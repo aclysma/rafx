@@ -1,22 +1,44 @@
 
 use glam::Mat4;
 use crate::frame_packet::FramePacket;
-use crate::static_visibility_node_set::StaticVisibilityResult;
-use crate::dynamic_visibility_node_set::DynamicVisibilityResult;
-use crate::RenderNodeSet;
+use crate::visibility::StaticVisibilityResult;
+use crate::visibility::DynamicVisibilityResult;
+use crate::{RenderNodeSet, RenderPhase};
+use crate::registry::{RenderPhaseMaskInnerType, MAX_RENDER_PHASE_COUNT};
+
+#[derive(Default)]
+pub struct RenderPhaseMaskBuilder(RenderPhaseMaskInnerType);
+
+impl RenderPhaseMaskBuilder {
+    pub fn add_render_phase<T: RenderPhase>(mut self) -> RenderPhaseMaskBuilder {
+        let index = T::render_phase_index();
+        assert!(index < MAX_RENDER_PHASE_COUNT);
+        self.0 |= 1<<T::render_phase_index();
+        self
+    }
+
+    pub fn build(self) -> RenderPhaseMask {
+        RenderPhaseMask(self.0)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct RenderPhaseMask(RenderPhaseMaskInnerType);
 
 ////////////////// Views //////////////////
 pub struct RenderView {
     view_proj: Mat4,
-    view_index: usize
+    view_index: usize,
+    render_stage_mask: RenderPhaseMask
 }
 
 impl RenderView {
-    pub fn new(frame_packet: &mut FramePacket, view_proj: Mat4) -> RenderView {
+    pub fn new(frame_packet: &mut FramePacket, view_proj: Mat4, render_stage_mask: RenderPhaseMask) -> RenderView {
         let view_index = frame_packet.allocate_view_packet();
         Self {
             view_proj,
-            view_index
+            view_index,
+            render_stage_mask
         }
     }
 
@@ -29,7 +51,12 @@ impl RenderView {
     {
         let view_packet = frame_packet.view_packet(self.view_index);
 
+        //let handle_bins =
+
+
         for handle in &static_visibility.handles {
+            //render_node_set.render_stage_mask
+
             let frame_node_index = frame_packet.append_frame_node(*handle);
             let view_node_index = view_packet.append_view_node(*handle, frame_node_index);
         }

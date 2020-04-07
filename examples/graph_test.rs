@@ -162,15 +162,29 @@ fn generate_gbuffer_pass() {
 
 
 
-use renderer::StaticVisibilityNodeSet;
-use renderer::DynamicVisibilityNodeSet;
-use renderer::RenderNodeSet;
-use renderer::DynamicAabbVisibilityNode;
-use renderer::SpriteRenderNode;
+use renderer::visibility::*;
+use renderer::features::sprite::*;
+use renderer::features::static_quad::*;
+use renderer::phases::draw_opaque::*;
+use renderer::{RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder};
 use renderer::RenderView;
 use renderer::FramePacket;
+use renderer::RenderRegistry;
+
 
 fn main() {
+    RenderRegistry::register_feature::<SpriteRenderFeature>();
+    RenderRegistry::register_feature::<StaticQuadRenderFeature>();
+    RenderRegistry::register_render_phase::<DrawOpaqueRenderPhase>();
+
+    let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
+        .add_render_phase::<DrawOpaqueRenderPhase>()
+        .build();
+
+    let minimap_render_phase_mask = RenderPhaseMaskBuilder::default()
+        .add_render_phase::<DrawOpaqueRenderPhase>()
+        .build();
+
     // Could maybe have multiple of these? Could pre-cook and serialize?
     let mut static_visibility_node_set = StaticVisibilityNodeSet::default();
     let mut dynamic_visibility_node_set = DynamicVisibilityNodeSet::default();
@@ -197,7 +211,7 @@ fn main() {
 
     // Would we need to update these? i.e. visibility_node_set.move_aabb()?
 
-    for _ in 0..100 {
+    for _ in 0..1 {
         println!("----- FRAME -----");
 
         // Take input
@@ -223,7 +237,7 @@ fn main() {
         let view_proj = projection * view;
 
         let mut frame_packet = FramePacket::default();
-        let main_view = RenderView::new(&mut frame_packet, view_proj/*, which_passes_are_enabled*/);
+        let main_view = RenderView::new(&mut frame_packet, view_proj, main_camera_render_phase_mask);
 
         //TODO: Separate static/dynamic visibility node sets? Do the static updates need to happen here before calculating static vis?
 
@@ -234,7 +248,7 @@ fn main() {
         // Simulation
 
         // User calls functions to create more views (such as shadows, minimap, etc.) based on simulation results
-        let minimap_view = RenderView::new(&mut frame_packet, view_proj/*, which_passes_are_enabled*/);
+        let minimap_view = RenderView::new(&mut frame_packet, view_proj, minimap_render_phase_mask);
 
         // User calls functions to start jobs that calculate dynamic visibility for FPS view
         let main_view_dynamic_visibility_result = dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view); // return task?

@@ -1,7 +1,7 @@
 
-use renderer_base::slab::RawSlab;
+use crate::slab::RawSlab;
 use crate::render_view::RenderView;
-use crate::visibility_nodes::*;
+use crate::visibility::*;
 use crate::GenericRenderNodeHandle;
 
 ////////////////// DynamicVisibilityNodeSet //////////////////

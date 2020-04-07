@@ -19,6 +19,7 @@ struct FramePacketInner {
 
 #[derive(Default)]
 pub struct FramePacket {
+    //TODO: Use atomics instead of mutex
     inner: Mutex<FramePacketInner>
 }
 
@@ -54,6 +55,7 @@ struct ViewPacketInner {
 
 #[derive(Default)]
 pub struct ViewPacket {
+    //TODO: Use atomics instead of mutex
     inner: Mutex<ViewPacketInner>
 }
 

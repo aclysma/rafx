@@ -1,5 +1,5 @@
 
-use renderer_base::slab::RawSlabKey;
+use crate::slab::RawSlabKey;
 use crate::GenericRenderNodeHandle;
 
 ////////////////// StaticAabb VisibilityNode //////////////////

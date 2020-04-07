@@ -1,7 +1,7 @@
 
 use crate::render_view::RenderView;
-use crate::static_visibility_node_set::StaticVisibilityResult;
-use crate::dynamic_visibility_node_set::DynamicVisibilityResult;
+use crate::visibility::StaticVisibilityResult;
+use crate::visibility::DynamicVisibilityResult;
 
 ////////////////// ViewExtractJob //////////////////
 enum ViewExtractJobState {

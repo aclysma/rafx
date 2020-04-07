@@ -1,7 +1,8 @@
 
-use renderer_base::slab::RawSlab;
+use crate::slab::RawSlab;
 use crate::render_nodes::*;
 use crate::frame_packet::FramePacket;
+use crate::features::sprite::*;
 
 ////////////////// RenderNodeSet //////////////////
 #[derive(Default)]

@@ -235,16 +235,13 @@ fn create_view() {
 
 
 
+pub mod slab;
 
+pub mod features;
 
-mod visibility_nodes;
-pub use visibility_nodes::*;
+pub mod phases;
 
-mod static_visibility_node_set;
-pub use static_visibility_node_set::StaticVisibilityNodeSet;
-
-mod dynamic_visibility_node_set;
-pub use dynamic_visibility_node_set::DynamicVisibilityNodeSet;
+pub mod visibility;
 
 
 mod render_nodes;
@@ -255,6 +252,8 @@ pub use render_node_set::RenderNodeSet;
 
 mod render_view;
 pub use render_view::RenderView;
+pub use render_view::RenderPhaseMaskBuilder;
+pub use render_view::RenderPhaseMask;
 
 mod frame_packet;
 pub use frame_packet::FramePacket;
@@ -262,3 +261,7 @@ pub use frame_packet::FramePacket;
 mod jobs;
 
 mod registry;
+pub use registry::RenderRegistry;
+pub use registry::RenderFeature;
+pub use registry::RenderPhase;
+pub use registry::RenderFeatureIndex;
