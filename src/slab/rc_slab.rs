@@ -32,7 +32,10 @@ impl<T> Clone for RcSlabEntry<T> {
 }
 
 impl<T> PartialEq for RcSlabEntry<T> {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
         self.slab_key == other.slab_key
     }
 }
@@ -40,13 +43,19 @@ impl<T> PartialEq for RcSlabEntry<T> {
 impl<T> Eq for RcSlabEntry<T> {}
 
 impl<T> std::hash::Hash for RcSlabEntry<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: std::hash::Hasher>(
+        &self,
+        state: &mut H,
+    ) {
         self.slab_key.hash(state);
     }
 }
 
 impl<T> std::fmt::Debug for RcSlabEntry<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result {
         (*self.slab_key).fmt(f)
     }
 }
@@ -117,7 +126,10 @@ impl<T> RcSlab<T> {
     /// Unreferenced elements are removed when update() is called
     ///
     /// Allocation can cause vectors to be resized. Use `with_capacity` to avoid this.
-    pub fn allocate(&mut self, value: T) -> RcSlabEntry<T> {
+    pub fn allocate(
+        &mut self,
+        value: T,
+    ) -> RcSlabEntry<T> {
         let key = self.slab.allocate(value);
         let entry = RcSlabEntry::new(key);
         self.entries.push(entry.clone());
@@ -126,17 +138,26 @@ impl<T> RcSlab<T> {
 
     /// Returns true if the entry exists. If it doesn't exist, it implies you've used the
     /// wrong key with the wrong slab
-    pub fn exists(&self, slab_entry: &RcSlabEntry<T>) -> bool {
+    pub fn exists(
+        &self,
+        slab_entry: &RcSlabEntry<T>,
+    ) -> bool {
         self.slab.exists(&*slab_entry.slab_key)
     }
 
     /// Get the element associated with the given key
-    pub fn get(&self, slab_entry: &RcSlabEntry<T>) -> &T {
+    pub fn get(
+        &self,
+        slab_entry: &RcSlabEntry<T>,
+    ) -> &T {
         self.slab.get(&*slab_entry.slab_key).unwrap()
     }
 
     /// Get the element associated with the given key
-    pub fn get_mut(&mut self, slab_entry: &RcSlabEntry<T>) -> &mut T {
+    pub fn get_mut(
+        &mut self,
+        slab_entry: &RcSlabEntry<T>,
+    ) -> &mut T {
         self.slab.get_mut(&*slab_entry.slab_key).unwrap()
     }
 

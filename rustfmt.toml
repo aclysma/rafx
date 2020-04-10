@@ -1,0 +1,82 @@
+
+# Many of the imports and modules are in "conceptual" order, for example
+# similar imports/modules are next to each other in order.
+reorder_imports = false
+reorder_modules = false
+
+# This makes merge conflicts less likely to occur, and makes it easier to see
+# symmetry between parameters.
+fn_args_layout = "Vertical"
+
+# Once TODOs are cleared we can turn this on
+# report_todo = "Unnumbered"
+# report_fixme = "Unnumbered"
+
+# Things I'd like to turn on if it's ever supported in cargo fmt
+#
+# ----- Force unsafe blocks to be multi-line -----
+#
+#   I'd like for unsafe blocks to be forced onto new lines, both before
+#   the unsafe and after the "unsafe {". New line before the unsafe
+#   could be omitted in simple let statements
+#
+#   CURRENT BEHAVIOR
+#
+#       semaphors.push(unsafe { vkCreateSemaphore() });
+#
+#       let x = unsafe { get_x() };
+#
+#   DESIRED BEHAVIOR
+#
+#        semaphors.push(
+#            unsafe {
+#                vkCreateSemaphore();
+#            }
+#        )
+#
+#        let x = unsafe {
+#            get_x();
+#        }
+#
+#   RATIONALE
+#
+#       This would make unsafe code more conspicuous. One workaround for
+#       particularly bad cases like the first example is to break it to
+#       multiple lines.
+#
+# ----- fn_args_layout for callsites -----
+#
+#   I'd like the "vetical" behavior for fn_args_layout applied at callsites
+#   as well
+#
+#   CURRENT BEHAVIOR
+#
+#       draw_circle(radius, position, color);
+#
+#       LogicalPosition::new(p0.x - p1.x, p0.y - p1.y)
+#
+#   DESIRED BEHAVIOR
+#
+#       draw_circle
+#           radius,
+#           position,
+#           color
+#       );
+#
+#       LogicalPosition::new(
+#           p0.x - p1.x,
+#           p0.y - p1.y
+#       );
+#
+#   RATIONALE
+#
+#       It's not uncommon to insert new parameters, or change parameters,
+#       being passed into a function. Merge conflicts are less likely to
+#       happen if each argument gets its own line.
+#
+#       In some cases there is symmetry that is helpful to see. When the
+#       the symmetry is broken, it's more conspicuous. This can make bugs
+#       easier to spot, or if it's not a bug, help the reader to see this.
+#
+#       As a bonus it's also more consistent with fn_args_layout
+#

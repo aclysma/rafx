@@ -1,4 +1,3 @@
-
 use crate::render_view::RenderView;
 use crate::visibility::VisibilityResult;
 
@@ -7,7 +6,7 @@ enum ViewExtractJobState {
     WaitingForStaticVisibility,
     WaitingForDynamicVisibility,
     WaitingForSimulationFinish,
-    Finished
+    Finished,
 }
 
 /// This wraps the process of calculating visibility and extracting data from the world into
@@ -30,16 +29,22 @@ impl ViewExtractJob {
         }
     }
 
-    fn on_static_visibility_ready(&mut self, nodes: &VisibilityResult) {
+    fn on_static_visibility_ready(
+        &mut self,
+        nodes: &VisibilityResult,
+    ) {
         // This should set some
         //self.static_visibility_future = result::ok(nodes);
     }
 
-    fn on_dynamic_visibility_ready(&mut self, nodes: &VisibilityResult) {
+    fn on_dynamic_visibility_ready(
+        &mut self,
+        nodes: &VisibilityResult,
+    ) {
         //self.dynamic_visibility_future = result::ok(nodes);
     }
 
-    fn on_simulation_finish(&mut self/*, world: &World*/) {
+    fn on_simulation_finish(&mut self /*, world: &World*/) {
         //self.world_future = result::ok(nodes);
     }
 

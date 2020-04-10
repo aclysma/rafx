@@ -96,8 +96,6 @@ fn main() {
         //
         // Redraw
         //
-        renderer
-            .draw(&window)
-            .unwrap();
+        renderer.draw(&window).unwrap();
     }
 }

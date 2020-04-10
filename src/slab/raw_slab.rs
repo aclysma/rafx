@@ -15,7 +15,7 @@ impl<T: Sized> Clone for RawSlabKey<T> {
     fn clone(&self) -> RawSlabKey<T> {
         RawSlabKey {
             index: self.index,
-            phantom_data: Default::default()
+            phantom_data: Default::default(),
         }
     }
 }
@@ -68,7 +68,10 @@ impl<T> RawSlab<T> {
     /// Allocate a slot within the raw slab.
     ///
     /// Allocation can cause vectors to be resized. Use `with_capacity` to avoid this.
-    pub fn allocate(&mut self, value: T) -> RawSlabKey<T> {
+    pub fn allocate(
+        &mut self,
+        value: T,
+    ) -> RawSlabKey<T> {
         let index = self.free_list.pop();
 
         if let Some(index) = index {
@@ -85,7 +88,10 @@ impl<T> RawSlab<T> {
     }
 
     /// Free an element in the raw slab. It is fatal to free an element that doesn't exist.
-    pub fn free(&mut self, slab_key: &RawSlabKey<T>) {
+    pub fn free(
+        &mut self,
+        slab_key: &RawSlabKey<T>,
+    ) {
         assert!(
             self.storage[slab_key.index as usize].is_some(),
             "tried to free a none value"
@@ -95,19 +101,28 @@ impl<T> RawSlab<T> {
     }
 
     /// Check if an element exists
-    pub fn exists(&self, slab_key: &RawSlabKey<T>) -> bool {
+    pub fn exists(
+        &self,
+        slab_key: &RawSlabKey<T>,
+    ) -> bool {
         self.storage[slab_key.index as usize].is_some()
     }
 
     /// Try to get the given element
-    pub fn get(&self, slab_key: &RawSlabKey<T>) -> Option<&T> {
+    pub fn get(
+        &self,
+        slab_key: &RawSlabKey<T>,
+    ) -> Option<&T> {
         // Non-mutable return value so we can return a ref to the value in the vec
 
         self.storage[slab_key.index as usize].as_ref()
     }
 
     /// Try to get the given element
-    pub fn get_mut(&mut self, slab_key: &RawSlabKey<T>) -> Option<&mut T> {
+    pub fn get_mut(
+        &mut self,
+        slab_key: &RawSlabKey<T>,
+    ) -> Option<&mut T> {
         // Mutable reference, and we don't want the caller messing with the Option in the vec,
         // so create a new Option with a mut ref to the value in the vec
         self.storage[slab_key.index as usize].as_mut()

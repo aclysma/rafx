@@ -4,7 +4,7 @@ use crate::RenderPhase;
 use std::sync::atomic::AtomicI32;
 use std::convert::TryInto;
 
-static DRAW_OPAQUE_RENDER_PHASE_INDEX : AtomicI32 = AtomicI32::new(-1);
+static DRAW_OPAQUE_RENDER_PHASE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
 pub struct DrawOpaqueRenderPhase;
 

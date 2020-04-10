@@ -35,7 +35,11 @@ impl<KeyT: Eq + Hash, ValueT> KeyedRcSlab<KeyT, ValueT> {
 
     /// Allocate a slot. If the element already exists, it is simply returned. If it doesn't exist,
     /// it's allocated a slot in the slab.
-    pub fn allocate(&mut self, key: KeyT, value: ValueT) -> RcSlabEntry<ValueT> {
+    pub fn allocate(
+        &mut self,
+        key: KeyT,
+        value: ValueT,
+    ) -> RcSlabEntry<ValueT> {
         match self.find(&key) {
             Some(ptr) => ptr,
             None => {
@@ -66,22 +70,34 @@ impl<KeyT: Eq + Hash, ValueT> KeyedRcSlab<KeyT, ValueT> {
     }
 
     /// True if the element exists
-    pub fn exists(&self, slab_entry: &RcSlabEntry<ValueT>) -> bool {
+    pub fn exists(
+        &self,
+        slab_entry: &RcSlabEntry<ValueT>,
+    ) -> bool {
         self.slab.exists(slab_entry)
     }
 
     /// Get the element via slab key
-    pub fn get(&self, slab_entry: &RcSlabEntry<ValueT>) -> &ValueT {
+    pub fn get(
+        &self,
+        slab_entry: &RcSlabEntry<ValueT>,
+    ) -> &ValueT {
         self.slab.get(slab_entry)
     }
 
     /// Get the element via slab key
-    pub fn get_mut(&mut self, slab_entry: &RcSlabEntry<ValueT>) -> &mut ValueT {
+    pub fn get_mut(
+        &mut self,
+        slab_entry: &RcSlabEntry<ValueT>,
+    ) -> &mut ValueT {
         self.slab.get_mut(slab_entry)
     }
 
     /// Find the slab_entry for the given key, or None if it doesn't exist
-    pub fn find(&self, key: &KeyT) -> Option<RcSlabEntry<ValueT>> {
+    pub fn find(
+        &self,
+        key: &KeyT,
+    ) -> Option<RcSlabEntry<ValueT>> {
         self.lookup.get(key)?.upgrade()
     }
 

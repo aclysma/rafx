@@ -1,6 +1,4 @@
-
 // Is it possible to use proc macros for registering for passes, entry points, etc?
-
 
 /// Logic:
 /// * Simulate
@@ -32,21 +30,6 @@
 ///  - This produces a visibility object that has a handle to the render object
 /// Entity has a handle to both the render object and the visibility object
 /// Extraction will store all data into a ring buffer of frame packets
-
-
-// struct VisibilityManager {
-//     fn register_visibility_type() { }
-//
-//
-// }
-//
-// struct RenderManager {
-//     fn register_render_type() { }
-// }
-
-
-
-
 
 ///
 /// Render graph can be calculated every frame, it's expected some nodes will not be hooked up and
@@ -98,7 +81,6 @@
 /// - I think FIFO priority queue without work-stealing is the most popular async execution strategy for games
 ///
 
-
 /// This trait defines all the extension points you can use to extract data from the game, process the data
 /// in preparation for submitting to the GPU, and actually doing the submit
 ///
@@ -125,128 +107,82 @@
 /// // - begin
 /// // - node
 /// // - end
-trait FeatureRenderer {
+// trait FeatureRenderer {
+//
+//     //
+//     // Extract
+//     //
+//
+//     /// Called once per frame
+//     fn extract_begin();
+//
+//     /// Called once per frame/render object
+//     fn extract_frame_node();
+//
+//     /// Called once per view/render object
+//     fn extract_view_nodes();
+//
+//     /// Called once per view
+//     fn extract_view_finalize();
+//
+//     /// Called once per frame
+//     fn extract_frame_finalize();
+//
+//     //
+//     // Prepare
+//     //
+//
+//     /// Called once per frame
+//     fn prepare_begin();
+//
+//     /// Called once per frame/render object
+//     fn prepare_frame_node();
+//
+//     /// Called once per view/render object
+//     fn prepare_view_nodes();
+//
+//     /// Called once per view
+//     fn prepare_view_finalize();
+//
+//     /// Called once per frame
+//     fn prepare_frame_finalize();
+//
+//     //
+//     // Submit
+//     //
+//
+//     /// Called once per submit block
+//     fn submit_block_begin();
+//
+//     /// Called once per block node
+//     fn submit_node();
+//
+//     /// Called once per submit block
+//     fn submit_block_end();
+// }
 
-    //
-    // Extract
-    //
-
-    /// Called once per frame
-    fn extract_begin();
-
-    /// Called once per frame/render object
-    fn extract_frame_node();
-
-    /// Called once per view/render object
-    fn extract_view_nodes();
-
-    /// Called once per view
-    fn extract_view_finalize();
-
-    /// Called once per frame
-    fn extract_frame_finalize();
-
-    //
-    // Prepare
-    //
-
-    /// Called once per frame
-    fn prepare_begin();
-
-    /// Called once per frame/render object
-    fn prepare_frame_node();
-
-    /// Called once per view/render object
-    fn prepare_view_nodes();
-
-    /// Called once per view
-    fn prepare_view_finalize();
-
-    /// Called once per frame
-    fn prepare_frame_finalize();
-
-    //
-    // Submit
-    //
-
-    /// Called once per submit block
-    fn submit_block_begin();
-
-    /// Called once per block node
-    fn submit_node();
-
-    /// Called once per submit block
-    fn submit_block_end();
-}
-/*
-struct FrameNodeSet;
-impl FrameNodeSet{
-    fn add_frame_node();
-}
-
-struct FrameNode {
-    // Entity handle
-}
-
-struct ViewNodeSet;
-impl ViewNodeSet {
-    // Entity handle
-
-    fn add_view_node();
-}
-
-struct SubmitNodeSet;
-impl SubmitNodeSet {
-    // Sort key
-
-    fn add_submit_node();
-}
-
-trait RenderStage {
-    fn get_sort_key();
-}
-
-trait SubmitNodeSortStrategy {
-
-}
-
-
-
-fn create_pass_gbuffer() {
-    // set_render_targets();
-    // set_viewport();
-    // submit_render_stage_for_view(first_person_view, render_stage_gbuffer);
-}
-
-fn render_graph_node() {
-    // NodeBuilder
-    //     .add_input_resource(...)
-    //     .add_output_resource(...)
-}
-
-fn create_view() {
-    // View::new(window, viewport, resource, frustum)
-}
-*/
-
-// use renderer_base::slab::RawSlab;
-// use renderer_base::slab::RawSlabKey;
-// use glam::{Vec2, Vec3, Vec4, Mat4};
-
-
+// fn create_pass_gbuffer() {
+//     // set_render_targets();
+//     // set_viewport();
+//     // submit_render_stage_for_view(first_person_view, render_stage_gbuffer);
+// }
+//
+// fn render_graph_node() {
+//     // NodeBuilder
+//     //     .add_input_resource(...)
+//     //     .add_output_resource(...)
+// }
 
 pub mod slab;
 
 pub mod features;
-pub use features::GenericRenderNodeHandle;
 
 pub mod phases;
 
 pub mod visibility;
 
-
 mod render_nodes;
-pub use render_nodes::*;
+pub use render_nodes::GenericRenderNodeHandle;
 
 mod render_node_set;
 pub use render_node_set::RenderNodeSet;

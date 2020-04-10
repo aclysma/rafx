@@ -29,12 +29,18 @@ impl<T> Generation<T> {
     }
 
     /// Returns true if the element is not None, and matches the given generation
-    pub fn exists(&self, generation: GenerationIndex) -> bool {
+    pub fn exists(
+        &self,
+        generation: GenerationIndex,
+    ) -> bool {
         self.value.is_some() && self.generation_index == generation
     }
 
     /// Get the value, but only if the given generation index isn't stale
-    pub fn get(&self, generation: GenerationIndex) -> Option<&T> {
+    pub fn get(
+        &self,
+        generation: GenerationIndex,
+    ) -> Option<&T> {
         //println!("get self: {} param: {}", self.generation_index.0, generation.0);
 
         let value = self.value.as_ref()?;
@@ -46,7 +52,10 @@ impl<T> Generation<T> {
     }
 
     /// Get the value, but only if the given generation index isn't stale
-    pub fn get_mut(&mut self, generation: GenerationIndex) -> Option<&mut T> {
+    pub fn get_mut(
+        &mut self,
+        generation: GenerationIndex,
+    ) -> Option<&mut T> {
         //println!("get self: {} param: {}", self.generation_index.0, generation.0);
 
         let value = self.value.as_mut()?;
@@ -60,7 +69,10 @@ impl<T> Generation<T> {
     /// Set the value. Fatal if a value already exists. It's called allocate to imply that you
     /// must call free before calling allocate again. (Partly to detect errors in usage, and partly
     /// because free increments generation_index
-    pub fn allocate(&mut self, value: T) -> GenerationIndex {
+    pub fn allocate(
+        &mut self,
+        value: T,
+    ) -> GenerationIndex {
         assert!(
             self.value.is_none(),
             "Can only allocate a generation if it's not already allocated"
@@ -72,7 +84,10 @@ impl<T> Generation<T> {
     }
 
     /// Clear the value. Fatal if the generation index is stale.
-    pub fn free(&mut self, generation_index: GenerationIndex) {
+    pub fn free(
+        &mut self,
+        generation_index: GenerationIndex,
+    ) {
         assert!(
             self.value.is_some(),
             "Can only free a generation if it's not already freed"

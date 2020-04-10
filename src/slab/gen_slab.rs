@@ -20,7 +20,10 @@ pub struct GenSlabKey<T> {
 }
 
 impl<T> GenSlabKey<T> {
-    fn new(index: SlabIndexT, generation_index: GenerationIndex) -> GenSlabKey<T> {
+    fn new(
+        index: SlabIndexT,
+        generation_index: GenerationIndex,
+    ) -> GenSlabKey<T> {
         GenSlabKey::<T> {
             index,
             generation_index,
@@ -46,20 +49,29 @@ impl<T> Clone for GenSlabKey<T> {
 }
 
 impl<T> PartialEq for GenSlabKey<T> {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
         self.index == other.index && self.generation_index == other.generation_index
     }
 }
 
 impl<T> std::hash::Hash for GenSlabKey<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: std::hash::Hasher>(
+        &self,
+        state: &mut H,
+    ) {
         self.index.hash(state);
         self.generation_index.hash(state);
     }
 }
 
 impl<T> std::fmt::Debug for GenSlabKey<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result {
         write!(
             f,
             "Index: {} Generation: {:?}",
@@ -104,7 +116,10 @@ impl<T> GenSlab<T> {
     /// Insert a T into the slab. A generation-aware key is returned
     ///
     /// Allocation can cause vectors to be resized. Use `with_capacity` to avoid this.
-    pub fn allocate(&mut self, value: T) -> GenSlabKey<T> {
+    pub fn allocate(
+        &mut self,
+        value: T,
+    ) -> GenSlabKey<T> {
         let index = self.free_list.pop();
 
         if let Some(index) = index {
@@ -127,7 +142,10 @@ impl<T> GenSlab<T> {
     }
 
     /// Remove the T from the slab. Fatal is the element with the given generation does not exist
-    pub fn free(&mut self, slab_key: &GenSlabKey<T>) {
+    pub fn free(
+        &mut self,
+        slab_key: &GenSlabKey<T>,
+    ) {
         assert!(
             self.storage[slab_key.index as usize]
                 .get(slab_key.generation_index)
@@ -139,19 +157,28 @@ impl<T> GenSlab<T> {
     }
 
     /// Determine if the given element/generation exists
-    pub fn exists(&self, slab_key: &GenSlabKey<T>) -> bool {
+    pub fn exists(
+        &self,
+        slab_key: &GenSlabKey<T>,
+    ) -> bool {
         // Non-mutable return value so we can return a ref to the value in the vec
         self.storage[slab_key.index as usize].exists(slab_key.generation_index)
     }
 
     /// Try to get the given element
-    pub fn get(&self, slab_key: &GenSlabKey<T>) -> Option<&T> {
+    pub fn get(
+        &self,
+        slab_key: &GenSlabKey<T>,
+    ) -> Option<&T> {
         // Non-mutable return value so we can return a ref to the value in the vec
         self.storage[slab_key.index as usize].get(slab_key.generation_index)
     }
 
     /// Try to get the given element
-    pub fn get_mut(&mut self, slab_key: &GenSlabKey<T>) -> Option<&mut T> {
+    pub fn get_mut(
+        &mut self,
+        slab_key: &GenSlabKey<T>,
+    ) -> Option<&mut T> {
         // Mutable reference, and we don't want the caller messing with the Option in the vec,
         // so create a new Option with a mut ref to the value in the vec
         self.storage[slab_key.index as usize].get_mut(slab_key.generation_index)
@@ -180,7 +207,10 @@ impl<T> GenSlab<T> {
     /// an instance. (For example if entity in slot 5 is destroyed and created, and a component attached
     /// to the "old" entity in slot 5 tried to get the entity handle of whatever is in slot 5, it
     /// could end up getting associated with the wrong entity)
-    pub fn upgrade_index_to_handle(&self, index: SlabIndexT) -> Option<GenSlabKey<T>> {
+    pub fn upgrade_index_to_handle(
+        &self,
+        index: SlabIndexT,
+    ) -> Option<GenSlabKey<T>> {
         let index_usize = index as usize;
         if !self.storage[index_usize].is_none() {
             let generation_index = self.storage[index_usize].generation_index();

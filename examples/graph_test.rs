@@ -105,9 +105,6 @@ trait Pass {
 // * End Frame Job
 // * Submit Done
 
-
-
-
 // view subscribes to stages
 // objects subscribe to stages
 
@@ -153,20 +150,13 @@ fn generate_gbuffer_pass() {
 // - The render pipeline uses cached data, node, static data. So it can run concurrently with all above steps
 // - The visibility spatial structures and render objects can be added/removed freely during the above steps
 
-
-
-
-
-
-
-
-
-
 use renderer::visibility::*;
 use renderer::features::sprite::*;
 use renderer::features::static_quad::*;
 use renderer::phases::draw_opaque::*;
-use renderer::{RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureImplSet, FramePacketBuilder};
+use renderer::{
+    RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureImplSet, FramePacketBuilder,
+};
 use renderer::RenderView;
 use renderer::FramePacket;
 use renderer::RenderRegistry;
@@ -176,13 +166,13 @@ use glam::Vec3;
 
 #[derive(Copy, Clone)]
 struct PositionComponent {
-    position: Vec3
+    position: Vec3,
 }
 
 #[derive(Clone)]
 struct SpriteComponent {
     sprite_handle: SpriteRenderNodeHandle,
-    visibility_handle: DynamicAabbVisibilityNodeHandle
+    visibility_handle: DynamicAabbVisibilityNodeHandle,
 }
 
 fn main() {
@@ -217,11 +207,7 @@ fn main() {
     let universe = Universe::default();
     let mut world = universe.create_world();
 
-    let sprites = [
-        "sprite1",
-        "sprite2",
-        "sprite3"
-    ];
+    let sprites = ["sprite1", "sprite2", "sprite3"];
 
     for i in 0..100 {
         let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
@@ -241,7 +227,7 @@ fn main() {
         let aabb_info = DynamicAabbVisibilityNode {
             // render node handles
             // aabb bounds
-            handle: sprite_handle.into()
+            handle: sprite_handle.into(),
         };
 
         // User calls functions to register visibility objects
@@ -251,10 +237,13 @@ fn main() {
         let position_component = PositionComponent { position };
         let sprite_component = SpriteComponent {
             sprite_handle,
-            visibility_handle
+            visibility_handle,
         };
 
-        world.insert((), (0..1).map(|_| (position_component, sprite_component.clone())));
+        world.insert(
+            (),
+            (0..1).map(|_| (position_component, sprite_component.clone())),
+        );
     }
 
     //
@@ -294,7 +283,11 @@ fn main() {
 
         let view_proj = projection * view;
 
-        let main_view = render_view_set.create_view(view_proj, main_camera_render_phase_mask, "main".to_string());
+        let main_view = render_view_set.create_view(
+            view_proj,
+            main_camera_render_phase_mask,
+            "main".to_string(),
+        );
 
         //
         // Predict visibility for static objects.. this could be front-loaded ahead of simulation to reduce latency
@@ -306,7 +299,8 @@ fn main() {
         // User could call function to calculate visibility of static objects for FPS camera early to reduce
         // future critical-path work (to reduce latency). The bungie talk took a volume of possible camera
         // positions instead of a single position
-        let main_view_static_visibility_result = static_visibility_node_set.calculate_static_visibility(&main_view); // return task?
+        let main_view_static_visibility_result =
+            static_visibility_node_set.calculate_static_visibility(&main_view); // return task?
 
         //
         // Simulation would go here
@@ -316,7 +310,11 @@ fn main() {
         //
         // Figure out other views (example: minimap, shadow maps, etc.)
         //
-        let minimap_view = render_view_set.create_view(view_proj, minimap_render_phase_mask, "minimap".to_string());
+        let minimap_view = render_view_set.create_view(
+            view_proj,
+            minimap_render_phase_mask,
+            "minimap".to_string(),
+        );
 
         //
         // Finish visibility calculations and populate the frame packet. Views can potentially be run in their own jobs
@@ -335,26 +333,41 @@ fn main() {
         let frame_packet_builder = FramePacketBuilder::new(&render_node_set);
 
         // User calls functions to start jobs that calculate dynamic visibility for FPS view
-        let main_view_dynamic_visibility_result = dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
+        let main_view_dynamic_visibility_result =
+            dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
 
         // User calls functions to start jobs that calculate static and dynamic visibility for all other views
-        let minimap_static_visibility_result = static_visibility_node_set.calculate_static_visibility(&minimap_view);
-        let minimap_dynamic_visibility_result = dynamic_visibility_node_set.calculate_dynamic_visibility(&minimap_view);
+        let minimap_static_visibility_result =
+            static_visibility_node_set.calculate_static_visibility(&minimap_view);
+        let minimap_dynamic_visibility_result =
+            dynamic_visibility_node_set.calculate_dynamic_visibility(&minimap_view);
 
-        log::info!("main view static node count: {}", main_view_static_visibility_result.handles.len());
-        log::info!("main view dynamic node count: {}", main_view_dynamic_visibility_result.handles.len());
+        log::info!(
+            "main view static node count: {}",
+            main_view_static_visibility_result.handles.len()
+        );
+        log::info!(
+            "main view dynamic node count: {}",
+            main_view_dynamic_visibility_result.handles.len()
+        );
 
         // After these jobs end, user calls functions to start jobs that extract data
         frame_packet_builder.allocate_frame_packet_nodes(
             &render_node_set,
             &main_view,
-            &[main_view_static_visibility_result, main_view_dynamic_visibility_result]
+            &[
+                main_view_static_visibility_result,
+                main_view_dynamic_visibility_result,
+            ],
         );
 
         frame_packet_builder.allocate_frame_packet_nodes(
             &render_node_set,
             &minimap_view,
-            &[minimap_static_visibility_result, minimap_dynamic_visibility_result]
+            &[
+                minimap_static_visibility_result,
+                minimap_dynamic_visibility_result,
+            ],
         );
 
         //
@@ -396,15 +409,11 @@ fn main() {
     }
 }
 
-
-
 //TODO:
 // - Render graph of non-transparents and then transparents
 // - maybe add 2d lighting?
 // - Add support for streaming chunks?
 // - tilemap?
-
-
 
 // Create views
 // Calculate static visibility (jobify)
