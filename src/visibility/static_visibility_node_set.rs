@@ -47,8 +47,9 @@ impl StaticVisibilityNodeSet {
         self.static_aabb.free(&handle.0);
     }
 
-    pub fn calculate_static_visibility(&self, view: &RenderView) -> StaticVisibilityResult {
-        let mut result = StaticVisibilityResult::default();
+    pub fn calculate_static_visibility(&self, view: &RenderView) -> VisibilityResult {
+        log::debug!("Calculate static visibility for {}", view.debug_name());
+        let mut result = VisibilityResult::default();
 
         for (_, aabb) in self.static_aabb.iter() {
             result.handles.push(aabb.handle);
@@ -57,10 +58,4 @@ impl StaticVisibilityNodeSet {
         //TODO: Could consider sorting lists of handles by type/key to get linear memory access
         result
     }
-}
-
-#[derive(Default)]
-pub struct StaticVisibilityResult {
-    pub handles: Vec<GenericRenderNodeHandle>
-    //pub count_per_type:
 }

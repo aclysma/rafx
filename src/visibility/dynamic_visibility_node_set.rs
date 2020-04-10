@@ -21,8 +21,9 @@ impl DynamicVisibilityNodeSet {
         self.dynamic_aabb.free(&handle.0);
     }
 
-    pub fn calculate_dynamic_visibility(&self, view: &RenderView) -> DynamicVisibilityResult {
-        let mut result = DynamicVisibilityResult::default();
+    pub fn calculate_dynamic_visibility(&self, view: &RenderView) -> VisibilityResult {
+        log::debug!("Calculate dynamic visibility for {}", view.debug_name());
+        let mut result = VisibilityResult::default();
 
         for (_, aabb) in self.dynamic_aabb.iter() {
             result.handles.push(aabb.handle);
@@ -33,7 +34,7 @@ impl DynamicVisibilityNodeSet {
     }
 }
 
-#[derive(Default)]
-pub struct DynamicVisibilityResult {
-    pub handles: Vec<GenericRenderNodeHandle>
-}
+// #[derive(Default)]
+// pub struct DynamicVisibilityResult {
+//     pub handles: Vec<GenericRenderNodeHandle>
+// }

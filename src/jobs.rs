@@ -1,7 +1,6 @@
 
 use crate::render_view::RenderView;
-use crate::visibility::StaticVisibilityResult;
-use crate::visibility::DynamicVisibilityResult;
+use crate::visibility::VisibilityResult;
 
 ////////////////// ViewExtractJob //////////////////
 enum ViewExtractJobState {
@@ -31,12 +30,12 @@ impl ViewExtractJob {
         }
     }
 
-    fn on_static_visibility_ready(&mut self, nodes: &StaticVisibilityResult) {
+    fn on_static_visibility_ready(&mut self, nodes: &VisibilityResult) {
         // This should set some
         //self.static_visibility_future = result::ok(nodes);
     }
 
-    fn on_dynamic_visibility_ready(&mut self, nodes: &DynamicVisibilityResult) {
+    fn on_dynamic_visibility_ready(&mut self, nodes: &VisibilityResult) {
         //self.dynamic_visibility_future = result::ok(nodes);
     }
 

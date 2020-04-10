@@ -1,11 +1,11 @@
 
-use crate::slab::{RawSlabKey, SlabIndexT};
+use crate::slab::RawSlabKey;
 use crate::registry::RenderFeature;
 use crate::registry::RenderFeatureImpl;
 use crate::registry::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
-use crate::{GenericRenderNodeHandle, FramePacket};
+use crate::{FramePacket, GenericRenderNodeHandle};
 use std::convert::TryInto;
 
 
@@ -24,6 +24,10 @@ impl RenderFeature for SpriteRenderFeature {
         SPRITE_FEATURE_INDEX.load(Ordering::Acquire) as RenderFeatureIndex
     }
 
+    fn feature_debug_name() -> &'static str {
+        "SpriteRenderFeature"
+    }
+
     fn create_render_feature_impl() -> Box<RenderFeatureImpl> {
         Box::new(Self)
     }
@@ -31,12 +35,13 @@ impl RenderFeature for SpriteRenderFeature {
 
 impl RenderFeatureImpl for SpriteRenderFeature {
     fn feature_index(&self) -> RenderFeatureIndex { <Self as RenderFeature>::feature_index() }
+    fn feature_debug_name(&self) -> &str { <Self as RenderFeature>::feature_debug_name() }
 
-    fn extract_begin(&self, frame_packet: &FramePacket) { println!("extract_begin {}", core::any::type_name::<Self>()); }
-    fn extract_frame_node(&self, frame_packet: &FramePacket) { println!("extract_frame_node {}", core::any::type_name::<Self>()); }
-    fn extract_view_nodes(&self, frame_packet: &FramePacket) { println!("extract_view_nodes {}", core::any::type_name::<Self>()); }
-    fn extract_view_finalize(&self, frame_packet: &FramePacket) { println!("extract_view_finalize {}", core::any::type_name::<Self>()); }
-    fn extract_frame_finalize(&self, frame_packet: &FramePacket) { println!("extract_frame_finalize {}", core::any::type_name::<Self>()); }
+    fn extract_begin(&self, frame_packet: &FramePacket) { log::trace!("extract_begin {}", self.feature_debug_name()); }
+    fn extract_frame_node(&self, frame_packet: &FramePacket) { log::trace!("extract_frame_node {}", self.feature_debug_name()); }
+    fn extract_view_nodes(&self, frame_packet: &FramePacket) { log::trace!("extract_view_nodes {}", self.feature_debug_name()); }
+    fn extract_view_finalize(&self, frame_packet: &FramePacket) { log::trace!("extract_view_finalize {}", self.feature_debug_name()); }
+    fn extract_frame_finalize(&self, frame_packet: &FramePacket) { log::trace!("extract_frame_finalize {}", self.feature_debug_name()); }
 }
 
 pub struct SpriteRenderNode {

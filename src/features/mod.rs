@@ -12,6 +12,13 @@ pub struct GenericRenderNodeHandle {
 }
 
 impl GenericRenderNodeHandle {
+    pub fn new(render_feature_index: RenderFeatureIndex, slab_index: SlabIndexT) -> Self {
+        GenericRenderNodeHandle {
+            render_feature_index,
+            slab_index
+        }
+    }
+
     pub fn render_feature_index(&self) -> RenderFeatureIndex {
         self.render_feature_index
     }

@@ -13,11 +13,14 @@ pub trait RenderFeature {
     fn set_feature_index(index: RenderFeatureIndex);
     fn feature_index() -> RenderFeatureIndex;
 
+    fn feature_debug_name() -> &'static str;
+
     fn create_render_feature_impl() -> Box<RenderFeatureImpl>;
 }
 
 pub trait RenderFeatureImpl {
     fn feature_index(&self) -> RenderFeatureIndex;
+    fn feature_debug_name(&self) -> &str;
 
     fn extract_begin(&self, frame_packet: &FramePacket);
     fn extract_frame_node(&self, frame_packet: &FramePacket);

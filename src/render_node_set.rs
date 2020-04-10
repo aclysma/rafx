@@ -3,16 +3,35 @@ use crate::slab::RawSlab;
 use crate::render_nodes::*;
 use crate::frame_packet::FramePacket;
 use crate::features::sprite::*;
+use crate::RenderRegistry;
+use crate::RenderFeature;
+use crate::features::static_quad::{StaticQuadRenderNode, StaticQuadRenderNodeHandle};
 
 ////////////////// RenderNodeSet //////////////////
-#[derive(Default)]
 pub struct RenderNodeSet {
     sprites: RawSlab<SpriteRenderNode>,
-    static_quads: RawSlab<StaticQuadRenderNode>
+    static_quads: RawSlab<StaticQuadRenderNode>,
+
+    node_count_by_type: Vec<u32>,
 }
 
 impl RenderNodeSet {
+    pub fn new() -> Self {
+        RenderNodeSet {
+            sprites: Default::default(),
+            static_quads: Default::default(),
+            node_count_by_type: vec![0, RenderRegistry::registered_feature_count()]
+        }
+    }
+
+    pub fn node_count_by_type(&self) -> &[u32] {
+        &self.node_count_by_type
+    }
+
     pub fn register_sprite(&mut self, node: SpriteRenderNode) -> SpriteRenderNodeHandle {
+
+        self.node_count_by_type[SpriteRenderFeature::feature_index() as usize];
+
         //TODO: Request streaming in a resource
         SpriteRenderNodeHandle(self.sprites.allocate(node))
     }

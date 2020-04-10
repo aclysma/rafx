@@ -21,35 +21,40 @@ impl RenderFeatureImplSet {
         self.feature_impls[feature_index] = Some(render_feature_impl);
     }
 
-    pub fn extract(&self, frame_packet: &FramePacket, views: &[RenderView]) {
+    pub fn extract(&self, frame_packet: &FramePacket, views: &[&RenderView]) {
+        log::debug!("RenderFeatureImplSet::extract");
         // In the future, make features run in parallel
         for feature_impl in &self.feature_impls {
             if let Some(feature_impl) = feature_impl {
+                log::debug!("extract_begin {}", feature_impl.feature_debug_name());
                 feature_impl.extract_begin(frame_packet);
 
                 // foreach frame node, call extract
+                log::debug!("extract_frame_node {}", feature_impl.feature_debug_name());
                 feature_impl.extract_frame_node(frame_packet);
 
                 for view in views {
-                    println!("view");
                     // foreach view node, call extract
+                    log::debug!("extract_frame_node {} {}", feature_impl.feature_debug_name(), view.debug_name());
                     feature_impl.extract_view_nodes(frame_packet);
 
                     // call once after all view nodes extracted
+                    log::debug!("extract_view_finalize {} {}", feature_impl.feature_debug_name(), view.debug_name());
                     feature_impl.extract_view_finalize(frame_packet);
                 }
 
                 // call once after all nodes extracted
+                log::debug!("extract_frame_finalize {}", feature_impl.feature_debug_name());
                 feature_impl.extract_frame_finalize(frame_packet);
             }
         }
     }
 
-    pub fn prepare(&self, frame_packet: &FramePacket, views: &[RenderView]) {
+    pub fn prepare(&self, frame_packet: &FramePacket, views: &[&RenderView]) {
 
     }
 
-    pub fn submit(&self, frame_packet: &FramePacket, views: &[RenderView]) {
+    pub fn submit(&self, frame_packet: &FramePacket, views: &[&RenderView]) {
 
     }
 

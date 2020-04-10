@@ -166,10 +166,11 @@ use renderer::visibility::*;
 use renderer::features::sprite::*;
 use renderer::features::static_quad::*;
 use renderer::phases::draw_opaque::*;
-use renderer::{RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureImplSet};
+use renderer::{RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureImplSet, FramePacketBuilder};
 use renderer::RenderView;
 use renderer::FramePacket;
 use renderer::RenderRegistry;
+use renderer::RenderViewSet;
 use legion::prelude::*;
 use glam::Vec3;
 
@@ -185,6 +186,11 @@ struct SpriteComponent {
 }
 
 fn main() {
+    // Setup logging
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Debug)
+        .init();
+
     //
     // Setup render features
     //
@@ -200,10 +206,10 @@ fn main() {
         .add_render_phase::<DrawOpaqueRenderPhase>()
         .build();
 
-    // Could maybe have multiple of these? Could pre-cook and serialize?
+    // In theory we could pre-cook static visibility in chunks and stream them in
     let mut static_visibility_node_set = StaticVisibilityNodeSet::default();
     let mut dynamic_visibility_node_set = DynamicVisibilityNodeSet::default();
-    let mut render_node_set = RenderNodeSet::default();
+    let mut render_node_set = RenderNodeSet::new();
 
     //
     // Init an example world state
@@ -221,6 +227,8 @@ fn main() {
         let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
         let sprite = sprites[i % sprites.len()];
 
+        //TODO: Not clear the best approach from an API perspective to allocate component and render
+        // node that point at each other. (We can't get Entity or Handle until the object is inserted)
         let sprite_info = SpriteRenderNode {
             // entity handle
             // sprite asset
@@ -249,14 +257,14 @@ fn main() {
         world.insert((), (0..1).map(|_| (position_component, sprite_component.clone())));
     }
 
-
-    // Would we need to update these? i.e. visibility_node_set.move_aabb()?
-
     //
     // Update loop example
     //
     for _ in 0..1 {
         println!("----- FRAME -----");
+
+        // One view set per frame
+        let render_view_set = RenderViewSet::default();
 
         //
         // Take input
@@ -286,107 +294,115 @@ fn main() {
 
         let view_proj = projection * view;
 
-        let mut frame_packet = FramePacket::default();
-        let main_view = RenderView::new(&mut frame_packet, view_proj, main_camera_render_phase_mask);
+        let main_view = render_view_set.create_view(view_proj, main_camera_render_phase_mask, "main".to_string());
 
         //
         // Predict visibility for static objects.. this could be front-loaded ahead of simulation to reduce latency
-        // Should also consider pre-cached/serialized visibility data that might be streamed in/out in chunks
+        // Should also consider pre-cached/serialized visibility data that might be streamed in/out in chunks. Updates
+        // to static visibility would have to happen before this point. This could be as simple as pushing a
+        // pre-built visibility data structure loaded from disk into a list.
         //
-        //TODO: Separate static/dynamic visibility node sets? Do the static updates need to happen here before calculating static vis?
 
         // User could call function to calculate visibility of static objects for FPS camera early to reduce
-        //   future critical-path work (to reduce latency)
+        // future critical-path work (to reduce latency). The bungie talk took a volume of possible camera
+        // positions instead of a single position
         let main_view_static_visibility_result = static_visibility_node_set.calculate_static_visibility(&main_view); // return task?
 
         //
         // Simulation would go here
         //
+        //TODO: Moving an object would require updating visibility nodes (likely a remove and re-insert)
 
         //
-        // Figure out other views (example: a minimap)
+        // Figure out other views (example: minimap, shadow maps, etc.)
         //
-
-        // User calls functions to create more views (such as shadows, minimap, etc.) based on simulation results
-        let minimap_view = RenderView::new(&mut frame_packet, view_proj, minimap_render_phase_mask);
+        let minimap_view = render_view_set.create_view(view_proj, minimap_render_phase_mask, "minimap".to_string());
 
         //
         // Finish visibility calculations and populate the frame packet. Views can potentially be run in their own jobs
-        // in the future
+        // in the future. The visibility calculations and allocation of frame packet nodes can all run in parallel.
+        // There is a single sync point after this to give features a callback that extraction is about to begin.
+        // (All frame nodes must be allocated before this point). After that, extraction for all features and views
+        // can run in parallel.
+        //
+        // I'm not sure why a pre-extract callback that can access all frame nodes is useful but it was called out
+        // in the bungie talk so implementing it for now. Removing this would allow extraction to move forward for
+        // views that finish visibility without waiting on visibility for other views
         //
 
+        // The frame packet builder will merge visibility results and hold extracted data from simulation. During
+        // the extract window, render nodes cannot be added/removed
+        let frame_packet_builder = FramePacketBuilder::new(&render_node_set);
+
         // User calls functions to start jobs that calculate dynamic visibility for FPS view
-        let main_view_dynamic_visibility_result = dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view); // return task?
+        let main_view_dynamic_visibility_result = dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
 
         // User calls functions to start jobs that calculate static and dynamic visibility for all other views
         let minimap_static_visibility_result = static_visibility_node_set.calculate_static_visibility(&minimap_view);
         let minimap_dynamic_visibility_result = dynamic_visibility_node_set.calculate_dynamic_visibility(&minimap_view);
 
-        println!("static nodes: {}", main_view_static_visibility_result.handles.len());
-        println!("dynamic nodes: {}", main_view_dynamic_visibility_result.handles.len());
+        log::info!("main view static node count: {}", main_view_static_visibility_result.handles.len());
+        log::info!("main view dynamic node count: {}", main_view_dynamic_visibility_result.handles.len());
 
         // After these jobs end, user calls functions to start jobs that extract data
-        main_view.allocate_frame_packet_nodes(
+        frame_packet_builder.allocate_frame_packet_nodes(
             &render_node_set,
-            &mut frame_packet,
-            &main_view_static_visibility_result,
-            &main_view_dynamic_visibility_result
+            &main_view,
+            &[main_view_static_visibility_result, main_view_dynamic_visibility_result]
         );
 
-        minimap_view.allocate_frame_packet_nodes(
+        frame_packet_builder.allocate_frame_packet_nodes(
             &render_node_set,
-            &mut frame_packet,
-            &main_view_static_visibility_result,
-            &main_view_dynamic_visibility_result
+            &minimap_view,
+            &[minimap_static_visibility_result, minimap_dynamic_visibility_result]
         );
 
         //
         // Run extraction jobs for all views/features
         //
 
-        // Up to end user if they want to create every frame or cache somewhere
+        // Up to end user if they want to create every frame or cache somewhere. Letting the user
+        // create the feature impls per frame allows them to make system-level data available to
+        // the callbacks. (Like maybe a reference to world?)
         let mut render_feature_set = RenderFeatureImplSet::new();
         render_feature_set.add_feature_impl(Box::new(SpriteRenderFeature));
         render_feature_set.add_feature_impl(Box::new(StaticQuadRenderFeature));
 
-        render_feature_set.extract(&frame_packet, &[main_view, minimap_view]);
+        let frame_packet = frame_packet_builder.build();
+
+        render_feature_set.extract(&frame_packet, &[&main_view, &minimap_view]);
 
         //
         // At this point, we can start the next simulation loop. The renderer has everything it needs
         // to render the game without referring to game state stored in the frame packet or feature renderers.
+        // Visibility and render nodes can be modified up to the point that we start doing visibility
+        // checks and building the next frame packet
         //
-        render_feature_set.prepare(&frame_packet, &[main_view, minimap_view]);
-        render_feature_set.submit(&frame_packet, &[main_view, minimap_view]);
+        render_feature_set.prepare(&frame_packet, &[&main_view, &minimap_view]);
+        render_feature_set.submit(&frame_packet, &[&main_view, &minimap_view]);
 
         // User calls function to kick off the prepare/submit pipeline
-        // render_node_set.prepare(&mut frame_packet);
-        // render_node_set.submit(&mut frame_packet);
-
-
-        // Return to the top...
-        // - The render pipeline uses cached data, node, static data. So it can run concurrently with all above steps
-        // - The visibility spatial structures and render objects can be added/removed freely during the above steps
-
-
-
-
+        render_node_set.prepare(&frame_packet);
+        render_node_set.submit(&frame_packet);
     }
 
-
-
-
-    //TODO:
-    // - Render graph of non-transparents and then transparents
-    // - maybe add 2d lighting?
-    // - Add support for streaming chunks?
-    // - tilemap?
-
+    //
+    // Unregister render nodes/visibility objects
+    //
     let query = <(Read<SpriteComponent>)>::query();
     for sprite_component in query.iter(&mut world) {
         render_node_set.unregister_sprite(sprite_component.sprite_handle);
         dynamic_visibility_node_set.unregister_dynamic_aabb(sprite_component.visibility_handle);
     }
 }
+
+
+
+//TODO:
+// - Render graph of non-transparents and then transparents
+// - maybe add 2d lighting?
+// - Add support for streaming chunks?
+// - tilemap?
 
 
 

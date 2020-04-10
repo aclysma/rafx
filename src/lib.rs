@@ -238,6 +238,7 @@ fn create_view() {
 pub mod slab;
 
 pub mod features;
+pub use features::GenericRenderNodeHandle;
 
 pub mod phases;
 
@@ -254,12 +255,14 @@ mod render_feature_impl_set;
 pub use render_feature_impl_set::RenderFeatureImplSet;
 
 mod render_view;
+pub use render_view::RenderViewSet;
 pub use render_view::RenderView;
 pub use render_view::RenderPhaseMaskBuilder;
 pub use render_view::RenderPhaseMask;
 
 mod frame_packet;
 pub use frame_packet::FramePacket;
+pub use frame_packet::FramePacketBuilder;
 
 mod jobs;
 
