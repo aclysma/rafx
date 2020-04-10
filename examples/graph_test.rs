@@ -166,13 +166,28 @@ use renderer::visibility::*;
 use renderer::features::sprite::*;
 use renderer::features::static_quad::*;
 use renderer::phases::draw_opaque::*;
-use renderer::{RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder};
+use renderer::{RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureImplSet};
 use renderer::RenderView;
 use renderer::FramePacket;
 use renderer::RenderRegistry;
+use legion::prelude::*;
+use glam::Vec3;
 
+#[derive(Copy, Clone)]
+struct PositionComponent {
+    position: Vec3
+}
+
+#[derive(Clone)]
+struct SpriteComponent {
+    sprite_handle: SpriteRenderNodeHandle,
+    visibility_handle: DynamicAabbVisibilityNodeHandle
+}
 
 fn main() {
+    //
+    // Setup render features
+    //
     RenderRegistry::register_feature::<SpriteRenderFeature>();
     RenderRegistry::register_feature::<StaticQuadRenderFeature>();
     RenderRegistry::register_render_phase::<DrawOpaqueRenderPhase>();
@@ -190,31 +205,66 @@ fn main() {
     let mut dynamic_visibility_node_set = DynamicVisibilityNodeSet::default();
     let mut render_node_set = RenderNodeSet::default();
 
-    let sprite_info = SpriteRenderNode {
-        // entity handle
-        // sprite asset
-    };
+    //
+    // Init an example world state
+    //
+    let universe = Universe::default();
+    let mut world = universe.create_world();
 
-    // User calls functions to register render objects
-    // - This is a retained API because render object existence loads streaming assets
-    let sprite_handle = render_node_set.register_sprite(sprite_info);
+    let sprites = [
+        "sprite1",
+        "sprite2",
+        "sprite3"
+    ];
 
-    let aabb_info = DynamicAabbVisibilityNode {
-        // render node handles
-        // aabb bounds
-        handle: sprite_handle.into()
-    };
+    for i in 0..100 {
+        let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
+        let sprite = sprites[i % sprites.len()];
 
-    // User calls functions to register visibility objects
-    // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-    let aabb_handle = dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
+        let sprite_info = SpriteRenderNode {
+            // entity handle
+            // sprite asset
+        };
+
+        // User calls functions to register render objects
+        // - This is a retained API because render object existence loads streaming assets
+        let sprite_handle = render_node_set.register_sprite(sprite_info);
+
+        let aabb_info = DynamicAabbVisibilityNode {
+            // render node handles
+            // aabb bounds
+            handle: sprite_handle.into()
+        };
+
+        // User calls functions to register visibility objects
+        // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
+        let visibility_handle = dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
+
+        let position_component = PositionComponent { position };
+        let sprite_component = SpriteComponent {
+            sprite_handle,
+            visibility_handle
+        };
+
+        world.insert((), (0..1).map(|_| (position_component, sprite_component.clone())));
+    }
+
 
     // Would we need to update these? i.e. visibility_node_set.move_aabb()?
 
+    //
+    // Update loop example
+    //
     for _ in 0..1 {
         println!("----- FRAME -----");
 
+        //
         // Take input
+        //
+
+        //
+        // Calculate user camera
+        //
 
         // User calls function to create "main" view
         let view = glam::Mat4::look_at_rh(
@@ -239,16 +289,31 @@ fn main() {
         let mut frame_packet = FramePacket::default();
         let main_view = RenderView::new(&mut frame_packet, view_proj, main_camera_render_phase_mask);
 
+        //
+        // Predict visibility for static objects.. this could be front-loaded ahead of simulation to reduce latency
+        // Should also consider pre-cached/serialized visibility data that might be streamed in/out in chunks
+        //
         //TODO: Separate static/dynamic visibility node sets? Do the static updates need to happen here before calculating static vis?
 
         // User could call function to calculate visibility of static objects for FPS camera early to reduce
         //   future critical-path work (to reduce latency)
         let main_view_static_visibility_result = static_visibility_node_set.calculate_static_visibility(&main_view); // return task?
 
-        // Simulation
+        //
+        // Simulation would go here
+        //
+
+        //
+        // Figure out other views (example: a minimap)
+        //
 
         // User calls functions to create more views (such as shadows, minimap, etc.) based on simulation results
         let minimap_view = RenderView::new(&mut frame_packet, view_proj, minimap_render_phase_mask);
+
+        //
+        // Finish visibility calculations and populate the frame packet. Views can potentially be run in their own jobs
+        // in the future
+        //
 
         // User calls functions to start jobs that calculate dynamic visibility for FPS view
         let main_view_dynamic_visibility_result = dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view); // return task?
@@ -268,11 +333,6 @@ fn main() {
             &main_view_dynamic_visibility_result
         );
 
-        main_view.extract(
-            &mut frame_packet,
-            //&world
-        );
-
         minimap_view.allocate_frame_packet_nodes(
             &render_node_set,
             &mut frame_packet,
@@ -280,16 +340,27 @@ fn main() {
             &main_view_dynamic_visibility_result
         );
 
-        minimap_view.extract(
-            &mut frame_packet,
-            //&world
-        );
+        //
+        // Run extraction jobs for all views/features
+        //
 
-        // Join Extract Jobs. At this point the frame packet and view packets are read-only. Simulation can continue.
+        // Up to end user if they want to create every frame or cache somewhere
+        let mut render_feature_set = RenderFeatureImplSet::new();
+        render_feature_set.add_feature_impl(Box::new(SpriteRenderFeature));
+        render_feature_set.add_feature_impl(Box::new(StaticQuadRenderFeature));
+
+        render_feature_set.extract(&frame_packet, &[main_view, minimap_view]);
+
+        //
+        // At this point, we can start the next simulation loop. The renderer has everything it needs
+        // to render the game without referring to game state stored in the frame packet or feature renderers.
+        //
+        render_feature_set.prepare(&frame_packet, &[main_view, minimap_view]);
+        render_feature_set.submit(&frame_packet, &[main_view, minimap_view]);
 
         // User calls function to kick off the prepare/submit pipeline
-        render_node_set.prepare(&mut frame_packet);
-        render_node_set.submit(&mut frame_packet);
+        // render_node_set.prepare(&mut frame_packet);
+        // render_node_set.submit(&mut frame_packet);
 
 
         // Return to the top...
@@ -310,9 +381,11 @@ fn main() {
     // - Add support for streaming chunks?
     // - tilemap?
 
-
-    render_node_set.unregister_sprite(sprite_handle);
-    dynamic_visibility_node_set.unregister_dynamic_aabb(aabb_handle);
+    let query = <(Read<SpriteComponent>)>::query();
+    for sprite_component in query.iter(&mut world) {
+        render_node_set.unregister_sprite(sprite_component.sprite_handle);
+        dynamic_visibility_node_set.unregister_dynamic_aabb(sprite_component.visibility_handle);
+    }
 }
 
 

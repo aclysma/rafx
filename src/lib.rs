@@ -250,6 +250,9 @@ pub use render_nodes::*;
 mod render_node_set;
 pub use render_node_set::RenderNodeSet;
 
+mod render_feature_impl_set;
+pub use render_feature_impl_set::RenderFeatureImplSet;
+
 mod render_view;
 pub use render_view::RenderView;
 pub use render_view::RenderPhaseMaskBuilder;

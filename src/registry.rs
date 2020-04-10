@@ -1,6 +1,7 @@
 
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
+use crate::FramePacket;
 
 pub type RenderFeatureIndex = u32;
 pub type RenderPhaseIndex = u32;
@@ -11,6 +12,18 @@ pub const MAX_RENDER_PHASE_COUNT : u32 = 32;
 pub trait RenderFeature {
     fn set_feature_index(index: RenderFeatureIndex);
     fn feature_index() -> RenderFeatureIndex;
+
+    fn create_render_feature_impl() -> Box<RenderFeatureImpl>;
+}
+
+pub trait RenderFeatureImpl {
+    fn feature_index(&self) -> RenderFeatureIndex;
+
+    fn extract_begin(&self, frame_packet: &FramePacket);
+    fn extract_frame_node(&self, frame_packet: &FramePacket);
+    fn extract_view_nodes(&self, frame_packet: &FramePacket);
+    fn extract_view_finalize(&self, frame_packet: &FramePacket);
+    fn extract_frame_finalize(&self, frame_packet: &FramePacket);
 }
 
 pub trait RenderPhase {
@@ -43,10 +56,6 @@ impl RenderRegistry {
         RENDER_REGISTRY_PHASE_COUNT.load(Ordering::Acquire)
     }
 }
-
-
-
-
 
 
 

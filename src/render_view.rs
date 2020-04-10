@@ -53,6 +53,18 @@ impl RenderView {
 
         //let handle_bins =
 
+        // Compute views
+        // Kick off extract job per view
+        //  - Produce list of visible objects for the view
+        //  - Create per-view nodes
+        //  - Create per-frame nodes
+        //  (sync point here to wait for all views to be done?)
+        //  - frame extract entry point
+        //  - extract per-frame nodes
+        //  - extract per-view nodes
+
+        // Are there per object nodes?
+
 
         for handle in &static_visibility.handles {
             //render_node_set.render_stage_mask

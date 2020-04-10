@@ -1,0 +1,99 @@
+use crate::{RenderRegistry, FramePacket, RenderView};
+use crate::registry::RenderFeatureImpl;
+
+pub struct RenderFeatureImplSet {
+    feature_impls: Vec<Option<Box<RenderFeatureImpl>>>
+}
+
+impl RenderFeatureImplSet {
+    pub fn new() -> Self {
+        let feature_count = RenderRegistry::registered_feature_count();
+        //let feature_impls = Vec::with_capacity(feature_count).resize_with(feature_count, None);
+        let feature_impls : Vec<_> = (0..feature_count).map(|_| None).collect();
+
+        RenderFeatureImplSet {
+            feature_impls
+        }
+    }
+
+    pub fn add_feature_impl(&mut self, render_feature_impl: Box<RenderFeatureImpl>) {
+        let feature_index = render_feature_impl.feature_index() as usize;
+        self.feature_impls[feature_index] = Some(render_feature_impl);
+    }
+
+    pub fn extract(&self, frame_packet: &FramePacket, views: &[RenderView]) {
+        // In the future, make features run in parallel
+        for feature_impl in &self.feature_impls {
+            if let Some(feature_impl) = feature_impl {
+                feature_impl.extract_begin(frame_packet);
+
+                // foreach frame node, call extract
+                feature_impl.extract_frame_node(frame_packet);
+
+                for view in views {
+                    println!("view");
+                    // foreach view node, call extract
+                    feature_impl.extract_view_nodes(frame_packet);
+
+                    // call once after all view nodes extracted
+                    feature_impl.extract_view_finalize(frame_packet);
+                }
+
+                // call once after all nodes extracted
+                feature_impl.extract_frame_finalize(frame_packet);
+            }
+        }
+    }
+
+    pub fn prepare(&self, frame_packet: &FramePacket, views: &[RenderView]) {
+
+    }
+
+    pub fn submit(&self, frame_packet: &FramePacket, views: &[RenderView]) {
+
+    }
+
+    /*
+    pub fn extract_begin(&self, frame_packet: &FramePacket) {
+        for feature_impl in &self.feature_impls {
+            if let Some(feature_impl) = feature_impl {
+                feature_impl.extract_begin(frame_packet);
+            }
+        }
+    }
+
+    pub fn extract_frame_node(&self, frame_packet: &FramePacket) {
+        for feature_impl in &self.feature_impls {
+            if let Some(feature_impl) = feature_impl {
+                feature_impl.extract_frame_node(frame_packet);
+            }
+        }
+    }
+
+    pub fn extract_view_nodes(&self, frame_packet: &FramePacket) {
+        for feature_impl in &self.feature_impls {
+            if let Some(feature_impl) = feature_impl {
+                feature_impl.extract_view_nodes(frame_packet);
+            }
+        }
+    }
+
+    pub fn extract_view_finalize(&self, frame_packet: &FramePacket) {
+        for feature_impl in &self.feature_impls {
+            if let Some(feature_impl) = feature_impl {
+                feature_impl.extract_view_finalize(frame_packet);
+            }
+        }
+    }
+
+    pub fn extract_frame_finalize(&self, frame_packet: &FramePacket) {
+        for feature_impl in &self.feature_impls {
+            if let Some(feature_impl) = feature_impl {
+                feature_impl.extract_frame_finalize(frame_packet);
+            }
+        }
+    }
+    */
+}
+
+
