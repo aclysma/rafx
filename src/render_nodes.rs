@@ -1,7 +1,8 @@
 use crate::RenderFeatureIndex;
 use crate::slab::SlabIndexT;
+use std::fmt::{Debug, Formatter, Error};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct GenericRenderNodeHandle {
     render_feature_index: RenderFeatureIndex,
     slab_index: SlabIndexT,

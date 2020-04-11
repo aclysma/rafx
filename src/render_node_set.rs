@@ -4,7 +4,7 @@ use crate::frame_packet::FramePacket;
 use crate::features::sprite::*;
 use crate::RenderRegistry;
 use crate::RenderFeature;
-use crate::features::static_quad::{StaticQuadRenderNode, StaticQuadRenderNodeHandle};
+use crate::features::static_quad::{StaticQuadRenderNode, StaticQuadRenderNodeHandle, StaticQuadRenderFeature};
 
 ////////////////// RenderNodeSet //////////////////
 pub struct RenderNodeSet {
@@ -31,7 +31,7 @@ impl RenderNodeSet {
         &mut self,
         node: SpriteRenderNode,
     ) -> SpriteRenderNodeHandle {
-        self.node_count_by_type[SpriteRenderFeature::feature_index() as usize];
+        self.node_count_by_type[SpriteRenderFeature::feature_index() as usize] += 1;
 
         //TODO: Request streaming in a resource
         SpriteRenderNodeHandle(self.sprites.allocate(node))
@@ -41,6 +41,8 @@ impl RenderNodeSet {
         &mut self,
         handle: SpriteRenderNodeHandle,
     ) {
+        self.node_count_by_type[SpriteRenderFeature::feature_index() as usize] -= 1;
+
         //TODO: Decrement reference count for resource
         self.sprites.free(&handle.0);
     }
@@ -49,6 +51,8 @@ impl RenderNodeSet {
         &mut self,
         node: StaticQuadRenderNode,
     ) -> StaticQuadRenderNodeHandle {
+        self.node_count_by_type[StaticQuadRenderFeature::feature_index() as usize] += 1;
+
         //TODO: Request streaming in a resource
         StaticQuadRenderNodeHandle(self.static_quads.allocate(node))
     }
@@ -57,19 +61,21 @@ impl RenderNodeSet {
         &mut self,
         handle: StaticQuadRenderNodeHandle,
     ) {
+        self.node_count_by_type[StaticQuadRenderFeature::feature_index() as usize] -= 1;
+
         //TODO: Decrement reference count for resource
         self.static_quads.free(&handle.0);
     }
 
-    pub fn prepare(
-        &self,
-        frame_packet: &FramePacket,
-    ) {
-    }
-
-    pub fn submit(
-        &self,
-        frame_packet: &FramePacket,
-    ) {
-    }
+    // pub fn prepare(
+    //     &self,
+    //     frame_packet: &FramePacket,
+    // ) {
+    // }
+    //
+    // pub fn submit(
+    //     &self,
+    //     frame_packet: &FramePacket,
+    // ) {
+    // }
 }

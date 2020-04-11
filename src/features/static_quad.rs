@@ -1,5 +1,5 @@
 use crate::slab::RawSlabKey;
-use crate::registry::{RenderFeature, RenderFeatureImpl};
+use crate::registry::{RenderFeature, RenderFeatureExtractImpl};
 use crate::registry::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
@@ -22,13 +22,9 @@ impl RenderFeature for StaticQuadRenderFeature {
     fn feature_debug_name() -> &'static str {
         "StaticQuadRenderFeature"
     }
-
-    fn create_render_feature_impl() -> Box<RenderFeatureImpl> {
-        Box::new(Self)
-    }
 }
 
-impl RenderFeatureImpl for StaticQuadRenderFeature {
+impl RenderFeatureExtractImpl for StaticQuadRenderFeature {
     fn feature_index(&self) -> RenderFeatureIndex {
         <Self as RenderFeature>::feature_index()
     }

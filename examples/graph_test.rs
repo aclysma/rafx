@@ -155,7 +155,7 @@ use renderer::features::sprite::*;
 use renderer::features::static_quad::*;
 use renderer::phases::draw_opaque::*;
 use renderer::{
-    RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureImplSet, FramePacketBuilder,
+    RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureExtractImplSet, FramePacketBuilder,
 };
 use renderer::RenderView;
 use renderer::FramePacket;
@@ -352,7 +352,7 @@ fn main() {
         );
 
         // After these jobs end, user calls functions to start jobs that extract data
-        frame_packet_builder.allocate_frame_packet_nodes(
+        frame_packet_builder.add_view(
             &render_node_set,
             &main_view,
             &[
@@ -361,7 +361,7 @@ fn main() {
             ],
         );
 
-        frame_packet_builder.allocate_frame_packet_nodes(
+        frame_packet_builder.add_view(
             &render_node_set,
             &minimap_view,
             &[
@@ -377,13 +377,13 @@ fn main() {
         // Up to end user if they want to create every frame or cache somewhere. Letting the user
         // create the feature impls per frame allows them to make system-level data available to
         // the callbacks. (Like maybe a reference to world?)
-        let mut render_feature_set = RenderFeatureImplSet::new();
-        render_feature_set.add_feature_impl(Box::new(SpriteRenderFeature));
-        render_feature_set.add_feature_impl(Box::new(StaticQuadRenderFeature));
+        let mut extract_impl_set = RenderFeatureExtractImplSet::new();
+        extract_impl_set.add_impl(Box::new(SpriteRenderFeature));
+        extract_impl_set.add_impl(Box::new(StaticQuadRenderFeature));
 
         let frame_packet = frame_packet_builder.build();
 
-        render_feature_set.extract(&frame_packet, &[&main_view, &minimap_view]);
+        extract_impl_set.extract(&frame_packet, &[&main_view, &minimap_view]);
 
         //
         // At this point, we can start the next simulation loop. The renderer has everything it needs
@@ -391,12 +391,12 @@ fn main() {
         // Visibility and render nodes can be modified up to the point that we start doing visibility
         // checks and building the next frame packet
         //
-        render_feature_set.prepare(&frame_packet, &[&main_view, &minimap_view]);
-        render_feature_set.submit(&frame_packet, &[&main_view, &minimap_view]);
+        //render_feature_set.prepare(&frame_packet, &[&main_view, &minimap_view]);
+        //render_feature_set.submit(&frame_packet, &[&main_view, &minimap_view]);
 
         // User calls function to kick off the prepare/submit pipeline
-        render_node_set.prepare(&frame_packet);
-        render_node_set.submit(&frame_packet);
+        //render_node_set.prepare(&frame_packet);
+        //render_node_set.submit(&frame_packet);
     }
 
     //

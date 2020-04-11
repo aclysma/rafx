@@ -59,6 +59,7 @@ impl StaticVisibilityNodeSet {
         let mut result = VisibilityResult::default();
 
         for (_, aabb) in self.static_aabb.iter() {
+            log::trace!("push static visibility object {:?}", aabb.handle);
             result.handles.push(aabb.handle);
         }
 

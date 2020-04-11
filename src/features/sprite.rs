@@ -1,6 +1,6 @@
 use crate::slab::RawSlabKey;
 use crate::registry::RenderFeature;
-use crate::registry::RenderFeatureImpl;
+use crate::registry::RenderFeatureExtractImpl;
 use crate::registry::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
@@ -23,13 +23,9 @@ impl RenderFeature for SpriteRenderFeature {
     fn feature_debug_name() -> &'static str {
         "SpriteRenderFeature"
     }
-
-    fn create_render_feature_impl() -> Box<dyn RenderFeatureImpl> {
-        Box::new(Self)
-    }
 }
 
-impl RenderFeatureImpl for SpriteRenderFeature {
+impl RenderFeatureExtractImpl for SpriteRenderFeature {
     fn feature_index(&self) -> RenderFeatureIndex {
         <Self as RenderFeature>::feature_index()
     }

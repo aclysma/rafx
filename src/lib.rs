@@ -188,7 +188,7 @@ mod render_node_set;
 pub use render_node_set::RenderNodeSet;
 
 mod render_feature_impl_set;
-pub use render_feature_impl_set::RenderFeatureImplSet;
+pub use render_feature_impl_set::RenderFeatureExtractImplSet;
 
 mod render_view;
 pub use render_view::RenderViewSet;
@@ -207,3 +207,5 @@ pub use registry::RenderRegistry;
 pub use registry::RenderFeature;
 pub use registry::RenderPhase;
 pub use registry::RenderFeatureIndex;
+
+mod testv2;

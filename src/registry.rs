@@ -14,10 +14,10 @@ pub trait RenderFeature {
 
     fn feature_debug_name() -> &'static str;
 
-    fn create_render_feature_impl() -> Box<RenderFeatureImpl>;
+    //fn create_render_feature_extract_impl() -> Box<RenderFeatureExtractImpl>;
 }
 
-pub trait RenderFeatureImpl {
+pub trait RenderFeatureExtractImpl {
     fn feature_index(&self) -> RenderFeatureIndex;
     fn feature_debug_name(&self) -> &str;
 
