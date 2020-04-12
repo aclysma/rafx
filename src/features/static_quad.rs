@@ -1,10 +1,10 @@
 use crate::slab::RawSlabKey;
-use crate::registry::{RenderFeature, RenderFeatureExtractImpl};
+use crate::registry::RenderFeature;
 use crate::registry::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
 use std::convert::TryInto;
-use crate::{FramePacket, GenericRenderNodeHandle};
+use crate::{FramePacket, GenericRenderNodeHandle, RenderFeatureExtractImpl};
 
 static STATIC_QUAD_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 

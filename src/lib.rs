@@ -187,9 +187,6 @@ pub use render_nodes::GenericRenderNodeHandle;
 mod render_node_set;
 pub use render_node_set::RenderNodeSet;
 
-mod render_feature_impl_set;
-pub use render_feature_impl_set::RenderFeatureExtractImplSet;
-
 mod render_view;
 pub use render_view::RenderViewSet;
 pub use render_view::RenderView;
@@ -201,6 +198,7 @@ pub use frame_packet::FramePacket;
 pub use frame_packet::FramePacketBuilder;
 
 mod jobs;
+pub use jobs::*;
 
 mod registry;
 pub use registry::RenderRegistry;

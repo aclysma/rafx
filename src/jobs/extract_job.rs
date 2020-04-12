@@ -1,5 +1,138 @@
-use crate::{RenderRegistry, FramePacket, RenderView, RenderPhase};
-use crate::registry::{RenderFeatureExtractImpl, RenderPhaseIndex};
+use crate::{RenderRegistry, FramePacket, RenderView, RenderPhase, RenderFeatureIndex};
+use crate::registry::RenderPhaseIndex;
+
+use std::sync::Arc;
+
+trait ExtractJob {
+    fn extract(self: Box<Self>) -> Box<dyn PrepareJob>;
+}
+
+trait PrepareJob {
+    fn prepare(self);
+}
+
+// fn test(mut extract_job: Box<dyn ExtractJob>) -> Box<dyn PrepareJob> {
+//     extract_job.extract()
+// }
+
+#[derive(Default)]
+pub struct ExtractJobSet {
+    extract_jobs: Vec<Box<ExtractJob>>
+}
+
+impl ExtractJobSet {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn add_job(
+        &mut self,
+        extract_job: Box<ExtractJob>,
+    ) {
+        self.extract_jobs.push(extract_job)
+    }
+
+    pub fn extract(mut self) -> PrepareJobSet {
+        let mut prepare_jobs = vec![];
+        for mut extract_job in self.extract_jobs {
+            let prepare_job = extract_job.extract();
+            prepare_jobs.push(prepare_job);
+        }
+
+        PrepareJobSet {
+            prepare_jobs
+        }
+    }
+}
+
+pub struct PrepareJobSet {
+    prepare_jobs: Vec<Box<PrepareJob>>
+}
+
+impl PrepareJobSet {
+    fn prepare(&self) {
+        unimplemented!()
+    }
+}
+
+struct SpriteExtractJob {
+    world: Arc<String>,
+    vec_o_stuff: Vec<u32>
+}
+
+impl ExtractJob for SpriteExtractJob {
+    fn extract(self: Box<Self>) -> Box<PrepareJob> {
+        Box::new(SpritePrepareJob {
+            vec_o_stuff: self.vec_o_stuff
+        })
+    }
+}
+
+struct SpritePrepareJob {
+    vec_o_stuff: Vec<u32>
+}
+
+impl PrepareJob for SpritePrepareJob {
+    fn prepare(self) {
+        unimplemented!()
+    }
+}
+
+fn test_stuff() {
+    let mut world = Arc::new("test".to_string());
+
+    let prepare_job_set = {
+        let mut extract_job_set = ExtractJobSet::default();
+        extract_job_set.add_job(Box::new(SpriteExtractJob {
+            world: world.clone(),
+            vec_o_stuff: vec![]
+        }));
+
+        extract_job_set.extract()
+    };
+
+    let world_unwrapped = Arc::try_unwrap(world).unwrap();
+
+    prepare_job_set.prepare();
+}
+
+fn run_extract_jobs(extract_jobs: Vec<Box<ExtractJob>>) -> Vec<Box<PrepareJob>> {
+    let mut prepare_jobs = vec![];
+    for extract_job in extract_jobs {
+        prepare_jobs.push(extract_job.extract())
+    }
+    prepare_jobs
+}
+
+
+
+
+
+pub trait RenderFeatureExtractImpl {
+    fn feature_index(&self) -> RenderFeatureIndex;
+    fn feature_debug_name(&self) -> &str;
+
+    fn extract_begin(
+        &self,
+        frame_packet: &FramePacket,
+    );
+    fn extract_frame_node(
+        &self,
+        frame_packet: &FramePacket,
+    );
+    fn extract_view_nodes(
+        &self,
+        frame_packet: &FramePacket,
+    );
+    fn extract_view_finalize(
+        &self,
+        frame_packet: &FramePacket,
+    );
+    fn extract_frame_finalize(
+        &self,
+        frame_packet: &FramePacket,
+    );
+}
 
 pub struct RenderFeatureExtractImplSet {
     feature_impls: Vec<Option<Box<RenderFeatureExtractImpl>>>,

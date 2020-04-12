@@ -13,34 +13,6 @@ pub trait RenderFeature {
     fn feature_index() -> RenderFeatureIndex;
 
     fn feature_debug_name() -> &'static str;
-
-    //fn create_render_feature_extract_impl() -> Box<RenderFeatureExtractImpl>;
-}
-
-pub trait RenderFeatureExtractImpl {
-    fn feature_index(&self) -> RenderFeatureIndex;
-    fn feature_debug_name(&self) -> &str;
-
-    fn extract_begin(
-        &self,
-        frame_packet: &FramePacket,
-    );
-    fn extract_frame_node(
-        &self,
-        frame_packet: &FramePacket,
-    );
-    fn extract_view_nodes(
-        &self,
-        frame_packet: &FramePacket,
-    );
-    fn extract_view_finalize(
-        &self,
-        frame_packet: &FramePacket,
-    );
-    fn extract_frame_finalize(
-        &self,
-        frame_packet: &FramePacket,
-    );
 }
 
 pub trait RenderPhase {

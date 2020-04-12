@@ -1,11 +1,11 @@
 use crate::slab::RawSlabKey;
 use crate::registry::RenderFeature;
-use crate::registry::RenderFeatureExtractImpl;
 use crate::registry::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
 use crate::{FramePacket, GenericRenderNodeHandle};
 use std::convert::TryInto;
+use crate::RenderFeatureExtractImpl;
 
 static SPRITE_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
