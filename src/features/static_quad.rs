@@ -4,8 +4,9 @@ use crate::registry::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
 use std::convert::TryInto;
-use crate::{FramePacket, GenericRenderNodeHandle, RenderFeatureExtractImpl, DefaultExtractJob, ExtractJob, RenderView, PrepareJob, DefaultExtractJobImpl};
+use crate::{FramePacket, GenericRenderNodeHandle, DefaultExtractJob, ExtractJob, RenderView, PrepareJob, DefaultExtractJobImpl};
 use legion::prelude::World;
+use crate::frame_packet::{PerFrameNode, PerViewNode};
 
 static STATIC_QUAD_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
@@ -33,37 +34,37 @@ struct StaticQuadExtractJobImpl {
 impl DefaultExtractJobImpl<World> for StaticQuadExtractJobImpl {
     fn extract_begin(
         &self,
-        source: &World,
+        _source: &World,
     ) {
         log::debug!("extract_begin {}", self.feature_debug_name());
     }
     fn extract_frame_node(
         &self,
-        source: &World,
-        entity: u32,
+        _source: &World,
+        frame_node: PerFrameNode,
     ) {
         log::debug!("extract_frame_node {}", self.feature_debug_name());
     }
 
     fn extract_view_node(
         &self,
-        source: &World,
-        entity: u32,
-        view: u32,
+        _source: &World,
+        view: &RenderView,
+        view_node: PerViewNode
     ) {
         log::debug!("extract_view_nodes {}", self.feature_debug_name());
     }
     fn extract_view_finalize(
         &self,
-        source: &World,
-        view: u32,
+        _source: &World,
+        view: &RenderView,
     ) {
         log::debug!("extract_view_finalize {}", self.feature_debug_name());
     }
     fn extract_frame_finalize(
         self,
-        source: &World,
-    ) -> Box<PrepareJob> {
+        _source: &World,
+    ) -> Box<dyn PrepareJob> {
         log::debug!("extract_frame_finalize {}", self.feature_debug_name());
         Box::new(StaticQuadPrepareJob { })
     }
@@ -71,6 +72,7 @@ impl DefaultExtractJobImpl<World> for StaticQuadExtractJobImpl {
     fn feature_debug_name(&self) -> &'static str {
         StaticQuadRenderFeature::feature_debug_name()
     }
+    fn feature_index(&self) -> RenderFeatureIndex { StaticQuadRenderFeature::feature_index() }
 }
 
 pub struct StaticQuadExtractJob {
@@ -91,7 +93,7 @@ impl StaticQuadExtractJob {
 }
 
 impl ExtractJob<World> for StaticQuadExtractJob {
-    fn extract(self: Box<Self>, source: &World, frame_packet: &FramePacket, views: &[&RenderView]) -> Box<PrepareJob> {
+    fn extract(self: Box<Self>, source: &World, frame_packet: &FramePacket, views: &[&RenderView]) -> Box<dyn PrepareJob> {
         //use crate::jobs::ExtractJob;
         //self.inner.extract(frame_packet, views)
         ExtractJob::extract(self.inner, source, frame_packet, views)
@@ -153,7 +155,7 @@ impl StaticQuadRenderNodeSet {
         }
     }
 
-    pub fn max_node_count(&self) -> usize {
+    pub fn max_render_node_count(&self) -> usize {
         self.sprites.storage_size()
     }
 

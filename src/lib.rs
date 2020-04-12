@@ -205,4 +205,6 @@ pub use registry::RenderFeature;
 pub use registry::RenderPhase;
 pub use registry::RenderFeatureIndex;
 
+mod resources;
+
 //mod testv2;

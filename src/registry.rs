@@ -1,8 +1,8 @@
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
-use crate::FramePacket;
 
 pub type RenderFeatureIndex = u32;
+pub type RenderFeatureCount = u32;
 pub type RenderPhaseIndex = u32;
 
 pub type RenderPhaseMaskInnerType = u32;

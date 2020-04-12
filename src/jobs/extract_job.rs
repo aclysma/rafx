@@ -1,8 +1,7 @@
-use crate::{RenderRegistry, FramePacket, RenderView, RenderPhase, RenderFeatureIndex, PrepareJob, PrepareJobSet};
-use crate::registry::RenderPhaseIndex;
+use crate::{FramePacket, RenderView, PrepareJob, PrepareJobSet, RenderFeatureIndex};
 
-use std::sync::Arc;
 use std::marker::PhantomData;
+use crate::frame_packet::{PerFrameNode, PerViewNode};
 
 pub trait ExtractJob<SourceT> {
     fn extract(self: Box<Self>, source: &SourceT, frame_packet: &FramePacket, views: &[&RenderView]) -> Box<dyn PrepareJob>;
@@ -11,7 +10,7 @@ pub trait ExtractJob<SourceT> {
 }
 
 pub struct ExtractJobSet<SourceT> {
-    extract_jobs: Vec<Box<ExtractJob<SourceT>>>
+    extract_jobs: Vec<Box<dyn ExtractJob<SourceT>>>
 }
 
 impl<SourceT> Default for ExtractJobSet<SourceT> {
@@ -29,16 +28,16 @@ impl<SourceT> ExtractJobSet<SourceT> {
 
     pub fn add_job(
         &mut self,
-        extract_job: Box<ExtractJob<SourceT>>,
+        extract_job: Box<dyn ExtractJob<SourceT>>,
     ) {
         self.extract_jobs.push(extract_job)
     }
 
-    pub fn extract(mut self, source: &SourceT, frame_packet: &FramePacket, views: &[&RenderView]) -> PrepareJobSet {
+    pub fn extract(self, source: &SourceT, frame_packet: &FramePacket, views: &[&RenderView]) -> PrepareJobSet {
         log::debug!("Start extract job set");
 
         let mut prepare_jobs = vec![];
-        for mut extract_job in self.extract_jobs {
+        for extract_job in self.extract_jobs {
             log::debug!("Start job {}", extract_job.feature_debug_name());
 
             let prepare_job = extract_job.extract(source, frame_packet, views);
@@ -52,16 +51,13 @@ impl<SourceT> ExtractJobSet<SourceT> {
 
 pub trait DefaultExtractJobImpl<SourceT> {
     fn extract_begin(&self, source: &SourceT);
-    fn extract_frame_node(&self, source: &SourceT, entity: u32);
-    fn extract_view_node(&self, source: &SourceT, entity: u32, view: u32);
-    fn extract_view_finalize(&self, source: &SourceT, view: u32);
-    fn extract_frame_finalize(self, source: &SourceT) -> Box<PrepareJob>;
+    fn extract_frame_node(&self, source: &SourceT, frame_node: PerFrameNode);
+    fn extract_view_node(&self, source: &SourceT, view: &RenderView, view_node: PerViewNode);
+    fn extract_view_finalize(&self, source: &SourceT, view: &RenderView);
+    fn extract_frame_finalize(self, source: &SourceT) -> Box<dyn PrepareJob>;
 
     fn feature_debug_name(&self) -> &'static str;
-}
-
-struct FrameNode {
-
+    fn feature_index(&self) -> RenderFeatureIndex;
 }
 
 pub(crate) struct DefaultExtractJob<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> {
@@ -81,7 +77,9 @@ impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> DefaultExtractJob<So
 }
 
 impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> ExtractJob<SourceT> for DefaultExtractJob<SourceT, ExtractImplT> {
-    fn extract(self: Box<Self>, source: &SourceT, frame_packet: &FramePacket, views: &[&RenderView]) -> Box<PrepareJob> {
+    fn extract(self: Box<Self>, source: &SourceT, frame_packet: &FramePacket, views: &[&RenderView]) -> Box<dyn PrepareJob> {
+        let feature_index = self.extract_impl.feature_index();
+
         log::debug!("DefaultExtractJob::extract");
         // // Responsible for iterating across frame packet to call these callbacks
         // self.extract_impl.extract_begin(source);
@@ -97,7 +95,10 @@ impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> ExtractJob<SourceT> 
         // foreach frame node, call extract
         //for frame_node in frame_packet.fram
         log::debug!("extract_frame_node {}", self.extract_impl.feature_debug_name());
-        self.extract_impl.extract_frame_node(source, 0); //TODO: Call once per frame node
+
+        for frame_node in frame_packet.frame_nodes(feature_index) {
+            self.extract_impl.extract_frame_node(source, *frame_node);
+        }
 
         //TODO: Views can run in parallel
         for view in views {
@@ -107,7 +108,13 @@ impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> ExtractJob<SourceT> 
                 self.extract_impl.feature_debug_name(),
                 view.debug_name()
             );
-            self.extract_impl.extract_view_node(source, 0, 0); //TODO: Call once per view node
+
+            let view_nodes = frame_packet.view_nodes(view, feature_index);
+            if let Some(view_nodes) = view_nodes {
+                for view_node in view_nodes {
+                    self.extract_impl.extract_view_node(source, view, *view_node);
+                }
+            }
 
             // call once after all view nodes extracted
             log::debug!(
@@ -115,7 +122,7 @@ impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> ExtractJob<SourceT> 
                 self.extract_impl.feature_debug_name(),
                 view.debug_name()
             );
-            self.extract_impl.extract_view_finalize(source, 0); //TODO: Pass the view?
+            self.extract_impl.extract_view_finalize(source, view); //TODO: Pass the view?
         }
 
         // call once after all nodes extracted
@@ -135,69 +142,7 @@ impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> ExtractJob<SourceT> 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-// struct SpriteExtractJob {
-//     world: Arc<String>,
-//     vec_o_stuff: Vec<u32>
-// }
-//
-// impl ExtractJob for SpriteExtractJob {
-//     fn extract(self: Box<Self>) -> Box<PrepareJob> {
-//         Box::new(SpritePrepareJob {
-//             vec_o_stuff: self.vec_o_stuff
-//         })
-//     }
-// }
-//
-// struct SpritePrepareJob {
-//     vec_o_stuff: Vec<u32>
-// }
-//
-// impl PrepareJob for SpritePrepareJob {
-//     fn prepare(self) {
-//         unimplemented!()
-//     }
-// }
-
-// fn test_stuff() {
-//     let mut world = Arc::new("test".to_string());
-//
-//     let prepare_job_set = {
-//         let mut extract_job_set = ExtractJobSet::default();
-//         extract_job_set.add_job(Box::new(SpriteExtractJob {
-//             world: world.clone(),
-//             vec_o_stuff: vec![]
-//         }));
-//
-//         extract_job_set.extract()
-//     };
-//
-//     let world_unwrapped = Arc::try_unwrap(world).unwrap();
-//
-//     prepare_job_set.prepare();
-// }
-//
-// fn run_extract_jobs(extract_jobs: Vec<Box<ExtractJob>>) -> Vec<Box<PrepareJob>> {
-//     let mut prepare_jobs = vec![];
-//     for extract_job in extract_jobs {
-//         prepare_jobs.push(extract_job.extract())
-//     }
-//     prepare_jobs
-// }
-
-
-
-
+/*
 
 pub trait RenderFeatureExtractImpl {
     fn feature_index(&self) -> RenderFeatureIndex;
@@ -343,3 +288,4 @@ impl RenderFeatureExtractImplSet {
     //     log::debug!("RenderFeatureExtractImplSet::submit {} {}", core::any::type_name::<T>(), view.debug_name());
     // }
 }
+*/

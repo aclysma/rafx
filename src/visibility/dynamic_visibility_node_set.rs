@@ -1,7 +1,6 @@
 use crate::slab::RawSlab;
 use crate::render_views::RenderView;
 use crate::visibility::*;
-use crate::GenericRenderNodeHandle;
 
 #[derive(Default)]
 pub struct DynamicVisibilityNodeSet {

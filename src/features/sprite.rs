@@ -5,8 +5,8 @@ use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
 use crate::{FramePacket, GenericRenderNodeHandle, ExtractJob, DefaultExtractJob, DefaultExtractJobImpl, PrepareJob, RenderView, RenderNodeSet};
 use std::convert::TryInto;
-use crate::RenderFeatureExtractImpl;
 use legion::prelude::World;
+use crate::frame_packet::{PerFrameNode, PerViewNode};
 
 static SPRITE_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
@@ -39,37 +39,37 @@ struct SpriteExtractJobImpl {
 impl DefaultExtractJobImpl<World> for SpriteExtractJobImpl {
     fn extract_begin(
         &self,
-        source: &World,
+        _source: &World,
     ) {
         log::debug!("extract_begin {}", self.feature_debug_name());
     }
     fn extract_frame_node(
         &self,
-        source: &World,
-        entity: u32,
+        _source: &World,
+        frame_node: PerFrameNode,
     ) {
         log::debug!("extract_frame_node {}", self.feature_debug_name());
     }
 
     fn extract_view_node(
         &self,
-        source: &World,
-        entity: u32,
-        view: u32,
+        _source: &World,
+        view: &RenderView,
+        view_node: PerViewNode
     ) {
         log::debug!("extract_view_nodes {}", self.feature_debug_name());
     }
     fn extract_view_finalize(
         &self,
-        source: &World,
-        view: u32,
+        _source: &World,
+        view: &RenderView,
     ) {
         log::debug!("extract_view_finalize {}", self.feature_debug_name());
     }
     fn extract_frame_finalize(
         self,
-        source: &World,
-    ) -> Box<PrepareJob> {
+        _source: &World,
+    ) -> Box<dyn PrepareJob> {
         log::debug!("extract_frame_finalize {}", self.feature_debug_name());
         Box::new(SpritePrepareJob { })
     }
@@ -77,6 +77,7 @@ impl DefaultExtractJobImpl<World> for SpriteExtractJobImpl {
     fn feature_debug_name(&self) -> &'static str {
         SpriteRenderFeature::feature_debug_name()
     }
+    fn feature_index(&self) -> RenderFeatureIndex { SpriteRenderFeature::feature_index() }
 }
 
 pub struct SpriteExtractJob {
@@ -105,7 +106,7 @@ impl SpriteExtractJob {
 }
 
 impl ExtractJob<World> for SpriteExtractJob {
-    fn extract(self: Box<Self>, source: &World, frame_packet: &FramePacket, views: &[&RenderView]) -> Box<PrepareJob> {
+    fn extract(self: Box<Self>, source: &World, frame_packet: &FramePacket, views: &[&RenderView]) -> Box<dyn PrepareJob> {
         self.inner.extract(source, frame_packet, views)
     }
 
@@ -185,7 +186,7 @@ impl RenderNodeSet for SpriteRenderNodeSet {
         SpriteRenderFeature::feature_index()
     }
 
-    fn max_node_count(&self) -> usize {
+    fn max_render_node_count(&self) -> usize {
         self.sprites.storage_size()
     }
 }

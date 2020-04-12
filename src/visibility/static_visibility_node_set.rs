@@ -1,10 +1,6 @@
-use crate::slab::SlabIndexT;
 use crate::slab::RawSlab;
 use crate::render_views::RenderView;
 use crate::visibility::*;
-use crate::GenericRenderNodeHandle;
-use crate::RenderRegistry;
-use std::any::Any;
 
 // Keep a list of generic handles grouped by type
 // - Requires less storage space since we store the type id once instead of per handle

@@ -154,9 +154,7 @@ use renderer::visibility::*;
 use renderer::features::sprite::*;
 use renderer::features::static_quad::*;
 use renderer::phases::draw_opaque::*;
-use renderer::{RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureExtractImplSet, FramePacketBuilder, PrepareJobSet, ExtractJobSet, AllRenderNodes};
-use renderer::RenderView;
-use renderer::FramePacket;
+use renderer::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
 use renderer::RenderRegistry;
 use renderer::RenderViewSet;
 use legion::prelude::*;
@@ -195,7 +193,7 @@ fn main() {
         .build();
 
     // In theory we could pre-cook static visibility in chunks and stream them in
-    let mut static_visibility_node_set = StaticVisibilityNodeSet::default();
+    let static_visibility_node_set = StaticVisibilityNodeSet::default();
     let mut dynamic_visibility_node_set = DynamicVisibilityNodeSet::default();
     let mut sprite_render_nodes = SpriteRenderNodeSet::new();
 
@@ -209,7 +207,7 @@ fn main() {
 
     for i in 0..100 {
         let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
-        let sprite = sprites[i % sprites.len()];
+        let _sprite = sprites[i % sprites.len()];
 
         //TODO: Not clear the best approach from an API perspective to allocate component and render
         // node that point at each other. (We can't get Entity or Handle until the object is inserted)
@@ -382,6 +380,7 @@ fn main() {
 
 
         let frame_packet = frame_packet_builder.build();
+        println!("frame packet:\n{:#?}", frame_packet);
 
         let mut extract_job_set = ExtractJobSet::new();
         extract_job_set.add_job(Box::new(SpriteExtractJob::new()));
@@ -401,7 +400,7 @@ fn main() {
         // Visibility and render nodes can be modified up to the point that we start doing visibility
         // checks and building the next frame packet
         //
-        let submit_job = prepare_job_set.prepare();
+        let _submit_job = prepare_job_set.prepare();
 
         //render_feature_set.prepare(&frame_packet, &[&main_view, &minimap_view]);
         //render_feature_set.submit(&frame_packet, &[&main_view, &minimap_view]);
@@ -414,7 +413,7 @@ fn main() {
     //
     // Unregister render nodes/visibility objects
     //
-    let query = <(Read<SpriteComponent>)>::query();
+    let query = <Read<SpriteComponent>>::query();
     for sprite_component in query.iter(&mut world) {
         sprite_render_nodes.unregister_sprite(sprite_component.sprite_handle);
         dynamic_visibility_node_set.unregister_dynamic_aabb(sprite_component.visibility_handle);

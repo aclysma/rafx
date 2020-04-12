@@ -7,11 +7,11 @@ pub trait PrepareJob {
 
 
 pub struct PrepareJobSet {
-    prepare_jobs: Vec<Box<PrepareJob>>
+    prepare_jobs: Vec<Box<dyn PrepareJob>>
 }
 
 impl PrepareJobSet {
-    pub fn new(prepare_jobs: Vec<Box<PrepareJob>>) -> Self {
+    pub fn new(prepare_jobs: Vec<Box<dyn PrepareJob>>) -> Self {
         PrepareJobSet {
             prepare_jobs
         }
