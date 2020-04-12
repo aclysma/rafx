@@ -154,9 +154,7 @@ use renderer::visibility::*;
 use renderer::features::sprite::*;
 use renderer::features::static_quad::*;
 use renderer::phases::draw_opaque::*;
-use renderer::{
-    RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureExtractImplSet, FramePacketBuilder,
-};
+use renderer::{RenderNodeSet, RenderPhase, RenderPhaseMaskBuilder, RenderFeatureExtractImplSet, FramePacketBuilder, PrepareJobSet, ExtractJobSet, AllRenderNodes};
 use renderer::RenderView;
 use renderer::FramePacket;
 use renderer::RenderRegistry;
@@ -199,7 +197,7 @@ fn main() {
     // In theory we could pre-cook static visibility in chunks and stream them in
     let mut static_visibility_node_set = StaticVisibilityNodeSet::default();
     let mut dynamic_visibility_node_set = DynamicVisibilityNodeSet::default();
-    let mut render_node_set = RenderNodeSet::new();
+    let mut sprite_render_nodes = SpriteRenderNodeSet::new();
 
     //
     // Init an example world state
@@ -222,7 +220,7 @@ fn main() {
 
         // User calls functions to register render objects
         // - This is a retained API because render object existence loads streaming assets
-        let sprite_handle = render_node_set.register_sprite(sprite_info);
+        let sprite_handle = sprite_render_nodes.register_sprite(sprite_info);
 
         let aabb_info = DynamicAabbVisibilityNode {
             // render node handles
@@ -330,7 +328,10 @@ fn main() {
 
         // The frame packet builder will merge visibility results and hold extracted data from simulation. During
         // the extract window, render nodes cannot be added/removed
-        let frame_packet_builder = FramePacketBuilder::new(&render_node_set);
+        let mut all_render_nodes = AllRenderNodes::new();
+        all_render_nodes.add_render_nodes(&sprite_render_nodes);
+
+        let frame_packet_builder = FramePacketBuilder::new(&all_render_nodes);
 
         // User calls functions to start jobs that calculate dynamic visibility for FPS view
         let main_view_dynamic_visibility_result =
@@ -353,7 +354,6 @@ fn main() {
 
         // After these jobs end, user calls functions to start jobs that extract data
         frame_packet_builder.add_view(
-            &render_node_set,
             &main_view,
             &[
                 main_view_static_visibility_result,
@@ -362,7 +362,6 @@ fn main() {
         );
 
         frame_packet_builder.add_view(
-            &render_node_set,
             &minimap_view,
             &[
                 minimap_static_visibility_result,
@@ -377,13 +376,24 @@ fn main() {
         // Up to end user if they want to create every frame or cache somewhere. Letting the user
         // create the feature impls per frame allows them to make system-level data available to
         // the callbacks. (Like maybe a reference to world?)
-        let mut extract_impl_set = RenderFeatureExtractImplSet::new();
-        extract_impl_set.add_impl(Box::new(SpriteRenderFeature));
-        extract_impl_set.add_impl(Box::new(StaticQuadRenderFeature));
+        // let mut extract_impl_set = RenderFeatureExtractImplSet::new();
+        // extract_impl_set.add_impl(Box::new(SpriteRenderFeature));
+        // extract_impl_set.add_impl(Box::new(StaticQuadRenderFeature));
+
 
         let frame_packet = frame_packet_builder.build();
 
-        extract_impl_set.extract(&frame_packet, &[&main_view, &minimap_view]);
+        let mut extract_job_set = ExtractJobSet::new();
+        extract_job_set.add_job(Box::new(SpriteExtractJob::new()));
+        extract_job_set.add_job(Box::new(StaticQuadExtractJob::new()));
+
+        // let new_world = universe.create_world();
+        // world.merge(new_world);
+
+
+        let prepare_job_set = extract_job_set.extract(&world, &frame_packet, &[&main_view, &minimap_view]);
+
+        //extract_job_set.extract(&frame_packet, &[&main_view, &minimap_view]);
 
         //
         // At this point, we can start the next simulation loop. The renderer has everything it needs
@@ -391,6 +401,8 @@ fn main() {
         // Visibility and render nodes can be modified up to the point that we start doing visibility
         // checks and building the next frame packet
         //
+        let submit_job = prepare_job_set.prepare();
+
         //render_feature_set.prepare(&frame_packet, &[&main_view, &minimap_view]);
         //render_feature_set.submit(&frame_packet, &[&main_view, &minimap_view]);
 
@@ -404,7 +416,7 @@ fn main() {
     //
     let query = <(Read<SpriteComponent>)>::query();
     for sprite_component in query.iter(&mut world) {
-        render_node_set.unregister_sprite(sprite_component.sprite_handle);
+        sprite_render_nodes.unregister_sprite(sprite_component.sprite_handle);
         dynamic_visibility_node_set.unregister_dynamic_aabb(sprite_component.visibility_handle);
     }
 }

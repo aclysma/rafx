@@ -186,6 +186,7 @@ pub use render_nodes::GenericRenderNodeHandle;
 
 mod render_node_set;
 pub use render_node_set::RenderNodeSet;
+pub use render_node_set::AllRenderNodes;
 
 mod render_view;
 pub use render_view::RenderViewSet;
@@ -206,4 +207,4 @@ pub use registry::RenderFeature;
 pub use registry::RenderPhase;
 pub use registry::RenderFeatureIndex;
 
-mod testv2;
+//mod testv2;

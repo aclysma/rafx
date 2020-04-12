@@ -147,8 +147,12 @@ impl<T> RawSlab<T> {
     }
 
     /// Return count of allocated Ts
-    pub fn count(&self) -> usize {
+    pub fn allocated_count(&self) -> usize {
         self.storage.len() - self.free_list.len()
+    }
+
+    pub fn storage_size(&self) -> usize {
+        self.storage.len()
     }
 }
 

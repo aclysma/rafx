@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::{RenderRegistry, RenderNodeSet, RenderView, GenericRenderNodeHandle};
 use crate::visibility::{VisibilityResult};
 use crate::render_view::RenderViewSet;
+use crate::render_node_set::AllRenderNodes;
 
 struct PerFrameNode {}
 
@@ -72,20 +73,19 @@ pub struct FramePacketBuilder {
 }
 
 impl FramePacketBuilder {
-    pub fn new(render_node_set: &RenderNodeSet) -> Self {
+    pub fn new(render_node_set: &AllRenderNodes) -> Self {
         let feature_count = RenderRegistry::registered_feature_count();
 
-        let node_count_by_type = render_node_set.node_count_by_type();
-        for (feature_index, node_count) in node_count_by_type.iter().enumerate() {
-            log::debug!("node count for feature {}: {}", feature_index, node_count);
+        let max_node_count_by_type = render_node_set.max_node_count_by_type();
+        for (feature_index, max_node_count) in max_node_count_by_type.iter().enumerate() {
+            log::debug!("node count for feature {}: {}", feature_index, max_node_count);
         }
-        let frame_node_assignments = node_count_by_type
+        let frame_node_assignments = max_node_count_by_type
             .iter()
-            .map(|node_count| vec![-1; *node_count as usize])
+            .map(|max_node_count| vec![-1; *max_node_count as usize])
             .collect();
 
         let inner = FramePacketBuilderInner {
-            //frame_packet,
             frame_node_assignments,
             view_packet_builders: Default::default(),
             frame_nodes: Default::default()
@@ -98,7 +98,6 @@ impl FramePacketBuilder {
 
     pub fn add_view(
         &self,
-        render_node_set: &RenderNodeSet,
         view: &RenderView,
         visibility_results: &[VisibilityResult],
     ) {
