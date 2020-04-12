@@ -1,6 +1,6 @@
-use crate::registry::RenderPhaseIndex;
+use renderer_base::RenderPhaseIndex;
 use std::sync::atomic::Ordering;
-use crate::RenderPhase;
+use renderer_base::RenderPhase;
 use std::sync::atomic::AtomicI32;
 use std::convert::TryInto;
 

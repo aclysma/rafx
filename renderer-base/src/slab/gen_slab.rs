@@ -93,10 +93,16 @@ pub struct GenSlab<T> {
     free_list: Vec<SlabIndexT>,
 }
 
+impl<T> Default for GenSlab<T> {
+    fn default() -> Self {
+        GenSlab::with_capacity(32)
+    }
+}
+
 impl<T> GenSlab<T> {
     /// Create an empty GenSlab
     pub fn new() -> Self {
-        GenSlab::with_capacity(32)
+        Self::default()
     }
 
     /// Create an empty but presized GenSlab
@@ -127,7 +133,7 @@ impl<T> GenSlab<T> {
             //println!("reuse slab index {}", index);
             assert!(self.storage[index as usize].is_none());
             let generation_index = self.storage[index as usize].allocate(value);
-            return GenSlabKey::new(index, generation_index);
+            GenSlabKey::new(index, generation_index)
         } else {
             // Insert a new value
             let mut generation = Generation::new();
@@ -137,7 +143,7 @@ impl<T> GenSlab<T> {
             self.storage.push(generation);
 
             //println!("new slab index {}", index);
-            return GenSlabKey::new(index, generation_index);
+            GenSlabKey::new(index, generation_index)
         }
     }
 

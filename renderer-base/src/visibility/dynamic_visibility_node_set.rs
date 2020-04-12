@@ -21,7 +21,7 @@ impl DynamicVisibilityNodeSet {
         handle: DynamicAabbVisibilityNodeHandle,
     ) {
         //TODO: Remove from spatial structure?
-        self.dynamic_aabb.free(&handle.0);
+        self.dynamic_aabb.free(handle.0);
     }
 
     pub fn calculate_dynamic_visibility(

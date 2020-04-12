@@ -44,7 +44,7 @@ impl StaticVisibilityNodeSet {
         handle: StaticAabbVisibilityNodeHandle,
     ) {
         //TODO: Remove from spatial structure?
-        self.static_aabb.free(&handle.0);
+        self.static_aabb.free(handle.0);
     }
 
     pub fn calculate_static_visibility(

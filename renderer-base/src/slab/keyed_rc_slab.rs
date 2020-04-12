@@ -17,10 +17,16 @@ pub struct KeyedRcSlab<KeyT: Eq + Hash, ValueT> {
     lookup: HashMap<KeyT, WeakSlabEntry<ValueT>>,
 }
 
+impl<KeyT: Eq + Hash, ValueT> Default for KeyedRcSlab<KeyT, ValueT> {
+    fn default() -> Self {
+        Self::with_capacity(32)
+    }
+}
+
 impl<KeyT: Eq + Hash, ValueT> KeyedRcSlab<KeyT, ValueT> {
     /// Create an empty KeyedRcSlab
     pub fn new() -> Self {
-        Self::with_capacity(32)
+        Default::default()
     }
 
     /// Create an empty but presized KeyedRcSlab

@@ -378,7 +378,6 @@ fn main() {
         // extract_impl_set.add_impl(Box::new(SpriteRenderFeature));
         // extract_impl_set.add_impl(Box::new(StaticQuadRenderFeature));
 
-
         let frame_packet = frame_packet_builder.build();
         println!("frame packet:\n{:#?}", frame_packet);
 
@@ -389,8 +388,8 @@ fn main() {
         // let new_world = universe.create_world();
         // world.merge(new_world);
 
-
-        let prepare_job_set = extract_job_set.extract(&world, &frame_packet, &[&main_view, &minimap_view]);
+        let prepare_job_set =
+            extract_job_set.extract(&world, &frame_packet, &[&main_view, &minimap_view]);
 
         //extract_job_set.extract(&frame_packet, &[&main_view, &minimap_view]);
 

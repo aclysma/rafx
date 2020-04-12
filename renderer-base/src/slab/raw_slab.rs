@@ -30,7 +30,7 @@ impl<T: Sized> RawSlabKey<T> {
         }
     }
 
-    pub fn index(&self) -> SlabIndexT {
+    pub fn index(self) -> SlabIndexT {
         self.index
     }
 }
@@ -45,10 +45,16 @@ pub struct RawSlab<T> {
     free_list: Vec<SlabIndexT>,
 }
 
+impl<T> Default for RawSlab<T> {
+    fn default() -> Self {
+        Self::with_capacity(32)
+    }
+}
+
 impl<T> RawSlab<T> {
     /// Create an empty RawSlab
     pub fn new() -> Self {
-        Self::with_capacity(32)
+        Default::default()
     }
 
     /// Create an empty but presized RawSlab
@@ -78,19 +84,19 @@ impl<T> RawSlab<T> {
             // Reuse a free slot
             assert!(self.storage[index as usize].is_none());
             self.storage[index as usize] = Some(value);
-            return RawSlabKey::new(index);
+            RawSlabKey::new(index)
         } else {
             let index = self.storage.len() as SlabIndexT;
             self.storage.push(Some(value));
 
-            return RawSlabKey::new(index);
+            RawSlabKey::new(index)
         }
     }
 
     /// Free an element in the raw slab. It is fatal to free an element that doesn't exist.
     pub fn free(
         &mut self,
-        slab_key: &RawSlabKey<T>,
+        slab_key: RawSlabKey<T>,
     ) {
         assert!(
             self.storage[slab_key.index as usize].is_some(),
@@ -103,7 +109,7 @@ impl<T> RawSlab<T> {
     /// Check if an element exists
     pub fn exists(
         &self,
-        slab_key: &RawSlabKey<T>,
+        slab_key: RawSlabKey<T>,
     ) -> bool {
         self.storage[slab_key.index as usize].is_some()
     }
@@ -111,7 +117,7 @@ impl<T> RawSlab<T> {
     /// Try to get the given element
     pub fn get(
         &self,
-        slab_key: &RawSlabKey<T>,
+        slab_key: RawSlabKey<T>,
     ) -> Option<&T> {
         // Non-mutable return value so we can return a ref to the value in the vec
 
@@ -121,7 +127,7 @@ impl<T> RawSlab<T> {
     /// Try to get the given element
     pub fn get_mut(
         &mut self,
-        slab_key: &RawSlabKey<T>,
+        slab_key: RawSlabKey<T>,
     ) -> Option<&mut T> {
         // Mutable reference, and we don't want the caller messing with the Option in the vec,
         // so create a new Option with a mut ref to the value in the vec
@@ -153,12 +159,6 @@ impl<T> RawSlab<T> {
 
     pub fn storage_size(&self) -> usize {
         self.storage.len()
-    }
-}
-
-impl<T> Default for RawSlab<T> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

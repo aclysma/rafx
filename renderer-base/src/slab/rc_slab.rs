@@ -106,10 +106,16 @@ pub struct RcSlab<T> {
     entries: Vec<RcSlabEntry<T>>,
 }
 
+impl<T> Default for RcSlab<T> {
+    fn default() -> Self {
+        Self::with_capacity(32)
+    }
+}
+
 impl<T> RcSlab<T> {
     /// Returns an empty RcSlab
     pub fn new() -> Self {
-        Self::with_capacity(32)
+        Default::default()
     }
 
     /// Return an empty but presized RcSlab
@@ -118,7 +124,7 @@ impl<T> RcSlab<T> {
 
         RcSlab::<T> {
             slab: GenSlab::<T>::with_capacity(capacity),
-            entries: entries,
+            entries,
         }
     }
 

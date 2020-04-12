@@ -1,12 +1,13 @@
-use crate::slab::{RawSlabKey, RawSlab};
-use crate::registry::RenderFeature;
-use crate::registry::RenderFeatureIndex;
+use renderer_base::slab::{RawSlabKey, RawSlab};
+use renderer_base::RenderFeature;
+use renderer_base::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
-use crate::{FramePacket, GenericRenderNodeHandle, ExtractJob, DefaultExtractJob, DefaultExtractJobImpl, PrepareJob, RenderView, RenderNodeSet};
+use renderer_base::{FramePacket, GenericRenderNodeHandle, ExtractJob, PrepareJob, RenderView, RenderNodeSet};
+use crate::jobs::{DefaultExtractJob, DefaultExtractJobImpl};
 use std::convert::TryInto;
 use legion::prelude::World;
-use crate::frame_packet::{PerFrameNode, PerViewNode};
+use renderer_base::{PerFrameNode, PerViewNode};
 
 static SPRITE_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
@@ -32,37 +33,40 @@ impl RenderFeature for SpriteRenderFeature {
 
 
 struct SpriteExtractJobImpl {
-    //world: &'static World,
-    //render_nodes: &'static SpriteRenderNodeSet
+
 }
 
 impl DefaultExtractJobImpl<World> for SpriteExtractJobImpl {
     fn extract_begin(
         &self,
         _source: &World,
+        _frame_packet: &FramePacket,
+        _views: &[&RenderView]
     ) {
         log::debug!("extract_begin {}", self.feature_debug_name());
     }
     fn extract_frame_node(
         &self,
         _source: &World,
-        frame_node: PerFrameNode,
+        _frame_node: PerFrameNode,
+        frame_node_index: u32,
     ) {
-        log::debug!("extract_frame_node {}", self.feature_debug_name());
+        log::debug!("extract_frame_node {} {}", self.feature_debug_name(), frame_node_index);
     }
 
     fn extract_view_node(
         &self,
         _source: &World,
-        view: &RenderView,
-        view_node: PerViewNode
+        _view: &RenderView,
+        _view_node: PerViewNode,
+        view_node_index: u32
     ) {
-        log::debug!("extract_view_nodes {}", self.feature_debug_name());
+        log::debug!("extract_view_nodes {} {}", self.feature_debug_name(), view_node_index);
     }
     fn extract_view_finalize(
         &self,
         _source: &World,
-        view: &RenderView,
+        _view: &RenderView,
     ) {
         log::debug!("extract_view_finalize {}", self.feature_debug_name());
     }
@@ -85,18 +89,9 @@ pub struct SpriteExtractJob {
 }
 
 impl SpriteExtractJob {
-    pub fn new(/*world: &World, render_nodes: &SpriteRenderNodeSet*/) -> Self {
-        // let world = unsafe {
-        //     force_to_static_lifetime(world)
-        // };
-        //
-        // let render_nodes = unsafe {
-        //     force_to_static_lifetime(render_nodes)
-        // };
-
+    pub fn new() -> Self {
         let job_impl = SpriteExtractJobImpl {
-            //world,
-            //render_nodes
+
         };
 
         SpriteExtractJob {
@@ -112,17 +107,8 @@ impl ExtractJob<World> for SpriteExtractJob {
 
     fn feature_debug_name(&self) -> &'static str {
         self.inner.feature_debug_name()
-        //ExtractJob::<World>::feature_debug_name(&*self.inner)
     }
 }
-
-//
-// unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T{
-//     std::mem::transmute(value)
-// }
-
-
-
 
 struct SpritePrepareJob {
 
@@ -177,7 +163,7 @@ impl SpriteRenderNodeSet {
         &mut self,
         handle: SpriteRenderNodeHandle,
     ) {
-        self.sprites.free(&handle.0);
+        self.sprites.free(handle.0);
     }
 }
 

@@ -1,12 +1,13 @@
-use crate::slab::{RawSlabKey, RawSlab};
-use crate::registry::RenderFeature;
-use crate::registry::RenderFeatureIndex;
+use renderer_base::slab::{RawSlabKey, RawSlab};
+use renderer_base::RenderFeature;
+use renderer_base::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
 use std::convert::TryInto;
-use crate::{FramePacket, GenericRenderNodeHandle, DefaultExtractJob, ExtractJob, RenderView, PrepareJob, DefaultExtractJobImpl};
+use renderer_base::{FramePacket, GenericRenderNodeHandle, ExtractJob, RenderView, PrepareJob};
+use crate::jobs::{DefaultExtractJob, DefaultExtractJobImpl};
 use legion::prelude::World;
-use crate::frame_packet::{PerFrameNode, PerViewNode};
+use renderer_base::{PerFrameNode, PerViewNode};
 
 static STATIC_QUAD_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
@@ -35,29 +36,33 @@ impl DefaultExtractJobImpl<World> for StaticQuadExtractJobImpl {
     fn extract_begin(
         &self,
         _source: &World,
+        _frame_packet: &FramePacket,
+        _views: &[&RenderView]
     ) {
         log::debug!("extract_begin {}", self.feature_debug_name());
     }
     fn extract_frame_node(
         &self,
         _source: &World,
-        frame_node: PerFrameNode,
+        _frame_node: PerFrameNode,
+        frame_node_index: u32,
     ) {
-        log::debug!("extract_frame_node {}", self.feature_debug_name());
+        log::debug!("extract_frame_node {} {}", self.feature_debug_name(), frame_node_index);
     }
 
     fn extract_view_node(
         &self,
         _source: &World,
-        view: &RenderView,
-        view_node: PerViewNode
+        _view: &RenderView,
+        _view_node: PerViewNode,
+        view_node_index: u32
     ) {
-        log::debug!("extract_view_nodes {}", self.feature_debug_name());
+        log::debug!("extract_view_nodes {} {}", self.feature_debug_name(), view_node_index);
     }
     fn extract_view_finalize(
         &self,
         _source: &World,
-        view: &RenderView,
+        _view: &RenderView,
     ) {
         log::debug!("extract_view_finalize {}", self.feature_debug_name());
     }
@@ -170,6 +175,6 @@ impl StaticQuadRenderNodeSet {
         &mut self,
         handle: StaticQuadRenderNodeHandle,
     ) {
-        self.sprites.free(&handle.0);
+        self.sprites.free(handle.0);
     }
 }

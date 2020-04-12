@@ -19,11 +19,11 @@ impl GenericRenderNodeHandle {
         }
     }
 
-    pub fn render_feature_index(&self) -> RenderFeatureIndex {
+    pub fn render_feature_index(self) -> RenderFeatureIndex {
         self.render_feature_index
     }
 
-    pub fn render_node_index(&self) -> SlabIndexT {
+    pub fn render_node_index(self) -> SlabIndexT {
         self.render_node_index
     }
 }

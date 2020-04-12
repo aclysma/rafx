@@ -2,9 +2,9 @@ pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 use ash::vk::Handle;
 
-use renderer_base::PhysicalSize;
-use renderer_base::LogicalSize;
-use renderer_base::Window;
+use renderer_shell_vulkan::PhysicalSize;
+use renderer_shell_vulkan::LogicalSize;
+use renderer_shell_vulkan::Window;
 
 pub struct Sdl2Window<'a> {
     window: &'a sdl2::video::Window,

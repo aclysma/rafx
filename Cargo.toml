@@ -10,8 +10,11 @@ edition = "2018"
 ash = ">=0.30"
 sdl2 = { version = ">=0.33" }
 
+renderer-shell-vulkan = { path = "renderer-shell-vulkan" }
+renderer-shell-vulkan-sdl2 = { path = "renderer-shell-vulkan-sdl2"}
+
 renderer-base = { path = "renderer-base" }
-renderer-sdl2 = { path = "renderer-sdl2"}
+renderer-ext = { path = "renderer-ext" }
 
 log="0.4"
 

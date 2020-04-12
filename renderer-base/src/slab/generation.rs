@@ -19,13 +19,19 @@ pub struct Generation<T> {
     value: Option<T>,
 }
 
+impl<T> Default for Generation<T> {
+    fn default() -> Self {
+        Generation {
+            generation_index: GenerationIndex(0),
+            value: None
+        }
+    }
+}
+
 impl<T> Generation<T> {
     /// Create a cleared Generation<T>
     pub fn new() -> Self {
-        Generation {
-            generation_index: GenerationIndex(0),
-            value: None,
-        }
+        Default::default()
     }
 
     /// Returns true if the element is not None, and matches the given generation
