@@ -1,7 +1,5 @@
 use glam::Mat4;
 use crate::frame_packet::FramePacket;
-//use crate::visibility::StaticVisibilityResult;
-//use crate::visibility::DynamicVisibilityResult;
 use crate::visibility::VisibilityResult;
 use crate::{RenderNodeSet, RenderPhase, GenericRenderNodeHandle};
 use crate::registry::{RenderPhaseMaskInnerType, MAX_RENDER_PHASE_COUNT};

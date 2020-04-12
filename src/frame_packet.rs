@@ -2,8 +2,8 @@ use std::sync::Mutex;
 use std::sync::Arc;
 use crate::{RenderRegistry, RenderNodeSet, RenderView, GenericRenderNodeHandle};
 use crate::visibility::{VisibilityResult};
-use crate::render_view::RenderViewSet;
-use crate::render_node_set::AllRenderNodes;
+use crate::render_views::RenderViewSet;
+use crate::render_nodes::AllRenderNodes;
 
 struct PerFrameNode {}
 

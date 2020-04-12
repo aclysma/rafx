@@ -83,11 +83,46 @@ impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> DefaultExtractJob<So
 impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> ExtractJob<SourceT> for DefaultExtractJob<SourceT, ExtractImplT> {
     fn extract(self: Box<Self>, source: &SourceT, frame_packet: &FramePacket, views: &[&RenderView]) -> Box<PrepareJob> {
         log::debug!("DefaultExtractJob::extract");
-        // Responsible for iterating across frame packet to call these callbacks
-        self.extract_impl.extract_begin(source);
-        self.extract_impl.extract_frame_node(source, 0);
-        self.extract_impl.extract_view_node(source, 0, 0);
-        self.extract_impl.extract_view_finalize(source, 0);
+        // // Responsible for iterating across frame packet to call these callbacks
+        // self.extract_impl.extract_begin(source);
+        // self.extract_impl.extract_frame_node(source, 0);
+        // self.extract_impl.extract_view_node(source, 0, 0);
+        // self.extract_impl.extract_view_finalize(source, 0);
+        // self.extract_impl.extract_frame_finalize(source)
+
+        // In the future, make features run in parallel
+        log::debug!("extract_begin {}", self.extract_impl.feature_debug_name());
+        self.extract_impl.extract_begin(source); //TODO: Pass node counts
+
+        // foreach frame node, call extract
+        //for frame_node in frame_packet.fram
+        log::debug!("extract_frame_node {}", self.extract_impl.feature_debug_name());
+        self.extract_impl.extract_frame_node(source, 0); //TODO: Call once per frame node
+
+        //TODO: Views can run in parallel
+        for view in views {
+            // foreach view node, call extract
+            log::debug!(
+                "extract_frame_node {} {}",
+                self.extract_impl.feature_debug_name(),
+                view.debug_name()
+            );
+            self.extract_impl.extract_view_node(source, 0, 0); //TODO: Call once per view node
+
+            // call once after all view nodes extracted
+            log::debug!(
+                "extract_view_finalize {} {}",
+                self.extract_impl.feature_debug_name(),
+                view.debug_name()
+            );
+            self.extract_impl.extract_view_finalize(source, 0); //TODO: Pass the view?
+        }
+
+        // call once after all nodes extracted
+        log::debug!(
+            "extract_frame_finalize {}",
+            self.extract_impl.feature_debug_name()
+        );
         self.extract_impl.extract_frame_finalize(source)
     }
 

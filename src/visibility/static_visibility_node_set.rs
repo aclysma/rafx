@@ -1,6 +1,6 @@
 use crate::slab::SlabIndexT;
 use crate::slab::RawSlab;
-use crate::render_view::RenderView;
+use crate::render_views::RenderView;
 use crate::visibility::*;
 use crate::GenericRenderNodeHandle;
 use crate::RenderRegistry;

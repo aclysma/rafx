@@ -183,16 +183,14 @@ pub mod visibility;
 
 mod render_nodes;
 pub use render_nodes::GenericRenderNodeHandle;
+pub use render_nodes::RenderNodeSet;
+pub use render_nodes::AllRenderNodes;
 
-mod render_node_set;
-pub use render_node_set::RenderNodeSet;
-pub use render_node_set::AllRenderNodes;
-
-mod render_view;
-pub use render_view::RenderViewSet;
-pub use render_view::RenderView;
-pub use render_view::RenderPhaseMaskBuilder;
-pub use render_view::RenderPhaseMask;
+mod render_views;
+pub use render_views::RenderViewSet;
+pub use render_views::RenderView;
+pub use render_views::RenderPhaseMaskBuilder;
+pub use render_views::RenderPhaseMask;
 
 mod frame_packet;
 pub use frame_packet::FramePacket;
