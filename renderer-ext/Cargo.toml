@@ -8,7 +8,8 @@ edition = "2018"
 
 [dependencies]
 renderer-base = { path = "../renderer-base" }
-legion = "0.2.1"
+#legion = "0.2.1"
+legion = { git = "https://github.com/TomGillen/legion.git" }
 
 log="0.4"
 glam = "0.8.6"

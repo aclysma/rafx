@@ -20,7 +20,8 @@ log="0.4"
 
 glam = "0.8.6"
 
-legion = "0.2.1"
+#legion = "0.2.1"
+legion = { git = "https://github.com/TomGillen/legion.git" }
 
 [dev-dependencies]
 env_logger = "0.6"

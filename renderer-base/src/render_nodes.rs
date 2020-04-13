@@ -34,7 +34,7 @@ pub trait RenderNodeSet {
 }
 
 pub struct AllRenderNodes<'a> {
-    nodes: Vec<Option<&'a dyn RenderNodeSet>>
+    nodes: Vec<Option<&'a dyn RenderNodeSet>>,
 }
 
 impl<'a> AllRenderNodes<'a> {
@@ -42,17 +42,20 @@ impl<'a> AllRenderNodes<'a> {
         let feature_count = RenderRegistry::registered_feature_count();
         let nodes = vec![None; feature_count as usize];
 
-        AllRenderNodes {
-            nodes
-        }
+        AllRenderNodes { nodes }
     }
 
-    pub fn add_render_nodes(&mut self, render_nodes: &'a dyn RenderNodeSet) {
+    pub fn add_render_nodes(
+        &mut self,
+        render_nodes: &'a dyn RenderNodeSet,
+    ) {
         self.nodes[render_nodes.feature_index() as usize] = Some(render_nodes);
     }
 
     pub fn max_render_node_count_by_type(&self) -> Vec<usize> {
-        self.nodes.iter()
-            .map(|node_set| node_set.map_or(0, |node_set| node_set.max_render_node_count())).collect()
+        self.nodes
+            .iter()
+            .map(|node_set| node_set.map_or(0, |node_set| node_set.max_render_node_count()))
+            .collect()
     }
 }

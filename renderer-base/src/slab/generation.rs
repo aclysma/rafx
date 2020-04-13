@@ -23,7 +23,7 @@ impl<T> Default for Generation<T> {
     fn default() -> Self {
         Generation {
             generation_index: GenerationIndex(0),
-            value: None
+            value: None,
         }
     }
 }

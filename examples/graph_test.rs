@@ -1,155 +1,3 @@
-/*
-struct FrameGraphBuilder {
-
-}
-
-impl FrameGraphBuilder {
-    fn add_resource() {
-
-    }
-
-    fn add_pass() {
-
-    }
-}
-
-struct ResourceBuilder {
-
-}
-
-impl ResourceBuilder {
-    fn build(frame_graph_builder: &FrameGraphBuilder) {
-
-    }
-}
-
-struct PassBuilder {
-
-}
-
-impl PassBuilder {
-    fn build(frame_graph_builder: &FrameGraphBuilder) {
-
-    }
-}
-
-struct PassModuleInput {
-
-}
-
-struct PassModuleOutput {
-    diffuse: Surface
-}
-
-fn set_up_pass_module(input: PassModuleInput, output: PassModuleOutput) {
-
-}
-
-
-fn main() {
-
-    let swapchain_backbuffer = frame_builder.add_external_resource();
-
-
-    let graphics_queue = frame_builder.get_queue(QueueType::Graphics);
-
-    frame_builder.add_pass(graphics_queue)
-        .reads_resource(swapchain_backbuffer)
-        .writes_resource(swapchain_backbuffer);
-
-
-
-    //strategy 1: writing to a resource consumes the ID and produces a new ID
-    //strategy 2: explicitly say if A is before or after B
-    //strategy 3: fence resource
-
-    let backbuffer = frame_builder.create_buffer();
-    let pass1 = frame_builder.add_pass(graphics_queue);
-
-    pass1.reads_resource(swapchain_backbuffer);
-    let swapchain_backbuffer = pass1.writes_resources(swapchain_backbuffer);
-
-    // awareness of pipelines?
-    // non-intrusive insertion of new logic?
-    // unify cpu and gpu scheduling?
-
-}
-
-trait Pass {
-    fn requirements(requirement: &mut PassRequirements) {
-        requirement.read(asdf);
-        requirement.read(asdf);
-        requirement.write(asdf);
-
-        requirement.after_fence(asdf);
-
-        requirement.before_fence(asdf);
-    }
-}
-
-*/
-
-// * Simulate
-//   - Static visibility can be calculated in parallel
-// * Compute Views
-//   - First person camera, shadow maps, etc.
-// * View Visibility Job(s)
-//   - Dynamic visibility, merge with results from static visibility
-// * Populate View Render Nodes
-// * Extract Per View Job(s)
-// * Extract Finish
-// * Prepare Per View Job(s)
-// * Publish to Submit
-// * High-Level Submit Script Job(s)
-// * Submit View Job(s)
-// * End Frame Job
-// * Submit Done
-
-// view subscribes to stages
-// objects subscribe to stages
-
-// Example:
-// - Shadow casting objects subscribe to shadow generate stage
-// - Shadow view subscribes to shadow generate stage
-
-// A material defines the stages/shaders per stage
-// -
-
-// script includes target bind, clear, resolve
-
-// Generate command buffers
-
-// Submit them later
-
-// destiny example
-/*
-fn generate_gbuffer_pass() {
-    set_render_targets(depth_stencil, gbuffer_surfaces);
-    setup_viewport_parameters();
-    // ...
-    clear_viewport();
-    submit_render_stage_for_view(first_person_view, _render_stage_gbuffer_opaque);
-}
-*/
-
-// User calls functions to register render objects
-// - This is a retained API because render object existence loads streaming assets
-// User calls functions to register visibility objects
-// - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-// Take input
-// User calls function to create FPS view
-// User could call function to calculate visibility of static objects for FPS camera early to reduce
-//   future critical-path work (to reduce latency)
-// Simulation
-// User calls functions to create more views (such as shadows, minimap, etc.)
-// User calls functions to start jobs that calculate dynamic visibility for FPS view
-// User calls functions to start jobs that calculate static and dynamic visibility for all other views
-// After these jobs end, user calls functions to start jobs that extract data
-// User calls function to kick off the prepare/submit pipeline
-// Return to the top...
-// - The render pipeline uses cached data, node, static data. So it can run concurrently with all above steps
-// - The visibility spatial structures and render objects can be added/removed freely during the above steps
-
 use renderer::visibility::*;
 use renderer::features::sprite::*;
 use renderer::features::static_quad::*;
@@ -159,17 +7,7 @@ use renderer::RenderRegistry;
 use renderer::RenderViewSet;
 use legion::prelude::*;
 use glam::Vec3;
-
-#[derive(Copy, Clone)]
-struct PositionComponent {
-    position: Vec3,
-}
-
-#[derive(Clone)]
-struct SpriteComponent {
-    sprite_handle: SpriteRenderNodeHandle,
-    visibility_handle: DynamicAabbVisibilityNodeHandle,
-}
+use renderer_ext::{ExtractSource, PositionComponent, SpriteComponent};
 
 fn main() {
     // Setup logging
@@ -200,46 +38,58 @@ fn main() {
     //
     // Init an example world state
     //
-    let universe = Universe::default();
+    let universe = Universe::new();
     let mut world = universe.create_world();
+    let mut resources = legion::systems::resource::Resources::default();
 
-    let sprites = ["sprite1", "sprite2", "sprite3"];
+    resources.insert(sprite_render_nodes);
 
-    for i in 0..100 {
-        let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
-        let _sprite = sprites[i % sprites.len()];
+    {
+        let sprites = ["sprite1", "sprite2", "sprite3"];
+        for i in 0..100 {
+            let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
+            let _sprite = sprites[i % sprites.len()];
 
-        //TODO: Not clear the best approach from an API perspective to allocate component and render
-        // node that point at each other. (We can't get Entity or Handle until the object is inserted)
-        let sprite_info = SpriteRenderNode {
-            // entity handle
-            // sprite asset
-        };
+            let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
 
-        // User calls functions to register render objects
-        // - This is a retained API because render object existence loads streaming assets
-        let sprite_handle = sprite_render_nodes.register_sprite(sprite_info);
+            // User calls functions to register render objects
+            // - This is a retained API because render object existence can trigger loading streaming assets and
+            //   keep them resident in memory
+            // - Some render objects might not correspond to legion entities, and some people might not be using
+            //   legion at all
+            // - the `_with_handle` variant allows us to get the handle of the value that's going to be allocated
+            //   This resolves a circular dependency where the component needs the render node handle and the
+            //   render node needs the entity.
+            sprite_render_nodes.register_sprite_with_handle(|sprite_handle| {
+                let aabb_info = DynamicAabbVisibilityNode {
+                    handle: sprite_handle.into(),
+                    // aabb bounds
+                };
 
-        let aabb_info = DynamicAabbVisibilityNode {
-            // render node handles
-            // aabb bounds
-            handle: sprite_handle.into(),
-        };
+                // User calls functions to register visibility objects
+                // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
+                let visibility_handle =
+                    dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
 
-        // User calls functions to register visibility objects
-        // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-        let visibility_handle = dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
+                let position_component = PositionComponent { position };
+                let sprite_component = SpriteComponent {
+                    sprite_handle,
+                    visibility_handle,
+                };
 
-        let position_component = PositionComponent { position };
-        let sprite_component = SpriteComponent {
-            sprite_handle,
-            visibility_handle,
-        };
+                let entity = world.insert(
+                    (),
+                    (0..1).map(|_| (position_component, sprite_component.clone())),
+                )[0];
 
-        world.insert(
-            (),
-            (0..1).map(|_| (position_component, sprite_component.clone())),
-        );
+                println!("create entity {:?}", entity);
+                world.get_component::<PositionComponent>(entity).unwrap();
+
+                SpriteRenderNode {
+                    entity, // sprite asset
+                }
+            });
+        }
     }
 
     //
@@ -326,8 +176,10 @@ fn main() {
 
         // The frame packet builder will merge visibility results and hold extracted data from simulation. During
         // the extract window, render nodes cannot be added/removed
+
+        let sprite_render_nodes = resources.get::<SpriteRenderNodeSet>().unwrap();
         let mut all_render_nodes = AllRenderNodes::new();
-        all_render_nodes.add_render_nodes(&sprite_render_nodes);
+        all_render_nodes.add_render_nodes(&*sprite_render_nodes);
 
         let frame_packet_builder = FramePacketBuilder::new(&all_render_nodes);
 
@@ -381,15 +233,17 @@ fn main() {
         let frame_packet = frame_packet_builder.build();
         println!("frame packet:\n{:#?}", frame_packet);
 
-        let mut extract_job_set = ExtractJobSet::new();
-        extract_job_set.add_job(Box::new(SpriteExtractJob::new()));
-        extract_job_set.add_job(Box::new(StaticQuadExtractJob::new()));
+        let prepare_job_set = {
+            let mut extract_job_set = ExtractJobSet::new();
+            extract_job_set.add_job(Box::new(SpriteExtractJob::new()));
+            extract_job_set.add_job(Box::new(StaticQuadExtractJob::new()));
 
-        // let new_world = universe.create_world();
-        // world.merge(new_world);
+            // let new_world = universe.create_world();
+            // world.merge(new_world);
 
-        let prepare_job_set =
-            extract_job_set.extract(&world, &frame_packet, &[&main_view, &minimap_view]);
+            let extract_source = ExtractSource::new(&world, &resources);
+            extract_job_set.extract(&extract_source, &frame_packet, &[&main_view, &minimap_view])
+        };
 
         //extract_job_set.extract(&frame_packet, &[&main_view, &minimap_view]);
 
@@ -412,6 +266,7 @@ fn main() {
     //
     // Unregister render nodes/visibility objects
     //
+    let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
     let query = <Read<SpriteComponent>>::query();
     for sprite_component in query.iter(&mut world) {
         sprite_render_nodes.unregister_sprite(sprite_component.sprite_handle);
@@ -424,10 +279,3 @@ fn main() {
 // - maybe add 2d lighting?
 // - Add support for streaming chunks?
 // - tilemap?
-
-// Create views
-// Calculate static visibility (jobify)
-// Calculate dynamic visibility (jobify)
-// Extract data
-// Prepare
-// Submit

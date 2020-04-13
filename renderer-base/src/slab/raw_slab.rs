@@ -23,7 +23,7 @@ impl<T: Sized> Clone for RawSlabKey<T> {
 impl<T: Sized> Copy for RawSlabKey<T> {}
 
 impl<T: Sized> RawSlabKey<T> {
-    fn new(index: SlabIndexT) -> Self {
+    pub fn new(index: SlabIndexT) -> Self {
         RawSlabKey {
             index,
             phantom_data: PhantomData,
@@ -90,6 +90,28 @@ impl<T> RawSlab<T> {
             self.storage.push(Some(value));
 
             RawSlabKey::new(index)
+        }
+    }
+
+    pub fn allocate_with_key<F: FnMut(RawSlabKey<T>) -> T>(
+        &mut self,
+        mut f: F,
+    ) -> RawSlabKey<T> {
+        let index = self.free_list.pop();
+
+        if let Some(index) = index {
+            // Reuse a free slot
+            assert!(self.storage[index as usize].is_none());
+            let slab_key = RawSlabKey::new(index);
+            let value = (f)(slab_key);
+            self.storage[index as usize] = Some(value);
+            slab_key
+        } else {
+            let index = self.storage.len() as SlabIndexT;
+            let slab_key = RawSlabKey::new(index);
+            let value = (f)(slab_key);
+            self.storage.push(Some(value));
+            slab_key
         }
     }
 

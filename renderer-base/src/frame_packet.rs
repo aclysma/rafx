@@ -6,13 +6,29 @@ use crate::registry::RenderFeatureCount;
 
 #[derive(Debug, Copy, Clone)]
 pub struct PerFrameNode {
-    render_node_index: u32
+    render_node_index: u32,
+}
+
+impl PerFrameNode {
+    pub fn render_node_index(&self) -> u32 {
+        self.render_node_index
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct PerViewNode {
     render_node_index: u32,
-    frame_node: u32
+    frame_node_index: u32,
+}
+
+impl PerViewNode {
+    pub fn render_node_index(&self) -> u32 {
+        self.render_node_index
+    }
+
+    pub fn frame_node_index(&self) -> u32 {
+        self.frame_node_index
+    }
 }
 
 ////////////////// FramePacket //////////////////
@@ -25,7 +41,11 @@ pub struct FramePacket {
 }
 
 impl FramePacket {
-    pub fn view_nodes(&self, view: &RenderView, feature_index: RenderFeatureIndex) -> Option<&[PerViewNode]> {
+    pub fn view_nodes(
+        &self,
+        view: &RenderView,
+        feature_index: RenderFeatureIndex,
+    ) -> Option<&[PerViewNode]> {
         if let Some(view_packet) = &self.view_packets[view.view_index() as usize] {
             Some(view_packet.view_nodes(feature_index))
         } else {
@@ -33,8 +53,30 @@ impl FramePacket {
         }
     }
 
-    pub fn frame_nodes(&self, feature_index: RenderFeatureIndex) -> &[PerFrameNode] {
+    pub fn view_node_count(
+        &self,
+        view: &RenderView,
+        feature_index: RenderFeatureIndex,
+    ) -> usize {
+        if let Some(view_packet) = &self.view_packets[view.view_index() as usize] {
+            view_packet.view_nodes(feature_index).len()
+        } else {
+            0
+        }
+    }
+
+    pub fn frame_nodes(
+        &self,
+        feature_index: RenderFeatureIndex,
+    ) -> &[PerFrameNode] {
         &self.frame_nodes[feature_index as usize]
+    }
+
+    pub fn frame_node_count(
+        &self,
+        feature_index: RenderFeatureIndex,
+    ) -> usize {
+        self.frame_nodes[feature_index as usize].len()
     }
 }
 
@@ -45,43 +87,40 @@ pub struct ViewPacket {
 }
 
 impl ViewPacket {
-    pub fn view_nodes(&self, feature_index: RenderFeatureIndex) -> &[PerViewNode] {
+    pub fn view_nodes(
+        &self,
+        feature_index: RenderFeatureIndex,
+    ) -> &[PerViewNode] {
         &self.view_nodes[feature_index as usize]
     }
 }
-
-
 
 struct ViewPacketBuilderInner {
     view_nodes: Vec<Vec<PerViewNode>>,
 }
 
 struct ViewPacketBuilder {
-    inner: Mutex<ViewPacketBuilderInner>
+    inner: Mutex<ViewPacketBuilderInner>,
 }
 
 impl ViewPacketBuilder {
     pub fn new(feature_count: RenderFeatureCount) -> Self {
         let view_nodes = (0..feature_count).map(|_| Vec::new()).collect();
 
-        let inner = Mutex::new(ViewPacketBuilderInner {
-            view_nodes
-        });
+        let inner = Mutex::new(ViewPacketBuilderInner { view_nodes });
 
-        ViewPacketBuilder {
-            inner
-        }
+        ViewPacketBuilder { inner }
     }
 
     pub fn append_view_node(
         &self,
         handle: GenericRenderNodeHandle,
-        frame_node: u32,
+        frame_node_index: u32,
     ) {
         let mut guard = self.inner.lock().unwrap();
         guard.view_nodes[handle.render_feature_index() as usize].push(PerViewNode {
-            frame_node,
-            render_node_index: handle.render_node_index()
+            frame_node_index,
+            render_node_index: handle.render_node_index(),
         });
         log::trace!("push view node");
     }
@@ -91,9 +130,7 @@ impl ViewPacketBuilder {
         let mut view_nodes = vec![];
         std::mem::swap(&mut view_nodes, &mut guard.view_nodes);
 
-        ViewPacket {
-            view_nodes
-        }
+        ViewPacket { view_nodes }
     }
 }
 
@@ -107,7 +144,7 @@ struct FramePacketBuilderInner {
 }
 
 pub struct FramePacketBuilder {
-    inner: Mutex<FramePacketBuilderInner>
+    inner: Mutex<FramePacketBuilderInner>,
 }
 
 impl FramePacketBuilder {
@@ -117,8 +154,14 @@ impl FramePacketBuilder {
 
         debug_assert_eq!(feature_count as usize, max_render_node_count_by_type.len());
 
-        for (feature_index, max_render_node_count) in max_render_node_count_by_type.iter().enumerate() {
-            log::debug!("node count for feature {}: {}", feature_index, max_render_node_count);
+        for (feature_index, max_render_node_count) in
+            max_render_node_count_by_type.iter().enumerate()
+        {
+            log::debug!(
+                "node count for feature {}: {}",
+                feature_index,
+                max_render_node_count
+            );
         }
 
         let frame_node_assignments = max_render_node_count_by_type
@@ -131,11 +174,11 @@ impl FramePacketBuilder {
         let inner = FramePacketBuilderInner {
             frame_node_assignments,
             view_packet_builders: Default::default(),
-            frame_nodes
+            frame_nodes,
         };
 
         FramePacketBuilder {
-            inner: Mutex::new(inner)
+            inner: Mutex::new(inner),
         }
     }
 
@@ -169,15 +212,17 @@ impl FramePacketBuilder {
     ) -> u32 {
         let mut guard = self.inner.lock().unwrap();
 
-        let index = guard.frame_node_assignments[handle.render_feature_index() as usize][handle.render_node_index() as usize];
+        let index = guard.frame_node_assignments[handle.render_feature_index() as usize]
+            [handle.render_node_index() as usize];
 
         if index == -1 {
             let index = guard.frame_nodes[handle.render_feature_index() as usize].len();
             guard.frame_nodes[handle.render_feature_index() as usize].push(PerFrameNode {
-                render_node_index: handle.render_node_index()
+                render_node_index: handle.render_node_index(),
             });
             log::trace!("push frame node");
-            guard.frame_node_assignments[handle.render_feature_index() as usize][handle.render_node_index() as usize] = index as i32;
+            guard.frame_node_assignments[handle.render_feature_index() as usize]
+                [handle.render_node_index() as usize] = index as i32;
             index as u32
         } else {
             index as u32
@@ -200,7 +245,7 @@ impl FramePacketBuilder {
 
         FramePacket {
             frame_nodes,
-            view_packets
+            view_packets,
         }
     }
 }
