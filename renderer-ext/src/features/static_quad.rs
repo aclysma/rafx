@@ -124,12 +124,22 @@ impl ExtractJob<ExtractSource> for StaticQuadExtractJob {
 struct StaticQuadPrepareJob {}
 
 impl PrepareJob for StaticQuadPrepareJob {
-    fn prepare(self) {}
+    fn prepare(
+        self: Box<Self>,
+        frame_packet: &FramePacket,
+        views: &[&RenderView]
+    ) {
+
+    }
+
+    fn feature_debug_name(&self) -> &'static str {
+        StaticQuadRenderFeature::feature_debug_name()
+    }
 }
 
 pub struct StaticQuadRenderNode {
     // texture
-// location
+    // location
 }
 
 pub struct StaticQuadRenderNodeHandle(pub RawSlabKey<StaticQuadRenderNode>);

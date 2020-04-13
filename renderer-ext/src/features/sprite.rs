@@ -1,5 +1,5 @@
 use renderer_base::slab::{RawSlabKey, RawSlab};
-use renderer_base::RenderFeature;
+use renderer_base::{RenderFeature, DefaultPrepareJobImpl, DefaultPrepareJob};
 use renderer_base::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
@@ -112,7 +112,14 @@ impl DefaultExtractJobImpl<ExtractSource> for SpriteExtractJobImpl {
         _source: &ExtractSource,
     ) -> Box<dyn PrepareJob> {
         log::debug!("extract_frame_finalize {}", self.feature_debug_name());
-        Box::new(SpritePrepareJob {})
+
+        let prepare_impl = SpritePrepareJobImpl {
+            per_frame_data: self.per_frame_data,
+            per_view_data: self.per_view_data
+        };
+
+        Box::new(DefaultPrepareJob::new(prepare_impl))
+
     }
 
     fn feature_debug_name(&self) -> &'static str {
@@ -123,39 +130,82 @@ impl DefaultExtractJobImpl<ExtractSource> for SpriteExtractJobImpl {
     }
 }
 
-pub struct SpriteExtractJob {
-    inner: Box<DefaultExtractJob<ExtractSource, SpriteExtractJobImpl>>,
+pub fn create_sprite_extract_job() -> Box<dyn ExtractJob<ExtractSource>> {
+    Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::default()))
 }
 
-impl SpriteExtractJob {
-    pub fn new() -> Self {
-        let job_impl = SpriteExtractJobImpl::default();
+// pub struct SpriteExtractJob {
+//     inner: Box<DefaultExtractJob<ExtractSource, SpriteExtractJobImpl>>,
+// }
+//
+// impl SpriteExtractJob {
+//     pub fn new() -> Self {
+//         let job_impl = SpriteExtractJobImpl::default();
+//
+//         SpriteExtractJob {
+//             inner: Box::new(DefaultExtractJob::new(job_impl)),
+//         }
+//     }
+// }
+//
+// impl ExtractJob<ExtractSource> for SpriteExtractJob {
+//     fn extract(
+//         self: Box<Self>,
+//         source: &ExtractSource,
+//         frame_packet: &FramePacket,
+//         views: &[&RenderView],
+//     ) -> Box<dyn PrepareJob> {
+//         self.inner.extract(source, frame_packet, views)
+//     }
+//
+//     fn feature_debug_name(&self) -> &'static str {
+//         self.inner.feature_debug_name()
+//     }
+// }
 
-        SpriteExtractJob {
-            inner: Box::new(DefaultExtractJob::new(job_impl)),
-        }
+struct SpritePrepareJobImpl {
+    per_frame_data: Vec<Vec3>,
+    per_view_data: Vec<Vec<Vec3>>,
+}
+
+impl DefaultPrepareJobImpl for SpritePrepareJobImpl {
+    fn prepare_begin(&mut self, frame_packet: &FramePacket, views: &[&RenderView]) {
+        log::debug!("prepare_begin {}", self.feature_debug_name());
+
     }
-}
 
-impl ExtractJob<ExtractSource> for SpriteExtractJob {
-    fn extract(
-        self: Box<Self>,
-        source: &ExtractSource,
-        frame_packet: &FramePacket,
-        views: &[&RenderView],
-    ) -> Box<dyn PrepareJob> {
-        self.inner.extract(source, frame_packet, views)
+    fn prepare_frame_node(&mut self, frame_node: PerFrameNode, frame_node_index: u32) {
+        log::debug!(
+            "prepare_frame_node {} {}",
+            self.feature_debug_name(),
+            frame_node_index
+        );
+    }
+
+    fn prepare_view_node(&mut self, view: &RenderView, view_node: PerViewNode, view_node_index: u32) {
+        log::debug!(
+            "prepare_view_node {} {} {}",
+            self.feature_debug_name(),
+            view_node_index,
+            self.per_frame_data[view_node.frame_node_index() as usize]
+        );
+    }
+
+    fn prepare_view_finalize(&mut self, view: &RenderView) {
+        log::debug!("prepare_view_finalize {}", self.feature_debug_name());
+    }
+
+    fn prepare_frame_finalize(self) {
+        log::debug!("prepare_frame_finalize {}", self.feature_debug_name());
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        self.inner.feature_debug_name()
+        SpriteRenderFeature::feature_debug_name()
     }
-}
 
-struct SpritePrepareJob {}
-
-impl PrepareJob for SpritePrepareJob {
-    fn prepare(self) {}
+    fn feature_index(&self) -> u32 {
+        SpriteRenderFeature::feature_index()
+    }
 }
 
 pub struct SpriteRenderNode {

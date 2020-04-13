@@ -235,17 +235,12 @@ fn main() {
 
         let prepare_job_set = {
             let mut extract_job_set = ExtractJobSet::new();
-            extract_job_set.add_job(Box::new(SpriteExtractJob::new()));
+            extract_job_set.add_job(create_sprite_extract_job());
             extract_job_set.add_job(Box::new(StaticQuadExtractJob::new()));
-
-            // let new_world = universe.create_world();
-            // world.merge(new_world);
 
             let extract_source = ExtractSource::new(&world, &resources);
             extract_job_set.extract(&extract_source, &frame_packet, &[&main_view, &minimap_view])
         };
-
-        //extract_job_set.extract(&frame_packet, &[&main_view, &minimap_view]);
 
         //
         // At this point, we can start the next simulation loop. The renderer has everything it needs
@@ -253,7 +248,9 @@ fn main() {
         // Visibility and render nodes can be modified up to the point that we start doing visibility
         // checks and building the next frame packet
         //
-        let _submit_job = prepare_job_set.prepare();
+        prepare_job_set.prepare(&frame_packet, &[&main_view, &minimap_view]);
+
+        // This should return a struct with prepared render calls in it
 
         //render_feature_set.prepare(&frame_packet, &[&main_view, &minimap_view]);
         //render_feature_set.submit(&frame_packet, &[&main_view, &minimap_view]);
