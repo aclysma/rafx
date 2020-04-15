@@ -9,6 +9,7 @@ pub trait ExtractJob<SourceT> {
     ) -> Box<dyn PrepareJob>;
 
     fn feature_debug_name(&self) -> &'static str;
+    fn feature_index(&self) -> RenderFeatureIndex;
 }
 
 pub struct ExtractJobSet<SourceT> {
@@ -181,5 +182,9 @@ impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> ExtractJob<SourceT>
 
     fn feature_debug_name(&self) -> &'static str {
         self.extract_impl.feature_debug_name()
+    }
+
+    fn feature_index(&self) -> u32 {
+        self.extract_impl.feature_index()
     }
 }

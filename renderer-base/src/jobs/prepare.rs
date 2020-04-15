@@ -1,13 +1,16 @@
-use crate::{FramePacket, RenderView, PerFrameNode, PerViewNode, RenderFeatureIndex};
+use crate::{FramePacket, RenderView, PerFrameNode, PerViewNode, RenderFeatureIndex, ViewSubmitNodes, MergedFrameSubmitNodes};
+use crate::jobs::FeatureSubmitNodes;
 
 pub trait PrepareJob {
     fn prepare(
         self: Box<Self>,
         frame_packet: &FramePacket,
-        views: &[&RenderView]
+        views: &[&RenderView],
+        submit_nodes: &mut FeatureSubmitNodes
     );
 
     fn feature_debug_name(&self) -> &'static str;
+    fn feature_index(&self) -> RenderFeatureIndex;
 }
 
 pub struct PrepareJobSet {
@@ -25,10 +28,22 @@ impl PrepareJobSet {
         self,
         frame_packet: &FramePacket,
         views: &[&RenderView]
-    ) {
+    ) /*-> PrepareResult*/ {
+
+        let mut all_submit_nodes = Vec::with_capacity(self.prepare_jobs.len());
+        //let submit_handlers = Default::default();
+
         for prepare_job in self.prepare_jobs {
-            prepare_job.prepare(frame_packet, views)
+            let mut submit_nodes = FeatureSubmitNodes::new(views.len(), prepare_job.feature_index());
+            prepare_job.prepare(frame_packet, views, &mut submit_nodes);
+            // submit_handlers.push(result of prepare)
+            all_submit_nodes.push(submit_nodes);
         }
+
+        // TODO: Merge and return all submit nodes
+        let merged_submit_nodes = MergedFrameSubmitNodes::new(all_submit_nodes, views);
+
+        // TODO: Do we record command buffers and return them here?
     }
 }
 
@@ -40,24 +55,29 @@ pub trait DefaultPrepareJobImpl {
         &mut self,
         frame_packet: &FramePacket,
         views: &[&RenderView],
+        submit_nodes: &mut FeatureSubmitNodes
     );
     fn prepare_frame_node(
         &mut self,
         frame_node: PerFrameNode,
         frame_node_index: u32,
+        submit_nodes: &mut FeatureSubmitNodes
     );
     fn prepare_view_node(
         &mut self,
         view: &RenderView,
         view_node: PerViewNode,
         view_node_index: u32,
+        submit_nodes: &mut ViewSubmitNodes
     );
     fn prepare_view_finalize(
         &mut self,
         view: &RenderView,
+        submit_nodes: &mut ViewSubmitNodes
     );
     fn prepare_frame_finalize(
         self,
+        submit_nodes: &mut FeatureSubmitNodes
     );
 
     fn feature_debug_name(&self) -> &'static str;
@@ -83,6 +103,7 @@ impl<PrepareImplT: DefaultPrepareJobImpl> PrepareJob for DefaultPrepareJob<Prepa
         mut self: Box<Self>,
         frame_packet: &FramePacket,
         views: &[&RenderView],
+        submit_nodes: &mut FeatureSubmitNodes
     ) {
         let feature_index = self.prepare_impl.feature_index();
 
@@ -90,7 +111,7 @@ impl<PrepareImplT: DefaultPrepareJobImpl> PrepareJob for DefaultPrepareJob<Prepa
 
         // In the future, make features run in parallel
         log::debug!("extract_begin {}", self.prepare_impl.feature_debug_name());
-        self.prepare_impl.prepare_begin(frame_packet, views);
+        self.prepare_impl.prepare_begin(frame_packet, views, submit_nodes);
 
         // foreach frame node, call extract
         //for frame_node in frame_packet.fram
@@ -103,11 +124,14 @@ impl<PrepareImplT: DefaultPrepareJobImpl> PrepareJob for DefaultPrepareJob<Prepa
         frame_packet.frame_nodes(feature_index).iter().enumerate()
         {
             self.prepare_impl
-                .prepare_frame_node(*frame_node, frame_node_index as u32);
+                .prepare_frame_node(*frame_node, frame_node_index as u32, submit_nodes);
         }
 
         //TODO: Views can run in parallel
         for view in views {
+            // This should be possible to adapt to run in parallel
+            let mut view_submit_nodes = submit_nodes.view_submit_nodes_mut(view);
+
             // foreach view node, call extract
             log::debug!(
                 "extract_frame_node {} {}",
@@ -122,6 +146,7 @@ impl<PrepareImplT: DefaultPrepareJobImpl> PrepareJob for DefaultPrepareJob<Prepa
                         view,
                         *view_node,
                         view_node_index as u32,
+                        view_submit_nodes
                     );
                 }
             }
@@ -132,7 +157,7 @@ impl<PrepareImplT: DefaultPrepareJobImpl> PrepareJob for DefaultPrepareJob<Prepa
                 self.prepare_impl.feature_debug_name(),
                 view.debug_name()
             );
-            self.prepare_impl.prepare_view_finalize(view);
+            self.prepare_impl.prepare_view_finalize(view, view_submit_nodes);
         }
 
         // call once after all nodes extracted
@@ -141,10 +166,14 @@ impl<PrepareImplT: DefaultPrepareJobImpl> PrepareJob for DefaultPrepareJob<Prepa
             self.prepare_impl.feature_debug_name()
         );
 
-        self.prepare_impl.prepare_frame_finalize();
+        self.prepare_impl.prepare_frame_finalize(submit_nodes);
     }
 
     fn feature_debug_name(&self) -> &'static str {
         self.prepare_impl.feature_debug_name()
+    }
+
+    fn feature_index(&self) -> u32 {
+        self.prepare_impl.feature_index()
     }
 }

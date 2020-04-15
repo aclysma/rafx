@@ -1,5 +1,5 @@
 use renderer_base::slab::{RawSlabKey, RawSlab};
-use renderer_base::RenderFeature;
+use renderer_base::{RenderFeature, FeatureSubmitNodes};
 use renderer_base::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
@@ -119,6 +119,10 @@ impl ExtractJob<ExtractSource> for StaticQuadExtractJob {
     fn feature_debug_name(&self) -> &'static str {
         self.inner.feature_debug_name()
     }
+
+    fn feature_index(&self) -> u32 {
+        self.inner.feature_index()
+    }
 }
 
 struct StaticQuadPrepareJob {}
@@ -127,13 +131,18 @@ impl PrepareJob for StaticQuadPrepareJob {
     fn prepare(
         self: Box<Self>,
         frame_packet: &FramePacket,
-        views: &[&RenderView]
+        views: &[&RenderView],
+        submit_nodes: &mut FeatureSubmitNodes
     ) {
 
     }
 
     fn feature_debug_name(&self) -> &'static str {
         StaticQuadRenderFeature::feature_debug_name()
+    }
+
+    fn feature_index(&self) -> u32 {
+        StaticQuadRenderFeature::feature_index()
     }
 }
 

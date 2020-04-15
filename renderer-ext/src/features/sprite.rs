@@ -1,5 +1,5 @@
 use renderer_base::slab::{RawSlabKey, RawSlab};
-use renderer_base::{RenderFeature, DefaultPrepareJobImpl, DefaultPrepareJob};
+use renderer_base::{RenderFeature, DefaultPrepareJobImpl, DefaultPrepareJob, FeatureSubmitNodes, ViewSubmitNodes};
 use renderer_base::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
@@ -13,6 +13,7 @@ use renderer_base::{PerFrameNode, PerViewNode};
 use legion::entity::Entity;
 use glam::Vec3;
 use crate::{PositionComponent, ExtractSource, SpriteComponent};
+use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 
 static SPRITE_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
@@ -169,12 +170,12 @@ struct SpritePrepareJobImpl {
 }
 
 impl DefaultPrepareJobImpl for SpritePrepareJobImpl {
-    fn prepare_begin(&mut self, frame_packet: &FramePacket, views: &[&RenderView]) {
+    fn prepare_begin(&mut self, frame_packet: &FramePacket, views: &[&RenderView], submit_nodes: &mut FeatureSubmitNodes) {
         log::debug!("prepare_begin {}", self.feature_debug_name());
 
     }
 
-    fn prepare_frame_node(&mut self, frame_node: PerFrameNode, frame_node_index: u32) {
+    fn prepare_frame_node(&mut self, frame_node: PerFrameNode, frame_node_index: u32, submit_nodes: &mut FeatureSubmitNodes) {
         log::debug!(
             "prepare_frame_node {} {}",
             self.feature_debug_name(),
@@ -182,20 +183,23 @@ impl DefaultPrepareJobImpl for SpritePrepareJobImpl {
         );
     }
 
-    fn prepare_view_node(&mut self, view: &RenderView, view_node: PerViewNode, view_node_index: u32) {
+    fn prepare_view_node(&mut self, view: &RenderView, view_node: PerViewNode, view_node_index: u32, submit_nodes: &mut ViewSubmitNodes) {
         log::debug!(
             "prepare_view_node {} {} {}",
             self.feature_debug_name(),
             view_node_index,
             self.per_frame_data[view_node.frame_node_index() as usize]
         );
+
+        submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(view_node_index, 0);
+
     }
 
-    fn prepare_view_finalize(&mut self, view: &RenderView) {
+    fn prepare_view_finalize(&mut self, view: &RenderView, submit_nodes: &mut ViewSubmitNodes) {
         log::debug!("prepare_view_finalize {}", self.feature_debug_name());
     }
 
-    fn prepare_frame_finalize(self) {
+    fn prepare_frame_finalize(self, submit_nodes: &mut FeatureSubmitNodes) {
         log::debug!("prepare_frame_finalize {}", self.feature_debug_name());
     }
 
