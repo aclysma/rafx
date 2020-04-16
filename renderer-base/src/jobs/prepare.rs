@@ -28,11 +28,12 @@ impl PrepareJobSet {
         self,
         frame_packet: &FramePacket,
         views: &[&RenderView]
-    ) /*-> PrepareResult*/ {
+    ) /*-> PrepareResult*/-> MergedFrameSubmitNodes {
 
         let mut all_submit_nodes = Vec::with_capacity(self.prepare_jobs.len());
         //let submit_handlers = Default::default();
 
+        //TODO: Kick these to happen in parallel
         for prepare_job in self.prepare_jobs {
             let mut submit_nodes = FeatureSubmitNodes::new(views.len(), prepare_job.feature_index());
             prepare_job.prepare(frame_packet, views, &mut submit_nodes);
@@ -44,6 +45,9 @@ impl PrepareJobSet {
         let merged_submit_nodes = MergedFrameSubmitNodes::new(all_submit_nodes, views);
 
         // TODO: Do we record command buffers and return them here?
+        //for
+
+        merged_submit_nodes
     }
 }
 
