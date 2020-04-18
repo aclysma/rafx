@@ -18,9 +18,13 @@ impl RenderPhase for DrawTransparentRenderPhase {
     }
 
     fn sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
-        // Sort by feature
+        // Sort by distance from camera back to front
         log::info!("Sort phase {}", Self::render_phase_debug_name());
-        submit_nodes.sort_by(|a, b| a.feature_index().cmp(&b.feature_index()));
+        submit_nodes.sort_unstable_by(|a, b| {
+            b.distance_from_camera()
+                .partial_cmp(&a.distance_from_camera())
+                .unwrap()
+        });
 
         submit_nodes
     }

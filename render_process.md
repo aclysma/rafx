@@ -74,7 +74,7 @@ Submit nodes may be sorted by feature, depth, etc.
 During the submit step, the user would call a function:
 
 ```
-submit_render_stage_for_view(view, stage);
+submit_render_phase_for_view(view, phase);
 ```
 
 This would iterate the appropriate submit node blocks, calling these callbacks.

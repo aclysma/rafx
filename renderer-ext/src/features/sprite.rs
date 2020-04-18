@@ -1,5 +1,8 @@
 use renderer_base::slab::{RawSlabKey, RawSlab};
-use renderer_base::{RenderFeature, DefaultPrepareJobImpl, DefaultPrepareJob, FeatureSubmitNodes, ViewSubmitNodes, FeatureCommandWriter, RenderNodeCount, SubmitNodeId};
+use renderer_base::{
+    RenderFeature, DefaultPrepareJobImpl, DefaultPrepareJob, FeatureSubmitNodes, ViewSubmitNodes,
+    FeatureCommandWriter, RenderNodeCount, SubmitNodeId,
+};
 use renderer_base::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
@@ -8,7 +11,6 @@ use renderer_base::{
 };
 use renderer_base::{DefaultExtractJob, DefaultExtractJobImpl};
 use std::convert::TryInto;
-use legion::prelude::{World, Read, IntoQuery};
 use renderer_base::{PerFrameNode, PerViewNode};
 use legion::entity::Entity;
 use glam::Vec3;
@@ -21,7 +23,7 @@ static SPRITE_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 #[derive(Debug, Clone)]
 pub struct ExtractedSpriteData {
     position: Vec3,
-    alpha: f32
+    alpha: f32,
 }
 
 pub struct SpriteRenderFeature;
@@ -93,7 +95,7 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriter> for SpriteExtractJobImp
 
         self.per_frame_data.push(ExtractedSpriteData {
             position: position_component.position,
-            alpha: sprite_component.alpha
+            alpha: sprite_component.alpha,
         });
     }
 
@@ -130,11 +132,10 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriter> for SpriteExtractJobImp
 
         let prepare_impl = SpritePrepareJobImpl {
             per_frame_data: self.per_frame_data,
-            per_view_data: self.per_view_data
+            per_view_data: self.per_view_data,
         };
 
         Box::new(DefaultPrepareJob::new(prepare_impl))
-
     }
 
     fn feature_debug_name(&self) -> &'static str {
@@ -184,12 +185,21 @@ struct SpritePrepareJobImpl {
 }
 
 impl DefaultPrepareJobImpl<CommandWriter> for SpritePrepareJobImpl {
-    fn prepare_begin(&mut self, frame_packet: &FramePacket, views: &[&RenderView], submit_nodes: &mut FeatureSubmitNodes) {
+    fn prepare_begin(
+        &mut self,
+        _frame_packet: &FramePacket,
+        _views: &[&RenderView],
+        _submit_nodes: &mut FeatureSubmitNodes,
+    ) {
         log::debug!("prepare_begin {}", self.feature_debug_name());
-
     }
 
-    fn prepare_frame_node(&mut self, frame_node: PerFrameNode, frame_node_index: u32, submit_nodes: &mut FeatureSubmitNodes) {
+    fn prepare_frame_node(
+        &mut self,
+        _frame_node: PerFrameNode,
+        frame_node_index: u32,
+        _submit_nodes: &mut FeatureSubmitNodes,
+    ) {
         log::debug!(
             "prepare_frame_node {} {}",
             self.feature_debug_name(),
@@ -197,7 +207,13 @@ impl DefaultPrepareJobImpl<CommandWriter> for SpritePrepareJobImpl {
         );
     }
 
-    fn prepare_view_node(&mut self, view: &RenderView, view_node: PerViewNode, view_node_index: u32, submit_nodes: &mut ViewSubmitNodes) {
+    fn prepare_view_node(
+        &mut self,
+        view: &RenderView,
+        view_node: PerViewNode,
+        view_node_index: u32,
+        submit_nodes: &mut ViewSubmitNodes,
+    ) {
         log::debug!(
             "prepare_view_node {} {} {:?}",
             self.feature_debug_name(),
@@ -205,23 +221,34 @@ impl DefaultPrepareJobImpl<CommandWriter> for SpritePrepareJobImpl {
             self.per_frame_data[view_node.frame_node_index() as usize]
         );
 
-        //view.view_proj().
+        // This can read per-frame and per-view data
+        //let extracted_data = &self.per_frame_data[view_node.frame_node_index() as usize];
+        let extracted_data = &self.per_view_data[view.view_index() as usize][view_node_index as usize];
 
-        let extracted_data = &self.per_frame_data[view_node.frame_node_index() as usize];
         if extracted_data.alpha >= 1.0 {
             submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(view_node_index, 0, 0.0);
         } else {
             let distance_from_camera = Vec3::length(extracted_data.position - view.eye_position());
-            submit_nodes.add_submit_node::<DrawTransparentRenderPhase>(view_node_index, 0, distance_from_camera);
+            submit_nodes.add_submit_node::<DrawTransparentRenderPhase>(
+                view_node_index,
+                0,
+                distance_from_camera,
+            );
         }
-
     }
 
-    fn prepare_view_finalize(&mut self, view: &RenderView, submit_nodes: &mut ViewSubmitNodes) {
+    fn prepare_view_finalize(
+        &mut self,
+        _view: &RenderView,
+        _submit_nodes: &mut ViewSubmitNodes,
+    ) {
         log::debug!("prepare_view_finalize {}", self.feature_debug_name());
     }
 
-    fn prepare_frame_finalize(self, submit_nodes: &mut FeatureSubmitNodes) -> Box<FeatureCommandWriter<CommandWriter>> {
+    fn prepare_frame_finalize(
+        self,
+        _submit_nodes: &mut FeatureSubmitNodes,
+    ) -> Box<dyn FeatureCommandWriter<CommandWriter>> {
         log::debug!("prepare_frame_finalize {}", self.feature_debug_name());
         Box::new(SpriteCommandWriter {})
     }
@@ -235,24 +262,28 @@ impl DefaultPrepareJobImpl<CommandWriter> for SpritePrepareJobImpl {
     }
 }
 
-
-
-
-
-struct SpriteCommandWriter {
-
-}
+struct SpriteCommandWriter {}
 
 impl FeatureCommandWriter<CommandWriter> for SpriteCommandWriter {
-    fn apply_setup(&self, write_context: &mut CommandWriter) {
+    fn apply_setup(
+        &self,
+        _write_context: &mut CommandWriter,
+    ) {
         log::debug!("apply_setup {}", self.feature_debug_name());
     }
 
-    fn render_element(&self, write_context: &mut CommandWriter, index: SubmitNodeId) {
+    fn render_element(
+        &self,
+        _write_context: &mut CommandWriter,
+        index: SubmitNodeId,
+    ) {
         log::info!("render_element {} id: {}", self.feature_debug_name(), index);
     }
 
-    fn revert_setup(&self, write_context: &mut CommandWriter) {
+    fn revert_setup(
+        &self,
+        _write_context: &mut CommandWriter,
+    ) {
         log::debug!("revert_setup {}", self.feature_debug_name());
     }
 
@@ -264,12 +295,6 @@ impl FeatureCommandWriter<CommandWriter> for SpriteCommandWriter {
         SpriteRenderFeature::feature_index()
     }
 }
-
-
-
-
-
-
 
 pub struct SpriteRenderNode {
     pub entity: Entity, // texture

@@ -1,7 +1,6 @@
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use fnv::FnvHashMap;
-use std::sync::RwLock;
 use crate::SubmitNode;
 
 pub type RenderFeatureIndex = u32;

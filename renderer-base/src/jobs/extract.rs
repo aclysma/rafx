@@ -129,13 +129,12 @@ impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
         log::debug!("extract_begin {}", self.extract_impl.feature_debug_name());
         self.extract_impl.extract_begin(source, frame_packet, views);
 
-        // foreach frame node, call extract
-        //for frame_node in frame_packet.fram
         log::debug!(
             "extract_frame_node {}",
             self.extract_impl.feature_debug_name()
         );
 
+        // foreach frame node, call extract
         for (frame_node_index, frame_node) in
             frame_packet.frame_nodes(feature_index).iter().enumerate()
         {
@@ -143,9 +142,9 @@ impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
                 .extract_frame_node(source, *frame_node, frame_node_index as u32);
         }
 
+        // foreach view node, call extract
         //TODO: Views can run in parallel
         for view in views {
-            // foreach view node, call extract
             log::debug!(
                 "extract_frame_node {} {}",
                 self.extract_impl.feature_debug_name(),

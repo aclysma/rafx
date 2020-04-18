@@ -3,7 +3,6 @@ use renderer::features::sprite::*;
 use renderer::features::static_quad::*;
 use renderer::phases::draw_opaque::*;
 use renderer::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
-use renderer::RenderRegistry;
 use renderer::RenderRegistryBuilder;
 use renderer::RenderViewSet;
 use legion::prelude::*;
@@ -29,16 +28,18 @@ fn main() {
 
     let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
         .add_render_phase::<DrawOpaqueRenderPhase>()
+        .add_render_phase::<DrawTransparentRenderPhase>()
         .build();
 
     let minimap_render_phase_mask = RenderPhaseMaskBuilder::default()
         .add_render_phase::<DrawOpaqueRenderPhase>()
+        .add_render_phase::<DrawTransparentRenderPhase>()
         .build();
 
     // In theory we could pre-cook static visibility in chunks and stream them in
     let static_visibility_node_set = StaticVisibilityNodeSet::default();
     let mut dynamic_visibility_node_set = DynamicVisibilityNodeSet::default();
-    let mut sprite_render_nodes = SpriteRenderNodeSet::new();
+    let sprite_render_nodes = SpriteRenderNodeSet::new();
 
     //
     // Init an example world state
@@ -243,12 +244,12 @@ fn main() {
         // extract_impl_set.add_impl(Box::new(StaticQuadRenderFeature));
 
         let frame_packet = frame_packet_builder.build();
-        println!("frame packet:\n{:#?}", frame_packet);
+        //println!("frame packet:\n{:#?}", frame_packet);
 
         let prepare_job_set = {
             let mut extract_job_set = ExtractJobSet::new();
             extract_job_set.add_job(create_sprite_extract_job());
-            extract_job_set.add_job(Box::new(StaticQuadExtractJob::new()));
+            extract_job_set.add_job(create_static_quad_extract_job());
 
             let extract_source = ExtractSource::new(&world, &resources);
             extract_job_set.extract(&extract_source, &frame_packet, &[&main_view, &minimap_view])
@@ -260,14 +261,20 @@ fn main() {
         // Visibility and render nodes can be modified up to the point that we start doing visibility
         // checks and building the next frame packet
         //
-        //let phase_list =
 
+        // This will produce submit nodes for each feature and merge them, grouped by view/phase
+        // The submit nodes will be sorted by the the callback on the phase. This could, for example
+        // sort transparent stuff back to front, or sort by meshes that could be rendered by
+        // instancing
         let prepared_render_data = prepare_job_set.prepare(
             &frame_packet,
             &[&main_view, &minimap_view],
             &render_registry,
         );
 
+        // At this point the end-user can kick off the final write job per view/phase pair. The
+        // output of this is left up to the end user and would likely be something like a GPU
+        // command buffer.
         let mut write_context = CommandWriter {};
         prepared_render_data
             .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
@@ -277,15 +284,6 @@ fn main() {
             .write_view_phase::<DrawOpaqueRenderPhase>(&minimap_view, &mut write_context);
         prepared_render_data
             .write_view_phase::<DrawTransparentRenderPhase>(&minimap_view, &mut write_context);
-
-        // This should return a struct with prepared render calls in it
-
-        //render_feature_set.prepare(&frame_packet, &[&main_view, &minimap_view]);
-        //render_feature_set.submit(&frame_packet, &[&main_view, &minimap_view]);
-
-        // User calls function to kick off the prepare/submit pipeline
-        //render_node_set.prepare(&frame_packet);
-        //render_node_set.submit(&frame_packet);
     }
 
     //

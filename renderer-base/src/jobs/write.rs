@@ -22,18 +22,18 @@ pub trait FeatureCommandWriter<WriteT> {
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
-pub struct FeatureCommandWriterSet<WriteT> {
-    prepare_jobs: Vec<Box<dyn FeatureCommandWriter<WriteT>>>,
-}
+// pub struct FeatureCommandWriterSet<WriteT> {
+//     prepare_jobs: Vec<Box<dyn FeatureCommandWriter<WriteT>>>,
+// }
 
 pub struct PreparedRenderData<WriteT> {
-    feature_writers: Vec<Option<Box<FeatureCommandWriter<WriteT>>>>,
+    feature_writers: Vec<Option<Box<dyn FeatureCommandWriter<WriteT>>>>,
     submit_nodes: MergedFrameSubmitNodes,
 }
 
 impl<WriteT> PreparedRenderData<WriteT> {
     pub fn new(
-        feature_writers: Vec<Box<FeatureCommandWriter<WriteT>>>,
+        feature_writers: Vec<Box<dyn FeatureCommandWriter<WriteT>>>,
         submit_nodes: MergedFrameSubmitNodes,
     ) -> Self {
         let mut writers: Vec<_> = (0..RenderRegistry::registered_feature_count())

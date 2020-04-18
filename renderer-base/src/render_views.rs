@@ -23,8 +23,14 @@ impl RenderPhaseMaskBuilder {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct RenderPhaseMask(RenderPhaseMaskInnerType);
+
+impl RenderPhaseMask {
+    pub fn is_included<RenderPhaseT: RenderPhase>(&self) -> bool {
+        (self.0 & 1<<RenderPhaseT::render_phase_index()) != 0
+    }
+}
 
 #[derive(Default)]
 pub struct RenderViewSet {
@@ -36,7 +42,7 @@ impl RenderViewSet {
         &self,
         eye_position: Vec3,
         view_proj: Mat4,
-        render_stage_mask: RenderPhaseMask,
+        render_phase_mask: RenderPhaseMask,
         debug_name: String,
     ) -> RenderView {
         let view_index = self.view_count.fetch_add(1, Ordering::Release);
@@ -44,7 +50,7 @@ impl RenderViewSet {
             view_index,
             eye_position,
             view_proj,
-            render_stage_mask,
+            render_phase_mask,
             debug_name,
         )
     }
@@ -59,8 +65,8 @@ pub struct RenderView {
     eye_position: Vec3,
     view_proj: Mat4,
     view_index: RenderViewIndex,
-    render_stage_mask: RenderPhaseMask,
-    debug_name: String, //visibility_results: Vec<Vec<GenericRenderNodeHandle>>,
+    render_phase_mask: RenderPhaseMask,
+    debug_name: String,
 }
 
 impl RenderView {
@@ -68,7 +74,7 @@ impl RenderView {
         view_index: RenderViewIndex,
         eye_position: Vec3,
         view_proj: Mat4,
-        render_stage_mask: RenderPhaseMask,
+        render_phase_mask: RenderPhaseMask,
         debug_name: String,
     ) -> RenderView {
         log::debug!("Allocate view {} {}", debug_name, view_index);
@@ -76,7 +82,7 @@ impl RenderView {
             eye_position,
             view_proj,
             view_index,
-            render_stage_mask,
+            render_phase_mask,
             debug_name,
         }
     }
@@ -95,5 +101,13 @@ impl RenderView {
 
     pub fn debug_name(&self) -> &str {
         &self.debug_name
+    }
+
+    pub fn phase_is_relevant<RenderPhaseT: RenderPhase>(&self) -> bool {
+        self.render_phase_mask.is_included::<RenderPhaseT>()
+    }
+
+    pub fn render_phase_mask(&self) -> RenderPhaseMask {
+        self.render_phase_mask
     }
 }

@@ -4,31 +4,24 @@ use crate::{
     RenderRegistry,
 };
 use std::marker::PhantomData;
-use fnv::FnvHashMap;
 
 pub trait PrepareJob<WriteT> {
     fn prepare(
         self: Box<Self>,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-        submit_nodes: &mut FeatureSubmitNodes,
-    ) -> Box<FeatureCommandWriter<WriteT>>;
+    ) -> (Box<dyn FeatureCommandWriter<WriteT>>, FeatureSubmitNodes);
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
 pub struct PrepareJobSet<WriteT> {
-    prepare_jobs: Vec<Box<dyn PrepareJob<WriteT>>>, //prepare_jobs: FnvHashMap<RenderFeatureIndex, Box<dyn PrepareJob<WriteT>>>,
+    prepare_jobs: Vec<Box<dyn PrepareJob<WriteT>>>,
 }
 
 impl<WriteT> PrepareJobSet<WriteT> {
     pub fn new(prepare_jobs: Vec<Box<dyn PrepareJob<WriteT>>>) -> Self {
-        // let mut prepare_jobs = FnvHashMap::<RenderFeatureIndex, Box<dyn PrepareJob<WriteT>>>::default();
-        // for job in job_list {
-        //     prepare_jobs.insert(job.feature_index(), job);
-        // }
-
         PrepareJobSet { prepare_jobs }
     }
 
@@ -43,17 +36,14 @@ impl<WriteT> PrepareJobSet<WriteT> {
 
         //TODO: Kick these to happen in parallel
         for prepare_job in self.prepare_jobs {
-            let mut submit_nodes =
-                FeatureSubmitNodes::new(views.len(), prepare_job.feature_index());
-            let feature_command_writer =
-                prepare_job.prepare(frame_packet, views, &mut submit_nodes);
+            let (writer, submit_nodes) = prepare_job.prepare(frame_packet, views);
 
+            feature_command_writers.push(writer);
             all_submit_nodes.push(submit_nodes);
-            feature_command_writers.push(feature_command_writer);
         }
 
         // Merge all submit nodes
-        let merged_submit_nodes = MergedFrameSubmitNodes::new(all_submit_nodes, views, registry);
+        let merged_submit_nodes = MergedFrameSubmitNodes::new(all_submit_nodes, registry);
 
         Box::new(PreparedRenderData::new(
             feature_command_writers,
@@ -90,7 +80,7 @@ pub trait DefaultPrepareJobImpl<WriteT> {
     fn prepare_frame_finalize(
         self,
         submit_nodes: &mut FeatureSubmitNodes,
-    ) -> Box<FeatureCommandWriter<WriteT>>;
+    ) -> Box<dyn FeatureCommandWriter<WriteT>>;
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
@@ -117,38 +107,38 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
         mut self: Box<Self>,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-        submit_nodes: &mut FeatureSubmitNodes,
-    ) -> Box<FeatureCommandWriter<WriteT>> {
+    ) -> (Box<dyn FeatureCommandWriter<WriteT>>, FeatureSubmitNodes) {
         let feature_index = self.prepare_impl.feature_index();
+
+        let mut submit_nodes = FeatureSubmitNodes::default();
 
         log::debug!("DefaultExtractJob::extract");
 
         // In the future, make features run in parallel
         log::debug!("extract_begin {}", self.prepare_impl.feature_debug_name());
         self.prepare_impl
-            .prepare_begin(frame_packet, views, submit_nodes);
+            .prepare_begin(frame_packet, views, &mut submit_nodes);
 
-        // foreach frame node, call extract
-        //for frame_node in frame_packet.fram
         log::debug!(
             "extract_frame_node {}",
             self.prepare_impl.feature_debug_name()
         );
 
+        // foreach frame node, call extract
         for (frame_node_index, frame_node) in
             frame_packet.frame_nodes(feature_index).iter().enumerate()
         {
             self.prepare_impl.prepare_frame_node(
                 *frame_node,
                 frame_node_index as u32,
-                submit_nodes,
+                &mut submit_nodes,
             );
         }
 
+        // foreach view node, call extract
         //TODO: Views can run in parallel
         for view in views {
-            // This should be possible to adapt to run in parallel
-            let mut view_submit_nodes = submit_nodes.view_submit_nodes_mut(view);
+            let mut view_submit_nodes = ViewSubmitNodes::new(self.prepare_impl.feature_index(), view.render_phase_mask());
 
             // foreach view node, call extract
             log::debug!(
@@ -164,7 +154,7 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
                         view,
                         *view_node,
                         view_node_index as u32,
-                        view_submit_nodes,
+                        &mut view_submit_nodes,
                     );
                 }
             }
@@ -175,8 +165,11 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
                 self.prepare_impl.feature_debug_name(),
                 view.debug_name()
             );
+
             self.prepare_impl
-                .prepare_view_finalize(view, view_submit_nodes);
+                .prepare_view_finalize(view, &mut view_submit_nodes);
+
+            submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
         }
 
         // call once after all nodes extracted
@@ -185,7 +178,8 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
             self.prepare_impl.feature_debug_name()
         );
 
-        self.prepare_impl.prepare_frame_finalize(submit_nodes)
+        let writer = self.prepare_impl.prepare_frame_finalize(&mut submit_nodes);
+        (writer, submit_nodes)
     }
 
     fn feature_debug_name(&self) -> &'static str {

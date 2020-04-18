@@ -16,7 +16,7 @@ pub struct PerFrameNode {
 }
 
 impl PerFrameNode {
-    pub fn render_node_index(&self) -> RenderNodeIndex {
+    pub fn render_node_index(self) -> RenderNodeIndex {
         self.render_node_index
     }
 }
@@ -28,16 +28,15 @@ pub struct PerViewNode {
 }
 
 impl PerViewNode {
-    pub fn render_node_index(&self) -> RenderNodeIndex {
+    pub fn render_node_index(self) -> RenderNodeIndex {
         self.render_node_index
     }
 
-    pub fn frame_node_index(&self) -> FrameNodeIndex {
+    pub fn frame_node_index(self) -> FrameNodeIndex {
         self.frame_node_index
     }
 }
 
-////////////////// FramePacket //////////////////
 #[derive(Debug)]
 pub struct FramePacket {
     view_packets: Vec<Option<ViewPacket>>,

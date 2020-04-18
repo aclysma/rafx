@@ -1,12 +1,10 @@
-use crate::{
-    RenderPhase, RenderView, RenderRegistry, RenderFeatureIndex, RenderPhaseIndex, RenderViewIndex,
-};
+use crate::{RenderPhase, RenderView, RenderRegistry, RenderFeatureIndex, RenderPhaseIndex, RenderViewIndex, RenderPhaseMask};
 use fnv::FnvHashMap;
 
 pub type SubmitNodeId = u32;
 pub type SubmitNodeSortKey = u32;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct SubmitNode {
     feature_index: RenderFeatureIndex,
     submit_node_id: SubmitNodeId,
@@ -26,16 +24,22 @@ impl SubmitNode {
     pub fn sort_key(&self) -> SubmitNodeSortKey {
         self.sort_key
     }
+
+    pub fn distance_from_camera(&self) -> f32 {
+        self.distance_from_camera
+    }
 }
 
+#[derive(Debug)]
 pub struct ViewSubmitNodes {
     // Index render phase index
     submit_nodes: Vec<Vec<SubmitNode>>,
     feature_index: RenderFeatureIndex,
+    render_phase_mask: RenderPhaseMask
 }
 
 impl ViewSubmitNodes {
-    pub fn new(feature_index: RenderFeatureIndex) -> Self {
+    pub fn new(feature_index: RenderFeatureIndex, render_phase_mask: RenderPhaseMask) -> Self {
         let submit_nodes = (0..RenderRegistry::registered_render_phase_count())
             .map(|_render_phase_index| Vec::new())
             .collect();
@@ -43,6 +47,7 @@ impl ViewSubmitNodes {
         ViewSubmitNodes {
             submit_nodes,
             feature_index,
+            render_phase_mask
         }
     }
 
@@ -52,13 +57,15 @@ impl ViewSubmitNodes {
         sort_key: SubmitNodeSortKey,
         distance_from_camera: f32,
     ) {
-        log::debug!("add submit node render phase: {} feature: {} submit node id: {} sort key: {} distance: {}", RenderPhaseT::render_phase_index(), self.feature_index, submit_node_id, sort_key, distance_from_camera);
-        self.submit_nodes[RenderPhaseT::render_phase_index() as usize].push(SubmitNode {
-            feature_index: self.feature_index,
-            submit_node_id,
-            sort_key,
-            distance_from_camera,
-        });
+        if self.render_phase_mask.is_included::<RenderPhaseT>() {
+            log::debug!("add submit node render phase: {} feature: {} submit node id: {} sort key: {} distance: {}", RenderPhaseT::render_phase_index(), self.feature_index, submit_node_id, sort_key, distance_from_camera);
+            self.submit_nodes[RenderPhaseT::render_phase_index() as usize].push(SubmitNode {
+                feature_index: self.feature_index,
+                submit_node_id,
+                sort_key,
+                distance_from_camera,
+            });
+        }
     }
 
     pub fn submit_nodes(
@@ -69,102 +76,66 @@ impl ViewSubmitNodes {
     }
 }
 
+#[derive(Default, Debug)]
 pub struct FeatureSubmitNodes {
-    // Index by view index
-    submit_nodes: Vec<ViewSubmitNodes>,
+    submit_nodes: FnvHashMap<RenderViewIndex, ViewSubmitNodes>,
 }
 
 impl FeatureSubmitNodes {
-    pub fn new(
-        view_count: usize,
-        feature_index: RenderFeatureIndex,
-    ) -> Self {
-        let submit_nodes = (0..view_count)
-            .map(|_view_index| ViewSubmitNodes::new(feature_index))
-            .collect();
-
-        FeatureSubmitNodes { submit_nodes }
-    }
-
-    pub fn add_submit_node<RenderPhaseT: RenderPhase>(
+    pub fn add_submit_nodes_for_view(
         &mut self,
         view: &RenderView,
-        submit_node_id: SubmitNodeId,
-        sort_key: SubmitNodeSortKey,
-        distance_from_camera: f32,
+        submit_nodes: ViewSubmitNodes,
     ) {
-        self.submit_nodes[view.view_index() as usize].add_submit_node::<RenderPhaseT>(
-            submit_node_id,
-            sort_key,
-            distance_from_camera,
-        );
+        self.submit_nodes.insert(view.view_index(), submit_nodes);
     }
+}
 
-    pub fn submit_nodes(
-        &self,
-        view: &RenderView,
-        render_phase_index: RenderPhaseIndex,
-    ) -> &[SubmitNode] {
-        &self.submit_nodes[view.view_index() as usize].submit_nodes(render_phase_index)
-    }
-
-    pub fn view_submit_nodes_mut(
-        &mut self,
-        view: &RenderView,
-    ) -> &mut ViewSubmitNodes {
-        &mut self.submit_nodes[view.view_index() as usize]
-    }
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct ViewPhase {
+    pub view_index: RenderViewIndex,
+    pub phase_index: RenderPhaseIndex,
 }
 
 pub struct MergedFrameSubmitNodes {
     // Sort by view index, then render phase index
-    merged_submit_nodes: FnvHashMap<RenderViewIndex, Vec<Vec<SubmitNode>>>,
+    merged_submit_nodes: FnvHashMap<ViewPhase, Vec<SubmitNode>>,
 }
 
 impl MergedFrameSubmitNodes {
     pub fn new(
-        feature_submit_nodes: Vec<FeatureSubmitNodes>,
-        views: &[&RenderView],
+        feature_submit_nodes: Vec<FeatureSubmitNodes>, // index by feature, then view
         registry: &RenderRegistry,
     ) -> MergedFrameSubmitNodes {
-        let mut merged_submit_nodes = FnvHashMap::default();
+        // Group all the render nodes by view/phase
+        let mut submit_nodes_by_view_phase = FnvHashMap::default();
+        for nodes in feature_submit_nodes {
+            for (view_index, view_nodes) in nodes.submit_nodes {
+                for (phase_index, phase_nodes) in view_nodes.submit_nodes.into_iter().enumerate() {
+                    let view_phase = ViewPhase {
+                        view_index,
+                        phase_index: phase_index as RenderPhaseIndex,
+                    };
 
-        //TODO: Can probably merge/sort views/render phase pairs in parallel if needed
-        for view in views {
-            let mut combined_nodes_for_view =
-                Vec::with_capacity(RenderRegistry::registered_render_phase_count() as usize);
-
-            for render_phase_index in 0..RenderRegistry::registered_render_phase_count() {
-                let mut combined_nodes_for_phase = Vec::new();
-
-                log::debug!(
-                    "Merging submit nodes for view: {} phase: {}",
-                    view.view_index(),
-                    render_phase_index
-                );
-                for fsn in &feature_submit_nodes {
-                    let submit_nodes = fsn.submit_nodes(view, render_phase_index);
-
-                    //TODO: Sort as we push into the vec?
-                    for submit_node in submit_nodes {
-                        log::debug!(
-                            "submit node feature: {} id: {}",
-                            submit_node.feature_index,
-                            submit_node.submit_node_id
-                        );
-                        combined_nodes_for_phase.push(*submit_node);
-                    }
+                    submit_nodes_by_view_phase
+                        .entry(view_phase)
+                        .or_insert_with(Vec::<Vec<SubmitNode>>::new)
+                        .push(phase_nodes);
                 }
+            }
+        }
 
-                let combined_nodes_for_phase =
-                    registry.sort_submit_nodes(render_phase_index, combined_nodes_for_phase);
-
-                //TODO: Sort the render nodes (probably configurable at the render phase level)
-                // callback to feature to do sort?
-                combined_nodes_for_view.push(combined_nodes_for_phase)
+        // For each view/phase pair, merge the nodes that each feature produced and sort them
+        let mut merged_submit_nodes = FnvHashMap::default();
+        for (view_phase, view_nodes) in submit_nodes_by_view_phase {
+            let mut all_nodes = vec![];
+            for mut nodes in view_nodes {
+                all_nodes.append(&mut nodes);
             }
 
-            merged_submit_nodes.insert(view.view_index(), combined_nodes_for_view);
+            let all_nodes = registry.sort_submit_nodes(view_phase.phase_index, all_nodes);
+
+            merged_submit_nodes.insert(view_phase, all_nodes);
         }
 
         MergedFrameSubmitNodes {
@@ -176,6 +147,18 @@ impl MergedFrameSubmitNodes {
         &self,
         view: &RenderView,
     ) -> &[SubmitNode] {
-        &self.merged_submit_nodes[&view.view_index()][PhaseT::render_phase_index() as usize]
+        let view_phase = ViewPhase {
+            view_index: view.view_index(),
+            phase_index: PhaseT::render_phase_index(),
+        };
+
+        println!("{:#?}", self.merged_submit_nodes);
+
+        let nodes = self.merged_submit_nodes.get(&view_phase);
+        if let Some(nodes) = nodes {
+            nodes
+        } else {
+            &[]
+        }
     }
 }
