@@ -1,4 +1,4 @@
-use renderer_base::RenderPhaseIndex;
+use renderer_base::{RenderPhaseIndex, SubmitNode};
 use std::sync::atomic::Ordering;
 use renderer_base::RenderPhase;
 use std::sync::atomic::AtomicI32;
@@ -17,7 +17,15 @@ impl RenderPhase for DrawOpaqueRenderPhase {
         DRAW_OPAQUE_RENDER_PHASE_INDEX.load(Ordering::Acquire) as RenderPhaseIndex
     }
 
-    fn sort_callback() {
+    fn sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
+        // Sort by feature
+        log::info!("Sort phase {}", Self::render_phase_debug_name());
+        submit_nodes.sort_by(|a, b| a.feature_index().cmp(&b.feature_index()));
 
+        submit_nodes
+    }
+
+    fn render_phase_debug_name() -> &'static str {
+        "DrawOpaqueRenderPhase"
     }
 }

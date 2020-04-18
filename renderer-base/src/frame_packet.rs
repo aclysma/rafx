@@ -121,12 +121,12 @@ impl ViewPacketBuilder {
     pub fn append_view_node(
         &self,
         handle: GenericRenderNodeHandle,
-        frame_node_index: u32
+        frame_node_index: u32,
     ) {
         let mut guard = self.inner.lock().unwrap();
         guard.view_nodes[handle.render_feature_index() as usize].push(PerViewNode {
             frame_node_index,
-            render_node_index: handle.render_node_index()
+            render_node_index: handle.render_node_index(),
         });
         log::trace!("push view node");
     }

@@ -95,7 +95,8 @@ pub trait DefaultExtractJobImpl<SourceT, WriteT> {
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
-pub struct DefaultExtractJob<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>> {
+pub struct DefaultExtractJob<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
+{
     extract_impl: ExtractImplT,
     phantom_data: PhantomData<(SourceT, WriteT)>,
 }
@@ -111,8 +112,8 @@ impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
     }
 }
 
-impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>> ExtractJob<SourceT, WriteT>
-    for DefaultExtractJob<SourceT, WriteT, ExtractImplT>
+impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
+    ExtractJob<SourceT, WriteT> for DefaultExtractJob<SourceT, WriteT, ExtractImplT>
 {
     fn extract(
         mut self: Box<Self>,

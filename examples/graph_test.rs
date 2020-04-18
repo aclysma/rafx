@@ -81,7 +81,7 @@ fn main() {
                 let sprite_component = SpriteComponent {
                     sprite_handle,
                     visibility_handle,
-                    alpha
+                    alpha,
                 };
 
                 let entity = world.insert(
@@ -262,17 +262,21 @@ fn main() {
         //
         //let phase_list =
 
-
         let prepared_render_data = prepare_job_set.prepare(
             &frame_packet,
             &[&main_view, &minimap_view],
-            &render_registry);
+            &render_registry,
+        );
 
-        let mut write_context = CommandWriter { };
-        prepared_render_data.write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
-        prepared_render_data.write_view_phase::<DrawTransparentRenderPhase>(&main_view, &mut write_context);
-        prepared_render_data.write_view_phase::<DrawOpaqueRenderPhase>(&minimap_view, &mut write_context);
-        prepared_render_data.write_view_phase::<DrawTransparentRenderPhase>(&minimap_view, &mut write_context);
+        let mut write_context = CommandWriter {};
+        prepared_render_data
+            .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
+        prepared_render_data
+            .write_view_phase::<DrawTransparentRenderPhase>(&main_view, &mut write_context);
+        prepared_render_data
+            .write_view_phase::<DrawOpaqueRenderPhase>(&minimap_view, &mut write_context);
+        prepared_render_data
+            .write_view_phase::<DrawTransparentRenderPhase>(&minimap_view, &mut write_context);
 
         // This should return a struct with prepared render calls in it
 

@@ -2,6 +2,7 @@ use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use fnv::FnvHashMap;
 use std::sync::RwLock;
+use crate::SubmitNode;
 
 pub type RenderFeatureIndex = u32;
 pub type RenderFeatureCount = u32;
@@ -21,17 +22,21 @@ pub trait RenderPhase {
     fn set_render_phase_index(index: RenderPhaseIndex);
     fn render_phase_index() -> RenderPhaseIndex;
 
-    fn sort_callback();
+    fn sort_submit_nodes(submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode>;
+
+    fn render_phase_debug_name() -> &'static str;
 }
 
+type SortCallback = fn(Vec<SubmitNode>) -> Vec<SubmitNode>;
+
 pub struct RegisteredPhase {
-    sort_callback: fn()
+    sort_submit_nodes_callback: SortCallback,
 }
 
 impl RegisteredPhase {
-    fn new<T: RenderPhase>(mut self) -> Self {
+    fn new<T: RenderPhase>() -> Self {
         RegisteredPhase {
-            sort_callback: T::sort_callback
+            sort_submit_nodes_callback: T::sort_submit_nodes,
         }
     }
 }
@@ -41,13 +46,13 @@ static RENDER_REGISTRY_PHASE_COUNT: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Default)]
 pub struct RenderRegistryBuilder {
-    sort_callback: FnvHashMap<RenderPhaseIndex, RegisteredPhase>
+    registered_phases: FnvHashMap<RenderPhaseIndex, RegisteredPhase>,
 }
 
 impl RenderRegistryBuilder {
     pub fn register_feature<T>(self) -> Self
-        where
-            T: RenderFeature,
+    where
+        T: RenderFeature,
     {
         let feature_index = RENDER_REGISTRY_FEATURE_COUNT.fetch_add(1, Ordering::AcqRel);
         T::set_feature_index(feature_index);
@@ -55,49 +60,42 @@ impl RenderRegistryBuilder {
     }
 
     pub fn register_render_phase<T>(mut self) -> Self
-        where
-            T: RenderPhase,
-    {
-        let render_phase_index = RENDER_REGISTRY_PHASE_COUNT.fetch_add(1, Ordering::AcqRel);
-        assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
-        T::set_render_phase_index(render_phase_index);
-        self
-    }
-
-    pub fn build(self) -> RenderRegistry {
-        RenderRegistry {
-            sort_callback: self.sort_callback
-        }
-    }
-}
-
-pub struct RenderRegistry {
-    sort_callback: FnvHashMap<RenderPhaseIndex, RegisteredPhase>
-}
-
-impl RenderRegistry {
-    pub fn register_feature<T>(&mut self)
-    where
-        T: RenderFeature,
-    {
-        let feature_index = RENDER_REGISTRY_FEATURE_COUNT.fetch_add(1, Ordering::AcqRel);
-        T::set_feature_index(feature_index);
-    }
-
-    pub fn registered_feature_count() -> RenderFeatureIndex {
-        RENDER_REGISTRY_FEATURE_COUNT.load(Ordering::Acquire)
-    }
-
-    pub fn register_render_phase<T>(&mut self)
     where
         T: RenderPhase,
     {
         let render_phase_index = RENDER_REGISTRY_PHASE_COUNT.fetch_add(1, Ordering::AcqRel);
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
         T::set_render_phase_index(render_phase_index);
+        self.registered_phases
+            .insert(T::render_phase_index(), RegisteredPhase::new::<T>());
+        self
+    }
+
+    pub fn build(self) -> RenderRegistry {
+        RenderRegistry {
+            registered_phases: self.registered_phases,
+        }
+    }
+}
+
+pub struct RenderRegistry {
+    registered_phases: FnvHashMap<RenderPhaseIndex, RegisteredPhase>,
+}
+
+impl RenderRegistry {
+    pub fn registered_feature_count() -> RenderFeatureIndex {
+        RENDER_REGISTRY_FEATURE_COUNT.load(Ordering::Acquire)
     }
 
     pub fn registered_render_phase_count() -> RenderPhaseIndex {
         RENDER_REGISTRY_PHASE_COUNT.load(Ordering::Acquire)
+    }
+
+    pub fn sort_submit_nodes(
+        &self,
+        render_phase_index: RenderPhaseIndex,
+        submit_nodes: Vec<SubmitNode>,
+    ) -> Vec<SubmitNode> {
+        (self.registered_phases[&render_phase_index].sort_submit_nodes_callback)(submit_nodes)
     }
 }

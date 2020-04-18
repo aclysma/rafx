@@ -40,7 +40,13 @@ impl RenderViewSet {
         debug_name: String,
     ) -> RenderView {
         let view_index = self.view_count.fetch_add(1, Ordering::Release);
-        RenderView::new(view_index, eye_position, view_proj, render_stage_mask, debug_name)
+        RenderView::new(
+            view_index,
+            eye_position,
+            view_proj,
+            render_stage_mask,
+            debug_name,
+        )
     }
 
     pub fn view_count(&self) -> RenderViewCount {
@@ -75,9 +81,13 @@ impl RenderView {
         }
     }
 
-    pub fn eye_position(&self) -> Vec3 { self.eye_position }
+    pub fn eye_position(&self) -> Vec3 {
+        self.eye_position
+    }
 
-    pub fn view_proj(&self) -> Mat4 { self.view_proj }
+    pub fn view_proj(&self) -> Mat4 {
+        self.view_proj
+    }
 
     pub fn view_index(&self) -> RenderViewIndex {
         self.view_index
