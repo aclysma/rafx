@@ -2,6 +2,9 @@ use crate::RenderFeatureIndex;
 use crate::slab::SlabIndexT;
 use crate::RenderRegistry;
 
+pub type RenderNodeIndex = u32;
+pub type RenderNodeCount = u32;
+
 #[derive(Copy, Clone, Debug)]
 pub struct GenericRenderNodeHandle {
     render_feature_index: RenderFeatureIndex,
@@ -30,7 +33,7 @@ impl GenericRenderNodeHandle {
 
 pub trait RenderNodeSet {
     fn feature_index(&self) -> RenderFeatureIndex;
-    fn max_render_node_count(&self) -> usize;
+    fn max_render_node_count(&self) -> RenderNodeCount;
 }
 
 pub struct AllRenderNodes<'a> {
@@ -52,7 +55,7 @@ impl<'a> AllRenderNodes<'a> {
         self.nodes[render_nodes.feature_index() as usize] = Some(render_nodes);
     }
 
-    pub fn max_render_node_count_by_type(&self) -> Vec<usize> {
+    pub fn max_render_node_count_by_type(&self) -> Vec<RenderNodeCount> {
         self.nodes
             .iter()
             .map(|node_set| node_set.map_or(0, |node_set| node_set.max_render_node_count()))

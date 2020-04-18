@@ -1,8 +1,14 @@
 use std::sync::Mutex;
 use crate::{RenderView, GenericRenderNodeHandle, RenderRegistry, RenderFeatureIndex};
 use crate::visibility::{VisibilityResult};
-use crate::render_nodes::AllRenderNodes;
+use crate::render_nodes::{AllRenderNodes, RenderNodeIndex};
 use crate::registry::RenderFeatureCount;
+
+pub type FrameNodeIndex = u32;
+pub type FrameNodeCount = u32;
+
+pub type ViewNodeIndex = u32;
+pub type ViewNodeCount = u32;
 
 #[derive(Debug, Copy, Clone)]
 pub struct PerFrameNode {
@@ -10,7 +16,7 @@ pub struct PerFrameNode {
 }
 
 impl PerFrameNode {
-    pub fn render_node_index(&self) -> u32 {
+    pub fn render_node_index(&self) -> RenderNodeIndex {
         self.render_node_index
     }
 }
@@ -22,11 +28,11 @@ pub struct PerViewNode {
 }
 
 impl PerViewNode {
-    pub fn render_node_index(&self) -> u32 {
+    pub fn render_node_index(&self) -> RenderNodeIndex {
         self.render_node_index
     }
 
-    pub fn frame_node_index(&self) -> u32 {
+    pub fn frame_node_index(&self) -> FrameNodeIndex {
         self.frame_node_index
     }
 }
@@ -57,9 +63,9 @@ impl FramePacket {
         &self,
         view: &RenderView,
         feature_index: RenderFeatureIndex,
-    ) -> usize {
+    ) -> ViewNodeCount {
         if let Some(view_packet) = &self.view_packets[view.view_index() as usize] {
-            view_packet.view_nodes(feature_index).len()
+            view_packet.view_nodes(feature_index).len() as ViewNodeCount
         } else {
             0
         }
@@ -75,8 +81,8 @@ impl FramePacket {
     pub fn frame_node_count(
         &self,
         feature_index: RenderFeatureIndex,
-    ) -> usize {
-        self.frame_nodes[feature_index as usize].len()
+    ) -> FrameNodeCount {
+        self.frame_nodes[feature_index as usize].len() as FrameNodeCount
     }
 }
 
@@ -115,12 +121,12 @@ impl ViewPacketBuilder {
     pub fn append_view_node(
         &self,
         handle: GenericRenderNodeHandle,
-        frame_node_index: u32,
+        frame_node_index: u32
     ) {
         let mut guard = self.inner.lock().unwrap();
         guard.view_nodes[handle.render_feature_index() as usize].push(PerViewNode {
             frame_node_index,
-            render_node_index: handle.render_node_index(),
+            render_node_index: handle.render_node_index()
         });
         log::trace!("push view node");
     }
@@ -202,14 +208,14 @@ impl FramePacketBuilder {
         let mut guard = self.inner.lock().unwrap();
         guard
             .view_packet_builders
-            .resize_with(view.view_index() + 1, || None);
-        guard.view_packet_builders[view.view_index()] = Some(view_packet_builder);
+            .resize_with(view.view_index() as usize + 1, || None);
+        guard.view_packet_builders[view.view_index() as usize] = Some(view_packet_builder);
     }
 
     fn append_frame_node(
         &self,
         handle: GenericRenderNodeHandle,
-    ) -> u32 {
+    ) -> FrameNodeIndex {
         let mut guard = self.inner.lock().unwrap();
 
         let index = guard.frame_node_assignments[handle.render_feature_index() as usize]

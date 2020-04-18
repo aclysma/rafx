@@ -15,6 +15,7 @@ pub struct PositionComponent {
 pub struct SpriteComponent {
     pub sprite_handle: SpriteRenderNodeHandle,
     pub visibility_handle: DynamicAabbVisibilityNodeHandle,
+    pub alpha: f32
 }
 
 pub struct ExtractSource {
@@ -34,6 +35,14 @@ impl ExtractSource {
             }
         }
     }
+}
+
+pub struct CommandWriter {
+
+}
+
+impl CommandWriter {
+
 }
 
 unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {

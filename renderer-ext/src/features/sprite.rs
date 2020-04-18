@@ -1,5 +1,5 @@
 use renderer_base::slab::{RawSlabKey, RawSlab};
-use renderer_base::{RenderFeature, DefaultPrepareJobImpl, DefaultPrepareJob, FeatureSubmitNodes, ViewSubmitNodes};
+use renderer_base::{RenderFeature, DefaultPrepareJobImpl, DefaultPrepareJob, FeatureSubmitNodes, ViewSubmitNodes, FeatureCommandWriter, RenderNodeCount, SubmitNodeId};
 use renderer_base::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
@@ -12,10 +12,17 @@ use legion::prelude::{World, Read, IntoQuery};
 use renderer_base::{PerFrameNode, PerViewNode};
 use legion::entity::Entity;
 use glam::Vec3;
-use crate::{PositionComponent, ExtractSource, SpriteComponent};
+use crate::{PositionComponent, ExtractSource, SpriteComponent, CommandWriter};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use crate::phases::draw_transparent::DrawTransparentRenderPhase;
 
 static SPRITE_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
+
+#[derive(Debug, Clone)]
+pub struct ExtractedSpriteData {
+    position: Vec3,
+    alpha: f32
+}
 
 pub struct SpriteRenderFeature;
 
@@ -35,11 +42,11 @@ impl RenderFeature for SpriteRenderFeature {
 
 #[derive(Default)]
 struct SpriteExtractJobImpl {
-    per_frame_data: Vec<Vec3>,
-    per_view_data: Vec<Vec<Vec3>>,
+    per_frame_data: Vec<ExtractedSpriteData>,
+    per_view_data: Vec<Vec<ExtractedSpriteData>>,
 }
 
-impl DefaultExtractJobImpl<ExtractSource> for SpriteExtractJobImpl {
+impl DefaultExtractJobImpl<ExtractSource, CommandWriter> for SpriteExtractJobImpl {
     fn extract_begin(
         &mut self,
         _source: &ExtractSource,
@@ -48,12 +55,12 @@ impl DefaultExtractJobImpl<ExtractSource> for SpriteExtractJobImpl {
     ) {
         log::debug!("extract_begin {}", self.feature_debug_name());
         self.per_frame_data
-            .reserve(frame_packet.frame_node_count(self.feature_index()));
+            .reserve(frame_packet.frame_node_count(self.feature_index()) as usize);
 
         self.per_view_data.reserve(views.len());
         for view in views {
             self.per_view_data.push(Vec::with_capacity(
-                frame_packet.view_node_count(view, self.feature_index()),
+                frame_packet.view_node_count(view, self.feature_index()) as usize,
             ));
         }
     }
@@ -79,8 +86,15 @@ impl DefaultExtractJobImpl<ExtractSource> for SpriteExtractJobImpl {
             .world
             .get_component::<PositionComponent>(sprite_render_node.entity)
             .unwrap();
+        let sprite_component = source
+            .world
+            .get_component::<SpriteComponent>(sprite_render_node.entity)
+            .unwrap();
 
-        self.per_frame_data.push(position_component.position);
+        self.per_frame_data.push(ExtractedSpriteData {
+            position: position_component.position,
+            alpha: sprite_component.alpha
+        });
     }
 
     fn extract_view_node(
@@ -91,13 +105,13 @@ impl DefaultExtractJobImpl<ExtractSource> for SpriteExtractJobImpl {
         view_node_index: u32,
     ) {
         log::debug!(
-            "extract_view_nodes {} {} {}",
+            "extract_view_nodes {} {} {:?}",
             self.feature_debug_name(),
             view_node_index,
             self.per_frame_data[view_node.frame_node_index() as usize]
         );
-        let frame_data = self.per_frame_data[view_node.frame_node_index() as usize];
-        self.per_view_data[view.view_index()].push(frame_data);
+        let frame_data = self.per_frame_data[view_node.frame_node_index() as usize].clone();
+        self.per_view_data[view.view_index() as usize].push(frame_data);
     }
 
     fn extract_view_finalize(
@@ -111,7 +125,7 @@ impl DefaultExtractJobImpl<ExtractSource> for SpriteExtractJobImpl {
     fn extract_frame_finalize(
         self,
         _source: &ExtractSource,
-    ) -> Box<dyn PrepareJob> {
+    ) -> Box<dyn PrepareJob<CommandWriter>> {
         log::debug!("extract_frame_finalize {}", self.feature_debug_name());
 
         let prepare_impl = SpritePrepareJobImpl {
@@ -131,7 +145,7 @@ impl DefaultExtractJobImpl<ExtractSource> for SpriteExtractJobImpl {
     }
 }
 
-pub fn create_sprite_extract_job() -> Box<dyn ExtractJob<ExtractSource>> {
+pub fn create_sprite_extract_job() -> Box<dyn ExtractJob<ExtractSource, CommandWriter>> {
     Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::default()))
 }
 
@@ -165,11 +179,11 @@ pub fn create_sprite_extract_job() -> Box<dyn ExtractJob<ExtractSource>> {
 // }
 
 struct SpritePrepareJobImpl {
-    per_frame_data: Vec<Vec3>,
-    per_view_data: Vec<Vec<Vec3>>,
+    per_frame_data: Vec<ExtractedSpriteData>,
+    per_view_data: Vec<Vec<ExtractedSpriteData>>,
 }
 
-impl DefaultPrepareJobImpl for SpritePrepareJobImpl {
+impl DefaultPrepareJobImpl<CommandWriter> for SpritePrepareJobImpl {
     fn prepare_begin(&mut self, frame_packet: &FramePacket, views: &[&RenderView], submit_nodes: &mut FeatureSubmitNodes) {
         log::debug!("prepare_begin {}", self.feature_debug_name());
 
@@ -185,13 +199,21 @@ impl DefaultPrepareJobImpl for SpritePrepareJobImpl {
 
     fn prepare_view_node(&mut self, view: &RenderView, view_node: PerViewNode, view_node_index: u32, submit_nodes: &mut ViewSubmitNodes) {
         log::debug!(
-            "prepare_view_node {} {} {}",
+            "prepare_view_node {} {} {:?}",
             self.feature_debug_name(),
             view_node_index,
             self.per_frame_data[view_node.frame_node_index() as usize]
         );
 
-        submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(view_node_index, 0);
+        //view.view_proj().
+
+        let extracted_data = &self.per_frame_data[view_node.frame_node_index() as usize];
+        if extracted_data.alpha >= 1.0 {
+            submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(view_node_index, 0, 0.0);
+        } else {
+            let distance_from_camera = Vec3::length(extracted_data.position - view.eye_position());
+            submit_nodes.add_submit_node::<DrawTransparentRenderPhase>(view_node_index, 0, distance_from_camera);
+        }
 
     }
 
@@ -199,18 +221,55 @@ impl DefaultPrepareJobImpl for SpritePrepareJobImpl {
         log::debug!("prepare_view_finalize {}", self.feature_debug_name());
     }
 
-    fn prepare_frame_finalize(self, submit_nodes: &mut FeatureSubmitNodes) {
+    fn prepare_frame_finalize(self, submit_nodes: &mut FeatureSubmitNodes) -> Box<FeatureCommandWriter<CommandWriter>> {
         log::debug!("prepare_frame_finalize {}", self.feature_debug_name());
+        Box::new(SpriteCommandWriter {})
     }
 
     fn feature_debug_name(&self) -> &'static str {
         SpriteRenderFeature::feature_debug_name()
     }
 
-    fn feature_index(&self) -> u32 {
+    fn feature_index(&self) -> RenderFeatureIndex {
         SpriteRenderFeature::feature_index()
     }
 }
+
+
+
+
+
+struct SpriteCommandWriter {
+
+}
+
+impl FeatureCommandWriter<CommandWriter> for SpriteCommandWriter {
+    fn apply_setup(&self, write_context: &mut CommandWriter) {
+        log::debug!("apply_setup {}", self.feature_debug_name());
+    }
+
+    fn render_element(&self, write_context: &mut CommandWriter, index: SubmitNodeId) {
+        log::info!("render_element {} id: {}", self.feature_debug_name(), index);
+    }
+
+    fn revert_setup(&self, write_context: &mut CommandWriter) {
+        log::debug!("revert_setup {}", self.feature_debug_name());
+    }
+
+    fn feature_debug_name(&self) -> &'static str {
+        SpriteRenderFeature::feature_debug_name()
+    }
+
+    fn feature_index(&self) -> RenderFeatureIndex {
+        SpriteRenderFeature::feature_index()
+    }
+}
+
+
+
+
+
+
 
 pub struct SpriteRenderNode {
     pub entity: Entity, // texture
@@ -269,7 +328,7 @@ impl RenderNodeSet for SpriteRenderNodeSet {
         SpriteRenderFeature::feature_index()
     }
 
-    fn max_render_node_count(&self) -> usize {
-        self.sprites.storage_size()
+    fn max_render_node_count(&self) -> RenderNodeCount {
+        self.sprites.storage_size() as RenderNodeCount
     }
 }

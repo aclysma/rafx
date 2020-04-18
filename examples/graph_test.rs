@@ -4,10 +4,12 @@ use renderer::features::static_quad::*;
 use renderer::phases::draw_opaque::*;
 use renderer::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
 use renderer::RenderRegistry;
+use renderer::RenderRegistryBuilder;
 use renderer::RenderViewSet;
 use legion::prelude::*;
 use glam::Vec3;
-use renderer_ext::{ExtractSource, PositionComponent, SpriteComponent};
+use renderer_ext::{ExtractSource, PositionComponent, SpriteComponent, CommandWriter};
+use renderer_ext::phases::draw_transparent::DrawTransparentRenderPhase;
 
 fn main() {
     // Setup logging
@@ -18,9 +20,12 @@ fn main() {
     //
     // Setup render features
     //
-    RenderRegistry::register_feature::<SpriteRenderFeature>();
-    RenderRegistry::register_feature::<StaticQuadRenderFeature>();
-    RenderRegistry::register_render_phase::<DrawOpaqueRenderPhase>();
+    let render_registry = RenderRegistryBuilder::default()
+        .register_feature::<SpriteRenderFeature>()
+        .register_feature::<StaticQuadRenderFeature>()
+        .register_render_phase::<DrawOpaqueRenderPhase>()
+        .register_render_phase::<DrawTransparentRenderPhase>()
+        .build();
 
     let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
         .add_render_phase::<DrawOpaqueRenderPhase>()
@@ -48,6 +53,7 @@ fn main() {
         let sprites = ["sprite1", "sprite2", "sprite3"];
         for i in 0..100 {
             let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
+            let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
             let _sprite = sprites[i % sprites.len()];
 
             let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
@@ -75,6 +81,7 @@ fn main() {
                 let sprite_component = SpriteComponent {
                     sprite_handle,
                     visibility_handle,
+                    alpha
                 };
 
                 let entity = world.insert(
@@ -109,9 +116,10 @@ fn main() {
         // Calculate user camera
         //
 
+        let eye_position = glam::Vec3::from([0.0, 0.0, 5.0]);
         // User calls function to create "main" view
         let view = glam::Mat4::look_at_rh(
-            glam::Vec3::from([0.0, 0.0, 5.0]),
+            eye_position,
             glam::Vec3::from([0.0, 0.0, 0.0]),
             glam::Vec3::from([0.0, 1.0, 0.0]),
         );
@@ -129,7 +137,10 @@ fn main() {
 
         let view_proj = projection * view;
 
+        println!("eye is at {}", view_proj);
+
         let main_view = render_view_set.create_view(
+            eye_position,
             view_proj,
             main_camera_render_phase_mask,
             "main".to_string(),
@@ -157,6 +168,7 @@ fn main() {
         // Figure out other views (example: minimap, shadow maps, etc.)
         //
         let minimap_view = render_view_set.create_view(
+            eye_position,
             view_proj,
             minimap_render_phase_mask,
             "minimap".to_string(),
@@ -248,7 +260,19 @@ fn main() {
         // Visibility and render nodes can be modified up to the point that we start doing visibility
         // checks and building the next frame packet
         //
-        prepare_job_set.prepare(&frame_packet, &[&main_view, &minimap_view]);
+        //let phase_list =
+
+
+        let prepared_render_data = prepare_job_set.prepare(
+            &frame_packet,
+            &[&main_view, &minimap_view],
+            &render_registry);
+
+        let mut write_context = CommandWriter { };
+        prepared_render_data.write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
+        prepared_render_data.write_view_phase::<DrawTransparentRenderPhase>(&main_view, &mut write_context);
+        prepared_render_data.write_view_phase::<DrawOpaqueRenderPhase>(&minimap_view, &mut write_context);
+        prepared_render_data.write_view_phase::<DrawTransparentRenderPhase>(&minimap_view, &mut write_context);
 
         // This should return a struct with prepared render calls in it
 

@@ -1,22 +1,22 @@
 use crate::{FramePacket, RenderView, PrepareJob, PrepareJobSet};
 
-pub trait ExtractJob<SourceT> {
+pub trait ExtractJob<SourceT, WriteT> {
     fn extract(
         self: Box<Self>,
         source: &SourceT,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> Box<dyn PrepareJob>;
+    ) -> Box<dyn PrepareJob<WriteT>>;
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
-pub struct ExtractJobSet<SourceT> {
-    extract_jobs: Vec<Box<dyn ExtractJob<SourceT>>>,
+pub struct ExtractJobSet<SourceT, WriteT> {
+    extract_jobs: Vec<Box<dyn ExtractJob<SourceT, WriteT>>>,
 }
 
-impl<SourceT> Default for ExtractJobSet<SourceT> {
+impl<SourceT, WriteT> Default for ExtractJobSet<SourceT, WriteT> {
     fn default() -> Self {
         ExtractJobSet {
             extract_jobs: Default::default(),
@@ -24,14 +24,14 @@ impl<SourceT> Default for ExtractJobSet<SourceT> {
     }
 }
 
-impl<SourceT> ExtractJobSet<SourceT> {
+impl<SourceT, WriteT> ExtractJobSet<SourceT, WriteT> {
     pub fn new() -> Self {
         Default::default()
     }
 
     pub fn add_job(
         &mut self,
-        extract_job: Box<dyn ExtractJob<SourceT>>,
+        extract_job: Box<dyn ExtractJob<SourceT, WriteT>>,
     ) {
         self.extract_jobs.push(extract_job)
     }
@@ -41,7 +41,7 @@ impl<SourceT> ExtractJobSet<SourceT> {
         source: &SourceT,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> PrepareJobSet {
+    ) -> PrepareJobSet<WriteT> {
         log::debug!("Start extract job set");
 
         let mut prepare_jobs = vec![];
@@ -61,7 +61,7 @@ use crate::RenderFeatureIndex;
 use std::marker::PhantomData;
 use crate::{PerFrameNode, PerViewNode};
 
-pub trait DefaultExtractJobImpl<SourceT> {
+pub trait DefaultExtractJobImpl<SourceT, WriteT> {
     fn extract_begin(
         &mut self,
         source: &SourceT,
@@ -89,19 +89,19 @@ pub trait DefaultExtractJobImpl<SourceT> {
     fn extract_frame_finalize(
         self,
         source: &SourceT,
-    ) -> Box<dyn PrepareJob>;
+    ) -> Box<dyn PrepareJob<WriteT>>;
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
-pub struct DefaultExtractJob<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> {
+pub struct DefaultExtractJob<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>> {
     extract_impl: ExtractImplT,
-    phantom_data: PhantomData<SourceT>,
+    phantom_data: PhantomData<(SourceT, WriteT)>,
 }
 
-impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>>
-    DefaultExtractJob<SourceT, ExtractImplT>
+impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
+    DefaultExtractJob<SourceT, WriteT, ExtractImplT>
 {
     pub fn new(extract_impl: ExtractImplT) -> Self {
         DefaultExtractJob {
@@ -111,15 +111,15 @@ impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>>
     }
 }
 
-impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> ExtractJob<SourceT>
-    for DefaultExtractJob<SourceT, ExtractImplT>
+impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>> ExtractJob<SourceT, WriteT>
+    for DefaultExtractJob<SourceT, WriteT, ExtractImplT>
 {
     fn extract(
         mut self: Box<Self>,
         source: &SourceT,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> Box<dyn PrepareJob> {
+    ) -> Box<dyn PrepareJob<WriteT>> {
         let feature_index = self.extract_impl.feature_index();
 
         log::debug!("DefaultExtractJob::extract");
@@ -184,7 +184,7 @@ impl<SourceT, ExtractImplT: DefaultExtractJobImpl<SourceT>> ExtractJob<SourceT>
         self.extract_impl.feature_debug_name()
     }
 
-    fn feature_index(&self) -> u32 {
+    fn feature_index(&self) -> RenderFeatureIndex {
         self.extract_impl.feature_index()
     }
 }

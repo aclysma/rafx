@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 log="0.4"
 glam = "0.8.6"
+fnv = "1.0"
+atomicbox = "0.3"

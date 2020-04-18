@@ -1,5 +1,5 @@
 use renderer_base::slab::{RawSlabKey, RawSlab};
-use renderer_base::{RenderFeature, FeatureSubmitNodes};
+use renderer_base::{RenderFeature, FeatureSubmitNodes, FeatureCommandWriter};
 use renderer_base::RenderFeatureIndex;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::AtomicI32;
@@ -9,7 +9,7 @@ use renderer_base::{DefaultExtractJob, DefaultExtractJobImpl};
 use legion::prelude::World;
 use renderer_base::{PerFrameNode, PerViewNode};
 use glam::Vec3;
-use crate::ExtractSource;
+use crate::{ExtractSource, CommandWriter};
 
 static STATIC_QUAD_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
@@ -32,7 +32,7 @@ impl RenderFeature for StaticQuadRenderFeature {
 #[derive(Default)]
 struct StaticQuadExtractJobImpl {}
 
-impl DefaultExtractJobImpl<ExtractSource> for StaticQuadExtractJobImpl {
+impl DefaultExtractJobImpl<ExtractSource, CommandWriter> for StaticQuadExtractJobImpl {
     fn extract_begin(
         &mut self,
         _source: &ExtractSource,
@@ -77,7 +77,7 @@ impl DefaultExtractJobImpl<ExtractSource> for StaticQuadExtractJobImpl {
     fn extract_frame_finalize(
         self,
         _source: &ExtractSource,
-    ) -> Box<dyn PrepareJob> {
+    ) -> Box<dyn PrepareJob<CommandWriter>> {
         log::debug!("extract_frame_finalize {}", self.feature_debug_name());
         Box::new(StaticQuadPrepareJob {})
     }
@@ -91,7 +91,7 @@ impl DefaultExtractJobImpl<ExtractSource> for StaticQuadExtractJobImpl {
 }
 
 pub struct StaticQuadExtractJob {
-    inner: Box<DefaultExtractJob<ExtractSource, StaticQuadExtractJobImpl>>,
+    inner: Box<DefaultExtractJob<ExtractSource, CommandWriter, StaticQuadExtractJobImpl>>,
 }
 
 impl StaticQuadExtractJob {
@@ -104,13 +104,13 @@ impl StaticQuadExtractJob {
     }
 }
 
-impl ExtractJob<ExtractSource> for StaticQuadExtractJob {
+impl ExtractJob<ExtractSource, CommandWriter> for StaticQuadExtractJob {
     fn extract(
         self: Box<Self>,
         source: &ExtractSource,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> Box<dyn PrepareJob> {
+    ) -> Box<dyn PrepareJob<CommandWriter>> {
         //use crate::jobs::ExtractJob;
         //self.inner.extract(frame_packet, views)
         ExtractJob::extract(self.inner, source, frame_packet, views)
@@ -120,31 +120,79 @@ impl ExtractJob<ExtractSource> for StaticQuadExtractJob {
         self.inner.feature_debug_name()
     }
 
-    fn feature_index(&self) -> u32 {
+    fn feature_index(&self) -> RenderFeatureIndex {
         self.inner.feature_index()
     }
 }
 
 struct StaticQuadPrepareJob {}
 
-impl PrepareJob for StaticQuadPrepareJob {
+impl PrepareJob<CommandWriter> for StaticQuadPrepareJob {
     fn prepare(
         self: Box<Self>,
         frame_packet: &FramePacket,
         views: &[&RenderView],
         submit_nodes: &mut FeatureSubmitNodes
-    ) {
-
+    ) -> Box<FeatureCommandWriter<CommandWriter>> {
+        Box::new(StaticQuadCommandWriter {})
     }
 
     fn feature_debug_name(&self) -> &'static str {
         StaticQuadRenderFeature::feature_debug_name()
     }
 
-    fn feature_index(&self) -> u32 {
+    fn feature_index(&self) -> RenderFeatureIndex {
         StaticQuadRenderFeature::feature_index()
     }
 }
+
+
+
+
+
+
+
+struct StaticQuadCommandWriter {
+
+}
+
+impl FeatureCommandWriter<CommandWriter> for StaticQuadCommandWriter {
+    fn apply_setup(&self, write_context: &mut CommandWriter) {
+        log::debug!("apply_setup {}", self.feature_debug_name());
+    }
+
+    fn render_element(&self, write_context: &mut CommandWriter, index: u32) {
+        log::debug!("render_element {}", self.feature_debug_name());
+    }
+
+    fn revert_setup(&self, write_context: &mut CommandWriter) {
+        log::debug!("revert_setup {}", self.feature_debug_name());
+    }
+
+    fn feature_debug_name(&self) -> &'static str {
+        StaticQuadRenderFeature::feature_debug_name()
+    }
+
+    fn feature_index(&self) -> RenderFeatureIndex {
+        StaticQuadRenderFeature::feature_index()
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 pub struct StaticQuadRenderNode {
     // texture

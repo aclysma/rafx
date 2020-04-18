@@ -16,4 +16,8 @@ impl RenderPhase for DrawOpaqueRenderPhase {
     fn render_phase_index() -> RenderPhaseIndex {
         DRAW_OPAQUE_RENDER_PHASE_INDEX.load(Ordering::Acquire) as RenderPhaseIndex
     }
+
+    fn sort_callback() {
+
+    }
 }

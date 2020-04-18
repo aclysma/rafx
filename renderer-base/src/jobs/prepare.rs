@@ -1,60 +1,67 @@
-use crate::{FramePacket, RenderView, PerFrameNode, PerViewNode, RenderFeatureIndex, ViewSubmitNodes, MergedFrameSubmitNodes};
-use crate::jobs::FeatureSubmitNodes;
+use crate::{FramePacket, RenderView, PerFrameNode, PerViewNode, RenderFeatureIndex, FeatureCommandWriter, PreparedRenderData, FeatureSubmitNodes, MergedFrameSubmitNodes, ViewSubmitNodes, RenderRegistry};
+use std::marker::PhantomData;
+use fnv::FnvHashMap;
 
-pub trait PrepareJob {
+pub trait PrepareJob<WriteT> {
     fn prepare(
         self: Box<Self>,
         frame_packet: &FramePacket,
         views: &[&RenderView],
         submit_nodes: &mut FeatureSubmitNodes
-    );
+    ) -> Box<FeatureCommandWriter<WriteT>>;
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
-pub struct PrepareJobSet {
-    prepare_jobs: Vec<Box<dyn PrepareJob>>,
+pub struct PrepareJobSet<WriteT> {
+    prepare_jobs: Vec<Box<dyn PrepareJob<WriteT>>>
+    //prepare_jobs: FnvHashMap<RenderFeatureIndex, Box<dyn PrepareJob<WriteT>>>,
 }
 
-impl PrepareJobSet {
+impl<WriteT> PrepareJobSet<WriteT> {
     pub fn new(
-        prepare_jobs: Vec<Box<dyn PrepareJob>>
+        prepare_jobs: Vec<Box<dyn PrepareJob<WriteT>>>
     ) -> Self {
+        // let mut prepare_jobs = FnvHashMap::<RenderFeatureIndex, Box<dyn PrepareJob<WriteT>>>::default();
+        // for job in job_list {
+        //     prepare_jobs.insert(job.feature_index(), job);
+        // }
+
+
         PrepareJobSet { prepare_jobs }
     }
 
     pub fn prepare(
         self,
         frame_packet: &FramePacket,
-        views: &[&RenderView]
-    ) /*-> PrepareResult*/-> MergedFrameSubmitNodes {
+        views: &[&RenderView],
+        registry: &RenderRegistry
+    ) -> Box<PreparedRenderData<WriteT>> {
 
+        let mut feature_command_writers = Vec::with_capacity(self.prepare_jobs.len());
         let mut all_submit_nodes = Vec::with_capacity(self.prepare_jobs.len());
-        //let submit_handlers = Default::default();
 
         //TODO: Kick these to happen in parallel
         for prepare_job in self.prepare_jobs {
             let mut submit_nodes = FeatureSubmitNodes::new(views.len(), prepare_job.feature_index());
-            prepare_job.prepare(frame_packet, views, &mut submit_nodes);
-            // submit_handlers.push(result of prepare)
+            let feature_command_writer = prepare_job.prepare(frame_packet, views, &mut submit_nodes);
+
             all_submit_nodes.push(submit_nodes);
+            feature_command_writers.push(feature_command_writer);
         }
 
-        // TODO: Merge and return all submit nodes
-        let merged_submit_nodes = MergedFrameSubmitNodes::new(all_submit_nodes, views);
+        // Merge all submit nodes
+        let merged_submit_nodes = MergedFrameSubmitNodes::new(all_submit_nodes, views, registry);
 
-        // TODO: Do we record command buffers and return them here?
-        //for
-
-        merged_submit_nodes
+        Box::new(PreparedRenderData::new(feature_command_writers, merged_submit_nodes))
     }
 }
 
 
 
 
-pub trait DefaultPrepareJobImpl {
+pub trait DefaultPrepareJobImpl<WriteT> {
     fn prepare_begin(
         &mut self,
         frame_packet: &FramePacket,
@@ -82,33 +89,35 @@ pub trait DefaultPrepareJobImpl {
     fn prepare_frame_finalize(
         self,
         submit_nodes: &mut FeatureSubmitNodes
-    );
+    ) -> Box<FeatureCommandWriter<WriteT>>;
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
-pub struct DefaultPrepareJob<PrepareImplT: DefaultPrepareJobImpl> {
+pub struct DefaultPrepareJob<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> {
     prepare_impl: PrepareImplT,
+    phantom_data: PhantomData<WriteT>
 }
 
-impl<PrepareImplT: DefaultPrepareJobImpl> DefaultPrepareJob<PrepareImplT>
+impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> DefaultPrepareJob<WriteT, PrepareImplT>
 {
     pub fn new(prepare_impl: PrepareImplT) -> Self {
         DefaultPrepareJob {
             prepare_impl,
+            phantom_data: Default::default()
         }
     }
 }
 
-impl<PrepareImplT: DefaultPrepareJobImpl> PrepareJob for DefaultPrepareJob<PrepareImplT>
+impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT> for DefaultPrepareJob<WriteT, PrepareImplT>
 {
     fn prepare(
         mut self: Box<Self>,
         frame_packet: &FramePacket,
         views: &[&RenderView],
         submit_nodes: &mut FeatureSubmitNodes
-    ) {
+    ) -> Box<FeatureCommandWriter<WriteT>> {
         let feature_index = self.prepare_impl.feature_index();
 
         log::debug!("DefaultExtractJob::extract");
@@ -170,14 +179,14 @@ impl<PrepareImplT: DefaultPrepareJobImpl> PrepareJob for DefaultPrepareJob<Prepa
             self.prepare_impl.feature_debug_name()
         );
 
-        self.prepare_impl.prepare_frame_finalize(submit_nodes);
+        self.prepare_impl.prepare_frame_finalize(submit_nodes)
     }
 
     fn feature_debug_name(&self) -> &'static str {
         self.prepare_impl.feature_debug_name()
     }
 
-    fn feature_index(&self) -> u32 {
+    fn feature_index(&self) -> RenderFeatureIndex {
         self.prepare_impl.feature_index()
     }
 }
