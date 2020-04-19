@@ -11,6 +11,7 @@ ash = "0.30"
 imgui = "0.3"
 imgui-sdl2 = "0.9.0"
 sdl2 = { version = "0.33", features = ["bundled", "static-link"] }
+image = "0.23"
 
 renderer-base = { path = "../renderer-base" }
 

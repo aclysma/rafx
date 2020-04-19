@@ -267,7 +267,7 @@ impl Renderer {
         physical_device_type_priority: Vec<PhysicalDeviceType>,
         present_mode_priority: Vec<PresentMode>,
         //mut event_listeners: Vec<Box<dyn RendererEventListener>>,
-        event_listener: Option<&mut RendererEventListener>
+        event_listener: Option<&mut dyn RendererEventListener>
     ) -> Result<Renderer, CreateRendererError> {
         let instance = ManuallyDrop::new(VkInstance::new(
             window,
