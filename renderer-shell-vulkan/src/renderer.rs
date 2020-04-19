@@ -18,7 +18,7 @@ use super::PhysicalSize;
 use super::Window;
 
 /// May be implemented to get callbacks related to the renderer and framebuffer usage
-pub trait RendererPlugin {
+pub trait RendererEventListener {
     /// Called whenever the swapchain needs to be created (the first time, and in cases where the
     /// swapchain needs to be recreated)
     fn swapchain_created(
@@ -49,7 +49,7 @@ pub struct RendererBuilder {
     validation_layer_debug_report_flags: vk::DebugReportFlagsEXT,
     present_mode_priority: Vec<PresentMode>,
     physical_device_type_priority: Vec<PhysicalDeviceType>,
-    plugins: Vec<Box<dyn RendererPlugin>>,
+    //event_listeners: Vec<Box<dyn RendererEventListener>>,
 }
 
 impl RendererBuilder {
@@ -63,7 +63,7 @@ impl RendererBuilder {
                 PhysicalDeviceType::DiscreteGpu,
                 PhysicalDeviceType::IntegratedGpu,
             ],
-            plugins: vec![],
+            //event_listeners: vec![],
         }
     }
 
@@ -167,18 +167,19 @@ impl RendererBuilder {
         self.present_mode_priority(vec![PresentMode::Mailbox, PresentMode::Fifo])
     }
 
-    pub fn add_plugin(
-        mut self,
-        plugin: Box<dyn RendererPlugin>,
-    ) -> Self {
-        self.plugins.push(plugin);
-        self
-    }
+    // pub fn add_event_listener(
+    //     mut self,
+    //     event_listener: Box<dyn RendererEventListener>,
+    // ) -> Self {
+    //     self.event_listeners.push(event_listener);
+    //     self
+    // }
 
     /// Builds the renderer. The window that's passed in will be used for creating the swapchain
     pub fn build(
         self,
         window: &dyn Window,
+        event_listener: Option<&mut dyn RendererEventListener>
     ) -> Result<Renderer, CreateRendererError> {
         Renderer::new(
             &self.app_name,
@@ -186,7 +187,7 @@ impl RendererBuilder {
             self.validation_layer_debug_report_flags,
             self.physical_device_type_priority.clone(),
             self.present_mode_priority.clone(),
-            self.plugins,
+            event_listener
         )
     }
 }
@@ -209,9 +210,12 @@ pub struct Renderer {
 
     previous_inner_size: PhysicalSize,
 
-    //coordinate_system: CoordinateSystem,
+    //event_listeners: Vec<Box<dyn RendererEventListener>>,
 
-    plugins: Vec<Box<dyn RendererPlugin>>,
+    // This is set to false until tear_down is called. We don't use "normal" drop because the user
+    // may need to pass in an EventListener to get cleanup callbacks. We still hook drop and if
+    // torn_down is false, we can log an error.
+    torn_down: bool
 }
 
 /// Represents an error from creating the renderer
@@ -262,7 +266,8 @@ impl Renderer {
         validation_layer_debug_report_flags: vk::DebugReportFlagsEXT,
         physical_device_type_priority: Vec<PhysicalDeviceType>,
         present_mode_priority: Vec<PresentMode>,
-        mut plugins: Vec<Box<dyn RendererPlugin>>,
+        //mut event_listeners: Vec<Box<dyn RendererEventListener>>,
+        event_listener: Option<&mut RendererEventListener>
     ) -> Result<Renderer, CreateRendererError> {
         let instance = ManuallyDrop::new(VkInstance::new(
             window,
@@ -288,8 +293,10 @@ impl Renderer {
         //     &mut skia_context,
         // )?);
 
-        for plugin in &mut plugins {
-            plugin.swapchain_created(&device, &swapchain)?;
+        if let Some(event_listener) = event_listener {
+            //for event_listener in &mut event_listeners {
+                event_listener.swapchain_created(&device, &swapchain)?;
+            //}
         }
 
         let sync_frame_index = 0;
@@ -303,8 +310,22 @@ impl Renderer {
             sync_frame_index,
             present_mode_priority,
             previous_inner_size,
-            plugins,
+            //event_listeners,
+            torn_down: false
         })
+    }
+
+    pub fn tear_down(&mut self, event_listener: Option<&mut dyn RendererEventListener>) {
+        unsafe {
+            self.device.logical_device.device_wait_idle().unwrap();
+        }
+
+        if let Some(event_listener) = event_listener {
+            event_listener.swapchain_destroyed();
+        }
+
+        // self will drop
+        self.torn_down = true;
     }
 
     pub fn vulkan_entry(&self) -> &ash::Entry {
@@ -344,16 +365,17 @@ impl Renderer {
     pub fn draw(
         &mut self,
         window: &dyn Window,
+        mut event_listener: Option<&mut dyn RendererEventListener>
     ) -> VkResult<()> {
         if window.physical_size() != self.previous_inner_size {
             debug!("Detected window inner size change, rebuilding swapchain");
-            self.rebuild_swapchain(window)?;
+            self.rebuild_swapchain(window, &mut event_listener)?;
         }
 
-        let result = self.do_draw(window);
+        let result = self.do_draw(window, &mut event_listener);
         if let Err(e) = result {
             match e {
-                ash::vk::Result::ERROR_OUT_OF_DATE_KHR => self.rebuild_swapchain(window),
+                ash::vk::Result::ERROR_OUT_OF_DATE_KHR => self.rebuild_swapchain(window, &mut event_listener),
                 ash::vk::Result::SUCCESS => Ok(()),
                 ash::vk::Result::SUBOPTIMAL_KHR => Ok(()),
                 _ => {
@@ -369,13 +391,17 @@ impl Renderer {
     fn rebuild_swapchain(
         &mut self,
         window: &dyn Window,
+        event_listener: &mut Option<&mut dyn RendererEventListener>
     ) -> VkResult<()> {
         unsafe {
             self.device.logical_device.device_wait_idle()?;
             //ManuallyDrop::drop(&mut self.skia_renderpass);
 
-            for plugin in &mut self.plugins {
-                plugin.swapchain_destroyed();
+            // for event_listener in &mut self.event_listeners {
+            //     event_listener.swapchain_destroyed();
+            // }
+            if let Some(event_listener) = event_listener {
+                event_listener.swapchain_destroyed();
             }
         }
 
@@ -398,8 +424,8 @@ impl Renderer {
         //     &mut self.skia_context,
         // )?);
 
-        for plugin in &mut self.plugins {
-            plugin.swapchain_created(&self.device, &self.swapchain)?;
+        if let Some(event_listener) = event_listener {
+            event_listener.swapchain_created(&self.device, &self.swapchain)?;
         }
 
         self.previous_inner_size = window.physical_size();
@@ -411,6 +437,7 @@ impl Renderer {
     fn do_draw(
         &mut self,
         window: &dyn Window,
+        event_listener: &mut Option<&mut dyn RendererEventListener>
     ) -> VkResult<()> {
         let frame_fence = self.swapchain.in_flight_fences[self.sync_frame_index];
 
@@ -453,8 +480,12 @@ impl Renderer {
         let mut command_buffers = vec![];
         //command_buffers.push(self.skia_renderpass.command_buffers[present_index as usize]);
 
-        for plugin in &mut self.plugins {
-            let mut buffers = plugin.render(window, &self.device, present_index as usize)?;
+        // for event_listener in &mut self.event_listeners {
+        //     let mut buffers = event_listener.render(window, &self.device, present_index as usize)?;
+        //     command_buffers.append(&mut buffers);
+        // }
+        if let Some(event_listener) = event_listener {
+            let mut buffers = event_listener.render(window, &self.device, present_index as usize)?;
             command_buffers.append(&mut buffers);
         }
 
@@ -503,13 +534,15 @@ impl Drop for Renderer {
     fn drop(&mut self) {
         debug!("destroying Renderer");
 
-        unsafe {
-            self.device.logical_device.device_wait_idle().unwrap();
-            //ManuallyDrop::drop(&mut self.skia_renderpass);
+        assert!(self.torn_down);
 
-            for plugin in &mut self.plugins {
-                plugin.swapchain_destroyed();
-            }
+        unsafe {
+            //self.device.logical_device.device_wait_idle().unwrap();
+            //ManuallyDrop::drop(&mut self.skia_renderpass);
+            //
+            // for event_listener in &mut self.event_listeners {
+            //     event_listener.swapchain_destroyed();
+            // }
 
             ManuallyDrop::drop(&mut self.swapchain);
             //ManuallyDrop::drop(&mut self.skia_context);

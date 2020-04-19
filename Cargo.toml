@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 ash = ">=0.30"
 sdl2 = { version = ">=0.33" }
+imgui = "0.3"
 
 renderer-shell-vulkan = { path = "renderer-shell-vulkan" }
 renderer-shell-vulkan-sdl2 = { path = "renderer-shell-vulkan-sdl2"}

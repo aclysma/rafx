@@ -30,6 +30,9 @@ pub use swapchain::MAX_FRAMES_IN_FLIGHT;
 mod buffer;
 pub use buffer::VkBuffer;
 
+mod image;
+pub use image::VkImage;
+
 mod debug_reporter;
 pub use debug_reporter::VkDebugReporter;
 
@@ -38,7 +41,7 @@ mod renderer;
 pub use renderer::RendererBuilder;
 pub use renderer::Renderer;
 pub use renderer::CreateRendererError;
-pub use renderer::RendererPlugin;
+pub use renderer::RendererEventListener;
 
 mod coordinates;
 pub use coordinates::Size;

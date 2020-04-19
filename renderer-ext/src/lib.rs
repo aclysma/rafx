@@ -1,6 +1,8 @@
 pub mod features;
 pub mod phases;
 
+pub mod imgui_support;
+
 use legion::prelude::*;
 use glam::Vec3;
 use features::sprite::SpriteRenderNodeHandle;
