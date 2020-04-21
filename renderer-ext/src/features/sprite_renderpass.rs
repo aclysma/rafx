@@ -37,6 +37,32 @@ struct Vertex {
     color: [u8; 4],
 }
 
+const VERTEX_LIST : [Vertex; 4] = [
+    Vertex {
+        pos: [-0.5, -0.5],
+        color: [255, 0, 0, 255],
+        tex_coord: [1.0, 0.0]
+    },
+    Vertex {
+        pos: [0.5, -0.5],
+        color: [255, 255, 0, 255],
+        tex_coord: [0.0, 0.0]
+
+    },
+    Vertex {
+        pos: [0.5, 0.5],
+        color: [255, 0, 255, 255],
+        tex_coord: [0.0, 1.0]
+    },
+    Vertex {
+        pos: [-0.5, 0.5],
+        color: [0, 0, 255, 255],
+        tex_coord: [1.0, 1.0]
+    }
+];
+
+const INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
+
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
     vertex_input_state_info: vk::PipelineVertexInputStateCreateInfoBuilder<'a>,
@@ -63,13 +89,16 @@ pub struct VkSpriteRenderPass {
     pub frame_buffers: Vec<vk::Framebuffer>,
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
+
     pub vertex_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
     pub index_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
     pub staging_vertex_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
     pub staging_index_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
+
     pub uniform_buffers: Vec<ManuallyDrop<VkBuffer>>,
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_sets: Vec<vk::DescriptorSet>,
+
     pub image: ManuallyDrop<VkImage>,
     pub image_view: vk::ImageView,
     pub image_sampler: vk::Sampler,
@@ -799,65 +828,73 @@ impl VkSpriteRenderPass {
         drop_old_buffers(staging_vertex_buffers);
         drop_old_buffers(staging_index_buffers);
 
-        // let mut draw_list_count = 0;
+        // VkBuffer::new_from_slice_device_local(
+        //     logical_device,
+        //     device_memory_properties,
+        //     queue,
+        //     command_pool,
+        //     vk::BufferUsageFlags::VERTEX_BUFFER,
+        //     &VERTEX_LIST);
+
+        let mut draw_list_count = 0;
         // if let Some(draw_data) = imgui_draw_data {
         //     for draw_list in draw_data.draw_lists() {
-        //         let (vertex_buffer, staging_vertex_buffer) = {
-        //             let vertex_buffer_size = draw_list.vtx_buffer().len() as u64
-        //                 * std::mem::size_of::<imgui::DrawVert>() as u64;
-        //             let mut staging_vertex_buffer = VkBuffer::new(
-        //                 logical_device,
-        //                 &device_memory_properties,
-        //                 vk::BufferUsageFlags::TRANSFER_SRC,
-        //                 vk::MemoryPropertyFlags::HOST_VISIBLE
-        //                     | vk::MemoryPropertyFlags::HOST_COHERENT,
-        //                 vertex_buffer_size,
-        //             )?;
-        //
-        //             staging_vertex_buffer.write_to_host_visible_buffer(draw_list.vtx_buffer())?;
-        //
-        //             let vertex_buffer = VkBuffer::new(
-        //                 &logical_device,
-        //                 &device_memory_properties,
-        //                 vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
-        //                 vk::MemoryPropertyFlags::DEVICE_LOCAL,
-        //                 vertex_buffer_size,
-        //             )?;
-        //
-        //             (vertex_buffer, staging_vertex_buffer)
-        //         };
-        //
-        //         //TODO: Duplicated code here
-        //         let (index_buffer, staging_index_buffer) = {
-        //             let index_buffer_size = draw_list.idx_buffer().len() as u64
-        //                 * std::mem::size_of::<imgui::DrawIdx>() as u64;
-        //             let mut staging_index_buffer = VkBuffer::new(
-        //                 logical_device,
-        //                 &device_memory_properties,
-        //                 vk::BufferUsageFlags::TRANSFER_SRC,
-        //                 vk::MemoryPropertyFlags::HOST_VISIBLE
-        //                     | vk::MemoryPropertyFlags::HOST_COHERENT,
-        //                 index_buffer_size,
-        //             )?;
-        //
-        //             staging_index_buffer.write_to_host_visible_buffer(draw_list.idx_buffer())?;
-        //
-        //             let index_buffer = VkBuffer::new(
-        //                 &logical_device,
-        //                 &device_memory_properties,
-        //                 vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER,
-        //                 vk::MemoryPropertyFlags::DEVICE_LOCAL,
-        //                 index_buffer_size,
-        //             )?;
-        //
-        //             (index_buffer, staging_index_buffer)
-        //         };
-        //
-        //         vertex_buffers.push(ManuallyDrop::new(vertex_buffer));
-        //         staging_vertex_buffers.push(ManuallyDrop::new(staging_vertex_buffer));
-        //         index_buffers.push(ManuallyDrop::new(index_buffer));
-        //         staging_index_buffers.push(ManuallyDrop::new(staging_index_buffer));
-        //         draw_list_count += 1;
+        let (vertex_buffer, staging_vertex_buffer) = {
+            let vertex_buffer_size = VERTEX_LIST.len() as u64
+                * std::mem::size_of::<Vertex>() as u64;
+            let mut staging_vertex_buffer = VkBuffer::new(
+                logical_device,
+                &device_memory_properties,
+                vk::BufferUsageFlags::TRANSFER_SRC,
+                vk::MemoryPropertyFlags::HOST_VISIBLE
+                    | vk::MemoryPropertyFlags::HOST_COHERENT,
+                vertex_buffer_size,
+            )?;
+
+            staging_vertex_buffer.write_to_host_visible_buffer(&VERTEX_LIST)?;
+
+            let vertex_buffer = VkBuffer::new(
+                &logical_device,
+                &device_memory_properties,
+                vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                vertex_buffer_size,
+            )?;
+
+            (vertex_buffer, staging_vertex_buffer)
+        };
+
+        //TODO: Duplicated code here
+        let (index_buffer, staging_index_buffer) = {
+            let index_buffer_size = INDEX_LIST.len() as u64
+                * std::mem::size_of::<u16>() as u64;
+            let mut staging_index_buffer = VkBuffer::new(
+                logical_device,
+                &device_memory_properties,
+                vk::BufferUsageFlags::TRANSFER_SRC,
+                vk::MemoryPropertyFlags::HOST_VISIBLE
+                    | vk::MemoryPropertyFlags::HOST_COHERENT,
+                index_buffer_size,
+            )?;
+
+            staging_index_buffer.write_to_host_visible_buffer(&INDEX_LIST)?;
+
+            let index_buffer = VkBuffer::new(
+                &logical_device,
+                &device_memory_properties,
+                vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                index_buffer_size,
+            )?;
+
+            (index_buffer, staging_index_buffer)
+        };
+
+        vertex_buffers.push(ManuallyDrop::new(vertex_buffer));
+        staging_vertex_buffers.push(ManuallyDrop::new(staging_vertex_buffer));
+        index_buffers.push(ManuallyDrop::new(index_buffer));
+        staging_index_buffers.push(ManuallyDrop::new(staging_index_buffer));
+        draw_list_count += 1;
         //     }
         // }
 
@@ -874,34 +911,34 @@ impl VkSpriteRenderPass {
         unsafe {
             logical_device.begin_command_buffer(*command_buffer, &command_buffer_begin_info)?;
 
-            // for i in 0..draw_list_count {
-            //     {
-            //         let buffer_copy_info = [vk::BufferCopy::builder()
-            //             .size(staging_vertex_buffers[i].size)
-            //             .build()];
-            //
-            //         logical_device.cmd_copy_buffer(
-            //             *command_buffer,
-            //             staging_vertex_buffers[i].buffer,
-            //             vertex_buffers[i].buffer,
-            //             &buffer_copy_info,
-            //         );
-            //     }
-            //
-            //     //TODO: Duplicated code here
-            //     {
-            //         let buffer_copy_info = [vk::BufferCopy::builder()
-            //             .size(staging_index_buffers[i].size)
-            //             .build()];
-            //
-            //         logical_device.cmd_copy_buffer(
-            //             *command_buffer,
-            //             staging_index_buffers[i].buffer,
-            //             index_buffers[i].buffer,
-            //             &buffer_copy_info,
-            //         );
-            //     }
-            // }
+            for i in 0..draw_list_count {
+                {
+                    let buffer_copy_info = [vk::BufferCopy::builder()
+                        .size(staging_vertex_buffers[i].size)
+                        .build()];
+
+                    logical_device.cmd_copy_buffer(
+                        *command_buffer,
+                        staging_vertex_buffers[i].buffer,
+                        vertex_buffers[i].buffer,
+                        &buffer_copy_info,
+                    );
+                }
+
+                //TODO: Duplicated code here
+                {
+                    let buffer_copy_info = [vk::BufferCopy::builder()
+                        .size(staging_index_buffers[i].size)
+                        .build()];
+
+                    logical_device.cmd_copy_buffer(
+                        *command_buffer,
+                        staging_index_buffers[i].buffer,
+                        index_buffers[i].buffer,
+                        &buffer_copy_info,
+                    );
+                }
+            }
 
             logical_device.cmd_begin_render_pass(
                 *command_buffer,
@@ -922,6 +959,32 @@ impl VkSpriteRenderPass {
                 0,
                 &[*descriptor_set],
                 &[],
+            );
+
+
+
+
+            logical_device.cmd_bind_vertex_buffers(
+                *command_buffer,
+                0, // first binding
+                &[vertex_buffers[0].buffer],
+                &[0], // offsets
+            );
+
+            logical_device.cmd_bind_index_buffer(
+                *command_buffer,
+                index_buffers[0].buffer,
+                0, // offset
+                vk::IndexType::UINT16,
+            );
+
+            logical_device.cmd_draw_indexed(
+                *command_buffer,
+                INDEX_LIST.len() as u32,
+                1,
+                0,
+                0,
+                0,
             );
 
             // let mut draw_list_index = 0;
