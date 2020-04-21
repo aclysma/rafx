@@ -15,14 +15,8 @@ use image::GenericImageView;
 fn main() {
     // Setup logging
     env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Error)
         .init();
-
-
-    let example_image = image::load_from_memory_with_format(include_bytes!("../texture.jpg"), image::ImageFormat::Jpeg).unwrap();
-    println!("IMAGE SIZE: {} {}", example_image.width(), example_image.height());
-
-
 
     // Setup SDL
     let sdl_context = sdl2::init().expect("Failed to initialize sdl2");
@@ -62,7 +56,7 @@ fn main() {
 
     // Check if there were error setting up vulkan
     if let Err(e) = renderer {
-        println!("Error during renderer construction: {:?}", e);
+        log::error!("Error during renderer construction: {:?}", e);
         return;
     }
 

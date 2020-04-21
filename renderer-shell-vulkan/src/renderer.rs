@@ -86,9 +86,9 @@ impl RendererBuilder {
         use_vulkan_debug_layer: bool,
     ) -> Self {
         self.validation_layer_debug_report_flags(if use_vulkan_debug_layer {
-            vk::DebugReportFlagsEXT::empty()
-        } else {
             vk::DebugReportFlagsEXT::all()
+        } else {
+            vk::DebugReportFlagsEXT::empty()
         })
     }
 

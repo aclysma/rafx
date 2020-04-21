@@ -99,8 +99,8 @@ pub struct VkSpriteRenderPass {
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_sets: Vec<vk::DescriptorSet>,
 
-    pub image: ManuallyDrop<VkImage>,
-    pub image_view: vk::ImageView,
+    pub images: Vec<ManuallyDrop<VkImage>>,
+    pub image_views: Vec<vk::ImageView>,
     pub image_sampler: vk::Sampler,
 }
 
@@ -186,15 +186,25 @@ impl VkSpriteRenderPass {
             )?)
         }
 
-        let image = Self::load_image(
-            &device.logical_device,
-            device.queues.graphics_queue,
-            command_pool,
-            &device.memory_properties,
-            &decoded_texture,
-        )?;
+        let mut images = vec![];
+        let mut image_views = vec![];
+        for _ in 0..2 {
+            let image = Self::load_image(
+                &device.logical_device,
+                device.queues.graphics_queue,
+                command_pool,
+                &device.memory_properties,
+                &decoded_texture,
+            )?;
 
-        let image_view = Self::create_texture_image_view(&device.logical_device, &image.image);
+            let image_view = Self::create_texture_image_view(&device.logical_device, &image.image);
+
+            images.push(image);
+            image_views.push(image_view);
+        }
+
+
+
 
         let image_sampler = Self::create_texture_image_sampler(&device.logical_device);
 
@@ -209,7 +219,7 @@ impl VkSpriteRenderPass {
             &descriptor_set_layout,
             swapchain.swapchain_info.image_count,
             &uniform_buffers,
-            &image_view,
+            &image_views,
             &image_sampler,
         )?;
 
@@ -248,8 +258,8 @@ impl VkSpriteRenderPass {
             uniform_buffers,
             descriptor_pool,
             descriptor_sets,
-            image,
-            image_view,
+            images,
+            image_views,
             image_sampler,
         })
     }
@@ -266,7 +276,13 @@ impl VkSpriteRenderPass {
                 .build(),
             vk::DescriptorSetLayoutBinding::builder()
                 .binding(1)
-                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                .descriptor_count(1)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                .build(),
+            vk::DescriptorSetLayoutBinding::builder()
+                .binding(2)
+                .descriptor_type(vk::DescriptorType::SAMPLER)
                 .descriptor_count(1)
                 .stage_flags(vk::ShaderStageFlags::FRAGMENT)
                 .build(),
@@ -362,7 +378,7 @@ impl VkSpriteRenderPass {
         let color_blend_state_info = vk::PipelineColorBlendStateCreateInfo::builder()
             .attachments(&color_blend_attachment_states);
 
-        let dynamic_state = vec![vk::DynamicState::SCISSOR];
+        let dynamic_state = vec![/*vk::DynamicState::SCISSOR*/];
         let dynamic_state_info =
             vk::PipelineDynamicStateCreateInfo::builder().dynamic_states(&dynamic_state);
 
@@ -390,7 +406,7 @@ impl VkSpriteRenderPass {
             .store_op(vk::AttachmentStoreOp::STORE)
             .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
             .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-            .initial_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+            .initial_layout(vk::ImageLayout::UNDEFINED)
             .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
             .build()];
 
@@ -718,13 +734,18 @@ impl VkSpriteRenderPass {
                 .descriptor_count(swapchain_image_count)
                 .build(),
             vk::DescriptorPoolSize::builder()
-                .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(swapchain_image_count)
-                .build(),
-            vk::DescriptorPoolSize::builder()
                 .ty(vk::DescriptorType::SAMPLED_IMAGE)
                 .descriptor_count(swapchain_image_count)
                 .build(),
+            vk::DescriptorPoolSize::builder()
+                .ty(vk::DescriptorType::SAMPLER)
+                .descriptor_count(swapchain_image_count)
+                .build(),
+
+            // vk::DescriptorPoolSize::builder()
+            //     .ty(vk::DescriptorType::SAMPLED_IMAGE)
+            //     .descriptor_count(swapchain_image_count)
+            //     .build(),
         ];
 
         let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
@@ -740,7 +761,7 @@ impl VkSpriteRenderPass {
         descriptor_set_layout: &vk::DescriptorSetLayout,
         swapchain_image_count: usize,
         uniform_buffers: &Vec<ManuallyDrop<VkBuffer>>,
-        image_view: &vk::ImageView,
+        image_views: &[vk::ImageView],
         image_sampler: &vk::Sampler,
     ) -> VkResult<Vec<vk::DescriptorSet>> {
         // DescriptorSetAllocateInfo expects an array with an element per set
@@ -753,9 +774,13 @@ impl VkSpriteRenderPass {
         let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
 
         for i in 0..swapchain_image_count {
-            let descriptor_image_infos = [vk::DescriptorImageInfo::builder()
+            let image_view_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
                 .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .image_view(*image_view)
+                .image_view(image_views[0])
+                .build()];
+
+            let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                 .sampler(*image_sampler)
                 .build()];
 
@@ -767,7 +792,7 @@ impl VkSpriteRenderPass {
 
             let descriptor_writes = [
                 vk::WriteDescriptorSet::builder()
-                    .dst_set(descriptor_sets[i as usize])
+                    .dst_set(descriptor_sets[i])
                     .dst_binding(0)
                     .dst_array_element(0)
                     .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
@@ -777,8 +802,16 @@ impl VkSpriteRenderPass {
                     .dst_set(descriptor_sets[i])
                     .dst_binding(1)
                     .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                    .image_info(&descriptor_image_infos)
+                    //.descriptor_count
+                    .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                    .image_info(&image_view_descriptor_image_infos)
+                    .build(),
+                vk::WriteDescriptorSet::builder()
+                    .dst_set(descriptor_sets[i])
+                    .dst_binding(2)
+                    .dst_array_element(0)
+                    .descriptor_type(vk::DescriptorType::SAMPLER)
+                    .image_info(&sampler_descriptor_image_infos)
                     .build(),
             ];
 
@@ -1158,8 +1191,14 @@ impl Drop for VkSpriteRenderPass {
 
         unsafe {
             self.device.destroy_sampler(self.image_sampler, None);
-            self.device.destroy_image_view(self.image_view, None);
-            ManuallyDrop::drop(&mut self.image);
+
+            for image_view in &self.image_views {
+                self.device.destroy_image_view(*image_view, None);
+            }
+
+            for image in &mut self.images {
+                ManuallyDrop::drop(image);
+            }
 
             for uniform_buffer in &mut self.uniform_buffers {
                 ManuallyDrop::drop(uniform_buffer);

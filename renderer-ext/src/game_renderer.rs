@@ -36,7 +36,7 @@ impl GameRenderer {
 
 impl RendererEventListener for GameRenderer {
     fn swapchain_created(&mut self, device: &VkDevice, swapchain: &VkSwapchain) -> VkResult<()> {
-        println!("game renderer swapchain created");
+        log::debug!("game renderer swapchain created");
         self.resource_manager.swapchain_created(device, swapchain)?;
         self.imgui_event_listener.swapchain_created(device, swapchain)?;
 
@@ -47,7 +47,7 @@ impl RendererEventListener for GameRenderer {
     }
 
     fn swapchain_destroyed(&mut self) {
-        println!("game renderer swapchain destroyed");
+        log::debug!("game renderer swapchain destroyed");
         self.resource_manager.swapchain_destroyed();
         self.imgui_event_listener.swapchain_destroyed();
 
@@ -58,7 +58,7 @@ impl RendererEventListener for GameRenderer {
     }
 
     fn render(&mut self, window: &Window, device: &VkDevice, present_index: usize) -> VkResult<Vec<ash::vk::CommandBuffer>> {
-        println!("game renderer render");
+        log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
         {

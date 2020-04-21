@@ -7,6 +7,7 @@ use ash::prelude::VkResult;
 use super::Window;
 use super::debug_reporter;
 use super::VkDebugReporter;
+use ash::extensions::ext::DebugReport;
 
 /// Create one of these at startup. It never gets lost/destroyed.
 pub struct VkInstance {
@@ -127,7 +128,11 @@ impl VkInstance {
             .collect();
 
         // Determine what extensions to use
-        let extension_names_raw = window.extension_names();
+        let mut extension_names_raw = window.extension_names();
+
+        if !validation_layer_debug_report_flags.is_empty() {
+            extension_names_raw.push(DebugReport::name().as_ptr())
+        }
 
         // Create the instance
         let create_info = vk::InstanceCreateInfo::builder()

@@ -152,8 +152,6 @@ impl MergedFrameSubmitNodes {
             phase_index: PhaseT::render_phase_index(),
         };
 
-        println!("{:#?}", self.merged_submit_nodes);
-
         let nodes = self.merged_submit_nodes.get(&view_phase);
         if let Some(nodes) = nodes {
             nodes

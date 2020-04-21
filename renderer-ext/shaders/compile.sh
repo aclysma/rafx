@@ -1,5 +1,5 @@
 
-export PATH=~/dev/sdk/vulkansdk-macos-1.1.121.1/macOS/bin/glslc:$PATH
+export PATH=~/dev/sdk/vulkansdk-macos-1.2.131.2/macOS/bin/glslc:$PATH
 glslc texture.vert -o texture.vert.spv
 glslc texture.frag -o texture.frag.spv
 
