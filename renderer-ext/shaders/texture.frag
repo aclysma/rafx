@@ -6,8 +6,9 @@ layout (set = 0, binding = 0) uniform UBO{
     vec3 color;
 } ubo;
 
-layout (set = 0, binding = 1) uniform texture2D tex[];
-layout (set = 0, binding = 2) uniform sampler smp;
+layout (set = 0, binding = 1) uniform sampler smp;
+
+layout (set = 1, binding = 0) uniform texture2D tex;
 
 layout (location = 0) in vec2 o_uv;
 
@@ -15,6 +16,6 @@ layout (location = 0) out vec4 uFragColor;
 
 void main() {
     //vec4 color = texture(tex[0], o_uv);
-    vec4 color = texture(sampler2D(tex[0], smp), o_uv);
+    vec4 color = texture(sampler2D(tex, smp), o_uv);
     uFragColor = color;
 }

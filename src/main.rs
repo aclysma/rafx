@@ -17,7 +17,7 @@ use image::GenericImageView;
 fn main() {
     // Setup logging
     env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Error)
+        .filter_level(log::LevelFilter::Debug)
         .init();
 
     // Setup SDL
@@ -74,6 +74,11 @@ fn main() {
         .event_pump()
         .expect("Could not create sdl event pump");
 
+    let mut time = renderer_ext::time::TimeState::new();
+    time.update();
+
+    let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
+
     'running: loop {
         for event in event_pump.poll_iter() {
             imgui_manager.handle_event(&event);
@@ -118,5 +123,10 @@ fn main() {
         // Redraw
         //
         renderer.draw(&window).unwrap();
+        time.update();
+
+        if print_time_event.try_take_event(time.current_instant(), std::time::Duration::from_secs_f32(1.0)) {
+            println!("FPS: {}", time.updates_per_second());
+        }
     }
 }

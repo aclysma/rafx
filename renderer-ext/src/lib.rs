@@ -10,6 +10,8 @@ pub use game_renderer::GameRendererWithShell;
 mod resource_manager;
 pub use resource_manager::ResourceManager;
 
+pub mod time;
+
 use legion::prelude::*;
 use glam::Vec3;
 use features::sprite::SpriteRenderNodeHandle;
