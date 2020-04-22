@@ -1,6 +1,9 @@
 // This example shows how to use the renderer with SDL2 directly.
 
-use renderer_shell_vulkan::{RendererBuilder, LogicalSize, ScaleToFit, Rect, CoordinateSystem, RendererEventListener, Window, VkDevice, VkSwapchain, Renderer, CreateRendererError};
+use renderer_shell_vulkan::{
+    RendererBuilder, LogicalSize, ScaleToFit, Rect, CoordinateSystem, RendererEventListener,
+    Window, VkDevice, VkSwapchain, Renderer, CreateRendererError,
+};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -10,7 +13,6 @@ use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
 use renderer_ext::GameRendererWithShell;
 use image::GenericImageView;
-
 
 fn main() {
     // Setup logging
@@ -74,10 +76,8 @@ fn main() {
 
     'running: loop {
         for event in event_pump.poll_iter() {
-
             imgui_manager.handle_event(&event);
             if !imgui_manager.ignore_event(&event) {
-
                 log::info!("{:?}", event);
                 match event {
                     //

@@ -17,8 +17,10 @@ use renderer_shell_vulkan::util;
 use renderer_shell_vulkan::VkImage;
 use image::error::ImageError::Decoding;
 use std::process::exit;
-use image::GenericImageView;
+use image::{GenericImageView, ImageFormat};
+use ash::vk::ShaderStageFlags;
 
+#[derive(Clone)]
 pub struct DecodedTexture {
     pub width: u32,
     pub height: u32,
@@ -63,6 +65,8 @@ const VERTEX_LIST : [Vertex; 4] = [
 
 const INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
 
+const MAX_TEXTURES : u32 = 100;
+
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
     vertex_input_state_info: vk::PipelineVertexInputStateCreateInfoBuilder<'a>,
@@ -104,24 +108,28 @@ pub struct VkSpriteRenderPass {
     pub image_sampler: vk::Sampler,
 }
 
+fn decode_texture(buf: &[u8], format: ImageFormat) -> DecodedTexture {
+    let example_image = image::load_from_memory_with_format(buf, format).unwrap();
+    let dimensions = example_image.dimensions();
+    let example_image = example_image.to_rgba().into_raw();
+    DecodedTexture {
+        width: dimensions.0,
+        height: dimensions.1,
+        data: example_image
+    }
+}
+
 impl VkSpriteRenderPass {
     pub fn new(
         device: &VkDevice,
         swapchain: &VkSwapchain,
     ) -> VkResult<Self> {
-
-
-
-        let example_image = image::load_from_memory_with_format(include_bytes!("../../../texture.jpg"), image::ImageFormat::Jpeg).unwrap();
-        let dimensions = example_image.dimensions();
-
-        let example_image = example_image.to_rgba().into_raw();
-
-        let decoded_texture = DecodedTexture {
-            width: dimensions.0,
-            height: dimensions.0,
-            data: example_image
-        };
+        let decoded_texture = decode_texture(include_bytes!("../../../texture2.jpg"), image::ImageFormat::Jpeg);
+        let mut decoded_textures = vec![];
+        for _ in 0..MAX_TEXTURES {
+            decoded_textures.push(decoded_texture.clone());
+        }
+        //decoded_textures.push(decode_texture(include_bytes!("../../../texture.jpg"), image::ImageFormat::Jpeg));
 
         let mut pipeline_resources = None;
 
@@ -188,7 +196,7 @@ impl VkSpriteRenderPass {
 
         let mut images = vec![];
         let mut image_views = vec![];
-        for _ in 0..2 {
+        for decoded_texture in decoded_textures {
             let image = Self::load_image(
                 &device.logical_device,
                 device.queues.graphics_queue,
@@ -277,7 +285,8 @@ impl VkSpriteRenderPass {
             vk::DescriptorSetLayoutBinding::builder()
                 .binding(1)
                 .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(1)
+                .descriptor_count(MAX_TEXTURES)
+                //.descriptor_count(1)
                 .stage_flags(vk::ShaderStageFlags::FRAGMENT)
                 .build(),
             vk::DescriptorSetLayoutBinding::builder()
@@ -286,6 +295,12 @@ impl VkSpriteRenderPass {
                 .descriptor_count(1)
                 .stage_flags(vk::ShaderStageFlags::FRAGMENT)
                 .build(),
+            // vk::DescriptorSetLayoutBinding::builder()
+            //     .binding(1)
+            //     .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+            //     .descriptor_count(MAX_TEXTURES)
+            //     .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+            //     .build(),
         ];
 
         let descriptor_set_layout_create_info =
@@ -735,16 +750,15 @@ impl VkSpriteRenderPass {
                 .build(),
             vk::DescriptorPoolSize::builder()
                 .ty(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(swapchain_image_count)
+                .descriptor_count(swapchain_image_count * MAX_TEXTURES)
                 .build(),
             vk::DescriptorPoolSize::builder()
                 .ty(vk::DescriptorType::SAMPLER)
                 .descriptor_count(swapchain_image_count)
                 .build(),
-
             // vk::DescriptorPoolSize::builder()
-            //     .ty(vk::DescriptorType::SAMPLED_IMAGE)
-            //     .descriptor_count(swapchain_image_count)
+            //     .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+            //     .descriptor_count(swapchain_image_count * MAX_TEXTURES)
             //     .build(),
         ];
 
@@ -774,15 +788,37 @@ impl VkSpriteRenderPass {
         let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
 
         for i in 0..swapchain_image_count {
-            let image_view_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
-                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .image_view(image_views[0])
-                .build()];
+            // let image_view_descriptor_image_infos = [
+            //     vk::DescriptorImageInfo::builder()
+            //         .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            //         .image_view(image_views[0])
+            //         .build(),
+            //     vk::DescriptorImageInfo::builder()
+            //         .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            //         .image_view(image_views[1])
+            //         .build()
+            // ];
+
+            let image_view_descriptor_image_infos : Vec<_> = image_views.iter().map(|image_view| {
+                vk::DescriptorImageInfo::builder()
+                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                    .image_view(*image_view)
+                    .build()
+            }).collect();
 
             let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
                 .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                 .sampler(*image_sampler)
                 .build()];
+
+
+            // let image_view_descriptor_image_infos : Vec<_> = image_views.iter().map(|image_view| {
+            //     vk::DescriptorImageInfo::builder()
+            //         .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            //         .image_view(*image_view)
+            //         .sampler(*image_sampler)
+            //         .build()
+            // }).collect();
 
             let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
                 .buffer(uniform_buffers[i as usize].buffer)
@@ -802,7 +838,6 @@ impl VkSpriteRenderPass {
                     .dst_set(descriptor_sets[i])
                     .dst_binding(1)
                     .dst_array_element(0)
-                    //.descriptor_count
                     .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
                     .image_info(&image_view_descriptor_image_infos)
                     .build(),
@@ -813,6 +848,13 @@ impl VkSpriteRenderPass {
                     .descriptor_type(vk::DescriptorType::SAMPLER)
                     .image_info(&sampler_descriptor_image_infos)
                     .build(),
+                // vk::WriteDescriptorSet::builder()
+                //     .dst_set(descriptor_sets[i])
+                //     .dst_binding(1)
+                //     .dst_array_element(0)
+                //     .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                //     .image_info(&image_view_descriptor_image_infos)
+                //     .build(),
             ];
 
             unsafe {
@@ -1011,14 +1053,22 @@ impl VkSpriteRenderPass {
                 vk::IndexType::UINT16,
             );
 
-            logical_device.cmd_draw_indexed(
-                *command_buffer,
-                INDEX_LIST.len() as u32,
-                1,
-                0,
-                0,
-                0,
-            );
+            for i in 0..MAX_TEXTURES {
+
+                let constants = [i];
+
+                //logical_device.cmd_push_constants(*command_buffer, *pipeline_layout, ShaderStageFlags::FRAGMENT, 0, constants.to_u);
+
+                logical_device.cmd_draw_indexed(
+                    *command_buffer,
+                    INDEX_LIST.len() as u32,
+                    1,
+                    0,
+                    0,
+                    0,
+                );
+            }
+
 
             // let mut draw_list_index = 0;
             // if let Some(draw_data) = imgui_draw_data {
