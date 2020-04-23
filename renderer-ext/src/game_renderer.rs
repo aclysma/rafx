@@ -2,7 +2,8 @@ use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiR
 use crate::ResourceManager;
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, RendererEventListener, RendererBuilder, CreateRendererError, Renderer, Window};
 use ash::prelude::VkResult;
-use crate::features::sprite_renderpass_push_constant::VkSpriteRenderPass;
+//use crate::features::sprite_renderpass_push_constant::VkSpriteRenderPass;
+use crate::features::sprite_renderpass_many_sets::VkSpriteRenderPass;
 use std::mem::swap;
 
 pub struct GameRenderer {
@@ -92,7 +93,8 @@ impl GameRendererWithShell {
         let mut game_renderer = GameRenderer::new(window, imgui_font_atlas);
 
         let shell = RendererBuilder::new()
-            .use_vulkan_debug_layer(true)
+            //.use_vulkan_debug_layer(true)
+            .use_vulkan_debug_layer(false)
             .prefer_mailbox_present_mode()
             .build(window, Some(&mut game_renderer))?;
 

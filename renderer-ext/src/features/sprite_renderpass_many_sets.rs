@@ -27,6 +27,12 @@ pub struct DecodedTexture {
     pub data: Vec<u8>,
 }
 
+#[repr(C)]
+struct PushConstants {
+
+    texture_index: u32
+}
+
 #[derive(Clone, Debug, Copy)]
 struct UniformBufferObject {
     mvp: [[f32; 4]; 4],
@@ -65,7 +71,7 @@ const VERTEX_LIST : [Vertex; 4] = [
 
 const INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
 
-const MAX_TEXTURES : u32 = 1000;
+const MAX_TEXTURES : u32 = 100;
 
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
@@ -509,7 +515,7 @@ impl VkSpriteRenderPass {
 
         let fragment_shader_module = Self::load_shader_module(
             logical_device,
-            &include_bytes!("../../shaders/texture.frag.spv")[..],
+            &include_bytes!("../../shaders/texture_many_sets.frag.spv")[..],
         )?;
 
         let shader_entry_name = CString::new("main").unwrap();
@@ -1114,33 +1120,26 @@ impl VkSpriteRenderPass {
                 &[],
             );
 
-            for i in 0..MAX_TEXTURES {
-                // logical_device.cmd_bind_descriptor_sets(
-                //     *command_buffer,
-                //     vk::PipelineBindPoint::GRAPHICS,
-                //     *pipeline_layout,
-                //     1,
-                //     &[descriptor_set_per_texture[(i % 2) as usize]],
-                //     &[],
-                // );
+            for _ in 0..100 {
+                for i in 0..MAX_TEXTURES {
+                    logical_device.cmd_bind_descriptor_sets(
+                        *command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        *pipeline_layout,
+                        1,
+                        &[descriptor_set_per_texture[i as usize]],
+                        &[],
+                    );
 
-                // logical_device.cmd_bind_descriptor_sets(
-                //     *command_buffer,
-                //     vk::PipelineBindPoint::GRAPHICS,
-                //     *pipeline_layout,
-                //     1,
-                //     &[descriptor_set_per_texture[i as usize]],
-                //     &[],
-                // );
-
-                logical_device.cmd_draw_indexed(
-                    *command_buffer,
-                    INDEX_LIST.len() as u32,
-                    1,
-                    0,
-                    0,
-                    0,
-                );
+                    logical_device.cmd_draw_indexed(
+                        *command_buffer,
+                        INDEX_LIST.len() as u32,
+                        1,
+                        0,
+                        0,
+                        0,
+                    );
+                }
             }
 
             logical_device.cmd_end_render_pass(*command_buffer);

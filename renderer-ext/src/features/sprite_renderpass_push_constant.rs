@@ -71,7 +71,7 @@ const VERTEX_LIST : [Vertex; 4] = [
 
 const INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
 
-const MAX_TEXTURES : u32 = 128;
+const MAX_TEXTURES : u32 = 100;
 
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
@@ -515,7 +515,7 @@ impl VkSpriteRenderPass {
 
         let fragment_shader_module = Self::load_shader_module(
             logical_device,
-            &include_bytes!("../../shaders/texture.frag.spv")[..],
+            &include_bytes!("../../shaders/texture_push_constant.frag.spv")[..],
         )?;
 
         let shader_entry_name = CString::new("main").unwrap();
@@ -1171,56 +1171,40 @@ impl VkSpriteRenderPass {
                 &[],
             );
 
-            for i in 0..MAX_TEXTURES {
-                // logical_device.cmd_bind_descriptor_sets(
-                //     *command_buffer,
-                //     vk::PipelineBindPoint::GRAPHICS,
-                //     *pipeline_layout,
-                //     1,
-                //     &[descriptor_set_per_texture[(i % 2) as usize]],
-                //     &[],
-                // );
+            for _ in 0..100 {
+                for i in 0..MAX_TEXTURES {
+                    let push_constants = PushConstants {
+                        texture_index: i
+                    };
 
-                // logical_device.cmd_bind_descriptor_sets(
-                //     *command_buffer,
-                //     vk::PipelineBindPoint::GRAPHICS,
-                //     *pipeline_layout,
-                //     1,
-                //     &[descriptor_set_per_texture[i as usize]],
-                //     &[],
-                // );
+                    unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+                        ::std::slice::from_raw_parts(
+                            (p as *const T) as *const u8,
+                            ::std::mem::size_of::<T>(),
+                        )
+                    }
 
-                let push_constants = PushConstants {
-                    texture_index: i
-                };
+                    let push_constants_ref = unsafe {
+                        any_as_u8_slice(&push_constants)
+                    };
 
-                unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-                    ::std::slice::from_raw_parts(
-                        (p as *const T) as *const u8,
-                        ::std::mem::size_of::<T>(),
-                    )
+                    logical_device.cmd_push_constants(
+                        *command_buffer,
+                        *pipeline_layout,
+                        ShaderStageFlags::FRAGMENT,
+                        0,
+                        push_constants_ref
+                    );
+
+                    logical_device.cmd_draw_indexed(
+                        *command_buffer,
+                        INDEX_LIST.len() as u32,
+                        1,
+                        0,
+                        0,
+                        0,
+                    );
                 }
-
-                let push_constants_ref = unsafe {
-                    any_as_u8_slice(&push_constants)
-                };
-
-                // logical_device.cmd_push_constants(
-                //     *command_buffer,
-                //     *pipeline_layout,
-                //     ShaderStageFlags::FRAGMENT,
-                // 0,
-                //     push_constants_ref
-                // );
-
-                logical_device.cmd_draw_indexed(
-                    *command_buffer,
-                    INDEX_LIST.len() as u32,
-                    1,
-                    0,
-                    0,
-                    0,
-                );
             }
 
             logical_device.cmd_end_render_pass(*command_buffer);
