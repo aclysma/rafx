@@ -10,11 +10,6 @@ layout (set = 0, binding = 1) uniform sampler smp;
 
 layout (set = 1, binding = 0) uniform texture2D tex;
 
-layout (push_constant) uniform PushConstants {
-    //mat4 transform;
-    uint textureIndex;
-} pushConstants;
-
 layout (location = 0) in vec2 o_uv;
 
 layout (location = 0) out vec4 uFragColor;

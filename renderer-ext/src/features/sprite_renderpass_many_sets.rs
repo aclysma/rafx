@@ -27,21 +27,6 @@ pub struct DecodedTexture {
     pub data: Vec<u8>,
 }
 
-#[repr(C, align(16))]
-struct PushConstants {
-    //transform: glam::Mat4
-    transform: u32
-}
-
-impl PushConstants {
-    fn new(transform: glam::Mat4) -> Self {
-        PushConstants {
-            //transform
-            transform: 1
-        }
-    }
-}
-
 #[derive(Clone, Debug, Copy)]
 struct UniformBufferObject {
     mvp: [[f32; 4]; 4],
@@ -54,7 +39,7 @@ struct Vertex {
     color: [u8; 4],
 }
 
-const VERTEX_LIST : [Vertex; 4] = [
+const QUAD_VERTEX_LIST : [Vertex; 4] = [
     Vertex {
         pos: [-0.5, -0.5],
         color: [255, 0, 0, 255],
@@ -78,7 +63,7 @@ const VERTEX_LIST : [Vertex; 4] = [
     }
 ];
 
-const INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
+const QUAD_INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
 
 const MAX_TEXTURES : u32 = 1000;
 
@@ -541,18 +526,9 @@ impl VkSpriteRenderPass {
                 .build(),
         ];
 
-        let push_constant_ranges = [
-            vk::PushConstantRange::builder()
-                .size(std::mem::size_of::<PushConstants>() as u32)
-                .offset(0)
-                .stage_flags(vk::ShaderStageFlags::VERTEX)
-                .build()
-        ];
-
         let layout_create_info =
             vk::PipelineLayoutCreateInfo::builder()
-                .set_layouts(descriptor_set_layouts)
-                .push_constant_ranges(&push_constant_ranges);
+                .set_layouts(descriptor_set_layouts);
 
         let pipeline_layout: vk::PipelineLayout =
             unsafe { logical_device.create_pipeline_layout(&layout_create_info, None)? };
@@ -987,9 +963,28 @@ impl VkSpriteRenderPass {
         //     vk::BufferUsageFlags::VERTEX_BUFFER,
         //     &VERTEX_LIST);
 
-        let vertex_list = VERTEX_LIST;
-        let index_list = INDEX_LIST;
+        // let vertex_list = VERTEX_LIST;
+        // let index_list = INDEX_LIST;
 
+
+
+        const QUADS_TO_DRAW : usize = 1;
+        const DRAW_CALLS : usize = 10000;
+        let mut vertex_list : Vec<Vertex> = Vec::with_capacity(QUAD_VERTEX_LIST.len() * QUADS_TO_DRAW);
+        let mut index_list : Vec<u16> = Vec::with_capacity(QUAD_INDEX_LIST.len() * QUADS_TO_DRAW);
+
+        {
+            //let scoped_timer = crate::time::ScopeTimer::new("build buffer data");
+            for quad_index in 0..QUADS_TO_DRAW {
+                for vertex in &QUAD_VERTEX_LIST {
+                    vertex_list.push(*vertex);
+                }
+
+                for index in &QUAD_INDEX_LIST {
+                    index_list.push(*index + (QUAD_VERTEX_LIST.len() * quad_index) as u16);
+                }
+            }
+        }
 
 
         let mut draw_list_count = 0;
@@ -1007,7 +1002,7 @@ impl VkSpriteRenderPass {
                 vertex_buffer_size,
             )?;
 
-            staging_vertex_buffer.write_to_host_visible_buffer(&vertex_list)?;
+            staging_vertex_buffer.write_to_host_visible_buffer(vertex_list.as_slice())?;
 
             let vertex_buffer = VkBuffer::new(
                 &logical_device,
@@ -1033,7 +1028,7 @@ impl VkSpriteRenderPass {
                 index_buffer_size,
             )?;
 
-            staging_index_buffer.write_to_host_visible_buffer(&index_list)?;
+            staging_index_buffer.write_to_host_visible_buffer(index_list.as_slice())?;
 
             let index_buffer = VkBuffer::new(
                 &logical_device,
@@ -1064,7 +1059,6 @@ impl VkSpriteRenderPass {
             .clear_values(&clear_values);
 
 
-        let scoped_timer = crate::time::ScopeTimer::new("record command buffer");
 
         // Implicitly resets the command buffer
         unsafe {
@@ -1139,7 +1133,6 @@ impl VkSpriteRenderPass {
             //     vk::IndexType::UINT16,
             // );
 
-
             logical_device.cmd_bind_descriptor_sets(
                 *command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
@@ -1158,71 +1151,38 @@ impl VkSpriteRenderPass {
                 &[],
             );
 
-            // let push_constants = PushConstants::new(glam::Mat4::identity());
-            //
-            // unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-            //     ::std::slice::from_raw_parts(
-            //         (p as *const T) as *const u8,
-            //         ::std::mem::size_of::<T>(),
-            //     )
-            // }
-            //
-            // let push_constants_ref = unsafe {
-            //     any_as_u8_slice(&push_constants)
-            // };
-            //
-            // logical_device.cmd_push_constants(
-            //     *command_buffer,
-            //     *pipeline_layout,
-            //     ShaderStageFlags::VERTEX,
-            //     0,
-            //     push_constants_ref
-            // );
-
-
-
-            for _ in 0..10 {
-                for i in 0..MAX_TEXTURES {
-                    // let push_constants = PushConstants::new(glam::Mat4::identity());
-                    //
-                    // unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-                    //     ::std::slice::from_raw_parts(
-                    //         (p as *const T) as *const u8,
-                    //         ::std::mem::size_of::<T>(),
-                    //     )
-                    // }
-                    //
-                    // let push_constants_ref = unsafe {
-                    //     any_as_u8_slice(&push_constants)
-                    // };
-                    //
-                    // logical_device.cmd_push_constants(
-                    //     *command_buffer,
-                    //     *pipeline_layout,
-                    //     ShaderStageFlags::VERTEX,
-                    //     0,
-                    //     push_constants_ref
-                    // );
-
-                    logical_device.cmd_bind_descriptor_sets(
-                        *command_buffer,
-                        vk::PipelineBindPoint::GRAPHICS,
-                        *pipeline_layout,
-                        1,
-                        &[descriptor_set_per_texture[0 as usize]],
-                        &[],
-                    );
-
-                    logical_device.cmd_draw_indexed(
-                        *command_buffer,
-                        INDEX_LIST.len() as u32,
-                        1,
-                        0,
-                        0,
-                        0,
-                    );
-                }
+            for _ in 0..DRAW_CALLS {
+                logical_device.cmd_draw_indexed(
+                    *command_buffer,
+                    index_list.len() as u32,
+                    1,
+                    0,
+                    0,
+                    0,
+                );
             }
+
+            // for _ in 0..10 {
+            //     for i in 0..MAX_TEXTURES {
+            //         logical_device.cmd_bind_descriptor_sets(
+            //             *command_buffer,
+            //             vk::PipelineBindPoint::GRAPHICS,
+            //             *pipeline_layout,
+            //             1,
+            //             &[descriptor_set_per_texture[0 as usize]],
+            //             &[],
+            //         );
+            //
+            //         logical_device.cmd_draw_indexed(
+            //             *command_buffer,
+            //             index_list.len() as u32,
+            //             1,
+            //             0,
+            //             0,
+            //             0,
+            //         );
+            //     }
+            // }
 
             logical_device.cmd_end_render_pass(*command_buffer);
 
