@@ -27,10 +27,19 @@ pub struct DecodedTexture {
     pub data: Vec<u8>,
 }
 
-#[repr(C)]
+#[repr(C, align(16))]
 struct PushConstants {
+    //transform: glam::Mat4
+    transform: u32
+}
 
-    texture_index: u32
+impl PushConstants {
+    fn new(transform: glam::Mat4) -> Self {
+        PushConstants {
+            //transform
+            transform: 1
+        }
+    }
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -71,7 +80,7 @@ const VERTEX_LIST : [Vertex; 4] = [
 
 const INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
 
-const MAX_TEXTURES : u32 = 100;
+const MAX_TEXTURES : u32 = 1000;
 
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
@@ -532,8 +541,18 @@ impl VkSpriteRenderPass {
                 .build(),
         ];
 
+        let push_constant_ranges = [
+            vk::PushConstantRange::builder()
+                .size(std::mem::size_of::<PushConstants>() as u32)
+                .offset(0)
+                .stage_flags(vk::ShaderStageFlags::VERTEX)
+                .build()
+        ];
+
         let layout_create_info =
-            vk::PipelineLayoutCreateInfo::builder().set_layouts(descriptor_set_layouts);
+            vk::PipelineLayoutCreateInfo::builder()
+                .set_layouts(descriptor_set_layouts)
+                .push_constant_ranges(&push_constant_ranges);
 
         let pipeline_layout: vk::PipelineLayout =
             unsafe { logical_device.create_pipeline_layout(&layout_create_info, None)? };
@@ -968,11 +987,16 @@ impl VkSpriteRenderPass {
         //     vk::BufferUsageFlags::VERTEX_BUFFER,
         //     &VERTEX_LIST);
 
+        let vertex_list = VERTEX_LIST;
+        let index_list = INDEX_LIST;
+
+
+
         let mut draw_list_count = 0;
         // if let Some(draw_data) = imgui_draw_data {
         //     for draw_list in draw_data.draw_lists() {
         let (vertex_buffer, staging_vertex_buffer) = {
-            let vertex_buffer_size = VERTEX_LIST.len() as u64
+            let vertex_buffer_size = vertex_list.len() as u64
                 * std::mem::size_of::<Vertex>() as u64;
             let mut staging_vertex_buffer = VkBuffer::new(
                 logical_device,
@@ -983,7 +1007,7 @@ impl VkSpriteRenderPass {
                 vertex_buffer_size,
             )?;
 
-            staging_vertex_buffer.write_to_host_visible_buffer(&VERTEX_LIST)?;
+            staging_vertex_buffer.write_to_host_visible_buffer(&vertex_list)?;
 
             let vertex_buffer = VkBuffer::new(
                 &logical_device,
@@ -998,7 +1022,7 @@ impl VkSpriteRenderPass {
 
         //TODO: Duplicated code here
         let (index_buffer, staging_index_buffer) = {
-            let index_buffer_size = INDEX_LIST.len() as u64
+            let index_buffer_size = index_list.len() as u64
                 * std::mem::size_of::<u16>() as u64;
             let mut staging_index_buffer = VkBuffer::new(
                 logical_device,
@@ -1009,7 +1033,7 @@ impl VkSpriteRenderPass {
                 index_buffer_size,
             )?;
 
-            staging_index_buffer.write_to_host_visible_buffer(&INDEX_LIST)?;
+            staging_index_buffer.write_to_host_visible_buffer(&index_list)?;
 
             let index_buffer = VkBuffer::new(
                 &logical_device,
@@ -1046,34 +1070,34 @@ impl VkSpriteRenderPass {
         unsafe {
             logical_device.begin_command_buffer(*command_buffer, &command_buffer_begin_info)?;
 
-            for i in 0..draw_list_count {
-                {
-                    let buffer_copy_info = [vk::BufferCopy::builder()
-                        .size(staging_vertex_buffers[i].size)
-                        .build()];
-
-                    logical_device.cmd_copy_buffer(
-                        *command_buffer,
-                        staging_vertex_buffers[i].buffer,
-                        vertex_buffers[i].buffer,
-                        &buffer_copy_info,
-                    );
-                }
-
-                //TODO: Duplicated code here
-                {
-                    let buffer_copy_info = [vk::BufferCopy::builder()
-                        .size(staging_index_buffers[i].size)
-                        .build()];
-
-                    logical_device.cmd_copy_buffer(
-                        *command_buffer,
-                        staging_index_buffers[i].buffer,
-                        index_buffers[i].buffer,
-                        &buffer_copy_info,
-                    );
-                }
-            }
+            // for i in 0..draw_list_count {
+            //     {
+            //         let buffer_copy_info = [vk::BufferCopy::builder()
+            //             .size(staging_vertex_buffers[i].size)
+            //             .build()];
+            //
+            //         logical_device.cmd_copy_buffer(
+            //             *command_buffer,
+            //             staging_vertex_buffers[i].buffer,
+            //             vertex_buffers[i].buffer,
+            //             &buffer_copy_info,
+            //         );
+            //     }
+            //
+            //     //TODO: Duplicated code here
+            //     {
+            //         let buffer_copy_info = [vk::BufferCopy::builder()
+            //             .size(staging_index_buffers[i].size)
+            //             .build()];
+            //
+            //         logical_device.cmd_copy_buffer(
+            //             *command_buffer,
+            //             staging_index_buffers[i].buffer,
+            //             index_buffers[i].buffer,
+            //             &buffer_copy_info,
+            //         );
+            //     }
+            // }
 
             logical_device.cmd_begin_render_pass(
                 *command_buffer,
@@ -1090,16 +1114,30 @@ impl VkSpriteRenderPass {
             logical_device.cmd_bind_vertex_buffers(
                 *command_buffer,
                 0, // first binding
-                &[vertex_buffers[0].buffer],
+                &[staging_vertex_buffers[0].buffer],
                 &[0], // offsets
             );
 
             logical_device.cmd_bind_index_buffer(
                 *command_buffer,
-                index_buffers[0].buffer,
+                staging_index_buffers[0].buffer,
                 0, // offset
                 vk::IndexType::UINT16,
             );
+
+            // logical_device.cmd_bind_vertex_buffers(
+            //     *command_buffer,
+            //     0, // first binding
+            //     &[vertex_buffers[0].buffer],
+            //     &[0], // offsets
+            // );
+            //
+            // logical_device.cmd_bind_index_buffer(
+            //     *command_buffer,
+            //     index_buffers[0].buffer,
+            //     0, // offset
+            //     vk::IndexType::UINT16,
+            // );
 
 
             logical_device.cmd_bind_descriptor_sets(
@@ -1120,14 +1158,58 @@ impl VkSpriteRenderPass {
                 &[],
             );
 
-            for _ in 0..100 {
+            // let push_constants = PushConstants::new(glam::Mat4::identity());
+            //
+            // unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+            //     ::std::slice::from_raw_parts(
+            //         (p as *const T) as *const u8,
+            //         ::std::mem::size_of::<T>(),
+            //     )
+            // }
+            //
+            // let push_constants_ref = unsafe {
+            //     any_as_u8_slice(&push_constants)
+            // };
+            //
+            // logical_device.cmd_push_constants(
+            //     *command_buffer,
+            //     *pipeline_layout,
+            //     ShaderStageFlags::VERTEX,
+            //     0,
+            //     push_constants_ref
+            // );
+
+
+
+            for _ in 0..10 {
                 for i in 0..MAX_TEXTURES {
+                    // let push_constants = PushConstants::new(glam::Mat4::identity());
+                    //
+                    // unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+                    //     ::std::slice::from_raw_parts(
+                    //         (p as *const T) as *const u8,
+                    //         ::std::mem::size_of::<T>(),
+                    //     )
+                    // }
+                    //
+                    // let push_constants_ref = unsafe {
+                    //     any_as_u8_slice(&push_constants)
+                    // };
+                    //
+                    // logical_device.cmd_push_constants(
+                    //     *command_buffer,
+                    //     *pipeline_layout,
+                    //     ShaderStageFlags::VERTEX,
+                    //     0,
+                    //     push_constants_ref
+                    // );
+
                     logical_device.cmd_bind_descriptor_sets(
                         *command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
                         *pipeline_layout,
                         1,
-                        &[descriptor_set_per_texture[i as usize]],
+                        &[descriptor_set_per_texture[0 as usize]],
                         &[],
                     );
 
