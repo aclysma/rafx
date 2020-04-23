@@ -20,7 +20,7 @@ impl<'a> ScopeTimer<'a> {
 impl<'a> Drop for ScopeTimer<'a> {
     fn drop(&mut self) {
         let end_time = std::time::Instant::now();
-        log::error!(
+        log::trace!(
             "ScopeTimer {}: {}",
             self.name,
             (end_time - self.start_time).as_micros() as f64 / 1000.0

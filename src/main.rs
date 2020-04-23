@@ -17,7 +17,7 @@ use image::GenericImageView;
 fn main() {
     // Setup logging
     env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Error)
         .init();
 
     // Setup SDL

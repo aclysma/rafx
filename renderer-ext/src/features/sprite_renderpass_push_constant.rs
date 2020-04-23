@@ -18,13 +18,19 @@ use renderer_shell_vulkan::VkImage;
 use image::error::ImageError::Decoding;
 use std::process::exit;
 use image::{GenericImageView, ImageFormat};
-use ash::vk::ShaderStageFlags;
+use ash::vk::{ShaderStageFlags, PushConstantRangeBuilder};
+use std::f32::MAX;
 
 #[derive(Clone)]
 pub struct DecodedTexture {
     pub width: u32,
     pub height: u32,
     pub data: Vec<u8>,
+}
+
+#[repr(C)]
+struct PushConstants {
+    texture_index: u32
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -65,7 +71,7 @@ const VERTEX_LIST : [Vertex; 4] = [
 
 const INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
 
-const MAX_TEXTURES : u32 = 100;
+const MAX_TEXTURES : u32 = 128;
 
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
@@ -86,7 +92,11 @@ struct PipelineResources {
 pub struct VkSpriteRenderPass {
     pub device: ash::Device, // This struct is not responsible for releasing this
     pub swapchain_info: SwapchainInfo,
-    pub descriptor_set_layout: vk::DescriptorSetLayout,
+
+    pub descriptor_set_layout_per_pass: vk::DescriptorSetLayout,
+    pub descriptor_set_layout_per_texture: vk::DescriptorSetLayout,
+
+
     pub pipeline_layout: vk::PipelineLayout,
     pub renderpass: vk::RenderPass,
     pub pipeline: vk::Pipeline,
@@ -100,8 +110,12 @@ pub struct VkSpriteRenderPass {
     pub staging_index_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
 
     pub uniform_buffers: Vec<ManuallyDrop<VkBuffer>>,
-    pub descriptor_pool: vk::DescriptorPool,
-    pub descriptor_sets: Vec<vk::DescriptorSet>,
+
+    pub descriptor_pool_per_pass: vk::DescriptorPool,
+    pub descriptor_pool_per_texture: vk::DescriptorPool,
+
+    pub descriptor_sets_per_pass: Vec<vk::DescriptorSet>,
+    pub descriptor_sets_per_texture: Vec<vk::DescriptorSet>,
 
     pub images: Vec<ManuallyDrop<VkImage>>,
     pub image_views: Vec<vk::ImageView>,
@@ -133,7 +147,13 @@ impl VkSpriteRenderPass {
 
         let mut pipeline_resources = None;
 
-        let descriptor_set_layout = Self::create_descriptor_set_layout(&device.logical_device)?;
+        let descriptor_set_layout_per_pass = Self::create_descriptor_set_layout_per_pass(&device.logical_device)?;
+        let descriptor_set_layout_per_texture = Self::create_descriptor_set_layout_per_texture(&device.logical_device)?;
+
+        let descriptor_set_layouts = [
+            descriptor_set_layout_per_pass,
+            descriptor_set_layout_per_texture
+        ];
 
         Self::create_fixed_function_state(&swapchain.swapchain_info, |fixed_function_state| {
             Self::create_renderpass_create_info(
@@ -144,7 +164,7 @@ impl VkSpriteRenderPass {
                         &swapchain.swapchain_info,
                         fixed_function_state,
                         renderpass_create_info,
-                        descriptor_set_layout,
+                        &descriptor_set_layouts,
                         |resources| {
                             pipeline_resources = Some(resources);
                         },
@@ -216,19 +236,31 @@ impl VkSpriteRenderPass {
 
         let image_sampler = Self::create_texture_image_sampler(&device.logical_device);
 
-        let descriptor_pool = Self::create_descriptor_pool(
+        let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
             &device.logical_device,
             swapchain.swapchain_info.image_count as u32,
         )?;
 
-        let descriptor_sets = Self::create_descriptor_sets(
+        let descriptor_pool_per_texture = Self::create_descriptor_pool_per_texture(
             &device.logical_device,
-            &descriptor_pool,
-            &descriptor_set_layout,
+            swapchain.swapchain_info.image_count as u32,
+        )?;
+
+        let descriptor_sets_per_pass = Self::create_descriptor_sets_per_pass(
+            &device.logical_device,
+            &descriptor_pool_per_pass,
+            &descriptor_set_layouts[0],
             swapchain.swapchain_info.image_count,
             &uniform_buffers,
-            &image_views,
             &image_sampler,
+        )?;
+
+        let descriptor_sets_per_texture = Self::create_descriptor_sets_per_texture(
+            &device.logical_device,
+            &descriptor_pool_per_texture,
+            &descriptor_set_layouts[1],
+            swapchain.swapchain_info.image_count,
+            &image_views,
         )?;
 
         for i in 0..swapchain.swapchain_info.image_count {
@@ -245,14 +277,16 @@ impl VkSpriteRenderPass {
                 &mut index_buffers[i],
                 &mut staging_vertex_buffers[i],
                 &mut staging_index_buffers[i],
-                &descriptor_sets[i],
+                &descriptor_sets_per_pass[i],
+                &descriptor_sets_per_texture[i]
             )?;
         }
 
         Ok(VkSpriteRenderPass {
             device: device.logical_device.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
-            descriptor_set_layout,
+            descriptor_set_layout_per_pass,
+            descriptor_set_layout_per_texture,
             pipeline_layout,
             renderpass,
             pipeline,
@@ -264,15 +298,17 @@ impl VkSpriteRenderPass {
             staging_vertex_buffers,
             staging_index_buffers,
             uniform_buffers,
-            descriptor_pool,
-            descriptor_sets,
+            descriptor_pool_per_pass,
+            descriptor_pool_per_texture,
+            descriptor_sets_per_pass,
+            descriptor_sets_per_texture,
             images,
             image_views,
             image_sampler,
         })
     }
 
-    fn create_descriptor_set_layout(
+    fn create_descriptor_set_layout_per_pass(
         logical_device: &ash::Device
     ) -> VkResult<vk::DescriptorSetLayout> {
         let descriptor_set_layout_bindings = [
@@ -284,23 +320,30 @@ impl VkSpriteRenderPass {
                 .build(),
             vk::DescriptorSetLayoutBinding::builder()
                 .binding(1)
-                .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(MAX_TEXTURES)
-                //.descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                .build(),
-            vk::DescriptorSetLayoutBinding::builder()
-                .binding(2)
                 .descriptor_type(vk::DescriptorType::SAMPLER)
                 .descriptor_count(1)
                 .stage_flags(vk::ShaderStageFlags::FRAGMENT)
                 .build(),
-            // vk::DescriptorSetLayoutBinding::builder()
-            //     .binding(1)
-            //     .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-            //     .descriptor_count(MAX_TEXTURES)
-            //     .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-            //     .build(),
+        ];
+
+        let descriptor_set_layout_create_info =
+            vk::DescriptorSetLayoutCreateInfo::builder().bindings(&descriptor_set_layout_bindings);
+
+        unsafe {
+            logical_device.create_descriptor_set_layout(&descriptor_set_layout_create_info, None)
+        }
+    }
+
+    fn create_descriptor_set_layout_per_texture(
+        logical_device: &ash::Device
+    ) -> VkResult<vk::DescriptorSetLayout> {
+        let descriptor_set_layout_bindings = [
+            vk::DescriptorSetLayoutBinding::builder()
+                .binding(0)
+                .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                .descriptor_count(MAX_TEXTURES)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                .build(),
         ];
 
         let descriptor_set_layout_create_info =
@@ -459,7 +502,7 @@ impl VkSpriteRenderPass {
         _swapchain_info: &SwapchainInfo,
         fixed_function_state: &FixedFunctionState,
         renderpass_create_info: &vk::RenderPassCreateInfo,
-        descriptor_set_layout: vk::DescriptorSetLayout,
+        descriptor_set_layouts: &[vk::DescriptorSetLayout],
         mut f: F,
     ) -> VkResult<()> {
         //
@@ -489,10 +532,18 @@ impl VkSpriteRenderPass {
                 .build(),
         ];
 
-        let descriptor_set_layouts = [descriptor_set_layout];
+        let push_constant_ranges = [
+            vk::PushConstantRange::builder()
+                .size(std::mem::size_of::<PushConstants>() as u32)
+                .offset(0)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                .build()
+        ];
 
         let layout_create_info =
-            vk::PipelineLayoutCreateInfo::builder().set_layouts(&descriptor_set_layouts);
+            vk::PipelineLayoutCreateInfo::builder()
+                .set_layouts(descriptor_set_layouts)
+                .push_constant_ranges(&push_constant_ranges);
 
         let pipeline_layout: vk::PipelineLayout =
             unsafe { logical_device.create_pipeline_layout(&layout_create_info, None)? };
@@ -737,27 +788,37 @@ impl VkSpriteRenderPass {
         unsafe { logical_device.create_sampler(&sampler_info, None).unwrap() }
     }
 
-    fn create_descriptor_pool(
+    fn create_descriptor_pool_per_pass(
         logical_device: &ash::Device,
         swapchain_image_count: u32,
     ) -> VkResult<vk::DescriptorPool> {
         let pool_sizes = [
             vk::DescriptorPoolSize::builder()
                 .ty(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(swapchain_image_count)
-                .build(),
-            vk::DescriptorPoolSize::builder()
-                .ty(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(swapchain_image_count * MAX_TEXTURES)
+                .descriptor_count(3)
                 .build(),
             vk::DescriptorPoolSize::builder()
                 .ty(vk::DescriptorType::SAMPLER)
-                .descriptor_count(swapchain_image_count)
+                .descriptor_count(3)
                 .build(),
-            // vk::DescriptorPoolSize::builder()
-            //     .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-            //     .descriptor_count(swapchain_image_count * MAX_TEXTURES)
-            //     .build(),
+        ];
+
+        let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
+            .pool_sizes(&pool_sizes)
+            .max_sets(3);
+
+        unsafe { logical_device.create_descriptor_pool(&descriptor_pool_info, None) }
+    }
+
+    fn create_descriptor_pool_per_texture(
+        logical_device: &ash::Device,
+        swapchain_image_count: u32,
+    ) -> VkResult<vk::DescriptorPool> {
+        let pool_sizes = [
+            vk::DescriptorPoolSize::builder()
+                .ty(vk::DescriptorType::SAMPLED_IMAGE)
+                .descriptor_count(MAX_TEXTURES * swapchain_image_count)
+                .build(),
         ];
 
         let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
@@ -767,13 +828,12 @@ impl VkSpriteRenderPass {
         unsafe { logical_device.create_descriptor_pool(&descriptor_pool_info, None) }
     }
 
-    fn create_descriptor_sets(
+    fn create_descriptor_sets_per_pass(
         logical_device: &ash::Device,
         descriptor_pool: &vk::DescriptorPool,
         descriptor_set_layout: &vk::DescriptorSetLayout,
         swapchain_image_count: usize,
         uniform_buffers: &Vec<ManuallyDrop<VkBuffer>>,
-        image_views: &[vk::ImageView],
         image_sampler: &vk::Sampler,
     ) -> VkResult<Vec<vk::DescriptorSet>> {
         // DescriptorSetAllocateInfo expects an array with an element per set
@@ -786,42 +846,15 @@ impl VkSpriteRenderPass {
         let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
 
         for i in 0..swapchain_image_count {
-            // let image_view_descriptor_image_infos = [
-            //     vk::DescriptorImageInfo::builder()
-            //         .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            //         .image_view(image_views[0])
-            //         .build(),
-            //     vk::DescriptorImageInfo::builder()
-            //         .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            //         .image_view(image_views[1])
-            //         .build()
-            // ];
-
-            let image_view_descriptor_image_infos : Vec<_> = image_views.iter().map(|image_view| {
-                vk::DescriptorImageInfo::builder()
-                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                    .image_view(*image_view)
-                    .build()
-            }).collect();
-
-            let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
-                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .sampler(*image_sampler)
-                .build()];
-
-
-            // let image_view_descriptor_image_infos : Vec<_> = image_views.iter().map(|image_view| {
-            //     vk::DescriptorImageInfo::builder()
-            //         .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            //         .image_view(*image_view)
-            //         .sampler(*image_sampler)
-            //         .build()
-            // }).collect();
-
             let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
                 .buffer(uniform_buffers[i as usize].buffer)
                 .offset(0)
                 .range(mem::size_of::<UniformBufferObject>() as u64)
+                .build()];
+
+            let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .sampler(*image_sampler)
                 .build()];
 
             let descriptor_writes = [
@@ -836,23 +869,9 @@ impl VkSpriteRenderPass {
                     .dst_set(descriptor_sets[i])
                     .dst_binding(1)
                     .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                    .image_info(&image_view_descriptor_image_infos)
-                    .build(),
-                vk::WriteDescriptorSet::builder()
-                    .dst_set(descriptor_sets[i])
-                    .dst_binding(2)
-                    .dst_array_element(0)
                     .descriptor_type(vk::DescriptorType::SAMPLER)
                     .image_info(&sampler_descriptor_image_infos)
                     .build(),
-                // vk::WriteDescriptorSet::builder()
-                //     .dst_set(descriptor_sets[i])
-                //     .dst_binding(1)
-                //     .dst_array_element(0)
-                //     .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                //     .image_info(&image_view_descriptor_image_infos)
-                //     .build(),
             ];
 
             unsafe {
@@ -861,6 +880,96 @@ impl VkSpriteRenderPass {
         }
 
         Ok(descriptor_sets)
+    }
+
+
+    fn create_descriptor_sets_per_texture(
+        logical_device: &ash::Device,
+        descriptor_pool: &vk::DescriptorPool,
+        descriptor_set_layout: &vk::DescriptorSetLayout,
+        swapchain_image_count: usize,
+        image_views: &[vk::ImageView],
+    ) -> VkResult<Vec<vk::DescriptorSet>> {
+        // DescriptorSetAllocateInfo expects an array with an element per set
+        let descriptor_set_layouts = vec![*descriptor_set_layout; swapchain_image_count];
+
+        let alloc_info = vk::DescriptorSetAllocateInfo::builder()
+            .descriptor_pool(*descriptor_pool)
+            .set_layouts(descriptor_set_layouts.as_slice());
+
+        let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
+
+        for i in 0..swapchain_image_count {
+            let image_infos : Vec<_> = image_views.iter().map(|image_view| {
+                vk::DescriptorImageInfo::builder()
+                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                    .image_view(*image_view)
+                    .build()
+            }).collect();
+
+            let descriptor_writes = [
+                vk::WriteDescriptorSet::builder()
+                    .dst_set(descriptor_sets[i])
+                    .dst_binding(0)
+                    .dst_array_element(0)
+                    .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                    .image_info(image_infos.as_slice())
+                    .build()
+            ];
+
+            unsafe {
+                logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+            }
+        }
+
+        Ok(descriptor_sets)
+
+
+
+        // // DescriptorSetAllocateInfo expects an array with an element per set
+        // let descriptor_set_layouts = vec![*descriptor_set_layout; swapchain_image_count];
+        //
+        // let alloc_info = vk::DescriptorSetAllocateInfo::builder()
+        //     .descriptor_pool(*descriptor_pool)
+        //     .set_layouts(descriptor_set_layouts.as_slice());
+        //
+        // let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
+        //
+        // for i in 0..swapchain_image_count {
+        //
+        //     let alloc_info = vk::DescriptorSetAllocateInfo::builder()
+        //         .descriptor_pool(*descriptor_pool)
+        //         .set_layouts(descriptor_set_layouts.as_slice());
+        //
+        //     let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
+        //
+        //     let mut descriptor_writes = Vec::with_capacity(MAX_TEXTURES as usize);
+        //
+        //     for (image_index, image_view) in image_views.iter().enumerate() {
+        //         let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
+        //             .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+        //             .image_view(*image_view)
+        //             .build();
+        //
+        //         descriptor_writes.push(
+        //             vk::WriteDescriptorSet::builder()
+        //                 .dst_set(descriptor_sets[image_index])
+        //                 .dst_binding(0)
+        //                 .dst_array_element(0)
+        //                 .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+        //                 .image_info(&[image_view_descriptor_image_info])
+        //                 .build()
+        //         );
+        //     }
+        //
+        //     unsafe {
+        //         logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+        //     }
+        //
+        //     all_sets.push(descriptor_sets);
+        // }
+        //
+        // Ok(all_sets)
     }
 
     fn record_command_buffer(
@@ -876,7 +985,8 @@ impl VkSpriteRenderPass {
         index_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
         staging_vertex_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
         staging_index_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
-        descriptor_set: &vk::DescriptorSet,
+        descriptor_set_per_pass: &vk::DescriptorSet,
+        descriptor_set_per_texture: &vk::DescriptorSet,
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
@@ -980,6 +1090,9 @@ impl VkSpriteRenderPass {
             })
             .clear_values(&clear_values);
 
+
+        let scoped_timer = crate::time::ScopeTimer::new("record command buffer");
+
         // Implicitly resets the command buffer
         unsafe {
             logical_device.begin_command_buffer(*command_buffer, &command_buffer_begin_info)?;
@@ -1025,18 +1138,6 @@ impl VkSpriteRenderPass {
                 *pipeline,
             );
 
-            logical_device.cmd_bind_descriptor_sets(
-                *command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                *pipeline_layout,
-                0,
-                &[*descriptor_set],
-                &[],
-            );
-
-
-
-
             logical_device.cmd_bind_vertex_buffers(
                 *command_buffer,
                 0, // first binding
@@ -1051,11 +1152,66 @@ impl VkSpriteRenderPass {
                 vk::IndexType::UINT16,
             );
 
+
+            logical_device.cmd_bind_descriptor_sets(
+                *command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                *pipeline_layout,
+                0,
+                &[*descriptor_set_per_pass],
+                &[],
+            );
+
+            logical_device.cmd_bind_descriptor_sets(
+                *command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                *pipeline_layout,
+                1,
+                &[*descriptor_set_per_texture],
+                &[],
+            );
+
             for i in 0..MAX_TEXTURES {
+                // logical_device.cmd_bind_descriptor_sets(
+                //     *command_buffer,
+                //     vk::PipelineBindPoint::GRAPHICS,
+                //     *pipeline_layout,
+                //     1,
+                //     &[descriptor_set_per_texture[(i % 2) as usize]],
+                //     &[],
+                // );
 
-                let constants = [i];
+                // logical_device.cmd_bind_descriptor_sets(
+                //     *command_buffer,
+                //     vk::PipelineBindPoint::GRAPHICS,
+                //     *pipeline_layout,
+                //     1,
+                //     &[descriptor_set_per_texture[i as usize]],
+                //     &[],
+                // );
 
-                //logical_device.cmd_push_constants(*command_buffer, *pipeline_layout, ShaderStageFlags::FRAGMENT, 0, constants.to_u);
+                let push_constants = PushConstants {
+                    texture_index: i
+                };
+
+                unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+                    ::std::slice::from_raw_parts(
+                        (p as *const T) as *const u8,
+                        ::std::mem::size_of::<T>(),
+                    )
+                }
+
+                let push_constants_ref = unsafe {
+                    any_as_u8_slice(&push_constants)
+                };
+
+                // logical_device.cmd_push_constants(
+                //     *command_buffer,
+                //     *pipeline_layout,
+                //     ShaderStageFlags::FRAGMENT,
+                // 0,
+                //     push_constants_ref
+                // );
 
                 logical_device.cmd_draw_indexed(
                     *command_buffer,
@@ -1066,82 +1222,6 @@ impl VkSpriteRenderPass {
                     0,
                 );
             }
-
-
-            // let mut draw_list_index = 0;
-            // if let Some(draw_data) = imgui_draw_data {
-            //     for draw_list in draw_data.draw_lists() {
-            //         logical_device.cmd_bind_vertex_buffers(
-            //             *command_buffer,
-            //             0, // first binding
-            //             &[vertex_buffers[draw_list_index].buffer],
-            //             &[0], // offsets
-            //         );
-            //
-            //         logical_device.cmd_bind_index_buffer(
-            //             *command_buffer,
-            //             index_buffers[draw_list_index].buffer,
-            //             0, // offset
-            //             vk::IndexType::UINT16,
-            //         );
-            //
-            //         let mut element_begin_index: u32 = 0;
-            //         for cmd in draw_list.commands() {
-            //             match cmd {
-            //                 imgui::DrawCmd::Elements {
-            //                     count,
-            //                     cmd_params:
-            //                     imgui::DrawCmdParams {
-            //                         clip_rect,
-            //                         //texture_id,
-            //                         ..
-            //                     },
-            //                 } => {
-            //                     let element_end_index = element_begin_index + count as u32;
-            //
-            //                     let scissors = vk::Rect2D {
-            //                         offset: vk::Offset2D {
-            //                             x: ((clip_rect[0] - draw_data.display_pos[0])
-            //                                 * draw_data.framebuffer_scale[0])
-            //                                 as i32,
-            //                             y: ((clip_rect[1] - draw_data.display_pos[1])
-            //                                 * draw_data.framebuffer_scale[1])
-            //                                 as i32,
-            //                         },
-            //                         extent: vk::Extent2D {
-            //                             width: ((clip_rect[2]
-            //                                 - clip_rect[0]
-            //                                 - draw_data.display_pos[0])
-            //                                 * draw_data.framebuffer_scale[0])
-            //                                 as u32,
-            //                             height: ((clip_rect[3]
-            //                                 - clip_rect[1]
-            //                                 - draw_data.display_pos[1])
-            //                                 * draw_data.framebuffer_scale[1])
-            //                                 as u32,
-            //                         },
-            //                     };
-            //
-            //                     logical_device.cmd_set_scissor(*command_buffer, 0, &[scissors]);
-            //
-            //                     logical_device.cmd_draw_indexed(
-            //                         *command_buffer,
-            //                         element_end_index - element_begin_index,
-            //                         1,
-            //                         element_begin_index,
-            //                         0,
-            //                         0,
-            //                     );
-            //
-            //                     element_begin_index = element_end_index;
-            //                 }
-            //                 _ => panic!("unexpected draw command"),
-            //             }
-            //         }
-            //
-            //         draw_list_index += 1;
-            //     }
-            // }
 
             logical_device.cmd_end_render_pass(*command_buffer);
 
@@ -1218,7 +1298,8 @@ impl VkSpriteRenderPass {
             &mut self.index_buffers[present_index],
             &mut self.staging_vertex_buffers[present_index],
             &mut self.staging_index_buffers[present_index],
-            &self.descriptor_sets[present_index],
+            &self.descriptor_sets_per_pass[present_index],
+            &self.descriptor_sets_per_texture[present_index],
         )
     }
 }
@@ -1269,9 +1350,13 @@ impl Drop for VkSpriteRenderPass {
             self.device.destroy_render_pass(self.renderpass, None);
 
             self.device
-                .destroy_descriptor_pool(self.descriptor_pool, None);
+                .destroy_descriptor_pool(self.descriptor_pool_per_pass, None);
             self.device
-                .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
+                .destroy_descriptor_pool(self.descriptor_pool_per_texture, None);
+            self.device
+                .destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
+            self.device
+                .destroy_descriptor_set_layout(self.descriptor_set_layout_per_texture, None);
         }
 
         log::debug!("destroyed VkImGuiRenderPass");
