@@ -1,5 +1,6 @@
 pub mod features;
 pub mod phases;
+pub mod renderpass;
 
 pub mod imgui_support;
 

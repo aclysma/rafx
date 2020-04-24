@@ -504,7 +504,7 @@ impl VkSpriteRenderPass {
         //
         let vertex_shader_module = Self::load_shader_module(
             logical_device,
-            &include_bytes!("../../shaders/texture.vert.spv")[..],
+            &include_bytes!("../../shaders/sprite.vert.spv")[..],
         )?;
 
         let fragment_shader_module = Self::load_shader_module(

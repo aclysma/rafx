@@ -42,7 +42,7 @@ fn main() {
     };
 
     let sdl_window = video_subsystem
-        .window("Skulpin", logical_size.width, logical_size.height)
+        .window("Renderer Prototype", logical_size.width, logical_size.height)
         .position_centered()
         .allow_highdpi()
         .resizable()

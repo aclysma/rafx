@@ -3,7 +3,8 @@ use crate::ResourceManager;
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, RendererEventListener, RendererBuilder, CreateRendererError, Renderer, Window};
 use ash::prelude::VkResult;
 //use crate::features::sprite_renderpass_push_constant::VkSpriteRenderPass;
-use crate::features::sprite_renderpass_many_sets::VkSpriteRenderPass;
+use crate::renderpass::sprite::VkSpriteRenderPass;
+use crate::renderpass::sprite::VkSpriteResourceManager;
 use std::mem::swap;
 
 pub struct GameRenderer {
@@ -11,6 +12,8 @@ pub struct GameRenderer {
     resource_manager: ResourceManager,
 
     imgui_event_listener: ImguiRenderEventListener,
+
+    sprite_resource_manager: Option<VkSpriteResourceManager>,
 
     //imgui_font_atlas: VkImGuiRenderPassFontAtlas,
     //imgui_renderpass: Option<VkImGuiRenderPass>,
@@ -29,6 +32,7 @@ impl GameRenderer {
             resource_manager,
             imgui_event_listener,
             //imgui_renderpass: None,
+            sprite_resource_manager: None,
             sprite_renderpass: None
         }
     }
@@ -41,20 +45,19 @@ impl RendererEventListener for GameRenderer {
         self.resource_manager.swapchain_created(device, swapchain)?;
         self.imgui_event_listener.swapchain_created(device, swapchain)?;
 
-        //self.imgui_renderpass = Some(VkImGuiRenderPass::new(device, swapchain, &self.imgui_font_atlas)?);
-        self.sprite_renderpass = Some(VkSpriteRenderPass::new(device, swapchain)?);
+        self.sprite_resource_manager = Some(VkSpriteResourceManager::new(device, swapchain.swapchain_info.clone())?);
+        self.sprite_renderpass = Some(VkSpriteRenderPass::new(device, swapchain, self.sprite_resource_manager.as_ref().unwrap())?);
 
         VkResult::Ok(())
     }
 
     fn swapchain_destroyed(&mut self) {
         log::debug!("game renderer swapchain destroyed");
-        self.resource_manager.swapchain_destroyed();
-        self.imgui_event_listener.swapchain_destroyed();
 
-        // Dropping these will clean them up
-        //self.imgui_renderpass = None;
         self.sprite_renderpass = None;
+        self.sprite_resource_manager = None;
+        self.imgui_event_listener.swapchain_destroyed();
+        self.resource_manager.swapchain_destroyed();
 
     }
 
@@ -67,9 +70,11 @@ impl RendererEventListener for GameRenderer {
             command_buffers.append(&mut commands);
         }
 
-        if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
-            sprite_renderpass.update(&device.memory_properties, present_index, 1.0)?;
-            command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
+        if let Some(sprite_resource_manager) = &mut self.sprite_resource_manager {
+            if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
+                sprite_renderpass.update(&device.memory_properties, present_index, 1.0, sprite_resource_manager)?;
+                command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
+            }
         }
 
         {
@@ -93,8 +98,8 @@ impl GameRendererWithShell {
         let mut game_renderer = GameRenderer::new(window, imgui_font_atlas);
 
         let shell = RendererBuilder::new()
-            //.use_vulkan_debug_layer(true)
-            .use_vulkan_debug_layer(false)
+            .use_vulkan_debug_layer(true)
+            //.use_vulkan_debug_layer(false)
             .prefer_mailbox_present_mode()
             .build(window, Some(&mut game_renderer))?;
 

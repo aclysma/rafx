@@ -56,7 +56,7 @@ impl RendererBuilder {
     /// Construct the renderer builder with default options
     pub fn new() -> Self {
         RendererBuilder {
-            app_name: CString::new("Skulpin").unwrap(),
+            app_name: CString::new("RendererPrototype").unwrap(),
             validation_layer_debug_report_flags: vk::DebugReportFlagsEXT::all(),
             present_mode_priority: vec![PresentMode::Fifo],
             physical_device_type_priority: vec![

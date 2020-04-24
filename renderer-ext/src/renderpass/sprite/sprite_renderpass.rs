@@ -18,20 +18,16 @@ use renderer_shell_vulkan::VkImage;
 use image::error::ImageError::Decoding;
 use std::process::exit;
 use image::{GenericImageView, ImageFormat};
-use ash::vk::{ShaderStageFlags, PushConstantRangeBuilder};
-use std::f32::MAX;
+use ash::vk::ShaderStageFlags;
 
-#[derive(Clone)]
-pub struct DecodedTexture {
-    pub width: u32,
-    pub height: u32,
-    pub data: Vec<u8>,
-}
+use super::VkSpriteResourceManager;
 
-#[repr(C)]
-struct PushConstants {
-    texture_index: u32
-}
+// #[derive(Clone)]
+// pub struct DecodedTexture {
+//     pub width: u32,
+//     pub height: u32,
+//     pub data: Vec<u8>,
+// }
 
 #[derive(Clone, Debug, Copy)]
 struct UniformBufferObject {
@@ -45,33 +41,59 @@ struct Vertex {
     color: [u8; 4],
 }
 
-const VERTEX_LIST : [Vertex; 4] = [
-    Vertex {
-        pos: [-0.5, -0.5],
-        color: [255, 0, 0, 255],
+// const QUAD_VERTEX_LIST : [Vertex; 4] = [
+//     Vertex {
+//         pos: [-0.5, -0.5],
+//         color: [255, 0, 0, 255],
+//         tex_coord: [1.0, 0.0]
+//     },
+//     Vertex {
+//         pos: [0.5, -0.5],
+//         color: [255, 255, 0, 255],
+//         tex_coord: [0.0, 0.0]
+//
+//     },
+//     Vertex {
+//         pos: [0.5, 0.5],
+//         color: [255, 0, 255, 255],
+//         tex_coord: [0.0, 1.0]
+//     },
+//     Vertex {
+//         pos: [-0.5, 0.5],
+//         color: [0, 0, 255, 255],
+//         tex_coord: [1.0, 1.0]
+//     }
+// ];
+
+#[derive(Clone, Debug, Copy)]
+struct QuadVertex {
+    pos: [f32; 3],
+    tex_coord: [f32; 2],
+}
+
+const QUAD_VERTEX_LIST : [QuadVertex; 4] = [
+    QuadVertex {
+        pos: [-0.5, -0.5, 0.0],
         tex_coord: [1.0, 0.0]
     },
-    Vertex {
-        pos: [0.5, -0.5],
-        color: [255, 255, 0, 255],
+    QuadVertex {
+        pos: [0.5, -0.5, 0.0],
         tex_coord: [0.0, 0.0]
 
     },
-    Vertex {
-        pos: [0.5, 0.5],
-        color: [255, 0, 255, 255],
+    QuadVertex {
+        pos: [0.5, 0.5, 0.0],
         tex_coord: [0.0, 1.0]
     },
-    Vertex {
-        pos: [-0.5, 0.5],
-        color: [0, 0, 255, 255],
+    QuadVertex {
+        pos: [-0.5, 0.5, 0.0],
         tex_coord: [1.0, 1.0]
     }
 ];
 
-const INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
+const QUAD_INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
 
-const MAX_TEXTURES : u32 = 100;
+const MAX_TEXTURES : u32 = 10;
 
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
@@ -94,7 +116,6 @@ pub struct VkSpriteRenderPass {
     pub swapchain_info: SwapchainInfo,
 
     pub descriptor_set_layout_per_pass: vk::DescriptorSetLayout,
-    pub descriptor_set_layout_per_texture: vk::DescriptorSetLayout,
 
 
     pub pipeline_layout: vk::PipelineLayout,
@@ -106,55 +127,131 @@ pub struct VkSpriteRenderPass {
 
     pub vertex_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
     pub index_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
-    pub staging_vertex_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
-    pub staging_index_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
 
     pub uniform_buffers: Vec<ManuallyDrop<VkBuffer>>,
 
     pub descriptor_pool_per_pass: vk::DescriptorPool,
-    pub descriptor_pool_per_texture: vk::DescriptorPool,
 
     pub descriptor_sets_per_pass: Vec<vk::DescriptorSet>,
-    pub descriptor_sets_per_texture: Vec<vk::DescriptorSet>,
 
-    pub images: Vec<ManuallyDrop<VkImage>>,
-    pub image_views: Vec<vk::ImageView>,
-    pub image_sampler: vk::Sampler,
+    pub image_sampler: vk::Sampler
 }
 
-fn decode_texture(buf: &[u8], format: ImageFormat) -> DecodedTexture {
-    let example_image = image::load_from_memory_with_format(buf, format).unwrap();
-    let dimensions = example_image.dimensions();
-    let example_image = example_image.to_rgba().into_raw();
-    DecodedTexture {
-        width: dimensions.0,
-        height: dimensions.1,
-        data: example_image
-    }
-}
+// fn decode_texture(buf: &[u8], format: ImageFormat) -> DecodedTexture {
+//     let example_image = image::load_from_memory_with_format(buf, format).unwrap();
+//     let dimensions = example_image.dimensions();
+//     let example_image = example_image.to_rgba().into_raw();
+//     DecodedTexture {
+//         width: dimensions.0,
+//         height: dimensions.1,
+//         data: example_image
+//     }
+// }
 
 impl VkSpriteRenderPass {
     pub fn new(
         device: &VkDevice,
         swapchain: &VkSwapchain,
+        sprite_resource_manager: &VkSpriteResourceManager
     ) -> VkResult<Self> {
-        let decoded_texture = decode_texture(include_bytes!("../../../texture2.jpg"), image::ImageFormat::Jpeg);
-        let mut decoded_textures = vec![];
-        for _ in 0..MAX_TEXTURES {
-            decoded_textures.push(decoded_texture.clone());
-        }
+        // let decoded_texture = decode_texture(include_bytes!("../../../../texture2.jpg"), image::ImageFormat::Jpeg);
+        // let mut decoded_textures = vec![];
+        // for _ in 0..MAX_TEXTURES {
+        //     decoded_textures.push(decoded_texture.clone());
+        // }
         //decoded_textures.push(decode_texture(include_bytes!("../../../texture.jpg"), image::ImageFormat::Jpeg));
 
-        let mut pipeline_resources = None;
 
+
+
+        //
+        // Command Buffers
+        //
+        let command_pool =
+            Self::create_command_pool(&device.logical_device, &device.queue_family_indices)?;
+
+
+
+        //
+        // Resources
+        //
+        // let mut images = vec![];
+        // let mut image_views = vec![];
+        // for decoded_texture in decoded_textures {
+        //     let image = Self::load_image(
+        //         &device.logical_device,
+        //         device.queues.graphics_queue,
+        //         command_pool,
+        //         &device.memory_properties,
+        //         &decoded_texture,
+        //     )?;
+        //
+        //     let image_view = Self::create_texture_image_view(&device.logical_device, &image.image);
+        //
+        //     images.push(image);
+        //     image_views.push(image_view);
+        // }
+
+        let image_sampler = Self::create_texture_image_sampler(&device.logical_device);
+
+        let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
+        for _ in 0..swapchain.swapchain_info.image_count {
+            uniform_buffers.push(Self::create_uniform_buffer(
+                &device.logical_device,
+                &device.memory_properties,
+            )?)
+        }
+
+
+
+
+
+
+
+
+        //
+        // Descriptors
+        //
         let descriptor_set_layout_per_pass = Self::create_descriptor_set_layout_per_pass(&device.logical_device)?;
-        let descriptor_set_layout_per_texture = Self::create_descriptor_set_layout_per_texture(&device.logical_device)?;
+        //let descriptor_set_layout_per_texture = Self::create_descriptor_set_layout_per_texture(&device.logical_device)?;
+
+        let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
+            &device.logical_device,
+            swapchain.swapchain_info.image_count as u32,
+        )?;
+
+        // let descriptor_pool_per_texture = Self::create_descriptor_pool_per_texture(
+        //     &device.logical_device,
+        //     swapchain.swapchain_info.image_count as u32,
+        // )?;
+
+        let descriptor_sets_per_pass = Self::create_descriptor_sets_per_pass(
+            &device.logical_device,
+            &descriptor_pool_per_pass,
+            descriptor_set_layout_per_pass,
+            swapchain.swapchain_info.image_count,
+            &uniform_buffers,
+            &image_sampler,
+        )?;
+
+        // let descriptor_sets_per_texture = Self::create_descriptor_sets_per_texture(
+        //     &device.logical_device,
+        //     &descriptor_pool_per_texture,
+        //     &descriptor_set_layouts[1],
+        //     swapchain.swapchain_info.image_count,
+        //     &image_views,
+        // )?;
 
         let descriptor_set_layouts = [
             descriptor_set_layout_per_pass,
-            descriptor_set_layout_per_texture
+            sprite_resource_manager.descriptor_set_layout()
         ];
 
+
+        //
+        // Pipeline/Renderpass
+        //
+        let mut pipeline_resources = None;
         Self::create_fixed_function_state(&swapchain.swapchain_info, |fixed_function_state| {
             Self::create_renderpass_create_info(
                 &swapchain.swapchain_info,
@@ -179,6 +276,9 @@ impl VkSpriteRenderPass {
         let renderpass = pipeline_resources.renderpass;
         let pipeline = pipeline_resources.pipeline;
 
+        //
+        // Renderpass Resources
+        //
         let frame_buffers = Self::create_framebuffers(
             &device.logical_device,
             &swapchain.swapchain_image_views,
@@ -186,83 +286,31 @@ impl VkSpriteRenderPass {
             &pipeline_resources.renderpass,
         );
 
-        let command_pool =
-            Self::create_command_pool(&device.logical_device, &device.queue_family_indices)?;
-
         let command_buffers = Self::create_command_buffers(
             &device.logical_device,
             &swapchain.swapchain_info,
             &command_pool,
         )?;
 
+
+
+
+
+        //
+        // Containers for dynamically-allocated resources
+        //
         let mut vertex_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
         let mut index_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
-        let mut staging_vertex_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
-        let mut staging_index_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
         for _ in 0..swapchain.swapchain_info.image_count {
             vertex_buffers.push(vec![]);
             index_buffers.push(vec![]);
-            staging_vertex_buffers.push(vec![]);
-            staging_index_buffers.push(vec![]);
-        }
-
-        let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
-        for _ in 0..swapchain.swapchain_info.image_count {
-            uniform_buffers.push(Self::create_uniform_buffer(
-                &device.logical_device,
-                &device.memory_properties,
-            )?)
-        }
-
-        let mut images = vec![];
-        let mut image_views = vec![];
-        for decoded_texture in decoded_textures {
-            let image = Self::load_image(
-                &device.logical_device,
-                device.queues.graphics_queue,
-                command_pool,
-                &device.memory_properties,
-                &decoded_texture,
-            )?;
-
-            let image_view = Self::create_texture_image_view(&device.logical_device, &image.image);
-
-            images.push(image);
-            image_views.push(image_view);
         }
 
 
 
-
-        let image_sampler = Self::create_texture_image_sampler(&device.logical_device);
-
-        let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
-            &device.logical_device,
-            swapchain.swapchain_info.image_count as u32,
-        )?;
-
-        let descriptor_pool_per_texture = Self::create_descriptor_pool_per_texture(
-            &device.logical_device,
-            swapchain.swapchain_info.image_count as u32,
-        )?;
-
-        let descriptor_sets_per_pass = Self::create_descriptor_sets_per_pass(
-            &device.logical_device,
-            &descriptor_pool_per_pass,
-            &descriptor_set_layouts[0],
-            swapchain.swapchain_info.image_count,
-            &uniform_buffers,
-            &image_sampler,
-        )?;
-
-        let descriptor_sets_per_texture = Self::create_descriptor_sets_per_texture(
-            &device.logical_device,
-            &descriptor_pool_per_texture,
-            &descriptor_set_layouts[1],
-            swapchain.swapchain_info.image_count,
-            &image_views,
-        )?;
-
+        //
+        // Record Command Buffers
+        //
         for i in 0..swapchain.swapchain_info.image_count {
             Self::record_command_buffer(
                 &device.memory_properties,
@@ -275,10 +323,8 @@ impl VkSpriteRenderPass {
                 &command_buffers[i],
                 &mut vertex_buffers[i],
                 &mut index_buffers[i],
-                &mut staging_vertex_buffers[i],
-                &mut staging_index_buffers[i],
                 &descriptor_sets_per_pass[i],
-                &descriptor_sets_per_texture[i]
+                sprite_resource_manager.descriptor_sets(i)
             )?;
         }
 
@@ -286,7 +332,6 @@ impl VkSpriteRenderPass {
             device: device.logical_device.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             descriptor_set_layout_per_pass,
-            descriptor_set_layout_per_texture,
             pipeline_layout,
             renderpass,
             pipeline,
@@ -295,16 +340,10 @@ impl VkSpriteRenderPass {
             command_buffers,
             vertex_buffers,
             index_buffers,
-            staging_vertex_buffers,
-            staging_index_buffers,
             uniform_buffers,
             descriptor_pool_per_pass,
-            descriptor_pool_per_texture,
             descriptor_sets_per_pass,
-            descriptor_sets_per_texture,
-            images,
-            image_views,
-            image_sampler,
+            image_sampler
         })
     }
 
@@ -341,7 +380,7 @@ impl VkSpriteRenderPass {
             vk::DescriptorSetLayoutBinding::builder()
                 .binding(0)
                 .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(MAX_TEXTURES)
+                .descriptor_count(1)
                 .stage_flags(vk::ShaderStageFlags::FRAGMENT)
                 .build(),
         ];
@@ -510,12 +549,12 @@ impl VkSpriteRenderPass {
         //
         let vertex_shader_module = Self::load_shader_module(
             logical_device,
-            &include_bytes!("../../shaders/sprite.vert.spv")[..],
+            &include_bytes!("../../../shaders/sprite.vert.spv")[..],
         )?;
 
         let fragment_shader_module = Self::load_shader_module(
             logical_device,
-            &include_bytes!("../../shaders/texture_push_constant.frag.spv")[..],
+            &include_bytes!("../../../shaders/sprite.frag.spv")[..],
         )?;
 
         let shader_entry_name = CString::new("main").unwrap();
@@ -532,18 +571,9 @@ impl VkSpriteRenderPass {
                 .build(),
         ];
 
-        let push_constant_ranges = [
-            vk::PushConstantRange::builder()
-                .size(std::mem::size_of::<PushConstants>() as u32)
-                .offset(0)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                .build()
-        ];
-
         let layout_create_info =
             vk::PipelineLayoutCreateInfo::builder()
-                .set_layouts(descriptor_set_layouts)
-                .push_constant_ranges(&push_constant_ranges);
+                .set_layouts(descriptor_set_layouts);
 
         let pipeline_layout: vk::PipelineLayout =
             unsafe { logical_device.create_pipeline_layout(&layout_create_info, None)? };
@@ -678,95 +708,6 @@ impl VkSpriteRenderPass {
         Ok(ManuallyDrop::new(buffer?))
     }
 
-    pub fn load_image(
-        logical_device: &ash::Device,
-        queue: vk::Queue,
-        command_pool: vk::CommandPool,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
-        decoded_texture: &DecodedTexture,
-    ) -> VkResult<ManuallyDrop<VkImage>> {
-        let extent = vk::Extent3D {
-            width: decoded_texture.width,
-            height: decoded_texture.height,
-            depth: 1,
-        };
-
-        let mut staging_buffer = VkBuffer::new(
-            logical_device,
-            device_memory_properties,
-            vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            decoded_texture.data.len() as u64,
-        )?;
-
-        staging_buffer.write_to_host_visible_buffer(&decoded_texture.data)?;
-
-        let image = VkImage::new(
-            logical_device,
-            device_memory_properties,
-            extent,
-            vk::Format::R8G8B8A8_UNORM,
-            vk::ImageTiling::OPTIMAL,
-            vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL,
-        )?;
-
-        transition_image_layout(
-            logical_device,
-            queue,
-            command_pool,
-            image.image,
-            vk::Format::R8G8B8A8_UNORM,
-            vk::ImageLayout::UNDEFINED,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-        )?;
-
-        copy_buffer_to_image(
-            logical_device,
-            queue,
-            command_pool,
-            staging_buffer.buffer,
-            image.image,
-            &image.extent,
-        )?;
-
-        transition_image_layout(
-            logical_device,
-            queue,
-            command_pool,
-            image.image,
-            vk::Format::R8G8B8A8_UNORM,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-        )?;
-
-        Ok(ManuallyDrop::new(image))
-    }
-
-    pub fn create_texture_image_view(
-        logical_device: &ash::Device,
-        image: &vk::Image,
-    ) -> vk::ImageView {
-        let subresource_range = vk::ImageSubresourceRange::builder()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
-            .base_mip_level(0)
-            .level_count(1)
-            .base_array_layer(0)
-            .layer_count(1);
-
-        let image_view_info = vk::ImageViewCreateInfo::builder()
-            .image(*image)
-            .view_type(vk::ImageViewType::TYPE_2D)
-            .format(vk::Format::R8G8B8A8_UNORM)
-            .subresource_range(*subresource_range);
-
-        unsafe {
-            logical_device
-                .create_image_view(&image_view_info, None)
-                .unwrap()
-        }
-    }
-
     pub fn create_texture_image_sampler(logical_device: &ash::Device) -> vk::Sampler {
         let sampler_info = vk::SamplerCreateInfo::builder()
             .mag_filter(vk::Filter::LINEAR)
@@ -810,34 +751,16 @@ impl VkSpriteRenderPass {
         unsafe { logical_device.create_descriptor_pool(&descriptor_pool_info, None) }
     }
 
-    fn create_descriptor_pool_per_texture(
-        logical_device: &ash::Device,
-        swapchain_image_count: u32,
-    ) -> VkResult<vk::DescriptorPool> {
-        let pool_sizes = [
-            vk::DescriptorPoolSize::builder()
-                .ty(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(MAX_TEXTURES * swapchain_image_count)
-                .build(),
-        ];
-
-        let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
-            .pool_sizes(&pool_sizes)
-            .max_sets(swapchain_image_count);
-
-        unsafe { logical_device.create_descriptor_pool(&descriptor_pool_info, None) }
-    }
-
     fn create_descriptor_sets_per_pass(
         logical_device: &ash::Device,
         descriptor_pool: &vk::DescriptorPool,
-        descriptor_set_layout: &vk::DescriptorSetLayout,
+        descriptor_set_layout: vk::DescriptorSetLayout,
         swapchain_image_count: usize,
         uniform_buffers: &Vec<ManuallyDrop<VkBuffer>>,
         image_sampler: &vk::Sampler,
     ) -> VkResult<Vec<vk::DescriptorSet>> {
         // DescriptorSetAllocateInfo expects an array with an element per set
-        let descriptor_set_layouts = vec![*descriptor_set_layout; swapchain_image_count];
+        let descriptor_set_layouts = vec![descriptor_set_layout; swapchain_image_count];
 
         let alloc_info = vk::DescriptorSetAllocateInfo::builder()
             .descriptor_pool(*descriptor_pool)
@@ -882,96 +805,6 @@ impl VkSpriteRenderPass {
         Ok(descriptor_sets)
     }
 
-
-    fn create_descriptor_sets_per_texture(
-        logical_device: &ash::Device,
-        descriptor_pool: &vk::DescriptorPool,
-        descriptor_set_layout: &vk::DescriptorSetLayout,
-        swapchain_image_count: usize,
-        image_views: &[vk::ImageView],
-    ) -> VkResult<Vec<vk::DescriptorSet>> {
-        // DescriptorSetAllocateInfo expects an array with an element per set
-        let descriptor_set_layouts = vec![*descriptor_set_layout; swapchain_image_count];
-
-        let alloc_info = vk::DescriptorSetAllocateInfo::builder()
-            .descriptor_pool(*descriptor_pool)
-            .set_layouts(descriptor_set_layouts.as_slice());
-
-        let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
-
-        for i in 0..swapchain_image_count {
-            let image_infos : Vec<_> = image_views.iter().map(|image_view| {
-                vk::DescriptorImageInfo::builder()
-                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                    .image_view(*image_view)
-                    .build()
-            }).collect();
-
-            let descriptor_writes = [
-                vk::WriteDescriptorSet::builder()
-                    .dst_set(descriptor_sets[i])
-                    .dst_binding(0)
-                    .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                    .image_info(image_infos.as_slice())
-                    .build()
-            ];
-
-            unsafe {
-                logical_device.update_descriptor_sets(&descriptor_writes, &[]);
-            }
-        }
-
-        Ok(descriptor_sets)
-
-
-
-        // // DescriptorSetAllocateInfo expects an array with an element per set
-        // let descriptor_set_layouts = vec![*descriptor_set_layout; swapchain_image_count];
-        //
-        // let alloc_info = vk::DescriptorSetAllocateInfo::builder()
-        //     .descriptor_pool(*descriptor_pool)
-        //     .set_layouts(descriptor_set_layouts.as_slice());
-        //
-        // let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
-        //
-        // for i in 0..swapchain_image_count {
-        //
-        //     let alloc_info = vk::DescriptorSetAllocateInfo::builder()
-        //         .descriptor_pool(*descriptor_pool)
-        //         .set_layouts(descriptor_set_layouts.as_slice());
-        //
-        //     let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
-        //
-        //     let mut descriptor_writes = Vec::with_capacity(MAX_TEXTURES as usize);
-        //
-        //     for (image_index, image_view) in image_views.iter().enumerate() {
-        //         let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
-        //             .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-        //             .image_view(*image_view)
-        //             .build();
-        //
-        //         descriptor_writes.push(
-        //             vk::WriteDescriptorSet::builder()
-        //                 .dst_set(descriptor_sets[image_index])
-        //                 .dst_binding(0)
-        //                 .dst_array_element(0)
-        //                 .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-        //                 .image_info(&[image_view_descriptor_image_info])
-        //                 .build()
-        //         );
-        //     }
-        //
-        //     unsafe {
-        //         logical_device.update_descriptor_sets(&descriptor_writes, &[]);
-        //     }
-        //
-        //     all_sets.push(descriptor_sets);
-        // }
-        //
-        // Ok(all_sets)
-    }
-
     fn record_command_buffer(
         device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         logical_device: &ash::Device,
@@ -983,10 +816,8 @@ impl VkSpriteRenderPass {
         command_buffer: &vk::CommandBuffer,
         vertex_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
         index_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
-        staging_vertex_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
-        staging_index_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
         descriptor_set_per_pass: &vk::DescriptorSet,
-        descriptor_set_per_texture: &vk::DescriptorSet,
+        descriptor_set_per_texture: &[vk::DescriptorSet],
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
@@ -1008,78 +839,157 @@ impl VkSpriteRenderPass {
 
         drop_old_buffers(vertex_buffers);
         drop_old_buffers(index_buffers);
-        drop_old_buffers(staging_vertex_buffers);
-        drop_old_buffers(staging_index_buffers);
 
-        // VkBuffer::new_from_slice_device_local(
-        //     logical_device,
-        //     device_memory_properties,
-        //     queue,
-        //     command_pool,
-        //     vk::BufferUsageFlags::VERTEX_BUFFER,
-        //     &VERTEX_LIST);
+
+        struct Sprite {
+            position: glam::Vec3,
+            texture_size: glam::Vec2,
+            scale: f32,
+            rotation: f32,
+            texture_descriptor_index: u32
+        }
+
+
+        struct DrawCall {
+            index_buffer_first_element: u16,
+            index_buffer_count: u16,
+            texture_descriptor_index: u32
+        }
+
+        const SPRITE_COUNT : usize = 5;
+        let mut sprites = Vec::with_capacity(SPRITE_COUNT);
+
+        let mut rng: pcg_rand::Pcg32 = rand::SeedableRng::seed_from_u64(42);
+        use rand::Rng;
+        use std::f32::consts::PI;
+
+        for i in (0..SPRITE_COUNT) {
+            sprites.push(Sprite {
+                position: glam::Vec3::new(rng.gen_range(-400.0, 400.0), rng.gen_range(-300.0, 300.0), 0.0),
+                texture_size: glam::Vec2::new(800.0, 450.0),
+                scale: rng.gen_range(0.1, 0.2),
+                rotation: rng.gen_range(-180.0, 180.0),
+                texture_descriptor_index: rng.gen_range(0, 2)
+            });
+        }
+
+        // let sprites = [
+        //     Sprite {
+        //         position: glam::Vec3::new(0.0, 0.0, 0.0),
+        //         texture_size: glam::Vec2::new(800.0, 450.0),
+        //         scale: 1.0,
+        //         rotation: 0.0,
+        //         texture_descriptor_index: 0
+        //     },
+        //     Sprite {
+        //         position: glam::Vec3::new(-200.0, 0.0, 0.0),
+        //         texture_size: glam::Vec2::new(800.0, 450.0),
+        //         scale: 0.5,
+        //         rotation: 30.0,
+        //         texture_descriptor_index: 1
+        //     },
+        // ];
+
+        let mut draw_calls = Vec::with_capacity(sprites.len());
+
+        let mut vertex_list : Vec<Vertex> = Vec::with_capacity(QUAD_VERTEX_LIST.len() * sprites.len());
+        let mut index_list : Vec<u16> = Vec::with_capacity(QUAD_INDEX_LIST.len() * sprites.len());
+        for sprite in &sprites {
+            let draw_call = DrawCall {
+                index_buffer_first_element: 0,
+                index_buffer_count: 4,
+                texture_descriptor_index: sprite.texture_descriptor_index
+            };
+
+            const DEG_TO_RAD : f32 = std::f32::consts::PI / 180.0;
+
+            let matrix = glam::Mat4::from_translation(sprite.position) *
+                    glam::Mat4::from_rotation_z(sprite.rotation * DEG_TO_RAD) *
+                    glam::Mat4::from_scale(glam::Vec3::new(sprite.texture_size.x() * sprite.scale, sprite.texture_size.y() * sprite.scale, 1.0));
+
+            let vertex_buffer_first_element = vertex_list.len() as u16;
+
+            for vertex in &QUAD_VERTEX_LIST {
+                //let pos = vertex.pos;
+                let transformed_pos = matrix.transform_point3(vertex.pos.into());
+
+                vertex_list.push(Vertex {
+                    pos: transformed_pos.truncate().into(),
+                    tex_coord: vertex.tex_coord,
+                    color: [255, 255, 255, 255]
+                });
+            }
+
+            let index_buffer_first_element = index_list.len() as u16;
+            for index in &QUAD_INDEX_LIST {
+                index_list.push((*index + vertex_buffer_first_element));
+            }
+
+            let draw_call = DrawCall {
+                index_buffer_first_element,
+                index_buffer_count: QUAD_INDEX_LIST.len() as u16,
+                texture_descriptor_index: sprite.texture_descriptor_index
+            };
+
+            draw_calls.push(draw_call);
+        }
+
+
+
+        // //const QUADS_TO_DRAW : usize = 1;
+        // let mut vertex_list : Vec<Vertex> = Vec::with_capacity(QUAD_VERTEX_LIST.len() * QUADS_TO_DRAW);
+        // let mut index_list : Vec<u16> = Vec::with_capacity(QUAD_INDEX_LIST.len() * QUADS_TO_DRAW);
+        //
+        // {
+        //     //let scoped_timer = crate::time::ScopeTimer::new("build buffer data");
+        //     for quad_index in 0..QUADS_TO_DRAW {
+        //         for vertex in &QUAD_VERTEX_LIST {
+        //             vertex_list.push(*vertex);
+        //         }
+        //
+        //         for index in &QUAD_INDEX_LIST {
+        //             index_list.push(*index + (QUAD_VERTEX_LIST.len() * quad_index) as u16);
+        //         }
+        //     }
+        // }
 
         let mut draw_list_count = 0;
-        // if let Some(draw_data) = imgui_draw_data {
-        //     for draw_list in draw_data.draw_lists() {
-        let (vertex_buffer, staging_vertex_buffer) = {
-            let vertex_buffer_size = VERTEX_LIST.len() as u64
+        let vertex_buffer = {
+            let vertex_buffer_size = vertex_list.len() as u64
                 * std::mem::size_of::<Vertex>() as u64;
-            let mut staging_vertex_buffer = VkBuffer::new(
+            let mut vertex_buffer = VkBuffer::new(
                 logical_device,
                 &device_memory_properties,
-                vk::BufferUsageFlags::TRANSFER_SRC,
+                vk::BufferUsageFlags::VERTEX_BUFFER,
                 vk::MemoryPropertyFlags::HOST_VISIBLE
                     | vk::MemoryPropertyFlags::HOST_COHERENT,
                 vertex_buffer_size,
             )?;
 
-            staging_vertex_buffer.write_to_host_visible_buffer(&VERTEX_LIST)?;
-
-            let vertex_buffer = VkBuffer::new(
-                &logical_device,
-                &device_memory_properties,
-                vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                vertex_buffer_size,
-            )?;
-
-            (vertex_buffer, staging_vertex_buffer)
+            vertex_buffer.write_to_host_visible_buffer(vertex_list.as_slice())?;
+            vertex_buffer
         };
 
         //TODO: Duplicated code here
-        let (index_buffer, staging_index_buffer) = {
-            let index_buffer_size = INDEX_LIST.len() as u64
+        let index_buffer = {
+            let index_buffer_size = index_list.len() as u64
                 * std::mem::size_of::<u16>() as u64;
-            let mut staging_index_buffer = VkBuffer::new(
+            let mut index_buffer = VkBuffer::new(
                 logical_device,
                 &device_memory_properties,
-                vk::BufferUsageFlags::TRANSFER_SRC,
+                vk::BufferUsageFlags::INDEX_BUFFER,
                 vk::MemoryPropertyFlags::HOST_VISIBLE
                     | vk::MemoryPropertyFlags::HOST_COHERENT,
                 index_buffer_size,
             )?;
 
-            staging_index_buffer.write_to_host_visible_buffer(&INDEX_LIST)?;
-
-            let index_buffer = VkBuffer::new(
-                &logical_device,
-                &device_memory_properties,
-                vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                index_buffer_size,
-            )?;
-
-            (index_buffer, staging_index_buffer)
+            index_buffer.write_to_host_visible_buffer(index_list.as_slice())?;
+            index_buffer
         };
 
         vertex_buffers.push(ManuallyDrop::new(vertex_buffer));
-        staging_vertex_buffers.push(ManuallyDrop::new(staging_vertex_buffer));
         index_buffers.push(ManuallyDrop::new(index_buffer));
-        staging_index_buffers.push(ManuallyDrop::new(staging_index_buffer));
         draw_list_count += 1;
-        //     }
-        // }
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(*renderpass)
@@ -1090,41 +1000,9 @@ impl VkSpriteRenderPass {
             })
             .clear_values(&clear_values);
 
-
-        let scoped_timer = crate::time::ScopeTimer::new("record command buffer");
-
         // Implicitly resets the command buffer
         unsafe {
             logical_device.begin_command_buffer(*command_buffer, &command_buffer_begin_info)?;
-
-            for i in 0..draw_list_count {
-                {
-                    let buffer_copy_info = [vk::BufferCopy::builder()
-                        .size(staging_vertex_buffers[i].size)
-                        .build()];
-
-                    logical_device.cmd_copy_buffer(
-                        *command_buffer,
-                        staging_vertex_buffers[i].buffer,
-                        vertex_buffers[i].buffer,
-                        &buffer_copy_info,
-                    );
-                }
-
-                //TODO: Duplicated code here
-                {
-                    let buffer_copy_info = [vk::BufferCopy::builder()
-                        .size(staging_index_buffers[i].size)
-                        .build()];
-
-                    logical_device.cmd_copy_buffer(
-                        *command_buffer,
-                        staging_index_buffers[i].buffer,
-                        index_buffers[i].buffer,
-                        &buffer_copy_info,
-                    );
-                }
-            }
 
             logical_device.cmd_begin_render_pass(
                 *command_buffer,
@@ -1136,6 +1014,16 @@ impl VkSpriteRenderPass {
                 *command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
                 *pipeline,
+            );
+
+            // Bind per-pass data (UBO with view/proj matrix, sampler)
+            logical_device.cmd_bind_descriptor_sets(
+                *command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                *pipeline_layout,
+                0,
+                &[*descriptor_set_per_pass],
+                &[],
             );
 
             logical_device.cmd_bind_vertex_buffers(
@@ -1152,63 +1040,30 @@ impl VkSpriteRenderPass {
                 vk::IndexType::UINT16,
             );
 
+            for draw_call in draw_calls {
+                println!("cmd_bind_descriptor_sets {:?}", descriptor_set_per_texture[draw_call.texture_descriptor_index as usize]);
 
-            logical_device.cmd_bind_descriptor_sets(
-                *command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                *pipeline_layout,
-                0,
-                &[*descriptor_set_per_pass],
-                &[],
-            );
+                // Bind per-draw-call data (i.e. texture)
+                logical_device.cmd_bind_descriptor_sets(
+                    *command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    *pipeline_layout,
+                    1,
+                    &[descriptor_set_per_texture[draw_call.texture_descriptor_index as usize]],
+                    &[],
+                );
 
-            logical_device.cmd_bind_descriptor_sets(
-                *command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                *pipeline_layout,
-                1,
-                &[*descriptor_set_per_texture],
-                &[],
-            );
-
-            for _ in 0..100 {
-                for i in 0..MAX_TEXTURES {
-                    let push_constants = PushConstants {
-                        texture_index: i
-                    };
-
-                    unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-                        ::std::slice::from_raw_parts(
-                            (p as *const T) as *const u8,
-                            ::std::mem::size_of::<T>(),
-                        )
-                    }
-
-                    let push_constants_ref = unsafe {
-                        any_as_u8_slice(&push_constants)
-                    };
-
-                    logical_device.cmd_push_constants(
-                        *command_buffer,
-                        *pipeline_layout,
-                        ShaderStageFlags::FRAGMENT,
-                        0,
-                        push_constants_ref
-                    );
-
-                    logical_device.cmd_draw_indexed(
-                        *command_buffer,
-                        INDEX_LIST.len() as u32,
-                        1,
-                        0,
-                        0,
-                        0,
-                    );
-                }
+                logical_device.cmd_draw_indexed(
+                    *command_buffer,
+                    draw_call.index_buffer_count as u32,
+                    1,
+                    draw_call.index_buffer_first_element as u32,
+                    0,
+                    0,
+                );
             }
 
             logical_device.cmd_end_render_pass(*command_buffer);
-
             logical_device.end_command_buffer(*command_buffer)
         }
     }
@@ -1246,11 +1101,21 @@ impl VkSpriteRenderPass {
         extents: vk::Extent2D,
         hidpi_factor: f64,
     ) -> VkResult<()> {
+
+        // // Pixel-perfect rendering...
+        // let half_width = (extents.width as f64 / hidpi_factor) as f32;
+        // let half_height = (extents.height as f64 / hidpi_factor) as f32;
+
+        // Resolution-independent rendering...
+        let fov = extents.width as f32 / extents.height as f32;
+        let half_width = 400.0;
+        let half_height = 400.0 / fov;
+
         let proj = Self::orthographic_rh_gl(
-            0.0,
-            (extents.width as f64 / hidpi_factor) as f32,
-            0.0,
-            (extents.height as f64 / hidpi_factor) as f32,
+            -half_width,
+            half_width,
+            -half_height,
+            half_height,
             -100.0,
             100.0,
         );
@@ -1265,6 +1130,7 @@ impl VkSpriteRenderPass {
         device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         present_index: usize,
         hidpi_factor: f64,
+        sprite_resource_manager: &VkSpriteResourceManager
     ) -> VkResult<()> {
         //TODO: Integrate this into the command buffer we create below
         self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
@@ -1280,17 +1146,15 @@ impl VkSpriteRenderPass {
             &self.command_buffers[present_index],
             &mut self.vertex_buffers[present_index],
             &mut self.index_buffers[present_index],
-            &mut self.staging_vertex_buffers[present_index],
-            &mut self.staging_index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
-            &self.descriptor_sets_per_texture[present_index],
+            sprite_resource_manager.descriptor_sets(present_index),
         )
     }
 }
 
 impl Drop for VkSpriteRenderPass {
     fn drop(&mut self) {
-        log::debug!("destroying VkImGuiRenderPass");
+        log::debug!("destroying VkSpriteRenderPass");
 
         fn drop_all_buffer_lists(buffer_list: &mut Vec<Vec<ManuallyDrop<VkBuffer>>>) {
             for buffers in buffer_list {
@@ -1305,22 +1169,12 @@ impl Drop for VkSpriteRenderPass {
         unsafe {
             self.device.destroy_sampler(self.image_sampler, None);
 
-            for image_view in &self.image_views {
-                self.device.destroy_image_view(*image_view, None);
-            }
-
-            for image in &mut self.images {
-                ManuallyDrop::drop(image);
-            }
-
             for uniform_buffer in &mut self.uniform_buffers {
                 ManuallyDrop::drop(uniform_buffer);
             }
 
             drop_all_buffer_lists(&mut self.vertex_buffers);
             drop_all_buffer_lists(&mut self.index_buffers);
-            drop_all_buffer_lists(&mut self.staging_vertex_buffers);
-            drop_all_buffer_lists(&mut self.staging_index_buffers);
 
             self.device.destroy_command_pool(self.command_pool, None);
 
@@ -1336,117 +1190,9 @@ impl Drop for VkSpriteRenderPass {
             self.device
                 .destroy_descriptor_pool(self.descriptor_pool_per_pass, None);
             self.device
-                .destroy_descriptor_pool(self.descriptor_pool_per_texture, None);
-            self.device
                 .destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
-            self.device
-                .destroy_descriptor_set_layout(self.descriptor_set_layout_per_texture, None);
         }
 
-        log::debug!("destroyed VkImGuiRenderPass");
+        log::debug!("destroyed VkSpriteRenderPass");
     }
-}
-
-pub fn transition_image_layout(
-    logical_device: &ash::Device,
-    queue: vk::Queue,
-    command_pool: vk::CommandPool,
-    image: vk::Image,
-    _format: vk::Format,
-    old_layout: vk::ImageLayout,
-    new_layout: vk::ImageLayout,
-) -> VkResult<()> {
-    util::submit_single_use_command_buffer(logical_device, queue, command_pool, |command_buffer| {
-        struct SyncInfo {
-            src_access_mask: vk::AccessFlags,
-            dst_access_mask: vk::AccessFlags,
-            src_stage: vk::PipelineStageFlags,
-            dst_stage: vk::PipelineStageFlags,
-        }
-
-        let sync_info = match (old_layout, new_layout) {
-            (vk::ImageLayout::UNDEFINED, vk::ImageLayout::TRANSFER_DST_OPTIMAL) => SyncInfo {
-                src_access_mask: vk::AccessFlags::empty(),
-                dst_access_mask: vk::AccessFlags::TRANSFER_WRITE,
-                src_stage: vk::PipelineStageFlags::TOP_OF_PIPE,
-                dst_stage: vk::PipelineStageFlags::TRANSFER,
-            },
-            (vk::ImageLayout::TRANSFER_DST_OPTIMAL, vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL) => {
-                SyncInfo {
-                    src_access_mask: vk::AccessFlags::TRANSFER_WRITE,
-                    dst_access_mask: vk::AccessFlags::SHADER_READ,
-                    src_stage: vk::PipelineStageFlags::TRANSFER,
-                    dst_stage: vk::PipelineStageFlags::FRAGMENT_SHADER,
-                }
-            }
-            _ => {
-                // Layout transition not yet supported
-                unimplemented!();
-            }
-        };
-
-        let subresource_range = vk::ImageSubresourceRange::builder()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
-            .base_mip_level(0)
-            .level_count(1)
-            .base_array_layer(0)
-            .layer_count(1);
-
-        let barrier_info = vk::ImageMemoryBarrier::builder()
-            .old_layout(old_layout)
-            .new_layout(new_layout)
-            .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-            .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-            .image(image)
-            .subresource_range(*subresource_range)
-            .src_access_mask(sync_info.src_access_mask)
-            .dst_access_mask(sync_info.dst_access_mask);
-
-        unsafe {
-            logical_device.cmd_pipeline_barrier(
-                command_buffer,
-                sync_info.src_stage,
-                sync_info.dst_stage,
-                vk::DependencyFlags::BY_REGION,
-                &[],
-                &[],
-                &[*barrier_info],
-            ); //TODO: Can remove build() by using *?
-        }
-    })
-}
-
-pub fn copy_buffer_to_image(
-    logical_device: &ash::Device,
-    queue: vk::Queue,
-    command_pool: vk::CommandPool,
-    buffer: vk::Buffer,
-    image: vk::Image,
-    extent: &vk::Extent3D,
-) -> VkResult<()> {
-    util::submit_single_use_command_buffer(logical_device, queue, command_pool, |command_buffer| {
-        let image_subresource = vk::ImageSubresourceLayers::builder()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
-            .mip_level(0)
-            .base_array_layer(0)
-            .layer_count(1);
-
-        let image_copy = vk::BufferImageCopy::builder()
-            .buffer_offset(0)
-            .buffer_row_length(0)
-            .buffer_image_height(0)
-            .image_subresource(*image_subresource)
-            .image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
-            .image_extent(*extent);
-
-        unsafe {
-            logical_device.cmd_copy_buffer_to_image(
-                command_buffer,
-                buffer,
-                image,
-                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                &[*image_copy],
-            );
-        }
-    })
 }
