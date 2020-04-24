@@ -105,8 +105,6 @@ impl VkSpriteResourceManager {
                 &decoded_texture,
             )?;
 
-            println!("decoded texture size {} {}", decoded_texture.width, decoded_texture.height);
-
             let image_view = Self::create_texture_image_view(&device.logical_device, &image.image);
 
             images.push(image);
@@ -354,15 +352,15 @@ impl VkSpriteResourceManager {
 
             let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
 
-            let mut descriptor_writes = Vec::with_capacity(MAX_TEXTURES as usize);
 
             for (image_index, image_view) in image_views.iter().enumerate() {
+
+                let mut descriptor_writes = Vec::with_capacity(MAX_TEXTURES as usize);
                 let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
                     .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                     .image_view(*image_view)
                     .build();
 
-                println!("{:?}", image_view);
                 descriptor_writes.push(
                     vk::WriteDescriptorSet::builder()
                         .dst_set(descriptor_sets[image_index])
@@ -372,13 +370,14 @@ impl VkSpriteResourceManager {
                         .image_info(&[image_view_descriptor_image_info])
                         .build()
                 );
+                unsafe {
+                    logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+                }
             }
 
-            println!("{:?}", descriptor_sets);
-
-            unsafe {
-                logical_device.update_descriptor_sets(&descriptor_writes, &[]);
-            }
+//            unsafe {
+//                logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+//            }
 
             all_sets.push(descriptor_sets);
         }

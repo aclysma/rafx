@@ -856,7 +856,7 @@ impl VkSpriteRenderPass {
             texture_descriptor_index: u32
         }
 
-        const SPRITE_COUNT : usize = 5;
+        const SPRITE_COUNT : usize = 100;
         let mut sprites = Vec::with_capacity(SPRITE_COUNT);
 
         let mut rng: pcg_rand::Pcg32 = rand::SeedableRng::seed_from_u64(42);
@@ -1041,8 +1041,6 @@ impl VkSpriteRenderPass {
             );
 
             for draw_call in draw_calls {
-                println!("cmd_bind_descriptor_sets {:?}", descriptor_set_per_texture[draw_call.texture_descriptor_index as usize]);
-
                 // Bind per-draw-call data (i.e. texture)
                 logical_device.cmd_bind_descriptor_sets(
                     *command_buffer,
