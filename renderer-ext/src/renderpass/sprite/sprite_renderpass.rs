@@ -221,26 +221,6 @@ impl VkSpriteRenderPass {
             index_buffers.push(vec![]);
         }
 
-        //
-        // Record Command Buffers
-        //
-        for i in 0..swapchain.swapchain_info.image_count {
-            Self::record_command_buffer(
-                &device.memory_properties,
-                &device.logical_device,
-                &swapchain.swapchain_info,
-                &renderpass,
-                &frame_buffers[i],
-                &pipeline,
-                &pipeline_layout,
-                &command_buffers[i],
-                &mut vertex_buffers[i],
-                &mut index_buffers[i],
-                &descriptor_sets_per_pass[i],
-                sprite_resource_manager.descriptor_sets(i)
-            )?;
-        }
-
         Ok(VkSpriteRenderPass {
             device: device.logical_device.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
@@ -258,6 +238,60 @@ impl VkSpriteRenderPass {
             descriptor_sets_per_pass,
             image_sampler
         })
+    }
+
+    fn create_command_pool(
+        logical_device: &ash::Device,
+        queue_family_indices: &VkQueueFamilyIndices,
+    ) -> VkResult<vk::CommandPool> {
+        log::info!(
+            "Creating command pool with queue family index {}",
+            queue_family_indices.graphics_queue_family_index
+        );
+        let pool_create_info = vk::CommandPoolCreateInfo::builder()
+            .flags(
+                vk::CommandPoolCreateFlags::TRANSIENT
+                    | vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER,
+            )
+            .queue_family_index(queue_family_indices.graphics_queue_family_index);
+
+        unsafe { logical_device.create_command_pool(&pool_create_info, None) }
+    }
+
+    pub fn create_texture_image_sampler(logical_device: &ash::Device) -> vk::Sampler {
+        let sampler_info = vk::SamplerCreateInfo::builder()
+            .mag_filter(vk::Filter::LINEAR)
+            .min_filter(vk::Filter::LINEAR)
+            .address_mode_u(vk::SamplerAddressMode::REPEAT)
+            .address_mode_v(vk::SamplerAddressMode::REPEAT)
+            .address_mode_w(vk::SamplerAddressMode::REPEAT)
+            .anisotropy_enable(false)
+            .max_anisotropy(1.0)
+            .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
+            .unnormalized_coordinates(false)
+            .compare_enable(false)
+            .compare_op(vk::CompareOp::ALWAYS)
+            .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+            .mip_lod_bias(0.0)
+            .min_lod(0.0)
+            .max_lod(0.0);
+
+        unsafe { logical_device.create_sampler(&sampler_info, None).unwrap() }
+    }
+
+    fn create_uniform_buffer(
+        logical_device: &ash::Device,
+        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
+    ) -> VkResult<ManuallyDrop<VkBuffer>> {
+        let buffer = VkBuffer::new(
+            logical_device,
+            device_memory_properties,
+            vk::BufferUsageFlags::UNIFORM_BUFFER,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            mem::size_of::<UniformBufferObject>() as u64,
+        );
+
+        Ok(ManuallyDrop::new(buffer?))
     }
 
     fn create_descriptor_set_layout_per_pass(
@@ -284,6 +318,82 @@ impl VkSpriteRenderPass {
         unsafe {
             logical_device.create_descriptor_set_layout(&descriptor_set_layout_create_info, None)
         }
+    }
+
+    fn create_descriptor_pool_per_pass(
+        logical_device: &ash::Device,
+        swapchain_image_count: u32,
+    ) -> VkResult<vk::DescriptorPool> {
+        let pool_sizes = [
+            vk::DescriptorPoolSize::builder()
+                .ty(vk::DescriptorType::UNIFORM_BUFFER)
+                .descriptor_count(3)
+                .build(),
+            vk::DescriptorPoolSize::builder()
+                .ty(vk::DescriptorType::SAMPLER)
+                .descriptor_count(3)
+                .build(),
+        ];
+
+        let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
+            .pool_sizes(&pool_sizes)
+            .max_sets(3);
+
+        unsafe { logical_device.create_descriptor_pool(&descriptor_pool_info, None) }
+    }
+
+    fn create_descriptor_sets_per_pass(
+        logical_device: &ash::Device,
+        descriptor_pool: &vk::DescriptorPool,
+        descriptor_set_layout: vk::DescriptorSetLayout,
+        swapchain_image_count: usize,
+        uniform_buffers: &Vec<ManuallyDrop<VkBuffer>>,
+        image_sampler: &vk::Sampler,
+    ) -> VkResult<Vec<vk::DescriptorSet>> {
+        // DescriptorSetAllocateInfo expects an array with an element per set
+        let descriptor_set_layouts = vec![descriptor_set_layout; swapchain_image_count];
+
+        let alloc_info = vk::DescriptorSetAllocateInfo::builder()
+            .descriptor_pool(*descriptor_pool)
+            .set_layouts(descriptor_set_layouts.as_slice());
+
+        let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
+
+        for i in 0..swapchain_image_count {
+            let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
+                .buffer(uniform_buffers[i as usize].buffer)
+                .offset(0)
+                .range(mem::size_of::<UniformBufferObject>() as u64)
+                .build()];
+
+            let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .sampler(*image_sampler)
+                .build()];
+
+            let descriptor_writes = [
+                vk::WriteDescriptorSet::builder()
+                    .dst_set(descriptor_sets[i])
+                    .dst_binding(0)
+                    .dst_array_element(0)
+                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                    .buffer_info(&descriptor_buffer_infos)
+                    .build(),
+                vk::WriteDescriptorSet::builder()
+                    .dst_set(descriptor_sets[i])
+                    .dst_binding(1)
+                    .dst_array_element(0)
+                    .descriptor_type(vk::DescriptorType::SAMPLER)
+                    .image_info(&sampler_descriptor_image_infos)
+                    .build(),
+            ];
+
+            unsafe {
+                logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+            }
+        }
+
+        Ok(descriptor_sets)
     }
 
     fn create_fixed_function_state<F: FnMut(&FixedFunctionState) -> VkResult<()>>(
@@ -440,12 +550,12 @@ impl VkSpriteRenderPass {
         //
         // Load Shaders
         //
-        let vertex_shader_module = Self::load_shader_module(
+        let vertex_shader_module = load_shader_module(
             logical_device,
             &include_bytes!("../../../shaders/sprite.vert.spv")[..],
         )?;
 
-        let fragment_shader_module = Self::load_shader_module(
+        let fragment_shader_module = load_shader_module(
             logical_device,
             &include_bytes!("../../../shaders/sprite.frag.spv")[..],
         )?;
@@ -515,19 +625,6 @@ impl VkSpriteRenderPass {
         Ok(())
     }
 
-    fn load_shader_module(
-        logical_device: &ash::Device,
-        data: &[u8],
-    ) -> VkResult<vk::ShaderModule> {
-        let mut spv_file = std::io::Cursor::new(data);
-        //TODO: Pass this error up
-        let code = renderer_shell_vulkan::util::read_spv(&mut spv_file)
-            .expect("Failed to read vertex shader spv file");
-        let shader_info = vk::ShaderModuleCreateInfo::builder().code(&code);
-
-        unsafe { logical_device.create_shader_module(&shader_info, None) }
-    }
-
     fn create_framebuffers(
         logical_device: &ash::Device,
         swapchain_image_views: &Vec<vk::ImageView>,
@@ -555,24 +652,6 @@ impl VkSpriteRenderPass {
             .collect()
     }
 
-    fn create_command_pool(
-        logical_device: &ash::Device,
-        queue_family_indices: &VkQueueFamilyIndices,
-    ) -> VkResult<vk::CommandPool> {
-        log::info!(
-            "Creating command pool with queue family index {}",
-            queue_family_indices.graphics_queue_family_index
-        );
-        let pool_create_info = vk::CommandPoolCreateInfo::builder()
-            .flags(
-                vk::CommandPoolCreateFlags::TRANSIENT
-                    | vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER,
-            )
-            .queue_family_index(queue_family_indices.graphics_queue_family_index);
-
-        unsafe { logical_device.create_command_pool(&pool_create_info, None) }
-    }
-
     fn create_command_buffers(
         logical_device: &ash::Device,
         swapchain_info: &SwapchainInfo,
@@ -586,119 +665,7 @@ impl VkSpriteRenderPass {
         unsafe { logical_device.allocate_command_buffers(&command_buffer_allocate_info) }
     }
 
-    fn create_uniform_buffer(
-        logical_device: &ash::Device,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
-    ) -> VkResult<ManuallyDrop<VkBuffer>> {
-        let buffer = VkBuffer::new(
-            logical_device,
-            device_memory_properties,
-            vk::BufferUsageFlags::UNIFORM_BUFFER,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            mem::size_of::<UniformBufferObject>() as u64,
-        );
-
-        Ok(ManuallyDrop::new(buffer?))
-    }
-
-    pub fn create_texture_image_sampler(logical_device: &ash::Device) -> vk::Sampler {
-        let sampler_info = vk::SamplerCreateInfo::builder()
-            .mag_filter(vk::Filter::LINEAR)
-            .min_filter(vk::Filter::LINEAR)
-            .address_mode_u(vk::SamplerAddressMode::REPEAT)
-            .address_mode_v(vk::SamplerAddressMode::REPEAT)
-            .address_mode_w(vk::SamplerAddressMode::REPEAT)
-            .anisotropy_enable(false)
-            .max_anisotropy(1.0)
-            .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
-            .unnormalized_coordinates(false)
-            .compare_enable(false)
-            .compare_op(vk::CompareOp::ALWAYS)
-            .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
-            .mip_lod_bias(0.0)
-            .min_lod(0.0)
-            .max_lod(0.0);
-
-        unsafe { logical_device.create_sampler(&sampler_info, None).unwrap() }
-    }
-
-    fn create_descriptor_pool_per_pass(
-        logical_device: &ash::Device,
-        swapchain_image_count: u32,
-    ) -> VkResult<vk::DescriptorPool> {
-        let pool_sizes = [
-            vk::DescriptorPoolSize::builder()
-                .ty(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(3)
-                .build(),
-            vk::DescriptorPoolSize::builder()
-                .ty(vk::DescriptorType::SAMPLER)
-                .descriptor_count(3)
-                .build(),
-        ];
-
-        let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
-            .pool_sizes(&pool_sizes)
-            .max_sets(3);
-
-        unsafe { logical_device.create_descriptor_pool(&descriptor_pool_info, None) }
-    }
-
-    fn create_descriptor_sets_per_pass(
-        logical_device: &ash::Device,
-        descriptor_pool: &vk::DescriptorPool,
-        descriptor_set_layout: vk::DescriptorSetLayout,
-        swapchain_image_count: usize,
-        uniform_buffers: &Vec<ManuallyDrop<VkBuffer>>,
-        image_sampler: &vk::Sampler,
-    ) -> VkResult<Vec<vk::DescriptorSet>> {
-        // DescriptorSetAllocateInfo expects an array with an element per set
-        let descriptor_set_layouts = vec![descriptor_set_layout; swapchain_image_count];
-
-        let alloc_info = vk::DescriptorSetAllocateInfo::builder()
-            .descriptor_pool(*descriptor_pool)
-            .set_layouts(descriptor_set_layouts.as_slice());
-
-        let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
-
-        for i in 0..swapchain_image_count {
-            let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
-                .buffer(uniform_buffers[i as usize].buffer)
-                .offset(0)
-                .range(mem::size_of::<UniformBufferObject>() as u64)
-                .build()];
-
-            let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
-                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .sampler(*image_sampler)
-                .build()];
-
-            let descriptor_writes = [
-                vk::WriteDescriptorSet::builder()
-                    .dst_set(descriptor_sets[i])
-                    .dst_binding(0)
-                    .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                    .buffer_info(&descriptor_buffer_infos)
-                    .build(),
-                vk::WriteDescriptorSet::builder()
-                    .dst_set(descriptor_sets[i])
-                    .dst_binding(1)
-                    .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::SAMPLER)
-                    .image_info(&sampler_descriptor_image_infos)
-                    .build(),
-            ];
-
-            unsafe {
-                logical_device.update_descriptor_sets(&descriptor_writes, &[]);
-            }
-        }
-
-        Ok(descriptor_sets)
-    }
-
-    fn record_command_buffer(
+    fn update_command_buffer(
         device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         logical_device: &ash::Device,
         swapchain_info: &SwapchainInfo,
@@ -759,8 +726,10 @@ impl VkSpriteRenderPass {
         for i in (0..SPRITE_COUNT) {
             sprites.push(Sprite {
                 position: glam::Vec3::new(rng.gen_range(-400.0, 400.0), rng.gen_range(-300.0, 300.0), 0.0),
-                texture_size: glam::Vec2::new(800.0, 450.0),
-                scale: rng.gen_range(0.1, 0.2),
+                //texture_size: glam::Vec2::new(800.0, 450.0),
+                texture_size: glam::Vec2::new(32.0, 32.0),
+                //scale: rng.gen_range(0.1, 0.2),
+                scale: rng.gen_range(0.5, 1.0),
                 rotation: rng.gen_range(-180.0, 180.0),
                 texture_descriptor_index: rng.gen_range(0, 2)
             });
@@ -959,31 +928,6 @@ impl VkSpriteRenderPass {
         }
     }
 
-    // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
-    // single function
-    pub fn orthographic_rh_gl(
-        left: f32,
-        right: f32,
-        bottom: f32,
-        top: f32,
-        near: f32,
-        far: f32,
-    ) -> [[f32; 4]; 4] {
-        let a = 2.0 / (right - left);
-        let b = 2.0 / (top - bottom);
-        let c = -2.0 / (far - near);
-        let tx = -(right + left) / (right - left);
-        let ty = -(top + bottom) / (top - bottom);
-        let tz = -(far + near) / (far - near);
-
-        [
-            [a, 0.0, 0.0, 0.0],
-            [0.0, b, 0.0, 0.0],
-            [0.0, 0.0, c, 0.0],
-            [tx, ty, tz, 1.0],
-        ]
-    }
-
     //TODO: This is doing a GPU idle wait, would be better to integrate it into the command
     // buffer
     pub fn update_uniform_buffer(
@@ -1002,7 +946,7 @@ impl VkSpriteRenderPass {
         let half_width = 400.0;
         let half_height = 400.0 / fov;
 
-        let proj = Self::orthographic_rh_gl(
+        let proj = orthographic_rh_gl(
             -half_width,
             half_width,
             -half_height,
@@ -1026,7 +970,7 @@ impl VkSpriteRenderPass {
         //TODO: Integrate this into the command buffer we create below
         self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
 
-        Self::record_command_buffer(
+        Self::update_command_buffer(
             device_memory_properties,
             &self.device,
             &self.swapchain_info,
@@ -1086,4 +1030,42 @@ impl Drop for VkSpriteRenderPass {
 
         log::debug!("destroyed VkSpriteRenderPass");
     }
+}
+
+fn load_shader_module(
+    logical_device: &ash::Device,
+    data: &[u8],
+) -> VkResult<vk::ShaderModule> {
+    let mut spv_file = std::io::Cursor::new(data);
+    //TODO: Pass this error up
+    let code = renderer_shell_vulkan::util::read_spv(&mut spv_file)
+        .expect("Failed to read vertex shader spv file");
+    let shader_info = vk::ShaderModuleCreateInfo::builder().code(&code);
+
+    unsafe { logical_device.create_shader_module(&shader_info, None) }
+}
+
+// This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
+// single function
+pub fn orthographic_rh_gl(
+    left: f32,
+    right: f32,
+    bottom: f32,
+    top: f32,
+    near: f32,
+    far: f32,
+) -> [[f32; 4]; 4] {
+    let a = 2.0 / (right - left);
+    let b = 2.0 / (top - bottom);
+    let c = -2.0 / (far - near);
+    let tx = -(right + left) / (right - left);
+    let ty = -(top + bottom) / (top - bottom);
+    let tz = -(far + near) / (far - near);
+
+    [
+        [a, 0.0, 0.0, 0.0],
+        [0.0, b, 0.0, 0.0],
+        [0.0, 0.0, c, 0.0],
+        [tx, ty, tz, 1.0],
+    ]
 }

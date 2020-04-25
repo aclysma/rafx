@@ -44,7 +44,7 @@ impl VkImage {
             device_memory_properties,
             required_property_flags,
         )
-        .expect("Unable to find suitable memorytype for the vertex buffer.");
+        .expect("Unable to find suitable memorytype for the image.");
 
         let image_allocate_info = vk::MemoryAllocateInfo::builder()
             .allocation_size(image_memory_req.size)

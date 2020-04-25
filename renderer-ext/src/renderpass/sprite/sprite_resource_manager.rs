@@ -38,7 +38,7 @@ fn decode_texture(buf: &[u8], format: ImageFormat) -> DecodedTexture {
     }
 }
 
-const MAX_TEXTURES : u32 = 2;
+const MAX_TEXTURES : u32 = 100;
 
 pub struct VkSpriteResourceManager {
     pub device: ash::Device,
@@ -73,17 +73,24 @@ impl VkSpriteResourceManager {
         //swapchain: &VkSwapchain,
         swapchain_info: SwapchainInfo
     ) -> VkResult<Self> {
-        //let decoded_texture = decode_texture(include_bytes!("../../../../texture2.jpg"), image::ImageFormat::Jpeg);
-        //let mut decoded_textures = vec![];
-        // for _ in 0..MAX_TEXTURES {
-        //     decoded_textures.push(decoded_texture.clone());
-        // }
+        let decoded_texture = decode_texture(include_bytes!("../../../../texture2.jpg"), image::ImageFormat::Jpeg);
+        let mut decoded_textures = vec![];
+        for _ in 0..MAX_TEXTURES {
+            decoded_textures.push(decoded_texture.clone());
+        }
 
         let decoded_textures = [
             decode_texture(include_bytes!("../../../../texture.jpg"), image::ImageFormat::Jpeg),
             decode_texture(include_bytes!("../../../../texture2.jpg"), image::ImageFormat::Jpeg),
             //decode_texture(include_bytes!("../../../../texture.jpg"), image::ImageFormat::Jpeg),
         ];
+
+        //let tiny_texture = decode_texture(include_bytes!("../../../../texture2.jpg"), image::ImageFormat::Jpeg);
+        //let tiny_texture = decode_texture(include_bytes!("../../../../texture-tiny-rust.png"), image::ImageFormat::Png);
+        //let tiny_texture = decode_texture(include_bytes!("../../../../texture-tiny-rust.jpeg"), image::ImageFormat::Jpeg);
+
+        //let decoded_textures : Vec<DecodedTexture> = (0..MAX_TEXTURES).map(|_| tiny_texture.clone()).collect();
+
 
         //
         // Command Buffers
@@ -97,7 +104,7 @@ impl VkSpriteResourceManager {
         let mut images = vec![];
         let mut image_views = vec![];
         for decoded_texture in &decoded_textures {
-            let image = Self::load_image(
+            let image = load_image(
                 &device.logical_device,
                 device.queues.graphics_queue,
                 command_pool,
@@ -141,52 +148,6 @@ impl VkSpriteResourceManager {
         })
     }
 
-    fn create_descriptor_set_layout_per_pass(
-        logical_device: &ash::Device
-    ) -> VkResult<vk::DescriptorSetLayout> {
-        let descriptor_set_layout_bindings = [
-            vk::DescriptorSetLayoutBinding::builder()
-                .binding(0)
-                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::VERTEX)
-                .build(),
-            vk::DescriptorSetLayoutBinding::builder()
-                .binding(1)
-                .descriptor_type(vk::DescriptorType::SAMPLER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                .build(),
-        ];
-
-        let descriptor_set_layout_create_info =
-            vk::DescriptorSetLayoutCreateInfo::builder().bindings(&descriptor_set_layout_bindings);
-
-        unsafe {
-            logical_device.create_descriptor_set_layout(&descriptor_set_layout_create_info, None)
-        }
-    }
-
-    fn create_descriptor_set_layout(
-        logical_device: &ash::Device
-    ) -> VkResult<vk::DescriptorSetLayout> {
-        let descriptor_set_layout_bindings = [
-            vk::DescriptorSetLayoutBinding::builder()
-                .binding(0)
-                .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                .build(),
-        ];
-
-        let descriptor_set_layout_create_info =
-            vk::DescriptorSetLayoutCreateInfo::builder().bindings(&descriptor_set_layout_bindings);
-
-        unsafe {
-            logical_device.create_descriptor_set_layout(&descriptor_set_layout_create_info, None)
-        }
-    }
-
     fn create_command_pool(
         logical_device: &ash::Device,
         queue_family_indices: &VkQueueFamilyIndices,
@@ -203,71 +164,6 @@ impl VkSpriteResourceManager {
             .queue_family_index(queue_family_indices.graphics_queue_family_index);
 
         unsafe { logical_device.create_command_pool(&pool_create_info, None) }
-    }
-
-    pub fn load_image(
-        logical_device: &ash::Device,
-        queue: vk::Queue,
-        command_pool: vk::CommandPool,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
-        decoded_texture: &DecodedTexture,
-    ) -> VkResult<ManuallyDrop<VkImage>> {
-        let extent = vk::Extent3D {
-            width: decoded_texture.width,
-            height: decoded_texture.height,
-            depth: 1,
-        };
-
-        let mut staging_buffer = VkBuffer::new(
-            logical_device,
-            device_memory_properties,
-            vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            decoded_texture.data.len() as u64,
-        )?;
-
-        staging_buffer.write_to_host_visible_buffer(&decoded_texture.data)?;
-
-        let image = VkImage::new(
-            logical_device,
-            device_memory_properties,
-            extent,
-            vk::Format::R8G8B8A8_UNORM,
-            vk::ImageTiling::OPTIMAL,
-            vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL,
-        )?;
-
-        transition_image_layout(
-            logical_device,
-            queue,
-            command_pool,
-            image.image,
-            vk::Format::R8G8B8A8_UNORM,
-            vk::ImageLayout::UNDEFINED,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-        )?;
-
-        copy_buffer_to_image(
-            logical_device,
-            queue,
-            command_pool,
-            staging_buffer.buffer,
-            image.image,
-            &image.extent,
-        )?;
-
-        transition_image_layout(
-            logical_device,
-            queue,
-            command_pool,
-            image.image,
-            vk::Format::R8G8B8A8_UNORM,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-        )?;
-
-        Ok(ManuallyDrop::new(image))
     }
 
     pub fn create_texture_image_view(
@@ -294,25 +190,24 @@ impl VkSpriteResourceManager {
         }
     }
 
-    pub fn create_texture_image_sampler(logical_device: &ash::Device) -> vk::Sampler {
-        let sampler_info = vk::SamplerCreateInfo::builder()
-            .mag_filter(vk::Filter::LINEAR)
-            .min_filter(vk::Filter::LINEAR)
-            .address_mode_u(vk::SamplerAddressMode::REPEAT)
-            .address_mode_v(vk::SamplerAddressMode::REPEAT)
-            .address_mode_w(vk::SamplerAddressMode::REPEAT)
-            .anisotropy_enable(false)
-            .max_anisotropy(1.0)
-            .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
-            .unnormalized_coordinates(false)
-            .compare_enable(false)
-            .compare_op(vk::CompareOp::ALWAYS)
-            .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
-            .mip_lod_bias(0.0)
-            .min_lod(0.0)
-            .max_lod(0.0);
+    fn create_descriptor_set_layout(
+        logical_device: &ash::Device
+    ) -> VkResult<vk::DescriptorSetLayout> {
+        let descriptor_set_layout_bindings = [
+            vk::DescriptorSetLayoutBinding::builder()
+                .binding(0)
+                .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                .descriptor_count(1)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                .build(),
+        ];
 
-        unsafe { logical_device.create_sampler(&sampler_info, None).unwrap() }
+        let descriptor_set_layout_create_info =
+            vk::DescriptorSetLayoutCreateInfo::builder().bindings(&descriptor_set_layout_bindings);
+
+        unsafe {
+            logical_device.create_descriptor_set_layout(&descriptor_set_layout_create_info, None)
+        }
     }
 
     fn create_descriptor_pool(
@@ -515,4 +410,69 @@ pub fn copy_buffer_to_image(
             );
         }
     })
+}
+
+pub fn load_image(
+    logical_device: &ash::Device,
+    queue: vk::Queue,
+    command_pool: vk::CommandPool,
+    device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
+    decoded_texture: &DecodedTexture,
+) -> VkResult<ManuallyDrop<VkImage>> {
+    let extent = vk::Extent3D {
+        width: decoded_texture.width,
+        height: decoded_texture.height,
+        depth: 1,
+    };
+
+    let mut staging_buffer = VkBuffer::new(
+        logical_device,
+        device_memory_properties,
+        vk::BufferUsageFlags::TRANSFER_SRC,
+        vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+        decoded_texture.data.len() as u64,
+    )?;
+
+    staging_buffer.write_to_host_visible_buffer(&decoded_texture.data)?;
+
+    let image = VkImage::new(
+        logical_device,
+        device_memory_properties,
+        extent,
+        vk::Format::R8G8B8A8_UNORM,
+        vk::ImageTiling::OPTIMAL,
+        vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+    )?;
+
+    transition_image_layout(
+        logical_device,
+        queue,
+        command_pool,
+        image.image,
+        vk::Format::R8G8B8A8_UNORM,
+        vk::ImageLayout::UNDEFINED,
+        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+    )?;
+
+    copy_buffer_to_image(
+        logical_device,
+        queue,
+        command_pool,
+        staging_buffer.buffer,
+        image.image,
+        &image.extent,
+    )?;
+
+    transition_image_layout(
+        logical_device,
+        queue,
+        command_pool,
+        image.image,
+        vk::Format::R8G8B8A8_UNORM,
+        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+    )?;
+
+    Ok(ManuallyDrop::new(image))
 }
