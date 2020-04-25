@@ -14,9 +14,6 @@ pub struct GameRenderer {
     imgui_event_listener: ImguiRenderEventListener,
 
     sprite_resource_manager: Option<VkSpriteResourceManager>,
-
-    //imgui_font_atlas: VkImGuiRenderPassFontAtlas,
-    //imgui_renderpass: Option<VkImGuiRenderPass>,
     sprite_renderpass: Option<VkSpriteRenderPass>
 
 }
@@ -31,7 +28,7 @@ impl GameRenderer {
             //imgui_font_atlas,
             resource_manager,
             imgui_event_listener,
-            //imgui_renderpass: None,
+
             sprite_resource_manager: None,
             sprite_renderpass: None
         }

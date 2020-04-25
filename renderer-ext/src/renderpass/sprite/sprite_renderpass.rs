@@ -22,55 +22,30 @@ use ash::vk::ShaderStageFlags;
 
 use super::VkSpriteResourceManager;
 
-// #[derive(Clone)]
-// pub struct DecodedTexture {
-//     pub width: u32,
-//     pub height: u32,
-//     pub data: Vec<u8>,
-// }
-
+/// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
 struct UniformBufferObject {
-    mvp: [[f32; 4]; 4],
+    // View and projection matrices
+    view_proj: [[f32; 4]; 4],
 }
 
+/// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy)]
+#[repr(C)]
 struct Vertex {
     pos: [f32; 2],
     tex_coord: [f32; 2],
     color: [u8; 4],
 }
 
-// const QUAD_VERTEX_LIST : [Vertex; 4] = [
-//     Vertex {
-//         pos: [-0.5, -0.5],
-//         color: [255, 0, 0, 255],
-//         tex_coord: [1.0, 0.0]
-//     },
-//     Vertex {
-//         pos: [0.5, -0.5],
-//         color: [255, 255, 0, 255],
-//         tex_coord: [0.0, 0.0]
-//
-//     },
-//     Vertex {
-//         pos: [0.5, 0.5],
-//         color: [255, 0, 255, 255],
-//         tex_coord: [0.0, 1.0]
-//     },
-//     Vertex {
-//         pos: [-0.5, 0.5],
-//         color: [0, 0, 255, 255],
-//         tex_coord: [1.0, 1.0]
-//     }
-// ];
-
+/// Used as static data to represent a quad
 #[derive(Clone, Debug, Copy)]
 struct QuadVertex {
     pos: [f32; 3],
     tex_coord: [f32; 2],
 }
 
+/// Static data the represents a "unit" quad
 const QUAD_VERTEX_LIST : [QuadVertex; 4] = [
     QuadVertex {
         pos: [-0.5, -0.5, 0.0],
@@ -91,9 +66,8 @@ const QUAD_VERTEX_LIST : [QuadVertex; 4] = [
     }
 ];
 
+/// Draw order of QUAD_VERTEX_LIST
 const QUAD_INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
-
-const MAX_TEXTURES : u32 = 10;
 
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
@@ -111,42 +85,39 @@ struct PipelineResources {
     pipeline: vk::Pipeline,
 }
 
+/// Draws sprites
 pub struct VkSpriteRenderPass {
-    pub device: ash::Device, // This struct is not responsible for releasing this
+    pub device: ash::Device,
     pub swapchain_info: SwapchainInfo,
 
+    // This contains bindings for the UBO containing a view/proj matrix and a sampler
     pub descriptor_set_layout_per_pass: vk::DescriptorSetLayout,
+    pub descriptor_pool_per_pass: vk::DescriptorPool,
 
+    // One per present index
+    pub descriptor_sets_per_pass: Vec<vk::DescriptorSet>,
 
+    // Static resources for the renderpass, including a frame buffer per present index
     pub pipeline_layout: vk::PipelineLayout,
     pub renderpass: vk::RenderPass,
     pub pipeline: vk::Pipeline,
     pub frame_buffers: Vec<vk::Framebuffer>,
+
+    // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
 
+    // Buffers for sending data to be rendered to the GPU
+    // Indexed by present index, then vertex buffer.
     pub vertex_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
     pub index_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
 
+    // Sends the view/proj matrix to the GPU. One per present index.
     pub uniform_buffers: Vec<ManuallyDrop<VkBuffer>>,
 
-    pub descriptor_pool_per_pass: vk::DescriptorPool,
-
-    pub descriptor_sets_per_pass: Vec<vk::DescriptorSet>,
-
+    // The sampler used to draw a sprite
     pub image_sampler: vk::Sampler
 }
-
-// fn decode_texture(buf: &[u8], format: ImageFormat) -> DecodedTexture {
-//     let example_image = image::load_from_memory_with_format(buf, format).unwrap();
-//     let dimensions = example_image.dimensions();
-//     let example_image = example_image.to_rgba().into_raw();
-//     DecodedTexture {
-//         width: dimensions.0,
-//         height: dimensions.1,
-//         data: example_image
-//     }
-// }
 
 impl VkSpriteRenderPass {
     pub fn new(
@@ -154,44 +125,15 @@ impl VkSpriteRenderPass {
         swapchain: &VkSwapchain,
         sprite_resource_manager: &VkSpriteResourceManager
     ) -> VkResult<Self> {
-        // let decoded_texture = decode_texture(include_bytes!("../../../../texture2.jpg"), image::ImageFormat::Jpeg);
-        // let mut decoded_textures = vec![];
-        // for _ in 0..MAX_TEXTURES {
-        //     decoded_textures.push(decoded_texture.clone());
-        // }
-        //decoded_textures.push(decode_texture(include_bytes!("../../../texture.jpg"), image::ImageFormat::Jpeg));
-
-
-
-
         //
         // Command Buffers
         //
         let command_pool =
             Self::create_command_pool(&device.logical_device, &device.queue_family_indices)?;
 
-
-
         //
-        // Resources
+        // Static resources used by GPU
         //
-        // let mut images = vec![];
-        // let mut image_views = vec![];
-        // for decoded_texture in decoded_textures {
-        //     let image = Self::load_image(
-        //         &device.logical_device,
-        //         device.queues.graphics_queue,
-        //         command_pool,
-        //         &device.memory_properties,
-        //         &decoded_texture,
-        //     )?;
-        //
-        //     let image_view = Self::create_texture_image_view(&device.logical_device, &image.image);
-        //
-        //     images.push(image);
-        //     image_views.push(image_view);
-        // }
-
         let image_sampler = Self::create_texture_image_sampler(&device.logical_device);
 
         let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
@@ -202,28 +144,15 @@ impl VkSpriteRenderPass {
             )?)
         }
 
-
-
-
-
-
-
-
         //
         // Descriptors
         //
         let descriptor_set_layout_per_pass = Self::create_descriptor_set_layout_per_pass(&device.logical_device)?;
-        //let descriptor_set_layout_per_texture = Self::create_descriptor_set_layout_per_texture(&device.logical_device)?;
 
         let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
             &device.logical_device,
             swapchain.swapchain_info.image_count as u32,
         )?;
-
-        // let descriptor_pool_per_texture = Self::create_descriptor_pool_per_texture(
-        //     &device.logical_device,
-        //     swapchain.swapchain_info.image_count as u32,
-        // )?;
 
         let descriptor_sets_per_pass = Self::create_descriptor_sets_per_pass(
             &device.logical_device,
@@ -234,19 +163,10 @@ impl VkSpriteRenderPass {
             &image_sampler,
         )?;
 
-        // let descriptor_sets_per_texture = Self::create_descriptor_sets_per_texture(
-        //     &device.logical_device,
-        //     &descriptor_pool_per_texture,
-        //     &descriptor_set_layouts[1],
-        //     swapchain.swapchain_info.image_count,
-        //     &image_views,
-        // )?;
-
         let descriptor_set_layouts = [
             descriptor_set_layout_per_pass,
             sprite_resource_manager.descriptor_set_layout()
         ];
-
 
         //
         // Pipeline/Renderpass
@@ -270,7 +190,6 @@ impl VkSpriteRenderPass {
             )
         })?;
 
-        //TODO: Return error if not set
         let pipeline_resources = pipeline_resources.unwrap();
         let pipeline_layout = pipeline_resources.pipeline_layout;
         let renderpass = pipeline_resources.renderpass;
@@ -292,10 +211,6 @@ impl VkSpriteRenderPass {
             &command_pool,
         )?;
 
-
-
-
-
         //
         // Containers for dynamically-allocated resources
         //
@@ -305,8 +220,6 @@ impl VkSpriteRenderPass {
             vertex_buffers.push(vec![]);
             index_buffers.push(vec![]);
         }
-
-
 
         //
         // Record Command Buffers
@@ -360,26 +273,6 @@ impl VkSpriteRenderPass {
             vk::DescriptorSetLayoutBinding::builder()
                 .binding(1)
                 .descriptor_type(vk::DescriptorType::SAMPLER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                .build(),
-        ];
-
-        let descriptor_set_layout_create_info =
-            vk::DescriptorSetLayoutCreateInfo::builder().bindings(&descriptor_set_layout_bindings);
-
-        unsafe {
-            logical_device.create_descriptor_set_layout(&descriptor_set_layout_create_info, None)
-        }
-    }
-
-    fn create_descriptor_set_layout_per_texture(
-        logical_device: &ash::Device
-    ) -> VkResult<vk::DescriptorSetLayout> {
-        let descriptor_set_layout_bindings = [
-            vk::DescriptorSetLayoutBinding::builder()
-                .binding(0)
-                .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
                 .descriptor_count(1)
                 .stage_flags(vk::ShaderStageFlags::FRAGMENT)
                 .build(),
@@ -1118,7 +1011,7 @@ impl VkSpriteRenderPass {
             100.0,
         );
 
-        let ubo = UniformBufferObject { mvp: proj };
+        let ubo = UniformBufferObject { view_proj: proj };
 
         self.uniform_buffers[swapchain_image_index].write_to_host_visible_buffer(&[ubo])
     }
