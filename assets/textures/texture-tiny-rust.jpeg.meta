@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(3675488443752219416),
+    importer_version: 2,
+    importer_type: "720d636b-b79c-42d4-8f46-a2d8e1ada46e",
+    importer_options: (),
+    importer_state: (Some("e7510922-2576-4f42-a41e-a264d60addaa")),
+    assets: [
+        (
+            id: "e7510922-2576-4f42-a41e-a264d60addaa",
+            search_tags: [
+                ("file_name", Some("texture-tiny-rust.jpeg")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 15981704205384028140,
+                id: "e7510922-2576-4f42-a41e-a264d60addaa",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(16400),
+                uncompressed_size: Some(16400),
+                type_id: "d4079e74-3ec9-4ebc-9b77-a87cafdfdada",
+            )),
+        ),
+    ],
+)

@@ -22,6 +22,10 @@ use ash::vk::ShaderStageFlags;
 
 use super::VkSpriteResourceManager;
 
+struct SpriteRenderpassStats {
+    draw_call_count: u32
+}
+
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
 struct UniformBufferObject {
@@ -716,7 +720,7 @@ impl VkSpriteRenderPass {
             texture_descriptor_index: u32
         }
 
-        const SPRITE_COUNT : usize = 100;
+        const SPRITE_COUNT : usize = 10000;
         let mut sprites = Vec::with_capacity(SPRITE_COUNT);
 
         let mut rng: pcg_rand::Pcg32 = rand::SeedableRng::seed_from_u64(42);
@@ -727,7 +731,7 @@ impl VkSpriteRenderPass {
             sprites.push(Sprite {
                 position: glam::Vec3::new(rng.gen_range(-400.0, 400.0), rng.gen_range(-300.0, 300.0), 0.0),
                 //texture_size: glam::Vec2::new(800.0, 450.0),
-                texture_size: glam::Vec2::new(32.0, 32.0),
+                texture_size: glam::Vec2::new(512.0, 512.0),
                 //scale: rng.gen_range(0.1, 0.2),
                 scale: rng.gen_range(0.5, 1.0),
                 rotation: rng.gen_range(-180.0, 180.0),
@@ -982,7 +986,7 @@ impl VkSpriteRenderPass {
             &mut self.vertex_buffers[present_index],
             &mut self.index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
-            sprite_resource_manager.descriptor_sets(present_index),
+            sprite_resource_manager.descriptor_sets(0),
         )
     }
 }

@@ -18,6 +18,12 @@ use glam::Vec3;
 use features::sprite::SpriteRenderNodeHandle;
 use renderer_base::visibility::DynamicAabbVisibilityNodeHandle;
 
+pub mod asset_resource;
+pub mod asset_storage;
+pub mod image_importer;
+
+pub mod asset_uploader;
+
 #[derive(Copy, Clone)]
 pub struct PositionComponent {
     pub position: Vec3,

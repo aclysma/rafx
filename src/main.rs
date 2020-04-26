@@ -14,11 +14,65 @@ use sdl2::mouse::MouseState;
 use renderer_ext::GameRendererWithShell;
 use image::GenericImageView;
 
+
+use atelier_assets::core::asset_uuid;
+use atelier_assets::core as atelier_core;
+
+mod daemon;
+use renderer_ext::asset_resource::AssetResource;
+use renderer_ext::image_importer::ImageAsset;
+use renderer_ext::renderpass::sprite::DecodedTexture;
+
+
 fn main() {
     // Setup logging
     env_logger::Builder::from_default_env()
         .filter_level(log::LevelFilter::Error)
         .init();
+
+    // Spawn the daemon in a background thread. This could be a different process, but
+    // for simplicity we'll launch it here.
+    std::thread::spawn(move || {
+        daemon::run();
+    });
+
+    let mut asset_resource = AssetResource::default();
+    asset_resource.add_storage::<ImageAsset>();
+
+
+
+    let asset_uuid = asset_uuid!("d60aa147-e1c7-42dc-9e99-40ba882544a7");
+
+    use atelier_assets::loader::Loader;
+    use atelier_assets::loader::handle::AssetHandle;
+
+    let load_handle = asset_resource.loader().add_ref(asset_uuid);
+    let handle = atelier_assets::loader::handle::Handle::<ImageAsset>::new(
+        asset_resource.tx().clone(),
+        load_handle,
+    );
+
+    let version = loop {
+        asset_resource.update();
+        if let atelier_assets::loader::LoadStatus::Loaded = handle
+            .load_status::<atelier_assets::loader::rpc_loader::RpcLoader>(
+                asset_resource.loader(),
+            ) {
+            break handle
+                .asset_version::<ImageAsset, _>(asset_resource.storage())
+                .unwrap();
+        }
+    };
+
+    let image_asset = handle.asset(asset_resource.storage()).unwrap();
+    let decoded_image = DecodedTexture {
+        width: image_asset.width,
+        height: image_asset.height,
+        data: image_asset.data.clone()
+    };
+    //let data =
+
+
 
     // Setup SDL
     let sdl_context = sdl2::init().expect("Failed to initialize sdl2");

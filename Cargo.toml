@@ -25,6 +25,29 @@ glam = "0.8.6"
 
 #legion = "0.2.1"
 legion = { git = "https://github.com/TomGillen/legion.git" }
+atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
 
+
+
+
+structopt = "0.3"
+serde = "1"
+uuid = "0.8"
+type-uuid = "0.1"
+image2 = { version = "0.11", features = [ "ser" ] }
+inventory = "0.1"
+
+# We need this PR (https://github.com/servo/bincode/pull/288) but it's not published yet
+#bincode = "1.2"
+bincode = { git = "https://github.com/servo/bincode.git", rev="e30e91e3a" }
+mopa = "0.2"
+itertools = "0.8"
+
+serde-diff = "0.3"
+
+ron = "0.5"
+erased-serde = "0.3"
+
+futures = "0.3"
 
 [dev-dependencies]

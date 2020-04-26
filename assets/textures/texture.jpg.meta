@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(14178135279647276843),
+    importer_version: 2,
+    importer_type: "720d636b-b79c-42d4-8f46-a2d8e1ada46e",
+    importer_options: (),
+    importer_state: (Some("afce7976-ee35-4bd7-94e5-3eb14f7fa063")),
+    assets: [
+        (
+            id: "afce7976-ee35-4bd7-94e5-3eb14f7fa063",
+            search_tags: [
+                ("file_name", Some("texture.jpg")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 10666685290204036559,
+                id: "afce7976-ee35-4bd7-94e5-3eb14f7fa063",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1048592),
+                uncompressed_size: Some(1048592),
+                type_id: "d4079e74-3ec9-4ebc-9b77-a87cafdfdada",
+            )),
+        ),
+    ],
+)

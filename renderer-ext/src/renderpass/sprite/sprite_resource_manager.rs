@@ -73,21 +73,21 @@ impl VkSpriteResourceManager {
         //swapchain: &VkSwapchain,
         swapchain_info: SwapchainInfo
     ) -> VkResult<Self> {
-        let decoded_texture = decode_texture(include_bytes!("../../../../texture2.jpg"), image::ImageFormat::Jpeg);
+        let decoded_texture = decode_texture(include_bytes!("../../../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg);
         let mut decoded_textures = vec![];
         for _ in 0..MAX_TEXTURES {
             decoded_textures.push(decoded_texture.clone());
         }
 
         let decoded_textures = [
-            decode_texture(include_bytes!("../../../../texture.jpg"), image::ImageFormat::Jpeg),
-            decode_texture(include_bytes!("../../../../texture2.jpg"), image::ImageFormat::Jpeg),
+            decode_texture(include_bytes!("../../../../assets/textures/texture.jpg"), image::ImageFormat::Jpeg),
+            decode_texture(include_bytes!("../../../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg),
             //decode_texture(include_bytes!("../../../../texture.jpg"), image::ImageFormat::Jpeg),
         ];
 
-        //let tiny_texture = decode_texture(include_bytes!("../../../../texture2.jpg"), image::ImageFormat::Jpeg);
-        //let tiny_texture = decode_texture(include_bytes!("../../../../texture-tiny-rust.png"), image::ImageFormat::Png);
-        //let tiny_texture = decode_texture(include_bytes!("../../../../texture-tiny-rust.jpeg"), image::ImageFormat::Jpeg);
+        //let tiny_texture = decode_texture(include_bytes!("../../../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg);
+        //let tiny_texture = decode_texture(include_bytes!("../../../../assets/textures/texture-tiny-rust.png"), image::ImageFormat::Png);
+        //let tiny_texture = decode_texture(include_bytes!("../../../../assets/textures/texture-tiny-rust.jpg"), image::ImageFormat::Jpeg);
 
         //let decoded_textures : Vec<DecodedTexture> = (0..MAX_TEXTURES).map(|_| tiny_texture.clone()).collect();
 
@@ -147,6 +147,32 @@ impl VkSpriteResourceManager {
             image_views,
         })
     }
+
+    // Called per changed resource. The commit version should be bumped once for each set of
+    // changes. So the call pattern would be add(1), add(1), add(1), commit(1), add(2), add(2), etc.
+    fn load_texture(hash: u32, data: DecodedTexture, commit_version: u32) {
+        // Get the texture uploaded, possibly on another thread
+    }
+
+    fn unload_texture(hash:u32) {
+
+    }
+
+    // Call after all adds for a single commit complete
+    fn commit_texture_changes() {
+        // Build descriptor sets
+    }
+
+    fn frame_begin(frame_index: u32) {
+        // all descriptors we currently hold are guaranteed to remain until frame_end is called for
+        // the same frame index
+    }
+
+    fn frame_end(frame_index: u32) {
+        // this will potentially retire some descriptors
+    }
+
+
 
     fn create_command_pool(
         logical_device: &ash::Device,
