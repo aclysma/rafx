@@ -1,7 +1,7 @@
 // This example shows how to use the renderer with SDL2 directly.
 
 use renderer_shell_vulkan::{
-    RendererBuilder, LogicalSize, ScaleToFit, Rect, CoordinateSystem, RendererEventListener,
+    RendererBuilder, LogicalSize, RendererEventListener,
     Window, VkDevice, VkSwapchain, Renderer, CreateRendererError,
 };
 use renderer_shell_vulkan_sdl2::Sdl2Window;
@@ -86,13 +86,6 @@ fn main() {
     let logical_size = LogicalSize {
         width: 900,
         height: 600,
-    };
-    let scale_to_fit = ScaleToFit::Center;
-    let visible_range = Rect {
-        left: 0.0,
-        right: logical_size.width as f32,
-        top: 0.0,
-        bottom: logical_size.height as f32,
     };
 
     let sdl_window = video_subsystem

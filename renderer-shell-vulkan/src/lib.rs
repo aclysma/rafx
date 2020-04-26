@@ -21,6 +21,7 @@ mod device;
 pub use device::VkDevice;
 pub use device::VkQueueFamilyIndices;
 pub use device::VkQueues;
+pub use device::VkCreateDeviceError;
 
 mod swapchain;
 pub use swapchain::VkSwapchain;
@@ -124,57 +125,3 @@ impl PhysicalDeviceType {
         }
     }
 }
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum ScaleToFit {
-    Fill = 0,
-    Start = 1,
-    Center = 2,
-    End = 3,
-}
-
-#[derive(Copy, Clone, PartialEq, Default, Debug)]
-pub struct Rect {
-    pub left: f32,
-    pub top: f32,
-    pub right: f32,
-    pub bottom: f32,
-}
-
-#[derive(Copy, Clone, PartialEq, Default, Debug)]
-pub struct Point {
-    pub x: f32,
-    pub y: f32,
-}
-
-/// Default coordinate system to use
-#[derive(Copy, Clone)]
-pub enum CoordinateSystem {
-    /// Logical coordinates will use (0,0) top-left and (+X,+Y) right-bottom where X/Y is the logical
-    /// size of the window. Logical size applies a multiplier for hi-dpi displays. For example, many
-    /// 4K displays would probably have a high-dpi factor of 2.0, simulating a 1080p display.
-    Logical,
-
-    /// Physical coordinates will use (0,0) top-left and (+X,+Y) right-bottom where X/Y is the raw
-    /// number of pixels.
-    Physical,
-
-    /// Visible range allows specifying an arbitrary coordinate system. For example, if you want X to
-    /// range (100, 300) and Y to range (-100, 400), you can do that. It's likely you'd want to
-    /// determine either X or Y using the aspect ratio to avoid stretching.
-    VisibleRange(Rect, ScaleToFit),
-
-    /// FixedWidth will use the given center position and width, and calculate appropriate Y extents
-    /// for the current aspect ratio
-    FixedWidth(Point, f32),
-
-    /// Do not modify the canvas matrix
-    None,
-}
-
-impl Default for CoordinateSystem {
-    fn default() -> Self {
-        CoordinateSystem::Logical
-    }
-}
-

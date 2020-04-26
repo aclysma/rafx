@@ -8,9 +8,9 @@ use super::Window;
 
 use std::ffi::CStr;
 
-//use ash::extensions::ext as ash_ext;
 use ash::extensions::khr;
 use crate::PhysicalDeviceType;
+use std::mem::ManuallyDrop;
 
 /// Has the indexes for all the queue families we will need. It's possible a single family
 /// is used for both graphics and presentation, in which case the index will be the same
@@ -26,6 +26,46 @@ pub struct VkQueues {
     pub present_queue: ash::vk::Queue,
 }
 
+/// Represents an error from creating the renderer
+#[derive(Debug)]
+pub enum VkCreateDeviceError {
+    VkError(vk::Result),
+    VkMemError(vk_mem::Error)
+}
+
+impl std::error::Error for VkCreateDeviceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match *self {
+            VkCreateDeviceError::VkError(ref e) => Some(e),
+            VkCreateDeviceError::VkMemError(ref e) => Some(e)
+        }
+    }
+}
+
+impl core::fmt::Display for VkCreateDeviceError {
+    fn fmt(
+        &self,
+        fmt: &mut core::fmt::Formatter,
+    ) -> core::fmt::Result {
+        match *self {
+            VkCreateDeviceError::VkError(ref e) => e.fmt(fmt),
+            VkCreateDeviceError::VkMemError(ref e) => e.fmt(fmt),
+        }
+    }
+}
+
+impl From<vk::Result> for VkCreateDeviceError {
+    fn from(result: vk::Result) -> Self {
+        VkCreateDeviceError::VkError(result)
+    }
+}
+
+impl From<vk_mem::Error> for VkCreateDeviceError {
+    fn from(result: vk_mem::Error) -> Self {
+        VkCreateDeviceError::VkMemError(result)
+    }
+}
+
 /// Represents the surface/physical device/logical device. Most of the code here has to do with
 /// picking a good device that's compatible with the window we're given.
 pub struct VkDevice {
@@ -36,6 +76,7 @@ pub struct VkDevice {
     pub queue_family_indices: VkQueueFamilyIndices,
     pub queues: VkQueues,
     pub memory_properties: vk::PhysicalDeviceMemoryProperties,
+    pub allocator: ManuallyDrop<vk_mem::Allocator>,
 }
 
 impl VkDevice {
@@ -43,7 +84,7 @@ impl VkDevice {
         instance: &VkInstance,
         window: &dyn Window,
         physical_device_type_priority: &[PhysicalDeviceType],
-    ) -> VkResult<Self> {
+    ) -> Result<Self, VkCreateDeviceError> {
         // Get the surface, needed to select the best queue family
         let surface = window
             .create_vulkan_surface(&instance.entry, &instance.instance)
@@ -66,6 +107,18 @@ impl VkDevice {
             &queue_family_indices,
         )?;
 
+        let allocator_create_info = vk_mem::AllocatorCreateInfo {
+            physical_device,
+            device: logical_device.clone(),
+            instance: instance.instance.clone(),
+            flags: vk_mem::AllocatorCreateFlags::default(),
+            preferred_large_heap_block_size: Default::default(),
+            frame_in_use_count: 0, // Not using CAN_BECOME_LOST, so this is not needed
+            heap_size_limits: Default::default()
+        };
+
+        let allocator = ManuallyDrop::new(vk_mem::Allocator::new(&allocator_create_info)?);
+
         let memory_properties = unsafe {
             instance
                 .instance
@@ -80,6 +133,7 @@ impl VkDevice {
             queue_family_indices,
             queues,
             memory_properties,
+            allocator
         })
     }
 
@@ -322,6 +376,7 @@ impl Drop for VkDevice {
         unsafe {
             self.logical_device.destroy_device(None);
             self.surface_loader.destroy_surface(self.surface, None);
+            ManuallyDrop::drop(&mut self.allocator);
         }
 
         debug!("destroyed VkDevice");
