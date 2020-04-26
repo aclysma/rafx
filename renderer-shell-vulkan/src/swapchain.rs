@@ -47,7 +47,7 @@ impl VkSwapchain {
         let (swapchain_info, swapchain_loader, swapchain) = Self::create_swapchain(
             &instance.instance,
             device.physical_device,
-            &device.logical_device,
+            device.device(),
             &device.surface_loader,
             device.surface,
             &device.queue_family_indices,
@@ -59,14 +59,14 @@ impl VkSwapchain {
         let swapchain_images = unsafe { swapchain_loader.get_swapchain_images(swapchain)? };
 
         let swapchain_image_views =
-            Self::create_image_views(&device.logical_device, &swapchain_info, &swapchain_images)?;
+            Self::create_image_views(device.device(), &swapchain_info, &swapchain_images)?;
 
         let image_available_semaphores = Self::allocate_semaphores_per_frame(&device)?;
         let render_finished_semaphores = Self::allocate_semaphores_per_frame(&device)?;
         let in_flight_fences = Self::allocate_fences_per_frame(&device)?;
 
         Ok(VkSwapchain {
-            device: device.logical_device.clone(),
+            device: device.context.device().clone(),
             swapchain_info,
             swapchain_loader,
             swapchain,
@@ -84,7 +84,7 @@ impl VkSwapchain {
             let semaphore_create_info = vk::SemaphoreCreateInfo::builder();
             let semaphore = unsafe {
                 device
-                    .logical_device
+                    .device()
                     .create_semaphore(&semaphore_create_info, None)?
             };
             semaphores.push(semaphore);
@@ -101,7 +101,7 @@ impl VkSwapchain {
 
             let fence = unsafe {
                 device
-                    .logical_device
+                    .device()
                     .create_fence(&fence_create_info, None)?
             };
             fences.push(fence);

@@ -96,7 +96,7 @@ impl VkSpriteResourceManager {
         // Command Buffers
         //
         let command_pool =
-            Self::create_command_pool(&device.logical_device, &device.queue_family_indices)?;
+            Self::create_command_pool(device.device(), &device.queue_family_indices)?;
 
         //
         // Resources
@@ -105,14 +105,13 @@ impl VkSpriteResourceManager {
         let mut image_views = vec![];
         for decoded_texture in &decoded_textures {
             let image = load_image(
-                &device.logical_device,
+                &device,
                 device.queues.graphics_queue,
                 command_pool,
-                &device.memory_properties,
                 &decoded_texture,
             )?;
 
-            let image_view = Self::create_texture_image_view(&device.logical_device, &image.image);
+            let image_view = Self::create_texture_image_view(&device.device(), &image.image);
 
             images.push(image);
             image_views.push(image_view);
@@ -121,15 +120,15 @@ impl VkSpriteResourceManager {
         //
         // Descriptors
         //
-        let descriptor_set_layout = Self::create_descriptor_set_layout(&device.logical_device)?;
+        let descriptor_set_layout = Self::create_descriptor_set_layout(&device.device())?;
 
         let descriptor_pool = Self::create_descriptor_pool(
-            &device.logical_device,
+            &device.device(),
             swapchain_info.image_count as u32,
         )?;
 
         let descriptor_sets = Self::create_descriptor_sets(
-            &device.logical_device,
+            &device.device(),
             &descriptor_pool,
             descriptor_set_layout,
             swapchain_info.image_count,
@@ -137,7 +136,7 @@ impl VkSpriteResourceManager {
         )?;
 
         Ok(VkSpriteResourceManager {
-            device: device.logical_device.clone(),
+            device: device.device().clone(),
             swapchain_info,
             descriptor_set_layout,
             command_pool,
@@ -439,10 +438,9 @@ pub fn copy_buffer_to_image(
 }
 
 pub fn load_image(
-    logical_device: &ash::Device,
+    device: &VkDevice,
     queue: vk::Queue,
     command_pool: vk::CommandPool,
-    device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
     decoded_texture: &DecodedTexture,
 ) -> VkResult<ManuallyDrop<VkImage>> {
     let extent = vk::Extent3D {
@@ -452,27 +450,27 @@ pub fn load_image(
     };
 
     let mut staging_buffer = VkBuffer::new(
-        logical_device,
-        device_memory_properties,
+        &device.context,
+        vk_mem::MemoryUsage::CpuOnly,
         vk::BufferUsageFlags::TRANSFER_SRC,
         vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-        decoded_texture.data.len() as u64,
+        decoded_texture.data.len() as u64
     )?;
 
     staging_buffer.write_to_host_visible_buffer(&decoded_texture.data)?;
 
     let image = VkImage::new(
-        logical_device,
-        device_memory_properties,
+        &device.context,
+        vk_mem::MemoryUsage::GpuOnly,
+        vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
         extent,
         vk::Format::R8G8B8A8_UNORM,
         vk::ImageTiling::OPTIMAL,
-        vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
     )?;
 
     transition_image_layout(
-        logical_device,
+        device.device(),
         queue,
         command_pool,
         image.image,
@@ -482,7 +480,7 @@ pub fn load_image(
     )?;
 
     copy_buffer_to_image(
-        logical_device,
+        device.device(),
         queue,
         command_pool,
         staging_buffer.buffer,
@@ -491,7 +489,7 @@ pub fn load_image(
     )?;
 
     transition_image_layout(
-        logical_device,
+        device.device(),
         queue,
         command_pool,
         image.image,

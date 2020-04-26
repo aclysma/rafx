@@ -109,6 +109,14 @@ impl GameRendererWithShell {
     pub fn draw(&mut self, window: &dyn Window) -> VkResult<()> {
         self.shell.draw(window, Some(&mut self.game_renderer))
     }
+
+    pub fn dump_stats(&mut self) {
+        if let Ok(stats) = self.shell.device_mut().allocator().calculate_stats() {
+            println!("{:#?}", stats);
+        } else {
+            log::error!("failed to calculate stats");
+        }
+    }
 }
 
 impl Drop for GameRendererWithShell {

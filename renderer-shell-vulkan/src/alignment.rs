@@ -2,7 +2,6 @@ use ash::vk;
 use std::iter::Iterator;
 use std::marker::PhantomData;
 use std::mem::size_of;
-use std::os::raw::c_void;
 
 /// `Align` handles dynamic alignment. The is useful for dynamic uniform buffers where
 /// the alignment might be different. For example a 4x4 f32 matrix has a size of 64 bytes
@@ -13,7 +12,7 @@ use std::os::raw::c_void;
 /// an additional allocation and with the correct alignment.
 #[derive(Debug, Clone)]
 pub struct Align<T> {
-    ptr: *mut c_void,
+    ptr: *mut u8,
     elem_size: vk::DeviceSize,
     size: vk::DeviceSize,
     _m: PhantomData<T>,
@@ -53,7 +52,7 @@ fn calc_padding(
 
 impl<T> Align<T> {
     pub unsafe fn new(
-        ptr: *mut c_void,
+        ptr: *mut u8,
         alignment: vk::DeviceSize,
         size: vk::DeviceSize,
     ) -> Self {

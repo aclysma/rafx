@@ -174,6 +174,7 @@ fn main() {
 
         if print_time_event.try_take_event(time.current_instant(), std::time::Duration::from_secs_f32(1.0)) {
             println!("FPS: {}", time.updates_per_second());
+            //renderer.dump_stats();
         }
     }
 }

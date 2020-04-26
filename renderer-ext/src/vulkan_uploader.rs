@@ -2,7 +2,7 @@ use ash::vk;
 use ash::prelude::VkResult;
 
 use ash::version::DeviceV1_0;
-use renderer_shell_vulkan::{VkDevice, VkQueueFamilyIndices, VkBuffer};
+use renderer_shell_vulkan::{VkDevice, VkQueueFamilyIndices, VkBuffer, VkDeviceContext};
 use std::mem::ManuallyDrop;
 use std::os::raw::c_void;
 use ash::vk::MappedMemoryRange;
@@ -11,13 +11,13 @@ use ash::vk::MappedMemoryRange;
 // (https://github.com/GPUOpen-LibrariesAndSDKs/Cauldron/blob/5acc12602c55e469cc1f9181967dbcb122f8e6c7/src/VK/base/UploadHeap.h)
 
 struct VkUploader {
-    device: ash::Device,
+    device_context: VkDeviceContext,
 
     command_pool: vk::CommandPool,
     command_buffer: vk::CommandBuffer,
 
     buffer: ManuallyDrop<VkBuffer>,
-    mapped_memory: *mut c_void,
+    mapped_memory: *mut u8,
 
     fence: vk::Fence,
 
@@ -37,33 +37,31 @@ impl VkUploader {
         // Command Buffers
         //
         let command_pool =
-            Self::create_command_pool(&device.logical_device, &device.queue_family_indices)?;
+            Self::create_command_pool(device.device(), &device.queue_family_indices)?;
 
-        let command_buffer = Self::create_command_buffer(&device.logical_device, &command_pool)?;
+        let command_buffer = Self::create_command_buffer(device.device(), &command_pool)?;
 
         let buffer = ManuallyDrop::new(VkBuffer::new(
-            &device.logical_device,
-            &device.memory_properties,
+            &device.context,
+            vk_mem::MemoryUsage::CpuOnly,
             vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             size
         )?);
 
         let mapped_memory = unsafe {
-            device.logical_device.map_memory(
-                buffer.buffer_memory,
-                0,
-                size,
-                vk::MemoryMapFlags::empty()
-            )?
+            //TODO: Better way of handling allocator errors
+            device.allocator().map_memory(
+                &buffer.allocation
+            ).map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?
         };
 
-        let fence = Self::create_fence(&device.logical_device)?;
+        let fence = Self::create_fence(device.device())?;
 
-        Self::begin_command_buffer(&device.logical_device, command_buffer);
+        Self::begin_command_buffer(&device.device(), command_buffer);
 
         Ok(VkUploader {
-            device: device.logical_device.clone(),
+            device_context: device.context.clone(),
             command_pool,
             command_buffer,
             buffer,
@@ -133,24 +131,25 @@ impl VkUploader {
     }
 
     pub fn flush(&self) {
-        unsafe {
-            let mapped_memory_range = MappedMemoryRange::builder()
-                .memory(self.buffer.buffer_memory)
-                .size(self.bytes_written_to_buffer);
-            self.device.flush_mapped_memory_ranges(&[*mapped_memory_range]);
-        }
+        // Not necessary, using coherent memory
+        // unsafe {
+        //     let mapped_memory_range = MappedMemoryRange::builder()
+        //         .memory(self.buffer.buffer_memory)
+        //         .size(self.bytes_written_to_buffer);
+        //     self.device.flush_mapped_memory_ranges(&[*mapped_memory_range]);
+        // }
     }
 
     pub fn flush_and_finish(&mut self) -> VkResult<()> {
         self.flush();
 
         unsafe {
-            self.device.end_command_buffer(self.command_buffer)?;
+            self.device_context.device().end_command_buffer(self.command_buffer)?;
         }
 
         //TODO: Submit and wait for fence
 
-        Self::begin_command_buffer(&self.device, self.command_buffer)
+        Self::begin_command_buffer(&self.device_context.device(), self.command_buffer)
 
     }
 }
@@ -160,10 +159,10 @@ impl Drop for VkUploader {
         log::debug!("destroying VkUploader");
 
         unsafe {
-            self.device.unmap_memory(self.buffer.buffer_memory);
+            self.device_context.allocator().unmap_memory(&self.buffer.allocation);
             ManuallyDrop::drop(&mut self.buffer);
-            self.device.destroy_command_pool(self.command_pool, None);
-            self.device.destroy_fence(self.fence, None);
+            self.device_context.device().destroy_command_pool(self.command_pool, None);
+            self.device_context.device().destroy_fence(self.fence, None);
         }
 
         log::debug!("destroyed VkSpriteRenderPass");

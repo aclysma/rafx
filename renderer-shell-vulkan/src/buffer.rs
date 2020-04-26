@@ -5,69 +5,71 @@ use std::mem::ManuallyDrop;
 use ash::prelude::VkResult;
 
 use ash::version::DeviceV1_0;
+use crate::VkDevice;
+use std::sync::Arc;
+use crate::device::VkDeviceContext;
 
 /// Represents a vulkan buffer (vertex, index, image, etc.)
 pub struct VkBuffer {
-    pub device: ash::Device, // This struct is not responsible for releasing this
+    pub device_context: VkDeviceContext,
     pub buffer: vk::Buffer,
-    pub buffer_memory: vk::DeviceMemory,
-    pub size: vk::DeviceSize,
+    pub allocation: vk_mem::Allocation,
+    pub allocation_info: vk_mem::AllocationInfo,
 }
 
 impl VkBuffer {
+    pub fn size(&self) -> vk::DeviceSize {
+        self.allocation_info.get_size() as vk::DeviceSize
+    }
+
     pub fn new(
-        logical_device: &ash::Device,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
-        usage: vk::BufferUsageFlags,
+        device_context: &VkDeviceContext,
+        memory_usage: vk_mem::MemoryUsage,
+        buffer_usage: vk::BufferUsageFlags,
         required_property_flags: vk::MemoryPropertyFlags,
         size: vk::DeviceSize,
     ) -> VkResult<Self> {
+        let allocation_create_info = vk_mem::AllocationCreateInfo {
+            usage: memory_usage,
+            flags: vk_mem::AllocationCreateFlags::NONE,
+            required_flags: required_property_flags,
+            preferred_flags: vk::MemoryPropertyFlags::empty(),
+            memory_type_bits: 0, // Do not exclude any memory types
+            pool: None,
+            user_data: None,
+        };
+
         let buffer_info = vk::BufferCreateInfo::builder()
             .size(size)
-            .usage(usage)
+            .usage(buffer_usage)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
-        let buffer = unsafe { logical_device.create_buffer(&buffer_info, None)? };
-
-        let buffer_memory_req = unsafe { logical_device.get_buffer_memory_requirements(buffer) };
-
-        //TODO: Return error
-        let buffer_memory_index = super::util::find_memorytype_index(
-            &buffer_memory_req,
-            device_memory_properties,
-            required_property_flags,
-        )
-        .expect("Unable to find suitable memorytype for the buffer.");
-
-        let buffer_allocate_info = vk::MemoryAllocateInfo::builder()
-            .allocation_size(buffer_memory_req.size)
-            .memory_type_index(buffer_memory_index);
-
-        let buffer_memory = unsafe { logical_device.allocate_memory(&buffer_allocate_info, None)? };
-
-        unsafe { logical_device.bind_buffer_memory(buffer, buffer_memory, 0)? }
+        //TODO: Better way of handling allocator errors
+        let (buffer, allocation, allocation_info) =
+            device_context.allocator().create_buffer(&buffer_info, &allocation_create_info)
+                .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
 
         Ok(VkBuffer {
-            device: logical_device.clone(),
+            device_context: device_context.clone(),
             buffer,
-            buffer_memory,
-            size,
+            allocation,
+            allocation_info
         })
     }
 
     pub fn new_from_slice_device_local<T: Copy>(
-        logical_device: &ash::Device,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
+        device_context: &VkDeviceContext,
+        buffer_usage: vk::BufferUsageFlags,
+        required_property_flags: vk::MemoryPropertyFlags,
         queue: vk::Queue,
         command_pool: vk::CommandPool,
-        usage: vk::BufferUsageFlags,
         data: &[T],
     ) -> VkResult<ManuallyDrop<VkBuffer>> {
         let vertex_buffer_size = data.len() as u64 * std::mem::size_of::<T>() as u64;
 
         let mut staging_buffer = super::VkBuffer::new(
-            logical_device,
-            &device_memory_properties,
+            device_context,
+            vk_mem::MemoryUsage::CpuOnly,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             vertex_buffer_size,
@@ -76,15 +78,15 @@ impl VkBuffer {
         staging_buffer.write_to_host_visible_buffer(data)?;
 
         let device_buffer = super::VkBuffer::new(
-            &logical_device,
-            &device_memory_properties,
-            vk::BufferUsageFlags::TRANSFER_DST | usage,
+            device_context,
+            vk_mem::MemoryUsage::GpuOnly,
+            vk::BufferUsageFlags::TRANSFER_DST | buffer_usage,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
             vertex_buffer_size,
         )?;
 
         VkBuffer::copy_buffer(
-            logical_device,
+            device_context.device(),
             queue,
             command_pool,
             &staging_buffer,
@@ -98,23 +100,20 @@ impl VkBuffer {
         &mut self,
         data: &[T],
     ) -> VkResult<()> {
-        let ptr = unsafe {
-            self.device.map_memory(
-                self.buffer_memory,
-                0, // offset
-                self.size,
-                vk::MemoryMapFlags::empty(),
-            )?
-        };
+        //TODO: Better way of handling allocator errors
+        let ptr = self.device_context.allocator().map_memory(&self.allocation)
+            .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?;
 
         let required_alignment = mem::align_of::<T>() as u64;
-        let mut align = unsafe { Align::new(ptr, required_alignment, self.size) };
+        let mut align = unsafe { Align::new(ptr, required_alignment, self.size()) };
 
         align.copy_from_slice(data);
 
-        unsafe {
-            self.device.unmap_memory(self.buffer_memory);
-        }
+        //TODO: Better way of handling allocator errors
+        self.device_context.allocator().unmap_memory(&self.allocation)
+            .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?;
+
+        // The staging buffer is coherent so flushing is not necessary
 
         Ok(())
     }
@@ -131,7 +130,7 @@ impl VkBuffer {
             queue,
             command_pool,
             |command_buffer| {
-                let buffer_copy_info = [vk::BufferCopy::builder().size(src.size).build()];
+                let buffer_copy_info = [vk::BufferCopy::builder().size(src.size()).build()];
 
                 unsafe {
                     logical_device.cmd_copy_buffer(
@@ -151,8 +150,7 @@ impl Drop for VkBuffer {
         trace!("destroying VkBuffer");
 
         unsafe {
-            self.device.destroy_buffer(self.buffer, None);
-            self.device.free_memory(self.buffer_memory, None);
+            self.device_context.allocator().destroy_buffer(self.buffer, &self.allocation);
         }
 
         trace!("destroyed VkBuffer");

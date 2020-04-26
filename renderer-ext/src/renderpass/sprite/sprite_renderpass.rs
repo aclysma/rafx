@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::VkDevice;
+use renderer_shell_vulkan::{VkDevice, VkDeviceContext};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -91,7 +91,7 @@ struct PipelineResources {
 
 /// Draws sprites
 pub struct VkSpriteRenderPass {
-    pub device: ash::Device,
+    pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
     // This contains bindings for the UBO containing a view/proj matrix and a sampler
@@ -133,17 +133,17 @@ impl VkSpriteRenderPass {
         // Command Buffers
         //
         let command_pool =
-            Self::create_command_pool(&device.logical_device, &device.queue_family_indices)?;
+            Self::create_command_pool(&device.device(), &device.queue_family_indices)?;
 
         //
         // Static resources used by GPU
         //
-        let image_sampler = Self::create_texture_image_sampler(&device.logical_device);
+        let image_sampler = Self::create_texture_image_sampler(&device.device());
 
         let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
         for _ in 0..swapchain.swapchain_info.image_count {
             uniform_buffers.push(Self::create_uniform_buffer(
-                &device.logical_device,
+                &device,
                 &device.memory_properties,
             )?)
         }
@@ -151,15 +151,15 @@ impl VkSpriteRenderPass {
         //
         // Descriptors
         //
-        let descriptor_set_layout_per_pass = Self::create_descriptor_set_layout_per_pass(&device.logical_device)?;
+        let descriptor_set_layout_per_pass = Self::create_descriptor_set_layout_per_pass(&device.device())?;
 
         let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
-            &device.logical_device,
+            &device.device(),
             swapchain.swapchain_info.image_count as u32,
         )?;
 
         let descriptor_sets_per_pass = Self::create_descriptor_sets_per_pass(
-            &device.logical_device,
+            &device.device(),
             &descriptor_pool_per_pass,
             descriptor_set_layout_per_pass,
             swapchain.swapchain_info.image_count,
@@ -181,7 +181,7 @@ impl VkSpriteRenderPass {
                 &swapchain.swapchain_info,
                 |renderpass_create_info| {
                     Self::create_pipeline(
-                        &device.logical_device,
+                        &device.device(),
                         &swapchain.swapchain_info,
                         fixed_function_state,
                         renderpass_create_info,
@@ -203,14 +203,14 @@ impl VkSpriteRenderPass {
         // Renderpass Resources
         //
         let frame_buffers = Self::create_framebuffers(
-            &device.logical_device,
+            &device.device(),
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
             &pipeline_resources.renderpass,
         );
 
         let command_buffers = Self::create_command_buffers(
-            &device.logical_device,
+            &device.device(),
             &swapchain.swapchain_info,
             &command_pool,
         )?;
@@ -226,7 +226,7 @@ impl VkSpriteRenderPass {
         }
 
         Ok(VkSpriteRenderPass {
-            device: device.logical_device.clone(),
+            device_context: device.context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             descriptor_set_layout_per_pass,
             pipeline_layout,
@@ -284,12 +284,12 @@ impl VkSpriteRenderPass {
     }
 
     fn create_uniform_buffer(
-        logical_device: &ash::Device,
+        device: &VkDevice,
         device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
     ) -> VkResult<ManuallyDrop<VkBuffer>> {
         let buffer = VkBuffer::new(
-            logical_device,
-            device_memory_properties,
+            &device.context,
+            vk_mem::MemoryUsage::CpuToGpu,
             vk::BufferUsageFlags::UNIFORM_BUFFER,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             mem::size_of::<UniformBufferObject>() as u64,
@@ -671,7 +671,7 @@ impl VkSpriteRenderPass {
 
     fn update_command_buffer(
         device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
-        logical_device: &ash::Device,
+        device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
         framebuffer: &vk::Framebuffer,
@@ -824,8 +824,8 @@ impl VkSpriteRenderPass {
             let vertex_buffer_size = vertex_list.len() as u64
                 * std::mem::size_of::<Vertex>() as u64;
             let mut vertex_buffer = VkBuffer::new(
-                logical_device,
-                &device_memory_properties,
+                device_context,
+                vk_mem::MemoryUsage::CpuToGpu,
                 vk::BufferUsageFlags::VERTEX_BUFFER,
                 vk::MemoryPropertyFlags::HOST_VISIBLE
                     | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -841,8 +841,8 @@ impl VkSpriteRenderPass {
             let index_buffer_size = index_list.len() as u64
                 * std::mem::size_of::<u16>() as u64;
             let mut index_buffer = VkBuffer::new(
-                logical_device,
-                &device_memory_properties,
+                device_context,
+                vk_mem::MemoryUsage::CpuToGpu,
                 vk::BufferUsageFlags::INDEX_BUFFER,
                 vk::MemoryPropertyFlags::HOST_VISIBLE
                     | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -868,6 +868,7 @@ impl VkSpriteRenderPass {
 
         // Implicitly resets the command buffer
         unsafe {
+            let logical_device = device_context.device();
             logical_device.begin_command_buffer(*command_buffer, &command_buffer_begin_info)?;
 
             logical_device.cmd_begin_render_pass(
@@ -976,7 +977,7 @@ impl VkSpriteRenderPass {
 
         Self::update_command_buffer(
             device_memory_properties,
-            &self.device,
+            &self.device_context,
             &self.swapchain_info,
             &self.renderpass,
             &self.frame_buffers[present_index],
@@ -1006,7 +1007,8 @@ impl Drop for VkSpriteRenderPass {
         }
 
         unsafe {
-            self.device.destroy_sampler(self.image_sampler, None);
+            let device = self.device_context.device();
+            device.destroy_sampler(self.image_sampler, None);
 
             for uniform_buffer in &mut self.uniform_buffers {
                 ManuallyDrop::drop(uniform_buffer);
@@ -1015,20 +1017,20 @@ impl Drop for VkSpriteRenderPass {
             drop_all_buffer_lists(&mut self.vertex_buffers);
             drop_all_buffer_lists(&mut self.index_buffers);
 
-            self.device.destroy_command_pool(self.command_pool, None);
+            device.destroy_command_pool(self.command_pool, None);
 
             for frame_buffer in &self.frame_buffers {
-                self.device.destroy_framebuffer(*frame_buffer, None);
+                device.destroy_framebuffer(*frame_buffer, None);
             }
 
-            self.device.destroy_pipeline(self.pipeline, None);
-            self.device
+            device.destroy_pipeline(self.pipeline, None);
+            device
                 .destroy_pipeline_layout(self.pipeline_layout, None);
-            self.device.destroy_render_pass(self.renderpass, None);
+            device.destroy_render_pass(self.renderpass, None);
 
-            self.device
+            device
                 .destroy_descriptor_pool(self.descriptor_pool_per_pass, None);
-            self.device
+            device
                 .destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
         }
 

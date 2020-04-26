@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::VkDevice;
+use renderer_shell_vulkan::{VkDevice, VkDeviceContext};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -47,7 +47,7 @@ struct PipelineResources {
 }
 
 pub struct VkImGuiRenderPass {
-    pub device: ash::Device, // This struct is not responsible for releasing this
+    pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
     pub pipeline_layout: vk::PipelineLayout,
@@ -76,14 +76,14 @@ impl VkImGuiRenderPass {
     ) -> VkResult<Self> {
         let mut pipeline_resources = None;
 
-        let descriptor_set_layout = Self::create_descriptor_set_layout(&device.logical_device)?;
+        let descriptor_set_layout = Self::create_descriptor_set_layout(&device.device())?;
 
         Self::create_fixed_function_state(&swapchain.swapchain_info, |fixed_function_state| {
             Self::create_renderpass_create_info(
                 &swapchain.swapchain_info,
                 |renderpass_create_info| {
                     Self::create_pipeline(
-                        &device.logical_device,
+                        device.device(),
                         &swapchain.swapchain_info,
                         fixed_function_state,
                         renderpass_create_info,
@@ -103,17 +103,17 @@ impl VkImGuiRenderPass {
         let pipeline = pipeline_resources.pipeline;
 
         let frame_buffers = Self::create_framebuffers(
-            &device.logical_device,
+            device.device(),
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
             &pipeline_resources.renderpass,
         );
 
         let command_pool =
-            Self::create_command_pool(&device.logical_device, &device.queue_family_indices)?;
+            Self::create_command_pool(device.device(), &device.queue_family_indices)?;
 
         let command_buffers = Self::create_command_buffers(
-            &device.logical_device,
+            device.device(),
             &swapchain.swapchain_info,
             &command_pool,
         )?;
@@ -132,30 +132,29 @@ impl VkImGuiRenderPass {
         let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
         for _ in 0..swapchain.swapchain_info.image_count {
             uniform_buffers.push(Self::create_uniform_buffer(
-                &device.logical_device,
+                &device.context,
                 &device.memory_properties,
             )?)
         }
 
         let image = Self::load_image(
-            &device.logical_device,
+            &device.context,
             device.queues.graphics_queue,
             command_pool,
-            &device.memory_properties,
             font_atlas,
         )?;
 
-        let image_view = Self::create_texture_image_view(&device.logical_device, &image.image);
+        let image_view = Self::create_texture_image_view(device.device(), &image.image);
 
-        let image_sampler = Self::create_texture_image_sampler(&device.logical_device);
+        let image_sampler = Self::create_texture_image_sampler(device.device());
 
         let descriptor_pool = Self::create_descriptor_pool(
-            &device.logical_device,
+            device.device(),
             swapchain.swapchain_info.image_count as u32,
         )?;
 
         let descriptor_sets = Self::create_descriptor_sets(
-            &device.logical_device,
+            device.device(),
             &descriptor_pool,
             &descriptor_set_layout,
             swapchain.swapchain_info.image_count,
@@ -168,7 +167,7 @@ impl VkImGuiRenderPass {
             Self::record_command_buffer(
                 None,
                 &device.memory_properties,
-                &device.logical_device,
+                &device.context,
                 &swapchain.swapchain_info,
                 &renderpass,
                 &frame_buffers[i],
@@ -184,7 +183,7 @@ impl VkImGuiRenderPass {
         }
 
         Ok(VkImGuiRenderPass {
-            device: device.logical_device.clone(),
+            device_context: device.context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             descriptor_set_layout,
             pipeline_layout,
@@ -534,12 +533,12 @@ impl VkImGuiRenderPass {
     }
 
     fn create_uniform_buffer(
-        logical_device: &ash::Device,
+        device_context: &VkDeviceContext,
         device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
     ) -> VkResult<ManuallyDrop<VkBuffer>> {
         let buffer = VkBuffer::new(
-            logical_device,
-            device_memory_properties,
+            device_context,
+            vk_mem::MemoryUsage::CpuToGpu,
             vk::BufferUsageFlags::UNIFORM_BUFFER,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             mem::size_of::<UniformBufferObject>() as u64,
@@ -549,10 +548,9 @@ impl VkImGuiRenderPass {
     }
 
     pub fn load_image(
-        logical_device: &ash::Device,
+        device_context: &VkDeviceContext,
         queue: vk::Queue,
         command_pool: vk::CommandPool,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         font_atlas: &VkImGuiRenderPassFontAtlas,
     ) -> VkResult<ManuallyDrop<VkImage>> {
         let extent = vk::Extent3D {
@@ -564,8 +562,8 @@ impl VkImGuiRenderPass {
         log::info!("Using imgui font atlas of size {:?}", extent);
 
         let mut staging_buffer = VkBuffer::new(
-            logical_device,
-            device_memory_properties,
+            device_context,
+            vk_mem::MemoryUsage::CpuOnly,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             font_atlas.data.len() as u64,
@@ -574,17 +572,17 @@ impl VkImGuiRenderPass {
         staging_buffer.write_to_host_visible_buffer(&font_atlas.data)?;
 
         let image = VkImage::new(
-            logical_device,
-            device_memory_properties,
+            device_context,
+            vk_mem::MemoryUsage::GpuOnly,
+            vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
             extent,
             vk::Format::R8G8B8A8_UNORM,
             vk::ImageTiling::OPTIMAL,
-            vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
         )?;
 
         transition_image_layout(
-            logical_device,
+            device_context.device(),
             queue,
             command_pool,
             image.image,
@@ -594,7 +592,7 @@ impl VkImGuiRenderPass {
         )?;
 
         copy_buffer_to_image(
-            logical_device,
+            device_context.device(),
             queue,
             command_pool,
             staging_buffer.buffer,
@@ -603,7 +601,7 @@ impl VkImGuiRenderPass {
         )?;
 
         transition_image_layout(
-            logical_device,
+            device_context.device(),
             queue,
             command_pool,
             image.image,
@@ -745,7 +743,7 @@ impl VkImGuiRenderPass {
     fn record_command_buffer(
         imgui_draw_data: Option<&imgui::DrawData>,
         device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
-        logical_device: &ash::Device,
+        device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
         framebuffer: &vk::Framebuffer,
@@ -788,8 +786,8 @@ impl VkImGuiRenderPass {
                     let vertex_buffer_size = draw_list.vtx_buffer().len() as u64
                         * std::mem::size_of::<imgui::DrawVert>() as u64;
                     let mut staging_vertex_buffer = VkBuffer::new(
-                        logical_device,
-                        &device_memory_properties,
+                        device_context,
+                        vk_mem::MemoryUsage::CpuOnly,
                         vk::BufferUsageFlags::TRANSFER_SRC,
                         vk::MemoryPropertyFlags::HOST_VISIBLE
                             | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -799,8 +797,8 @@ impl VkImGuiRenderPass {
                     staging_vertex_buffer.write_to_host_visible_buffer(draw_list.vtx_buffer())?;
 
                     let vertex_buffer = VkBuffer::new(
-                        &logical_device,
-                        &device_memory_properties,
+                        device_context,
+                        vk_mem::MemoryUsage::GpuOnly,
                         vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
                         vk::MemoryPropertyFlags::DEVICE_LOCAL,
                         vertex_buffer_size,
@@ -814,8 +812,8 @@ impl VkImGuiRenderPass {
                     let index_buffer_size = draw_list.idx_buffer().len() as u64
                         * std::mem::size_of::<imgui::DrawIdx>() as u64;
                     let mut staging_index_buffer = VkBuffer::new(
-                        logical_device,
-                        &device_memory_properties,
+                        device_context,
+                        vk_mem::MemoryUsage::CpuOnly,
                         vk::BufferUsageFlags::TRANSFER_SRC,
                         vk::MemoryPropertyFlags::HOST_VISIBLE
                             | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -825,8 +823,8 @@ impl VkImGuiRenderPass {
                     staging_index_buffer.write_to_host_visible_buffer(draw_list.idx_buffer())?;
 
                     let index_buffer = VkBuffer::new(
-                        &logical_device,
-                        &device_memory_properties,
+                        device_context,
+                        vk_mem::MemoryUsage::GpuOnly,
                         vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER,
                         vk::MemoryPropertyFlags::DEVICE_LOCAL,
                         index_buffer_size,
@@ -852,6 +850,8 @@ impl VkImGuiRenderPass {
             })
             .clear_values(&clear_values);
 
+        let logical_device = device_context.device();
+
         // Implicitly resets the command buffer
         unsafe {
             logical_device.begin_command_buffer(*command_buffer, &command_buffer_begin_info)?;
@@ -859,7 +859,7 @@ impl VkImGuiRenderPass {
             for i in 0..draw_list_count {
                 {
                     let buffer_copy_info = [vk::BufferCopy::builder()
-                        .size(staging_vertex_buffers[i].size)
+                        .size(staging_vertex_buffers[i].size())
                         .build()];
 
                     logical_device.cmd_copy_buffer(
@@ -873,7 +873,7 @@ impl VkImGuiRenderPass {
                 //TODO: Duplicated code here
                 {
                     let buffer_copy_info = [vk::BufferCopy::builder()
-                        .size(staging_index_buffers[i].size)
+                        .size(staging_index_buffers[i].size())
                         .build()];
 
                     logical_device.cmd_copy_buffer(
@@ -1047,7 +1047,7 @@ impl VkImGuiRenderPass {
         Self::record_command_buffer(
             imgui_draw_data,
             device_memory_properties,
-            &self.device,
+            &self.device_context,
             &self.swapchain_info,
             &self.renderpass,
             &self.frame_buffers[present_index],
@@ -1078,8 +1078,9 @@ impl Drop for VkImGuiRenderPass {
         }
 
         unsafe {
-            self.device.destroy_sampler(self.image_sampler, None);
-            self.device.destroy_image_view(self.image_view, None);
+            let device = self.device_context.device();
+            device.destroy_sampler(self.image_sampler, None);
+            device.destroy_image_view(self.image_view, None);
             ManuallyDrop::drop(&mut self.image);
 
             for uniform_buffer in &mut self.uniform_buffers {
@@ -1091,20 +1092,20 @@ impl Drop for VkImGuiRenderPass {
             drop_all_buffer_lists(&mut self.staging_vertex_buffers);
             drop_all_buffer_lists(&mut self.staging_index_buffers);
 
-            self.device.destroy_command_pool(self.command_pool, None);
+            device.destroy_command_pool(self.command_pool, None);
 
             for frame_buffer in &self.frame_buffers {
-                self.device.destroy_framebuffer(*frame_buffer, None);
+                device.destroy_framebuffer(*frame_buffer, None);
             }
 
-            self.device.destroy_pipeline(self.pipeline, None);
-            self.device
+            device.destroy_pipeline(self.pipeline, None);
+            device
                 .destroy_pipeline_layout(self.pipeline_layout, None);
-            self.device.destroy_render_pass(self.renderpass, None);
+            device.destroy_render_pass(self.renderpass, None);
 
-            self.device
+            device
                 .destroy_descriptor_pool(self.descriptor_pool, None);
-            self.device
+            device
                 .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
         }
 

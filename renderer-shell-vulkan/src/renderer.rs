@@ -305,7 +305,7 @@ impl Renderer {
 
     pub fn tear_down(&mut self, event_listener: Option<&mut dyn RendererEventListener>) {
         unsafe {
-            self.device.logical_device.device_wait_idle().unwrap();
+            self.device.device().device_wait_idle().unwrap();
         }
 
         if let Some(event_listener) = event_listener {
@@ -314,6 +314,10 @@ impl Renderer {
 
         // self will drop
         self.torn_down = true;
+    }
+
+    pub fn device_mut(&mut self) -> &mut VkDevice {
+        &mut self.device
     }
 
     /// Call to render a frame. This can block for certain presentation modes. This will rebuild
@@ -351,7 +355,7 @@ impl Renderer {
     ) -> VkResult<()> {
         // Let event listeners know the swapchain will be destroyed
         unsafe {
-            self.device.logical_device.device_wait_idle()?;
+            self.device.device().device_wait_idle()?;
             if let Some(event_listener) = event_listener {
                 event_listener.swapchain_destroyed();
             }
@@ -396,9 +400,9 @@ impl Renderer {
         // Wait if two frame are already in flight
         unsafe {
             self.device
-                .logical_device
+                .device()
                 .wait_for_fences(&[frame_fence], true, std::u64::MAX)?;
-            self.device.logical_device.reset_fences(&[frame_fence])?;
+            self.device.device().reset_fences(&[frame_fence])?;
         }
 
         let (present_index, _is_suboptimal) = unsafe {
@@ -430,7 +434,7 @@ impl Renderer {
             .build()];
 
         unsafe {
-            self.device.logical_device.queue_submit(
+            self.device.device().queue_submit(
                 self.device.queues.graphics_queue,
                 &submit_info,
                 frame_fence,

@@ -19,6 +19,7 @@ pub use instance::VkCreateInstanceError;
 
 mod device;
 pub use device::VkDevice;
+pub use device::VkDeviceContext;
 pub use device::VkQueueFamilyIndices;
 pub use device::VkQueues;
 pub use device::VkCreateDeviceError;
@@ -125,3 +126,8 @@ impl PhysicalDeviceType {
         }
     }
 }
+
+
+use std::sync::Arc;
+use std::mem::ManuallyDrop;
+type Allocator = Arc<ManuallyDrop<vk_mem::Allocator>>;

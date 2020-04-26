@@ -12,6 +12,8 @@ use ash::extensions::khr;
 use crate::PhysicalDeviceType;
 use std::mem::ManuallyDrop;
 
+use std::sync::Arc;
+
 /// Has the indexes for all the queue families we will need. It's possible a single family
 /// is used for both graphics and presentation, in which case the index will be the same
 #[derive(Default)]
@@ -24,6 +26,53 @@ pub struct VkQueueFamilyIndices {
 pub struct VkQueues {
     pub graphics_queue: ash::vk::Queue,
     pub present_queue: ash::vk::Queue,
+}
+
+pub struct VkDeviceContextInner {
+    allocator: vk_mem::Allocator,
+    device: ash::Device,
+}
+
+/// A lighter-weight structure that can be cached on downstream users. It includes
+/// access to vk::Device and allocators.
+#[derive(Clone)]
+pub struct VkDeviceContext {
+    inner: Option<Arc<ManuallyDrop<VkDeviceContextInner>>>,
+}
+
+impl VkDeviceContext {
+    pub fn device(&self) -> &ash::Device {
+        &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").device
+    }
+
+    pub fn allocator(&self) -> &vk_mem::Allocator {
+        &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").allocator
+    }
+
+    fn new(
+        device: ash::Device,
+        allocator: vk_mem::Allocator,
+    ) -> Self {
+        VkDeviceContext {
+            inner: Some(Arc::new(ManuallyDrop::new(VkDeviceContextInner {
+                allocator,
+                device
+            })))
+        }
+    }
+
+    unsafe fn destroy(&mut self) {
+        let mut inner = None;
+        std::mem::swap(&mut inner, &mut self.inner);
+        if let Ok(mut inner) = Arc::try_unwrap(inner.unwrap()) {
+            inner.allocator.destroy();
+            inner.device.destroy_device(None);
+            ManuallyDrop::drop(&mut inner);
+
+        } else {
+            panic!("Could not free the allocator, something is holding a reference to it. Have all allocations been dropped?")
+        }
+    }
 }
 
 /// Represents an error from creating the renderer
@@ -69,17 +118,24 @@ impl From<vk_mem::Error> for VkCreateDeviceError {
 /// Represents the surface/physical device/logical device. Most of the code here has to do with
 /// picking a good device that's compatible with the window we're given.
 pub struct VkDevice {
+    pub context: VkDeviceContext,
     pub surface: ash::vk::SurfaceKHR,
     pub surface_loader: ash::extensions::khr::Surface,
     pub physical_device: ash::vk::PhysicalDevice,
-    pub logical_device: ash::Device,
     pub queue_family_indices: VkQueueFamilyIndices,
     pub queues: VkQueues,
     pub memory_properties: vk::PhysicalDeviceMemoryProperties,
-    pub allocator: ManuallyDrop<vk_mem::Allocator>,
 }
 
 impl VkDevice {
+    pub fn allocator(&self) -> &vk_mem::Allocator {
+        self.context.allocator()
+    }
+
+    pub fn device(&self) -> &ash::Device {
+        self.context.device()
+    }
+
     pub fn new(
         instance: &VkInstance,
         window: &dyn Window,
@@ -117,7 +173,7 @@ impl VkDevice {
             heap_size_limits: Default::default()
         };
 
-        let allocator = ManuallyDrop::new(vk_mem::Allocator::new(&allocator_create_info)?);
+        let allocator = vk_mem::Allocator::new(&allocator_create_info)?;
 
         let memory_properties = unsafe {
             instance
@@ -125,15 +181,16 @@ impl VkDevice {
                 .get_physical_device_memory_properties(physical_device)
         };
 
+        let context = VkDeviceContext::new(logical_device, allocator);
+
         Ok(VkDevice {
+            context,
             surface,
             surface_loader,
             physical_device,
-            logical_device,
             queue_family_indices,
             queues,
             memory_properties,
-            allocator
         })
     }
 
@@ -374,9 +431,8 @@ impl Drop for VkDevice {
     fn drop(&mut self) {
         debug!("destroying VkDevice");
         unsafe {
-            self.logical_device.destroy_device(None);
+            self.context.destroy();
             self.surface_loader.destroy_surface(self.surface, None);
-            ManuallyDrop::drop(&mut self.allocator);
         }
 
         debug!("destroyed VkDevice");
