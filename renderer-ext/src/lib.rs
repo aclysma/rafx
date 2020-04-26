@@ -21,6 +21,7 @@ use renderer_base::visibility::DynamicAabbVisibilityNodeHandle;
 pub mod asset_resource;
 pub mod asset_storage;
 pub mod image_importer;
+pub mod vulkan_uploader;
 
 pub mod asset_uploader;
 
