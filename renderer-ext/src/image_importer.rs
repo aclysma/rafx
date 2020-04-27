@@ -8,10 +8,6 @@ use std::convert::TryInto;
 
 #[derive(TypeUuid, Serialize, Deserialize)]
 #[uuid = "d4079e74-3ec9-4ebc-9b77-a87cafdfdada"]
-// pub enum ImageAsset {
-//     Rgb8(ImageBuf<u8, color::Rgb>),
-//     // ...
-// }
 pub struct ImageAsset {
     pub width: u32,
     pub height: u32,

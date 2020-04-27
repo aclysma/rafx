@@ -21,13 +21,14 @@ use atelier_assets::core as atelier_core;
 mod daemon;
 use renderer_ext::asset_resource::AssetResource;
 use renderer_ext::image_importer::ImageAsset;
-use renderer_ext::renderpass::sprite::DecodedTexture;
+use renderer_ext::image_utils::DecodedTexture;
 
 
 fn main() {
     // Setup logging
     env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Error)
+        //.filter_level(log::LevelFilter::Error)
+        .filter_level(log::LevelFilter::Debug)
         .init();
 
     // Spawn the daemon in a background thread. This could be a different process, but

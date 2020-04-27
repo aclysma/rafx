@@ -39,7 +39,7 @@ struct UniformBufferObject {
 struct Vertex {
     pos: [f32; 2],
     tex_coord: [f32; 2],
-    color: [u8; 4],
+    //color: [u8; 4],
 }
 
 /// Used as static data to represent a quad
@@ -426,12 +426,12 @@ impl VkSpriteRenderPass {
                 format: vk::Format::R32G32_SFLOAT,
                 offset: offset_of!(Vertex, tex_coord) as u32,
             },
-            vk::VertexInputAttributeDescription {
-                binding: 0,
-                location: 2,
-                format: vk::Format::R8G8B8A8_UNORM,
-                offset: offset_of!(Vertex, color) as u32,
-            },
+            // vk::VertexInputAttributeDescription {
+            //     binding: 0,
+            //     location: 2,
+            //     format: vk::Format::R8G8B8A8_UNORM,
+            //     offset: offset_of!(Vertex, color) as u32,
+            // },
         ];
 
         let vertex_input_state_info = vk::PipelineVertexInputStateCreateInfo::builder()
@@ -720,7 +720,7 @@ impl VkSpriteRenderPass {
             texture_descriptor_index: u32
         }
 
-        const SPRITE_COUNT : usize = 10000;
+        const SPRITE_COUNT : usize = 5;
         let mut sprites = Vec::with_capacity(SPRITE_COUNT);
 
         let mut rng: pcg_rand::Pcg32 = rand::SeedableRng::seed_from_u64(42);
@@ -782,7 +782,7 @@ impl VkSpriteRenderPass {
                 vertex_list.push(Vertex {
                     pos: transformed_pos.truncate().into(),
                     tex_coord: vertex.tex_coord,
-                    color: [255, 255, 255, 255]
+                    //color: [255, 255, 255, 255]
                 });
             }
 

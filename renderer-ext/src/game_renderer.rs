@@ -95,8 +95,8 @@ impl GameRendererWithShell {
         let mut game_renderer = GameRenderer::new(window, imgui_font_atlas);
 
         let shell = RendererBuilder::new()
-            //.use_vulkan_debug_layer(true)
-            .use_vulkan_debug_layer(false)
+            .use_vulkan_debug_layer(true)
+            //.use_vulkan_debug_layer(false)
             .prefer_mailbox_present_mode()
             .build(window, Some(&mut game_renderer))?;
 

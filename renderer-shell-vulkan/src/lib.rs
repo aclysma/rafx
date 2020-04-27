@@ -35,6 +35,9 @@ pub use buffer::VkBuffer;
 mod image;
 pub use image::VkImage;
 
+mod uploader;
+pub use uploader::VkUploader;
+
 mod debug_reporter;
 pub use debug_reporter::VkDebugReporter;
 

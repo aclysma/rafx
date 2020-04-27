@@ -5,7 +5,7 @@ use std::mem::ManuallyDrop;
 use ash::prelude::VkResult;
 
 use ash::version::DeviceV1_0;
-use crate::VkDevice;
+use crate::{VkDevice, VkUploader};
 use std::sync::Arc;
 use crate::device::VkDeviceContext;
 
@@ -57,52 +57,13 @@ impl VkBuffer {
         })
     }
 
-    pub fn new_from_slice_device_local<T: Copy>(
-        device_context: &VkDeviceContext,
-        buffer_usage: vk::BufferUsageFlags,
-        required_property_flags: vk::MemoryPropertyFlags,
-        queue: vk::Queue,
-        command_pool: vk::CommandPool,
-        data: &[T],
-    ) -> VkResult<ManuallyDrop<VkBuffer>> {
-        let vertex_buffer_size = data.len() as u64 * std::mem::size_of::<T>() as u64;
-
-        let mut staging_buffer = super::VkBuffer::new(
-            device_context,
-            vk_mem::MemoryUsage::CpuOnly,
-            vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            vertex_buffer_size,
-        )?;
-
-        staging_buffer.write_to_host_visible_buffer(data)?;
-
-        let device_buffer = super::VkBuffer::new(
-            device_context,
-            vk_mem::MemoryUsage::GpuOnly,
-            vk::BufferUsageFlags::TRANSFER_DST | buffer_usage,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL,
-            vertex_buffer_size,
-        )?;
-
-        VkBuffer::copy_buffer(
-            device_context.device(),
-            queue,
-            command_pool,
-            &staging_buffer,
-            &device_buffer,
-        )?;
-
-        Ok(ManuallyDrop::new(device_buffer))
-    }
-
     pub fn write_to_host_visible_buffer<T: Copy>(
         &mut self,
         data: &[T],
     ) -> VkResult<()> {
         //TODO: Better way of handling allocator errors
         let ptr = self.device_context.allocator().map_memory(&self.allocation)
-            .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?;
+            .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)? as *mut std::ffi::c_void;
 
         let required_alignment = mem::align_of::<T>() as u64;
         let mut align = unsafe { Align::new(ptr, required_alignment, self.size()) };
@@ -116,32 +77,6 @@ impl VkBuffer {
         // The staging buffer is coherent so flushing is not necessary
 
         Ok(())
-    }
-
-    pub fn copy_buffer(
-        logical_device: &ash::Device,
-        queue: vk::Queue,
-        command_pool: vk::CommandPool,
-        src: &VkBuffer,
-        dst: &VkBuffer,
-    ) -> VkResult<()> {
-        super::util::submit_single_use_command_buffer(
-            logical_device,
-            queue,
-            command_pool,
-            |command_buffer| {
-                let buffer_copy_info = [vk::BufferCopy::builder().size(src.size()).build()];
-
-                unsafe {
-                    logical_device.cmd_copy_buffer(
-                        command_buffer,
-                        src.buffer,
-                        dst.buffer,
-                        &buffer_copy_info,
-                    );
-                }
-            },
-        )
     }
 }
 
