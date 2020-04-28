@@ -441,6 +441,18 @@ impl Renderer {
             )?;
         }
 
+
+        // {
+        //     let mut graphics_queue = self.device.context.graphics_submit_queue().lock().unwrap();
+        //
+        //
+        //     graphics_queue.submit(&wait_semaphores, &signal_semaphores)?;
+        //     graphics_queue.update();
+        // }
+        // self.device.context.graphics_submit_queue().lock().unwrap().submit(&wait_semaphores, &signal_semaphores);
+        // self.device.context.graphics_submit_queue().lock().unwrap().update();
+
+
         let wait_semaphors = [self.swapchain.render_finished_semaphores[self.sync_frame_index]];
         let swapchains = [self.swapchain.swapchain];
         let image_indices = [present_index];

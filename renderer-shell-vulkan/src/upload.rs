@@ -12,14 +12,14 @@ use std::ops::Deref;
 // (https://github.com/GPUOpen-LibrariesAndSDKs/Cauldron/blob/5acc12602c55e469cc1f9181967dbcb122f8e6c7/src/VK/base/UploadHeap.h)
 
 #[derive(PartialEq)]
-enum UploaderState {
+enum UploadState {
     Writable,
     SentToGpu
 }
 
 /// This is a convenience class that allows accumulating writes into a staging buffer and commands
 /// to execute on the staging buffer. This allows for batching uploading resources.
-pub struct VkUploader {
+pub struct VkUpload {
     device_context: VkDeviceContext,
 
     queue_family_index: u32,
@@ -31,21 +31,19 @@ pub struct VkUploader {
     fence: vk::Fence,
 
     bytes_written_to_buffer: u64,
-    state: UploaderState,
+    state: UploadState,
 
     buffer_begin: *mut u8,
     buffer_end: *mut u8,
     buffer_write_pointer: *mut u8
 }
 
-impl VkUploader {
+impl VkUpload {
     pub fn new(
         device: &VkDevice,
         queue_family_index: u32,
         size: u64
     ) -> VkResult<Self> {
-        let queue = device.queues.graphics_queue;
-
         //
         // Command Buffers
         //
@@ -77,7 +75,7 @@ impl VkUploader {
 
         let fence = Self::create_fence(device.device())?;
 
-        let mut uploader = VkUploader {
+        let mut upload = VkUpload {
             device_context: device.context.clone(),
             queue_family_index,
             command_pool,
@@ -85,13 +83,13 @@ impl VkUploader {
             buffer,
             fence,
             bytes_written_to_buffer: 0,
-            state: UploaderState::Writable,
+            state: UploadState::Writable,
             buffer_begin,
             buffer_end,
             buffer_write_pointer
         };
 
-        Ok(uploader)
+        Ok(upload)
     }
 
     fn create_command_pool(
@@ -159,16 +157,16 @@ impl VkUploader {
             Self::begin_command_buffer(self.device_context.device(), self.command_buffer);
             self.device_context.device().reset_fences(&[self.fence])?;
             self.buffer_write_pointer = self.buffer_begin;
-            self.state = UploaderState::Writable;
+            self.state = UploadState::Writable;
         }
 
         Ok(())
     }
 
     pub fn push(&mut self, data: &[u8], required_alignment: usize) -> VkResult<vk::DeviceSize> {
-        log::debug!("Pushing {} bytes into uploader", data.len());
+        log::debug!("Pushing {} bytes into upload", data.len());
 
-        if self.state == UploaderState::Writable {
+        if self.state == UploadState::Writable {
             unsafe {
                 // Figure out the span of memory we will write over
                 let align_offset = self.buffer_write_pointer as usize % required_alignment;
@@ -199,7 +197,7 @@ impl VkUploader {
     }
 
     pub fn submit(&mut self, queue: vk::Queue) -> VkResult<()> {
-        if self.state == UploaderState::Writable {
+        if self.state == UploadState::Writable {
             unsafe {
                 self.device_context.device().end_command_buffer(self.command_buffer)?;
             }
@@ -212,7 +210,7 @@ impl VkUploader {
 
             unsafe {
                 self.device_context.device().queue_submit(queue, &[submit], self.fence)?;
-                self.state = UploaderState::SentToGpu;
+                self.state = UploadState::SentToGpu;
             }
         }
 
@@ -220,7 +218,7 @@ impl VkUploader {
     }
 
     pub fn wait_until_finished(&mut self) -> VkResult<()> {
-        if self.state == UploaderState::SentToGpu {
+        if self.state == UploadState::SentToGpu {
             unsafe {
                 self.device_context.device().wait_for_fences(&[self.fence], true, std::u64::MAX)?;
                 self.reset_to_writable_state();
@@ -231,7 +229,7 @@ impl VkUploader {
     }
 
     // pub fn update(&mut self) -> VkResult<()> {
-    //     if self.state == UploaderState::SentToGpu {
+    //     if self.state == UploadState::SentToGpu {
     //         unsafe {
     //             let submit_complete = self.device_context.device().get_fence_status(self.fence)?;
     //
@@ -245,9 +243,9 @@ impl VkUploader {
     // }
 }
 
-impl Drop for VkUploader {
+impl Drop for VkUpload {
     fn drop(&mut self) {
-        log::debug!("destroying VkUploader");
+        log::debug!("destroying VkUpload");
 
         unsafe {
             self.device_context.allocator().unmap_memory(&self.buffer.allocation);
@@ -256,6 +254,6 @@ impl Drop for VkUploader {
             self.device_context.device().destroy_fence(self.fence, None);
         }
 
-        log::debug!("destroyed VkSpriteRenderPass");
+        log::debug!("destroyed VkUpload");
     }
 }

@@ -25,6 +25,8 @@ pub mod image_utils;
 
 pub mod asset_uploader;
 
+pub mod queue_manager;
+
 #[derive(Copy, Clone)]
 pub struct PositionComponent {
     pub position: Vec3,

@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkUploader};
+use renderer_shell_vulkan::{VkDevice, VkUpload};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -130,12 +130,14 @@ pub fn cmd_copy_buffer_to_image(
     }
 }
 
+//TODO: This uses a single upload of 16MB and fails if going over that limit. Probably need to
+// do something smarter in the future (like upload 16MB chunks at a time)
 pub fn load_images(
     device: &VkDevice,
     queue: vk::Queue,
     decoded_textures: &[DecodedTexture],
 ) -> VkResult<Vec<ManuallyDrop<VkImage>>> {
-    let mut uploader = VkUploader::new(device, device.queue_family_indices.graphics_queue_family_index, 1024*1024*16)?;
+    let mut upload = VkUpload::new(device, device.queue_family_indices.graphics_queue_family_index, 1024*1024*16)?;
 
     let mut images = Vec::with_capacity(decoded_textures.len());
 
@@ -147,7 +149,7 @@ pub fn load_images(
         };
 
         // Push data into the staging buffer
-        let offset = uploader.push(&decoded_texture.data, std::mem::size_of::<usize>())?;
+        let offset = upload.push(&decoded_texture.data, std::mem::size_of::<usize>())?;
 
         // Allocate an image
         let image = ManuallyDrop::new(VkImage::new(
@@ -162,7 +164,7 @@ pub fn load_images(
 
         cmd_transition_image_layout(
             device.device(),
-            uploader.command_buffer(),
+            upload.command_buffer(),
             &[image.image],
             vk::Format::R8G8B8A8_UNORM,
             vk::ImageLayout::UNDEFINED,
@@ -171,8 +173,8 @@ pub fn load_images(
 
         cmd_copy_buffer_to_image(
             device.device(),
-            uploader.command_buffer(),
-            uploader.staging_buffer().buffer,
+            upload.command_buffer(),
+            upload.staging_buffer().buffer,
             offset,
             image.image,
             &image.extent,
@@ -180,7 +182,7 @@ pub fn load_images(
 
         cmd_transition_image_layout(
             device.device(),
-            uploader.command_buffer(),
+            upload.command_buffer(),
             &[image.image],
             vk::Format::R8G8B8A8_UNORM,
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -190,8 +192,8 @@ pub fn load_images(
         images.push(image);
     }
 
-    uploader.submit(queue)?;
-    uploader.wait_until_finished()?;
+    upload.submit(queue)?;
+    upload.wait_until_finished()?;
 
     Ok(images)
 }

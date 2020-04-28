@@ -9,10 +9,10 @@ use super::Window;
 use std::ffi::CStr;
 
 use ash::extensions::khr;
-use crate::PhysicalDeviceType;
+use crate::{PhysicalDeviceType, VkSubmitQueue};
 use std::mem::ManuallyDrop;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// Has the indexes for all the queue families we will need. It's possible a single family
 /// is used for both graphics and presentation, in which case the index will be the same
@@ -31,6 +31,7 @@ pub struct VkQueues {
 pub struct VkDeviceContextInner {
     allocator: vk_mem::Allocator,
     device: ash::Device,
+    graphics_submit_queue: Mutex<VkSubmitQueue>,
 }
 
 /// A lighter-weight structure that can be cached on downstream users. It includes
@@ -49,14 +50,23 @@ impl VkDeviceContext {
         &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").allocator
     }
 
+    pub fn graphics_submit_queue(&self) -> &Mutex<VkSubmitQueue> {
+        &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").graphics_submit_queue
+    }
+
     fn new(
         device: ash::Device,
         allocator: vk_mem::Allocator,
+        queues: &VkQueues,
+        queue_families: &VkQueueFamilyIndices
     ) -> Self {
+        let graphics_submit_queue = VkSubmitQueue::new(device.clone(), queues.graphics_queue, queue_families.graphics_queue_family_index);
+
         VkDeviceContext {
             inner: Some(Arc::new(ManuallyDrop::new(VkDeviceContextInner {
                 allocator,
-                device
+                device,
+                graphics_submit_queue: Mutex::new(graphics_submit_queue)
             })))
         }
     }
@@ -181,7 +191,7 @@ impl VkDevice {
                 .get_physical_device_memory_properties(physical_device)
         };
 
-        let context = VkDeviceContext::new(logical_device, allocator);
+        let context = VkDeviceContext::new(logical_device, allocator, &queues, &queue_family_indices);
 
         Ok(VkDevice {
             context,

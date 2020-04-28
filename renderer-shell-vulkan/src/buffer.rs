@@ -5,7 +5,7 @@ use std::mem::ManuallyDrop;
 use ash::prelude::VkResult;
 
 use ash::version::DeviceV1_0;
-use crate::{VkDevice, VkUploader};
+use crate::{VkDevice, VkUpload};
 use std::sync::Arc;
 use crate::device::VkDeviceContext;
 
