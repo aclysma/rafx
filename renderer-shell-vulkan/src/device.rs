@@ -31,7 +31,7 @@ pub struct VkQueues {
 pub struct VkDeviceContextInner {
     allocator: vk_mem::Allocator,
     device: ash::Device,
-    graphics_submit_queue: Mutex<VkSubmitQueue>,
+    graphics_submit_queue: VkSubmitQueue,
 }
 
 /// A lighter-weight structure that can be cached on downstream users. It includes
@@ -50,7 +50,7 @@ impl VkDeviceContext {
         &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").allocator
     }
 
-    pub fn graphics_submit_queue(&self) -> &Mutex<VkSubmitQueue> {
+    pub fn graphics_submit_queue(&self) -> &VkSubmitQueue {
         &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").graphics_submit_queue
     }
 
@@ -66,7 +66,7 @@ impl VkDeviceContext {
             inner: Some(Arc::new(ManuallyDrop::new(VkDeviceContextInner {
                 allocator,
                 device,
-                graphics_submit_queue: Mutex::new(graphics_submit_queue)
+                graphics_submit_queue
             })))
         }
     }
