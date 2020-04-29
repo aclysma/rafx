@@ -36,10 +36,13 @@ mod image;
 pub use image::VkImage;
 
 mod upload;
+pub use upload::VkUploadState;
 pub use upload::VkUpload;
+pub use upload::VkTransferUploadState;
+pub use upload::VkTransferUpload;
 
-mod submit;
-pub use submit::VkSubmitQueue;
+// mod submit;
+// pub use submit::VkSubmitQueue;
 
 mod debug_reporter;
 pub use debug_reporter::VkDebugReporter;

@@ -95,7 +95,15 @@ impl VkSpriteResourceManager {
         //
         // Resources
         //
-        let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &decoded_textures)?;
+        //let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
+        let images = crate::image_utils::load_images(
+            device,
+            device.queue_family_indices.transfer_queue_family_index,
+            device.queues.transfer_queue,
+            device.queue_family_indices.graphics_queue_family_index,
+            device.queues.graphics_queue,
+            &decoded_textures
+        )?;
 
         let mut image_views = Vec::with_capacity(decoded_textures.len());
         for image in &images {

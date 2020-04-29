@@ -7,6 +7,7 @@ use ash::vk::SubmitInfo;
 use crate::{VkDevice, VkDeviceContext};
 use std::sync::mpsc::{Receiver, Sender};
 
+/*
 //TODO: CommmandBufferPool may need a custom strategy, one per thread/frame in flight
 
 // Other things we could include here
@@ -236,3 +237,4 @@ impl VkSubmitQueue {
         Ok(())
     }
 }
+*/

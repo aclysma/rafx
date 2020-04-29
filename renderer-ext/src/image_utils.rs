@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkUpload};
+use renderer_shell_vulkan::{VkDevice, VkUpload, VkUploadState, VkTransferUpload, VkTransferUploadState};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -27,39 +27,71 @@ pub struct DecodedTexture {
     pub data: Vec<u8>,
 }
 
+#[derive(PartialEq)]
+pub enum TransitionType {
+    PreUpload,
+    PostUploadUnifiedQueues,
+    PostUploadTransferQueue,
+    PostUploadDstQueue,
+}
+
 pub fn cmd_transition_image_layout(
     logical_device: &ash::Device,
     command_buffer: vk::CommandBuffer,
     images: &[vk::Image],
-    _format: vk::Format,
-    old_layout: vk::ImageLayout,
-    new_layout: vk::ImageLayout,
+    transition_type: TransitionType,
+    //_format: vk::Format,
+    // src_layout: vk::ImageLayout,
+    // dst_layout: vk::ImageLayout,
+    mut src_queue_family: u32,
+    mut dst_queue_family: u32
 ) {
+    if src_queue_family == dst_queue_family {
+        src_queue_family = vk::QUEUE_FAMILY_IGNORED;
+        dst_queue_family = vk::QUEUE_FAMILY_IGNORED;
+    }
+
     struct SyncInfo {
         src_access_mask: vk::AccessFlags,
         dst_access_mask: vk::AccessFlags,
         src_stage: vk::PipelineStageFlags,
         dst_stage: vk::PipelineStageFlags,
+        src_layout: vk::ImageLayout,
+        dst_layout: vk::ImageLayout,
     }
 
-    let sync_info = match (old_layout, new_layout) {
-        (vk::ImageLayout::UNDEFINED, vk::ImageLayout::TRANSFER_DST_OPTIMAL) => SyncInfo {
+    let sync_info = match transition_type {
+        TransitionType::PreUpload => SyncInfo {
             src_access_mask: vk::AccessFlags::empty(),
             dst_access_mask: vk::AccessFlags::TRANSFER_WRITE,
             src_stage: vk::PipelineStageFlags::TOP_OF_PIPE,
             dst_stage: vk::PipelineStageFlags::TRANSFER,
+            src_layout: vk::ImageLayout::UNDEFINED,
+            dst_layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
         },
-        (vk::ImageLayout::TRANSFER_DST_OPTIMAL, vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL) => {
-            SyncInfo {
-                src_access_mask: vk::AccessFlags::TRANSFER_WRITE,
-                dst_access_mask: vk::AccessFlags::SHADER_READ,
-                src_stage: vk::PipelineStageFlags::TRANSFER,
-                dst_stage: vk::PipelineStageFlags::FRAGMENT_SHADER,
-            }
-        }
-        _ => {
-            // Layout transition not yet supported
-            unimplemented!();
+        TransitionType::PostUploadUnifiedQueues => SyncInfo {
+            src_access_mask: vk::AccessFlags::TRANSFER_WRITE,
+            dst_access_mask: vk::AccessFlags::SHADER_READ,
+            src_stage: vk::PipelineStageFlags::TRANSFER,
+            dst_stage: vk::PipelineStageFlags::FRAGMENT_SHADER,
+            src_layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            dst_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        },
+        TransitionType::PostUploadTransferQueue => SyncInfo {
+            src_access_mask: vk::AccessFlags::TRANSFER_WRITE,
+            dst_access_mask: vk::AccessFlags::empty(),
+            src_stage: vk::PipelineStageFlags::TRANSFER,
+            dst_stage: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+            src_layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            dst_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        },
+        TransitionType::PostUploadDstQueue => SyncInfo {
+            src_access_mask: vk::AccessFlags::empty(),
+            dst_access_mask: vk::AccessFlags::SHADER_READ,
+            src_stage: vk::PipelineStageFlags::TOP_OF_PIPE,
+            dst_stage: vk::PipelineStageFlags::FRAGMENT_SHADER,
+            src_layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            dst_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         }
     };
 
@@ -72,10 +104,10 @@ pub fn cmd_transition_image_layout(
 
     let barrier_infos : Vec<_> = images.iter().map(|image| {
         vk::ImageMemoryBarrier::builder()
-            .old_layout(old_layout)
-            .new_layout(new_layout)
-            .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-            .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+            .old_layout(sync_info.src_layout)
+            .new_layout(sync_info.dst_layout)
+            .src_queue_family_index(src_queue_family)
+            .dst_queue_family_index(dst_queue_family)
             .image(*image)
             .subresource_range(*subresource_range)
             .src_access_mask(sync_info.src_access_mask)
@@ -130,14 +162,16 @@ pub fn cmd_copy_buffer_to_image(
     }
 }
 
+/*
 //TODO: This uses a single upload of 16MB and fails if going over that limit. Probably need to
 // do something smarter in the future (like upload 16MB chunks at a time)
 pub fn load_images(
     device: &VkDevice,
+    queue_family_index: u32,
     queue: vk::Queue,
     decoded_textures: &[DecodedTexture],
 ) -> VkResult<Vec<ManuallyDrop<VkImage>>> {
-    let mut upload = VkUpload::new(device, device.queue_family_indices.graphics_queue_family_index, 1024*1024*16)?;
+    let mut upload = VkUpload::new(device, queue_family_index, 1024*1024*16)?;
 
     let mut images = Vec::with_capacity(decoded_textures.len());
 
@@ -193,7 +227,113 @@ pub fn load_images(
     }
 
     upload.submit(queue)?;
-    upload.wait_until_finished()?;
+    loop {
+        //upload.wait_until_finished()?;
+        if upload.state()? == VkUploadState::Complete {
+            break;
+        }
+    }
+
+
+    Ok(images)
+}
+*/
+
+pub fn load_images(
+    device: &VkDevice,
+    transfer_queue_family_index: u32,
+    transfer_queue: vk::Queue,
+    dst_queue_family_index: u32,
+    dst_queue: vk::Queue,
+    decoded_textures: &[DecodedTexture],
+) -> VkResult<Vec<ManuallyDrop<VkImage>>> {
+    let mut upload = VkTransferUpload::new(
+        device,
+        transfer_queue_family_index,
+        dst_queue_family_index,
+        1024*1024*16
+    )?;
+
+    let mut images = Vec::with_capacity(decoded_textures.len());
+
+    for decoded_texture in decoded_textures {
+        let extent = vk::Extent3D {
+            width: decoded_texture.width,
+            height: decoded_texture.height,
+            depth: 1,
+        };
+
+        // Push data into the staging buffer
+        let offset = upload.push(&decoded_texture.data, std::mem::size_of::<usize>())?;
+
+        // Allocate an image
+        let image = ManuallyDrop::new(VkImage::new(
+            &device.context,
+            vk_mem::MemoryUsage::GpuOnly,
+            vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+            extent,
+            vk::Format::R8G8B8A8_UNORM,
+            vk::ImageTiling::OPTIMAL,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+        )?);
+
+        cmd_transition_image_layout(
+            device.device(),
+            upload.transfer_command_buffer(),
+            &[image.image],
+            TransitionType::PreUpload,
+            transfer_queue_family_index,
+            transfer_queue_family_index
+        );
+
+        cmd_copy_buffer_to_image(
+            device.device(),
+            upload.transfer_command_buffer(),
+            upload.staging_buffer().buffer,
+            offset,
+            image.image,
+            &image.extent,
+        );
+
+        cmd_transition_image_layout(
+            device.device(),
+            upload.transfer_command_buffer(),
+            &[image.image],
+            TransitionType::PostUploadTransferQueue,
+            transfer_queue_family_index,
+            dst_queue_family_index
+        );
+
+
+
+        images.push(image);
+    }
+
+    upload.submit_transfer(transfer_queue)?;
+    loop {
+        if upload.state()? == VkTransferUploadState::PendingSubmitDstQueue {
+            break;
+        }
+    }
+
+    for image in &images {
+        cmd_transition_image_layout(
+            device.device(),
+            upload.dst_command_buffer(),
+            &[image.image],
+            TransitionType::PostUploadTransferQueue,
+            transfer_queue_family_index,
+            dst_queue_family_index
+        );
+    }
+
+    upload.submit_dst(dst_queue)?;
+    loop {
+        if upload.state()? == VkTransferUploadState::Complete {
+            break;
+        }
+    }
+
 
     Ok(images)
 }

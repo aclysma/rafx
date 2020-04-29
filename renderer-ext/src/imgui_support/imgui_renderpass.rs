@@ -149,7 +149,15 @@ impl VkImGuiRenderPass {
             data: font_atlas.data.clone()
         };
 
-        let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
+        //let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
+        let images = crate::image_utils::load_images(
+            device,
+            device.queue_family_indices.transfer_queue_family_index,
+            device.queues.transfer_queue,
+            device.queue_family_indices.graphics_queue_family_index,
+            device.queues.graphics_queue,
+            &[decoded_texture]
+        )?;
 
         let image_views : Vec<_> = images.iter().map(|image| Self::create_texture_image_view(device.device(), &image.image)).collect();
 

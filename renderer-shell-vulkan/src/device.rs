@@ -9,21 +9,28 @@ use super::Window;
 use std::ffi::CStr;
 
 use ash::extensions::khr;
-use crate::{PhysicalDeviceType, VkSubmitQueue};
+use crate::{PhysicalDeviceType/*, VkSubmitQueue*/};
 use std::mem::ManuallyDrop;
 
 use std::sync::{Arc, Mutex};
+
+pub struct VkQueue {
+    pub queue_family_index: u32,
+    pub queue: vk::Queue
+}
 
 /// Has the indexes for all the queue families we will need. It's possible a single family
 /// is used for both graphics and presentation, in which case the index will be the same
 #[derive(Default)]
 pub struct VkQueueFamilyIndices {
+    pub transfer_queue_family_index: u32,
     pub graphics_queue_family_index: u32,
     pub present_queue_family_index: u32,
 }
 
 /// An instantiated queue per queue family. We only need one queue per family.
 pub struct VkQueues {
+    pub transfer_queue: ash::vk::Queue,
     pub graphics_queue: ash::vk::Queue,
     pub present_queue: ash::vk::Queue,
 }
@@ -31,7 +38,7 @@ pub struct VkQueues {
 pub struct VkDeviceContextInner {
     allocator: vk_mem::Allocator,
     device: ash::Device,
-    graphics_submit_queue: VkSubmitQueue,
+    //graphics_submit_queue: VkSubmitQueue,
 }
 
 /// A lighter-weight structure that can be cached on downstream users. It includes
@@ -50,9 +57,9 @@ impl VkDeviceContext {
         &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").allocator
     }
 
-    pub fn graphics_submit_queue(&self) -> &VkSubmitQueue {
-        &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").graphics_submit_queue
-    }
+    // pub fn graphics_submit_queue(&self) -> &VkSubmitQueue {
+    //     &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").graphics_submit_queue
+    // }
 
     fn new(
         device: ash::Device,
@@ -60,13 +67,13 @@ impl VkDeviceContext {
         queues: &VkQueues,
         queue_families: &VkQueueFamilyIndices
     ) -> Self {
-        let graphics_submit_queue = VkSubmitQueue::new(device.clone(), queues.graphics_queue, queue_families.graphics_queue_family_index);
+        //let graphics_submit_queue = VkSubmitQueue::new(device.clone(), queues.graphics_queue, queue_families.graphics_queue_family_index);
 
         VkDeviceContext {
             inner: Some(Arc::new(ManuallyDrop::new(VkDeviceContextInner {
                 allocator,
                 device,
-                graphics_submit_queue
+                //graphics_submit_queue
             })))
         }
     }
@@ -334,6 +341,8 @@ impl VkDevice {
 
         let mut graphics_queue_family_index = None;
         let mut present_queue_family_index = None;
+        let mut transfer_queue_family_index = None;
+        let mut transfer_queue_family_is_dedicated = false;
 
         info!("Available queue families:");
         for (queue_family_index, queue_family) in queue_families.iter().enumerate() {
@@ -346,6 +355,8 @@ impl VkDevice {
 
             let supports_graphics = queue_family.queue_flags & ash::vk::QueueFlags::GRAPHICS
                 == ash::vk::QueueFlags::GRAPHICS;
+            let supports_transfer = queue_family.queue_flags & ash::vk::QueueFlags::TRANSFER
+                == ash::vk::QueueFlags::TRANSFER;
             let supports_present = unsafe {
                 surface_loader.get_physical_device_surface_support(
                     physical_device,
@@ -354,14 +365,7 @@ impl VkDevice {
                 )?
             };
 
-            // A queue family that supports both is ideal. If we find it, break out early.
-            if supports_graphics && supports_present {
-                graphics_queue_family_index = Some(queue_family_index);
-                present_queue_family_index = Some(queue_family_index);
-                break;
-            }
-
-            // Otherwise, remember the first graphics queue family we saw...
+            // Remember the first graphics queue family we saw...
             if supports_graphics && graphics_queue_family_index.is_none() {
                 graphics_queue_family_index = Some(queue_family_index);
             }
@@ -370,19 +374,44 @@ impl VkDevice {
             if supports_present && present_queue_family_index.is_none() {
                 present_queue_family_index = Some(queue_family_index);
             }
+
+            // A queue family that supports both is ideal, use that instead if we find it
+            if supports_graphics && supports_present {
+                // Use the first queue family that supports both
+                if graphics_queue_family_index != present_queue_family_index {
+                    graphics_queue_family_index = Some(queue_family_index);
+                    present_queue_family_index = Some(queue_family_index);
+                }
+            }
+
+            if !supports_graphics && supports_transfer && !transfer_queue_family_is_dedicated {
+                // Ideally we want to find a dedicated transfer queue
+                transfer_queue_family_index = Some(queue_family_index);
+                transfer_queue_family_is_dedicated = true;
+            } else if supports_transfer && transfer_queue_family_index.is_none() && Some(queue_family_index) != graphics_queue_family_index {
+                // Otherwise accept the first queue that supports transfers that is NOT the graphics queue
+                transfer_queue_family_index = Some(queue_family_index);
+            }
+        }
+
+        // If we didn't find a transfer queue family != graphics queue family, settle for using the
+        // graphics queue family. It's guaranteed to support transfer.
+        if transfer_queue_family_index.is_none() {
+            transfer_queue_family_index = graphics_queue_family_index;
         }
 
         info!(
-            "Graphics QF: {:?}  Present QF: {:?}",
-            graphics_queue_family_index, present_queue_family_index
+            "Graphics QF: {:?}  Present QF: {:?}  Transfer QF: {:?}",
+            graphics_queue_family_index, present_queue_family_index, transfer_queue_family_index
         );
 
-        if let (Some(graphics_queue_family_index), Some(present_queue_family_index)) =
-            (graphics_queue_family_index, present_queue_family_index)
+        if let (Some(graphics_queue_family_index), Some(present_queue_family_index), Some(transfer_queue_family_index)) =
+            (graphics_queue_family_index, present_queue_family_index, transfer_queue_family_index)
         {
             Ok(Some(VkQueueFamilyIndices {
                 graphics_queue_family_index,
                 present_queue_family_index,
+                transfer_queue_family_index
             }))
         } else {
             Ok(None)
@@ -403,6 +432,7 @@ impl VkDevice {
         let mut queue_families_to_create = std::collections::HashSet::new();
         queue_families_to_create.insert(queue_family_indices.graphics_queue_family_index);
         queue_families_to_create.insert(queue_family_indices.present_queue_family_index);
+        queue_families_to_create.insert(queue_family_indices.transfer_queue_family_index);
 
         let queue_infos: Vec<_> = queue_families_to_create
             .iter()
@@ -428,9 +458,13 @@ impl VkDevice {
         let present_queue =
             unsafe { device.get_device_queue(queue_family_indices.present_queue_family_index, 0) };
 
+        let transfer_queue =
+            unsafe { device.get_device_queue(queue_family_indices.transfer_queue_family_index, 0) };
+
         let queues = VkQueues {
             graphics_queue,
             present_queue,
+            transfer_queue
         };
 
         Ok((device, queues))

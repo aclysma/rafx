@@ -17,7 +17,7 @@ use super::PresentMode;
 use super::PhysicalDeviceType;
 use super::PhysicalSize;
 use super::Window;
-use crate::submit::PendingCommandBuffer;
+//use crate::submit::PendingCommandBuffer;
 
 /// May be implemented to get callbacks related to the renderer and framebuffer usage
 pub trait RendererEventListener {
@@ -421,27 +421,12 @@ impl Renderer {
             command_buffers.append(&mut buffers);
         }
 
-        // if let Some(event_listener) = event_listener {
-        //     let mut buffers = event_listener.render(window, &self.device, present_index as usize)?;
-        //     let queued_command_buffer = PendingCommandBuffer {
-        //         command_buffers: buffers,
-        //         semaphore_waits: Default::default(),
-        //         semaphore_waits_dst_stage_mask: Default::default(),
-        //         semaphore_signals: Default::default(),
-        //         command_pools_reset_on_finish: Default::default(),
-        //     };
-        //
-        //     self.device.context.graphics_submit_queue().push(Box::new(queued_command_buffer));
-        // }
-
         let wait_semaphores = [self.swapchain.image_available_semaphores[self.sync_frame_index]];
         let signal_semaphores = [self.swapchain.render_finished_semaphores[self.sync_frame_index]];
 
         let wait_dst_stage_mask = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
 
         //add fence to queue submit
-        println!("wait semaphores {:?}", wait_semaphores);
-        println!("signal semaphores {:?}", signal_semaphores);
         let submit_info = [vk::SubmitInfo::builder()
             .wait_semaphores(&wait_semaphores)
             .signal_semaphores(&signal_semaphores)
@@ -450,31 +435,12 @@ impl Renderer {
             .build()];
 
         unsafe {
-
-            println!("submit info: {:#?}", submit_info);
             self.device.device().queue_submit(
                 self.device.queues.graphics_queue,
                 &submit_info,
                 frame_fence,
             )?;
         }
-
-
-        // {
-        //     let mut graphics_queue = self.device.context.graphics_submit_queue();//.lock().unwrap();
-        //
-        //     //graphics_queue.push()
-        //
-        //     graphics_queue.submit(
-        //         &wait_semaphores,
-        //         &wait_dst_stage_mask,
-        //         &signal_semaphores,
-        //         &[frame_fence]
-        //     )?;
-        //
-        //     graphics_queue.update();
-        // }
-
 
         let wait_semaphors = [self.swapchain.render_finished_semaphores[self.sync_frame_index]];
         let swapchains = [self.swapchain.swapchain];
@@ -488,10 +454,6 @@ impl Renderer {
             self.swapchain
                 .swapchain_loader
                 .queue_present(self.device.queues.present_queue, &present_info)?;
-
-            // loop {
-            //
-            // }
         }
 
         self.sync_frame_index = (self.sync_frame_index + 1) % MAX_FRAMES_IN_FLIGHT;
