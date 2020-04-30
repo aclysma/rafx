@@ -22,6 +22,7 @@ mod daemon;
 use renderer_ext::asset_resource::AssetResource;
 use renderer_ext::image_importer::ImageAsset;
 use renderer_ext::image_utils::DecodedTexture;
+use imgui::Key;
 
 
 fn main() {
@@ -131,7 +132,7 @@ fn main() {
         for event in event_pump.poll_iter() {
             imgui_manager.handle_event(&event);
             if !imgui_manager.ignore_event(&event) {
-                log::info!("{:?}", event);
+                log::trace!("{:?}", event);
                 match event {
                     //
                     // Halt if the user requests to close the window
@@ -146,9 +147,18 @@ fn main() {
                         keymod: modifiers,
                         ..
                     } => {
-                        log::info!("Key Down {:?} {:?}", keycode, modifiers);
+                        log::trace!("Key Down {:?} {:?}", keycode, modifiers);
                         if keycode == Keycode::Escape {
                             break 'running;
+                        }
+
+                        if keycode == Keycode::Space {
+                            log::info!("set images");
+                            renderer.set_images();
+                        }
+
+                        if keycode == Keycode::D {
+                            renderer.dump_stats();
                         }
                     }
 

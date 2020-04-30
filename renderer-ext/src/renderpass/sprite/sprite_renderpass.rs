@@ -683,6 +683,7 @@ impl VkSpriteRenderPass {
         descriptor_set_per_pass: &vk::DescriptorSet,
         descriptor_set_per_texture: &[vk::DescriptorSet],
     ) -> VkResult<()> {
+
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
         let clear_values = [vk::ClearValue {
@@ -704,7 +705,7 @@ impl VkSpriteRenderPass {
         drop_old_buffers(vertex_buffers);
         drop_old_buffers(index_buffers);
 
-
+        #[derive(Debug)]
         struct Sprite {
             position: glam::Vec3,
             texture_size: glam::Vec2,
@@ -713,7 +714,7 @@ impl VkSpriteRenderPass {
             texture_descriptor_index: u32
         }
 
-
+        #[derive(Debug)]
         struct DrawCall {
             index_buffer_first_element: u16,
             index_buffer_count: u16,
@@ -723,20 +724,22 @@ impl VkSpriteRenderPass {
         const SPRITE_COUNT : usize = 5;
         let mut sprites = Vec::with_capacity(SPRITE_COUNT);
 
-        let mut rng: pcg_rand::Pcg32 = rand::SeedableRng::seed_from_u64(42);
-        use rand::Rng;
-        use std::f32::consts::PI;
+        if !descriptor_set_per_texture.is_empty() {
+            let mut rng: pcg_rand::Pcg32 = rand::SeedableRng::seed_from_u64(42);
+            use rand::Rng;
+            use std::f32::consts::PI;
 
-        for i in (0..SPRITE_COUNT) {
-            sprites.push(Sprite {
-                position: glam::Vec3::new(rng.gen_range(-400.0, 400.0), rng.gen_range(-300.0, 300.0), 0.0),
-                //texture_size: glam::Vec2::new(800.0, 450.0),
-                texture_size: glam::Vec2::new(512.0, 512.0),
-                //scale: rng.gen_range(0.1, 0.2),
-                scale: rng.gen_range(0.5, 1.0),
-                rotation: rng.gen_range(-180.0, 180.0),
-                texture_descriptor_index: rng.gen_range(0, 2)
-            });
+            for i in (0..SPRITE_COUNT) {
+                sprites.push(Sprite {
+                    position: glam::Vec3::new(rng.gen_range(-400.0, 400.0), rng.gen_range(-300.0, 300.0), 0.0),
+                    //texture_size: glam::Vec2::new(800.0, 450.0),
+                    texture_size: glam::Vec2::new(512.0, 512.0),
+                    //scale: rng.gen_range(0.1, 0.2),
+                    scale: rng.gen_range(0.5, 1.0),
+                    rotation: rng.gen_range(-180.0, 180.0),
+                    texture_descriptor_index: rng.gen_range(0, descriptor_set_per_texture.len() as u32)
+                });
+            }
         }
 
         // let sprites = [
@@ -800,8 +803,6 @@ impl VkSpriteRenderPass {
             draw_calls.push(draw_call);
         }
 
-
-
         // //const QUADS_TO_DRAW : usize = 1;
         // let mut vertex_list : Vec<Vertex> = Vec::with_capacity(QUAD_VERTEX_LIST.len() * QUADS_TO_DRAW);
         // let mut index_list : Vec<u16> = Vec::with_capacity(QUAD_INDEX_LIST.len() * QUADS_TO_DRAW);
@@ -820,42 +821,46 @@ impl VkSpriteRenderPass {
         // }
 
         let mut draw_list_count = 0;
-        let vertex_buffer = {
-            let vertex_buffer_size = vertex_list.len() as u64
-                * std::mem::size_of::<Vertex>() as u64;
-            let mut vertex_buffer = VkBuffer::new(
-                device_context,
-                vk_mem::MemoryUsage::CpuToGpu,
-                vk::BufferUsageFlags::VERTEX_BUFFER,
-                vk::MemoryPropertyFlags::HOST_VISIBLE
-                    | vk::MemoryPropertyFlags::HOST_COHERENT,
-                vertex_buffer_size,
-            )?;
+        if !sprites.is_empty() {
+            let vertex_buffer = {
+                let vertex_buffer_size = vertex_list.len() as u64
+                    * std::mem::size_of::<Vertex>() as u64;
+                let mut vertex_buffer = VkBuffer::new(
+                    device_context,
+                    vk_mem::MemoryUsage::CpuToGpu,
+                    vk::BufferUsageFlags::VERTEX_BUFFER,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE
+                        | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    vertex_buffer_size,
+                )?;
 
-            vertex_buffer.write_to_host_visible_buffer(vertex_list.as_slice())?;
-            vertex_buffer
-        };
+                vertex_buffer.write_to_host_visible_buffer(vertex_list.as_slice())?;
+                vertex_buffer
+            };
 
-        //TODO: Duplicated code here
-        let index_buffer = {
-            let index_buffer_size = index_list.len() as u64
-                * std::mem::size_of::<u16>() as u64;
-            let mut index_buffer = VkBuffer::new(
-                device_context,
-                vk_mem::MemoryUsage::CpuToGpu,
-                vk::BufferUsageFlags::INDEX_BUFFER,
-                vk::MemoryPropertyFlags::HOST_VISIBLE
-                    | vk::MemoryPropertyFlags::HOST_COHERENT,
-                index_buffer_size,
-            )?;
+            //TODO: Duplicated code here
+            let index_buffer = {
+                let index_buffer_size = index_list.len() as u64
+                    * std::mem::size_of::<u16>() as u64;
+                let mut index_buffer = VkBuffer::new(
+                    device_context,
+                    vk_mem::MemoryUsage::CpuToGpu,
+                    vk::BufferUsageFlags::INDEX_BUFFER,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE
+                        | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    index_buffer_size,
+                )?;
 
-            index_buffer.write_to_host_visible_buffer(index_list.as_slice())?;
-            index_buffer
-        };
+                index_buffer.write_to_host_visible_buffer(index_list.as_slice())?;
+                index_buffer
+            };
 
-        vertex_buffers.push(ManuallyDrop::new(vertex_buffer));
-        index_buffers.push(ManuallyDrop::new(index_buffer));
-        draw_list_count += 1;
+            vertex_buffers.push(ManuallyDrop::new(vertex_buffer));
+            index_buffers.push(ManuallyDrop::new(index_buffer));
+            draw_list_count += 1;
+        }
+
+
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(*renderpass)
@@ -877,55 +882,57 @@ impl VkSpriteRenderPass {
                 vk::SubpassContents::INLINE,
             );
 
-            logical_device.cmd_bind_pipeline(
-                *command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                *pipeline,
-            );
+            if !sprites.is_empty() {
+                logical_device.cmd_bind_pipeline(
+                    *command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    *pipeline,
+                );
 
-            // Bind per-pass data (UBO with view/proj matrix, sampler)
-            logical_device.cmd_bind_descriptor_sets(
-                *command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                *pipeline_layout,
-                0,
-                &[*descriptor_set_per_pass],
-                &[],
-            );
-
-            logical_device.cmd_bind_vertex_buffers(
-                *command_buffer,
-                0, // first binding
-                &[vertex_buffers[0].buffer],
-                &[0], // offsets
-            );
-
-            logical_device.cmd_bind_index_buffer(
-                *command_buffer,
-                index_buffers[0].buffer,
-                0, // offset
-                vk::IndexType::UINT16,
-            );
-
-            for draw_call in draw_calls {
-                // Bind per-draw-call data (i.e. texture)
+                // Bind per-pass data (UBO with view/proj matrix, sampler)
                 logical_device.cmd_bind_descriptor_sets(
                     *command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
                     *pipeline_layout,
-                    1,
-                    &[descriptor_set_per_texture[draw_call.texture_descriptor_index as usize]],
+                    0,
+                    &[*descriptor_set_per_pass],
                     &[],
                 );
 
-                logical_device.cmd_draw_indexed(
+                logical_device.cmd_bind_vertex_buffers(
                     *command_buffer,
-                    draw_call.index_buffer_count as u32,
-                    1,
-                    draw_call.index_buffer_first_element as u32,
-                    0,
-                    0,
+                    0, // first binding
+                    &[vertex_buffers[0].buffer],
+                    &[0], // offsets
                 );
+
+                logical_device.cmd_bind_index_buffer(
+                    *command_buffer,
+                    index_buffers[0].buffer,
+                    0, // offset
+                    vk::IndexType::UINT16,
+                );
+
+                for draw_call in draw_calls {
+                    // Bind per-draw-call data (i.e. texture)
+                    logical_device.cmd_bind_descriptor_sets(
+                        *command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        *pipeline_layout,
+                        1,
+                        &[descriptor_set_per_texture[draw_call.texture_descriptor_index as usize]],
+                        &[],
+                    );
+
+                    logical_device.cmd_draw_indexed(
+                        *command_buffer,
+                        draw_call.index_buffer_count as u32,
+                        1,
+                        draw_call.index_buffer_first_element as u32,
+                        0,
+                        0,
+                    );
+                }
             }
 
             logical_device.cmd_end_render_pass(*command_buffer);
@@ -987,7 +994,7 @@ impl VkSpriteRenderPass {
             &mut self.vertex_buffers[present_index],
             &mut self.index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
-            sprite_resource_manager.descriptor_sets(0),
+            sprite_resource_manager.descriptor_set(),
         )
     }
 }

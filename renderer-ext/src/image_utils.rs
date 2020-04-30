@@ -27,6 +27,17 @@ pub struct DecodedTexture {
     pub data: Vec<u8>,
 }
 
+pub fn decode_texture(buf: &[u8], format: ImageFormat) -> DecodedTexture {
+    let example_image = image::load_from_memory_with_format(buf, format).unwrap();
+    let dimensions = example_image.dimensions();
+    let example_image = example_image.to_rgba().into_raw();
+    DecodedTexture {
+        width: dimensions.0,
+        height: dimensions.1,
+        data: example_image
+    }
+}
+
 #[derive(PartialEq)]
 pub enum TransitionType {
     PreUpload,
@@ -239,21 +250,13 @@ pub fn load_images(
 }
 */
 
-pub fn load_images(
+pub fn enqueue_load_images(
     device: &VkDevice,
+    upload: &mut VkTransferUpload,
     transfer_queue_family_index: u32,
-    transfer_queue: vk::Queue,
     dst_queue_family_index: u32,
-    dst_queue: vk::Queue,
     decoded_textures: &[DecodedTexture],
 ) -> VkResult<Vec<ManuallyDrop<VkImage>>> {
-    let mut upload = VkTransferUpload::new(
-        device,
-        transfer_queue_family_index,
-        dst_queue_family_index,
-        1024*1024*16
-    )?;
-
     let mut images = Vec::with_capacity(decoded_textures.len());
 
     for decoded_texture in decoded_textures {
@@ -304,16 +307,7 @@ pub fn load_images(
             dst_queue_family_index
         );
 
-
-
         images.push(image);
-    }
-
-    upload.submit_transfer(transfer_queue)?;
-    loop {
-        if upload.state()? == VkTransferUploadState::PendingSubmitDstQueue {
-            break;
-        }
     }
 
     for image in &images {
@@ -327,13 +321,92 @@ pub fn load_images(
         );
     }
 
+    Ok(images)
+}
+
+pub fn load_images(
+    device: &VkDevice,
+    transfer_queue_family_index: u32,
+    transfer_queue: vk::Queue,
+    dst_queue_family_index: u32,
+    dst_queue: vk::Queue,
+    decoded_textures: &[DecodedTexture],
+) -> VkResult<Vec<ManuallyDrop<VkImage>>> {
+    let mut upload = VkTransferUpload::new(
+        device,
+        transfer_queue_family_index,
+        dst_queue_family_index,
+        1024*1024*16
+    )?;
+
+    let images = enqueue_load_images(device, &mut upload, transfer_queue_family_index, dst_queue_family_index, decoded_textures)?;
+
+    // let mut images = Vec::with_capacity(decoded_textures.len());
+    //
+    // for decoded_texture in decoded_textures {
+    //     let extent = vk::Extent3D {
+    //         width: decoded_texture.width,
+    //         height: decoded_texture.height,
+    //         depth: 1,
+    //     };
+    //
+    //     // Push data into the staging buffer
+    //     let offset = upload.push(&decoded_texture.data, std::mem::size_of::<usize>())?;
+    //
+    //     // Allocate an image
+    //     let image = ManuallyDrop::new(VkImage::new(
+    //         &device.context,
+    //         vk_mem::MemoryUsage::GpuOnly,
+    //         vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+    //         extent,
+    //         vk::Format::R8G8B8A8_UNORM,
+    //         vk::ImageTiling::OPTIMAL,
+    //         vk::MemoryPropertyFlags::DEVICE_LOCAL,
+    //     )?);
+    //
+    //     cmd_transition_image_layout(
+    //         device.device(),
+    //         upload.transfer_command_buffer(),
+    //         &[image.image],
+    //         TransitionType::PreUpload,
+    //         transfer_queue_family_index,
+    //         transfer_queue_family_index
+    //     );
+    //
+    //     cmd_copy_buffer_to_image(
+    //         device.device(),
+    //         upload.transfer_command_buffer(),
+    //         upload.staging_buffer().buffer,
+    //         offset,
+    //         image.image,
+    //         &image.extent,
+    //     );
+    //
+    //     cmd_transition_image_layout(
+    //         device.device(),
+    //         upload.transfer_command_buffer(),
+    //         &[image.image],
+    //         TransitionType::PostUploadTransferQueue,
+    //         transfer_queue_family_index,
+    //         dst_queue_family_index
+    //     );
+    //
+    //     images.push(image);
+    // }
+
+    upload.submit_transfer(transfer_queue)?;
+    loop {
+        if upload.state()? == VkTransferUploadState::PendingSubmitDstQueue {
+            break;
+        }
+    }
+
     upload.submit_dst(dst_queue)?;
     loop {
         if upload.state()? == VkTransferUploadState::Complete {
             break;
         }
     }
-
 
     Ok(images)
 }

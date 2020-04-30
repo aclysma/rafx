@@ -18,38 +18,132 @@ use renderer_shell_vulkan::VkImage;
 use image::error::ImageError::Decoding;
 use std::process::exit;
 use image::{GenericImageView, ImageFormat};
-use ash::vk::ShaderStageFlags;
+use ash::vk::{ShaderStageFlags, DescriptorPoolResetFlags};
 use crate::image_utils::DecodedTexture;
+use std::collections::VecDeque;
+use imgui::FontSource::DefaultFontData;
 
-fn decode_texture(buf: &[u8], format: ImageFormat) -> DecodedTexture {
-    let example_image = image::load_from_memory_with_format(buf, format).unwrap();
-    let dimensions = example_image.dimensions();
-    let example_image = example_image.to_rgba().into_raw();
-    DecodedTexture {
-        width: dimensions.0,
-        height: dimensions.1,
-        data: example_image
+struct DescriptorPoolInFlight {
+    pool: vk::DescriptorPool,
+    frames_remaining_until_reset: u32
+}
+
+pub type DescriptorPoolAllocatorAllocFn = Fn(&ash::Device) -> VkResult<vk::DescriptorPool>;
+
+pub struct DescriptorPoolAllocator {
+    allocate_fn: Box<DescriptorPoolAllocatorAllocFn>,
+    in_flight_pools: VecDeque<DescriptorPoolInFlight>,
+    reset_pool: Vec<vk::DescriptorPool>,
+    max_in_flight_frames: u32,
+
+    // Number of pools we have created in total
+    created_pool_count: u32,
+    max_pool_count: u32
+}
+
+impl DescriptorPoolAllocator {
+    pub fn new<F: Fn(&ash::Device) -> VkResult<vk::DescriptorPool> + 'static>(
+        max_in_flight_frames: u32,
+        max_pool_count: u32,
+        allocate_fn: F
+    ) -> Self {
+        DescriptorPoolAllocator {
+            allocate_fn: Box::new(allocate_fn),
+            in_flight_pools: Default::default(),
+            reset_pool: Default::default(),
+            max_in_flight_frames,
+            created_pool_count: 0,
+            max_pool_count
+        }
+    }
+
+    pub fn allocate_pool(&mut self, device: &ash::Device) -> VkResult<vk::DescriptorPool> {
+        self.reset_pool.pop()
+            .map(|pool| Ok(pool))
+            .unwrap_or_else(|| {
+                self.created_pool_count += 1;
+                assert!(self.created_pool_count <= self.max_pool_count);
+                (self.allocate_fn)(device)
+            })
+    }
+
+    pub fn retire_pool(&mut self, pool: vk::DescriptorPool) {
+        self.in_flight_pools.push_back(DescriptorPoolInFlight {
+            pool,
+            frames_remaining_until_reset: self.max_in_flight_frames
+        });
+    }
+
+    pub fn update(&mut self, device: &ash::Device) {
+        // Decrease frame count by one for all retiring pools
+        for pool_in_flight in &mut self.in_flight_pools {
+            pool_in_flight.frames_remaining_until_reset -= 1;
+        }
+
+        // Determine how many pools we can drain
+        let mut pools_to_drain = 0;
+        for in_flight_pool in &self.in_flight_pools {
+            if in_flight_pool.frames_remaining_until_reset <= 0 {
+                pools_to_drain += 1;
+            } else {
+                break;
+            }
+        }
+
+        // Reset them and add them to the list of pools ready to be allocated
+        let pools_to_reset : Vec<_> = self.in_flight_pools.drain(0..pools_to_drain).collect();
+        for pool_to_reset in pools_to_reset {
+            unsafe {
+                device.reset_descriptor_pool(pool_to_reset.pool, DescriptorPoolResetFlags::empty());
+            }
+
+            self.reset_pool.push(pool_to_reset.pool);
+        }
+    }
+
+    pub fn destroy(&mut self, device: &ash::Device) {
+        unsafe {
+            device.device_wait_idle();
+        }
+
+        while !self.in_flight_pools.is_empty() {
+            self.update(device);
+        }
+
+        for pool in self.reset_pool.drain(..) {
+            unsafe {
+                device.destroy_descriptor_pool(pool, None);
+            }
+        }
     }
 }
 
-const MAX_TEXTURES : u32 = 5;
+impl Drop for DescriptorPoolAllocator {
+    fn drop(&mut self) {
+        assert!(self.in_flight_pools.is_empty());
+        assert!(self.reset_pool.is_empty());
+    }
+}
+
+pub struct VkSprite {
+    pub image: ManuallyDrop<VkImage>,
+    pub image_view: vk::ImageView
+}
 
 pub struct VkSpriteResourceManager {
     pub device: ash::Device,
     pub swapchain_info: SwapchainInfo,
 
-
     pub command_pool: vk::CommandPool,
-    //pub command_buffers: Vec<vk::CommandBuffer>,
 
     // The raw texture resources
-    pub images: Vec<ManuallyDrop<VkImage>>,
-    pub image_views: Vec<vk::ImageView>,
+    pub sprites: Vec<VkSprite>,
 
     // The descriptor set layout, pools, and sets
     pub descriptor_set_layout: vk::DescriptorSetLayout,
+    pub descriptor_pool_allocator: DescriptorPoolAllocator,
     pub descriptor_pool: vk::DescriptorPool,
-    pub descriptor_sets: Vec<Vec<vk::DescriptorSet>>,
+    pub descriptor_set: Vec<vk::DescriptorSet>,
 }
 
 impl VkSpriteResourceManager {
@@ -57,25 +151,61 @@ impl VkSpriteResourceManager {
         self.descriptor_set_layout
     }
 
-    pub fn descriptor_sets(&self, present_index: usize) -> &Vec<vk::DescriptorSet> {
-        &self.descriptor_sets[present_index]
+    pub fn descriptor_set(&self) -> &Vec<vk::DescriptorSet> {
+        &self.descriptor_set
     }
 
+    pub fn set_images(&mut self, images: Vec<ManuallyDrop<VkImage>>) -> VkResult<()> {
+        let mut sprites = Vec::with_capacity(images.len());
+        for image in images {
+            let image_view = Self::create_texture_image_view(&self.device, &image.image);
+            sprites.push(VkSprite {
+                image,
+                image_view
+            });
+        }
+
+        self.sprites = sprites;
+        self.refresh_descriptor_set()?;
+        Ok(())
+    }
+
+    fn refresh_descriptor_set(&mut self) -> VkResult<()> {
+        self.descriptor_pool_allocator.retire_pool(self.descriptor_pool);
+
+        let descriptor_pool = self.descriptor_pool_allocator.allocate_pool(&self.device)?;
+        let descriptor_set = Self::create_descriptor_set(
+            &self.device,
+            &descriptor_pool,
+            self.descriptor_set_layout,
+            &self.sprites
+        )?;
+
+        self.descriptor_pool = descriptor_pool;
+        self.descriptor_set = descriptor_set;
+
+        Ok(())
+    }
+
+    pub fn update(&mut self) {
+        self.descriptor_pool_allocator.update(&self.device);
+    }
 
     pub fn new(
         device: &VkDevice,
         //swapchain: &VkSwapchain,
         swapchain_info: SwapchainInfo
     ) -> VkResult<Self> {
-        let decoded_texture = decode_texture(include_bytes!("../../../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg);
-        let mut decoded_textures = vec![];
-        for _ in 0..MAX_TEXTURES {
-            decoded_textures.push(decoded_texture.clone());
-        }
+
+        // let decoded_texture = decode_texture(include_bytes!("../../../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg);
+        // let mut decoded_textures = vec![];
+        // for _ in 0..MAX_TEXTURES {
+        //     decoded_textures.push(decoded_texture.clone());
+        // }
 
         let decoded_textures = [
-            decode_texture(include_bytes!("../../../../assets/textures/texture.jpg"), image::ImageFormat::Jpeg),
-            decode_texture(include_bytes!("../../../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg),
+            crate::image_utils::decode_texture(include_bytes!("../../../../assets/textures/texture.jpg"), image::ImageFormat::Jpeg),
+            //decode_texture(include_bytes!("../../../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg),
             //decode_texture(include_bytes!("../../../../texture.jpg"), image::ImageFormat::Jpeg),
         ];
 
@@ -95,7 +225,6 @@ impl VkSpriteResourceManager {
         //
         // Resources
         //
-        //let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
         let images = crate::image_utils::load_images(
             device,
             device.queue_family_indices.transfer_queue_family_index,
@@ -105,66 +234,45 @@ impl VkSpriteResourceManager {
             &decoded_textures
         )?;
 
-        let mut image_views = Vec::with_capacity(decoded_textures.len());
-        for image in &images {
-            image_views.push(Self::create_texture_image_view(device.device(), &image.image));
+        //let mut image_views = Vec::with_capacity(decoded_textures.len());
+        let mut sprites = Vec::with_capacity(images.len());
+        for image in images {
+            //image_views.push(Self::create_texture_image_view(device.device(), &image.image));
+            let image_view = Self::create_texture_image_view(device.device(), &image.image);
+            sprites.push(VkSprite {
+                image,
+                image_view
+            });
         }
 
         //
         // Descriptors
         //
-        let descriptor_set_layout = Self::create_descriptor_set_layout(&device.device())?;
-
-        let descriptor_pool = Self::create_descriptor_pool(
-            &device.device(),
+        let descriptor_set_layout = Self::create_descriptor_set_layout(device.device())?;
+        let mut descriptor_pool_allocator = DescriptorPoolAllocator::new(
             swapchain_info.image_count as u32,
-        )?;
-
-        let descriptor_sets = Self::create_descriptor_sets(
-            &device.device(),
+            swapchain_info.image_count as u32 + 1,
+            |device| Self::create_descriptor_pool(device)
+        );
+        let descriptor_pool = descriptor_pool_allocator.allocate_pool(device.device())?;
+        let descriptor_set = Self::create_descriptor_set(
+            device.device(),
             &descriptor_pool,
             descriptor_set_layout,
-            swapchain_info.image_count,
-            &image_views,
+            &sprites
         )?;
 
         Ok(VkSpriteResourceManager {
             device: device.device().clone(),
             swapchain_info,
-            descriptor_set_layout,
             command_pool,
+            descriptor_set_layout,
+            descriptor_pool_allocator,
             descriptor_pool,
-            descriptor_sets,
-            images,
-            image_views,
+            descriptor_set,
+            sprites
         })
     }
-
-    // Called per changed resource. The commit version should be bumped once for each set of
-    // changes. So the call pattern would be add(1), add(1), add(1), commit(1), add(2), add(2), etc.
-    fn load_texture(hash: u32, data: DecodedTexture, commit_version: u32) {
-        // Get the texture uploaded, possibly on another thread
-    }
-
-    fn unload_texture(hash:u32) {
-
-    }
-
-    // Call after all adds for a single commit complete
-    fn commit_texture_changes() {
-        // Build descriptor sets
-    }
-
-    fn frame_begin(frame_index: u32) {
-        // all descriptors we currently hold are guaranteed to remain until frame_end is called for
-        // the same frame index
-    }
-
-    fn frame_end(frame_index: u32) {
-        // this will potentially retire some descriptors
-    }
-
-
 
     fn create_command_pool(
         logical_device: &ash::Device,
@@ -230,68 +338,63 @@ impl VkSpriteResourceManager {
 
     fn create_descriptor_pool(
         logical_device: &ash::Device,
-        swapchain_image_count: u32,
     ) -> VkResult<vk::DescriptorPool> {
+        const MAX_TEXTURES : u32 = 1000;
+
         let pool_sizes = [
             vk::DescriptorPoolSize::builder()
                 .ty(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(MAX_TEXTURES * swapchain_image_count)
+                .descriptor_count(MAX_TEXTURES)
                 .build(),
         ];
 
         let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
             .pool_sizes(&pool_sizes)
-            .max_sets(MAX_TEXTURES * swapchain_image_count);
+            .max_sets(MAX_TEXTURES);
 
         unsafe { logical_device.create_descriptor_pool(&descriptor_pool_info, None) }
     }
 
-    fn create_descriptor_sets(
+    fn create_descriptor_set(
         logical_device: &ash::Device,
         descriptor_pool: &vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
-        swapchain_image_count: usize,
-        image_views: &[vk::ImageView],
-    ) -> VkResult<Vec<Vec<vk::DescriptorSet>>> {
-        let mut all_sets = Vec::with_capacity(swapchain_image_count);
+        sprites: &[VkSprite],
+    ) -> VkResult<Vec<vk::DescriptorSet>> {
+        let descriptor_set_layouts = vec![descriptor_set_layout; sprites.len()];
 
-        for _ in 0..swapchain_image_count {
-            // DescriptorSetAllocateInfo expects an array with an element per set
-            let descriptor_set_layouts = vec![descriptor_set_layout; MAX_TEXTURES as usize];
-
+        let descriptor_sets = if !sprites.is_empty() {
             let alloc_info = vk::DescriptorSetAllocateInfo::builder()
                 .descriptor_pool(*descriptor_pool)
                 .set_layouts(descriptor_set_layouts.as_slice());
 
-            let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
+            unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?
+        } else {
+            vec![]
+        };
 
+        for (image_index, sprite) in sprites.iter().enumerate() {
+            let mut descriptor_writes = Vec::with_capacity(sprites.len());
+            let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .image_view(sprite.image_view)
+                .build();
 
-            for (image_index, image_view) in image_views.iter().enumerate() {
-
-                let mut descriptor_writes = Vec::with_capacity(MAX_TEXTURES as usize);
-                let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
-                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                    .image_view(*image_view)
-                    .build();
-
-                descriptor_writes.push(
-                    vk::WriteDescriptorSet::builder()
-                        .dst_set(descriptor_sets[image_index])
-                        .dst_binding(0)
-                        .dst_array_element(0)
-                        .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                        .image_info(&[image_view_descriptor_image_info])
-                        .build()
-                );
-                unsafe {
-                    logical_device.update_descriptor_sets(&descriptor_writes, &[]);
-                }
+            descriptor_writes.push(
+                vk::WriteDescriptorSet::builder()
+                    .dst_set(descriptor_sets[image_index])
+                    .dst_binding(0)
+                    .dst_array_element(0)
+                    .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                    .image_info(&[image_view_descriptor_image_info])
+                    .build()
+            );
+            unsafe {
+                logical_device.update_descriptor_sets(&descriptor_writes, &[]);
             }
-
-            all_sets.push(descriptor_sets);
         }
 
-        Ok(all_sets)
+        Ok(descriptor_sets)
     }
 }
 
@@ -303,18 +406,26 @@ impl Drop for VkSpriteResourceManager {
 
             self.device.destroy_command_pool(self.command_pool, None);
 
-            self.device
-                .destroy_descriptor_pool(self.descriptor_pool, None);
+            self.descriptor_pool_allocator.retire_pool(self.descriptor_pool);
+            self.descriptor_pool_allocator.destroy(&self.device);
+
+            // self.device
+            //     .destroy_descriptor_pool(self.descriptor_pool, None);
 
             self.device
                 .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
 
-            for image_view in &self.image_views {
-                self.device.destroy_image_view(*image_view, None);
-            }
+            // for image_view in &self.image_views {
+            //     self.device.destroy_image_view(*image_view, None);
+            // }
+            //
+            // for image in &mut self.images {
+            //     ManuallyDrop::drop(image);
+            // }
 
-            for image in &mut self.images {
-                ManuallyDrop::drop(image);
+            for sprite in &mut self.sprites {
+                self.device.destroy_image_view(sprite.image_view, None);
+                ManuallyDrop::drop(&mut sprite.image)
             }
         }
 

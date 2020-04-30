@@ -1,11 +1,14 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
 use crate::ResourceManager;
-use renderer_shell_vulkan::{VkDevice, VkSwapchain, RendererEventListener, RendererBuilder, CreateRendererError, Renderer, Window};
+use renderer_shell_vulkan::{VkDevice, VkSwapchain, RendererEventListener, RendererBuilder, CreateRendererError, Renderer, Window, VkTransferUpload, VkTransferUploadState, VkImage};
 use ash::prelude::VkResult;
 //use crate::features::sprite_renderpass_push_constant::VkSpriteRenderPass;
 use crate::renderpass::sprite::VkSpriteRenderPass;
 use crate::renderpass::sprite::VkSpriteResourceManager;
-use std::mem::swap;
+use std::mem::{swap, ManuallyDrop};
+use crate::image_utils::{decode_texture, load_images, enqueue_load_images};
+use ash::vk;
+use crate::time::ScopeTimer;
 
 pub struct GameRenderer {
     // Handles uploading resources to GPU
@@ -14,8 +17,11 @@ pub struct GameRenderer {
     imgui_event_listener: ImguiRenderEventListener,
 
     sprite_resource_manager: Option<VkSpriteResourceManager>,
-    sprite_renderpass: Option<VkSpriteRenderPass>
+    sprite_renderpass: Option<VkSpriteRenderPass>,
 
+
+    reset_image_upload: Option<VkTransferUpload>,
+    reset_image_images: Option<Vec<ManuallyDrop<VkImage>>>
 }
 
 impl GameRenderer {
@@ -30,20 +36,54 @@ impl GameRenderer {
             imgui_event_listener,
 
             sprite_resource_manager: None,
-            sprite_renderpass: None
+            sprite_renderpass: None,
+            reset_image_upload: None,
+            reset_image_images: None
         }
+    }
+
+    pub fn set_images(&mut self, device: &VkDevice) -> VkResult<()> {
+        if self.reset_image_upload.is_none() {
+
+            let texture = decode_texture(include_bytes!("../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg);
+
+            let mut upload = VkTransferUpload::new(
+                device,
+                device.queue_family_indices.transfer_queue_family_index,
+                device.queue_family_indices.graphics_queue_family_index,
+                1024 * 1024 * 16
+            )?;
+
+            let images = enqueue_load_images(
+                device,
+                &mut upload,
+                device.queue_family_indices.transfer_queue_family_index,
+                device.queue_family_indices.graphics_queue_family_index,
+                &[texture]
+            )?;
+
+            upload.submit_transfer(device.queues.transfer_queue);
+
+            self.reset_image_upload = Some(upload);
+            self.reset_image_images = Some(images);
+        }
+
+        Ok(())
     }
 }
 
 
 impl RendererEventListener for GameRenderer {
     fn swapchain_created(&mut self, device: &VkDevice, swapchain: &VkSwapchain) -> VkResult<()> {
-        log::debug!("game renderer swapchain created");
+        log::debug!("game renderer swapchain_created called");
         self.resource_manager.swapchain_created(device, swapchain)?;
         self.imgui_event_listener.swapchain_created(device, swapchain)?;
 
+        log::debug!("Create VkSpriteResourceManager");
         self.sprite_resource_manager = Some(VkSpriteResourceManager::new(device, swapchain.swapchain_info.clone())?);
+        log::debug!("Create VkSpriteRenderPass");
         self.sprite_renderpass = Some(VkSpriteRenderPass::new(device, swapchain, self.sprite_resource_manager.as_ref().unwrap())?);
+        log::debug!("game renderer swapchain_created finished");
 
         VkResult::Ok(())
     }
@@ -55,7 +95,6 @@ impl RendererEventListener for GameRenderer {
         self.sprite_resource_manager = None;
         self.imgui_event_listener.swapchain_destroyed();
         self.resource_manager.swapchain_destroyed();
-
     }
 
     fn render(&mut self, window: &Window, device: &VkDevice, present_index: usize) -> VkResult<Vec<ash::vk::CommandBuffer>> {
@@ -68,13 +107,39 @@ impl RendererEventListener for GameRenderer {
         }
 
         if let Some(sprite_resource_manager) = &mut self.sprite_resource_manager {
+
+            if let Some(upload) = &mut self.reset_image_upload {
+                if upload.state()? == VkTransferUploadState::PendingSubmitDstQueue {
+                    upload.submit_dst(device.queues.graphics_queue);
+                }
+
+                if upload.state()? == VkTransferUploadState::Complete {
+                    let mut images = None;
+                    std::mem::swap(&mut images, &mut self.reset_image_images);
+                    let images = images.unwrap();
+
+                    self.reset_image_upload = None;
+
+
+                    let swap_images = ScopeTimer::new("Swap the images");
+                    sprite_resource_manager.set_images(images);
+                }
+            }
+
+
+
+            sprite_resource_manager.update();
+            //sprite_resource_manager.refresh_descriptor_set()?;
+
             if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
+                log::trace!("sprite_renderpass update");
                 sprite_renderpass.update(&device.memory_properties, present_index, 1.0, sprite_resource_manager)?;
                 command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
             }
         }
 
         {
+            log::trace!("imgui_event_listener update");
             let mut commands = self.imgui_event_listener.render(window, device, present_index)?;
             command_buffers.append(&mut commands);
         }
@@ -95,8 +160,8 @@ impl GameRendererWithShell {
         let mut game_renderer = GameRenderer::new(window, imgui_font_atlas);
 
         let shell = RendererBuilder::new()
-            .use_vulkan_debug_layer(true)
-            //.use_vulkan_debug_layer(false)
+            //.use_vulkan_debug_layer(true)
+            .use_vulkan_debug_layer(false)
             .prefer_mailbox_present_mode()
             .build(window, Some(&mut game_renderer))?;
 
@@ -116,6 +181,10 @@ impl GameRendererWithShell {
         } else {
             log::error!("failed to calculate stats");
         }
+    }
+
+    pub fn set_images(&mut self) {
+        self.game_renderer.set_images(self.shell.device_mut());
     }
 }
 
