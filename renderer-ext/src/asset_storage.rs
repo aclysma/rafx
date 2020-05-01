@@ -9,6 +9,38 @@ use std::{sync::Mutex, collections::HashMap, error::Error, sync::Arc};
 use atelier_assets::importer as atelier_importer;
 use atelier_assets::loader as atelier_loader;
 
+// Used to dynamic dispatch into a storage, supports checked downcasting
+pub trait TypedStorage: Any + Send {
+    fn update_asset(
+        &mut self,
+        loader_info: &dyn LoaderInfoProvider,
+        data: &[u8],
+        load_handle: LoadHandle,
+        load_op: AssetLoadOp,
+        version: u32,
+    ) -> Result<(), Box<dyn Error>>;
+    fn commit_asset_version(
+        &mut self,
+        handle: LoadHandle,
+        version: u32,
+    );
+    fn free(
+        &mut self,
+        handle: LoadHandle,
+    );
+
+    fn type_name(&self) -> &'static str;
+}
+
+pub trait StorageUploader<T> : 'static + Send
+where T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send
+{
+    fn upload(&self, asset: &T, load_op: AssetLoadOp);
+}
+
+mopafy!(TypedStorage);
+
+// Contains a storage per asset type
 pub struct GenericAssetStorage {
     storage: Mutex<HashMap<AssetTypeId, Box<dyn TypedStorage>>>,
     refop_sender: Arc<Sender<RefOp>>,
@@ -22,55 +54,81 @@ impl GenericAssetStorage {
         }
     }
 
-    pub fn add_storage<T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send>(&self) {
+    pub fn add_storage<T>(&self)
+    where
+        T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send
+    {
         let mut storages = self.storage.lock().unwrap();
         storages.insert(
             AssetTypeId(T::UUID),
-            Box::new(Storage::<T>::new(self.refop_sender.clone())),
+            Box::new(Storage::<T>::new(self.refop_sender.clone(), None)),
+        );
+    }
+
+
+    pub fn add_storage_with_uploader<T, U>(&self, uploader: Box<U>)
+    where
+        T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
+        U: StorageUploader<T>
+    {
+        let mut storages = self.storage.lock().unwrap();
+        storages.insert(
+            AssetTypeId(T::UUID),
+            Box::new(Storage::<T>::new(self.refop_sender.clone(), Some(uploader))),
         );
     }
 }
 
-struct AssetState<A> {
-    version: u32,
-    asset: A,
-}
-pub struct Storage<A: TypeUuid> {
-    refop_sender: Arc<Sender<RefOp>>,
-    assets: HashMap<LoadHandle, AssetState<A>>,
-    uncommitted: HashMap<LoadHandle, AssetState<A>>,
-}
-impl<A: TypeUuid> Storage<A> {
-    fn new(sender: Arc<Sender<RefOp>>) -> Self {
-        Self {
-            refop_sender: sender,
-            assets: HashMap::new(),
-            uncommitted: HashMap::new(),
-        }
-    }
-    fn get<T: AssetHandle>(
+// Implement atelier's AssetStorage - an untyped trait that finds the asset_type's storage and
+// forwards the call
+impl AssetStorage for GenericAssetStorage {
+    fn update_asset(
         &self,
-        handle: &T,
-    ) -> Option<&A> {
-        self.assets.get(&handle.load_handle()).map(|a| &a.asset)
+        loader_info: &dyn LoaderInfoProvider,
+        asset_type_id: &AssetTypeId,
+        data: &[u8],
+        load_handle: LoadHandle,
+        load_op: AssetLoadOp,
+        version: u32,
+    ) -> Result<(), Box<dyn Error>> {
+        self.storage
+            .lock()
+            .unwrap()
+            .get_mut(asset_type_id)
+            .expect("unknown asset type")
+            .update_asset(loader_info, data, load_handle, load_op, version)
     }
-    fn get_version<T: AssetHandle>(
+    fn commit_asset_version(
         &self,
-        handle: &T,
-    ) -> Option<u32> {
-        self.assets.get(&handle.load_handle()).map(|a| a.version)
+        asset_type: &AssetTypeId,
+        load_handle: LoadHandle,
+        version: u32,
+    ) {
+        self.storage
+            .lock()
+            .unwrap()
+            .get_mut(asset_type)
+            .expect("unknown asset type")
+            .commit_asset_version(load_handle, version)
     }
-    fn get_asset_with_version<T: AssetHandle>(
+    fn free(
         &self,
-        handle: &T,
-    ) -> Option<(&A, u32)> {
-        self.assets
-            .get(&handle.load_handle())
-            .map(|a| (&a.asset, a.version))
+        asset_type_id: &AssetTypeId,
+        load_handle: LoadHandle,
+    ) {
+        self.storage
+            .lock()
+            .unwrap()
+            .get_mut(asset_type_id)
+            .expect("unknown asset type")
+            .free(load_handle)
     }
 }
+
+// Implement atelier's TypedAssetStorage - a typed trait that finds the asset_type's storage and
+// forwards the call
 impl<A: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send> TypedAssetStorage<A>
-    for GenericAssetStorage
+for GenericAssetStorage
 {
     fn get<T: AssetHandle>(
         &self,
@@ -136,28 +194,50 @@ impl<A: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send> TypedAssetSt
         }
     }
 }
-pub trait TypedStorage: Any + Send {
-    fn update_asset(
-        &mut self,
-        loader_info: &dyn LoaderInfoProvider,
-        data: &[u8],
-        load_handle: LoadHandle,
-        load_op: AssetLoadOp,
-        version: u32,
-    ) -> Result<(), Box<dyn Error>>;
-    fn commit_asset_version(
-        &mut self,
-        handle: LoadHandle,
-        version: u32,
-    );
-    fn free(
-        &mut self,
-        handle: LoadHandle,
-    );
 
-    fn type_name(&self) -> &'static str;
+struct AssetState<A> {
+    version: u32,
+    asset: A,
 }
-mopafy!(TypedStorage);
+
+// A strongly typed storage for a single asset type
+pub struct Storage<A: TypeUuid> {
+    refop_sender: Arc<Sender<RefOp>>,
+    assets: HashMap<LoadHandle, AssetState<A>>,
+    uncommitted: HashMap<LoadHandle, AssetState<A>>,
+    uploader: Option<Box<dyn StorageUploader<A>>>
+}
+impl<A: TypeUuid> Storage<A> {
+    fn new(sender: Arc<Sender<RefOp>>, uploader: Option<Box<dyn StorageUploader<A>>>) -> Self {
+        Self {
+            refop_sender: sender,
+            assets: HashMap::new(),
+            uncommitted: HashMap::new(),
+            uploader
+        }
+    }
+    fn get<T: AssetHandle>(
+        &self,
+        handle: &T,
+    ) -> Option<&A> {
+        self.assets.get(&handle.load_handle()).map(|a| &a.asset)
+    }
+    fn get_version<T: AssetHandle>(
+        &self,
+        handle: &T,
+    ) -> Option<u32> {
+        self.assets.get(&handle.load_handle()).map(|a| a.version)
+    }
+    fn get_asset_with_version<T: AssetHandle>(
+        &self,
+        handle: &T,
+    ) -> Option<(&A, u32)> {
+        self.assets
+            .get(&handle.load_handle())
+            .map(|a| (&a.asset, a.version))
+    }
+}
+
 impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage for Storage<A> {
     fn update_asset(
         &mut self,
@@ -173,12 +253,21 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             self.refop_sender.clone(),
             || bincode::deserialize::<A>(data),
         )?;
+
         self.uncommitted
             .insert(load_handle, AssetState { asset, version });
         log::info!("{} bytes loaded for {:?}", data.len(), load_handle);
-        // The loading process could be async, in which case you can delay
-        // calling `load_op.complete` as it should only be done when the asset is usable.
-        load_op.complete();
+
+        if let Some(uploader) = &self.uploader {
+            // We have an uploader, pass it a reference to the asset and a load_op. The uploader
+            // will be responsible for calling load_op.complete() or load_op.error()
+            let asset = self.uncommitted.get(&load_handle).unwrap();
+            uploader.upload(&asset.asset, load_op);
+        } else {
+            // Since there is no uploader, we call load_op.complete() immediately
+            load_op.complete();
+        }
+
         Ok(())
     }
     fn commit_asset_version(
@@ -208,50 +297,5 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
 
     fn type_name(&self) -> &'static str {
         core::any::type_name::<Self>()
-    }
-}
-
-// Untyped implementation of AssetStorage that finds the asset_type's storage and forwards the call
-impl AssetStorage for GenericAssetStorage {
-    fn update_asset(
-        &self,
-        loader_info: &dyn LoaderInfoProvider,
-        asset_type_id: &AssetTypeId,
-        data: &[u8],
-        load_handle: LoadHandle,
-        load_op: AssetLoadOp,
-        version: u32,
-    ) -> Result<(), Box<dyn Error>> {
-        self.storage
-            .lock()
-            .unwrap()
-            .get_mut(asset_type_id)
-            .expect("unknown asset type")
-            .update_asset(loader_info, data, load_handle, load_op, version)
-    }
-    fn commit_asset_version(
-        &self,
-        asset_type: &AssetTypeId,
-        load_handle: LoadHandle,
-        version: u32,
-    ) {
-        self.storage
-            .lock()
-            .unwrap()
-            .get_mut(asset_type)
-            .expect("unknown asset type")
-            .commit_asset_version(load_handle, version)
-    }
-    fn free(
-        &self,
-        asset_type_id: &AssetTypeId,
-        load_handle: LoadHandle,
-    ) {
-        self.storage
-            .lock()
-            .unwrap()
-            .get_mut(asset_type_id)
-            .expect("unknown asset type")
-            .free(load_handle)
     }
 }

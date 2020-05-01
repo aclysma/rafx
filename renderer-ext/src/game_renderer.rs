@@ -1,14 +1,15 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
 use crate::ResourceManager;
-use renderer_shell_vulkan::{VkDevice, VkSwapchain, RendererEventListener, RendererBuilder, CreateRendererError, Renderer, Window, VkTransferUpload, VkTransferUploadState, VkImage};
+use renderer_shell_vulkan::{VkDevice, VkSwapchain, RendererEventListener, RendererBuilder, CreateRendererError, Renderer, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext};
 use ash::prelude::VkResult;
 //use crate::features::sprite_renderpass_push_constant::VkSpriteRenderPass;
-use crate::renderpass::sprite::VkSpriteRenderPass;
+use crate::renderpass::sprite::{VkSpriteRenderPass, LoadingSprite};
 use crate::renderpass::sprite::VkSpriteResourceManager;
 use std::mem::{swap, ManuallyDrop};
 use crate::image_utils::{decode_texture, load_images, enqueue_load_images};
 use ash::vk;
 use crate::time::ScopeTimer;
+use std::sync::mpsc::Sender;
 
 pub struct GameRenderer {
     // Handles uploading resources to GPU
@@ -42,33 +43,41 @@ impl GameRenderer {
         }
     }
 
-    pub fn set_images(&mut self, device: &VkDevice) -> VkResult<()> {
+    pub fn set_images(&mut self, device_context: &VkDeviceContext) -> VkResult<()> {
         if self.reset_image_upload.is_none() {
 
             let texture = decode_texture(include_bytes!("../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg);
 
             let mut upload = VkTransferUpload::new(
-                device,
-                device.queue_family_indices.transfer_queue_family_index,
-                device.queue_family_indices.graphics_queue_family_index,
+                device_context,
+                device_context.queue_family_indices().transfer_queue_family_index,
+                device_context.queue_family_indices().graphics_queue_family_index,
                 1024 * 1024 * 16
             )?;
 
             let images = enqueue_load_images(
-                device,
+                device_context,
                 &mut upload,
-                device.queue_family_indices.transfer_queue_family_index,
-                device.queue_family_indices.graphics_queue_family_index,
+                device_context.queue_family_indices().transfer_queue_family_index,
+                device_context.queue_family_indices().graphics_queue_family_index,
                 &[texture]
             )?;
 
-            upload.submit_transfer(device.queues.transfer_queue);
+            upload.submit_transfer(device_context.queues().transfer_queue);
 
             self.reset_image_upload = Some(upload);
             self.reset_image_images = Some(images);
         }
 
         Ok(())
+    }
+
+    pub fn loading_sprite_tx(&self) -> Option<&Sender<LoadingSprite>> {
+        if let Some(sprite_resource_manager) = &self.sprite_resource_manager {
+            Some(sprite_resource_manager.loading_sprite_tx())
+        } else {
+            None
+        }
     }
 }
 
@@ -128,7 +137,7 @@ impl RendererEventListener for GameRenderer {
 
 
 
-            sprite_resource_manager.update();
+            sprite_resource_manager.update(device);
             //sprite_resource_manager.refresh_descriptor_set()?;
 
             if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
@@ -160,8 +169,8 @@ impl GameRendererWithShell {
         let mut game_renderer = GameRenderer::new(window, imgui_font_atlas);
 
         let shell = RendererBuilder::new()
-            //.use_vulkan_debug_layer(true)
-            .use_vulkan_debug_layer(false)
+            .use_vulkan_debug_layer(true)
+            //.use_vulkan_debug_layer(false)
             .prefer_mailbox_present_mode()
             .build(window, Some(&mut game_renderer))?;
 
@@ -184,7 +193,15 @@ impl GameRendererWithShell {
     }
 
     pub fn set_images(&mut self) {
-        self.game_renderer.set_images(self.shell.device_mut());
+        self.game_renderer.set_images(&self.shell.device().context);
+    }
+
+    pub fn shell(&self) -> &Renderer {
+        &self.shell
+    }
+
+    pub fn loading_sprite_tx(&self) -> Option<&Sender<LoadingSprite>> {
+        self.game_renderer.loading_sprite_tx()
     }
 }
 

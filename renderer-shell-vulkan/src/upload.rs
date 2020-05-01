@@ -40,9 +40,13 @@ pub struct VkUpload {
     buffer_write_pointer: *mut u8
 }
 
+unsafe impl Send for VkUpload {
+
+}
+
 impl VkUpload {
     pub fn new(
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
         queue_family_index: u32,
         size: u64
     ) -> VkResult<Self> {
@@ -50,13 +54,13 @@ impl VkUpload {
         // Command Buffers
         //
         let command_pool =
-            Self::create_command_pool(device.device(), queue_family_index)?;
+            Self::create_command_pool(device_context.device(), queue_family_index)?;
 
-        let command_buffer = Self::create_command_buffer(device.device(), &command_pool)?;
-        Self::begin_command_buffer(device.device(), command_buffer)?;
+        let command_buffer = Self::create_command_buffer(device_context.device(), &command_pool)?;
+        Self::begin_command_buffer(device_context.device(), command_buffer)?;
 
         let buffer = ManuallyDrop::new(VkBuffer::new(
-            &device.context,
+            &device_context,
             vk_mem::MemoryUsage::CpuOnly,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -65,7 +69,7 @@ impl VkUpload {
 
         let (buffer_begin, buffer_end, buffer_write_pointer) = unsafe {
             //TODO: Better way of handling allocator errors
-            let buffer_begin = device.allocator().map_memory(
+            let buffer_begin = device_context.allocator().map_memory(
                 &buffer.allocation
             ).map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)? as *mut u8;
 
@@ -75,10 +79,10 @@ impl VkUpload {
             (buffer_begin, buffer_end, buffer_write_pointer)
         };
 
-        let fence = Self::create_fence(device.device())?;
+        let fence = Self::create_fence(device_context.device())?;
 
         let mut upload = VkUpload {
-            device_context: device.context.clone(),
+            device_context: device_context.clone(),
             queue_family_index,
             command_pool,
             command_buffer,
@@ -308,7 +312,7 @@ pub struct VkTransferUpload {
 
 impl VkTransferUpload {
     pub fn new(
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
         transfer_queue_family_index: u32,
         dst_queue_family_index: u32,
         size: u64
@@ -317,17 +321,17 @@ impl VkTransferUpload {
         // Command Buffers
         //
         let dst_command_pool =
-            Self::create_command_pool(device.device(), dst_queue_family_index)?;
+            Self::create_command_pool(device_context.device(), dst_queue_family_index)?;
 
-        let dst_command_buffer = Self::create_command_buffer(device.device(), &dst_command_pool)?;
-        Self::begin_command_buffer(device.device(), dst_command_buffer)?;
+        let dst_command_buffer = Self::create_command_buffer(device_context.device(), &dst_command_pool)?;
+        Self::begin_command_buffer(device_context.device(), dst_command_buffer)?;
 
-        let upload = VkUpload::new(device, transfer_queue_family_index, size)?;
+        let upload = VkUpload::new(device_context, transfer_queue_family_index, size)?;
 
-        let dst_fence = Self::create_fence(device.device())?;
+        let dst_fence = Self::create_fence(device_context.device())?;
 
         Ok(VkTransferUpload {
-            device_context: device.context.clone(),
+            device_context: device_context.clone(),
             upload,
             dst_queue_family_index,
             dst_command_pool,

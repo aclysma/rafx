@@ -317,6 +317,12 @@ impl Renderer {
         self.torn_down = true;
     }
 
+
+
+    pub fn device(&self) -> &VkDevice {
+        &self.device
+    }
+
     pub fn device_mut(&mut self) -> &mut VkDevice {
         &mut self.device
     }

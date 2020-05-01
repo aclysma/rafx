@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkUpload, VkUploadState, VkTransferUpload, VkTransferUploadState};
+use renderer_shell_vulkan::{VkDevice, VkUpload, VkUploadState, VkTransferUpload, VkTransferUploadState, VkDeviceContext};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -251,7 +251,7 @@ pub fn load_images(
 */
 
 pub fn enqueue_load_images(
-    device: &VkDevice,
+    device_context: &VkDeviceContext,
     upload: &mut VkTransferUpload,
     transfer_queue_family_index: u32,
     dst_queue_family_index: u32,
@@ -271,7 +271,7 @@ pub fn enqueue_load_images(
 
         // Allocate an image
         let image = ManuallyDrop::new(VkImage::new(
-            &device.context,
+            device_context,
             vk_mem::MemoryUsage::GpuOnly,
             vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
             extent,
@@ -281,7 +281,7 @@ pub fn enqueue_load_images(
         )?);
 
         cmd_transition_image_layout(
-            device.device(),
+            device_context.device(),
             upload.transfer_command_buffer(),
             &[image.image],
             TransitionType::PreUpload,
@@ -290,7 +290,7 @@ pub fn enqueue_load_images(
         );
 
         cmd_copy_buffer_to_image(
-            device.device(),
+            device_context.device(),
             upload.transfer_command_buffer(),
             upload.staging_buffer().buffer,
             offset,
@@ -299,7 +299,7 @@ pub fn enqueue_load_images(
         );
 
         cmd_transition_image_layout(
-            device.device(),
+            device_context.device(),
             upload.transfer_command_buffer(),
             &[image.image],
             TransitionType::PostUploadTransferQueue,
@@ -312,7 +312,7 @@ pub fn enqueue_load_images(
 
     for image in &images {
         cmd_transition_image_layout(
-            device.device(),
+            device_context.device(),
             upload.dst_command_buffer(),
             &[image.image],
             TransitionType::PostUploadTransferQueue,
@@ -325,7 +325,7 @@ pub fn enqueue_load_images(
 }
 
 pub fn load_images(
-    device: &VkDevice,
+    device_context: &VkDeviceContext,
     transfer_queue_family_index: u32,
     transfer_queue: vk::Queue,
     dst_queue_family_index: u32,
@@ -333,13 +333,13 @@ pub fn load_images(
     decoded_textures: &[DecodedTexture],
 ) -> VkResult<Vec<ManuallyDrop<VkImage>>> {
     let mut upload = VkTransferUpload::new(
-        device,
+        device_context,
         transfer_queue_family_index,
         dst_queue_family_index,
         1024*1024*16
     )?;
 
-    let images = enqueue_load_images(device, &mut upload, transfer_queue_family_index, dst_queue_family_index, decoded_textures)?;
+    let images = enqueue_load_images(device_context, &mut upload, transfer_queue_family_index, dst_queue_family_index, decoded_textures)?;
 
     // let mut images = Vec::with_capacity(decoded_textures.len());
     //

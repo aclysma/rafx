@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkUpload};
+use renderer_shell_vulkan::{VkDevice, VkUpload, VkTransferUpload, VkTransferUploadState};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -17,11 +17,14 @@ use renderer_shell_vulkan::util;
 use renderer_shell_vulkan::VkImage;
 use image::error::ImageError::Decoding;
 use std::process::exit;
-use image::{GenericImageView, ImageFormat};
+use image::{GenericImageView, ImageFormat, load};
 use ash::vk::{ShaderStageFlags, DescriptorPoolResetFlags};
 use crate::image_utils::DecodedTexture;
 use std::collections::VecDeque;
 use imgui::FontSource::DefaultFontData;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc;
+use std::time::Duration;
 
 struct DescriptorPoolInFlight {
     pool: vk::DescriptorPool,
@@ -125,6 +128,12 @@ impl Drop for DescriptorPoolAllocator {
     }
 }
 
+pub struct LoadingSprite {
+    pub images: Vec<ManuallyDrop<VkImage>>,
+    //pub uploader: VkTransferUpload,
+    //pub load_op: atelier_assets::loader::AssetLoadOp
+}
+
 pub struct VkSprite {
     pub image: ManuallyDrop<VkImage>,
     pub image_view: vk::ImageView
@@ -144,6 +153,10 @@ pub struct VkSpriteResourceManager {
     pub descriptor_pool_allocator: DescriptorPoolAllocator,
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set: Vec<vk::DescriptorSet>,
+
+    pub loading_sprite_tx: Sender<LoadingSprite>,
+    pub loading_sprite_rx: Receiver<LoadingSprite>,
+    pub loading_sprites: VecDeque<LoadingSprite>
 }
 
 impl VkSpriteResourceManager {
@@ -170,6 +183,10 @@ impl VkSpriteResourceManager {
         Ok(())
     }
 
+    pub fn loading_sprite_tx(&self) -> &Sender<LoadingSprite> {
+        &self.loading_sprite_tx
+    }
+
     fn refresh_descriptor_set(&mut self) -> VkResult<()> {
         self.descriptor_pool_allocator.retire_pool(self.descriptor_pool);
 
@@ -187,8 +204,56 @@ impl VkSpriteResourceManager {
         Ok(())
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, device: &VkDevice) {
         self.descriptor_pool_allocator.update(&self.device);
+
+        for loading_sprite in self.loading_sprite_rx.recv_timeout(Duration::from_secs(0)) {
+            self.loading_sprites.push_back(loading_sprite);
+        }
+
+        let loading_sprite = self.loading_sprites.pop_front();
+        if let Some(loading_sprite) = loading_sprite {
+            self.set_images(loading_sprite.images);
+            self.refresh_descriptor_set();
+        }
+
+        //if let Some(loading_sprite) = self.loading_sprites.front_mut() {
+
+
+            // match loading_sprite.uploader.state() {
+            //     Ok(state) => {
+            //         match state {
+            //             VkTransferUploadState::Writable => {
+            //                 println!("VkTransferUploadState::Writable");
+            //                 loading_sprite.uploader.submit_transfer(device.queues.transfer_queue);
+            //                 break;
+            //             },
+            //             VkTransferUploadState::SentToTransferQueue => {
+            //                 println!("VkTransferUploadState::SentToTransferQueue");
+            //                 break;
+            //             },
+            //             VkTransferUploadState::PendingSubmitDstQueue => {
+            //                 println!("VkTransferUploadState::PendingSubmitDstQueue");
+            //                 loading_sprite.uploader.submit_dst(device.queues.graphics_queue);
+            //                 break;
+            //             },
+            //             VkTransferUploadState::SentToDstQueue => {
+            //                 println!("VkTransferUploadState::SentToDstQueue");
+            //                 break;
+            //             },
+            //             VkTransferUploadState::Complete => {
+            //                 println!("VkTransferUploadState::Complete");
+            //                 let front = self.loading_sprites.pop_front().unwrap();
+            //                 front.load_op.complete();
+            //             },
+            //         }
+            //     },
+            //     Err(err) => {
+            //         let front = self.loading_sprites.pop_front().unwrap();
+            //         front.load_op.error(err);
+            //     },
+            // }
+        //}
     }
 
     pub fn new(
@@ -226,7 +291,7 @@ impl VkSpriteResourceManager {
         // Resources
         //
         let images = crate::image_utils::load_images(
-            device,
+            &device.context,
             device.queue_family_indices.transfer_queue_family_index,
             device.queues.transfer_queue,
             device.queue_family_indices.graphics_queue_family_index,
@@ -262,6 +327,8 @@ impl VkSpriteResourceManager {
             &sprites
         )?;
 
+        let (loading_sprite_tx, loading_sprite_rx) = mpsc::channel();
+
         Ok(VkSpriteResourceManager {
             device: device.device().clone(),
             swapchain_info,
@@ -270,7 +337,10 @@ impl VkSpriteResourceManager {
             descriptor_pool_allocator,
             descriptor_pool,
             descriptor_set,
-            sprites
+            sprites,
+            loading_sprite_tx,
+            loading_sprite_rx,
+            loading_sprites: Default::default()
         })
     }
 

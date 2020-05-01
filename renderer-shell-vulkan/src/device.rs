@@ -21,7 +21,7 @@ pub struct VkQueue {
 
 /// Has the indexes for all the queue families we will need. It's possible a single family
 /// is used for both graphics and presentation, in which case the index will be the same
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct VkQueueFamilyIndices {
     pub transfer_queue_family_index: u32,
     pub graphics_queue_family_index: u32,
@@ -29,6 +29,7 @@ pub struct VkQueueFamilyIndices {
 }
 
 /// An instantiated queue per queue family. We only need one queue per family.
+#[derive(Clone)]
 pub struct VkQueues {
     pub transfer_queue: ash::vk::Queue,
     pub graphics_queue: ash::vk::Queue,
@@ -38,6 +39,8 @@ pub struct VkQueues {
 pub struct VkDeviceContextInner {
     allocator: vk_mem::Allocator,
     device: ash::Device,
+    queues: VkQueues,
+    queue_family_indices: VkQueueFamilyIndices
     //graphics_submit_queue: VkSubmitQueue,
 }
 
@@ -50,11 +53,19 @@ pub struct VkDeviceContext {
 
 impl VkDeviceContext {
     pub fn device(&self) -> &ash::Device {
-        &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").device
+        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").device
     }
 
     pub fn allocator(&self) -> &vk_mem::Allocator {
-        &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").allocator
+        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").allocator
+    }
+
+    pub fn queue_family_indices(&self) -> &VkQueueFamilyIndices {
+        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").queue_family_indices
+    }
+
+    pub fn queues(&self) -> &VkQueues {
+        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").queues
     }
 
     // pub fn graphics_submit_queue(&self) -> &VkSubmitQueue {
@@ -65,7 +76,7 @@ impl VkDeviceContext {
         device: ash::Device,
         allocator: vk_mem::Allocator,
         queues: &VkQueues,
-        queue_families: &VkQueueFamilyIndices
+        queue_family_indices: &VkQueueFamilyIndices
     ) -> Self {
         //let graphics_submit_queue = VkSubmitQueue::new(device.clone(), queues.graphics_queue, queue_families.graphics_queue_family_index);
 
@@ -73,6 +84,8 @@ impl VkDeviceContext {
             inner: Some(Arc::new(ManuallyDrop::new(VkDeviceContextInner {
                 allocator,
                 device,
+                queues: queues.clone(),
+                queue_family_indices: queue_family_indices.clone()
                 //graphics_submit_queue
             })))
         }

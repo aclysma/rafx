@@ -151,7 +151,7 @@ impl VkImGuiRenderPass {
 
         //let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
         let images = crate::image_utils::load_images(
-            device,
+            &device.context,
             device.queue_family_indices.transfer_queue_family_index,
             device.queues.transfer_queue,
             device.queue_family_indices.graphics_queue_family_index,

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use type_uuid::TypeUuid;
 
 use atelier_assets::loader as atelier_loader;
-use crate::asset_storage::GenericAssetStorage;
+use crate::asset_storage::{GenericAssetStorage, StorageUploader};
 
 pub struct AssetResource {
     loader: RpcLoader,
@@ -32,8 +32,19 @@ impl Default for AssetResource {
 }
 
 impl AssetResource {
-    pub fn add_storage<T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send>(&mut self) {
+    pub fn add_storage<T>(&mut self)
+    where
+        T : TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send
+    {
         self.storage.add_storage::<T>();
+    }
+
+    pub fn add_storage_with_uploader<T, U>(&mut self, uploader: Box<U>)
+    where
+        T : TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
+        U : StorageUploader<T>
+    {
+        self.storage.add_storage_with_uploader::<T, U>(uploader);
     }
 
     pub fn update(&mut self) {
