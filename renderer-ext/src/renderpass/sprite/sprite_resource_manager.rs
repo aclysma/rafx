@@ -1,12 +1,12 @@
 use std::mem;
-use ash::vk;
+use ash::{vk, Device};
 use ash::prelude::VkResult;
 use std::ffi::CString;
 use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkUpload, VkTransferUpload, VkTransferUploadState};
+use renderer_shell_vulkan::{VkDevice, VkUpload, VkTransferUpload, VkTransferUploadState, VkResourceDropSink, VkDescriptorPoolAllocator};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -27,22 +27,12 @@ use std::sync::mpsc;
 use std::time::Duration;
 use imgui::Image;
 use std::error::Error;
-
-
-struct ImageInFlight {
-    image: ManuallyDrop<VkImage>,
-    frames_remaining_until_reset: u32
-}
-
-struct ImageViewInFlight {
-    image_view: vk::ImageView,
-    frames_remaining_until_reset: u32
-}
+use std::num::Wrapping;
+use itertools::max;
 
 pub struct ImageDropSink {
-    in_flight_images: VecDeque<ImageInFlight>,
-    in_flight_image_views: VecDeque<ImageViewInFlight>,
-    max_in_flight_frames: u32,
+    images: VkResourceDropSink<ManuallyDrop<VkImage>>,
+    image_views: VkResourceDropSink<vk::ImageView>,
 }
 
 impl ImageDropSink {
@@ -50,203 +40,33 @@ impl ImageDropSink {
         max_in_flight_frames: u32
     ) -> Self {
         ImageDropSink {
-            in_flight_images: Default::default(),
-            in_flight_image_views: Default::default(),
-            max_in_flight_frames
+            images: VkResourceDropSink::new(max_in_flight_frames),
+            image_views: VkResourceDropSink::new(max_in_flight_frames)
         }
     }
 
     pub fn retire_image(&mut self, image: ManuallyDrop<VkImage>) {
-        self.in_flight_images.push_back(ImageInFlight {
-            image,
-            frames_remaining_until_reset: self.max_in_flight_frames
-        });
+        self.images.retire(image);
     }
-
 
     pub fn retire_image_view(&mut self, image_view: vk::ImageView) {
-        self.in_flight_image_views.push_back(ImageViewInFlight {
-            image_view,
-            frames_remaining_until_reset: self.max_in_flight_frames
-        });
+        self.image_views.retire(image_view);
     }
 
-
-    pub fn update(&mut self, device: &ash::Device) {
-        {
-            for image_views_in_flight in &mut self.in_flight_image_views {
-                image_views_in_flight.frames_remaining_until_reset -= 1;
-            }
-
-            // Determine how many image views we can drain
-            let mut image_views_to_drop = 0;
-            for in_flight_image_view in &self.in_flight_image_views {
-                if in_flight_image_view.frames_remaining_until_reset <= 0 {
-                    image_views_to_drop += 1;
-                } else {
-                    break;
-                }
-            }
-
-            // Reset them and add them to the list of pools ready to be allocated
-            let image_views_to_drop : Vec<_> = self.in_flight_image_views.drain(0..image_views_to_drop).collect();
-            for mut image_view in image_views_to_drop {
-                unsafe {
-                    device.destroy_image_view(image_view.image_view, None);
-                }
-            }
-        }
-
-        {
-            // Decrease frame count by one for all retiring pools
-            for image_in_flight in &mut self.in_flight_images {
-                image_in_flight.frames_remaining_until_reset -= 1;
-            }
-
-            // Determine how many images we can drain
-            let mut images_to_drop = 0;
-            for in_flight_image in &self.in_flight_images {
-                if in_flight_image.frames_remaining_until_reset <= 0 {
-                    images_to_drop += 1;
-                } else {
-                    break;
-                }
-            }
-
-            // Reset them and add them to the list of pools ready to be allocated
-            let images_to_drop : Vec<_> = self.in_flight_images.drain(0..images_to_drop).collect();
-            for mut image in images_to_drop {
-                unsafe {
-                    ManuallyDrop::drop(&mut image.image);
-                }
-            }
-        }
+    pub fn on_frame_complete(&mut self, device: &ash::Device) {
+        self.image_views.on_frame_complete(device);
+        self.images.on_frame_complete(device);
     }
 
-
-    pub fn destroy(&mut self, device: &ash::Device) {
-        unsafe {
-            device.device_wait_idle();
-        }
-
-        let images_to_drop : Vec<_> = self.in_flight_images.drain(..).collect();
-        for mut image in images_to_drop {
-            unsafe {
-                ManuallyDrop::drop(&mut image.image);
-            }
-        }
-
-        for image_view in self.in_flight_image_views.drain(..) {
-            unsafe {
-                device.destroy_image_view(image_view.image_view, None);
-            }
-        }
+    pub fn destroy(&mut self, device: &ash::Device) -> VkResult<()> {
+        self.image_views.destroy(device)?;
+        self.images.destroy(device)?;
+        Ok(())
     }
 }
 
 
 
-struct DescriptorPoolInFlight {
-    pool: vk::DescriptorPool,
-    frames_remaining_until_reset: u32
-}
-
-pub type DescriptorPoolAllocatorAllocFn = Fn(&ash::Device) -> VkResult<vk::DescriptorPool>;
-
-pub struct DescriptorPoolAllocator {
-    allocate_fn: Box<DescriptorPoolAllocatorAllocFn>,
-    in_flight_pools: VecDeque<DescriptorPoolInFlight>,
-    reset_pool: Vec<vk::DescriptorPool>,
-    max_in_flight_frames: u32,
-
-    // Number of pools we have created in total
-    created_pool_count: u32,
-    max_pool_count: u32
-}
-
-impl DescriptorPoolAllocator {
-    pub fn new<F: Fn(&ash::Device) -> VkResult<vk::DescriptorPool> + 'static>(
-        max_in_flight_frames: u32,
-        max_pool_count: u32,
-        allocate_fn: F
-    ) -> Self {
-        DescriptorPoolAllocator {
-            allocate_fn: Box::new(allocate_fn),
-            in_flight_pools: Default::default(),
-            reset_pool: Default::default(),
-            max_in_flight_frames,
-            created_pool_count: 0,
-            max_pool_count
-        }
-    }
-
-    pub fn allocate_pool(&mut self, device: &ash::Device) -> VkResult<vk::DescriptorPool> {
-        self.reset_pool.pop()
-            .map(|pool| Ok(pool))
-            .unwrap_or_else(|| {
-                self.created_pool_count += 1;
-                assert!(self.created_pool_count <= self.max_pool_count);
-                (self.allocate_fn)(device)
-            })
-    }
-
-    pub fn retire_pool(&mut self, pool: vk::DescriptorPool) {
-        self.in_flight_pools.push_back(DescriptorPoolInFlight {
-            pool,
-            frames_remaining_until_reset: self.max_in_flight_frames
-        });
-    }
-
-    pub fn update(&mut self, device: &ash::Device) {
-        // Decrease frame count by one for all retiring pools
-        for pool_in_flight in &mut self.in_flight_pools {
-            pool_in_flight.frames_remaining_until_reset -= 1;
-        }
-
-        // Determine how many pools we can drain
-        let mut pools_to_drain = 0;
-        for in_flight_pool in &self.in_flight_pools {
-            if in_flight_pool.frames_remaining_until_reset <= 0 {
-                pools_to_drain += 1;
-            } else {
-                break;
-            }
-        }
-
-        // Reset them and add them to the list of pools ready to be allocated
-        let pools_to_reset : Vec<_> = self.in_flight_pools.drain(0..pools_to_drain).collect();
-        for pool_to_reset in pools_to_reset {
-            unsafe {
-                device.reset_descriptor_pool(pool_to_reset.pool, DescriptorPoolResetFlags::empty());
-            }
-
-            self.reset_pool.push(pool_to_reset.pool);
-        }
-    }
-
-    pub fn destroy(&mut self, device: &ash::Device) {
-        unsafe {
-            device.device_wait_idle();
-        }
-
-        while !self.in_flight_pools.is_empty() {
-            self.update(device);
-        }
-
-        for pool in self.reset_pool.drain(..) {
-            unsafe {
-                device.destroy_descriptor_pool(pool, None);
-            }
-        }
-    }
-}
-
-impl Drop for DescriptorPoolAllocator {
-    fn drop(&mut self) {
-        assert!(self.in_flight_pools.is_empty());
-        assert!(self.reset_pool.is_empty());
-    }
-}
 
 #[derive(Debug)]
 pub enum LoadingSpritePollResult {
@@ -372,7 +192,7 @@ pub struct VkSpriteResourceManager {
 
     // The descriptor set layout, pools, and sets
     pub descriptor_set_layout: vk::DescriptorSetLayout,
-    pub descriptor_pool_allocator: DescriptorPoolAllocator,
+    pub descriptor_pool_allocator: VkDescriptorPoolAllocator,
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set: Vec<vk::DescriptorSet>,
 
@@ -436,7 +256,7 @@ impl VkSpriteResourceManager {
 
     pub fn update(&mut self, device: &VkDevice) {
         self.descriptor_pool_allocator.update(&self.device);
-        self.image_drop_sink.update(&self.device);
+        self.image_drop_sink.on_frame_complete(&self.device);
 
         for loading_sprite in self.loading_sprite_rx.recv_timeout(Duration::from_secs(0)) {
             self.loading_sprites.push(loading_sprite);
@@ -525,7 +345,7 @@ impl VkSpriteResourceManager {
         // Descriptors
         //
         let descriptor_set_layout = Self::create_descriptor_set_layout(device.device())?;
-        let mut descriptor_pool_allocator = DescriptorPoolAllocator::new(
+        let mut descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
             swapchain_info.image_count as u32,
             swapchain_info.image_count as u32 + 1,
             |device| Self::create_descriptor_pool(device)

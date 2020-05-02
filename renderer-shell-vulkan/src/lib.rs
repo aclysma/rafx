@@ -10,6 +10,16 @@ use alignment::Align;
 
 pub mod util;
 
+pub mod cleanup;
+pub use cleanup::VkResourceDropSink;
+pub use cleanup::VkDropSinkResourceImpl;
+
+pub mod pool;
+//pub use pool::VkDescriptorPoolAllocator;
+pub use pool::VkPoolAllocator;
+pub use pool::VkPoolResourceImpl;
+pub use pool::VkDescriptorPoolAllocator;
+
 mod window_support;
 pub use window_support::Window;
 
