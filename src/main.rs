@@ -62,19 +62,19 @@ impl ImageUploder {
         )?;
 
         //TODO: Try not to do this in a blocking way here
-        upload.submit_transfer(self.device_context.queues().transfer_queue)?;
-        loop {
-            if upload.state()? == VkTransferUploadState::PendingSubmitDstQueue {
-                break;
-            }
-        }
-
-        upload.submit_dst(self.device_context.queues().graphics_queue)?;
-        loop {
-            if upload.state()? == VkTransferUploadState::Complete {
-                break;
-            }
-        }
+        // upload.submit_transfer(self.device_context.queues().transfer_queue)?;
+        // loop {
+        //     if upload.state()? == VkTransferUploadState::PendingSubmitDstQueue {
+        //         break;
+        //     }
+        // }
+        //
+        // upload.submit_dst(self.device_context.queues().graphics_queue)?;
+        // loop {
+        //     if upload.state()? == VkTransferUploadState::Complete {
+        //         break;
+        //     }
+        // }
 
         Ok((images, upload))
     }
@@ -90,10 +90,10 @@ impl StorageUploader<ImageAsset> for ImageUploder {
             Ok((images, uploader)) => {
                 self.loading_sprite_tx.send(LoadingSprite {
                     images,
-                    //uploader,
-                    //load_op
+                    uploader,
+                    load_op
                 });
-                load_op.complete()
+                //load_op.complete()
             },
             Err(e) => load_op.error(e)
         }
@@ -190,24 +190,24 @@ fn main() {
             load_handle,
         );
 
-        let version = loop {
-            asset_resource.update();
-            if let atelier_assets::loader::LoadStatus::Loaded = image_handle
-                .load_status::<atelier_assets::loader::rpc_loader::RpcLoader>(
-                    asset_resource.loader(),
-                ) {
-                break image_handle
-                    .asset_version::<ImageAsset, _>(asset_resource.storage())
-                    .unwrap();
-            }
-        };
+        // let version = loop {
+        //     asset_resource.update();
+        //     if let atelier_assets::loader::LoadStatus::Loaded = image_handle
+        //         .load_status::<atelier_assets::loader::rpc_loader::RpcLoader>(
+        //             asset_resource.loader(),
+        //         ) {
+        //         break image_handle
+        //             .asset_version::<ImageAsset, _>(asset_resource.storage())
+        //             .unwrap();
+        //     }
+        // };
 
-        let image_asset = image_handle.asset(asset_resource.storage()).unwrap();
-        let decoded_image = DecodedTexture {
-            width: image_asset.width,
-            height: image_asset.height,
-            data: image_asset.data.clone()
-        };
+        // let image_asset = image_handle.asset(asset_resource.storage()).unwrap();
+        // let decoded_image = DecodedTexture {
+        //     width: image_asset.width,
+        //     height: image_asset.height,
+        //     data: image_asset.data.clone()
+        // };
 
         (asset_resource, image_handle)
     };

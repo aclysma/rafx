@@ -26,6 +26,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
 use std::time::Duration;
 use imgui::Image;
+use std::error::Error;
 
 
 struct ImageInFlight {
@@ -241,10 +242,61 @@ impl Drop for DescriptorPoolAllocator {
     }
 }
 
+#[derive(Debug)]
+pub enum LoadingSpritePollResult {
+    Pending,
+    Complete,
+    Error(Box<Error + 'static + Send>),
+}
+
 pub struct LoadingSprite {
     pub images: Vec<ManuallyDrop<VkImage>>,
-    //pub uploader: VkTransferUpload,
-    //pub load_op: atelier_assets::loader::AssetLoadOp
+    pub uploader: VkTransferUpload,
+    pub load_op: atelier_assets::loader::AssetLoadOp
+}
+
+impl LoadingSprite {
+    pub fn poll_load(
+        &mut self,
+        device: &VkDevice
+    ) -> LoadingSpritePollResult {
+        loop {
+            match self.uploader.state() {
+                Ok(state) => {
+                    match state {
+                        VkTransferUploadState::Writable => {
+                            println!("VkTransferUploadState::Writable");
+                            self.uploader.submit_transfer(device.queues.transfer_queue);
+                        },
+                        VkTransferUploadState::SentToTransferQueue => {
+                            println!("VkTransferUploadState::SentToTransferQueue");
+                            break LoadingSpritePollResult::Pending;
+                        },
+                        VkTransferUploadState::PendingSubmitDstQueue => {
+                            println!("VkTransferUploadState::PendingSubmitDstQueue");
+                            self.uploader.submit_dst(device.queues.graphics_queue);
+                        },
+                        VkTransferUploadState::SentToDstQueue => {
+                            println!("VkTransferUploadState::SentToDstQueue");
+                            break LoadingSpritePollResult::Pending;
+                        },
+                        VkTransferUploadState::Complete => {
+                            println!("VkTransferUploadState::Complete");
+                            //let front = self.loading_sprites.pop_front().unwrap();
+                            //front.load_op.complete();
+                            break LoadingSpritePollResult::Complete;
+                        },
+                    }
+                },
+                Err(err) => {
+                    //let front = self.loading_sprites.pop_front().unwrap();
+                    //front.load_op.error(err);
+                    //break;
+                    break LoadingSpritePollResult::Error(Box::new(err));
+                },
+            }
+        }
+    }
 }
 
 pub struct VkSprite {
@@ -270,7 +322,7 @@ pub struct VkSpriteResourceManager {
 
     pub loading_sprite_tx: Sender<LoadingSprite>,
     pub loading_sprite_rx: Receiver<LoadingSprite>,
-    pub loading_sprites: VecDeque<LoadingSprite>
+    pub loading_sprites: Vec<LoadingSprite>
 }
 
 impl VkSpriteResourceManager {
@@ -323,52 +375,72 @@ impl VkSpriteResourceManager {
         self.image_drop_sink.update(&self.device);
 
         for loading_sprite in self.loading_sprite_rx.recv_timeout(Duration::from_secs(0)) {
-            self.loading_sprites.push_back(loading_sprite);
+            self.loading_sprites.push(loading_sprite);
         }
 
-        let loading_sprite = self.loading_sprites.pop_front();
-        if let Some(loading_sprite) = loading_sprite {
-            self.set_images(loading_sprite.images);
-            self.refresh_descriptor_set();
+        // let loading_sprite = self.loading_sprites.pop_front();
+        // if let Some(loading_sprite) = loading_sprite {
+        //     self.set_images(loading_sprite.images);
+        //     self.refresh_descriptor_set();
+        // }
+
+        for i in (0..self.loading_sprites.len()).rev() {
+            let result = self.loading_sprites[i].poll_load(device);
+            println!("poll_load {:?}", result);
+            match result {
+                LoadingSpritePollResult::Pending => {
+                    // do nothing
+                },
+                LoadingSpritePollResult::Complete => {
+                    let loading_sprite = self.loading_sprites.swap_remove(i);
+                    self.set_images(loading_sprite.images);
+                    self.refresh_descriptor_set();
+                    loading_sprite.load_op.complete();
+                },
+                LoadingSpritePollResult::Error(e) => {
+                    let image = self.loading_sprites.swap_remove(i);
+                    //image.load_op.error(e);
+                }
+            }
         }
 
-        //if let Some(loading_sprite) = self.loading_sprites.front_mut() {
-
-
-            // match loading_sprite.uploader.state() {
-            //     Ok(state) => {
-            //         match state {
-            //             VkTransferUploadState::Writable => {
-            //                 println!("VkTransferUploadState::Writable");
-            //                 loading_sprite.uploader.submit_transfer(device.queues.transfer_queue);
-            //                 break;
-            //             },
-            //             VkTransferUploadState::SentToTransferQueue => {
-            //                 println!("VkTransferUploadState::SentToTransferQueue");
-            //                 break;
-            //             },
-            //             VkTransferUploadState::PendingSubmitDstQueue => {
-            //                 println!("VkTransferUploadState::PendingSubmitDstQueue");
-            //                 loading_sprite.uploader.submit_dst(device.queues.graphics_queue);
-            //                 break;
-            //             },
-            //             VkTransferUploadState::SentToDstQueue => {
-            //                 println!("VkTransferUploadState::SentToDstQueue");
-            //                 break;
-            //             },
-            //             VkTransferUploadState::Complete => {
-            //                 println!("VkTransferUploadState::Complete");
-            //                 let front = self.loading_sprites.pop_front().unwrap();
-            //                 front.load_op.complete();
-            //             },
-            //         }
-            //     },
-            //     Err(err) => {
-            //         let front = self.loading_sprites.pop_front().unwrap();
-            //         front.load_op.error(err);
-            //     },
-            // }
-        //}
+        // if let Some(loading_sprite) = self.loading_sprites.front_mut() {
+        //     loop {
+        //         match loading_sprite.uploader.state() {
+        //             Ok(state) => {
+        //                 match state {
+        //                     VkTransferUploadState::Writable => {
+        //                         println!("VkTransferUploadState::Writable");
+        //                         loading_sprite.uploader.submit_transfer(device.queues.transfer_queue);
+        //                         break;
+        //                     },
+        //                     VkTransferUploadState::SentToTransferQueue => {
+        //                         println!("VkTransferUploadState::SentToTransferQueue");
+        //                         break;
+        //                     },
+        //                     VkTransferUploadState::PendingSubmitDstQueue => {
+        //                         println!("VkTransferUploadState::PendingSubmitDstQueue");
+        //                         loading_sprite.uploader.submit_dst(device.queues.graphics_queue);
+        //                         break;
+        //                     },
+        //                     VkTransferUploadState::SentToDstQueue => {
+        //                         println!("VkTransferUploadState::SentToDstQueue");
+        //                         break;
+        //                     },
+        //                     VkTransferUploadState::Complete => {
+        //                         println!("VkTransferUploadState::Complete");
+        //                         let front = self.loading_sprites.pop_front().unwrap();
+        //                         front.load_op.complete();
+        //                     },
+        //                 }
+        //             },
+        //             Err(err) => {
+        //                 let front = self.loading_sprites.pop_front().unwrap();
+        //                 front.load_op.error(err);
+        //             },
+        //         }
+        //     }
+        // }
     }
 
     pub fn new(
