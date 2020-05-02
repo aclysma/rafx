@@ -25,6 +25,119 @@ use imgui::FontSource::DefaultFontData;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
 use std::time::Duration;
+use imgui::Image;
+
+
+struct ImageInFlight {
+    image: ManuallyDrop<VkImage>,
+    frames_remaining_until_reset: u32
+}
+
+struct ImageViewInFlight {
+    image_view: vk::ImageView,
+    frames_remaining_until_reset: u32
+}
+
+pub struct ImageDropSink {
+    in_flight_images: VecDeque<ImageInFlight>,
+    in_flight_image_views: VecDeque<ImageViewInFlight>,
+    max_in_flight_frames: u32,
+}
+
+impl ImageDropSink {
+    pub fn new(
+        max_in_flight_frames: u32
+    ) -> Self {
+        ImageDropSink {
+            in_flight_images: Default::default(),
+            in_flight_image_views: Default::default(),
+            max_in_flight_frames
+        }
+    }
+
+    pub fn retire_image(&mut self, image: ManuallyDrop<VkImage>) {
+        self.in_flight_images.push_back(ImageInFlight {
+            image,
+            frames_remaining_until_reset: self.max_in_flight_frames
+        });
+    }
+
+
+    pub fn retire_image_view(&mut self, image_view: vk::ImageView) {
+        self.in_flight_image_views.push_back(ImageViewInFlight {
+            image_view,
+            frames_remaining_until_reset: self.max_in_flight_frames
+        });
+    }
+
+
+    pub fn update(&mut self, device: &ash::Device) {
+        {
+            for image_views_in_flight in &mut self.in_flight_image_views {
+                image_views_in_flight.frames_remaining_until_reset -= 1;
+            }
+
+            // Determine how many image views we can drain
+            let mut image_views_to_drop = 0;
+            for in_flight_image_view in &self.in_flight_image_views {
+                if in_flight_image_view.frames_remaining_until_reset <= 0 {
+                    image_views_to_drop += 1;
+                } else {
+                    break;
+                }
+            }
+
+            // Reset them and add them to the list of pools ready to be allocated
+            let image_views_to_drop : Vec<_> = self.in_flight_image_views.drain(0..image_views_to_drop).collect();
+            for mut image_view in image_views_to_drop {
+                unsafe {
+                    device.destroy_image_view(image_view.image_view, None);
+                }
+            }
+        }
+
+        {
+            // Decrease frame count by one for all retiring pools
+            for image_in_flight in &mut self.in_flight_images {
+                image_in_flight.frames_remaining_until_reset -= 1;
+            }
+
+            // Determine how many images we can drain
+            let mut images_to_drop = 0;
+            for in_flight_image in &self.in_flight_images {
+                if in_flight_image.frames_remaining_until_reset <= 0 {
+                    images_to_drop += 1;
+                } else {
+                    break;
+                }
+            }
+
+            // Reset them and add them to the list of pools ready to be allocated
+            let images_to_drop : Vec<_> = self.in_flight_images.drain(0..images_to_drop).collect();
+            for mut image in images_to_drop {
+                unsafe {
+                    ManuallyDrop::drop(&mut image.image);
+                }
+            }
+        }
+    }
+
+
+    pub fn destroy(&mut self, device: &ash::Device) {
+        unsafe {
+            device.device_wait_idle();
+        }
+
+        let images_to_drop : Vec<_> = self.in_flight_images.drain(..).collect();
+        for mut image in images_to_drop {
+            unsafe {
+                ManuallyDrop::drop(&mut image.image);
+            }
+        }
+    }
+}
+
+
 
 struct DescriptorPoolInFlight {
     pool: vk::DescriptorPool,
@@ -147,6 +260,7 @@ pub struct VkSpriteResourceManager {
 
     // The raw texture resources
     pub sprites: Vec<VkSprite>,
+    pub image_drop_sink: ImageDropSink,
 
     // The descriptor set layout, pools, and sets
     pub descriptor_set_layout: vk::DescriptorSetLayout,
@@ -206,6 +320,7 @@ impl VkSpriteResourceManager {
 
     pub fn update(&mut self, device: &VkDevice) {
         self.descriptor_pool_allocator.update(&self.device);
+        self.image_drop_sink.update(&self.device);
 
         for loading_sprite in self.loading_sprite_rx.recv_timeout(Duration::from_secs(0)) {
             self.loading_sprites.push_back(loading_sprite);
@@ -269,7 +384,7 @@ impl VkSpriteResourceManager {
         // }
 
         let decoded_textures = [
-            crate::image_utils::decode_texture(include_bytes!("../../../../assets/textures/texture.jpg"), image::ImageFormat::Jpeg),
+            //crate::image_utils::decode_texture(include_bytes!("../../../../assets/textures/texture.jpg"), image::ImageFormat::Jpeg),
             //decode_texture(include_bytes!("../../../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg),
             //decode_texture(include_bytes!("../../../../texture.jpg"), image::ImageFormat::Jpeg),
         ];
@@ -329,6 +444,8 @@ impl VkSpriteResourceManager {
 
         let (loading_sprite_tx, loading_sprite_rx) = mpsc::channel();
 
+        let image_drop_sink = ImageDropSink::new(swapchain_info.image_count as u32 + 1);
+
         Ok(VkSpriteResourceManager {
             device: device.device().clone(),
             swapchain_info,
@@ -338,6 +455,7 @@ impl VkSpriteResourceManager {
             descriptor_pool,
             descriptor_set,
             sprites,
+            image_drop_sink,
             loading_sprite_tx,
             loading_sprite_rx,
             loading_sprites: Default::default()
@@ -492,6 +610,15 @@ impl Drop for VkSpriteResourceManager {
             // for image in &mut self.images {
             //     ManuallyDrop::drop(image);
             // }
+
+            for sprite in self.sprites.drain(..) {
+                self.image_drop_sink.retire_image(sprite.image);
+                self.image_drop_sink.retire_image_view(sprite.image_view);
+            }
+
+
+
+            self.image_drop_sink.destroy(&self.device);
 
             for sprite in &mut self.sprites {
                 self.device.destroy_image_view(sprite.image_view, None);

@@ -166,7 +166,7 @@ fn main() {
 
 
 
-    {
+    let (mut asset_resource, image_handle) = {
         let device = renderer.shell().device();
         let device_context = &device.context;
 
@@ -185,31 +185,32 @@ fn main() {
         use atelier_assets::loader::handle::AssetHandle;
 
         let load_handle = asset_resource.loader().add_ref(asset_uuid);
-        let handle = atelier_assets::loader::handle::Handle::<ImageAsset>::new(
+        let image_handle = atelier_assets::loader::handle::Handle::<ImageAsset>::new(
             asset_resource.tx().clone(),
             load_handle,
         );
 
         let version = loop {
             asset_resource.update();
-            if let atelier_assets::loader::LoadStatus::Loaded = handle
+            if let atelier_assets::loader::LoadStatus::Loaded = image_handle
                 .load_status::<atelier_assets::loader::rpc_loader::RpcLoader>(
                     asset_resource.loader(),
                 ) {
-                break handle
+                break image_handle
                     .asset_version::<ImageAsset, _>(asset_resource.storage())
                     .unwrap();
             }
         };
 
-        let image_asset = handle.asset(asset_resource.storage()).unwrap();
+        let image_asset = image_handle.asset(asset_resource.storage()).unwrap();
         let decoded_image = DecodedTexture {
             width: image_asset.width,
             height: image_asset.height,
             data: image_asset.data.clone()
         };
-        //let data =
-    }
+
+        (asset_resource, image_handle)
+    };
 
 
 
@@ -259,6 +260,8 @@ fn main() {
 
         let window = Sdl2Window::new(&sdl_window);
         imgui_manager.begin_frame(&sdl_window, &MouseState::new(&event_pump));
+
+        asset_resource.update();
 
         imgui_manager.with_ui(|ui| {
             let mut opened = true;
