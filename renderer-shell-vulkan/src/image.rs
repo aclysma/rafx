@@ -7,6 +7,7 @@ use crate::{util, VkDevice};
 use std::sync::Arc;
 use std::mem::ManuallyDrop;
 use crate::device::VkDeviceContext;
+use core::fmt;
 
 pub struct VkImage {
     pub device_context: VkDeviceContext,
@@ -14,6 +15,15 @@ pub struct VkImage {
     pub extent: vk::Extent3D,
     pub allocation: vk_mem::Allocation,
     pub allocation_info: vk_mem::AllocationInfo,
+}
+
+impl fmt::Debug for VkImage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VkImage")
+            .field("image", &self.image)
+            .field("extent", &self.extent)
+            .finish()
+    }
 }
 
 impl VkImage {

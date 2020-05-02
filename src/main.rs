@@ -88,11 +88,11 @@ impl StorageUploader<ImageAsset> for ImageUploder {
         println!("UPLOADER HIT");
         match result {
             Ok((images, uploader)) => {
-                self.loading_sprite_tx.send(LoadingSprite {
+                self.loading_sprite_tx.send(LoadingSprite::new(
                     images,
                     uploader,
                     load_op
-                });
+                ));
                 //load_op.complete()
             },
             Err(e) => load_op.error(e)

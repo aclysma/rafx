@@ -135,6 +135,12 @@ impl ImageDropSink {
                 ManuallyDrop::drop(&mut image.image);
             }
         }
+
+        for image_view in self.in_flight_image_views.drain(..) {
+            unsafe {
+                device.destroy_image_view(image_view.image_view, None);
+            }
+        }
     }
 }
 
@@ -245,56 +251,106 @@ impl Drop for DescriptorPoolAllocator {
 #[derive(Debug)]
 pub enum LoadingSpritePollResult {
     Pending,
-    Complete,
+    Complete(Vec<ManuallyDrop<VkImage>>),
     Error(Box<Error + 'static + Send>),
+    Destroyed
 }
 
+struct LoadingSpriteInner {
+    images: Vec<ManuallyDrop<VkImage>>,
+    uploader: VkTransferUpload,
+    load_op: atelier_assets::loader::AssetLoadOp
+}
+
+
 pub struct LoadingSprite {
-    pub images: Vec<ManuallyDrop<VkImage>>,
-    pub uploader: VkTransferUpload,
-    pub load_op: atelier_assets::loader::AssetLoadOp
+    inner: Option<LoadingSpriteInner>
 }
 
 impl LoadingSprite {
+    pub fn new(
+        images: Vec<ManuallyDrop<VkImage>>,
+        uploader: VkTransferUpload,
+        load_op: atelier_assets::loader::AssetLoadOp
+    ) -> Self {
+        let inner = LoadingSpriteInner {
+            images,
+            uploader,
+            load_op
+        };
+
+        LoadingSprite {
+            inner: Some(inner)
+        }
+    }
+
     pub fn poll_load(
         &mut self,
         device: &VkDevice
     ) -> LoadingSpritePollResult {
         loop {
-            match self.uploader.state() {
-                Ok(state) => {
-                    match state {
-                        VkTransferUploadState::Writable => {
-                            println!("VkTransferUploadState::Writable");
-                            self.uploader.submit_transfer(device.queues.transfer_queue);
-                        },
-                        VkTransferUploadState::SentToTransferQueue => {
-                            println!("VkTransferUploadState::SentToTransferQueue");
-                            break LoadingSpritePollResult::Pending;
-                        },
-                        VkTransferUploadState::PendingSubmitDstQueue => {
-                            println!("VkTransferUploadState::PendingSubmitDstQueue");
-                            self.uploader.submit_dst(device.queues.graphics_queue);
-                        },
-                        VkTransferUploadState::SentToDstQueue => {
-                            println!("VkTransferUploadState::SentToDstQueue");
-                            break LoadingSpritePollResult::Pending;
-                        },
-                        VkTransferUploadState::Complete => {
-                            println!("VkTransferUploadState::Complete");
-                            //let front = self.loading_sprites.pop_front().unwrap();
-                            //front.load_op.complete();
-                            break LoadingSpritePollResult::Complete;
-                        },
-                    }
-                },
-                Err(err) => {
-                    //let front = self.loading_sprites.pop_front().unwrap();
-                    //front.load_op.error(err);
-                    //break;
-                    break LoadingSpritePollResult::Error(Box::new(err));
-                },
+            if let Some(mut inner) = self.take_inner() {
+                match inner.uploader.state() {
+                    Ok(state) => {
+                        match state {
+                            VkTransferUploadState::Writable => {
+                                println!("VkTransferUploadState::Writable");
+                                inner.uploader.submit_transfer(device.queues.transfer_queue);
+                                self.inner = Some(inner);
+                            },
+                            VkTransferUploadState::SentToTransferQueue => {
+                                println!("VkTransferUploadState::SentToTransferQueue");
+                                self.inner = Some(inner);
+                                break LoadingSpritePollResult::Pending;
+                            },
+                            VkTransferUploadState::PendingSubmitDstQueue => {
+                                println!("VkTransferUploadState::PendingSubmitDstQueue");
+                                inner.uploader.submit_dst(device.queues.graphics_queue);
+                                self.inner = Some(inner);
+                            },
+                            VkTransferUploadState::SentToDstQueue => {
+                                println!("VkTransferUploadState::SentToDstQueue");
+                                self.inner = Some(inner);
+                                break LoadingSpritePollResult::Pending;
+                            },
+                            VkTransferUploadState::Complete => {
+                                println!("VkTransferUploadState::Complete");
+                                inner.load_op.complete();
+                                break LoadingSpritePollResult::Complete(inner.images);
+                            },
+                        }
+                    },
+                    Err(err) => {
+                        inner.load_op.error(err);
+                        break LoadingSpritePollResult::Error(Box::new(err));
+                    },
+                }
+            } else {
+                break LoadingSpritePollResult::Destroyed;
             }
+        }
+    }
+
+    fn take_inner(&mut self) -> Option<LoadingSpriteInner> {
+        let mut inner = None;
+        std::mem::swap(&mut self.inner, &mut inner);
+        inner
+    }
+}
+
+impl Drop for LoadingSprite {
+    fn drop(&mut self) {
+        if let Some(mut inner) = self.take_inner() {
+            for image in &mut inner.images {
+                unsafe {
+                    ManuallyDrop::drop(image);
+                }
+            }
+            //TODO: error() probably needs to accept a box
+            //let error : Box<dyn Error> = From::from("Dropped before load complete");
+            inner.load_op.error(vk::Result::ERROR_OUT_OF_DEVICE_MEMORY);
+            //use std::error::Error;
+            //inner.load_op.error("Dropped before load complete");
         }
     }
 }
@@ -338,14 +394,22 @@ impl VkSpriteResourceManager {
         let mut sprites = Vec::with_capacity(images.len());
         for image in images {
             let image_view = Self::create_texture_image_view(&self.device, &image.image);
+            println!("create image view AAAAA {:?}", image_view);
             sprites.push(VkSprite {
                 image,
                 image_view
             });
         }
 
-        self.sprites = sprites;
+        std::mem::swap(&mut sprites, &mut self.sprites);
         self.refresh_descriptor_set()?;
+
+        for sprite in sprites.drain(..) {
+            println!("retire view {:?}", sprite.image_view);
+            self.image_drop_sink.retire_image(sprite.image);
+            self.image_drop_sink.retire_image_view(sprite.image_view);
+        }
+
         Ok(())
     }
 
@@ -378,12 +442,6 @@ impl VkSpriteResourceManager {
             self.loading_sprites.push(loading_sprite);
         }
 
-        // let loading_sprite = self.loading_sprites.pop_front();
-        // if let Some(loading_sprite) = loading_sprite {
-        //     self.set_images(loading_sprite.images);
-        //     self.refresh_descriptor_set();
-        // }
-
         for i in (0..self.loading_sprites.len()).rev() {
             let result = self.loading_sprites[i].poll_load(device);
             println!("poll_load {:?}", result);
@@ -391,56 +449,21 @@ impl VkSpriteResourceManager {
                 LoadingSpritePollResult::Pending => {
                     // do nothing
                 },
-                LoadingSpritePollResult::Complete => {
+                LoadingSpritePollResult::Complete(images) => {
                     let loading_sprite = self.loading_sprites.swap_remove(i);
-                    self.set_images(loading_sprite.images);
+                    self.set_images(images);
                     self.refresh_descriptor_set();
-                    loading_sprite.load_op.complete();
                 },
                 LoadingSpritePollResult::Error(e) => {
                     let image = self.loading_sprites.swap_remove(i);
                     //image.load_op.error(e);
+                },
+                LoadingSpritePollResult::Destroyed => {
+                    // not expected
+                    unreachable!();
                 }
             }
         }
-
-        // if let Some(loading_sprite) = self.loading_sprites.front_mut() {
-        //     loop {
-        //         match loading_sprite.uploader.state() {
-        //             Ok(state) => {
-        //                 match state {
-        //                     VkTransferUploadState::Writable => {
-        //                         println!("VkTransferUploadState::Writable");
-        //                         loading_sprite.uploader.submit_transfer(device.queues.transfer_queue);
-        //                         break;
-        //                     },
-        //                     VkTransferUploadState::SentToTransferQueue => {
-        //                         println!("VkTransferUploadState::SentToTransferQueue");
-        //                         break;
-        //                     },
-        //                     VkTransferUploadState::PendingSubmitDstQueue => {
-        //                         println!("VkTransferUploadState::PendingSubmitDstQueue");
-        //                         loading_sprite.uploader.submit_dst(device.queues.graphics_queue);
-        //                         break;
-        //                     },
-        //                     VkTransferUploadState::SentToDstQueue => {
-        //                         println!("VkTransferUploadState::SentToDstQueue");
-        //                         break;
-        //                     },
-        //                     VkTransferUploadState::Complete => {
-        //                         println!("VkTransferUploadState::Complete");
-        //                         let front = self.loading_sprites.pop_front().unwrap();
-        //                         front.load_op.complete();
-        //                     },
-        //                 }
-        //             },
-        //             Err(err) => {
-        //                 let front = self.loading_sprites.pop_front().unwrap();
-        //                 front.load_op.error(err);
-        //             },
-        //         }
-        //     }
-        // }
     }
 
     pub fn new(
@@ -491,6 +514,7 @@ impl VkSpriteResourceManager {
         for image in images {
             //image_views.push(Self::create_texture_image_view(device.device(), &image.image));
             let image_view = Self::create_texture_image_view(device.device(), &image.image);
+            println!("create image view BBBBB {:?}", image_view);
             sprites.push(VkSprite {
                 image,
                 image_view
@@ -685,17 +709,18 @@ impl Drop for VkSpriteResourceManager {
 
             for sprite in self.sprites.drain(..) {
                 self.image_drop_sink.retire_image(sprite.image);
+                println!("retire view {:?}", sprite.image_view);
                 self.image_drop_sink.retire_image_view(sprite.image_view);
             }
-
-
-
             self.image_drop_sink.destroy(&self.device);
 
-            for sprite in &mut self.sprites {
-                self.device.destroy_image_view(sprite.image_view, None);
-                ManuallyDrop::drop(&mut sprite.image)
-            }
+            self.loading_sprites.clear();
+
+
+            // for sprite in &mut self.sprites {
+            //     self.device.destroy_image_view(sprite.image_view, None);
+            //     ManuallyDrop::drop(&mut sprite.image)
+            // }
         }
 
         log::debug!("destroyed VkSpriteResourceManager");
