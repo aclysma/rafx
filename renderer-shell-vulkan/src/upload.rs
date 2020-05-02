@@ -153,22 +153,6 @@ impl VkUpload {
         }
     }
 
-    // fn reset_to_writable_state(
-    //     &mut self
-    // ) -> VkResult<()> {
-    //     let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
-    //         .flags(vk::CommandBufferUsageFlags::empty());
-    //
-    //     unsafe {
-    //         Self::begin_command_buffer(self.device_context.device(), self.command_buffer);
-    //         self.device_context.device().reset_fences(&[self.fence])?;
-    //         self.buffer_write_pointer = self.buffer_begin;
-    //         self.writable = true;
-    //     }
-    //
-    //     Ok(())
-    // }
-
     pub fn push(&mut self, data: &[u8], required_alignment: usize) -> VkResult<vk::DeviceSize> {
         log::debug!("Pushing {} bytes into upload", data.len());
 
@@ -208,8 +192,6 @@ impl VkUpload {
                 self.device_context.device().end_command_buffer(self.command_buffer)?;
             }
 
-            //TODO: Submit and wait for fence
-
             let submit = vk::SubmitInfo::builder()
                 .command_buffers(&[self.command_buffer])
                 .build();
@@ -222,37 +204,6 @@ impl VkUpload {
 
         Ok(())
     }
-
-    // pub fn wait_until_finished(&mut self) -> VkResult<()> {
-    //     if self.state == UploadState::SentToGpu {
-    //         unsafe {
-    //             self.device_context.device().wait_for_fences(&[self.fence], true, std::u64::MAX)?;
-    //             self.reset_to_writable_state();
-    //         }
-    //     }
-    //
-    //     Ok(())
-    // }
-
-    // pub fn update(&mut self) -> VkResult<()> {
-    //     if self.state == UploadState::SentToGpu {
-    //         unsafe {
-    //             let submit_complete = self.device_context.device().get_fence_status(self.fence)?;
-    //
-    //             if submit_complete {
-    //                 self.reset_to_writable_state();
-    //             }
-    //         }
-    //     }
-    //
-    //     Ok(())
-    // }
-
-    // pub fn update(&mut self) -> VkResult<()> {
-    //     loop {
-    //         if self.state() ==
-    //     }
-    // }
 
     pub fn state(&self) -> VkResult<VkUploadState> {
         let state = if self.writable {
@@ -284,10 +235,6 @@ impl Drop for VkUpload {
         log::debug!("destroyed VkUpload");
     }
 }
-
-
-
-
 
 #[derive(PartialEq)]
 pub enum VkTransferUploadState {
@@ -361,7 +308,6 @@ impl VkTransferUpload {
         logical_device: &ash::Device,
         queue_family_index: u32,
     ) -> VkResult<vk::CommandPool> {
-        //TODO: Consider a separate transfer queue
         log::info!(
             "Creating command pool with queue family index {}",
             queue_family_index

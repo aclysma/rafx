@@ -101,13 +101,16 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
     }
 }
 
+// We assume destroy was called
 impl<T: VkDropSinkResourceImpl> Drop for VkResourceDropSink<T> {
     fn drop(&mut self) {
         assert!(self.resources_in_flight.is_empty())
     }
 }
 
-
+//
+// Blanket implementation for anything that is ManuallyDrop
+//
 impl<T> VkDropSinkResourceImpl for ManuallyDrop<T> {
     fn destroy(device: &Device, mut resource: Self) -> VkResult<()> {
         unsafe {
@@ -117,6 +120,9 @@ impl<T> VkDropSinkResourceImpl for ManuallyDrop<T> {
     }
 }
 
+//
+// Implementation for ImageViews
+//
 impl VkDropSinkResourceImpl for vk::ImageView {
     fn destroy(device: &Device, resource: Self) -> VkResult<()> {
         unsafe {
@@ -126,16 +132,16 @@ impl VkDropSinkResourceImpl for vk::ImageView {
     }
 }
 
-pub struct ImageDropSink {
+pub struct CombinedDropSink {
     images: VkResourceDropSink<ManuallyDrop<VkImage>>,
     image_views: VkResourceDropSink<vk::ImageView>,
 }
 
-impl ImageDropSink {
+impl CombinedDropSink {
     pub fn new(
         max_in_flight_frames: u32
     ) -> Self {
-        ImageDropSink {
+        CombinedDropSink {
             images: VkResourceDropSink::new(max_in_flight_frames),
             image_views: VkResourceDropSink::new(max_in_flight_frames)
         }
