@@ -8,12 +8,15 @@ use crate::VkImage;
 
 /// Implement to customize how VkResourceDropSink drops resources
 pub trait VkDropSinkResourceImpl {
-    fn destroy(device: &ash::Device, resource: Self) -> VkResult<()>;
+    fn destroy(
+        device: &ash::Device,
+        resource: Self,
+    ) -> VkResult<()>;
 }
 
 struct VkDropSinkResourceInFlight<T: VkDropSinkResourceImpl> {
     resource: T,
-    live_until_frame: Wrapping<u32>
+    live_until_frame: Wrapping<u32>,
 }
 
 /// This handles waiting for N frames to pass before dropping the resource. "Dropping" could mean
@@ -31,7 +34,7 @@ pub struct VkResourceDropSink<T: VkDropSinkResourceImpl> {
     max_in_flight_frames: Wrapping<u32>,
 
     // Incremented when on_frame_complete is called
-    frame_index: Wrapping<u32>
+    frame_index: Wrapping<u32>,
 }
 
 impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
@@ -40,27 +43,32 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
     /// in the sink. If max_in_flight_frames is 2, then you would have a resource that has
     /// likely not been submitted to the GPU yet, plus a resource per the N frames that have
     /// been submitted
-    pub fn new(
-        max_in_flight_frames: u32
-    ) -> Self {
+    pub fn new(max_in_flight_frames: u32) -> Self {
         VkResourceDropSink {
             resources_in_flight: Default::default(),
             max_in_flight_frames: Wrapping(max_in_flight_frames),
-            frame_index: Wrapping(0)
+            frame_index: Wrapping(0),
         }
     }
 
     /// Schedule the resource to drop after we complete N frames
-    pub fn retire(&mut self, resource: T) {
-        self.resources_in_flight.push_back(VkDropSinkResourceInFlight::<T> {
-            resource,
-            live_until_frame: self.frame_index + self.max_in_flight_frames + Wrapping(1)
-        });
+    pub fn retire(
+        &mut self,
+        resource: T,
+    ) {
+        self.resources_in_flight
+            .push_back(VkDropSinkResourceInFlight::<T> {
+                resource,
+                live_until_frame: self.frame_index + self.max_in_flight_frames + Wrapping(1),
+            });
     }
 
     /// Call when we are ready to drop another set of resources, most likely when a frame is
     /// presented or a new frame begins
-    pub fn on_frame_complete(&mut self, device: &ash::Device) {
+    pub fn on_frame_complete(
+        &mut self,
+        device: &ash::Device,
+    ) {
         self.frame_index += Wrapping(1);
 
         // Determine how many resources we should drain
@@ -68,7 +76,8 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
         for resource_in_flight in &self.resources_in_flight {
             // If frame_index matches or exceeds live_until_frame, then the result will be a very
             // high value due to wrapping a negative value to u32::MAX
-            if resource_in_flight.live_until_frame - self.frame_index > Wrapping(std::u32::MAX / 2) {
+            if resource_in_flight.live_until_frame - self.frame_index > Wrapping(std::u32::MAX / 2)
+            {
                 resources_to_drop += 1;
             } else {
                 break;
@@ -76,7 +85,10 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
         }
 
         // Reset them and add them to the list of pools ready to be allocated
-        let resources_to_drop : Vec<_> = self.resources_in_flight.drain(0..resources_to_drop).collect();
+        let resources_to_drop: Vec<_> = self
+            .resources_in_flight
+            .drain(0..resources_to_drop)
+            .collect();
         for mut resource_to_drop in resources_to_drop {
             unsafe {
                 T::destroy(device, resource_to_drop.resource);
@@ -86,7 +98,10 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
 
     /// Immediately destroy everything. We assume the device is idle and nothing is in flight.
     /// Calling this function when the device is not idle could result in a deadlock
-    pub fn destroy(&mut self, device: &ash::Device) -> VkResult<()> {
+    pub fn destroy(
+        &mut self,
+        device: &ash::Device,
+    ) -> VkResult<()> {
         unsafe {
             device.device_wait_idle()?;
         }
@@ -112,7 +127,10 @@ impl<T: VkDropSinkResourceImpl> Drop for VkResourceDropSink<T> {
 // Blanket implementation for anything that is ManuallyDrop
 //
 impl<T> VkDropSinkResourceImpl for ManuallyDrop<T> {
-    fn destroy(device: &Device, mut resource: Self) -> VkResult<()> {
+    fn destroy(
+        device: &Device,
+        mut resource: Self,
+    ) -> VkResult<()> {
         unsafe {
             ManuallyDrop::drop(&mut resource);
             Ok(())
@@ -124,7 +142,10 @@ impl<T> VkDropSinkResourceImpl for ManuallyDrop<T> {
 // Implementation for ImageViews
 //
 impl VkDropSinkResourceImpl for vk::ImageView {
-    fn destroy(device: &Device, resource: Self) -> VkResult<()> {
+    fn destroy(
+        device: &Device,
+        resource: Self,
+    ) -> VkResult<()> {
         unsafe {
             device.destroy_image_view(resource, None);
             Ok(())
@@ -139,36 +160,41 @@ pub struct CombinedDropSink {
 }
 
 impl CombinedDropSink {
-    pub fn new(
-        max_in_flight_frames: u32
-    ) -> Self {
+    pub fn new(max_in_flight_frames: u32) -> Self {
         CombinedDropSink {
             images: VkResourceDropSink::new(max_in_flight_frames),
-            image_views: VkResourceDropSink::new(max_in_flight_frames)
+            image_views: VkResourceDropSink::new(max_in_flight_frames),
         }
     }
 
-    pub fn retire_image(&mut self, image: ManuallyDrop<VkImage>) {
+    pub fn retire_image(
+        &mut self,
+        image: ManuallyDrop<VkImage>,
+    ) {
         self.images.retire(image);
     }
 
-    pub fn retire_image_view(&mut self, image_view: vk::ImageView) {
+    pub fn retire_image_view(
+        &mut self,
+        image_view: vk::ImageView,
+    ) {
         self.image_views.retire(image_view);
     }
 
-    pub fn on_frame_complete(&mut self, device: &ash::Device) {
+    pub fn on_frame_complete(
+        &mut self,
+        device: &ash::Device,
+    ) {
         self.image_views.on_frame_complete(device);
         self.images.on_frame_complete(device);
     }
 
-    pub fn destroy(&mut self, device: &ash::Device) -> VkResult<()> {
+    pub fn destroy(
+        &mut self,
+        device: &ash::Device,
+    ) -> VkResult<()> {
         self.image_views.destroy(device)?;
         self.images.destroy(device)?;
         Ok(())
     }
 }
-
-
-
-
-

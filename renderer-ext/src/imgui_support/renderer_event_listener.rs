@@ -1,4 +1,3 @@
-
 use renderer_shell_vulkan::{VkSwapchain, VkDeviceContext};
 use renderer_shell_vulkan::VkDevice;
 use renderer_shell_vulkan::Window;
@@ -29,7 +28,11 @@ impl renderer_shell_vulkan::VkSurfaceEventListener for ImguiRenderEventListener 
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
     ) -> VkResult<()> {
-        self.imgui_renderpass = Some(VkImGuiRenderPass::new(device_context, swapchain, &self.font_atlas)?);
+        self.imgui_renderpass = Some(VkImGuiRenderPass::new(
+            device_context,
+            swapchain,
+            &self.font_atlas,
+        )?);
         Ok(())
     }
 

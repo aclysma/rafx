@@ -1,5 +1,3 @@
-
-
 /// Records time when created and logs amount of time passed when dropped
 pub struct ScopeTimer<'a> {
     start_time: std::time::Instant,
@@ -58,9 +56,6 @@ impl PeriodicEvent {
         }
     }
 }
-
-
-
 
 #[derive(Copy, Clone)]
 pub enum SimulationTimePauseReason {

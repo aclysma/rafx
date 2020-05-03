@@ -21,7 +21,7 @@ pub enum VkUploadState {
     SentToGpu,
 
     /// The upload is finished and the resources may be used
-    Complete
+    Complete,
 }
 
 /// This is a convenience class that allows accumulating writes into a staging buffer and commands
@@ -42,24 +42,21 @@ pub struct VkUpload {
 
     buffer_begin: *mut u8,
     buffer_end: *mut u8,
-    buffer_write_pointer: *mut u8
+    buffer_write_pointer: *mut u8,
 }
 
-unsafe impl Send for VkUpload {
-
-}
+unsafe impl Send for VkUpload {}
 
 impl VkUpload {
     pub fn new(
         device_context: &VkDeviceContext,
         queue_family_index: u32,
-        size: u64
+        size: u64,
     ) -> VkResult<Self> {
         //
         // Command Buffers
         //
-        let command_pool =
-            Self::create_command_pool(device_context.device(), queue_family_index)?;
+        let command_pool = Self::create_command_pool(device_context.device(), queue_family_index)?;
 
         let command_buffer = Self::create_command_buffer(device_context.device(), &command_pool)?;
         Self::begin_command_buffer(device_context.device(), command_buffer)?;
@@ -69,14 +66,16 @@ impl VkUpload {
             vk_mem::MemoryUsage::CpuOnly,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            size
+            size,
         )?);
 
         let (buffer_begin, buffer_end, buffer_write_pointer) = unsafe {
             //TODO: Better way of handling allocator errors
-            let buffer_begin = device_context.allocator().map_memory(
-                &buffer.allocation
-            ).map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)? as *mut u8;
+            let buffer_begin = device_context
+                .allocator()
+                .map_memory(&buffer.allocation)
+                .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?
+                as *mut u8;
 
             let buffer_end = buffer_begin.add(buffer.size() as usize);
             let buffer_write_pointer = buffer_begin;
@@ -97,7 +96,7 @@ impl VkUpload {
             bytes_written_to_buffer: 0,
             buffer_begin,
             buffer_end,
-            buffer_write_pointer
+            buffer_write_pointer,
         };
 
         Ok(upload)
@@ -131,34 +130,29 @@ impl VkUpload {
             .command_pool(*command_pool)
             .level(vk::CommandBufferLevel::PRIMARY);
 
-        unsafe {
-            Ok(logical_device.allocate_command_buffers(&command_buffer_allocate_info)?[0])
-        }
+        unsafe { Ok(logical_device.allocate_command_buffers(&command_buffer_allocate_info)?[0]) }
     }
 
-    fn create_fence(
-        logical_device: &ash::Device,
-    ) -> VkResult<vk::Fence> {
-        let fence_create_info =
-            vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::empty());
+    fn create_fence(logical_device: &ash::Device) -> VkResult<vk::Fence> {
+        let fence_create_info = vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::empty());
 
-        unsafe {
-            Ok(logical_device.create_fence(&fence_create_info, None)?)
-        }
+        unsafe { Ok(logical_device.create_fence(&fence_create_info, None)?) }
     }
 
     fn begin_command_buffer(
         logical_device: &ash::Device,
-        command_buffer: vk::CommandBuffer
+        command_buffer: vk::CommandBuffer,
     ) -> VkResult<()> {
-        let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
-            .flags(vk::CommandBufferUsageFlags::empty());
-        unsafe {
-            logical_device.begin_command_buffer(command_buffer, &command_buffer_begin_info)
-        }
+        let command_buffer_begin_info =
+            vk::CommandBufferBeginInfo::builder().flags(vk::CommandBufferUsageFlags::empty());
+        unsafe { logical_device.begin_command_buffer(command_buffer, &command_buffer_begin_info) }
     }
 
-    pub fn push(&mut self, data: &[u8], required_alignment: usize) -> VkResult<vk::DeviceSize> {
+    pub fn push(
+        &mut self,
+        data: &[u8],
+        required_alignment: usize,
+    ) -> VkResult<vk::DeviceSize> {
         log::debug!("Pushing {} bytes into upload", data.len());
 
         if self.writable {
@@ -191,10 +185,15 @@ impl VkUpload {
         &self.buffer
     }
 
-    pub fn submit(&mut self, queue: vk::Queue) -> VkResult<()> {
+    pub fn submit(
+        &mut self,
+        queue: vk::Queue,
+    ) -> VkResult<()> {
         if self.writable {
             unsafe {
-                self.device_context.device().end_command_buffer(self.command_buffer)?;
+                self.device_context
+                    .device()
+                    .end_command_buffer(self.command_buffer)?;
             }
 
             let submit = vk::SubmitInfo::builder()
@@ -202,7 +201,9 @@ impl VkUpload {
                 .build();
 
             unsafe {
-                self.device_context.device().queue_submit(queue, &[submit], self.fence)?;
+                self.device_context
+                    .device()
+                    .queue_submit(queue, &[submit], self.fence)?;
                 self.writable = false;
             }
         }
@@ -214,7 +215,8 @@ impl VkUpload {
         let state = if self.writable {
             VkUploadState::Writable
         } else {
-            let submit_complete = unsafe { self.device_context.device().get_fence_status(self.fence)? };
+            let submit_complete =
+                unsafe { self.device_context.device().get_fence_status(self.fence)? };
             if submit_complete {
                 VkUploadState::Complete
             } else {
@@ -231,9 +233,13 @@ impl Drop for VkUpload {
         log::debug!("destroying VkUpload");
 
         unsafe {
-            self.device_context.allocator().unmap_memory(&self.buffer.allocation);
+            self.device_context
+                .allocator()
+                .unmap_memory(&self.buffer.allocation);
             ManuallyDrop::drop(&mut self.buffer);
-            self.device_context.device().destroy_command_pool(self.command_pool, None);
+            self.device_context
+                .device()
+                .destroy_command_pool(self.command_pool, None);
             self.device_context.device().destroy_fence(self.fence, None);
         }
 
@@ -259,7 +265,7 @@ pub enum VkTransferUploadState {
     SentToDstQueue,
 
     /// The submit has finished on both queues and the uploaded resources are ready for use
-    Complete
+    Complete,
 }
 
 /// A state machine and associated buffers/synchronization primitives to simplify uploading resources
@@ -273,7 +279,7 @@ pub struct VkTransferUpload {
     dst_command_buffer: vk::CommandBuffer,
 
     dst_fence: vk::Fence,
-    sent_to_dst_queue: bool
+    sent_to_dst_queue: bool,
 }
 
 impl VkTransferUpload {
@@ -281,7 +287,7 @@ impl VkTransferUpload {
         device_context: &VkDeviceContext,
         transfer_queue_family_index: u32,
         dst_queue_family_index: u32,
-        size: u64
+        size: u64,
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -289,7 +295,8 @@ impl VkTransferUpload {
         let dst_command_pool =
             Self::create_command_pool(device_context.device(), dst_queue_family_index)?;
 
-        let dst_command_buffer = Self::create_command_buffer(device_context.device(), &dst_command_pool)?;
+        let dst_command_buffer =
+            Self::create_command_buffer(device_context.device(), &dst_command_pool)?;
         Self::begin_command_buffer(device_context.device(), dst_command_buffer)?;
 
         let upload = VkUpload::new(device_context, transfer_queue_family_index, size)?;
@@ -303,11 +310,15 @@ impl VkTransferUpload {
             dst_command_pool,
             dst_command_buffer,
             dst_fence,
-            sent_to_dst_queue: false
+            sent_to_dst_queue: false,
         })
     }
 
-    pub fn push(&mut self, data: &[u8], required_alignment: usize) -> VkResult<vk::DeviceSize> {
+    pub fn push(
+        &mut self,
+        data: &[u8],
+        required_alignment: usize,
+    ) -> VkResult<vk::DeviceSize> {
         self.upload.push(data, required_alignment)
     }
 
@@ -350,41 +361,40 @@ impl VkTransferUpload {
             .command_pool(*command_pool)
             .level(vk::CommandBufferLevel::PRIMARY);
 
-        unsafe {
-            Ok(logical_device.allocate_command_buffers(&command_buffer_allocate_info)?[0])
-        }
+        unsafe { Ok(logical_device.allocate_command_buffers(&command_buffer_allocate_info)?[0]) }
     }
 
-    fn create_fence(
-        logical_device: &ash::Device,
-    ) -> VkResult<vk::Fence> {
-        let fence_create_info =
-            vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::empty());
+    fn create_fence(logical_device: &ash::Device) -> VkResult<vk::Fence> {
+        let fence_create_info = vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::empty());
 
-        unsafe {
-            Ok(logical_device.create_fence(&fence_create_info, None)?)
-        }
+        unsafe { Ok(logical_device.create_fence(&fence_create_info, None)?) }
     }
 
     fn begin_command_buffer(
         logical_device: &ash::Device,
-        command_buffer: vk::CommandBuffer
+        command_buffer: vk::CommandBuffer,
     ) -> VkResult<()> {
-        let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
-            .flags(vk::CommandBufferUsageFlags::empty());
-        unsafe {
-            logical_device.begin_command_buffer(command_buffer, &command_buffer_begin_info)
-        }
+        let command_buffer_begin_info =
+            vk::CommandBufferBeginInfo::builder().flags(vk::CommandBufferUsageFlags::empty());
+        unsafe { logical_device.begin_command_buffer(command_buffer, &command_buffer_begin_info) }
     }
 
-    pub fn submit_transfer(&mut self, transfer_queue: vk::Queue) -> VkResult<()> {
+    pub fn submit_transfer(
+        &mut self,
+        transfer_queue: vk::Queue,
+    ) -> VkResult<()> {
         self.upload.submit(transfer_queue)
     }
 
-    pub fn submit_dst(&mut self, dst_queue: vk::Queue) -> VkResult<()> {
+    pub fn submit_dst(
+        &mut self,
+        dst_queue: vk::Queue,
+    ) -> VkResult<()> {
         if self.state()? == VkTransferUploadState::PendingSubmitDstQueue {
             unsafe {
-                self.device_context.device().end_command_buffer(self.dst_command_buffer)?;
+                self.device_context
+                    .device()
+                    .end_command_buffer(self.dst_command_buffer)?;
             }
 
             let submit = vk::SubmitInfo::builder()
@@ -392,7 +402,9 @@ impl VkTransferUpload {
                 .build();
 
             unsafe {
-                self.device_context.device().queue_submit(dst_queue, &[submit], self.dst_fence)?;
+                self.device_context
+                    .device()
+                    .queue_submit(dst_queue, &[submit], self.dst_fence)?;
                 self.sent_to_dst_queue = true;
             }
         }
@@ -402,7 +414,11 @@ impl VkTransferUpload {
 
     pub fn state(&self) -> VkResult<VkTransferUploadState> {
         let state = if self.sent_to_dst_queue {
-            let submit_complete = unsafe { self.device_context.device().get_fence_status(self.dst_fence)? };
+            let submit_complete = unsafe {
+                self.device_context
+                    .device()
+                    .get_fence_status(self.dst_fence)?
+            };
             if submit_complete {
                 VkTransferUploadState::Complete
             } else {
@@ -412,7 +428,7 @@ impl VkTransferUpload {
             match self.upload.state()? {
                 VkUploadState::Writable => VkTransferUploadState::Writable,
                 VkUploadState::SentToGpu => VkTransferUploadState::SentToTransferQueue,
-                VkUploadState::Complete => VkTransferUploadState::PendingSubmitDstQueue
+                VkUploadState::Complete => VkTransferUploadState::PendingSubmitDstQueue,
             }
         };
 
@@ -425,8 +441,12 @@ impl Drop for VkTransferUpload {
         log::debug!("destroying VkUpload");
 
         unsafe {
-            self.device_context.device().destroy_command_pool(self.dst_command_pool, None);
-            self.device_context.device().destroy_fence(self.dst_fence, None);
+            self.device_context
+                .device()
+                .destroy_command_pool(self.dst_command_pool, None);
+            self.device_context
+                .device()
+                .destroy_fence(self.dst_fence, None);
         }
 
         log::debug!("destroyed VkUpload");

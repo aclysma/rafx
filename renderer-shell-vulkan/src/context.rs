@@ -244,11 +244,13 @@ impl VkContext {
         Ok(VkContext {
             instance,
             device,
-            present_mode_priority
+            present_mode_priority,
         })
     }
 
-    pub fn instance(&self) -> &VkInstance { &self.instance }
+    pub fn instance(&self) -> &VkInstance {
+        &self.instance
+    }
 
     pub fn device(&self) -> &VkDevice {
         &self.device
@@ -258,7 +260,9 @@ impl VkContext {
         &self.device.device_context
     }
 
-    pub fn present_mode_priority(&self) -> &Vec<PresentMode> { &self.present_mode_priority }
+    pub fn present_mode_priority(&self) -> &Vec<PresentMode> {
+        &self.present_mode_priority
+    }
 }
 
 impl Drop for VkContext {

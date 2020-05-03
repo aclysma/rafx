@@ -1,9 +1,13 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
 //use crate::ResourceManager;
-use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurfaceEventListener, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext};
+use renderer_shell_vulkan::{
+    VkDevice, VkSwapchain, VkSurfaceEventListener, VkSurface, Window, VkTransferUpload,
+    VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError,
+    VkContext,
+};
 use ash::prelude::VkResult;
 //use crate::features::sprite_renderpass_push_constant::VkSpriteRenderPass;
-use crate::renderpass::sprite::{VkSpriteRenderPass/*, LoadingSprite*/};
+use crate::renderpass::sprite::{VkSpriteRenderPass /*, LoadingSprite*/};
 use crate::renderpass::sprite::VkSpriteResourceManager;
 use std::mem::{swap, ManuallyDrop};
 use crate::image_utils::{decode_texture, load_images, enqueue_load_images};
@@ -25,11 +29,13 @@ impl GameRenderer {
         window: &dyn Window,
         device_context: &VkDeviceContext,
         imgui_font_atlas: VkImGuiRenderPassFontAtlas,
-        time_state: &TimeState
+        time_state: &TimeState,
     ) -> VkResult<Self> {
-
         let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
-        let sprite_resource_manager = VkSpriteResourceManager::new(device_context, renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32)?;
+        let sprite_resource_manager = VkSpriteResourceManager::new(
+            device_context,
+            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        )?;
 
         Ok(GameRenderer {
             time_state: time_state.clone(),
@@ -39,7 +45,10 @@ impl GameRenderer {
         })
     }
 
-    pub fn update_time(&mut self, time_state: &TimeState) {
+    pub fn update_time(
+        &mut self,
+        time_state: &TimeState,
+    ) {
         self.time_state = time_state.clone();
     }
 
@@ -52,14 +61,22 @@ impl GameRenderer {
     }
 }
 
-
 impl VkSurfaceEventListener for GameRenderer {
-    fn swapchain_created(&mut self, device_context: &VkDeviceContext, swapchain: &VkSwapchain) -> VkResult<()> {
+    fn swapchain_created(
+        &mut self,
+        device_context: &VkDeviceContext,
+        swapchain: &VkSwapchain,
+    ) -> VkResult<()> {
         log::debug!("game renderer swapchain_created called");
-        self.imgui_event_listener.swapchain_created(device_context, swapchain)?;
+        self.imgui_event_listener
+            .swapchain_created(device_context, swapchain)?;
 
         log::debug!("Create VkSpriteRenderPass");
-        self.sprite_renderpass = Some(VkSpriteRenderPass::new(device_context, swapchain, &self.sprite_resource_manager)?);
+        self.sprite_renderpass = Some(VkSpriteRenderPass::new(
+            device_context,
+            swapchain,
+            &self.sprite_resource_manager,
+        )?);
         log::debug!("game renderer swapchain_created finished");
 
         VkResult::Ok(())
@@ -76,7 +93,7 @@ impl VkSurfaceEventListener for GameRenderer {
         &mut self,
         window: &Window,
         device_context: &VkDeviceContext,
-        present_index: usize
+        present_index: usize,
     ) -> VkResult<Vec<ash::vk::CommandBuffer>> {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
@@ -85,13 +102,20 @@ impl VkSurfaceEventListener for GameRenderer {
 
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");
-            sprite_renderpass.update(present_index, 1.0, &self.sprite_resource_manager, &self.time_state)?;
+            sprite_renderpass.update(
+                present_index,
+                1.0,
+                &self.sprite_resource_manager,
+                &self.time_state,
+            )?;
             command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
         }
 
         {
             log::trace!("imgui_event_listener update");
-            let mut commands = self.imgui_event_listener.render(window, device_context, present_index)?;
+            let mut commands =
+                self.imgui_event_listener
+                    .render(window, device_context, present_index)?;
             command_buffers.append(&mut commands);
         }
 
@@ -103,14 +127,14 @@ pub struct GameRendererWithContext {
     // Handles setting up device/instance
     context: VkContext,
     game_renderer: ManuallyDrop<GameRenderer>,
-    surface: ManuallyDrop<VkSurface>
+    surface: ManuallyDrop<VkSurface>,
 }
 
 impl GameRendererWithContext {
     pub fn new(
         window: &dyn Window,
         imgui_font_atlas: VkImGuiRenderPassFontAtlas,
-        time_state: &TimeState
+        time_state: &TimeState,
     ) -> Result<GameRendererWithContext, VkCreateContextError> {
         let context = VkContextBuilder::new()
             .use_vulkan_debug_layer(true)
@@ -122,7 +146,7 @@ impl GameRendererWithContext {
             window,
             &context.device().device_context,
             imgui_font_atlas,
-            time_state
+            time_state,
         )?;
 
         let surface = VkSurface::new(&context, window, Some(&mut game_renderer))?;
@@ -130,7 +154,7 @@ impl GameRendererWithContext {
         Ok(GameRendererWithContext {
             context,
             game_renderer: ManuallyDrop::new(game_renderer),
-            surface: ManuallyDrop::new(surface)
+            surface: ManuallyDrop::new(surface),
         })
     }
 

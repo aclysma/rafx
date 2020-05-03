@@ -12,30 +12,33 @@ use renderer_base::slab::{GenSlab, GenSlabKey};
 use std::marker::PhantomData;
 
 // Used to catch asset changes and upload them to the GPU (or some other system)
-pub trait StorageUploader<T> : 'static + Send
-    where T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send
+pub trait StorageUploader<T>: 'static + Send
+where
+    T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
 {
     fn upload(
         &self,
         asset: &T,
         load_op: AssetLoadOp,
-        resource_handle: ResourceHandle<T>
+        resource_handle: ResourceHandle<T>,
     );
 
-    fn free(&self, resource_handle: ResourceHandle<T>);
+    fn free(
+        &self,
+        resource_handle: ResourceHandle<T>,
+    );
 }
-
 
 pub struct ResourceHandle<A> {
     key: GenSlabKey<LoadHandle>,
-    phantom_data: PhantomData<A>
+    phantom_data: PhantomData<A>,
 }
 
 impl<A> ResourceHandle<A> {
     pub fn new(key: GenSlabKey<LoadHandle>) -> Self {
         ResourceHandle {
             key,
-            phantom_data: Default::default()
+            phantom_data: Default::default(),
         }
     }
 
@@ -49,15 +52,13 @@ impl<A> Clone for ResourceHandle<A> {
     fn clone(&self) -> Self {
         ResourceHandle {
             key: self.key,
-            phantom_data: Default::default()
+            phantom_data: Default::default(),
         }
     }
 }
 
 // Can't use derive because of phantom data
-impl<A> Copy for ResourceHandle<A> {
-
-}
+impl<A> Copy for ResourceHandle<A> {}
 
 // Used to dynamic dispatch into a storage, supports checked downcasting
 pub trait TypedStorage: Any + Send {
@@ -100,7 +101,7 @@ impl GenericAssetStorage {
 
     pub fn add_storage<T>(&self)
     where
-        T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send
+        T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
     {
         let mut storages = self.storage.lock().unwrap();
         storages.insert(
@@ -109,11 +110,12 @@ impl GenericAssetStorage {
         );
     }
 
-
-    pub fn add_storage_with_uploader<T, U>(&self, uploader: Box<U>)
-    where
+    pub fn add_storage_with_uploader<T, U>(
+        &self,
+        uploader: Box<U>,
+    ) where
         T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
-        U: StorageUploader<T>
+        U: StorageUploader<T>,
     {
         let mut storages = self.storage.lock().unwrap();
         storages.insert(
@@ -172,7 +174,7 @@ impl AssetStorage for GenericAssetStorage {
 // Implement atelier's TypedAssetStorage - a typed trait that finds the asset_type's storage and
 // forwards the call
 impl<A: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send> TypedAssetStorage<A>
-for GenericAssetStorage
+    for GenericAssetStorage
 {
     fn get<T: AssetHandle>(
         &self,
@@ -251,16 +253,19 @@ pub struct Storage<A: TypeUuid> {
     assets: HashMap<LoadHandle, AssetState<A>>,
     uncommitted: HashMap<LoadHandle, AssetState<A>>,
     slab: GenSlab<LoadHandle>,
-    uploader: Option<Box<dyn StorageUploader<A>>>
+    uploader: Option<Box<dyn StorageUploader<A>>>,
 }
 impl<A: TypeUuid> Storage<A> {
-    fn new(sender: Arc<Sender<RefOp>>, uploader: Option<Box<dyn StorageUploader<A>>>) -> Self {
+    fn new(
+        sender: Arc<Sender<RefOp>>,
+        uploader: Option<Box<dyn StorageUploader<A>>>,
+    ) -> Self {
         Self {
             refop_sender: sender,
             assets: HashMap::new(),
             uncommitted: HashMap::new(),
             slab: GenSlab::<LoadHandle>::new(),
-            uploader
+            uploader,
         }
     }
     fn get<T: AssetHandle>(
@@ -302,11 +307,20 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         )?;
 
         // Find or allocate the slab key
-        let resource_handle = self.assets.get(&load_handle).map(|x| x.resource_handle)
+        let resource_handle = self
+            .assets
+            .get(&load_handle)
+            .map(|x| x.resource_handle)
             .unwrap_or_else(|| ResourceHandle::new(self.slab.allocate(load_handle)));
 
-        self.uncommitted
-            .insert(load_handle, AssetState { asset, resource_handle, version });
+        self.uncommitted.insert(
+            load_handle,
+            AssetState {
+                asset,
+                resource_handle,
+                version,
+            },
+        );
         log::info!("{} bytes loaded for {:?}", data.len(), load_handle);
 
         if let Some(uploader) = &self.uploader {

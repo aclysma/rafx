@@ -18,7 +18,10 @@ pub struct VkImage {
 }
 
 impl fmt::Debug for VkImage {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         f.debug_struct("VkImage")
             .field("image", &self.image)
             .field("extent", &self.extent)
@@ -59,7 +62,9 @@ impl VkImage {
             .samples(vk::SampleCountFlags::TYPE_1);
 
         //let allocator = device.allocator().clone();
-        let (image, allocation, allocation_info) = device_context.allocator().create_image(&image_create_info, &allocation_create_info)
+        let (image, allocation, allocation_info) = device_context
+            .allocator()
+            .create_image(&image_create_info, &allocation_create_info)
             .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
 
         Ok(VkImage {
@@ -78,7 +83,9 @@ impl Drop for VkImage {
 
         unsafe {
             unsafe {
-                self.device_context.allocator().destroy_image(self.image, &self.allocation);
+                self.device_context
+                    .allocator()
+                    .destroy_image(self.image, &self.allocation);
             }
         }
 

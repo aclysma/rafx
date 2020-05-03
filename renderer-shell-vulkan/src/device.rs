@@ -9,14 +9,14 @@ use super::Window;
 use std::ffi::CStr;
 
 use ash::extensions::khr;
-use crate::{PhysicalDeviceType/*, VkSubmitQueue*/};
+use crate::{PhysicalDeviceType /*, VkSubmitQueue*/};
 use std::mem::ManuallyDrop;
 
 use std::sync::{Arc, Mutex};
 
 pub struct VkQueue {
     pub queue_family_index: u32,
-    pub queue: vk::Queue
+    pub queue: vk::Queue,
 }
 
 /// Has the indexes for all the queue families we will need. It's possible a single family
@@ -56,35 +56,65 @@ pub struct VkDeviceContext {
 
 impl VkDeviceContext {
     pub fn instance(&self) -> &ash::Instance {
-        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").instance
+        &self
+            .inner
+            .as_ref()
+            .expect("inner is only None if VkDevice is dropped")
+            .instance
     }
 
     pub fn device(&self) -> &ash::Device {
-        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").device
+        &self
+            .inner
+            .as_ref()
+            .expect("inner is only None if VkDevice is dropped")
+            .device
     }
 
     pub fn allocator(&self) -> &vk_mem::Allocator {
-        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").allocator
+        &self
+            .inner
+            .as_ref()
+            .expect("inner is only None if VkDevice is dropped")
+            .allocator
     }
 
     pub fn surface(&self) -> vk::SurfaceKHR {
-        self.inner.as_ref().expect("inner is only None if VkDevice is dropped").surface
+        self.inner
+            .as_ref()
+            .expect("inner is only None if VkDevice is dropped")
+            .surface
     }
 
     pub fn surface_loader(&self) -> &ash::extensions::khr::Surface {
-        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").surface_loader
+        &self
+            .inner
+            .as_ref()
+            .expect("inner is only None if VkDevice is dropped")
+            .surface_loader
     }
 
     pub fn physical_device(&self) -> vk::PhysicalDevice {
-        self.inner.as_ref().expect("inner is only None if VkDevice is dropped").physical_device
+        self.inner
+            .as_ref()
+            .expect("inner is only None if VkDevice is dropped")
+            .physical_device
     }
 
     pub fn queue_family_indices(&self) -> &VkQueueFamilyIndices {
-        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").queue_family_indices
+        &self
+            .inner
+            .as_ref()
+            .expect("inner is only None if VkDevice is dropped")
+            .queue_family_indices
     }
 
     pub fn queues(&self) -> &VkQueues {
-        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").queues
+        &self
+            .inner
+            .as_ref()
+            .expect("inner is only None if VkDevice is dropped")
+            .queues
     }
 
     fn new(
@@ -107,7 +137,7 @@ impl VkDeviceContext {
                 physical_device,
                 queue_family_indices: queue_family_indices.clone(),
                 queues: queues.clone(),
-            })))
+            }))),
         }
     }
 
@@ -118,7 +148,6 @@ impl VkDeviceContext {
             inner.allocator.destroy();
             inner.device.destroy_device(None);
             ManuallyDrop::drop(&mut inner);
-
         } else {
             panic!("Could not free the allocator, something is holding a reference to it. Have all allocations been dropped?")
         }
@@ -129,14 +158,14 @@ impl VkDeviceContext {
 #[derive(Debug)]
 pub enum VkCreateDeviceError {
     VkError(vk::Result),
-    VkMemError(vk_mem::Error)
+    VkMemError(vk_mem::Error),
 }
 
 impl std::error::Error for VkCreateDeviceError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match *self {
             VkCreateDeviceError::VkError(ref e) => Some(e),
-            VkCreateDeviceError::VkMemError(ref e) => Some(e)
+            VkCreateDeviceError::VkMemError(ref e) => Some(e),
         }
     }
 }
@@ -223,7 +252,7 @@ impl VkDevice {
             flags: vk_mem::AllocatorCreateFlags::default(),
             preferred_large_heap_block_size: Default::default(),
             frame_in_use_count: 0, // Not using CAN_BECOME_LOST, so this is not needed
-            heap_size_limits: Default::default()
+            heap_size_limits: Default::default(),
         };
 
         let allocator = vk_mem::Allocator::new(&allocator_create_info)?;
@@ -242,7 +271,7 @@ impl VkDevice {
             surface_loader.clone(),
             physical_device,
             &queue_family_indices,
-            &queues
+            &queues,
         );
 
         Ok(VkDevice {
@@ -433,7 +462,10 @@ impl VkDevice {
                 // Ideally we want to find a dedicated transfer queue
                 transfer_queue_family_index = Some(queue_family_index);
                 transfer_queue_family_is_dedicated = true;
-            } else if supports_transfer && transfer_queue_family_index.is_none() && Some(queue_family_index) != graphics_queue_family_index {
+            } else if supports_transfer
+                && transfer_queue_family_index.is_none()
+                && Some(queue_family_index) != graphics_queue_family_index
+            {
                 // Otherwise accept the first queue that supports transfers that is NOT the graphics queue
                 transfer_queue_family_index = Some(queue_family_index);
             }
@@ -450,13 +482,19 @@ impl VkDevice {
             graphics_queue_family_index, present_queue_family_index, transfer_queue_family_index
         );
 
-        if let (Some(graphics_queue_family_index), Some(present_queue_family_index), Some(transfer_queue_family_index)) =
-            (graphics_queue_family_index, present_queue_family_index, transfer_queue_family_index)
-        {
+        if let (
+            Some(graphics_queue_family_index),
+            Some(present_queue_family_index),
+            Some(transfer_queue_family_index),
+        ) = (
+            graphics_queue_family_index,
+            present_queue_family_index,
+            transfer_queue_family_index,
+        ) {
             Ok(Some(VkQueueFamilyIndices {
                 graphics_queue_family_index,
                 present_queue_family_index,
-                transfer_queue_family_index
+                transfer_queue_family_index,
             }))
         } else {
             Ok(None)
@@ -509,7 +547,7 @@ impl VkDevice {
         let queues = VkQueues {
             graphics_queue,
             present_queue,
-            transfer_queue
+            transfer_queue,
         };
 
         Ok((device, queues))

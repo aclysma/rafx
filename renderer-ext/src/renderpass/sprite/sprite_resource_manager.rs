@@ -6,7 +6,10 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkUpload, VkTransferUpload, VkTransferUploadState, VkResourceDropSink, VkDescriptorPoolAllocator, VkDeviceContext};
+use renderer_shell_vulkan::{
+    VkDevice, VkUpload, VkTransferUpload, VkTransferUploadState, VkResourceDropSink,
+    VkDescriptorPoolAllocator, VkDeviceContext,
+};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -36,13 +39,13 @@ use crate::image_importer::ImageAsset;
 /// Represents an image that will replace another image
 pub struct ImageUpdate {
     pub images: Vec<ManuallyDrop<VkImage>>,
-    pub resource_handles: Vec<ResourceHandle<ImageAsset>>
+    pub resource_handles: Vec<ResourceHandle<ImageAsset>>,
 }
 
 /// Represents the current state of the sprite and the GPU resources associated with it
 pub struct VkSprite {
     pub image: ManuallyDrop<VkImage>,
-    pub image_view: vk::ImageView
+    pub image_view: vk::ImageView,
 }
 
 /// Keeps track of sprites/images and manages descriptor sets that allow shaders to bind to images
@@ -62,7 +65,7 @@ pub struct VkSpriteResourceManager {
 
     // For sending image updates in a thread-safe manner
     image_update_tx: Sender<ImageUpdate>,
-    image_update_rx: Receiver<ImageUpdate>
+    image_update_rx: Receiver<ImageUpdate>,
 }
 
 impl VkSpriteResourceManager {
@@ -80,7 +83,7 @@ impl VkSpriteResourceManager {
 
     pub fn new(
         device_context: &VkDeviceContext,
-        max_frames_in_flight: u32
+        max_frames_in_flight: u32,
     ) -> VkResult<Self> {
         let sprites = Vec::new();
 
@@ -91,14 +94,14 @@ impl VkSpriteResourceManager {
         let mut descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
             max_frames_in_flight,
             max_frames_in_flight + 1,
-            |device| Self::create_descriptor_pool(device)
+            |device| Self::create_descriptor_pool(device),
         );
         let descriptor_pool = descriptor_pool_allocator.allocate_pool(device_context.device())?;
         let descriptor_sets = Self::create_descriptor_set(
             device_context.device(),
             &descriptor_pool,
             descriptor_set_layout,
-            &sprites
+            &sprites,
         )?;
 
         let (image_update_tx, image_update_rx) = mpsc::channel();
@@ -114,14 +117,16 @@ impl VkSpriteResourceManager {
             sprites,
             drop_sink,
             image_update_tx,
-            image_update_rx
+            image_update_rx,
         })
     }
 
     pub fn update(&mut self) {
         // This will handle any resources that need to be dropped
-        self.descriptor_pool_allocator.update(self.device_context.device());
-        self.drop_sink.on_frame_complete(self.device_context.device());
+        self.descriptor_pool_allocator
+            .update(self.device_context.device());
+        self.drop_sink
+            .on_frame_complete(self.device_context.device());
 
         // Check if we have any image updates to process
         //TODO: This may need to be deferred until a commit, and the commit may be to update to a
@@ -130,7 +135,10 @@ impl VkSpriteResourceManager {
     }
 
     /// Runs through the incoming image updates and applies them to the list of sprites
-    fn do_update_sprites(&mut self, image_update: ImageUpdate) {
+    fn do_update_sprites(
+        &mut self,
+        image_update: ImageUpdate,
+    ) {
         let mut max_index = self.sprites.len();
         for resource_handle in &image_update.resource_handles {
             max_index = max_index.max(resource_handle.index() as usize + 1);
@@ -142,14 +150,15 @@ impl VkSpriteResourceManager {
         for (i, image) in image_update.images.into_iter().enumerate() {
             let resource_handle = image_update.resource_handles[i];
 
-            let image_view = Self::create_texture_image_view(self.device_context.device(), &image.image);
+            let image_view =
+                Self::create_texture_image_view(self.device_context.device(), &image.image);
 
             // Do a swap so if there is an old sprite we can properly destroy it
-            let mut sprite = Some(VkSprite {
-                image,
-                image_view
-            });
-            std::mem::swap(&mut sprite, &mut self.sprites[resource_handle.index() as usize]);
+            let mut sprite = Some(VkSprite { image, image_view });
+            std::mem::swap(
+                &mut sprite,
+                &mut self.sprites[resource_handle.index() as usize],
+            );
             if sprite.is_some() {
                 old_sprites.push(sprite);
             }
@@ -177,14 +186,17 @@ impl VkSpriteResourceManager {
     }
 
     fn refresh_descriptor_sets(&mut self) -> VkResult<()> {
-        self.descriptor_pool_allocator.retire_pool(self.descriptor_pool);
+        self.descriptor_pool_allocator
+            .retire_pool(self.descriptor_pool);
 
-        let descriptor_pool = self.descriptor_pool_allocator.allocate_pool(self.device_context.device())?;
+        let descriptor_pool = self
+            .descriptor_pool_allocator
+            .allocate_pool(self.device_context.device())?;
         let descriptor_sets = Self::create_descriptor_set(
             self.device_context.device(),
             &descriptor_pool,
             self.descriptor_set_layout,
-            &self.sprites
+            &self.sprites,
         )?;
 
         self.descriptor_pool = descriptor_pool;
@@ -220,14 +232,12 @@ impl VkSpriteResourceManager {
     fn create_descriptor_set_layout(
         logical_device: &ash::Device
     ) -> VkResult<vk::DescriptorSetLayout> {
-        let descriptor_set_layout_bindings = [
-            vk::DescriptorSetLayoutBinding::builder()
-                .binding(0)
-                .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                .build(),
-        ];
+        let descriptor_set_layout_bindings = [vk::DescriptorSetLayoutBinding::builder()
+            .binding(0)
+            .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+            .descriptor_count(1)
+            .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+            .build()];
 
         let descriptor_set_layout_create_info =
             vk::DescriptorSetLayoutCreateInfo::builder().bindings(&descriptor_set_layout_bindings);
@@ -237,17 +247,13 @@ impl VkSpriteResourceManager {
         }
     }
 
-    fn create_descriptor_pool(
-        logical_device: &ash::Device,
-    ) -> VkResult<vk::DescriptorPool> {
-        const MAX_TEXTURES : u32 = 1000;
+    fn create_descriptor_pool(logical_device: &ash::Device) -> VkResult<vk::DescriptorPool> {
+        const MAX_TEXTURES: u32 = 1000;
 
-        let pool_sizes = [
-            vk::DescriptorPoolSize::builder()
-                .ty(vk::DescriptorType::SAMPLED_IMAGE)
-                .descriptor_count(MAX_TEXTURES)
-                .build(),
-        ];
+        let pool_sizes = [vk::DescriptorPoolSize::builder()
+            .ty(vk::DescriptorType::SAMPLED_IMAGE)
+            .descriptor_count(MAX_TEXTURES)
+            .build()];
 
         let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
             .pool_sizes(&pool_sizes)
@@ -289,7 +295,7 @@ impl VkSpriteResourceManager {
                         .dst_array_element(0)
                         .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
                         .image_info(&[image_view_descriptor_image_info])
-                        .build()
+                        .build(),
                 );
                 unsafe {
                     logical_device.update_descriptor_sets(&descriptor_writes, &[]);
@@ -306,10 +312,13 @@ impl Drop for VkSpriteResourceManager {
         log::debug!("destroying VkSpriteResourceManager");
 
         unsafe {
-            self.descriptor_pool_allocator.retire_pool(self.descriptor_pool);
-            self.descriptor_pool_allocator.destroy(self.device_context.device());
+            self.descriptor_pool_allocator
+                .retire_pool(self.descriptor_pool);
+            self.descriptor_pool_allocator
+                .destroy(self.device_context.device());
 
-            self.device_context.device()
+            self.device_context
+                .device()
                 .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
 
             for sprite in self.sprites.drain(..) {
@@ -324,4 +333,3 @@ impl Drop for VkSpriteResourceManager {
         log::debug!("destroyed VkSpriteResourceManager");
     }
 }
-

@@ -6,7 +6,9 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkUpload, VkUploadState, VkTransferUpload, VkTransferUploadState, VkDeviceContext};
+use renderer_shell_vulkan::{
+    VkDevice, VkUpload, VkUploadState, VkTransferUpload, VkTransferUploadState, VkDeviceContext,
+};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -27,14 +29,17 @@ pub struct DecodedTexture {
     pub data: Vec<u8>,
 }
 
-pub fn decode_texture(buf: &[u8], format: ImageFormat) -> DecodedTexture {
+pub fn decode_texture(
+    buf: &[u8],
+    format: ImageFormat,
+) -> DecodedTexture {
     let example_image = image::load_from_memory_with_format(buf, format).unwrap();
     let dimensions = example_image.dimensions();
     let example_image = example_image.to_rgba().into_raw();
     DecodedTexture {
         width: dimensions.0,
         height: dimensions.1,
-        data: example_image
+        data: example_image,
     }
 }
 
@@ -55,7 +60,7 @@ pub fn cmd_transition_image_layout(
     // src_layout: vk::ImageLayout,
     // dst_layout: vk::ImageLayout,
     mut src_queue_family: u32,
-    mut dst_queue_family: u32
+    mut dst_queue_family: u32,
 ) {
     if src_queue_family == dst_queue_family {
         src_queue_family = vk::QUEUE_FAMILY_IGNORED;
@@ -103,7 +108,7 @@ pub fn cmd_transition_image_layout(
             dst_stage: vk::PipelineStageFlags::FRAGMENT_SHADER,
             src_layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             dst_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-        }
+        },
     };
 
     let subresource_range = vk::ImageSubresourceRange::builder()
@@ -113,18 +118,21 @@ pub fn cmd_transition_image_layout(
         .base_array_layer(0)
         .layer_count(1);
 
-    let barrier_infos : Vec<_> = images.iter().map(|image| {
-        vk::ImageMemoryBarrier::builder()
-            .old_layout(sync_info.src_layout)
-            .new_layout(sync_info.dst_layout)
-            .src_queue_family_index(src_queue_family)
-            .dst_queue_family_index(dst_queue_family)
-            .image(*image)
-            .subresource_range(*subresource_range)
-            .src_access_mask(sync_info.src_access_mask)
-            .dst_access_mask(sync_info.dst_access_mask)
-            .build()
-    }).collect();
+    let barrier_infos: Vec<_> = images
+        .iter()
+        .map(|image| {
+            vk::ImageMemoryBarrier::builder()
+                .old_layout(sync_info.src_layout)
+                .new_layout(sync_info.dst_layout)
+                .src_queue_family_index(src_queue_family)
+                .dst_queue_family_index(dst_queue_family)
+                .image(*image)
+                .subresource_range(*subresource_range)
+                .src_access_mask(sync_info.src_access_mask)
+                .dst_access_mask(sync_info.dst_access_mask)
+                .build()
+        })
+        .collect();
 
     unsafe {
         logical_device.cmd_pipeline_barrier(
@@ -138,7 +146,6 @@ pub fn cmd_transition_image_layout(
         );
     }
 }
-
 
 pub fn cmd_copy_buffer_to_image(
     logical_device: &ash::Device,
@@ -209,7 +216,7 @@ pub fn enqueue_load_images(
             &[image.image],
             TransitionType::PreUpload,
             transfer_queue_family_index,
-            transfer_queue_family_index
+            transfer_queue_family_index,
         );
 
         cmd_copy_buffer_to_image(
@@ -227,7 +234,7 @@ pub fn enqueue_load_images(
             &[image.image],
             TransitionType::PostUploadTransferQueue,
             transfer_queue_family_index,
-            dst_queue_family_index
+            dst_queue_family_index,
         );
 
         images.push(image);
@@ -240,7 +247,7 @@ pub fn enqueue_load_images(
             &[image.image],
             TransitionType::PostUploadTransferQueue,
             transfer_queue_family_index,
-            dst_queue_family_index
+            dst_queue_family_index,
         );
     }
 
@@ -259,10 +266,16 @@ pub fn load_images(
         device_context,
         transfer_queue_family_index,
         dst_queue_family_index,
-        1024*1024*16
+        1024 * 1024 * 16,
     )?;
 
-    let images = enqueue_load_images(device_context, &mut upload, transfer_queue_family_index, dst_queue_family_index, decoded_textures)?;
+    let images = enqueue_load_images(
+        device_context,
+        &mut upload,
+        transfer_queue_family_index,
+        dst_queue_family_index,
+        decoded_textures,
+    )?;
 
     upload.submit_transfer(transfer_queue)?;
     loop {

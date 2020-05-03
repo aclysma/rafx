@@ -216,8 +216,8 @@ fn init_imgui(window: &Window) -> imgui::Context {
 
     let font_1p = imgui::FontSource::TtfData {
         data: include_bytes!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/fonts/mplus-1p-regular.ttf"
+            env!("CARGO_MANIFEST_DIR"),
+            "/fonts/mplus-1p-regular.ttf"
         )),
         size_pixels: font_size,
         config: None,
@@ -255,8 +255,8 @@ fn init_imgui(window: &Window) -> imgui::Context {
 
         imgui::FontSource::TtfData {
             data: include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/fonts/materialdesignicons-webfont.ttf"
+                env!("CARGO_MANIFEST_DIR"),
+                "/fonts/materialdesignicons-webfont.ttf"
             )),
             size_pixels: font_size,
             config: Some(font_config),

@@ -1,4 +1,7 @@
-use crate::{RenderPhase, RenderView, RenderRegistry, RenderFeatureIndex, RenderPhaseIndex, RenderViewIndex, RenderPhaseMask};
+use crate::{
+    RenderPhase, RenderView, RenderRegistry, RenderFeatureIndex, RenderPhaseIndex, RenderViewIndex,
+    RenderPhaseMask,
+};
 use fnv::FnvHashMap;
 
 pub type SubmitNodeId = u32;
@@ -35,11 +38,14 @@ pub struct ViewSubmitNodes {
     // Index render phase index
     submit_nodes: Vec<Vec<SubmitNode>>,
     feature_index: RenderFeatureIndex,
-    render_phase_mask: RenderPhaseMask
+    render_phase_mask: RenderPhaseMask,
 }
 
 impl ViewSubmitNodes {
-    pub fn new(feature_index: RenderFeatureIndex, render_phase_mask: RenderPhaseMask) -> Self {
+    pub fn new(
+        feature_index: RenderFeatureIndex,
+        render_phase_mask: RenderPhaseMask,
+    ) -> Self {
         let submit_nodes = (0..RenderRegistry::registered_render_phase_count())
             .map(|_render_phase_index| Vec::new())
             .collect();
@@ -47,7 +53,7 @@ impl ViewSubmitNodes {
         ViewSubmitNodes {
             submit_nodes,
             feature_index,
-            render_phase_mask
+            render_phase_mask,
         }
     }
 

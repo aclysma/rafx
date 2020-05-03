@@ -138,7 +138,8 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
         // foreach view node, call extract
         //TODO: Views can run in parallel
         for view in views {
-            let mut view_submit_nodes = ViewSubmitNodes::new(self.prepare_impl.feature_index(), view.render_phase_mask());
+            let mut view_submit_nodes =
+                ViewSubmitNodes::new(self.prepare_impl.feature_index(), view.render_phase_mask());
 
             // foreach view node, call extract
             log::debug!(

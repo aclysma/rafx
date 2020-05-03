@@ -1,5 +1,7 @@
 use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter};
+use atelier_assets::importer::{
+    Error, ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter,
+};
 use image2::{color, ImageBuf, Image};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
@@ -11,7 +13,7 @@ use std::convert::TryInto;
 pub struct ImageAsset {
     pub width: u32,
     pub height: u32,
-    pub data: Vec<u8>
+    pub data: Vec<u8>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
@@ -23,8 +25,8 @@ struct ImageImporterState(Option<AssetUuid>);
 struct ImageImporter;
 impl Importer for ImageImporter {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         2
     }
@@ -51,12 +53,13 @@ impl Importer for ImageImporter {
         let mut bytes = Vec::new();
         source.read_to_end(&mut bytes)?;
 
-        let decoded_image = image2::io::decode::<_, _, image2::Rgba>(&bytes).map_err(|e| Error::Boxed(Box::new(e)))?;
+        let decoded_image = image2::io::decode::<_, _, image2::Rgba>(&bytes)
+            .map_err(|e| Error::Boxed(Box::new(e)))?;
 
         let image_asset = ImageAsset {
             width: decoded_image.width() as u32,
             height: decoded_image.height() as u32,
-            data: decoded_image.data().to_vec()
+            data: decoded_image.data().to_vec(),
         };
 
         Ok(ImporterValue {

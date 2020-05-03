@@ -24,7 +24,7 @@ use super::VkSpriteResourceManager;
 use crate::time::TimeState;
 
 struct SpriteRenderpassStats {
-    draw_call_count: u32
+    draw_call_count: u32,
 }
 
 /// Per-pass "global" data
@@ -51,28 +51,27 @@ struct QuadVertex {
 }
 
 /// Static data the represents a "unit" quad
-const QUAD_VERTEX_LIST : [QuadVertex; 4] = [
+const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
     QuadVertex {
         pos: [-0.5, -0.5, 0.0],
-        tex_coord: [1.0, 0.0]
+        tex_coord: [1.0, 0.0],
     },
     QuadVertex {
         pos: [0.5, -0.5, 0.0],
-        tex_coord: [0.0, 0.0]
-
+        tex_coord: [0.0, 0.0],
     },
     QuadVertex {
         pos: [0.5, 0.5, 0.0],
-        tex_coord: [0.0, 1.0]
+        tex_coord: [0.0, 1.0],
     },
     QuadVertex {
         pos: [-0.5, 0.5, 0.0],
-        tex_coord: [1.0, 1.0]
-    }
+        tex_coord: [1.0, 1.0],
+    },
 ];
 
 /// Draw order of QUAD_VERTEX_LIST
-const QUAD_INDEX_LIST : [u16; 6] = [0, 1, 2, 2, 3, 0];
+const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
@@ -121,20 +120,22 @@ pub struct VkSpriteRenderPass {
     pub uniform_buffers: Vec<ManuallyDrop<VkBuffer>>,
 
     // The sampler used to draw a sprite
-    pub image_sampler: vk::Sampler
+    pub image_sampler: vk::Sampler,
 }
 
 impl VkSpriteRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        sprite_resource_manager: &VkSpriteResourceManager
+        sprite_resource_manager: &VkSpriteResourceManager,
     ) -> VkResult<Self> {
         //
         // Command Buffers
         //
-        let command_pool =
-            Self::create_command_pool(&device_context.device(), &device_context.queue_family_indices())?;
+        let command_pool = Self::create_command_pool(
+            &device_context.device(),
+            &device_context.queue_family_indices(),
+        )?;
 
         //
         // Static resources used by GPU
@@ -143,15 +144,14 @@ impl VkSpriteRenderPass {
 
         let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
         for _ in 0..swapchain.swapchain_info.image_count {
-            uniform_buffers.push(Self::create_uniform_buffer(
-                &device_context,
-            )?)
+            uniform_buffers.push(Self::create_uniform_buffer(&device_context)?)
         }
 
         //
         // Descriptors
         //
-        let descriptor_set_layout_per_pass = Self::create_descriptor_set_layout_per_pass(&device_context.device())?;
+        let descriptor_set_layout_per_pass =
+            Self::create_descriptor_set_layout_per_pass(&device_context.device())?;
 
         let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
             &device_context.device(),
@@ -169,7 +169,7 @@ impl VkSpriteRenderPass {
 
         let descriptor_set_layouts = [
             descriptor_set_layout_per_pass,
-            sprite_resource_manager.descriptor_set_layout()
+            sprite_resource_manager.descriptor_set_layout(),
         ];
 
         //
@@ -240,7 +240,7 @@ impl VkSpriteRenderPass {
             uniform_buffers,
             descriptor_pool_per_pass,
             descriptor_sets_per_pass,
-            image_sampler
+            image_sampler,
         })
     }
 
@@ -283,9 +283,7 @@ impl VkSpriteRenderPass {
         unsafe { logical_device.create_sampler(&sampler_info, None).unwrap() }
     }
 
-    fn create_uniform_buffer(
-        device_context: &VkDeviceContext,
-    ) -> VkResult<ManuallyDrop<VkBuffer>> {
+    fn create_uniform_buffer(device_context: &VkDeviceContext) -> VkResult<ManuallyDrop<VkBuffer>> {
         let buffer = VkBuffer::new(
             device_context,
             vk_mem::MemoryUsage::CpuToGpu,
@@ -578,8 +576,7 @@ impl VkSpriteRenderPass {
         ];
 
         let layout_create_info =
-            vk::PipelineLayoutCreateInfo::builder()
-                .set_layouts(descriptor_set_layouts);
+            vk::PipelineLayoutCreateInfo::builder().set_layouts(descriptor_set_layouts);
 
         let pipeline_layout: vk::PipelineLayout =
             unsafe { logical_device.create_pipeline_layout(&layout_create_info, None)? };
@@ -680,9 +677,8 @@ impl VkSpriteRenderPass {
         index_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
         descriptor_set_per_pass: &vk::DescriptorSet,
         descriptor_set_per_texture: &[vk::DescriptorSet],
-        time_state: &TimeState
+        time_state: &TimeState,
     ) -> VkResult<()> {
-
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
         let clear_values = [vk::ClearValue {
@@ -710,17 +706,17 @@ impl VkSpriteRenderPass {
             texture_size: glam::Vec2,
             scale: f32,
             rotation: f32,
-            texture_descriptor_index: u32
+            texture_descriptor_index: u32,
         }
 
         #[derive(Debug)]
         struct DrawCall {
             index_buffer_first_element: u16,
             index_buffer_count: u16,
-            texture_descriptor_index: u32
+            texture_descriptor_index: u32,
         }
 
-        const SPRITE_COUNT : usize = 50;
+        const SPRITE_COUNT: usize = 50;
         let mut sprites = Vec::with_capacity(SPRITE_COUNT);
 
         if !descriptor_set_per_texture.is_empty() {
@@ -730,13 +726,20 @@ impl VkSpriteRenderPass {
 
             for i in (0..SPRITE_COUNT) {
                 sprites.push(Sprite {
-                    position: glam::Vec3::new(rng.gen_range(-400.0, 400.0), rng.gen_range(-300.0, 300.0), 0.0),
+                    position: glam::Vec3::new(
+                        rng.gen_range(-400.0, 400.0),
+                        rng.gen_range(-300.0, 300.0),
+                        0.0,
+                    ),
                     //texture_size: glam::Vec2::new(800.0, 450.0),
                     texture_size: glam::Vec2::new(850.0, 400.0),
                     //scale: rng.gen_range(0.1, 0.2),
                     scale: rng.gen_range(0.1, 0.2),
-                    rotation: rng.gen_range(-180.0, 180.0) + (rng.gen_range(-0.5, 0.5) * (time_state.total_time().as_secs_f32() * 180.0)),
-                    texture_descriptor_index: rng.gen_range(0, descriptor_set_per_texture.len() as u32)
+                    rotation: rng.gen_range(-180.0, 180.0)
+                        + (rng.gen_range(-0.5, 0.5)
+                            * (time_state.total_time().as_secs_f32() * 180.0)),
+                    texture_descriptor_index: rng
+                        .gen_range(0, descriptor_set_per_texture.len() as u32),
                 });
             }
         }
@@ -760,20 +763,25 @@ impl VkSpriteRenderPass {
 
         let mut draw_calls = Vec::with_capacity(sprites.len());
 
-        let mut vertex_list : Vec<Vertex> = Vec::with_capacity(QUAD_VERTEX_LIST.len() * sprites.len());
-        let mut index_list : Vec<u16> = Vec::with_capacity(QUAD_INDEX_LIST.len() * sprites.len());
+        let mut vertex_list: Vec<Vertex> =
+            Vec::with_capacity(QUAD_VERTEX_LIST.len() * sprites.len());
+        let mut index_list: Vec<u16> = Vec::with_capacity(QUAD_INDEX_LIST.len() * sprites.len());
         for sprite in &sprites {
             let draw_call = DrawCall {
                 index_buffer_first_element: 0,
                 index_buffer_count: 4,
-                texture_descriptor_index: sprite.texture_descriptor_index
+                texture_descriptor_index: sprite.texture_descriptor_index,
             };
 
-            const DEG_TO_RAD : f32 = std::f32::consts::PI / 180.0;
+            const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
 
-            let matrix = glam::Mat4::from_translation(sprite.position) *
-                    glam::Mat4::from_rotation_z(sprite.rotation * DEG_TO_RAD) *
-                    glam::Mat4::from_scale(glam::Vec3::new(sprite.texture_size.x() * sprite.scale, sprite.texture_size.y() * sprite.scale, 1.0));
+            let matrix = glam::Mat4::from_translation(sprite.position)
+                * glam::Mat4::from_rotation_z(sprite.rotation * DEG_TO_RAD)
+                * glam::Mat4::from_scale(glam::Vec3::new(
+                    sprite.texture_size.x() * sprite.scale,
+                    sprite.texture_size.y() * sprite.scale,
+                    1.0,
+                ));
 
             let vertex_buffer_first_element = vertex_list.len() as u16;
 
@@ -796,7 +804,7 @@ impl VkSpriteRenderPass {
             let draw_call = DrawCall {
                 index_buffer_first_element,
                 index_buffer_count: QUAD_INDEX_LIST.len() as u16,
-                texture_descriptor_index: sprite.texture_descriptor_index
+                texture_descriptor_index: sprite.texture_descriptor_index,
             };
 
             draw_calls.push(draw_call);
@@ -822,14 +830,13 @@ impl VkSpriteRenderPass {
         let mut draw_list_count = 0;
         if !sprites.is_empty() {
             let vertex_buffer = {
-                let vertex_buffer_size = vertex_list.len() as u64
-                    * std::mem::size_of::<Vertex>() as u64;
+                let vertex_buffer_size =
+                    vertex_list.len() as u64 * std::mem::size_of::<Vertex>() as u64;
                 let mut vertex_buffer = VkBuffer::new(
                     device_context,
                     vk_mem::MemoryUsage::CpuToGpu,
                     vk::BufferUsageFlags::VERTEX_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE
-                        | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
                     vertex_buffer_size,
                 )?;
 
@@ -839,14 +846,12 @@ impl VkSpriteRenderPass {
 
             //TODO: Duplicated code here
             let index_buffer = {
-                let index_buffer_size = index_list.len() as u64
-                    * std::mem::size_of::<u16>() as u64;
+                let index_buffer_size = index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
                 let mut index_buffer = VkBuffer::new(
                     device_context,
                     vk_mem::MemoryUsage::CpuToGpu,
                     vk::BufferUsageFlags::INDEX_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE
-                        | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
                     index_buffer_size,
                 )?;
 
@@ -858,8 +863,6 @@ impl VkSpriteRenderPass {
             index_buffers.push(ManuallyDrop::new(index_buffer));
             draw_list_count += 1;
         }
-
-
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(*renderpass)
@@ -947,7 +950,6 @@ impl VkSpriteRenderPass {
         extents: vk::Extent2D,
         hidpi_factor: f64,
     ) -> VkResult<()> {
-
         // // Pixel-perfect rendering...
         // let half_width = (extents.width as f64 / hidpi_factor) as f32;
         // let half_height = (extents.height as f64 / hidpi_factor) as f32;
@@ -976,7 +978,7 @@ impl VkSpriteRenderPass {
         present_index: usize,
         hidpi_factor: f64,
         sprite_resource_manager: &VkSpriteResourceManager,
-        time_state: &TimeState
+        time_state: &TimeState,
     ) -> VkResult<()> {
         //TODO: Integrate this into the command buffer we create below
         self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
@@ -993,7 +995,7 @@ impl VkSpriteRenderPass {
             &mut self.index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
             sprite_resource_manager.descriptor_sets(),
-            time_state
+            time_state,
         )
     }
 }
@@ -1030,14 +1032,11 @@ impl Drop for VkSpriteRenderPass {
             }
 
             device.destroy_pipeline(self.pipeline, None);
-            device
-                .destroy_pipeline_layout(self.pipeline_layout, None);
+            device.destroy_pipeline_layout(self.pipeline_layout, None);
             device.destroy_render_pass(self.renderpass, None);
 
-            device
-                .destroy_descriptor_pool(self.descriptor_pool_per_pass, None);
-            device
-                .destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
+            device.destroy_descriptor_pool(self.descriptor_pool_per_pass, None);
+            device.destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
         }
 
         log::debug!("destroyed VkSpriteRenderPass");

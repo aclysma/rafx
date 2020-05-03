@@ -78,7 +78,9 @@ impl VkSwapchain {
         })
     }
 
-    fn allocate_semaphores_per_frame(device_context: &VkDeviceContext) -> VkResult<Vec<vk::Semaphore>> {
+    fn allocate_semaphores_per_frame(
+        device_context: &VkDeviceContext
+    ) -> VkResult<Vec<vk::Semaphore>> {
         let mut semaphores = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT);
         for _ in 0..MAX_FRAMES_IN_FLIGHT {
             let semaphore_create_info = vk::SemaphoreCreateInfo::builder();

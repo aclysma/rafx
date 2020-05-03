@@ -60,7 +60,7 @@ pub struct VkSurface {
     // This is set to false until tear_down is called. We don't use "normal" drop because the user
     // may need to pass in an EventListener to get cleanup callbacks. We still hook drop and if
     // torn_down is false, we can log an error.
-    torn_down: bool
+    torn_down: bool,
 }
 
 impl VkSurface {
@@ -68,7 +68,7 @@ impl VkSurface {
     pub fn new(
         context: &VkContext,
         window: &dyn Window,
-        event_listener: Option<&mut dyn VkSurfaceEventListener>
+        event_listener: Option<&mut dyn VkSurfaceEventListener>,
     ) -> VkResult<VkSurface> {
         let swapchain = ManuallyDrop::new(VkSwapchain::new(
             &context.device().device_context,
@@ -93,11 +93,14 @@ impl VkSurface {
             previous_inner_size,
             present_mode_priority: context.present_mode_priority().clone(),
             //event_listeners,
-            torn_down: false
+            torn_down: false,
         })
     }
 
-    pub fn tear_down(&mut self, event_listener: Option<&mut dyn VkSurfaceEventListener>) {
+    pub fn tear_down(
+        &mut self,
+        event_listener: Option<&mut dyn VkSurfaceEventListener>,
+    ) {
         unsafe {
             self.device_context.device().device_wait_idle().unwrap();
         }
@@ -115,7 +118,7 @@ impl VkSurface {
     pub fn draw(
         &mut self,
         window: &dyn Window,
-        mut event_listener: Option<&mut dyn VkSurfaceEventListener>
+        mut event_listener: Option<&mut dyn VkSurfaceEventListener>,
     ) -> VkResult<()> {
         if window.physical_size() != self.previous_inner_size {
             debug!("Detected window inner size change, rebuilding swapchain");
@@ -125,7 +128,9 @@ impl VkSurface {
         let result = self.do_draw(window, &mut event_listener);
         if let Err(e) = result {
             match e {
-                ash::vk::Result::ERROR_OUT_OF_DATE_KHR => self.rebuild_swapchain(window, &mut event_listener),
+                ash::vk::Result::ERROR_OUT_OF_DATE_KHR => {
+                    self.rebuild_swapchain(window, &mut event_listener)
+                }
                 ash::vk::Result::SUCCESS => Ok(()),
                 ash::vk::Result::SUBOPTIMAL_KHR => Ok(()),
                 _ => {
@@ -141,7 +146,7 @@ impl VkSurface {
     fn rebuild_swapchain(
         &mut self,
         window: &dyn Window,
-        event_listener: &mut Option<&mut dyn VkSurfaceEventListener>
+        event_listener: &mut Option<&mut dyn VkSurfaceEventListener>,
     ) -> VkResult<()> {
         // Let event listeners know the swapchain will be destroyed
         unsafe {
@@ -177,7 +182,7 @@ impl VkSurface {
     fn do_draw(
         &mut self,
         window: &dyn Window,
-        event_listener: &mut Option<&mut dyn VkSurfaceEventListener>
+        event_listener: &mut Option<&mut dyn VkSurfaceEventListener>,
     ) -> VkResult<()> {
         let frame_fence = self.swapchain.in_flight_fences[self.sync_frame_index];
 
@@ -205,7 +210,8 @@ impl VkSurface {
 
         let mut command_buffers = vec![];
         if let Some(event_listener) = event_listener {
-            let mut buffers = event_listener.render(window, &self.device_context, present_index as usize)?;
+            let mut buffers =
+                event_listener.render(window, &self.device_context, present_index as usize)?;
             command_buffers.append(&mut buffers);
         }
 

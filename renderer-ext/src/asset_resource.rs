@@ -35,15 +35,17 @@ impl Default for AssetResource {
 impl AssetResource {
     pub fn add_storage<T>(&mut self)
     where
-        T : TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send
+        T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
     {
         self.storage.add_storage::<T>();
     }
 
-    pub fn add_storage_with_uploader<T, U>(&mut self, uploader: Box<U>)
-    where
-        T : TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
-        U : StorageUploader<T>
+    pub fn add_storage_with_uploader<T, U>(
+        &mut self,
+        uploader: Box<U>,
+    ) where
+        T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
+        U: StorageUploader<T>,
     {
         self.storage.add_storage_with_uploader::<T, U>(uploader);
     }

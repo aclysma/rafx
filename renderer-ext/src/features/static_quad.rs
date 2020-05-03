@@ -134,7 +134,10 @@ impl PrepareJob<CommandWriter> for StaticQuadPrepareJob {
         self: Box<Self>,
         _frame_packet: &FramePacket,
         _views: &[&RenderView],
-    ) -> (Box<dyn FeatureCommandWriter<CommandWriter>>, FeatureSubmitNodes) {
+    ) -> (
+        Box<dyn FeatureCommandWriter<CommandWriter>>,
+        FeatureSubmitNodes,
+    ) {
         (
             Box::new(StaticQuadCommandWriter {}),
             FeatureSubmitNodes::default(),

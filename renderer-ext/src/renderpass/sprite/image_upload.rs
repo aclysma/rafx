@@ -1,4 +1,6 @@
-use renderer_shell_vulkan::{VkTransferUploadState, VkDevice, VkDeviceContext, VkTransferUpload, VkImage};
+use renderer_shell_vulkan::{
+    VkTransferUploadState, VkDevice, VkDeviceContext, VkTransferUpload, VkImage,
+};
 use std::sync::mpsc::{Sender, Receiver};
 use ash::prelude::VkResult;
 use std::time::Duration;
@@ -13,15 +15,15 @@ use atelier_assets::loader::AssetLoadOp;
 // This is registered with the asset storage which lets us hook when assets are updated
 pub struct ImageUploader {
     device_context: VkDeviceContext,
-    tx: Sender<PendingImageUpload>
+    tx: Sender<PendingImageUpload>,
 }
 
 impl ImageUploader {
-    pub fn new(device_context: VkDeviceContext, tx: Sender<PendingImageUpload>) -> Self {
-        ImageUploader {
-            device_context,
-            tx
-        }
+    pub fn new(
+        device_context: VkDeviceContext,
+        tx: Sender<PendingImageUpload>,
+    ) -> Self {
+        ImageUploader { device_context, tx }
     }
 }
 
@@ -30,34 +32,31 @@ impl StorageUploader<ImageAsset> for ImageUploader {
         &self,
         asset: &ImageAsset,
         load_op: AssetLoadOp,
-        resource_handle: ResourceHandle<ImageAsset>
+        resource_handle: ResourceHandle<ImageAsset>,
     ) {
         let texture = DecodedTexture {
             width: asset.width,
             height: asset.height,
-            data: asset.data.clone()
+            data: asset.data.clone(),
         };
 
         //TODO: This is not respecting commit() - it just updates sprites as soon as it can
-        self.tx.send(PendingImageUpload {
-            load_op,
-            texture,
-            resource_handle
-        }).unwrap(); //TODO: Better error handling
+        self.tx
+            .send(PendingImageUpload {
+                load_op,
+                texture,
+                resource_handle,
+            })
+            .unwrap(); //TODO: Better error handling
     }
 
-    fn free(&self, resource_handle: ResourceHandle<ImageAsset>) {
+    fn free(
+        &self,
+        resource_handle: ResourceHandle<ImageAsset>,
+    ) {
         //TODO: We are not unloading images
     }
 }
-
-
-
-
-
-
-
-
 
 // A message sent to ImageUploadQueue
 pub struct PendingImageUpload {
@@ -71,7 +70,7 @@ pub enum InProgressImageUploadPollResult {
     Pending,
     Complete(Vec<ManuallyDrop<VkImage>>, Vec<ResourceHandle<ImageAsset>>),
     Error(Box<Error + 'static + Send>),
-    Destroyed
+    Destroyed,
 }
 
 // This is an inner of InProgressImageUpload - it is wrapped in a Option to avoid borrowing issues
@@ -80,12 +79,12 @@ struct InProgressImageUploadInner {
     load_ops: Vec<AssetLoadOp>,
     images: Vec<ManuallyDrop<VkImage>>,
     resource_handles: Vec<ResourceHandle<ImageAsset>>,
-    upload: VkTransferUpload
+    upload: VkTransferUpload,
 }
 
 // A single upload which may contain multiple images
 struct InProgressImageUpload {
-    inner: Option<InProgressImageUploadInner>
+    inner: Option<InProgressImageUploadInner>,
 }
 
 impl InProgressImageUpload {
@@ -93,18 +92,16 @@ impl InProgressImageUpload {
         load_ops: Vec<AssetLoadOp>,
         images: Vec<ManuallyDrop<VkImage>>,
         resource_handles: Vec<ResourceHandle<ImageAsset>>,
-        upload: VkTransferUpload
+        upload: VkTransferUpload,
     ) -> Self {
         let inner = InProgressImageUploadInner {
             load_ops,
             images,
             resource_handles,
-            upload
+            upload,
         };
 
-        InProgressImageUpload {
-            inner: Some(inner)
-        }
+        InProgressImageUpload { inner: Some(inner) }
     }
 
     // The main state machine for an upload:
@@ -114,40 +111,41 @@ impl InProgressImageUpload {
     // Calls load_op.complete() or load_op.error() as appropriate
     pub fn poll_load(
         &mut self,
-        device: &VkDevice
+        device: &VkDevice,
     ) -> InProgressImageUploadPollResult {
         loop {
             if let Some(mut inner) = self.take_inner() {
                 match inner.upload.state() {
-                    Ok(state) => {
-                        match state {
-                            VkTransferUploadState::Writable => {
-                                println!("VkTransferUploadState::Writable");
-                                inner.upload.submit_transfer(device.queues.transfer_queue);
-                                self.inner = Some(inner);
-                            },
-                            VkTransferUploadState::SentToTransferQueue => {
-                                println!("VkTransferUploadState::SentToTransferQueue");
-                                self.inner = Some(inner);
-                                break InProgressImageUploadPollResult::Pending;
-                            },
-                            VkTransferUploadState::PendingSubmitDstQueue => {
-                                println!("VkTransferUploadState::PendingSubmitDstQueue");
-                                inner.upload.submit_dst(device.queues.graphics_queue);
-                                self.inner = Some(inner);
-                            },
-                            VkTransferUploadState::SentToDstQueue => {
-                                println!("VkTransferUploadState::SentToDstQueue");
-                                self.inner = Some(inner);
-                                break InProgressImageUploadPollResult::Pending;
-                            },
-                            VkTransferUploadState::Complete => {
-                                println!("VkTransferUploadState::Complete");
-                                for load_op in inner.load_ops {
-                                    load_op.complete();
-                                }
-                                break InProgressImageUploadPollResult::Complete(inner.images, inner.resource_handles);
-                            },
+                    Ok(state) => match state {
+                        VkTransferUploadState::Writable => {
+                            println!("VkTransferUploadState::Writable");
+                            inner.upload.submit_transfer(device.queues.transfer_queue);
+                            self.inner = Some(inner);
+                        }
+                        VkTransferUploadState::SentToTransferQueue => {
+                            println!("VkTransferUploadState::SentToTransferQueue");
+                            self.inner = Some(inner);
+                            break InProgressImageUploadPollResult::Pending;
+                        }
+                        VkTransferUploadState::PendingSubmitDstQueue => {
+                            println!("VkTransferUploadState::PendingSubmitDstQueue");
+                            inner.upload.submit_dst(device.queues.graphics_queue);
+                            self.inner = Some(inner);
+                        }
+                        VkTransferUploadState::SentToDstQueue => {
+                            println!("VkTransferUploadState::SentToDstQueue");
+                            self.inner = Some(inner);
+                            break InProgressImageUploadPollResult::Pending;
+                        }
+                        VkTransferUploadState::Complete => {
+                            println!("VkTransferUploadState::Complete");
+                            for load_op in inner.load_ops {
+                                load_op.complete();
+                            }
+                            break InProgressImageUploadPollResult::Complete(
+                                inner.images,
+                                inner.resource_handles,
+                            );
                         }
                     },
                     Err(err) => {
@@ -155,7 +153,7 @@ impl InProgressImageUpload {
                             load_op.error(err);
                         }
                         break InProgressImageUploadPollResult::Error(Box::new(err));
-                    },
+                    }
                 }
             } else {
                 break InProgressImageUploadPollResult::Destroyed;
@@ -184,11 +182,14 @@ pub struct ImageUploadQueue {
     uploads_in_progress: Vec<InProgressImageUpload>,
 
     // This channel forwards completed uploads to the sprite resource manager
-    sprite_update_tx: Sender<ImageUpdate>
+    sprite_update_tx: Sender<ImageUpdate>,
 }
 
 impl ImageUploadQueue {
-    pub fn new(device_context: &VkDeviceContext, sprite_update_tx: Sender<ImageUpdate>) -> Self {
+    pub fn new(
+        device_context: &VkDeviceContext,
+        sprite_update_tx: Sender<ImageUpdate>,
+    ) -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
 
         ImageUploadQueue {
@@ -196,7 +197,7 @@ impl ImageUploadQueue {
             tx,
             rx,
             uploads_in_progress: Default::default(),
-            sprite_update_tx
+            sprite_update_tx,
         }
     }
 
@@ -223,17 +224,25 @@ impl ImageUploadQueue {
 
         let mut upload = VkTransferUpload::new(
             &self.device_context,
-            self.device_context.queue_family_indices().transfer_queue_family_index,
-            self.device_context.queue_family_indices().graphics_queue_family_index,
-            1024 * 1024 * 16
+            self.device_context
+                .queue_family_indices()
+                .transfer_queue_family_index,
+            self.device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            1024 * 1024 * 16,
         )?;
 
         let images = enqueue_load_images(
             &self.device_context,
             &mut upload,
-            self.device_context.queue_family_indices().transfer_queue_family_index,
-            self.device_context.queue_family_indices().graphics_queue_family_index,
-            &decoded_textures
+            self.device_context
+                .queue_family_indices()
+                .transfer_queue_family_index,
+            self.device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            &decoded_textures,
         )?;
 
         upload.submit_transfer(self.device_context.queues().transfer_queue)?;
@@ -241,32 +250,35 @@ impl ImageUploadQueue {
             load_ops,
             images,
             resource_handles,
-            upload
+            upload,
         ));
 
         Ok(())
     }
 
-    fn update_existing_uploads(&mut self, device: &VkDevice) {
+    fn update_existing_uploads(
+        &mut self,
+        device: &VkDevice,
+    ) {
         // iterate backwards so we can use swap_remove
         for i in (0..self.uploads_in_progress.len()).rev() {
             let result = self.uploads_in_progress[i].poll_load(device);
             match result {
                 InProgressImageUploadPollResult::Pending => {
                     // do nothing
-                },
+                }
                 InProgressImageUploadPollResult::Complete(images, resource_handles) => {
                     let upload = self.uploads_in_progress.swap_remove(i);
                     self.sprite_update_tx.send(ImageUpdate {
                         images,
-                        resource_handles
+                        resource_handles,
                     });
-                },
+                }
                 InProgressImageUploadPollResult::Error(e) => {
                     let upload = self.uploads_in_progress.swap_remove(i);
                     //TODO: error() probably needs to accept a box so we can relay the error
                     // image.load_op.error(e);
-                },
+                }
                 InProgressImageUploadPollResult::Destroyed => {
                     // not expected - this only occurs if polling the upload when it is already in a complete or error state
                     unreachable!();
@@ -275,7 +287,10 @@ impl ImageUploadQueue {
         }
     }
 
-    pub fn update(&mut self, device: &VkDevice) -> VkResult<()> {
+    pub fn update(
+        &mut self,
+        device: &VkDevice,
+    ) -> VkResult<()> {
         self.start_new_uploads()?;
         self.update_existing_uploads(device);
         Ok(())

@@ -8,13 +8,19 @@ pub type VkPoolResourceAllocatorAllocFn<T: VkPoolResourceImpl> = Fn(&ash::Device
 
 /// Implement to customize how VkPoolAllocator resets and destroys pools
 pub trait VkPoolResourceImpl {
-    fn reset(device: &ash::Device, resource: &mut Self) -> VkResult<()>;
-    fn destroy(device: &ash::Device, resource: Self) -> VkResult<()>;
+    fn reset(
+        device: &ash::Device,
+        resource: &mut Self,
+    ) -> VkResult<()>;
+    fn destroy(
+        device: &ash::Device,
+        resource: Self,
+    ) -> VkResult<()>;
 }
 
 struct VkPoolResourceInFlight<T: VkPoolResourceImpl> {
     pool: T,
-    live_until_frame: Wrapping<u32>
+    live_until_frame: Wrapping<u32>,
 }
 
 /// This handles waiting for N frames to pass before resetting the pool. "Restting" could mean
@@ -44,7 +50,7 @@ pub struct VkPoolAllocator<T: VkPoolResourceImpl> {
     created_pool_count: u32,
 
     // Max number of pools to create (sum includes allocated pools, pools in flight, and reset pools
-    max_pool_count: u32
+    max_pool_count: u32,
 }
 
 impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
@@ -56,7 +62,7 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
     pub fn new<F: Fn(&ash::Device) -> VkResult<T> + 'static>(
         max_in_flight_frames: u32,
         max_pool_count: u32,
-        allocate_fn: F
+        allocate_fn: F,
     ) -> Self {
         VkPoolAllocator {
             allocate_fn: Box::new(allocate_fn),
@@ -65,15 +71,19 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
             max_in_flight_frames: Wrapping(max_in_flight_frames),
             frame_index: Wrapping(0),
             created_pool_count: 0,
-            max_pool_count
+            max_pool_count,
         }
     }
 
     /// Allocate a pool - either reusing an old one that has been reset or creating a new one. Will
     /// assert that we do not exceed max_pool_count. The pool is allowed to exist until retire_pool
     /// is called. After this point, we will wait for N frames before restting it.
-    pub fn allocate_pool(&mut self, device: &ash::Device) -> VkResult<T> {
-        self.reset_pools.pop()
+    pub fn allocate_pool(
+        &mut self,
+        device: &ash::Device,
+    ) -> VkResult<T> {
+        self.reset_pools
+            .pop()
             .map(|pool| Ok(pool))
             .unwrap_or_else(|| {
                 self.created_pool_count += 1;
@@ -83,16 +93,22 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
     }
 
     /// Schedule the pool to reset after we complete N frames
-    pub fn retire_pool(&mut self, pool: T) {
+    pub fn retire_pool(
+        &mut self,
+        pool: T,
+    ) {
         self.in_flight_pools.push_back(VkPoolResourceInFlight {
             pool,
-            live_until_frame: self.frame_index + self.max_in_flight_frames + Wrapping(1)
+            live_until_frame: self.frame_index + self.max_in_flight_frames + Wrapping(1),
         });
     }
 
     /// Call when we are ready to reset another set of resources, most likely when a frame is
     /// presented or a new frame begins
-    pub fn update(&mut self, device: &ash::Device) {
+    pub fn update(
+        &mut self,
+        device: &ash::Device,
+    ) {
         self.frame_index += Wrapping(1);
 
         // Determine how many pools we can drain
@@ -108,7 +124,7 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
         }
 
         // Reset them and add them to the list of pools ready to be allocated
-        let pools_to_reset : Vec<_> = self.in_flight_pools.drain(0..pools_to_drain).collect();
+        let pools_to_reset: Vec<_> = self.in_flight_pools.drain(0..pools_to_drain).collect();
         for mut pool_to_reset in pools_to_reset {
             unsafe {
                 T::reset(device, &mut pool_to_reset.pool);
@@ -120,7 +136,10 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
 
     /// Immediately destroy everything. We assume the device is idle and nothing is in flight.
     /// Calling this function when the device is not idle could result in a deadlock
-    pub fn destroy(&mut self, device: &ash::Device) -> VkResult<()> {
+    pub fn destroy(
+        &mut self,
+        device: &ash::Device,
+    ) -> VkResult<()> {
         unsafe {
             device.device_wait_idle();
         }
@@ -149,13 +168,17 @@ impl<T: VkPoolResourceImpl> Drop for VkPoolAllocator<T> {
 // Implementation for descriptor pools
 //
 impl VkPoolResourceImpl for vk::DescriptorPool {
-    fn reset(device: &Device, resource: &mut Self) -> VkResult<()> {
-        unsafe {
-            device.reset_descriptor_pool(*resource, vk::DescriptorPoolResetFlags::empty())
-        }
+    fn reset(
+        device: &Device,
+        resource: &mut Self,
+    ) -> VkResult<()> {
+        unsafe { device.reset_descriptor_pool(*resource, vk::DescriptorPoolResetFlags::empty()) }
     }
 
-    fn destroy(device: &Device, resource: Self) -> VkResult<()> {
+    fn destroy(
+        device: &Device,
+        resource: Self,
+    ) -> VkResult<()> {
         unsafe {
             device.destroy_descriptor_pool(resource, None);
         }

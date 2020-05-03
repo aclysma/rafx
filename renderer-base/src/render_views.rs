@@ -28,7 +28,7 @@ pub struct RenderPhaseMask(RenderPhaseMaskInnerType);
 
 impl RenderPhaseMask {
     pub fn is_included<RenderPhaseT: RenderPhase>(&self) -> bool {
-        (self.0 & 1<<RenderPhaseT::render_phase_index()) != 0
+        (self.0 & 1 << RenderPhaseT::render_phase_index()) != 0
     }
 }
 

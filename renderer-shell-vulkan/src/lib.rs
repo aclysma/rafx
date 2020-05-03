@@ -145,7 +145,6 @@ impl PhysicalDeviceType {
     }
 }
 
-
 use std::sync::Arc;
 use std::mem::ManuallyDrop;
 type Allocator = Arc<ManuallyDrop<vk_mem::Allocator>>;

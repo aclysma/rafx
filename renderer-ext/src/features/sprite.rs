@@ -223,7 +223,8 @@ impl DefaultPrepareJobImpl<CommandWriter> for SpritePrepareJobImpl {
 
         // This can read per-frame and per-view data
         //let extracted_data = &self.per_frame_data[view_node.frame_node_index() as usize];
-        let extracted_data = &self.per_view_data[view.view_index() as usize][view_node_index as usize];
+        let extracted_data =
+            &self.per_view_data[view.view_index() as usize][view_node_index as usize];
 
         if extracted_data.alpha >= 1.0 {
             submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(view_node_index, 0, 0.0);

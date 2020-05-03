@@ -1,5 +1,7 @@
-
-use renderer_shell_vulkan::{LogicalSize, VkSurfaceEventListener, Window, VkDevice, VkSwapchain, VkSurface, VkDeviceContext, VkTransferUpload, VkTransferUploadState, VkImage};
+use renderer_shell_vulkan::{
+    LogicalSize, VkSurfaceEventListener, Window, VkDevice, VkSwapchain, VkSurface, VkDeviceContext,
+    VkTransferUpload, VkTransferUploadState, VkImage,
+};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -10,7 +12,6 @@ use sdl2::mouse::MouseState;
 use renderer_ext::GameRendererWithContext;
 use image::{GenericImageView, load};
 use atelier_assets::loader as atelier_loader;
-
 
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
@@ -27,7 +28,9 @@ use std::sync::mpsc::{Sender, Receiver};
 use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
-use renderer_ext::renderpass::sprite::{VkSpriteResourceManager, ImageUpdate, ImageUploadQueue, ImageUploader};
+use renderer_ext::renderpass::sprite::{
+    VkSpriteResourceManager, ImageUpdate, ImageUploadQueue, ImageUploader,
+};
 
 fn main() {
     // Setup logging
@@ -60,7 +63,11 @@ fn main() {
     };
 
     let sdl_window = video_subsystem
-        .window("Renderer Prototype", logical_size.width, logical_size.height)
+        .window(
+            "Renderer Prototype",
+            logical_size.width,
+            logical_size.height,
+        )
         .position_centered()
         .allow_highdpi()
         .resizable()
@@ -95,7 +102,7 @@ fn main() {
     // Handles routing data between the asset system and sprite resource manager
     let mut image_upload_queue = ImageUploadQueue::new(
         renderer.context().device_context(),
-        renderer.sprite_resource_manager().image_update_tx().clone()
+        renderer.sprite_resource_manager().image_update_tx().clone(),
     );
 
     // Force an image to load and stay resident in memory
@@ -103,10 +110,9 @@ fn main() {
         let device_context = renderer.context().device_context();
 
         let mut asset_resource = AssetResource::default();
-        asset_resource.add_storage_with_uploader::<ImageAsset, ImageUploader>(Box::new(ImageUploader::new(
-            device_context.clone(),
-            image_upload_queue.tx().clone()
-        )));
+        asset_resource.add_storage_with_uploader::<ImageAsset, ImageUploader>(Box::new(
+            ImageUploader::new(device_context.clone(), image_upload_queue.tx().clone()),
+        ));
 
         let asset_uuid = asset_uuid!("d60aa147-e1c7-42dc-9e99-40ba882544a7");
 
@@ -120,11 +126,6 @@ fn main() {
         );
         (asset_resource, image_handle)
     };
-
-
-
-
-
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 
@@ -181,7 +182,10 @@ fn main() {
         renderer.draw(&window, &time).unwrap();
         time.update();
 
-        if print_time_event.try_take_event(time.current_instant(), std::time::Duration::from_secs_f32(1.0)) {
+        if print_time_event.try_take_event(
+            time.current_instant(),
+            std::time::Duration::from_secs_f32(1.0),
+        ) {
             println!("FPS: {}", time.updates_per_second());
             //renderer.dump_stats();
         }

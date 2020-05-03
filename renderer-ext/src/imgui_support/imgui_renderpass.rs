@@ -115,8 +115,10 @@ impl VkImGuiRenderPass {
             &pipeline_resources.renderpass,
         );
 
-        let command_pool =
-            Self::create_command_pool(device_context.device(), &device_context.queue_family_indices())?;
+        let command_pool = Self::create_command_pool(
+            device_context.device(),
+            &device_context.queue_family_indices(),
+        )?;
 
         let command_buffers = Self::create_command_buffers(
             device_context.device(),
@@ -137,28 +139,33 @@ impl VkImGuiRenderPass {
 
         let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
         for _ in 0..swapchain.swapchain_info.image_count {
-            uniform_buffers.push(Self::create_uniform_buffer(
-                &device_context,
-            )?)
+            uniform_buffers.push(Self::create_uniform_buffer(&device_context)?)
         }
 
         let decoded_texture = DecodedTexture {
             width: font_atlas.width,
             height: font_atlas.height,
-            data: font_atlas.data.clone()
+            data: font_atlas.data.clone(),
         };
 
         //let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
         let images = crate::image_utils::load_images(
             &device_context,
-            device_context.queue_family_indices().transfer_queue_family_index,
+            device_context
+                .queue_family_indices()
+                .transfer_queue_family_index,
             device_context.queues().transfer_queue,
-            device_context.queue_family_indices().graphics_queue_family_index,
+            device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
             device_context.queues().graphics_queue,
-            &[decoded_texture]
+            &[decoded_texture],
         )?;
 
-        let image_views : Vec<_> = images.iter().map(|image| Self::create_texture_image_view(device_context.device(), &image.image)).collect();
+        let image_views: Vec<_> = images
+            .iter()
+            .map(|image| Self::create_texture_image_view(device_context.device(), &image.image))
+            .collect();
 
         let image_sampler = Self::create_texture_image_sampler(device_context.device());
 
@@ -174,7 +181,7 @@ impl VkImGuiRenderPass {
             swapchain.swapchain_info.image_count,
             &uniform_buffers,
             &image_views,
-            image_sampler
+            image_sampler,
         )?;
 
         for i in 0..swapchain.swapchain_info.image_count {
@@ -214,7 +221,7 @@ impl VkImGuiRenderPass {
             descriptor_sets,
             images,
             image_views,
-            image_sampler
+            image_sampler,
         })
     }
 
@@ -545,9 +552,7 @@ impl VkImGuiRenderPass {
         unsafe { logical_device.allocate_command_buffers(&command_buffer_allocate_info) }
     }
 
-    fn create_uniform_buffer(
-        device_context: &VkDeviceContext,
-    ) -> VkResult<ManuallyDrop<VkBuffer>> {
+    fn create_uniform_buffer(device_context: &VkDeviceContext) -> VkResult<ManuallyDrop<VkBuffer>> {
         let buffer = VkBuffer::new(
             device_context,
             vk_mem::MemoryUsage::CpuToGpu,
@@ -637,7 +642,7 @@ impl VkImGuiRenderPass {
         swapchain_image_count: usize,
         uniform_buffers: &Vec<ManuallyDrop<VkBuffer>>,
         image_views: &[vk::ImageView],
-        image_sampler: vk::Sampler
+        image_sampler: vk::Sampler,
     ) -> VkResult<Vec<Vec<vk::DescriptorSet>>> {
         let mut all_sets = Vec::with_capacity(swapchain_image_count);
 
@@ -1054,14 +1059,11 @@ impl Drop for VkImGuiRenderPass {
             }
 
             device.destroy_pipeline(self.pipeline, None);
-            device
-                .destroy_pipeline_layout(self.pipeline_layout, None);
+            device.destroy_pipeline_layout(self.pipeline_layout, None);
             device.destroy_render_pass(self.renderpass, None);
 
-            device
-                .destroy_descriptor_pool(self.descriptor_pool, None);
-            device
-                .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
+            device.destroy_descriptor_pool(self.descriptor_pool, None);
+            device.destroy_descriptor_set_layout(self.descriptor_set_layout, None);
         }
 
         log::debug!("destroyed VkImGuiRenderPass");

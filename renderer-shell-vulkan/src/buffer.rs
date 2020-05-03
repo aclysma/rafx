@@ -45,15 +45,16 @@ impl VkBuffer {
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
         //TODO: Better way of handling allocator errors
-        let (buffer, allocation, allocation_info) =
-            device_context.allocator().create_buffer(&buffer_info, &allocation_create_info)
-                .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
+        let (buffer, allocation, allocation_info) = device_context
+            .allocator()
+            .create_buffer(&buffer_info, &allocation_create_info)
+            .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
 
         Ok(VkBuffer {
             device_context: device_context.clone(),
             buffer,
             allocation,
-            allocation_info
+            allocation_info,
         })
     }
 
@@ -62,8 +63,12 @@ impl VkBuffer {
         data: &[T],
     ) -> VkResult<()> {
         //TODO: Better way of handling allocator errors
-        let ptr = self.device_context.allocator().map_memory(&self.allocation)
-            .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)? as *mut std::ffi::c_void;
+        let ptr = self
+            .device_context
+            .allocator()
+            .map_memory(&self.allocation)
+            .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?
+            as *mut std::ffi::c_void;
 
         let required_alignment = mem::align_of::<T>() as u64;
         let mut align = unsafe { Align::new(ptr, required_alignment, self.size()) };
@@ -71,7 +76,9 @@ impl VkBuffer {
         align.copy_from_slice(data);
 
         //TODO: Better way of handling allocator errors
-        self.device_context.allocator().unmap_memory(&self.allocation)
+        self.device_context
+            .allocator()
+            .unmap_memory(&self.allocation)
             .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?;
 
         // The staging buffer is coherent so flushing is not necessary
@@ -85,7 +92,9 @@ impl Drop for VkBuffer {
         trace!("destroying VkBuffer");
 
         unsafe {
-            self.device_context.allocator().destroy_buffer(self.buffer, &self.allocation);
+            self.device_context
+                .allocator()
+                .destroy_buffer(self.buffer, &self.allocation);
         }
 
         trace!("destroyed VkBuffer");
