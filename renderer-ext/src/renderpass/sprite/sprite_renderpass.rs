@@ -21,6 +21,7 @@ use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
 use super::VkSpriteResourceManager;
+use crate::time::TimeState;
 
 struct SpriteRenderpassStats {
     draw_call_count: u32
@@ -682,6 +683,7 @@ impl VkSpriteRenderPass {
         index_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
         descriptor_set_per_pass: &vk::DescriptorSet,
         descriptor_set_per_texture: &[vk::DescriptorSet],
+        time_state: &TimeState
     ) -> VkResult<()> {
 
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
@@ -721,7 +723,7 @@ impl VkSpriteRenderPass {
             texture_descriptor_index: u32
         }
 
-        const SPRITE_COUNT : usize = 5;
+        const SPRITE_COUNT : usize = 50;
         let mut sprites = Vec::with_capacity(SPRITE_COUNT);
 
         if !descriptor_set_per_texture.is_empty() {
@@ -733,10 +735,10 @@ impl VkSpriteRenderPass {
                 sprites.push(Sprite {
                     position: glam::Vec3::new(rng.gen_range(-400.0, 400.0), rng.gen_range(-300.0, 300.0), 0.0),
                     //texture_size: glam::Vec2::new(800.0, 450.0),
-                    texture_size: glam::Vec2::new(512.0, 512.0),
+                    texture_size: glam::Vec2::new(850.0, 400.0),
                     //scale: rng.gen_range(0.1, 0.2),
-                    scale: rng.gen_range(0.5, 1.0),
-                    rotation: rng.gen_range(-180.0, 180.0),
+                    scale: rng.gen_range(0.1, 0.2),
+                    rotation: rng.gen_range(-180.0, 180.0) + (rng.gen_range(-0.5, 0.5) * (time_state.total_time().as_secs_f32() * 180.0)),
                     texture_descriptor_index: rng.gen_range(0, descriptor_set_per_texture.len() as u32)
                 });
             }
@@ -977,7 +979,8 @@ impl VkSpriteRenderPass {
         device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         present_index: usize,
         hidpi_factor: f64,
-        sprite_resource_manager: &VkSpriteResourceManager
+        sprite_resource_manager: &VkSpriteResourceManager,
+        time_state: &TimeState
     ) -> VkResult<()> {
         //TODO: Integrate this into the command buffer we create below
         self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
@@ -995,6 +998,7 @@ impl VkSpriteRenderPass {
             &mut self.index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
             sprite_resource_manager.descriptor_sets(),
+            time_state
         )
     }
 }

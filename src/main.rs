@@ -42,6 +42,9 @@ fn main() {
         daemon::run();
     });
 
+    let mut time = renderer_ext::time::TimeState::new();
+    time.update();
+
     // Setup SDL
     let sdl_context = sdl2::init().expect("Failed to initialize sdl2");
     let video_subsystem = sdl_context
@@ -69,7 +72,7 @@ fn main() {
     let imgui_manager = renderer_ext::imgui_support::init_imgui_manager(&sdl_window);
 
     let window = Sdl2Window::new(&sdl_window);
-    let renderer = GameRendererWithShell::new(&window, imgui_manager.build_font_atlas());
+    let renderer = GameRendererWithShell::new(&window, imgui_manager.build_font_atlas(), &time);
 
     // Check if there were error setting up vulkan
     if let Err(e) = renderer {
@@ -88,9 +91,6 @@ fn main() {
     let mut event_pump = sdl_context
         .event_pump()
         .expect("Could not create sdl event pump");
-
-    let mut time = renderer_ext::time::TimeState::new();
-    time.update();
 
     // Handles routing data between the asset system and sprite resource manager
     let mut image_upload_queue = ImageUploadQueue::new(
@@ -179,7 +179,7 @@ fn main() {
         //
         // Redraw
         //
-        renderer.draw(&window).unwrap();
+        renderer.draw(&window, &time).unwrap();
         time.update();
 
         if print_time_event.try_take_event(time.current_instant(), std::time::Duration::from_secs_f32(1.0)) {

@@ -194,14 +194,28 @@ impl VkSpriteResourceManager {
 
         self.sprites.resize_with(max_index, || None);
 
+        let mut old_sprites = vec![];
         for (i, image) in sprite_update.images.into_iter().enumerate() {
             let resource_handle = sprite_update.resource_handles[i];
 
             let image_view = Self::create_texture_image_view(&self.device, &image.image);
-            self.sprites[resource_handle.index() as usize] = Some(VkSprite {
+
+            // Do a swap so if there is an old sprite we can properly destroy it
+            let mut sprite = Some(VkSprite {
                 image,
                 image_view
             });
+            std::mem::swap(&mut sprite, &mut self.sprites[resource_handle.index() as usize]);
+            if sprite.is_some() {
+                old_sprites.push(sprite);
+            }
+        }
+
+        // retire old images/views
+        for sprite in old_sprites.drain(..) {
+            let sprite = sprite.unwrap();
+            self.drop_sink.retire_image(sprite.image);
+            self.drop_sink.retire_image_view(sprite.image_view);
         }
     }
 

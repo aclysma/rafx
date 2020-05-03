@@ -169,6 +169,7 @@ const NANOS_PER_SEC: u32 = 1_000_000_000;
 
 /// Contains the global time information (such as time when app was started.) There is also a
 /// time context that is continuously updated
+#[derive(Clone)]
 pub struct TimeState {
     app_start_system_time: time::SystemTime,
     app_start_instant: time::Instant,
