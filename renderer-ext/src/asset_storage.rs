@@ -8,6 +8,56 @@ use std::{sync::Mutex, collections::HashMap, error::Error, sync::Arc};
 
 use atelier_assets::importer as atelier_importer;
 use atelier_assets::loader as atelier_loader;
+use renderer_base::slab::{GenSlab, GenSlabKey};
+use std::marker::PhantomData;
+
+// Used to catch asset changes and upload them to the GPU (or some other system)
+pub trait StorageUploader<T> : 'static + Send
+    where T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send
+{
+    fn upload(
+        &self,
+        asset: &T,
+        load_op: AssetLoadOp,
+        resource_handle: ResourceHandle<T>
+    );
+
+    fn free(&self, resource_handle: ResourceHandle<T>);
+}
+
+
+pub struct ResourceHandle<A> {
+    key: GenSlabKey<LoadHandle>,
+    phantom_data: PhantomData<A>
+}
+
+impl<A> ResourceHandle<A> {
+    pub fn new(key: GenSlabKey<LoadHandle>) -> Self {
+        ResourceHandle {
+            key,
+            phantom_data: Default::default()
+        }
+    }
+
+    pub fn index(&self) -> renderer_base::slab::SlabIndexT {
+        self.key.index()
+    }
+}
+
+// Can't use derive because of phantom data
+impl<A> Clone for ResourceHandle<A> {
+    fn clone(&self) -> Self {
+        ResourceHandle {
+            key: self.key,
+            phantom_data: Default::default()
+        }
+    }
+}
+
+// Can't use derive because of phantom data
+impl<A> Copy for ResourceHandle<A> {
+
+}
 
 // Used to dynamic dispatch into a storage, supports checked downcasting
 pub trait TypedStorage: Any + Send {
@@ -30,12 +80,6 @@ pub trait TypedStorage: Any + Send {
     );
 
     fn type_name(&self) -> &'static str;
-}
-
-pub trait StorageUploader<T> : 'static + Send
-where T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send
-{
-    fn upload(&self, asset: &T, load_op: AssetLoadOp);
 }
 
 mopafy!(TypedStorage);
@@ -197,6 +241,7 @@ for GenericAssetStorage
 
 struct AssetState<A> {
     version: u32,
+    resource_handle: ResourceHandle<A>,
     asset: A,
 }
 
@@ -205,6 +250,7 @@ pub struct Storage<A: TypeUuid> {
     refop_sender: Arc<Sender<RefOp>>,
     assets: HashMap<LoadHandle, AssetState<A>>,
     uncommitted: HashMap<LoadHandle, AssetState<A>>,
+    slab: GenSlab<LoadHandle>,
     uploader: Option<Box<dyn StorageUploader<A>>>
 }
 impl<A: TypeUuid> Storage<A> {
@@ -213,6 +259,7 @@ impl<A: TypeUuid> Storage<A> {
             refop_sender: sender,
             assets: HashMap::new(),
             uncommitted: HashMap::new(),
+            slab: GenSlab::<LoadHandle>::new(),
             uploader
         }
     }
@@ -254,15 +301,19 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             || bincode::deserialize::<A>(data),
         )?;
 
+        // Find or allocate the slab key
+        let resource_handle = self.assets.get(&load_handle).map(|x| x.resource_handle)
+            .unwrap_or_else(|| ResourceHandle::new(self.slab.allocate(load_handle)));
+
         self.uncommitted
-            .insert(load_handle, AssetState { asset, version });
+            .insert(load_handle, AssetState { asset, resource_handle, version });
         log::info!("{} bytes loaded for {:?}", data.len(), load_handle);
 
         if let Some(uploader) = &self.uploader {
             // We have an uploader, pass it a reference to the asset and a load_op. The uploader
             // will be responsible for calling load_op.complete() or load_op.error()
             let asset = self.uncommitted.get(&load_handle).unwrap();
-            uploader.upload(&asset.asset, load_op);
+            uploader.upload(&asset.asset, load_op, resource_handle);
         } else {
             // Since there is no uploader, we call load_op.complete() immediately
             load_op.complete();
@@ -270,6 +321,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
 
         Ok(())
     }
+
     fn commit_asset_version(
         &mut self,
         load_handle: LoadHandle,
@@ -287,12 +339,16 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         );
         log::info!("Commit {:?}", load_handle);
     }
+
     fn free(
         &mut self,
         load_handle: LoadHandle,
     ) {
-        self.assets.remove(&load_handle);
         log::info!("Free {:?}", load_handle);
+        let asset_state = self.assets.remove(&load_handle);
+        if let Some(asset_state) = asset_state {
+            self.slab.free(&asset_state.resource_handle.key);
+        }
     }
 
     fn type_name(&self) -> &'static str {

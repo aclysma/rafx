@@ -1,9 +1,9 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
-use crate::ResourceManager;
+//use crate::ResourceManager;
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, RendererEventListener, RendererBuilder, CreateRendererError, Renderer, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext};
 use ash::prelude::VkResult;
 //use crate::features::sprite_renderpass_push_constant::VkSpriteRenderPass;
-use crate::renderpass::sprite::{VkSpriteRenderPass, LoadingSprite};
+use crate::renderpass::sprite::{VkSpriteRenderPass/*, LoadingSprite*/};
 use crate::renderpass::sprite::VkSpriteResourceManager;
 use std::mem::{swap, ManuallyDrop};
 use crate::image_utils::{decode_texture, load_images, enqueue_load_images};
@@ -12,72 +12,31 @@ use crate::time::ScopeTimer;
 use std::sync::mpsc::Sender;
 
 pub struct GameRenderer {
-    // Handles uploading resources to GPU
-    resource_manager: ResourceManager,
-
     imgui_event_listener: ImguiRenderEventListener,
 
     sprite_resource_manager: Option<VkSpriteResourceManager>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
-
-
-    reset_image_upload: Option<VkTransferUpload>,
-    reset_image_images: Option<Vec<ManuallyDrop<VkImage>>>
 }
 
 impl GameRenderer {
     pub fn new(window: &dyn Window, imgui_font_atlas: VkImGuiRenderPassFontAtlas) -> Self {
-        let mut resource_manager = ResourceManager::new();
 
         let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
 
         GameRenderer {
-            //imgui_font_atlas,
-            resource_manager,
             imgui_event_listener,
 
             sprite_resource_manager: None,
             sprite_renderpass: None,
-            reset_image_upload: None,
-            reset_image_images: None
         }
     }
 
-    pub fn set_images(&mut self, device_context: &VkDeviceContext) -> VkResult<()> {
-        if self.reset_image_upload.is_none() {
-
-            let texture = decode_texture(include_bytes!("../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg);
-
-            let mut upload = VkTransferUpload::new(
-                device_context,
-                device_context.queue_family_indices().transfer_queue_family_index,
-                device_context.queue_family_indices().graphics_queue_family_index,
-                1024 * 1024 * 16
-            )?;
-
-            let images = enqueue_load_images(
-                device_context,
-                &mut upload,
-                device_context.queue_family_indices().transfer_queue_family_index,
-                device_context.queue_family_indices().graphics_queue_family_index,
-                &[texture]
-            )?;
-
-            upload.submit_transfer(device_context.queues().transfer_queue);
-
-            self.reset_image_upload = Some(upload);
-            self.reset_image_images = Some(images);
-        }
-
-        Ok(())
+    pub fn sprite_resource_manager(&self) -> Option<&VkSpriteResourceManager> {
+        self.sprite_resource_manager.as_ref()
     }
 
-    pub fn loading_sprite_tx(&self) -> Option<&Sender<LoadingSprite>> {
-        if let Some(sprite_resource_manager) = &self.sprite_resource_manager {
-            Some(sprite_resource_manager.loading_sprite_tx())
-        } else {
-            None
-        }
+    pub fn sprite_resource_manager_mut(&mut self) -> Option<&mut VkSpriteResourceManager> {
+        self.sprite_resource_manager.as_mut()
     }
 }
 
@@ -85,7 +44,6 @@ impl GameRenderer {
 impl RendererEventListener for GameRenderer {
     fn swapchain_created(&mut self, device: &VkDevice, swapchain: &VkSwapchain) -> VkResult<()> {
         log::debug!("game renderer swapchain_created called");
-        self.resource_manager.swapchain_created(device, swapchain)?;
         self.imgui_event_listener.swapchain_created(device, swapchain)?;
 
         log::debug!("Create VkSpriteResourceManager");
@@ -103,42 +61,14 @@ impl RendererEventListener for GameRenderer {
         self.sprite_renderpass = None;
         self.sprite_resource_manager = None;
         self.imgui_event_listener.swapchain_destroyed();
-        self.resource_manager.swapchain_destroyed();
     }
 
     fn render(&mut self, window: &Window, device: &VkDevice, present_index: usize) -> VkResult<Vec<ash::vk::CommandBuffer>> {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
-        {
-            let mut commands = self.resource_manager.render(window, device, present_index)?;
-            command_buffers.append(&mut commands);
-        }
-
         if let Some(sprite_resource_manager) = &mut self.sprite_resource_manager {
-
-            if let Some(upload) = &mut self.reset_image_upload {
-                if upload.state()? == VkTransferUploadState::PendingSubmitDstQueue {
-                    upload.submit_dst(device.queues.graphics_queue);
-                }
-
-                if upload.state()? == VkTransferUploadState::Complete {
-                    let mut images = None;
-                    std::mem::swap(&mut images, &mut self.reset_image_images);
-                    let images = images.unwrap();
-
-                    self.reset_image_upload = None;
-
-
-                    let swap_images = ScopeTimer::new("Swap the images");
-                    sprite_resource_manager.set_images(images);
-                }
-            }
-
-
-
             sprite_resource_manager.update(device);
-            //sprite_resource_manager.refresh_descriptor_set()?;
 
             if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
                 log::trace!("sprite_renderpass update");
@@ -192,16 +122,16 @@ impl GameRendererWithShell {
         }
     }
 
-    pub fn set_images(&mut self) {
-        self.game_renderer.set_images(&self.shell.device().context);
-    }
-
     pub fn shell(&self) -> &Renderer {
         &self.shell
     }
 
-    pub fn loading_sprite_tx(&self) -> Option<&Sender<LoadingSprite>> {
-        self.game_renderer.loading_sprite_tx()
+    pub fn sprite_resource_manager(&self) -> Option<&VkSpriteResourceManager> {
+        self.game_renderer.sprite_resource_manager()
+    }
+
+    pub fn sprite_resource_manager_mut(&mut self) -> Option<&mut VkSpriteResourceManager> {
+        self.game_renderer.sprite_resource_manager_mut()
     }
 }
 

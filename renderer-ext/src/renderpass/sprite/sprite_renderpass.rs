@@ -994,7 +994,7 @@ impl VkSpriteRenderPass {
             &mut self.vertex_buffers[present_index],
             &mut self.index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
-            sprite_resource_manager.descriptor_set(),
+            sprite_resource_manager.descriptor_sets(),
         )
     }
 }

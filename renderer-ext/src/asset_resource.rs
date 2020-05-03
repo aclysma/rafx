@@ -7,6 +7,7 @@ use type_uuid::TypeUuid;
 use atelier_assets::loader as atelier_loader;
 use crate::asset_storage::{GenericAssetStorage, StorageUploader};
 
+// A legion-friendly container for assets storages
 pub struct AssetResource {
     loader: RpcLoader,
     storage: GenericAssetStorage,

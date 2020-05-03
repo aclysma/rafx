@@ -8,9 +8,6 @@ mod game_renderer;
 pub use game_renderer::GameRenderer;
 pub use game_renderer::GameRendererWithShell;
 
-mod resource_manager;
-pub use resource_manager::ResourceManager;
-
 pub mod time;
 
 use legion::prelude::*;
@@ -22,10 +19,6 @@ pub mod asset_resource;
 pub mod asset_storage;
 pub mod image_importer;
 pub mod image_utils;
-
-pub mod asset_uploader;
-
-pub mod queue_manager;
 
 #[derive(Copy, Clone)]
 pub struct PositionComponent {
