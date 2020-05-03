@@ -132,6 +132,7 @@ impl VkDropSinkResourceImpl for vk::ImageView {
     }
 }
 
+/// Provides DropSinks for all the things in a single struct
 pub struct CombinedDropSink {
     images: VkResourceDropSink<ManuallyDrop<VkImage>>,
     image_views: VkResourceDropSink<vk::ImageView>,

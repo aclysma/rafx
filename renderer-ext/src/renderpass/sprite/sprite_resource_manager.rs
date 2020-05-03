@@ -33,16 +33,20 @@ use renderer_shell_vulkan::cleanup::CombinedDropSink;
 use crate::asset_storage::ResourceHandle;
 use crate::image_importer::ImageAsset;
 
-pub struct SpriteUpdate {
+/// Represents an image that will replace another image
+pub struct ImageUpdate {
     pub images: Vec<ManuallyDrop<VkImage>>,
     pub resource_handles: Vec<ResourceHandle<ImageAsset>>
 }
 
+/// Represents the current state of the sprite and the GPU resources associated with it
 pub struct VkSprite {
     pub image: ManuallyDrop<VkImage>,
     pub image_view: vk::ImageView
 }
 
+/// Keeps track of sprites/images and manages descriptor sets that allow shaders to bind to images
+/// and use them
 pub struct VkSpriteResourceManager {
     device_context: VkDeviceContext,
 
@@ -56,8 +60,9 @@ pub struct VkSpriteResourceManager {
     descriptor_pool: vk::DescriptorPool,
     descriptor_sets: Vec<vk::DescriptorSet>,
 
-    sprite_update_tx: Sender<SpriteUpdate>,
-    sprite_update_rx: Receiver<SpriteUpdate>
+    // For sending image updates in a thread-safe manner
+    image_update_tx: Sender<ImageUpdate>,
+    image_update_rx: Receiver<ImageUpdate>
 }
 
 impl VkSpriteResourceManager {
@@ -69,76 +74,8 @@ impl VkSpriteResourceManager {
         &self.descriptor_sets
     }
 
-    pub fn sprite_update_tx(&self) -> &Sender<SpriteUpdate> {
-        &self.sprite_update_tx
-    }
-
-    fn do_update_sprites(&mut self, sprite_update: SpriteUpdate) {
-        let mut max_index = self.sprites.len();
-        for resource_handle in &sprite_update.resource_handles {
-            max_index = max_index.max(resource_handle.index() as usize + 1);
-        }
-
-        self.sprites.resize_with(max_index, || None);
-
-        let mut old_sprites = vec![];
-        for (i, image) in sprite_update.images.into_iter().enumerate() {
-            let resource_handle = sprite_update.resource_handles[i];
-
-            let image_view = Self::create_texture_image_view(self.device_context.device(), &image.image);
-
-            // Do a swap so if there is an old sprite we can properly destroy it
-            let mut sprite = Some(VkSprite {
-                image,
-                image_view
-            });
-            std::mem::swap(&mut sprite, &mut self.sprites[resource_handle.index() as usize]);
-            if sprite.is_some() {
-                old_sprites.push(sprite);
-            }
-        }
-
-        // retire old images/views
-        for sprite in old_sprites.drain(..) {
-            let sprite = sprite.unwrap();
-            self.drop_sink.retire_image(sprite.image);
-            self.drop_sink.retire_image_view(sprite.image_view);
-        }
-    }
-
-    fn try_update_sprites(&mut self) {
-        let mut has_update = false;
-        while let Ok(update) = self.sprite_update_rx.recv_timeout(Duration::from_secs(0)) {
-            self.do_update_sprites(update);
-            has_update = true;
-        }
-
-        if has_update {
-            self.refresh_descriptor_sets();
-        }
-    }
-
-    fn refresh_descriptor_sets(&mut self) -> VkResult<()> {
-        self.descriptor_pool_allocator.retire_pool(self.descriptor_pool);
-
-        let descriptor_pool = self.descriptor_pool_allocator.allocate_pool(self.device_context.device())?;
-        let descriptor_sets = Self::create_descriptor_set(
-            self.device_context.device(),
-            &descriptor_pool,
-            self.descriptor_set_layout,
-            &self.sprites
-        )?;
-
-        self.descriptor_pool = descriptor_pool;
-        self.descriptor_sets = descriptor_sets;
-
-        Ok(())
-    }
-
-    pub fn update(&mut self) {
-        self.descriptor_pool_allocator.update(self.device_context.device());
-        self.drop_sink.on_frame_complete(self.device_context.device());
-        self.try_update_sprites();
+    pub fn image_update_tx(&self) -> &Sender<ImageUpdate> {
+        &self.image_update_tx
     }
 
     pub fn new(
@@ -164,7 +101,7 @@ impl VkSpriteResourceManager {
             &sprites
         )?;
 
-        let (sprite_update_tx, sprite_update_rx) = mpsc::channel();
+        let (image_update_tx, image_update_rx) = mpsc::channel();
 
         let drop_sink = CombinedDropSink::new(max_frames_in_flight + 1);
 
@@ -176,9 +113,84 @@ impl VkSpriteResourceManager {
             descriptor_sets,
             sprites,
             drop_sink,
-            sprite_update_tx,
-            sprite_update_rx
+            image_update_tx,
+            image_update_rx
         })
+    }
+
+    pub fn update(&mut self) {
+        // This will handle any resources that need to be dropped
+        self.descriptor_pool_allocator.update(self.device_context.device());
+        self.drop_sink.on_frame_complete(self.device_context.device());
+
+        // Check if we have any image updates to process
+        //TODO: This may need to be deferred until a commit, and the commit may be to update to a
+        // particular version of the assets
+        self.try_update_sprites();
+    }
+
+    /// Runs through the incoming image updates and applies them to the list of sprites
+    fn do_update_sprites(&mut self, image_update: ImageUpdate) {
+        let mut max_index = self.sprites.len();
+        for resource_handle in &image_update.resource_handles {
+            max_index = max_index.max(resource_handle.index() as usize + 1);
+        }
+
+        self.sprites.resize_with(max_index, || None);
+
+        let mut old_sprites = vec![];
+        for (i, image) in image_update.images.into_iter().enumerate() {
+            let resource_handle = image_update.resource_handles[i];
+
+            let image_view = Self::create_texture_image_view(self.device_context.device(), &image.image);
+
+            // Do a swap so if there is an old sprite we can properly destroy it
+            let mut sprite = Some(VkSprite {
+                image,
+                image_view
+            });
+            std::mem::swap(&mut sprite, &mut self.sprites[resource_handle.index() as usize]);
+            if sprite.is_some() {
+                old_sprites.push(sprite);
+            }
+        }
+
+        // retire old images/views
+        for sprite in old_sprites.drain(..) {
+            let sprite = sprite.unwrap();
+            self.drop_sink.retire_image(sprite.image);
+            self.drop_sink.retire_image_view(sprite.image_view);
+        }
+    }
+
+    /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
+    fn try_update_sprites(&mut self) {
+        let mut has_update = false;
+        while let Ok(update) = self.image_update_rx.recv_timeout(Duration::from_secs(0)) {
+            self.do_update_sprites(update);
+            has_update = true;
+        }
+
+        if has_update {
+            self.refresh_descriptor_sets();
+        }
+    }
+
+    fn refresh_descriptor_sets(&mut self) -> VkResult<()> {
+        self.descriptor_pool_allocator.retire_pool(self.descriptor_pool);
+
+        let descriptor_pool = self.descriptor_pool_allocator.allocate_pool(self.device_context.device())?;
+        let descriptor_sets = Self::create_descriptor_set(
+            self.device_context.device(),
+            &descriptor_pool,
+            self.descriptor_set_layout,
+            &self.sprites
+        )?;
+
+        self.descriptor_pool = descriptor_pool;
+        self.descriptor_sets = descriptor_sets;
+
+        Ok(())
     }
 
     pub fn create_texture_image_view(

@@ -103,7 +103,7 @@ pub struct GameRendererWithContext {
     // Handles setting up device/instance
     context: VkContext,
     game_renderer: ManuallyDrop<GameRenderer>,
-    renderer: ManuallyDrop<VkSurface>
+    surface: ManuallyDrop<VkSurface>
 }
 
 impl GameRendererWithContext {
@@ -125,12 +125,12 @@ impl GameRendererWithContext {
             time_state
         )?;
 
-        let renderer = VkSurface::new(&context, window, Some(&mut game_renderer))?;
+        let surface = VkSurface::new(&context, window, Some(&mut game_renderer))?;
 
         Ok(GameRendererWithContext {
             context,
             game_renderer: ManuallyDrop::new(game_renderer),
-            renderer: ManuallyDrop::new(renderer)
+            surface: ManuallyDrop::new(surface)
         })
     }
 
@@ -140,7 +140,7 @@ impl GameRendererWithContext {
         time_state: &TimeState,
     ) -> VkResult<()> {
         self.game_renderer.update_time(time_state);
-        self.renderer.draw(window, Some(&mut *self.game_renderer))
+        self.surface.draw(window, Some(&mut *self.game_renderer))
     }
 
     pub fn dump_stats(&mut self) {
@@ -166,9 +166,9 @@ impl GameRendererWithContext {
 
 impl Drop for GameRendererWithContext {
     fn drop(&mut self) {
-        self.renderer.tear_down(Some(&mut *self.game_renderer));
+        self.surface.tear_down(Some(&mut *self.game_renderer));
         unsafe {
-            ManuallyDrop::drop(&mut self.renderer);
+            ManuallyDrop::drop(&mut self.surface);
             ManuallyDrop::drop(&mut self.game_renderer);
         }
     }

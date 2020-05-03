@@ -209,7 +209,10 @@ impl From<vk::Result> for VkCreateContextError {
 }
 
 /// Sets up a vulkan instance, device, and swapchain. Sends callbacks to a RendererEventListener
-/// provided by the end user
+/// provided by the end user. When the VkContext is dropped, all vulkan resources are torn down.
+/// Most code will not need access to VkContext.. it's better to pass around VkDeviceContext. These
+/// can be cloned and owned by value. However, all VkDeviceContexts must be dropped before dropping
+/// the VkContext
 pub struct VkContext {
     instance: ManuallyDrop<VkInstance>,
     device: ManuallyDrop<VkDevice>,

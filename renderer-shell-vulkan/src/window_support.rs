@@ -6,6 +6,7 @@ use ash::vk;
 use super::PhysicalSize;
 use super::LogicalSize;
 
+/// This is a thin abstraction layer that lets us be compatible with both SDL2 and winit.
 pub trait Window {
     fn physical_size(&self) -> PhysicalSize;
     fn logical_size(&self) -> LogicalSize;

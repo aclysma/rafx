@@ -87,10 +87,6 @@ impl VkDeviceContext {
         &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").queues
     }
 
-    // pub fn graphics_submit_queue(&self) -> &VkSubmitQueue {
-    //     &self.inner.as_ref().expect("allocator is only None if VkDevice is dropped").graphics_submit_queue
-    // }
-
     fn new(
         instance: ash::Instance,
         device: ash::Device,
@@ -169,8 +165,11 @@ impl From<vk_mem::Error> for VkCreateDeviceError {
     }
 }
 
-/// Represents the surface/physical device/logical device. Most of the code here has to do with
-/// picking a good device that's compatible with the window we're given.
+/// Represents the instance and device. Most of the code here has to do with picking a good device
+/// that's compatible with the window we're given. The VkDevice is the "heavy-weight" structure
+/// that will destroy all vulkan resources when it's dropped. VkDeviceContext is a lighter-weight
+/// structure that should generally be used instead. It is expected that all VkDeviceContext
+/// structures based on this VkDevice are destroyed before dropping the VkDevice.
 pub struct VkDevice {
     pub device_context: VkDeviceContext,
     pub surface: ash::vk::SurfaceKHR,

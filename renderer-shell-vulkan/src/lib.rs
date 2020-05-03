@@ -50,9 +50,6 @@ pub use upload::VkUpload;
 pub use upload::VkTransferUploadState;
 pub use upload::VkTransferUpload;
 
-// mod submit;
-// pub use submit::VkSubmitQueue;
-
 mod debug_reporter;
 pub use debug_reporter::VkDebugReporter;
 
@@ -63,9 +60,7 @@ pub use context::VkCreateContextError;
 
 #[allow(clippy::module_inception)]
 mod surface;
-// pub use renderer::RendererBuilder;
 pub use surface::VkSurface;
-// pub use renderer::CreateRendererError;
 pub use surface::VkSurfaceEventListener;
 
 mod coordinates;

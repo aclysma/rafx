@@ -14,8 +14,13 @@ use log::Level::Trace;
 
 #[derive(PartialEq)]
 pub enum VkUploadState {
+    /// The upload is not submitted yet and data may be appended to it
     Writable,
+
+    /// The buffer has been sent to the GPU and is no longer writable
     SentToGpu,
+
+    /// The upload is finished and the resources may be used
     Complete
 }
 
@@ -238,13 +243,27 @@ impl Drop for VkUpload {
 
 #[derive(PartialEq)]
 pub enum VkTransferUploadState {
+    /// The upload is not submitted yet and data may be appended to it
     Writable,
+
+    /// The buffer has been sent to the GPU's transfer queue and is no longer writable
     SentToTransferQueue,
+
+    /// The submit to the transfer queue finished. We are ready to submit to the graphics queue
+    /// but we wait here until called explicitly because submitting to a queue is not thread-safe.
+    /// Additionally, it's likely we will want to batch this submit with other command buffers going
+    /// to the same queue
     PendingSubmitDstQueue,
+
+    /// The buffer has been sent to the GPU's graphics queue but has not finished
     SentToDstQueue,
+
+    /// The submit has finished on both queues and the uploaded resources are ready for use
     Complete
 }
 
+/// A state machine and associated buffers/synchronization primitives to simplify uploading resources
+/// to the GPU via a transfer queue, and then submitting a memory barrier to the graphics queue
 pub struct VkTransferUpload {
     device_context: VkDeviceContext,
     upload: VkUpload,

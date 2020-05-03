@@ -3,7 +3,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use ash::prelude::VkResult;
 use std::time::Duration;
 use crate::image_utils::{enqueue_load_images, DecodedTexture};
-use crate::renderpass::sprite::SpriteUpdate;
+use crate::renderpass::sprite::ImageUpdate;
 use std::mem::ManuallyDrop;
 use crate::asset_storage::{ResourceHandle, StorageUploader};
 use crate::image_importer::ImageAsset;
@@ -184,11 +184,11 @@ pub struct ImageUploadQueue {
     uploads_in_progress: Vec<InProgressImageUpload>,
 
     // This channel forwards completed uploads to the sprite resource manager
-    sprite_update_tx: Sender<SpriteUpdate>
+    sprite_update_tx: Sender<ImageUpdate>
 }
 
 impl ImageUploadQueue {
-    pub fn new(device_context: &VkDeviceContext, sprite_update_tx: Sender<SpriteUpdate>) -> Self {
+    pub fn new(device_context: &VkDeviceContext, sprite_update_tx: Sender<ImageUpdate>) -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
 
         ImageUploadQueue {
@@ -257,7 +257,7 @@ impl ImageUploadQueue {
                 },
                 InProgressImageUploadPollResult::Complete(images, resource_handles) => {
                     let upload = self.uploads_in_progress.swap_remove(i);
-                    self.sprite_update_tx.send(SpriteUpdate {
+                    self.sprite_update_tx.send(ImageUpdate {
                         images,
                         resource_handles
                     });

@@ -27,7 +27,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
-use renderer_ext::renderpass::sprite::{VkSpriteResourceManager, SpriteUpdate, ImageUploadQueue, ImageUploader};
+use renderer_ext::renderpass::sprite::{VkSpriteResourceManager, ImageUpdate, ImageUploadQueue, ImageUploader};
 
 fn main() {
     // Setup logging
@@ -95,7 +95,7 @@ fn main() {
     // Handles routing data between the asset system and sprite resource manager
     let mut image_upload_queue = ImageUploadQueue::new(
         renderer.context().device_context(),
-        renderer.sprite_resource_manager().sprite_update_tx().clone()
+        renderer.sprite_resource_manager().image_update_tx().clone()
     );
 
     // Force an image to load and stay resident in memory
