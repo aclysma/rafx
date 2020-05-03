@@ -6,7 +6,7 @@ pub mod imgui_support;
 
 mod game_renderer;
 pub use game_renderer::GameRenderer;
-pub use game_renderer::GameRendererWithShell;
+pub use game_renderer::GameRendererWithContext;
 
 pub mod time;
 

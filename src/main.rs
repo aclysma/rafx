@@ -1,5 +1,5 @@
 
-use renderer_shell_vulkan::{LogicalSize, RendererEventListener, Window, VkDevice, VkSwapchain, Renderer, VkDeviceContext, VkTransferUpload, VkTransferUploadState, VkImage};
+use renderer_shell_vulkan::{LogicalSize, VkSurfaceEventListener, Window, VkDevice, VkSwapchain, VkSurface, VkDeviceContext, VkTransferUpload, VkTransferUploadState, VkImage};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -7,7 +7,7 @@ use ash::prelude::VkResult;
 use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
-use renderer_ext::GameRendererWithShell;
+use renderer_ext::GameRendererWithContext;
 use image::{GenericImageView, load};
 use atelier_assets::loader as atelier_loader;
 
@@ -72,7 +72,7 @@ fn main() {
     let imgui_manager = renderer_ext::imgui_support::init_imgui_manager(&sdl_window);
 
     let window = Sdl2Window::new(&sdl_window);
-    let renderer = GameRendererWithShell::new(&window, imgui_manager.build_font_atlas(), &time);
+    let renderer = GameRendererWithContext::new(&window, imgui_manager.build_font_atlas(), &time);
 
     // Check if there were error setting up vulkan
     if let Err(e) = renderer {

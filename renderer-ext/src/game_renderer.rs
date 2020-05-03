@@ -1,6 +1,6 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
 //use crate::ResourceManager;
-use renderer_shell_vulkan::{VkDevice, VkSwapchain, RendererEventListener, Renderer, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext};
+use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurfaceEventListener, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext};
 use ash::prelude::VkResult;
 //use crate::features::sprite_renderpass_push_constant::VkSpriteRenderPass;
 use crate::renderpass::sprite::{VkSpriteRenderPass/*, LoadingSprite*/};
@@ -53,7 +53,7 @@ impl GameRenderer {
 }
 
 
-impl RendererEventListener for GameRenderer {
+impl VkSurfaceEventListener for GameRenderer {
     fn swapchain_created(&mut self, device_context: &VkDeviceContext, swapchain: &VkSwapchain) -> VkResult<()> {
         log::debug!("game renderer swapchain_created called");
         self.imgui_event_listener.swapchain_created(device_context, swapchain)?;
@@ -99,19 +99,19 @@ impl RendererEventListener for GameRenderer {
     }
 }
 
-pub struct GameRendererWithShell {
+pub struct GameRendererWithContext {
     // Handles setting up device/instance
     context: VkContext,
     game_renderer: ManuallyDrop<GameRenderer>,
-    renderer: ManuallyDrop<Renderer>
+    renderer: ManuallyDrop<VkSurface>
 }
 
-impl GameRendererWithShell {
+impl GameRendererWithContext {
     pub fn new(
         window: &dyn Window,
         imgui_font_atlas: VkImGuiRenderPassFontAtlas,
         time_state: &TimeState
-    ) -> Result<GameRendererWithShell, VkCreateContextError> {
+    ) -> Result<GameRendererWithContext, VkCreateContextError> {
         let context = VkContextBuilder::new()
             .use_vulkan_debug_layer(true)
             //.use_vulkan_debug_layer(false)
@@ -125,9 +125,9 @@ impl GameRendererWithShell {
             time_state
         )?;
 
-        let renderer = Renderer::new(&context, window, Some(&mut game_renderer))?;
+        let renderer = VkSurface::new(&context, window, Some(&mut game_renderer))?;
 
-        Ok(GameRendererWithShell {
+        Ok(GameRendererWithContext {
             context,
             game_renderer: ManuallyDrop::new(game_renderer),
             renderer: ManuallyDrop::new(renderer)
@@ -164,7 +164,7 @@ impl GameRendererWithShell {
     }
 }
 
-impl Drop for GameRendererWithShell {
+impl Drop for GameRendererWithContext {
     fn drop(&mut self) {
         self.renderer.tear_down(Some(&mut *self.game_renderer));
         unsafe {

@@ -62,11 +62,11 @@ pub use context::VkContextBuilder;
 pub use context::VkCreateContextError;
 
 #[allow(clippy::module_inception)]
-mod renderer;
+mod surface;
 // pub use renderer::RendererBuilder;
-pub use renderer::Renderer;
+pub use surface::VkSurface;
 // pub use renderer::CreateRendererError;
-pub use renderer::RendererEventListener;
+pub use surface::VkSurfaceEventListener;
 
 mod coordinates;
 pub use coordinates::Size;

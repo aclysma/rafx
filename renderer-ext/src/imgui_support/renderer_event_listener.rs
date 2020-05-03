@@ -23,7 +23,7 @@ impl ImguiRenderEventListener {
     }
 }
 
-impl renderer_shell_vulkan::RendererEventListener for ImguiRenderEventListener {
+impl renderer_shell_vulkan::VkSurfaceEventListener for ImguiRenderEventListener {
     fn swapchain_created(
         &mut self,
         device_context: &VkDeviceContext,

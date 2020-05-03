@@ -20,8 +20,8 @@ use super::Window;
 use crate::{VkContext, VkDeviceContext};
 //use crate::submit::PendingCommandBuffer;
 
-/// May be implemented to get callbacks related to the renderer and framebuffer usage
-pub trait RendererEventListener {
+/// May be implemented to get callbacks related to the VkSurface (window) and framebuffer usage
+pub trait VkSurfaceEventListener {
     /// Called whenever the swapchain needs to be created (the first time, and in cases where the
     /// swapchain needs to be recreated)
     fn swapchain_created(
@@ -30,7 +30,7 @@ pub trait RendererEventListener {
         swapchain: &VkSwapchain,
     ) -> VkResult<()>;
 
-    /// Called whenever the swapchain will be destroyed (when renderer is dropped, and also in cases
+    /// Called whenever the swapchain will be destroyed (when VkSurface is dropped, and also in cases
     /// where the swapchain needs to be recreated)
     fn swapchain_destroyed(&mut self);
 
@@ -44,9 +44,9 @@ pub trait RendererEventListener {
     ) -> VkResult<Vec<vk::CommandBuffer>>;
 }
 
-/// Sets up a vulkan instance, device, and swapchain. Sends callbacks to a RendererEventListener
+/// Sets up a vulkan instance, device, and swapchain. Sends callbacks to a VkSurfaceEventListener
 /// provided by the end user
-pub struct Renderer {
+pub struct VkSurface {
     device_context: VkDeviceContext,
     physical_device: vk::PhysicalDevice,
     swapchain: ManuallyDrop<VkSwapchain>,
@@ -63,13 +63,13 @@ pub struct Renderer {
     torn_down: bool
 }
 
-impl Renderer {
-    /// Create the renderer
+impl VkSurface {
+    /// Create the surface - a per-window object that maintains the swapchain
     pub fn new(
         context: &VkContext,
         window: &dyn Window,
-        event_listener: Option<&mut dyn RendererEventListener>
-    ) -> VkResult<Renderer> {
+        event_listener: Option<&mut dyn VkSurfaceEventListener>
+    ) -> VkResult<VkSurface> {
         let swapchain = ManuallyDrop::new(VkSwapchain::new(
             &context.device().device_context,
             window,
@@ -85,7 +85,7 @@ impl Renderer {
 
         let previous_inner_size = window.physical_size();
 
-        Ok(Renderer {
+        Ok(VkSurface {
             device_context: context.device().device_context.clone(),
             physical_device: context.device().physical_device,
             swapchain,
@@ -97,7 +97,7 @@ impl Renderer {
         })
     }
 
-    pub fn tear_down(&mut self, event_listener: Option<&mut dyn RendererEventListener>) {
+    pub fn tear_down(&mut self, event_listener: Option<&mut dyn VkSurfaceEventListener>) {
         unsafe {
             self.device_context.device().device_wait_idle().unwrap();
         }
@@ -110,22 +110,12 @@ impl Renderer {
         self.torn_down = true;
     }
 
-
-
-    // pub fn device(&self) -> &VkDevice {
-    //     &self.device
-    // }
-
-    // pub fn device_mut(&mut self) -> &mut VkDevice {
-    //     &mut self.device
-    // }
-
     /// Call to render a frame. This can block for certain presentation modes. This will rebuild
     /// the swapchain if necessary.
     pub fn draw(
         &mut self,
         window: &dyn Window,
-        mut event_listener: Option<&mut dyn RendererEventListener>
+        mut event_listener: Option<&mut dyn VkSurfaceEventListener>
     ) -> VkResult<()> {
         if window.physical_size() != self.previous_inner_size {
             debug!("Detected window inner size change, rebuilding swapchain");
@@ -151,7 +141,7 @@ impl Renderer {
     fn rebuild_swapchain(
         &mut self,
         window: &dyn Window,
-        event_listener: &mut Option<&mut dyn RendererEventListener>
+        event_listener: &mut Option<&mut dyn VkSurfaceEventListener>
     ) -> VkResult<()> {
         // Let event listeners know the swapchain will be destroyed
         unsafe {
@@ -187,7 +177,7 @@ impl Renderer {
     fn do_draw(
         &mut self,
         window: &dyn Window,
-        event_listener: &mut Option<&mut dyn RendererEventListener>
+        event_listener: &mut Option<&mut dyn VkSurfaceEventListener>
     ) -> VkResult<()> {
         let frame_fence = self.swapchain.in_flight_fences[self.sync_frame_index];
 
@@ -260,9 +250,9 @@ impl Renderer {
     }
 }
 
-impl Drop for Renderer {
+impl Drop for VkSurface {
     fn drop(&mut self) {
-        debug!("destroying Renderer");
+        debug!("destroying VkSurface");
 
         // This checks that the device is idle and issues swapchain_destroyed to the event listener
         assert!(self.torn_down);
@@ -271,6 +261,6 @@ impl Drop for Renderer {
             ManuallyDrop::drop(&mut self.swapchain);
         }
 
-        debug!("destroyed Renderer");
+        debug!("destroyed VkSurface");
     }
 }
