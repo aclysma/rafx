@@ -1,5 +1,5 @@
 
-use renderer_shell_vulkan::VkSwapchain;
+use renderer_shell_vulkan::{VkSwapchain, VkDeviceContext};
 use renderer_shell_vulkan::VkDevice;
 use renderer_shell_vulkan::Window;
 use ash::vk;
@@ -26,10 +26,10 @@ impl ImguiRenderEventListener {
 impl renderer_shell_vulkan::RendererEventListener for ImguiRenderEventListener {
     fn swapchain_created(
         &mut self,
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
     ) -> VkResult<()> {
-        self.imgui_renderpass = Some(VkImGuiRenderPass::new(device, swapchain, &self.font_atlas)?);
+        self.imgui_renderpass = Some(VkImGuiRenderPass::new(device_context, swapchain, &self.font_atlas)?);
         Ok(())
     }
 
@@ -40,7 +40,7 @@ impl renderer_shell_vulkan::RendererEventListener for ImguiRenderEventListener {
     fn render(
         &mut self,
         window: &dyn Window,
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
         present_index: usize,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let draw_data = unsafe { imgui::sys::igGetDrawData() };
@@ -54,7 +54,6 @@ impl renderer_shell_vulkan::RendererEventListener for ImguiRenderEventListener {
         let renderpass = self.imgui_renderpass.as_mut().unwrap();
 
         renderpass.update(
-            &device.memory_properties,
             Some(&draw_data),
             present_index as usize,
             window.scale_factor(),

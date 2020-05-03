@@ -15,7 +15,6 @@ pub use cleanup::VkResourceDropSink;
 pub use cleanup::VkDropSinkResourceImpl;
 
 pub mod pool;
-//pub use pool::VkDescriptorPoolAllocator;
 pub use pool::VkPoolAllocator;
 pub use pool::VkPoolResourceImpl;
 pub use pool::VkDescriptorPoolAllocator;
@@ -57,11 +56,16 @@ pub use upload::VkTransferUpload;
 mod debug_reporter;
 pub use debug_reporter::VkDebugReporter;
 
+mod context;
+pub use context::VkContext;
+pub use context::VkContextBuilder;
+pub use context::VkCreateContextError;
+
 #[allow(clippy::module_inception)]
 mod renderer;
-pub use renderer::RendererBuilder;
+// pub use renderer::RendererBuilder;
 pub use renderer::Renderer;
-pub use renderer::CreateRendererError;
+// pub use renderer::CreateRendererError;
 pub use renderer::RendererEventListener;
 
 mod coordinates;

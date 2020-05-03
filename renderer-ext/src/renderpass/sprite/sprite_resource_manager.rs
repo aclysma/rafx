@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkUpload, VkTransferUpload, VkTransferUploadState, VkResourceDropSink, VkDescriptorPoolAllocator};
+use renderer_shell_vulkan::{VkDevice, VkUpload, VkTransferUpload, VkTransferUploadState, VkResourceDropSink, VkDescriptorPoolAllocator, VkDeviceContext};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -33,112 +33,6 @@ use renderer_shell_vulkan::cleanup::CombinedDropSink;
 use crate::asset_storage::ResourceHandle;
 use crate::image_importer::ImageAsset;
 
-/*
-#[derive(Debug)]
-pub enum LoadingSpritePollResult {
-    Pending,
-    Complete(Vec<ManuallyDrop<VkImage>>),
-    Error(Box<Error + 'static + Send>),
-    Destroyed
-}
-
-struct LoadingSpriteInner {
-    images: Vec<ManuallyDrop<VkImage>>,
-    uploader: VkTransferUpload,
-    load_op: atelier_assets::loader::AssetLoadOp
-}
-
-
-pub struct LoadingSprite {
-    inner: Option<LoadingSpriteInner>
-}
-
-impl LoadingSprite {
-    pub fn new(
-        images: Vec<ManuallyDrop<VkImage>>,
-        uploader: VkTransferUpload,
-        load_op: atelier_assets::loader::AssetLoadOp
-    ) -> Self {
-        let inner = LoadingSpriteInner {
-            images,
-            uploader,
-            load_op
-        };
-
-        LoadingSprite {
-            inner: Some(inner)
-        }
-    }
-
-    pub fn poll_load(
-        &mut self,
-        device: &VkDevice
-    ) -> LoadingSpritePollResult {
-        loop {
-            if let Some(mut inner) = self.take_inner() {
-                match inner.uploader.state() {
-                    Ok(state) => {
-                        match state {
-                            VkTransferUploadState::Writable => {
-                                println!("VkTransferUploadState::Writable");
-                                inner.uploader.submit_transfer(device.queues.transfer_queue);
-                                self.inner = Some(inner);
-                            },
-                            VkTransferUploadState::SentToTransferQueue => {
-                                println!("VkTransferUploadState::SentToTransferQueue");
-                                self.inner = Some(inner);
-                                break LoadingSpritePollResult::Pending;
-                            },
-                            VkTransferUploadState::PendingSubmitDstQueue => {
-                                println!("VkTransferUploadState::PendingSubmitDstQueue");
-                                inner.uploader.submit_dst(device.queues.graphics_queue);
-                                self.inner = Some(inner);
-                            },
-                            VkTransferUploadState::SentToDstQueue => {
-                                println!("VkTransferUploadState::SentToDstQueue");
-                                self.inner = Some(inner);
-                                break LoadingSpritePollResult::Pending;
-                            },
-                            VkTransferUploadState::Complete => {
-                                println!("VkTransferUploadState::Complete");
-                                inner.load_op.complete();
-                                break LoadingSpritePollResult::Complete(inner.images);
-                            },
-                        }
-                    },
-                    Err(err) => {
-                        inner.load_op.error(err);
-                        break LoadingSpritePollResult::Error(Box::new(err));
-                    },
-                }
-            } else {
-                break LoadingSpritePollResult::Destroyed;
-            }
-        }
-    }
-
-    fn take_inner(&mut self) -> Option<LoadingSpriteInner> {
-        let mut inner = None;
-        std::mem::swap(&mut self.inner, &mut inner);
-        inner
-    }
-}
-
-impl Drop for LoadingSprite {
-    fn drop(&mut self) {
-        if let Some(mut inner) = self.take_inner() {
-            for image in &mut inner.images {
-                unsafe {
-                    ManuallyDrop::drop(image);
-                }
-            }
-            //TODO: error() probably needs to accept a box
-            inner.load_op.error(vk::Result::ERROR_OUT_OF_DEVICE_MEMORY);
-        }
-    }
-}
-*/
-
 pub struct SpriteUpdate {
     pub images: Vec<ManuallyDrop<VkImage>>,
     pub resource_handles: Vec<ResourceHandle<ImageAsset>>
@@ -150,8 +44,7 @@ pub struct VkSprite {
 }
 
 pub struct VkSpriteResourceManager {
-    device: ash::Device,
-    swapchain_info: SwapchainInfo,
+    device_context: VkDeviceContext,
 
     // The raw texture resources
     sprites: Vec<Option<VkSprite>>,
@@ -165,12 +58,6 @@ pub struct VkSpriteResourceManager {
 
     sprite_update_tx: Sender<SpriteUpdate>,
     sprite_update_rx: Receiver<SpriteUpdate>
-
-    //pub pending_sprite_updates: Vec<VkSpriteUpdate>
-
-    // pub loading_sprite_tx: Sender<LoadingSprite>,
-    // pub loading_sprite_rx: Receiver<LoadingSprite>,
-    // pub loading_sprites: Vec<LoadingSprite>
 }
 
 impl VkSpriteResourceManager {
@@ -198,7 +85,7 @@ impl VkSpriteResourceManager {
         for (i, image) in sprite_update.images.into_iter().enumerate() {
             let resource_handle = sprite_update.resource_handles[i];
 
-            let image_view = Self::create_texture_image_view(&self.device, &image.image);
+            let image_view = Self::create_texture_image_view(self.device_context.device(), &image.image);
 
             // Do a swap so if there is an old sprite we can properly destroy it
             let mut sprite = Some(VkSprite {
@@ -231,50 +118,12 @@ impl VkSpriteResourceManager {
         }
     }
 
-    // pub fn sprite_update_tx(&self) -> &Sender<SpriteUpdate> {
-    //     &self.sprite_update_tx
-    // }
-
-    // pub fn update_sprites(&mut self, images: Vec<ManuallyDrop<VkImage>>, resource_handles: Vec<ResourceHandle<ImageAsset>>) {
-    //     self.pending_sprite_updates.push(SpriteUpdate {
-    //         images,
-    //         resource_handles
-    //     });
-    // }
-
-    /*
-    pub fn set_images(&mut self, images: Vec<ManuallyDrop<VkImage>>) -> VkResult<()> {
-        let mut sprites = Vec::with_capacity(images.len());
-        for image in images {
-            let image_view = Self::create_texture_image_view(&self.device, &image.image);
-            sprites.push(VkSprite {
-                image,
-                image_view
-            });
-        }
-
-        std::mem::swap(&mut sprites, &mut self.sprites);
-        self.refresh_descriptor_set()?;
-
-        for sprite in sprites.drain(..) {
-            self.drop_sink.retire_image(sprite.image);
-            self.drop_sink.retire_image_view(sprite.image_view);
-        }
-
-        Ok(())
-    }
-
-    pub fn loading_sprite_tx(&self) -> &Sender<LoadingSprite> {
-        &self.loading_sprite_tx
-    }
-*/
-
     fn refresh_descriptor_sets(&mut self) -> VkResult<()> {
         self.descriptor_pool_allocator.retire_pool(self.descriptor_pool);
 
-        let descriptor_pool = self.descriptor_pool_allocator.allocate_pool(&self.device)?;
+        let descriptor_pool = self.descriptor_pool_allocator.allocate_pool(self.device_context.device())?;
         let descriptor_sets = Self::create_descriptor_set(
-            &self.device,
+            self.device_context.device(),
             &descriptor_pool,
             self.descriptor_set_layout,
             &self.sprites
@@ -286,89 +135,30 @@ impl VkSpriteResourceManager {
         Ok(())
     }
 
-    pub fn update(&mut self, device: &VkDevice) {
-        self.descriptor_pool_allocator.update(&self.device);
-        self.drop_sink.on_frame_complete(&self.device);
+    pub fn update(&mut self) {
+        self.descriptor_pool_allocator.update(self.device_context.device());
+        self.drop_sink.on_frame_complete(self.device_context.device());
         self.try_update_sprites();
-
-        /*
-        for loading_sprite in self.loading_sprite_rx.recv_timeout(Duration::from_secs(0)) {
-            self.loading_sprites.push(loading_sprite);
-        }
-
-        for i in (0..self.loading_sprites.len()).rev() {
-            let result = self.loading_sprites[i].poll_load(device);
-            match result {
-                LoadingSpritePollResult::Pending => {
-                    // do nothing
-                },
-                LoadingSpritePollResult::Complete(images) => {
-                    let loading_sprite = self.loading_sprites.swap_remove(i);
-                    self.set_images(images);
-                    self.refresh_descriptor_set();
-                },
-                LoadingSpritePollResult::Error(e) => {
-                    let image = self.loading_sprites.swap_remove(i);
-                    //TODO: error() probably needs to accept a box
-                    //image.load_op.error(e);
-                },
-                LoadingSpritePollResult::Destroyed => {
-                    // not expected
-                    unreachable!();
-                }
-            }
-        }
-        */
     }
 
     pub fn new(
-        device: &VkDevice,
-        //swapchain: &VkSwapchain,
-        swapchain_info: SwapchainInfo
+        device_context: &VkDeviceContext,
+        max_frames_in_flight: u32
     ) -> VkResult<Self> {
-        // let decoded_textures = [
-        //     //crate::image_utils::decode_texture(include_bytes!("../../../../assets/textures/texture.jpg"), image::ImageFormat::Jpeg),
-        //     //decode_texture(include_bytes!("../../../../assets/textures/texture2.jpg"), image::ImageFormat::Jpeg),
-        //     //decode_texture(include_bytes!("../../../../texture.jpg"), image::ImageFormat::Jpeg),
-        // ];
-
-        //
-        // Resources
-        //
-        // let images = crate::image_utils::load_images(
-        //     &device.context,
-        //     device.queue_family_indices.transfer_queue_family_index,
-        //     device.queues.transfer_queue,
-        //     device.queue_family_indices.graphics_queue_family_index,
-        //     device.queues.graphics_queue,
-        //     &decoded_textures
-        // )?;
-
-        //let mut image_views = Vec::with_capacity(decoded_textures.len());
-        //let mut sprites = Vec::with_capacity(images.len());
-        // for image in images {
-        //     //image_views.push(Self::create_texture_image_view(device.device(), &image.image));
-        //     let image_view = Self::create_texture_image_view(device.device(), &image.image);
-        //     sprites.push(Some(VkSprite {
-        //         image,
-        //         image_view
-        //     }));
-        // }
-
         let sprites = Vec::new();
 
         //
         // Descriptors
         //
-        let descriptor_set_layout = Self::create_descriptor_set_layout(device.device())?;
+        let descriptor_set_layout = Self::create_descriptor_set_layout(device_context.device())?;
         let mut descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
-            swapchain_info.image_count as u32,
-            swapchain_info.image_count as u32 + 1,
+            max_frames_in_flight,
+            max_frames_in_flight + 1,
             |device| Self::create_descriptor_pool(device)
         );
-        let descriptor_pool = descriptor_pool_allocator.allocate_pool(device.device())?;
+        let descriptor_pool = descriptor_pool_allocator.allocate_pool(device_context.device())?;
         let descriptor_sets = Self::create_descriptor_set(
-            device.device(),
+            device_context.device(),
             &descriptor_pool,
             descriptor_set_layout,
             &sprites
@@ -376,12 +166,10 @@ impl VkSpriteResourceManager {
 
         let (sprite_update_tx, sprite_update_rx) = mpsc::channel();
 
-        let drop_sink = CombinedDropSink::new(swapchain_info.image_count as u32 + 1);
+        let drop_sink = CombinedDropSink::new(max_frames_in_flight + 1);
 
         Ok(VkSpriteResourceManager {
-            device: device.device().clone(),
-            swapchain_info,
-            //command_pool,
+            device_context: device_context.clone(),
             descriptor_set_layout,
             descriptor_pool_allocator,
             descriptor_pool,
@@ -390,9 +178,6 @@ impl VkSpriteResourceManager {
             drop_sink,
             sprite_update_tx,
             sprite_update_rx
-            // loading_sprite_tx,
-            // loading_sprite_rx,
-            // loading_sprites: Default::default()
         })
     }
 
@@ -510,9 +295,9 @@ impl Drop for VkSpriteResourceManager {
 
         unsafe {
             self.descriptor_pool_allocator.retire_pool(self.descriptor_pool);
-            self.descriptor_pool_allocator.destroy(&self.device);
+            self.descriptor_pool_allocator.destroy(self.device_context.device());
 
-            self.device
+            self.device_context.device()
                 .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
 
             for sprite in self.sprites.drain(..) {
@@ -521,9 +306,7 @@ impl Drop for VkSpriteResourceManager {
                     self.drop_sink.retire_image_view(sprite.image_view);
                 }
             }
-            self.drop_sink.destroy(&self.device);
-
-            //self.loading_sprites.clear();
+            self.drop_sink.destroy(self.device_context.device());
         }
 
         log::debug!("destroyed VkSpriteResourceManager");

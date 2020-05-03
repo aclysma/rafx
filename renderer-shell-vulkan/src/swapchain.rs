@@ -7,7 +7,7 @@ use ash::version::DeviceV1_0;
 use super::VkInstance;
 use super::VkDevice;
 use super::VkQueueFamilyIndices;
-use crate::PresentMode;
+use crate::{PresentMode, VkDeviceContext};
 use super::Window;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
@@ -22,7 +22,8 @@ pub struct SwapchainInfo {
 
 /// Handles setting up the swapchain resources required to present
 pub struct VkSwapchain {
-    pub device: ash::Device, // VkDevice is responsible for cleaning this up
+    //pub device: ash::Device, // VkDevice is responsible for cleaning this up
+    pub device_context: VkDeviceContext,
 
     pub swapchain_info: SwapchainInfo,
     pub swapchain_loader: khr::Swapchain,
@@ -38,19 +39,18 @@ pub struct VkSwapchain {
 
 impl VkSwapchain {
     pub fn new(
-        instance: &VkInstance,
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
         window: &dyn Window,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[PresentMode],
     ) -> VkResult<VkSwapchain> {
         let (swapchain_info, swapchain_loader, swapchain) = Self::create_swapchain(
-            &instance.instance,
-            device.physical_device,
-            device.device(),
-            &device.surface_loader,
-            device.surface,
-            &device.queue_family_indices,
+            device_context.instance(),
+            device_context.physical_device(),
+            device_context.device(),
+            &device_context.surface_loader(),
+            device_context.surface(),
+            &device_context.queue_family_indices(),
             window,
             old_swapchain,
             present_mode_priority,
@@ -59,14 +59,14 @@ impl VkSwapchain {
         let swapchain_images = unsafe { swapchain_loader.get_swapchain_images(swapchain)? };
 
         let swapchain_image_views =
-            Self::create_image_views(device.device(), &swapchain_info, &swapchain_images)?;
+            Self::create_image_views(device_context.device(), &swapchain_info, &swapchain_images)?;
 
-        let image_available_semaphores = Self::allocate_semaphores_per_frame(&device)?;
-        let render_finished_semaphores = Self::allocate_semaphores_per_frame(&device)?;
-        let in_flight_fences = Self::allocate_fences_per_frame(&device)?;
+        let image_available_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
+        let render_finished_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
+        let in_flight_fences = Self::allocate_fences_per_frame(&device_context)?;
 
         Ok(VkSwapchain {
-            device: device.context.device().clone(),
+            device_context: device_context.clone(),
             swapchain_info,
             swapchain_loader,
             swapchain,
@@ -78,12 +78,12 @@ impl VkSwapchain {
         })
     }
 
-    fn allocate_semaphores_per_frame(device: &VkDevice) -> VkResult<Vec<vk::Semaphore>> {
+    fn allocate_semaphores_per_frame(device_context: &VkDeviceContext) -> VkResult<Vec<vk::Semaphore>> {
         let mut semaphores = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT);
         for _ in 0..MAX_FRAMES_IN_FLIGHT {
             let semaphore_create_info = vk::SemaphoreCreateInfo::builder();
             let semaphore = unsafe {
-                device
+                device_context
                     .device()
                     .create_semaphore(&semaphore_create_info, None)?
             };
@@ -93,14 +93,14 @@ impl VkSwapchain {
         Ok(semaphores)
     }
 
-    fn allocate_fences_per_frame(device: &VkDevice) -> VkResult<Vec<vk::Fence>> {
+    fn allocate_fences_per_frame(device_context: &VkDeviceContext) -> VkResult<Vec<vk::Fence>> {
         let mut fences = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT);
         for _ in 0..MAX_FRAMES_IN_FLIGHT {
             let fence_create_info =
                 vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::SIGNALED);
 
             let fence = unsafe {
-                device
+                device_context
                     .device()
                     .create_fence(&fence_create_info, None)?
             };
@@ -359,20 +359,21 @@ impl Drop for VkSwapchain {
         debug!("destroying VkSwapchain");
 
         unsafe {
+            let device = self.device_context.device();
             for &semaphore in self.image_available_semaphores.iter() {
-                self.device.destroy_semaphore(semaphore, None);
+                device.destroy_semaphore(semaphore, None);
             }
 
             for &semaphore in self.render_finished_semaphores.iter() {
-                self.device.destroy_semaphore(semaphore, None);
+                device.destroy_semaphore(semaphore, None);
             }
 
             for &fence in self.in_flight_fences.iter() {
-                self.device.destroy_fence(fence, None);
+                device.destroy_fence(fence, None);
             }
 
             for &swapchain_image_view in self.swapchain_image_views.iter() {
-                self.device.destroy_image_view(swapchain_image_view, None);
+                device.destroy_image_view(swapchain_image_view, None);
             }
 
             self.swapchain_loader

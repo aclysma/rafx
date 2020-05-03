@@ -126,7 +126,7 @@ pub struct VkSpriteRenderPass {
 
 impl VkSpriteRenderPass {
     pub fn new(
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         sprite_resource_manager: &VkSpriteResourceManager
     ) -> VkResult<Self> {
@@ -134,33 +134,32 @@ impl VkSpriteRenderPass {
         // Command Buffers
         //
         let command_pool =
-            Self::create_command_pool(&device.device(), &device.queue_family_indices)?;
+            Self::create_command_pool(&device_context.device(), &device_context.queue_family_indices())?;
 
         //
         // Static resources used by GPU
         //
-        let image_sampler = Self::create_texture_image_sampler(&device.device());
+        let image_sampler = Self::create_texture_image_sampler(&device_context.device());
 
         let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
         for _ in 0..swapchain.swapchain_info.image_count {
             uniform_buffers.push(Self::create_uniform_buffer(
-                &device,
-                &device.memory_properties,
+                &device_context,
             )?)
         }
 
         //
         // Descriptors
         //
-        let descriptor_set_layout_per_pass = Self::create_descriptor_set_layout_per_pass(&device.device())?;
+        let descriptor_set_layout_per_pass = Self::create_descriptor_set_layout_per_pass(&device_context.device())?;
 
         let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
-            &device.device(),
+            &device_context.device(),
             swapchain.swapchain_info.image_count as u32,
         )?;
 
         let descriptor_sets_per_pass = Self::create_descriptor_sets_per_pass(
-            &device.device(),
+            &device_context.device(),
             &descriptor_pool_per_pass,
             descriptor_set_layout_per_pass,
             swapchain.swapchain_info.image_count,
@@ -182,7 +181,7 @@ impl VkSpriteRenderPass {
                 &swapchain.swapchain_info,
                 |renderpass_create_info| {
                     Self::create_pipeline(
-                        &device.device(),
+                        &device_context.device(),
                         &swapchain.swapchain_info,
                         fixed_function_state,
                         renderpass_create_info,
@@ -204,14 +203,14 @@ impl VkSpriteRenderPass {
         // Renderpass Resources
         //
         let frame_buffers = Self::create_framebuffers(
-            &device.device(),
+            &device_context.device(),
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
             &pipeline_resources.renderpass,
         );
 
         let command_buffers = Self::create_command_buffers(
-            &device.device(),
+            &device_context.device(),
             &swapchain.swapchain_info,
             &command_pool,
         )?;
@@ -227,7 +226,7 @@ impl VkSpriteRenderPass {
         }
 
         Ok(VkSpriteRenderPass {
-            device_context: device.context.clone(),
+            device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             descriptor_set_layout_per_pass,
             pipeline_layout,
@@ -285,11 +284,10 @@ impl VkSpriteRenderPass {
     }
 
     fn create_uniform_buffer(
-        device: &VkDevice,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
+        device_context: &VkDeviceContext,
     ) -> VkResult<ManuallyDrop<VkBuffer>> {
         let buffer = VkBuffer::new(
-            &device.context,
+            device_context,
             vk_mem::MemoryUsage::CpuToGpu,
             vk::BufferUsageFlags::UNIFORM_BUFFER,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -671,7 +669,6 @@ impl VkSpriteRenderPass {
     }
 
     fn update_command_buffer(
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
@@ -976,7 +973,6 @@ impl VkSpriteRenderPass {
 
     pub fn update(
         &mut self,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         present_index: usize,
         hidpi_factor: f64,
         sprite_resource_manager: &VkSpriteResourceManager,
@@ -986,7 +982,6 @@ impl VkSpriteRenderPass {
         self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
 
         Self::update_command_buffer(
-            device_memory_properties,
             &self.device_context,
             &self.swapchain_info,
             &self.renderpass,

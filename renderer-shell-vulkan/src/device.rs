@@ -37,11 +37,14 @@ pub struct VkQueues {
 }
 
 pub struct VkDeviceContextInner {
-    allocator: vk_mem::Allocator,
+    instance: ash::Instance,
     device: ash::Device,
+    allocator: vk_mem::Allocator,
+    surface: vk::SurfaceKHR,
+    surface_loader: ash::extensions::khr::Surface,
+    physical_device: vk::PhysicalDevice,
+    queue_family_indices: VkQueueFamilyIndices,
     queues: VkQueues,
-    queue_family_indices: VkQueueFamilyIndices
-    //graphics_submit_queue: VkSubmitQueue,
 }
 
 /// A lighter-weight structure that can be cached on downstream users. It includes
@@ -52,12 +55,28 @@ pub struct VkDeviceContext {
 }
 
 impl VkDeviceContext {
+    pub fn instance(&self) -> &ash::Instance {
+        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").instance
+    }
+
     pub fn device(&self) -> &ash::Device {
         &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").device
     }
 
     pub fn allocator(&self) -> &vk_mem::Allocator {
         &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").allocator
+    }
+
+    pub fn surface(&self) -> vk::SurfaceKHR {
+        self.inner.as_ref().expect("inner is only None if VkDevice is dropped").surface
+    }
+
+    pub fn surface_loader(&self) -> &ash::extensions::khr::Surface {
+        &self.inner.as_ref().expect("inner is only None if VkDevice is dropped").surface_loader
+    }
+
+    pub fn physical_device(&self) -> vk::PhysicalDevice {
+        self.inner.as_ref().expect("inner is only None if VkDevice is dropped").physical_device
     }
 
     pub fn queue_family_indices(&self) -> &VkQueueFamilyIndices {
@@ -73,20 +92,25 @@ impl VkDeviceContext {
     // }
 
     fn new(
+        instance: ash::Instance,
         device: ash::Device,
         allocator: vk_mem::Allocator,
+        surface: ash::vk::SurfaceKHR,
+        surface_loader: ash::extensions::khr::Surface,
+        physical_device: ash::vk::PhysicalDevice,
+        queue_family_indices: &VkQueueFamilyIndices,
         queues: &VkQueues,
-        queue_family_indices: &VkQueueFamilyIndices
     ) -> Self {
-        //let graphics_submit_queue = VkSubmitQueue::new(device.clone(), queues.graphics_queue, queue_families.graphics_queue_family_index);
-
         VkDeviceContext {
             inner: Some(Arc::new(ManuallyDrop::new(VkDeviceContextInner {
-                allocator,
+                instance,
                 device,
+                allocator,
+                surface,
+                surface_loader,
+                physical_device,
+                queue_family_indices: queue_family_indices.clone(),
                 queues: queues.clone(),
-                queue_family_indices: queue_family_indices.clone()
-                //graphics_submit_queue
             })))
         }
     }
@@ -148,7 +172,7 @@ impl From<vk_mem::Error> for VkCreateDeviceError {
 /// Represents the surface/physical device/logical device. Most of the code here has to do with
 /// picking a good device that's compatible with the window we're given.
 pub struct VkDevice {
-    pub context: VkDeviceContext,
+    pub device_context: VkDeviceContext,
     pub surface: ash::vk::SurfaceKHR,
     pub surface_loader: ash::extensions::khr::Surface,
     pub physical_device: ash::vk::PhysicalDevice,
@@ -159,11 +183,11 @@ pub struct VkDevice {
 
 impl VkDevice {
     pub fn allocator(&self) -> &vk_mem::Allocator {
-        self.context.allocator()
+        self.device_context.allocator()
     }
 
     pub fn device(&self) -> &ash::Device {
-        self.context.device()
+        self.device_context.device()
     }
 
     pub fn new(
@@ -211,10 +235,19 @@ impl VkDevice {
                 .get_physical_device_memory_properties(physical_device)
         };
 
-        let context = VkDeviceContext::new(logical_device, allocator, &queues, &queue_family_indices);
+        let device_context = VkDeviceContext::new(
+            instance.instance.clone(),
+            logical_device,
+            allocator,
+            surface,
+            surface_loader.clone(),
+            physical_device,
+            &queue_family_indices,
+            &queues
+        );
 
         Ok(VkDevice {
-            context,
+            device_context,
             surface,
             surface_loader,
             physical_device,
@@ -488,7 +521,7 @@ impl Drop for VkDevice {
     fn drop(&mut self) {
         debug!("destroying VkDevice");
         unsafe {
-            self.context.destroy();
+            self.device_context.destroy();
             self.surface_loader.destroy_surface(self.surface, None);
         }
 

@@ -188,11 +188,11 @@ pub struct ImageUploadQueue {
 }
 
 impl ImageUploadQueue {
-    pub fn new(device: &VkDevice, sprite_update_tx: Sender<SpriteUpdate>) -> Self {
+    pub fn new(device_context: &VkDeviceContext, sprite_update_tx: Sender<SpriteUpdate>) -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
 
         ImageUploadQueue {
-            device_context: device.context.clone(),
+            device_context: device_context.clone(),
             tx,
             rx,
             uploads_in_progress: Default::default(),

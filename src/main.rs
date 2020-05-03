@@ -1,5 +1,5 @@
 
-use renderer_shell_vulkan::{RendererBuilder, LogicalSize, RendererEventListener, Window, VkDevice, VkSwapchain, Renderer, CreateRendererError, VkDeviceContext, VkTransferUpload, VkTransferUploadState, VkImage};
+use renderer_shell_vulkan::{LogicalSize, RendererEventListener, Window, VkDevice, VkSwapchain, Renderer, VkDeviceContext, VkTransferUpload, VkTransferUploadState, VkImage};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -94,14 +94,13 @@ fn main() {
 
     // Handles routing data between the asset system and sprite resource manager
     let mut image_upload_queue = ImageUploadQueue::new(
-        renderer.shell().device(),
-        renderer.sprite_resource_manager().unwrap().sprite_update_tx().clone()
+        renderer.context().device_context(),
+        renderer.sprite_resource_manager().sprite_update_tx().clone()
     );
 
     // Force an image to load and stay resident in memory
     let (mut asset_resource, image_handle) = {
-        let device = renderer.shell().device();
-        let device_context = &device.context;
+        let device_context = renderer.context().device_context();
 
         let mut asset_resource = AssetResource::default();
         asset_resource.add_storage_with_uploader::<ImageAsset, ImageUploader>(Box::new(ImageUploader::new(
@@ -167,7 +166,7 @@ fn main() {
         imgui_manager.begin_frame(&sdl_window, &MouseState::new(&event_pump));
 
         asset_resource.update();
-        image_upload_queue.update(renderer.shell().device());
+        image_upload_queue.update(renderer.context().device());
 
         imgui_manager.with_ui(|ui| {
             let mut opened = true;

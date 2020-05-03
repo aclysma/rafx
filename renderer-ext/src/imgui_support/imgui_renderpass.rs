@@ -76,20 +76,20 @@ pub struct VkImGuiRenderPass {
 
 impl VkImGuiRenderPass {
     pub fn new(
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         font_atlas: &VkImGuiRenderPassFontAtlas,
     ) -> VkResult<Self> {
         let mut pipeline_resources = None;
 
-        let descriptor_set_layout = Self::create_descriptor_set_layout(&device.device())?;
+        let descriptor_set_layout = Self::create_descriptor_set_layout(&device_context.device())?;
 
         Self::create_fixed_function_state(&swapchain.swapchain_info, |fixed_function_state| {
             Self::create_renderpass_create_info(
                 &swapchain.swapchain_info,
                 |renderpass_create_info| {
                     Self::create_pipeline(
-                        device.device(),
+                        device_context.device(),
                         &swapchain.swapchain_info,
                         fixed_function_state,
                         renderpass_create_info,
@@ -109,17 +109,17 @@ impl VkImGuiRenderPass {
         let pipeline = pipeline_resources.pipeline;
 
         let frame_buffers = Self::create_framebuffers(
-            device.device(),
+            device_context.device(),
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
             &pipeline_resources.renderpass,
         );
 
         let command_pool =
-            Self::create_command_pool(device.device(), &device.queue_family_indices)?;
+            Self::create_command_pool(device_context.device(), &device_context.queue_family_indices())?;
 
         let command_buffers = Self::create_command_buffers(
-            device.device(),
+            device_context.device(),
             &swapchain.swapchain_info,
             &command_pool,
         )?;
@@ -138,8 +138,7 @@ impl VkImGuiRenderPass {
         let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
         for _ in 0..swapchain.swapchain_info.image_count {
             uniform_buffers.push(Self::create_uniform_buffer(
-                &device.context,
-                &device.memory_properties,
+                &device_context,
             )?)
         }
 
@@ -151,25 +150,25 @@ impl VkImGuiRenderPass {
 
         //let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
         let images = crate::image_utils::load_images(
-            &device.context,
-            device.queue_family_indices.transfer_queue_family_index,
-            device.queues.transfer_queue,
-            device.queue_family_indices.graphics_queue_family_index,
-            device.queues.graphics_queue,
+            &device_context,
+            device_context.queue_family_indices().transfer_queue_family_index,
+            device_context.queues().transfer_queue,
+            device_context.queue_family_indices().graphics_queue_family_index,
+            device_context.queues().graphics_queue,
             &[decoded_texture]
         )?;
 
-        let image_views : Vec<_> = images.iter().map(|image| Self::create_texture_image_view(device.device(), &image.image)).collect();
+        let image_views : Vec<_> = images.iter().map(|image| Self::create_texture_image_view(device_context.device(), &image.image)).collect();
 
-        let image_sampler = Self::create_texture_image_sampler(device.device());
+        let image_sampler = Self::create_texture_image_sampler(device_context.device());
 
         let descriptor_pool = Self::create_descriptor_pool(
-            device.device(),
+            device_context.device(),
             swapchain.swapchain_info.image_count as u32,
         )?;
 
         let descriptor_sets = Self::create_descriptor_sets(
-            device.device(),
+            device_context.device(),
             &descriptor_pool,
             descriptor_set_layout,
             swapchain.swapchain_info.image_count,
@@ -181,8 +180,7 @@ impl VkImGuiRenderPass {
         for i in 0..swapchain.swapchain_info.image_count {
             Self::record_command_buffer(
                 None,
-                &device.memory_properties,
-                &device.context,
+                &device_context,
                 &swapchain.swapchain_info,
                 &renderpass,
                 &frame_buffers[i],
@@ -198,7 +196,7 @@ impl VkImGuiRenderPass {
         }
 
         Ok(VkImGuiRenderPass {
-            device_context: device.context.clone(),
+            device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             descriptor_set_layout,
             pipeline_layout,
@@ -549,7 +547,6 @@ impl VkImGuiRenderPass {
 
     fn create_uniform_buffer(
         device_context: &VkDeviceContext,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
     ) -> VkResult<ManuallyDrop<VkBuffer>> {
         let buffer = VkBuffer::new(
             device_context,
@@ -697,7 +694,6 @@ impl VkImGuiRenderPass {
 
     fn record_command_buffer(
         imgui_draw_data: Option<&imgui::DrawData>,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
@@ -991,7 +987,6 @@ impl VkImGuiRenderPass {
 
     pub fn update(
         &mut self,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         imgui_draw_data: Option<&imgui::DrawData>,
         present_index: usize,
         hidpi_factor: f64,
@@ -1001,7 +996,6 @@ impl VkImGuiRenderPass {
 
         Self::record_command_buffer(
             imgui_draw_data,
-            device_memory_properties,
             &self.device_context,
             &self.swapchain_info,
             &self.renderpass,
