@@ -12,6 +12,7 @@ imgui = "0.3"
 imgui-sdl2 = "0.9.0"
 sdl2 = { version = "0.33", features = ["bundled", "static-link"] }
 image = "0.23"
+gltf = "0.15"
 
 vk-mem = "0.2"
 
