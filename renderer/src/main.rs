@@ -33,6 +33,9 @@ use renderer_ext::renderpass::sprite::{
 };
 
 fn main() {
+    //renderer_ext::test_gltf();
+    //return;
+
     // Setup logging
     env_logger::Builder::from_default_env()
         //.filter_level(log::LevelFilter::Error)
@@ -114,7 +117,7 @@ fn main() {
             ImageUploader::new(device_context.clone(), image_upload_queue.tx().clone()),
         ));
 
-        let asset_uuid = asset_uuid!("d60aa147-e1c7-42dc-9e99-40ba882544a7");
+        let asset_uuid = asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50");
 
         use atelier_assets::loader::Loader;
         use atelier_assets::loader::handle::AssetHandle;

@@ -19,6 +19,7 @@ use crate::image_utils::DecodedTexture;
 pub mod asset_resource;
 pub mod asset_storage;
 pub mod image_importer;
+pub mod gltf_importer;
 pub mod image_utils;
 
 #[derive(Copy, Clone)]

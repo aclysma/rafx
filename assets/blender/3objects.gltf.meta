@@ -1,0 +1,33 @@
+(
+    version: 1,
+    import_hash: Some(16774764847441058850),
+    importer_version: 5,
+    importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
+    importer_options: (),
+    importer_state: (
+        asset_uuid: Some("57bb28f4-2e3b-4b48-9d07-3a264add22ad"),
+        image_asset_uuids: {
+            Name("texture2"): "85a5d431-7205-45d4-85a7-45439bfec9fb",
+        },
+    ),
+    assets: [
+        (
+            id: "85a5d431-7205-45d4-85a7-45439bfec9fb",
+            search_tags: [
+                ("image_name", Some("texture2")),
+                ("file_name", Some("3objects.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 9630591607727206897,
+                id: "85a5d431-7205-45d4-85a7-45439bfec9fb",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1440016),
+                uncompressed_size: Some(1440016),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+    ],
+)

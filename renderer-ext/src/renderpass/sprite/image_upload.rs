@@ -268,6 +268,7 @@ impl ImageUploadQueue {
                     // do nothing
                 }
                 InProgressImageUploadPollResult::Complete(images, resource_handles) => {
+                    //load_op.complete() is called by poll_load
                     let upload = self.uploads_in_progress.swap_remove(i);
                     self.sprite_update_tx.send(ImageUpdate {
                         images,
@@ -275,9 +276,8 @@ impl ImageUploadQueue {
                     });
                 }
                 InProgressImageUploadPollResult::Error(e) => {
-                    let upload = self.uploads_in_progress.swap_remove(i);
-                    //TODO: error() probably needs to accept a box so we can relay the error
-                    // image.load_op.error(e);
+                    //load_op.error() is called by poll_load
+                    self.uploads_in_progress.swap_remove(i);
                 }
                 InProgressImageUploadPollResult::Destroyed => {
                     // not expected - this only occurs if polling the upload when it is already in a complete or error state

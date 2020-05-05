@@ -9,7 +9,7 @@ use std::io::Read;
 use std::convert::TryInto;
 
 #[derive(TypeUuid, Serialize, Deserialize)]
-#[uuid = "d4079e74-3ec9-4ebc-9b77-a87cafdfdada"]
+#[uuid = "e6166902-8716-401b-9d2e-8b01701c5626"]
 pub struct ImageAsset {
     pub width: u32,
     pub height: u32,
@@ -17,11 +17,11 @@ pub struct ImageAsset {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "3c8367c8-45fb-40bb-a229-00e5e9c3fc70"]
+#[uuid = "23f90369-6916-4548-81d0-a76e0b162df2"]
 struct ImageImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
-#[uuid = "720d636b-b79c-42d4-8f46-a2d8e1ada46e"]
+#[uuid = "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251"]
 struct ImageImporter;
 impl Importer for ImageImporter {
     fn version_static() -> u32

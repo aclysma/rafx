@@ -1,0 +1,32 @@
+(
+    version: 1,
+    import_hash: Some(6547880566565668191),
+    importer_version: 3,
+    importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
+    importer_options: (),
+    importer_state: (
+        asset_uuid: Some("fb39c983-5ec4-4727-8331-2211cccdbcda"),
+        image_asset_uuids: {
+            Name("test_tx2"): "31ebe22b-db17-4781-94ed-9eb2d9895f00",
+        },
+    ),
+    assets: [
+        (
+            id: "fb39c983-5ec4-4727-8331-2211cccdbcda",
+            search_tags: [
+                ("file_name", Some("cubic.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 12913261660856986273,
+                id: "fb39c983-5ec4-4727-8331-2211cccdbcda",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(4194320),
+                uncompressed_size: Some(4194320),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+    ],
+)
