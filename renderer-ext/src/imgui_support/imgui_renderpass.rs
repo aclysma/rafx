@@ -25,6 +25,7 @@ struct UniformBufferObject {
 }
 
 #[derive(Clone, Debug, Copy)]
+#[repr(C)]
 struct Vertex {
     pos: [f32; 2],
     tex_coord: [f32; 2],
