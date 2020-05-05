@@ -24,30 +24,30 @@ enum GltfObjectId {
 #[derive(TypeUuid, Serialize, Deserialize)]
 #[uuid = "130a91a8-ba80-4cad-9bce-848326b234c7"]
 pub struct MaterialAsset {
-    base_color: [f32;4],
-    base_color_texture: Option<AssetUuid>
+    pub base_color: [f32;4],
+    pub base_color_texture: Option<AssetUuid>
 }
 
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy, Serialize, Deserialize)]
 #[repr(C)]
-struct Vertex {
-    position: [f32; 3],
-    normal: [f32; 3],
-    tex_coord: [f32; 2],
+pub struct Vertex {
+    pub position: [f32; 3],
+    pub normal: [f32; 3],
+    pub tex_coord: [f32; 2],
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct MeshPart {
-    vertices: Vec<Vertex>,
-    indices: Vec<u16>,
-    material: Option<AssetUuid>
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u16>,
+    pub material: Option<AssetUuid>
 }
 
 #[derive(TypeUuid, Serialize, Deserialize)]
 #[uuid = "cf232526-3757-4d94-98d1-c2f7e27c979f"]
 pub struct MeshAsset {
-    mesh_parts: Vec<MeshPart>
+    pub mesh_parts: Vec<MeshPart>
 }
 
 // //TODO: It might not make practical sense to have an overall GLTF asset in the long run, probably

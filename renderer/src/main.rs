@@ -31,8 +31,13 @@ use std::error::Error;
 use renderer_ext::renderpass::sprite::{
     VkSpriteResourceManager, ImageUpdate, ImageUploadQueue, ImageUploader,
 };
+use renderer_ext::gltf_importer::{MaterialAsset, MeshAsset};
 
 fn main() {
+    // let u32_value : u32 = 2000000000;
+    // let u16_value : u16 = u32_value.try_into();
+
+
     //renderer_ext::test_gltf();
     //return;
 
@@ -109,25 +114,34 @@ fn main() {
     );
 
     // Force an image to load and stay resident in memory
-    let (mut asset_resource, image_handle) = {
+    let (mut asset_resource, image_handle, material_handle) = {
         let device_context = renderer.context().device_context();
 
         let mut asset_resource = AssetResource::default();
         asset_resource.add_storage_with_uploader::<ImageAsset, ImageUploader>(Box::new(
             ImageUploader::new(device_context.clone(), image_upload_queue.tx().clone()),
         ));
+        asset_resource.add_storage::<MaterialAsset>();
+        asset_resource.add_storage::<MeshAsset>();
 
-        let asset_uuid = asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50");
+        let image_uuid = asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50");
+        let material_uuid = asset_uuid!("35befa43-1100-418f-8064-8090e7152a6e");
 
         use atelier_assets::loader::Loader;
         use atelier_assets::loader::handle::AssetHandle;
 
-        let load_handle = asset_resource.loader().add_ref(asset_uuid);
+        let image_load_handle = asset_resource.loader().add_ref(image_uuid);
         let image_handle = atelier_assets::loader::handle::Handle::<ImageAsset>::new(
             asset_resource.tx().clone(),
-            load_handle,
+            image_load_handle,
         );
-        (asset_resource, image_handle)
+
+        let material_load_handle = asset_resource.loader().add_ref(material_uuid);
+        let material_handle = atelier_assets::loader::handle::Handle::<MaterialAsset>::new(
+            asset_resource.tx().clone(),
+            material_load_handle,
+        );
+        (asset_resource, image_handle, material_handle)
     };
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
@@ -165,6 +179,17 @@ fn main() {
                 }
             }
         }
+        // use atelier_loader::handle::TypedAssetStorage;
+        // let a : Option<&MaterialAsset> = material_handle.asset(asset_resource.storage());
+        // match a {
+        //     Some(material) => {
+        //         println!("material color {:?}", material.base_color);
+        //     },
+        //     None => {
+        //         println!("material not loaded");
+        //     }
+        // }
+
 
         let window = Sdl2Window::new(&sdl_window);
         imgui_manager.begin_frame(&sdl_window, &MouseState::new(&event_pump));
