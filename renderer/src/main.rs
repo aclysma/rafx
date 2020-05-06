@@ -15,6 +15,7 @@ use atelier_assets::loader as atelier_loader;
 
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
+use atelier_assets::core::AssetUuid;
 
 mod daemon;
 use renderer_ext::asset_resource::AssetResource;
@@ -32,6 +33,15 @@ use renderer_ext::renderpass::sprite::{
     VkSpriteResourceManager, ImageUpdate, ImageUploadQueue, ImageUploader,
 };
 use renderer_ext::gltf_importer::{MaterialAsset, MeshAsset};
+
+fn load_asset<T>(asset_uuid: AssetUuid, asset_resource: &AssetResource) -> atelier_assets::loader::handle::Handle::<T> {
+    use atelier_loader::Loader;
+    let load_handle = asset_resource.loader().add_ref(asset_uuid);
+    atelier_assets::loader::handle::Handle::<T>::new(
+        asset_resource.tx().clone(),
+        load_handle,
+    )
+}
 
 fn main() {
     // let u32_value : u32 = 2000000000;
@@ -114,7 +124,7 @@ fn main() {
     );
 
     // Force an image to load and stay resident in memory
-    let (mut asset_resource, image_handle, material_handle) = {
+    let mut asset_resource = {
         let device_context = renderer.context().device_context();
 
         let mut asset_resource = AssetResource::default();
@@ -123,26 +133,13 @@ fn main() {
         ));
         asset_resource.add_storage::<MaterialAsset>();
         asset_resource.add_storage::<MeshAsset>();
-
-        let image_uuid = asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50");
-        let material_uuid = asset_uuid!("35befa43-1100-418f-8064-8090e7152a6e");
-
-        use atelier_assets::loader::Loader;
-        use atelier_assets::loader::handle::AssetHandle;
-
-        let image_load_handle = asset_resource.loader().add_ref(image_uuid);
-        let image_handle = atelier_assets::loader::handle::Handle::<ImageAsset>::new(
-            asset_resource.tx().clone(),
-            image_load_handle,
-        );
-
-        let material_load_handle = asset_resource.loader().add_ref(material_uuid);
-        let material_handle = atelier_assets::loader::handle::Handle::<MaterialAsset>::new(
-            asset_resource.tx().clone(),
-            material_load_handle,
-        );
-        (asset_resource, image_handle, material_handle)
+        asset_resource
     };
+
+    //let cat_handle = load_asset::<ImageAsset>(asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"), &asset_resource);
+    //let image_handle = load_asset::<ImageAsset>(asset_uuid!("337fe670-fb88-441e-bf87-33ed6fcfe269"), &asset_resource);
+    //let material_handle = load_asset::<MaterialAsset>(asset_uuid!("742f5d82-0770-45de-907f-91ebe4834d7a"), &asset_resource);
+    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"), &asset_resource);
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 

@@ -1,6 +1,6 @@
-use atelier_assets::core::AssetUuid;
+use atelier_assets::core::{AssetUuid, AssetRef};
 use atelier_assets::importer::{
-    Error, ImportedAsset, Importer, ImporterValue, SourceFileImporter,
+    Error, ImportedAsset, Importer, ImporterValue, SourceFileImporter
 };
 use image2::{color, ImageBuf, Image};
 use serde::{Deserialize, Serialize};
@@ -77,7 +77,7 @@ impl Importer for GltfImporter {
     where
         Self: Sized,
     {
-        10
+        11
     }
 
     fn version(&self) -> u32 {
@@ -168,12 +168,17 @@ impl Importer for GltfImporter {
                 search_tags.push(("material_name".to_string(), Some(name.clone())));
             }
 
+            let mut load_deps = vec![];
+            if let Some(image) = material_to_import.asset.base_color_texture {
+                load_deps.push(AssetRef::Uuid(image));
+            }
+
             // Create the asset
             imported_assets.push(ImportedAsset {
                 id: material_uuid,
                 search_tags,
                 build_deps: vec![],
-                load_deps: vec![],
+                load_deps,
                 build_pipeline: None,
                 asset_data: Box::new(material_to_import.asset),
             });
@@ -197,12 +202,19 @@ impl Importer for GltfImporter {
                 search_tags.push(("mesh_name".to_string(), Some(name.clone())));
             }
 
+            let mut load_deps = vec![];
+            for mesh_part in &mesh_to_import.asset.mesh_parts {
+                if let Some(material) = mesh_part.material {
+                    load_deps.push(AssetRef::Uuid(material));
+                }
+            }
+
             // Create the asset
             imported_assets.push(ImportedAsset {
                 id: mesh_uuid,
                 search_tags,
                 build_deps: vec![],
-                load_deps: vec![],
+                load_deps,
                 build_pipeline: None,
                 asset_data: Box::new(mesh_to_import.asset),
             });

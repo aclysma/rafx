@@ -61,7 +61,7 @@ unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
     std::mem::transmute(value)
 }
 
-
+/*
 pub fn test_gltf() {
     //let path = std::path::Path::new("assets/blender/cubic.gltf");
     let path = std::path::Path::new("assets/blender/3objects.gltf");
@@ -285,3 +285,4 @@ pub fn test_gltf() {
     // - height
 
 }
+*/
