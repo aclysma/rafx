@@ -14,6 +14,8 @@ sdl2 = { version = "0.33", features = ["bundled", "static-link"] }
 image = "0.23"
 gltf = "0.15"
 
+crossbeam-channel = "0.4.2"
+
 vk-mem = "0.2"
 
 renderer-base = { path = "../renderer-base" }
@@ -29,10 +31,7 @@ glam = "0.8.6"
 rand = "0.7.3"
 pcg_rand = "0.11.1"
 
-
 fnv = "1.0"
-
-
 
 structopt = "0.3"
 serde = "1"

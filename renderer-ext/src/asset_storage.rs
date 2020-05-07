@@ -11,22 +11,54 @@ use atelier_assets::loader as atelier_loader;
 use renderer_base::slab::{GenSlab, GenSlabKey};
 use std::marker::PhantomData;
 
+
+
 // Used to catch asset changes and upload them to the GPU (or some other system)
 pub trait StorageUploader<T>: 'static + Send
 where
     T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
 {
-    fn upload(
-        &self,
-        asset: &T,
+    fn update_asset(
+        &mut self,
+        load_handle: LoadHandle,
         load_op: AssetLoadOp,
         resource_handle: ResourceHandle<T>,
+        version: u32,
+        asset: &T,
+    );
+
+    fn commit_asset_version(
+        &mut self,
+        load_handle: LoadHandle,
+        resource_handle: ResourceHandle<T>,
+        version: u32
     );
 
     fn free(
-        &self,
+        &mut self,
+        load_handle: LoadHandle,
         resource_handle: ResourceHandle<T>,
     );
+
+    // fn update_asset(
+    //     &mut self,
+    //     loader_info: &dyn LoaderInfoProvider,
+    //     data: &[u8],
+    //     load_handle: LoadHandle,
+    //     load_op: AssetLoadOp,
+    //     version: u32,
+    // ) -> Result<(), Box<dyn Error>>;
+    // fn commit_asset_version(
+    //     &mut self,
+    //     handle: LoadHandle,
+    //     version: u32,
+    // );
+    // fn free(
+    //     &mut self,
+    //     handle: LoadHandle,
+    // );
+    //
+    // fn type_name(&self) -> &'static str;
 }
 
 pub struct ResourceHandle<A> {
@@ -323,11 +355,11 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         );
         log::info!("{} bytes loaded for {:?}", data.len(), load_handle);
 
-        if let Some(uploader) = &self.uploader {
+        if let Some(uploader) = &mut self.uploader {
             // We have an uploader, pass it a reference to the asset and a load_op. The uploader
             // will be responsible for calling load_op.complete() or load_op.error()
             let asset = self.uncommitted.get(&load_handle).unwrap();
-            uploader.upload(&asset.asset, load_op, resource_handle);
+            uploader.update_asset(load_handle, load_op, resource_handle, version, &asset.asset);
         } else {
             // Since there is no uploader, we call load_op.complete() immediately
             load_op.complete();
@@ -339,19 +371,25 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
     fn commit_asset_version(
         &mut self,
         load_handle: LoadHandle,
-        _version: u32,
+        version: u32,
     ) {
         // The commit step is done after an asset load has completed.
         // It exists to avoid frames where an asset that was loaded is unloaded, which
         // could happen when hot reloading. To support this case, you must support having multiple
         // versions of an asset loaded at the same time.
-        self.assets.insert(
-            load_handle,
-            self.uncommitted
+        let asset_state = self.uncommitted
                 .remove(&load_handle)
-                .expect("asset not present when committing"),
+                .expect("asset not present when committing");
+
+        let resource_handle = asset_state.resource_handle;
+        self.assets.insert(
+            load_handle, asset_state
         );
-        log::info!("Commit {:?}", load_handle);
+
+        if let Some(uploader) = &mut self.uploader {
+            uploader.commit_asset_version(load_handle, resource_handle, version);
+        }
+        log::info!("!!! Commit {:?}", load_handle);
     }
 
     fn free(
@@ -361,7 +399,11 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         log::info!("Free {:?}", load_handle);
         let asset_state = self.assets.remove(&load_handle);
         if let Some(asset_state) = asset_state {
+            let resource_handle = asset_state.resource_handle;
             self.slab.free(&asset_state.resource_handle.key);
+            if let Some(uploader) = &mut self.uploader {
+                uploader.free(load_handle, resource_handle);
+            }
         }
     }
 

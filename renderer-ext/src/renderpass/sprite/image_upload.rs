@@ -1,7 +1,7 @@
 use renderer_shell_vulkan::{
     VkTransferUploadState, VkDevice, VkDeviceContext, VkTransferUpload, VkImage,
 };
-use std::sync::mpsc::{Sender, Receiver};
+use crossbeam_channel::{Sender, Receiver};
 use ash::prelude::VkResult;
 use std::time::Duration;
 use crate::image_utils::{enqueue_load_images, DecodedTexture};
@@ -10,29 +10,118 @@ use std::mem::ManuallyDrop;
 use crate::asset_storage::{ResourceHandle, StorageUploader};
 use crate::image_importer::ImageAsset;
 use std::error::Error;
-use atelier_assets::loader::AssetLoadOp;
+use atelier_assets::loader::{LoadHandle, AssetLoadOp};
+use fnv::FnvHashMap;
+use std::sync::Arc;
+use image::load;
+use std::hint::unreachable_unchecked;
+
+
+//
+// Ghetto futures
+//
+
+enum UploadOpResult {
+    UploadError,
+    UploadComplete(ManuallyDrop<VkImage>),
+    UploadDrop,
+}
+
+struct UploadOp {
+    sender: Option<Sender<UploadOpResult>>,
+}
+
+impl UploadOp {
+    pub(crate) fn new(sender: Sender<UploadOpResult>) -> Self {
+        Self {
+            sender: Some(sender),
+        }
+    }
+
+    pub fn complete(mut self, image: ManuallyDrop<VkImage>) {
+        let _ = self
+            .sender
+            .as_ref()
+            .unwrap()
+            .send(UploadOpResult::UploadComplete(image));
+        self.sender = None;
+    }
+
+    pub fn error(mut self) {
+        let _ = self
+            .sender
+            .as_ref()
+            .unwrap()
+            .send(UploadOpResult::UploadError);
+        self.sender = None;
+    }
+}
+
+impl Drop for UploadOp {
+    fn drop(&mut self) {
+        if let Some(ref sender) = self.sender {
+            let _ = sender.send(UploadOpResult::UploadDrop);
+        }
+    }
+}
+
+struct UploadOpAwaiter {
+    receiver: Receiver<UploadOpResult>
+}
+
+fn create_upload_op() -> (UploadOp, UploadOpAwaiter) {
+    let (tx, rx) = crossbeam_channel::unbounded();
+    let op = UploadOp::new(tx);
+    let awaiter = UploadOpAwaiter {
+        receiver: rx
+    };
+
+    (op, awaiter)
+}
+
+
+
+
+
+
+
+
+//
+// A storage uploader for ImageAsset
+//
+
+
 
 // This is registered with the asset storage which lets us hook when assets are updated
 pub struct ImageUploader {
-    device_context: VkDeviceContext,
-    tx: Sender<PendingImageUpload>,
+    upload_tx: Sender<PendingImageUpload>,
+    image_update_tx: Sender<ImageUpdate>,
+    pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, UploadOpAwaiter>>
 }
 
 impl ImageUploader {
     pub fn new(
-        device_context: VkDeviceContext,
-        tx: Sender<PendingImageUpload>,
+        upload_tx: Sender<PendingImageUpload>,
+        image_update_tx: Sender<ImageUpdate>
     ) -> Self {
-        ImageUploader { device_context, tx }
+        ImageUploader {
+            upload_tx,
+            image_update_tx,
+            pending_updates: Default::default()
+        }
     }
 }
 
+// This sends the texture to the uploader. The uploader will batch uploads together when update()
+// is called on it. When complete, the uploader will send the image handle back via a channel
 impl StorageUploader<ImageAsset> for ImageUploader {
-    fn upload(
-        &self,
-        asset: &ImageAsset,
+    fn update_asset(
+        &mut self,
+        load_handle: LoadHandle,
         load_op: AssetLoadOp,
         resource_handle: ResourceHandle<ImageAsset>,
+        version: u32,
+        asset: &ImageAsset,
     ) {
         let texture = DecodedTexture {
             width: asset.width,
@@ -40,68 +129,131 @@ impl StorageUploader<ImageAsset> for ImageUploader {
             data: asset.data.clone(),
         };
 
-        //TODO: This is not respecting commit() - it just updates sprites as soon as it can
-        self.tx
+        let (upload_op, awaiter) = create_upload_op();
+
+        self.pending_updates.entry(load_handle).or_default().insert(version,awaiter);
+
+        self.upload_tx
             .send(PendingImageUpload {
                 load_op,
+                upload_op,
                 texture,
                 resource_handle,
             })
             .unwrap(); //TODO: Better error handling
     }
 
+    fn commit_asset_version(
+        &mut self,
+        load_handle: LoadHandle,
+        resource_handle: ResourceHandle<ImageAsset>,
+        version: u32
+    ) {
+        if let Some(versions) = self.pending_updates.get_mut(&load_handle) {
+            if let Some(awaiter) = versions.remove(&version) {
+
+                // We assume that if commit_asset_version is being called the awaiter is signaled
+                // and has a valid result
+                let value = awaiter.receiver.recv_timeout(Duration::from_secs(0)).unwrap();
+                match value {
+                    UploadOpResult::UploadComplete(image) => {
+                        log::info!("Commit asset {:?} {:?}", load_handle, version);
+                        self.image_update_tx.send(ImageUpdate {
+                            images: vec![image],
+                            resource_handles: vec![resource_handle]
+                        });
+                    },
+                    UploadOpResult::UploadError => unreachable!(),
+                    UploadOpResult::UploadDrop => unreachable!(),
+                }
+            } else {
+                log::error!("Could not find awaiter for asset version {:?} {}", load_handle, version);
+            }
+        } else {
+            log::error!("Could not find awaiter for {:?} {}", load_handle, version);
+        }
+    }
+
     fn free(
-        &self,
+        &mut self,
+        load_handle: LoadHandle,
         resource_handle: ResourceHandle<ImageAsset>,
     ) {
         //TODO: We are not unloading images
+        self.pending_updates.remove(&load_handle);
     }
 }
 
-// A message sent to ImageUploadQueue
+
+
+
+
+
+
+
+
+//
+// Something to upload resources
+//
+
+
+
 pub struct PendingImageUpload {
     load_op: AssetLoadOp,
+    upload_op: UploadOp,
     texture: DecodedTexture,
     resource_handle: ResourceHandle<ImageAsset>,
 }
 
+pub struct PendingBufferUpload {
+    load_op: AssetLoadOp,
+    upload_op: UploadOp,
+    data: Vec<u8>,
+    resource_handle: ResourceHandle<ImageAsset>,
+}
+
 // The result from polling a single upload (which may contain multiple images in it)
-pub enum InProgressImageUploadPollResult {
+pub enum InProgressUploadPollResult {
     Pending,
-    Complete(Vec<ManuallyDrop<VkImage>>, Vec<ResourceHandle<ImageAsset>>),
-    Error(Box<Error + 'static + Send>),
+    Complete,
+    Error,
     Destroyed,
 }
 
 // This is an inner of InProgressImageUpload - it is wrapped in a Option to avoid borrowing issues
 // when polling by allowing us to temporarily take ownership of it and then put it back
-struct InProgressImageUploadInner {
-    load_ops: Vec<AssetLoadOp>,
+struct InProgressUploadInner {
+    image_load_ops: Vec<AssetLoadOp>,
+    image_upload_ops: Vec<UploadOp>,
     images: Vec<ManuallyDrop<VkImage>>,
-    resource_handles: Vec<ResourceHandle<ImageAsset>>,
+
+    // buffer_load_ops: Vec<AssetLoadOp>,
+    // buffer_upload_ops: Vec<UploadOp>,
+    // buffers: Vec<ManuallyDrop<VkImage>>,
+
     upload: VkTransferUpload,
 }
 
 // A single upload which may contain multiple images
-struct InProgressImageUpload {
-    inner: Option<InProgressImageUploadInner>,
+struct InProgressUpload {
+    inner: Option<InProgressUploadInner>,
 }
 
-impl InProgressImageUpload {
+impl InProgressUpload {
     pub fn new(
-        load_ops: Vec<AssetLoadOp>,
+        image_load_ops: Vec<AssetLoadOp>,
+        image_upload_ops: Vec<UploadOp>,
         images: Vec<ManuallyDrop<VkImage>>,
-        resource_handles: Vec<ResourceHandle<ImageAsset>>,
         upload: VkTransferUpload,
     ) -> Self {
-        let inner = InProgressImageUploadInner {
-            load_ops,
+        let inner = InProgressUploadInner {
+            image_load_ops,
+            image_upload_ops,
             images,
-            resource_handles,
             upload,
         };
 
-        InProgressImageUpload { inner: Some(inner) }
+        InProgressUpload { inner: Some(inner) }
     }
 
     // The main state machine for an upload:
@@ -112,7 +264,7 @@ impl InProgressImageUpload {
     pub fn poll_load(
         &mut self,
         device: &VkDevice,
-    ) -> InProgressImageUploadPollResult {
+    ) -> InProgressUploadPollResult {
         loop {
             if let Some(mut inner) = self.take_inner() {
                 match inner.upload.state() {
@@ -125,7 +277,7 @@ impl InProgressImageUpload {
                         VkTransferUploadState::SentToTransferQueue => {
                             println!("VkTransferUploadState::SentToTransferQueue");
                             self.inner = Some(inner);
-                            break InProgressImageUploadPollResult::Pending;
+                            break InProgressUploadPollResult::Pending;
                         }
                         VkTransferUploadState::PendingSubmitDstQueue => {
                             println!("VkTransferUploadState::PendingSubmitDstQueue");
@@ -135,34 +287,44 @@ impl InProgressImageUpload {
                         VkTransferUploadState::SentToDstQueue => {
                             println!("VkTransferUploadState::SentToDstQueue");
                             self.inner = Some(inner);
-                            break InProgressImageUploadPollResult::Pending;
+                            break InProgressUploadPollResult::Pending;
                         }
                         VkTransferUploadState::Complete => {
                             println!("VkTransferUploadState::Complete");
-                            for load_op in inner.load_ops {
+                            let mut image_upload_ops = inner.image_upload_ops;
+                            let mut images = inner.images;
+                            for i in 0..image_upload_ops.len() {
+                                //TODO: This is gross
+                                let upload_op = image_upload_ops.pop().unwrap();
+                                let image = images.pop().unwrap();
+                                //let upload_op = image_upload_ops[i];
+                                upload_op.complete(image);
+                            }
+
+                            for load_op in inner.image_load_ops {
                                 load_op.complete();
                             }
-                            break InProgressImageUploadPollResult::Complete(
-                                inner.images,
-                                inner.resource_handles,
-                            );
+                            break InProgressUploadPollResult::Complete;
                         }
                     },
                     Err(err) => {
-                        for load_op in inner.load_ops {
+                        for load_op in inner.image_load_ops {
                             load_op.error(err);
                         }
-                        break InProgressImageUploadPollResult::Error(Box::new(err));
+                        for upload_op in inner.image_upload_ops {
+                            upload_op.error();
+                        }
+                        break InProgressUploadPollResult::Error;
                     }
                 }
             } else {
-                break InProgressImageUploadPollResult::Destroyed;
+                break InProgressUploadPollResult::Destroyed;
             }
         }
     }
 
     // Allows taking ownership of the inner object
-    fn take_inner(&mut self) -> Option<InProgressImageUploadInner> {
+    fn take_inner(&mut self) -> Option<InProgressUploadInner> {
         let mut inner = None;
         std::mem::swap(&mut self.inner, &mut inner);
         inner
@@ -171,7 +333,7 @@ impl InProgressImageUpload {
 
 // Receives sets of images that need to be uploaded and kicks off the upload. Responsible for
 // batching image updates together into uploads
-pub struct ImageUploadQueue {
+pub struct UploadQueue {
     device_context: VkDeviceContext,
 
     // The ImageUploader associated with the asset storage passes messages via these channels.
@@ -179,25 +341,23 @@ pub struct ImageUploadQueue {
     rx: Receiver<PendingImageUpload>,
 
     // These are uploads that are currently in progress
-    uploads_in_progress: Vec<InProgressImageUpload>,
+    uploads_in_progress: Vec<InProgressUpload>,
 
     // This channel forwards completed uploads to the sprite resource manager
-    sprite_update_tx: Sender<ImageUpdate>,
+    //sprite_update_tx: Sender<ImageUpdate>,
 }
 
-impl ImageUploadQueue {
+impl UploadQueue {
     pub fn new(
         device_context: &VkDeviceContext,
-        sprite_update_tx: Sender<ImageUpdate>,
     ) -> Self {
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = crossbeam_channel::unbounded();
 
-        ImageUploadQueue {
+        UploadQueue {
             device_context: device_context.clone(),
             tx,
             rx,
             uploads_in_progress: Default::default(),
-            sprite_update_tx,
         }
     }
 
@@ -206,12 +366,14 @@ impl ImageUploadQueue {
     }
 
     fn start_new_uploads(&mut self) -> VkResult<()> {
-        let mut load_ops = vec![];
+        let mut image_load_ops = vec![];
+        let mut image_upload_ops = vec![];
         let mut decoded_textures = vec![];
         let mut resource_handles = vec![];
 
         while let Ok(pending_upload) = self.rx.recv_timeout(Duration::from_secs(0)) {
-            load_ops.push(pending_upload.load_op);
+            image_load_ops.push(pending_upload.load_op);
+            image_upload_ops.push(pending_upload.upload_op);
             decoded_textures.push(pending_upload.texture);
             resource_handles.push(pending_upload.resource_handle);
 
@@ -246,10 +408,10 @@ impl ImageUploadQueue {
         )?;
 
         upload.submit_transfer(self.device_context.queues().transfer_queue)?;
-        self.uploads_in_progress.push(InProgressImageUpload::new(
-            load_ops,
+        self.uploads_in_progress.push(InProgressUpload::new(
+            image_load_ops,
+            image_upload_ops,
             images,
-            resource_handles,
             upload,
         ));
 
@@ -264,22 +426,18 @@ impl ImageUploadQueue {
         for i in (0..self.uploads_in_progress.len()).rev() {
             let result = self.uploads_in_progress[i].poll_load(device);
             match result {
-                InProgressImageUploadPollResult::Pending => {
+                InProgressUploadPollResult::Pending => {
                     // do nothing
                 }
-                InProgressImageUploadPollResult::Complete(images, resource_handles) => {
+                InProgressUploadPollResult::Complete => {
                     //load_op.complete() is called by poll_load
-                    let upload = self.uploads_in_progress.swap_remove(i);
-                    self.sprite_update_tx.send(ImageUpdate {
-                        images,
-                        resource_handles,
-                    });
+                    self.uploads_in_progress.swap_remove(i);
                 }
-                InProgressImageUploadPollResult::Error(e) => {
+                InProgressUploadPollResult::Error => {
                     //load_op.error() is called by poll_load
                     self.uploads_in_progress.swap_remove(i);
                 }
-                InProgressImageUploadPollResult::Destroyed => {
+                InProgressUploadPollResult::Destroyed => {
                     // not expected - this only occurs if polling the upload when it is already in a complete or error state
                     unreachable!();
                 }

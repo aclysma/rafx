@@ -25,12 +25,12 @@ use imgui::{Key, Image};
 use renderer_ext::asset_storage::{StorageUploader, ResourceHandle};
 use std::mem::ManuallyDrop;
 //use renderer_ext::renderpass::sprite::LoadingSprite;
-use std::sync::mpsc::{Sender, Receiver};
+use crossbeam_channel::{Sender, Receiver};
 use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
 use renderer_ext::renderpass::sprite::{
-    VkSpriteResourceManager, ImageUpdate, ImageUploadQueue, ImageUploader,
+    VkSpriteResourceManager, ImageUpdate, UploadQueue, ImageUploader,
 };
 use renderer_ext::gltf_importer::{MaterialAsset, MeshAsset};
 
@@ -118,9 +118,9 @@ fn main() {
         .expect("Could not create sdl event pump");
 
     // Handles routing data between the asset system and sprite resource manager
-    let mut image_upload_queue = ImageUploadQueue::new(
+    let mut image_upload_queue = UploadQueue::new(
         renderer.context().device_context(),
-        renderer.sprite_resource_manager().image_update_tx().clone(),
+        //renderer.sprite_resource_manager().image_update_tx().clone(),
     );
 
     // Force an image to load and stay resident in memory
@@ -129,17 +129,17 @@ fn main() {
 
         let mut asset_resource = AssetResource::default();
         asset_resource.add_storage_with_uploader::<ImageAsset, ImageUploader>(Box::new(
-            ImageUploader::new(device_context.clone(), image_upload_queue.tx().clone()),
+            ImageUploader::new(image_upload_queue.tx().clone(), renderer.sprite_resource_manager().image_update_tx().clone()),
         ));
         asset_resource.add_storage::<MaterialAsset>();
         asset_resource.add_storage::<MeshAsset>();
         asset_resource
     };
 
-    //let cat_handle = load_asset::<ImageAsset>(asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"), &asset_resource);
+    let cat_handle = load_asset::<ImageAsset>(asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"), &asset_resource);
     //let image_handle = load_asset::<ImageAsset>(asset_uuid!("337fe670-fb88-441e-bf87-33ed6fcfe269"), &asset_resource);
     //let material_handle = load_asset::<MaterialAsset>(asset_uuid!("742f5d82-0770-45de-907f-91ebe4834d7a"), &asset_resource);
-    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"), &asset_resource);
+    //let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"), &asset_resource);
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 

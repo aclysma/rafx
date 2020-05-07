@@ -25,8 +25,7 @@ use ash::vk::{ShaderStageFlags, DescriptorPoolResetFlags};
 use crate::image_utils::DecodedTexture;
 use std::collections::VecDeque;
 use imgui::FontSource::DefaultFontData;
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::mpsc;
+use crossbeam_channel::{Receiver, Sender};
 use std::time::Duration;
 use imgui::Image;
 use std::error::Error;
@@ -104,7 +103,7 @@ impl VkSpriteResourceManager {
             &sprites,
         )?;
 
-        let (image_update_tx, image_update_rx) = mpsc::channel();
+        let (image_update_tx, image_update_rx) = crossbeam_channel::unbounded();
 
         let drop_sink = CombinedDropSink::new(max_frames_in_flight + 1);
 

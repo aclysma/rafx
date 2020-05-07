@@ -13,8 +13,9 @@ use std::mem::{swap, ManuallyDrop};
 use crate::image_utils::{decode_texture, load_images, enqueue_load_images};
 use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
-use std::sync::mpsc::Sender;
+use crossbeam_channel::Sender;
 use std::ops::Deref;
+use crate::renderpass::mesh::VkMeshRenderPass;
 
 pub struct GameRenderer {
     time_state: TimeState,
@@ -22,6 +23,7 @@ pub struct GameRenderer {
 
     sprite_resource_manager: VkSpriteResourceManager,
     sprite_renderpass: Option<VkSpriteRenderPass>,
+    mesh_renderpass: Option<VkMeshRenderPass>,
 }
 
 impl GameRenderer {
@@ -42,6 +44,7 @@ impl GameRenderer {
             imgui_event_listener,
             sprite_resource_manager,
             sprite_renderpass: None,
+            mesh_renderpass: None
         })
     }
 
@@ -77,6 +80,12 @@ impl VkSurfaceEventListener for GameRenderer {
             swapchain,
             &self.sprite_resource_manager,
         )?);
+        log::debug!("Create VkMeshRenderPass");
+        self.mesh_renderpass = Some(VkMeshRenderPass::new(
+            device_context,
+            swapchain,
+            &self.sprite_resource_manager,
+        )?);
         log::debug!("game renderer swapchain_created finished");
 
         VkResult::Ok(())
@@ -86,6 +95,7 @@ impl VkSurfaceEventListener for GameRenderer {
         log::debug!("game renderer swapchain destroyed");
 
         self.sprite_renderpass = None;
+        self.mesh_renderpass = None;
         self.imgui_event_listener.swapchain_destroyed();
     }
 
@@ -100,15 +110,26 @@ impl VkSurfaceEventListener for GameRenderer {
 
         self.sprite_resource_manager.update();
 
-        if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
-            log::trace!("sprite_renderpass update");
-            sprite_renderpass.update(
+        // if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
+        //     log::trace!("sprite_renderpass update");
+        //     sprite_renderpass.update(
+        //         present_index,
+        //         1.0,
+        //         &self.sprite_resource_manager,
+        //         &self.time_state,
+        //     )?;
+        //     command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
+        // }
+
+        if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
+            log::trace!("mesh_renderpass update");
+            mesh_renderpass.update(
                 present_index,
                 1.0,
                 &self.sprite_resource_manager,
                 &self.time_state,
             )?;
-            command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
+            command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
         }
 
         {
