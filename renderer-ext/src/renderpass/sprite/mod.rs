@@ -7,4 +7,3 @@ pub use sprite_renderpass::VkSpriteRenderPass;
 
 mod image_upload;
 pub use image_upload::ImageUploader;
-pub use image_upload::UploadQueue;

@@ -21,6 +21,7 @@ pub mod asset_storage;
 pub mod image_importer;
 pub mod gltf_importer;
 pub mod image_utils;
+pub mod upload;
 
 #[derive(Copy, Clone)]
 pub struct PositionComponent {

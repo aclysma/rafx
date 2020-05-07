@@ -226,11 +226,24 @@ impl VkUpload {
 
         Ok(state)
     }
+
+    fn wait_for_idle(&self) -> VkResult<()> {
+        unsafe {
+            if !self.writable {
+                self.device_context.device().wait_for_fences(&[self.fence], true, core::u64::MAX)
+            } else {
+                Ok(())
+            }
+        }
+    }
 }
 
 impl Drop for VkUpload {
     fn drop(&mut self) {
         log::debug!("destroying VkUpload");
+
+        // If the transfer is in flight, wait for it to complete
+        self.wait_for_idle();
 
         unsafe {
             self.device_context
@@ -434,11 +447,25 @@ impl VkTransferUpload {
 
         Ok(state)
     }
+
+    fn wait_for_idle(&self) -> VkResult<()> {
+        unsafe {
+            if self.sent_to_dst_queue {
+                self.device_context.device().wait_for_fences(&[self.dst_fence], true, core::u64::MAX)
+            } else {
+                Ok(())
+            }
+        }
+    }
 }
 
 impl Drop for VkTransferUpload {
     fn drop(&mut self) {
         log::debug!("destroying VkUpload");
+
+        // If the transfer is in flight, wait for it to complete
+        self.upload.wait_for_idle();
+        self.wait_for_idle();
 
         unsafe {
             self.device_context

@@ -30,9 +30,10 @@ use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
 use renderer_ext::renderpass::sprite::{
-    VkSpriteResourceManager, ImageUpdate, UploadQueue, ImageUploader,
+    VkSpriteResourceManager, ImageUpdate, ImageUploader,
 };
 use renderer_ext::gltf_importer::{MaterialAsset, MeshAsset};
+use renderer_ext::upload::UploadQueue;
 
 fn load_asset<T>(asset_uuid: AssetUuid, asset_resource: &AssetResource) -> atelier_assets::loader::handle::Handle::<T> {
     use atelier_loader::Loader;
@@ -129,7 +130,7 @@ fn main() {
 
         let mut asset_resource = AssetResource::default();
         asset_resource.add_storage_with_uploader::<ImageAsset, ImageUploader>(Box::new(
-            ImageUploader::new(image_upload_queue.tx().clone(), renderer.sprite_resource_manager().image_update_tx().clone()),
+            ImageUploader::new(image_upload_queue.pending_image_tx().clone(), renderer.sprite_resource_manager().image_update_tx().clone()),
         ));
         asset_resource.add_storage::<MaterialAsset>();
         asset_resource.add_storage::<MeshAsset>();
