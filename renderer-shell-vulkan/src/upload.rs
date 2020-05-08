@@ -38,8 +38,6 @@ pub struct VkUpload {
     writable: bool,
     fence: vk::Fence,
 
-    bytes_written_to_buffer: u64,
-
     buffer_begin: *mut u8,
     buffer_end: *mut u8,
     buffer_write_pointer: *mut u8,
@@ -93,7 +91,6 @@ impl VkUpload {
             buffer,
             fence,
             writable: true,
-            bytes_written_to_buffer: 0,
             buffer_begin,
             buffer_end,
             buffer_write_pointer,
@@ -158,8 +155,7 @@ impl VkUpload {
         if self.writable {
             unsafe {
                 // Figure out the span of memory we will write over
-                let align_offset = self.buffer_write_pointer as usize % required_alignment;
-                let write_begin_ptr = self.buffer_write_pointer.add(align_offset);
+                let write_begin_ptr = (((self.buffer_write_pointer as usize + required_alignment - 1) / required_alignment) * required_alignment) as *mut u8;// as const *u8;
                 let write_end_ptr = write_begin_ptr.add(data.len());
 
                 // If the span walks past the end of the buffer, fail

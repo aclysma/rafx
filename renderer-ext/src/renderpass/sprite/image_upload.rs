@@ -17,11 +17,15 @@ use crate::upload::PendingImageUpload;
 use crate::upload::ImageUploadOpResult;
 use crate::upload::ImageUploadOpAwaiter;
 
+struct PendingImageUpdate {
+    awaiter: ImageUploadOpAwaiter
+}
+
 // This is registered with the asset storage which lets us hook when assets are updated
 pub struct ImageUploader {
     upload_tx: Sender<PendingImageUpload>,
     image_update_tx: Sender<ImageUpdate>,
-    pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, ImageUploadOpAwaiter>>
+    pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, PendingImageUpdate>>
 }
 
 impl ImageUploader {
@@ -56,7 +60,11 @@ impl StorageUploader<ImageAsset> for ImageUploader {
 
         let (upload_op, awaiter) = crate::upload::create_upload_op();
 
-        self.pending_updates.entry(load_handle).or_default().insert(version,awaiter);
+        let pending_update = PendingImageUpdate {
+            awaiter
+        };
+
+        self.pending_updates.entry(load_handle).or_default().insert(version,pending_update);
 
         self.upload_tx
             .send(PendingImageUpload {
@@ -74,7 +82,8 @@ impl StorageUploader<ImageAsset> for ImageUploader {
         version: u32
     ) {
         if let Some(versions) = self.pending_updates.get_mut(&load_handle) {
-            if let Some(awaiter) = versions.remove(&version) {
+            if let Some(pending_update) = versions.remove(&version) {
+                let awaiter = pending_update.awaiter;
 
                 // We assume that if commit_asset_version is being called the awaiter is signaled
                 // and has a valid result

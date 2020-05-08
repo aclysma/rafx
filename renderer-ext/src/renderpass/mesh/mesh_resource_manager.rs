@@ -34,26 +34,39 @@ use itertools::max;
 use renderer_shell_vulkan::cleanup::CombinedDropSink;
 use crate::asset_storage::ResourceHandle;
 use crate::image_importer::ImageAsset;
+use crate::gltf_importer::MeshAsset;
 
 /// Represents an image that will replace another image
-pub struct ImageUpdate {
-    pub images: Vec<ManuallyDrop<VkImage>>,
-    pub resource_handles: Vec<ResourceHandle<ImageAsset>>,
+pub struct MeshPartRenderInfo {
+    pub index_offset: u32,
+    pub index_size: u32,
+    pub vertex_offset: u32,
+    pub vertex_size: u32,
+    pub material: u32
 }
 
-/// Represents the current state of the sprite and the GPU resources associated with it
-pub struct Sprite {
-    pub image: ManuallyDrop<VkImage>,
-    pub image_view: vk::ImageView,
+pub struct MeshRenderInfo {
+    pub mesh_parts: Vec<MeshPartRenderInfo>,
+    pub buffer: ManuallyDrop<VkBuffer>,
 }
 
-/// Keeps track of sprites/images and manages descriptor sets that allow shaders to bind to images
+pub struct MeshUpdate {
+    pub meshes: Vec<MeshRenderInfo>,
+    pub resource_handles: Vec<ResourceHandle<MeshAsset>>,
+}
+
+/// Represents the current state of the mesh and the GPU resources associated with it
+pub struct Mesh {
+    //pub vertices: ManuallyDrop<VkBuffer>,
+}
+
+/// Keeps track of meshes and manages descriptor sets that allow shaders to bind to images
 /// and use them
-pub struct VkSpriteResourceManager {
+pub struct VkMeshResourceManager {
     device_context: VkDeviceContext,
 
     // The raw texture resources
-    sprites: Vec<Option<Sprite>>,
+    meshes: Vec<Option<Mesh>>,
     drop_sink: CombinedDropSink,
 
     // The descriptor set layout, pools, and sets
@@ -63,11 +76,11 @@ pub struct VkSpriteResourceManager {
     descriptor_sets: Vec<vk::DescriptorSet>,
 
     // For sending image updates in a thread-safe manner
-    image_update_tx: Sender<ImageUpdate>,
-    image_update_rx: Receiver<ImageUpdate>,
+    mesh_update_tx: Sender<MeshUpdate>,
+    mesh_update_rx: Receiver<MeshUpdate>,
 }
 
-impl VkSpriteResourceManager {
+impl VkMeshResourceManager {
     pub fn descriptor_set_layout(&self) -> vk::DescriptorSetLayout {
         self.descriptor_set_layout
     }
@@ -76,15 +89,15 @@ impl VkSpriteResourceManager {
         &self.descriptor_sets
     }
 
-    pub fn image_update_tx(&self) -> &Sender<ImageUpdate> {
-        &self.image_update_tx
+    pub fn mesh_update_tx(&self) -> &Sender<MeshUpdate> {
+        &self.mesh_update_tx
     }
 
     pub fn new(
         device_context: &VkDeviceContext,
         max_frames_in_flight: u32,
     ) -> VkResult<Self> {
-        let sprites = Vec::new();
+        let meshes = Vec::new();
 
         //
         // Descriptors
@@ -100,23 +113,23 @@ impl VkSpriteResourceManager {
             device_context.device(),
             descriptor_set_layout,
             &descriptor_pool,
-            &sprites,
+            &meshes,
         )?;
 
-        let (image_update_tx, image_update_rx) = crossbeam_channel::unbounded();
+        let (mesh_update_tx, mesh_update_rx) = crossbeam_channel::unbounded();
 
         let drop_sink = CombinedDropSink::new(max_frames_in_flight + 1);
 
-        Ok(VkSpriteResourceManager {
+        Ok(VkMeshResourceManager {
             device_context: device_context.clone(),
             descriptor_set_layout,
             descriptor_pool_allocator,
             descriptor_pool,
             descriptor_sets,
-            sprites,
+            meshes,
             drop_sink,
-            image_update_tx,
-            image_update_rx,
+            mesh_update_tx,
+            mesh_update_rx,
         })
     }
 
@@ -130,52 +143,53 @@ impl VkSpriteResourceManager {
         // Check if we have any image updates to process
         //TODO: This may need to be deferred until a commit, and the commit may be to update to a
         // particular version of the assets
-        self.try_update_sprites();
+        self.try_update_meshes();
     }
 
-    /// Runs through the incoming image updates and applies them to the list of sprites
-    fn do_update_sprites(
+    /// Runs through the incoming image updates and applies them to the list of meshes
+    fn do_update_meshes(
         &mut self,
-        image_update: ImageUpdate,
+        mesh_update: MeshUpdate,
     ) {
-        let mut max_index = self.sprites.len();
-        for resource_handle in &image_update.resource_handles {
+        let mut max_index = self.meshes.len();
+        for resource_handle in &mesh_update.resource_handles {
             max_index = max_index.max(resource_handle.index() as usize + 1);
         }
 
-        self.sprites.resize_with(max_index, || None);
+        self.meshes.resize_with(max_index, || None);
 
-        let mut old_sprites = vec![];
-        for (i, image) in image_update.images.into_iter().enumerate() {
-            let resource_handle = image_update.resource_handles[i];
+        let mut old_meshes = vec![];
+        for (i, mesh) in mesh_update.meshes.into_iter().enumerate() {
+            let resource_handle = mesh_update.resource_handles[i];
 
-            let image_view =
-                Self::create_texture_image_view(self.device_context.device(), &image.image);
+            println!("UPLOAD MESH {}", mesh.buffer.allocation_info.get_size());
 
-            // Do a swap so if there is an old sprite we can properly destroy it
-            let mut sprite = Some(Sprite { image, image_view });
+            // let image_view =
+            //     Self::create_texture_image_view(self.device_context.device(), &image.image);
+
+            // Do a swap so if there is an old mesh we can properly destroy it
+            let mut mesh = Some(Mesh {  });
             std::mem::swap(
-                &mut sprite,
-                &mut self.sprites[resource_handle.index() as usize],
+                &mut mesh,
+                &mut self.meshes[resource_handle.index() as usize],
             );
-            if sprite.is_some() {
-                old_sprites.push(sprite);
+            if mesh.is_some() {
+                old_meshes.push(mesh);
             }
         }
 
-        // retire old images/views
-        for sprite in old_sprites.drain(..) {
-            let sprite = sprite.unwrap();
-            self.drop_sink.retire_image(sprite.image);
-            self.drop_sink.retire_image_view(sprite.image_view);
-        }
+        // retire old meshes
+        // for mesh in old_meshes.drain(..) {
+        //     let mesh = mesh.unwrap();
+        //     self.drop_sink.retire_image(mesh.mesh);
+        // }
     }
 
     /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
-    fn try_update_sprites(&mut self) {
+    fn try_update_meshes(&mut self) {
         let mut has_update = false;
-        while let Ok(update) = self.image_update_rx.recv_timeout(Duration::from_secs(0)) {
-            self.do_update_sprites(update);
+        while let Ok(update) = self.mesh_update_rx.recv_timeout(Duration::from_secs(0)) {
+            self.do_update_meshes(update);
             has_update = true;
         }
 
@@ -195,7 +209,7 @@ impl VkSpriteResourceManager {
             self.device_context.device(),
             self.descriptor_set_layout,
             &descriptor_pool,
-            &self.sprites,
+            &self.meshes,
         )?;
 
         self.descriptor_pool = descriptor_pool;
@@ -204,36 +218,36 @@ impl VkSpriteResourceManager {
         Ok(())
     }
 
-    pub fn create_texture_image_view(
-        logical_device: &ash::Device,
-        image: &vk::Image,
-    ) -> vk::ImageView {
-        let subresource_range = vk::ImageSubresourceRange::builder()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
-            .base_mip_level(0)
-            .level_count(1)
-            .base_array_layer(0)
-            .layer_count(1);
-
-        let image_view_info = vk::ImageViewCreateInfo::builder()
-            .image(*image)
-            .view_type(vk::ImageViewType::TYPE_2D)
-            .format(vk::Format::R8G8B8A8_UNORM)
-            .subresource_range(*subresource_range);
-
-        unsafe {
-            logical_device
-                .create_image_view(&image_view_info, None)
-                .unwrap()
-        }
-    }
+    // pub fn create_texture_image_view(
+    //     logical_device: &ash::Device,
+    //     image: &vk::Image,
+    // ) -> vk::ImageView {
+    //     let subresource_range = vk::ImageSubresourceRange::builder()
+    //         .aspect_mask(vk::ImageAspectFlags::COLOR)
+    //         .base_mip_level(0)
+    //         .level_count(1)
+    //         .base_array_layer(0)
+    //         .layer_count(1);
+    //
+    //     let image_view_info = vk::ImageViewCreateInfo::builder()
+    //         .image(*image)
+    //         .view_type(vk::ImageViewType::TYPE_2D)
+    //         .format(vk::Format::R8G8B8A8_UNORM)
+    //         .subresource_range(*subresource_range);
+    //
+    //     unsafe {
+    //         logical_device
+    //             .create_image_view(&image_view_info, None)
+    //             .unwrap()
+    //     }
+    // }
 
     fn create_descriptor_set_layout(
         logical_device: &ash::Device
     ) -> VkResult<vk::DescriptorSetLayout> {
         let descriptor_set_layout_bindings = [vk::DescriptorSetLayoutBinding::builder()
             .binding(0)
-            .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+            .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
             .descriptor_count(1)
             .stage_flags(vk::ShaderStageFlags::FRAGMENT)
             .build()];
@@ -247,16 +261,16 @@ impl VkSpriteResourceManager {
     }
 
     fn create_descriptor_pool(logical_device: &ash::Device) -> VkResult<vk::DescriptorPool> {
-        const MAX_TEXTURES: u32 = 1000;
+        const MAX_MESHES: u32 = 1000;
 
         let pool_sizes = [vk::DescriptorPoolSize::builder()
             .ty(vk::DescriptorType::SAMPLED_IMAGE)
-            .descriptor_count(MAX_TEXTURES)
+            .descriptor_count(MAX_MESHES)
             .build()];
 
         let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
             .pool_sizes(&pool_sizes)
-            .max_sets(MAX_TEXTURES);
+            .max_sets(MAX_MESHES);
 
         unsafe { logical_device.create_descriptor_pool(&descriptor_pool_info, None) }
     }
@@ -265,11 +279,11 @@ impl VkSpriteResourceManager {
         logical_device: &ash::Device,
         descriptor_set_layout: vk::DescriptorSetLayout,
         descriptor_pool: &vk::DescriptorPool,
-        sprites: &[Option<Sprite>],
+        meshes: &[Option<Mesh>],
     ) -> VkResult<Vec<vk::DescriptorSet>> {
-        let descriptor_set_layouts = vec![descriptor_set_layout; sprites.len()];
+        let descriptor_set_layouts = vec![descriptor_set_layout; meshes.len()];
 
-        let descriptor_sets = if !sprites.is_empty() {
+        let descriptor_sets = if !meshes.is_empty() {
             let alloc_info = vk::DescriptorSetAllocateInfo::builder()
                 .descriptor_pool(*descriptor_pool)
                 .set_layouts(descriptor_set_layouts.as_slice());
@@ -279,25 +293,25 @@ impl VkSpriteResourceManager {
             vec![]
         };
 
-        for (image_index, sprite) in sprites.iter().enumerate() {
-            if let Some(sprite) = sprite.as_ref() {
-                let mut descriptor_writes = Vec::with_capacity(sprites.len());
-                let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
-                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                    .image_view(sprite.image_view)
-                    .build();
-
-                descriptor_writes.push(
-                    vk::WriteDescriptorSet::builder()
-                        .dst_set(descriptor_sets[image_index])
-                        .dst_binding(0)
-                        .dst_array_element(0)
-                        .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                        .image_info(&[image_view_descriptor_image_info])
-                        .build(),
-                );
+        for (image_index, mesh) in meshes.iter().enumerate() {
+            if let Some(mesh) = mesh.as_ref() {
+                // let mut descriptor_writes = Vec::with_capacity(meshes.len());
+                // let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
+                //     .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                //     .image_view(mesh.image_view)
+                //     .build();
+                //
+                // descriptor_writes.push(
+                //     vk::WriteDescriptorSet::builder()
+                //         .dst_set(descriptor_sets[image_index])
+                //         .dst_binding(0)
+                //         .dst_array_element(0)
+                //         .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                //         .image_info(&[image_view_descriptor_image_info])
+                //         .build(),
+                // );
                 unsafe {
-                    logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+                    //logical_device.update_descriptor_sets(&descriptor_writes, &[]);
                 }
             }
         }
@@ -306,9 +320,9 @@ impl VkSpriteResourceManager {
     }
 }
 
-impl Drop for VkSpriteResourceManager {
+impl Drop for VkMeshResourceManager {
     fn drop(&mut self) {
-        log::debug!("destroying VkSpriteResourceManager");
+        log::debug!("destroying VkMeshResourceManager");
 
         unsafe {
             self.descriptor_pool_allocator
@@ -320,15 +334,15 @@ impl Drop for VkSpriteResourceManager {
                 .device()
                 .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
 
-            for sprite in self.sprites.drain(..) {
-                if let Some(sprite) = sprite {
-                    self.drop_sink.retire_image(sprite.image);
-                    self.drop_sink.retire_image_view(sprite.image_view);
+            for mesh in self.meshes.drain(..) {
+                if let Some(mesh) = mesh {
+                    // self.drop_sink.retire_image(mesh.mesh);
+                    // self.drop_sink.retire_image_view(mesh.image_view);
                 }
             }
             self.drop_sink.destroy(self.device_context.device());
         }
 
-        log::debug!("destroyed VkSpriteResourceManager");
+        log::debug!("destroyed VkMeshResourceManager");
     }
 }

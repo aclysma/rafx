@@ -389,7 +389,7 @@ impl UploadQueue {
         let in_flight_image_uploads = self.start_new_image_uploads(&mut upload)?;
         let in_flight_buffer_uploads = self.start_new_buffer_uploads(&mut upload)?;
 
-        if !in_flight_image_uploads.is_empty() || in_flight_buffer_uploads.is_empty() {
+        if !in_flight_image_uploads.is_empty() || !in_flight_buffer_uploads.is_empty() {
             upload.submit_transfer(self.device_context.queues().transfer_queue)?;
             self.uploads_in_progress.push(InProgressUpload::new(
                 in_flight_image_uploads,

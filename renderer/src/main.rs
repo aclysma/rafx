@@ -34,6 +34,7 @@ use renderer_ext::renderpass::sprite::{
 };
 use renderer_ext::gltf_importer::{MaterialAsset, MeshAsset};
 use renderer_ext::upload::UploadQueue;
+use renderer_ext::renderpass::mesh::MeshUploader;
 
 fn load_asset<T>(asset_uuid: AssetUuid, asset_resource: &AssetResource) -> atelier_assets::loader::handle::Handle::<T> {
     use atelier_loader::Loader;
@@ -119,7 +120,7 @@ fn main() {
         .expect("Could not create sdl event pump");
 
     // Handles routing data between the asset system and sprite resource manager
-    let mut image_upload_queue = UploadQueue::new(
+    let mut upload_queue = UploadQueue::new(
         renderer.context().device_context(),
         //renderer.sprite_resource_manager().image_update_tx().clone(),
     );
@@ -130,17 +131,19 @@ fn main() {
 
         let mut asset_resource = AssetResource::default();
         asset_resource.add_storage_with_uploader::<ImageAsset, ImageUploader>(Box::new(
-            ImageUploader::new(image_upload_queue.pending_image_tx().clone(), renderer.sprite_resource_manager().image_update_tx().clone()),
+            ImageUploader::new(upload_queue.pending_image_tx().clone(), renderer.sprite_resource_manager().image_update_tx().clone()),
         ));
         asset_resource.add_storage::<MaterialAsset>();
-        asset_resource.add_storage::<MeshAsset>();
+        asset_resource.add_storage_with_uploader::<MeshAsset, MeshUploader>(Box::new(
+            MeshUploader::new(upload_queue.pending_buffer_tx().clone(), renderer.mesh_resource_manager().mesh_update_tx().clone()),
+        ));
         asset_resource
     };
 
     let cat_handle = load_asset::<ImageAsset>(asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"), &asset_resource);
     //let image_handle = load_asset::<ImageAsset>(asset_uuid!("337fe670-fb88-441e-bf87-33ed6fcfe269"), &asset_resource);
     //let material_handle = load_asset::<MaterialAsset>(asset_uuid!("742f5d82-0770-45de-907f-91ebe4834d7a"), &asset_resource);
-    //let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"), &asset_resource);
+    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"), &asset_resource);
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 
@@ -193,7 +196,7 @@ fn main() {
         imgui_manager.begin_frame(&sdl_window, &MouseState::new(&event_pump));
 
         asset_resource.update();
-        image_upload_queue.update(renderer.context().device());
+        upload_queue.update(renderer.context().device());
 
         imgui_manager.with_ui(|ui| {
             let mut opened = true;

@@ -22,6 +22,7 @@ use ash::vk::ShaderStageFlags;
 
 use crate::renderpass::sprite::VkSpriteResourceManager;
 use crate::time::TimeState;
+use crate::renderpass::mesh::VkMeshResourceManager;
 
 struct SpriteRenderpassStats {
     draw_call_count: u32,
@@ -127,7 +128,7 @@ impl VkMeshRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        sprite_resource_manager: &VkSpriteResourceManager,
+        mesh_resource_manager: &VkMeshResourceManager,
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -169,7 +170,7 @@ impl VkMeshRenderPass {
 
         let descriptor_set_layouts = [
             descriptor_set_layout_per_pass,
-            sprite_resource_manager.descriptor_set_layout(),
+            mesh_resource_manager.descriptor_set_layout(),
         ];
 
         //
@@ -977,7 +978,7 @@ impl VkMeshRenderPass {
         &mut self,
         present_index: usize,
         hidpi_factor: f64,
-        sprite_resource_manager: &VkSpriteResourceManager,
+        mesh_resource_manager: &VkMeshResourceManager,
         time_state: &TimeState,
     ) -> VkResult<()> {
         //TODO: Integrate this into the command buffer we create below
@@ -994,7 +995,7 @@ impl VkMeshRenderPass {
             &mut self.vertex_buffers[present_index],
             &mut self.index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
-            sprite_resource_manager.descriptor_sets(),
+            mesh_resource_manager.descriptor_sets(),
             time_state,
         )
     }
