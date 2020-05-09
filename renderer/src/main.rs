@@ -147,10 +147,10 @@ fn main() {
     //let material_handle = load_asset::<MaterialAsset>(asset_uuid!("742f5d82-0770-45de-907f-91ebe4834d7a"), &asset_resource);
 
     // 3objects
-    //let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"), &asset_resource);
+    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"), &asset_resource);
 
     // unit_cube
-    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("5c7c907a-9335-4d4a-bb61-4f0c7ff03d07"), &asset_resource);
+    //let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("5c7c907a-9335-4d4a-bb61-4f0c7ff03d07"), &asset_resource);
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 

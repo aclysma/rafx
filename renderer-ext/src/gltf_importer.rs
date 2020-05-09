@@ -31,7 +31,7 @@ pub struct MaterialAsset {
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy, Serialize, Deserialize)]
 #[repr(packed(1))]
-pub struct Vertex {
+pub struct MeshVertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
     pub tex_coord: [f32; 2],
@@ -39,7 +39,7 @@ pub struct Vertex {
 
 #[derive(Serialize, Deserialize)]
 pub struct MeshPart {
-    pub vertices: Vec<Vertex>,
+    pub vertices: Vec<MeshVertex>,
     pub indices: Vec<u16>,
     pub material: Option<AssetUuid>
 }
@@ -445,7 +445,6 @@ fn extract_meshes_to_import(
 
                 if let (Some(indices), Some(positions), Some(normals), Some(tex_coords)) = (indices, positions, normals, tex_coords) {
                     let indices = convert_to_u16_indices(indices);
-                    println!("{:?}", indices);
 
                     if let Ok(indices) = indices {
                         let positions : Vec<_> = positions.collect();
@@ -454,13 +453,7 @@ fn extract_meshes_to_import(
 
                         let mut vertices = Vec::with_capacity(positions.len());
                         for i in 0..positions.len() {
-                            vertices.push(Vertex {
-                                position: positions[i],
-                                normal: normals[i],
-                                tex_coord: tex_coords[i]
-                            });
-
-                            println!("{:?}", Vertex {
+                            vertices.push(MeshVertex {
                                 position: positions[i],
                                 normal: normals[i],
                                 tex_coord: tex_coords[i]
@@ -472,7 +465,6 @@ fn extract_meshes_to_import(
                         } else {
                             None
                         };
-
 
                         Some(MeshPart {
                             vertices,

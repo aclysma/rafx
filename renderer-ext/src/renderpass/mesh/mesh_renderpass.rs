@@ -25,25 +25,23 @@ use crate::time::TimeState;
 use crate::renderpass::mesh::VkMeshResourceManager;
 use crate::renderpass::mesh::mesh_resource_manager::Mesh;
 
-struct SpriteRenderpassStats {
-    draw_call_count: u32,
-}
+use crate::gltf_importer::MeshVertex;
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
-struct UniformBufferObject {
+struct MeshUniformBufferObject {
     // View and projection matrices
     view_proj: [[f32; 4]; 4],
 }
 
-/// Vertex format for vertices sent to the GPU
-#[derive(Clone, Debug, Copy)]
-#[repr(C)]
-struct Vertex {
-    pos: [f32; 3],
-    normal: [u8; 3],
-    tex_coord: [f32; 2],
-}
+// /// Vertex format for vertices sent to the GPU
+// #[derive(Clone, Debug, Copy)]
+// #[repr(C)]
+// struct Vertex {
+//     pos: [f32; 3],
+//     normal: [u8; 3],
+//     tex_coord: [f32; 2],
+// }
 
 // /// Used as static data to represent a quad
 // #[derive(Clone, Debug, Copy)]
@@ -292,7 +290,7 @@ impl VkMeshRenderPass {
             vk_mem::MemoryUsage::CpuToGpu,
             vk::BufferUsageFlags::UNIFORM_BUFFER,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            mem::size_of::<UniformBufferObject>() as u64,
+            mem::size_of::<MeshUniformBufferObject>() as u64,
         );
 
         Ok(ManuallyDrop::new(buffer?))
@@ -367,7 +365,7 @@ impl VkMeshRenderPass {
             let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
                 .buffer(uniform_buffers[i as usize].buffer)
                 .offset(0)
-                .range(mem::size_of::<UniformBufferObject>() as u64)
+                .range(mem::size_of::<MeshUniformBufferObject>() as u64)
                 .build()];
 
             // let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
@@ -410,7 +408,7 @@ impl VkMeshRenderPass {
 
         let vertex_input_binding_descriptions = [vk::VertexInputBindingDescription {
             binding: 0,
-            stride: mem::size_of::<Vertex>() as u32,
+            stride: mem::size_of::<MeshVertex>() as u32,
             input_rate: vk::VertexInputRate::VERTEX,
         }];
         let vertex_input_attribute_descriptions = [
@@ -418,19 +416,19 @@ impl VkMeshRenderPass {
                 binding: 0,
                 location: 0,
                 format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(Vertex, pos) as u32,
+                offset: offset_of!(MeshVertex, position) as u32,
             },
             vk::VertexInputAttributeDescription {
                 binding: 0,
                 location: 1,
                 format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(Vertex, normal) as u32,
+                offset: offset_of!(MeshVertex, normal) as u32,
             },
             vk::VertexInputAttributeDescription {
                 binding: 0,
                 location: 2,
                 format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(Vertex, tex_coord) as u32,
+                offset: offset_of!(MeshVertex, tex_coord) as u32,
             },
         ];
 
@@ -853,7 +851,7 @@ impl VkMeshRenderPass {
             100.0,
         );
 
-        let ubo = UniformBufferObject { view_proj: proj };
+        let ubo = MeshUniformBufferObject { view_proj: proj };
 
         self.uniform_buffers[swapchain_image_index].write_to_host_visible_buffer(&[ubo])
     }

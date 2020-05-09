@@ -196,6 +196,7 @@ impl CombinedDropSink {
     ) {
         self.image_views.on_frame_complete(device);
         self.images.on_frame_complete(device);
+        self.buffers.on_frame_complete(device);
     }
 
     pub fn destroy(
@@ -204,6 +205,7 @@ impl CombinedDropSink {
     ) -> VkResult<()> {
         self.image_views.destroy(device)?;
         self.images.destroy(device)?;
+        self.buffers.destroy(device)?;
         Ok(())
     }
 }

@@ -17,7 +17,7 @@ use image::load;
 use crate::upload::{PendingImageUpload, PendingBufferUpload};
 use crate::upload::BufferUploadOpResult;
 use crate::upload::BufferUploadOpAwaiter;
-use crate::gltf_importer::{MeshAsset, Vertex};
+use crate::gltf_importer::{MeshAsset, MeshVertex};
 use crate::renderpass::mesh::mesh_resource_manager::{MeshUpdate, LoadingMeshPartRenderInfo, LoadingMeshRenderInfo};
 
 pub struct PushBufferResult {

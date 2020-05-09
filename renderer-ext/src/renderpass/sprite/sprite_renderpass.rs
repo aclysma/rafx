@@ -29,7 +29,7 @@ struct SpriteRenderpassStats {
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
-struct UniformBufferObject {
+struct SpriteUniformBufferObject {
     // View and projection matrices
     view_proj: [[f32; 4]; 4],
 }
@@ -37,7 +37,7 @@ struct UniformBufferObject {
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy)]
 #[repr(C)]
-struct Vertex {
+struct SpriteVertex {
     pos: [f32; 2],
     tex_coord: [f32; 2],
     //color: [u8; 4],
@@ -289,7 +289,7 @@ impl VkSpriteRenderPass {
             vk_mem::MemoryUsage::CpuToGpu,
             vk::BufferUsageFlags::UNIFORM_BUFFER,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            mem::size_of::<UniformBufferObject>() as u64,
+            mem::size_of::<SpriteUniformBufferObject>() as u64,
         );
 
         Ok(ManuallyDrop::new(buffer?))
@@ -364,7 +364,7 @@ impl VkSpriteRenderPass {
             let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
                 .buffer(uniform_buffers[i as usize].buffer)
                 .offset(0)
-                .range(mem::size_of::<UniformBufferObject>() as u64)
+                .range(mem::size_of::<SpriteUniformBufferObject>() as u64)
                 .build()];
 
             let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
@@ -407,7 +407,7 @@ impl VkSpriteRenderPass {
 
         let vertex_input_binding_descriptions = [vk::VertexInputBindingDescription {
             binding: 0,
-            stride: mem::size_of::<Vertex>() as u32,
+            stride: mem::size_of::<SpriteVertex>() as u32,
             input_rate: vk::VertexInputRate::VERTEX,
         }];
         let vertex_input_attribute_descriptions = [
@@ -415,13 +415,13 @@ impl VkSpriteRenderPass {
                 binding: 0,
                 location: 0,
                 format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(Vertex, pos) as u32,
+                offset: offset_of!(SpriteVertex, pos) as u32,
             },
             vk::VertexInputAttributeDescription {
                 binding: 0,
                 location: 1,
                 format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(Vertex, tex_coord) as u32,
+                offset: offset_of!(SpriteVertex, tex_coord) as u32,
             },
             // vk::VertexInputAttributeDescription {
             //     binding: 0,
@@ -763,7 +763,7 @@ impl VkSpriteRenderPass {
 
         let mut draw_calls = Vec::with_capacity(sprites.len());
 
-        let mut vertex_list: Vec<Vertex> =
+        let mut vertex_list: Vec<SpriteVertex> =
             Vec::with_capacity(QUAD_VERTEX_LIST.len() * sprites.len());
         let mut index_list: Vec<u16> = Vec::with_capacity(QUAD_INDEX_LIST.len() * sprites.len());
         for sprite in &sprites {
@@ -789,7 +789,7 @@ impl VkSpriteRenderPass {
                 //let pos = vertex.pos;
                 let transformed_pos = matrix.transform_point3(vertex.pos.into());
 
-                vertex_list.push(Vertex {
+                vertex_list.push(SpriteVertex {
                     pos: transformed_pos.truncate().into(),
                     tex_coord: vertex.tex_coord,
                     //color: [255, 255, 255, 255]
@@ -831,7 +831,7 @@ impl VkSpriteRenderPass {
         if !sprites.is_empty() {
             let vertex_buffer = {
                 let vertex_buffer_size =
-                    vertex_list.len() as u64 * std::mem::size_of::<Vertex>() as u64;
+                    vertex_list.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
                 let mut vertex_buffer = VkBuffer::new(
                     device_context,
                     vk_mem::MemoryUsage::CpuToGpu,
@@ -968,7 +968,7 @@ impl VkSpriteRenderPass {
             100.0,
         );
 
-        let ubo = UniformBufferObject { view_proj: proj };
+        let ubo = SpriteUniformBufferObject { view_proj: proj };
 
         self.uniform_buffers[swapchain_image_index].write_to_host_visible_buffer(&[ubo])
     }
