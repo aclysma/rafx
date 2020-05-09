@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use ash::version::DeviceV1_0;
 use std::mem::ManuallyDrop;
 use ash::{Device, vk};
-use crate::VkImage;
+use crate::{VkImage, VkBuffer};
 
 /// Implement to customize how VkResourceDropSink drops resources
 pub trait VkDropSinkResourceImpl {
@@ -155,6 +155,7 @@ impl VkDropSinkResourceImpl for vk::ImageView {
 
 /// Provides DropSinks for all the things in a single struct
 pub struct CombinedDropSink {
+    buffers: VkResourceDropSink<ManuallyDrop<VkBuffer>>,
     images: VkResourceDropSink<ManuallyDrop<VkImage>>,
     image_views: VkResourceDropSink<vk::ImageView>,
 }
@@ -162,9 +163,17 @@ pub struct CombinedDropSink {
 impl CombinedDropSink {
     pub fn new(max_in_flight_frames: u32) -> Self {
         CombinedDropSink {
+            buffers: VkResourceDropSink::new(max_in_flight_frames),
             images: VkResourceDropSink::new(max_in_flight_frames),
             image_views: VkResourceDropSink::new(max_in_flight_frames),
         }
+    }
+
+    pub fn retire_buffer(
+        &mut self,
+        buffer: ManuallyDrop<VkBuffer>,
+    ) {
+        self.buffers.retire(buffer);
     }
 
     pub fn retire_image(

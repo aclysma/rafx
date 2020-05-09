@@ -16,6 +16,7 @@ use renderer_shell_vulkan::SwapchainInfo;
 use renderer_shell_vulkan::VkQueueFamilyIndices;
 use renderer_shell_vulkan::VkBuffer;
 use renderer_shell_vulkan::util;
+use atelier_assets::core::AssetUuid;
 
 use renderer_shell_vulkan::VkImage;
 use image::error::ImageError::Decoding;
@@ -34,6 +35,7 @@ use itertools::max;
 use renderer_shell_vulkan::cleanup::CombinedDropSink;
 use crate::asset_storage::ResourceHandle;
 use crate::image_importer::ImageAsset;
+use fnv::FnvHashMap;
 
 /// Represents an image that will replace another image
 pub struct ImageUpdate {
@@ -53,6 +55,7 @@ pub struct VkSpriteResourceManager {
     device_context: VkDeviceContext,
 
     // The raw texture resources
+    sprites_lookup: FnvHashMap<AssetUuid, ResourceHandle<ImageAsset>>,
     sprites: Vec<Option<Sprite>>,
     drop_sink: CombinedDropSink,
 
@@ -76,6 +79,21 @@ impl VkSpriteResourceManager {
         &self.descriptor_sets
     }
 
+    pub fn sprite_by_handle(&self, resource_handle: ResourceHandle<ImageAsset>) -> Option<&Sprite> {
+        //TODO: Stale handle detection?
+        self.sprites[resource_handle.index() as usize].as_ref()
+    }
+
+    pub fn sprite_handle_by_uuid(&self, asset_uuid: &AssetUuid) -> Option<ResourceHandle<ImageAsset>> {
+        self.sprites_lookup.get(asset_uuid).map(|x| *x)
+    }
+
+    pub fn sprite_by_uuid(&self, asset_uuid: &AssetUuid) -> Option<&Sprite> {
+        self.sprites_lookup
+            .get(asset_uuid)
+            .and_then(|handle| self.sprites[handle.index() as usize].as_ref())
+    }
+
     pub fn image_update_tx(&self) -> &Sender<ImageUpdate> {
         &self.image_update_tx
     }
@@ -84,6 +102,7 @@ impl VkSpriteResourceManager {
         device_context: &VkDeviceContext,
         max_frames_in_flight: u32,
     ) -> VkResult<Self> {
+        let sprites_lookup = Default::default();
         let sprites = Vec::new();
 
         //
@@ -113,6 +132,7 @@ impl VkSpriteResourceManager {
             descriptor_pool_allocator,
             descriptor_pool,
             descriptor_sets,
+            sprites_lookup,
             sprites,
             drop_sink,
             image_update_tx,

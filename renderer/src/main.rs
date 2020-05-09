@@ -55,8 +55,10 @@ fn main() {
 
     // Setup logging
     env_logger::Builder::from_default_env()
+        .filter_module("renderer_shell_vulkan::buffer", log::LevelFilter::Debug)
+        .filter_module("renderer_ext::game_renderer", log::LevelFilter::Debug)
         //.filter_level(log::LevelFilter::Error)
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Trace)
         .init();
 
     // Spawn the daemon in a background thread. This could be a different process, but
@@ -143,7 +145,12 @@ fn main() {
     let cat_handle = load_asset::<ImageAsset>(asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"), &asset_resource);
     //let image_handle = load_asset::<ImageAsset>(asset_uuid!("337fe670-fb88-441e-bf87-33ed6fcfe269"), &asset_resource);
     //let material_handle = load_asset::<MaterialAsset>(asset_uuid!("742f5d82-0770-45de-907f-91ebe4834d7a"), &asset_resource);
-    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"), &asset_resource);
+
+    // 3objects
+    //let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"), &asset_resource);
+
+    // unit_cube
+    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("5c7c907a-9335-4d4a-bb61-4f0c7ff03d07"), &asset_resource);
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 

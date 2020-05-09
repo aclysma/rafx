@@ -30,7 +30,7 @@ pub struct MaterialAsset {
 
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy, Serialize, Deserialize)]
-#[repr(C)]
+#[repr(packed(1))]
 pub struct Vertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
@@ -103,6 +103,8 @@ impl Importer for GltfImporter {
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
 
         state.asset_uuid = Some(gltf_asset_uuid);
+
+        log::info!("Importing mesh {}", gltf_asset_uuid);
 
         //
         // Load the GLTF file
@@ -443,6 +445,7 @@ fn extract_meshes_to_import(
 
                 if let (Some(indices), Some(positions), Some(normals), Some(tex_coords)) = (indices, positions, normals, tex_coords) {
                     let indices = convert_to_u16_indices(indices);
+                    println!("{:?}", indices);
 
                     if let Ok(indices) = indices {
                         let positions : Vec<_> = positions.collect();
@@ -452,6 +455,12 @@ fn extract_meshes_to_import(
                         let mut vertices = Vec::with_capacity(positions.len());
                         for i in 0..positions.len() {
                             vertices.push(Vertex {
+                                position: positions[i],
+                                normal: normals[i],
+                                tex_coord: tex_coords[i]
+                            });
+
+                            println!("{:?}", Vertex {
                                 position: positions[i],
                                 normal: normals[i],
                                 tex_coord: tex_coords[i]

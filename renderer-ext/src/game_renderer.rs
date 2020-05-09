@@ -10,7 +10,7 @@ use ash::prelude::VkResult;
 use crate::renderpass::sprite::{VkSpriteRenderPass /*, LoadingSprite*/};
 use crate::renderpass::sprite::VkSpriteResourceManager;
 use std::mem::{swap, ManuallyDrop};
-use crate::image_utils::{decode_texture, load_images, enqueue_load_images};
+use crate::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
 use crossbeam_channel::Sender;
@@ -99,6 +99,7 @@ impl VkSurfaceEventListener for GameRenderer {
             device_context,
             swapchain,
             &self.mesh_resource_manager,
+            &self.sprite_resource_manager
         )?);
         log::debug!("game renderer swapchain_created finished");
 
@@ -123,7 +124,7 @@ impl VkSurfaceEventListener for GameRenderer {
         let mut command_buffers = vec![];
 
         self.sprite_resource_manager.update();
-        self.mesh_resource_manager.update();
+        self.mesh_resource_manager.update(&self.sprite_resource_manager);
 
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");
@@ -136,16 +137,17 @@ impl VkSurfaceEventListener for GameRenderer {
             command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
         }
 
-        // if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
-        //     log::trace!("mesh_renderpass update");
-        //     mesh_renderpass.update(
-        //         present_index,
-        //         1.0,
-        //         &self.mesh_resource_manager,
-        //         &self.time_state,
-        //     )?;
-        //     command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
-        // }
+        if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
+            log::trace!("mesh_renderpass update");
+            mesh_renderpass.update(
+                present_index,
+                1.0,
+                &self.mesh_resource_manager,
+                &self.sprite_resource_manager,
+                &self.time_state,
+            )?;
+            command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
+        }
 
         {
             log::trace!("imgui_event_listener update");

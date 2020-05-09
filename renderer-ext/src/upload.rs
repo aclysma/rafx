@@ -4,7 +4,7 @@ use renderer_shell_vulkan::{VkTransferUploadState, VkDevice, VkDeviceContext, Vk
 use crossbeam_channel::{Sender, Receiver};
 use ash::prelude::VkResult;
 use std::time::Duration;
-use crate::image_utils::{enqueue_load_images, DecodedTexture};
+use crate::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffers};
 use crate::renderpass::sprite::ImageUpdate;
 use std::mem::ManuallyDrop;
 use crate::asset_storage::{ResourceHandle, StorageUploader};
@@ -350,31 +350,36 @@ impl UploadQueue {
             return Ok(vec![]);
         }
 
-        // let images = enqueue_load_images(
-        //     &self.device_context,
-        //     upload,
-        //     self.device_context
-        //         .queue_family_indices()
-        //         .transfer_queue_family_index,
-        //     self.device_context
-        //         .queue_family_indices()
-        //         .graphics_queue_family_index,
-        //     &decoded_textures,
-        // )?;
+        let buffers = enqueue_load_buffers(
+            &self.device_context,
+            upload,
+            self.device_context
+                .queue_family_indices()
+                .transfer_queue_family_index,
+            self.device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            &buffer_data,
+        )?;
+
 
         let mut in_flight_uploads = Vec::with_capacity(ops.len());
-        // for (op, buffer) in ops.into_iter().zip(buffers) {
-        //     in_flight_uploads.push(InFlightBufferUpload {
-        //         load_op: op.0,
-        //         upload_op: op.1,
-        //         buffer
-        //     });
-        // }
+        for (op, buffer) in ops.into_iter().zip(buffers) {
+            in_flight_uploads.push(InFlightBufferUpload {
+                load_op: op.0,
+                upload_op: op.1,
+                buffer
+            });
+        }
 
         Ok(in_flight_uploads)
     }
 
     fn start_new_uploads(&mut self) -> VkResult<()> {
+        if self.pending_image_rx.is_empty() && self.pending_buffer_rx.is_empty() {
+            return Ok(());
+        }
+
         let mut upload = VkTransferUpload::new(
             &self.device_context,
             self.device_context

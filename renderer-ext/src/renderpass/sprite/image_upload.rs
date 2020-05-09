@@ -8,6 +8,7 @@ use std::mem::ManuallyDrop;
 use crate::asset_storage::{ResourceHandle, StorageUploader};
 use crate::image_importer::ImageAsset;
 use std::error::Error;
+use atelier_assets::core::AssetUuid;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
 use fnv::FnvHashMap;
 use std::sync::Arc;
@@ -48,10 +49,12 @@ impl StorageUploader<ImageAsset> for ImageUploader {
         &mut self,
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
-        _resource_handle: ResourceHandle<ImageAsset>,
+        asset_uuid: &AssetUuid,
+        resource_handle: ResourceHandle<ImageAsset>,
         version: u32,
         asset: &ImageAsset,
     ) {
+        log::info!("ImageUploader update_asset {} {:?} {:?}", version, load_handle, resource_handle);
         let texture = DecodedTexture {
             width: asset.width,
             height: asset.height,
@@ -81,6 +84,7 @@ impl StorageUploader<ImageAsset> for ImageUploader {
         resource_handle: ResourceHandle<ImageAsset>,
         version: u32
     ) {
+        log::info!("ImageUploader commit_asset_version {} {:?} {:?}", version, load_handle, resource_handle);
         if let Some(versions) = self.pending_updates.get_mut(&load_handle) {
             if let Some(pending_update) = versions.remove(&version) {
                 let awaiter = pending_update.awaiter;
@@ -112,6 +116,7 @@ impl StorageUploader<ImageAsset> for ImageUploader {
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<ImageAsset>,
     ) {
+        log::info!("ImageUploader free {:?} {:?}", load_handle, resource_handle);
         //TODO: We are not unloading images
         self.pending_updates.remove(&load_handle);
     }

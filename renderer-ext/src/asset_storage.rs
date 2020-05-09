@@ -8,6 +8,7 @@ use std::{sync::Mutex, collections::HashMap, error::Error, sync::Arc};
 
 use atelier_assets::importer as atelier_importer;
 use atelier_assets::loader as atelier_loader;
+use atelier_assets::core::AssetUuid;
 use renderer_base::slab::{GenSlab, GenSlabKey};
 use std::marker::PhantomData;
 
@@ -22,6 +23,7 @@ where
         &mut self,
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
+        asset_uuid: &AssetUuid,
         resource_handle: ResourceHandle<T>,
         version: u32,
         asset: &T,
@@ -86,6 +88,14 @@ impl<A> Clone for ResourceHandle<A> {
             key: self.key,
             phantom_data: Default::default(),
         }
+    }
+}
+
+impl<A> std::fmt::Debug for ResourceHandle<A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ResourceHandle")
+            .field("key", &self.key.index())
+            .finish()
     }
 }
 
@@ -359,7 +369,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             // We have an uploader, pass it a reference to the asset and a load_op. The uploader
             // will be responsible for calling load_op.complete() or load_op.error()
             let asset = self.uncommitted.get(&load_handle).unwrap();
-            uploader.update_asset(load_handle, load_op, resource_handle, version, &asset.asset);
+            uploader.update_asset(load_handle, load_op, &loader_info.get_asset_id(load_handle).unwrap(), resource_handle, version, &asset.asset);
         } else {
             // Since there is no uploader, we call load_op.complete() immediately
             load_op.complete();

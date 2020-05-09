@@ -8,6 +8,7 @@ use std::mem::{ManuallyDrop, align_of};
 use crate::asset_storage::{ResourceHandle, StorageUploader};
 use crate::image_importer::ImageAsset;
 use std::error::Error;
+use atelier_assets::core::AssetUuid;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
 use fnv::FnvHashMap;
 use std::sync::Arc;
@@ -17,7 +18,7 @@ use crate::upload::{PendingImageUpload, PendingBufferUpload};
 use crate::upload::BufferUploadOpResult;
 use crate::upload::BufferUploadOpAwaiter;
 use crate::gltf_importer::{MeshAsset, Vertex};
-use crate::renderpass::mesh::mesh_resource_manager::{MeshUpdate, MeshPartRenderInfo, MeshRenderInfo};
+use crate::renderpass::mesh::mesh_resource_manager::{MeshUpdate, LoadingMeshPartRenderInfo, LoadingMeshRenderInfo};
 
 pub struct PushBufferResult {
     offset: usize,
@@ -97,7 +98,7 @@ impl PushBuffer {
 
 struct PendingMeshUpdate {
     awaiter: BufferUploadOpAwaiter,
-    mesh_parts: Vec<MeshPartRenderInfo>
+    mesh_parts: Vec<LoadingMeshPartRenderInfo>
 }
 
 
@@ -128,15 +129,18 @@ impl StorageUploader<MeshAsset> for MeshUploader {
         &mut self,
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
-        _resource_handle: ResourceHandle<MeshAsset>,
+        asset_uuid: &AssetUuid,
+        resource_handle: ResourceHandle<MeshAsset>,
         version: u32,
         asset: &MeshAsset,
     ) {
+        log::info!("MeshUploader update_asset {} {:?} {:?}", version, load_handle, resource_handle);
         let (upload_op, awaiter) = crate::upload::create_upload_op();
 
         //
         // Determine size of buffer needed
         //
+        // Arbitrary, not sure if there is any requirement
         const REQUIRED_ALIGNMENT : usize = 16;
         let mut storage_calculator = PushBufferSizeCalculator::new();
         for mesh_part in &asset.mesh_parts {
@@ -153,12 +157,12 @@ impl StorageUploader<MeshAsset> for MeshUploader {
             let index = combined_mesh_data.push(&mesh_part.indices, REQUIRED_ALIGNMENT);
             let vertex = combined_mesh_data.push(&mesh_part.vertices, REQUIRED_ALIGNMENT);
 
-            mesh_part_render_infos.push(MeshPartRenderInfo {
+            mesh_part_render_infos.push(LoadingMeshPartRenderInfo {
                 index_offset: index.offset as u32,
                 index_size: index.size as u32,
                 vertex_offset: vertex.offset as u32,
                 vertex_size: vertex.size as u32,
-                material: 0
+                material: mesh_part.material
             });
         }
 
@@ -184,6 +188,7 @@ impl StorageUploader<MeshAsset> for MeshUploader {
         resource_handle: ResourceHandle<MeshAsset>,
         version: u32
     ) {
+        log::info!("MeshUploader commit_asset_version {} {:?} {:?}", version, load_handle, resource_handle);
         if let Some(versions) = self.pending_updates.get_mut(&load_handle) {
             if let Some(pending_update) = versions.remove(&version) {
                 let awaiter = pending_update.awaiter;
@@ -195,7 +200,7 @@ impl StorageUploader<MeshAsset> for MeshUploader {
                     BufferUploadOpResult::UploadComplete(buffer) => {
                         log::info!("Commit asset {:?} {:?}", load_handle, version);
 
-                        let mesh_render_info = MeshRenderInfo {
+                        let mesh_render_info = LoadingMeshRenderInfo {
                             buffer,
                             mesh_parts: pending_update.mesh_parts
                         };
@@ -221,7 +226,9 @@ impl StorageUploader<MeshAsset> for MeshUploader {
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<MeshAsset>,
     ) {
-        //TODO: We are not unloading images
+        log::info!("MeshUploader free {:?} {:?}", load_handle, resource_handle);
+
+        //TODO: We are not unloading meshes
         self.pending_updates.remove(&load_handle);
     }
 }
