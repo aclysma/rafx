@@ -1,0 +1,79 @@
+(
+    version: 1,
+    import_hash: Some(2473846456193568467),
+    importer_version: 11,
+    importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
+    importer_options: (),
+    importer_state: (
+        asset_uuid: Some("8240e189-81df-4523-bf07-09058803b1f6"),
+        image_asset_uuids: {
+            Name("texture2"): "f559a74c-098b-46a6-b784-d500301f41e3",
+        },
+        material_asset_uuids: {
+            Name("Material"): "da9d36a3-72fa-4a92-8ccf-176731143e4d",
+        },
+        mesh_asset_uuids: {
+            Name("Cube"): "6b33207a-241c-41ba-9149-3e678557a45c",
+        },
+    ),
+    assets: [
+        (
+            id: "f559a74c-098b-46a6-b784-d500301f41e3",
+            search_tags: [
+                ("image_name", Some("texture2")),
+                ("file_name", Some("textured_cube.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 9944282126451967618,
+                id: "f559a74c-098b-46a6-b784-d500301f41e3",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1440016),
+                uncompressed_size: Some(1440016),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+        (
+            id: "da9d36a3-72fa-4a92-8ccf-176731143e4d",
+            search_tags: [
+                ("material_name", Some("Material")),
+                ("file_name", Some("textured_cube.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 299214503143284793,
+                id: "da9d36a3-72fa-4a92-8ccf-176731143e4d",
+                build_deps: [],
+                load_deps: [
+                    Uuid("f559a74c-098b-46a6-b784-d500301f41e3"),
+                ],
+                compression: None,
+                compressed_size: Some(33),
+                uncompressed_size: Some(33),
+                type_id: "130a91a8-ba80-4cad-9bce-848326b234c7",
+            )),
+        ),
+        (
+            id: "6b33207a-241c-41ba-9149-3e678557a45c",
+            search_tags: [
+                ("mesh_name", Some("Cube")),
+                ("file_name", Some("textured_cube.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 1555186678890161625,
+                id: "6b33207a-241c-41ba-9149-3e678557a45c",
+                build_deps: [],
+                load_deps: [
+                    Uuid("da9d36a3-72fa-4a92-8ccf-176731143e4d"),
+                ],
+                compression: None,
+                compressed_size: Some(881),
+                uncompressed_size: Some(881),
+                type_id: "cf232526-3757-4d94-98d1-c2f7e27c979f",
+            )),
+        ),
+    ],
+)

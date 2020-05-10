@@ -21,88 +21,7 @@ use crate::resource_managers::mesh_resource_manager::{
     MeshUpdate, LoadingMeshPartRenderInfo, LoadingMeshRenderInfo,
 };
 use crate::pipeline::gltf::MeshAsset;
-
-pub struct PushBufferResult {
-    offset: usize,
-    size: usize,
-}
-
-pub struct PushBufferSizeCalculator {
-    required_size: usize,
-}
-
-impl PushBufferSizeCalculator {
-    pub fn new() -> Self {
-        PushBufferSizeCalculator { required_size: 0 }
-    }
-
-    pub fn push_bytes(
-        &mut self,
-        data: &[u8],
-        required_alignment: usize,
-    ) {
-        self.push(data, required_alignment)
-    }
-
-    pub fn push<T>(
-        &mut self,
-        data: &[T],
-        required_alignment: usize,
-    ) {
-        self.required_size = ((self.required_size + required_alignment - 1) / required_alignment)
-            * required_alignment;
-        self.required_size += (data.len() * std::mem::size_of::<T>());
-    }
-
-    pub fn required_size(&self) -> usize {
-        self.required_size
-    }
-}
-
-pub struct PushBuffer {
-    data: Vec<u8>,
-}
-
-impl PushBuffer {
-    pub fn new(size_hint: usize) -> Self {
-        PushBuffer {
-            data: Vec::with_capacity(size_hint),
-        }
-    }
-
-    pub fn push_bytes(
-        &mut self,
-        data: &[u8],
-        required_alignment: usize,
-    ) -> PushBufferResult {
-        // Figure out where in the buffer to write
-        let span_begin =
-            ((self.data.len() + required_alignment - 1) / required_alignment) * required_alignment;
-        let span_end = span_begin + data.len();
-
-        // Resize the buffer and copy the data
-        self.data.resize(span_end, 0);
-        self.data[span_begin..span_end].copy_from_slice(data);
-
-        // Return the offset
-        PushBufferResult {
-            offset: span_begin,
-            size: data.len(),
-        }
-    }
-
-    pub fn push<T>(
-        &mut self,
-        data: &[T],
-        required_alignment: usize,
-    ) -> PushBufferResult {
-        let ptr: *const u8 = data.as_ptr() as *const u8;
-        let slice: &[u8] =
-            unsafe { std::slice::from_raw_parts(ptr, std::mem::size_of::<T>() * data.len()) };
-
-        self.push_bytes(slice, required_alignment)
-    }
-}
+use crate::push_buffer::{PushBufferSizeCalculator, PushBuffer};
 
 struct PendingMeshUpdate {
     awaiter: BufferUploadOpAwaiter,
@@ -170,10 +89,10 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
             let vertex = combined_mesh_data.push(&mesh_part.vertices, REQUIRED_ALIGNMENT);
 
             mesh_part_render_infos.push(LoadingMeshPartRenderInfo {
-                index_offset: index.offset as u32,
-                index_size: index.size as u32,
-                vertex_offset: vertex.offset as u32,
-                vertex_size: vertex.size as u32,
+                index_offset: index.offset() as u32,
+                index_size: index.size() as u32,
+                vertex_offset: vertex.offset() as u32,
+                vertex_size: vertex.size() as u32,
                 material: mesh_part.material,
             });
         }
@@ -192,7 +111,7 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
             .send(PendingBufferUpload {
                 load_op,
                 upload_op,
-                data: combined_mesh_data.data,
+                data: combined_mesh_data.into_data(),
             })
             .unwrap(); //TODO: Better error handling
     }

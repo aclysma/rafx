@@ -21,7 +21,7 @@ use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
 use crate::time::TimeState;
-use crate::resource_managers::VkSpriteResourceManager;
+use crate::resource_managers::SpriteResourceManager;
 
 struct SpriteRenderpassStats {
     draw_call_count: u32,
@@ -127,7 +127,7 @@ impl VkSpriteRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        sprite_resource_manager: &VkSpriteResourceManager,
+        sprite_resource_manager: &SpriteResourceManager,
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -977,7 +977,7 @@ impl VkSpriteRenderPass {
         &mut self,
         present_index: usize,
         hidpi_factor: f64,
-        sprite_resource_manager: &VkSpriteResourceManager,
+        sprite_resource_manager: &SpriteResourceManager,
         time_state: &TimeState,
     ) -> VkResult<()> {
         //TODO: Integrate this into the command buffer we create below

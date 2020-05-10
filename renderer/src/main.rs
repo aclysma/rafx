@@ -29,7 +29,7 @@ use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
 use renderer_ext::upload::UploadQueue;
-use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler};
+use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoadHandler};
 use renderer_ext::pipeline::image::ImageAsset;
 use renderer_ext::pipeline::gltf::{MaterialAsset, MeshAsset};
 
@@ -131,10 +131,15 @@ fn main() {
         asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
             ImageLoadHandler::new(
                 upload_queue.pending_image_tx().clone(),
-                renderer.sprite_resource_manager().image_update_tx().clone(),
+                renderer.image_resource_manager().image_update_tx().clone(),
+                renderer.sprite_resource_manager().sprite_update_tx().clone(),
             ),
         ));
-        asset_resource.add_storage::<MaterialAsset>();
+        asset_resource.add_storage_with_load_handler::<MaterialAsset, MaterialLoadHandler>(Box::new(
+            MaterialLoadHandler::new(
+                renderer.material_resource_manager().material_update_tx().clone(),
+            )
+        ));
         asset_resource.add_storage_with_load_handler::<MeshAsset, MeshLoadHandler>(Box::new(
             MeshLoadHandler::new(
                 upload_queue.pending_buffer_tx().clone(),
@@ -152,13 +157,16 @@ fn main() {
     //let material_handle = load_asset::<MaterialAsset>(asset_uuid!("742f5d82-0770-45de-907f-91ebe4834d7a"), &asset_resource);
 
     // 3objects
-    let mesh_handle = load_asset::<MeshAsset>(
-        asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"),
-        &asset_resource,
-    );
+    // let mesh_handle = load_asset::<MeshAsset>(
+    //     asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"),
+    //     &asset_resource,
+    // );
 
     // unit_cube
     //let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("5c7c907a-9335-4d4a-bb61-4f0c7ff03d07"), &asset_resource);
+
+    // textured cube
+    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"), &asset_resource);
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 

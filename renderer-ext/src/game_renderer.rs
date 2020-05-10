@@ -12,14 +12,16 @@ use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
 use crossbeam_channel::Sender;
 use std::ops::Deref;
-use crate::resource_managers::{VkSpriteResourceManager, VkMeshResourceManager};
+use crate::resource_managers::{SpriteResourceManager, VkMeshResourceManager, ImageResourceManager, MaterialResourceManager};
 use crate::renderpass::VkMeshRenderPass;
 
 pub struct GameRenderer {
     time_state: TimeState,
     imgui_event_listener: ImguiRenderEventListener,
 
-    sprite_resource_manager: VkSpriteResourceManager,
+    image_resource_manager: ImageResourceManager,
+    material_resource_manager: MaterialResourceManager,
+    sprite_resource_manager: SpriteResourceManager,
     mesh_resource_manager: VkMeshResourceManager,
     sprite_renderpass: Option<VkSpriteRenderPass>,
     mesh_renderpass: Option<VkMeshRenderPass>,
@@ -33,9 +35,18 @@ impl GameRenderer {
         time_state: &TimeState,
     ) -> VkResult<Self> {
         let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
-        let sprite_resource_manager = VkSpriteResourceManager::new(
+        let image_resource_manager = ImageResourceManager::new(
             device_context,
             renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        )?;
+        let material_resource_manager = MaterialResourceManager::new(
+            device_context,
+            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        )?;
+        let sprite_resource_manager = SpriteResourceManager::new(
+            device_context,
+            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+            &image_resource_manager
         )?;
         let mesh_resource_manager = VkMeshResourceManager::new(
             device_context,
@@ -45,6 +56,8 @@ impl GameRenderer {
         Ok(GameRenderer {
             time_state: time_state.clone(),
             imgui_event_listener,
+            image_resource_manager,
+            material_resource_manager,
             sprite_resource_manager,
             mesh_resource_manager,
             sprite_renderpass: None,
@@ -59,11 +72,28 @@ impl GameRenderer {
         self.time_state = time_state.clone();
     }
 
-    pub fn sprite_resource_manager(&self) -> &VkSpriteResourceManager {
+
+    pub fn image_resource_manager(&self) -> &ImageResourceManager {
+        &self.image_resource_manager
+    }
+
+    pub fn image_resource_manager_mut(&mut self) -> &mut ImageResourceManager {
+        &mut self.image_resource_manager
+    }
+
+    pub fn material_resource_manager(&self) -> &MaterialResourceManager {
+        &self.material_resource_manager
+    }
+
+    pub fn material_resource_manager_mut(&mut self) -> &mut MaterialResourceManager {
+        &mut self.material_resource_manager
+    }
+
+    pub fn sprite_resource_manager(&self) -> &SpriteResourceManager {
         &self.sprite_resource_manager
     }
 
-    pub fn sprite_resource_manager_mut(&mut self) -> &mut VkSpriteResourceManager {
+    pub fn sprite_resource_manager_mut(&mut self) -> &mut SpriteResourceManager {
         &mut self.sprite_resource_manager
     }
 
@@ -121,9 +151,11 @@ impl VkSurfaceEventListener for GameRenderer {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
-        self.sprite_resource_manager.update();
+        self.image_resource_manager.update();
+        self.material_resource_manager.update(&self.image_resource_manager);
+        self.sprite_resource_manager.update(&self.image_resource_manager);
         self.mesh_resource_manager
-            .update(&self.sprite_resource_manager);
+            .update(&self.material_resource_manager);
 
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");
@@ -216,11 +248,27 @@ impl GameRendererWithContext {
         &self.context
     }
 
-    pub fn sprite_resource_manager(&self) -> &VkSpriteResourceManager {
+    pub fn image_resource_manager(&self) -> &ImageResourceManager {
+        self.game_renderer.image_resource_manager()
+    }
+
+    pub fn image_resource_manager_mut(&mut self) -> &mut ImageResourceManager {
+        self.game_renderer.image_resource_manager_mut()
+    }
+
+    pub fn material_resource_manager(&self) -> &MaterialResourceManager {
+        self.game_renderer.material_resource_manager()
+    }
+
+    pub fn material_resource_manager_mut(&mut self) -> &mut MaterialResourceManager {
+        self.game_renderer.material_resource_manager_mut()
+    }
+
+    pub fn sprite_resource_manager(&self) -> &SpriteResourceManager {
         self.game_renderer.sprite_resource_manager()
     }
 
-    pub fn sprite_resource_manager_mut(&mut self) -> &mut VkSpriteResourceManager {
+    pub fn sprite_resource_manager_mut(&mut self) -> &mut SpriteResourceManager {
         self.game_renderer.sprite_resource_manager_mut()
     }
 

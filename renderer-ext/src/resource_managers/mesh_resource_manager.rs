@@ -34,8 +34,8 @@ use itertools::max;
 use renderer_shell_vulkan::cleanup::CombinedDropSink;
 use crate::asset_storage::ResourceHandle;
 use atelier_assets::core::AssetUuid;
-use crate::resource_managers::VkSpriteResourceManager;
-use crate::pipeline::gltf::MeshAsset;
+use crate::resource_managers::{SpriteResourceManager, MaterialResourceManager};
+use crate::pipeline::gltf::{MeshAsset, MaterialAsset};
 use crate::pipeline::image::ImageAsset;
 
 /// Represents an image that will replace another image
@@ -62,7 +62,7 @@ pub struct MeshPartRenderInfo {
     pub index_size: u32,
     pub vertex_offset: u32,
     pub vertex_size: u32,
-    pub image_handle: Option<ResourceHandle<ImageAsset>>,
+    pub material_handle: Option<ResourceHandle<MaterialAsset>>,
 }
 
 pub struct MeshRenderInfo {
@@ -154,7 +154,7 @@ impl VkMeshResourceManager {
 
     pub fn update(
         &mut self,
-        sprite_resource_manager: &VkSpriteResourceManager,
+        material_resource_manager: &MaterialResourceManager,
     ) {
         // This will handle any resources that need to be dropped
         // self.descriptor_pool_allocator
@@ -165,14 +165,30 @@ impl VkMeshResourceManager {
         // Check if we have any image updates to process
         //TODO: This may need to be deferred until a commit, and the commit may be to update to a
         // particular version of the assets
-        self.try_update_meshes(sprite_resource_manager);
+        self.try_update_meshes(material_resource_manager);
+    }
+
+    /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
+    fn try_update_meshes(
+        &mut self,
+        material_resource_manager: &MaterialResourceManager,
+    ) {
+        //let mut has_update = false;
+        while let Ok(update) = self.mesh_update_rx.recv_timeout(Duration::from_secs(0)) {
+            self.do_update_meshes(update, material_resource_manager);
+            //has_update = true;
+        }
+
+        // if has_update {
+        //     self.refresh_descriptor_sets();
+        // }
     }
 
     /// Runs through the incoming image updates and applies them to the list of meshes
     fn do_update_meshes(
         &mut self,
         mesh_update: MeshUpdate,
-        sprite_resource_manager: &VkSpriteResourceManager,
+        material_resource_manager: &MaterialResourceManager,
     ) {
         let mut max_index = self.meshes.len();
         for resource_handle in &mesh_update.resource_handles {
@@ -198,9 +214,12 @@ impl VkMeshResourceManager {
                 .iter()
                 .map(|loading_mesh_part| {
                     let material = loading_mesh_part.material;
-                    let image_handle = material.and_then(|material| {
-                        sprite_resource_manager.sprite_handle_by_uuid(&material)
+                    let material_handle = material.and_then(|material| {
+                        material_resource_manager.material_handle_by_uuid(&material)
                     });
+
+                    println!("do_update_meshes {:?} {:?}", loading_mesh_part.material, material_handle);
+
                     // let m = material
                     //     .and_then(|material| sprite_resource_manager.sprite_handle_by_uuid(&material))
                     //     .and_then(|handle| sprite_resource_manager.descriptor_sets()[handle.index()]);
@@ -210,7 +229,7 @@ impl VkMeshResourceManager {
                         vertex_offset: loading_mesh_part.vertex_offset,
                         index_size: loading_mesh_part.index_size,
                         index_offset: loading_mesh_part.index_offset,
-                        image_handle,
+                        material_handle,
                     }
                 })
                 .collect();
@@ -236,22 +255,6 @@ impl VkMeshResourceManager {
             let mesh = mesh.unwrap();
             self.drop_sink.retire_buffer(mesh.render_info.buffer);
         }
-    }
-
-    /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
-    fn try_update_meshes(
-        &mut self,
-        sprite_resource_manager: &VkSpriteResourceManager,
-    ) {
-        //let mut has_update = false;
-        while let Ok(update) = self.mesh_update_rx.recv_timeout(Duration::from_secs(0)) {
-            self.do_update_meshes(update, sprite_resource_manager);
-            //has_update = true;
-        }
-
-        // if has_update {
-        //     self.refresh_descriptor_sets();
-        // }
     }
 
     // fn refresh_descriptor_sets(&mut self) -> VkResult<()> {

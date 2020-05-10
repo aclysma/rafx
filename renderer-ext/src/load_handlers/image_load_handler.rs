@@ -17,28 +17,33 @@ use image::load;
 use crate::upload::PendingImageUpload;
 use crate::upload::ImageUploadOpResult;
 use crate::upload::ImageUploadOpAwaiter;
-use crate::resource_managers::sprite_resource_manager::ImageUpdate;
+use crate::resource_managers::sprite_resource_manager::SpriteResourceUpdate;
 use crate::pipeline::image::ImageAsset;
+use crate::resource_managers::image_resource_manager::ImageResourceUpdate;
 
 struct PendingImageUpdate {
     awaiter: ImageUploadOpAwaiter,
+    asset_uuid: AssetUuid
 }
 
 // This is registered with the asset storage which lets us hook when assets are updated
 pub struct ImageLoadHandler {
     upload_tx: Sender<PendingImageUpload>,
-    image_update_tx: Sender<ImageUpdate>,
+    image_update_tx: Sender<ImageResourceUpdate>,
+    sprite_update_tx: Sender<SpriteResourceUpdate>,
     pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, PendingImageUpdate>>,
 }
 
 impl ImageLoadHandler {
     pub fn new(
         upload_tx: Sender<PendingImageUpload>,
-        image_update_tx: Sender<ImageUpdate>,
+        image_update_tx: Sender<ImageResourceUpdate>,
+        sprite_update_tx: Sender<SpriteResourceUpdate>,
     ) -> Self {
         ImageLoadHandler {
             upload_tx,
             image_update_tx,
+            sprite_update_tx,
             pending_updates: Default::default(),
         }
     }
@@ -70,7 +75,10 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
 
         let (upload_op, awaiter) = crate::upload::create_upload_op();
 
-        let pending_update = PendingImageUpdate { awaiter };
+        let pending_update = PendingImageUpdate {
+            awaiter,
+            asset_uuid: *asset_uuid
+        };
 
         self.pending_updates
             .entry(load_handle)
@@ -111,9 +119,15 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
                 match value {
                     ImageUploadOpResult::UploadComplete(image) => {
                         log::info!("Commit asset {:?} {:?}", load_handle, version);
-                        self.image_update_tx.send(ImageUpdate {
-                            images: vec![image],
-                            resource_handles: vec![resource_handle],
+                        self.image_update_tx.send(ImageResourceUpdate {
+                            image: image,
+                            resource_handle: resource_handle,
+                            asset_uuid: pending_update.asset_uuid
+                        });
+                        self.sprite_update_tx.send(SpriteResourceUpdate {
+                            image_uuid: pending_update.asset_uuid,
+                            resource_handle: resource_handle,
+                            sprite_uuid: pending_update.asset_uuid //TODO: This is temporary until there are sprite assets
                         });
                     }
                     ImageUploadOpResult::UploadError => unreachable!(),

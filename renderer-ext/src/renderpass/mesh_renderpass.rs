@@ -22,7 +22,7 @@ use ash::vk::ShaderStageFlags;
 
 use crate::time::TimeState;
 
-use crate::resource_managers::{VkMeshResourceManager, VkSpriteResourceManager};
+use crate::resource_managers::{VkMeshResourceManager, SpriteResourceManager};
 use crate::resource_managers::mesh_resource_manager::Mesh;
 use crate::pipeline::gltf::MeshVertex;
 
@@ -127,7 +127,7 @@ impl VkMeshRenderPass {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         mesh_resource_manager: &VkMeshResourceManager,
-        sprite_resource_manager: &VkSpriteResourceManager,
+        sprite_resource_manager: &SpriteResourceManager,
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -860,7 +860,7 @@ impl VkMeshRenderPass {
         present_index: usize,
         hidpi_factor: f64,
         mesh_resource_manager: &VkMeshResourceManager,
-        sprite_resource_manager: &VkSpriteResourceManager,
+        sprite_resource_manager: &SpriteResourceManager,
         time_state: &TimeState,
     ) -> VkResult<()> {
         //TODO: Integrate this into the command buffer we create below

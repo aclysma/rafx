@@ -36,27 +36,33 @@ use renderer_shell_vulkan::cleanup::CombinedDropSink;
 use crate::asset_storage::ResourceHandle;
 use fnv::FnvHashMap;
 use crate::pipeline::image::ImageAsset;
+use crate::resource_managers::ImageResourceManager;
 
 /// Represents an image that will replace another image
-pub struct ImageUpdate {
-    pub images: Vec<ManuallyDrop<VkImage>>,
-    pub resource_handles: Vec<ResourceHandle<ImageAsset>>,
+pub struct SpriteResourceUpdate {
+    //pub images: Vec<ManuallyDrop<VkImage>>,
+
+    pub sprite_uuid: AssetUuid,
+    pub resource_handle: ResourceHandle<ImageAsset>,
+
+    pub image_uuid: AssetUuid,
 }
 
 /// Represents the current state of the sprite and the GPU resources associated with it
-pub struct Sprite {
-    pub image: ManuallyDrop<VkImage>,
-    pub image_view: vk::ImageView,
+pub struct SpriteResource {
+    // pub image: ManuallyDrop<VkImage>,
+    // pub image_view: vk::ImageView,
+    pub image_handle: ResourceHandle<ImageAsset>
 }
 
 /// Keeps track of sprites/images and manages descriptor sets that allow shaders to bind to images
 /// and use them
-pub struct VkSpriteResourceManager {
+pub struct SpriteResourceManager {
     device_context: VkDeviceContext,
 
     // The raw texture resources
-    sprites_lookup: FnvHashMap<AssetUuid, ResourceHandle<ImageAsset>>,
-    sprites: Vec<Option<Sprite>>,
+    sprites_by_uuid: FnvHashMap<AssetUuid, ResourceHandle<ImageAsset>>,
+    sprites: Vec<Option<SpriteResource>>,
     drop_sink: CombinedDropSink,
 
     // The descriptor set layout, pools, and sets
@@ -65,12 +71,12 @@ pub struct VkSpriteResourceManager {
     descriptor_pool: vk::DescriptorPool,
     descriptor_sets: Vec<vk::DescriptorSet>,
 
-    // For sending image updates in a thread-safe manner
-    image_update_tx: Sender<ImageUpdate>,
-    image_update_rx: Receiver<ImageUpdate>,
+    // For sending sprite updates in a thread-safe manner
+    sprite_update_tx: Sender<SpriteResourceUpdate>,
+    sprite_update_rx: Receiver<SpriteResourceUpdate>,
 }
 
-impl VkSpriteResourceManager {
+impl SpriteResourceManager {
     pub fn descriptor_set_layout(&self) -> vk::DescriptorSetLayout {
         self.descriptor_set_layout
     }
@@ -82,7 +88,7 @@ impl VkSpriteResourceManager {
     pub fn sprite_by_handle(
         &self,
         resource_handle: ResourceHandle<ImageAsset>,
-    ) -> Option<&Sprite> {
+    ) -> Option<&SpriteResource> {
         //TODO: Stale handle detection?
         self.sprites[resource_handle.index() as usize].as_ref()
     }
@@ -91,27 +97,28 @@ impl VkSpriteResourceManager {
         &self,
         asset_uuid: &AssetUuid,
     ) -> Option<ResourceHandle<ImageAsset>> {
-        self.sprites_lookup.get(asset_uuid).map(|x| *x)
+        self.sprites_by_uuid.get(asset_uuid).map(|x| *x)
     }
 
     pub fn sprite_by_uuid(
         &self,
         asset_uuid: &AssetUuid,
-    ) -> Option<&Sprite> {
-        self.sprites_lookup
+    ) -> Option<&SpriteResource> {
+        self.sprites_by_uuid
             .get(asset_uuid)
             .and_then(|handle| self.sprites[handle.index() as usize].as_ref())
     }
 
-    pub fn image_update_tx(&self) -> &Sender<ImageUpdate> {
-        &self.image_update_tx
+    pub fn sprite_update_tx(&self) -> &Sender<SpriteResourceUpdate> {
+        &self.sprite_update_tx
     }
 
     pub fn new(
         device_context: &VkDeviceContext,
         max_frames_in_flight: u32,
+        image_resource_manager: &ImageResourceManager
     ) -> VkResult<Self> {
-        let sprites_lookup = Default::default();
+        let sprites_by_uuid = Default::default();
         let sprites = Vec::new();
 
         //
@@ -129,91 +136,76 @@ impl VkSpriteResourceManager {
             descriptor_set_layout,
             &descriptor_pool,
             &sprites,
+            image_resource_manager
         )?;
 
         let (image_update_tx, image_update_rx) = crossbeam_channel::unbounded();
 
         let drop_sink = CombinedDropSink::new(max_frames_in_flight + 1);
 
-        Ok(VkSpriteResourceManager {
+        Ok(SpriteResourceManager {
             device_context: device_context.clone(),
             descriptor_set_layout,
             descriptor_pool_allocator,
             descriptor_pool,
             descriptor_sets,
-            sprites_lookup,
+            sprites_by_uuid,
             sprites,
             drop_sink,
-            image_update_tx,
-            image_update_rx,
+            sprite_update_tx: image_update_tx,
+            sprite_update_rx: image_update_rx,
         })
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, image_resource_manager: &ImageResourceManager) {
         // This will handle any resources that need to be dropped
         self.descriptor_pool_allocator
             .update(self.device_context.device());
         self.drop_sink
             .on_frame_complete(self.device_context.device());
 
-        // Check if we have any image updates to process
-        //TODO: This may need to be deferred until a commit, and the commit may be to update to a
-        // particular version of the assets
-        self.try_update_sprites();
+        // Check if we have any sprite updates to process
+        self.apply_sprite_updates(image_resource_manager);
+    }
+
+    /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
+    fn apply_sprite_updates(&mut self, image_resource_manager: &ImageResourceManager) {
+        let mut updates = Vec::with_capacity(self.sprite_update_rx.len());
+        while let Ok(update) = self.sprite_update_rx.recv_timeout(Duration::from_secs(0)) {
+            updates.push(update);
+        }
+
+        if !updates.is_empty() {
+            self.do_apply_sprite_updates(updates, image_resource_manager);
+            self.refresh_descriptor_sets(image_resource_manager);
+        }
     }
 
     /// Runs through the incoming image updates and applies them to the list of sprites
-    fn do_update_sprites(
+    fn do_apply_sprite_updates(
         &mut self,
-        image_update: ImageUpdate,
+        updates: Vec<SpriteResourceUpdate>,
+        image_resource_manager: &ImageResourceManager
     ) {
         let mut max_index = self.sprites.len();
-        for resource_handle in &image_update.resource_handles {
-            max_index = max_index.max(resource_handle.index() as usize + 1);
+        for update in &updates {
+            max_index = max_index.max(update.resource_handle.index() as usize + 1);
         }
 
         self.sprites.resize_with(max_index, || None);
 
-        let mut old_sprites = vec![];
-        for (i, image) in image_update.images.into_iter().enumerate() {
-            let resource_handle = image_update.resource_handles[i];
-
-            let image_view =
-                Self::create_texture_image_view(self.device_context.device(), &image.image);
-
-            // Do a swap so if there is an old sprite we can properly destroy it
-            let mut sprite = Some(Sprite { image, image_view });
-            std::mem::swap(
-                &mut sprite,
-                &mut self.sprites[resource_handle.index() as usize],
-            );
-            if sprite.is_some() {
-                old_sprites.push(sprite);
-            }
-        }
-
-        // retire old images/views
-        for sprite in old_sprites.drain(..) {
-            let sprite = sprite.unwrap();
-            self.drop_sink.retire_image(sprite.image);
-            self.drop_sink.retire_image_view(sprite.image_view);
+        for update in updates {
+            self.sprites_by_uuid.entry(update.sprite_uuid).or_insert(update.resource_handle);
+            self.sprites[update.resource_handle.index() as usize] = Some(SpriteResource {
+                image_handle: update.resource_handle
+            });
         }
     }
 
-    /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
-    fn try_update_sprites(&mut self) {
-        let mut has_update = false;
-        while let Ok(update) = self.image_update_rx.recv_timeout(Duration::from_secs(0)) {
-            self.do_update_sprites(update);
-            has_update = true;
-        }
-
-        if has_update {
-            self.refresh_descriptor_sets();
-        }
-    }
-
-    fn refresh_descriptor_sets(&mut self) -> VkResult<()> {
+    fn refresh_descriptor_sets(
+        &mut self,
+        image_resource_manager: &ImageResourceManager
+    ) -> VkResult<()> {
         self.descriptor_pool_allocator
             .retire_pool(self.descriptor_pool);
 
@@ -225,6 +217,7 @@ impl VkSpriteResourceManager {
             self.descriptor_set_layout,
             &descriptor_pool,
             &self.sprites,
+            image_resource_manager
         )?;
 
         self.descriptor_pool = descriptor_pool;
@@ -294,7 +287,8 @@ impl VkSpriteResourceManager {
         logical_device: &ash::Device,
         descriptor_set_layout: vk::DescriptorSetLayout,
         descriptor_pool: &vk::DescriptorPool,
-        sprites: &[Option<Sprite>],
+        sprites: &[Option<SpriteResource>],
+        image_resource_manager: &ImageResourceManager
     ) -> VkResult<Vec<vk::DescriptorSet>> {
         let descriptor_set_layouts = vec![descriptor_set_layout; sprites.len()];
 
@@ -310,23 +304,25 @@ impl VkSpriteResourceManager {
 
         for (image_index, sprite) in sprites.iter().enumerate() {
             if let Some(sprite) = sprite.as_ref() {
-                let mut descriptor_writes = Vec::with_capacity(sprites.len());
-                let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
-                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                    .image_view(sprite.image_view)
-                    .build();
+                if let Some(image) = image_resource_manager.image_by_handle(sprite.image_handle) {
+                    let mut descriptor_writes = Vec::with_capacity(sprites.len());
+                    let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
+                        .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                        .image_view(image.image_view)
+                        .build();
 
-                descriptor_writes.push(
-                    vk::WriteDescriptorSet::builder()
-                        .dst_set(descriptor_sets[image_index])
-                        .dst_binding(0)
-                        .dst_array_element(0)
-                        .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                        .image_info(&[image_view_descriptor_image_info])
-                        .build(),
-                );
-                unsafe {
-                    logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+                    descriptor_writes.push(
+                        vk::WriteDescriptorSet::builder()
+                            .dst_set(descriptor_sets[image_index])
+                            .dst_binding(0)
+                            .dst_array_element(0)
+                            .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                            .image_info(&[image_view_descriptor_image_info])
+                            .build(),
+                    );
+                    unsafe {
+                        logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+                    }
                 }
             }
         }
@@ -335,7 +331,7 @@ impl VkSpriteResourceManager {
     }
 }
 
-impl Drop for VkSpriteResourceManager {
+impl Drop for SpriteResourceManager {
     fn drop(&mut self) {
         log::debug!("destroying VkSpriteResourceManager");
 
@@ -349,12 +345,6 @@ impl Drop for VkSpriteResourceManager {
                 .device()
                 .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
 
-            for sprite in self.sprites.drain(..) {
-                if let Some(sprite) = sprite {
-                    self.drop_sink.retire_image(sprite.image);
-                    self.drop_sink.retire_image_view(sprite.image_view);
-                }
-            }
             self.drop_sink.destroy(self.device_context.device());
         }
 
