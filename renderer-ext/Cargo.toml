@@ -50,5 +50,6 @@ serde-diff = "0.3"
 
 ron = "0.5"
 erased-serde = "0.3"
+serde_json = "1.0.53"
 
 futures = "0.3"

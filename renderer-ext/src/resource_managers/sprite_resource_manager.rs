@@ -37,22 +37,26 @@ use crate::asset_storage::ResourceHandle;
 use fnv::FnvHashMap;
 use crate::pipeline::image::ImageAsset;
 use crate::resource_managers::ImageResourceManager;
+use crate::pipeline::sprite::SpriteAsset;
 
 /// Represents an image that will replace another image
 pub struct SpriteResourceUpdate {
     //pub images: Vec<ManuallyDrop<VkImage>>,
 
-    pub sprite_uuid: AssetUuid,
-    pub resource_handle: ResourceHandle<ImageAsset>,
+    pub asset_uuid: AssetUuid,
+    pub resource_handle: ResourceHandle<SpriteAsset>,
 
-    pub image_uuid: AssetUuid,
+    pub images: Vec<AssetUuid>,
 }
 
 /// Represents the current state of the sprite and the GPU resources associated with it
 pub struct SpriteResource {
     // pub image: ManuallyDrop<VkImage>,
     // pub image_view: vk::ImageView,
-    pub image_handle: ResourceHandle<ImageAsset>
+
+    //TODO: Link to frames instead of images and generate global frame indices that index into
+    // the descriptor pool
+    pub image_handles: Vec<Option<ResourceHandle<ImageAsset>>>
 }
 
 /// Keeps track of sprites/images and manages descriptor sets that allow shaders to bind to images
@@ -61,7 +65,7 @@ pub struct SpriteResourceManager {
     device_context: VkDeviceContext,
 
     // The raw texture resources
-    sprites_by_uuid: FnvHashMap<AssetUuid, ResourceHandle<ImageAsset>>,
+    sprites_by_uuid: FnvHashMap<AssetUuid, ResourceHandle<SpriteAsset>>,
     sprites: Vec<Option<SpriteResource>>,
     drop_sink: CombinedDropSink,
 
@@ -87,7 +91,7 @@ impl SpriteResourceManager {
 
     pub fn sprite_by_handle(
         &self,
-        resource_handle: ResourceHandle<ImageAsset>,
+        resource_handle: ResourceHandle<SpriteAsset>,
     ) -> Option<&SpriteResource> {
         //TODO: Stale handle detection?
         self.sprites[resource_handle.index() as usize].as_ref()
@@ -96,7 +100,7 @@ impl SpriteResourceManager {
     pub fn sprite_handle_by_uuid(
         &self,
         asset_uuid: &AssetUuid,
-    ) -> Option<ResourceHandle<ImageAsset>> {
+    ) -> Option<ResourceHandle<SpriteAsset>> {
         self.sprites_by_uuid.get(asset_uuid).map(|x| *x)
     }
 
@@ -195,9 +199,14 @@ impl SpriteResourceManager {
         self.sprites.resize_with(max_index, || None);
 
         for update in updates {
-            self.sprites_by_uuid.entry(update.sprite_uuid).or_insert(update.resource_handle);
+            self.sprites_by_uuid.entry(update.asset_uuid).or_insert(update.resource_handle);
+            let mut image_handles = Vec::with_capacity(update.images.len());
+            for image_uuid in update.images {
+                image_handles.push(image_resource_manager.image_handle_by_uuid(&image_uuid));
+            }
+
             self.sprites[update.resource_handle.index() as usize] = Some(SpriteResource {
-                image_handle: update.resource_handle
+                image_handles
             });
         }
     }
@@ -304,24 +313,28 @@ impl SpriteResourceManager {
 
         for (image_index, sprite) in sprites.iter().enumerate() {
             if let Some(sprite) = sprite.as_ref() {
-                if let Some(image) = image_resource_manager.image_by_handle(sprite.image_handle) {
-                    let mut descriptor_writes = Vec::with_capacity(sprites.len());
-                    let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
-                        .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                        .image_view(image.image_view)
-                        .build();
+                for image_handle in &sprite.image_handles {
+                    if let Some(image_handle) = image_handle {
+                        if let Some(image_resource) = image_resource_manager.image_by_handle(*image_handle) {
+                            let mut descriptor_writes = Vec::with_capacity(sprites.len());
+                            let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
+                                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                                .image_view(image_resource.image_view)
+                                .build();
 
-                    descriptor_writes.push(
-                        vk::WriteDescriptorSet::builder()
-                            .dst_set(descriptor_sets[image_index])
-                            .dst_binding(0)
-                            .dst_array_element(0)
-                            .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
-                            .image_info(&[image_view_descriptor_image_info])
-                            .build(),
-                    );
-                    unsafe {
-                        logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+                            descriptor_writes.push(
+                                vk::WriteDescriptorSet::builder()
+                                    .dst_set(descriptor_sets[image_index])
+                                    .dst_binding(0)
+                                    .dst_array_element(0)
+                                    .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                                    .image_info(&[image_view_descriptor_image_info])
+                                    .build(),
+                            );
+                            unsafe {
+                                logical_device.update_descriptor_sets(&descriptor_writes, &[]);
+                            }
+                        }
                     }
                 }
             }

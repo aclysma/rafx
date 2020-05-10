@@ -20,29 +20,24 @@ use crate::upload::ImageUploadOpAwaiter;
 use crate::resource_managers::sprite_resource_manager::SpriteResourceUpdate;
 use crate::pipeline::image::ImageAsset;
 use crate::resource_managers::image_resource_manager::ImageResourceUpdate;
+use crate::pipeline::sprite::SpriteAsset;
 
-struct PendingImageUpdate {
-    awaiter: ImageUploadOpAwaiter,
-    asset_uuid: AssetUuid
+struct PendingSpriteUpdate {
+    asset_uuid: AssetUuid,
+    images: Vec<AssetUuid>
 }
 
 // This is registered with the asset storage which lets us hook when assets are updated
-pub struct ImageLoadHandler {
-    upload_tx: Sender<PendingImageUpload>,
-    image_update_tx: Sender<ImageResourceUpdate>,
+pub struct SpriteLoadHandler {
     sprite_update_tx: Sender<SpriteResourceUpdate>,
-    pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, PendingImageUpdate>>,
+    pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, PendingSpriteUpdate>>,
 }
 
-impl ImageLoadHandler {
+impl SpriteLoadHandler {
     pub fn new(
-        upload_tx: Sender<PendingImageUpload>,
-        image_update_tx: Sender<ImageResourceUpdate>,
         sprite_update_tx: Sender<SpriteResourceUpdate>,
     ) -> Self {
-        ImageLoadHandler {
-            upload_tx,
-            image_update_tx,
+        SpriteLoadHandler {
             sprite_update_tx,
             pending_updates: Default::default(),
         }
@@ -50,34 +45,27 @@ impl ImageLoadHandler {
 }
 
 // This sends the texture to the upload queue. The upload queue will batch uploads together when update()
-// is called on it. When complete, the upload queue will send the image handle back via a channel
-impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
+// is called on it. When complete, the upload queue will send the sprite handle back via a channel
+impl ResourceLoadHandler<SpriteAsset> for SpriteLoadHandler {
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         asset_uuid: &AssetUuid,
-        resource_handle: ResourceHandle<ImageAsset>,
+        resource_handle: ResourceHandle<SpriteAsset>,
         version: u32,
-        asset: &ImageAsset,
+        asset: &SpriteAsset,
     ) {
         log::info!(
-            "ImageLoadHandler update_asset {} {:?} {:?}",
+            "SpriteLoadHandler update_asset {} {:?} {:?}",
             version,
             load_handle,
             resource_handle
         );
-        let texture = DecodedTexture {
-            width: asset.width,
-            height: asset.height,
-            data: asset.data.clone(),
-        };
 
-        let (upload_op, awaiter) = crate::upload::create_upload_op();
-
-        let pending_update = PendingImageUpdate {
-            awaiter,
-            asset_uuid: *asset_uuid
+        let pending_update = PendingSpriteUpdate {
+            asset_uuid: *asset_uuid,
+            images: asset.images.clone()
         };
 
         self.pending_updates
@@ -85,49 +73,29 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
             .or_default()
             .insert(version, pending_update);
 
-        self.upload_tx
-            .send(PendingImageUpload {
-                load_op,
-                upload_op,
-                texture,
-            })
-            .unwrap(); //TODO: Better error handling
+        load_op.complete();
     }
 
     fn commit_asset_version(
         &mut self,
         load_handle: LoadHandle,
-        resource_handle: ResourceHandle<ImageAsset>,
+        resource_handle: ResourceHandle<SpriteAsset>,
         version: u32,
     ) {
         log::info!(
-            "ImageLoadHandler commit_asset_version {} {:?} {:?}",
+            "SpriteLoadHandler commit_asset_version {} {:?} {:?}",
             version,
             load_handle,
             resource_handle
         );
         if let Some(versions) = self.pending_updates.get_mut(&load_handle) {
             if let Some(pending_update) = versions.remove(&version) {
-                let awaiter = pending_update.awaiter;
+                self.sprite_update_tx.send(SpriteResourceUpdate {
+                    asset_uuid: pending_update.asset_uuid,
+                    resource_handle: resource_handle,
 
-                // We assume that if commit_asset_version is being called the awaiter is signaled
-                // and has a valid result
-                let value = awaiter
-                    .receiver()
-                    .recv_timeout(Duration::from_secs(0))
-                    .unwrap();
-                match value {
-                    ImageUploadOpResult::UploadComplete(image) => {
-                        log::info!("Commit asset {:?} {:?}", load_handle, version);
-                        self.image_update_tx.send(ImageResourceUpdate {
-                            image: image,
-                            resource_handle: resource_handle,
-                            asset_uuid: pending_update.asset_uuid
-                        });
-                    }
-                    ImageUploadOpResult::UploadError => unreachable!(),
-                    ImageUploadOpResult::UploadDrop => unreachable!(),
-                }
+                    images: pending_update.images,
+                });
             } else {
                 log::error!(
                     "Could not find awaiter for asset version {:?} {}",
@@ -143,10 +111,10 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
     fn free(
         &mut self,
         load_handle: LoadHandle,
-        resource_handle: ResourceHandle<ImageAsset>,
+        resource_handle: ResourceHandle<SpriteAsset>,
     ) {
         log::info!(
-            "ImageLoadHandler free {:?} {:?}",
+            "SpriteLoadHandler free {:?} {:?}",
             load_handle,
             resource_handle
         );
