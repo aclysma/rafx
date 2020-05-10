@@ -172,7 +172,7 @@
 // //     //     .add_input_resource(...)
 // //     //     .add_output_resource(...)
 // // }
-// pub use renderer_base::*;
-// pub use renderer_ext::*;
+pub use renderer_base::*;
+pub use renderer_ext::*;
 //
 // //mod testv2;

@@ -3,10 +3,8 @@ use crossbeam_channel::{Sender, Receiver};
 use ash::prelude::VkResult;
 use std::time::Duration;
 use crate::image_utils::{enqueue_load_images, DecodedTexture};
-use crate::renderpass::sprite::ImageUpdate;
 use std::mem::{ManuallyDrop, align_of};
 use crate::asset_storage::{ResourceHandle, StorageUploader};
-use crate::image_importer::ImageAsset;
 use std::error::Error;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
@@ -17,8 +15,8 @@ use image::load;
 use crate::upload::{PendingImageUpload, PendingBufferUpload};
 use crate::upload::BufferUploadOpResult;
 use crate::upload::BufferUploadOpAwaiter;
-use crate::gltf_importer::{MeshAsset, MeshVertex};
-use crate::renderpass::mesh::mesh_resource_manager::{MeshUpdate, LoadingMeshPartRenderInfo, LoadingMeshRenderInfo};
+use crate::resource_managers::mesh_resource_manager::{MeshUpdate, LoadingMeshPartRenderInfo, LoadingMeshRenderInfo};
+use crate::pipeline::gltf::MeshAsset;
 
 pub struct PushBufferResult {
     offset: usize,

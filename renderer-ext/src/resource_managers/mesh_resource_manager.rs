@@ -33,10 +33,10 @@ use std::num::Wrapping;
 use itertools::max;
 use renderer_shell_vulkan::cleanup::CombinedDropSink;
 use crate::asset_storage::ResourceHandle;
-use crate::image_importer::ImageAsset;
-use crate::gltf_importer::MeshAsset;
-use crate::renderpass::sprite::VkSpriteResourceManager;
 use atelier_assets::core::AssetUuid;
+use crate::resource_managers::VkSpriteResourceManager;
+use crate::pipeline::gltf::MeshAsset;
+use crate::pipeline::image::ImageAsset;
 
 /// Represents an image that will replace another image
 pub struct LoadingMeshPartRenderInfo {

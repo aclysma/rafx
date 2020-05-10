@@ -20,58 +20,58 @@ use std::process::exit;
 use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
-use crate::renderpass::sprite::VkSpriteResourceManager;
 use crate::time::TimeState;
-use crate::renderpass::mesh::VkMeshResourceManager;
-use crate::renderpass::mesh::mesh_resource_manager::Mesh;
+use crate::resource_managers::VkSpriteResourceManager;
 
-use crate::gltf_importer::MeshVertex;
+struct SpriteRenderpassStats {
+    draw_call_count: u32,
+}
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
-struct MeshUniformBufferObject {
+struct SpriteUniformBufferObject {
     // View and projection matrices
     view_proj: [[f32; 4]; 4],
 }
 
-// /// Vertex format for vertices sent to the GPU
-// #[derive(Clone, Debug, Copy)]
-// #[repr(C)]
-// struct Vertex {
-//     pos: [f32; 3],
-//     normal: [u8; 3],
-//     tex_coord: [f32; 2],
-// }
+/// Vertex format for vertices sent to the GPU
+#[derive(Clone, Debug, Copy)]
+#[repr(C)]
+struct SpriteVertex {
+    pos: [f32; 2],
+    tex_coord: [f32; 2],
+    //color: [u8; 4],
+}
 
-// /// Used as static data to represent a quad
-// #[derive(Clone, Debug, Copy)]
-// struct QuadVertex {
-//     pos: [f32; 3],
-//     tex_coord: [f32; 2],
-// }
-//
-// /// Static data the represents a "unit" quad
-// const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
-//     QuadVertex {
-//         pos: [-0.5, -0.5, 0.0],
-//         tex_coord: [1.0, 0.0],
-//     },
-//     QuadVertex {
-//         pos: [0.5, -0.5, 0.0],
-//         tex_coord: [0.0, 0.0],
-//     },
-//     QuadVertex {
-//         pos: [0.5, 0.5, 0.0],
-//         tex_coord: [0.0, 1.0],
-//     },
-//     QuadVertex {
-//         pos: [-0.5, 0.5, 0.0],
-//         tex_coord: [1.0, 1.0],
-//     },
-// ];
-//
-// /// Draw order of QUAD_VERTEX_LIST
-// const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
+/// Used as static data to represent a quad
+#[derive(Clone, Debug, Copy)]
+struct QuadVertex {
+    pos: [f32; 3],
+    tex_coord: [f32; 2],
+}
+
+/// Static data the represents a "unit" quad
+const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
+    QuadVertex {
+        pos: [-0.5, -0.5, 0.0],
+        tex_coord: [1.0, 0.0],
+    },
+    QuadVertex {
+        pos: [0.5, -0.5, 0.0],
+        tex_coord: [0.0, 0.0],
+    },
+    QuadVertex {
+        pos: [0.5, 0.5, 0.0],
+        tex_coord: [0.0, 1.0],
+    },
+    QuadVertex {
+        pos: [-0.5, 0.5, 0.0],
+        tex_coord: [1.0, 1.0],
+    },
+];
+
+/// Draw order of QUAD_VERTEX_LIST
+const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
 struct FixedFunctionState<'a> {
     vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
@@ -90,7 +90,7 @@ struct PipelineResources {
 }
 
 /// Draws sprites
-pub struct VkMeshRenderPass {
+pub struct VkSpriteRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
@@ -123,11 +123,10 @@ pub struct VkMeshRenderPass {
     pub image_sampler: vk::Sampler,
 }
 
-impl VkMeshRenderPass {
+impl VkSpriteRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        mesh_resource_manager: &VkMeshResourceManager,
         sprite_resource_manager: &VkSpriteResourceManager,
     ) -> VkResult<Self> {
         //
@@ -170,7 +169,7 @@ impl VkMeshRenderPass {
 
         let descriptor_set_layouts = [
             descriptor_set_layout_per_pass,
-            //sprite_resource_manager.descriptor_set_layout(),
+            sprite_resource_manager.descriptor_set_layout(),
         ];
 
         //
@@ -226,7 +225,7 @@ impl VkMeshRenderPass {
             index_buffers.push(vec![]);
         }
 
-        Ok(VkMeshRenderPass {
+        Ok(VkSpriteRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             descriptor_set_layout_per_pass,
@@ -290,7 +289,7 @@ impl VkMeshRenderPass {
             vk_mem::MemoryUsage::CpuToGpu,
             vk::BufferUsageFlags::UNIFORM_BUFFER,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            mem::size_of::<MeshUniformBufferObject>() as u64,
+            mem::size_of::<SpriteUniformBufferObject>() as u64,
         );
 
         Ok(ManuallyDrop::new(buffer?))
@@ -306,12 +305,12 @@ impl VkMeshRenderPass {
                 .descriptor_count(1)
                 .stage_flags(vk::ShaderStageFlags::VERTEX)
                 .build(),
-            // vk::DescriptorSetLayoutBinding::builder()
-            //     .binding(1)
-            //     .descriptor_type(vk::DescriptorType::SAMPLER)
-            //     .descriptor_count(1)
-            //     .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-            //     .build(),
+            vk::DescriptorSetLayoutBinding::builder()
+                .binding(1)
+                .descriptor_type(vk::DescriptorType::SAMPLER)
+                .descriptor_count(1)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                .build(),
         ];
 
         let descriptor_set_layout_create_info =
@@ -331,10 +330,10 @@ impl VkMeshRenderPass {
                 .ty(vk::DescriptorType::UNIFORM_BUFFER)
                 .descriptor_count(3)
                 .build(),
-            // vk::DescriptorPoolSize::builder()
-            //     .ty(vk::DescriptorType::SAMPLER)
-            //     .descriptor_count(3)
-            //     .build(),
+            vk::DescriptorPoolSize::builder()
+                .ty(vk::DescriptorType::SAMPLER)
+                .descriptor_count(3)
+                .build(),
         ];
 
         let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
@@ -365,13 +364,13 @@ impl VkMeshRenderPass {
             let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
                 .buffer(uniform_buffers[i as usize].buffer)
                 .offset(0)
-                .range(mem::size_of::<MeshUniformBufferObject>() as u64)
+                .range(mem::size_of::<SpriteUniformBufferObject>() as u64)
                 .build()];
 
-            // let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
-            //     .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            //     .sampler(*image_sampler)
-            //     .build()];
+            let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .sampler(*image_sampler)
+                .build()];
 
             let descriptor_writes = [
                 vk::WriteDescriptorSet::builder()
@@ -381,13 +380,13 @@ impl VkMeshRenderPass {
                     .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
                     .buffer_info(&descriptor_buffer_infos)
                     .build(),
-                // vk::WriteDescriptorSet::builder()
-                //     .dst_set(descriptor_sets[i])
-                //     .dst_binding(1)
-                //     .dst_array_element(0)
-                //     .descriptor_type(vk::DescriptorType::SAMPLER)
-                //     .image_info(&sampler_descriptor_image_infos)
-                //     .build(),
+                vk::WriteDescriptorSet::builder()
+                    .dst_set(descriptor_sets[i])
+                    .dst_binding(1)
+                    .dst_array_element(0)
+                    .descriptor_type(vk::DescriptorType::SAMPLER)
+                    .image_info(&sampler_descriptor_image_infos)
+                    .build(),
             ];
 
             unsafe {
@@ -408,28 +407,28 @@ impl VkMeshRenderPass {
 
         let vertex_input_binding_descriptions = [vk::VertexInputBindingDescription {
             binding: 0,
-            stride: mem::size_of::<MeshVertex>() as u32,
+            stride: mem::size_of::<SpriteVertex>() as u32,
             input_rate: vk::VertexInputRate::VERTEX,
         }];
         let vertex_input_attribute_descriptions = [
             vk::VertexInputAttributeDescription {
                 binding: 0,
                 location: 0,
-                format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(MeshVertex, position) as u32,
+                format: vk::Format::R32G32_SFLOAT,
+                offset: offset_of!(SpriteVertex, pos) as u32,
             },
             vk::VertexInputAttributeDescription {
                 binding: 0,
                 location: 1,
-                format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(MeshVertex, normal) as u32,
-            },
-            vk::VertexInputAttributeDescription {
-                binding: 0,
-                location: 2,
                 format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(MeshVertex, tex_coord) as u32,
+                offset: offset_of!(SpriteVertex, tex_coord) as u32,
             },
+            // vk::VertexInputAttributeDescription {
+            //     binding: 0,
+            //     location: 2,
+            //     format: vk::Format::R8G8B8A8_UNORM,
+            //     offset: offset_of!(Vertex, color) as u32,
+            // },
         ];
 
         let vertex_input_state_info = vk::PipelineVertexInputStateCreateInfo::builder()
@@ -504,12 +503,11 @@ impl VkMeshRenderPass {
         let renderpass_attachments = [vk::AttachmentDescription::builder()
             .format(swapchain_info.surface_format.format)
             .samples(vk::SampleCountFlags::TYPE_1)
-            //.load_op(vk::AttachmentLoadOp::CLEAR)
-            .load_op(vk::AttachmentLoadOp::LOAD)
+            .load_op(vk::AttachmentLoadOp::CLEAR)
             .store_op(vk::AttachmentStoreOp::STORE)
             .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
             .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-            .initial_layout(vk::ImageLayout::PRESENT_SRC_KHR) //TODO: This is probably not efficient
+            .initial_layout(vk::ImageLayout::UNDEFINED)
             .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
             .build()];
 
@@ -555,12 +553,12 @@ impl VkMeshRenderPass {
         //
         let vertex_shader_module = load_shader_module(
             logical_device,
-            &include_bytes!("../../../shaders/mesh.vert.spv")[..],
+            &include_bytes!("../../shaders/sprite.vert.spv")[..],
         )?;
 
         let fragment_shader_module = load_shader_module(
             logical_device,
-            &include_bytes!("../../../shaders/mesh.frag.spv")[..],
+            &include_bytes!("../../shaders/sprite.frag.spv")[..],
         )?;
 
         let shader_entry_name = CString::new("main").unwrap();
@@ -679,7 +677,6 @@ impl VkMeshRenderPass {
         index_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
         descriptor_set_per_pass: &vk::DescriptorSet,
         descriptor_set_per_texture: &[vk::DescriptorSet],
-        meshes: &[Option<Mesh>],
         time_state: &TimeState,
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
@@ -703,42 +700,169 @@ impl VkMeshRenderPass {
         drop_old_buffers(vertex_buffers);
         drop_old_buffers(index_buffers);
 
-        // let mut draw_list_count = 0;
-        // if !sprites.is_empty() {
-        //     let vertex_buffer = {
-        //         let vertex_buffer_size =
-        //             vertex_list.len() as u64 * std::mem::size_of::<Vertex>() as u64;
-        //         let mut vertex_buffer = VkBuffer::new(
-        //             device_context,
-        //             vk_mem::MemoryUsage::CpuToGpu,
-        //             vk::BufferUsageFlags::VERTEX_BUFFER,
-        //             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-        //             vertex_buffer_size,
-        //         )?;
+        #[derive(Debug)]
+        struct Sprite {
+            position: glam::Vec3,
+            texture_size: glam::Vec2,
+            scale: f32,
+            rotation: f32,
+            texture_descriptor_index: u32,
+        }
+
+        #[derive(Debug)]
+        struct DrawCall {
+            index_buffer_first_element: u16,
+            index_buffer_count: u16,
+            texture_descriptor_index: u32,
+        }
+
+        const SPRITE_COUNT: usize = 50;
+        let mut sprites = Vec::with_capacity(SPRITE_COUNT);
+
+        if !descriptor_set_per_texture.is_empty() {
+            let mut rng: pcg_rand::Pcg32 = rand::SeedableRng::seed_from_u64(42);
+            use rand::Rng;
+            use std::f32::consts::PI;
+
+            for i in (0..SPRITE_COUNT) {
+                sprites.push(Sprite {
+                    position: glam::Vec3::new(
+                        rng.gen_range(-400.0, 400.0),
+                        rng.gen_range(-300.0, 300.0),
+                        0.0,
+                    ),
+                    //texture_size: glam::Vec2::new(800.0, 450.0),
+                    texture_size: glam::Vec2::new(850.0, 400.0),
+                    //scale: rng.gen_range(0.1, 0.2),
+                    scale: rng.gen_range(0.1, 0.2),
+                    rotation: rng.gen_range(-180.0, 180.0)
+                        + (rng.gen_range(-0.5, 0.5)
+                            * (time_state.total_time().as_secs_f32() * 180.0)),
+                    texture_descriptor_index: rng
+                        .gen_range(0, descriptor_set_per_texture.len() as u32),
+                });
+            }
+        }
+
+        // let sprites = [
+        //     Sprite {
+        //         position: glam::Vec3::new(0.0, 0.0, 0.0),
+        //         texture_size: glam::Vec2::new(800.0, 450.0),
+        //         scale: 1.0,
+        //         rotation: 0.0,
+        //         texture_descriptor_index: 0
+        //     },
+        //     Sprite {
+        //         position: glam::Vec3::new(-200.0, 0.0, 0.0),
+        //         texture_size: glam::Vec2::new(800.0, 450.0),
+        //         scale: 0.5,
+        //         rotation: 30.0,
+        //         texture_descriptor_index: 1
+        //     },
+        // ];
+
+        let mut draw_calls = Vec::with_capacity(sprites.len());
+
+        let mut vertex_list: Vec<SpriteVertex> =
+            Vec::with_capacity(QUAD_VERTEX_LIST.len() * sprites.len());
+        let mut index_list: Vec<u16> = Vec::with_capacity(QUAD_INDEX_LIST.len() * sprites.len());
+        for sprite in &sprites {
+            let draw_call = DrawCall {
+                index_buffer_first_element: 0,
+                index_buffer_count: 4,
+                texture_descriptor_index: sprite.texture_descriptor_index,
+            };
+
+            const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
+
+            let matrix = glam::Mat4::from_translation(sprite.position)
+                * glam::Mat4::from_rotation_z(sprite.rotation * DEG_TO_RAD)
+                * glam::Mat4::from_scale(glam::Vec3::new(
+                    sprite.texture_size.x() * sprite.scale,
+                    sprite.texture_size.y() * sprite.scale,
+                    1.0,
+                ));
+
+            let vertex_buffer_first_element = vertex_list.len() as u16;
+
+            for vertex in &QUAD_VERTEX_LIST {
+                //let pos = vertex.pos;
+                let transformed_pos = matrix.transform_point3(vertex.pos.into());
+
+                vertex_list.push(SpriteVertex {
+                    pos: transformed_pos.truncate().into(),
+                    tex_coord: vertex.tex_coord,
+                    //color: [255, 255, 255, 255]
+                });
+            }
+
+            let index_buffer_first_element = index_list.len() as u16;
+            for index in &QUAD_INDEX_LIST {
+                index_list.push((*index + vertex_buffer_first_element));
+            }
+
+            let draw_call = DrawCall {
+                index_buffer_first_element,
+                index_buffer_count: QUAD_INDEX_LIST.len() as u16,
+                texture_descriptor_index: sprite.texture_descriptor_index,
+            };
+
+            draw_calls.push(draw_call);
+        }
+
+        // //const QUADS_TO_DRAW : usize = 1;
+        // let mut vertex_list : Vec<Vertex> = Vec::with_capacity(QUAD_VERTEX_LIST.len() * QUADS_TO_DRAW);
+        // let mut index_list : Vec<u16> = Vec::with_capacity(QUAD_INDEX_LIST.len() * QUADS_TO_DRAW);
         //
-        //         vertex_buffer.write_to_host_visible_buffer(vertex_list.as_slice())?;
-        //         vertex_buffer
-        //     };
+        // {
+        //     //let scoped_timer = crate::time::ScopeTimer::new("build buffer data");
+        //     for quad_index in 0..QUADS_TO_DRAW {
+        //         for vertex in &QUAD_VERTEX_LIST {
+        //             vertex_list.push(*vertex);
+        //         }
         //
-        //     //TODO: Duplicated code here
-        //     let index_buffer = {
-        //         let index_buffer_size = index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
-        //         let mut index_buffer = VkBuffer::new(
-        //             device_context,
-        //             vk_mem::MemoryUsage::CpuToGpu,
-        //             vk::BufferUsageFlags::INDEX_BUFFER,
-        //             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-        //             index_buffer_size,
-        //         )?;
-        //
-        //         index_buffer.write_to_host_visible_buffer(index_list.as_slice())?;
-        //         index_buffer
-        //     };
-        //
-        //     vertex_buffers.push(ManuallyDrop::new(vertex_buffer));
-        //     index_buffers.push(ManuallyDrop::new(index_buffer));
-        //     draw_list_count += 1;
+        //         for index in &QUAD_INDEX_LIST {
+        //             index_list.push(*index + (QUAD_VERTEX_LIST.len() * quad_index) as u16);
+        //         }
+        //     }
         // }
+
+        let mut draw_list_count = 0;
+        if !sprites.is_empty() {
+            let vertex_buffer = {
+                let vertex_buffer_size =
+                    vertex_list.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
+                let mut vertex_buffer = VkBuffer::new(
+                    device_context,
+                    vk_mem::MemoryUsage::CpuToGpu,
+                    vk::BufferUsageFlags::VERTEX_BUFFER,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    vertex_buffer_size,
+                )?;
+
+                vertex_buffer.write_to_host_visible_buffer(vertex_list.as_slice())?;
+                vertex_buffer
+            };
+
+            //TODO: Duplicated code here
+            let index_buffer = {
+                let index_buffer_size = index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
+                let mut index_buffer = VkBuffer::new(
+                    device_context,
+                    vk_mem::MemoryUsage::CpuToGpu,
+                    vk::BufferUsageFlags::INDEX_BUFFER,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    index_buffer_size,
+                )?;
+
+                index_buffer.write_to_host_visible_buffer(index_list.as_slice())?;
+                index_buffer
+            };
+
+            vertex_buffers.push(ManuallyDrop::new(vertex_buffer));
+            index_buffers.push(ManuallyDrop::new(index_buffer));
+            draw_list_count += 1;
+        }
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(*renderpass)
@@ -760,7 +884,7 @@ impl VkMeshRenderPass {
                 vk::SubpassContents::INLINE,
             );
 
-            if !meshes.is_empty() {
+            if !sprites.is_empty() {
                 logical_device.cmd_bind_pipeline(
                     *command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
@@ -777,46 +901,39 @@ impl VkMeshRenderPass {
                     &[],
                 );
 
-                for mesh in meshes {
-                    if let Some(mesh) = mesh {
-                        for mesh_part in &mesh.render_info.mesh_parts {
-                            logical_device.cmd_bind_vertex_buffers(
-                                *command_buffer,
-                                0, // first binding
-                                &[mesh.render_info.buffer.buffer],
-                                &[mesh_part.vertex_offset as u64], // offsets
-                            );
+                logical_device.cmd_bind_vertex_buffers(
+                    *command_buffer,
+                    0, // first binding
+                    &[vertex_buffers[0].buffer],
+                    &[0], // offsets
+                );
 
-                            logical_device.cmd_bind_index_buffer(
-                                *command_buffer,
-                                mesh.render_info.buffer.buffer,
-                                mesh_part.index_offset as u64, // offset
-                                vk::IndexType::UINT16,
-                            );
+                logical_device.cmd_bind_index_buffer(
+                    *command_buffer,
+                    index_buffers[0].buffer,
+                    0, // offset
+                    vk::IndexType::UINT16,
+                );
 
-                            // // Bind per-draw-call data (i.e. texture)
-                            // logical_device.cmd_bind_descriptor_sets(
-                            //     *command_buffer,
-                            //     vk::PipelineBindPoint::GRAPHICS,
-                            //     *pipeline_layout,
-                            //     1,
-                            //     //&[/*descriptor_set_per_texture[mesh_part.image_handle as usize]*/ descriptor_set_per_texture[0]],
-                            //     &[descr]
-                            //     &[],
-                            // );
+                for draw_call in draw_calls {
+                    // Bind per-draw-call data (i.e. texture)
+                    logical_device.cmd_bind_descriptor_sets(
+                        *command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        *pipeline_layout,
+                        1,
+                        &[descriptor_set_per_texture[draw_call.texture_descriptor_index as usize]],
+                        &[],
+                    );
 
-                            //mesh_part.mesh_part.index_size[]
-
-                            logical_device.cmd_draw_indexed(
-                                *command_buffer,
-                                mesh_part.index_size / 2,
-                                1,
-                                0,
-                                0,
-                                0,
-                            );
-                        }
-                    }
+                    logical_device.cmd_draw_indexed(
+                        *command_buffer,
+                        draw_call.index_buffer_count as u32,
+                        1,
+                        draw_call.index_buffer_first_element as u32,
+                        0,
+                        0,
+                    );
                 }
             }
 
@@ -839,8 +956,8 @@ impl VkMeshRenderPass {
 
         // Resolution-independent rendering...
         let fov = extents.width as f32 / extents.height as f32;
-        let half_width = 10.0;
-        let half_height = 10.0 / fov;
+        let half_width = 400.0;
+        let half_height = 400.0 / fov;
 
         let proj = orthographic_rh_gl(
             -half_width,
@@ -851,7 +968,7 @@ impl VkMeshRenderPass {
             100.0,
         );
 
-        let ubo = MeshUniformBufferObject { view_proj: proj };
+        let ubo = SpriteUniformBufferObject { view_proj: proj };
 
         self.uniform_buffers[swapchain_image_index].write_to_host_visible_buffer(&[ubo])
     }
@@ -860,7 +977,6 @@ impl VkMeshRenderPass {
         &mut self,
         present_index: usize,
         hidpi_factor: f64,
-        mesh_resource_manager: &VkMeshResourceManager,
         sprite_resource_manager: &VkSpriteResourceManager,
         time_state: &TimeState,
     ) -> VkResult<()> {
@@ -879,15 +995,14 @@ impl VkMeshRenderPass {
             &mut self.index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
             sprite_resource_manager.descriptor_sets(),
-            mesh_resource_manager.meshes(),
             time_state,
         )
     }
 }
 
-impl Drop for VkMeshRenderPass {
+impl Drop for VkSpriteRenderPass {
     fn drop(&mut self) {
-        log::debug!("destroying VkMeshRenderPass");
+        log::debug!("destroying VkSpriteRenderPass");
 
         fn drop_all_buffer_lists(buffer_list: &mut Vec<Vec<ManuallyDrop<VkBuffer>>>) {
             for buffers in buffer_list {
@@ -924,7 +1039,7 @@ impl Drop for VkMeshRenderPass {
             device.destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
         }
 
-        log::debug!("destroyed VkMeshRenderPass");
+        log::debug!("destroyed VkSpriteRenderPass");
     }
 }
 

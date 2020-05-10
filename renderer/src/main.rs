@@ -19,7 +19,6 @@ use atelier_assets::core::AssetUuid;
 
 mod daemon;
 use renderer_ext::asset_resource::AssetResource;
-use renderer_ext::image_importer::ImageAsset;
 use renderer_ext::image_utils::{DecodedTexture, enqueue_load_images};
 use imgui::{Key, Image};
 use renderer_ext::asset_storage::{StorageUploader, ResourceHandle};
@@ -29,12 +28,10 @@ use crossbeam_channel::{Sender, Receiver};
 use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
-use renderer_ext::renderpass::sprite::{
-    VkSpriteResourceManager, ImageUpdate, ImageUploader,
-};
-use renderer_ext::gltf_importer::{MaterialAsset, MeshAsset};
 use renderer_ext::upload::UploadQueue;
-use renderer_ext::renderpass::mesh::MeshUploader;
+use renderer_ext::load_handlers::{ImageUploader, MeshUploader};
+use renderer_ext::pipeline::image::ImageAsset;
+use renderer_ext::pipeline::gltf::{MaterialAsset, MeshAsset};
 
 fn load_asset<T>(asset_uuid: AssetUuid, asset_resource: &AssetResource) -> atelier_assets::loader::handle::Handle::<T> {
     use atelier_loader::Loader;
@@ -206,8 +203,14 @@ fn main() {
         upload_queue.update(renderer.context().device());
 
         imgui_manager.with_ui(|ui| {
-            let mut opened = true;
-            ui.show_demo_window(&mut opened);
+            //let mut opened = true;
+            //ui.show_demo_window(&mut opened);
+            ui.main_menu_bar(|| {
+                ui.text(imgui::im_str!(
+                    "FPS: {:.1}",
+                    time.updates_per_second_smoothed()
+                ));
+            });
         });
 
         imgui_manager.render(&sdl_window);

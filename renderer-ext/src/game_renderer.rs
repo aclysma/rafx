@@ -1,21 +1,19 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
-//use crate::ResourceManager;
 use renderer_shell_vulkan::{
     VkDevice, VkSwapchain, VkSurfaceEventListener, VkSurface, Window, VkTransferUpload,
     VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError,
     VkContext,
 };
 use ash::prelude::VkResult;
-//use crate::features::sprite_renderpass_push_constant::VkSpriteRenderPass;
-use crate::renderpass::sprite::{VkSpriteRenderPass /*, LoadingSprite*/};
-use crate::renderpass::sprite::VkSpriteResourceManager;
+use crate::renderpass::{VkSpriteRenderPass};
 use std::mem::{swap, ManuallyDrop};
 use crate::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
 use crossbeam_channel::Sender;
 use std::ops::Deref;
-use crate::renderpass::mesh::{VkMeshRenderPass, VkMeshResourceManager};
+use crate::resource_managers::{VkSpriteResourceManager, VkMeshResourceManager};
+use crate::renderpass::VkMeshRenderPass;
 
 pub struct GameRenderer {
     time_state: TimeState,

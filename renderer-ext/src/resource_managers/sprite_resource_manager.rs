@@ -34,8 +34,8 @@ use std::num::Wrapping;
 use itertools::max;
 use renderer_shell_vulkan::cleanup::CombinedDropSink;
 use crate::asset_storage::ResourceHandle;
-use crate::image_importer::ImageAsset;
 use fnv::FnvHashMap;
+use crate::pipeline::image::ImageAsset;
 
 /// Represents an image that will replace another image
 pub struct ImageUpdate {

@@ -9,11 +9,11 @@ use std::io::Read;
 use std::convert::TryInto;
 use gltf::image::Data as GltfImageData;
 use gltf::buffer::Data as GltfBufferData;
-use crate::image_importer::ImageAsset;
 use fnv::FnvHashMap;
 use atelier_assets::loader::handle::Handle;
 use gltf::Accessor;
 use gltf::mesh::util::indices::CastingIter;
+use crate::pipeline::image::ImageAsset;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 enum GltfObjectId {
@@ -284,7 +284,7 @@ fn extract_images_to_import(
             },
         };
 
-        let asset = crate::image_importer::ImageAsset {
+        let asset = ImageAsset {
             data: converted_image.to_vec(),
             width: image_data.width,
             height: image_data.height
