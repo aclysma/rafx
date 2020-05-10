@@ -1,4 +1,3 @@
-
 pub mod sprite_resource_manager;
 pub use sprite_resource_manager::VkSpriteResourceManager;
 

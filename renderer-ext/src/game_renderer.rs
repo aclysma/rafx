@@ -48,7 +48,7 @@ impl GameRenderer {
             sprite_resource_manager,
             mesh_resource_manager,
             sprite_renderpass: None,
-            mesh_renderpass: None
+            mesh_renderpass: None,
         })
     }
 
@@ -97,7 +97,7 @@ impl VkSurfaceEventListener for GameRenderer {
             device_context,
             swapchain,
             &self.mesh_resource_manager,
-            &self.sprite_resource_manager
+            &self.sprite_resource_manager,
         )?);
         log::debug!("game renderer swapchain_created finished");
 
@@ -122,7 +122,8 @@ impl VkSurfaceEventListener for GameRenderer {
         let mut command_buffers = vec![];
 
         self.sprite_resource_manager.update();
-        self.mesh_resource_manager.update(&self.sprite_resource_manager);
+        self.mesh_resource_manager
+            .update(&self.sprite_resource_manager);
 
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");

@@ -194,7 +194,7 @@ pub fn enqueue_load_images(
         };
 
         // Arbitrary, not sure if there is any requirement
-        const REQUIRED_ALIGNMENT : usize = 16;
+        const REQUIRED_ALIGNMENT: usize = 16;
 
         // Push data into the staging buffer
         let offset = upload.push(&decoded_texture.data, REQUIRED_ALIGNMENT)?;
@@ -294,12 +294,6 @@ pub fn load_images(
     Ok(images)
 }
 
-
-
-
-
-
-
 #[derive(PartialEq)]
 pub enum BufferMemoryBarrierType {
     PostUploadUnifiedQueues,
@@ -382,7 +376,7 @@ pub fn cmd_copy_buffer_to_buffer(
     src_buffer: vk::Buffer,
     dst_buffer: vk::Buffer,
     src_buffer_offset: u64,
-    size: u64
+    size: u64,
 ) {
     let buffer_copy = vk::BufferCopy::builder()
         .src_offset(src_buffer_offset)
@@ -390,12 +384,7 @@ pub fn cmd_copy_buffer_to_buffer(
         .size(size);
 
     unsafe {
-        logical_device.cmd_copy_buffer(
-            command_buffer,
-            src_buffer,
-            dst_buffer,
-            &[*buffer_copy]
-        );
+        logical_device.cmd_copy_buffer(command_buffer, src_buffer, dst_buffer, &[*buffer_copy]);
     }
 }
 
@@ -410,7 +399,7 @@ pub fn enqueue_load_buffers(
 
     for data_array in data_arrays {
         // Arbitrary, not sure if there is any requirement
-        const REQUIRED_ALIGNMENT : usize = 16;
+        const REQUIRED_ALIGNMENT: usize = 16;
 
         // Push data into the staging buffer
         let offset = upload.push(&data_array, REQUIRED_ALIGNMENT)?;
@@ -420,7 +409,9 @@ pub fn enqueue_load_buffers(
         let dst_buffer = ManuallyDrop::new(VkBuffer::new(
             device_context,
             vk_mem::MemoryUsage::GpuOnly,
-            vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::INDEX_BUFFER,
+            vk::BufferUsageFlags::TRANSFER_DST
+                | vk::BufferUsageFlags::VERTEX_BUFFER
+                | vk::BufferUsageFlags::INDEX_BUFFER,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
             size,
         )?);

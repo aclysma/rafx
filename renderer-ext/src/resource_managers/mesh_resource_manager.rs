@@ -44,7 +44,7 @@ pub struct LoadingMeshPartRenderInfo {
     pub index_size: u32,
     pub vertex_offset: u32,
     pub vertex_size: u32,
-    pub material: Option<AssetUuid>
+    pub material: Option<AssetUuid>,
 }
 
 pub struct LoadingMeshRenderInfo {
@@ -62,7 +62,7 @@ pub struct MeshPartRenderInfo {
     pub index_size: u32,
     pub vertex_offset: u32,
     pub vertex_size: u32,
-    pub image_handle: Option<ResourceHandle<ImageAsset>>
+    pub image_handle: Option<ResourceHandle<ImageAsset>>,
 }
 
 pub struct MeshRenderInfo {
@@ -152,7 +152,10 @@ impl VkMeshResourceManager {
         })
     }
 
-    pub fn update(&mut self, sprite_resource_manager: &VkSpriteResourceManager) {
+    pub fn update(
+        &mut self,
+        sprite_resource_manager: &VkSpriteResourceManager,
+    ) {
         // This will handle any resources that need to be dropped
         // self.descriptor_pool_allocator
         //     .update(self.device_context.device());
@@ -169,7 +172,7 @@ impl VkMeshResourceManager {
     fn do_update_meshes(
         &mut self,
         mesh_update: MeshUpdate,
-        sprite_resource_manager: &VkSpriteResourceManager
+        sprite_resource_manager: &VkSpriteResourceManager,
     ) {
         let mut max_index = self.meshes.len();
         for resource_handle in &mesh_update.resource_handles {
@@ -182,30 +185,39 @@ impl VkMeshResourceManager {
         for (i, render_info) in mesh_update.meshes.into_iter().enumerate() {
             let resource_handle = mesh_update.resource_handles[i];
 
-            println!("UPLOAD MESH {}", render_info.buffer.allocation_info.get_size());
+            println!(
+                "UPLOAD MESH {}",
+                render_info.buffer.allocation_info.get_size()
+            );
 
             // let image_view =
             //     Self::create_texture_image_view(self.device_context.device(), &image.image);
 
-            let mut mesh_parts : Vec<_> = render_info.mesh_parts.iter().map(|loading_mesh_part| {
-                let material = loading_mesh_part.material;
-                let image_handle = material.and_then(|material| sprite_resource_manager.sprite_handle_by_uuid(&material));
-                // let m = material
-                //     .and_then(|material| sprite_resource_manager.sprite_handle_by_uuid(&material))
-                //     .and_then(|handle| sprite_resource_manager.descriptor_sets()[handle.index()]);
+            let mut mesh_parts: Vec<_> = render_info
+                .mesh_parts
+                .iter()
+                .map(|loading_mesh_part| {
+                    let material = loading_mesh_part.material;
+                    let image_handle = material.and_then(|material| {
+                        sprite_resource_manager.sprite_handle_by_uuid(&material)
+                    });
+                    // let m = material
+                    //     .and_then(|material| sprite_resource_manager.sprite_handle_by_uuid(&material))
+                    //     .and_then(|handle| sprite_resource_manager.descriptor_sets()[handle.index()]);
 
-                MeshPartRenderInfo {
-                    vertex_size: loading_mesh_part.vertex_size,
-                    vertex_offset: loading_mesh_part.vertex_offset,
-                    index_size: loading_mesh_part.index_size,
-                    index_offset: loading_mesh_part.index_offset,
-                    image_handle
-                }
-            }).collect();
+                    MeshPartRenderInfo {
+                        vertex_size: loading_mesh_part.vertex_size,
+                        vertex_offset: loading_mesh_part.vertex_offset,
+                        index_size: loading_mesh_part.index_size,
+                        index_offset: loading_mesh_part.index_offset,
+                        image_handle,
+                    }
+                })
+                .collect();
 
             let render_info = MeshRenderInfo {
                 mesh_parts: mesh_parts,
-                buffer: render_info.buffer
+                buffer: render_info.buffer,
             };
 
             // Do a swap so if there is an old mesh we can properly destroy it
@@ -229,7 +241,7 @@ impl VkMeshResourceManager {
     /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
     fn try_update_meshes(
         &mut self,
-        sprite_resource_manager: &VkSpriteResourceManager
+        sprite_resource_manager: &VkSpriteResourceManager,
     ) {
         //let mut has_update = false;
         while let Ok(update) = self.mesh_update_rx.recv_timeout(Duration::from_secs(0)) {

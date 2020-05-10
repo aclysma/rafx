@@ -12,8 +12,6 @@ use atelier_assets::core::AssetUuid;
 use renderer_base::slab::{GenSlab, GenSlabKey};
 use std::marker::PhantomData;
 
-
-
 // Used to catch asset changes and upload them to the GPU (or some other system)
 pub trait ResourceLoadHandler<T>: 'static + Send
 where
@@ -33,7 +31,7 @@ where
         &mut self,
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<T>,
-        version: u32
+        version: u32,
     );
 
     fn free(
@@ -72,7 +70,10 @@ impl<A> Clone for ResourceHandle<A> {
 }
 
 impl<A> std::fmt::Debug for ResourceHandle<A> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
         f.debug_struct("ResourceHandle")
             .field("key", &self.key.index())
             .finish()
@@ -142,7 +143,10 @@ impl GenericAssetStorage {
         let mut storages = self.storage.lock().unwrap();
         storages.insert(
             AssetTypeId(T::UUID),
-            Box::new(Storage::<T>::new(self.refop_sender.clone(), Some(load_handler))),
+            Box::new(Storage::<T>::new(
+                self.refop_sender.clone(),
+                Some(load_handler),
+            )),
         );
     }
 }
@@ -349,7 +353,14 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             // We have a load handler, pass it a reference to the asset and a load_op. The load handler
             // will be responsible for calling load_op.complete() or load_op.error()
             let asset = self.uncommitted.get(&load_handle).unwrap();
-            load_handler.update_asset(load_handle, load_op, &loader_info.get_asset_id(load_handle).unwrap(), resource_handle, version, &asset.asset);
+            load_handler.update_asset(
+                load_handle,
+                load_op,
+                &loader_info.get_asset_id(load_handle).unwrap(),
+                resource_handle,
+                version,
+                &asset.asset,
+            );
         } else {
             // Since there is no load handler, we call load_op.complete() immediately
             load_op.complete();
@@ -367,14 +378,13 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         // It exists to avoid frames where an asset that was loaded is unloaded, which
         // could happen when hot reloading. To support this case, you must support having multiple
         // versions of an asset loaded at the same time.
-        let asset_state = self.uncommitted
-                .remove(&load_handle)
-                .expect("asset not present when committing");
+        let asset_state = self
+            .uncommitted
+            .remove(&load_handle)
+            .expect("asset not present when committing");
 
         let resource_handle = asset_state.resource_handle;
-        self.assets.insert(
-            load_handle, asset_state
-        );
+        self.assets.insert(load_handle, asset_state);
 
         if let Some(load_handler) = &mut self.load_handler {
             load_handler.commit_asset_version(load_handle, resource_handle, version);

@@ -1,6 +1,6 @@
-
-
-use renderer_shell_vulkan::{VkTransferUploadState, VkDevice, VkDeviceContext, VkTransferUpload, VkImage, VkBuffer};
+use renderer_shell_vulkan::{
+    VkTransferUploadState, VkDevice, VkDeviceContext, VkTransferUpload, VkImage, VkBuffer,
+};
 use crossbeam_channel::{Sender, Receiver};
 use ash::prelude::VkResult;
 use std::time::Duration;
@@ -12,8 +12,6 @@ use atelier_assets::loader::{LoadHandle, AssetLoadOp};
 use fnv::FnvHashMap;
 use std::sync::Arc;
 use image::load;
-
-
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result
@@ -35,7 +33,10 @@ impl<T> UploadOp<T> {
         }
     }
 
-    pub fn complete(mut self, image: T) {
+    pub fn complete(
+        mut self,
+        image: T,
+    ) {
         let _ = self
             .sender
             .as_ref()
@@ -63,7 +64,7 @@ impl<T> Drop for UploadOp<T> {
 }
 
 pub struct UploadOpAwaiter<T> {
-    receiver: Receiver<UploadOpResult<T>>
+    receiver: Receiver<UploadOpResult<T>>,
 }
 
 impl<T> UploadOpAwaiter<T> {
@@ -75,9 +76,7 @@ impl<T> UploadOpAwaiter<T> {
 pub fn create_upload_op<T>() -> (UploadOp<T>, UploadOpAwaiter<T>) {
     let (tx, rx) = crossbeam_channel::unbounded();
     let op = UploadOp::new(tx);
-    let awaiter = UploadOpAwaiter {
-        receiver: rx
-    };
+    let awaiter = UploadOpAwaiter { receiver: rx };
 
     (op, awaiter)
 }
@@ -89,12 +88,6 @@ pub type ImageUploadOpAwaiter = UploadOpAwaiter<ManuallyDrop<VkImage>>;
 pub type BufferUploadOpResult = UploadOpResult<ManuallyDrop<VkBuffer>>;
 pub type BufferUploadOp = UploadOp<ManuallyDrop<VkBuffer>>;
 pub type BufferUploadOpAwaiter = UploadOpAwaiter<ManuallyDrop<VkBuffer>>;
-
-
-
-
-
-
 
 //
 // Represents a single request inserted into the upload queue that hasn't started yet
@@ -270,9 +263,7 @@ pub struct UploadQueue {
 }
 
 impl UploadQueue {
-    pub fn new(
-        device_context: &VkDeviceContext,
-    ) -> Self {
+    pub fn new(device_context: &VkDeviceContext) -> Self {
         let (pending_image_tx, pending_image_rx) = crossbeam_channel::unbounded();
         let (pending_buffer_tx, pending_buffer_rx) = crossbeam_channel::unbounded();
 
@@ -294,7 +285,10 @@ impl UploadQueue {
         &self.pending_buffer_tx
     }
 
-    fn start_new_image_uploads(&mut self, upload: &mut VkTransferUpload) -> VkResult<Vec<InFlightImageUpload>> {
+    fn start_new_image_uploads(
+        &mut self,
+        upload: &mut VkTransferUpload,
+    ) -> VkResult<Vec<InFlightImageUpload>> {
         let mut ops = vec![];
         let mut decoded_textures = vec![];
 
@@ -326,14 +320,17 @@ impl UploadQueue {
             in_flight_uploads.push(InFlightImageUpload {
                 load_op: op.0,
                 upload_op: op.1,
-                image
+                image,
             });
         }
 
         Ok(in_flight_uploads)
     }
 
-    fn start_new_buffer_uploads(&mut self, upload: &mut VkTransferUpload) -> VkResult<Vec<InFlightBufferUpload>> {
+    fn start_new_buffer_uploads(
+        &mut self,
+        upload: &mut VkTransferUpload,
+    ) -> VkResult<Vec<InFlightBufferUpload>> {
         let mut ops = vec![];
         let mut buffer_data = vec![];
 
@@ -360,13 +357,12 @@ impl UploadQueue {
             &buffer_data,
         )?;
 
-
         let mut in_flight_uploads = Vec::with_capacity(ops.len());
         for (op, buffer) in ops.into_iter().zip(buffers) {
             in_flight_uploads.push(InFlightBufferUpload {
                 load_op: op.0,
                 upload_op: op.1,
-                buffer
+                buffer,
             });
         }
 

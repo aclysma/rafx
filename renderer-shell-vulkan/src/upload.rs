@@ -155,7 +155,10 @@ impl VkUpload {
         if self.writable {
             unsafe {
                 // Figure out the span of memory we will write over
-                let write_begin_ptr = (((self.buffer_write_pointer as usize + required_alignment - 1) / required_alignment) * required_alignment) as *mut u8;// as const *u8;
+                let write_begin_ptr = (((self.buffer_write_pointer as usize + required_alignment
+                    - 1)
+                    / required_alignment)
+                    * required_alignment) as *mut u8; // as const *u8;
                 let write_end_ptr = write_begin_ptr.add(data.len());
 
                 // If the span walks past the end of the buffer, fail
@@ -226,7 +229,9 @@ impl VkUpload {
     fn wait_for_idle(&self) -> VkResult<()> {
         unsafe {
             if !self.writable {
-                self.device_context.device().wait_for_fences(&[self.fence], true, core::u64::MAX)
+                self.device_context
+                    .device()
+                    .wait_for_fences(&[self.fence], true, core::u64::MAX)
             } else {
                 Ok(())
             }
@@ -447,7 +452,11 @@ impl VkTransferUpload {
     fn wait_for_idle(&self) -> VkResult<()> {
         unsafe {
             if self.sent_to_dst_queue {
-                self.device_context.device().wait_for_fences(&[self.dst_fence], true, core::u64::MAX)
+                self.device_context.device().wait_for_fences(
+                    &[self.dst_fence],
+                    true,
+                    core::u64::MAX,
+                )
             } else {
                 Ok(())
             }

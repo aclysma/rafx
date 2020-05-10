@@ -47,7 +47,8 @@ impl AssetResource {
         T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
         U: ResourceLoadHandler<T>,
     {
-        self.storage.add_storage_with_load_handler::<T, U>(load_handler);
+        self.storage
+            .add_storage_with_load_handler::<T, U>(load_handler);
     }
 
     pub fn update(&mut self) {

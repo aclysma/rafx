@@ -79,16 +79,25 @@ impl VkSpriteResourceManager {
         &self.descriptor_sets
     }
 
-    pub fn sprite_by_handle(&self, resource_handle: ResourceHandle<ImageAsset>) -> Option<&Sprite> {
+    pub fn sprite_by_handle(
+        &self,
+        resource_handle: ResourceHandle<ImageAsset>,
+    ) -> Option<&Sprite> {
         //TODO: Stale handle detection?
         self.sprites[resource_handle.index() as usize].as_ref()
     }
 
-    pub fn sprite_handle_by_uuid(&self, asset_uuid: &AssetUuid) -> Option<ResourceHandle<ImageAsset>> {
+    pub fn sprite_handle_by_uuid(
+        &self,
+        asset_uuid: &AssetUuid,
+    ) -> Option<ResourceHandle<ImageAsset>> {
         self.sprites_lookup.get(asset_uuid).map(|x| *x)
     }
 
-    pub fn sprite_by_uuid(&self, asset_uuid: &AssetUuid) -> Option<&Sprite> {
+    pub fn sprite_by_uuid(
+        &self,
+        asset_uuid: &AssetUuid,
+    ) -> Option<&Sprite> {
         self.sprites_lookup
             .get(asset_uuid)
             .and_then(|handle| self.sprites[handle.index() as usize].as_ref())

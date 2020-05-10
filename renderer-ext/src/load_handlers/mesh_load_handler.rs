@@ -1,4 +1,6 @@
-use renderer_shell_vulkan::{VkTransferUploadState, VkDevice, VkDeviceContext, VkTransferUpload, VkImage, VkBuffer};
+use renderer_shell_vulkan::{
+    VkTransferUploadState, VkDevice, VkDeviceContext, VkTransferUpload, VkImage, VkBuffer,
+};
 use crossbeam_channel::{Sender, Receiver};
 use ash::prelude::VkResult;
 use std::time::Duration;
@@ -15,23 +17,23 @@ use image::load;
 use crate::upload::{PendingImageUpload, PendingBufferUpload};
 use crate::upload::BufferUploadOpResult;
 use crate::upload::BufferUploadOpAwaiter;
-use crate::resource_managers::mesh_resource_manager::{MeshUpdate, LoadingMeshPartRenderInfo, LoadingMeshRenderInfo};
+use crate::resource_managers::mesh_resource_manager::{
+    MeshUpdate, LoadingMeshPartRenderInfo, LoadingMeshRenderInfo,
+};
 use crate::pipeline::gltf::MeshAsset;
 
 pub struct PushBufferResult {
     offset: usize,
-    size: usize
+    size: usize,
 }
 
 pub struct PushBufferSizeCalculator {
-    required_size: usize
+    required_size: usize,
 }
 
 impl PushBufferSizeCalculator {
     pub fn new() -> Self {
-        PushBufferSizeCalculator {
-            required_size: 0
-        }
+        PushBufferSizeCalculator { required_size: 0 }
     }
 
     pub fn push_bytes(
@@ -42,8 +44,13 @@ impl PushBufferSizeCalculator {
         self.push(data, required_alignment)
     }
 
-    pub fn push<T>(&mut self, data: &[T], required_alignment: usize) {
-        self.required_size = ((self.required_size + required_alignment - 1) / required_alignment) * required_alignment;
+    pub fn push<T>(
+        &mut self,
+        data: &[T],
+        required_alignment: usize,
+    ) {
+        self.required_size = ((self.required_size + required_alignment - 1) / required_alignment)
+            * required_alignment;
         self.required_size += (data.len() * std::mem::size_of::<T>());
     }
 
@@ -53,7 +60,7 @@ impl PushBufferSizeCalculator {
 }
 
 pub struct PushBuffer {
-    data: Vec<u8>
+    data: Vec<u8>,
 }
 
 impl PushBuffer {
@@ -69,7 +76,8 @@ impl PushBuffer {
         required_alignment: usize,
     ) -> PushBufferResult {
         // Figure out where in the buffer to write
-        let span_begin = ((self.data.len() + required_alignment - 1) / required_alignment) * required_alignment;
+        let span_begin =
+            ((self.data.len() + required_alignment - 1) / required_alignment) * required_alignment;
         let span_end = span_begin + data.len();
 
         // Resize the buffer and copy the data
@@ -79,43 +87,44 @@ impl PushBuffer {
         // Return the offset
         PushBufferResult {
             offset: span_begin,
-            size: data.len()
+            size: data.len(),
         }
     }
 
-    pub fn push<T>(&mut self, data: &[T], required_alignment: usize) -> PushBufferResult {
+    pub fn push<T>(
+        &mut self,
+        data: &[T],
+        required_alignment: usize,
+    ) -> PushBufferResult {
         let ptr: *const u8 = data.as_ptr() as *const u8;
-        let slice: &[u8] = unsafe {
-            std::slice::from_raw_parts(ptr, std::mem::size_of::<T>() * data.len())
-        };
+        let slice: &[u8] =
+            unsafe { std::slice::from_raw_parts(ptr, std::mem::size_of::<T>() * data.len()) };
 
         self.push_bytes(slice, required_alignment)
     }
 }
 
-
 struct PendingMeshUpdate {
     awaiter: BufferUploadOpAwaiter,
-    mesh_parts: Vec<LoadingMeshPartRenderInfo>
+    mesh_parts: Vec<LoadingMeshPartRenderInfo>,
 }
-
 
 // This is registered with the asset storage which lets us hook when assets are updated
 pub struct MeshLoadHandler {
     upload_tx: Sender<PendingBufferUpload>,
     mesh_update_tx: Sender<MeshUpdate>,
-    pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, PendingMeshUpdate>>
+    pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, PendingMeshUpdate>>,
 }
 
 impl MeshLoadHandler {
     pub fn new(
         upload_tx: Sender<PendingBufferUpload>,
-        mesh_update_tx: Sender<MeshUpdate>
+        mesh_update_tx: Sender<MeshUpdate>,
     ) -> Self {
         MeshLoadHandler {
             upload_tx,
             mesh_update_tx,
-            pending_updates: Default::default()
+            pending_updates: Default::default(),
         }
     }
 }
@@ -132,14 +141,19 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
         version: u32,
         asset: &MeshAsset,
     ) {
-        log::info!("MeshLoadHandler update_asset {} {:?} {:?}", version, load_handle, resource_handle);
+        log::info!(
+            "MeshLoadHandler update_asset {} {:?} {:?}",
+            version,
+            load_handle,
+            resource_handle
+        );
         let (upload_op, awaiter) = crate::upload::create_upload_op();
 
         //
         // Determine size of buffer needed
         //
         // Arbitrary, not sure if there is any requirement
-        const REQUIRED_ALIGNMENT : usize = 16;
+        const REQUIRED_ALIGNMENT: usize = 16;
         let mut storage_calculator = PushBufferSizeCalculator::new();
         for mesh_part in &asset.mesh_parts {
             storage_calculator.push(&mesh_part.indices, REQUIRED_ALIGNMENT);
@@ -160,16 +174,19 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
                 index_size: index.size as u32,
                 vertex_offset: vertex.offset as u32,
                 vertex_size: vertex.size as u32,
-                material: mesh_part.material
+                material: mesh_part.material,
             });
         }
 
         let pending_update = PendingMeshUpdate {
             awaiter,
-            mesh_parts: mesh_part_render_infos
+            mesh_parts: mesh_part_render_infos,
         };
 
-        self.pending_updates.entry(load_handle).or_default().insert(version,pending_update);
+        self.pending_updates
+            .entry(load_handle)
+            .or_default()
+            .insert(version, pending_update);
 
         self.upload_tx
             .send(PendingBufferUpload {
@@ -184,35 +201,47 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
         &mut self,
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<MeshAsset>,
-        version: u32
+        version: u32,
     ) {
-        log::info!("MeshLoadHandler commit_asset_version {} {:?} {:?}", version, load_handle, resource_handle);
+        log::info!(
+            "MeshLoadHandler commit_asset_version {} {:?} {:?}",
+            version,
+            load_handle,
+            resource_handle
+        );
         if let Some(versions) = self.pending_updates.get_mut(&load_handle) {
             if let Some(pending_update) = versions.remove(&version) {
                 let awaiter = pending_update.awaiter;
 
                 // We assume that if commit_asset_version is being called the awaiter is signaled
                 // and has a valid result
-                let value = awaiter.receiver().recv_timeout(Duration::from_secs(0)).unwrap();
+                let value = awaiter
+                    .receiver()
+                    .recv_timeout(Duration::from_secs(0))
+                    .unwrap();
                 match value {
                     BufferUploadOpResult::UploadComplete(buffer) => {
                         log::info!("Commit asset {:?} {:?}", load_handle, version);
 
                         let mesh_render_info = LoadingMeshRenderInfo {
                             buffer,
-                            mesh_parts: pending_update.mesh_parts
+                            mesh_parts: pending_update.mesh_parts,
                         };
 
                         self.mesh_update_tx.send(MeshUpdate {
                             meshes: vec![mesh_render_info],
-                            resource_handles: vec![resource_handle]
+                            resource_handles: vec![resource_handle],
                         });
-                    },
+                    }
                     BufferUploadOpResult::UploadError => unreachable!(),
                     BufferUploadOpResult::UploadDrop => unreachable!(),
                 }
             } else {
-                log::error!("Could not find awaiter for asset version {:?} {}", load_handle, version);
+                log::error!(
+                    "Could not find awaiter for asset version {:?} {}",
+                    load_handle,
+                    version
+                );
             }
         } else {
             log::error!("Could not find awaiter for {:?} {}", load_handle, version);
@@ -224,10 +253,13 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<MeshAsset>,
     ) {
-        log::info!("MeshLoadHandler free {:?} {:?}", load_handle, resource_handle);
+        log::info!(
+            "MeshLoadHandler free {:?} {:?}",
+            load_handle,
+            resource_handle
+        );
 
         //TODO: We are not unloading meshes
         self.pending_updates.remove(&load_handle);
     }
 }
-
