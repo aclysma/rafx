@@ -21,7 +21,7 @@ mod daemon;
 use renderer_ext::asset_resource::AssetResource;
 use renderer_ext::image_utils::{DecodedTexture, enqueue_load_images};
 use imgui::{Key, Image};
-use renderer_ext::asset_storage::{StorageUploader, ResourceHandle};
+use renderer_ext::asset_storage::{ResourceLoadHandler, ResourceHandle};
 use std::mem::ManuallyDrop;
 //use renderer_ext::renderpass::sprite::LoadingSprite;
 use crossbeam_channel::{Sender, Receiver};
@@ -29,7 +29,7 @@ use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
 use renderer_ext::upload::UploadQueue;
-use renderer_ext::load_handlers::{ImageUploader, MeshUploader};
+use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler};
 use renderer_ext::pipeline::image::ImageAsset;
 use renderer_ext::pipeline::gltf::{MaterialAsset, MeshAsset};
 
@@ -129,12 +129,12 @@ fn main() {
         let device_context = renderer.context().device_context();
 
         let mut asset_resource = AssetResource::default();
-        asset_resource.add_storage_with_uploader::<ImageAsset, ImageUploader>(Box::new(
-            ImageUploader::new(upload_queue.pending_image_tx().clone(), renderer.sprite_resource_manager().image_update_tx().clone()),
+        asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
+            ImageLoadHandler::new(upload_queue.pending_image_tx().clone(), renderer.sprite_resource_manager().image_update_tx().clone()),
         ));
         asset_resource.add_storage::<MaterialAsset>();
-        asset_resource.add_storage_with_uploader::<MeshAsset, MeshUploader>(Box::new(
-            MeshUploader::new(upload_queue.pending_buffer_tx().clone(), renderer.mesh_resource_manager().mesh_update_tx().clone()),
+        asset_resource.add_storage_with_load_handler::<MeshAsset, MeshLoadHandler>(Box::new(
+            MeshLoadHandler::new(upload_queue.pending_buffer_tx().clone(), renderer.mesh_resource_manager().mesh_update_tx().clone()),
         ));
         asset_resource
     };

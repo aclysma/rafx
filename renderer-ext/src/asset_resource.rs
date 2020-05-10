@@ -5,7 +5,7 @@ use std::sync::Arc;
 use type_uuid::TypeUuid;
 
 use atelier_assets::loader as atelier_loader;
-use crate::asset_storage::{GenericAssetStorage, StorageUploader};
+use crate::asset_storage::{GenericAssetStorage, ResourceLoadHandler};
 
 // A legion-friendly container for assets storages
 pub struct AssetResource {
@@ -40,14 +40,14 @@ impl AssetResource {
         self.storage.add_storage::<T>();
     }
 
-    pub fn add_storage_with_uploader<T, U>(
+    pub fn add_storage_with_load_handler<T, U>(
         &mut self,
-        uploader: Box<U>,
+        load_handler: Box<U>,
     ) where
         T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
-        U: StorageUploader<T>,
+        U: ResourceLoadHandler<T>,
     {
-        self.storage.add_storage_with_uploader::<T, U>(uploader);
+        self.storage.add_storage_with_load_handler::<T, U>(load_handler);
     }
 
     pub fn update(&mut self) {

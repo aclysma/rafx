@@ -4,7 +4,7 @@ use ash::prelude::VkResult;
 use std::time::Duration;
 use crate::image_utils::{enqueue_load_images, DecodedTexture};
 use std::mem::ManuallyDrop;
-use crate::asset_storage::{ResourceHandle, StorageUploader};
+use crate::asset_storage::{ResourceHandle, ResourceLoadHandler};
 use std::error::Error;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
@@ -23,18 +23,18 @@ struct PendingImageUpdate {
 }
 
 // This is registered with the asset storage which lets us hook when assets are updated
-pub struct ImageUploader {
+pub struct ImageLoadHandler {
     upload_tx: Sender<PendingImageUpload>,
     image_update_tx: Sender<ImageUpdate>,
     pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, PendingImageUpdate>>
 }
 
-impl ImageUploader {
+impl ImageLoadHandler {
     pub fn new(
         upload_tx: Sender<PendingImageUpload>,
         image_update_tx: Sender<ImageUpdate>
     ) -> Self {
-        ImageUploader {
+        ImageLoadHandler {
             upload_tx,
             image_update_tx,
             pending_updates: Default::default()
@@ -42,9 +42,9 @@ impl ImageUploader {
     }
 }
 
-// This sends the texture to the uploader. The uploader will batch uploads together when update()
-// is called on it. When complete, the uploader will send the image handle back via a channel
-impl StorageUploader<ImageAsset> for ImageUploader {
+// This sends the texture to the upload queue. The upload queue will batch uploads together when update()
+// is called on it. When complete, the upload queue will send the image handle back via a channel
+impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
@@ -54,7 +54,7 @@ impl StorageUploader<ImageAsset> for ImageUploader {
         version: u32,
         asset: &ImageAsset,
     ) {
-        log::info!("ImageUploader update_asset {} {:?} {:?}", version, load_handle, resource_handle);
+        log::info!("ImageLoadHandler update_asset {} {:?} {:?}", version, load_handle, resource_handle);
         let texture = DecodedTexture {
             width: asset.width,
             height: asset.height,
@@ -84,7 +84,7 @@ impl StorageUploader<ImageAsset> for ImageUploader {
         resource_handle: ResourceHandle<ImageAsset>,
         version: u32
     ) {
-        log::info!("ImageUploader commit_asset_version {} {:?} {:?}", version, load_handle, resource_handle);
+        log::info!("ImageLoadHandler commit_asset_version {} {:?} {:?}", version, load_handle, resource_handle);
         if let Some(versions) = self.pending_updates.get_mut(&load_handle) {
             if let Some(pending_update) = versions.remove(&version) {
                 let awaiter = pending_update.awaiter;
@@ -116,7 +116,7 @@ impl StorageUploader<ImageAsset> for ImageUploader {
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<ImageAsset>,
     ) {
-        log::info!("ImageUploader free {:?} {:?}", load_handle, resource_handle);
+        log::info!("ImageLoadHandler free {:?} {:?}", load_handle, resource_handle);
         //TODO: We are not unloading images
         self.pending_updates.remove(&load_handle);
     }

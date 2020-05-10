@@ -4,7 +4,7 @@ use ash::prelude::VkResult;
 use std::time::Duration;
 use crate::image_utils::{enqueue_load_images, DecodedTexture};
 use std::mem::{ManuallyDrop, align_of};
-use crate::asset_storage::{ResourceHandle, StorageUploader};
+use crate::asset_storage::{ResourceHandle, ResourceLoadHandler};
 use std::error::Error;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
@@ -101,18 +101,18 @@ struct PendingMeshUpdate {
 
 
 // This is registered with the asset storage which lets us hook when assets are updated
-pub struct MeshUploader {
+pub struct MeshLoadHandler {
     upload_tx: Sender<PendingBufferUpload>,
     mesh_update_tx: Sender<MeshUpdate>,
     pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, PendingMeshUpdate>>
 }
 
-impl MeshUploader {
+impl MeshLoadHandler {
     pub fn new(
         upload_tx: Sender<PendingBufferUpload>,
         mesh_update_tx: Sender<MeshUpdate>
     ) -> Self {
-        MeshUploader {
+        MeshLoadHandler {
             upload_tx,
             mesh_update_tx,
             pending_updates: Default::default()
@@ -120,9 +120,9 @@ impl MeshUploader {
     }
 }
 
-// This sends the texture to the uploader. The uploader will batch uploads together when update()
-// is called on it. When complete, the uploader will send the image handle back via a channel
-impl StorageUploader<MeshAsset> for MeshUploader {
+// This sends the texture to the upload queue. The upload queue will batch uploads together when update()
+// is called on it. When complete, the upload queue will send the image handle back via a channel
+impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
@@ -132,7 +132,7 @@ impl StorageUploader<MeshAsset> for MeshUploader {
         version: u32,
         asset: &MeshAsset,
     ) {
-        log::info!("MeshUploader update_asset {} {:?} {:?}", version, load_handle, resource_handle);
+        log::info!("MeshLoadHandler update_asset {} {:?} {:?}", version, load_handle, resource_handle);
         let (upload_op, awaiter) = crate::upload::create_upload_op();
 
         //
@@ -186,7 +186,7 @@ impl StorageUploader<MeshAsset> for MeshUploader {
         resource_handle: ResourceHandle<MeshAsset>,
         version: u32
     ) {
-        log::info!("MeshUploader commit_asset_version {} {:?} {:?}", version, load_handle, resource_handle);
+        log::info!("MeshLoadHandler commit_asset_version {} {:?} {:?}", version, load_handle, resource_handle);
         if let Some(versions) = self.pending_updates.get_mut(&load_handle) {
             if let Some(pending_update) = versions.remove(&version) {
                 let awaiter = pending_update.awaiter;
@@ -224,7 +224,7 @@ impl StorageUploader<MeshAsset> for MeshUploader {
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<MeshAsset>,
     ) {
-        log::info!("MeshUploader free {:?} {:?}", load_handle, resource_handle);
+        log::info!("MeshLoadHandler free {:?} {:?}", load_handle, resource_handle);
 
         //TODO: We are not unloading meshes
         self.pending_updates.remove(&load_handle);

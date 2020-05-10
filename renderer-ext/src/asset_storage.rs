@@ -15,7 +15,7 @@ use std::marker::PhantomData;
 
 
 // Used to catch asset changes and upload them to the GPU (or some other system)
-pub trait StorageUploader<T>: 'static + Send
+pub trait ResourceLoadHandler<T>: 'static + Send
 where
     T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
 {
@@ -41,26 +41,6 @@ where
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<T>,
     );
-
-    // fn update_asset(
-    //     &mut self,
-    //     loader_info: &dyn LoaderInfoProvider,
-    //     data: &[u8],
-    //     load_handle: LoadHandle,
-    //     load_op: AssetLoadOp,
-    //     version: u32,
-    // ) -> Result<(), Box<dyn Error>>;
-    // fn commit_asset_version(
-    //     &mut self,
-    //     handle: LoadHandle,
-    //     version: u32,
-    // );
-    // fn free(
-    //     &mut self,
-    //     handle: LoadHandle,
-    // );
-    //
-    // fn type_name(&self) -> &'static str;
 }
 
 pub struct ResourceHandle<A> {
@@ -152,17 +132,17 @@ impl GenericAssetStorage {
         );
     }
 
-    pub fn add_storage_with_uploader<T, U>(
+    pub fn add_storage_with_load_handler<T, U>(
         &self,
-        uploader: Box<U>,
+        load_handler: Box<U>,
     ) where
         T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
-        U: StorageUploader<T>,
+        U: ResourceLoadHandler<T>,
     {
         let mut storages = self.storage.lock().unwrap();
         storages.insert(
             AssetTypeId(T::UUID),
-            Box::new(Storage::<T>::new(self.refop_sender.clone(), Some(uploader))),
+            Box::new(Storage::<T>::new(self.refop_sender.clone(), Some(load_handler))),
         );
     }
 }
@@ -295,19 +275,19 @@ pub struct Storage<A: TypeUuid> {
     assets: HashMap<LoadHandle, AssetState<A>>,
     uncommitted: HashMap<LoadHandle, AssetState<A>>,
     slab: GenSlab<LoadHandle>,
-    uploader: Option<Box<dyn StorageUploader<A>>>,
+    load_handler: Option<Box<dyn ResourceLoadHandler<A>>>,
 }
 impl<A: TypeUuid> Storage<A> {
     fn new(
         sender: Arc<Sender<RefOp>>,
-        uploader: Option<Box<dyn StorageUploader<A>>>,
+        load_handler: Option<Box<dyn ResourceLoadHandler<A>>>,
     ) -> Self {
         Self {
             refop_sender: sender,
             assets: HashMap::new(),
             uncommitted: HashMap::new(),
             slab: GenSlab::<LoadHandle>::new(),
-            uploader,
+            load_handler,
         }
     }
     fn get<T: AssetHandle>(
@@ -365,13 +345,13 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         );
         log::info!("{} bytes loaded for {:?}", data.len(), load_handle);
 
-        if let Some(uploader) = &mut self.uploader {
-            // We have an uploader, pass it a reference to the asset and a load_op. The uploader
+        if let Some(load_handler) = &mut self.load_handler {
+            // We have a load handler, pass it a reference to the asset and a load_op. The load handler
             // will be responsible for calling load_op.complete() or load_op.error()
             let asset = self.uncommitted.get(&load_handle).unwrap();
-            uploader.update_asset(load_handle, load_op, &loader_info.get_asset_id(load_handle).unwrap(), resource_handle, version, &asset.asset);
+            load_handler.update_asset(load_handle, load_op, &loader_info.get_asset_id(load_handle).unwrap(), resource_handle, version, &asset.asset);
         } else {
-            // Since there is no uploader, we call load_op.complete() immediately
+            // Since there is no load handler, we call load_op.complete() immediately
             load_op.complete();
         }
 
@@ -396,8 +376,8 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             load_handle, asset_state
         );
 
-        if let Some(uploader) = &mut self.uploader {
-            uploader.commit_asset_version(load_handle, resource_handle, version);
+        if let Some(load_handler) = &mut self.load_handler {
+            load_handler.commit_asset_version(load_handle, resource_handle, version);
         }
         log::info!("!!! Commit {:?}", load_handle);
     }
@@ -411,8 +391,8 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         if let Some(asset_state) = asset_state {
             let resource_handle = asset_state.resource_handle;
             self.slab.free(&asset_state.resource_handle.key);
-            if let Some(uploader) = &mut self.uploader {
-                uploader.free(load_handle, resource_handle);
+            if let Some(load_handler) = &mut self.load_handler {
+                load_handler.free(load_handle, resource_handle);
             }
         }
     }

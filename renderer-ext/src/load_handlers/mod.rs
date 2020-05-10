@@ -1,5 +1,5 @@
-mod image_upload;
-pub use image_upload::ImageUploader;
+mod image_load_handler;
+pub use image_load_handler::ImageLoadHandler;
 
-mod mesh_upload;
-pub use mesh_upload::MeshUploader;
+mod mesh_load_handler;
+pub use mesh_load_handler::MeshLoadHandler;
