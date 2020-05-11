@@ -548,6 +548,9 @@ impl VkSpriteRenderPass {
         descriptor_set_layouts: &[vk::DescriptorSetLayout],
         mut f: F,
     ) -> VkResult<()> {
+        let layout_create_info =
+            vk::PipelineLayoutCreateInfo::builder().set_layouts(descriptor_set_layouts);
+
         let pipeline_layout: vk::PipelineLayout =
             unsafe { logical_device.create_pipeline_layout(&layout_create_info, None)? };
 
@@ -580,9 +583,6 @@ impl VkSpriteRenderPass {
                 .name(&shader_entry_name)
                 .build(),
         ];
-
-        let layout_create_info =
-            vk::PipelineLayoutCreateInfo::builder().set_layouts(descriptor_set_layouts);
 
         let pipeline_info = vk::GraphicsPipelineCreateInfo::builder()
             .stages(&shader_stage_create_infos)
