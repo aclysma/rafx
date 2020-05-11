@@ -11,5 +11,5 @@ use std::convert::TryInto;
 #[derive(TypeUuid, Serialize, Deserialize, Debug)]
 #[uuid = "e0ae2222-1a44-4022-af95-03c9101ac89e"]
 pub struct ShaderAsset {
-    pub data: Vec<u8>
+    pub data: Vec<u32>
 }

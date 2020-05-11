@@ -12,8 +12,10 @@ use std::collections::hash_map::Entry::Occupied;
 
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
+use std::ffi::CString;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DescriptorType {
     SAMPLER,
     COMBINED_IMAGE_SAMPLER,
@@ -52,7 +54,7 @@ impl Default for DescriptorType {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShaderStageFlags {
     VERTEX,
     TESSELLATION_CONTROL,
@@ -85,7 +87,7 @@ impl Default for ShaderStageFlags {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct DescriptorSetLayoutBinding {
     pub binding: u32,
     pub descriptor_type: DescriptorType,
@@ -110,7 +112,7 @@ impl Into<vk::DescriptorSetLayoutBinding> for DescriptorSetLayoutBinding {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct DescriptorSetLayout {
     pub descriptor_set_layout_bindings: Vec<DescriptorSetLayoutBinding>,
 }
@@ -137,7 +139,7 @@ impl DescriptorSetLayout {
 
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PushConstantRange {
     pub stage_flags: ShaderStageFlags,
     pub offset: u32,
@@ -160,7 +162,7 @@ impl Into<vk::PushConstantRange> for PushConstantRange {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineLayout {
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_ranges: Vec<PushConstantRange>,
@@ -192,7 +194,7 @@ impl PipelineLayout {
 
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentDescriptionFlags {
     None,
     MayAlias
@@ -212,7 +214,7 @@ pub struct SwapchainSurfaceInfo {
     pub extents: vk::Extent2D,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SampleCountFlags {
     SampleCount1,
     SampleCount2,
@@ -237,7 +239,13 @@ impl Into<vk::SampleCountFlags> for SampleCountFlags {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+impl Default for SampleCountFlags {
+    fn default() -> Self {
+        SampleCountFlags::SampleCount1
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentLoadOp {
     Load,
     Clear,
@@ -254,7 +262,7 @@ impl Into<vk::AttachmentLoadOp> for AttachmentLoadOp {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentStoreOp {
     Store,
     DontCare
@@ -269,7 +277,7 @@ impl Into<vk::AttachmentStoreOp> for AttachmentStoreOp {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PipelineBindPoint {
     Compute,
     Graphics
@@ -285,7 +293,7 @@ impl Into<vk::PipelineBindPoint> for PipelineBindPoint {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ImageLayout {
     UNDEFINED,
     GENERAL,
@@ -314,7 +322,7 @@ impl Into<vk::ImageLayout> for ImageLayout {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PipelineStageFlags {
     Empty,
     TOP_OF_PIPE,
@@ -363,7 +371,7 @@ impl Into<vk::PipelineStageFlags> for PipelineStageFlags {
 
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AccessFlags {
     Empty,
     INDIRECT_COMMAND_READ,
@@ -410,7 +418,7 @@ impl Into<vk::AccessFlags> for AccessFlags {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DependencyFlags {
     Empty,
     ByRegion,
@@ -426,7 +434,7 @@ impl Into<vk::DependencyFlags> for DependencyFlags {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Format {
     MatchSwapchain,
     Raw(i32),
@@ -441,7 +449,7 @@ impl Format {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AttachmentDescription {
     pub flags: AttachmentDescriptionFlags,
     pub format: Format,
@@ -469,7 +477,7 @@ impl AttachmentDescription {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AttachmentReference {
     pub attachment: u32,
     pub layout: ImageLayout
@@ -489,7 +497,7 @@ impl Into<vk::AttachmentReference> for AttachmentReference {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SubpassDescription {
     pub pipeline_bind_point: PipelineBindPoint,
     pub input_attachments: Vec<AttachmentReference>,
@@ -498,7 +506,7 @@ pub struct SubpassDescription {
     pub depth_stencil_attachment: AttachmentReference,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SubpassDependencyIndex {
     External,
     Index(u32)
@@ -514,7 +522,7 @@ impl Into<u32> for SubpassDependencyIndex {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SubpassDependency {
     pub src_subpass: SubpassDependencyIndex,
     pub dst_subpass: SubpassDependencyIndex,
@@ -544,7 +552,7 @@ impl Into<vk::SubpassDependency> for SubpassDependency {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct RenderPass {
     pub attachments: Vec<AttachmentDescription>,
     pub subpasses: Vec<SubpassDescription>,
@@ -558,7 +566,7 @@ pub struct RenderPass {
 
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PrimitiveTopology {
     POINT_LIST,
     LINE_LIST,
@@ -591,8 +599,15 @@ impl Into<vk::PrimitiveTopology> for PrimitiveTopology {
     }
 }
 
+impl Default for PrimitiveTopology {
+    fn default() -> Self {
+        PrimitiveTopology::POINT_LIST
+    }
+}
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineInputAssemblyState {
     pub primitive_topology: PrimitiveTopology,
     pub primitive_restart_enable: bool
@@ -615,7 +630,7 @@ impl Into<vk::PipelineInputAssemblyStateCreateInfo> for PipelineInputAssemblySta
 
 //impl Into<vk::PipelineInputAssemblyState>
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum VertexInputRate {
     Vertex,
     Instance
@@ -630,7 +645,7 @@ impl Into<vk::VertexInputRate> for VertexInputRate {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct VertexInputBindingDescription {
     pub binding: u32,
     pub stride: u32,
@@ -652,7 +667,7 @@ impl Into<vk::VertexInputBindingDescription> for VertexInputBindingDescription {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct VertexInputAttributeDescription {
     pub location: u32,
     pub binding: u32,
@@ -670,14 +685,14 @@ impl VertexInputAttributeDescription {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineVertexInputState {
     pub binding_descriptions: Vec<VertexInputBindingDescription>,
     pub attribute_descriptions: Vec<VertexInputAttributeDescription>,
 }
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RectDecimal {
     pub x: Decimal,
     pub y: Decimal,
@@ -685,7 +700,7 @@ pub struct RectDecimal {
     pub height: Decimal,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RectF32 {
     pub x: f32,
     pub y: f32,
@@ -693,7 +708,7 @@ pub struct RectF32 {
     pub height: f32,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RectI32 {
     pub x: i32,
     pub y: i32,
@@ -702,7 +717,7 @@ pub struct RectI32 {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Dimensions {
     MatchSwapchain,
     Raw(RectDecimal),
@@ -745,7 +760,7 @@ impl Dimensions {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Viewport {
     pub dimensions: Dimensions,
     pub min_depth: Decimal,
@@ -765,7 +780,7 @@ impl Viewport {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Scissors {
     dimensions: Dimensions
 }
@@ -780,13 +795,13 @@ impl Scissors {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineViewportState {
     pub viewports: Vec<Viewport>,
     pub scissors: Vec<Scissors>
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PolygonMode {
     Fill,
     Line,
@@ -803,7 +818,14 @@ impl Into<vk::PolygonMode> for PolygonMode {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+
+impl Default for PolygonMode {
+    fn default() -> Self {
+        PolygonMode::Fill
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FrontFace {
     CounterClockwise,
     Clockwise,
@@ -818,7 +840,13 @@ impl Into<vk::FrontFace> for FrontFace {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+impl Default for FrontFace {
+    fn default() -> Self {
+        FrontFace::CounterClockwise
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CullModeFlags {
     None,
     Front,
@@ -837,8 +865,13 @@ impl Into<vk::CullModeFlags> for CullModeFlags {
     }
 }
 
+impl Default for CullModeFlags {
+    fn default() -> Self {
+        CullModeFlags::None
+    }
+}
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineRasterizationState {
     pub depth_clamp_enable: bool,
     pub rasterizer_discard_enable: bool,
@@ -878,7 +911,7 @@ impl Into<vk::PipelineRasterizationStateCreateInfo> for PipelineRasterizationSta
 
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineMultisampleState {
     pub rasterization_samples: SampleCountFlags,
     pub sample_shading_enable: bool,
@@ -907,7 +940,7 @@ impl PipelineMultisampleState {
 
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BlendFactor {
     ZERO,
     ONE,
@@ -956,7 +989,7 @@ impl Into<vk::BlendFactor> for BlendFactor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BlendOp {
     ADD,
     SUBTRACT,
@@ -978,7 +1011,7 @@ impl Into<vk::BlendOp> for BlendOp {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ColorComponentFlags {
     red: bool,
     green: bool,
@@ -1010,7 +1043,7 @@ impl Into<vk::ColorComponentFlags> for ColorComponentFlags {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PipelineColorBlendAttachmentState {
     pub blend_enable: bool,
     pub src_color_blend_factor: BlendFactor,
@@ -1044,7 +1077,7 @@ impl Into<vk::PipelineColorBlendAttachmentState> for PipelineColorBlendAttachmen
 
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LogicOp {
     CLEAR,
     AND,
@@ -1087,7 +1120,13 @@ impl Into<vk::LogicOp> for LogicOp {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+impl Default for LogicOp {
+    fn default() -> LogicOp {
+        LogicOp::CLEAR
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineColorBlendState {
     pub logic_op_enable: bool,
     pub logic_op: LogicOp,
@@ -1106,6 +1145,7 @@ impl PipelineColorBlendState {
     }
 }
 
+
 // impl PipelineColorBlendState {
 //     pub fn as_builder(&self) -> vk::PipelineColorBlendStateCreateInfoBuilder {
 //         let blend_constants = [
@@ -1123,7 +1163,7 @@ impl PipelineColorBlendState {
 //     }
 // }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DynamicState {
     VIEWPORT,
     SCISSOR,
@@ -1152,16 +1192,13 @@ impl Into<vk::DynamicState> for DynamicState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineDynamicState {
     pub dynamic_states: Vec<DynamicState>
 }
 
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GraphicsPipeline {
-    pub pipeline_layout: PipelineLayout,
-    pub renderpass: RenderPass,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct FixedFunctionState {
     pub vertex_input_state: PipelineVertexInputState,
     pub input_assembly_state: PipelineInputAssemblyState,
     pub viewport_state: PipelineViewportState,
@@ -1170,6 +1207,38 @@ pub struct GraphicsPipeline {
     pub color_blend_state: PipelineColorBlendState,
     pub dynamic_state: PipelineDynamicState,
 }
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ShaderModule {
+    pub code: Vec<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct PipelineShaderStage {
+    pub stage: ShaderStageFlags,
+    pub shader_module: ShaderModule,
+    pub entry_name: CString
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct PipelineShaderStages {
+    pub stages: Vec<PipelineShaderStage>
+}
+
+
+
+
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct GraphicsPipeline {
+    pub pipeline_layout: PipelineLayout,
+    pub renderpass: RenderPass,
+    pub fixed_function_state: FixedFunctionState,
+    pub pipeline_shader_stages: PipelineShaderStages,
+}
+
 
 
 // // Applies globally

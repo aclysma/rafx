@@ -33,6 +33,9 @@ use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoa
 use renderer_ext::pipeline::image::ImageAsset;
 use renderer_ext::pipeline::gltf::{MaterialAsset, MeshAsset};
 use renderer_ext::pipeline::sprite::SpriteAsset;
+use renderer_ext::pipeline_description::GraphicsPipeline;
+use std::io::Write;
+use std::collections::hash_map::DefaultHasher;
 
 fn load_asset<T>(
     asset_uuid: AssetUuid,
@@ -63,6 +66,72 @@ fn main() {
     std::thread::spawn(move || {
         daemon::run();
     });
+
+
+    use renderer_ext::pipeline_description as dsc;
+    let default_pipeline = dsc::GraphicsPipeline::default();
+
+    let mut sprite_pipeline = dsc::GraphicsPipeline::default();
+    sprite_pipeline.pipeline_layout.descriptor_set_layouts = vec![
+        dsc::DescriptorSetLayout {
+            descriptor_set_layout_bindings: vec! [
+                dsc::DescriptorSetLayoutBinding {
+                    ..Default::default()
+                },
+                dsc::DescriptorSetLayoutBinding {
+                    ..Default::default()
+                },
+            ]
+        },
+        dsc::DescriptorSetLayout {
+            descriptor_set_layout_bindings: vec! [
+                dsc::DescriptorSetLayoutBinding {
+                    ..Default::default()
+                }
+            ]
+        }
+    ];
+
+
+
+
+
+
+
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    default_pipeline.hash(&mut hasher);
+    let hash = hasher.finish();
+    println!("HASH OF PIPELINE: {}", hash);
+
+
+    //TODO: Could consider using json_comments
+
+    let pipeline_json = serde_json::to_string_pretty(&sprite_pipeline);
+    match pipeline_json {
+        Ok(string) => std::fs::File::create("pipeline_json_example.json").unwrap().write_all(string.as_bytes()).unwrap(),
+        Err(err) => println!("Could not create json: {:?}", err)
+    }
+
+    let pipeline_json = ron::ser::to_string_pretty(&sprite_pipeline, ron::ser::PrettyConfig::default());
+    match pipeline_json {
+        Ok(string) => std::fs::File::create("pipeline_ron_example.ron").unwrap().write_all(string.as_bytes()).unwrap(),
+        Err(err) => println!("Could not create ron: {:?}", err)
+    }
+
+    let pipeline_toml = toml::to_string_pretty(&sprite_pipeline);
+    match pipeline_toml {
+        Ok(string) => std::fs::File::create("pipeline_toml_example.toml").unwrap().write_all(string.as_bytes()).unwrap(),
+        Err(err) => println!("Could not create toml: {:?}", err)
+    }
+
+    // let pipeline_ron = ron::ser::to_string_pretty(&sprite_pipeline, ron::ser::PrettyConfig::default()).unwrap();
+    // let pipeline_toml = toml::to_string_pretty(&sprite_pipeline).unwrap();
+    // std::fs::File::create("pipeline_ron_example.ron").unwrap().write_all(pipeline_ron.as_bytes());
+    // std::fs::File::create("pipeline_toml_example.toml").unwrap().write_all(pipeline_ron.as_bytes());
+
+
+
 
     let mut time = renderer_ext::time::TimeState::new();
     time.update();

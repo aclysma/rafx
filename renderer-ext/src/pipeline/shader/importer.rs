@@ -6,7 +6,7 @@ use atelier_assets::importer::{
 use image2::{color, ImageBuf, Image};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
-use std::io::Read;
+use std::io::{Read, Cursor};
 use std::convert::TryInto;
 use crate::pipeline::sprite::SpriteAsset;
 use atelier_assets::importer::Error as ImportError;
@@ -24,7 +24,7 @@ impl Importer for ShaderImporter {
         where
             Self: Sized,
     {
-        1
+        2
     }
 
     fn version(&self) -> u32 {
@@ -48,9 +48,10 @@ impl Importer for ShaderImporter {
         *state = ShaderImporterState(Some(id));
 
         // Raw compiled shader
-        let mut data = Vec::new();
-        source.read_to_end(&mut data)?;
+        let mut bytes = Vec::new();
+        source.read_to_end(&mut bytes)?;
 
+        let data = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
         let shader_asset = ShaderAsset {
             data
         };

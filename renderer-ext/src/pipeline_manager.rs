@@ -20,6 +20,10 @@ struct RenderPassState {
     vk_obj: vk::RenderPass
 }
 
+struct ShaderModuleState {
+    vk_obj: vk::ShaderModule
+}
+
 struct GraphicsPipelineState {
     vk_obj: vk::Pipeline
 }
@@ -29,6 +33,7 @@ struct PipelineManager {
     descriptor_set_layouts: FnvHashMap<dsc::DescriptorSetLayout, DescriptorSetLayoutState>,
     pipeline_layouts: FnvHashMap<dsc::PipelineLayout, PipelineLayoutState>,
     renderpasses: FnvHashMap<dsc::RenderPass, RenderPassState>,
+    shader_modules: FnvHashMap<dsc::ShaderModule, ShaderModuleState>,
     graphics_pipelines: FnvHashMap<dsc::GraphicsPipeline, GraphicsPipelineState>,
     swapchain_surface_info: dsc::SwapchainSurfaceInfo,
 }
@@ -40,6 +45,7 @@ impl PipelineManager {
             descriptor_set_layouts: Default::default(),
             pipeline_layouts: Default::default(),
             renderpasses: Default::default(),
+            shader_modules: Default::default(),
             graphics_pipelines: Default::default(),
             swapchain_surface_info
         }
@@ -53,7 +59,7 @@ impl PipelineManager {
             .entry(descriptor_set_layout.clone());
 
         if let Occupied(entry) = entry {
-            return Ok(entry.get().vk_obj);
+            Ok(entry.get().vk_obj)
         } else {
             let bindings : Vec<_> = descriptor_set_layout.descriptor_set_layout_bindings.iter()
                 .map(|binding| binding.as_builder().build())
@@ -78,7 +84,7 @@ impl PipelineManager {
         pipeline_layout: &dsc::PipelineLayout
     ) -> VkResult<vk::PipelineLayout> {
         if let Some(pipeline_layout_state) = self.pipeline_layouts.get(pipeline_layout) {
-            return Ok(pipeline_layout_state.vk_obj);
+            Ok(pipeline_layout_state.vk_obj)
         } else {
             let mut descriptor_set_layouts = Vec::with_capacity(pipeline_layout.descriptor_set_layouts.len());
             for descriptor_set_layout in &pipeline_layout.descriptor_set_layouts {
@@ -109,7 +115,7 @@ impl PipelineManager {
         renderpass: &dsc::RenderPass,
     ) -> VkResult<vk::RenderPass> {
         if let Some(renderpass) = self.renderpasses.get(renderpass) {
-            return Ok(renderpass.vk_obj);
+            Ok(renderpass.vk_obj)
         } else {
             let attachments : Vec<_> = renderpass.attachments.iter()
                 .map(|attachment| attachment.as_builder(&self.swapchain_surface_info).build())
@@ -158,23 +164,40 @@ impl PipelineManager {
         }
     }
 
+    pub fn get_or_create_shader_module(
+        &mut self,
+        shader_module: &dsc::ShaderModule
+    ) -> VkResult<vk::ShaderModule> {
+        if let Some(shader_module) = self.shader_modules.get(shader_module) {
+            Ok(shader_module.vk_obj)
+        } else {
+            let shader_info = vk::ShaderModuleCreateInfo::builder()
+                .code(&shader_module.code);
+
+            unsafe {
+                self.device_context.device().create_shader_module(&shader_info, None)
+            }
+        }
+    }
+
     pub fn get_or_create_graphics_pipeline(
         &mut self,
         graphics_pipeline: &dsc::GraphicsPipeline,
     ) -> VkResult<vk::Pipeline> {
         if let Some(pipeline) = self.graphics_pipelines.get(graphics_pipeline) {
-            return Ok(pipeline.vk_obj);
+            Ok(pipeline.vk_obj)
         } else {
             let pipeline_layout = self.get_or_create_pipeline_layout(&graphics_pipeline.pipeline_layout)?;
             let renderpass = self.get_or_create_renderpass(&graphics_pipeline.renderpass)?;
+            let fixed_function_state = &graphics_pipeline.fixed_function_state;
 
-            let input_assembly_state = graphics_pipeline.input_assembly_state.as_builder().build();
+            let input_assembly_state = fixed_function_state.input_assembly_state.as_builder().build();
 
-            let mut vertex_input_attribute_descriptions : Vec<_> = graphics_pipeline.vertex_input_state.attribute_descriptions.iter()
+            let mut vertex_input_attribute_descriptions : Vec<_> = fixed_function_state.vertex_input_state.attribute_descriptions.iter()
                 .map(|attribute| attribute.as_builder(&self.swapchain_surface_info).build())
                 .collect();
 
-            let mut vertex_input_binding_descriptions : Vec<_> = graphics_pipeline.vertex_input_state.binding_descriptions.iter()
+            let mut vertex_input_binding_descriptions : Vec<_> = fixed_function_state.vertex_input_state.binding_descriptions.iter()
                 .map(|binding| binding.as_builder().build())
                 .collect();
 
@@ -182,12 +205,11 @@ impl PipelineManager {
                 .vertex_attribute_descriptions(vertex_input_attribute_descriptions.as_slice())
                 .vertex_binding_descriptions(&vertex_input_binding_descriptions);
 
-
-            let scissors : Vec<_> = graphics_pipeline.viewport_state.scissors.iter()
+            let scissors : Vec<_> = fixed_function_state.viewport_state.scissors.iter()
                 .map(|scissors| scissors.to_rect2d(&self.swapchain_surface_info))
                 .collect();
 
-            let viewports : Vec<_> = graphics_pipeline.viewport_state.viewports.iter()
+            let viewports : Vec<_> = fixed_function_state.viewport_state.viewports.iter()
                 .map(|viewport| viewport.as_builder(&self.swapchain_surface_info).build())
                 .collect();
 
@@ -195,20 +217,31 @@ impl PipelineManager {
                 .scissors(&scissors)
                 .viewports(&viewports);
 
-            let rasterization_state = graphics_pipeline.rasterization_state.as_builder();
+            let rasterization_state = fixed_function_state.rasterization_state.as_builder();
 
-            let multisample_state = graphics_pipeline.multisample_state.as_builder();
+            let multisample_state = fixed_function_state.multisample_state.as_builder();
 
-            let color_blend_attachments : Vec<_> = graphics_pipeline.color_blend_state.attachments.iter().map(|attachment| attachment.as_builder().build()).collect();
+            let color_blend_attachments : Vec<_> = fixed_function_state.color_blend_state.attachments.iter().map(|attachment| attachment.as_builder().build()).collect();
             let color_blend_state = vk::PipelineColorBlendStateCreateInfo::builder()
-                .logic_op(graphics_pipeline.color_blend_state.logic_op.into())
-                .logic_op_enable(graphics_pipeline.color_blend_state.logic_op_enable)
-                .blend_constants(graphics_pipeline.color_blend_state.blend_constants_as_f32())
+                .logic_op(fixed_function_state.color_blend_state.logic_op.into())
+                .logic_op_enable(fixed_function_state.color_blend_state.logic_op_enable)
+                .blend_constants(fixed_function_state.color_blend_state.blend_constants_as_f32())
                 .attachments(&color_blend_attachments);
 
-            let dynamic_states : Vec<vk::DynamicState> = graphics_pipeline.dynamic_state.dynamic_states.iter().map(|dynamic_state| dynamic_state.clone().into()).collect();
+            let dynamic_states : Vec<vk::DynamicState> = fixed_function_state.dynamic_state.dynamic_states.iter().map(|dynamic_state| dynamic_state.clone().into()).collect();
             let dynamic_state = PipelineDynamicStateCreateInfo::builder()
                 .dynamic_states(&dynamic_states);
+
+
+            let mut stages = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
+            for pipeline_shader_stage in &graphics_pipeline.pipeline_shader_stages.stages {
+                let module = self.get_or_create_shader_module(&pipeline_shader_stage.shader_module)?;
+                stages.push(vk::PipelineShaderStageCreateInfo::builder()
+                    .stage(pipeline_shader_stage.stage.into())
+                    .module(module)
+                    .name(&pipeline_shader_stage.entry_name)
+                    .build());
+            }
 
             let pipeline_info = vk::GraphicsPipelineCreateInfo::builder()
                 .input_assembly_state(&input_assembly_state)
@@ -218,6 +251,9 @@ impl PipelineManager {
                 .multisample_state(&multisample_state)
                 .color_blend_state(&color_blend_state)
                 .dynamic_state(&dynamic_state)
+                .layout(pipeline_layout)
+                .render_pass(renderpass)
+                .stages(&stages)
                 .build();
 
             let vk_obj = unsafe {
@@ -235,10 +271,38 @@ impl PipelineManager {
                 vk_obj
             });
 
-            //TODO: Next step is to handle shaders
-            shaders!
-
             Ok(vk_obj)
+        }
+    }
+}
+
+impl Drop for PipelineManager {
+    fn drop(&mut self) {
+        unsafe {
+            for (dsc, state) in &self.graphics_pipelines {
+                self.device_context.device().destroy_pipeline(state.vk_obj, None);
+            }
+            self.graphics_pipelines.clear();
+
+            for (dsc, state) in &self.shader_modules {
+                self.device_context.device().destroy_shader_module(state.vk_obj, None);
+            }
+            self.shader_modules.clear();
+
+            for (dsc, state) in &self.renderpasses {
+                self.device_context.device().destroy_render_pass(state.vk_obj, None);
+            }
+            self.renderpasses.clear();
+
+            for (dsc, state) in &self.pipeline_layouts {
+                self.device_context.device().destroy_pipeline_layout(state.vk_obj, None);
+            }
+            self.pipeline_layouts.clear();
+
+            for (dsc, state) in &self.descriptor_set_layouts {
+                self.device_context.device().destroy_descriptor_set_layout(state.vk_obj, None);
+            }
+            self.descriptor_set_layouts.clear();
         }
     }
 }
