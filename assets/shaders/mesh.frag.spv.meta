@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(15575203711398327302),
+    importer_version: 1,
+    importer_type: "90fdad4b-cec1-4f59-b679-97895711b6e1",
+    importer_options: (),
+    importer_state: (Some("6e9bea25-9c6f-41e1-8ec2-d8834b8e8100")),
+    assets: [
+        (
+            id: "6e9bea25-9c6f-41e1-8ec2-d8834b8e8100",
+            search_tags: [
+                ("file_name", Some("mesh.frag.spv")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 7600008317960093947,
+                id: "6e9bea25-9c6f-41e1-8ec2-d8834b8e8100",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(656),
+                uncompressed_size: Some(656),
+                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
+            )),
+        ),
+    ],
+)

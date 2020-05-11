@@ -549,6 +549,17 @@ impl VkMeshRenderPass {
         descriptor_set_layouts: &[vk::DescriptorSetLayout],
         mut f: F,
     ) -> VkResult<()> {
+
+
+        let layout_create_info =
+            vk::PipelineLayoutCreateInfo::builder().set_layouts(descriptor_set_layouts);
+
+        let pipeline_layout: vk::PipelineLayout =
+            unsafe { logical_device.create_pipeline_layout(&layout_create_info, None)? };
+
+        let renderpass: vk::RenderPass =
+            unsafe { logical_device.create_render_pass(renderpass_create_info, None)? };
+
         //
         // Load Shaders
         //
@@ -575,15 +586,6 @@ impl VkMeshRenderPass {
                 .name(&shader_entry_name)
                 .build(),
         ];
-
-        let layout_create_info =
-            vk::PipelineLayoutCreateInfo::builder().set_layouts(descriptor_set_layouts);
-
-        let pipeline_layout: vk::PipelineLayout =
-            unsafe { logical_device.create_pipeline_layout(&layout_create_info, None)? };
-
-        let renderpass: vk::RenderPass =
-            unsafe { logical_device.create_render_pass(renderpass_create_info, None)? };
 
         let pipeline_info = vk::GraphicsPipelineCreateInfo::builder()
             .stages(&shader_stage_create_infos)

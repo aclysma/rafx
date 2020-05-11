@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(11110020593406431615),
+    import_hash: Some(13780604017676674160),
     importer_version: 2,
     importer_type: "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251",
     importer_options: (),
@@ -13,7 +13,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 14267670697488572997,
+                hash: 6394699543486212080,
                 id: "7c42f3bc-e96b-49f6-961b-5bfc799dee50",
                 build_deps: [],
                 load_deps: [],

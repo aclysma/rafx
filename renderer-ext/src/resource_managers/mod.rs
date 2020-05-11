@@ -9,3 +9,6 @@ pub use image_resource_manager::ImageResourceManager;
 
 pub mod material_resource_manager;
 pub use material_resource_manager::MaterialResourceManager;
+
+// pub mod pipeline_resource_manager;
+// pub use pipeline_resource_manager::PipelineResourceManager;

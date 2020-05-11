@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(4521207421994637848),
+    importer_version: 1,
+    importer_type: "90fdad4b-cec1-4f59-b679-97895711b6e1",
+    importer_options: (),
+    importer_state: (Some("84f3550a-164c-4bba-8452-678a79b6be6c")),
+    assets: [
+        (
+            id: "84f3550a-164c-4bba-8452-678a79b6be6c",
+            search_tags: [
+                ("file_name", Some("mesh.vert.spv")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 12454887393591536822,
+                id: "84f3550a-164c-4bba-8452-678a79b6be6c",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1392),
+                uncompressed_size: Some(1392),
+                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
+            )),
+        ),
+    ],
+)

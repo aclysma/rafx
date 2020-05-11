@@ -34,86 +34,89 @@ use itertools::max;
 use renderer_shell_vulkan::cleanup::CombinedDropSink;
 use crate::asset_storage::ResourceHandle;
 use fnv::FnvHashMap;
-use crate::pipeline::image::ImageAsset;
-use crate::pipeline::gltf::MaterialAsset;
-use crate::resource_managers::ImageResourceManager;
+
+
+
+
+
+
 
 /// Represents an image that will replace another image
-pub struct MaterialResourceUpdate {
+pub struct PipelineResourceUpdate {
     pub asset_uuid: AssetUuid,
-    pub resource_handle: ResourceHandle<MaterialAsset>,
+    pub resource_handle: ResourceHandle<PipelineAsset>,
 
-    pub image_uuid: Option<AssetUuid>,
+    // data goes here
 }
 
 /// Represents the current state of the sprite and the GPU resources associated with it
-pub struct MaterialResource {
-    pub image_handle: Option<ResourceHandle<ImageAsset>>,
+pub struct PipelineResource {
+    // data goes here
 }
 
 /// Keeps track of sprites/images and manages descriptor sets that allow shaders to bind to images
 /// and use them
-pub struct MaterialResourceManager {
+pub struct PipelineResourceManager {
     device_context: VkDeviceContext,
 
     // The raw texture resources
-    materials_by_uuid: FnvHashMap<AssetUuid, ResourceHandle<MaterialAsset>>,
-    materials: Vec<Option<MaterialResource>>,
+    pipelines_by_uuid: FnvHashMap<AssetUuid, ResourceHandle<PipelineAsset>>,
+    pipelines: Vec<Option<PipelineResource>>,
     drop_sink: CombinedDropSink,
 
     // For sending image updates in a thread-safe manner
-    material_update_tx: Sender<MaterialResourceUpdate>,
-    material_update_rx: Receiver<MaterialResourceUpdate>,
+    pipeline_update_tx: Sender<PipelineResourceUpdate>,
+    pipeline_update_rx: Receiver<PipelineResourceUpdate>,
 }
 
-impl MaterialResourceManager {
+impl PipelineResourceManager {
     pub fn new(
         device_context: &VkDeviceContext,
         max_frames_in_flight: u32,
     ) -> VkResult<Self> {
-        let materials_by_uuid = Default::default();
-        let materials = Vec::new();
+        let pipelines_by_uuid = Default::default();
+        let pipelines = Vec::new();
 
-        let (material_update_tx, material_update_rx) = crossbeam_channel::unbounded();
+        let (pipeline_update_tx, pipeline_update_rx) = crossbeam_channel::unbounded();
 
         let drop_sink = CombinedDropSink::new(max_frames_in_flight + 1);
 
-        Ok(MaterialResourceManager {
+        Ok(PipelineResourceManager {
             device_context: device_context.clone(),
-            materials_by_uuid,
-            materials,
+            pipelines_by_uuid,
+            pipelines,
             drop_sink,
-            material_update_tx,
-            material_update_rx,
+            pipeline_update_tx,
+            pipeline_update_rx,
         })
     }
 
-    pub fn material_by_handle(
+    pub fn pipeline_by_handle(
         &self,
         resource_handle: ResourceHandle<ImageAsset>,
-    ) -> Option<&MaterialResource> {
+    ) -> Option<&PipelineResource> {
         //TODO: Stale handle detection?
-        self.materials[resource_handle.index() as usize].as_ref()
+        self.pipelines[resource_handle.index() as usize].as_ref()
     }
 
-    pub fn material_handle_by_uuid(
+    pub fn pipeline_handle_by_uuid(
         &self,
         asset_uuid: &AssetUuid,
-    ) -> Option<ResourceHandle<MaterialAsset>> {
-        self.materials_by_uuid.get(asset_uuid).map(|x| *x)
+    ) -> Option<ResourceHandle<PipelineAsset>> {
+        self.pipelines_by_uuid.get(asset_uuid).map(|x| *x)
     }
 
-    pub fn material_by_uuid(
+    pub fn pipeline_by_uuid(
         &self,
         asset_uuid: &AssetUuid,
-    ) -> Option<&MaterialResource> {
-        self.materials_by_uuid
+    ) -> Option<&PipelineResource> {
+        self.pipelines_by_uuid
             .get(asset_uuid)
-            .and_then(|handle| self.materials[handle.index() as usize].as_ref())
+            .and_then(|handle| self.pipelines[handle.index() as usize].as_ref())
     }
 
-    pub fn material_update_tx(&self) -> &Sender<MaterialResourceUpdate> {
-        &self.material_update_tx
+    pub fn pipeline_update_tx(&self) -> &Sender<PipelineResourceUpdate> {
+        &self.pipeline_update_tx
     }
 
     pub fn update(
@@ -125,58 +128,58 @@ impl MaterialResourceManager {
             .on_frame_complete(self.device_context.device());
 
         // Check if we have any image updates to process
-        self.apply_material_updates(image_resource_manager);
+        self.apply_pipeline_updates(image_resource_manager);
     }
 
     /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
-    fn apply_material_updates(
+    fn apply_pipeline_updates(
         &mut self,
         image_resource_manager: &ImageResourceManager
     ) {
-        let mut updates = Vec::with_capacity(self.material_update_rx.len());
-        while let Ok(update) = self.material_update_rx.recv_timeout(Duration::from_secs(0)) {
+        let mut updates = Vec::with_capacity(self.pipeline_update_rx.len());
+        while let Ok(update) = self.pipeline_update_rx.recv_timeout(Duration::from_secs(0)) {
             updates.push(update);
         }
 
         if !updates.is_empty() {
-            self.do_apply_material_updates(updates, image_resource_manager);
+            self.do_apply_pipeline_updates(updates, image_resource_manager);
         }
     }
 
     /// Runs through the incoming image updates and applies them to the list of sprites
-    fn do_apply_material_updates(
+    fn do_apply_pipeline_updates(
         &mut self,
-        updates: Vec<MaterialResourceUpdate>,
+        updates: Vec<PipelineResourceUpdate>,
         image_resource_manager: &ImageResourceManager
     ) {
-        let mut max_index = self.materials.len();
+        let mut max_index = self.pipelines.len();
         for update in &updates {
             max_index = max_index.max(update.resource_handle.index() as usize + 1);
         }
 
-        self.materials.resize_with(max_index, || None);
+        self.pipelines.resize_with(max_index, || None);
 
         for update in updates {
-            self.materials_by_uuid.entry(update.asset_uuid).or_insert(update.resource_handle);
+            self.pipelines_by_uuid.entry(update.asset_uuid).or_insert(update.resource_handle);
 
             let image_handle = update.image_uuid.and_then(|image_uuid| {
                 image_resource_manager.image_handle_by_uuid(&image_uuid)
             });
 
             // Do a swap so if there is an old sprite we can properly destroy it
-            self.materials[update.resource_handle.index() as usize] = Some(MaterialResource {
+            self.pipelines[update.resource_handle.index() as usize] = Some(PipelineResource {
                 image_handle
             });
         }
     }
 }
 
-impl Drop for MaterialResourceManager {
+impl Drop for PipelineResourceManager {
     fn drop(&mut self) {
-        log::debug!("destroying MaterialResourceManager");
+        log::debug!("destroying PipelineResourceManager");
 
         self.drop_sink.destroy(self.device_context.device());
 
-        log::debug!("destroyed MaterialResourceManager");
+        log::debug!("destroyed PipelineResourceManager");
     }
 }
