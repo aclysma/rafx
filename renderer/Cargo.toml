@@ -52,5 +52,6 @@ erased-serde = "0.3"
 
 futures = "0.3"
 crossbeam-channel = "0.4.2"
+rust_decimal = { version = "1.5.0", features = [ "serde-float" ] }
 
 [dev-dependencies]

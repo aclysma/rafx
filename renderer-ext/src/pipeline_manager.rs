@@ -28,24 +28,24 @@ struct GraphicsPipelineState {
     vk_obj: vk::Pipeline
 }
 
-struct PipelineManager {
+pub struct PipelineManager {
     device_context: VkDeviceContext,
     descriptor_set_layouts: FnvHashMap<dsc::DescriptorSetLayout, DescriptorSetLayoutState>,
     pipeline_layouts: FnvHashMap<dsc::PipelineLayout, PipelineLayoutState>,
     renderpasses: FnvHashMap<dsc::RenderPass, RenderPassState>,
-    shader_modules: FnvHashMap<dsc::ShaderModule, ShaderModuleState>,
+    //shader_modules: FnvHashMap<dsc::ShaderModule, ShaderModuleState>,
     graphics_pipelines: FnvHashMap<dsc::GraphicsPipeline, GraphicsPipelineState>,
     swapchain_surface_info: dsc::SwapchainSurfaceInfo,
 }
 
 impl PipelineManager {
-    fn new(device_context: &VkDeviceContext, swapchain_surface_info: dsc::SwapchainSurfaceInfo) -> Self {
+    pub fn new(device_context: &VkDeviceContext, swapchain_surface_info: dsc::SwapchainSurfaceInfo) -> Self {
         PipelineManager {
             device_context: device_context.clone(),
             descriptor_set_layouts: Default::default(),
             pipeline_layouts: Default::default(),
             renderpasses: Default::default(),
-            shader_modules: Default::default(),
+            //shader_modules: Default::default(),
             graphics_pipelines: Default::default(),
             swapchain_surface_info
         }
@@ -121,25 +121,57 @@ impl PipelineManager {
                 .map(|attachment| attachment.as_builder(&self.swapchain_surface_info).build())
                 .collect();
 
+            // One vec per subpass
             let mut color_attachments : Vec<Vec<vk::AttachmentReference>> = Vec::with_capacity(renderpass.subpasses.len());
             let mut input_attachments : Vec<Vec<vk::AttachmentReference>> = Vec::with_capacity(renderpass.subpasses.len());
             let mut resolve_attachments : Vec<Vec<vk::AttachmentReference>> = Vec::with_capacity(renderpass.subpasses.len());
+
+            // One element per subpass that has a depth stencil attachment specified
             let mut depth_stencil_attachments : Vec<vk::AttachmentReference> = Vec::with_capacity(renderpass.subpasses.len());
+
             let mut subpasses : Vec<_> = Vec::with_capacity(renderpass.subpasses.len());
 
             for subpass in &renderpass.subpasses {
                 color_attachments.push(subpass.color_attachments.iter().map(|attachment| attachment.as_builder().build()).collect());
                 input_attachments.push(subpass.input_attachments.iter().map(|attachment| attachment.as_builder().build()).collect());
-                resolve_attachments.push(subpass.resolve_attachments.iter().map(|attachment| attachment.as_builder().build()).collect());
-                depth_stencil_attachments.push(subpass.depth_stencil_attachment.as_builder().build());
 
-                let subpass_description = vk::SubpassDescription::builder()
+                // The resolve attachment array must be unused or of length == color attachments. If
+                // the number of subpass resolves doesn't match the color attachments, truncate or
+                // insert attachment references with AttachmentIndex::Unused
+                if subpass.resolve_attachments.len() > subpass.color_attachments.len() {
+                    log::warn!("A renderpass definition has more resolve attachments than color attachments. The additional resolve attachments will be discarded");
+                }
+
+                let mut subpass_resolve_attachments : Vec<_> = subpass.resolve_attachments.iter().map(|attachment| attachment.as_builder().build()).collect();
+                if !subpass_resolve_attachments.is_empty() {
+                    let unused_attachment = dsc::AttachmentReference {
+                        attachment: dsc::AttachmentIndex::Unused,
+                        layout: Default::default()
+                    }.as_builder().build();
+                    subpass_resolve_attachments.resize(color_attachments.len(), unused_attachment);
+                }
+                resolve_attachments.push(subpass_resolve_attachments);
+
+                let mut subpass_description_builder = vk::SubpassDescription::builder()
                     .pipeline_bind_point(subpass.pipeline_bind_point.into())
                     .color_attachments(color_attachments.last().unwrap())
-                    .input_attachments(input_attachments.last().unwrap())
-                    .resolve_attachments(resolve_attachments.last().unwrap())
-                    .depth_stencil_attachment(depth_stencil_attachments.last().unwrap())
-                    .build();
+                    .input_attachments(input_attachments.last().unwrap());
+
+                // Only specify resolve attachments if we have more than zero of them
+                {
+                    let subpass_resolve_attachments = resolve_attachments.last().unwrap();
+                    if subpass_resolve_attachments.len() > 0 {
+                        subpass_description_builder = subpass_description_builder.resolve_attachments(subpass_resolve_attachments);
+                    }
+                }
+
+                // Only specify a depth stencil attachment if we have one
+                if let Some(depth_stencil_attachment) = &subpass.depth_stencil_attachment {
+                    depth_stencil_attachments.push(depth_stencil_attachment.as_builder().build());
+                    subpass_description_builder = subpass_description_builder.depth_stencil_attachment(depth_stencil_attachments.last().unwrap());
+                }
+
+                let subpass_description = subpass_description_builder.build();
 
                 subpasses.push(subpass_description);
             }
@@ -149,9 +181,9 @@ impl PipelineManager {
                 .collect();
 
             let create_info = vk::RenderPassCreateInfo::builder()
-                .attachments(attachments.as_slice())
-                .subpasses(subpasses.as_slice())
-                .dependencies(dependencies.as_slice());
+                .attachments(&attachments)
+                .subpasses(&subpasses)
+                .dependencies(&dependencies);
 
             let vk_obj = unsafe {
                 self.device_context.device().create_render_pass(&*create_info, None)?
@@ -164,21 +196,21 @@ impl PipelineManager {
         }
     }
 
-    pub fn get_or_create_shader_module(
-        &mut self,
-        shader_module: &dsc::ShaderModule
-    ) -> VkResult<vk::ShaderModule> {
-        if let Some(shader_module) = self.shader_modules.get(shader_module) {
-            Ok(shader_module.vk_obj)
-        } else {
-            let shader_info = vk::ShaderModuleCreateInfo::builder()
-                .code(&shader_module.code);
-
-            unsafe {
-                self.device_context.device().create_shader_module(&shader_info, None)
-            }
-        }
-    }
+    // pub fn get_or_create_shader_module(
+    //     &mut self,
+    //     shader_module: &dsc::ShaderModule
+    // ) -> VkResult<vk::ShaderModule> {
+    //     if let Some(shader_module) = self.shader_modules.get(shader_module) {
+    //         Ok(shader_module.vk_obj)
+    //     } else {
+    //         let shader_info = vk::ShaderModuleCreateInfo::builder()
+    //             .code(&shader_module.code);
+    //
+    //         unsafe {
+    //             self.device_context.device().create_shader_module(&shader_info, None)
+    //         }
+    //     }
+    // }
 
     pub fn get_or_create_graphics_pipeline(
         &mut self,
@@ -234,8 +266,17 @@ impl PipelineManager {
 
 
             let mut stages = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
+            let mut shader_modules = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
             for pipeline_shader_stage in &graphics_pipeline.pipeline_shader_stages.stages {
-                let module = self.get_or_create_shader_module(&pipeline_shader_stage.shader_module)?;
+                //let module = self.get_or_create_shader_module(&pipeline_shader_stage.shader_module)?;
+
+                let module = unsafe {
+                    let shader_info = vk::ShaderModuleCreateInfo::builder()
+                        .code(&pipeline_shader_stage.shader_module.code);
+                    self.device_context.device().create_shader_module(&shader_info, None)?
+                };
+                shader_modules.push(module);
+
                 stages.push(vk::PipelineShaderStageCreateInfo::builder()
                     .stage(pipeline_shader_stage.stage.into())
                     .module(module)
@@ -267,6 +308,12 @@ impl PipelineManager {
                 }?
             };
 
+            unsafe {
+                for module in shader_modules {
+                    self.device_context.device().destroy_shader_module(module, None);
+                }
+            }
+
             self.graphics_pipelines.insert(graphics_pipeline.clone(), GraphicsPipelineState {
                 vk_obj
             });
@@ -284,10 +331,10 @@ impl Drop for PipelineManager {
             }
             self.graphics_pipelines.clear();
 
-            for (dsc, state) in &self.shader_modules {
-                self.device_context.device().destroy_shader_module(state.vk_obj, None);
-            }
-            self.shader_modules.clear();
+            // for (dsc, state) in &self.shader_modules {
+            //     self.device_context.device().destroy_shader_module(state.vk_obj, None);
+            // }
+            // self.shader_modules.clear();
 
             for (dsc, state) in &self.renderpasses {
                 self.device_context.device().destroy_render_pass(state.vk_obj, None);

@@ -17,73 +17,73 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DescriptorType {
-    SAMPLER,
-    COMBINED_IMAGE_SAMPLER,
-    SAMPLED_IMAGE,
-    STORAGE_IMAGE,
-    UNIFORM_TEXEL_BUFFER,
-    STORAGE_TEXEL_BUFFER,
-    UNIFORM_BUFFER,
-    STORAGE_BUFFER,
-    UNIFORM_BUFFER_DYNAMIC,
-    STORAGE_BUFFER_DYNAMIC,
-    INPUT_ATTACHMENT,
+    Sampler,
+    CombinedImageSampler,
+    SampledImage,
+    StorageImage,
+    UniformTexelBuffer,
+    StorageTexelBuffer,
+    UniformBuffer,
+    StorageBuffer,
+    UniformBufferDynamic,
+    StorageBufferDynamic,
+    InputAttachment,
 }
 
 impl Into<vk::DescriptorType> for DescriptorType {
     fn into(self) -> vk::DescriptorType {
         match self {
-            SAMPLER => vk::DescriptorType::SAMPLER,
-            COMBINED_IMAGE_SAMPLER => vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-            SAMPLED_IMAGE => vk::DescriptorType::SAMPLED_IMAGE,
-            STORAGE_IMAGE => vk::DescriptorType::STORAGE_IMAGE,
-            UNIFORM_TEXEL_BUFFER => vk::DescriptorType::UNIFORM_TEXEL_BUFFER,
-            STORAGE_TEXEL_BUFFER => vk::DescriptorType::STORAGE_TEXEL_BUFFER,
-            UNIFORM_BUFFER => vk::DescriptorType::UNIFORM_BUFFER,
-            STORAGE_BUFFER => vk::DescriptorType::STORAGE_BUFFER,
-            UNIFORM_BUFFER_DYNAMIC => vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
-            STORAGE_BUFFER_DYNAMIC => vk::DescriptorType::STORAGE_BUFFER_DYNAMIC,
-            INPUT_ATTACHMENT => vk::DescriptorType::INPUT_ATTACHMENT,
+            DescriptorType::Sampler => vk::DescriptorType::SAMPLER,
+            DescriptorType::CombinedImageSampler => vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+            DescriptorType::SampledImage => vk::DescriptorType::SAMPLED_IMAGE,
+            DescriptorType::StorageImage => vk::DescriptorType::STORAGE_IMAGE,
+            DescriptorType::UniformTexelBuffer => vk::DescriptorType::UNIFORM_TEXEL_BUFFER,
+            DescriptorType::StorageTexelBuffer => vk::DescriptorType::STORAGE_TEXEL_BUFFER,
+            DescriptorType::UniformBuffer => vk::DescriptorType::UNIFORM_BUFFER,
+            DescriptorType::StorageBuffer => vk::DescriptorType::STORAGE_BUFFER,
+            DescriptorType::UniformBufferDynamic => vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+            DescriptorType::StorageBufferDynamic => vk::DescriptorType::STORAGE_BUFFER_DYNAMIC,
+            DescriptorType::InputAttachment => vk::DescriptorType::INPUT_ATTACHMENT,
         }
     }
 }
 
 impl Default for DescriptorType {
     fn default() -> Self {
-        DescriptorType::SAMPLER
+        DescriptorType::Sampler
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShaderStageFlags {
-    VERTEX,
-    TESSELLATION_CONTROL,
-    TESSELLATION_EVALUATION,
-    GEOMETRY,
-    FRAGMENT,
-    COMPUTE,
-    ALL_GRAPHICS,
-    ALL,
+    Vertex,
+    TesselectionControl,
+    TesselactionEvaluation,
+    Geometry,
+    Fragment,
+    Compute,
+    AllGraphics,
+    All,
 }
 
 impl Into<vk::ShaderStageFlags> for ShaderStageFlags {
     fn into(self) -> vk::ShaderStageFlags {
         match self {
-            VERTEX => vk::ShaderStageFlags::VERTEX,
-            TESSELLATION_CONTROL => vk::ShaderStageFlags::TESSELLATION_CONTROL,
-            TESSELLATION_EVALUATION => vk::ShaderStageFlags::TESSELLATION_EVALUATION,
-            GEOMETRY => vk::ShaderStageFlags::GEOMETRY,
-            FRAGMENT => vk::ShaderStageFlags::FRAGMENT,
-            COMPUTE => vk::ShaderStageFlags::COMPUTE,
-            ALL_GRAPHICS => vk::ShaderStageFlags::ALL_GRAPHICS,
-            ALL => vk::ShaderStageFlags::ALL,
+            ShaderStageFlags::Vertex => vk::ShaderStageFlags::VERTEX,
+            ShaderStageFlags::TesselectionControl => vk::ShaderStageFlags::TESSELLATION_CONTROL,
+            ShaderStageFlags::TesselactionEvaluation => vk::ShaderStageFlags::TESSELLATION_EVALUATION,
+            ShaderStageFlags::Geometry => vk::ShaderStageFlags::GEOMETRY,
+            ShaderStageFlags::Fragment => vk::ShaderStageFlags::FRAGMENT,
+            ShaderStageFlags::Compute => vk::ShaderStageFlags::COMPUTE,
+            ShaderStageFlags::AllGraphics => vk::ShaderStageFlags::ALL_GRAPHICS,
+            ShaderStageFlags::All => vk::ShaderStageFlags::ALL,
         }
     }
 }
 
 impl Default for ShaderStageFlags {
     fn default() -> Self {
-        ShaderStageFlags::VERTEX
+        ShaderStageFlags::Vertex
     }
 }
 
@@ -125,21 +125,7 @@ impl DescriptorSetLayout {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PushConstantRange {
     pub stage_flags: ShaderStageFlags,
     pub offset: u32,
@@ -177,23 +163,6 @@ impl PipelineLayout {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentDescriptionFlags {
     None,
@@ -206,6 +175,12 @@ impl Into<vk::AttachmentDescriptionFlags> for AttachmentDescriptionFlags {
             AttachmentDescriptionFlags::None => vk::AttachmentDescriptionFlags::empty(),
             AttachmentDescriptionFlags::MayAlias => vk::AttachmentDescriptionFlags::MAY_ALIAS,
         }
+    }
+}
+
+impl Default for AttachmentDescriptionFlags {
+    fn default() -> Self {
+        AttachmentDescriptionFlags::MayAlias
     }
 }
 
@@ -262,6 +237,12 @@ impl Into<vk::AttachmentLoadOp> for AttachmentLoadOp {
     }
 }
 
+impl Default for AttachmentLoadOp {
+    fn default() -> Self {
+        AttachmentLoadOp::Load
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentStoreOp {
     Store,
@@ -274,6 +255,12 @@ impl Into<vk::AttachmentStoreOp> for AttachmentStoreOp {
             AttachmentStoreOp::Store => vk::AttachmentStoreOp::STORE,
             AttachmentStoreOp::DontCare => vk::AttachmentStoreOp::DONT_CARE,
         }
+    }
+}
+
+impl Default for AttachmentStoreOp {
+    fn default() -> Self {
+        AttachmentStoreOp::Store
     }
 }
 
@@ -292,129 +279,171 @@ impl Into<vk::PipelineBindPoint> for PipelineBindPoint {
     }
 }
 
+impl Default for PipelineBindPoint {
+    fn default() -> Self {
+        PipelineBindPoint::Graphics
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ImageLayout {
-    UNDEFINED,
-    GENERAL,
-    COLOR_ATTACHMENT_OPTIMAL,
-    DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-    DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-    SHADER_READ_ONLY_OPTIMAL,
-    TRANSFER_SRC_OPTIMAL,
-    TRANSFER_DST_OPTIMAL,
-    PREINITIALIZED,
+    Undefined,
+    General,
+    ColorAttachmentOptimal,
+    DepthStencilAttachmentOptimal,
+    DepthStencilReadOnlyOptimal,
+    ShaderReadOnlyOptimal,
+    TransferSrcOptimal,
+    TransferDstOptimal,
+    Preinitialized,
+    PresentSrcKhr,
+    SharedPresentKhr,
+    ShadingRateOptimal,
+    FragmentDensityMapOptimalExt,
+    DepthReadOnlyStencilAttachmentOptimal,
+    DepthAttachmentStencilReadOnlyOptimal,
+    DepthAttachmentOptimal,
+    DepthReadOnlyOptimal,
+    StencilAttachmentOptimal,
+    StencilReadOnlyOptimal,
 }
 
 impl Into<vk::ImageLayout> for ImageLayout {
     fn into(self) -> vk::ImageLayout {
         match self {
-            ImageLayout::UNDEFINED => vk::ImageLayout::UNDEFINED,
-            ImageLayout::GENERAL => vk::ImageLayout::GENERAL,
-            ImageLayout::COLOR_ATTACHMENT_OPTIMAL => vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-            ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL => vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL => vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-            ImageLayout::SHADER_READ_ONLY_OPTIMAL => vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-            ImageLayout::TRANSFER_SRC_OPTIMAL => vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-            ImageLayout::TRANSFER_DST_OPTIMAL => vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            ImageLayout::PREINITIALIZED => vk::ImageLayout::PREINITIALIZED,
+            ImageLayout::Undefined => vk::ImageLayout::UNDEFINED,
+            ImageLayout::General => vk::ImageLayout::GENERAL,
+            ImageLayout::ColorAttachmentOptimal => vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+            ImageLayout::DepthStencilAttachmentOptimal => vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            ImageLayout::DepthStencilReadOnlyOptimal => vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+            ImageLayout::ShaderReadOnlyOptimal => vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            ImageLayout::TransferSrcOptimal => vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            ImageLayout::TransferDstOptimal => vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            ImageLayout::Preinitialized => vk::ImageLayout::PREINITIALIZED,
+            ImageLayout::PresentSrcKhr => vk::ImageLayout::PRESENT_SRC_KHR,
+            ImageLayout::SharedPresentKhr => vk::ImageLayout::SHARED_PRESENT_KHR,
+            ImageLayout::ShadingRateOptimal => vk::ImageLayout::SHADING_RATE_OPTIMAL_NV,
+            ImageLayout::FragmentDensityMapOptimalExt => vk::ImageLayout::FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
+            ImageLayout::DepthReadOnlyStencilAttachmentOptimal => vk::ImageLayout::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+            ImageLayout::DepthAttachmentStencilReadOnlyOptimal => vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+            ImageLayout::DepthAttachmentOptimal => vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
+            ImageLayout::DepthReadOnlyOptimal => vk::ImageLayout::DEPTH_READ_ONLY_OPTIMAL,
+            ImageLayout::StencilAttachmentOptimal => vk::ImageLayout::STENCIL_ATTACHMENT_OPTIMAL,
+            ImageLayout::StencilReadOnlyOptimal => vk::ImageLayout::STENCIL_READ_ONLY_OPTIMAL,
         }
+    }
+}
+
+impl Default for ImageLayout {
+    fn default() -> Self {
+        ImageLayout::Undefined
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PipelineStageFlags {
     Empty,
-    TOP_OF_PIPE,
-    DRAW_INDIRECT,
-    VERTEX_INPUT,
-    VERTEX_SHADER,
-    TESSELLATION_CONTROL_SHADER,
-    TESSELLATION_EVALUATION_SHADER,
-    GEOMETRY_SHADER,
-    FRAGMENT_SHADER,
-    EARLY_FRAGMENT_TESTS,
-    LATE_FRAGMENT_TESTS,
-    COLOR_ATTACHMENT_OUTPUT,
-    COMPUTE_SHADER,
-    TRANSFER,
-    BOTTOM_OF_PIPE,
-    HOST,
-    ALL_GRAPHICS,
-    ALL_COMMANDS,
+    TopOfPipe,
+    DrawIndirect,
+    VertexInput,
+    VertexShader,
+    TesselationControlShader,
+    TesselationEvaluationShader,
+    GeometryShader,
+    FragmentShader,
+    EarlyFragmentTests,
+    LateFragmentTests,
+    ColorAttachmentOutput,
+    ComputeShader,
+    Transfer,
+    BottomOfPipe,
+    Host,
+    AllGraphics,
+    AllCommands,
 }
 
 impl Into<vk::PipelineStageFlags> for PipelineStageFlags {
     fn into(self) -> vk::PipelineStageFlags {
         match self {
             PipelineStageFlags::Empty => vk::PipelineStageFlags::empty(),
-            PipelineStageFlags::TOP_OF_PIPE => vk::PipelineStageFlags::TOP_OF_PIPE,
-            PipelineStageFlags::DRAW_INDIRECT => vk::PipelineStageFlags::DRAW_INDIRECT,
-            PipelineStageFlags::VERTEX_INPUT => vk::PipelineStageFlags::VERTEX_INPUT,
-            PipelineStageFlags::VERTEX_SHADER => vk::PipelineStageFlags::VERTEX_SHADER,
-            PipelineStageFlags::TESSELLATION_CONTROL_SHADER => vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER,
-            PipelineStageFlags::TESSELLATION_EVALUATION_SHADER => vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER,
-            PipelineStageFlags::GEOMETRY_SHADER => vk::PipelineStageFlags::GEOMETRY_SHADER,
-            PipelineStageFlags::FRAGMENT_SHADER => vk::PipelineStageFlags::FRAGMENT_SHADER,
-            PipelineStageFlags::EARLY_FRAGMENT_TESTS => vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
-            PipelineStageFlags::LATE_FRAGMENT_TESTS => vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT => vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            PipelineStageFlags::COMPUTE_SHADER => vk::PipelineStageFlags::COMPUTE_SHADER,
-            PipelineStageFlags::TRANSFER => vk::PipelineStageFlags::TRANSFER,
-            PipelineStageFlags::BOTTOM_OF_PIPE => vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-            PipelineStageFlags::HOST => vk::PipelineStageFlags::HOST,
-            PipelineStageFlags::ALL_GRAPHICS => vk::PipelineStageFlags::ALL_GRAPHICS,
-            PipelineStageFlags::ALL_COMMANDS => vk::PipelineStageFlags::ALL_COMMANDS,
+            PipelineStageFlags::TopOfPipe => vk::PipelineStageFlags::TOP_OF_PIPE,
+            PipelineStageFlags::DrawIndirect => vk::PipelineStageFlags::DRAW_INDIRECT,
+            PipelineStageFlags::VertexInput => vk::PipelineStageFlags::VERTEX_INPUT,
+            PipelineStageFlags::VertexShader => vk::PipelineStageFlags::VERTEX_SHADER,
+            PipelineStageFlags::TesselationControlShader => vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER,
+            PipelineStageFlags::TesselationEvaluationShader => vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER,
+            PipelineStageFlags::GeometryShader => vk::PipelineStageFlags::GEOMETRY_SHADER,
+            PipelineStageFlags::FragmentShader => vk::PipelineStageFlags::FRAGMENT_SHADER,
+            PipelineStageFlags::EarlyFragmentTests => vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
+            PipelineStageFlags::LateFragmentTests => vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
+            PipelineStageFlags::ColorAttachmentOutput => vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+            PipelineStageFlags::ComputeShader => vk::PipelineStageFlags::COMPUTE_SHADER,
+            PipelineStageFlags::Transfer => vk::PipelineStageFlags::TRANSFER,
+            PipelineStageFlags::BottomOfPipe => vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+            PipelineStageFlags::Host => vk::PipelineStageFlags::HOST,
+            PipelineStageFlags::AllGraphics => vk::PipelineStageFlags::ALL_GRAPHICS,
+            PipelineStageFlags::AllCommands => vk::PipelineStageFlags::ALL_COMMANDS,
         }
     }
 }
 
+impl Default for PipelineStageFlags {
+    fn default() -> Self {
+        PipelineStageFlags::Empty
+    }
+}
 
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AccessFlags {
     Empty,
-    INDIRECT_COMMAND_READ,
-    INDEX_READ,
-    VERTEX_ATTRIBUTE_READ,
-    UNIFORM_READ,
-    INPUT_ATTACHMENT_READ,
-    SHADER_READ,
-    SHADER_WRITE,
-    COLOR_ATTACHMENT_READ,
-    COLOR_ATTACHMENT_WRITE,
-    DEPTH_STENCIL_ATTACHMENT_READ,
-    DEPTH_STENCIL_ATTACHMENT_WRITE,
-    TRANSFER_READ,
-    TRANSFER_WRITE,
-    HOST_READ,
-    HOST_WRITE,
-    MEMORY_READ,
-    MEMORY_WRITE,
+    IndirectCommandRead,
+    IndexRead,
+    VertexAttributeRead,
+    UniformRead,
+    InputAttachmentRead,
+    ShaderRead,
+    ShaderWrite,
+    ColorAttachmentRead,
+    ColorAttachmentWrite,
+    DepthStencilAttachmentRead,
+    DepthStencilAttachmentWrite,
+    TransferRead,
+    TransferWrite,
+    HostRead,
+    HostWrite,
+    MemoryRead,
+    MemoryWrite,
 }
 
 impl Into<vk::AccessFlags> for AccessFlags {
     fn into(self) -> vk::AccessFlags {
         match self {
             AccessFlags::Empty => vk::AccessFlags::empty(),
-            AccessFlags::INDIRECT_COMMAND_READ => vk::AccessFlags::INDIRECT_COMMAND_READ,
-            AccessFlags::INDEX_READ => vk::AccessFlags::INDEX_READ,
-            AccessFlags::VERTEX_ATTRIBUTE_READ => vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
-            AccessFlags::UNIFORM_READ => vk::AccessFlags::UNIFORM_READ,
-            AccessFlags::INPUT_ATTACHMENT_READ => vk::AccessFlags::INPUT_ATTACHMENT_READ,
-            AccessFlags::SHADER_READ => vk::AccessFlags::SHADER_READ,
-            AccessFlags::SHADER_WRITE => vk::AccessFlags::SHADER_WRITE,
-            AccessFlags::COLOR_ATTACHMENT_READ => vk::AccessFlags::COLOR_ATTACHMENT_READ,
-            AccessFlags::COLOR_ATTACHMENT_WRITE => vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-            AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ => vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
-            AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE => vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-            AccessFlags::TRANSFER_READ => vk::AccessFlags::TRANSFER_READ,
-            AccessFlags::TRANSFER_WRITE => vk::AccessFlags::TRANSFER_WRITE,
-            AccessFlags::HOST_READ => vk::AccessFlags::HOST_READ,
-            AccessFlags::HOST_WRITE => vk::AccessFlags::HOST_WRITE,
-            AccessFlags::MEMORY_READ => vk::AccessFlags::MEMORY_READ,
-            AccessFlags::MEMORY_WRITE => vk::AccessFlags::MEMORY_WRITE,
+            AccessFlags::IndirectCommandRead => vk::AccessFlags::INDIRECT_COMMAND_READ,
+            AccessFlags::IndexRead => vk::AccessFlags::INDEX_READ,
+            AccessFlags::VertexAttributeRead => vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
+            AccessFlags::UniformRead => vk::AccessFlags::UNIFORM_READ,
+            AccessFlags::InputAttachmentRead => vk::AccessFlags::INPUT_ATTACHMENT_READ,
+            AccessFlags::ShaderRead => vk::AccessFlags::SHADER_READ,
+            AccessFlags::ShaderWrite => vk::AccessFlags::SHADER_WRITE,
+            AccessFlags::ColorAttachmentRead => vk::AccessFlags::COLOR_ATTACHMENT_READ,
+            AccessFlags::ColorAttachmentWrite => vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+            AccessFlags::DepthStencilAttachmentRead => vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
+            AccessFlags::DepthStencilAttachmentWrite => vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+            AccessFlags::TransferRead => vk::AccessFlags::TRANSFER_READ,
+            AccessFlags::TransferWrite => vk::AccessFlags::TRANSFER_WRITE,
+            AccessFlags::HostRead => vk::AccessFlags::HOST_READ,
+            AccessFlags::HostWrite => vk::AccessFlags::HOST_WRITE,
+            AccessFlags::MemoryRead => vk::AccessFlags::MEMORY_READ,
+            AccessFlags::MemoryWrite => vk::AccessFlags::MEMORY_WRITE,
         }
+    }
+}
+
+impl Default for AccessFlags {
+    fn default() -> Self {
+        AccessFlags::Empty
     }
 }
 
@@ -433,23 +462,402 @@ impl Into<vk::DependencyFlags> for DependencyFlags {
     }
 }
 
+impl Default for DependencyFlags {
+    fn default() -> Self {
+        DependencyFlags::Empty
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Format {
     MatchSwapchain,
-    Raw(i32),
+    UNDEFINED,
+    R4G4_UNORM_PACK8,
+    R4G4B4A4_UNORM_PACK16,
+    B4G4R4A4_UNORM_PACK16,
+    R5G6B5_UNORM_PACK16,
+    B5G6R5_UNORM_PACK16,
+    R5G5B5A1_UNORM_PACK16,
+    B5G5R5A1_UNORM_PACK16,
+    A1R5G5B5_UNORM_PACK16,
+    R8_UNORM,
+    R8_SNORM,
+    R8_USCALED,
+    R8_SSCALED,
+    R8_UINT,
+    R8_SINT,
+    R8_SRGB,
+    R8G8_UNORM,
+    R8G8_SNORM,
+    R8G8_USCALED,
+    R8G8_SSCALED,
+    R8G8_UINT,
+    R8G8_SINT,
+    R8G8_SRGB,
+    R8G8B8_UNORM,
+    R8G8B8_SNORM,
+    R8G8B8_USCALED,
+    R8G8B8_SSCALED,
+    R8G8B8_UINT,
+    R8G8B8_SINT,
+    R8G8B8_SRGB,
+    B8G8R8_UNORM,
+    B8G8R8_SNORM,
+    B8G8R8_USCALED,
+    B8G8R8_SSCALED,
+    B8G8R8_UINT,
+    B8G8R8_SINT,
+    B8G8R8_SRGB,
+    R8G8B8A8_UNORM,
+    R8G8B8A8_SNORM,
+    R8G8B8A8_USCALED,
+    R8G8B8A8_SSCALED,
+    R8G8B8A8_UINT,
+    R8G8B8A8_SINT,
+    R8G8B8A8_SRGB,
+    B8G8R8A8_UNORM,
+    B8G8R8A8_SNORM,
+    B8G8R8A8_USCALED,
+    B8G8R8A8_SSCALED,
+    B8G8R8A8_UINT,
+    B8G8R8A8_SINT,
+    B8G8R8A8_SRGB,
+    A8B8G8R8_UNORM_PACK32,
+    A8B8G8R8_SNORM_PACK32,
+    A8B8G8R8_USCALED_PACK32,
+    A8B8G8R8_SSCALED_PACK32,
+    A8B8G8R8_UINT_PACK32,
+    A8B8G8R8_SINT_PACK32,
+    A8B8G8R8_SRGB_PACK32,
+    A2R10G10B10_UNORM_PACK32,
+    A2R10G10B10_SNORM_PACK32,
+    A2R10G10B10_USCALED_PACK32,
+    A2R10G10B10_SSCALED_PACK32,
+    A2R10G10B10_UINT_PACK32,
+    A2R10G10B10_SINT_PACK32,
+    A2B10G10R10_UNORM_PACK32,
+    A2B10G10R10_SNORM_PACK32,
+    A2B10G10R10_USCALED_PACK32,
+    A2B10G10R10_SSCALED_PACK32,
+    A2B10G10R10_UINT_PACK32,
+    A2B10G10R10_SINT_PACK32,
+    R16_UNORM,
+    R16_SNORM,
+    R16_USCALED,
+    R16_SSCALED,
+    R16_UINT,
+    R16_SINT,
+    R16_SFLOAT,
+    R16G16_UNORM,
+    R16G16_SNORM,
+    R16G16_USCALED,
+    R16G16_SSCALED,
+    R16G16_UINT,
+    R16G16_SINT,
+    R16G16_SFLOAT,
+    R16G16B16_UNORM,
+    R16G16B16_SNORM,
+    R16G16B16_USCALED,
+    R16G16B16_SSCALED,
+    R16G16B16_UINT,
+    R16G16B16_SINT,
+    R16G16B16_SFLOAT,
+    R16G16B16A16_UNORM,
+    R16G16B16A16_SNORM,
+    R16G16B16A16_USCALED,
+    R16G16B16A16_SSCALED,
+    R16G16B16A16_UINT,
+    R16G16B16A16_SINT,
+    R16G16B16A16_SFLOAT,
+    R32_UINT,
+    R32_SINT,
+    R32_SFLOAT,
+    R32G32_UINT,
+    R32G32_SINT,
+    R32G32_SFLOAT,
+    R32G32B32_UINT,
+    R32G32B32_SINT,
+    R32G32B32_SFLOAT,
+    R32G32B32A32_UINT,
+    R32G32B32A32_SINT,
+    R32G32B32A32_SFLOAT,
+    R64_UINT,
+    R64_SINT,
+    R64_SFLOAT,
+    R64G64_UINT,
+    R64G64_SINT,
+    R64G64_SFLOAT,
+    R64G64B64_UINT,
+    R64G64B64_SINT,
+    R64G64B64_SFLOAT,
+    R64G64B64A64_UINT,
+    R64G64B64A64_SINT,
+    R64G64B64A64_SFLOAT,
+    B10G11R11_UFLOAT_PACK32,
+    E5B9G9R9_UFLOAT_PACK32,
+    D16_UNORM,
+    X8_D24_UNORM_PACK32,
+    D32_SFLOAT,
+    S8_UINT,
+    D16_UNORM_S8_UINT,
+    D24_UNORM_S8_UINT,
+    D32_SFLOAT_S8_UINT,
+    BC1_RGB_UNORM_BLOCK,
+    BC1_RGB_SRGB_BLOCK,
+    BC1_RGBA_UNORM_BLOCK,
+    BC1_RGBA_SRGB_BLOCK,
+    BC2_UNORM_BLOCK,
+    BC2_SRGB_BLOCK,
+    BC3_UNORM_BLOCK,
+    BC3_SRGB_BLOCK,
+    BC4_UNORM_BLOCK,
+    BC4_SNORM_BLOCK,
+    BC5_UNORM_BLOCK,
+    BC5_SNORM_BLOCK,
+    BC6H_UFLOAT_BLOCK,
+    BC6H_SFLOAT_BLOCK,
+    BC7_UNORM_BLOCK,
+    BC7_SRGB_BLOCK,
+    ETC2_R8G8B8_UNORM_BLOCK,
+    ETC2_R8G8B8_SRGB_BLOCK,
+    ETC2_R8G8B8A1_UNORM_BLOCK,
+    ETC2_R8G8B8A1_SRGB_BLOCK,
+    ETC2_R8G8B8A8_UNORM_BLOCK,
+    ETC2_R8G8B8A8_SRGB_BLOCK,
+    EAC_R11_UNORM_BLOCK,
+    EAC_R11_SNORM_BLOCK,
+    EAC_R11G11_UNORM_BLOCK,
+    EAC_R11G11_SNORM_BLOCK,
+    ASTC_4X4_UNORM_BLOCK,
+    ASTC_4X4_SRGB_BLOCK,
+    ASTC_5X4_UNORM_BLOCK,
+    ASTC_5X4_SRGB_BLOCK,
+    ASTC_5X5_UNORM_BLOCK,
+    ASTC_5X5_SRGB_BLOCK,
+    ASTC_6X5_UNORM_BLOCK,
+    ASTC_6X5_SRGB_BLOCK,
+    ASTC_6X6_UNORM_BLOCK,
+    ASTC_6X6_SRGB_BLOCK,
+    ASTC_8X5_UNORM_BLOCK,
+    ASTC_8X5_SRGB_BLOCK,
+    ASTC_8X6_UNORM_BLOCK,
+    ASTC_8X6_SRGB_BLOCK,
+    ASTC_8X8_UNORM_BLOCK,
+    ASTC_8X8_SRGB_BLOCK,
+    ASTC_10X5_UNORM_BLOCK,
+    ASTC_10X5_SRGB_BLOCK,
+    ASTC_10X6_UNORM_BLOCK,
+    ASTC_10X6_SRGB_BLOCK,
+    ASTC_10X8_UNORM_BLOCK,
+    ASTC_10X8_SRGB_BLOCK,
+    ASTC_10X10_UNORM_BLOCK,
+    ASTC_10X10_SRGB_BLOCK,
+    ASTC_12X10_UNORM_BLOCK,
+    ASTC_12X10_SRGB_BLOCK,
+    ASTC_12X12_UNORM_BLOCK,
+    ASTC_12X12_SRGB_BLOCK,
 }
 
 impl Format {
     fn as_vk_format(&self, swapchain_surface_info: &SwapchainSurfaceInfo) -> vk::Format {
         match self {
             Format::MatchSwapchain => swapchain_surface_info.surface_format.format,
-            Format::Raw(raw) => vk::Format::from_raw(*raw)
+            Format::UNDEFINED => vk::Format::UNDEFINED,
+            Format::R4G4_UNORM_PACK8 => vk::Format::R4G4_UNORM_PACK8,
+            Format::R4G4B4A4_UNORM_PACK16 => vk::Format::R4G4B4A4_UNORM_PACK16,
+            Format::B4G4R4A4_UNORM_PACK16 => vk::Format::B4G4R4A4_UNORM_PACK16,
+            Format::R5G6B5_UNORM_PACK16 => vk::Format::R5G6B5_UNORM_PACK16,
+            Format::B5G6R5_UNORM_PACK16 => vk::Format::B5G6R5_UNORM_PACK16,
+            Format::R5G5B5A1_UNORM_PACK16 => vk::Format::R5G5B5A1_UNORM_PACK16,
+            Format::B5G5R5A1_UNORM_PACK16 => vk::Format::B5G5R5A1_UNORM_PACK16,
+            Format::A1R5G5B5_UNORM_PACK16 => vk::Format::A1R5G5B5_UNORM_PACK16,
+            Format::R8_UNORM => vk::Format::R8_UNORM,
+            Format::R8_SNORM => vk::Format::R8_SNORM,
+            Format::R8_USCALED => vk::Format::R8_USCALED,
+            Format::R8_SSCALED => vk::Format::R8_SSCALED,
+            Format::R8_UINT => vk::Format::R8_UINT,
+            Format::R8_SINT => vk::Format::R8_SINT,
+            Format::R8_SRGB => vk::Format::R8_SRGB,
+            Format::R8G8_UNORM => vk::Format::R8G8_UNORM,
+            Format::R8G8_SNORM => vk::Format::R8G8_SNORM,
+            Format::R8G8_USCALED => vk::Format::R8G8_USCALED,
+            Format::R8G8_SSCALED => vk::Format::R8G8_SSCALED,
+            Format::R8G8_UINT => vk::Format::R8G8_UINT,
+            Format::R8G8_SINT => vk::Format::R8G8_SINT,
+            Format::R8G8_SRGB => vk::Format::R8G8_SRGB,
+            Format::R8G8B8_UNORM => vk::Format::R8G8B8_UNORM,
+            Format::R8G8B8_SNORM => vk::Format::R8G8B8_SNORM,
+            Format::R8G8B8_USCALED => vk::Format::R8G8B8_USCALED,
+            Format::R8G8B8_SSCALED => vk::Format::R8G8B8_SSCALED,
+            Format::R8G8B8_UINT => vk::Format::R8G8B8_UINT,
+            Format::R8G8B8_SINT => vk::Format::R8G8B8_SINT,
+            Format::R8G8B8_SRGB => vk::Format::R8G8B8_SRGB,
+            Format::B8G8R8_UNORM => vk::Format::B8G8R8_UNORM,
+            Format::B8G8R8_SNORM => vk::Format::B8G8R8_SNORM,
+            Format::B8G8R8_USCALED => vk::Format::B8G8R8_USCALED,
+            Format::B8G8R8_SSCALED => vk::Format::B8G8R8_SSCALED,
+            Format::B8G8R8_UINT => vk::Format::B8G8R8_UINT,
+            Format::B8G8R8_SINT => vk::Format::B8G8R8_SINT,
+            Format::B8G8R8_SRGB => vk::Format::B8G8R8_SRGB,
+            Format::R8G8B8A8_UNORM => vk::Format::R8G8B8A8_UNORM,
+            Format::R8G8B8A8_SNORM => vk::Format::R8G8B8A8_SNORM,
+            Format::R8G8B8A8_USCALED => vk::Format::R8G8B8A8_USCALED,
+            Format::R8G8B8A8_SSCALED => vk::Format::R8G8B8A8_SSCALED,
+            Format::R8G8B8A8_UINT => vk::Format::R8G8B8A8_UINT,
+            Format::R8G8B8A8_SINT => vk::Format::R8G8B8A8_SINT,
+            Format::R8G8B8A8_SRGB => vk::Format::R8G8B8A8_SRGB,
+            Format::B8G8R8A8_UNORM => vk::Format::B8G8R8A8_UNORM,
+            Format::B8G8R8A8_SNORM => vk::Format::B8G8R8A8_SNORM,
+            Format::B8G8R8A8_USCALED => vk::Format::B8G8R8A8_USCALED,
+            Format::B8G8R8A8_SSCALED => vk::Format::B8G8R8A8_SSCALED,
+            Format::B8G8R8A8_UINT => vk::Format::B8G8R8A8_UINT,
+            Format::B8G8R8A8_SINT => vk::Format::B8G8R8A8_SINT,
+            Format::B8G8R8A8_SRGB => vk::Format::B8G8R8A8_SRGB,
+            Format::A8B8G8R8_UNORM_PACK32 => vk::Format::A8B8G8R8_UNORM_PACK32,
+            Format::A8B8G8R8_SNORM_PACK32 => vk::Format::A8B8G8R8_SNORM_PACK32,
+            Format::A8B8G8R8_USCALED_PACK32 => vk::Format::A8B8G8R8_USCALED_PACK32,
+            Format::A8B8G8R8_SSCALED_PACK32 => vk::Format::A8B8G8R8_SSCALED_PACK32,
+            Format::A8B8G8R8_UINT_PACK32 => vk::Format::A8B8G8R8_UINT_PACK32,
+            Format::A8B8G8R8_SINT_PACK32 => vk::Format::A8B8G8R8_SINT_PACK32,
+            Format::A8B8G8R8_SRGB_PACK32 => vk::Format::A8B8G8R8_SRGB_PACK32,
+            Format::A2R10G10B10_UNORM_PACK32 => vk::Format::A2R10G10B10_UNORM_PACK32,
+            Format::A2R10G10B10_SNORM_PACK32 => vk::Format::A2R10G10B10_SNORM_PACK32,
+            Format::A2R10G10B10_USCALED_PACK32 => vk::Format::A2R10G10B10_USCALED_PACK32,
+            Format::A2R10G10B10_SSCALED_PACK32 => vk::Format::A2R10G10B10_SSCALED_PACK32,
+            Format::A2R10G10B10_UINT_PACK32 => vk::Format::A2R10G10B10_UINT_PACK32,
+            Format::A2R10G10B10_SINT_PACK32 => vk::Format::A2R10G10B10_SINT_PACK32,
+            Format::A2B10G10R10_UNORM_PACK32 => vk::Format::A2B10G10R10_UNORM_PACK32,
+            Format::A2B10G10R10_SNORM_PACK32 => vk::Format::A2B10G10R10_SNORM_PACK32,
+            Format::A2B10G10R10_USCALED_PACK32 => vk::Format::A2B10G10R10_USCALED_PACK32,
+            Format::A2B10G10R10_SSCALED_PACK32 => vk::Format::A2B10G10R10_SSCALED_PACK32,
+            Format::A2B10G10R10_UINT_PACK32 => vk::Format::A2B10G10R10_UINT_PACK32,
+            Format::A2B10G10R10_SINT_PACK32 => vk::Format::A2B10G10R10_SINT_PACK32,
+            Format::R16_UNORM => vk::Format::R16_UNORM,
+            Format::R16_SNORM => vk::Format::R16_SNORM,
+            Format::R16_USCALED => vk::Format::R16_USCALED,
+            Format::R16_SSCALED => vk::Format::R16_SSCALED,
+            Format::R16_UINT => vk::Format::R16_UINT,
+            Format::R16_SINT => vk::Format::R16_SINT,
+            Format::R16_SFLOAT => vk::Format::R16_SFLOAT,
+            Format::R16G16_UNORM => vk::Format::R16G16_UNORM,
+            Format::R16G16_SNORM => vk::Format::R16G16_SNORM,
+            Format::R16G16_USCALED => vk::Format::R16G16_USCALED,
+            Format::R16G16_SSCALED => vk::Format::R16G16_SSCALED,
+            Format::R16G16_UINT => vk::Format::R16G16_UINT,
+            Format::R16G16_SINT => vk::Format::R16G16_SINT,
+            Format::R16G16_SFLOAT => vk::Format::R16G16_SFLOAT,
+            Format::R16G16B16_UNORM => vk::Format::R16G16B16_UNORM,
+            Format::R16G16B16_SNORM => vk::Format::R16G16B16_SNORM,
+            Format::R16G16B16_USCALED => vk::Format::R16G16B16_USCALED,
+            Format::R16G16B16_SSCALED => vk::Format::R16G16B16_SSCALED,
+            Format::R16G16B16_UINT => vk::Format::R16G16B16_UINT,
+            Format::R16G16B16_SINT => vk::Format::R16G16B16_SINT,
+            Format::R16G16B16_SFLOAT => vk::Format::R16G16B16_SFLOAT,
+            Format::R16G16B16A16_UNORM => vk::Format::R16G16B16A16_UNORM,
+            Format::R16G16B16A16_SNORM => vk::Format::R16G16B16A16_SNORM,
+            Format::R16G16B16A16_USCALED => vk::Format::R16G16B16A16_USCALED,
+            Format::R16G16B16A16_SSCALED => vk::Format::R16G16B16A16_SSCALED,
+            Format::R16G16B16A16_UINT => vk::Format::R16G16B16A16_UINT,
+            Format::R16G16B16A16_SINT => vk::Format::R16G16B16A16_SINT,
+            Format::R16G16B16A16_SFLOAT => vk::Format::R16G16B16A16_SFLOAT,
+            Format::R32_UINT => vk::Format::R32_UINT,
+            Format::R32_SINT => vk::Format::R32_SINT,
+            Format::R32_SFLOAT => vk::Format::R32_SFLOAT,
+            Format::R32G32_UINT => vk::Format::R32G32_UINT,
+            Format::R32G32_SINT => vk::Format::R32G32_SINT,
+            Format::R32G32_SFLOAT => vk::Format::R32G32_SFLOAT,
+            Format::R32G32B32_UINT => vk::Format::R32G32B32_UINT,
+            Format::R32G32B32_SINT => vk::Format::R32G32B32_SINT,
+            Format::R32G32B32_SFLOAT => vk::Format::R32G32B32_SFLOAT,
+            Format::R32G32B32A32_UINT => vk::Format::R32G32B32A32_UINT,
+            Format::R32G32B32A32_SINT => vk::Format::R32G32B32A32_SINT,
+            Format::R32G32B32A32_SFLOAT => vk::Format::R32G32B32A32_SFLOAT,
+            Format::R64_UINT => vk::Format::R64_UINT,
+            Format::R64_SINT => vk::Format::R64_SINT,
+            Format::R64_SFLOAT => vk::Format::R64_SFLOAT,
+            Format::R64G64_UINT => vk::Format::R64G64_UINT,
+            Format::R64G64_SINT => vk::Format::R64G64_SINT,
+            Format::R64G64_SFLOAT => vk::Format::R64G64_SFLOAT,
+            Format::R64G64B64_UINT => vk::Format::R64G64B64_UINT,
+            Format::R64G64B64_SINT => vk::Format::R64G64B64_SINT,
+            Format::R64G64B64_SFLOAT => vk::Format::R64G64B64_SFLOAT,
+            Format::R64G64B64A64_UINT => vk::Format::R64G64B64A64_UINT,
+            Format::R64G64B64A64_SINT => vk::Format::R64G64B64A64_SINT,
+            Format::R64G64B64A64_SFLOAT => vk::Format::R64G64B64A64_SFLOAT,
+            Format::B10G11R11_UFLOAT_PACK32 => vk::Format::B10G11R11_UFLOAT_PACK32,
+            Format::E5B9G9R9_UFLOAT_PACK32 => vk::Format::E5B9G9R9_UFLOAT_PACK32,
+            Format::D16_UNORM => vk::Format::D16_UNORM,
+            Format::X8_D24_UNORM_PACK32 => vk::Format::X8_D24_UNORM_PACK32,
+            Format::D32_SFLOAT => vk::Format::D32_SFLOAT,
+            Format::S8_UINT => vk::Format::S8_UINT,
+            Format::D16_UNORM_S8_UINT => vk::Format::D16_UNORM_S8_UINT,
+            Format::D24_UNORM_S8_UINT => vk::Format::D24_UNORM_S8_UINT,
+            Format::D32_SFLOAT_S8_UINT => vk::Format::D32_SFLOAT_S8_UINT,
+            Format::BC1_RGB_UNORM_BLOCK => vk::Format::BC1_RGB_UNORM_BLOCK,
+            Format::BC1_RGB_SRGB_BLOCK => vk::Format::BC1_RGB_SRGB_BLOCK,
+            Format::BC1_RGBA_UNORM_BLOCK => vk::Format::BC1_RGBA_UNORM_BLOCK,
+            Format::BC1_RGBA_SRGB_BLOCK => vk::Format::BC1_RGBA_SRGB_BLOCK,
+            Format::BC2_UNORM_BLOCK => vk::Format::BC2_UNORM_BLOCK,
+            Format::BC2_SRGB_BLOCK => vk::Format::BC2_SRGB_BLOCK,
+            Format::BC3_UNORM_BLOCK => vk::Format::BC3_UNORM_BLOCK,
+            Format::BC3_SRGB_BLOCK => vk::Format::BC3_SRGB_BLOCK,
+            Format::BC4_UNORM_BLOCK => vk::Format::BC4_UNORM_BLOCK,
+            Format::BC4_SNORM_BLOCK => vk::Format::BC4_SNORM_BLOCK,
+            Format::BC5_UNORM_BLOCK => vk::Format::BC5_UNORM_BLOCK,
+            Format::BC5_SNORM_BLOCK => vk::Format::BC5_SNORM_BLOCK,
+            Format::BC6H_UFLOAT_BLOCK => vk::Format::BC6H_UFLOAT_BLOCK,
+            Format::BC6H_SFLOAT_BLOCK => vk::Format::BC6H_SFLOAT_BLOCK,
+            Format::BC7_UNORM_BLOCK => vk::Format::BC7_UNORM_BLOCK,
+            Format::BC7_SRGB_BLOCK => vk::Format::BC7_SRGB_BLOCK,
+            Format::ETC2_R8G8B8_UNORM_BLOCK => vk::Format::ETC2_R8G8B8_UNORM_BLOCK,
+            Format::ETC2_R8G8B8_SRGB_BLOCK => vk::Format::ETC2_R8G8B8_SRGB_BLOCK,
+            Format::ETC2_R8G8B8A1_UNORM_BLOCK => vk::Format::ETC2_R8G8B8A1_UNORM_BLOCK,
+            Format::ETC2_R8G8B8A1_SRGB_BLOCK => vk::Format::ETC2_R8G8B8A1_SRGB_BLOCK,
+            Format::ETC2_R8G8B8A8_UNORM_BLOCK => vk::Format::ETC2_R8G8B8A8_UNORM_BLOCK,
+            Format::ETC2_R8G8B8A8_SRGB_BLOCK => vk::Format::ETC2_R8G8B8A8_SRGB_BLOCK,
+            Format::EAC_R11_UNORM_BLOCK => vk::Format::EAC_R11_UNORM_BLOCK,
+            Format::EAC_R11_SNORM_BLOCK => vk::Format::EAC_R11_SNORM_BLOCK,
+            Format::EAC_R11G11_UNORM_BLOCK => vk::Format::EAC_R11G11_UNORM_BLOCK,
+            Format::EAC_R11G11_SNORM_BLOCK => vk::Format::EAC_R11G11_SNORM_BLOCK,
+            Format::ASTC_4X4_UNORM_BLOCK => vk::Format::ASTC_4X4_UNORM_BLOCK,
+            Format::ASTC_4X4_SRGB_BLOCK => vk::Format::ASTC_4X4_SRGB_BLOCK,
+            Format::ASTC_5X4_UNORM_BLOCK => vk::Format::ASTC_5X4_UNORM_BLOCK,
+            Format::ASTC_5X4_SRGB_BLOCK => vk::Format::ASTC_5X4_SRGB_BLOCK,
+            Format::ASTC_5X5_UNORM_BLOCK => vk::Format::ASTC_5X5_UNORM_BLOCK,
+            Format::ASTC_5X5_SRGB_BLOCK => vk::Format::ASTC_5X5_SRGB_BLOCK,
+            Format::ASTC_6X5_UNORM_BLOCK => vk::Format::ASTC_6X5_UNORM_BLOCK,
+            Format::ASTC_6X5_SRGB_BLOCK => vk::Format::ASTC_6X5_SRGB_BLOCK,
+            Format::ASTC_6X6_UNORM_BLOCK => vk::Format::ASTC_6X6_UNORM_BLOCK,
+            Format::ASTC_6X6_SRGB_BLOCK => vk::Format::ASTC_6X6_SRGB_BLOCK,
+            Format::ASTC_8X5_UNORM_BLOCK => vk::Format::ASTC_8X5_UNORM_BLOCK,
+            Format::ASTC_8X5_SRGB_BLOCK => vk::Format::ASTC_8X5_SRGB_BLOCK,
+            Format::ASTC_8X6_UNORM_BLOCK => vk::Format::ASTC_8X6_UNORM_BLOCK,
+            Format::ASTC_8X6_SRGB_BLOCK => vk::Format::ASTC_8X6_SRGB_BLOCK,
+            Format::ASTC_8X8_UNORM_BLOCK => vk::Format::ASTC_8X8_UNORM_BLOCK,
+            Format::ASTC_8X8_SRGB_BLOCK => vk::Format::ASTC_8X8_SRGB_BLOCK,
+            Format::ASTC_10X5_UNORM_BLOCK => vk::Format::ASTC_10X5_UNORM_BLOCK,
+            Format::ASTC_10X5_SRGB_BLOCK => vk::Format::ASTC_10X5_SRGB_BLOCK,
+            Format::ASTC_10X6_UNORM_BLOCK => vk::Format::ASTC_10X6_UNORM_BLOCK,
+            Format::ASTC_10X6_SRGB_BLOCK => vk::Format::ASTC_10X6_SRGB_BLOCK,
+            Format::ASTC_10X8_UNORM_BLOCK => vk::Format::ASTC_10X8_UNORM_BLOCK,
+            Format::ASTC_10X8_SRGB_BLOCK => vk::Format::ASTC_10X8_SRGB_BLOCK,
+            Format::ASTC_10X10_UNORM_BLOCK => vk::Format::ASTC_10X10_UNORM_BLOCK,
+            Format::ASTC_10X10_SRGB_BLOCK => vk::Format::ASTC_10X10_SRGB_BLOCK,
+            Format::ASTC_12X10_UNORM_BLOCK => vk::Format::ASTC_12X10_UNORM_BLOCK,
+            Format::ASTC_12X10_SRGB_BLOCK => vk::Format::ASTC_12X10_SRGB_BLOCK,
+            Format::ASTC_12X12_UNORM_BLOCK => vk::Format::ASTC_12X12_UNORM_BLOCK,
+            Format::ASTC_12X12_SRGB_BLOCK => vk::Format::ASTC_12X12_SRGB_BLOCK,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+impl Default for Format {
+    fn default() -> Self {
+        Format::MatchSwapchain
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct AttachmentDescription {
     pub flags: AttachmentDescriptionFlags,
     pub format: Format,
@@ -477,16 +885,37 @@ impl AttachmentDescription {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AttachmentIndex {
+    Index(u32),
+    Unused,
+}
+
+impl Into<u32> for AttachmentIndex {
+    fn into(self) -> u32 {
+        match self {
+            AttachmentIndex::Index(index) => index,
+            AttachmentIndex::Unused => vk::ATTACHMENT_UNUSED,
+        }
+    }
+}
+
+impl Default for AttachmentIndex {
+    fn default() -> Self {
+        AttachmentIndex::Index(0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct AttachmentReference {
-    pub attachment: u32,
+    pub attachment: AttachmentIndex,
     pub layout: ImageLayout
 }
 
 impl AttachmentReference {
     pub fn as_builder(&self) -> vk::AttachmentReferenceBuilder {
         vk::AttachmentReference::builder()
-            .attachment(self.attachment)
+            .attachment(self.attachment.into())
             .layout(self.layout.into())
     }
 }
@@ -497,13 +926,13 @@ impl Into<vk::AttachmentReference> for AttachmentReference {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct SubpassDescription {
     pub pipeline_bind_point: PipelineBindPoint,
     pub input_attachments: Vec<AttachmentReference>,
     pub color_attachments: Vec<AttachmentReference>,
     pub resolve_attachments: Vec<AttachmentReference>,
-    pub depth_stencil_attachment: AttachmentReference,
+    pub depth_stencil_attachment: Option<AttachmentReference>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -521,27 +950,43 @@ impl Into<u32> for SubpassDependencyIndex {
     }
 }
 
+impl Default for SubpassDependencyIndex {
+    fn default() -> Self {
+        SubpassDependencyIndex::External
+    }
+}
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct SubpassDependency {
     pub src_subpass: SubpassDependencyIndex,
     pub dst_subpass: SubpassDependencyIndex,
     pub src_stage_mask: PipelineStageFlags,
     pub dst_stage_mask: PipelineStageFlags,
-    pub src_access_mask: AccessFlags,
-    pub dst_access_mask: AccessFlags,
+    pub src_access_mask: Vec<AccessFlags>,
+    pub dst_access_mask: Vec<AccessFlags>,
     pub dependency_flags: DependencyFlags,
 }
 
 impl SubpassDependency {
     pub fn as_builder(&self) -> vk::SubpassDependencyBuilder {
+
+        fn access_flag_list_to_mask(access_flags: &[AccessFlags]) -> vk::AccessFlags {
+            let mut access_flags_mask = vk::AccessFlags::empty();
+            for access_flag in access_flags {
+                let vk_access_flag : vk::AccessFlags = (*access_flag).into();
+                access_flags_mask |= vk_access_flag;
+            }
+            access_flags_mask
+        }
+
         vk::SubpassDependency::builder()
             .src_subpass(self.src_subpass.into())
             .dst_subpass(self.dst_subpass.into())
             .src_stage_mask(self.src_stage_mask.into())
             .dst_stage_mask(self.dst_stage_mask.into())
-            .src_access_mask(self.src_access_mask.into())
-            .dst_access_mask(self.dst_access_mask.into())
+            .src_access_mask(access_flag_list_to_mask(self.src_access_mask.as_slice()))
+            .dst_access_mask(access_flag_list_to_mask(self.dst_access_mask.as_slice()))
             .dependency_flags(self.dependency_flags.into())
     }
 }
@@ -568,40 +1013,40 @@ pub struct RenderPass {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PrimitiveTopology {
-    POINT_LIST,
-    LINE_LIST,
-    LINE_STRIP,
-    TRIANGLE_LIST,
-    TRIANGLE_STRIP,
-    TRIANGLE_FAN,
-    LINE_LIST_WITH_ADJACENCY,
-    LINE_STRIP_WITH_ADJACENCY,
-    TRIANGLE_LIST_WITH_ADJACENCY,
-    TRIANGLE_STRIP_WITH_ADJACENCY,
-    PATCH_LIST,
+    PointList,
+    LineList,
+    LineStrip,
+    TriangleList,
+    TriangleStrip,
+    TriangleFan,
+    LineListWithAdjacency,
+    LineStripWithAdjacency,
+    TriangleListWithAdjacency,
+    TriangleStripWithAdjacency,
+    PatchList,
 }
 
 impl Into<vk::PrimitiveTopology> for PrimitiveTopology {
     fn into(self) -> vk::PrimitiveTopology {
         match self {
-            PrimitiveTopology::POINT_LIST => vk::PrimitiveTopology::POINT_LIST,
-            PrimitiveTopology::LINE_LIST => vk::PrimitiveTopology::LINE_LIST,
-            PrimitiveTopology::LINE_STRIP => vk::PrimitiveTopology::LINE_STRIP,
-            PrimitiveTopology::TRIANGLE_LIST => vk::PrimitiveTopology::TRIANGLE_LIST,
-            PrimitiveTopology::TRIANGLE_STRIP => vk::PrimitiveTopology::TRIANGLE_STRIP,
-            PrimitiveTopology::TRIANGLE_FAN => vk::PrimitiveTopology::TRIANGLE_FAN,
-            PrimitiveTopology::LINE_LIST_WITH_ADJACENCY => vk::PrimitiveTopology::LINE_LIST_WITH_ADJACENCY,
-            PrimitiveTopology::LINE_STRIP_WITH_ADJACENCY => vk::PrimitiveTopology::LINE_STRIP_WITH_ADJACENCY,
-            PrimitiveTopology::TRIANGLE_LIST_WITH_ADJACENCY => vk::PrimitiveTopology::TRIANGLE_LIST_WITH_ADJACENCY,
-            PrimitiveTopology::TRIANGLE_STRIP_WITH_ADJACENCY => vk::PrimitiveTopology::TRIANGLE_STRIP_WITH_ADJACENCY,
-            PrimitiveTopology::PATCH_LIST => vk::PrimitiveTopology::PATCH_LIST,
+            PrimitiveTopology::PointList => vk::PrimitiveTopology::POINT_LIST,
+            PrimitiveTopology::LineList => vk::PrimitiveTopology::LINE_LIST,
+            PrimitiveTopology::LineStrip => vk::PrimitiveTopology::LINE_STRIP,
+            PrimitiveTopology::TriangleList => vk::PrimitiveTopology::TRIANGLE_LIST,
+            PrimitiveTopology::TriangleStrip => vk::PrimitiveTopology::TRIANGLE_STRIP,
+            PrimitiveTopology::TriangleFan => vk::PrimitiveTopology::TRIANGLE_FAN,
+            PrimitiveTopology::LineListWithAdjacency => vk::PrimitiveTopology::LINE_LIST_WITH_ADJACENCY,
+            PrimitiveTopology::LineStripWithAdjacency => vk::PrimitiveTopology::LINE_STRIP_WITH_ADJACENCY,
+            PrimitiveTopology::TriangleListWithAdjacency => vk::PrimitiveTopology::TRIANGLE_LIST_WITH_ADJACENCY,
+            PrimitiveTopology::TriangleStripWithAdjacency => vk::PrimitiveTopology::TRIANGLE_STRIP_WITH_ADJACENCY,
+            PrimitiveTopology::PatchList => vk::PrimitiveTopology::PATCH_LIST,
         }
     }
 }
 
 impl Default for PrimitiveTopology {
     fn default() -> Self {
-        PrimitiveTopology::POINT_LIST
+        PrimitiveTopology::PointList
     }
 }
 
@@ -645,7 +1090,13 @@ impl Into<vk::VertexInputRate> for VertexInputRate {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+impl Default for VertexInputRate {
+    fn default() -> Self {
+        VertexInputRate::Vertex
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct VertexInputBindingDescription {
     pub binding: u32,
     pub stride: u32,
@@ -667,7 +1118,7 @@ impl Into<vk::VertexInputBindingDescription> for VertexInputBindingDescription {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct VertexInputAttributeDescription {
     pub location: u32,
     pub binding: u32,
@@ -759,8 +1210,13 @@ impl Dimensions {
     }
 }
 
+impl Default for Dimensions {
+    fn default() -> Self {
+        Dimensions::MatchSwapchain
+    }
+}
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct Viewport {
     pub dimensions: Dimensions,
     pub min_depth: Decimal,
@@ -780,7 +1236,7 @@ impl Viewport {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct Scissors {
     dimensions: Dimensions
 }
@@ -817,7 +1273,6 @@ impl Into<vk::PolygonMode> for PolygonMode {
         }
     }
 }
-
 
 impl Default for PolygonMode {
     fn default() -> Self {
@@ -907,116 +1362,121 @@ impl Into<vk::PipelineRasterizationStateCreateInfo> for PipelineRasterizationSta
     }
 }
 
-
-
-
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineMultisampleState {
     pub rasterization_samples: SampleCountFlags,
     pub sample_shading_enable: bool,
     pub min_sample_shading: Decimal,
-    pub sample_mask: Vec<u32>,
+    pub sample_mask: Option<Vec<u32>>,
     pub alpha_to_coverage_enable: bool,
     pub alpha_to_one_enable: bool,
 }
 
-
 impl PipelineMultisampleState {
     pub fn as_builder(&self) -> vk::PipelineMultisampleStateCreateInfoBuilder {
-        vk::PipelineMultisampleStateCreateInfo::builder()
+        let mut builder = vk::PipelineMultisampleStateCreateInfo::builder()
             .rasterization_samples(self.rasterization_samples.into())
             .sample_shading_enable(self.sample_shading_enable)
             .min_sample_shading(self.min_sample_shading.to_f32().unwrap())
-            .sample_mask(&self.sample_mask)
             .alpha_to_coverage_enable(self.alpha_to_coverage_enable)
-            .alpha_to_one_enable(self.alpha_to_one_enable)
+            .alpha_to_one_enable(self.alpha_to_one_enable);
+
+        if let Some(sample_mask) = &self.sample_mask {
+            builder = builder.sample_mask(sample_mask.as_slice())
+        }
+
+        builder
     }
 }
 
-
-
-
-
-
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BlendFactor {
-    ZERO,
-    ONE,
-    SRC_COLOR,
-    ONE_MINUS_SRC_COLOR,
-    DST_COLOR,
-    ONE_MINUS_DST_COLOR,
-    SRC_ALPHA,
-    ONE_MINUS_SRC_ALPHA,
-    DST_ALPHA,
-    ONE_MINUS_DST_ALPHA,
-    CONSTANT_COLOR,
-    ONE_MINUS_CONSTANT_COLOR,
-    CONSTANT_ALPHA,
-    ONE_MINUS_CONSTANT_ALPHA,
-    SRC_ALPHA_SATURATE,
-    SRC1_COLOR,
-    ONE_MINUS_SRC1_COLOR,
-    SRC1_ALPHA,
-    ONE_MINUS_SRC1_ALPHA,
+    Zero,
+    One,
+    SrcColor,
+    OneMinusSrcColor,
+    DstColor,
+    OneMinusDstColor,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+    DstAlpha,
+    OneMinusDstAlpha,
+    ConstantColor,
+    OneMinusConstantColor,
+    ConstantAlpha,
+    OneMinusConstantAlpha,
+    SrcAlphaSaturate,
+    Src1Color,
+    OneMinusSrc1Color,
+    Src1Alpha,
+    OneMinusSrc1Alpha,
 }
 
 impl Into<vk::BlendFactor> for BlendFactor {
     fn into(self) -> vk::BlendFactor {
         match self {
-            BlendFactor::ZERO => vk::BlendFactor::ZERO,
-            BlendFactor::ONE => vk::BlendFactor::ONE,
-            BlendFactor::SRC_COLOR => vk::BlendFactor::SRC_COLOR,
-            BlendFactor::ONE_MINUS_SRC_COLOR => vk::BlendFactor::ONE_MINUS_SRC_COLOR,
-            BlendFactor::DST_COLOR => vk::BlendFactor::DST_COLOR,
-            BlendFactor::ONE_MINUS_DST_COLOR => vk::BlendFactor::ONE_MINUS_DST_COLOR,
-            BlendFactor::SRC_ALPHA => vk::BlendFactor::SRC_ALPHA,
-            BlendFactor::ONE_MINUS_SRC_ALPHA => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
-            BlendFactor::DST_ALPHA => vk::BlendFactor::DST_ALPHA,
-            BlendFactor::ONE_MINUS_DST_ALPHA => vk::BlendFactor::ONE_MINUS_DST_ALPHA,
-            BlendFactor::CONSTANT_COLOR => vk::BlendFactor::CONSTANT_COLOR,
-            BlendFactor::ONE_MINUS_CONSTANT_COLOR => vk::BlendFactor::ONE_MINUS_CONSTANT_COLOR,
-            BlendFactor::CONSTANT_ALPHA => vk::BlendFactor::CONSTANT_ALPHA,
-            BlendFactor::ONE_MINUS_CONSTANT_ALPHA => vk::BlendFactor::ONE_MINUS_CONSTANT_ALPHA,
-            BlendFactor::SRC_ALPHA_SATURATE => vk::BlendFactor::SRC_ALPHA_SATURATE,
-            BlendFactor::SRC1_COLOR => vk::BlendFactor::SRC1_COLOR,
-            BlendFactor::ONE_MINUS_SRC1_COLOR => vk::BlendFactor::ONE_MINUS_SRC1_COLOR,
-            BlendFactor::SRC1_ALPHA => vk::BlendFactor::SRC1_ALPHA,
-            BlendFactor::ONE_MINUS_SRC1_ALPHA => vk::BlendFactor::ONE_MINUS_SRC1_ALPHA,
+            BlendFactor::Zero => vk::BlendFactor::ZERO,
+            BlendFactor::One => vk::BlendFactor::ONE,
+            BlendFactor::SrcColor => vk::BlendFactor::SRC_COLOR,
+            BlendFactor::OneMinusSrcColor => vk::BlendFactor::ONE_MINUS_SRC_COLOR,
+            BlendFactor::DstColor => vk::BlendFactor::DST_COLOR,
+            BlendFactor::OneMinusDstColor => vk::BlendFactor::ONE_MINUS_DST_COLOR,
+            BlendFactor::SrcAlpha => vk::BlendFactor::SRC_ALPHA,
+            BlendFactor::OneMinusSrcAlpha => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
+            BlendFactor::DstAlpha => vk::BlendFactor::DST_ALPHA,
+            BlendFactor::OneMinusDstAlpha => vk::BlendFactor::ONE_MINUS_DST_ALPHA,
+            BlendFactor::ConstantColor => vk::BlendFactor::CONSTANT_COLOR,
+            BlendFactor::OneMinusConstantColor => vk::BlendFactor::ONE_MINUS_CONSTANT_COLOR,
+            BlendFactor::ConstantAlpha => vk::BlendFactor::CONSTANT_ALPHA,
+            BlendFactor::OneMinusConstantAlpha => vk::BlendFactor::ONE_MINUS_CONSTANT_ALPHA,
+            BlendFactor::SrcAlphaSaturate => vk::BlendFactor::SRC_ALPHA_SATURATE,
+            BlendFactor::Src1Color => vk::BlendFactor::SRC1_COLOR,
+            BlendFactor::OneMinusSrc1Color => vk::BlendFactor::ONE_MINUS_SRC1_COLOR,
+            BlendFactor::Src1Alpha => vk::BlendFactor::SRC1_ALPHA,
+            BlendFactor::OneMinusSrc1Alpha => vk::BlendFactor::ONE_MINUS_SRC1_ALPHA,
         }
+    }
+}
+
+impl Default for BlendFactor {
+    fn default() -> Self {
+        BlendFactor::Zero
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BlendOp {
-    ADD,
-    SUBTRACT,
-    REVERSE_SUBTRACT,
-    MIN,
-    MAX,
+    Add,
+    Subtract,
+    ReverseSubtract,
+    Min,
+    Max,
 }
 
 impl Into<vk::BlendOp> for BlendOp {
     fn into(self) -> vk::BlendOp {
         match self {
-            BlendOp::ADD => vk::BlendOp::ADD,
-            BlendOp::SUBTRACT => vk::BlendOp::SUBTRACT,
-            BlendOp::REVERSE_SUBTRACT => vk::BlendOp::REVERSE_SUBTRACT,
-            BlendOp::MIN => vk::BlendOp::MIN,
-            BlendOp::MAX => vk::BlendOp::MAX,
+            BlendOp::Add => vk::BlendOp::ADD,
+            BlendOp::Subtract => vk::BlendOp::SUBTRACT,
+            BlendOp::ReverseSubtract => vk::BlendOp::REVERSE_SUBTRACT,
+            BlendOp::Min => vk::BlendOp::MIN,
+            BlendOp::Max => vk::BlendOp::MAX,
         }
     }
 }
 
+impl Default for BlendOp {
+    fn default() -> Self {
+        BlendOp::Add
+    }
+}
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ColorComponentFlags {
-    red: bool,
-    green: bool,
-    blue: bool,
-    alpha: bool,
+    pub red: bool,
+    pub green: bool,
+    pub blue: bool,
+    pub alpha: bool,
 }
 
 impl Into<vk::ColorComponentFlags> for ColorComponentFlags {
@@ -1043,7 +1503,7 @@ impl Into<vk::ColorComponentFlags> for ColorComponentFlags {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineColorBlendAttachmentState {
     pub blend_enable: bool,
     pub src_color_blend_factor: BlendFactor,
@@ -1079,50 +1539,50 @@ impl Into<vk::PipelineColorBlendAttachmentState> for PipelineColorBlendAttachmen
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LogicOp {
-    CLEAR,
-    AND,
-    AND_REVERSE,
-    COPY,
-    AND_INVERTED,
-    NO_OP,
-    XOR,
-    OR,
-    NOR,
-    EQUIVALENT,
-    INVERT,
-    OR_REVERSE,
-    COPY_INVERTED,
-    OR_INVERTED,
-    NAND,
-    SET,
+    Clear,
+    And,
+    AndReverse,
+    Copy,
+    AndInverted,
+    NoOp,
+    Xor,
+    Or,
+    Nor,
+    Equivalent,
+    Invert,
+    OrReverse,
+    CopyInverted,
+    OrInverted,
+    Nand,
+    Set,
 }
 
 impl Into<vk::LogicOp> for LogicOp {
     fn into(self) -> vk::LogicOp {
         match self {
-            LogicOp::CLEAR => vk::LogicOp::CLEAR,
-            LogicOp::AND => vk::LogicOp::AND,
-            LogicOp::AND_REVERSE => vk::LogicOp::AND_REVERSE,
-            LogicOp::COPY => vk::LogicOp::COPY,
-            LogicOp::AND_INVERTED => vk::LogicOp::AND_INVERTED,
-            LogicOp::NO_OP => vk::LogicOp::NO_OP,
-            LogicOp::XOR => vk::LogicOp::XOR,
-            LogicOp::OR => vk::LogicOp::OR,
-            LogicOp::NOR => vk::LogicOp::NOR,
-            LogicOp::EQUIVALENT => vk::LogicOp::EQUIVALENT,
-            LogicOp::INVERT => vk::LogicOp::INVERT,
-            LogicOp::OR_REVERSE => vk::LogicOp::OR_REVERSE,
-            LogicOp::COPY_INVERTED => vk::LogicOp::COPY_INVERTED,
-            LogicOp::OR_INVERTED => vk::LogicOp::OR_INVERTED,
-            LogicOp::NAND => vk::LogicOp::NAND,
-            LogicOp::SET => vk::LogicOp::SET,
+            LogicOp::Clear => vk::LogicOp::CLEAR,
+            LogicOp::And => vk::LogicOp::AND,
+            LogicOp::AndReverse => vk::LogicOp::AND_REVERSE,
+            LogicOp::Copy => vk::LogicOp::COPY,
+            LogicOp::AndInverted => vk::LogicOp::AND_INVERTED,
+            LogicOp::NoOp => vk::LogicOp::NO_OP,
+            LogicOp::Xor => vk::LogicOp::XOR,
+            LogicOp::Or => vk::LogicOp::OR,
+            LogicOp::Nor => vk::LogicOp::NOR,
+            LogicOp::Equivalent => vk::LogicOp::EQUIVALENT,
+            LogicOp::Invert => vk::LogicOp::INVERT,
+            LogicOp::OrReverse => vk::LogicOp::OR_REVERSE,
+            LogicOp::CopyInverted => vk::LogicOp::COPY_INVERTED,
+            LogicOp::OrInverted => vk::LogicOp::OR_INVERTED,
+            LogicOp::Nand => vk::LogicOp::NAND,
+            LogicOp::Set => vk::LogicOp::SET,
         }
     }
 }
 
 impl Default for LogicOp {
     fn default() -> LogicOp {
-        LogicOp::CLEAR
+        LogicOp::Clear
     }
 }
 
@@ -1145,49 +1605,31 @@ impl PipelineColorBlendState {
     }
 }
 
-
-// impl PipelineColorBlendState {
-//     pub fn as_builder(&self) -> vk::PipelineColorBlendStateCreateInfoBuilder {
-//         let blend_constants = [
-//             self.blend_constants[0].to_f32().unwrap(),
-//             self.blend_constants[1].to_f32().unwrap(),
-//             self.blend_constants[2].to_f32().unwrap(),
-//             self.blend_constants[3].to_f32().unwrap(),
-//         ];
-//
-//         vk::PipelineColorBlendStateCreateInfo::builder()
-//             .logic_op_enable(self.logic_op_enable)
-//             .logic_op(self.logic_op.into())
-//             .attachments(self.attachments)
-//             .blend_constants(blend_constants)
-//     }
-// }
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DynamicState {
-    VIEWPORT,
-    SCISSOR,
-    LINE_WIDTH,
-    DEPTH_BIAS,
-    BLEND_CONSTANTS,
-    DEPTH_BOUNDS,
-    STENCIL_COMPARE_MASK,
-    STENCIL_WRITE_MASK,
-    STENCIL_REFERENCE,
+    Viewport,
+    Scissor,
+    LineWidth,
+    DepthBias,
+    BlendConstants,
+    DepthBounds,
+    StencilCompareMask,
+    StencilWriteMask,
+    StencilReference,
 }
 
 impl Into<vk::DynamicState> for DynamicState {
     fn into(self) -> vk::DynamicState {
         match self {
-            DynamicState::VIEWPORT => vk::DynamicState::VIEWPORT,
-            DynamicState::SCISSOR => vk::DynamicState::SCISSOR,
-            DynamicState::LINE_WIDTH => vk::DynamicState::LINE_WIDTH,
-            DynamicState::DEPTH_BIAS => vk::DynamicState::DEPTH_BIAS,
-            DynamicState::BLEND_CONSTANTS => vk::DynamicState::BLEND_CONSTANTS,
-            DynamicState::DEPTH_BOUNDS => vk::DynamicState::DEPTH_BOUNDS,
-            DynamicState::STENCIL_COMPARE_MASK => vk::DynamicState::STENCIL_COMPARE_MASK,
-            DynamicState::STENCIL_WRITE_MASK => vk::DynamicState::STENCIL_WRITE_MASK,
-            DynamicState::STENCIL_REFERENCE => vk::DynamicState::STENCIL_REFERENCE,
+            DynamicState::Viewport => vk::DynamicState::VIEWPORT,
+            DynamicState::Scissor => vk::DynamicState::SCISSOR,
+            DynamicState::LineWidth => vk::DynamicState::LINE_WIDTH,
+            DynamicState::DepthBias => vk::DynamicState::DEPTH_BIAS,
+            DynamicState::BlendConstants => vk::DynamicState::BLEND_CONSTANTS,
+            DynamicState::DepthBounds => vk::DynamicState::DEPTH_BOUNDS,
+            DynamicState::StencilCompareMask => vk::DynamicState::STENCIL_COMPARE_MASK,
+            DynamicState::StencilWriteMask => vk::DynamicState::STENCIL_WRITE_MASK,
+            DynamicState::StencilReference => vk::DynamicState::STENCIL_REFERENCE,
         }
     }
 }
@@ -1208,13 +1650,12 @@ pub struct FixedFunctionState {
     pub dynamic_state: PipelineDynamicState,
 }
 
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ShaderModule {
     pub code: Vec<u32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineShaderStage {
     pub stage: ShaderStageFlags,
     pub shader_module: ShaderModule,
@@ -1226,11 +1667,6 @@ pub struct PipelineShaderStages {
     pub stages: Vec<PipelineShaderStage>
 }
 
-
-
-
-
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct GraphicsPipeline {
     pub pipeline_layout: PipelineLayout,
@@ -1238,116 +1674,3 @@ pub struct GraphicsPipeline {
     pub fixed_function_state: FixedFunctionState,
     pub pipeline_shader_stages: PipelineShaderStages,
 }
-
-
-
-// // Applies globally
-// let color_blend_state_info = vk::PipelineColorBlendStateCreateInfo::builder()
-// .attachments(&color_blend_attachment_states);
-//
-// let dynamic_state = vec![/*vk::DynamicState::SCISSOR*/];
-// let dynamic_state_info =
-// vk::PipelineDynamicStateCreateInfo::builder().dynamic_states(&dynamic_state);
-
-
-/*
-
-    fn create_fixed_function_state<F: FnMut(&FixedFunctionState) -> VkResult<()>>(
-        swapchain_info: &SwapchainInfo,
-        mut f: F,
-    ) -> VkResult<()> {
-        let vertex_input_assembly_state_info = vk::PipelineInputAssemblyStateCreateInfo::builder()
-            .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
-            .primitive_restart_enable(false);
-
-        let vertex_input_binding_descriptions = [vk::VertexInputBindingDescription {
-            binding: 0,
-            stride: mem::size_of::<SpriteVertex>() as u32,
-            input_rate: vk::VertexInputRate::VERTEX,
-        }];
-        let vertex_input_attribute_descriptions = [
-            vk::VertexInputAttributeDescription {
-                binding: 0,
-                location: 0,
-                format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(SpriteVertex, pos) as u32,
-            },
-            vk::VertexInputAttributeDescription {
-                binding: 0,
-                location: 1,
-                format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(SpriteVertex, tex_coord) as u32,
-            },
-            // vk::VertexInputAttributeDescription {
-            //     binding: 0,
-            //     location: 2,
-            //     format: vk::Format::R8G8B8A8_UNORM,
-            //     offset: offset_of!(Vertex, color) as u32,
-            // },
-        ];
-
-        let vertex_input_state_info = vk::PipelineVertexInputStateCreateInfo::builder()
-            .vertex_attribute_descriptions(&vertex_input_attribute_descriptions)
-            .vertex_binding_descriptions(&vertex_input_binding_descriptions);
-
-        let viewports = [vk::Viewport {
-            x: 0.0,
-            y: 0.0,
-            width: swapchain_info.extents.width as f32,
-            height: swapchain_info.extents.height as f32,
-            min_depth: 0.0,
-            max_depth: 1.0,
-        }];
-
-        let scissors = [vk::Rect2D {
-            offset: vk::Offset2D { x: 0, y: 0 },
-            extent: swapchain_info.extents.clone(),
-        }];
-
-        let viewport_state_info = vk::PipelineViewportStateCreateInfo::builder()
-            .scissors(&scissors)
-            .viewports(&viewports);
-
-        let rasterization_info = vk::PipelineRasterizationStateCreateInfo::builder()
-            .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
-            .line_width(1.0)
-            .polygon_mode(vk::PolygonMode::FILL);
-
-        // Skip depth/stencil testing
-
-        let multisample_state_info = vk::PipelineMultisampleStateCreateInfo::builder()
-            .rasterization_samples(vk::SampleCountFlags::TYPE_1);
-
-        // Applies to the current framebuffer
-        let color_blend_attachment_states = [vk::PipelineColorBlendAttachmentState::builder()
-            .color_write_mask(vk::ColorComponentFlags::all())
-            .blend_enable(true)
-            .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
-            .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
-            .color_blend_op(vk::BlendOp::ADD)
-            .src_alpha_blend_factor(vk::BlendFactor::ONE)
-            .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
-            .alpha_blend_op(vk::BlendOp::ADD)
-            .build()];
-
-        // Applies globally
-        let color_blend_state_info = vk::PipelineColorBlendStateCreateInfo::builder()
-            .attachments(&color_blend_attachment_states);
-
-        let dynamic_state = vec![/*vk::DynamicState::SCISSOR*/];
-        let dynamic_state_info =
-            vk::PipelineDynamicStateCreateInfo::builder().dynamic_states(&dynamic_state);
-
-        let fixed_function_state = FixedFunctionState {
-            vertex_input_assembly_state_info,
-            vertex_input_state_info,
-            viewport_state_info,
-            rasterization_info,
-            multisample_state_info,
-            color_blend_state_info,
-            dynamic_state_info,
-        };
-
-        f(&fixed_function_state)
-    }
-*/

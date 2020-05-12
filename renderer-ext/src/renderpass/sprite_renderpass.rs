@@ -22,6 +22,8 @@ use ash::vk::ShaderStageFlags;
 
 use crate::time::TimeState;
 use crate::resource_managers::SpriteResourceManager;
+use crate::pipeline_manager::PipelineManager;
+use crate::pipeline_description::AttachmentReference;
 
 struct SpriteRenderpassStats {
     draw_call_count: u32,
@@ -37,9 +39,9 @@ struct SpriteUniformBufferObject {
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy)]
 #[repr(C)]
-struct SpriteVertex {
-    pos: [f32; 2],
-    tex_coord: [f32; 2],
+pub struct SpriteVertex {
+    pub pos: [f32; 2],
+    pub tex_coord: [f32; 2],
     //color: [u8; 4],
 }
 
@@ -127,6 +129,7 @@ impl VkSpriteRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
+        pipeline_manager: &mut PipelineManager,
         sprite_resource_manager: &SpriteResourceManager,
     ) -> VkResult<Self> {
         //
@@ -175,29 +178,35 @@ impl VkSpriteRenderPass {
         //
         // Pipeline/Renderpass
         //
-        let mut pipeline_resources = None;
-        Self::create_fixed_function_state(&swapchain.swapchain_info, |fixed_function_state| {
-            Self::create_renderpass_create_info(
-                &swapchain.swapchain_info,
-                |renderpass_create_info| {
-                    Self::create_pipeline(
-                        &device_context.device(),
-                        &swapchain.swapchain_info,
-                        fixed_function_state,
-                        renderpass_create_info,
-                        &descriptor_set_layouts,
-                        |resources| {
-                            pipeline_resources = Some(resources);
-                        },
-                    )
-                },
-            )
-        })?;
+        // let mut pipeline_resources = None;
+        // Self::create_fixed_function_state(&swapchain.swapchain_info, |fixed_function_state| {
+        //     Self::create_renderpass_create_info(
+        //         &swapchain.swapchain_info,
+        //         |renderpass_create_info| {
+        //             Self::create_pipeline(
+        //                 &device_context.device(),
+        //                 &swapchain.swapchain_info,
+        //                 fixed_function_state,
+        //                 renderpass_create_info,
+        //                 &descriptor_set_layouts,
+        //                 |resources| {
+        //                     pipeline_resources = Some(resources);
+        //                 },
+        //             )
+        //         },
+        //     )
+        // })?;
+        //
+        // let pipeline_resources = pipeline_resources.unwrap();
+        // let pipeline_layout = pipeline_resources.pipeline_layout;
+        // let renderpass = pipeline_resources.renderpass;
+        // let pipeline = pipeline_resources.pipeline;
 
-        let pipeline_resources = pipeline_resources.unwrap();
-        let pipeline_layout = pipeline_resources.pipeline_layout;
-        let renderpass = pipeline_resources.renderpass;
-        let pipeline = pipeline_resources.pipeline;
+        let sprite_pipeline = create_sprite_pipeline();
+        let pipeline_layout = pipeline_manager.get_or_create_pipeline_layout(&sprite_pipeline.pipeline_layout)?;
+        let renderpass = pipeline_manager.get_or_create_renderpass(&sprite_pipeline.renderpass)?;
+        let pipeline = pipeline_manager.get_or_create_graphics_pipeline(&sprite_pipeline)?;
+
 
         //
         // Renderpass Resources
@@ -206,7 +215,7 @@ impl VkSpriteRenderPass {
             &device_context.device(),
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
-            &pipeline_resources.renderpass,
+            &renderpass,
         );
 
         let command_buffers = Self::create_command_buffers(
@@ -1031,9 +1040,9 @@ impl Drop for VkSpriteRenderPass {
                 device.destroy_framebuffer(*frame_buffer, None);
             }
 
-            device.destroy_pipeline(self.pipeline, None);
-            device.destroy_pipeline_layout(self.pipeline_layout, None);
-            device.destroy_render_pass(self.renderpass, None);
+            // device.destroy_pipeline(self.pipeline, None);
+            // device.destroy_pipeline_layout(self.pipeline_layout, None);
+            // device.destroy_render_pass(self.renderpass, None);
 
             device.destroy_descriptor_pool(self.descriptor_pool_per_pass, None);
             device.destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
@@ -1079,4 +1088,166 @@ pub fn orthographic_rh_gl(
         [0.0, 0.0, c, 0.0],
         [tx, ty, tz, 1.0],
     ]
+}
+
+fn create_sprite_pipeline() -> crate::pipeline_description::GraphicsPipeline {
+    use crate::pipeline_description as dsc;
+    use rust_decimal::Decimal;
+
+    let mut sprite_pipeline = dsc::GraphicsPipeline::default();
+    sprite_pipeline.pipeline_layout.descriptor_set_layouts = vec![
+        dsc::DescriptorSetLayout {
+            descriptor_set_layout_bindings: vec! [
+                dsc::DescriptorSetLayoutBinding {
+                    binding: 0,
+                    descriptor_type: dsc::DescriptorType::UniformBuffer,
+                    descriptor_count: 1,
+                    stage_flags: dsc::ShaderStageFlags::Vertex
+                },
+                dsc::DescriptorSetLayoutBinding {
+                    binding: 1,
+                    descriptor_type: dsc::DescriptorType::Sampler,
+                    descriptor_count: 1,
+                    stage_flags: dsc::ShaderStageFlags::Fragment
+                },
+            ]
+        },
+        dsc::DescriptorSetLayout {
+            descriptor_set_layout_bindings: vec! [
+                dsc::DescriptorSetLayoutBinding {
+                    binding: 0,
+                    descriptor_type: dsc::DescriptorType::SampledImage,
+                    descriptor_count: 1,
+                    stage_flags: dsc::ShaderStageFlags::Fragment
+                }
+            ]
+        }
+    ];
+    sprite_pipeline.fixed_function_state.input_assembly_state.primitive_topology = dsc::PrimitiveTopology::TriangleList;
+    sprite_pipeline.fixed_function_state.vertex_input_state.binding_descriptions = vec![
+        dsc::VertexInputBindingDescription {
+            binding: 0,
+            stride: std::mem::size_of::<SpriteVertex>() as u32,
+            input_rate: dsc::VertexInputRate::Vertex
+        }
+    ];
+    sprite_pipeline.fixed_function_state.vertex_input_state.attribute_descriptions = vec![
+        dsc::VertexInputAttributeDescription {
+            binding: 0,
+            location: 0,
+            format: dsc::Format::R32G32_SFLOAT,
+            offset: renderer_shell_vulkan::offset_of!(SpriteVertex, pos) as u32,
+        },
+        dsc::VertexInputAttributeDescription {
+            binding: 0,
+            location: 1,
+            format: dsc::Format::R32G32_SFLOAT,
+            offset: renderer_shell_vulkan::offset_of!(SpriteVertex, tex_coord) as u32,
+        },
+    ];
+
+    use rust_decimal::prelude::FromPrimitive;
+    sprite_pipeline.fixed_function_state.viewport_state.viewports = vec![
+        dsc::Viewport {
+            dimensions: Default::default(),
+            min_depth: Decimal::from_f32(0.0).unwrap(),
+            max_depth: Decimal::from_f32(1.0).unwrap(),
+        }
+    ];
+    sprite_pipeline.fixed_function_state.viewport_state.scissors = vec![
+        Default::default()
+    ];
+
+    sprite_pipeline.fixed_function_state.rasterization_state = dsc::PipelineRasterizationState {
+        front_face: dsc::FrontFace::CounterClockwise,
+        line_width: Decimal::from_f32(1.0).unwrap(),
+        polygon_mode: dsc::PolygonMode::Fill,
+        cull_mode: dsc::CullModeFlags::None,
+        ..Default::default()
+    };
+
+    sprite_pipeline.fixed_function_state.multisample_state.rasterization_samples = dsc::SampleCountFlags::SampleCount1;
+
+    sprite_pipeline.fixed_function_state.color_blend_state.attachments = vec![
+        dsc::PipelineColorBlendAttachmentState {
+            color_write_mask: dsc::ColorComponentFlags {
+                red: true,
+                green: true,
+                blue: true,
+                alpha: true
+            },
+            blend_enable: true,
+            src_color_blend_factor: dsc::BlendFactor::SrcAlpha,
+            dst_color_blend_factor: dsc::BlendFactor::OneMinusSrcAlpha,
+            color_blend_op: dsc::BlendOp::Add,
+            src_alpha_blend_factor: dsc::BlendFactor::One,
+            dst_alpha_blend_factor: dsc::BlendFactor::Zero,
+            alpha_blend_op: dsc::BlendOp::Add
+        }
+    ];
+
+    sprite_pipeline.renderpass.attachments = vec![
+        dsc::AttachmentDescription {
+            flags: dsc::AttachmentDescriptionFlags::None,
+            format: dsc::Format::MatchSwapchain,
+            samples: dsc::SampleCountFlags::SampleCount1,
+            load_op: dsc::AttachmentLoadOp::Clear,
+            store_op: dsc::AttachmentStoreOp::Store,
+            stencil_load_op: dsc::AttachmentLoadOp::DontCare,
+            stencil_store_op: dsc::AttachmentStoreOp::DontCare,
+            initial_layout: dsc::ImageLayout::Undefined,
+            final_layout: dsc::ImageLayout::PresentSrcKhr,
+        }
+    ];
+
+    sprite_pipeline.renderpass.subpasses = vec![
+        dsc::SubpassDescription {
+            color_attachments: vec![
+                dsc::AttachmentReference {
+                    attachment: dsc::AttachmentIndex::Index(0),
+                    layout: dsc::ImageLayout::ColorAttachmentOptimal
+                }
+            ],
+            pipeline_bind_point: dsc::PipelineBindPoint::Graphics,
+            ..Default::default()
+        }
+    ];
+
+    sprite_pipeline.renderpass.dependencies = vec![
+        dsc::SubpassDependency {
+            dependency_flags: dsc::DependencyFlags::Empty,
+            src_subpass: dsc::SubpassDependencyIndex::External,
+            dst_subpass: dsc::SubpassDependencyIndex::Index(0),
+            src_stage_mask: dsc::PipelineStageFlags::ColorAttachmentOutput,
+            src_access_mask: vec![],
+            dst_stage_mask: dsc::PipelineStageFlags::ColorAttachmentOutput,
+            dst_access_mask: vec![dsc::AccessFlags::ColorAttachmentRead, dsc::AccessFlags::ColorAttachmentWrite]
+        }
+    ];
+
+    let vert_shader_data = include_bytes!("../../shaders/sprite.vert.spv");
+    let frag_shader_data = include_bytes!("../../shaders/sprite.frag.spv");
+    let vert_code = renderer_shell_vulkan::util::read_spv(&mut std::io::Cursor::new(vert_shader_data.as_ref()))
+        .expect("Failed to read vertex shader spv file");
+    let frag_code = renderer_shell_vulkan::util::read_spv(&mut std::io::Cursor::new(frag_shader_data.as_ref()))
+        .expect("Failed to read frag shader spv file");
+
+    sprite_pipeline.pipeline_shader_stages.stages = vec![
+        dsc::PipelineShaderStage {
+            stage: dsc::ShaderStageFlags::Vertex,
+            entry_name: CString::new("main").unwrap(),
+            shader_module: dsc::ShaderModule {
+                code: vert_code
+            }
+        },
+        dsc::PipelineShaderStage {
+            stage: dsc::ShaderStageFlags::Fragment,
+            entry_name: CString::new("main").unwrap(),
+            shader_module: dsc::ShaderModule {
+                code: frag_code
+            }
+        }
+    ];
+
+    sprite_pipeline
 }

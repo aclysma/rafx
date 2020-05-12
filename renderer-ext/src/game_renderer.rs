@@ -14,6 +14,8 @@ use crossbeam_channel::Sender;
 use std::ops::Deref;
 use crate::resource_managers::{SpriteResourceManager, VkMeshResourceManager, ImageResourceManager, MaterialResourceManager};
 use crate::renderpass::VkMeshRenderPass;
+use crate::pipeline_manager::PipelineManager;
+use crate::pipeline_description::SwapchainSurfaceInfo;
 
 pub struct GameRenderer {
     time_state: TimeState,
@@ -23,6 +25,9 @@ pub struct GameRenderer {
     material_resource_manager: MaterialResourceManager,
     sprite_resource_manager: SpriteResourceManager,
     mesh_resource_manager: VkMeshResourceManager,
+
+    pipeline_manager: Option<PipelineManager>,
+
     sprite_renderpass: Option<VkSpriteRenderPass>,
     mesh_renderpass: Option<VkMeshRenderPass>,
 }
@@ -60,6 +65,7 @@ impl GameRenderer {
             material_resource_manager,
             sprite_resource_manager,
             mesh_resource_manager,
+            pipeline_manager: None,
             sprite_renderpass: None,
             mesh_renderpass: None,
         })
@@ -71,7 +77,6 @@ impl GameRenderer {
     ) {
         self.time_state = time_state.clone();
     }
-
 
     pub fn image_resource_manager(&self) -> &ImageResourceManager {
         &self.image_resource_manager
@@ -116,10 +121,20 @@ impl VkSurfaceEventListener for GameRenderer {
         self.imgui_event_listener
             .swapchain_created(device_context, swapchain)?;
 
+        self.pipeline_manager = Some(PipelineManager::new(
+            device_context,
+            SwapchainSurfaceInfo {
+                surface_format: swapchain.swapchain_info.surface_format,
+                extents: swapchain.swapchain_info.extents
+            }
+        ));
+        let mut pipeline_manager = self.pipeline_manager.as_mut().unwrap();
+
         log::debug!("Create VkSpriteRenderPass");
         self.sprite_renderpass = Some(VkSpriteRenderPass::new(
             device_context,
             swapchain,
+            pipeline_manager,
             &self.sprite_resource_manager,
         )?);
         log::debug!("Create VkMeshRenderPass");
@@ -139,6 +154,7 @@ impl VkSurfaceEventListener for GameRenderer {
 
         self.sprite_renderpass = None;
         self.mesh_renderpass = None;
+        self.pipeline_manager = None;
         self.imgui_event_listener.swapchain_destroyed();
     }
 

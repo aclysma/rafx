@@ -1,0 +1,170 @@
+(
+    pipeline_layout: (
+        descriptor_set_layouts: [
+            (
+                descriptor_set_layout_bindings: [
+                    (
+                        binding: 0,
+                        descriptor_type: Sampler,
+                        descriptor_count: 0,
+                        stage_flags: Vertex,
+                    ),
+                    (
+                        binding: 1,
+                        descriptor_type: Sampler,
+                        descriptor_count: 0,
+                        stage_flags: Vertex,
+                    ),
+                ],
+            ),
+            (
+                descriptor_set_layout_bindings: [
+                    (
+                        binding: 0,
+                        descriptor_type: Sampler,
+                        descriptor_count: 0,
+                        stage_flags: Vertex,
+                    ),
+                ],
+            ),
+        ],
+        push_constant_ranges: [
+            (
+                stage_flags: Vertex,
+                offset: 0,
+                size: 0,
+            ),
+        ],
+    ),
+    renderpass: (
+        attachments: [
+            (
+                flags: MayAlias,
+                format: MatchSwapchain,
+                samples: SampleCount1,
+                load_op: Load,
+                store_op: Store,
+                stencil_load_op: Load,
+                stencil_store_op: Store,
+                initial_layout: Undefined,
+                final_layout: Undefined,
+            ),
+        ],
+        subpasses: [
+            (
+                pipeline_bind_point: Graphics,
+                input_attachments: [],
+                color_attachments: [],
+                resolve_attachments: [],
+                depth_stencil_attachment: None,
+            ),
+        ],
+        dependencies: [
+            (
+                src_subpass: External,
+                dst_subpass: External,
+                src_stage_mask: Empty,
+                dst_stage_mask: Empty,
+                src_access_mask: [],
+                dst_access_mask: [],
+                dependency_flags: Empty,
+            ),
+        ],
+    ),
+    fixed_function_state: (
+        vertex_input_state: (
+            binding_descriptions: [
+                (
+                    binding: 0,
+                    stride: 0,
+                    input_rate: Vertex,
+                ),
+            ],
+            attribute_descriptions: [
+                (
+                    location: 0,
+                    binding: 0,
+                    format: MatchSwapchain,
+                    offset: 0,
+                ),
+            ],
+        ),
+        input_assembly_state: (
+            primitive_topology: PointList,
+            primitive_restart_enable: false,
+        ),
+        viewport_state: (
+            viewports: [
+                (
+                    dimensions: MatchSwapchain,
+                    min_depth: 0,
+                    max_depth: 0,
+                ),
+            ],
+            scissors: [
+                (
+                    dimensions: MatchSwapchain,
+                ),
+            ],
+        ),
+        rasterization_state: (
+            depth_clamp_enable: false,
+            rasterizer_discard_enable: false,
+            polygon_mode: Fill,
+            cull_mode: None,
+            front_face: CounterClockwise,
+            depth_bias_enable: false,
+            depth_bias_constant_factor: 0,
+            depth_bias_clamp: 0,
+            depth_bias_slope_factor: 0,
+            line_width: 0,
+        ),
+        multisample_state: (
+            rasterization_samples: SampleCount1,
+            sample_shading_enable: false,
+            min_sample_shading: 0,
+            sample_mask: None,
+            alpha_to_coverage_enable: false,
+            alpha_to_one_enable: false,
+        ),
+        color_blend_state: (
+            logic_op_enable: false,
+            logic_op: Clear,
+            attachments: [
+                (
+                    blend_enable: false,
+                    src_color_blend_factor: Zero,
+                    dst_color_blend_factor: Zero,
+                    color_blend_op: Add,
+                    src_alpha_blend_factor: Zero,
+                    dst_alpha_blend_factor: Zero,
+                    alpha_blend_op: Add,
+                    color_write_mask: (
+                        red: false,
+                        green: false,
+                        blue: false,
+                        alpha: false,
+                    ),
+                ),
+            ],
+            blend_constants: (0, 0, 0, 0),
+        ),
+        dynamic_state: (
+            dynamic_states: [
+                Viewport,
+                Scissor,
+            ],
+        ),
+    ),
+    pipeline_shader_stages: (
+        stages: [
+            (
+                stage: Vertex,
+                shader_module: (
+                    code: [],
+                ),
+                entry_name: "",
+            ),
+        ],
+    ),
+)

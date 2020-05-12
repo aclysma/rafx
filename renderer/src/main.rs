@@ -46,6 +46,202 @@ fn load_asset<T>(
     atelier_assets::loader::handle::Handle::<T>::new(asset_resource.tx().clone(), load_handle)
 }
 
+use renderer_ext::pipeline_description as dsc;
+fn create_kitchen_sink_pipeline() -> dsc::GraphicsPipeline {
+    let mut kitchen_sink_pipeline = dsc::GraphicsPipeline::default();
+    kitchen_sink_pipeline.pipeline_layout.descriptor_set_layouts = vec![
+        dsc::DescriptorSetLayout {
+            descriptor_set_layout_bindings: vec! [
+                Default::default(),
+                dsc::DescriptorSetLayoutBinding {
+                    binding: 1,
+                    ..Default::default()
+                },
+            ]
+        },
+        dsc::DescriptorSetLayout {
+            descriptor_set_layout_bindings: vec! [
+                Default::default()
+            ]
+        }
+    ];
+    kitchen_sink_pipeline.pipeline_layout.push_constant_ranges = vec![
+        dsc::PushConstantRange {
+            ..Default::default()
+        }
+    ];
+    kitchen_sink_pipeline.renderpass.attachments = vec![
+        Default::default()
+    ];
+
+    kitchen_sink_pipeline.renderpass.subpasses = vec![
+        Default::default()
+    ];
+    kitchen_sink_pipeline.renderpass.dependencies = vec![
+        Default::default()
+    ];
+    kitchen_sink_pipeline.fixed_function_state.vertex_input_state.binding_descriptions = vec![
+        Default::default()
+    ];
+
+    kitchen_sink_pipeline.fixed_function_state.vertex_input_state.attribute_descriptions = vec![
+        Default::default()
+    ];
+    kitchen_sink_pipeline.fixed_function_state.viewport_state.viewports = vec![
+        Default::default()
+    ];
+    kitchen_sink_pipeline.fixed_function_state.viewport_state.scissors = vec![
+        Default::default()
+    ];
+    kitchen_sink_pipeline.fixed_function_state.color_blend_state.attachments = vec![
+        Default::default()
+    ];
+    kitchen_sink_pipeline.fixed_function_state.dynamic_state.dynamic_states = vec![
+        dsc::DynamicState::Viewport,
+        dsc::DynamicState::Scissor
+    ];
+
+    kitchen_sink_pipeline.pipeline_shader_stages.stages = vec![
+        Default::default()
+    ];
+
+    kitchen_sink_pipeline
+}
+
+fn create_sprite_pipeline() -> dsc::GraphicsPipeline {
+    use rust_decimal::Decimal;
+    use renderer_ext::renderpass::SpriteVertex;
+
+    let mut sprite_pipeline = dsc::GraphicsPipeline::default();
+    sprite_pipeline.pipeline_layout.descriptor_set_layouts = vec![
+        dsc::DescriptorSetLayout {
+            descriptor_set_layout_bindings: vec! [
+                dsc::DescriptorSetLayoutBinding {
+                    binding: 0,
+                    descriptor_type: dsc::DescriptorType::UniformBuffer,
+                    descriptor_count: 1,
+                    stage_flags: dsc::ShaderStageFlags::Vertex
+                },
+                dsc::DescriptorSetLayoutBinding {
+                    binding: 1,
+                    descriptor_type: dsc::DescriptorType::Sampler,
+                    descriptor_count: 1,
+                    stage_flags: dsc::ShaderStageFlags::Fragment
+                },
+            ]
+        },
+        dsc::DescriptorSetLayout {
+            descriptor_set_layout_bindings: vec! [
+                dsc::DescriptorSetLayoutBinding {
+                    binding: 0,
+                    descriptor_type: dsc::DescriptorType::SampledImage,
+                    descriptor_count: 1,
+                    stage_flags: dsc::ShaderStageFlags::Fragment
+                }
+            ]
+        }
+    ];
+    sprite_pipeline.fixed_function_state.input_assembly_state.primitive_topology = dsc::PrimitiveTopology::TriangleList;
+    sprite_pipeline.fixed_function_state.vertex_input_state.binding_descriptions = vec![
+        dsc::VertexInputBindingDescription {
+            binding: 0,
+            stride: std::mem::size_of::<renderer_ext::renderpass::SpriteVertex>() as u32,
+            input_rate: dsc::VertexInputRate::Vertex
+        }
+    ];
+    sprite_pipeline.fixed_function_state.vertex_input_state.attribute_descriptions = vec![
+        dsc::VertexInputAttributeDescription {
+            binding: 0,
+            location: 0,
+            format: dsc::Format::R32G32_SFLOAT,
+            offset: renderer_shell_vulkan::offset_of!(renderer_ext::renderpass::SpriteVertex, pos) as u32,
+        },
+        dsc::VertexInputAttributeDescription {
+            binding: 0,
+            location: 1,
+            format: dsc::Format::R32G32_SFLOAT,
+            offset: renderer_shell_vulkan::offset_of!(renderer_ext::renderpass::SpriteVertex, tex_coord) as u32,
+        },
+    ];
+
+    use rust_decimal::prelude::FromPrimitive;
+    sprite_pipeline.fixed_function_state.viewport_state.viewports = vec![
+        dsc::Viewport {
+            dimensions: Default::default(),
+            min_depth: Decimal::from_f32(0.0).unwrap(),
+            max_depth: Decimal::from_f32(1.0).unwrap(),
+        }
+    ];
+    sprite_pipeline.fixed_function_state.viewport_state.scissors = vec![
+        Default::default()
+    ];
+
+    sprite_pipeline.fixed_function_state.rasterization_state = dsc::PipelineRasterizationState {
+        front_face: dsc::FrontFace::CounterClockwise,
+        line_width: Decimal::from_f32(1.0).unwrap(),
+        polygon_mode: dsc::PolygonMode::Fill,
+        cull_mode: dsc::CullModeFlags::None,
+        ..Default::default()
+    };
+
+    sprite_pipeline.fixed_function_state.multisample_state.rasterization_samples = dsc::SampleCountFlags::SampleCount1;
+
+    sprite_pipeline.fixed_function_state.color_blend_state.attachments = vec![
+        dsc::PipelineColorBlendAttachmentState {
+            color_write_mask: dsc::ColorComponentFlags {
+                red: true,
+                green: true,
+                blue: true,
+                alpha: true
+            },
+            blend_enable: true,
+            src_color_blend_factor: dsc::BlendFactor::SrcAlpha,
+            dst_color_blend_factor: dsc::BlendFactor::OneMinusSrcAlpha,
+            color_blend_op: dsc::BlendOp::Add,
+            src_alpha_blend_factor: dsc::BlendFactor::One,
+            dst_alpha_blend_factor: dsc::BlendFactor::Zero,
+            alpha_blend_op: dsc::BlendOp::Add
+        }
+    ];
+
+    sprite_pipeline
+}
+
+fn write_example_pipeline_file(name: &'static str, pipeline: &dsc::GraphicsPipeline) {
+    let pipeline_str = serde_json::to_string_pretty(&pipeline);
+    match pipeline_str {
+        Ok(string) => std::fs::File::create(format!("example_pipeline_{}.json.pipeline", name)).unwrap().write_all(string.as_bytes()).unwrap(),
+        Err(err) => println!("Could not create json: {:?}", err)
+    }
+
+    let pipeline_str = ron::ser::to_string_pretty(&pipeline, ron::ser::PrettyConfig::default());
+    match pipeline_str {
+        Ok(string) => std::fs::File::create(format!("example_pipeline_{}.ron.pipeline", name)).unwrap().write_all(string.as_bytes()).unwrap(),
+        Err(err) => println!("Could not create ron: {:?}", err)
+    }
+}
+
+fn hash_pipeline(pipeline: &dsc::GraphicsPipeline) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    pipeline.hash(&mut hasher);
+    hasher.finish()
+}
+
+fn write_example_pipeline_files() {
+    let graphics_pipeline = dsc::GraphicsPipeline::default();
+    write_example_pipeline_file("default", &graphics_pipeline);
+    println!("default hash: {}", hash_pipeline(&graphics_pipeline));
+
+    let graphics_pipeline = create_sprite_pipeline();
+    write_example_pipeline_file("sprite", &graphics_pipeline);
+    println!("sprite hash: {}", hash_pipeline(&graphics_pipeline));
+
+    let graphics_pipeline = create_kitchen_sink_pipeline();
+    write_example_pipeline_file("kitchen_sink", &graphics_pipeline);
+    println!("kitchen sink hash: {}", hash_pipeline(&graphics_pipeline));
+}
+
 fn main() {
     // let u32_value : u32 = 2000000000;
     // let u16_value : u16 = u32_value.try_into();
@@ -68,62 +264,14 @@ fn main() {
     });
 
 
-    use renderer_ext::pipeline_description as dsc;
-    let default_pipeline = dsc::GraphicsPipeline::default();
-
-    let mut sprite_pipeline = dsc::GraphicsPipeline::default();
-    sprite_pipeline.pipeline_layout.descriptor_set_layouts = vec![
-        dsc::DescriptorSetLayout {
-            descriptor_set_layout_bindings: vec! [
-                dsc::DescriptorSetLayoutBinding {
-                    ..Default::default()
-                },
-                dsc::DescriptorSetLayoutBinding {
-                    ..Default::default()
-                },
-            ]
-        },
-        dsc::DescriptorSetLayout {
-            descriptor_set_layout_bindings: vec! [
-                dsc::DescriptorSetLayoutBinding {
-                    ..Default::default()
-                }
-            ]
-        }
-    ];
 
 
+    write_example_pipeline_files();
 
-
-
-
-
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
-    default_pipeline.hash(&mut hasher);
-    let hash = hasher.finish();
-    println!("HASH OF PIPELINE: {}", hash);
 
 
     //TODO: Could consider using json_comments
 
-    let pipeline_json = serde_json::to_string_pretty(&sprite_pipeline);
-    match pipeline_json {
-        Ok(string) => std::fs::File::create("pipeline_json_example.json").unwrap().write_all(string.as_bytes()).unwrap(),
-        Err(err) => println!("Could not create json: {:?}", err)
-    }
-
-    let pipeline_json = ron::ser::to_string_pretty(&sprite_pipeline, ron::ser::PrettyConfig::default());
-    match pipeline_json {
-        Ok(string) => std::fs::File::create("pipeline_ron_example.ron").unwrap().write_all(string.as_bytes()).unwrap(),
-        Err(err) => println!("Could not create ron: {:?}", err)
-    }
-
-    let pipeline_toml = toml::to_string_pretty(&sprite_pipeline);
-    match pipeline_toml {
-        Ok(string) => std::fs::File::create("pipeline_toml_example.toml").unwrap().write_all(string.as_bytes()).unwrap(),
-        Err(err) => println!("Could not create toml: {:?}", err)
-    }
 
     // let pipeline_ron = ron::ser::to_string_pretty(&sprite_pipeline, ron::ser::PrettyConfig::default()).unwrap();
     // let pipeline_toml = toml::to_string_pretty(&sprite_pipeline).unwrap();
