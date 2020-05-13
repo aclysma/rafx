@@ -20,18 +20,20 @@ where
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
-        load_op: AssetLoadOp,
         asset_uuid: &AssetUuid,
         resource_handle: ResourceHandle<T>,
         version: u32,
         asset: &T,
+        load_op: AssetLoadOp,
     );
 
     fn commit_asset_version(
         &mut self,
         load_handle: LoadHandle,
+        asset_uuid: &AssetUuid,
         resource_handle: ResourceHandle<T>,
         version: u32,
+        asset: &T,
     );
 
     fn free(
@@ -270,6 +272,7 @@ impl<A: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send> TypedAssetSt
 struct AssetState<A> {
     version: u32,
     resource_handle: ResourceHandle<A>,
+    asset_uuid: AssetUuid,
     asset: A,
 }
 
@@ -332,34 +335,40 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             || bincode::deserialize::<A>(data),
         )?;
 
-        // Find or allocate the slab key
+        // Find or allocate the slab key. This is used to generate a unique value appropriate for
+        // indexing into arrays
         let resource_handle = self
             .assets
             .get(&load_handle)
             .map(|x| x.resource_handle)
             .unwrap_or_else(|| ResourceHandle::new(self.slab.allocate(load_handle)));
 
+        let asset_uuid = loader_info.get_asset_id(load_handle).unwrap();
+
+        // Add to list of uncommitted assets
         self.uncommitted.insert(
             load_handle,
             AssetState {
+                asset_uuid,
                 asset,
                 resource_handle,
                 version,
             },
         );
-        log::info!("{} bytes loaded for {:?}", data.len(), load_handle);
 
+        // If we have a load handler, fire the update_asset callback, otherwise trigger
+        // load_op.complete() immediately
         if let Some(load_handler) = &mut self.load_handler {
             // We have a load handler, pass it a reference to the asset and a load_op. The load handler
             // will be responsible for calling load_op.complete() or load_op.error()
-            let asset = self.uncommitted.get(&load_handle).unwrap();
+            let asset_state = self.uncommitted.get(&load_handle).unwrap();
             load_handler.update_asset(
                 load_handle,
-                load_op,
-                &loader_info.get_asset_id(load_handle).unwrap(),
+                &asset_uuid,
                 resource_handle,
                 version,
-                &asset.asset,
+                &asset_state.asset,
+                load_op,
             );
         } else {
             // Since there is no load handler, we call load_op.complete() immediately
@@ -374,36 +383,45 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         load_handle: LoadHandle,
         version: u32,
     ) {
-        // The commit step is done after an asset load has completed.
-        // It exists to avoid frames where an asset that was loaded is unloaded, which
-        // could happen when hot reloading. To support this case, you must support having multiple
-        // versions of an asset loaded at the same time.
+        // Remove from the uncommitted list
         let asset_state = self
             .uncommitted
             .remove(&load_handle)
             .expect("asset not present when committing");
 
-        let resource_handle = asset_state.resource_handle;
-        self.assets.insert(load_handle, asset_state);
-
+        // If a load handler exists, trigger the commit_asset_version callback
         if let Some(load_handler) = &mut self.load_handler {
-            load_handler.commit_asset_version(load_handle, resource_handle, version);
+            load_handler.commit_asset_version(
+                load_handle,
+                &asset_state.asset_uuid,
+                asset_state.resource_handle,
+                version,
+                &asset_state.asset
+            );
         }
-        log::info!("!!! Commit {:?}", load_handle);
+
+        // Commit the result
+        let result = self.assets.insert(load_handle, asset_state);
+
+        // Insert should return none because the load_handle should be unique
+        debug_assert!(result.is_none());
     }
 
     fn free(
         &mut self,
         load_handle: LoadHandle,
     ) {
-        log::info!("Free {:?}", load_handle);
+        // Remove it from the list of assets
         let asset_state = self.assets.remove(&load_handle);
+
         if let Some(asset_state) = asset_state {
-            let resource_handle = asset_state.resource_handle;
-            self.slab.free(&asset_state.resource_handle.key);
+            // Trigger the free callback on the load handler, if one exists
             if let Some(load_handler) = &mut self.load_handler {
-                load_handler.free(load_handle, resource_handle);
+                load_handler.free(load_handle, asset_state.resource_handle);
             }
+
+            // Free the ResourceHandle
+            self.slab.free(&asset_state.resource_handle.key);
         }
     }
 

@@ -36,11 +36,6 @@ use crate::asset_storage::ResourceHandle;
 use fnv::FnvHashMap;
 
 
-
-
-
-
-
 /// Represents an image that will replace another image
 pub struct PipelineResourceUpdate {
     pub asset_uuid: AssetUuid,

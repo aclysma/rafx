@@ -23,7 +23,6 @@ use crate::resource_managers::image_resource_manager::ImageResourceUpdate;
 
 struct PendingImageUpdate {
     awaiter: ImageUploadOpAwaiter,
-    asset_uuid: AssetUuid
 }
 
 // This is registered with the asset storage which lets us hook when assets are updated
@@ -55,11 +54,11 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
-        load_op: AssetLoadOp,
         asset_uuid: &AssetUuid,
         resource_handle: ResourceHandle<ImageAsset>,
         version: u32,
         asset: &ImageAsset,
+        load_op: AssetLoadOp,
     ) {
         log::info!(
             "ImageLoadHandler update_asset {} {:?} {:?}",
@@ -77,7 +76,6 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
 
         let pending_update = PendingImageUpdate {
             awaiter,
-            asset_uuid: *asset_uuid
         };
 
         self.pending_updates
@@ -97,8 +95,10 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
     fn commit_asset_version(
         &mut self,
         load_handle: LoadHandle,
+        asset_uuid: &AssetUuid,
         resource_handle: ResourceHandle<ImageAsset>,
         version: u32,
+        asset: &ImageAsset,
     ) {
         log::info!(
             "ImageLoadHandler commit_asset_version {} {:?} {:?}",
@@ -121,8 +121,8 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
                         log::info!("Commit asset {:?} {:?}", load_handle, version);
                         self.image_update_tx.send(ImageResourceUpdate {
                             image: image,
-                            resource_handle: resource_handle,
-                            asset_uuid: pending_update.asset_uuid
+                            resource_handle,
+                            asset_uuid: *asset_uuid
                         });
                     }
                     ImageUploadOpResult::UploadError => unreachable!(),
@@ -150,7 +150,9 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
             load_handle,
             resource_handle
         );
+
         //TODO: We are not unloading images
+
         self.pending_updates.remove(&load_handle);
     }
 }

@@ -8,8 +8,10 @@ use type_uuid::*;
 use std::io::Read;
 use std::convert::TryInto;
 
-#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone)]
-#[uuid = "e0ae2222-1a44-4022-af95-03c9101ac89e"]
-pub struct ShaderAsset {
-    pub data: Vec<u32>
+#[derive(TypeUuid, Serialize, Deserialize)]
+#[uuid = "e6166902-8716-401b-9d2e-8b01701c5626"]
+pub struct ImageAsset {
+    pub width: u32,
+    pub height: u32,
+    pub data: Vec<u8>,
 }

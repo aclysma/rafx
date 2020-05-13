@@ -17,41 +17,45 @@ use image::load;
 use crate::upload::PendingImageUpload;
 use crate::upload::ImageUploadOpResult;
 use crate::upload::ImageUploadOpAwaiter;
-use crate::resource_managers::sprite_resource_manager::SpriteResourceUpdate;
-use crate::pipeline::image::ImageAsset;
-use crate::resource_managers::image_resource_manager::ImageResourceUpdate;
-use crate::pipeline::gltf::MaterialAsset;
-use crate::resource_managers::material_resource_manager::MaterialResourceUpdate;
+use crate::pipeline::shader::ShaderAsset;
+use ash::vk;
+use crate::resource_managers::shader_resource_manager::ShaderResourceUpdate;
+use ash::version::DeviceV1_0;
 
-// This is registered with the asset storage which lets us hook when assets are updated
-pub struct MaterialLoadHandler {
-    material_update_tx: Sender<MaterialResourceUpdate>,
+// This is registered with the asset storage, letting us hook into the asset
+// update/commit/free lifecycle
+pub struct ShaderLoadHandler {
+    // We fire update messages into the shader resource manager here
+    device_context: VkDeviceContext,
+    shader_update_tx: Sender<ShaderResourceUpdate>,
 }
 
-impl MaterialLoadHandler {
+impl ShaderLoadHandler {
     pub fn new(
-        material_update_tx: Sender<MaterialResourceUpdate>,
+        device_context: &VkDeviceContext,
+        shader_update_tx: Sender<ShaderResourceUpdate>,
     ) -> Self {
-        MaterialLoadHandler {
-            material_update_tx,
+        ShaderLoadHandler {
+            device_context: device_context.clone(),
+            shader_update_tx,
         }
     }
 }
 
 // This sends the texture to the upload queue. The upload queue will batch uploads together when update()
 // is called on it. When complete, the upload queue will send the material handle back via a channel
-impl ResourceLoadHandler<MaterialAsset> for MaterialLoadHandler {
+impl ResourceLoadHandler<ShaderAsset> for ShaderLoadHandler {
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
         asset_uuid: &AssetUuid,
-        resource_handle: ResourceHandle<MaterialAsset>,
+        resource_handle: ResourceHandle<ShaderAsset>,
         version: u32,
-        asset: &MaterialAsset,
+        asset: &ShaderAsset,
         load_op: AssetLoadOp,
     ) {
         log::info!(
-            "MaterialLoadHandler update_asset {} {:?} {:?}",
+            "ShaderLoadHandler update_asset {} {:?} {:?}",
             version,
             load_handle,
             resource_handle
@@ -64,9 +68,9 @@ impl ResourceLoadHandler<MaterialAsset> for MaterialLoadHandler {
         &mut self,
         load_handle: LoadHandle,
         asset_uuid: &AssetUuid,
-        resource_handle: ResourceHandle<MaterialAsset>,
+        resource_handle: ResourceHandle<ShaderAsset>,
         version: u32,
-        asset: &MaterialAsset,
+        asset: &ShaderAsset,
     ) {
         log::info!(
             "MaterialLoadHandler commit_asset_version {} {:?} {:?}",
@@ -75,17 +79,28 @@ impl ResourceLoadHandler<MaterialAsset> for MaterialLoadHandler {
             resource_handle
         );
 
-        self.material_update_tx.send(MaterialResourceUpdate {
-            asset_uuid: *asset_uuid,
-            resource_handle,
-            image_uuid: asset.base_color_texture,
-        });
+        let shader = vk::ShaderModuleCreateInfo::builder()
+            .code(&asset.data);
+        let shader_module = unsafe {
+            self.device_context.device().create_shader_module(&shader, None)
+        };
+
+        match shader_module {
+            Ok(shader_module) => {
+                self.shader_update_tx.send(ShaderResourceUpdate {
+                    asset_uuid: *asset_uuid,
+                    resource_handle,
+                    shader_module
+                });
+            },
+            Err(err) => log::error!("Error loading shader module: {:?}", err)
+        }
     }
 
     fn free(
         &mut self,
         load_handle: LoadHandle,
-        resource_handle: ResourceHandle<MaterialAsset>,
+        resource_handle: ResourceHandle<ShaderAsset>,
     ) {
         log::info!(
             "MaterialLoadHandler free {:?} {:?}",
@@ -93,6 +108,6 @@ impl ResourceLoadHandler<MaterialAsset> for MaterialLoadHandler {
             resource_handle
         );
 
-        //TODO: We are not unloading materials
+        //TODO: We are not unloading shaders
     }
 }

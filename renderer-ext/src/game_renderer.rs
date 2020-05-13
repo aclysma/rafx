@@ -12,7 +12,7 @@ use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
 use crossbeam_channel::Sender;
 use std::ops::Deref;
-use crate::resource_managers::{SpriteResourceManager, VkMeshResourceManager, ImageResourceManager, MaterialResourceManager};
+use crate::resource_managers::{SpriteResourceManager, VkMeshResourceManager, ImageResourceManager, MaterialResourceManager, ShaderResourceManager};
 use crate::renderpass::VkMeshRenderPass;
 use crate::pipeline_manager::PipelineManager;
 use crate::pipeline_description::SwapchainSurfaceInfo;
@@ -21,6 +21,7 @@ pub struct GameRenderer {
     time_state: TimeState,
     imgui_event_listener: ImguiRenderEventListener,
 
+    shader_resource_manager: ShaderResourceManager,
     image_resource_manager: ImageResourceManager,
     material_resource_manager: MaterialResourceManager,
     sprite_resource_manager: SpriteResourceManager,
@@ -40,6 +41,11 @@ impl GameRenderer {
         time_state: &TimeState,
     ) -> VkResult<Self> {
         let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
+
+        let shader_resource_manager = ShaderResourceManager::new(
+            device_context,
+            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        )?;
         let image_resource_manager = ImageResourceManager::new(
             device_context,
             renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
@@ -61,6 +67,7 @@ impl GameRenderer {
         Ok(GameRenderer {
             time_state: time_state.clone(),
             imgui_event_listener,
+            shader_resource_manager,
             image_resource_manager,
             material_resource_manager,
             sprite_resource_manager,
@@ -76,6 +83,14 @@ impl GameRenderer {
         time_state: &TimeState,
     ) {
         self.time_state = time_state.clone();
+    }
+
+    pub fn shader_resource_manager(&self) -> &ShaderResourceManager {
+        &self.shader_resource_manager
+    }
+
+    pub fn shader_resource_manager_mut(&mut self) -> &mut ShaderResourceManager {
+        &mut self.shader_resource_manager
     }
 
     pub fn image_resource_manager(&self) -> &ImageResourceManager {
@@ -167,6 +182,7 @@ impl VkSurfaceEventListener for GameRenderer {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
+        self.shader_resource_manager.update();
         self.image_resource_manager.update();
         self.material_resource_manager.update(&self.image_resource_manager);
         self.sprite_resource_manager.update(&self.image_resource_manager);
@@ -262,6 +278,14 @@ impl GameRendererWithContext {
 
     pub fn context(&self) -> &VkContext {
         &self.context
+    }
+
+    pub fn shader_resource_manager(&self) -> &ShaderResourceManager {
+        self.game_renderer.shader_resource_manager()
+    }
+
+    pub fn shader_resource_manager_mut(&mut self) -> &mut ShaderResourceManager {
+        self.game_renderer.shader_resource_manager_mut()
     }
 
     pub fn image_resource_manager(&self) -> &ImageResourceManager {

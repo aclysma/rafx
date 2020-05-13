@@ -1,0 +1,33 @@
+(
+    version: 1,
+    import_hash: Some(1001553998827212235),
+    importer_version: 3,
+    importer_type: "ecf05dde-045a-4201-9ec5-f14f91f14014",
+    importer_options: (),
+    importer_state: (Some("32c20111-bc4a-4dc7-bdf4-85d620ba199a")),
+    assets: [
+        (
+            id: "32c20111-bc4a-4dc7-bdf4-85d620ba199a",
+            search_tags: [
+                ("file_name", Some("sprite.pipeline")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 10880238728088077416,
+                id: "32c20111-bc4a-4dc7-bdf4-85d620ba199a",
+                build_deps: [
+                    Path("sprite.frag.spv"),
+                    Path("sprite.vert.spv"),
+                ],
+                load_deps: [
+                    Path("sprite.frag.spv"),
+                    Path("sprite.vert.spv"),
+                ],
+                compression: None,
+                compressed_size: Some(567),
+                uncompressed_size: Some(567),
+                type_id: "effdd6a3-71b9-4ac0-990d-770b1d7ac7e1",
+            )),
+        ),
+    ],
+)

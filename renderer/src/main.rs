@@ -29,7 +29,7 @@ use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
 use renderer_ext::upload::UploadQueue;
-use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoadHandler, SpriteLoadHandler};
+use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoadHandler, SpriteLoadHandler, ShaderLoadHandler, PipelineLoadHandler};
 use renderer_ext::pipeline::image::ImageAsset;
 use renderer_ext::pipeline::gltf::{MaterialAsset, MeshAsset};
 use renderer_ext::pipeline::sprite::SpriteAsset;
@@ -47,6 +47,9 @@ fn load_asset<T>(
 }
 
 use renderer_ext::pipeline_description as dsc;
+use renderer_ext::pipeline::shader::ShaderAsset;
+use renderer_ext::pipeline::pipeline::PipelineAsset;
+
 fn create_kitchen_sink_pipeline() -> dsc::GraphicsPipeline {
     let mut kitchen_sink_pipeline = dsc::GraphicsPipeline::default();
     kitchen_sink_pipeline.pipeline_layout.descriptor_set_layouts = vec![
@@ -108,8 +111,8 @@ fn create_kitchen_sink_pipeline() -> dsc::GraphicsPipeline {
     kitchen_sink_pipeline
 }
 
+/*
 fn create_sprite_pipeline() -> dsc::GraphicsPipeline {
-    use rust_decimal::Decimal;
     use renderer_ext::renderpass::SpriteVertex;
 
     let mut sprite_pipeline = dsc::GraphicsPipeline::default();
@@ -164,7 +167,6 @@ fn create_sprite_pipeline() -> dsc::GraphicsPipeline {
         },
     ];
 
-    use rust_decimal::prelude::FromPrimitive;
     sprite_pipeline.fixed_function_state.viewport_state.viewports = vec![
         dsc::Viewport {
             dimensions: Default::default(),
@@ -206,6 +208,7 @@ fn create_sprite_pipeline() -> dsc::GraphicsPipeline {
 
     sprite_pipeline
 }
+*/
 
 fn write_example_pipeline_file(name: &'static str, pipeline: &dsc::GraphicsPipeline) {
     let pipeline_str = serde_json::to_string_pretty(&pipeline);
@@ -233,7 +236,7 @@ fn write_example_pipeline_files() {
     write_example_pipeline_file("default", &graphics_pipeline);
     println!("default hash: {}", hash_pipeline(&graphics_pipeline));
 
-    let graphics_pipeline = create_sprite_pipeline();
+    let graphics_pipeline = renderer_ext::renderpass::sprite_renderpass::create_sprite_pipeline();
     write_example_pipeline_file("sprite", &graphics_pipeline);
     println!("sprite hash: {}", hash_pipeline(&graphics_pipeline));
 
@@ -346,6 +349,18 @@ fn main() {
         let device_context = renderer.context().device_context();
 
         let mut asset_resource = AssetResource::default();
+        asset_resource.add_storage_with_load_handler::<ShaderAsset, ShaderLoadHandler>(Box::new(
+            ShaderLoadHandler::new(
+                renderer.context().device_context(),
+                renderer.shader_resource_manager().shader_update_tx().clone(),
+            ),
+        ));
+        asset_resource.add_storage_with_load_handler::<PipelineAsset, PipelineLoadHandler>(Box::new(
+            PipelineLoadHandler::new(
+                //renderer.context().device_context(),
+                //renderer.shader_resource_manager().shader_update_tx().clone(),
+            ),
+        ));
         asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
             ImageLoadHandler::new(
                 upload_queue.pending_image_tx().clone(),
@@ -395,7 +410,10 @@ fn main() {
     let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"), &asset_resource);
 
     //SPRITE
-    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("0be51c83-73a1-4780-984a-7e4accc65ae7"), &asset_resource);
+    let sprite_handle = load_asset::<SpriteAsset>(asset_uuid!("0be51c83-73a1-4780-984a-7e4accc65ae7"), &asset_resource);
+
+    //PIPELINE
+    let pipeline = load_asset::<PipelineAsset>(asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"), &asset_resource);
 
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();

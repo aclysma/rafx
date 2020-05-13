@@ -22,15 +22,9 @@ use crate::pipeline::image::ImageAsset;
 use crate::resource_managers::image_resource_manager::ImageResourceUpdate;
 use crate::pipeline::sprite::SpriteAsset;
 
-struct PendingSpriteUpdate {
-    asset_uuid: AssetUuid,
-    images: Vec<AssetUuid>
-}
-
 // This is registered with the asset storage which lets us hook when assets are updated
 pub struct SpriteLoadHandler {
     sprite_update_tx: Sender<SpriteResourceUpdate>,
-    pending_updates: FnvHashMap<LoadHandle, FnvHashMap<u32, PendingSpriteUpdate>>,
 }
 
 impl SpriteLoadHandler {
@@ -39,7 +33,6 @@ impl SpriteLoadHandler {
     ) -> Self {
         SpriteLoadHandler {
             sprite_update_tx,
-            pending_updates: Default::default(),
         }
     }
 }
@@ -50,11 +43,11 @@ impl ResourceLoadHandler<SpriteAsset> for SpriteLoadHandler {
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
-        load_op: AssetLoadOp,
         asset_uuid: &AssetUuid,
         resource_handle: ResourceHandle<SpriteAsset>,
         version: u32,
         asset: &SpriteAsset,
+        load_op: AssetLoadOp,
     ) {
         log::info!(
             "SpriteLoadHandler update_asset {} {:?} {:?}",
@@ -63,24 +56,16 @@ impl ResourceLoadHandler<SpriteAsset> for SpriteLoadHandler {
             resource_handle
         );
 
-        let pending_update = PendingSpriteUpdate {
-            asset_uuid: *asset_uuid,
-            images: asset.images.clone()
-        };
-
-        self.pending_updates
-            .entry(load_handle)
-            .or_default()
-            .insert(version, pending_update);
-
         load_op.complete();
     }
 
     fn commit_asset_version(
         &mut self,
         load_handle: LoadHandle,
+        asset_uuid: &AssetUuid,
         resource_handle: ResourceHandle<SpriteAsset>,
         version: u32,
+        asset: &SpriteAsset,
     ) {
         log::info!(
             "SpriteLoadHandler commit_asset_version {} {:?} {:?}",
@@ -88,24 +73,12 @@ impl ResourceLoadHandler<SpriteAsset> for SpriteLoadHandler {
             load_handle,
             resource_handle
         );
-        if let Some(versions) = self.pending_updates.get_mut(&load_handle) {
-            if let Some(pending_update) = versions.remove(&version) {
-                self.sprite_update_tx.send(SpriteResourceUpdate {
-                    asset_uuid: pending_update.asset_uuid,
-                    resource_handle: resource_handle,
 
-                    images: pending_update.images,
-                });
-            } else {
-                log::error!(
-                    "Could not find awaiter for asset version {:?} {}",
-                    load_handle,
-                    version
-                );
-            }
-        } else {
-            log::error!("Could not find awaiter for {:?} {}", load_handle, version);
-        }
+        self.sprite_update_tx.send(SpriteResourceUpdate {
+            asset_uuid: *asset_uuid,
+            resource_handle: resource_handle,
+            images: asset.images.clone(),
+        });
     }
 
     fn free(
@@ -118,7 +91,7 @@ impl ResourceLoadHandler<SpriteAsset> for SpriteLoadHandler {
             load_handle,
             resource_handle
         );
-        //TODO: We are not unloading images
-        self.pending_updates.remove(&load_handle);
+
+        //TODO: We are not unloading sprites
     }
 }

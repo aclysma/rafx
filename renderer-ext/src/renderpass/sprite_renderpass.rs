@@ -1090,9 +1090,8 @@ pub fn orthographic_rh_gl(
     ]
 }
 
-fn create_sprite_pipeline() -> crate::pipeline_description::GraphicsPipeline {
+pub fn create_sprite_pipeline() -> crate::pipeline_description::GraphicsPipeline {
     use crate::pipeline_description as dsc;
-    use rust_decimal::Decimal;
 
     let mut sprite_pipeline = dsc::GraphicsPipeline::default();
     sprite_pipeline.pipeline_layout.descriptor_set_layouts = vec![
@@ -1146,12 +1145,11 @@ fn create_sprite_pipeline() -> crate::pipeline_description::GraphicsPipeline {
         },
     ];
 
-    use rust_decimal::prelude::FromPrimitive;
     sprite_pipeline.fixed_function_state.viewport_state.viewports = vec![
         dsc::Viewport {
             dimensions: Default::default(),
-            min_depth: Decimal::from_f32(0.0).unwrap(),
-            max_depth: Decimal::from_f32(1.0).unwrap(),
+            min_depth: dsc::Decimal(0.0),
+            max_depth: dsc::Decimal(1.0),
         }
     ];
     sprite_pipeline.fixed_function_state.viewport_state.scissors = vec![
@@ -1160,7 +1158,7 @@ fn create_sprite_pipeline() -> crate::pipeline_description::GraphicsPipeline {
 
     sprite_pipeline.fixed_function_state.rasterization_state = dsc::PipelineRasterizationState {
         front_face: dsc::FrontFace::CounterClockwise,
-        line_width: Decimal::from_f32(1.0).unwrap(),
+        line_width: dsc::Decimal(1.0),
         polygon_mode: dsc::PolygonMode::Fill,
         cull_mode: dsc::CullModeFlags::None,
         ..Default::default()

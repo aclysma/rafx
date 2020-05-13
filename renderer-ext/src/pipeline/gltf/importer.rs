@@ -11,6 +11,7 @@ use fnv::FnvHashMap;
 use atelier_assets::loader::handle::Handle;
 use gltf::Accessor;
 use gltf::mesh::util::indices::CastingIter;
+use crate::pipeline::gltf::{MaterialAsset, MeshAsset, MeshPart, MeshVertex};
 use crate::pipeline::image::ImageAsset;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
@@ -19,34 +20,7 @@ enum GltfObjectId {
     Index(usize),
 }
 
-#[derive(TypeUuid, Serialize, Deserialize)]
-#[uuid = "130a91a8-ba80-4cad-9bce-848326b234c7"]
-pub struct MaterialAsset {
-    pub base_color: [f32; 4],
-    pub base_color_texture: Option<AssetUuid>,
-}
 
-/// Vertex format for vertices sent to the GPU
-#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
-#[repr(packed(1))]
-pub struct MeshVertex {
-    pub position: [f32; 3],
-    pub normal: [f32; 3],
-    pub tex_coord: [f32; 2],
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct MeshPart {
-    pub vertices: Vec<MeshVertex>,
-    pub indices: Vec<u16>,
-    pub material: Option<AssetUuid>,
-}
-
-#[derive(TypeUuid, Serialize, Deserialize)]
-#[uuid = "cf232526-3757-4d94-98d1-c2f7e27c979f"]
-pub struct MeshAsset {
-    pub mesh_parts: Vec<MeshPart>,
-}
 
 // //TODO: It might not make practical sense to have an overall GLTF asset in the long run, probably
 // // would produce separate image, mesh, prefab assets
@@ -392,52 +366,6 @@ struct MeshToImport {
     id: GltfObjectId,
     asset: MeshAsset,
 }
-
-// fn read_index_buffer(accessor: Accessor) -> Vec<u16> {
-//
-//
-//     use gltf::accessor::{DataType, Dimensions, Iter};
-//     match (accessor.data_type(), accessor.dimensions()) {
-//         (DataType::U16, Dimensions::Scalar) => {
-//             Vec::with_capacity(accessor.count());
-//
-//             let iter = Iter::<u16>::new(accessor, )
-//
-//
-//             // let iter = Iter::<[f32; 3]>::new(accessor, get_buffer_data);
-//             // for item in iter {
-//             //     println!("{:?}", item);
-//             // }
-//         }
-//         _ => {
-//             unimplemented!();
-//         },
-//     }
-//
-//
-// }
-
-// use std::convert::TryFrom;
-// fn convert_to_u16_indices(indices: &gltf::mesh::util::ReadIndices) -> Result<Vec<u16>, <u32 as TryFrom<u16>>::Error> {
-//     indices.into_u32().map(|x| {
-//         u16::try_from(x)?
-//     }).collect()
-// }
-
-// fn convert_to_u16_indices(read_indices: &gltf::mesh::util::ReadIndices) -> Option<Vec<u16>> {
-//     use gltf::mesh::util::ReadIndices;
-//     match read_indices {
-//         ReadIndices::U8(values) => {
-//             Some(values.collect::<Vec<u8>>().map(|x| x as u16).collect())
-//         },
-//         ReadIndices::U16(values) => {
-//             Some(values.map(|x| x).collect())
-//         },
-//         ReadIndices::U32(values) => {
-//             unimplemented!();
-//         }
-//     }
-// }
 
 //TODO: This feels kind of dumb..
 fn convert_to_u16_indices(

@@ -10,10 +10,42 @@ use ash::version::DeviceV1_0;
 use fnv::FnvHashMap;
 use std::collections::hash_map::Entry::Occupied;
 
-use rust_decimal::Decimal;
-use rust_decimal::prelude::ToPrimitive;
 use std::ffi::CString;
 use serde::{Serialize, Deserialize};
+
+// This is an f32 that supports Hash and Eq. Generally this is dangerous, but here we're
+// not doing any sort of fp-arithmetic and not expecting NaN. We should be deterministically
+// parsing a string and creating a float from it. Representing as an f64 since this ensures
+// all 32-bit whole numbers can be represented exactly. (anything <= 2^53)
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(transparent)]
+pub struct Decimal(pub f64);
+
+impl Decimal {
+    pub fn to_f32(&self) -> f32 {
+        self.0 as f32
+    }
+
+    pub fn to_i32(&self) -> i32 {
+        self.0 as i32
+    }
+
+    pub fn to_u32(&self) -> u32 {
+        self.0 as u32
+    }
+}
+
+impl Eq for Decimal {
+
+}
+
+impl std::hash::Hash for Decimal {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let bits: u64 = unsafe { std::mem::transmute(self.0) };
+        bits.hash(state);
+    }
+}
+
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DescriptorType {
@@ -1184,10 +1216,10 @@ impl Dimensions {
                 height: swapchain_surface_info.extents.height as f32,
             },
             Dimensions::Raw(rect) => RectF32 {
-                x: rect.x.to_f32().unwrap(),
-                y: rect.y.to_f32().unwrap(),
-                width: rect.width.to_f32().unwrap(),
-                height: rect.height.to_f32().unwrap(),
+                x: rect.x.to_f32(),
+                y: rect.y.to_f32(),
+                width: rect.width.to_f32(),
+                height: rect.height.to_f32(),
             }
         }
     }
@@ -1201,10 +1233,10 @@ impl Dimensions {
                 height: swapchain_surface_info.extents.height,
             },
             Dimensions::Raw(rect) => RectI32 {
-                x: rect.x.to_i32().unwrap(),
-                y: rect.y.to_i32().unwrap(),
-                width: rect.width.to_u32().unwrap(),
-                height: rect.height.to_u32().unwrap(),
+                x: rect.x.to_i32(),
+                y: rect.y.to_i32(),
+                width: rect.width.to_u32(),
+                height: rect.height.to_u32(),
             }
         }
     }
@@ -1231,8 +1263,8 @@ impl Viewport {
             .y(rect_f32.y)
             .width(rect_f32.width)
             .height(rect_f32.height)
-            .min_depth(self.min_depth.to_f32().unwrap())
-            .max_depth(self.max_depth.to_f32().unwrap())
+            .min_depth(self.min_depth.to_f32())
+            .max_depth(self.max_depth.to_f32())
     }
 }
 
@@ -1349,10 +1381,10 @@ impl PipelineRasterizationState {
             .cull_mode(self.cull_mode.into())
             .front_face(self.front_face.into())
             .depth_bias_enable(self.depth_bias_enable)
-            .depth_bias_constant_factor(self.depth_bias_constant_factor.to_f32().unwrap())
-            .depth_bias_clamp(self.depth_bias_clamp.to_f32().unwrap())
-            .depth_bias_slope_factor(self.depth_bias_slope_factor.to_f32().unwrap())
-            .line_width(self.line_width.to_f32().unwrap())
+            .depth_bias_constant_factor(self.depth_bias_constant_factor.to_f32())
+            .depth_bias_clamp(self.depth_bias_clamp.to_f32())
+            .depth_bias_slope_factor(self.depth_bias_slope_factor.to_f32())
+            .line_width(self.line_width.to_f32())
     }
 }
 
@@ -1377,7 +1409,7 @@ impl PipelineMultisampleState {
         let mut builder = vk::PipelineMultisampleStateCreateInfo::builder()
             .rasterization_samples(self.rasterization_samples.into())
             .sample_shading_enable(self.sample_shading_enable)
-            .min_sample_shading(self.min_sample_shading.to_f32().unwrap())
+            .min_sample_shading(self.min_sample_shading.to_f32())
             .alpha_to_coverage_enable(self.alpha_to_coverage_enable)
             .alpha_to_one_enable(self.alpha_to_one_enable);
 
@@ -1597,10 +1629,10 @@ pub struct PipelineColorBlendState {
 impl PipelineColorBlendState {
     pub fn blend_constants_as_f32(&self) -> [f32;4] {
         [
-            self.blend_constants[0].to_f32().unwrap(),
-            self.blend_constants[1].to_f32().unwrap(),
-            self.blend_constants[2].to_f32().unwrap(),
-            self.blend_constants[3].to_f32().unwrap(),
+            self.blend_constants[0].to_f32(),
+            self.blend_constants[1].to_f32(),
+            self.blend_constants[2].to_f32(),
+            self.blend_constants[3].to_f32(),
         ]
     }
 }

@@ -54,11 +54,11 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
-        load_op: AssetLoadOp,
         asset_uuid: &AssetUuid,
         resource_handle: ResourceHandle<MeshAsset>,
         version: u32,
         asset: &MeshAsset,
+        load_op: AssetLoadOp,
     ) {
         log::info!(
             "MeshLoadHandler update_asset {} {:?} {:?}",
@@ -119,8 +119,10 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
     fn commit_asset_version(
         &mut self,
         load_handle: LoadHandle,
+        asset_uuid: &AssetUuid,
         resource_handle: ResourceHandle<MeshAsset>,
         version: u32,
+        asset: &MeshAsset,
     ) {
         log::info!(
             "MeshLoadHandler commit_asset_version {} {:?} {:?}",
@@ -179,6 +181,7 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
         );
 
         //TODO: We are not unloading meshes
+
         self.pending_updates.remove(&load_handle);
     }
 }

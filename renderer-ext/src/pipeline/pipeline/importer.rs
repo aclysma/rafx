@@ -10,21 +10,21 @@ use std::io::{Read, Cursor};
 use std::convert::TryInto;
 use crate::pipeline::sprite::SpriteAsset;
 use atelier_assets::importer::Error as ImportError;
-use crate::pipeline::shader::ShaderAsset;
+use crate::pipeline::pipeline::PipelineAsset;
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "867bc278-67b5-469c-aeea-1c05da722918"]
-struct ShaderImporterState(Option<AssetUuid>);
+#[uuid = "3a7fe150-1627-4622-9e34-091b9c15fc26"]
+struct PipelineImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
-#[uuid = "90fdad4b-cec1-4f59-b679-97895711b6e1"]
-struct ShaderImporter;
-impl Importer for ShaderImporter {
+#[uuid = "ecf05dde-045a-4201-9ec5-f14f91f14014"]
+struct PipelineImporter;
+impl Importer for PipelineImporter {
     fn version_static() -> u32
         where
             Self: Sized,
     {
-        2
+        3
     }
 
     fn version(&self) -> u32 {
@@ -33,7 +33,7 @@ impl Importer for ShaderImporter {
 
     type Options = ();
 
-    type State = ShaderImporterState;
+    type State = PipelineImporterState;
 
     /// Reads the given bytes and produces assets.
     fn import(
@@ -45,16 +45,9 @@ impl Importer for ShaderImporter {
         let id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = ShaderImporterState(Some(id));
+        *state = PipelineImporterState(Some(id));
 
-        // Raw compiled shader
-        let mut bytes = Vec::new();
-        source.read_to_end(&mut bytes)?;
-
-        let data = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
-        let shader_asset = ShaderAsset {
-            data
-        };
+        let pipeline_asset = ron::de::from_reader::<_, PipelineAsset>(source)?;
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {
@@ -63,13 +56,13 @@ impl Importer for ShaderImporter {
                 build_deps: vec![],
                 load_deps: vec![],
                 build_pipeline: None,
-                asset_data: Box::new(shader_asset),
+                asset_data: Box::new(pipeline_asset),
             }],
         })
     }
 }
 
 inventory::submit!(SourceFileImporter {
-    extension: "spv",
-    instantiator: || Box::new(ShaderImporter {}),
+    extension: "pipeline",
+    instantiator: || Box::new(PipelineImporter {}),
 });

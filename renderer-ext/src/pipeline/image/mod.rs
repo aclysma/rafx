@@ -1,2 +1,5 @@
-mod image_importer;
-pub use image_importer::*;
+mod assets;
+pub use assets::*;
+
+mod importer;
+pub use importer::*;
