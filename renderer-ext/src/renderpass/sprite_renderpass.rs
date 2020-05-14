@@ -150,11 +150,17 @@ impl VkSpriteRenderPass {
             uniform_buffers.push(Self::create_uniform_buffer(&device_context)?)
         }
 
+        let sprite_pipeline_description = create_sprite_pipeline();
+
         //
         // Descriptors
         //
-        let descriptor_set_layout_per_pass =
-            Self::create_descriptor_set_layout_per_pass(&device_context.device())?;
+        let descriptor_set_layout_per_pass = crate::pipeline_description::create_descriptor_set_layout(
+            device_context.device(),
+            &sprite_pipeline_description.pipeline_layout.descriptor_set_layouts[0]
+        )?;
+        //let descriptor_set_layout_per_pass =
+        //    Self::create_descriptor_set_layout_per_pass(&device_context.device())?;
 
         let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
             &device_context.device(),
@@ -202,10 +208,23 @@ impl VkSpriteRenderPass {
         // let renderpass = pipeline_resources.renderpass;
         // let pipeline = pipeline_resources.pipeline;
 
-        let sprite_pipeline = create_sprite_pipeline();
-        let pipeline_layout = pipeline_manager.get_or_create_pipeline_layout(&sprite_pipeline.pipeline_layout)?;
-        let renderpass = pipeline_manager.get_or_create_renderpass(&sprite_pipeline.renderpass)?;
-        let pipeline = pipeline_manager.get_or_create_graphics_pipeline(&sprite_pipeline)?;
+        let pipeline_layout = crate::pipeline_description::create_pipeline_layout(
+            device_context.device(),
+            &sprite_pipeline_description.pipeline_layout,
+            &descriptor_set_layouts,
+        )?;
+        let renderpass = crate::pipeline_description::create_renderpass(
+            device_context.device(),
+            &sprite_pipeline_description.renderpass,
+            pipeline_manager.swapchain_surface_info()
+        )?;
+        let pipeline = crate::pipeline_description::create_graphics_pipeline(
+            device_context.device(),
+            &sprite_pipeline_description,
+            pipeline_layout,
+            renderpass,
+            pipeline_manager.swapchain_surface_info()
+        )?;
 
 
         //

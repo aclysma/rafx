@@ -13,6 +13,8 @@ use std::collections::hash_map::Entry::Occupied;
 use std::ffi::CString;
 use serde::{Serialize, Deserialize};
 
+//TODO: Rename all this from description to definition
+
 // This is an f32 that supports Hash and Eq. Generally this is dangerous, but here we're
 // not doing any sort of fp-arithmetic and not expecting NaN. We should be deterministically
 // parsing a string and creating a float from it. Representing as an f64 since this ensures
@@ -1706,3 +1708,10 @@ pub struct GraphicsPipeline {
     pub fixed_function_state: FixedFunctionState,
     pub pipeline_shader_stages: PipelineShaderStages,
 }
+
+
+
+
+
+
+
