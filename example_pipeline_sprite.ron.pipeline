@@ -496,7 +496,7 @@
                         65592,
                     ],
                 ),
-                entry_name: "bWFpbg==",
+                entry_name: "main",
             ),
             (
                 stage: Fragment,
@@ -769,7 +769,7 @@
                         65592,
                     ],
                 ),
-                entry_name: "bWFpbg==",
+                entry_name: "main",
             ),
         ],
     ),

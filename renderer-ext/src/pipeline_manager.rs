@@ -385,6 +385,7 @@ impl PipelineManager {
         load_handle: LoadHandle,
         shader_module: &dsc::ShaderModule,
     ) -> VkResult<vk::ShaderModule> {
+        //TODO: Might be more consistent to hash the shader asset?
         let hash = hash_resource_description(&shader_module);
         if self.shader_modules.contains_resource(hash) {
             Ok(self.shader_modules.add_ref_by_hash(hash, load_handle, shader_module))
@@ -495,6 +496,32 @@ impl PipelineManager {
     }
 
     pub fn update(&mut self) {
+        let shader_module_count = self.shader_modules.by_hash.len();
+        let descriptor_set_layout_count = self.descriptor_set_layouts.by_hash.len();
+        let pipeline_layout_count = self.pipeline_layouts.by_hash.len();
+        let renderpass_count = self.renderpasses.by_hash.len();
+        let pipeline_count = self.graphics_pipelines.by_hash.len();
+
+        #[derive(Debug)]
+        struct ResourceCounts {
+            shader_module_count: usize,
+            descriptor_set_layout_count: usize,
+            pipeline_layout_count: usize,
+            renderpass_count: usize,
+            pipeline_count: usize,
+        }
+
+        let resource_counts = ResourceCounts {
+            shader_module_count,
+            descriptor_set_layout_count,
+            pipeline_layout_count,
+            renderpass_count,
+            pipeline_count,
+        };
+
+        println!("Resource counts: {:#?}", resource_counts);
+
+
         for request in self.shader_load_queues.take_load_requests() {
             let result = self.load_shader_module(request.load_handle, &request.description);
             match result {

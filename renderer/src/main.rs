@@ -410,32 +410,63 @@ fn main() {
     //let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("5c7c907a-9335-4d4a-bb61-4f0c7ff03d07"), &asset_resource);
     // textured cube
 
-    //PIPELINE
-    let pipeline = load_asset::<PipelineAsset>(asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"), &asset_resource);
-    loop {
-        asset_resource.update();
-        renderer.update_resources();
-        use atelier_assets::loader::LoadStatus;
-        use atelier_loader::handle::AssetHandle;
-        match pipeline.load_status(asset_resource.loader()) {
-            LoadStatus::NotRequested => {
-                unreachable!();
-            },
-            LoadStatus::Loading => {
-                // keep waiting
-            },
-            LoadStatus::Loaded => {
-                break;
-            },
-            LoadStatus::Unloading => { unreachable!() },
-            LoadStatus::DoesNotExist => {
-                println!("Essential asset not found");
-            },
-            LoadStatus::Error(err) => {
-                println!("Error loading essential asset {:?}", err);
-            },
+    fn wait_for_asset_to_load<T>(asset_handle: &atelier_assets::loader::handle::Handle<T>, asset_resource: &mut AssetResource, renderer: &mut GameRendererWithContext) {
+        loop {
+            asset_resource.update();
+            renderer.update_resources();
+            use atelier_assets::loader::LoadStatus;
+            use atelier_loader::handle::AssetHandle;
+            match asset_handle.load_status(asset_resource.loader()) {
+                LoadStatus::NotRequested => {
+                    unreachable!();
+                },
+                LoadStatus::Loading => {
+                    // keep waiting
+                },
+                LoadStatus::Loaded => {
+                    break;
+                },
+                LoadStatus::Unloading => { unreachable!() },
+                LoadStatus::DoesNotExist => {
+                    println!("Essential asset not found");
+                },
+                LoadStatus::Error(err) => {
+                    println!("Error loading essential asset {:?}", err);
+                },
+            }
         }
     }
+
+    //PIPELINE
+    let pipeline = load_asset::<PipelineAsset>(asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"), &asset_resource);
+    let pipeline_variant = load_asset::<PipelineAsset>(asset_uuid!("38126811-1892-41f9-80b0-64d9b5bdcad2"), &asset_resource);
+    wait_for_asset_to_load(&pipeline, &mut asset_resource, &mut renderer);
+    wait_for_asset_to_load(&pipeline_variant, &mut asset_resource, &mut renderer);
+
+    // loop {
+    //     asset_resource.update();
+    //     renderer.update_resources();
+    //     use atelier_assets::loader::LoadStatus;
+    //     use atelier_loader::handle::AssetHandle;
+    //     match pipeline.load_status(asset_resource.loader()) {
+    //         LoadStatus::NotRequested => {
+    //             unreachable!();
+    //         },
+    //         LoadStatus::Loading => {
+    //             // keep waiting
+    //         },
+    //         LoadStatus::Loaded => {
+    //             break;
+    //         },
+    //         LoadStatus::Unloading => { unreachable!() },
+    //         LoadStatus::DoesNotExist => {
+    //             println!("Essential asset not found");
+    //         },
+    //         LoadStatus::Error(err) => {
+    //             println!("Error loading essential asset {:?}", err);
+    //         },
+    //     }
+    // }
 
     let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"), &asset_resource);
 
