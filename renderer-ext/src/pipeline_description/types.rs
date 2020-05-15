@@ -1684,6 +1684,19 @@ pub struct FixedFunctionState {
     pub dynamic_state: PipelineDynamicState,
 }
 
+
+
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct ShaderModuleMeta {
+    pub stage: ShaderStageFlags,
+    pub entry_name: String
+}
+
+// These structs are candidates for removal because in practice you probably wouldn't want to
+// embed a shader module's full data into a struct and pass it around
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ShaderModule {
     pub code: Vec<u32>,
@@ -1693,7 +1706,7 @@ pub struct ShaderModule {
 pub struct PipelineShaderStage {
     pub stage: ShaderStageFlags,
     pub shader_module: ShaderModule,
-    pub entry_name: CString
+    pub entry_name: String
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -1711,7 +1724,12 @@ pub struct GraphicsPipeline {
 
 
 
-
+// pub struct CreatedGraphicsPipeline {
+//     pub pipeline_layout: vk::PipelineLayout,
+//     pub renderpass: vk::RenderPass,
+//     pub pipeline: vk::Pipeline
+//     pub pipeline_shader_stages: PipelineShaderStages,
+// }
 
 
 

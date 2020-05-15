@@ -16,6 +16,8 @@ use crate::resource_managers::{SpriteResourceManager, VkMeshResourceManager, Ima
 use crate::renderpass::VkMeshRenderPass;
 use crate::pipeline_manager::PipelineManager;
 use crate::pipeline_description::SwapchainSurfaceInfo;
+use crate::pipeline::pipeline::PipelineAsset;
+use atelier_assets::loader::handle::Handle;
 
 pub struct GameRenderer {
     time_state: TimeState,
@@ -31,6 +33,9 @@ pub struct GameRenderer {
 
     sprite_renderpass: Option<VkSpriteRenderPass>,
     mesh_renderpass: Option<VkMeshRenderPass>,
+
+
+    //sprite_renderpass_pipeline_asset: Option<Handle<PipelineAsset>>
 }
 
 impl GameRenderer {
@@ -81,7 +86,21 @@ impl GameRenderer {
             mesh_renderpass: None,
         })
     }
+/*
+    pub fn set_pipeline_asset(&mut self, asset: Handle<PipelineAsset>) {
+        self.sprite_renderpass_pipeline_asset = Some(asset.clone());
+    }
 
+    fn create_sprite_renderpass() {
+        if let Some(asset) = self.sp //TODO: Try to get the sprite pipeline asset driving things?
+        self.sprite_renderpass = Some(VkSpriteRenderPass::new(
+            device_context,
+            swapchain,
+            &mut self.pipeline_manager,
+            &self.sprite_resource_manager,
+        )?);
+    }
+*/
     pub fn update_resources(&mut self) {
         self.pipeline_manager.update();
     }

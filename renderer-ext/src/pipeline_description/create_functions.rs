@@ -130,13 +130,15 @@ pub fn create_renderpass(
 
 pub fn create_graphics_pipeline(
     device: &ash::Device,
-    graphics_pipeline: &dsc::GraphicsPipeline,
+    //graphics_pipeline: &dsc::GraphicsPipeline,
+    fixed_function_state: &dsc::FixedFunctionState,
     pipeline_layout: vk::PipelineLayout,
     renderpass: vk::RenderPass,
+    shader_modules_meta: &[dsc::ShaderModuleMeta],
     shader_modules: &[vk::ShaderModule],
     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
 ) -> VkResult<vk::Pipeline> {
-    let fixed_function_state = &graphics_pipeline.fixed_function_state;
+    //let fixed_function_state = &graphics_pipeline.fixed_function_state;
 
     let input_assembly_state = fixed_function_state.input_assembly_state.as_builder().build();
 
@@ -179,12 +181,14 @@ pub fn create_graphics_pipeline(
     let dynamic_state = vk::PipelineDynamicStateCreateInfo::builder()
         .dynamic_states(&dynamic_states);
 
-    let mut stages = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
-    for (pipeline_shader_stage, module) in graphics_pipeline.pipeline_shader_stages.stages.iter().zip(shader_modules) {
+    let mut stages = Vec::with_capacity(shader_modules_meta.len());
+    let mut entry_names : Vec<std::ffi::CString> = Vec::with_capacity(shader_modules_meta.len());
+    for (meta, module) in shader_modules_meta.iter().zip(shader_modules) {
+        entry_names.push(std::ffi::CString::new(meta.entry_name.clone()).unwrap());
         stages.push(vk::PipelineShaderStageCreateInfo::builder()
-            .stage(pipeline_shader_stage.stage.into())
+            .stage(meta.stage.into())
             .module(*module)
-            .name(&pipeline_shader_stage.entry_name)
+            .name(entry_names.last().unwrap())
             .build());
     }
 

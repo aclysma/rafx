@@ -20,24 +20,25 @@ use atelier_assets::core::AssetUuid;
 use atelier_assets::loader::AssetLoadOp;
 use crate::pipeline::pipeline::PipelineAsset;
 use std::time::Duration;
+use atelier_assets::loader::handle::AssetHandle;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LoadHandleVersion {
-    load_handle: LoadHandle,
-    version: u32,
-}
-
-impl LoadHandleVersion {
-    pub fn new(
-        load_handle: LoadHandle,
-        version: u32,
-    ) -> Self {
-        LoadHandleVersion {
-            load_handle,
-            version,
-        }
-    }
-}
+// #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+// pub struct LoadHandleVersion {
+//     load_handle: LoadHandle,
+//     version: u32,
+// }
+//
+// impl LoadHandleVersion {
+//     pub fn new(
+//         load_handle: LoadHandle,
+//         version: u32,
+//     ) -> Self {
+//         LoadHandleVersion {
+//             load_handle,
+//             version,
+//         }
+//     }
+// }
 
 // Hash of a GPU resource
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -53,12 +54,12 @@ struct PipelineResourceManagerHashState<GpuResourceT> {
     vk_obj: GpuResourceT
 }
 
-#[derive(Default)]
 pub struct PipelineResourceManager<DscT, GpuResourceT : Copy> {
     // Look up the hash of a resource by load handle. The resource could be cached here but since
     // they are reference counted, we would need to lookup by the hash anyways (or wrap the ref
     // count in an arc)
-    by_load_handle: FnvHashMap<LoadHandleVersion, PipelineResourceHash>,
+    by_load_handle_committed: FnvHashMap<LoadHandle, PipelineResourceHash>,
+    by_load_handle_uncommitted: FnvHashMap<LoadHandle, PipelineResourceHash>,
 
     // Look up
     by_hash: FnvHashMap<PipelineResourceHash, PipelineResourceManagerHashState<GpuResourceT>>,
@@ -66,25 +67,49 @@ pub struct PipelineResourceManager<DscT, GpuResourceT : Copy> {
     // For debug purposes only to detect collisions
     values: FnvHashMap<PipelineResourceHash, DscT>,
 
-    current_version: FnvHashMap<LoadHandle, LoadHandleVersion>,
-
     phantom_data: PhantomData<DscT>
+}
+
+impl<DscT : PartialEq + Clone, GpuResourceT : Copy> Default for PipelineResourceManager<DscT, GpuResourceT> {
+    fn default() -> Self {
+        PipelineResourceManager {
+            by_load_handle_committed: Default::default(),
+            by_load_handle_uncommitted: Default::default(),
+            by_hash: Default::default(),
+            values: Default::default(),
+            phantom_data: Default::default()
+        }
+    }
 }
 
 impl<DscT : PartialEq + Clone, GpuResourceT : Copy> PipelineResourceManager<DscT, GpuResourceT> {
     // Returns the resource
-    fn get(
+    fn get_committed(
         &self,
-        load_handle: LoadHandleVersion
+        load_handle: LoadHandle
     ) -> Option<GpuResourceT> {
-        let resource_hash = self.by_load_handle.get(&load_handle);
+        let resource_hash = self.by_load_handle_committed.get(&load_handle);
+        resource_hash.and_then(|resource_hash| self.get_internal(*resource_hash))
+    }
+
+    fn get_latest(
+        &self,
+        load_handle: LoadHandle
+    ) -> Option<GpuResourceT> {
+        let resource_hash = self.by_load_handle_uncommitted.get(&load_handle);
         if let Some(resource_hash) = resource_hash {
-            let resource_hash = *resource_hash;
-            let state = self.by_hash.get(&resource_hash).unwrap();
-            Some(state.vk_obj)
+            self.get_internal(*resource_hash)
         } else {
-            None
+            self.get_committed(load_handle)
         }
+    }
+
+    // Returns the resource
+    fn get_internal(
+        &self,
+        resource_hash: PipelineResourceHash
+    ) -> Option<GpuResourceT> {
+        self.by_hash.get(&resource_hash).map(|state| state.vk_obj)
     }
 
     fn contains_resource(
@@ -97,7 +122,7 @@ impl<DscT : PartialEq + Clone, GpuResourceT : Copy> PipelineResourceManager<DscT
     fn insert(
         &mut self,
         hash: PipelineResourceHash,
-        load_handle: LoadHandleVersion,
+        load_handle: LoadHandle,
         dsc: &DscT,
         resource: GpuResourceT
     ) -> VkResult<GpuResourceT> {
@@ -109,64 +134,101 @@ impl<DscT : PartialEq + Clone, GpuResourceT : Copy> PipelineResourceManager<DscT
             vk_obj: resource
         });
 
-        self.by_load_handle.insert(load_handle, hash);
+        self.by_load_handle_uncommitted.insert(load_handle, hash);
         self.values.insert(hash, dsc.clone());
         Ok(resource)
     }
 
-    fn add_ref(
+    fn add_ref_by_hash(
         &mut self,
         hash: PipelineResourceHash,
-        load_handle: LoadHandleVersion,
+        load_handle: LoadHandle,
         dsc: &DscT,
     ) -> GpuResourceT {
-        // Add ref count
-        let state = self.by_hash.get(&hash).unwrap();
-        state.ref_count.fetch_add(1, std::sync::atomic::Ordering::Acquire);
-
-        // Store the load handle
-        self.by_load_handle.insert(load_handle, hash);
-
+        // Check the hash has no false collisions
         if let Some(value) = self.values.get(&hash) {
             assert!(*dsc == *value);
         } else {
             self.values.insert(hash, dsc.clone());
         }
 
+        self.add_ref_internal(load_handle, hash)
+    }
+
+    fn add_ref_by_handle<T>(
+        &mut self,
+        load_handle: LoadHandle,
+        existing_asset_handle: &atelier_assets::loader::handle::Handle<T>,
+    ) -> GpuResourceT {
+        use atelier_assets::loader::handle::AssetHandle;
+        // Find the hash the existing asset is loaded under
+        let hash = if let Some(x) = self.by_load_handle_uncommitted.get(&existing_asset_handle.load_handle()) {
+            Some(*x)
+        } else if let Some(x) = self.by_load_handle_committed.get(&existing_asset_handle.load_handle()) {
+            Some(*x)
+        } else {
+            None
+        };
+
+        self.add_ref_internal(load_handle, hash.unwrap())
+    }
+
+    fn add_ref_internal(
+        &mut self,
+        load_handle: LoadHandle,
+        hash: PipelineResourceHash,
+    ) -> GpuResourceT {
+        // Add ref count
+        let state = self.by_hash.get(&hash).unwrap();
+        state.ref_count.fetch_add(1, std::sync::atomic::Ordering::Acquire);
+
+        // Store the load handle
+        self.by_load_handle_uncommitted.insert(load_handle, hash);
         state.vk_obj
     }
 
     fn remove_ref(
         &mut self,
-        load_handle: LoadHandleVersion,
-    ) -> Option<GpuResourceT> {
-        match self.by_load_handle.get(&load_handle) {
-            Some(hash) => {
-                let hash = *hash;
-                let (ref_count, vk_obj) = {
-                    let state = self.by_hash.get(&hash).unwrap();
-
-                    // Subtract one because fetch_sub returns the value in the state before it was subtracted
-                    let ref_count = state.ref_count.fetch_sub(1, std::sync::atomic::Ordering::Release) - 1;
-                    (ref_count, state.vk_obj)
-                };
-
-                self.by_load_handle.remove(&load_handle);
-
-                if ref_count == 0 {
-                    self.values.remove(&hash);
-                    self.by_hash.remove(&hash);
-
-                    // Return the underlying object if it is ready to be destroyed
-                    Some(vk_obj)
-                } else {
-                    None
-                }
-            },
-            None => {
-                log::error!("A load handle was removed from a PipelineResourceManager but the passed in load handle was not found.");
-                None
+        load_handle: LoadHandle,
+    ) -> Vec<GpuResourceT> {
+        // Worst-case we can have both a committed and uncommitted asset created
+        let mut resources = Vec::with_capacity(2);
+        if let Some(hash) = self.by_load_handle_committed.remove(&load_handle) {
+            if let Some(resource) = self.remove_ref_internal(load_handle, hash) {
+                resources.push(resource);
             }
+        }
+
+        if let Some(hash) = self.by_load_handle_uncommitted.remove(&load_handle) {
+            if let Some(resource) = self.remove_ref_internal(load_handle, hash) {
+                resources.push(resource);
+            }
+        }
+
+        resources
+    }
+
+    fn remove_ref_internal(
+        &mut self,
+        load_handle: LoadHandle,
+        hash: PipelineResourceHash
+    ) -> Option<GpuResourceT>  {
+        let (ref_count, vk_obj) = {
+            let state = self.by_hash.get(&hash).unwrap();
+
+            // Subtract one because fetch_sub returns the value in the state before it was subtracted
+            let ref_count = state.ref_count.fetch_sub(1, std::sync::atomic::Ordering::Release) - 1;
+            (ref_count, state.vk_obj)
+        };
+
+        if ref_count == 0 {
+            self.values.remove(&hash);
+            self.by_hash.remove(&hash);
+
+            // Return the underlying object if it is ready to be destroyed
+            Some(vk_obj)
+        } else {
+            None
         }
     }
 
@@ -175,7 +237,8 @@ impl<DscT : PartialEq + Clone, GpuResourceT : Copy> PipelineResourceManager<DscT
         let resources = self.by_hash.iter().map(|(_, v)| v.vk_obj).collect();
         self.by_hash.clear();
         self.values.clear();
-        self.by_load_handle.clear();
+        self.by_load_handle_committed.clear();
+        self.by_load_handle_uncommitted.clear();
         resources
     }
 }
@@ -189,18 +252,18 @@ fn hash_resource_description<T : Hash>(t: &T) -> PipelineResourceHash {
 }
 
 pub struct LoadRequest<T> {
-    load_handle: LoadHandleVersion,
+    load_handle: LoadHandle,
     load_op: AssetLoadOp,
     description: T,
 }
 
 pub struct CommitRequest<T> {
-    load_handle: LoadHandleVersion,
+    load_handle: LoadHandle,
     phantom_data: PhantomData<T>
 }
 
 pub struct FreeRequest<T> {
-    load_handle: LoadHandleVersion,
+    load_handle: LoadHandle,
     phantom_data: PhantomData<T>
 }
 
@@ -271,7 +334,7 @@ pub struct PipelineManager {
     descriptor_set_layouts: PipelineResourceManager<dsc::DescriptorSetLayout, vk::DescriptorSetLayout>,
     pipeline_layouts: PipelineResourceManager<dsc::PipelineLayout, vk::PipelineLayout>,
     renderpasses: PipelineResourceManager<dsc::RenderPass, vk::RenderPass>,
-    graphics_pipelines: PipelineResourceManager<dsc::GraphicsPipeline, vk::Pipeline>,
+    graphics_pipelines: PipelineResourceManager<PipelineAsset, vk::Pipeline>,
 
     // Queues for incoming load requests
     shader_load_queues: LoadQueues<dsc::ShaderModule>,
@@ -319,13 +382,14 @@ impl PipelineManager {
 
     pub fn load_shader_module(
         &mut self,
-        load_handle: LoadHandleVersion,
+        load_handle: LoadHandle,
         shader_module: &dsc::ShaderModule,
     ) -> VkResult<vk::ShaderModule> {
         let hash = hash_resource_description(&shader_module);
         if self.shader_modules.contains_resource(hash) {
-            Ok(self.shader_modules.add_ref(hash, load_handle, shader_module))
+            Ok(self.shader_modules.add_ref_by_hash(hash, load_handle, shader_module))
         } else {
+            println!("Creating shader module\n[bytes: {}]", shader_module.code.len());
             let resource =
                 crate::pipeline_description::create_shader_module(self.device_context.device(), shader_module)?;
             self.shader_modules.insert(hash, load_handle, shader_module, resource);
@@ -335,13 +399,14 @@ impl PipelineManager {
 
     pub fn load_descriptor_set_layout(
         &mut self,
-        load_handle: LoadHandleVersion,
+        load_handle: LoadHandle,
         descriptor_set_layout: &dsc::DescriptorSetLayout,
     ) -> VkResult<vk::DescriptorSetLayout> {
         let hash = hash_resource_description(&descriptor_set_layout);
         if self.descriptor_set_layouts.contains_resource(hash) {
-            Ok(self.descriptor_set_layouts.add_ref(hash, load_handle, descriptor_set_layout))
+            Ok(self.descriptor_set_layouts.add_ref_by_hash(hash, load_handle, descriptor_set_layout))
         } else {
+            println!("Creating descriptor set layout\n{:#?}", descriptor_set_layout);
             let resource =
                 crate::pipeline_description::create_descriptor_set_layout(self.device_context.device(), descriptor_set_layout)?;
             self.descriptor_set_layouts.insert(hash, load_handle, descriptor_set_layout, resource);
@@ -351,19 +416,20 @@ impl PipelineManager {
 
     pub fn load_pipeline_layout(
         &mut self,
-        load_handle: LoadHandleVersion,
+        load_handle: LoadHandle,
         pipeline_layout: &dsc::PipelineLayout
     ) -> VkResult<vk::PipelineLayout> {
 
         let hash = hash_resource_description(&pipeline_layout);
         if self.pipeline_layouts.contains_resource(hash) {
-            Ok(self.pipeline_layouts.add_ref(hash, load_handle, pipeline_layout))
+            Ok(self.pipeline_layouts.add_ref_by_hash(hash, load_handle, pipeline_layout))
         } else {
             let mut descriptor_set_layouts = Vec::with_capacity(pipeline_layout.descriptor_set_layouts.len());
             for descriptor_set_layout in &pipeline_layout.descriptor_set_layouts {
                 descriptor_set_layouts.push(self.load_descriptor_set_layout(load_handle, descriptor_set_layout)?);
             }
 
+            println!("Creating pipeline layout\n{:#?}", pipeline_layout);
             let resource =
                 crate::pipeline_description::create_pipeline_layout(self.device_context.device(), pipeline_layout, &descriptor_set_layouts)?;
             self.pipeline_layouts.insert(hash, load_handle, pipeline_layout, resource);
@@ -373,13 +439,14 @@ impl PipelineManager {
 
     pub fn load_renderpass(
         &mut self,
-        load_handle: LoadHandleVersion,
+        load_handle: LoadHandle,
         renderpass: &dsc::RenderPass,
     ) -> VkResult<vk::RenderPass> {
         let hash = hash_resource_description(&renderpass);
         if self.renderpasses.contains_resource(hash) {
-            Ok(self.renderpasses.add_ref(hash, load_handle, renderpass))
+            Ok(self.renderpasses.add_ref_by_hash(hash, load_handle, renderpass))
         } else {
+            println!("Creating renderpass\n{:#?}", renderpass);
             let resource =
                 crate::pipeline_description::create_renderpass(self.device_context.device(), renderpass, self.swapchain_surface_info.as_ref().unwrap())?;
             self.renderpasses.insert(hash, load_handle, renderpass, resource);
@@ -389,28 +456,36 @@ impl PipelineManager {
 
     pub fn load_graphics_pipeline(
         &mut self,
-        load_handle: LoadHandleVersion,
-        graphics_pipeline: &dsc::GraphicsPipeline,
+        load_handle: LoadHandle,
+        graphics_pipeline: &PipelineAsset,
     ) -> VkResult<vk::Pipeline> {
         let hash = hash_resource_description(&graphics_pipeline);
         if self.graphics_pipelines.contains_resource(hash) {
-            Ok(self.graphics_pipelines.add_ref(hash, load_handle, graphics_pipeline))
+            Ok(self.graphics_pipelines.add_ref_by_hash(hash, load_handle, graphics_pipeline))
         } else {
             let pipeline_layout = self.load_pipeline_layout(load_handle, &graphics_pipeline.pipeline_layout)?;
             let renderpass = self.load_renderpass(load_handle, &graphics_pipeline.renderpass)?;
 
-            let mut shader_modules = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
-            for stage in &graphics_pipeline.pipeline_shader_stages.stages {
-                let shader_module = self.load_shader_module(load_handle, &stage.shader_module)?;
+            let mut shader_modules_meta = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
+            let mut shader_modules = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
+            for stage in &graphics_pipeline.pipeline_shader_stages {
+                let shader_module = self.shader_modules.get_latest(stage.shader_module.load_handle()).unwrap();
+                let shader_module_meta = dsc::ShaderModuleMeta {
+                    stage: stage.stage,
+                    entry_name: stage.entry_name.clone()
+                };
                 shader_modules.push(shader_module);
+                shader_modules_meta.push(shader_module_meta);
             }
 
+            println!("Creating graphics pipeline\n{:#?}\n{:#?}", graphics_pipeline.fixed_function_state, shader_modules_meta);
             let resource =
                 crate::pipeline_description::create_graphics_pipeline(
                     self.device_context.device(),
-                    graphics_pipeline,
+                    &graphics_pipeline.fixed_function_state,
                     pipeline_layout,
                     renderpass,
+                    &shader_modules_meta,
                     &shader_modules,
                     self.swapchain_surface_info.as_ref().unwrap()
                 )?;
@@ -435,16 +510,24 @@ impl PipelineManager {
         // window size/format
         if self.swapchain_surface_info.is_some() {
             for request in self.graphics_pipeline_load_queues.take_load_requests() {
-                let shaders = Vec::with_capacity(request.description.pipeline_shader_stages.len());
-                for shader_stage in request.description.pipeline_shader_stages {
-                    //TODO: Get the thing by load handle
-                    // - not sure if the load handle will be the correct version
-                    //shader_stage.shader_module.load_handle()
-                    self.shader_modules.get();
-                }
+                // let mut shaders = Vec::with_capacity(request.description.pipeline_shader_stages.len());
+                // for shader_stage in &request.description.pipeline_shader_stages {
+                //     let shader = self.shader_modules.get_latest(shader_stage.shader_module.load_handle());
+                //     shaders.push(shader.unwrap());
+                // }
+                //
+                // let graphics_pipeline = dsc::GraphicsPipeline {
+                //     pipeline_layout: request.description.pipeline_layout,
+                //     renderpass: request.description.renderpass,
+                //     fixed_function_state: request.description.fixed_function_state,
+                //     //pipeline_shader_stages: request.description.pipeline_shader_stages
+                // };
 
+                let result = self.load_graphics_pipeline(
+                    request.load_handle,
+                    &request.description
+                );
 
-                let result = self.load_graphics_pipeline(request.load_handle, &request.description);
                 match result {
                     Ok(_) => request.load_op.complete(),
                     Err(err) => {
@@ -498,17 +581,12 @@ impl ResourceLoadHandler<ShaderAsset> for ShaderLoadHandler {
         asset: &ShaderAsset,
         load_op: AssetLoadOp
     ) {
-        let load_handle_version = LoadHandleVersion {
-            load_handle,
-            version
-        };
-
         let description = dsc::ShaderModule {
             code: asset.data.clone()
         };
 
         let request = LoadRequest {
-            load_handle: load_handle_version,
+            load_handle,
             load_op,
             description
         };
@@ -524,13 +602,8 @@ impl ResourceLoadHandler<ShaderAsset> for ShaderLoadHandler {
         version: u32,
         asset: &ShaderAsset
     ) {
-        let load_handle_version = LoadHandleVersion {
-            load_handle,
-            version
-        };
-
         let request = CommitRequest {
-            load_handle: load_handle_version,
+            load_handle,
             phantom_data: Default::default()
         };
 
@@ -543,13 +616,8 @@ impl ResourceLoadHandler<ShaderAsset> for ShaderLoadHandler {
         resource_handle: ResourceHandle<ShaderAsset>,
         version: u32,
     ) {
-        let load_handle_version = LoadHandleVersion {
-            load_handle,
-            version
-        };
-
         let request = FreeRequest {
-            load_handle: load_handle_version,
+            load_handle,
             phantom_data: Default::default()
         };
 
@@ -571,15 +639,10 @@ impl ResourceLoadHandler<PipelineAsset> for PipelineLoadHandler {
         asset: &PipelineAsset,
         load_op: AssetLoadOp
     ) {
-        let load_handle_version = LoadHandleVersion {
-            load_handle,
-            version
-        };
-
         let description = asset.clone();
 
         let request = LoadRequest {
-            load_handle: load_handle_version,
+            load_handle,
             load_op,
             description
         };
@@ -595,13 +658,8 @@ impl ResourceLoadHandler<PipelineAsset> for PipelineLoadHandler {
         version: u32,
         asset: &PipelineAsset
     ) {
-        let load_handle_version = LoadHandleVersion {
-            load_handle,
-            version
-        };
-
         let request = CommitRequest {
-            load_handle: load_handle_version,
+            load_handle,
             phantom_data: Default::default()
         };
 
@@ -614,13 +672,8 @@ impl ResourceLoadHandler<PipelineAsset> for PipelineLoadHandler {
         resource_handle: ResourceHandle<PipelineAsset>,
         version: u32,
     ) {
-        let load_handle_version = LoadHandleVersion {
-            load_handle,
-            version
-        };
-
         let request = FreeRequest {
-            load_handle: load_handle_version,
+            load_handle,
             phantom_data: Default::default()
         };
 

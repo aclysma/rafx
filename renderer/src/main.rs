@@ -50,6 +50,7 @@ fn load_asset<T>(
 use renderer_ext::pipeline_description as dsc;
 use renderer_ext::pipeline::shader::ShaderAsset;
 use renderer_ext::pipeline::pipeline::PipelineAsset;
+use std::hint::unreachable_unchecked;
 
 fn create_kitchen_sink_pipeline() -> dsc::GraphicsPipeline {
     let mut kitchen_sink_pipeline = dsc::GraphicsPipeline::default();
@@ -319,7 +320,11 @@ fn main() {
     let imgui_manager = renderer_ext::imgui_support::init_imgui_manager(&sdl_window);
 
     let window = Sdl2Window::new(&sdl_window);
-    let renderer = GameRendererWithContext::new(&window, imgui_manager.build_font_atlas(), &time);
+    let renderer = GameRendererWithContext::new(
+        &window,
+        imgui_manager.build_font_atlas(),
+        &time,
+    );
 
     // Check if there were error setting up vulkan
     if let Err(e) = renderer {
@@ -404,13 +409,38 @@ fn main() {
     // unit_cube
     //let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("5c7c907a-9335-4d4a-bb61-4f0c7ff03d07"), &asset_resource);
     // textured cube
+
+    //PIPELINE
+    let pipeline = load_asset::<PipelineAsset>(asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"), &asset_resource);
+    loop {
+        asset_resource.update();
+        renderer.update_resources();
+        use atelier_assets::loader::LoadStatus;
+        use atelier_loader::handle::AssetHandle;
+        match pipeline.load_status(asset_resource.loader()) {
+            LoadStatus::NotRequested => {
+                unreachable!();
+            },
+            LoadStatus::Loading => {
+                // keep waiting
+            },
+            LoadStatus::Loaded => {
+                break;
+            },
+            LoadStatus::Unloading => { unreachable!() },
+            LoadStatus::DoesNotExist => {
+                println!("Essential asset not found");
+            },
+            LoadStatus::Error(err) => {
+                println!("Error loading essential asset {:?}", err);
+            },
+        }
+    }
+
     let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"), &asset_resource);
 
     //SPRITE
     let sprite_handle = load_asset::<SpriteAsset>(asset_uuid!("0be51c83-73a1-4780-984a-7e4accc65ae7"), &asset_resource);
-
-    //PIPELINE
-    let pipeline = load_asset::<PipelineAsset>(asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"), &asset_resource);
 
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();

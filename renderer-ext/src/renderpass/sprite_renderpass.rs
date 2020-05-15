@@ -182,9 +182,14 @@ impl VkSpriteRenderPass {
         ];
 
         let mut shader_modules = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
+        let mut shader_modules_meta = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
         for stage in &sprite_pipeline_description.pipeline_shader_stages.stages {
             let shader_module = crate::pipeline_description::create_shader_module(device_context.device(), &stage.shader_module)?;
             shader_modules.push(shader_module);
+            shader_modules_meta.push(crate::pipeline_description::ShaderModuleMeta {
+                stage: stage.stage,
+                entry_name: stage.entry_name.clone()
+            })
         }
 
         let pipeline_layout = crate::pipeline_description::create_pipeline_layout(
@@ -197,11 +202,13 @@ impl VkSpriteRenderPass {
             &sprite_pipeline_description.renderpass,
             pipeline_manager.swapchain_surface_info().unwrap()
         )?;
+
         let pipeline = crate::pipeline_description::create_graphics_pipeline(
             device_context.device(),
-            &sprite_pipeline_description,
+            &sprite_pipeline_description.fixed_function_state,
             pipeline_layout,
             renderpass,
+            &shader_modules_meta,
             &shader_modules,
             pipeline_manager.swapchain_surface_info().unwrap()
         )?;
@@ -308,32 +315,6 @@ impl VkSpriteRenderPass {
         Ok(ManuallyDrop::new(buffer?))
     }
 
-    fn create_descriptor_set_layout_per_pass(
-        logical_device: &ash::Device
-    ) -> VkResult<vk::DescriptorSetLayout> {
-        let descriptor_set_layout_bindings = [
-            vk::DescriptorSetLayoutBinding::builder()
-                .binding(0)
-                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::VERTEX)
-                .build(),
-            vk::DescriptorSetLayoutBinding::builder()
-                .binding(1)
-                .descriptor_type(vk::DescriptorType::SAMPLER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                .build(),
-        ];
-
-        let descriptor_set_layout_create_info =
-            vk::DescriptorSetLayoutCreateInfo::builder().bindings(&descriptor_set_layout_bindings);
-
-        unsafe {
-            logical_device.create_descriptor_set_layout(&descriptor_set_layout_create_info, None)
-        }
-    }
-
     fn create_descriptor_pool_per_pass(
         logical_device: &ash::Device,
         swapchain_image_count: u32,
@@ -408,234 +389,6 @@ impl VkSpriteRenderPass {
         }
 
         Ok(descriptor_sets)
-    }
-
-    fn create_fixed_function_state<F: FnMut(&FixedFunctionState) -> VkResult<()>>(
-        swapchain_info: &SwapchainInfo,
-        mut f: F,
-    ) -> VkResult<()> {
-        let vertex_input_assembly_state_info = vk::PipelineInputAssemblyStateCreateInfo::builder()
-            .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
-            .primitive_restart_enable(false);
-
-        let vertex_input_binding_descriptions = [vk::VertexInputBindingDescription {
-            binding: 0,
-            stride: mem::size_of::<SpriteVertex>() as u32,
-            input_rate: vk::VertexInputRate::VERTEX,
-        }];
-        let vertex_input_attribute_descriptions = [
-            vk::VertexInputAttributeDescription {
-                binding: 0,
-                location: 0,
-                format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(SpriteVertex, pos) as u32,
-            },
-            vk::VertexInputAttributeDescription {
-                binding: 0,
-                location: 1,
-                format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(SpriteVertex, tex_coord) as u32,
-            },
-            // vk::VertexInputAttributeDescription {
-            //     binding: 0,
-            //     location: 2,
-            //     format: vk::Format::R8G8B8A8_UNORM,
-            //     offset: offset_of!(Vertex, color) as u32,
-            // },
-        ];
-
-        let vertex_input_state_info = vk::PipelineVertexInputStateCreateInfo::builder()
-            .vertex_attribute_descriptions(&vertex_input_attribute_descriptions)
-            .vertex_binding_descriptions(&vertex_input_binding_descriptions);
-
-        let viewports = [vk::Viewport {
-            x: 0.0,
-            y: 0.0,
-            width: swapchain_info.extents.width as f32,
-            height: swapchain_info.extents.height as f32,
-            min_depth: 0.0,
-            max_depth: 1.0,
-        }];
-
-        let scissors = [vk::Rect2D {
-            offset: vk::Offset2D { x: 0, y: 0 },
-            extent: swapchain_info.extents.clone(),
-        }];
-
-        let viewport_state_info = vk::PipelineViewportStateCreateInfo::builder()
-            .scissors(&scissors)
-            .viewports(&viewports);
-
-        let rasterization_info = vk::PipelineRasterizationStateCreateInfo::builder()
-            .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
-            .line_width(1.0)
-            .polygon_mode(vk::PolygonMode::FILL);
-
-        // Skip depth/stencil testing
-
-        let multisample_state_info = vk::PipelineMultisampleStateCreateInfo::builder()
-            .rasterization_samples(vk::SampleCountFlags::TYPE_1);
-
-        // Applies to the current framebuffer
-        let color_blend_attachment_states = [vk::PipelineColorBlendAttachmentState::builder()
-            .color_write_mask(vk::ColorComponentFlags::all())
-            .blend_enable(true)
-            .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
-            .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
-            .color_blend_op(vk::BlendOp::ADD)
-            .src_alpha_blend_factor(vk::BlendFactor::ONE)
-            .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
-            .alpha_blend_op(vk::BlendOp::ADD)
-            .build()];
-
-        // Applies globally
-        let color_blend_state_info = vk::PipelineColorBlendStateCreateInfo::builder()
-            .attachments(&color_blend_attachment_states);
-
-        let dynamic_state = vec![/*vk::DynamicState::SCISSOR*/];
-        let dynamic_state_info =
-            vk::PipelineDynamicStateCreateInfo::builder().dynamic_states(&dynamic_state);
-
-        let fixed_function_state = FixedFunctionState {
-            vertex_input_assembly_state_info,
-            vertex_input_state_info,
-            viewport_state_info,
-            rasterization_info,
-            multisample_state_info,
-            color_blend_state_info,
-            dynamic_state_info,
-        };
-
-        f(&fixed_function_state)
-    }
-
-    fn create_renderpass_create_info<F: FnMut(&vk::RenderPassCreateInfo) -> VkResult<()>>(
-        swapchain_info: &SwapchainInfo,
-        mut f: F,
-    ) -> VkResult<()> {
-        let renderpass_attachments = [vk::AttachmentDescription::builder()
-            .format(swapchain_info.surface_format.format)
-            .samples(vk::SampleCountFlags::TYPE_1)
-            .load_op(vk::AttachmentLoadOp::CLEAR)
-            .store_op(vk::AttachmentStoreOp::STORE)
-            .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-            .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-            .initial_layout(vk::ImageLayout::UNDEFINED)
-            .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-            .build()];
-
-        let color_attachment_refs = [vk::AttachmentReference {
-            attachment: 0,
-            layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-        }];
-
-        let subpasses = [vk::SubpassDescription::builder()
-            .color_attachments(&color_attachment_refs)
-            .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-            .build()];
-
-        let dependencies = [vk::SubpassDependency::builder()
-            .src_subpass(vk::SUBPASS_EXTERNAL)
-            .dst_subpass(0)
-            .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-            .src_access_mask(vk::AccessFlags::default())
-            .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-            .dst_access_mask(
-                vk::AccessFlags::COLOR_ATTACHMENT_READ | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-            )
-            .build()];
-
-        let renderpass_create_info = vk::RenderPassCreateInfo::builder()
-            .attachments(&renderpass_attachments)
-            .subpasses(&subpasses)
-            .dependencies(&dependencies);
-
-        f(&renderpass_create_info)
-    }
-
-    fn create_pipeline<F: FnMut(PipelineResources)>(
-        logical_device: &ash::Device,
-        _swapchain_info: &SwapchainInfo,
-        fixed_function_state: &FixedFunctionState,
-        renderpass_create_info: &vk::RenderPassCreateInfo,
-        descriptor_set_layouts: &[vk::DescriptorSetLayout],
-        mut f: F,
-    ) -> VkResult<()> {
-        let layout_create_info =
-            vk::PipelineLayoutCreateInfo::builder().set_layouts(descriptor_set_layouts);
-
-        let pipeline_layout: vk::PipelineLayout =
-            unsafe { logical_device.create_pipeline_layout(&layout_create_info, None)? };
-
-        let renderpass: vk::RenderPass =
-            unsafe { logical_device.create_render_pass(renderpass_create_info, None)? };
-
-        //
-        // Load Shaders
-        //
-        let vertex_shader_module = load_shader_module(
-            logical_device,
-            &include_bytes!("../../shaders/sprite.vert.spv")[..],
-        )?;
-
-        let fragment_shader_module = load_shader_module(
-            logical_device,
-            &include_bytes!("../../shaders/sprite.frag.spv")[..],
-        )?;
-
-        let shader_entry_name = CString::new("main").unwrap();
-        let shader_stage_create_infos = [
-            vk::PipelineShaderStageCreateInfo::builder()
-                .stage(vk::ShaderStageFlags::VERTEX)
-                .module(vertex_shader_module)
-                .name(&shader_entry_name)
-                .build(),
-            vk::PipelineShaderStageCreateInfo::builder()
-                .stage(vk::ShaderStageFlags::FRAGMENT)
-                .module(fragment_shader_module)
-                .name(&shader_entry_name)
-                .build(),
-        ];
-
-        let pipeline_info = vk::GraphicsPipelineCreateInfo::builder()
-            .stages(&shader_stage_create_infos)
-            .vertex_input_state(&fixed_function_state.vertex_input_state_info)
-            .input_assembly_state(&fixed_function_state.vertex_input_assembly_state_info)
-            .viewport_state(&fixed_function_state.viewport_state_info)
-            .rasterization_state(&fixed_function_state.rasterization_info)
-            .multisample_state(&fixed_function_state.multisample_state_info)
-            .color_blend_state(&fixed_function_state.color_blend_state_info)
-            .dynamic_state(&fixed_function_state.dynamic_state_info)
-            .layout(pipeline_layout)
-            .render_pass(renderpass);
-
-        let pipeline = unsafe {
-            match logical_device.create_graphics_pipelines(
-                vk::PipelineCache::null(),
-                &[pipeline_info.build()],
-                None,
-            ) {
-                Ok(result) => Ok(result[0]),
-                Err(e) => Err(e.1),
-            }?
-        };
-
-        //
-        // Destroy shader modules. They don't need to be kept around once the pipeline is built
-        //
-        unsafe {
-            logical_device.destroy_shader_module(vertex_shader_module, None);
-            logical_device.destroy_shader_module(fragment_shader_module, None);
-        }
-
-        let resources = PipelineResources {
-            pipeline_layout,
-            renderpass,
-            pipeline,
-        };
-
-        f(resources);
-        Ok(())
     }
 
     fn create_framebuffers(
@@ -1056,19 +809,6 @@ impl Drop for VkSpriteRenderPass {
     }
 }
 
-fn load_shader_module(
-    logical_device: &ash::Device,
-    data: &[u8],
-) -> VkResult<vk::ShaderModule> {
-    let mut spv_file = std::io::Cursor::new(data);
-    //TODO: Pass this error up
-    let code = renderer_shell_vulkan::util::read_spv(&mut spv_file)
-        .expect("Failed to read vertex shader spv file");
-    let shader_info = vk::ShaderModuleCreateInfo::builder().code(&code);
-
-    unsafe { logical_device.create_shader_module(&shader_info, None) }
-}
-
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
 // single function
 pub fn orthographic_rh_gl(
@@ -1237,14 +977,14 @@ pub fn create_sprite_pipeline() -> crate::pipeline_description::GraphicsPipeline
     sprite_pipeline.pipeline_shader_stages.stages = vec![
         dsc::PipelineShaderStage {
             stage: dsc::ShaderStageFlags::Vertex,
-            entry_name: CString::new("main").unwrap(),
+            entry_name: "main".to_string(),
             shader_module: dsc::ShaderModule {
                 code: vert_code
             }
         },
         dsc::PipelineShaderStage {
             stage: dsc::ShaderStageFlags::Fragment,
-            entry_name: CString::new("main").unwrap(),
+            entry_name: "main".to_string(),
             shader_module: dsc::ShaderModule {
                 code: frag_code
             }
