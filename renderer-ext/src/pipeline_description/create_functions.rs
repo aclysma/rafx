@@ -4,6 +4,18 @@ use ash::prelude::*;
 use ash::version::DeviceV1_0;
 use super::types as dsc;
 
+pub fn create_shader_module(
+    device: &ash::Device,
+    shader_module: &dsc::ShaderModule
+) -> VkResult<vk::ShaderModule> {
+    let create_info = vk::ShaderModuleCreateInfo::builder()
+        .code(&shader_module.code);
+
+    unsafe {
+        device.create_shader_module(&*create_info, None)
+    }
+}
+
 pub fn create_descriptor_set_layout(
     device: &ash::Device,
     descriptor_set_layout: &dsc::DescriptorSetLayout
@@ -121,6 +133,7 @@ pub fn create_graphics_pipeline(
     graphics_pipeline: &dsc::GraphicsPipeline,
     pipeline_layout: vk::PipelineLayout,
     renderpass: vk::RenderPass,
+    shader_modules: &[vk::ShaderModule],
     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
 ) -> VkResult<vk::Pipeline> {
     let fixed_function_state = &graphics_pipeline.fixed_function_state;
@@ -166,22 +179,11 @@ pub fn create_graphics_pipeline(
     let dynamic_state = vk::PipelineDynamicStateCreateInfo::builder()
         .dynamic_states(&dynamic_states);
 
-
     let mut stages = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
-    let mut shader_modules = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
-    for pipeline_shader_stage in &graphics_pipeline.pipeline_shader_stages.stages {
-        //let module = self.get_or_create_shader_module(&pipeline_shader_stage.shader_module)?;
-
-        let module = unsafe {
-            let shader_info = vk::ShaderModuleCreateInfo::builder()
-                .code(&pipeline_shader_stage.shader_module.code);
-            device.create_shader_module(&shader_info, None)?
-        };
-        shader_modules.push(module);
-
+    for (pipeline_shader_stage, module) in graphics_pipeline.pipeline_shader_stages.stages.iter().zip(shader_modules) {
         stages.push(vk::PipelineShaderStageCreateInfo::builder()
             .stage(pipeline_shader_stage.stage.into())
-            .module(module)
+            .module(*module)
             .name(&pipeline_shader_stage.entry_name)
             .build());
     }

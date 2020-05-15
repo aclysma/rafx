@@ -85,6 +85,7 @@ impl ResourceLoadHandler<SpriteAsset> for SpriteLoadHandler {
         &mut self,
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<SpriteAsset>,
+        version: u32,
     ) {
         log::info!(
             "SpriteLoadHandler free {:?} {:?}",

@@ -86,6 +86,7 @@ impl ResourceLoadHandler<MaterialAsset> for MaterialLoadHandler {
         &mut self,
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<MaterialAsset>,
+        version: u32,
     ) {
         log::info!(
             "MaterialLoadHandler free {:?} {:?}",

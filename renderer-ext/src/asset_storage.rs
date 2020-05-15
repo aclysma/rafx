@@ -40,6 +40,7 @@ where
         &mut self,
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<T>,
+        version: u32,
     );
 }
 
@@ -328,6 +329,8 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         load_op: AssetLoadOp,
         version: u32,
     ) -> Result<(), Box<dyn Error>> {
+        log::info!("update_asset {:?} {:?} {}", load_handle, loader_info.get_asset_id(load_handle).unwrap(), version);
+
         // To enable automatic serde of Handle, we need to set up a SerdeContext with a RefOp sender
         let asset = atelier_loader::handle::SerdeContext::with_sync(
             loader_info,
@@ -389,6 +392,8 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             .remove(&load_handle)
             .expect("asset not present when committing");
 
+        log::info!("commit_asset_version {:?} {:?} {}", load_handle, asset_state.asset_uuid, version);
+
         // If a load handler exists, trigger the commit_asset_version callback
         if let Some(load_handler) = &mut self.load_handler {
             load_handler.commit_asset_version(
@@ -401,10 +406,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         }
 
         // Commit the result
-        let result = self.assets.insert(load_handle, asset_state);
-
-        // Insert should return none because the load_handle should be unique
-        debug_assert!(result.is_none());
+        self.assets.insert(load_handle, asset_state);
     }
 
     fn free(
@@ -415,9 +417,11 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         let asset_state = self.assets.remove(&load_handle);
 
         if let Some(asset_state) = asset_state {
+            log::info!("free {:?} {:?}", load_handle, asset_state.asset_uuid);
+
             // Trigger the free callback on the load handler, if one exists
             if let Some(load_handler) = &mut self.load_handler {
-                load_handler.free(load_handle, asset_state.resource_handle);
+                load_handler.free(load_handle, asset_state.resource_handle, asset_state.version);
             }
 
             // Free the ResourceHandle

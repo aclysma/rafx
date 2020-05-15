@@ -144,6 +144,7 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
         &mut self,
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<ImageAsset>,
+        version: u32,
     ) {
         log::info!(
             "ImageLoadHandler free {:?} {:?}",

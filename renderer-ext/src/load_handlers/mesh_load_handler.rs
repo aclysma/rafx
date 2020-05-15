@@ -173,6 +173,7 @@ impl ResourceLoadHandler<MeshAsset> for MeshLoadHandler {
         &mut self,
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<MeshAsset>,
+        version: u32,
     ) {
         log::info!(
             "MeshLoadHandler free {:?} {:?}",

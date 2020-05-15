@@ -181,32 +181,11 @@ impl VkSpriteRenderPass {
             sprite_resource_manager.descriptor_set_layout(),
         ];
 
-        //
-        // Pipeline/Renderpass
-        //
-        // let mut pipeline_resources = None;
-        // Self::create_fixed_function_state(&swapchain.swapchain_info, |fixed_function_state| {
-        //     Self::create_renderpass_create_info(
-        //         &swapchain.swapchain_info,
-        //         |renderpass_create_info| {
-        //             Self::create_pipeline(
-        //                 &device_context.device(),
-        //                 &swapchain.swapchain_info,
-        //                 fixed_function_state,
-        //                 renderpass_create_info,
-        //                 &descriptor_set_layouts,
-        //                 |resources| {
-        //                     pipeline_resources = Some(resources);
-        //                 },
-        //             )
-        //         },
-        //     )
-        // })?;
-        //
-        // let pipeline_resources = pipeline_resources.unwrap();
-        // let pipeline_layout = pipeline_resources.pipeline_layout;
-        // let renderpass = pipeline_resources.renderpass;
-        // let pipeline = pipeline_resources.pipeline;
+        let mut shader_modules = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
+        for stage in &sprite_pipeline_description.pipeline_shader_stages.stages {
+            let shader_module = crate::pipeline_description::create_shader_module(device_context.device(), &stage.shader_module)?;
+            shader_modules.push(shader_module);
+        }
 
         let pipeline_layout = crate::pipeline_description::create_pipeline_layout(
             device_context.device(),
@@ -216,16 +195,22 @@ impl VkSpriteRenderPass {
         let renderpass = crate::pipeline_description::create_renderpass(
             device_context.device(),
             &sprite_pipeline_description.renderpass,
-            pipeline_manager.swapchain_surface_info()
+            pipeline_manager.swapchain_surface_info().unwrap()
         )?;
         let pipeline = crate::pipeline_description::create_graphics_pipeline(
             device_context.device(),
             &sprite_pipeline_description,
             pipeline_layout,
             renderpass,
-            pipeline_manager.swapchain_surface_info()
+            &shader_modules,
+            pipeline_manager.swapchain_surface_info().unwrap()
         )?;
 
+        for shader_module in shader_modules {
+            unsafe {
+                device_context.device().destroy_shader_module(shader_module, None);
+            }
+        }
 
         //
         // Renderpass Resources
@@ -1059,9 +1044,9 @@ impl Drop for VkSpriteRenderPass {
                 device.destroy_framebuffer(*frame_buffer, None);
             }
 
-            // device.destroy_pipeline(self.pipeline, None);
-            // device.destroy_pipeline_layout(self.pipeline_layout, None);
-            // device.destroy_render_pass(self.renderpass, None);
+            device.destroy_pipeline(self.pipeline, None);
+            device.destroy_pipeline_layout(self.pipeline_layout, None);
+            device.destroy_render_pass(self.renderpass, None);
 
             device.destroy_descriptor_pool(self.descriptor_pool_per_pass, None);
             device.destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);

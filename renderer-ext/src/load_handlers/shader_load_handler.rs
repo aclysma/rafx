@@ -101,6 +101,7 @@ impl ResourceLoadHandler<ShaderAsset> for ShaderLoadHandler {
         &mut self,
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<ShaderAsset>,
+        version: u32,
     ) {
         log::info!(
             "MaterialLoadHandler free {:?} {:?}",

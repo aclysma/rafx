@@ -77,6 +77,11 @@ impl ResourceLoadHandler<PipelineAsset> for PipelineLoadHandler {
 
         //TODO: I'm using AssetUuid in some places but I should be using handles instead
 
+        //Problems
+        // - Load handle is not unique to asset version
+        // - Not clear how I can reference an asset from another loader
+        // - Does a dependent asset reloading trigger an update/commit downstream?
+
 
         log::info!(
             "PipelineLoadHandler commit_asset_version {} {:?} {:?}",
@@ -84,6 +89,8 @@ impl ResourceLoadHandler<PipelineAsset> for PipelineLoadHandler {
             load_handle,
             resource_handle
         );
+
+        //asset.pipeline_shader_stages[0].shader_module.asset_with_version()
 
         //asset.pipeline_shader_stages[0].shader_module.asset()
 
@@ -98,6 +105,7 @@ impl ResourceLoadHandler<PipelineAsset> for PipelineLoadHandler {
         &mut self,
         load_handle: LoadHandle,
         resource_handle: ResourceHandle<PipelineAsset>,
+        version: u32,
     ) {
         log::info!(
             "PipelineLoadHandler free {:?} {:?}",

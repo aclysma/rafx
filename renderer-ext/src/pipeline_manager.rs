@@ -12,36 +12,33 @@ use atelier_assets::loader::LoadHandle;
 use mopa::Any;
 use std::ops::Deref;
 use image::load;
-use crossbeam_channel::Sender;
+use crossbeam_channel::{Sender, Receiver};
 use std::hash::Hash;
+use crate::pipeline::shader::ShaderAsset;
+use crate::asset_storage::{ResourceLoadHandler, ResourceHandle};
+use atelier_assets::core::AssetUuid;
+use atelier_assets::loader::AssetLoadOp;
+use crate::pipeline::pipeline::PipelineAsset;
+use std::time::Duration;
 
-/*
-// A borrowed reference to a GPU resource
-struct PipelineResourceRef<'a, DscT, GpuResourceT : Copy> {
-    resource_manager: &'a PipelineResourceManager<DscT, GpuResourceT>,
-    resource_hash: PipelineResourceHash,
-    resource: GpuResourceT,
-    phantom_data: PhantomData<DscT>
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct LoadHandleVersion {
+    load_handle: LoadHandle,
+    version: u32,
 }
 
-impl<'a, DscT, GpuResourceT : Copy> PipelineResourceRef<'a, DscT, GpuResourceT> {
-
-}
-
-impl<'a, DscT, GpuResourceT : Copy> Drop for PipelineResourceRef<'a, DscT, GpuResourceT> {
-    fn drop(&mut self) {
-        self.resource_manager.remove_hash_ref(self.resource_hash)
+impl LoadHandleVersion {
+    pub fn new(
+        load_handle: LoadHandle,
+        version: u32,
+    ) -> Self {
+        LoadHandleVersion {
+            load_handle,
+            version,
+        }
     }
 }
 
-impl<'a, DscT, GpuResourceT : Copy> Deref for PipelineResourceRef<'a, DscT, GpuResourceT> {
-    type Target = GpuResourceT;
-
-    fn deref(&self) -> &Self::Target {
-        &self.resource
-    }
-}
-*/
 // Hash of a GPU resource
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct PipelineResourceHash(u64);
@@ -61,7 +58,7 @@ pub struct PipelineResourceManager<DscT, GpuResourceT : Copy> {
     // Look up the hash of a resource by load handle. The resource could be cached here but since
     // they are reference counted, we would need to lookup by the hash anyways (or wrap the ref
     // count in an arc)
-    by_load_handle: FnvHashMap<LoadHandle, PipelineResourceHash>,
+    by_load_handle: FnvHashMap<LoadHandleVersion, PipelineResourceHash>,
 
     // Look up
     by_hash: FnvHashMap<PipelineResourceHash, PipelineResourceManagerHashState<GpuResourceT>>,
@@ -69,10 +66,7 @@ pub struct PipelineResourceManager<DscT, GpuResourceT : Copy> {
     // For debug purposes only to detect collisions
     values: FnvHashMap<PipelineResourceHash, DscT>,
 
-    // // When we want to drop the resource, we send it via this channel. These will get flushed out
-    // // and destroyed (potentially after a few frames have passed and it is no longer possible that
-    // // it's being used from an in-flight submit
-    // drop_sender: Sender<GpuResourceT>,
+    current_version: FnvHashMap<LoadHandle, LoadHandleVersion>,
 
     phantom_data: PhantomData<DscT>
 }
@@ -81,7 +75,7 @@ impl<DscT : PartialEq + Clone, GpuResourceT : Copy> PipelineResourceManager<DscT
     // Returns the resource
     fn get(
         &self,
-        load_handle: LoadHandle
+        load_handle: LoadHandleVersion
     ) -> Option<GpuResourceT> {
         let resource_hash = self.by_load_handle.get(&load_handle);
         if let Some(resource_hash) = resource_hash {
@@ -103,7 +97,7 @@ impl<DscT : PartialEq + Clone, GpuResourceT : Copy> PipelineResourceManager<DscT
     fn insert(
         &mut self,
         hash: PipelineResourceHash,
-        load_handle: LoadHandle,
+        load_handle: LoadHandleVersion,
         dsc: &DscT,
         resource: GpuResourceT
     ) -> VkResult<GpuResourceT> {
@@ -123,7 +117,7 @@ impl<DscT : PartialEq + Clone, GpuResourceT : Copy> PipelineResourceManager<DscT
     fn add_ref(
         &mut self,
         hash: PipelineResourceHash,
-        load_handle: LoadHandle,
+        load_handle: LoadHandleVersion,
         dsc: &DscT,
     ) -> GpuResourceT {
         // Add ref count
@@ -144,7 +138,7 @@ impl<DscT : PartialEq + Clone, GpuResourceT : Copy> PipelineResourceManager<DscT
 
     fn remove_ref(
         &mut self,
-        load_handle: LoadHandle,
+        load_handle: LoadHandleVersion,
     ) -> Option<GpuResourceT> {
         match self.by_load_handle.get(&load_handle) {
             Some(hash) => {
@@ -186,48 +180,6 @@ impl<DscT : PartialEq + Clone, GpuResourceT : Copy> PipelineResourceManager<DscT
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// struct DescriptorSetLayoutState {
-//     ref_count: u32,
-//     vk_obj: vk::DescriptorSetLayout
-// }
-//
-// struct PipelineLayoutState {
-//     ref_count: u32,
-//     vk_obj: vk::PipelineLayout
-// }
-//
-// struct RenderPassState {
-//     ref_count: u32,
-//     vk_obj: vk::RenderPass
-// }
-//
-// struct ShaderModuleState {
-//     ref_count: u32,
-//     vk_obj: vk::ShaderModule
-// }
-//
-// struct GraphicsPipelineState {
-//     ref_count: u32,
-//     vk_obj: vk::Pipeline
-// }
-
-
-
-
 fn hash_resource_description<T : Hash>(t: &T) -> PipelineResourceHash {
     use std::hash::{Hash, Hasher};
     use std::collections::hash_map::DefaultHasher;
@@ -236,40 +188,154 @@ fn hash_resource_description<T : Hash>(t: &T) -> PipelineResourceHash {
     PipelineResourceHash(hasher.finish())
 }
 
+pub struct LoadRequest<T> {
+    load_handle: LoadHandleVersion,
+    load_op: AssetLoadOp,
+    description: T,
+}
+
+pub struct CommitRequest<T> {
+    load_handle: LoadHandleVersion,
+    phantom_data: PhantomData<T>
+}
+
+pub struct FreeRequest<T> {
+    load_handle: LoadHandleVersion,
+    phantom_data: PhantomData<T>
+}
+
+#[derive(Clone)]
+pub struct LoadQueuesTx<T> {
+    load_request_tx: Sender<LoadRequest<T>>,
+    commit_request_tx: Sender<CommitRequest<T>>,
+    free_request_tx: Sender<FreeRequest<T>>,
+}
+
+pub struct LoadQueuesRx<T> {
+    load_request_rx: Receiver<LoadRequest<T>>,
+    commit_request_rx: Receiver<CommitRequest<T>>,
+    free_request_rx: Receiver<FreeRequest<T>>,
+}
+
+pub struct LoadQueues<T> {
+    tx: LoadQueuesTx<T>,
+    rx: LoadQueuesRx<T>,
+}
+
+impl<T> LoadQueues<T> {
+    pub fn take_load_requests(&mut self) -> Vec<LoadRequest<T>> {
+        let mut requests = Vec::with_capacity(self.rx.load_request_rx.len());
+        while let Ok(request) = self.rx.load_request_rx.recv_timeout(Duration::from_secs(0)) {
+            requests.push(request);
+        }
+
+        requests
+    }
+}
+
+impl<T> Default for LoadQueues<T> {
+    fn default() -> Self {
+        let (load_request_tx, load_request_rx) = crossbeam_channel::unbounded();
+        let (commit_request_tx, commit_request_rx) = crossbeam_channel::unbounded();
+        let (free_request_tx, free_request_rx) = crossbeam_channel::unbounded();
+
+        let tx = LoadQueuesTx {
+            load_request_tx,
+            commit_request_tx,
+            free_request_tx
+        };
+
+        let rx = LoadQueuesRx {
+            load_request_rx,
+            commit_request_rx,
+            free_request_rx
+        };
+
+        LoadQueues {
+            tx,
+            rx
+        }
+    }
+}
+
 
 
 //TODO: Use hashes as keys instead of values (but maybe leave debug-only verification to make sure
 // there aren't any hash collisions
 pub struct PipelineManager {
     device_context: VkDeviceContext,
-    //shader_modules: PipelineResourceManager<dsc::RenderPass, vk::ShaderModule>,
+    swapchain_surface_info: Option<dsc::SwapchainSurfaceInfo>,
+
+    // Sets of resources
+    shader_modules: PipelineResourceManager<dsc::ShaderModule, vk::ShaderModule>,
     descriptor_set_layouts: PipelineResourceManager<dsc::DescriptorSetLayout, vk::DescriptorSetLayout>,
     pipeline_layouts: PipelineResourceManager<dsc::PipelineLayout, vk::PipelineLayout>,
     renderpasses: PipelineResourceManager<dsc::RenderPass, vk::RenderPass>,
     graphics_pipelines: PipelineResourceManager<dsc::GraphicsPipeline, vk::Pipeline>,
-    swapchain_surface_info: dsc::SwapchainSurfaceInfo,
+
+    // Queues for incoming load requests
+    shader_load_queues: LoadQueues<dsc::ShaderModule>,
+    graphics_pipeline_load_queues: LoadQueues<PipelineAsset>
 }
 
-
 impl PipelineManager {
-    pub fn new(device_context: &VkDeviceContext, swapchain_surface_info: dsc::SwapchainSurfaceInfo) -> Self {
+    pub fn new(device_context: &VkDeviceContext) -> Self {
         PipelineManager {
             device_context: device_context.clone(),
+            swapchain_surface_info: None,
+            shader_modules: Default::default(),
             descriptor_set_layouts: Default::default(),
             pipeline_layouts: Default::default(),
             renderpasses: Default::default(),
             graphics_pipelines: Default::default(),
-            swapchain_surface_info
+            shader_load_queues: Default::default(),
+            graphics_pipeline_load_queues: Default::default(),
         }
     }
 
-    pub fn swapchain_surface_info(&self) -> &dsc::SwapchainSurfaceInfo {
-        &self.swapchain_surface_info
+    pub fn update_swapchain_surface_info(&mut self, swapchain_surface_info: dsc::SwapchainSurfaceInfo) {
+        self.swapchain_surface_info = Some(swapchain_surface_info);
+    }
+
+    pub fn swapchain_surface_info(&self) -> Option<&dsc::SwapchainSurfaceInfo> {
+        self.swapchain_surface_info.as_ref()
+    }
+    //
+    // pub fn shader_load_queues_tx(&self) -> &LoadQueuesTx<dsc::ShaderModule> {
+    //     &self.shader_load_queues.tx
+    // }
+
+    pub fn create_shader_load_handler(&self) -> ShaderLoadHandler {
+        ShaderLoadHandler {
+            load_queues: self.shader_load_queues.tx.clone()
+        }
+    }
+
+    pub fn create_pipeline_load_handler(&self) -> PipelineLoadHandler {
+        PipelineLoadHandler {
+            load_queues: self.graphics_pipeline_load_queues.tx.clone()
+        }
+    }
+
+    pub fn load_shader_module(
+        &mut self,
+        load_handle: LoadHandleVersion,
+        shader_module: &dsc::ShaderModule,
+    ) -> VkResult<vk::ShaderModule> {
+        let hash = hash_resource_description(&shader_module);
+        if self.shader_modules.contains_resource(hash) {
+            Ok(self.shader_modules.add_ref(hash, load_handle, shader_module))
+        } else {
+            let resource =
+                crate::pipeline_description::create_shader_module(self.device_context.device(), shader_module)?;
+            self.shader_modules.insert(hash, load_handle, shader_module, resource);
+            Ok(resource)
+        }
     }
 
     pub fn load_descriptor_set_layout(
         &mut self,
-        load_handle: LoadHandle,
+        load_handle: LoadHandleVersion,
         descriptor_set_layout: &dsc::DescriptorSetLayout,
     ) -> VkResult<vk::DescriptorSetLayout> {
         let hash = hash_resource_description(&descriptor_set_layout);
@@ -285,7 +351,7 @@ impl PipelineManager {
 
     pub fn load_pipeline_layout(
         &mut self,
-        load_handle: LoadHandle,
+        load_handle: LoadHandleVersion,
         pipeline_layout: &dsc::PipelineLayout
     ) -> VkResult<vk::PipelineLayout> {
 
@@ -303,37 +369,11 @@ impl PipelineManager {
             self.pipeline_layouts.insert(hash, load_handle, pipeline_layout, resource);
             Ok(resource)
         }
-
-        /*
-        self.pipeline_layouts.insert_with(
-            hash_resource_description(pipeline_layout),
-            load_handle,
-            pipeline_layout,
-            || {
-                let mut descriptor_set_layouts = Vec::with_capacity(pipeline_layout.descriptor_set_layouts.len());
-                for descriptor_set_layout in &pipeline_layout.descriptor_set_layouts {
-                    descriptor_set_layouts.push(self.load_descriptor_set_layout(load_handle, descriptor_set_layout)?);
-                }
-
-                let push_constant_ranges: Vec<_> = pipeline_layout.push_constant_ranges.iter()
-                    .map(|push_constant_range| push_constant_range.as_builder().build())
-                    .collect();
-
-                let create_info = vk::PipelineLayoutCreateInfo::builder()
-                    .set_layouts(descriptor_set_layouts.as_slice())
-                    .push_constant_ranges(push_constant_ranges.as_slice());
-
-                unsafe {
-                    self.device_context.device().create_pipeline_layout(&*create_info, None)
-                }
-            }
-        )
-        */
     }
 
     pub fn load_renderpass(
         &mut self,
-        load_handle: LoadHandle,
+        load_handle: LoadHandleVersion,
         renderpass: &dsc::RenderPass,
     ) -> VkResult<vk::RenderPass> {
         let hash = hash_resource_description(&renderpass);
@@ -341,96 +381,15 @@ impl PipelineManager {
             Ok(self.renderpasses.add_ref(hash, load_handle, renderpass))
         } else {
             let resource =
-                crate::pipeline_description::create_renderpass(self.device_context.device(), renderpass, &self.swapchain_surface_info)?;
+                crate::pipeline_description::create_renderpass(self.device_context.device(), renderpass, self.swapchain_surface_info.as_ref().unwrap())?;
             self.renderpasses.insert(hash, load_handle, renderpass, resource);
             Ok(resource)
         }
-
-        /*
-        self.renderpasses.insert_with(
-            hash_resource_description(renderpass),
-            load_handle,
-            renderpass,
-            || {
-                let attachments : Vec<_> = renderpass.attachments.iter()
-                    .map(|attachment| attachment.as_builder(&self.swapchain_surface_info).build())
-                    .collect();
-
-                // One vec per subpass
-                let mut color_attachments : Vec<Vec<vk::AttachmentReference>> = Vec::with_capacity(renderpass.subpasses.len());
-                let mut input_attachments : Vec<Vec<vk::AttachmentReference>> = Vec::with_capacity(renderpass.subpasses.len());
-                let mut resolve_attachments : Vec<Vec<vk::AttachmentReference>> = Vec::with_capacity(renderpass.subpasses.len());
-
-                // One element per subpass that has a depth stencil attachment specified
-                let mut depth_stencil_attachments : Vec<vk::AttachmentReference> = Vec::with_capacity(renderpass.subpasses.len());
-
-                let mut subpasses : Vec<_> = Vec::with_capacity(renderpass.subpasses.len());
-
-                for subpass in &renderpass.subpasses {
-                    color_attachments.push(subpass.color_attachments.iter().map(|attachment| attachment.as_builder().build()).collect());
-                    input_attachments.push(subpass.input_attachments.iter().map(|attachment| attachment.as_builder().build()).collect());
-
-                    // The resolve attachment array must be unused or of length == color attachments. If
-                    // the number of subpass resolves doesn't match the color attachments, truncate or
-                    // insert attachment references with AttachmentIndex::Unused
-                    if subpass.resolve_attachments.len() > subpass.color_attachments.len() {
-                        log::warn!("A renderpass definition has more resolve attachments than color attachments. The additional resolve attachments will be discarded");
-                    }
-
-                    let mut subpass_resolve_attachments : Vec<_> = subpass.resolve_attachments.iter().map(|attachment| attachment.as_builder().build()).collect();
-                    if !subpass_resolve_attachments.is_empty() {
-                        let unused_attachment = dsc::AttachmentReference {
-                            attachment: dsc::AttachmentIndex::Unused,
-                            layout: Default::default()
-                        }.as_builder().build();
-                        subpass_resolve_attachments.resize(color_attachments.len(), unused_attachment);
-                    }
-                    resolve_attachments.push(subpass_resolve_attachments);
-
-                    let mut subpass_description_builder = vk::SubpassDescription::builder()
-                        .pipeline_bind_point(subpass.pipeline_bind_point.into())
-                        .color_attachments(color_attachments.last().unwrap())
-                        .input_attachments(input_attachments.last().unwrap());
-
-                    // Only specify resolve attachments if we have more than zero of them
-                    {
-                        let subpass_resolve_attachments = resolve_attachments.last().unwrap();
-                        if subpass_resolve_attachments.len() > 0 {
-                            subpass_description_builder = subpass_description_builder.resolve_attachments(subpass_resolve_attachments);
-                        }
-                    }
-
-                    // Only specify a depth stencil attachment if we have one
-                    if let Some(depth_stencil_attachment) = &subpass.depth_stencil_attachment {
-                        depth_stencil_attachments.push(depth_stencil_attachment.as_builder().build());
-                        subpass_description_builder = subpass_description_builder.depth_stencil_attachment(depth_stencil_attachments.last().unwrap());
-                    }
-
-                    let subpass_description = subpass_description_builder.build();
-
-                    subpasses.push(subpass_description);
-                }
-
-                let dependencies : Vec<_> = renderpass.dependencies.iter()
-                    .map(|dependency| dependency.as_builder().build())
-                    .collect();
-
-                let create_info = vk::RenderPassCreateInfo::builder()
-                    .attachments(&attachments)
-                    .subpasses(&subpasses)
-                    .dependencies(&dependencies);
-
-                unsafe {
-                    self.device_context.device().create_render_pass(&*create_info, None)
-                }
-            }
-        )
-        */
     }
 
     pub fn load_graphics_pipeline(
         &mut self,
-        load_handle: LoadHandle,
+        load_handle: LoadHandleVersion,
         graphics_pipeline: &dsc::GraphicsPipeline,
     ) -> VkResult<vk::Pipeline> {
         let hash = hash_resource_description(&graphics_pipeline);
@@ -439,115 +398,62 @@ impl PipelineManager {
         } else {
             let pipeline_layout = self.load_pipeline_layout(load_handle, &graphics_pipeline.pipeline_layout)?;
             let renderpass = self.load_renderpass(load_handle, &graphics_pipeline.renderpass)?;
+
+            let mut shader_modules = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
+            for stage in &graphics_pipeline.pipeline_shader_stages.stages {
+                let shader_module = self.load_shader_module(load_handle, &stage.shader_module)?;
+                shader_modules.push(shader_module);
+            }
+
             let resource =
                 crate::pipeline_description::create_graphics_pipeline(
                     self.device_context.device(),
                     graphics_pipeline,
                     pipeline_layout,
                     renderpass,
-                    &self.swapchain_surface_info
+                    &shader_modules,
+                    self.swapchain_surface_info.as_ref().unwrap()
                 )?;
             self.graphics_pipelines.insert(hash, load_handle, graphics_pipeline, resource);
             Ok(resource)
         }
+    }
 
-        /*
-        self.graphics_pipelines.insert_with(
-            hash_resource_description(graphics_pipeline),
-            load_handle,
-            graphics_pipeline,
-            || {
-                let pipeline_layout = self.load_pipeline_layout(load_handle, &graphics_pipeline.pipeline_layout)?;
-                let renderpass = self.load_renderpass(load_handle, &graphics_pipeline.renderpass)?;
-                let fixed_function_state = &graphics_pipeline.fixed_function_state;
+    pub fn update(&mut self) {
+        for request in self.shader_load_queues.take_load_requests() {
+            let result = self.load_shader_module(request.load_handle, &request.description);
+            match result {
+                Ok(_) => request.load_op.complete(),
+                Err(err) => {
+                    //TODO: May need to unregister dependency assets
+                    request.load_op.error(err);
+                }
+            }
+        }
 
-                let input_assembly_state = fixed_function_state.input_assembly_state.as_builder().build();
-
-                let mut vertex_input_attribute_descriptions: Vec<_> = fixed_function_state.vertex_input_state.attribute_descriptions.iter()
-                    .map(|attribute| attribute.as_builder(&self.swapchain_surface_info).build())
-                    .collect();
-
-                let mut vertex_input_binding_descriptions: Vec<_> = fixed_function_state.vertex_input_state.binding_descriptions.iter()
-                    .map(|binding| binding.as_builder().build())
-                    .collect();
-
-                let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder()
-                    .vertex_attribute_descriptions(vertex_input_attribute_descriptions.as_slice())
-                    .vertex_binding_descriptions(&vertex_input_binding_descriptions);
-
-                let scissors: Vec<_> = fixed_function_state.viewport_state.scissors.iter()
-                    .map(|scissors| scissors.to_rect2d(&self.swapchain_surface_info))
-                    .collect();
-
-                let viewports: Vec<_> = fixed_function_state.viewport_state.viewports.iter()
-                    .map(|viewport| viewport.as_builder(&self.swapchain_surface_info).build())
-                    .collect();
-
-                let viewport_state = vk::PipelineViewportStateCreateInfo::builder()
-                    .scissors(&scissors)
-                    .viewports(&viewports);
-
-                let rasterization_state = fixed_function_state.rasterization_state.as_builder();
-
-                let multisample_state = fixed_function_state.multisample_state.as_builder();
-
-                let color_blend_attachments: Vec<_> = fixed_function_state.color_blend_state.attachments.iter().map(|attachment| attachment.as_builder().build()).collect();
-                let color_blend_state = vk::PipelineColorBlendStateCreateInfo::builder()
-                    .logic_op(fixed_function_state.color_blend_state.logic_op.into())
-                    .logic_op_enable(fixed_function_state.color_blend_state.logic_op_enable)
-                    .blend_constants(fixed_function_state.color_blend_state.blend_constants_as_f32())
-                    .attachments(&color_blend_attachments);
-
-                let dynamic_states: Vec<vk::DynamicState> = fixed_function_state.dynamic_state.dynamic_states.iter().map(|dynamic_state| dynamic_state.clone().into()).collect();
-                let dynamic_state = PipelineDynamicStateCreateInfo::builder()
-                    .dynamic_states(&dynamic_states);
-
-
-                let mut stages = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
-                let mut shader_modules = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.stages.len());
-                for pipeline_shader_stage in &graphics_pipeline.pipeline_shader_stages.stages {
-                    //let module = self.get_or_create_shader_module(&pipeline_shader_stage.shader_module)?;
-
-                    let module = unsafe {
-                        let shader_info = vk::ShaderModuleCreateInfo::builder()
-                            .code(&pipeline_shader_stage.shader_module.code);
-                        self.device_context.device().create_shader_module(&shader_info, None)?
-                    };
-                    shader_modules.push(module);
-
-                    stages.push(vk::PipelineShaderStageCreateInfo::builder()
-                        .stage(pipeline_shader_stage.stage.into())
-                        .module(module)
-                        .name(&pipeline_shader_stage.entry_name)
-                        .build());
+        // Delay processing pipelines until we have a swapchain - we can't init pipelines if we don't know the
+        // window size/format
+        if self.swapchain_surface_info.is_some() {
+            for request in self.graphics_pipeline_load_queues.take_load_requests() {
+                let shaders = Vec::with_capacity(request.description.pipeline_shader_stages.len());
+                for shader_stage in request.description.pipeline_shader_stages {
+                    //TODO: Get the thing by load handle
+                    // - not sure if the load handle will be the correct version
+                    //shader_stage.shader_module.load_handle()
+                    self.shader_modules.get();
                 }
 
-                let pipeline_info = vk::GraphicsPipelineCreateInfo::builder()
-                    .input_assembly_state(&input_assembly_state)
-                    .vertex_input_state(&vertex_input_state)
-                    .viewport_state(&viewport_state)
-                    .rasterization_state(&rasterization_state)
-                    .multisample_state(&multisample_state)
-                    .color_blend_state(&color_blend_state)
-                    .dynamic_state(&dynamic_state)
-                    .layout(pipeline_layout)
-                    .render_pass(renderpass)
-                    .stages(&stages)
-                    .build();
 
-                unsafe {
-                    match self.device_context.device().create_graphics_pipelines(
-                        vk::PipelineCache::null(),
-                        &[pipeline_info],
-                        None,
-                    ) {
-                        Ok(result) => Ok(result[0]),
-                        Err(e) => Err(e.1),
+                let result = self.load_graphics_pipeline(request.load_handle, &request.description);
+                match result {
+                    Ok(_) => request.load_op.complete(),
+                    Err(err) => {
+                        //TODO: May need to unregister dependency assets
+                        request.load_op.error(err);
                     }
                 }
             }
-        )
-        */
+        }
     }
 }
 
@@ -569,6 +475,155 @@ impl Drop for PipelineManager {
             for resource in self.descriptor_set_layouts.take_all_resources() {
                 self.device_context.device().destroy_descriptor_set_layout(resource, None);
             }
+
+            for resource in self.shader_modules.take_all_resources() {
+                self.device_context.device().destroy_shader_module(resource, None);
+            }
         }
+    }
+}
+
+
+pub struct ShaderLoadHandler {
+    load_queues: LoadQueuesTx<dsc::ShaderModule>
+}
+
+impl ResourceLoadHandler<ShaderAsset> for ShaderLoadHandler {
+    fn update_asset(
+        &mut self,
+        load_handle: LoadHandle,
+        asset_uuid: &AssetUuid,
+        resource_handle: ResourceHandle<ShaderAsset>,
+        version: u32,
+        asset: &ShaderAsset,
+        load_op: AssetLoadOp
+    ) {
+        let load_handle_version = LoadHandleVersion {
+            load_handle,
+            version
+        };
+
+        let description = dsc::ShaderModule {
+            code: asset.data.clone()
+        };
+
+        let request = LoadRequest {
+            load_handle: load_handle_version,
+            load_op,
+            description
+        };
+
+        self.load_queues.load_request_tx.send(request);
+    }
+
+    fn commit_asset_version(
+        &mut self,
+        load_handle: LoadHandle,
+        asset_uuid: &AssetUuid,
+        resource_handle: ResourceHandle<ShaderAsset>,
+        version: u32,
+        asset: &ShaderAsset
+    ) {
+        let load_handle_version = LoadHandleVersion {
+            load_handle,
+            version
+        };
+
+        let request = CommitRequest {
+            load_handle: load_handle_version,
+            phantom_data: Default::default()
+        };
+
+        self.load_queues.commit_request_tx.send(request);
+    }
+
+    fn free(
+        &mut self,
+        load_handle: LoadHandle,
+        resource_handle: ResourceHandle<ShaderAsset>,
+        version: u32,
+    ) {
+        let load_handle_version = LoadHandleVersion {
+            load_handle,
+            version
+        };
+
+        let request = FreeRequest {
+            load_handle: load_handle_version,
+            phantom_data: Default::default()
+        };
+
+        self.load_queues.free_request_tx.send(request);
+    }
+}
+
+pub struct PipelineLoadHandler {
+    load_queues: LoadQueuesTx<PipelineAsset>
+}
+
+impl ResourceLoadHandler<PipelineAsset> for PipelineLoadHandler {
+    fn update_asset(
+        &mut self,
+        load_handle: LoadHandle,
+        asset_uuid: &AssetUuid,
+        resource_handle: ResourceHandle<PipelineAsset>,
+        version: u32,
+        asset: &PipelineAsset,
+        load_op: AssetLoadOp
+    ) {
+        let load_handle_version = LoadHandleVersion {
+            load_handle,
+            version
+        };
+
+        let description = asset.clone();
+
+        let request = LoadRequest {
+            load_handle: load_handle_version,
+            load_op,
+            description
+        };
+
+        self.load_queues.load_request_tx.send(request);
+    }
+
+    fn commit_asset_version(
+        &mut self,
+        load_handle: LoadHandle,
+        asset_uuid: &AssetUuid,
+        resource_handle: ResourceHandle<PipelineAsset>,
+        version: u32,
+        asset: &PipelineAsset
+    ) {
+        let load_handle_version = LoadHandleVersion {
+            load_handle,
+            version
+        };
+
+        let request = CommitRequest {
+            load_handle: load_handle_version,
+            phantom_data: Default::default()
+        };
+
+        self.load_queues.commit_request_tx.send(request);
+    }
+
+    fn free(
+        &mut self,
+        load_handle: LoadHandle,
+        resource_handle: ResourceHandle<PipelineAsset>,
+        version: u32,
+    ) {
+        let load_handle_version = LoadHandleVersion {
+            load_handle,
+            version
+        };
+
+        let request = FreeRequest {
+            load_handle: load_handle_version,
+            phantom_data: Default::default()
+        };
+
+        self.load_queues.free_request_tx.send(request);
     }
 }

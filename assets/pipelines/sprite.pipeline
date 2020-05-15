@@ -165,7 +165,7 @@
         (
             stage: Vertex,
             shader_module: "sprite.vert.spv",
-            entry_name: "main"
+            entry_name: "main" 
         ),
         (
             stage: Fragment,

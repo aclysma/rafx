@@ -29,7 +29,8 @@ use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
 use renderer_ext::upload::UploadQueue;
-use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoadHandler, SpriteLoadHandler, ShaderLoadHandler, PipelineLoadHandler};
+use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoadHandler, SpriteLoadHandler};
+use renderer_ext::pipeline_manager::{ShaderLoadHandler, PipelineLoadHandler};
 use renderer_ext::pipeline::image::ImageAsset;
 use renderer_ext::pipeline::gltf::{MaterialAsset, MeshAsset};
 use renderer_ext::pipeline::sprite::SpriteAsset;
@@ -350,17 +351,13 @@ fn main() {
 
         let mut asset_resource = AssetResource::default();
         asset_resource.add_storage_with_load_handler::<ShaderAsset, ShaderLoadHandler>(Box::new(
-            ShaderLoadHandler::new(
-                renderer.context().device_context(),
-                renderer.shader_resource_manager().shader_update_tx().clone(),
-            ),
+            renderer.pipeline_manager().create_shader_load_handler(),
         ));
         asset_resource.add_storage_with_load_handler::<PipelineAsset, PipelineLoadHandler>(Box::new(
-            PipelineLoadHandler::new(
-                //renderer.context().device_context(),
-                //renderer.shader_resource_manager().shader_update_tx().clone(),
-            ),
+            renderer.pipeline_manager().create_pipeline_load_handler(),
         ));
+        // asset_resource.add_storage::<ShaderAsset>();
+        // asset_resource.add_storage::<PipelineAsset>();
         asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
             ImageLoadHandler::new(
                 upload_queue.pending_image_tx().clone(),
@@ -467,6 +464,7 @@ fn main() {
 
         asset_resource.update();
         upload_queue.update(renderer.context().device());
+        renderer.update_resources();
 
         imgui_manager.with_ui(|ui| {
             //let mut opened = true;

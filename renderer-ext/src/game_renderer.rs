@@ -27,7 +27,7 @@ pub struct GameRenderer {
     sprite_resource_manager: SpriteResourceManager,
     mesh_resource_manager: VkMeshResourceManager,
 
-    pipeline_manager: Option<PipelineManager>,
+    pipeline_manager: PipelineManager,
 
     sprite_renderpass: Option<VkSpriteRenderPass>,
     mesh_renderpass: Option<VkMeshRenderPass>,
@@ -64,6 +64,10 @@ impl GameRenderer {
             renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
         )?;
 
+        let pipeline_manager = PipelineManager::new(
+            device_context
+        );
+
         Ok(GameRenderer {
             time_state: time_state.clone(),
             imgui_event_listener,
@@ -72,10 +76,14 @@ impl GameRenderer {
             material_resource_manager,
             sprite_resource_manager,
             mesh_resource_manager,
-            pipeline_manager: None,
+            pipeline_manager,
             sprite_renderpass: None,
             mesh_renderpass: None,
         })
+    }
+
+    pub fn update_resources(&mut self) {
+        self.pipeline_manager.update();
     }
 
     pub fn update_time(
@@ -83,6 +91,10 @@ impl GameRenderer {
         time_state: &TimeState,
     ) {
         self.time_state = time_state.clone();
+    }
+
+    pub fn pipeline_manager(&self) -> &PipelineManager {
+        &self.pipeline_manager
     }
 
     pub fn shader_resource_manager(&self) -> &ShaderResourceManager {
@@ -136,20 +148,24 @@ impl VkSurfaceEventListener for GameRenderer {
         self.imgui_event_listener
             .swapchain_created(device_context, swapchain)?;
 
-        self.pipeline_manager = Some(PipelineManager::new(
-            device_context,
-            SwapchainSurfaceInfo {
-                surface_format: swapchain.swapchain_info.surface_format,
-                extents: swapchain.swapchain_info.extents
-            }
-        ));
-        let mut pipeline_manager = self.pipeline_manager.as_mut().unwrap();
+        // self.pipeline_manager = Some(PipelineManager::new(
+        //     device_context,
+        //     SwapchainSurfaceInfo {
+        //         surface_format: swapchain.swapchain_info.surface_format,
+        //         extents: swapchain.swapchain_info.extents
+        //     }
+        // ));
+        // let mut pipeline_manager = self.pipeline_manager.as_mut().unwrap();
+        self.pipeline_manager.update_swapchain_surface_info(SwapchainSurfaceInfo {
+            surface_format: swapchain.swapchain_info.surface_format,
+            extents: swapchain.swapchain_info.extents
+        });
 
         log::debug!("Create VkSpriteRenderPass");
         self.sprite_renderpass = Some(VkSpriteRenderPass::new(
             device_context,
             swapchain,
-            pipeline_manager,
+            &mut self.pipeline_manager,
             &self.sprite_resource_manager,
         )?);
         log::debug!("Create VkMeshRenderPass");
@@ -169,7 +185,6 @@ impl VkSurfaceEventListener for GameRenderer {
 
         self.sprite_renderpass = None;
         self.mesh_renderpass = None;
-        self.pipeline_manager = None;
         self.imgui_event_listener.swapchain_destroyed();
     }
 
@@ -259,6 +274,10 @@ impl GameRendererWithContext {
         })
     }
 
+    pub fn update_resources(&mut self) {
+        self.game_renderer.update_resources();
+    }
+
     pub fn draw(
         &mut self,
         window: &dyn Window,
@@ -278,6 +297,10 @@ impl GameRendererWithContext {
 
     pub fn context(&self) -> &VkContext {
         &self.context
+    }
+
+    pub fn pipeline_manager(&self) -> &PipelineManager {
+        self.game_renderer.pipeline_manager()
     }
 
     pub fn shader_resource_manager(&self) -> &ShaderResourceManager {
