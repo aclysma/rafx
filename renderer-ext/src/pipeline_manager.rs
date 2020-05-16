@@ -64,8 +64,9 @@ struct PipelineResourceManagerHashState<GpuResourceT> {
 // -
 pub struct DeduplicatedSet<HashT, DscT, ResourceT>
     where
-        HashT: Eq + Hash,
+        HashT: Eq + Hash + Clone,
         ResourceT: Clone,
+        DscT: Clone + PartialEq,
 {
     // Look up
     by_hash: FnvHashMap<HashT, PipelineResourceManagerHashState<ResourceT>>,
@@ -77,8 +78,9 @@ pub struct DeduplicatedSet<HashT, DscT, ResourceT>
 
 impl<HashT, DscT, ResourceT> Default for DeduplicatedSet<HashT, DscT, ResourceT>
     where
-        HashT: Eq + Hash,
+        HashT: Eq + Hash + Clone,
         ResourceT: Clone,
+        DscT: Clone + PartialEq,
 {
     fn default() -> Self {
         DeduplicatedSet {
@@ -90,8 +92,9 @@ impl<HashT, DscT, ResourceT> Default for DeduplicatedSet<HashT, DscT, ResourceT>
 
 impl<HashT, DscT, ResourceT> DeduplicatedSet<HashT, DscT, ResourceT>
     where
-        HashT: Eq + Hash,
+        HashT: Eq + Hash + Clone,
         ResourceT: Clone,
+        DscT: Clone + PartialEq,
 {
     fn len(&self) -> usize {
         self.by_hash.len()
@@ -115,10 +118,11 @@ impl<HashT, DscT, ResourceT> DeduplicatedSet<HashT, DscT, ResourceT>
     fn insert(
         &mut self,
         hash: HashT,
+        dsc: &DscT,
         resource: ResourceT
     ) {
         // Insert the resource
-        let old_object = self.by_hash.insert(hash, PipelineResourceManagerHashState {
+        let old_object = self.by_hash.insert(hash.clone(), PipelineResourceManagerHashState {
             ref_count: std::sync::atomic::AtomicU32::new(1),
             vk_obj: resource
         });
@@ -126,15 +130,23 @@ impl<HashT, DscT, ResourceT> DeduplicatedSet<HashT, DscT, ResourceT>
         // If this trips, we have duplicate objects for the same load handle which isn't allowed.
         // The caller should have called add_ref instead
         assert!(old_object.is_none());
+
+        let old_value = self.values.insert(hash, dsc.clone());
+        // If this trips, we incorrectly inserted a new value over a value that already existed
+        assert!(old_value.is_none());
     }
 
     fn try_add_ref(
         &mut self,
         hash: HashT,
+        dsc: &DscT,
     ) -> Option<ResourceT> {
         // Add ref count
         //let state = self.by_hash.get(&hash);
         self.by_hash.get(&hash).map(|state| {
+            // Check the hash has no false collisions
+            assert!(self.values.get(&hash).unwrap() == dsc);
+
             state.ref_count.fetch_add(1, std::sync::atomic::Ordering::Acquire);
             state.vk_obj.clone()
         })
@@ -152,6 +164,10 @@ impl<HashT, DscT, ResourceT> DeduplicatedSet<HashT, DscT, ResourceT>
         };
 
         if ref_count == 0 {
+            // Remove the value and verify it was set in the first place
+            let old_value = self.values.remove(&hash);
+            assert!(old_value.is_some());
+
             // Ref count is 0, return the underlying object since it's ready to be destroyed
             let state = self.by_hash.remove(&hash).unwrap();
             Some(state.vk_obj)
@@ -167,6 +183,7 @@ impl<HashT, DscT, ResourceT> DeduplicatedSet<HashT, DscT, ResourceT>
             resources.push(v.vk_obj.clone());
         }
 
+        self.values.clear();
         self.by_hash.clear();
         resources
     }
@@ -195,7 +212,11 @@ impl<HashT, DscT, ResourceT> DeduplicatedSet<HashT, DscT, ResourceT>
 // - Any insertion must be matched by a remove using the same LoadHandle
 // - The final LoadHandle remove will send the resource to something that drops it via drop_sender
 
-pub struct PipelineResourceManager<DscT : Hash, GpuResourceT : Clone> {
+pub struct PipelineResourceManager<DscT, ResourceT>
+    where
+        DscT: Hash + Clone + PartialEq,
+        ResourceT: Clone,
+{
     // Look up the hash of a resource by load handle. The resource could be cached here but since
     // they are reference counted, we would need to lookup by the hash anyways (or wrap the ref
     // count in an arc)
@@ -203,28 +224,32 @@ pub struct PipelineResourceManager<DscT : Hash, GpuResourceT : Clone> {
     by_load_handle_uncommitted: FnvHashMap<LoadHandle, PipelineResourceHash>,
 
     // Look up
-    //by_hash: FnvHashMap<PipelineResourceHash, PipelineResourceManagerHashState<GpuResourceT>>,
-    by_hash: DeduplicatedSet<PipelineResourceHash, DscT, GpuResourceT>,
-
-    // To detect collisions and so that we can recreate when swapchains are added/removed
-    values: FnvHashMap<PipelineResourceHash, DscT>,
+    //by_hash: FnvHashMap<PipelineResourceHash, PipelineResourceManagerHashState<ResourceT>>,
+    by_hash: DeduplicatedSet<PipelineResourceHash, DscT, ResourceT>,
 
     phantom_data: PhantomData<DscT>
 }
 
-impl<DscT : PartialEq + Clone + Hash, GpuResourceT : Clone> Default for PipelineResourceManager<DscT, GpuResourceT> {
+impl<DscT, ResourceT> Default for PipelineResourceManager<DscT, ResourceT>
+    where
+        DscT: Hash + Clone + PartialEq,
+        ResourceT: Clone,
+{
     fn default() -> Self {
         PipelineResourceManager {
             by_load_handle_committed: Default::default(),
             by_load_handle_uncommitted: Default::default(),
             by_hash: Default::default(),
-            values: Default::default(),
             phantom_data: Default::default()
         }
     }
 }
 
-impl<DscT : PartialEq + Clone + Hash, GpuResourceT : Clone> PipelineResourceManager<DscT, GpuResourceT> {
+impl<DscT, ResourceT> PipelineResourceManager<DscT, ResourceT>
+    where
+        DscT: Hash + Clone + PartialEq,
+        ResourceT: Clone,
+{
     fn len(&self) -> usize {
         self.by_hash.len()
     }
@@ -233,7 +258,7 @@ impl<DscT : PartialEq + Clone + Hash, GpuResourceT : Clone> PipelineResourceMana
     fn get_committed(
         &self,
         load_handle: LoadHandle
-    ) -> Option<GpuResourceT> {
+    ) -> Option<ResourceT> {
         let resource_hash = self.by_load_handle_committed.get(&load_handle);
         resource_hash.and_then(|resource_hash| self.by_hash.get(*resource_hash))
     }
@@ -241,7 +266,7 @@ impl<DscT : PartialEq + Clone + Hash, GpuResourceT : Clone> PipelineResourceMana
     fn get_latest(
         &self,
         load_handle: LoadHandle
-    ) -> Option<GpuResourceT> {
+    ) -> Option<ResourceT> {
         let resource_hash = self.by_load_handle_uncommitted.get(&load_handle);
         if let Some(resource_hash) = resource_hash {
             self.by_hash.get(*resource_hash)
@@ -259,34 +284,34 @@ impl<DscT : PartialEq + Clone + Hash, GpuResourceT : Clone> PipelineResourceMana
 
     fn insert(
         &mut self,
-        hash: PipelineResourceHash,
         load_handle: LoadHandle,
+        hash: PipelineResourceHash,
         dsc: &DscT,
-        resource: GpuResourceT
+        resource: ResourceT
     ) {
         debug_assert!(!self.contains_resource(hash));
 
         // Insert the resource
-        self.by_hash.insert(hash, resource);
+        self.by_hash.insert(hash, dsc, resource);
 
         let old_load_handle = self.by_load_handle_uncommitted.insert(load_handle, hash);
         // If this trips, we have duplicate objects for the same load handle
         assert!(old_load_handle.is_none());
 
-        let old_value = self.values.insert(hash, dsc.clone());
-        // If this trips, we incorrectly inserted a new value over a value that already existed
-        assert!(old_value.is_none());
+        // let old_value = self.values.insert(hash, dsc.clone());
+        // // If this trips, we incorrectly inserted a new value over a value that already existed
+        // assert!(old_value.is_none());
     }
 
     fn try_add_ref(
         &mut self,
-        hash: PipelineResourceHash,
         load_handle: LoadHandle,
+        hash: PipelineResourceHash,
         dsc: &DscT,
-    ) -> Option<GpuResourceT> {
-        self.by_hash.try_add_ref(hash).map(|resource| {
-            // Check the hash has no false collisions
-            assert!(self.values.get(&hash).unwrap() == dsc);
+    ) -> Option<ResourceT> {
+        self.by_hash.try_add_ref(hash, dsc).map(|resource| {
+            // // Check the hash has no false collisions
+            // assert!(self.values.get(&hash).unwrap() == dsc);
 
             let old_load_handle = self.by_load_handle_uncommitted.insert(load_handle, hash);
             // Check that this load handle wasn't being used to load something else
@@ -298,19 +323,19 @@ impl<DscT : PartialEq + Clone + Hash, GpuResourceT : Clone> PipelineResourceMana
     fn remove_ref(
         &mut self,
         load_handle: LoadHandle,
-    ) -> Vec<GpuResourceT> {
+    ) -> Vec<ResourceT> {
         // Worst-case we can have both a committed and uncommitted asset created
         let mut resources = Vec::with_capacity(2);
         if let Some(hash) = self.by_load_handle_committed.remove(&load_handle) {
             if let Some(resource) = self.by_hash.remove_ref(hash) {
-                self.values.remove(&hash);
+                //self.values.remove(&hash);
                 resources.push(resource);
             }
         }
 
         if let Some(hash) = self.by_load_handle_uncommitted.remove(&load_handle) {
             if let Some(resource) = self.by_hash.remove_ref(hash) {
-                self.values.remove(&hash);
+                //self.values.remove(&hash);
                 resources.push(resource);
             }
         }
@@ -326,13 +351,180 @@ impl<DscT : PartialEq + Clone + Hash, GpuResourceT : Clone> PipelineResourceMana
     }
 
     // Intended for use when destroying so that resources can be cleaned up
-    fn take_all_resources(&mut self) -> Vec<GpuResourceT> {
-        self.values.clear();
+    fn take_all_resources(&mut self) -> Vec<ResourceT> {
+        //self.values.clear();
         self.by_load_handle_committed.clear();
         self.by_load_handle_uncommitted.clear();
         self.by_hash.take_all_resources()
     }
 }
+
+
+
+//TODO: This design might not even work, have to deal with having multiple swapchains :/
+/*
+
+// The same thing as PipelineResourceManager except a load handle have multiple items within it and
+// these items also should be deduplicated
+pub struct PipelineResourceManagerMulti<DscT, ResourceT>
+    where
+        DscT: Hash + Clone + PartialEq,
+        ResourceT: Clone,
+{
+    // Look up the hash of a resource by load handle. The resource could be cached here but since
+    // they are reference counted, we would need to lookup by the hash anyways (or wrap the ref
+    // count in an arc)
+    by_load_handle_committed: FnvHashMap<LoadHandle, Vec<PipelineResourceHash>>,
+    by_load_handle_uncommitted: FnvHashMap<LoadHandle, Vec<PipelineResourceHash>>,
+
+    // Look up
+    //by_hash: FnvHashMap<PipelineResourceHash, PipelineResourceManagerHashState<ResourceT>>,
+    by_hash: DeduplicatedSet<PipelineResourceHash, DscT, ResourceT>,
+
+    phantom_data: PhantomData<DscT>
+}
+
+impl<DscT, ResourceT> Default for PipelineResourceManagerMulti<DscT, ResourceT>
+    where
+        DscT: Hash + Clone + PartialEq,
+        ResourceT: Clone,
+{
+    fn default() -> Self {
+        PipelineResourceManagerMulti {
+            by_load_handle_committed: Default::default(),
+            by_load_handle_uncommitted: Default::default(),
+            by_hash: Default::default(),
+            phantom_data: Default::default()
+        }
+    }
+}
+
+impl<DscT, ResourceT> PipelineResourceManagerMulti<DscT, ResourceT>
+    where
+        DscT: Hash + Clone + PartialEq,
+        ResourceT: Clone,
+{
+    fn len(&self) -> usize {
+        self.by_hash.len()
+    }
+
+    // Returns the resource
+    fn get_committed(
+        &self,
+        load_handle: LoadHandle
+    ) -> Option<Vec<ResourceT>> {
+        //TODO: Return a ref to the vec instead of cloning
+        let resource_hash = self.by_load_handle_committed.get(&load_handle);
+        resource_hash
+            .and_then(|resource_hashes| {
+                resource_hashes.iter()
+                    .map(|hash| self.by_hash.get(*hash))
+                    .collect()
+            })
+    }
+
+    fn get_latest(
+        &self,
+        load_handle: LoadHandle
+    ) -> Option<Vec<ResourceT>> {
+        //TODO: Return a ref to the vec instead of cloning
+        let resource_hash = self.by_load_handle_uncommitted.get(&load_handle);
+        if let Some(resource_hashes) = resource_hash {
+            resource_hashes.iter()
+                .map(|hash| self.by_hash.get(*hash))
+                .collect()
+        } else {
+            self.get_committed(load_handle)
+        }
+    }
+
+    fn contains_resource(
+        &self,
+        hash: PipelineResourceHash,
+    ) -> bool {
+        self.by_hash.contains(hash)
+    }
+
+    fn insert(
+        &mut self,
+        load_handle: LoadHandle,
+        hash: &[PipelineResourceHash],
+        dsc: &[DscT],
+        resource: &[ResourceT]
+    ) {
+        debug_assert!(!self.contains_resource(hash));
+
+        // Insert the resource
+        for (dsc, resource) in dsc.iter.zip(resource) {
+            self.by_hash.insert(hash, dsc, resource);
+        }
+
+        let old_load_handle = self.by_load_handle_uncommitted.insert(load_handle, hash);
+        // If this trips, we have duplicate objects for the same load handle
+        assert!(old_load_handle.is_none());
+
+        // let old_value = self.values.insert(hash, dsc.clone());
+        // // If this trips, we incorrectly inserted a new value over a value that already existed
+        // assert!(old_value.is_none());
+    }
+
+    fn try_add_ref(
+        &mut self,
+        load_handle: LoadHandle,
+        hash: &[PipelineResourceHash],
+        dsc: &DscT,
+    ) -> Option<ResourceT> {
+        self.by_hash.try_add_ref(hash, dsc).map(|resource| {
+            // // Check the hash has no false collisions
+            // assert!(self.values.get(&hash).unwrap() == dsc);
+
+            let old_load_handle = self.by_load_handle_uncommitted.insert(load_handle, hash);
+            // Check that this load handle wasn't being used to load something else
+            assert!(old_load_handle.is_none());
+            resource
+        })
+    }
+
+    fn remove_ref(
+        &mut self,
+        load_handle: LoadHandle,
+    ) -> Vec<ResourceT> {
+        // Worst-case we can have both a committed and uncommitted asset created
+        let mut resources = Vec::with_capacity(2);
+        if let Some(hash) = self.by_load_handle_committed.remove(&load_handle) {
+            if let Some(resource) = self.by_hash.remove_ref(hash) {
+                //self.values.remove(&hash);
+                resources.push(resource);
+            }
+        }
+
+        if let Some(hash) = self.by_load_handle_uncommitted.remove(&load_handle) {
+            if let Some(resource) = self.by_hash.remove_ref(hash) {
+                //self.values.remove(&hash);
+                resources.push(resource);
+            }
+        }
+
+        resources
+    }
+
+    fn commit(&mut self, load_handle: LoadHandle) {
+        if let Some(hash) = self.by_load_handle_uncommitted.remove(&load_handle) {
+            let old_load_handle = self.by_load_handle_committed.insert(load_handle, hash);
+            assert!(old_load_handle.is_none());
+        }
+    }
+
+    // Intended for use when destroying so that resources can be cleaned up
+    fn take_all_resources(&mut self) -> Vec<ResourceT> {
+        //self.values.clear();
+        self.by_load_handle_committed.clear();
+        self.by_load_handle_uncommitted.clear();
+        self.by_hash.take_all_resources()
+    }
+}
+*/
+
 
 
 
@@ -476,19 +668,15 @@ impl ActiveSwapchainSurfaceInfoSet {
 }
 
 #[derive(Clone)]
-struct HashedRenderpass {
-    // shader_modules: Vec<vk::ShaderModule>,
-    // descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
-    // pipeline_layout: vk::PipelineLayout,
-
-    // Per swapchain
-    swapchain_renderpasses: Vec<vk::RenderPass>
-}
-
-#[derive(Clone)]
 struct HashedPipelineLayout {
     descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
     pipeline_layout: vk::PipelineLayout,
+}
+
+#[derive(Clone)]
+struct HashedRenderpass {
+    // Per swapchain
+    swapchain_renderpasses: Vec<vk::RenderPass>
 }
 
 #[derive(Clone)]
@@ -553,7 +741,7 @@ impl PipelineManager {
         if self.active_swapchain_surface_infos.add(&swapchain_surface_info) {
             // Allocate a new renderpass instance for every loaded renderpass for the swapchain
             for (hash, state) in &mut self.renderpasses.by_hash.by_hash {
-                let renderpass_dsc = self.renderpasses.values.get(hash).unwrap();
+                let renderpass_dsc = self.renderpasses.by_hash.values.get(hash).unwrap();
                 let renderpasses = Self::create_renderpasses(
                     &self.device_context,
                     &[swapchain_surface_info.clone()],
@@ -566,7 +754,7 @@ impl PipelineManager {
 
             // Allocate a new pipeline instance for every loaded pipeline for the swapchain
             for (hash, state) in &mut self.graphics_pipelines.by_hash.by_hash {
-                let pipeline_asset = self.graphics_pipelines.values.get(hash).unwrap();
+                let pipeline_asset = self.graphics_pipelines.by_hash.values.get(hash).unwrap();
 
                 let shader_modules = &state.vk_obj.shader_modules;
                 let pipeline_layout = state.vk_obj.pipeline_layout;
@@ -734,16 +922,14 @@ impl PipelineManager {
         load_handle: LoadHandle,
         shader_module: &dsc::ShaderModule,
     ) -> VkResult<vk::ShaderModule> {
-        //TODO: Might be more consistent to hash the shader asset?
         let hash = PipelineResourceHash::from_resource_description(shader_module);
-        if let Some(resource) = self.shader_modules.try_add_ref(hash, load_handle, shader_module) {
-            //Ok(self.shader_modules.add_ref_by_hash(hash, load_handle, shader_module))
+        if let Some(resource) = self.shader_modules.try_add_ref(load_handle, hash, shader_module) {
             Ok(resource)
         } else {
             println!("Creating shader module\n[bytes: {}]", shader_module.code.len());
             let resource =
                 crate::pipeline_description::create_shader_module(self.device_context.device(), shader_module)?;
-            self.shader_modules.insert(hash, load_handle, shader_module, resource);
+            self.shader_modules.insert(load_handle, hash, shader_module, resource);
             Ok(resource)
         }
     }
@@ -754,14 +940,13 @@ impl PipelineManager {
         descriptor_set_layout: &dsc::DescriptorSetLayout,
     ) -> VkResult<vk::DescriptorSetLayout> {
         let hash = PipelineResourceHash::from_resource_description(descriptor_set_layout);
-        if let Some(resource) = self.descriptor_set_layouts.try_add_ref(hash, load_handle, descriptor_set_layout) {
-            //Ok(self.descriptor_set_layouts.add_ref_by_hash(hash, load_handle, descriptor_set_layout))
+        if let Some(resource) = self.descriptor_set_layouts.try_add_ref(load_handle, hash, descriptor_set_layout) {
             Ok(resource)
         } else {
             println!("Creating descriptor set layout\n{:#?}", descriptor_set_layout);
             let resource =
                 crate::pipeline_description::create_descriptor_set_layout(self.device_context.device(), descriptor_set_layout)?;
-            self.descriptor_set_layouts.insert(hash, load_handle, descriptor_set_layout, resource);
+            self.descriptor_set_layouts.insert(load_handle, hash, descriptor_set_layout, resource);
             Ok(resource)
         }
     }
@@ -772,8 +957,7 @@ impl PipelineManager {
         pipeline_layout: &dsc::PipelineLayout
     ) -> VkResult<HashedPipelineLayout> {
         let hash = PipelineResourceHash::from_resource_description(pipeline_layout);
-        if let Some(resource) = self.pipeline_layouts.try_add_ref(hash, load_handle, pipeline_layout) {
-            //Ok(self.pipeline_layouts.add_ref_by_hash(hash, load_handle, pipeline_layout))
+        if let Some(resource) = self.pipeline_layouts.try_add_ref(load_handle, hash, pipeline_layout) {
             Ok(resource)
         } else {
             let mut descriptor_set_layouts = Vec::with_capacity(pipeline_layout.descriptor_set_layouts.len());
@@ -790,11 +974,12 @@ impl PipelineManager {
                 descriptor_set_layouts: descriptor_set_layouts
             };
 
-            self.pipeline_layouts.insert(hash, load_handle, pipeline_layout, hashed_pipeline_layout.clone());
+            self.pipeline_layouts.insert(load_handle, hash, pipeline_layout, hashed_pipeline_layout.clone());
             Ok(hashed_pipeline_layout)
         }
     }
 
+    // Shared logic pulled out because it may be called when loading an asset or
     fn create_renderpasses(
         device_context: &VkDeviceContext,
         swapchain_infos: &[SwapchainSurfaceInfo],
@@ -818,18 +1003,9 @@ impl PipelineManager {
         renderpass: &dsc::RenderPass,
     ) -> VkResult<HashedRenderpass> {
         let hash = PipelineResourceHash::from_resource_description(renderpass);
-        if let Some(resource) = self.renderpasses.try_add_ref(hash, load_handle, renderpass) {
-            //Ok(self.renderpasses.add_ref_by_hash(hash, load_handle, renderpass))
+        if let Some(resource) = self.renderpasses.try_add_ref(load_handle, hash, renderpass) {
             Ok(resource)
         } else {
-            // println!("Creating renderpasses\n{:#?}", renderpass);
-            // let mut resources = Vec::with_capacity(self.active_swapchain_surface_infos.unique_swapchain_infos().len());
-            // for swapchain_info in self.active_swapchain_surface_infos.unique_swapchain_infos() {
-            //     let resource =
-            //         crate::pipeline_description::create_renderpass(self.device_context.device(), renderpass, swapchain_info)?;
-            //     resources.push(resource);
-            // }
-
             let resources = Self::create_renderpasses(
                 &self.device_context,
                 &self.active_swapchain_surface_infos.unique_swapchain_infos(),
@@ -840,7 +1016,7 @@ impl PipelineManager {
                 swapchain_renderpasses: resources
             };
 
-            self.renderpasses.insert(hash, load_handle, renderpass, hashed_renderpass.clone());
+            self.renderpasses.insert(load_handle, hash, renderpass, hashed_renderpass.clone());
             Ok(hashed_renderpass)
         }
     }
@@ -853,18 +1029,12 @@ impl PipelineManager {
         renderpasses: &[vk::RenderPass],
         graphics_pipeline: &PipelineAsset,
     ) -> VkResult<Vec<vk::Pipeline>> {
-        //let pipeline_layout = self.load_pipeline_layout(load_handle, &graphics_pipeline.pipeline_layout)?;
-        //let renderpasses = self.load_renderpass(load_handle, &graphics_pipeline.renderpass)?;
-
         let mut shader_modules_meta = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
-        //let mut shader_modules = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
         for stage in &graphics_pipeline.pipeline_shader_stages {
-            //let shader_module = self.shader_modules.get_latest(stage.shader_module.load_handle()).unwrap();
             let shader_module_meta = dsc::ShaderModuleMeta {
                 stage: stage.stage,
                 entry_name: stage.entry_name.clone()
             };
-            //shader_modules.push(shader_module);
             shader_modules_meta.push(shader_module_meta);
         }
 
@@ -893,23 +1063,21 @@ impl PipelineManager {
         load_handle: LoadHandle,
         graphics_pipeline: &PipelineAsset,
     ) -> VkResult<HashedGraphicsPipeline> {
-        //TODO: Hashing the asset comes with the downside that if multiple shader assets are the same, we don't deduplicate them.
+        //TODO: Hashing the asset comes with the downside that if shader assets are different load
+        // handles but the same values, we don't deduplicate them.
         let hash = PipelineResourceHash::from_resource_description(graphics_pipeline);
-        if let Some(resource) = self.graphics_pipelines.try_add_ref(hash, load_handle, graphics_pipeline) {
-            //Ok(self.graphics_pipelines.add_ref_by_hash(hash, load_handle, graphics_pipeline).swapchain_pipelines.clone())
+        if let Some(resource) = self.graphics_pipelines.try_add_ref(load_handle, hash, graphics_pipeline) {
             Ok(resource)
         } else {
             let pipeline_layout = self.load_pipeline_layout(load_handle, &graphics_pipeline.pipeline_layout)?;
             let renderpasses = self.load_renderpass(load_handle, &graphics_pipeline.renderpass)?;
 
-            // let mut shader_modules_meta = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
             let mut shader_modules = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
             for stage in &graphics_pipeline.pipeline_shader_stages {
                 let shader_module = self.shader_modules.get_latest(stage.shader_module.load_handle()).unwrap();
                 shader_modules.push(shader_module);
             }
 
-            //let resources = Self::create_renderpasses(&self.device_context, load_handle, &self.active_swapchain_surface_infos.unique_swapchain_infos(), renderpass)?;
             let resources = Self::create_graphics_pipelines(
                 &self.device_context,
                 &shader_modules,
@@ -927,7 +1095,7 @@ impl PipelineManager {
                 swapchain_pipelines: resources.clone()
             };
 
-            self.graphics_pipelines.insert(hash, load_handle, graphics_pipeline, hashed_graphics_pipeline.clone());
+            self.graphics_pipelines.insert(load_handle, hash, graphics_pipeline, hashed_graphics_pipeline.clone());
             Ok(hashed_graphics_pipeline)
         }
     }
@@ -962,6 +1130,18 @@ impl Drop for PipelineManager {
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 pub struct ShaderLoadHandler {
@@ -1021,6 +1201,21 @@ impl ResourceLoadHandler<ShaderAsset> for ShaderLoadHandler {
         self.load_queues.free_request_tx.send(request);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 pub struct PipelineLoadHandler {
     load_queues: LoadQueuesTx<PipelineAsset>
