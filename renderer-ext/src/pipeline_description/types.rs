@@ -218,6 +218,7 @@ impl Default for AttachmentDescriptionFlags {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct SwapchainSurfaceInfo {
     pub surface_format: vk::SurfaceFormatKHR,
     pub extents: vk::Extent2D,

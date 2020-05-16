@@ -248,12 +248,6 @@ fn write_example_pipeline_files() {
 }
 
 fn main() {
-    // let u32_value : u32 = 2000000000;
-    // let u16_value : u16 = u32_value.try_into();
-
-    //renderer_ext::test_gltf();
-    //return;
-
     // Setup logging
     env_logger::Builder::from_default_env()
         .filter_module("renderer_shell_vulkan::buffer", log::LevelFilter::Debug)
@@ -268,24 +262,7 @@ fn main() {
         daemon::run();
     });
 
-
-
-
-    write_example_pipeline_files();
-
-
-
-    //TODO: Could consider using json_comments
-
-
-    // let pipeline_ron = ron::ser::to_string_pretty(&sprite_pipeline, ron::ser::PrettyConfig::default()).unwrap();
-    // let pipeline_toml = toml::to_string_pretty(&sprite_pipeline).unwrap();
-    // std::fs::File::create("pipeline_ron_example.ron").unwrap().write_all(pipeline_ron.as_bytes());
-    // std::fs::File::create("pipeline_toml_example.toml").unwrap().write_all(pipeline_ron.as_bytes());
-
-
-
-
+    // Something to track time
     let mut time = renderer_ext::time::TimeState::new();
     time.update();
 
@@ -295,14 +272,13 @@ fn main() {
         .video()
         .expect("Failed to create sdl video subsystem");
 
-    // Set up the coordinate system to be fixed at 900x600, and use this as the default window size
-    // This means the drawing code can be written as though the window is always 900x600. The
-    // output will be automatically scaled so that it's always visible.
+    // Default window size
     let logical_size = LogicalSize {
         width: 900,
         height: 600,
     };
 
+    // Create the window
     let sdl_window = video_subsystem
         .window(
             "Renderer Prototype",
@@ -315,15 +291,26 @@ fn main() {
         .vulkan()
         .build()
         .expect("Failed to create window");
+
     log::info!("window created");
 
+    // Load imgui, we do it a little early because it wants to have the actual SDL2 window and
+    // doesn't work with the thin window wrapper
     let imgui_manager = renderer_ext::imgui_support::init_imgui_manager(&sdl_window);
 
+    // Thin window wrapper to decouple the renderer from a specific windowing crate
     let window = Sdl2Window::new(&sdl_window);
+
+    // Assets will be stored here, we init it ahead of the renderer as it will register its own
+    // asset types
+    let mut asset_resource = AssetResource::default();
+
+    // Create the renderer, this will init the vulkan instance, device, and set up a swap chain
     let renderer = GameRendererWithContext::new(
         &window,
         imgui_manager.build_font_atlas(),
         &time,
+        &mut asset_resource
     );
 
     // Check if there were error setting up vulkan
@@ -336,79 +323,11 @@ fn main() {
 
     let mut renderer = renderer.unwrap();
 
-    // Increment a frame count so we can render something that moves
-    let mut frame_count = 0;
-
     log::info!("Starting window event loop");
     let mut event_pump = sdl_context
         .event_pump()
         .expect("Could not create sdl event pump");
 
-    // Handles routing data between the asset system and sprite resource manager
-    let mut upload_queue = UploadQueue::new(
-        renderer.context().device_context(),
-        //renderer.sprite_resource_manager().image_update_tx().clone(),
-    );
-
-    // Force an image to load and stay resident in memory
-    let mut asset_resource = {
-        let device_context = renderer.context().device_context();
-
-        let mut asset_resource = AssetResource::default();
-        asset_resource.add_storage_with_load_handler::<ShaderAsset, ShaderLoadHandler>(Box::new(
-            renderer.pipeline_manager().create_shader_load_handler(),
-        ));
-        asset_resource.add_storage_with_load_handler::<PipelineAsset, PipelineLoadHandler>(Box::new(
-            renderer.pipeline_manager().create_pipeline_load_handler(),
-        ));
-        // asset_resource.add_storage::<ShaderAsset>();
-        // asset_resource.add_storage::<PipelineAsset>();
-        asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
-            ImageLoadHandler::new(
-                upload_queue.pending_image_tx().clone(),
-                renderer.image_resource_manager().image_update_tx().clone(),
-                renderer.sprite_resource_manager().sprite_update_tx().clone(),
-            ),
-        ));
-        asset_resource.add_storage_with_load_handler::<MaterialAsset, MaterialLoadHandler>(Box::new(
-            MaterialLoadHandler::new(
-                renderer.material_resource_manager().material_update_tx().clone(),
-            )
-        ));
-        asset_resource.add_storage_with_load_handler::<MeshAsset, MeshLoadHandler>(Box::new(
-            MeshLoadHandler::new(
-                upload_queue.pending_buffer_tx().clone(),
-                renderer.mesh_resource_manager().mesh_update_tx().clone(),
-            ),
-        ));
-        asset_resource.add_storage_with_load_handler::<SpriteAsset, SpriteLoadHandler>(Box::new(
-            SpriteLoadHandler::new(
-                renderer.sprite_resource_manager().sprite_update_tx().clone(),
-            ),
-        ));
-        asset_resource
-    };
-
-    //IMAGE
-    // let cat_handle = load_asset::<ImageAsset>(
-    //     asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
-    //     &asset_resource,
-    // );
-    //let image_handle = load_asset::<ImageAsset>(asset_uuid!("337fe670-fb88-441e-bf87-33ed6fcfe269"), &asset_resource);
-
-    //MATERIAL
-    //let material_handle = load_asset::<MaterialAsset>(asset_uuid!("742f5d82-0770-45de-907f-91ebe4834d7a"), &asset_resource);
-
-    //MESHES
-    // 3objects
-    // let mesh_handle = load_asset::<MeshAsset>(
-    //     asset_uuid!("25829306-59bb-4db3-a535-e542948abea0"),
-    //     &asset_resource,
-    // );
-
-    // unit_cube
-    //let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("5c7c907a-9335-4d4a-bb61-4f0c7ff03d07"), &asset_resource);
-    // textured cube
 
     fn wait_for_asset_to_load<T>(asset_handle: &atelier_assets::loader::handle::Handle<T>, asset_resource: &mut AssetResource, renderer: &mut GameRendererWithContext) {
         loop {
@@ -442,31 +361,6 @@ fn main() {
     let pipeline_variant = load_asset::<PipelineAsset>(asset_uuid!("38126811-1892-41f9-80b0-64d9b5bdcad2"), &asset_resource);
     wait_for_asset_to_load(&pipeline, &mut asset_resource, &mut renderer);
     wait_for_asset_to_load(&pipeline_variant, &mut asset_resource, &mut renderer);
-
-    // loop {
-    //     asset_resource.update();
-    //     renderer.update_resources();
-    //     use atelier_assets::loader::LoadStatus;
-    //     use atelier_loader::handle::AssetHandle;
-    //     match pipeline.load_status(asset_resource.loader()) {
-    //         LoadStatus::NotRequested => {
-    //             unreachable!();
-    //         },
-    //         LoadStatus::Loading => {
-    //             // keep waiting
-    //         },
-    //         LoadStatus::Loaded => {
-    //             break;
-    //         },
-    //         LoadStatus::Unloading => { unreachable!() },
-    //         LoadStatus::DoesNotExist => {
-    //             println!("Essential asset not found");
-    //         },
-    //         LoadStatus::Error(err) => {
-    //             println!("Error loading essential asset {:?}", err);
-    //         },
-    //     }
-    // }
 
     let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"), &asset_resource);
 
@@ -509,22 +403,12 @@ fn main() {
                 }
             }
         }
-        // use atelier_loader::handle::TypedAssetStorage;
-        // let a : Option<&MaterialAsset> = material_handle.asset(asset_resource.storage());
-        // match a {
-        //     Some(material) => {
-        //         println!("material color {:?}", material.base_color);
-        //     },
-        //     None => {
-        //         println!("material not loaded");
-        //     }
-        // }
 
         let window = Sdl2Window::new(&sdl_window);
         imgui_manager.begin_frame(&sdl_window, &MouseState::new(&event_pump));
 
         asset_resource.update();
-        upload_queue.update(renderer.context().device());
+        //upload_queue.update(renderer.context().device());
         renderer.update_resources();
 
         imgui_manager.with_ui(|ui| {

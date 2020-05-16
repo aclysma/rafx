@@ -23,7 +23,9 @@ use ash::vk::ShaderStageFlags;
 use crate::time::TimeState;
 use crate::resource_managers::SpriteResourceManager;
 use crate::pipeline_manager::PipelineManager;
-use crate::pipeline_description::AttachmentReference;
+use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
+use crate::asset_resource::AssetResource;
+use std::hint::unreachable_unchecked;
 
 struct SpriteRenderpassStats {
     draw_call_count: u32,
@@ -131,6 +133,7 @@ impl VkSpriteRenderPass {
         swapchain: &VkSwapchain,
         pipeline_manager: &mut PipelineManager,
         sprite_resource_manager: &SpriteResourceManager,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -200,7 +203,7 @@ impl VkSpriteRenderPass {
         let renderpass = crate::pipeline_description::create_renderpass(
             device_context.device(),
             &sprite_pipeline_description.renderpass,
-            pipeline_manager.swapchain_surface_info().unwrap()
+            swapchain_surface_info
         )?;
 
         let pipeline = crate::pipeline_description::create_graphics_pipeline(
@@ -210,7 +213,7 @@ impl VkSpriteRenderPass {
             renderpass,
             &shader_modules_meta,
             &shader_modules,
-            pipeline_manager.swapchain_surface_info().unwrap()
+            swapchain_surface_info
         )?;
 
         for shader_module in shader_modules {
@@ -262,6 +265,10 @@ impl VkSpriteRenderPass {
             descriptor_sets_per_pass,
             image_sampler,
         })
+    }
+
+    fn update_resources(&mut self, asset_resource: &AssetResource, pipeline_manager: &PipelineManager) {
+
     }
 
     fn create_command_pool(
