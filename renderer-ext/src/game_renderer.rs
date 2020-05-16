@@ -236,7 +236,8 @@ impl VkSurfaceEventListener for GameRenderer {
 
         self.pipeline_manager.add_swapchain(&swapchain_surface_info);
 
-        self.pipeline_manager.
+        //self.pipeline_manager.
+        let pipeline_info = self.pipeline_manager.get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
 
         // Get the pipeline,
 

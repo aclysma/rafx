@@ -292,7 +292,7 @@ impl UploadQueue {
         let mut ops = vec![];
         let mut decoded_textures = vec![];
 
-        while let Ok(pending_upload) = self.pending_image_rx.recv_timeout(Duration::from_secs(0)) {
+        for pending_upload in self.pending_image_rx.try_iter() {
             ops.push((pending_upload.load_op, pending_upload.upload_op));
             decoded_textures.push(pending_upload.texture);
 
@@ -334,7 +334,7 @@ impl UploadQueue {
         let mut ops = vec![];
         let mut buffer_data = vec![];
 
-        while let Ok(pending_upload) = self.pending_buffer_rx.recv_timeout(Duration::from_secs(0)) {
+        for pending_upload in self.pending_buffer_rx.try_iter() {
             ops.push((pending_upload.load_op, pending_upload.upload_op));
             buffer_data.push(pending_upload.data);
 
