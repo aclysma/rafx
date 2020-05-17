@@ -268,12 +268,22 @@ impl VkSurfaceEventListener for GameRenderer {
         VkResult::Ok(())
     }
 
-    fn swapchain_destroyed(&mut self) {
+    fn swapchain_destroyed(
+        &mut self,
+        device_context: &VkDeviceContext,
+        swapchain: &VkSwapchain,
+    ) {
         log::debug!("game renderer swapchain destroyed");
+
+        let swapchain_surface_info = SwapchainSurfaceInfo {
+            surface_format: swapchain.swapchain_info.surface_format,
+            extents: swapchain.swapchain_info.extents
+        };
 
         self.sprite_renderpass = None;
         self.mesh_renderpass = None;
-        self.imgui_event_listener.swapchain_destroyed();
+        self.resource_manager.remove_swapchain(&swapchain_surface_info);
+        self.imgui_event_listener.swapchain_destroyed(device_context, swapchain);
     }
 
     fn render(

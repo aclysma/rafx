@@ -374,7 +374,7 @@ fn main() {
         for event in event_pump.poll_iter() {
             imgui_manager.handle_event(&event);
             if !imgui_manager.ignore_event(&event) {
-                log::trace!("{:?}", event);
+                //log::trace!("{:?}", event);
                 match event {
                     //
                     // Halt if the user requests to close the window
@@ -389,7 +389,7 @@ fn main() {
                         keymod: modifiers,
                         ..
                     } => {
-                        log::trace!("Key Down {:?} {:?}", keycode, modifiers);
+                        //log::trace!("Key Down {:?} {:?}", keycode, modifiers);
                         if keycode == Keycode::Escape {
                             break 'running;
                         }

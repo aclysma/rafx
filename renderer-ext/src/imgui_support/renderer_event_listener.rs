@@ -36,7 +36,11 @@ impl renderer_shell_vulkan::VkSurfaceEventListener for ImguiRenderEventListener 
         Ok(())
     }
 
-    fn swapchain_destroyed(&mut self) {
+    fn swapchain_destroyed(
+        &mut self,
+        device_context: &VkDeviceContext,
+        swapchain: &VkSwapchain,
+    ) {
         self.imgui_renderpass = None;
     }
 

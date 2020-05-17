@@ -294,17 +294,6 @@ struct LoadedShaderModule {
     shader_module: ResourceArc<vk::ShaderModule>
 }
 
-
-struct CreatedGraphicsPipeline {
-    //shader_modules: Vec<ResourceArc<vk::ShaderModule>>,
-    //descriptor_set_layouts: Vec<ResourceArc<vk::DescriptorSetLayout>>,
-    //pipeline_layout: ResourceArc<vk::PipelineLayout>,
-
-    // Potentially one of these per swapchain surface
-    renderpass: ResourceArc<vk::RenderPass>,
-    pipeline: ResourceArc<vk::Pipeline>
-}
-
 struct LoadedGraphicsPipeline {
     shader_modules: Vec<ResourceArc<vk::ShaderModule>>,
     descriptor_set_layouts: Vec<ResourceArc<vk::DescriptorSetLayout>>,
@@ -312,7 +301,10 @@ struct LoadedGraphicsPipeline {
 
     // Potentially one of these per swapchain surface
     render_passes: Vec<ResourceArc<vk::RenderPass>>,
-    pipelines: Vec<ResourceArc<vk::Pipeline>>
+    pipelines: Vec<ResourceArc<vk::Pipeline>>,
+
+    // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
+    pipeline_asset: PipelineAsset,
 }
 
 
@@ -541,7 +533,6 @@ use crate::pipeline::pipeline::PipelineAsset;
 use crate::pipeline::shader::ShaderAsset;
 use ash::prelude::VkResult;
 use crate::pipeline_description::SwapchainSurfaceInfo;
-use std::hint::unreachable_unchecked;
 use std::borrow::Borrow;
 
 pub struct GenericLoadHandler<AssetT>
@@ -741,6 +732,65 @@ impl ResourceManager {
         &mut self,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo
     ) -> VkResult<()> {
+        log::info!("add_swapchain {:?}", swapchain_surface_info);
+        // Add it
+        if self.swapchain_surfaces.add(&swapchain_surface_info) {
+            let mut committed_updates = vec![];
+            let mut uncommitted_updates = vec![];
+
+            // Allocate a new renderpass instance for every loaded renderpass for the swapchain
+            for (load_handle, loaded_asset) in &mut self.loaded_assets.graphics_pipelines.loaded_assets {
+                if let Some(committed) = &mut loaded_asset.committed {
+                    committed_updates.push((load_handle.clone(), committed.pipeline_asset.clone()));
+                }
+
+                if let Some(uncommitted) = &mut loaded_asset.uncommitted {
+                    uncommitted_updates.push((load_handle.clone(), uncommitted.pipeline_asset.clone()));
+                }
+            }
+
+            for (load_handle, pipeline_asset) in committed_updates {
+                let renderpass = self.get_or_create_renderpass(
+                    &pipeline_asset.renderpass,
+                    swapchain_surface_info
+                )?;
+
+                let pipeline_create_data = PipelineCreateData::new(self, &pipeline_asset)?;
+                let pipeline = self.get_or_create_pipeline(
+                    &pipeline_create_data,
+                    &pipeline_asset,
+                    swapchain_surface_info,
+                    renderpass.clone()
+                )?;
+
+                let mut loaded_graphics_pipeline = self.loaded_assets.graphics_pipelines.loaded_assets.get_mut(&load_handle).unwrap();
+                let mut committed = loaded_graphics_pipeline.committed.as_mut().unwrap();
+                committed.render_passes.push(renderpass);
+                committed.pipelines.push(pipeline);
+            }
+
+
+            for (load_handle, pipeline_asset) in uncommitted_updates {
+                let renderpass = self.get_or_create_renderpass(
+                    &pipeline_asset.renderpass,
+                    swapchain_surface_info
+                )?;
+
+                let pipeline_create_data = PipelineCreateData::new(self, &pipeline_asset)?;
+                let pipeline = self.get_or_create_pipeline(
+                    &pipeline_create_data,
+                    &pipeline_asset,
+                    swapchain_surface_info,
+                    renderpass.clone()
+                )?;
+
+                let mut loaded_graphics_pipeline = self.loaded_assets.graphics_pipelines.loaded_assets.get_mut(&load_handle).unwrap();
+                let mut uncommitted = loaded_graphics_pipeline.uncommitted.as_mut().unwrap();
+                uncommitted.render_passes.push(renderpass);
+                uncommitted.pipelines.push(pipeline);
+            }
+        }
+
         Ok(())
     }
 
@@ -748,7 +798,25 @@ impl ResourceManager {
         &mut self,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo
     ) {
+        log::info!("remove_swapchain {:?}", swapchain_surface_info);
+        //TODO: Common case is to destroy and re-create the same swapchain surface info, so we can
+        // delay destroying until we also get an additional add/remove. If the next add call is
+        // the same, we can avoid the remove entirely
+        if let Some(remove_index) = self.swapchain_surfaces.remove(swapchain_surface_info) {
+            for (_, loaded_asset) in &mut self.loaded_assets.graphics_pipelines.loaded_assets {
+                if let Some(committed) = &mut loaded_asset.committed {
+                    committed.render_passes.swap_remove(remove_index);
+                    committed.pipelines.swap_remove(remove_index);
+                }
 
+                if let Some(uncommitted) = &mut loaded_asset.uncommitted {
+                    uncommitted.render_passes.swap_remove(remove_index);
+                    uncommitted.pipelines.swap_remove(remove_index);
+                }
+            }
+        } else {
+            log::error!("Received a remove swapchain without a matching add\n{:#?}", swapchain_surface_info);
+        }
     }
 
     pub fn update(
@@ -961,20 +1029,108 @@ impl ResourceManager {
         }
     }
 
+    fn get_or_create_pipeline(
+        &mut self,
+        pipeline_create_data: &PipelineCreateData,
+        pipeline_asset: &PipelineAsset,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+        renderpass: ResourceArc<vk::RenderPass>,
+    ) -> VkResult<ResourceArc<vk::Pipeline>> {
+        let pipeline_key = GraphicsPipelineKey {
+            shader_module_load_handles: pipeline_create_data.shader_module_load_handles.clone(),
+            shader_module_metas: pipeline_create_data.shader_module_metas.clone(),
+            fixed_function_state: pipeline_asset.fixed_function_state.clone(),
+            pipeline_layout: pipeline_asset.pipeline_layout.clone(),
+            renderpass: pipeline_asset.renderpass.clone(),
+            swapchain_surface_info: swapchain_surface_info.clone()
+        };
+
+        let hash = ResourceHash::from_key(&pipeline_key);
+        if let Some(pipeline) = self.resources.graphics_pipelines.get(hash, &pipeline_key) {
+            Ok(pipeline)
+        } else {
+            println!("Creating pipeline\n{:#?}", pipeline_key);
+            let resource = crate::pipeline_description::create_graphics_pipeline(
+                &self.device_context.device(),
+                &pipeline_asset.fixed_function_state,
+                pipeline_create_data.pipeline_layout.get_raw(),
+                renderpass.get_raw(),
+                &pipeline_create_data.shader_module_metas,
+                &pipeline_create_data.shader_module_vk_objs,
+                swapchain_surface_info
+            )?;
+            println!("Created pipeline {:?}", resource);
+
+            let pipeline = self.resources.graphics_pipelines.insert(hash, &pipeline_key, resource);
+            Ok(pipeline)
+        }
+    }
+
     fn load_graphics_pipeline(
         &mut self,
-        //load_handle: LoadHandle,
-        graphics_pipeline: &PipelineAsset,
+        pipeline_asset: &PipelineAsset,
     ) -> VkResult<LoadedGraphicsPipeline> {
         //TODO: Hashing the asset comes with the downside that if shader assets are different load
         // handles but the same values, we don't deduplicate them.
+        let pipeline_create_data = PipelineCreateData::new(self, pipeline_asset)?;
+        let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
+        let mut render_passes = Vec::with_capacity(self.swapchain_surfaces.unique_swapchain_infos().len());
+        for swapchain_surface_info in &swapchain_surface_infos {
+            let render_pass = self.get_or_create_renderpass(&pipeline_asset.renderpass, swapchain_surface_info)?;
+            render_passes.push(render_pass);
+        }
 
+        //
+        // Render passes and pipelines
+        //
+        let mut pipelines = Vec::with_capacity(self.swapchain_surfaces.unique_swapchain_infos().len());
+
+        for (swapchain_surface_info, renderpass) in swapchain_surface_infos.iter().zip(&render_passes) {
+            let pipeline = self.get_or_create_pipeline(
+                &pipeline_create_data,
+                pipeline_asset,
+                swapchain_surface_info,
+                renderpass.clone()
+            )?;
+            pipelines.push(pipeline);
+        }
+
+        Ok(LoadedGraphicsPipeline {
+            shader_modules: pipeline_create_data.shader_module_arcs,
+            descriptor_set_layouts: pipeline_create_data.descriptor_set_layout_arcs,
+            pipeline_layout: pipeline_create_data.pipeline_layout,
+            render_passes,
+            pipelines,
+            pipeline_asset: pipeline_asset.clone()
+        })
+    }
+}
+
+// We have to create pipelines when pipeline assets load and when swapchains are added/removed.
+// Gathering all the info to hash and create a pipeline is a bit involved so we share the code
+// here
+struct PipelineCreateData {
+    shader_module_metas: Vec<dsc::ShaderModuleMeta>,
+    shader_module_load_handles: Vec<LoadHandle>,
+    shader_module_arcs: Vec<ResourceArc<vk::ShaderModule>>,
+    shader_module_vk_objs: Vec<vk::ShaderModule>,
+
+    descriptor_set_layout_arcs: Vec<ResourceArc<vk::DescriptorSetLayout>>,
+
+    pipeline_layout: ResourceArc<vk::PipelineLayout>,
+}
+
+impl PipelineCreateData {
+    pub fn new(
+        resource_manager: &mut ResourceManager,
+        pipeline_asset: &PipelineAsset,
+    ) -> VkResult<Self> {
         //
         // Shader module metadata (required to create the pipeline key)
         //
-        let mut shader_module_metas = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
-        let mut shader_module_load_handles = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
-        for stage in &graphics_pipeline.pipeline_shader_stages {
+        let mut shader_module_metas = Vec::with_capacity(pipeline_asset.pipeline_shader_stages.len());
+        let mut shader_module_load_handles = Vec::with_capacity(pipeline_asset.pipeline_shader_stages.len());
+        for stage in &pipeline_asset.pipeline_shader_stages {
             let shader_module_meta = dsc::ShaderModuleMeta {
                 stage: stage.stage,
                 entry_name: stage.entry_name.clone()
@@ -986,10 +1142,10 @@ impl ResourceManager {
         //
         // Actual shader module resources (to create the pipeline)
         //
-        let mut shader_module_arcs = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
-        let mut shader_module_vk_objs = Vec::with_capacity(graphics_pipeline.pipeline_shader_stages.len());
-        for stage in &graphics_pipeline.pipeline_shader_stages {
-            let shader_module = self.loaded_assets.shader_modules.get_latest(stage.shader_module.load_handle()).unwrap();
+        let mut shader_module_arcs = Vec::with_capacity(pipeline_asset.pipeline_shader_stages.len());
+        let mut shader_module_vk_objs = Vec::with_capacity(pipeline_asset.pipeline_shader_stages.len());
+        for stage in &pipeline_asset.pipeline_shader_stages {
+            let shader_module = resource_manager.loaded_assets.shader_modules.get_latest(stage.shader_module.load_handle()).unwrap();
             shader_module_arcs.push(shader_module.shader_module.clone());
             shader_module_vk_objs.push(shader_module.shader_module.get_raw());
         }
@@ -997,85 +1153,34 @@ impl ResourceManager {
         //
         // Descriptor set layout
         //
-        let mut descriptor_set_layouts = Vec::with_capacity(graphics_pipeline.pipeline_layout.descriptor_set_layouts.len());
-        for descriptor_set_layout_def in &graphics_pipeline.pipeline_layout.descriptor_set_layouts {
-            let descriptor_set_layout = self.get_or_create_descriptor_set_layout(descriptor_set_layout_def)?;
-            descriptor_set_layouts.push(descriptor_set_layout);
+        let mut descriptor_set_layout_arcs = Vec::with_capacity(pipeline_asset.pipeline_layout.descriptor_set_layouts.len());
+        for descriptor_set_layout_def in &pipeline_asset.pipeline_layout.descriptor_set_layouts {
+            let descriptor_set_layout = resource_manager.get_or_create_descriptor_set_layout(descriptor_set_layout_def)?;
+            descriptor_set_layout_arcs.push(descriptor_set_layout);
         }
 
         //
         // Pipeline layout
         //
-        let pipeline_layout = self.get_or_create_pipeline_layout(&graphics_pipeline.pipeline_layout)?;
+        let pipeline_layout = resource_manager.get_or_create_pipeline_layout(&pipeline_asset.pipeline_layout)?;
 
-        //
-        // Render passes
-        //
-        let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
-        let mut render_passes = Vec::with_capacity(self.swapchain_surfaces.unique_swapchain_infos().len());
-        for swapchain_surface_info in &swapchain_surface_infos {
-            let render_pass = self.get_or_create_renderpass(&graphics_pipeline.renderpass, swapchain_surface_info)?;
-            render_passes.push(render_pass);
-        }
-
-        //
-        // Render passes and pipelines
-        //
-        let mut pipelines = Vec::with_capacity(self.swapchain_surfaces.unique_swapchain_infos().len());
-
-        for (swapchain_surface_info, renderpass) in swapchain_surface_infos.iter().zip(&render_passes) {
-            let pipeline_key = GraphicsPipelineKey {
-                shader_module_load_handles: shader_module_load_handles.clone(),
-                shader_module_metas: shader_module_metas.clone(),
-                fixed_function_state: graphics_pipeline.fixed_function_state.clone(),
-                pipeline_layout: graphics_pipeline.pipeline_layout.clone(),
-                renderpass: graphics_pipeline.renderpass.clone(),
-                swapchain_surface_info: swapchain_surface_info.clone()
-            };
-
-            let hash = ResourceHash::from_key(&pipeline_key);
-            if let Some(resource) = self.resources.graphics_pipelines.get(hash, &pipeline_key) {
-                pipelines.push(resource);
-            } else {
-                println!("Creating pipeline\n{:#?}", pipeline_key);
-                let resource = crate::pipeline_description::create_graphics_pipeline(
-                    &self.device_context.device(),
-                    &graphics_pipeline.fixed_function_state,
-                    pipeline_layout.get_raw(),
-                    renderpass.get_raw(),
-                    &shader_module_metas,
-                    &shader_module_vk_objs,
-                    swapchain_surface_info
-                )?;
-                println!("Created pipeline {:?}", resource);
-
-                let pipeline = self.resources.graphics_pipelines.insert(hash, &pipeline_key, resource);
-
-                let graphics_pipeline = CreatedGraphicsPipeline {
-                    renderpass: renderpass.clone(),
-                    pipeline: pipeline.clone(),
-                };
-
-                pipelines.push(pipeline);
-            }
-        }
-
-        Ok(LoadedGraphicsPipeline {
-            shader_modules: shader_module_arcs,
-            descriptor_set_layouts,
-            pipeline_layout,
-            render_passes,
-            pipelines
+        Ok(PipelineCreateData {
+            shader_module_metas,
+            shader_module_load_handles,
+            shader_module_arcs,
+            shader_module_vk_objs,
+            descriptor_set_layout_arcs,
+            pipeline_layout
         })
     }
 }
-
 
 impl Drop for ResourceManager {
     fn drop(&mut self) {
         unsafe {
             println!("Cleaning up resource manager");
             self.dump_stats();
+
             // Wipe out any loaded assets. This will potentially drop ref counts on resources
             self.loaded_assets.destroy();
 

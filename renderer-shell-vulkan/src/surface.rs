@@ -32,7 +32,11 @@ pub trait VkSurfaceEventListener {
 
     /// Called whenever the swapchain will be destroyed (when VkSurface is dropped, and also in cases
     /// where the swapchain needs to be recreated)
-    fn swapchain_destroyed(&mut self);
+    fn swapchain_destroyed(
+        &mut self,
+        device_context: &VkDeviceContext,
+        swapchain: &VkSwapchain,
+    );
 
     /// Called when we are presenting a new frame. The returned command buffer will be submitted
     /// with command buffers for the skia canvas
@@ -106,7 +110,7 @@ impl VkSurface {
         }
 
         if let Some(event_listener) = event_listener {
-            event_listener.swapchain_destroyed();
+            event_listener.swapchain_destroyed(&self.device_context, &self.swapchain);
         }
 
         // self will drop
@@ -152,7 +156,7 @@ impl VkSurface {
         unsafe {
             self.device_context.device().device_wait_idle()?;
             if let Some(event_listener) = event_listener {
-                event_listener.swapchain_destroyed();
+                event_listener.swapchain_destroyed(&self.device_context, &self.swapchain);
             }
         }
 
