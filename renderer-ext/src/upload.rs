@@ -168,7 +168,7 @@ impl InProgressUpload {
     // Calls load_op.complete() or load_op.error() as appropriate
     pub fn poll_load(
         &mut self,
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
     ) -> InProgressUploadPollResult {
         loop {
             if let Some(mut inner) = self.take_inner() {
@@ -176,7 +176,7 @@ impl InProgressUpload {
                     Ok(state) => match state {
                         VkTransferUploadState::Writable => {
                             println!("VkTransferUploadState::Writable");
-                            inner.upload.submit_transfer(device.queues.transfer_queue);
+                            inner.upload.submit_transfer(device_context.queues().transfer_queue);
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToTransferQueue => {
@@ -186,7 +186,7 @@ impl InProgressUpload {
                         }
                         VkTransferUploadState::PendingSubmitDstQueue => {
                             println!("VkTransferUploadState::PendingSubmitDstQueue");
-                            inner.upload.submit_dst(device.queues.graphics_queue);
+                            inner.upload.submit_dst(device_context.queues().graphics_queue);
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToDstQueue => {
@@ -402,11 +402,11 @@ impl UploadQueue {
 
     fn update_existing_uploads(
         &mut self,
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
     ) {
         // iterate backwards so we can use swap_remove
         for i in (0..self.uploads_in_progress.len()).rev() {
-            let result = self.uploads_in_progress[i].poll_load(device);
+            let result = self.uploads_in_progress[i].poll_load(device_context);
             match result {
                 InProgressUploadPollResult::Pending => {
                     // do nothing
@@ -429,10 +429,10 @@ impl UploadQueue {
 
     pub fn update(
         &mut self,
-        device: &VkDevice,
+        device_context: &VkDeviceContext,
     ) -> VkResult<()> {
         self.start_new_uploads()?;
-        self.update_existing_uploads(device);
+        self.update_existing_uploads(device_context);
         Ok(())
     }
 }

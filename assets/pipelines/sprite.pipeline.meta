@@ -13,15 +13,15 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 8761382821735031195,
+                hash: 16086539133865298412,
                 id: "32c20111-bc4a-4dc7-bdf4-85d620ba199a",
                 build_deps: [
-                    Path("sprite.frag.spv"),
                     Path("sprite.vert.spv"),
+                    Path("sprite.frag.spv"),
                 ],
                 load_deps: [
-                    Path("sprite.frag.spv"),
                     Path("sprite.vert.spv"),
+                    Path("sprite.frag.spv"),
                 ],
                 compression: None,
                 compressed_size: Some(567),

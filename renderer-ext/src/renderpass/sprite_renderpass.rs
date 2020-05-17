@@ -98,17 +98,20 @@ pub struct VkSpriteRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
+    pipeline_info: crate::asset_lookup::PipelineInfo,
+
+
     // This contains bindings for the UBO containing a view/proj matrix and a sampler
-    pub descriptor_set_layout_per_pass: vk::DescriptorSetLayout,
+    //pub descriptor_set_layout_per_pass: vk::DescriptorSetLayout,
     pub descriptor_pool_per_pass: vk::DescriptorPool,
 
     // One per present index
     pub descriptor_sets_per_pass: Vec<vk::DescriptorSet>,
 
     // Static resources for the renderpass, including a frame buffer per present index
-    pub pipeline_layout: vk::PipelineLayout,
-    pub renderpass: vk::RenderPass,
-    pub pipeline: vk::Pipeline,
+    // pub pipeline_layout: vk::PipelineLayout,
+    // pub renderpass: vk::RenderPass,
+    // pub pipeline: vk::Pipeline,
     pub frame_buffers: Vec<vk::Framebuffer>,
 
     // Command pool and list of command buffers, one per present index
@@ -131,6 +134,7 @@ impl VkSpriteRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
+        pipeline_info: crate::asset_lookup::PipelineInfo,
         //pipeline_manager: &mut PipelineManager,
         sprite_resource_manager: &SpriteResourceManager,
         swapchain_surface_info: &SwapchainSurfaceInfo,
@@ -153,17 +157,17 @@ impl VkSpriteRenderPass {
             uniform_buffers.push(Self::create_uniform_buffer(&device_context)?)
         }
 
-        let sprite_pipeline_description = create_sprite_pipeline();
+        //let sprite_pipeline_description = create_sprite_pipeline();
 
         //
         // Descriptors
         //
-        let descriptor_set_layout_per_pass = crate::pipeline_description::create_descriptor_set_layout(
-            device_context.device(),
-            &sprite_pipeline_description.pipeline_layout.descriptor_set_layouts[0]
-        )?;
-        //let descriptor_set_layout_per_pass =
-        //    Self::create_descriptor_set_layout_per_pass(&device_context.device())?;
+        // let descriptor_set_layout_per_pass = crate::pipeline_description::create_descriptor_set_layout(
+        //     device_context.device(),
+        //     &sprite_pipeline_description.pipeline_layout.descriptor_set_layouts[0]
+        // )?;
+        let descriptor_set_layout_per_pass = pipeline_info.descriptor_set_layouts[0].get_raw();
+
 
         let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
             &device_context.device(),
@@ -184,43 +188,43 @@ impl VkSpriteRenderPass {
             sprite_resource_manager.descriptor_set_layout(),
         ];
 
-        let mut shader_modules = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
-        let mut shader_modules_meta = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
-        for stage in &sprite_pipeline_description.pipeline_shader_stages.stages {
-            let shader_module = crate::pipeline_description::create_shader_module(device_context.device(), &stage.shader_module)?;
-            shader_modules.push(shader_module);
-            shader_modules_meta.push(crate::pipeline_description::ShaderModuleMeta {
-                stage: stage.stage,
-                entry_name: stage.entry_name.clone()
-            })
-        }
+        // let mut shader_modules = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
+        // let mut shader_modules_meta = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
+        // for stage in &sprite_pipeline_description.pipeline_shader_stages.stages {
+        //     let shader_module = crate::pipeline_description::create_shader_module(device_context.device(), &stage.shader_module)?;
+        //     shader_modules.push(shader_module);
+        //     shader_modules_meta.push(crate::pipeline_description::ShaderModuleMeta {
+        //         stage: stage.stage,
+        //         entry_name: stage.entry_name.clone()
+        //     })
+        // }
+        //
+        // let pipeline_layout = crate::pipeline_description::create_pipeline_layout(
+        //     device_context.device(),
+        //     &sprite_pipeline_description.pipeline_layout,
+        //     &descriptor_set_layouts,
+        // )?;
+        // let renderpass = crate::pipeline_description::create_renderpass(
+        //     device_context.device(),
+        //     &sprite_pipeline_description.renderpass,
+        //     swapchain_surface_info
+        // )?;
+        //
+        // let pipeline = crate::pipeline_description::create_graphics_pipeline(
+        //     device_context.device(),
+        //     &sprite_pipeline_description.fixed_function_state,
+        //     pipeline_layout,
+        //     renderpass,
+        //     &shader_modules_meta,
+        //     &shader_modules,
+        //     swapchain_surface_info
+        // )?;
 
-        let pipeline_layout = crate::pipeline_description::create_pipeline_layout(
-            device_context.device(),
-            &sprite_pipeline_description.pipeline_layout,
-            &descriptor_set_layouts,
-        )?;
-        let renderpass = crate::pipeline_description::create_renderpass(
-            device_context.device(),
-            &sprite_pipeline_description.renderpass,
-            swapchain_surface_info
-        )?;
-
-        let pipeline = crate::pipeline_description::create_graphics_pipeline(
-            device_context.device(),
-            &sprite_pipeline_description.fixed_function_state,
-            pipeline_layout,
-            renderpass,
-            &shader_modules_meta,
-            &shader_modules,
-            swapchain_surface_info
-        )?;
-
-        for shader_module in shader_modules {
-            unsafe {
-                device_context.device().destroy_shader_module(shader_module, None);
-            }
-        }
+        // for shader_module in shader_modules {
+        //     unsafe {
+        //         device_context.device().destroy_shader_module(shader_module, None);
+        //     }
+        // }
 
         //
         // Renderpass Resources
@@ -229,7 +233,7 @@ impl VkSpriteRenderPass {
             &device_context.device(),
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
-            &renderpass,
+            &pipeline_info.renderpass.get_raw(),
         );
 
         let command_buffers = Self::create_command_buffers(
@@ -251,10 +255,11 @@ impl VkSpriteRenderPass {
         Ok(VkSpriteRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
-            descriptor_set_layout_per_pass,
-            pipeline_layout,
-            renderpass,
-            pipeline,
+            pipeline_info,
+            // descriptor_set_layout_per_pass,
+            // pipeline_layout,
+            // renderpass,
+            // pipeline,
             frame_buffers,
             command_pool,
             command_buffers,
@@ -759,10 +764,13 @@ impl VkSpriteRenderPass {
         Self::update_command_buffer(
             &self.device_context,
             &self.swapchain_info,
-            &self.renderpass,
+            //&self.renderpass,
+            &self.pipeline_info.renderpass.get_raw(),
             &self.frame_buffers[present_index],
-            &self.pipeline,
-            &self.pipeline_layout,
+            // &self.pipeline,
+            // &self.pipeline_layout,
+            &self.pipeline_info.pipeline.get_raw(),
+            &self.pipeline_info.pipeline_layout.get_raw(),
             &self.command_buffers[present_index],
             &mut self.vertex_buffers[present_index],
             &mut self.index_buffers[present_index],
@@ -804,12 +812,12 @@ impl Drop for VkSpriteRenderPass {
                 device.destroy_framebuffer(*frame_buffer, None);
             }
 
-            device.destroy_pipeline(self.pipeline, None);
-            device.destroy_pipeline_layout(self.pipeline_layout, None);
-            device.destroy_render_pass(self.renderpass, None);
+            // device.destroy_pipeline(self.pipeline, None);
+            // device.destroy_pipeline_layout(self.pipeline_layout, None);
+            // device.destroy_render_pass(self.renderpass, None);
 
             device.destroy_descriptor_pool(self.descriptor_pool_per_pass, None);
-            device.destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
+            //device.destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
         }
 
         log::debug!("destroyed VkSpriteRenderPass");
@@ -840,7 +848,7 @@ pub fn orthographic_rh_gl(
         [tx, ty, tz, 1.0],
     ]
 }
-
+/*
 pub fn create_sprite_pipeline() -> crate::pipeline_description::GraphicsPipeline {
     use crate::pipeline_description as dsc;
 
@@ -1000,3 +1008,4 @@ pub fn create_sprite_pipeline() -> crate::pipeline_description::GraphicsPipeline
 
     sprite_pipeline
 }
+*/

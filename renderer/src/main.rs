@@ -212,40 +212,40 @@ fn create_sprite_pipeline() -> dsc::GraphicsPipeline {
 }
 */
 
-fn write_example_pipeline_file(name: &'static str, pipeline: &dsc::GraphicsPipeline) {
-    let pipeline_str = serde_json::to_string_pretty(&pipeline);
-    match pipeline_str {
-        Ok(string) => std::fs::File::create(format!("example_pipeline_{}.json.pipeline", name)).unwrap().write_all(string.as_bytes()).unwrap(),
-        Err(err) => println!("Could not create json: {:?}", err)
-    }
+// fn write_example_pipeline_file(name: &'static str, pipeline: &dsc::GraphicsPipeline) {
+//     let pipeline_str = serde_json::to_string_pretty(&pipeline);
+//     match pipeline_str {
+//         Ok(string) => std::fs::File::create(format!("example_pipeline_{}.json.pipeline", name)).unwrap().write_all(string.as_bytes()).unwrap(),
+//         Err(err) => println!("Could not create json: {:?}", err)
+//     }
+//
+//     let pipeline_str = ron::ser::to_string_pretty(&pipeline, ron::ser::PrettyConfig::default());
+//     match pipeline_str {
+//         Ok(string) => std::fs::File::create(format!("example_pipeline_{}.ron.pipeline", name)).unwrap().write_all(string.as_bytes()).unwrap(),
+//         Err(err) => println!("Could not create ron: {:?}", err)
+//     }
+// }
+//
+// fn hash_pipeline(pipeline: &dsc::GraphicsPipeline) -> u64 {
+//     use std::hash::{Hash, Hasher};
+//     let mut hasher = DefaultHasher::new();
+//     pipeline.hash(&mut hasher);
+//     hasher.finish()
+// }
 
-    let pipeline_str = ron::ser::to_string_pretty(&pipeline, ron::ser::PrettyConfig::default());
-    match pipeline_str {
-        Ok(string) => std::fs::File::create(format!("example_pipeline_{}.ron.pipeline", name)).unwrap().write_all(string.as_bytes()).unwrap(),
-        Err(err) => println!("Could not create ron: {:?}", err)
-    }
-}
-
-fn hash_pipeline(pipeline: &dsc::GraphicsPipeline) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
-    pipeline.hash(&mut hasher);
-    hasher.finish()
-}
-
-fn write_example_pipeline_files() {
-    let graphics_pipeline = dsc::GraphicsPipeline::default();
-    write_example_pipeline_file("default", &graphics_pipeline);
-    println!("default hash: {}", hash_pipeline(&graphics_pipeline));
-
-    let graphics_pipeline = renderer_ext::renderpass::sprite_renderpass::create_sprite_pipeline();
-    write_example_pipeline_file("sprite", &graphics_pipeline);
-    println!("sprite hash: {}", hash_pipeline(&graphics_pipeline));
-
-    let graphics_pipeline = create_kitchen_sink_pipeline();
-    write_example_pipeline_file("kitchen_sink", &graphics_pipeline);
-    println!("kitchen sink hash: {}", hash_pipeline(&graphics_pipeline));
-}
+// fn write_example_pipeline_files() {
+//     let graphics_pipeline = dsc::GraphicsPipeline::default();
+//     write_example_pipeline_file("default", &graphics_pipeline);
+//     println!("default hash: {}", hash_pipeline(&graphics_pipeline));
+//
+//     let graphics_pipeline = renderer_ext::renderpass::sprite_renderpass::create_sprite_pipeline();
+//     write_example_pipeline_file("sprite", &graphics_pipeline);
+//     println!("sprite hash: {}", hash_pipeline(&graphics_pipeline));
+//
+//     let graphics_pipeline = create_kitchen_sink_pipeline();
+//     write_example_pipeline_file("kitchen_sink", &graphics_pipeline);
+//     println!("kitchen sink hash: {}", hash_pipeline(&graphics_pipeline));
+// }
 
 fn main() {
     // Setup logging

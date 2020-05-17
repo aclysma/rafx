@@ -53,13 +53,14 @@ fn load_asset<T>(
 }
 
 fn wait_for_asset_to_load<T>(
+    device_context: &VkDeviceContext,
     asset_handle: &atelier_assets::loader::handle::Handle<T>,
     asset_resource: &mut AssetResource,
     renderer: &mut GameRenderer
 ) {
     loop {
         asset_resource.update();
-        renderer.update_resources();
+        renderer.update_resources(device_context);
         match asset_handle.load_status(asset_resource.loader()) {
             LoadStatus::NotRequested => {
                 unreachable!();
@@ -195,7 +196,7 @@ impl GameRenderer {
             mesh_renderpass: None,
         };
 
-        wait_for_asset_to_load(&renderer.sprite_renderpass_pipeline.clone(), asset_resource, &mut renderer);
+        wait_for_asset_to_load(device_context, &renderer.sprite_renderpass_pipeline.clone(), asset_resource, &mut renderer);
         //wait_for_asset_to_load(&pipeline_variant, asset_resource, &mut renderer);
 
         // let sprite_renderpass_asset = renderer.sprite_renderpass_pipeline.asset(asset_resource.loader()).unwrap();
@@ -204,9 +205,10 @@ impl GameRenderer {
         Ok(renderer)
     }
 
-    pub fn update_resources(&mut self) {
+    pub fn update_resources(&mut self, device_context: &VkDeviceContext) {
         //self.pipeline_manager.update();
         self.resource_manager.update();
+        self.upload_queue.update(device_context);
 
         self.shader_resource_manager.update();
         self.image_resource_manager.update();
@@ -244,6 +246,7 @@ impl VkSurfaceEventListener for GameRenderer {
 
         //self.pipeline_manager.
         //let pipeline_info = self.pipeline_manager.get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
+        let sprite_pipeline_info = self.resource_manager.get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
 
 
         // Get the pipeline,
@@ -252,6 +255,7 @@ impl VkSurfaceEventListener for GameRenderer {
         self.sprite_renderpass = Some(VkSpriteRenderPass::new(
             device_context,
             swapchain,
+            sprite_pipeline_info,
             //&mut self.pipeline_manager,
             &self.sprite_resource_manager,
             &swapchain_surface_info
@@ -371,7 +375,7 @@ impl GameRendererWithContext {
     }
 
     pub fn update_resources(&mut self) {
-        self.game_renderer.update_resources();
+        self.game_renderer.update_resources(self.context.device_context());
     }
 
     pub fn draw(

@@ -58,7 +58,7 @@ impl<ResourceT> Drop for ResourceArcInner<ResourceT>
 }
 
 #[derive(Clone)]
-struct WeakResourceArc<ResourceT>
+pub struct WeakResourceArc<ResourceT>
     where
         ResourceT: VkDropSinkResourceImpl + Copy
 {
@@ -69,7 +69,7 @@ impl<ResourceT> WeakResourceArc<ResourceT>
     where
         ResourceT: VkDropSinkResourceImpl + Copy
 {
-    fn upgrade(&self) -> Option<ResourceArc<ResourceT>> {
+    pub fn upgrade(&self) -> Option<ResourceArc<ResourceT>> {
         if let Some(upgrade) = self.inner.upgrade() {
             Some(ResourceArc {
                 inner: upgrade
@@ -81,7 +81,7 @@ impl<ResourceT> WeakResourceArc<ResourceT>
 }
 
 #[derive(Clone)]
-struct ResourceArc<ResourceT>
+pub struct ResourceArc<ResourceT>
     where
         ResourceT: VkDropSinkResourceImpl + Copy
 {
@@ -108,11 +108,11 @@ impl<ResourceT> ResourceArc<ResourceT>
         }
     }
 
-    fn get_raw(&self) -> ResourceT {
+    pub fn get_raw(&self) -> ResourceT {
         self.inner.resource.borrow().resource
     }
 
-    fn downgrade(&self) -> WeakResourceArc<ResourceT> {
+    pub fn downgrade(&self) -> WeakResourceArc<ResourceT> {
         let inner = Arc::downgrade(&self.inner);
         WeakResourceArc {
             inner
@@ -371,7 +371,7 @@ impl<LoadedAssetT> AssetLookup<LoadedAssetT> {
         }
     }
 
-    fn get_committed(&mut self, load_handle: LoadHandle) -> Option<&LoadedAssetT> {
+    fn get_committed(&self, load_handle: LoadHandle) -> Option<&LoadedAssetT> {
         if let Some(loaded_assets) = self.loaded_assets.get(&load_handle) {
             if let Some(committed) = &loaded_assets.committed {
                 Some(committed)
@@ -534,6 +534,7 @@ use crate::pipeline::shader::ShaderAsset;
 use ash::prelude::VkResult;
 use crate::pipeline_description::SwapchainSurfaceInfo;
 use std::borrow::Borrow;
+use atelier_assets::loader::handle::Handle;
 
 pub struct GenericLoadHandler<AssetT>
     where
@@ -695,6 +696,13 @@ impl ActiveSwapchainSurfaceInfoSet {
 
 
 
+pub struct PipelineInfo {
+    pub descriptor_set_layouts: Vec<ResourceArc<vk::DescriptorSetLayout>>,
+    pub pipeline_layout: ResourceArc<vk::PipelineLayout>,
+    pub renderpass: ResourceArc<vk::RenderPass>,
+    pub pipeline: ResourceArc<vk::Pipeline>,
+}
+
 pub struct ResourceManager {
     device_context: VkDeviceContext,
 
@@ -725,6 +733,18 @@ impl ResourceManager {
     pub fn create_pipeline_load_handler(&self) -> GenericLoadHandler<PipelineAsset> {
         GenericLoadHandler {
             load_queues: self.load_queues.graphics_pipelines.tx.clone()
+        }
+    }
+
+    pub fn get_pipeline_info(&self, handle: &Handle<PipelineAsset>, swapchain: &SwapchainSurfaceInfo) -> PipelineInfo {
+        let resource = self.loaded_assets.graphics_pipelines.get_committed(handle.load_handle()).unwrap();
+        let swapchain_index = self.swapchain_surfaces.ref_counts.get(swapchain).unwrap().index;
+
+        PipelineInfo {
+            descriptor_set_layouts: resource.descriptor_set_layouts.clone(),
+            pipeline_layout: resource.pipeline_layout.clone(),
+            renderpass: resource.render_passes[swapchain_index].clone(),
+            pipeline: resource.pipelines[swapchain_index].clone()
         }
     }
 
