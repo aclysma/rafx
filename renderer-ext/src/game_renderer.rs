@@ -30,7 +30,7 @@ use atelier_assets::loader::LoadStatus;
 use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
-use crate::asset_lookup::ResourceManager;
+use crate::resource_managers::ResourceManager;
 
 // #[derive(Clone)]
 // struct SpriteRenderpassInfo {

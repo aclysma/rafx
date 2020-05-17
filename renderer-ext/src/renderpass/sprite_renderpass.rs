@@ -21,7 +21,7 @@ use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
 use crate::time::TimeState;
-use crate::resource_managers::SpriteResourceManager;
+use crate::resource_managers::{SpriteResourceManager, PipelineInfo};
 //use crate::pipeline_manager::PipelineManager;
 use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
 use crate::asset_resource::AssetResource;
@@ -98,7 +98,7 @@ pub struct VkSpriteRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
-    pipeline_info: crate::asset_lookup::PipelineInfo,
+    pipeline_info: PipelineInfo,
 
 
     // This contains bindings for the UBO containing a view/proj matrix and a sampler
@@ -134,7 +134,7 @@ impl VkSpriteRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        pipeline_info: crate::asset_lookup::PipelineInfo,
+        pipeline_info: PipelineInfo,
         //pipeline_manager: &mut PipelineManager,
         sprite_resource_manager: &SpriteResourceManager,
         swapchain_surface_info: &SwapchainSurfaceInfo,

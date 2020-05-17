@@ -695,6 +695,50 @@ impl ActiveSwapchainSurfaceInfoSet {
 
 
 
+struct DescriptorSetPoolManager {
+    device_context: VkDeviceContext,
+    descriptor_set_layout_def: dsc::DescriptorSetLayout,
+    descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+    count_per_pool: u32,
+    pools: Vec<vk::DescriptorPool>
+}
+
+impl DescriptorSetPoolManager {
+    fn new(
+        device_context: &VkDeviceContext,
+        descriptor_set_layout_def: dsc::DescriptorSetLayout,
+        descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+        count_per_pool: u32,
+    ) -> Self {
+        DescriptorSetPoolManager {
+            device_context: device_context.clone(),
+            descriptor_set_layout_def,
+            descriptor_set_layout,
+            count_per_pool,
+            pools: Default::default()
+        }
+    }
+
+    fn allocate() {
+
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
