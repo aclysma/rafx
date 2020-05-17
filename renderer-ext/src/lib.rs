@@ -18,6 +18,7 @@ pub mod load_handlers;
 pub mod push_buffer;
 pub mod pipeline_description;
 pub mod pipeline_manager;
+pub mod asset_lookup;
 
 use legion::prelude::*;
 use glam::Vec3;

@@ -153,11 +153,91 @@ impl VkDropSinkResourceImpl for vk::ImageView {
     }
 }
 
+//
+// Implementation for pipelines
+//
+impl VkDropSinkResourceImpl for vk::Pipeline {
+    fn destroy(
+        device: &Device,
+        resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device.destroy_pipeline(resource, None);
+            Ok(())
+        }
+    }
+}
+
+//
+// Implementation for renderpasses
+//
+impl VkDropSinkResourceImpl for vk::RenderPass {
+    fn destroy(
+        device: &Device,
+        resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device.destroy_render_pass(resource, None);
+            Ok(())
+        }
+    }
+}
+
+//
+// Implementation for pipeline layouts
+//
+impl VkDropSinkResourceImpl for vk::PipelineLayout {
+    fn destroy(
+        device: &Device,
+        resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device.destroy_pipeline_layout(resource, None);
+            Ok(())
+        }
+    }
+}
+
+//
+// Implementation for pipeline layouts
+//
+impl VkDropSinkResourceImpl for vk::DescriptorSetLayout {
+    fn destroy(
+        device: &Device,
+        resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device.destroy_descriptor_set_layout(resource, None);
+            Ok(())
+        }
+    }
+}
+
+//
+// Implementation for shader modules
+//
+impl VkDropSinkResourceImpl for vk::ShaderModule {
+    fn destroy(
+        device: &Device,
+        resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device.destroy_shader_module(resource, None);
+            Ok(())
+        }
+    }
+}
+
 /// Provides DropSinks for all the things in a single struct
 pub struct CombinedDropSink {
     buffers: VkResourceDropSink<ManuallyDrop<VkBuffer>>,
     images: VkResourceDropSink<ManuallyDrop<VkImage>>,
     image_views: VkResourceDropSink<vk::ImageView>,
+    pipelines: VkResourceDropSink<vk::Pipeline>,
+    render_passes: VkResourceDropSink<vk::RenderPass>,
+    pipeline_layouts: VkResourceDropSink<vk::PipelineLayout>,
+    descriptor_sets: VkResourceDropSink<vk::DescriptorSetLayout>,
+    shader_modules: VkResourceDropSink<vk::ShaderModule>,
 }
 
 impl CombinedDropSink {
@@ -166,28 +246,68 @@ impl CombinedDropSink {
             buffers: VkResourceDropSink::new(max_in_flight_frames),
             images: VkResourceDropSink::new(max_in_flight_frames),
             image_views: VkResourceDropSink::new(max_in_flight_frames),
+            pipelines: VkResourceDropSink::new(max_in_flight_frames),
+            render_passes: VkResourceDropSink::new(max_in_flight_frames),
+            pipeline_layouts: VkResourceDropSink::new(max_in_flight_frames),
+            descriptor_sets: VkResourceDropSink::new(max_in_flight_frames),
+            shader_modules: VkResourceDropSink::new(max_in_flight_frames),
         }
     }
 
     pub fn retire_buffer(
         &mut self,
-        buffer: ManuallyDrop<VkBuffer>,
+        resource: ManuallyDrop<VkBuffer>,
     ) {
-        self.buffers.retire(buffer);
+        self.buffers.retire(resource);
     }
 
     pub fn retire_image(
         &mut self,
-        image: ManuallyDrop<VkImage>,
+        resource: ManuallyDrop<VkImage>,
     ) {
-        self.images.retire(image);
+        self.images.retire(resource);
     }
 
     pub fn retire_image_view(
         &mut self,
-        image_view: vk::ImageView,
+        resource: vk::ImageView,
     ) {
-        self.image_views.retire(image_view);
+        self.image_views.retire(resource);
+    }
+
+    pub fn retire_pipeline(
+        &mut self,
+        resource: vk::Pipeline,
+    ) {
+        self.pipelines.retire(resource);
+    }
+
+    pub fn retire_render_pass(
+        &mut self,
+        resource: vk::RenderPass,
+    ) {
+        self.render_passes.retire(resource);
+    }
+
+    pub fn retire_pipeline_layout(
+        &mut self,
+        resource: vk::PipelineLayout,
+    ) {
+        self.pipeline_layouts.retire(resource);
+    }
+
+    pub fn retire_descriptor_set_layout(
+        &mut self,
+        resource: vk::DescriptorSetLayout,
+    ) {
+        self.descriptor_sets.retire(resource);
+    }
+
+    pub fn retire_shader_module(
+        &mut self,
+        resource: vk::ShaderModule,
+    ) {
+        self.shader_modules.retire(resource);
     }
 
     pub fn on_frame_complete(
@@ -197,6 +317,11 @@ impl CombinedDropSink {
         self.image_views.on_frame_complete(device);
         self.images.on_frame_complete(device);
         self.buffers.on_frame_complete(device);
+        self.pipelines.on_frame_complete(device);
+        self.render_passes.on_frame_complete(device);
+        self.pipeline_layouts.on_frame_complete(device);
+        self.descriptor_sets.on_frame_complete(device);
+        self.shader_modules.on_frame_complete(device);
     }
 
     pub fn destroy(
@@ -206,6 +331,11 @@ impl CombinedDropSink {
         self.image_views.destroy(device)?;
         self.images.destroy(device)?;
         self.buffers.destroy(device)?;
+        self.pipelines.destroy(device)?;
+        self.render_passes.destroy(device)?;
+        self.pipeline_layouts.destroy(device)?;
+        self.descriptor_sets.destroy(device)?;
+        self.shader_modules.destroy(device)?;
         Ok(())
     }
 }
