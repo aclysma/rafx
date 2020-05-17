@@ -218,7 +218,10 @@ impl VkMeshResourceManager {
                         material_resource_manager.material_handle_by_uuid(&material)
                     });
 
-                    println!("do_update_meshes {:?} {:?}", loading_mesh_part.material, material_handle);
+                    println!(
+                        "do_update_meshes {:?} {:?}",
+                        loading_mesh_part.material, material_handle
+                    );
 
                     // let m = material
                     //     .and_then(|material| sprite_resource_manager.sprite_handle_by_uuid(&material))

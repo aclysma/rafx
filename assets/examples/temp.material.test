@@ -1,0 +1,20 @@
+(
+    passes: [
+        (
+            phase: "Asdf",
+            pipeline: "asdf",
+            shader_overrides: [
+                (
+                    stage: Vertex,
+                    shader_module: "sprite.vert.spv",
+                    entry_name: "main" 
+                ),
+            ],
+
+        )
+    ]
+)
+
+
+
+

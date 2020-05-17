@@ -106,7 +106,6 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
             device.device_wait_idle()?;
         }
 
-
         for resource in self.resources_in_flight.drain(..) {
             unsafe {
                 T::destroy(device, resource.resource)?;

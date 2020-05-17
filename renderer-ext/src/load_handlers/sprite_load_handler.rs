@@ -28,12 +28,8 @@ pub struct SpriteLoadHandler {
 }
 
 impl SpriteLoadHandler {
-    pub fn new(
-        sprite_update_tx: Sender<SpriteResourceUpdate>,
-    ) -> Self {
-        SpriteLoadHandler {
-            sprite_update_tx,
-        }
+    pub fn new(sprite_update_tx: Sender<SpriteResourceUpdate>) -> Self {
+        SpriteLoadHandler { sprite_update_tx }
     }
 }
 

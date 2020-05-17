@@ -20,8 +20,6 @@ enum GltfObjectId {
     Index(usize),
 }
 
-
-
 // //TODO: It might not make practical sense to have an overall GLTF asset in the long run, probably
 // // would produce separate image, mesh, prefab assets
 // #[derive(TypeUuid, Serialize, Deserialize)]

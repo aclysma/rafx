@@ -22,18 +22,18 @@ pub struct AnimationLayoutHorizontal {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum AnimationLayout {
-    Horizontal(AnimationLayoutHorizontal)
+    Horizontal(AnimationLayoutHorizontal),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Animation {
     pub name: String,
-    pub frames: AnimationLayout
+    pub frames: AnimationLayout,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug)]
 #[uuid = "b06ff45c-7560-441a-a023-6a17707eeff4"]
 pub struct SpriteAsset {
     pub images: Vec<AssetUuid>,
-    pub animations: Vec<Animation>
+    pub animations: Vec<Animation>,
 }

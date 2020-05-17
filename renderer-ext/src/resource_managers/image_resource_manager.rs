@@ -154,7 +154,9 @@ impl ImageResourceManager {
             let resource_handle = update.resource_handle;
             let asset_uuid = update.asset_uuid;
 
-            self.images_by_uuid.entry(asset_uuid).or_insert(resource_handle);
+            self.images_by_uuid
+                .entry(asset_uuid)
+                .or_insert(resource_handle);
 
             let image_view =
                 Self::create_texture_image_view(self.device_context.device(), &image.image);

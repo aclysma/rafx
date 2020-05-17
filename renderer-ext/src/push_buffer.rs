@@ -1,4 +1,3 @@
-
 pub struct PushBufferResult {
     offset: usize,
     size: usize,

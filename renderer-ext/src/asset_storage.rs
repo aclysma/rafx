@@ -335,7 +335,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             load_handle,
             loader_info.get_asset_id(load_handle).unwrap(),
             version
-            );
+        );
 
         // To enable automatic serde of Handle, we need to set up a SerdeContext with a RefOp sender
         let asset = atelier_loader::handle::SerdeContext::with_sync(
@@ -404,7 +404,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             load_handle,
             asset_state.asset_uuid,
             version
-            );
+        );
 
         // If a load handler exists, trigger the commit_asset_version callback
         if let Some(load_handler) = &mut self.load_handler {
@@ -413,7 +413,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
                 &asset_state.asset_uuid,
                 asset_state.resource_handle,
                 version,
-                &asset_state.asset
+                &asset_state.asset,
             );
         }
 
@@ -438,7 +438,11 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
 
             // Trigger the free callback on the load handler, if one exists
             if let Some(load_handler) = &mut self.load_handler {
-                load_handler.free(load_handle, asset_state.resource_handle, asset_state.version);
+                load_handler.free(
+                    load_handle,
+                    asset_state.resource_handle,
+                    asset_state.version,
+                );
             }
 
             // Free the ResourceHandle

@@ -74,9 +74,7 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
 
         let (upload_op, awaiter) = crate::upload::create_upload_op();
 
-        let pending_update = PendingImageUpdate {
-            awaiter,
-        };
+        let pending_update = PendingImageUpdate { awaiter };
 
         self.pending_updates
             .entry(load_handle)
@@ -122,7 +120,7 @@ impl ResourceLoadHandler<ImageAsset> for ImageLoadHandler {
                         self.image_update_tx.send(ImageResourceUpdate {
                             image: image,
                             resource_handle,
-                            asset_uuid: *asset_uuid
+                            asset_uuid: *asset_uuid,
                         });
                     }
                     ImageUploadOpResult::UploadError => unreachable!(),

@@ -1,4 +1,3 @@
-
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{
     Error, ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter,
@@ -8,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::Read;
 use std::convert::TryInto;
-
 
 #[derive(TypeUuid, Serialize, Deserialize)]
 #[uuid = "130a91a8-ba80-4cad-9bce-848326b234c7"]

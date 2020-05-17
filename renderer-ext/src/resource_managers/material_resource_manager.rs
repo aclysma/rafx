@@ -118,7 +118,7 @@ impl MaterialResourceManager {
 
     pub fn update(
         &mut self,
-        image_resource_manager: &ImageResourceManager
+        image_resource_manager: &ImageResourceManager,
     ) {
         // This will handle any resources that need to be dropped
         self.drop_sink
@@ -131,7 +131,7 @@ impl MaterialResourceManager {
     /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
     fn apply_material_updates(
         &mut self,
-        image_resource_manager: &ImageResourceManager
+        image_resource_manager: &ImageResourceManager,
     ) {
         let mut updates = Vec::with_capacity(self.material_update_rx.len());
         while let Ok(update) = self.material_update_rx.recv_timeout(Duration::from_secs(0)) {
@@ -147,7 +147,7 @@ impl MaterialResourceManager {
     fn do_apply_material_updates(
         &mut self,
         updates: Vec<MaterialResourceUpdate>,
-        image_resource_manager: &ImageResourceManager
+        image_resource_manager: &ImageResourceManager,
     ) {
         let mut max_index = self.materials.len();
         for update in &updates {
@@ -157,16 +157,17 @@ impl MaterialResourceManager {
         self.materials.resize_with(max_index, || None);
 
         for update in updates {
-            self.materials_by_uuid.entry(update.asset_uuid).or_insert(update.resource_handle);
+            self.materials_by_uuid
+                .entry(update.asset_uuid)
+                .or_insert(update.resource_handle);
 
-            let image_handle = update.image_uuid.and_then(|image_uuid| {
-                image_resource_manager.image_handle_by_uuid(&image_uuid)
-            });
+            let image_handle = update
+                .image_uuid
+                .and_then(|image_uuid| image_resource_manager.image_handle_by_uuid(&image_uuid));
 
             // Do a swap so if there is an old sprite we can properly destroy it
-            self.materials[update.resource_handle.index() as usize] = Some(MaterialResource {
-                image_handle
-            });
+            self.materials[update.resource_handle.index() as usize] =
+                Some(MaterialResource { image_handle });
         }
     }
 }

@@ -42,7 +42,6 @@ use crate::pipeline::sprite::SpriteAsset;
 /// Represents an image that will replace another image
 pub struct SpriteResourceUpdate {
     //pub images: Vec<ManuallyDrop<VkImage>>,
-
     pub asset_uuid: AssetUuid,
     pub resource_handle: ResourceHandle<SpriteAsset>,
 
@@ -56,7 +55,7 @@ pub struct SpriteResource {
 
     //TODO: Link to frames instead of images and generate global frame indices that index into
     // the descriptor pool
-    pub image_handles: Vec<Option<ResourceHandle<ImageAsset>>>
+    pub image_handles: Vec<Option<ResourceHandle<ImageAsset>>>,
 }
 
 /// Keeps track of sprites/images and manages descriptor sets that allow shaders to bind to images
@@ -120,7 +119,7 @@ impl SpriteResourceManager {
     pub fn new(
         device_context: &VkDeviceContext,
         max_frames_in_flight: u32,
-        image_resource_manager: &ImageResourceManager
+        image_resource_manager: &ImageResourceManager,
     ) -> VkResult<Self> {
         let sprites_by_uuid = Default::default();
         let sprites = Vec::new();
@@ -140,7 +139,7 @@ impl SpriteResourceManager {
             descriptor_set_layout,
             &descriptor_pool,
             &sprites,
-            image_resource_manager
+            image_resource_manager,
         )?;
 
         let (image_update_tx, image_update_rx) = crossbeam_channel::unbounded();
@@ -161,7 +160,10 @@ impl SpriteResourceManager {
         })
     }
 
-    pub fn update(&mut self, image_resource_manager: &ImageResourceManager) {
+    pub fn update(
+        &mut self,
+        image_resource_manager: &ImageResourceManager,
+    ) {
         // This will handle any resources that need to be dropped
         self.descriptor_pool_allocator
             .update(self.device_context.device());
@@ -173,7 +175,10 @@ impl SpriteResourceManager {
     }
 
     /// Checks if there are pending image updates, and if there are, regenerates the descriptor sets
-    fn apply_sprite_updates(&mut self, image_resource_manager: &ImageResourceManager) {
+    fn apply_sprite_updates(
+        &mut self,
+        image_resource_manager: &ImageResourceManager,
+    ) {
         let mut updates = Vec::with_capacity(self.sprite_update_rx.len());
         while let Ok(update) = self.sprite_update_rx.recv_timeout(Duration::from_secs(0)) {
             updates.push(update);
@@ -189,7 +194,7 @@ impl SpriteResourceManager {
     fn do_apply_sprite_updates(
         &mut self,
         updates: Vec<SpriteResourceUpdate>,
-        image_resource_manager: &ImageResourceManager
+        image_resource_manager: &ImageResourceManager,
     ) {
         let mut max_index = self.sprites.len();
         for update in &updates {
@@ -199,21 +204,22 @@ impl SpriteResourceManager {
         self.sprites.resize_with(max_index, || None);
 
         for update in updates {
-            self.sprites_by_uuid.entry(update.asset_uuid).or_insert(update.resource_handle);
+            self.sprites_by_uuid
+                .entry(update.asset_uuid)
+                .or_insert(update.resource_handle);
             let mut image_handles = Vec::with_capacity(update.images.len());
             for image_uuid in update.images {
                 image_handles.push(image_resource_manager.image_handle_by_uuid(&image_uuid));
             }
 
-            self.sprites[update.resource_handle.index() as usize] = Some(SpriteResource {
-                image_handles
-            });
+            self.sprites[update.resource_handle.index() as usize] =
+                Some(SpriteResource { image_handles });
         }
     }
 
     fn refresh_descriptor_sets(
         &mut self,
-        image_resource_manager: &ImageResourceManager
+        image_resource_manager: &ImageResourceManager,
     ) -> VkResult<()> {
         self.descriptor_pool_allocator
             .retire_pool(self.descriptor_pool);
@@ -226,7 +232,7 @@ impl SpriteResourceManager {
             self.descriptor_set_layout,
             &descriptor_pool,
             &self.sprites,
-            image_resource_manager
+            image_resource_manager,
         )?;
 
         self.descriptor_pool = descriptor_pool;
@@ -297,7 +303,7 @@ impl SpriteResourceManager {
         descriptor_set_layout: vk::DescriptorSetLayout,
         descriptor_pool: &vk::DescriptorPool,
         sprites: &[Option<SpriteResource>],
-        image_resource_manager: &ImageResourceManager
+        image_resource_manager: &ImageResourceManager,
     ) -> VkResult<Vec<vk::DescriptorSet>> {
         let descriptor_set_layouts = vec![descriptor_set_layout; sprites.len()];
 
@@ -315,12 +321,15 @@ impl SpriteResourceManager {
             if let Some(sprite) = sprite.as_ref() {
                 for image_handle in &sprite.image_handles {
                     if let Some(image_handle) = image_handle {
-                        if let Some(image_resource) = image_resource_manager.image_by_handle(*image_handle) {
+                        if let Some(image_resource) =
+                            image_resource_manager.image_by_handle(*image_handle)
+                        {
                             let mut descriptor_writes = Vec::with_capacity(sprites.len());
-                            let image_view_descriptor_image_info = vk::DescriptorImageInfo::builder()
-                                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                                .image_view(image_resource.image_view)
-                                .build();
+                            let image_view_descriptor_image_info =
+                                vk::DescriptorImageInfo::builder()
+                                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                                    .image_view(image_resource.image_view)
+                                    .build();
 
                             descriptor_writes.push(
                                 vk::WriteDescriptorSet::builder()

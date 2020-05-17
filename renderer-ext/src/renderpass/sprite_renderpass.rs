@@ -100,7 +100,6 @@ pub struct VkSpriteRenderPass {
 
     pipeline_info: PipelineInfo,
 
-
     // This contains bindings for the UBO containing a view/proj matrix and a sampler
     //pub descriptor_set_layout_per_pass: vk::DescriptorSetLayout,
     pub descriptor_pool_per_pass: vk::DescriptorPool,
@@ -167,7 +166,6 @@ impl VkSpriteRenderPass {
         //     &sprite_pipeline_description.pipeline_layout.descriptor_set_layouts[0]
         // )?;
         let descriptor_set_layout_per_pass = pipeline_info.descriptor_set_layouts[0].get_raw();
-
 
         let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
             &device_context.device(),
@@ -271,11 +269,11 @@ impl VkSpriteRenderPass {
             image_sampler,
         })
     }
-/*
-    fn update_resources(&mut self, asset_resource: &AssetResource, pipeline_manager: &PipelineManager) {
+    /*
+        fn update_resources(&mut self, asset_resource: &AssetResource, pipeline_manager: &PipelineManager) {
 
-    }
-*/
+        }
+    */
     fn create_command_pool(
         logical_device: &ash::Device,
         queue_family_indices: &VkQueueFamilyIndices,

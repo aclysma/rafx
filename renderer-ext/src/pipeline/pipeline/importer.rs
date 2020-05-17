@@ -1,8 +1,6 @@
 use atelier_assets::core::AssetUuid;
 use atelier_assets::core::AssetRef;
-use atelier_assets::importer::{
-    ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter,
-};
+use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter};
 use image2::{color, ImageBuf, Image};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
@@ -21,8 +19,8 @@ struct PipelineImporterState(Option<AssetUuid>);
 struct PipelineImporter;
 impl Importer for PipelineImporter {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         3
     }

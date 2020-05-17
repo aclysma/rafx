@@ -12,7 +12,10 @@ use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
 use crossbeam_channel::Sender;
 use std::ops::Deref;
-use crate::resource_managers::{SpriteResourceManager, VkMeshResourceManager, ImageResourceManager, MaterialResourceManager/*, ShaderResourceManager*/};
+use crate::resource_managers::{
+    SpriteResourceManager, VkMeshResourceManager, ImageResourceManager,
+    MaterialResourceManager, /*, ShaderResourceManager*/
+};
 use crate::renderpass::VkMeshRenderPass;
 //use crate::pipeline_manager::{PipelineManager, ShaderLoadHandler, PipelineLoadHandler, PipelineResourceManager};
 use crate::pipeline_description::SwapchainSurfaceInfo;
@@ -56,7 +59,7 @@ fn wait_for_asset_to_load<T>(
     device_context: &VkDeviceContext,
     asset_handle: &atelier_assets::loader::handle::Handle<T>,
     asset_resource: &mut AssetResource,
-    renderer: &mut GameRenderer
+    renderer: &mut GameRenderer,
 ) {
     loop {
         asset_resource.update();
@@ -64,20 +67,20 @@ fn wait_for_asset_to_load<T>(
         match asset_handle.load_status(asset_resource.loader()) {
             LoadStatus::NotRequested => {
                 unreachable!();
-            },
+            }
             LoadStatus::Loading => {
                 // keep waiting
-            },
+            }
             LoadStatus::Loaded => {
                 break;
-            },
-            LoadStatus::Unloading => { unreachable!() },
+            }
+            LoadStatus::Unloading => unreachable!(),
             LoadStatus::DoesNotExist => {
                 println!("Essential asset not found");
-            },
+            }
             LoadStatus::Error(err) => {
                 println!("Error loading essential asset {:?}", err);
-            },
+            }
         }
     }
 }
@@ -101,7 +104,6 @@ pub struct GameRenderer {
     sprite_renderpass: Option<VkSpriteRenderPass>,
 
     mesh_renderpass: Option<VkMeshRenderPass>,
-
 }
 
 impl GameRenderer {
@@ -114,9 +116,7 @@ impl GameRenderer {
     ) -> VkResult<Self> {
         let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
 
-        let mut upload_queue = UploadQueue::new(
-            device_context,
-        );
+        let mut upload_queue = UploadQueue::new(device_context);
 
         // let shader_resource_manager = ShaderResourceManager::new(
         //     device_context,
@@ -133,7 +133,7 @@ impl GameRenderer {
         let sprite_resource_manager = SpriteResourceManager::new(
             device_context,
             renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-            &image_resource_manager
+            &image_resource_manager,
         )?;
         let mesh_resource_manager = VkMeshResourceManager::new(
             device_context,
@@ -160,11 +160,11 @@ impl GameRenderer {
                 sprite_resource_manager.sprite_update_tx().clone(),
             ),
         ));
-        asset_resource.add_storage_with_load_handler::<MaterialAsset, MaterialLoadHandler>(Box::new(
-            MaterialLoadHandler::new(
+        asset_resource.add_storage_with_load_handler::<MaterialAsset, MaterialLoadHandler>(
+            Box::new(MaterialLoadHandler::new(
                 material_resource_manager.material_update_tx().clone(),
-            )
-        ));
+            )),
+        );
         asset_resource.add_storage_with_load_handler::<MeshAsset, MeshLoadHandler>(Box::new(
             MeshLoadHandler::new(
                 upload_queue.pending_buffer_tx().clone(),
@@ -172,12 +172,13 @@ impl GameRenderer {
             ),
         ));
         asset_resource.add_storage_with_load_handler::<SpriteAsset, SpriteLoadHandler>(Box::new(
-            SpriteLoadHandler::new(
-                sprite_resource_manager.sprite_update_tx().clone(),
-            ),
+            SpriteLoadHandler::new(sprite_resource_manager.sprite_update_tx().clone()),
         ));
 
-        let sprite_renderpass_pipeline = load_asset::<PipelineAsset>(asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"), &asset_resource);
+        let sprite_renderpass_pipeline = load_asset::<PipelineAsset>(
+            asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"),
+            &asset_resource,
+        );
         //let pipeline_variant = load_asset::<PipelineAsset>(asset_uuid!("38126811-1892-41f9-80b0-64d9b5bdcad2"), &asset_resource);
 
         let mut renderer = GameRenderer {
@@ -196,7 +197,12 @@ impl GameRenderer {
             mesh_renderpass: None,
         };
 
-        wait_for_asset_to_load(device_context, &renderer.sprite_renderpass_pipeline.clone(), asset_resource, &mut renderer);
+        wait_for_asset_to_load(
+            device_context,
+            &renderer.sprite_renderpass_pipeline.clone(),
+            asset_resource,
+            &mut renderer,
+        );
         //wait_for_asset_to_load(&pipeline_variant, asset_resource, &mut renderer);
 
         // let sprite_renderpass_asset = renderer.sprite_renderpass_pipeline.asset(asset_resource.loader()).unwrap();
@@ -205,15 +211,20 @@ impl GameRenderer {
         Ok(renderer)
     }
 
-    pub fn update_resources(&mut self, device_context: &VkDeviceContext) {
+    pub fn update_resources(
+        &mut self,
+        device_context: &VkDeviceContext,
+    ) {
         //self.pipeline_manager.update();
         self.resource_manager.update();
         self.upload_queue.update(device_context);
 
         //self.shader_resource_manager.update();
         self.image_resource_manager.update();
-        self.material_resource_manager.update(&self.image_resource_manager);
-        self.sprite_resource_manager.update(&self.image_resource_manager);
+        self.material_resource_manager
+            .update(&self.image_resource_manager);
+        self.sprite_resource_manager
+            .update(&self.image_resource_manager);
         self.mesh_resource_manager
             .update(&self.material_resource_manager);
     }
@@ -238,7 +249,7 @@ impl VkSurfaceEventListener for GameRenderer {
 
         let swapchain_surface_info = SwapchainSurfaceInfo {
             surface_format: swapchain.swapchain_info.surface_format,
-            extents: swapchain.swapchain_info.extents
+            extents: swapchain.swapchain_info.extents,
         };
 
         //self.pipeline_manager.add_swapchain(&swapchain_surface_info);
@@ -246,8 +257,9 @@ impl VkSurfaceEventListener for GameRenderer {
 
         //self.pipeline_manager.
         //let pipeline_info = self.pipeline_manager.get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
-        let sprite_pipeline_info = self.resource_manager.get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
-
+        let sprite_pipeline_info = self
+            .resource_manager
+            .get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
 
         // Get the pipeline,
 
@@ -258,7 +270,7 @@ impl VkSurfaceEventListener for GameRenderer {
             sprite_pipeline_info,
             //&mut self.pipeline_manager,
             &self.sprite_resource_manager,
-            &swapchain_surface_info
+            &swapchain_surface_info,
         )?);
         log::debug!("Create VkMeshRenderPass");
         self.mesh_renderpass = Some(VkMeshRenderPass::new(
@@ -281,13 +293,15 @@ impl VkSurfaceEventListener for GameRenderer {
 
         let swapchain_surface_info = SwapchainSurfaceInfo {
             surface_format: swapchain.swapchain_info.surface_format,
-            extents: swapchain.swapchain_info.extents
+            extents: swapchain.swapchain_info.extents,
         };
 
         self.sprite_renderpass = None;
         self.mesh_renderpass = None;
-        self.resource_manager.remove_swapchain(&swapchain_surface_info);
-        self.imgui_event_listener.swapchain_destroyed(device_context, swapchain);
+        self.resource_manager
+            .remove_swapchain(&swapchain_surface_info);
+        self.imgui_event_listener
+            .swapchain_destroyed(device_context, swapchain);
     }
 
     fn render(
@@ -362,7 +376,7 @@ impl GameRendererWithContext {
             &context.device().device_context,
             imgui_font_atlas,
             time_state,
-            asset_resource
+            asset_resource,
         )?;
 
         let surface = VkSurface::new(&context, window, Some(&mut game_renderer))?;
@@ -375,7 +389,8 @@ impl GameRendererWithContext {
     }
 
     pub fn update_resources(&mut self) {
-        self.game_renderer.update_resources(self.context.device_context());
+        self.game_renderer
+            .update_resources(self.context.device_context());
     }
 
     pub fn draw(

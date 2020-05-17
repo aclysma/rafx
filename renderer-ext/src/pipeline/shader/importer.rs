@@ -1,8 +1,6 @@
 use atelier_assets::core::AssetUuid;
 use atelier_assets::core::AssetRef;
-use atelier_assets::importer::{
-    ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter,
-};
+use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter};
 use image2::{color, ImageBuf, Image};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
@@ -21,8 +19,8 @@ struct ShaderImporterState(Option<AssetUuid>);
 struct ShaderImporter;
 impl Importer for ShaderImporter {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         2
     }
@@ -52,9 +50,7 @@ impl Importer for ShaderImporter {
         source.read_to_end(&mut bytes)?;
 
         let data = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
-        let shader_asset = ShaderAsset {
-            data
-        };
+        let shader_asset = ShaderAsset { data };
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {

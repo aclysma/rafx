@@ -16,7 +16,7 @@ use crate::pipeline::shader::ShaderAsset;
 pub struct PipelineShaderStage {
     pub stage: dsc::ShaderStageFlags,
     pub shader_module: Handle<ShaderAsset>,
-    pub entry_name: String
+    pub entry_name: String,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]

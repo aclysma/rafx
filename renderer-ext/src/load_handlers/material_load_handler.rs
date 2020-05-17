@@ -29,12 +29,8 @@ pub struct MaterialLoadHandler {
 }
 
 impl MaterialLoadHandler {
-    pub fn new(
-        material_update_tx: Sender<MaterialResourceUpdate>,
-    ) -> Self {
-        MaterialLoadHandler {
-            material_update_tx,
-        }
+    pub fn new(material_update_tx: Sender<MaterialResourceUpdate>) -> Self {
+        MaterialLoadHandler { material_update_tx }
     }
 }
 

@@ -1,4 +1,3 @@
-
 use ash::vk;
 use crate::asset_storage::ResourceHandle;
 use image2::Hash;
@@ -37,17 +36,17 @@ impl Decimal {
     }
 }
 
-impl Eq for Decimal {
-
-}
+impl Eq for Decimal {}
 
 impl std::hash::Hash for Decimal {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+    ) {
         let bits: u64 = unsafe { std::mem::transmute(self.0) };
         bits.hash(state);
     }
 }
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DescriptorType {
@@ -105,7 +104,9 @@ impl Into<vk::ShaderStageFlags> for ShaderStageFlags {
         match self {
             ShaderStageFlags::Vertex => vk::ShaderStageFlags::VERTEX,
             ShaderStageFlags::TesselectionControl => vk::ShaderStageFlags::TESSELLATION_CONTROL,
-            ShaderStageFlags::TesselactionEvaluation => vk::ShaderStageFlags::TESSELLATION_EVALUATION,
+            ShaderStageFlags::TesselactionEvaluation => {
+                vk::ShaderStageFlags::TESSELLATION_EVALUATION
+            }
             ShaderStageFlags::Geometry => vk::ShaderStageFlags::GEOMETRY,
             ShaderStageFlags::Fragment => vk::ShaderStageFlags::FRAGMENT,
             ShaderStageFlags::Compute => vk::ShaderStageFlags::COMPUTE,
@@ -154,7 +155,7 @@ pub struct DescriptorSetLayout {
 impl DescriptorSetLayout {
     pub fn new() -> Self {
         DescriptorSetLayout {
-            descriptor_set_layout_bindings: Default::default()
+            descriptor_set_layout_bindings: Default::default(),
         }
     }
 }
@@ -181,7 +182,6 @@ impl Into<vk::PushConstantRange> for PushConstantRange {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineLayout {
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
@@ -200,7 +200,7 @@ impl PipelineLayout {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentDescriptionFlags {
     None,
-    MayAlias
+    MayAlias,
 }
 
 impl Into<vk::AttachmentDescriptionFlags> for AttachmentDescriptionFlags {
@@ -232,7 +232,7 @@ pub enum SampleCountFlags {
     SampleCount8,
     SampleCount16,
     SampleCount32,
-    SampleCount64
+    SampleCount64,
 }
 
 impl Into<vk::SampleCountFlags> for SampleCountFlags {
@@ -259,7 +259,7 @@ impl Default for SampleCountFlags {
 pub enum AttachmentLoadOp {
     Load,
     Clear,
-    DontCare
+    DontCare,
 }
 
 impl Into<vk::AttachmentLoadOp> for AttachmentLoadOp {
@@ -281,7 +281,7 @@ impl Default for AttachmentLoadOp {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentStoreOp {
     Store,
-    DontCare
+    DontCare,
 }
 
 impl Into<vk::AttachmentStoreOp> for AttachmentStoreOp {
@@ -302,7 +302,7 @@ impl Default for AttachmentStoreOp {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PipelineBindPoint {
     Compute,
-    Graphics
+    Graphics,
 }
 
 impl Into<vk::PipelineBindPoint> for PipelineBindPoint {
@@ -349,8 +349,12 @@ impl Into<vk::ImageLayout> for ImageLayout {
             ImageLayout::Undefined => vk::ImageLayout::UNDEFINED,
             ImageLayout::General => vk::ImageLayout::GENERAL,
             ImageLayout::ColorAttachmentOptimal => vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-            ImageLayout::DepthStencilAttachmentOptimal => vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            ImageLayout::DepthStencilReadOnlyOptimal => vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+            ImageLayout::DepthStencilAttachmentOptimal => {
+                vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+            }
+            ImageLayout::DepthStencilReadOnlyOptimal => {
+                vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL
+            }
             ImageLayout::ShaderReadOnlyOptimal => vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
             ImageLayout::TransferSrcOptimal => vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
             ImageLayout::TransferDstOptimal => vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -358,9 +362,15 @@ impl Into<vk::ImageLayout> for ImageLayout {
             ImageLayout::PresentSrcKhr => vk::ImageLayout::PRESENT_SRC_KHR,
             ImageLayout::SharedPresentKhr => vk::ImageLayout::SHARED_PRESENT_KHR,
             ImageLayout::ShadingRateOptimal => vk::ImageLayout::SHADING_RATE_OPTIMAL_NV,
-            ImageLayout::FragmentDensityMapOptimalExt => vk::ImageLayout::FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
-            ImageLayout::DepthReadOnlyStencilAttachmentOptimal => vk::ImageLayout::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-            ImageLayout::DepthAttachmentStencilReadOnlyOptimal => vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+            ImageLayout::FragmentDensityMapOptimalExt => {
+                vk::ImageLayout::FRAGMENT_DENSITY_MAP_OPTIMAL_EXT
+            }
+            ImageLayout::DepthReadOnlyStencilAttachmentOptimal => {
+                vk::ImageLayout::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+            }
+            ImageLayout::DepthAttachmentStencilReadOnlyOptimal => {
+                vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+            }
             ImageLayout::DepthAttachmentOptimal => vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
             ImageLayout::DepthReadOnlyOptimal => vk::ImageLayout::DEPTH_READ_ONLY_OPTIMAL,
             ImageLayout::StencilAttachmentOptimal => vk::ImageLayout::STENCIL_ATTACHMENT_OPTIMAL,
@@ -405,13 +415,19 @@ impl Into<vk::PipelineStageFlags> for PipelineStageFlags {
             PipelineStageFlags::DrawIndirect => vk::PipelineStageFlags::DRAW_INDIRECT,
             PipelineStageFlags::VertexInput => vk::PipelineStageFlags::VERTEX_INPUT,
             PipelineStageFlags::VertexShader => vk::PipelineStageFlags::VERTEX_SHADER,
-            PipelineStageFlags::TesselationControlShader => vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER,
-            PipelineStageFlags::TesselationEvaluationShader => vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER,
+            PipelineStageFlags::TesselationControlShader => {
+                vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER
+            }
+            PipelineStageFlags::TesselationEvaluationShader => {
+                vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER
+            }
             PipelineStageFlags::GeometryShader => vk::PipelineStageFlags::GEOMETRY_SHADER,
             PipelineStageFlags::FragmentShader => vk::PipelineStageFlags::FRAGMENT_SHADER,
             PipelineStageFlags::EarlyFragmentTests => vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
             PipelineStageFlags::LateFragmentTests => vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            PipelineStageFlags::ColorAttachmentOutput => vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+            PipelineStageFlags::ColorAttachmentOutput => {
+                vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
+            }
             PipelineStageFlags::ComputeShader => vk::PipelineStageFlags::COMPUTE_SHADER,
             PipelineStageFlags::Transfer => vk::PipelineStageFlags::TRANSFER,
             PipelineStageFlags::BottomOfPipe => vk::PipelineStageFlags::BOTTOM_OF_PIPE,
@@ -427,7 +443,6 @@ impl Default for PipelineStageFlags {
         PipelineStageFlags::Empty
     }
 }
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AccessFlags {
@@ -464,8 +479,12 @@ impl Into<vk::AccessFlags> for AccessFlags {
             AccessFlags::ShaderWrite => vk::AccessFlags::SHADER_WRITE,
             AccessFlags::ColorAttachmentRead => vk::AccessFlags::COLOR_ATTACHMENT_READ,
             AccessFlags::ColorAttachmentWrite => vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-            AccessFlags::DepthStencilAttachmentRead => vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
-            AccessFlags::DepthStencilAttachmentWrite => vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+            AccessFlags::DepthStencilAttachmentRead => {
+                vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
+            }
+            AccessFlags::DepthStencilAttachmentWrite => {
+                vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE
+            }
             AccessFlags::TransferRead => vk::AccessFlags::TRANSFER_READ,
             AccessFlags::TransferWrite => vk::AccessFlags::TRANSFER_WRITE,
             AccessFlags::HostRead => vk::AccessFlags::HOST_READ,
@@ -694,7 +713,10 @@ pub enum Format {
 }
 
 impl Format {
-    fn as_vk_format(&self, swapchain_surface_info: &SwapchainSurfaceInfo) -> vk::Format {
+    fn as_vk_format(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> vk::Format {
         match self {
             Format::MatchSwapchain => swapchain_surface_info.surface_format.format,
             Format::UNDEFINED => vk::Format::UNDEFINED,
@@ -902,11 +924,14 @@ pub struct AttachmentDescription {
     pub stencil_load_op: AttachmentLoadOp,
     pub stencil_store_op: AttachmentStoreOp,
     pub initial_layout: ImageLayout,
-    pub final_layout: ImageLayout
+    pub final_layout: ImageLayout,
 }
 
 impl AttachmentDescription {
-    pub fn as_builder(&self, swapchain_surface_info: &SwapchainSurfaceInfo) -> vk::AttachmentDescriptionBuilder {
+    pub fn as_builder(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> vk::AttachmentDescriptionBuilder {
         vk::AttachmentDescription::builder()
             .flags(self.flags.into())
             .format(self.format.as_vk_format(swapchain_surface_info))
@@ -944,7 +969,7 @@ impl Default for AttachmentIndex {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct AttachmentReference {
     pub attachment: AttachmentIndex,
-    pub layout: ImageLayout
+    pub layout: ImageLayout,
 }
 
 impl AttachmentReference {
@@ -973,7 +998,7 @@ pub struct SubpassDescription {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SubpassDependencyIndex {
     External,
-    Index(u32)
+    Index(u32),
 }
 
 impl Into<u32> for SubpassDependencyIndex {
@@ -991,7 +1016,6 @@ impl Default for SubpassDependencyIndex {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct SubpassDependency {
     pub src_subpass: SubpassDependencyIndex,
@@ -1005,11 +1029,10 @@ pub struct SubpassDependency {
 
 impl SubpassDependency {
     pub fn as_builder(&self) -> vk::SubpassDependencyBuilder {
-
         fn access_flag_list_to_mask(access_flags: &[AccessFlags]) -> vk::AccessFlags {
             let mut access_flags_mask = vk::AccessFlags::empty();
             for access_flag in access_flags {
-                let vk_access_flag : vk::AccessFlags = (*access_flag).into();
+                let vk_access_flag: vk::AccessFlags = (*access_flag).into();
                 access_flags_mask |= vk_access_flag;
             }
             access_flags_mask
@@ -1036,15 +1059,8 @@ impl Into<vk::SubpassDependency> for SubpassDependency {
 pub struct RenderPass {
     pub attachments: Vec<AttachmentDescription>,
     pub subpasses: Vec<SubpassDescription>,
-    pub dependencies: Vec<SubpassDependency>
+    pub dependencies: Vec<SubpassDependency>,
 }
-
-
-
-
-
-
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PrimitiveTopology {
@@ -1070,10 +1086,18 @@ impl Into<vk::PrimitiveTopology> for PrimitiveTopology {
             PrimitiveTopology::TriangleList => vk::PrimitiveTopology::TRIANGLE_LIST,
             PrimitiveTopology::TriangleStrip => vk::PrimitiveTopology::TRIANGLE_STRIP,
             PrimitiveTopology::TriangleFan => vk::PrimitiveTopology::TRIANGLE_FAN,
-            PrimitiveTopology::LineListWithAdjacency => vk::PrimitiveTopology::LINE_LIST_WITH_ADJACENCY,
-            PrimitiveTopology::LineStripWithAdjacency => vk::PrimitiveTopology::LINE_STRIP_WITH_ADJACENCY,
-            PrimitiveTopology::TriangleListWithAdjacency => vk::PrimitiveTopology::TRIANGLE_LIST_WITH_ADJACENCY,
-            PrimitiveTopology::TriangleStripWithAdjacency => vk::PrimitiveTopology::TRIANGLE_STRIP_WITH_ADJACENCY,
+            PrimitiveTopology::LineListWithAdjacency => {
+                vk::PrimitiveTopology::LINE_LIST_WITH_ADJACENCY
+            }
+            PrimitiveTopology::LineStripWithAdjacency => {
+                vk::PrimitiveTopology::LINE_STRIP_WITH_ADJACENCY
+            }
+            PrimitiveTopology::TriangleListWithAdjacency => {
+                vk::PrimitiveTopology::TRIANGLE_LIST_WITH_ADJACENCY
+            }
+            PrimitiveTopology::TriangleStripWithAdjacency => {
+                vk::PrimitiveTopology::TRIANGLE_STRIP_WITH_ADJACENCY
+            }
             PrimitiveTopology::PatchList => vk::PrimitiveTopology::PATCH_LIST,
         }
     }
@@ -1085,12 +1109,10 @@ impl Default for PrimitiveTopology {
     }
 }
 
-
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineInputAssemblyState {
     pub primitive_topology: PrimitiveTopology,
-    pub primitive_restart_enable: bool
+    pub primitive_restart_enable: bool,
 }
 
 impl PipelineInputAssemblyState {
@@ -1107,20 +1129,19 @@ impl Into<vk::PipelineInputAssemblyStateCreateInfo> for PipelineInputAssemblySta
     }
 }
 
-
 //impl Into<vk::PipelineInputAssemblyState>
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum VertexInputRate {
     Vertex,
-    Instance
+    Instance,
 }
 
 impl Into<vk::VertexInputRate> for VertexInputRate {
     fn into(self) -> vk::VertexInputRate {
         match self {
             VertexInputRate::Vertex => vk::VertexInputRate::VERTEX,
-            VertexInputRate::Instance => vk::VertexInputRate::INSTANCE
+            VertexInputRate::Instance => vk::VertexInputRate::INSTANCE,
         }
     }
 }
@@ -1162,7 +1183,10 @@ pub struct VertexInputAttributeDescription {
 }
 
 impl VertexInputAttributeDescription {
-    pub fn as_builder(&self, swapchain_surface_info: &SwapchainSurfaceInfo) -> vk::VertexInputAttributeDescriptionBuilder {
+    pub fn as_builder(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> vk::VertexInputAttributeDescriptionBuilder {
         vk::VertexInputAttributeDescription::builder()
             .location(self.location)
             .binding(self.binding)
@@ -1176,7 +1200,6 @@ pub struct PipelineVertexInputState {
     pub binding_descriptions: Vec<VertexInputBindingDescription>,
     pub attribute_descriptions: Vec<VertexInputAttributeDescription>,
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RectDecimal {
@@ -1202,7 +1225,6 @@ pub struct RectI32 {
     pub height: u32,
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Dimensions {
     MatchSwapchain,
@@ -1210,7 +1232,10 @@ pub enum Dimensions {
 }
 
 impl Dimensions {
-    fn as_rect_f32(&self, swapchain_surface_info: &SwapchainSurfaceInfo) -> RectF32 {
+    fn as_rect_f32(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> RectF32 {
         match self {
             Dimensions::MatchSwapchain => RectF32 {
                 x: 0.0,
@@ -1223,11 +1248,14 @@ impl Dimensions {
                 y: rect.y.to_f32(),
                 width: rect.width.to_f32(),
                 height: rect.height.to_f32(),
-            }
+            },
         }
     }
 
-    fn as_rect_i32(&self, swapchain_surface_info: &SwapchainSurfaceInfo) -> RectI32 {
+    fn as_rect_i32(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> RectI32 {
         match self {
             Dimensions::MatchSwapchain => RectI32 {
                 x: 0,
@@ -1240,7 +1268,7 @@ impl Dimensions {
                 y: rect.y.to_i32(),
                 width: rect.width.to_u32(),
                 height: rect.height.to_u32(),
-            }
+            },
         }
     }
 }
@@ -1259,7 +1287,10 @@ pub struct Viewport {
 }
 
 impl Viewport {
-    pub fn as_builder(&self, swapchain_surface_info: &SwapchainSurfaceInfo) -> vk::ViewportBuilder {
+    pub fn as_builder(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> vk::ViewportBuilder {
         let rect_f32 = self.dimensions.as_rect_f32(swapchain_surface_info);
         vk::Viewport::builder()
             .x(rect_f32.x)
@@ -1273,15 +1304,24 @@ impl Viewport {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct Scissors {
-    dimensions: Dimensions
+    dimensions: Dimensions,
 }
 
 impl Scissors {
-    pub fn to_rect2d(&self, swapchain_surface_info: &SwapchainSurfaceInfo) -> vk::Rect2D {
+    pub fn to_rect2d(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> vk::Rect2D {
         let rect_i32 = self.dimensions.as_rect_i32(swapchain_surface_info);
         vk::Rect2D {
-            offset: vk::Offset2D { x: rect_i32.x, y: rect_i32.y },
-            extent: vk::Extent2D { width: rect_i32.width, height: rect_i32.height },
+            offset: vk::Offset2D {
+                x: rect_i32.x,
+                y: rect_i32.y,
+            },
+            extent: vk::Extent2D {
+                width: rect_i32.width,
+                height: rect_i32.height,
+            },
         }
     }
 }
@@ -1289,14 +1329,14 @@ impl Scissors {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineViewportState {
     pub viewports: Vec<Viewport>,
-    pub scissors: Vec<Scissors>
+    pub scissors: Vec<Scissors>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PolygonMode {
     Fill,
     Line,
-    Point
+    Point,
 }
 
 impl Into<vk::PolygonMode> for PolygonMode {
@@ -1341,7 +1381,7 @@ pub enum CullModeFlags {
     None,
     Front,
     Back,
-    FrontAndBack
+    FrontAndBack,
 }
 
 impl Into<vk::CullModeFlags> for CullModeFlags {
@@ -1570,8 +1610,6 @@ impl Into<vk::PipelineColorBlendAttachmentState> for PipelineColorBlendAttachmen
     }
 }
 
-
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LogicOp {
     Clear,
@@ -1630,7 +1668,7 @@ pub struct PipelineColorBlendState {
 }
 
 impl PipelineColorBlendState {
-    pub fn blend_constants_as_f32(&self) -> [f32;4] {
+    pub fn blend_constants_as_f32(&self) -> [f32; 4] {
         [
             self.blend_constants[0].to_f32(),
             self.blend_constants[1].to_f32(),
@@ -1671,7 +1709,7 @@ impl Into<vk::DynamicState> for DynamicState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineDynamicState {
-    pub dynamic_states: Vec<DynamicState>
+    pub dynamic_states: Vec<DynamicState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -1685,14 +1723,10 @@ pub struct FixedFunctionState {
     pub dynamic_state: PipelineDynamicState,
 }
 
-
-
-
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ShaderModuleMeta {
     pub stage: ShaderStageFlags,
-    pub entry_name: String
+    pub entry_name: String,
 }
 
 // These structs are candidates for removal because in practice you probably wouldn't want to
@@ -1707,12 +1741,12 @@ pub struct ShaderModule {
 pub struct PipelineShaderStage {
     pub stage: ShaderStageFlags,
     pub shader_module: ShaderModule,
-    pub entry_name: String
+    pub entry_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineShaderStages {
-    pub stages: Vec<PipelineShaderStage>
+    pub stages: Vec<PipelineShaderStage>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -1723,14 +1757,9 @@ pub struct GraphicsPipeline {
     pub pipeline_shader_stages: PipelineShaderStages,
 }
 
-
-
 // pub struct CreatedGraphicsPipeline {
 //     pub pipeline_layout: vk::PipelineLayout,
 //     pub renderpass: vk::RenderPass,
 //     pub pipeline: vk::Pipeline
 //     pub pipeline_shader_stages: PipelineShaderStages,
 // }
-
-
-

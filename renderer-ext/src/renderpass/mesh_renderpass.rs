@@ -549,8 +549,6 @@ impl VkMeshRenderPass {
         descriptor_set_layouts: &[vk::DescriptorSetLayout],
         mut f: F,
     ) -> VkResult<()> {
-
-
         let layout_create_info =
             vk::PipelineLayoutCreateInfo::builder().set_layouts(descriptor_set_layouts);
 

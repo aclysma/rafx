@@ -9,7 +9,6 @@ use std::io::Read;
 use std::convert::TryInto;
 use crate::pipeline::image::ImageAsset;
 
-
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "23f90369-6916-4548-81d0-a76e0b162df2"]
 struct ImageImporterState(Option<AssetUuid>);

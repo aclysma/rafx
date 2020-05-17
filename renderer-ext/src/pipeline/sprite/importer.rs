@@ -1,8 +1,6 @@
 use atelier_assets::core::AssetUuid;
 use atelier_assets::core::AssetRef;
-use atelier_assets::importer::{
-    ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter,
-};
+use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter};
 use image2::{color, ImageBuf, Image};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
@@ -10,7 +8,6 @@ use std::io::Read;
 use std::convert::TryInto;
 use crate::pipeline::sprite::SpriteAsset;
 use atelier_assets::importer::Error as ImportError;
-
 
 #[derive(Debug)]
 pub enum SpriteImportError {
@@ -51,8 +48,8 @@ struct SpriteImporterState(Option<AssetUuid>);
 struct SpriteImporter;
 impl Importer for SpriteImporter {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         4
     }
@@ -77,13 +74,16 @@ impl Importer for SpriteImporter {
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         *state = SpriteImporterState(Some(id));
 
-        let sprite_asset: SpriteAsset = serde_json::from_reader(source)
-            .map_err(|err| {
-                println!("SPRITE IMPORT ERROR: {:?}", err);
-                ImportError::Boxed(Box::new(SpriteImportError::JsonError(err)))
-            })?;
+        let sprite_asset: SpriteAsset = serde_json::from_reader(source).map_err(|err| {
+            println!("SPRITE IMPORT ERROR: {:?}", err);
+            ImportError::Boxed(Box::new(SpriteImportError::JsonError(err)))
+        })?;
 
-        let load_deps = sprite_asset.images.iter().map(|asset_uuid| AssetRef::Uuid(*asset_uuid)).collect();
+        let load_deps = sprite_asset
+            .images
+            .iter()
+            .map(|asset_uuid| AssetRef::Uuid(*asset_uuid))
+            .collect();
         println!("SPRITE IMPORT {:?}", sprite_asset);
 
         Ok(ImporterValue {

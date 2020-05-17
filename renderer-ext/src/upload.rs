@@ -176,7 +176,9 @@ impl InProgressUpload {
                     Ok(state) => match state {
                         VkTransferUploadState::Writable => {
                             println!("VkTransferUploadState::Writable");
-                            inner.upload.submit_transfer(device_context.queues().transfer_queue);
+                            inner
+                                .upload
+                                .submit_transfer(device_context.queues().transfer_queue);
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToTransferQueue => {
@@ -186,7 +188,9 @@ impl InProgressUpload {
                         }
                         VkTransferUploadState::PendingSubmitDstQueue => {
                             println!("VkTransferUploadState::PendingSubmitDstQueue");
-                            inner.upload.submit_dst(device_context.queues().graphics_queue);
+                            inner
+                                .upload
+                                .submit_dst(device_context.queues().graphics_queue);
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToDstQueue => {
