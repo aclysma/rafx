@@ -99,7 +99,7 @@ impl VkFenceContext {
                         for i in (0..self.pending_fences.len()).rev() {
                             if unsafe { device.get_fence_status(self.pending_fences[i]) }? {
                                 // the vulkan fence is immediately reset, but the user signal must be reset manually
-                                device.reset_fences(&self.pending_fences[i..=i]);
+                                device.reset_fences(&self.pending_fences[i..=i])?;
                                 self.pending_fences.swap_remove(i);
                                 let request = self.pending_requests.swap_remove(i);
                                 request.state.signal_version.fetch_add(1, Ordering::Relaxed);
