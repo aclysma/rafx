@@ -122,10 +122,12 @@ where
     ResourceT: VkDropSinkResourceImpl + Copy,
 {
     resources: FnvHashMap<ResourceHash, WeakResourceArc<ResourceT>>,
-    keys: FnvHashMap<ResourceHash, KeyT>,
     drop_sink: VkResourceDropSink<ResourceT>,
     drop_tx: Sender<ResourceWithHash<ResourceT>>,
     drop_rx: Receiver<ResourceWithHash<ResourceT>>,
+    phantom_data: PhantomData<KeyT>,
+    #[cfg(debug_assertions)]
+    keys: FnvHashMap<ResourceHash, KeyT>,
 }
 
 impl<KeyT, ResourceT> ResourceLookup<KeyT, ResourceT>
@@ -138,10 +140,12 @@ where
 
         ResourceLookup {
             resources: Default::default(),
-            keys: Default::default(),
             drop_sink: VkResourceDropSink::new(max_frames_in_flight),
             drop_tx,
             drop_rx,
+            phantom_data: Default::default(),
+            #[cfg(debug_assertions)]
+            keys: Default::default(),
         }
     }
 
@@ -152,8 +156,10 @@ where
     ) -> Option<ResourceArc<ResourceT>> {
         if let Some(resource) = self.resources.get(&hash) {
             let upgrade = resource.upgrade();
+
+            #[cfg(debug_assertions)]
             if upgrade.is_some() {
-                assert!(self.keys.get(&hash).unwrap() == key);
+                debug_assert!(self.keys.get(&hash).unwrap() == key);
             }
 
             upgrade
@@ -182,8 +188,13 @@ where
         let downgraded = arc.downgrade();
         let old = self.resources.insert(hash, downgraded);
         assert!(old.is_none());
-        self.keys.insert(hash, key.clone());
-        assert!(old.is_none());
+
+        #[cfg(debug_assertions)]
+        {
+            self.keys.insert(hash, key.clone());
+            assert!(old.is_none());
+        }
+
         arc
     }
 
@@ -196,7 +207,11 @@ where
             );
             self.drop_sink.retire(dropped.resource);
             self.resources.remove(&dropped.resource_hash);
-            self.keys.remove(&dropped.resource_hash);
+
+            #[cfg(debug_assertions)]
+            {
+                self.keys.remove(&dropped.resource_hash);
+            }
         }
     }
 
@@ -672,6 +687,18 @@ impl ActiveSwapchainSurfaceInfoSet {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
 struct DescriptorSetPoolManager {
     device_context: VkDeviceContext,
     descriptor_set_layout_def: dsc::DescriptorSetLayout,
@@ -696,8 +723,23 @@ impl DescriptorSetPoolManager {
         }
     }
 
-    fn allocate() {}
+    fn allocate() {
+
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 pub struct PipelineInfo {
     pub descriptor_set_layouts: Vec<ResourceArc<vk::DescriptorSetLayout>>,

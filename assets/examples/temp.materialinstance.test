@@ -1,0 +1,18 @@
+(
+    passes: [
+        (
+            image_slots: [
+                (
+                    name: "asdf",
+                    iamge: "path.png
+                )
+            ],
+            scalar_slots: [
+                (
+                    name: "as",
+                    value: 3.1
+                )
+            ]
+        )
+    ]
+)
