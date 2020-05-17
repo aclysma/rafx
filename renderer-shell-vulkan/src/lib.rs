@@ -68,6 +68,8 @@ pub use coordinates::Size;
 pub use coordinates::LogicalSize;
 pub use coordinates::PhysicalSize;
 
+mod fence;
+
 /// Used to select which PresentMode is preferred. Some of this is hardware/platform dependent and
 /// it's a good idea to read the Vulkan spec.
 ///
