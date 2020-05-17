@@ -1,7 +1,10 @@
 use ash::vk;
 use ash::prelude::VkResult;
+use ash::version::DeviceV1_0;
 
 use std::task::{Context, Poll, Waker};
+use std::pin::Pin;
+use std::future::Future;
 use std::time::{Instant, Duration};
 use std::sync::{
     atomic::{Ordering, AtomicUsize},
