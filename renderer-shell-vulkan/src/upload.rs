@@ -3,10 +3,6 @@ use ash::prelude::VkResult;
 
 use std::future::Future;
 use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
-use std::time::{Instant, Duration};
-use std::sync::{atomic::AtomicBool, Arc};
-use crossbeam_channel::{Sender, Receiver, TryRecvError};
 use ash::version::DeviceV1_0;
 use crate::{VkDevice, VkQueueFamilyIndices, VkBuffer, VkDeviceContext};
 use std::mem::ManuallyDrop;
@@ -28,117 +24,6 @@ pub enum VkUploadState {
 
     /// The upload is finished and the resources may be used
     Complete,
-}
-
-pub struct VkFenceHandle(u32, u32);
-pub struct VkFenceContext {
-    device_context: VkDeviceContext,
-    fences: Vec<vk::Fence>,
-    wakers: Vec<Waker>,
-    receiver: Receiver<(vk::Fence, Waker)>,
-    sender: Sender<(vk::Fence, Waker)>,
-}
-impl VkFenceContext {
-    fn cloned_sender(&self) -> Sender<(vk::Fence, Waker)> {
-        self.sender.clone()
-    }
-
-    pub fn poll_fences(
-        &mut self,
-        timeout: Duration,
-        channel_check_period: Duration,
-    ) -> VkResult<()> {
-        let mut start_time = Instant::now();
-        let deadline = start_time + timeout;
-        loop {
-            'channel_check: loop {
-                match self.receiver.try_recv() {
-                    Ok((fence, waker)) => {
-                        self.wakers.push(waker);
-                        self.fences.push(fence);
-                    }
-                    Err(TryRecvError::Empty) => {
-                        break 'channel_check;
-                    }
-                    Err(TryRecvError::Disconnected) => return Ok(()), // should we return some other error here?
-                }
-            }
-
-            let fence_wait_start = Instant::now();
-            let fence_wait_deadline =
-                std::cmp::min(deadline, fence_wait_start + channel_check_period);
-            'fence_wait: loop {
-                let now = Instant::now();
-                if now > fence_wait_deadline {
-                    break 'fence_wait;
-                }
-                let fence_wait_timeout = fence_wait_deadline.saturating_duration_since(now);
-                let device = self.device_context.device();
-                unsafe {
-                    match device.wait_for_fences(
-                        &self.fences,
-                        false,
-                        fence_wait_timeout.as_nanos() as u64,
-                    ) {
-                        Ok(()) => {
-                            // something is signalled
-                            for i in (0..self.fences.len()).rev() {
-                                if unsafe { device.get_fence_status(self.fences[i]) }? {
-                                    self.fences.swap_remove(i);
-                                    let waker = self.wakers.swap_remove(i);
-                                    waker.wake();
-                                }
-                            }
-                        }
-                        Err(vk::Result::TIMEOUT) => {}
-                        err => err?,
-                    }
-                }
-            }
-            if Instant::now() > deadline {
-                return Ok(());
-            }
-        }
-    }
-}
-
-struct VkFenceInner {
-    fence: vk::Fence,
-    device: ash::Device,
-}
-struct VkFence(Arc<VkFenceInner>);
-impl Drop for VkFenceInner {
-    fn drop(&mut self) {
-        unsafe { self.device.destroy_fence(self.fence, None) };
-    }
-}
-pub struct VkFenceFuture {
-    fence: vk::Fence,
-    device_context: VkDeviceContext,
-    wakers: Vec<Waker>,
-    signalling_sender: Sender<(vk::Fence, Waker)>,
-}
-
-impl Future for VkFenceFuture {
-    type Output = VkResult<()>;
-    fn poll(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Self::Output> {
-        let submit_complete = unsafe { self.device_context.device().get_fence_status(self.fence)? };
-        if submit_complete {
-            Poll::Ready(Ok(()))
-        } else {
-            self.signalling_sender
-                .send((self.fence.clone(), cx.waker().clone()))
-                .expect("signalling receiver is closed");
-            Poll::Pending
-        }
-    }
-}
-
-async fn test_await(fence: VkFenceFuture) {
-    let result = fence.await;
 }
 
 /// This is a convenience class that allows accumulating writes into a staging buffer and commands
