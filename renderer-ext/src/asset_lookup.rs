@@ -120,6 +120,19 @@ impl<ResourceT> ResourceArc<ResourceT>
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 //
 // A lookup of resources. They reference count using Arcs internally and send a signal when they
 // drop. This allows the resources to be collected and disposed of
@@ -308,13 +321,9 @@ struct LoadedGraphicsPipeline {
 }
 
 
-// struct LoadedShaderModule {
-//     shader_module: CreatedShaderModule
-// }
-//
-// struct LoadedGraphicsPipeline {
-//     pipelines: Vec<CreatedGraphicsPipeline>
-// }
+
+
+
 
 //
 // Represents a single asset which may simultaneously have committed and uncommitted loaded state
@@ -1126,6 +1135,24 @@ impl ResourceManager {
     }
 }
 
+impl Drop for ResourceManager {
+    fn drop(&mut self) {
+        unsafe {
+            println!("Cleaning up resource manager");
+            self.dump_stats();
+
+            // Wipe out any loaded assets. This will potentially drop ref counts on resources
+            self.loaded_assets.destroy();
+
+            // Now drop all resources with a zero ref count and warn for any resources that remain
+            self.resources.destroy(self.device_context.device());
+
+            println!("Dropping resource manager");
+            self.dump_stats();
+        }
+    }
+}
+
 // We have to create pipelines when pipeline assets load and when swapchains are added/removed.
 // Gathering all the info to hash and create a pipeline is a bit involved so we share the code
 // here
@@ -1194,25 +1221,6 @@ impl PipelineCreateData {
         })
     }
 }
-
-impl Drop for ResourceManager {
-    fn drop(&mut self) {
-        unsafe {
-            println!("Cleaning up resource manager");
-            self.dump_stats();
-
-            // Wipe out any loaded assets. This will potentially drop ref counts on resources
-            self.loaded_assets.destroy();
-
-            // Now drop all resources with a zero ref count and warn for any resources that remain
-            self.resources.destroy(self.device_context.device());
-
-            println!("Dropping resource manager");
-            self.dump_stats();
-        }
-    }
-}
-
 
 
 

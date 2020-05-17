@@ -30,7 +30,7 @@ use atelier_loader::AssetLoadOp;
 use std::error::Error;
 use renderer_ext::upload::UploadQueue;
 use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoadHandler, SpriteLoadHandler};
-use renderer_ext::pipeline_manager::{ShaderLoadHandler, PipelineLoadHandler};
+//use renderer_ext::pipeline_manager::{ShaderLoadHandler, PipelineLoadHandler};
 use renderer_ext::pipeline::image::ImageAsset;
 use renderer_ext::pipeline::gltf::{MaterialAsset, MeshAsset};
 use renderer_ext::pipeline::sprite::SpriteAsset;

@@ -12,15 +12,15 @@ use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
 use crossbeam_channel::Sender;
 use std::ops::Deref;
-use crate::resource_managers::{SpriteResourceManager, VkMeshResourceManager, ImageResourceManager, MaterialResourceManager, ShaderResourceManager};
+use crate::resource_managers::{SpriteResourceManager, VkMeshResourceManager, ImageResourceManager, MaterialResourceManager/*, ShaderResourceManager*/};
 use crate::renderpass::VkMeshRenderPass;
-use crate::pipeline_manager::{PipelineManager, ShaderLoadHandler, PipelineLoadHandler, PipelineResourceManager};
+//use crate::pipeline_manager::{PipelineManager, ShaderLoadHandler, PipelineLoadHandler, PipelineResourceManager};
 use crate::pipeline_description::SwapchainSurfaceInfo;
 use crate::pipeline::pipeline::PipelineAsset;
 use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
 use crate::upload::UploadQueue;
-use crate::load_handlers::{ImageLoadHandler, MaterialLoadHandler, MeshLoadHandler, SpriteLoadHandler};
+use crate::load_handlers::{ImageLoadHandler, MeshLoadHandler, SpriteLoadHandler, MaterialLoadHandler};
 use crate::pipeline::shader::ShaderAsset;
 use crate::pipeline::image::ImageAsset;
 use crate::pipeline::gltf::{MaterialAsset, MeshAsset};
@@ -86,7 +86,7 @@ pub struct GameRenderer {
     time_state: TimeState,
     imgui_event_listener: ImguiRenderEventListener,
 
-    shader_resource_manager: ShaderResourceManager,
+    //shader_resource_manager: ShaderResourceManager,
     image_resource_manager: ImageResourceManager,
     material_resource_manager: MaterialResourceManager,
     sprite_resource_manager: SpriteResourceManager,
@@ -118,10 +118,10 @@ impl GameRenderer {
             device_context,
         );
 
-        let shader_resource_manager = ShaderResourceManager::new(
-            device_context,
-            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        )?;
+        // let shader_resource_manager = ShaderResourceManager::new(
+        //     device_context,
+        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        // )?;
         let image_resource_manager = ImageResourceManager::new(
             device_context,
             renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
@@ -151,7 +151,7 @@ impl GameRenderer {
         asset_resource.add_storage_with_load_handler::<PipelineAsset, _>(Box::new(
             resource_manager.create_pipeline_load_handler(),
         ));
-        // asset_resource.add_storage::<ShaderAsset>();
+        //asset_resource.add_storage::<ShaderAsset>();
         // asset_resource.add_storage::<PipelineAsset>();
         asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
             ImageLoadHandler::new(
@@ -183,7 +183,7 @@ impl GameRenderer {
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
             imgui_event_listener,
-            shader_resource_manager,
+            //shader_resource_manager,
             image_resource_manager,
             material_resource_manager,
             sprite_resource_manager,
@@ -210,7 +210,7 @@ impl GameRenderer {
         self.resource_manager.update();
         self.upload_queue.update(device_context);
 
-        self.shader_resource_manager.update();
+        //self.shader_resource_manager.update();
         self.image_resource_manager.update();
         self.material_resource_manager.update(&self.image_resource_manager);
         self.sprite_resource_manager.update(&self.image_resource_manager);
