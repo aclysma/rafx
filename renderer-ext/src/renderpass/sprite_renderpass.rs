@@ -131,7 +131,7 @@ impl VkSpriteRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        pipeline_manager: &mut PipelineManager,
+        //pipeline_manager: &mut PipelineManager,
         sprite_resource_manager: &SpriteResourceManager,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<Self> {
@@ -266,11 +266,11 @@ impl VkSpriteRenderPass {
             image_sampler,
         })
     }
-
+/*
     fn update_resources(&mut self, asset_resource: &AssetResource, pipeline_manager: &PipelineManager) {
 
     }
-
+*/
     fn create_command_pool(
         logical_device: &ash::Device,
         queue_family_indices: &VkQueueFamilyIndices,

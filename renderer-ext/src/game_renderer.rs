@@ -6,7 +6,7 @@ use renderer_shell_vulkan::{
 };
 use ash::prelude::VkResult;
 use crate::renderpass::{VkSpriteRenderPass};
-use std::mem::{swap, ManuallyDrop};
+use std::mem::{ManuallyDrop};
 use crate::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
@@ -14,7 +14,7 @@ use crossbeam_channel::Sender;
 use std::ops::Deref;
 use crate::resource_managers::{SpriteResourceManager, VkMeshResourceManager, ImageResourceManager, MaterialResourceManager, ShaderResourceManager};
 use crate::renderpass::VkMeshRenderPass;
-use crate::pipeline_manager::{PipelineManager, ShaderLoadHandler, PipelineLoadHandler};
+use crate::pipeline_manager::{PipelineManager, ShaderLoadHandler, PipelineLoadHandler, PipelineResourceManager};
 use crate::pipeline_description::SwapchainSurfaceInfo;
 use crate::pipeline::pipeline::PipelineAsset;
 use atelier_assets::loader::handle::Handle;
@@ -30,6 +30,7 @@ use atelier_assets::loader::LoadStatus;
 use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
+use crate::asset_lookup::ResourceManager;
 
 // #[derive(Clone)]
 // struct SpriteRenderpassInfo {
@@ -92,7 +93,8 @@ pub struct GameRenderer {
 
     upload_queue: UploadQueue,
 
-    pipeline_manager: PipelineManager,
+    //pipeline_manager: PipelineManager,
+    resource_manager: ResourceManager,
 
     sprite_renderpass_pipeline: Handle<PipelineAsset>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
@@ -137,15 +139,16 @@ impl GameRenderer {
             renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
         )?;
 
-        let pipeline_manager = PipelineManager::new(
-            device_context
-        );
+        // let pipeline_manager = PipelineManager::new(
+        //     device_context
+        // );
+        let resource_manager = ResourceManager::new(device_context);
 
-        asset_resource.add_storage_with_load_handler::<ShaderAsset, ShaderLoadHandler>(Box::new(
-            pipeline_manager.create_shader_load_handler(),
+        asset_resource.add_storage_with_load_handler::<ShaderAsset, _>(Box::new(
+            resource_manager.create_shader_load_handler(),
         ));
-        asset_resource.add_storage_with_load_handler::<PipelineAsset, PipelineLoadHandler>(Box::new(
-            pipeline_manager.create_pipeline_load_handler(),
+        asset_resource.add_storage_with_load_handler::<PipelineAsset, _>(Box::new(
+            resource_manager.create_pipeline_load_handler(),
         ));
         // asset_resource.add_storage::<ShaderAsset>();
         // asset_resource.add_storage::<PipelineAsset>();
@@ -185,7 +188,8 @@ impl GameRenderer {
             sprite_resource_manager,
             mesh_resource_manager,
             upload_queue,
-            pipeline_manager,
+            //pipeline_manager,
+            resource_manager,
             sprite_renderpass_pipeline,
             sprite_renderpass: None,
             mesh_renderpass: None,
@@ -201,7 +205,8 @@ impl GameRenderer {
     }
 
     pub fn update_resources(&mut self) {
-        self.pipeline_manager.update();
+        //self.pipeline_manager.update();
+        self.resource_manager.update();
 
         self.shader_resource_manager.update();
         self.image_resource_manager.update();
@@ -234,10 +239,12 @@ impl VkSurfaceEventListener for GameRenderer {
             extents: swapchain.swapchain_info.extents
         };
 
-        self.pipeline_manager.add_swapchain(&swapchain_surface_info);
+        //self.pipeline_manager.add_swapchain(&swapchain_surface_info);
+        self.resource_manager.add_swapchain(&swapchain_surface_info);
 
         //self.pipeline_manager.
-        let pipeline_info = self.pipeline_manager.get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
+        //let pipeline_info = self.pipeline_manager.get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
+
 
         // Get the pipeline,
 
@@ -245,7 +252,7 @@ impl VkSurfaceEventListener for GameRenderer {
         self.sprite_renderpass = Some(VkSpriteRenderPass::new(
             device_context,
             swapchain,
-            &mut self.pipeline_manager,
+            //&mut self.pipeline_manager,
             &self.sprite_resource_manager,
             &swapchain_surface_info
         )?);
