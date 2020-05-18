@@ -1,0 +1,35 @@
+(
+    version: 1,
+    import_hash: Some(11724860284159076950),
+    importer_version: 1,
+    importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
+    importer_options: (),
+    importer_state: (Some("b042a2b1-6631-4b1f-b988-9f6f853abfac")),
+    assets: [
+        (
+            id: "b042a2b1-6631-4b1f-b988-9f6f853abfac",
+            search_tags: [
+                ("file_name", Some("sprite.material2")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 9831162372635208665,
+                id: "b042a2b1-6631-4b1f-b988-9f6f853abfac",
+                build_deps: [
+                    Path("sprite.pipeline2"),
+                    Path("../shaders/sprite.frag.spv"),
+                    Path("../shaders/sprite.vert.spv"),
+                ],
+                load_deps: [
+                    Path("sprite.pipeline2"),
+                    Path("../shaders/sprite.vert.spv"),
+                    Path("../shaders/sprite.frag.spv"),
+                ],
+                compression: None,
+                compressed_size: Some(333),
+                uncompressed_size: Some(333),
+                type_id: "ad94bca2-1f02-4e5f-9117-1a7b03456a11",
+            )),
+        ),
+    ],
+)

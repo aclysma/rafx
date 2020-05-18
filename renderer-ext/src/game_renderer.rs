@@ -19,7 +19,7 @@ use crate::resource_managers::{
 use crate::renderpass::VkMeshRenderPass;
 //use crate::pipeline_manager::{PipelineManager, ShaderLoadHandler, PipelineLoadHandler, PipelineResourceManager};
 use crate::pipeline_description::SwapchainSurfaceInfo;
-use crate::pipeline::pipeline::PipelineAsset;
+use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset2, PipelineAsset2};
 use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
 use crate::upload::UploadQueue;
@@ -69,6 +69,7 @@ fn wait_for_asset_to_load<T>(
                 unreachable!();
             }
             LoadStatus::Loading => {
+                log::info!("blocked waiting for asset to load");
                 // keep waiting
             }
             LoadStatus::Loaded => {
@@ -100,7 +101,8 @@ pub struct GameRenderer {
     //pipeline_manager: PipelineManager,
     resource_manager: ResourceManager,
 
-    sprite_renderpass_pipeline: Handle<PipelineAsset>,
+    //sprite_renderpass_pipeline: Handle<PipelineAsset>,
+    sprite_material: Handle<MaterialAsset2>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
 
     mesh_renderpass: Option<VkMeshRenderPass>,
@@ -151,6 +153,12 @@ impl GameRenderer {
         asset_resource.add_storage_with_load_handler::<PipelineAsset, _>(Box::new(
             resource_manager.create_pipeline_load_handler(),
         ));
+        asset_resource.add_storage_with_load_handler::<PipelineAsset2, _>(Box::new(
+            resource_manager.create_pipeline2_load_handler(),
+        ));
+        asset_resource.add_storage_with_load_handler::<MaterialAsset2, _>(Box::new(
+            resource_manager.create_material_load_handler(),
+        ));
         //asset_resource.add_storage::<ShaderAsset>();
         // asset_resource.add_storage::<PipelineAsset>();
         asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
@@ -175,9 +183,13 @@ impl GameRenderer {
             SpriteLoadHandler::new(sprite_resource_manager.sprite_update_tx().clone()),
         ));
 
-        let sprite_renderpass_pipeline = load_asset::<PipelineAsset>(
-            asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"),
-            &asset_resource,
+        // let sprite_renderpass_pipeline = load_asset::<PipelineAsset>(
+        //     asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"),
+        //     &asset_resource,
+        // );
+        let sprite_material = load_asset::<MaterialAsset2>(
+            asset_uuid!("b042a2b1-6631-4b1f-b988-9f6f853abfac"),
+            &asset_resource
         );
         //let pipeline_variant = load_asset::<PipelineAsset>(asset_uuid!("38126811-1892-41f9-80b0-64d9b5bdcad2"), &asset_resource);
 
@@ -192,14 +204,21 @@ impl GameRenderer {
             upload_queue,
             //pipeline_manager,
             resource_manager,
-            sprite_renderpass_pipeline,
+            //sprite_renderpass_pipeline,
+            sprite_material,
             sprite_renderpass: None,
             mesh_renderpass: None,
         };
 
+        // wait_for_asset_to_load(
+        //     device_context,
+        //     &renderer.sprite_renderpass_pipeline.clone(),
+        //     asset_resource,
+        //     &mut renderer,
+        // );
         wait_for_asset_to_load(
             device_context,
-            &renderer.sprite_renderpass_pipeline.clone(),
+            &renderer.sprite_material.clone(),
             asset_resource,
             &mut renderer,
         );
@@ -257,9 +276,14 @@ impl VkSurfaceEventListener for GameRenderer {
 
         //self.pipeline_manager.
         //let pipeline_info = self.pipeline_manager.get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
+
+        // let sprite_pipeline_info = self
+        //     .resource_manager
+        //     .get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
+
         let sprite_pipeline_info = self
             .resource_manager
-            .get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
+            .get_pipeline_info2(&self.sprite_material, &swapchain_surface_info, 0);
 
         // Get the pipeline,
 

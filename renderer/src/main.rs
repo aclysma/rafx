@@ -340,6 +340,7 @@ fn main() {
                     unreachable!();
                 },
                 LoadStatus::Loading => {
+                    log::info!("blocked waiting for asset to load");
                     // keep waiting
                 },
                 LoadStatus::Loaded => {
@@ -355,12 +356,6 @@ fn main() {
             }
         }
     }
-
-    //PIPELINE
-    let pipeline = load_asset::<PipelineAsset>(asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"), &asset_resource);
-    let pipeline_variant = load_asset::<PipelineAsset>(asset_uuid!("38126811-1892-41f9-80b0-64d9b5bdcad2"), &asset_resource);
-    wait_for_asset_to_load(&pipeline, &mut asset_resource, &mut renderer);
-    wait_for_asset_to_load(&pipeline_variant, &mut asset_resource, &mut renderer);
 
     let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"), &asset_resource);
 

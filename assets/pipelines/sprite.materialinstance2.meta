@@ -1,0 +1,33 @@
+(
+    version: 1,
+    import_hash: Some(11344689667671237604),
+    importer_version: 1,
+    importer_type: "4ce02143-a5c4-4433-b843-07cdccf013b0",
+    importer_options: (),
+    importer_state: (Some("e77d56eb-02d9-45cd-a088-c40913c95872")),
+    assets: [
+        (
+            id: "e77d56eb-02d9-45cd-a088-c40913c95872",
+            search_tags: [
+                ("file_name", Some("sprite.materialinstance2")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 17988218872036863132,
+                id: "e77d56eb-02d9-45cd-a088-c40913c95872",
+                build_deps: [
+                    Path("sprite.material2"),
+                    Path("../textures/texture2.jpg"),
+                ],
+                load_deps: [
+                    Path("sprite.material2"),
+                    Path("../textures/texture2.jpg"),
+                ],
+                compression: None,
+                compressed_size: Some(71),
+                uncompressed_size: Some(71),
+                type_id: "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b",
+            )),
+        ),
+    ],
+)

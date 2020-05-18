@@ -2,21 +2,20 @@
     passes: [
         (
             phase: "Opaque",
-            pipeline: "temp.pipeline.test",
+            pipeline: "sprite.pipeline2",
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "sprite.vert.spv",
+                    shader_module: "../shaders/sprite.vert.spv",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "sprite.frag.spv",
+                    shader_module: "../shaders/sprite.frag.spv",
                     entry_name: "main"
                 ),
             ],
-            shader_interface: [
-            (
+            shader_interface: (
                 descriptor_set_layouts: [
                     (
                         descriptor_set_layout_bindings: [
@@ -74,20 +73,18 @@
                             binding: 0,
                             format: R32G32_SFLOAT,
                             offset: 0,
-                            slot_name: "POSITION"
+                            //slot_name: "POSITION"
                         ),
                         (
                             location: 1,
                             binding: 0,
                             format: R32G32_SFLOAT,
                             offset: 8,
-                            slot_name: "TEXCOORD_0"
+                            //slot_name: "TEXCOORD_0"
                         ),
                     ],
                 ),
             ),
-        ],
-        push_constant_ranges: [],
-        )
+        ),
     ]
 )
