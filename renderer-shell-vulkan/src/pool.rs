@@ -188,3 +188,28 @@ impl VkPoolResourceImpl for vk::DescriptorPool {
 }
 
 pub type VkDescriptorPoolAllocator = VkPoolAllocator<vk::DescriptorPool>;
+
+//
+// Implementation for commnand pools
+//
+impl VkPoolResourceImpl for vk::CommandPool {
+    fn reset(
+        device: &Device,
+        resource: &mut Self,
+    ) -> VkResult<()> {
+        unsafe { device.reset_command_pool(*resource, vk::CommandPoolResetFlags::empty()) }
+    }
+
+    fn destroy(
+        device: &Device,
+        resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device.destroy_command_pool(resource, None);
+        }
+
+        Ok(())
+    }
+}
+
+pub type VkCommandPoolAllocator = VkPoolAllocator<vk::CommandPool>;

@@ -14,10 +14,9 @@ use crossbeam_channel::Sender;
 use std::ops::Deref;
 use crate::resource_managers::{
     SpriteResourceManager, VkMeshResourceManager, ImageResourceManager,
-    MaterialResourceManager, /*, ShaderResourceManager*/
+    MaterialResourceManager,
 };
 use crate::renderpass::VkMeshRenderPass;
-//use crate::pipeline_manager::{PipelineManager, ShaderLoadHandler, PipelineLoadHandler, PipelineResourceManager};
 use crate::pipeline_description::SwapchainSurfaceInfo;
 use crate::pipeline::pipeline::{MaterialAsset2, PipelineAsset2};
 use atelier_assets::loader::handle::Handle;
@@ -130,9 +129,6 @@ impl GameRenderer {
             renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
         )?;
 
-        // let pipeline_manager = PipelineManager::new(
-        //     device_context
-        // );
         let resource_manager = ResourceManager::new(device_context);
 
         asset_resource.add_storage_with_load_handler::<ShaderAsset, _>(Box::new(
@@ -175,36 +171,23 @@ impl GameRenderer {
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
             imgui_event_listener,
-            //shader_resource_manager,
             image_resource_manager,
             material_resource_manager,
             sprite_resource_manager,
             mesh_resource_manager,
             upload_queue,
-            //pipeline_manager,
             resource_manager,
-            //sprite_renderpass_pipeline,
             sprite_material,
             sprite_renderpass: None,
             mesh_renderpass: None,
         };
 
-        // wait_for_asset_to_load(
-        //     device_context,
-        //     &renderer.sprite_renderpass_pipeline.clone(),
-        //     asset_resource,
-        //     &mut renderer,
-        // );
         wait_for_asset_to_load(
             device_context,
             &renderer.sprite_material.clone(),
             asset_resource,
             &mut renderer,
         );
-        //wait_for_asset_to_load(&pipeline_variant, asset_resource, &mut renderer);
-
-        // let sprite_renderpass_asset = renderer.sprite_renderpass_pipeline.asset(asset_resource.loader()).unwrap();
-        // renderer.pipeline_manager.load_graphics_pipeline(renderer.sprite_renderpass_pipeline.load_handle(), sprite_renderpass_asset);
 
         Ok(renderer)
     }
@@ -250,15 +233,7 @@ impl VkSurfaceEventListener for GameRenderer {
             extents: swapchain.swapchain_info.extents,
         };
 
-        //self.pipeline_manager.add_swapchain(&swapchain_surface_info);
         self.resource_manager.add_swapchain(&swapchain_surface_info);
-
-        //self.pipeline_manager.
-        //let pipeline_info = self.pipeline_manager.get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
-
-        // let sprite_pipeline_info = self
-        //     .resource_manager
-        //     .get_pipeline_info(&self.sprite_renderpass_pipeline, &swapchain_surface_info);
 
         let sprite_pipeline_info = self
             .resource_manager
