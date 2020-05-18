@@ -19,7 +19,7 @@ use crate::resource_managers::{
 use crate::renderpass::VkMeshRenderPass;
 //use crate::pipeline_manager::{PipelineManager, ShaderLoadHandler, PipelineLoadHandler, PipelineResourceManager};
 use crate::pipeline_description::SwapchainSurfaceInfo;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset2, PipelineAsset2};
+use crate::pipeline::pipeline::{MaterialAsset2, PipelineAsset2};
 use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
 use crate::upload::UploadQueue;
@@ -35,16 +35,6 @@ use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
 use crate::resource_managers::ResourceManager;
 
-// #[derive(Clone)]
-// struct SpriteRenderpassInfo {
-//     handle: Handle<PipelineAsset>,
-//     per_pass_descriptor_set: vk::DescriptorSetLayout,
-//     per_sprite_descriptor_set: vk::DescriptorSetLayout,
-//     pipeline_layout: vk::PipelineLayout,
-//     renderpass: vk::RenderPass,
-//     pipeline: vk::Pipeline,
-//
-// }
 
 fn load_asset<T>(
     asset_uuid: AssetUuid,
@@ -98,10 +88,8 @@ pub struct GameRenderer {
 
     upload_queue: UploadQueue,
 
-    //pipeline_manager: PipelineManager,
     resource_manager: ResourceManager,
 
-    //sprite_renderpass_pipeline: Handle<PipelineAsset>,
     sprite_material: Handle<MaterialAsset2>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
 
@@ -150,9 +138,6 @@ impl GameRenderer {
         asset_resource.add_storage_with_load_handler::<ShaderAsset, _>(Box::new(
             resource_manager.create_shader_load_handler(),
         ));
-        asset_resource.add_storage_with_load_handler::<PipelineAsset, _>(Box::new(
-            resource_manager.create_pipeline_load_handler(),
-        ));
         asset_resource.add_storage_with_load_handler::<PipelineAsset2, _>(Box::new(
             resource_manager.create_pipeline2_load_handler(),
         ));
@@ -160,7 +145,6 @@ impl GameRenderer {
             resource_manager.create_material_load_handler(),
         ));
         //asset_resource.add_storage::<ShaderAsset>();
-        // asset_resource.add_storage::<PipelineAsset>();
         asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
             ImageLoadHandler::new(
                 upload_queue.pending_image_tx().clone(),
@@ -183,15 +167,10 @@ impl GameRenderer {
             SpriteLoadHandler::new(sprite_resource_manager.sprite_update_tx().clone()),
         ));
 
-        // let sprite_renderpass_pipeline = load_asset::<PipelineAsset>(
-        //     asset_uuid!("32c20111-bc4a-4dc7-bdf4-85d620ba199a"),
-        //     &asset_resource,
-        // );
         let sprite_material = load_asset::<MaterialAsset2>(
-            asset_uuid!("b042a2b1-6631-4b1f-b988-9f6f853abfac"),
+            asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
             &asset_resource
         );
-        //let pipeline_variant = load_asset::<PipelineAsset>(asset_uuid!("38126811-1892-41f9-80b0-64d9b5bdcad2"), &asset_resource);
 
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
@@ -283,7 +262,7 @@ impl VkSurfaceEventListener for GameRenderer {
 
         let sprite_pipeline_info = self
             .resource_manager
-            .get_pipeline_info2(&self.sprite_material, &swapchain_surface_info, 0);
+            .get_pipeline_info(&self.sprite_material, &swapchain_surface_info, 0);
 
         // Get the pipeline,
 

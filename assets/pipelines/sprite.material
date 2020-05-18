@@ -2,7 +2,7 @@
     passes: [
         (
             phase: "Opaque",
-            pipeline: "sprite.pipeline2",
+            pipeline: "sprite.pipeline",
             shaders: [
                 (
                     stage: Vertex,

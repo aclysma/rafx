@@ -1,5 +1,5 @@
 (
-    material: "sprite.material2",
+    material: "sprite.material",
     image_slots: [
         (
             slot_name: "texture",

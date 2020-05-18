@@ -49,7 +49,6 @@ fn load_asset<T>(
 
 use renderer_ext::pipeline_description as dsc;
 use renderer_ext::pipeline::shader::ShaderAsset;
-use renderer_ext::pipeline::pipeline::PipelineAsset;
 use std::hint::unreachable_unchecked;
 
 fn create_kitchen_sink_pipeline() -> dsc::GraphicsPipeline {
