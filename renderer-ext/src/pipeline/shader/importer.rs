@@ -9,6 +9,7 @@ use std::convert::TryInto;
 use crate::pipeline::sprite::SpriteAsset;
 use atelier_assets::importer::Error as ImportError;
 use crate::pipeline::shader::ShaderAsset;
+use crate::pipeline_description as dsc;
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "867bc278-67b5-469c-aeea-1c05da722918"]
@@ -22,7 +23,7 @@ impl Importer for ShaderImporter {
     where
         Self: Sized,
     {
-        2
+        3
     }
 
     fn version(&self) -> u32 {
@@ -49,8 +50,12 @@ impl Importer for ShaderImporter {
         let mut bytes = Vec::new();
         source.read_to_end(&mut bytes)?;
 
-        let data = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
-        let shader_asset = ShaderAsset { data };
+        let code = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
+        let shader_asset = ShaderAsset {
+            shader: dsc::ShaderModule {
+                code
+            }
+        };
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {

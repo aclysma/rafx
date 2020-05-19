@@ -18,7 +18,7 @@ use crate::resource_managers::{
 };
 use crate::renderpass::VkMeshRenderPass;
 use crate::pipeline_description::SwapchainSurfaceInfo;
-use crate::pipeline::pipeline::{MaterialAsset2, PipelineAsset2};
+use crate::pipeline::pipeline::{MaterialAsset2, PipelineAsset2, MaterialInstanceAsset2};
 use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
 use crate::upload::UploadQueue;
@@ -91,6 +91,7 @@ pub struct GameRenderer {
 
     sprite_material: Handle<MaterialAsset2>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
+    sprite_material_instance: Handle<MaterialInstanceAsset2>,
 
     mesh_renderpass: Option<VkMeshRenderPass>,
 }
@@ -140,6 +141,9 @@ impl GameRenderer {
         asset_resource.add_storage_with_load_handler::<MaterialAsset2, _>(Box::new(
             resource_manager.create_material_load_handler(),
         ));
+        asset_resource.add_storage_with_load_handler::<MaterialInstanceAsset2, _>(Box::new(
+            resource_manager.create_material_instance_load_handler(),
+        ));
         //asset_resource.add_storage::<ShaderAsset>();
         asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
             ImageLoadHandler::new(
@@ -167,6 +171,10 @@ impl GameRenderer {
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
             &asset_resource
         );
+        let sprite_material_instance = load_asset::<MaterialInstanceAsset2>(
+            asset_uuid!("84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5"),
+            &asset_resource
+        );
 
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
@@ -178,6 +186,7 @@ impl GameRenderer {
             upload_queue,
             resource_manager,
             sprite_material,
+            sprite_material_instance,
             sprite_renderpass: None,
             mesh_renderpass: None,
         };
@@ -185,6 +194,13 @@ impl GameRenderer {
         wait_for_asset_to_load(
             device_context,
             &renderer.sprite_material.clone(),
+            asset_resource,
+            &mut renderer,
+        );
+
+        wait_for_asset_to_load(
+            device_context,
+            &renderer.sprite_material_instance.clone(),
             asset_resource,
             &mut renderer,
         );
