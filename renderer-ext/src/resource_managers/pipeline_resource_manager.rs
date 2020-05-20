@@ -30,7 +30,7 @@ impl ResourceHash {
 #[derive(Clone)]
 struct ResourceWithHash<ResourceT>
 where
-    ResourceT: VkDropSinkResourceImpl + Copy,
+    ResourceT: Copy
 {
     resource: ResourceT,
     resource_hash: ResourceHash,
@@ -38,7 +38,7 @@ where
 
 struct ResourceArcInner<ResourceT>
 where
-    ResourceT: VkDropSinkResourceImpl + Copy,
+    ResourceT: Copy
 {
     resource: ResourceWithHash<ResourceT>,
     drop_tx: Sender<ResourceWithHash<ResourceT>>,
@@ -46,7 +46,7 @@ where
 
 impl<ResourceT> Drop for ResourceArcInner<ResourceT>
 where
-    ResourceT: VkDropSinkResourceImpl + Copy,
+    ResourceT: Copy
 {
     fn drop(&mut self) {
         self.drop_tx.send(self.resource.clone());
@@ -56,14 +56,14 @@ where
 #[derive(Clone)]
 pub struct WeakResourceArc<ResourceT>
 where
-    ResourceT: VkDropSinkResourceImpl + Copy,
+    ResourceT: Copy
 {
     inner: Weak<ResourceArcInner<ResourceT>>,
 }
 
 impl<ResourceT> WeakResourceArc<ResourceT>
 where
-    ResourceT: VkDropSinkResourceImpl + Copy,
+    ResourceT: Copy
 {
     pub fn upgrade(&self) -> Option<ResourceArc<ResourceT>> {
         if let Some(upgrade) = self.inner.upgrade() {
@@ -77,14 +77,14 @@ where
 #[derive(Clone)]
 pub struct ResourceArc<ResourceT>
 where
-    ResourceT: VkDropSinkResourceImpl + Copy,
+    ResourceT: Copy
 {
     inner: Arc<ResourceArcInner<ResourceT>>,
 }
 
 impl<ResourceT> ResourceArc<ResourceT>
 where
-    ResourceT: VkDropSinkResourceImpl + Copy,
+    ResourceT: Copy
 {
     fn new(
         resource: ResourceT,
@@ -503,6 +503,10 @@ struct LoadedMaterialPass {
     //pipeline_asset: PipelineAsset2,
     //material_pass: MaterialPass,
     pipeline_create_data: PipelineCreateData,
+
+    //descriptor_set_factory: DescriptorSetFactory,
+    shader_interface: MaterialPassShaderInterface,
+
 }
 
 struct LoadedMaterial {
@@ -729,7 +733,7 @@ impl<T> Default for LoadQueues<T> {
 use crate::asset_storage::ResourceHandle;
 use crate::asset_storage::ResourceLoadHandler;
 use type_uuid::TypeUuid;
-use crate::pipeline::pipeline::{MaterialAsset2, PipelineAsset2, MaterialPass, MaterialInstanceAsset2};
+use crate::pipeline::pipeline::{MaterialAsset2, PipelineAsset2, MaterialPass, MaterialInstanceAsset2, DescriptorSetLayoutBindingWithSlotName, MaterialPassShaderInterface};
 use crate::pipeline::shader::ShaderAsset;
 use ash::prelude::VkResult;
 use crate::pipeline_description::SwapchainSurfaceInfo;
@@ -1072,7 +1076,7 @@ struct MaterialInstancePool {
     //device_context: VkDeviceContext,
     //allocator: VkDescriptorPoolAllocator,
     //descriptor_set_layout_def: dsc::DescriptorSetLayout,
-    //descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+    //descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>, //TODO: This needs to be the same one as is in ResourceLookup
 
     slab: RawSlab<MaterialInstanceDescriptorCreateData>,
     pending_allocations: Vec<MaterialInstanceAsset2>,
@@ -1123,7 +1127,10 @@ struct MaterialInstanceManager {
 }
 
 impl MaterialInstanceManager {
-    pub fn insert(&mut self, descriptor_set_layout: &dsc::DescriptorSetLayout, material_instance: &MaterialInstanceAsset2) -> MaterialInstanceDescriptorSetRef {
+    pub fn insert(
+        &mut self, descriptor_set_layout: &dsc::DescriptorSetLayout,
+        material_instance: &MaterialInstanceAsset2
+    ) -> MaterialInstanceDescriptorSetRef {
         let hash = ResourceHash::from_key(descriptor_set_layout);
         let pool = self.pools.entry(hash)
             .or_insert_with(|| MaterialInstancePool::new());
@@ -1509,7 +1516,8 @@ impl ResourceManager {
                 shader_modules: pipeline_create_data.shader_module_arcs.clone(),
                 render_passes,
                 pipelines,
-                pipeline_create_data
+                pipeline_create_data,
+                shader_interface: pass.shader_interface.clone()
             })
         }
 
@@ -1528,15 +1536,55 @@ impl ResourceManager {
         for pass in &material_asset.passes {
             let descriptor_set_layouts = &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts;
             let mut pass_descriptor_sets = Vec::with_capacity(descriptor_set_layouts.len());
-            for descriptor_set_layout in descriptor_set_layouts {
 
-                let descriptor_set = self.material_instances.insert(descriptor_set_layout, material_instance_asset);
-                pass_descriptor_sets.push(descriptor_set);
+            for descriptor_set in &pass.shader_interface.descriptor_set_layouts {
 
-                // Find the descriptor set pool
-                //let hash = ResourceHash::from_key(descriptor_set_layout);
-                //self.des
+                // vk::DescriptorSetLayoutBindingBuilder
+                //
+                // let mut bindings = Vec::with_capacity(descriptor_set.descriptor_set_layout_bindings.len());
+                // for binding in descriptor_set.descriptor_set_layout_bindings {
+                //
+                //
+                //
+                //     let write = vk::WriteDescriptorSet::builder() {
+                //
+                //     }
+                // }
+
+
+
+
+
+
+
             }
+
+
+
+            // for descriptor_set_layout in descriptor_set_layouts {
+            //
+            //
+            //
+            //
+            //     for x in descriptor_set_layout.descriptor_set_layout_bindings {
+            //         x.
+            //     }
+            //
+            //
+            //
+            //     for x in material_instance_asset.image_slots {
+            //
+            //     }
+            //
+            //
+            //
+            //     let descriptor_set = self.material_instances.insert(descriptor_set_layout, material_instance_asset);
+            //     pass_descriptor_sets.push(descriptor_set);
+            //
+            //     // Find the descriptor set pool
+            //     //let hash = ResourceHash::from_key(descriptor_set_layout);
+            //     //self.des
+            // }
 
             material_descriptor_sets.push(pass_descriptor_sets);
         }
@@ -1580,6 +1628,106 @@ impl ResourceManager {
         // })
     }
 }
+
+
+
+
+/*
+// This might be able to be dsc::SamplerCreateInfo? Looks like a flat structure
+pub struct SamplerCreateInfo {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: SamplerCreateFlags,
+    pub mag_filter: Filter,
+    pub min_filter: Filter,
+    pub mipmap_mode: SamplerMipmapMode,
+    pub address_mode_u: SamplerAddressMode,
+    pub address_mode_v: SamplerAddressMode,
+    pub address_mode_w: SamplerAddressMode,
+    pub mip_lod_bias: f32,
+    pub anisotropy_enable: Bool32,
+    pub max_anisotropy: f32,
+    pub compare_enable: Bool32,
+    pub compare_op: CompareOp,
+    pub min_lod: f32,
+    pub max_lod: f32,
+    pub border_color: BorderColor,
+    pub unnormalized_coordinates: Bool32,
+}
+
+//
+pub struct ImageViewCreateInfo {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: ImageViewCreateFlags,
+    pub image: Image, // ResourceArc<vk::Image>
+    pub view_type: ImageViewType,
+    pub format: Format,
+    pub components: ComponentMapping,
+    pub subresource_range: ImageSubresourceRange,
+}
+
+pub struct DescriptorImageInfo {
+    pub sampler: Sampler,
+    pub image_view: ImageView,
+    pub image_layout: ImageLayout, //dsc::ImageLayout
+}
+
+pub struct DescriptorBufferInfo {
+    pub buffer: Buffer, // I think will need one of these to go with each set?
+    pub offset: DeviceSize,
+    pub range: DeviceSize,
+}
+
+pub struct BufferViewCreateInfo {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: BufferViewCreateFlags,
+    pub buffer: Buffer,
+    pub format: Format,
+    pub offset: DeviceSize,
+    pub range: DeviceSize,
+}
+
+pub struct WriteDescriptorSet {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub dst_set: DescriptorSet,
+    pub dst_binding: u32,
+    pub dst_array_element: u32,
+    pub descriptor_count: u32,
+    pub descriptor_type: DescriptorType,
+    pub p_image_info: *const DescriptorImageInfo,
+    pub p_buffer_info: *const DescriptorBufferInfo,
+    pub p_texel_buffer_view: *const BufferView,
+}
+
+struct DescriptorSetWrite {
+    //pub dst_set: DescriptorSet,
+    pub dst_binding: u32,
+    pub dst_array_element: u32,
+    pub descriptor_count: u32,
+    pub descriptor_type: dsc::DescriptorType,
+    pub p_image_info: *const DescriptorImageInfo,
+    pub p_buffer_info: *const DescriptorBufferInfo,
+    pub p_texel_buffer_view: *const BufferView,
+}
+*/
+
+// struct PendingDescriptorSetWriteImage {
+//
+//     image: ResourceArc<vk::Image>,
+// }
+//
+// struct PendingDescriptorSetWrite {
+//
+// }
+
+
+
+
+
+
 
 impl Drop for ResourceManager {
     fn drop(&mut self) {
