@@ -170,6 +170,21 @@ impl VkResource for vk::ImageView {
 }
 
 //
+// Implementation for Samplers
+//
+impl VkResource for vk::Sampler {
+    fn destroy(
+        device_context: &VkDeviceContext,
+        resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device_context.device().destroy_sampler(resource, None);
+            Ok(())
+        }
+    }
+}
+
+//
 // Implementation for pipelines
 //
 impl VkResource for vk::Pipeline {

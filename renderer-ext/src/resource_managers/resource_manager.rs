@@ -273,7 +273,20 @@ struct ImageKey {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct ImageViewKey {
-    load_handle: LoadHandle,
+    image_load_handle: LoadHandle,
+    image_view_meta: dsc::ImageViewMeta
+}
+
+#[derive(Debug)]
+struct ResourceMetrics {
+    shader_module_count: usize,
+    descriptor_set_layout_count: usize,
+    pipeline_layout_count: usize,
+    renderpass_count: usize,
+    pipeline_count: usize,
+    image_count: usize,
+    image_view_count: usize,
+    sampler_count: usize,
 }
 
 //
@@ -291,6 +304,7 @@ struct ResourceLookupSet {
     pub graphics_pipelines: ResourceLookup<GraphicsPipelineKey, vk::Pipeline>,
     pub images: ResourceLookup<ImageKey, VkImageRaw>,
     pub image_views: ResourceLookup<ImageViewKey, vk::ImageView>,
+    pub samplers: ResourceLookup<dsc::Sampler, vk::Sampler>,
 }
 
 impl ResourceLookupSet {
@@ -304,6 +318,7 @@ impl ResourceLookupSet {
             graphics_pipelines: ResourceLookup::new(max_frames_in_flight),
             images: ResourceLookup::new(max_frames_in_flight),
             image_views: ResourceLookup::new(max_frames_in_flight),
+            samplers: ResourceLookup::new(max_frames_in_flight),
         }
     }
 
@@ -317,6 +332,7 @@ impl ResourceLookupSet {
         self.graphics_pipelines.on_frame_complete(&self.device_context);
         self.images.on_frame_complete(&self.device_context);
         self.image_views.on_frame_complete(&self.device_context);
+        self.samplers.on_frame_complete(&self.device_context);
     }
 
     fn destroy(
@@ -329,6 +345,22 @@ impl ResourceLookupSet {
         self.graphics_pipelines.destroy(&self.device_context);
         self.images.destroy(&self.device_context);
         self.image_views.destroy(&self.device_context);
+        self.samplers.destroy(&self.device_context);
+    }
+
+    fn metrics(
+        &self
+    ) -> ResourceMetrics {
+        ResourceMetrics {
+            shader_module_count: self.shader_modules.len(),
+            descriptor_set_layout_count: self.descriptor_set_layouts.len(),
+            pipeline_layout_count: self.pipeline_layouts.len(),
+            renderpass_count: self.render_passes.len(),
+            pipeline_count: self.graphics_pipelines.len(),
+            image_count: self.images.len(),
+            image_view_count: self.image_views.len(),
+            sampler_count: self.samplers.len(),
+        }
     }
 
     fn get_or_create_shader_module(
@@ -497,6 +529,42 @@ impl ResourceLookupSet {
         let raw_image = ManuallyDrop::into_inner(image).take_raw().unwrap();
         self.images.insert(hash, &image_key, raw_image)
     }
+
+    fn get_or_create_image_view(
+        &mut self,
+        image_load_handle: LoadHandle,
+        image_view_meta: dsc::ImageViewMeta
+    ) -> VkResult<ResourceArc<vk::ImageView>> {
+        let image_view_key = ImageViewKey {
+            image_load_handle,
+            image_view_meta: image_view_meta.clone(),
+        };
+
+        let hash = ResourceHash::from_key(&image_view_key);
+        if let Some(image_view) = self.image_views.get(hash, &image_view_key) {
+            Ok(image_view)
+        } else {
+
+            let image_key = ImageKey {
+                load_handle: image_load_handle
+            };
+            let image_load_handle_hash = ResourceHash::from_key(&image_load_handle);
+            let image = self.images.get(image_load_handle_hash, &image_key).unwrap();
+
+            println!("Creating image view\n{:#?}", image_view_key);
+            let resource = crate::pipeline_description::create_image_view(
+                &self.device_context.device(),
+                image.get_raw().image,
+                image_view_meta,
+            )?;
+            println!("Created image view\n{:#?}", resource);
+
+            let image_view = self
+                .image_views
+                .insert(hash, &image_view_key, resource);
+            Ok(image_view)
+        }
+    }
 }
 
 //
@@ -526,8 +594,6 @@ struct LoadedMaterialPass {
     pipelines: Vec<ResourceArc<vk::Pipeline>>,
 
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    //pipeline_asset: PipelineAsset2,
-    //material_pass: MaterialPass,
     pipeline_create_data: PipelineCreateData,
 
     //descriptor_set_factory: DescriptorSetFactory,
@@ -1427,24 +1493,7 @@ impl ResourceManager {
     }
 
     fn dump_stats(&self) {
-        #[derive(Debug)]
-        struct ResourceCounts {
-            shader_module_count: usize,
-            descriptor_set_layout_count: usize,
-            pipeline_layout_count: usize,
-            renderpass_count: usize,
-            pipeline_count: usize,
-            image_count: usize,
-        }
-
-        let resource_counts = ResourceCounts {
-            shader_module_count: self.resources.shader_modules.len(),
-            descriptor_set_layout_count: self.resources.descriptor_set_layouts.len(),
-            pipeline_layout_count: self.resources.pipeline_layouts.len(),
-            renderpass_count: self.resources.render_passes.len(),
-            pipeline_count: self.resources.graphics_pipelines.len(),
-            image_count: self.resources.images.len(),
-        };
+        let resource_metrics = self.resources.metrics();
 
         #[derive(Debug)]
         struct LoadedAssetCounts {
@@ -1488,13 +1537,13 @@ impl ResourceManager {
 
         #[derive(Debug)]
         struct ResourceManagerMetrics {
-            resource_counts: ResourceCounts,
+            resource_metrics: ResourceMetrics,
             loaded_asset_counts: LoadedAssetCounts,
             material_instance_stats: MaterialInstanceManagerStats
         }
 
         let metrics = ResourceManagerMetrics {
-            resource_counts,
+            resource_metrics,
             loaded_asset_counts,
             material_instance_stats
         };
@@ -1799,43 +1848,9 @@ impl ResourceManager {
 
 
 /*
-// This might be able to be dsc::SamplerCreateInfo? Looks like a flat structure
-pub struct SamplerCreateInfo {
-    pub s_type: StructureType,
-    pub p_next: *const c_void,
-    pub flags: SamplerCreateFlags,
-    pub mag_filter: Filter,
-    pub min_filter: Filter,
-    pub mipmap_mode: SamplerMipmapMode,
-    pub address_mode_u: SamplerAddressMode,
-    pub address_mode_v: SamplerAddressMode,
-    pub address_mode_w: SamplerAddressMode,
-    pub mip_lod_bias: f32,
-    pub anisotropy_enable: Bool32,
-    pub max_anisotropy: f32,
-    pub compare_enable: Bool32,
-    pub compare_op: CompareOp,
-    pub min_lod: f32,
-    pub max_lod: f32,
-    pub border_color: BorderColor,
-    pub unnormalized_coordinates: Bool32,
-}
-
-//
-pub struct ImageViewCreateInfo {
-    pub s_type: StructureType,
-    pub p_next: *const c_void,
-    pub flags: ImageViewCreateFlags,
-    pub image: Image, // ResourceArc<vk::Image>
-    pub view_type: ImageViewType,
-    pub format: Format,
-    pub components: ComponentMapping,
-    pub subresource_range: ImageSubresourceRange,
-}
-
 pub struct DescriptorImageInfo {
     pub sampler: Sampler,
-    pub image_view: ImageView,
+    pub image_view: ImageView, //ResourceArc<vk::ImageView>
     pub image_layout: ImageLayout, //dsc::ImageLayout
 }
 

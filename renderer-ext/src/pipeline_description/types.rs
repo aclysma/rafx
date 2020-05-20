@@ -48,6 +48,286 @@ impl std::hash::Hash for Decimal {
     }
 }
 
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ImageViewType {
+    Type1D,
+    Type2D,
+    Type3D,
+    Cube,
+    Type1DArray,
+    Type2DArray,
+    CubeArray,
+}
+
+impl Into<vk::ImageViewType> for ImageViewType {
+    fn into(self) -> vk::ImageViewType {
+        match self {
+            ImageViewType::Type1D => vk::ImageViewType::TYPE_1D,
+            ImageViewType::Type2D => vk::ImageViewType::TYPE_2D,
+            ImageViewType::Type3D => vk::ImageViewType::TYPE_3D,
+            ImageViewType::Cube => vk::ImageViewType::CUBE,
+            ImageViewType::Type1DArray => vk::ImageViewType::TYPE_1D_ARRAY,
+            ImageViewType::Type2DArray => vk::ImageViewType::TYPE_2D_ARRAY,
+            ImageViewType::CubeArray => vk::ImageViewType::CUBE_ARRAY,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ComponentSwizzle {
+    Identity,
+    Zero,
+    One,
+    R,
+    G,
+    B,
+    A,
+}
+
+impl Into<vk::ComponentSwizzle> for ComponentSwizzle {
+    fn into(self) -> vk::ComponentSwizzle {
+        match self {
+            ComponentSwizzle::Identity => vk::ComponentSwizzle::IDENTITY,
+            ComponentSwizzle::Zero => vk::ComponentSwizzle::ZERO,
+            ComponentSwizzle::One => vk::ComponentSwizzle::ONE,
+            ComponentSwizzle::R => vk::ComponentSwizzle::R,
+            ComponentSwizzle::G => vk::ComponentSwizzle::G,
+            ComponentSwizzle::B => vk::ComponentSwizzle::B,
+            ComponentSwizzle::A => vk::ComponentSwizzle::A,
+        }
+    }
+}
+
+impl Default for ComponentSwizzle {
+    fn default() -> Self {
+        ComponentSwizzle::Identity
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct ComponentMapping {
+    r: ComponentSwizzle,
+    g: ComponentSwizzle,
+    b: ComponentSwizzle,
+    a: ComponentSwizzle,
+}
+
+impl Into<vk::ComponentMapping> for ComponentMapping {
+    fn into(self) -> vk::ComponentMapping {
+        vk::ComponentMapping::builder()
+            .r(self.r.into())
+            .g(self.g.into())
+            .b(self.b.into())
+            .a(self.a.into())
+            .build()
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ImageAspectFlags {
+    Color,
+    Depth,
+    Stenci,
+    Metadata,
+}
+
+impl Into<vk::ImageAspectFlags> for ImageAspectFlags {
+    fn into(self) -> vk::ImageAspectFlags {
+        match self {
+            ImageAspectFlags::Color => vk::ImageAspectFlags::COLOR,
+            ImageAspectFlags::Depth => vk::ImageAspectFlags::DEPTH,
+            ImageAspectFlags::Stenci => vk::ImageAspectFlags::STENCIL,
+            ImageAspectFlags::Metadata => vk::ImageAspectFlags::METADATA,
+        }
+    }
+}
+
+impl Default for ImageAspectFlags {
+    fn default() -> Self {
+        ImageAspectFlags::Color
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ImageSubresourceRange {
+    pub aspect_mask: ImageAspectFlags,
+    pub base_mip_level: u32,
+    pub level_count: u32,
+    pub base_array_layer: u32,
+    pub layer_count: u32,
+}
+
+impl Into<vk::ImageSubresourceRange> for ImageSubresourceRange {
+    fn into(self) -> vk::ImageSubresourceRange {
+        vk::ImageSubresourceRange::builder()
+            .aspect_mask(self.aspect_mask.into())
+            .base_mip_level(self.base_mip_level.into())
+            .level_count(self.level_count.into())
+            .base_array_layer(self.base_array_layer.into())
+            .layer_count(self.layer_count.into())
+            .build()
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CompareOp {
+    Never,
+    Less,
+    Equal,
+    LessOrEqual,
+    Greater,
+    NotEqual,
+    GreaterOrEqual,
+    Always,
+}
+
+impl Into<vk::CompareOp> for CompareOp {
+    fn into(self) -> vk::CompareOp {
+        match self {
+            CompareOp::Never => vk::CompareOp::NEVER,
+            CompareOp::Less => vk::CompareOp::LESS,
+            CompareOp::Equal => vk::CompareOp::EQUAL,
+            CompareOp::LessOrEqual => vk::CompareOp::LESS_OR_EQUAL,
+            CompareOp::Greater => vk::CompareOp::GREATER,
+            CompareOp::NotEqual => vk::CompareOp::NOT_EQUAL,
+            CompareOp::GreaterOrEqual => vk::CompareOp::GREATER_OR_EQUAL,
+            CompareOp::Always => vk::CompareOp::ALWAYS,
+        }
+    }
+}
+
+impl Default for CompareOp {
+    fn default() -> Self {
+        CompareOp::Never
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BorderColor {
+    FloatTransparentBlack,
+    IntTransparentBlack,
+    FloatOpaqueBlack,
+    IntOpaqueBlack,
+    FloatOpaqueWhite,
+    IntOpaqueWhite,
+}
+
+impl Into<vk::BorderColor> for BorderColor {
+    fn into(self) -> vk::BorderColor {
+        match self {
+            BorderColor::FloatTransparentBlack => vk::BorderColor::FLOAT_TRANSPARENT_BLACK,
+            BorderColor::IntTransparentBlack => vk::BorderColor::INT_TRANSPARENT_BLACK,
+            BorderColor::FloatOpaqueBlack => vk::BorderColor::FLOAT_OPAQUE_BLACK,
+            BorderColor::IntOpaqueBlack => vk::BorderColor::INT_OPAQUE_BLACK,
+            BorderColor::FloatOpaqueWhite => vk::BorderColor::FLOAT_OPAQUE_WHITE,
+            BorderColor::IntOpaqueWhite => vk::BorderColor::INT_OPAQUE_WHITE,
+        }
+    }
+}
+
+impl Default for BorderColor {
+    fn default() -> Self {
+        BorderColor::FloatTransparentBlack
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SamplerAddressMode {
+    Repeat,
+    MirroredRepeat,
+    ClampToEdge,
+    ClampToBorder,
+}
+
+impl Into<vk::SamplerAddressMode> for SamplerAddressMode {
+    fn into(self) -> vk::SamplerAddressMode {
+        match self {
+            SamplerAddressMode::Repeat => vk::SamplerAddressMode::REPEAT,
+            SamplerAddressMode::MirroredRepeat => vk::SamplerAddressMode::MIRRORED_REPEAT,
+            SamplerAddressMode::ClampToEdge => vk::SamplerAddressMode::CLAMP_TO_EDGE,
+            SamplerAddressMode::ClampToBorder => vk::SamplerAddressMode::CLAMP_TO_BORDER,
+        }
+    }
+}
+
+impl Default for SamplerAddressMode {
+    fn default() -> Self {
+        SamplerAddressMode::Repeat
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SamplerMipmapMode {
+    Nearest,
+    Linear,
+}
+
+impl Into<vk::SamplerMipmapMode> for SamplerMipmapMode {
+    fn into(self) -> vk::SamplerMipmapMode {
+        match self {
+            SamplerMipmapMode::Nearest => vk::SamplerMipmapMode::NEAREST,
+            SamplerMipmapMode::Linear => vk::SamplerMipmapMode::LINEAR,
+        }
+    }
+}
+
+impl Default for SamplerMipmapMode {
+    fn default() -> Self {
+        SamplerMipmapMode::Nearest
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Filter {
+    Nearest,
+    Linear,
+}
+
+impl Into<vk::Filter> for Filter {
+    fn into(self) -> vk::Filter {
+        match self {
+            Filter::Nearest => vk::Filter::NEAREST,
+            Filter::Linear => vk::Filter::LINEAR,
+        }
+    }
+}
+
+impl Default for Filter {
+    fn default() -> Self {
+        Filter::Nearest
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Sampler {
+    pub mag_filter: Filter,
+    pub min_filter: Filter,
+    pub mipmap_mode: SamplerMipmapMode,
+    pub address_mode_u: SamplerAddressMode,
+    pub address_mode_v: SamplerAddressMode,
+    pub address_mode_w: SamplerAddressMode,
+    pub mip_lod_bias: Decimal,
+    pub anisotropy_enable: bool,
+    pub max_anisotropy: Decimal,
+    pub compare_enable: bool,
+    pub compare_op: CompareOp,
+    pub min_lod: Decimal,
+    pub max_lod: Decimal,
+    pub border_color: BorderColor,
+    pub unnormalized_coordinates: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ImageViewMeta {
+    // Actual image excluded from meta
+    //pub image: Image,
+    pub view_type: ImageViewType,
+    pub format: Format,
+    pub components: ComponentMapping,
+    pub subresource_range: ImageSubresourceRange,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DescriptorType {
     Sampler,
@@ -523,8 +803,31 @@ impl Default for DependencyFlags {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Format {
+pub enum AttachmentFormat {
     MatchSwapchain,
+    Format(Format)
+}
+
+impl AttachmentFormat {
+    fn as_vk_format(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> vk::Format {
+        match self {
+            AttachmentFormat::MatchSwapchain => swapchain_surface_info.surface_format.format,
+            AttachmentFormat::Format(format) => (*format).into(),
+        }
+    }
+}
+
+impl Default for AttachmentFormat {
+    fn default() -> Self {
+        AttachmentFormat::MatchSwapchain
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Format {
     UNDEFINED,
     R4G4_UNORM_PACK8,
     R4G4B4A4_UNORM_PACK16,
@@ -712,13 +1015,9 @@ pub enum Format {
     ASTC_12X12_SRGB_BLOCK,
 }
 
-impl Format {
-    fn as_vk_format(
-        &self,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
-    ) -> vk::Format {
+impl Into<vk::Format> for Format {
+    fn into(self) -> vk::Format {
         match self {
-            Format::MatchSwapchain => swapchain_surface_info.surface_format.format,
             Format::UNDEFINED => vk::Format::UNDEFINED,
             Format::R4G4_UNORM_PACK8 => vk::Format::R4G4_UNORM_PACK8,
             Format::R4G4B4A4_UNORM_PACK16 => vk::Format::R4G4B4A4_UNORM_PACK16,
@@ -910,14 +1209,14 @@ impl Format {
 
 impl Default for Format {
     fn default() -> Self {
-        Format::MatchSwapchain
+        Format::UNDEFINED
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct AttachmentDescription {
     pub flags: AttachmentDescriptionFlags,
-    pub format: Format,
+    pub format: AttachmentFormat,
     pub samples: SampleCountFlags,
     pub load_op: AttachmentLoadOp,
     pub store_op: AttachmentStoreOp,
@@ -1190,7 +1489,7 @@ impl VertexInputAttributeDescription {
         vk::VertexInputAttributeDescription::builder()
             .location(self.location)
             .binding(self.binding)
-            .format(self.format.as_vk_format(swapchain_surface_info))
+            .format(self.format.into())
             .offset(self.offset)
     }
 }
@@ -1727,6 +2026,7 @@ pub struct FixedFunctionState {
 pub struct ShaderModuleMeta {
     pub stage: ShaderStageFlags,
     pub entry_name: String,
+    // Reference to shader is excluded
 }
 
 // These structs are candidates for removal because in practice you probably wouldn't want to
@@ -1756,10 +2056,3 @@ pub struct GraphicsPipeline {
     pub fixed_function_state: FixedFunctionState,
     pub pipeline_shader_stages: PipelineShaderStages,
 }
-
-// pub struct CreatedGraphicsPipeline {
-//     pub pipeline_layout: vk::PipelineLayout,
-//     pub renderpass: vk::RenderPass,
-//     pub pipeline: vk::Pipeline
-//     pub pipeline_shader_stages: PipelineShaderStages,
-// }

@@ -264,3 +264,49 @@ pub fn create_graphics_pipeline(
         }
     }
 }
+
+pub fn create_image_view(
+    device: &ash::Device,
+    image: vk::Image,
+    image_view_meta: dsc::ImageViewMeta
+) -> VkResult<vk::ImageView> {
+    unsafe {
+        let create_info = vk::ImageViewCreateInfo::builder()
+            .image(image)
+            .view_type(image_view_meta.view_type.into())
+            .format(image_view_meta.format.into())
+            .components(image_view_meta.components.into())
+            .subresource_range(image_view_meta.subresource_range.into());
+
+        device.create_image_view(
+            &*create_info,
+            None
+        )
+    }
+}
+
+pub fn create_sampler(
+    device: &ash::Device,
+    sampler: dsc::Sampler
+) -> VkResult<vk::Sampler> {
+    unsafe {
+        let create_info = vk::SamplerCreateInfo::builder()
+            .mag_filter(sampler.mag_filter.into())
+            .min_filter(sampler.min_filter.into())
+            .mipmap_mode(sampler.mipmap_mode.into())
+            .address_mode_u(sampler.address_mode_u.into())
+            .address_mode_v(sampler.address_mode_v.into())
+            .address_mode_w(sampler.address_mode_w.into())
+            .mip_lod_bias(sampler.mip_lod_bias.to_f32())
+            .anisotropy_enable(sampler.anisotropy_enable.into())
+            .max_anisotropy(sampler.max_anisotropy.to_f32())
+            .compare_enable(sampler.compare_enable.into())
+            .compare_op(sampler.compare_op.into())
+            .min_lod(sampler.min_lod.to_f32())
+            .max_lod(sampler.max_lod.to_f32())
+            .border_color(sampler.border_color.into())
+            .unnormalized_coordinates(sampler.unnormalized_coordinates.into());
+
+        device.create_sampler(&*create_info, None)
+    }
+}
