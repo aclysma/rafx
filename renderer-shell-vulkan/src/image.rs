@@ -9,12 +9,29 @@ use std::mem::ManuallyDrop;
 use crate::device::VkDeviceContext;
 use core::fmt;
 
+#[derive(Copy, Clone)]
+pub struct VkImageRaw {
+    pub image: vk::Image,
+    pub allocation: vk_mem::Allocation,
+}
+
+impl fmt::Debug for VkImageRaw {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        f.debug_struct("VkImageRaw")
+            .field("image", &self.image)
+            .field("allocation", &self.allocation)
+            .finish()
+    }
+}
+
 pub struct VkImage {
     pub device_context: VkDeviceContext,
-    pub image: vk::Image,
     pub extent: vk::Extent3D,
-    pub allocation: vk_mem::Allocation,
     pub allocation_info: vk_mem::AllocationInfo,
+    pub raw: Option<VkImageRaw>
 }
 
 impl fmt::Debug for VkImage {
@@ -23,7 +40,7 @@ impl fmt::Debug for VkImage {
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         f.debug_struct("VkImage")
-            .field("image", &self.image)
+            .field("raw", &self.raw)
             .field("extent", &self.extent)
             .finish()
     }
@@ -67,13 +84,28 @@ impl VkImage {
             .create_image(&image_create_info, &allocation_create_info)
             .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
 
+        let raw = VkImageRaw {
+            image,
+            allocation
+        };
+
         Ok(VkImage {
             device_context: device_context.clone(),
-            image,
             extent,
-            allocation,
             allocation_info,
+            raw: Some(raw),
         })
+    }
+
+    pub fn image(&self) -> vk::Image {
+        // Raw is only none if take_raw has not been called, and take_raw consumes the VkImage
+        self.raw.unwrap().image
+    }
+
+    pub fn take_raw(mut self) -> Option<VkImageRaw> {
+        let mut raw = None;
+        std::mem::swap(&mut raw, &mut self.raw);
+        raw
     }
 }
 
@@ -83,9 +115,11 @@ impl Drop for VkImage {
 
         unsafe {
             unsafe {
-                self.device_context
-                    .allocator()
-                    .destroy_image(self.image, &self.allocation);
+                if let Some(raw) = &self.raw {
+                    self.device_context
+                        .allocator()
+                        .destroy_image(raw.image, &raw.allocation);
+                }
             }
         }
 

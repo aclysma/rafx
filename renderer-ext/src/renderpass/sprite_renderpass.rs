@@ -21,11 +21,12 @@ use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
 use crate::time::TimeState;
-use crate::resource_managers::{SpriteResourceManager, PipelineInfo};
+//use crate::resource_managers::{SpriteResourceManager, PipelineInfo};
 //use crate::pipeline_manager::PipelineManager;
 use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
 use crate::asset_resource::AssetResource;
 use std::hint::unreachable_unchecked;
+use crate::resource_managers::PipelineInfo;
 
 struct SpriteRenderpassStats {
     draw_call_count: u32,
@@ -135,7 +136,7 @@ impl VkSpriteRenderPass {
         swapchain: &VkSwapchain,
         pipeline_info: PipelineInfo,
         //pipeline_manager: &mut PipelineManager,
-        sprite_resource_manager: &SpriteResourceManager,
+        //sprite_resource_manager: &SpriteResourceManager,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<Self> {
         //
@@ -166,6 +167,7 @@ impl VkSpriteRenderPass {
         //     &sprite_pipeline_description.pipeline_layout.descriptor_set_layouts[0]
         // )?;
         let descriptor_set_layout_per_pass = pipeline_info.descriptor_set_layouts[0].get_raw();
+        let descriptor_set_layout_per_sprite = pipeline_info.descriptor_set_layouts[1].get_raw();
 
         let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
             &device_context.device(),
@@ -183,7 +185,7 @@ impl VkSpriteRenderPass {
 
         let descriptor_set_layouts = [
             descriptor_set_layout_per_pass,
-            sprite_resource_manager.descriptor_set_layout(),
+            descriptor_set_layout_per_sprite,
         ];
 
         // let mut shader_modules = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
@@ -753,7 +755,7 @@ impl VkSpriteRenderPass {
         &mut self,
         present_index: usize,
         hidpi_factor: f64,
-        sprite_resource_manager: &SpriteResourceManager,
+        //sprite_resource_manager: &SpriteResourceManager,
         time_state: &TimeState,
     ) -> VkResult<()> {
         //TODO: Integrate this into the command buffer we create below
@@ -773,7 +775,8 @@ impl VkSpriteRenderPass {
             &mut self.vertex_buffers[present_index],
             &mut self.index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
-            sprite_resource_manager.descriptor_sets(),
+            //sprite_resource_manager.descriptor_sets(),
+            &vec![],
             time_state,
         )
     }

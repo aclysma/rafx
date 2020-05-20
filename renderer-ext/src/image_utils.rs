@@ -213,7 +213,7 @@ pub fn enqueue_load_images(
         cmd_image_memory_barrier(
             device_context.device(),
             upload.transfer_command_buffer(),
-            &[image.image],
+            &[image.image()],
             ImageMemoryBarrierType::PreUpload,
             transfer_queue_family_index,
             transfer_queue_family_index,
@@ -224,14 +224,14 @@ pub fn enqueue_load_images(
             upload.transfer_command_buffer(),
             upload.staging_buffer().buffer,
             offset,
-            image.image,
+            image.image(),
             &image.extent,
         );
 
         cmd_image_memory_barrier(
             device_context.device(),
             upload.transfer_command_buffer(),
-            &[image.image],
+            &[image.image()],
             ImageMemoryBarrierType::PostUploadTransferQueue,
             transfer_queue_family_index,
             dst_queue_family_index,
@@ -244,7 +244,7 @@ pub fn enqueue_load_images(
         cmd_image_memory_barrier(
             device_context.device(),
             upload.dst_command_buffer(),
-            &[image.image],
+            &[image.image()],
             ImageMemoryBarrierType::PostUploadDstQueue,
             transfer_queue_family_index,
             dst_queue_family_index,

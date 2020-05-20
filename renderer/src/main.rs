@@ -29,11 +29,11 @@ use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
 use renderer_ext::upload::UploadQueue;
-use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoadHandler, SpriteLoadHandler};
+//use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoadHandler, SpriteLoadHandler};
 //use renderer_ext::pipeline_manager::{ShaderLoadHandler, PipelineLoadHandler};
 use renderer_ext::pipeline::image::ImageAsset;
-use renderer_ext::pipeline::gltf::{MaterialAsset, MeshAsset};
-use renderer_ext::pipeline::sprite::SpriteAsset;
+//use renderer_ext::pipeline::gltf::{MaterialAsset, MeshAsset};
+//use renderer_ext::pipeline::sprite::SpriteAsset;
 use renderer_ext::pipeline_description::GraphicsPipeline;
 use std::io::Write;
 use std::collections::hash_map::DefaultHasher;
@@ -356,10 +356,10 @@ fn main() {
         }
     }
 
-    let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"), &asset_resource);
-
-    //SPRITE
-    let sprite_handle = load_asset::<SpriteAsset>(asset_uuid!("0be51c83-73a1-4780-984a-7e4accc65ae7"), &asset_resource);
+    // let mesh_handle = load_asset::<MeshAsset>(asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"), &asset_resource);
+    //
+    // //SPRITE
+    // let sprite_handle = load_asset::<SpriteAsset>(asset_uuid!("0be51c83-73a1-4780-984a-7e4accc65ae7"), &asset_resource);
 
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();

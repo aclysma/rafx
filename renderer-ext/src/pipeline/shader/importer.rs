@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::{Read, Cursor};
 use std::convert::TryInto;
-use crate::pipeline::sprite::SpriteAsset;
+//use crate::pipeline::sprite::SpriteAsset;
 use atelier_assets::importer::Error as ImportError;
 use crate::pipeline::shader::ShaderAsset;
 use crate::pipeline_description as dsc;

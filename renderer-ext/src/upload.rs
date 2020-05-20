@@ -17,18 +17,20 @@ use image::load;
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result
 //
 pub enum UploadOpResult<T> {
-    UploadError,
-    UploadComplete(T),
-    UploadDrop,
+    UploadError(LoadHandle),
+    UploadComplete(AssetLoadOp, T),
+    UploadDrop(LoadHandle),
 }
 
 pub struct UploadOp<T> {
+    load_handle: LoadHandle,
     sender: Option<Sender<UploadOpResult<T>>>,
 }
 
 impl<T> UploadOp<T> {
-    pub(crate) fn new(sender: Sender<UploadOpResult<T>>) -> Self {
+    pub fn new(load_handle: LoadHandle, sender: Sender<UploadOpResult<T>>) -> Self {
         Self {
+            load_handle,
             sender: Some(sender),
         }
     }
@@ -36,12 +38,13 @@ impl<T> UploadOp<T> {
     pub fn complete(
         mut self,
         image: T,
+        load_op: AssetLoadOp,
     ) {
         let _ = self
             .sender
             .as_ref()
             .unwrap()
-            .send(UploadOpResult::UploadComplete(image));
+            .send(UploadOpResult::UploadComplete(load_op, image));
         self.sender = None;
     }
 
@@ -50,7 +53,7 @@ impl<T> UploadOp<T> {
             .sender
             .as_ref()
             .unwrap()
-            .send(UploadOpResult::UploadError);
+            .send(UploadOpResult::UploadError(self.load_handle));
         self.sender = None;
     }
 }
@@ -58,7 +61,7 @@ impl<T> UploadOp<T> {
 impl<T> Drop for UploadOp<T> {
     fn drop(&mut self) {
         if let Some(ref sender) = self.sender {
-            let _ = sender.send(UploadOpResult::UploadDrop);
+            let _ = sender.send(UploadOpResult::UploadDrop(self.load_handle));
         }
     }
 }
@@ -73,9 +76,9 @@ impl<T> UploadOpAwaiter<T> {
     }
 }
 
-pub fn create_upload_op<T>() -> (UploadOp<T>, UploadOpAwaiter<T>) {
+pub fn create_upload_op<T>(load_handle: LoadHandle) -> (UploadOp<T>, UploadOpAwaiter<T>) {
     let (tx, rx) = crossbeam_channel::unbounded();
-    let op = UploadOp::new(tx);
+    let op = UploadOp::new(load_handle,tx);
     let awaiter = UploadOpAwaiter { receiver: rx };
 
     (op, awaiter)
@@ -201,13 +204,11 @@ impl InProgressUpload {
                         VkTransferUploadState::Complete => {
                             println!("VkTransferUploadState::Complete");
                             for upload in inner.image_uploads {
-                                upload.upload_op.complete(upload.image);
-                                upload.load_op.complete();
+                                upload.upload_op.complete(upload.image, upload.load_op);
                             }
 
                             for upload in inner.buffer_uploads {
-                                upload.upload_op.complete(upload.buffer);
-                                upload.load_op.complete();
+                                upload.upload_op.complete(upload.buffer, upload.load_op);
                             }
 
                             break InProgressUploadPollResult::Complete;
@@ -406,11 +407,10 @@ impl UploadQueue {
 
     fn update_existing_uploads(
         &mut self,
-        device_context: &VkDeviceContext,
     ) {
         // iterate backwards so we can use swap_remove
         for i in (0..self.uploads_in_progress.len()).rev() {
-            let result = self.uploads_in_progress[i].poll_load(device_context);
+            let result = self.uploads_in_progress[i].poll_load(&self.device_context);
             match result {
                 InProgressUploadPollResult::Pending => {
                     // do nothing
@@ -433,10 +433,9 @@ impl UploadQueue {
 
     pub fn update(
         &mut self,
-        device_context: &VkDeviceContext,
     ) -> VkResult<()> {
         self.start_new_uploads()?;
-        self.update_existing_uploads(device_context);
+        self.update_existing_uploads();
         Ok(())
     }
 }

@@ -9,7 +9,7 @@ use std::io::Read;
 use std::convert::TryInto;
 use serde::export::Formatter;
 
-#[derive(TypeUuid, Serialize, Deserialize)]
+#[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "e6166902-8716-401b-9d2e-8b01701c5626"]
 pub struct ImageAsset {
     pub width: u32,

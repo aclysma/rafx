@@ -12,7 +12,7 @@ pub mod util;
 
 pub mod cleanup;
 pub use cleanup::VkResourceDropSink;
-pub use cleanup::VkDropSinkResourceImpl;
+pub use cleanup::VkResource;
 
 pub mod pool;
 pub use pool::VkPoolAllocator;
@@ -43,6 +43,7 @@ pub use buffer::VkBuffer;
 
 mod image;
 pub use image::VkImage;
+pub use image::VkImageRaw;
 
 mod upload;
 pub use upload::VkUploadState;

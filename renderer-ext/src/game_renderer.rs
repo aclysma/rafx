@@ -12,21 +12,21 @@ use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
 use crossbeam_channel::Sender;
 use std::ops::Deref;
-use crate::resource_managers::{
-    SpriteResourceManager, VkMeshResourceManager, ImageResourceManager,
-    MaterialResourceManager,
-};
-use crate::renderpass::VkMeshRenderPass;
+// use crate::resource_managers::{
+//     SpriteResourceManager, VkMeshResourceManager, ImageResourceManager,
+//     MaterialResourceManager,
+// };
+//use crate::renderpass::VkMeshRenderPass;
 use crate::pipeline_description::SwapchainSurfaceInfo;
 use crate::pipeline::pipeline::{MaterialAsset2, PipelineAsset2, MaterialInstanceAsset2};
 use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
 use crate::upload::UploadQueue;
-use crate::load_handlers::{ImageLoadHandler, MeshLoadHandler, SpriteLoadHandler, MaterialLoadHandler};
+//use crate::load_handlers::{ImageLoadHandler, MeshLoadHandler, SpriteLoadHandler, MaterialLoadHandler};
 use crate::pipeline::shader::ShaderAsset;
 use crate::pipeline::image::ImageAsset;
-use crate::pipeline::gltf::{MaterialAsset, MeshAsset};
-use crate::pipeline::sprite::SpriteAsset;
+//use crate::pipeline::gltf::{MaterialAsset, MeshAsset};
+//use crate::pipeline::sprite::SpriteAsset;
 use atelier_assets::core::asset_uuid;
 use atelier_assets::loader::LoadStatus;
 use atelier_assets::loader::handle::AssetHandle;
@@ -59,6 +59,7 @@ fn wait_for_asset_to_load<T>(
             }
             LoadStatus::Loading => {
                 log::info!("blocked waiting for asset to load");
+                std::thread::sleep(std::time::Duration::from_millis(100));
                 // keep waiting
             }
             LoadStatus::Loaded => {
@@ -80,10 +81,10 @@ pub struct GameRenderer {
     imgui_event_listener: ImguiRenderEventListener,
 
     //shader_resource_manager: ShaderResourceManager,
-    image_resource_manager: ImageResourceManager,
-    material_resource_manager: MaterialResourceManager,
-    sprite_resource_manager: SpriteResourceManager,
-    mesh_resource_manager: VkMeshResourceManager,
+    // image_resource_manager: ImageResourceManager,
+    // material_resource_manager: MaterialResourceManager,
+    // sprite_resource_manager: SpriteResourceManager,
+    // mesh_resource_manager: VkMeshResourceManager,
 
     upload_queue: UploadQueue,
 
@@ -93,7 +94,7 @@ pub struct GameRenderer {
     sprite_renderpass: Option<VkSpriteRenderPass>,
     sprite_material_instance: Handle<MaterialInstanceAsset2>,
 
-    mesh_renderpass: Option<VkMeshRenderPass>,
+    //mesh_renderpass: Option<VkMeshRenderPass>,
 }
 
 impl GameRenderer {
@@ -112,23 +113,23 @@ impl GameRenderer {
         //     device_context,
         //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
         // )?;
-        let image_resource_manager = ImageResourceManager::new(
-            device_context,
-            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        )?;
-        let material_resource_manager = MaterialResourceManager::new(
-            device_context,
-            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        )?;
-        let sprite_resource_manager = SpriteResourceManager::new(
-            device_context,
-            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-            &image_resource_manager,
-        )?;
-        let mesh_resource_manager = VkMeshResourceManager::new(
-            device_context,
-            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        )?;
+        // let image_resource_manager = ImageResourceManager::new(
+        //     device_context,
+        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        // )?;
+        // let material_resource_manager = MaterialResourceManager::new(
+        //     device_context,
+        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        // )?;
+        // let sprite_resource_manager = SpriteResourceManager::new(
+        //     device_context,
+        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        //     &image_resource_manager,
+        // )?;
+        // let mesh_resource_manager = VkMeshResourceManager::new(
+        //     device_context,
+        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        // )?;
 
         let resource_manager = ResourceManager::new(device_context);
 
@@ -144,28 +145,36 @@ impl GameRenderer {
         asset_resource.add_storage_with_load_handler::<MaterialInstanceAsset2, _>(Box::new(
             resource_manager.create_material_instance_load_handler(),
         ));
-        //asset_resource.add_storage::<ShaderAsset>();
-        asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
-            ImageLoadHandler::new(
-                upload_queue.pending_image_tx().clone(),
-                image_resource_manager.image_update_tx().clone(),
-                sprite_resource_manager.sprite_update_tx().clone(),
-            ),
+        asset_resource.add_storage_with_load_handler::<ImageAsset, _>(Box::new(
+            resource_manager.create_image_load_handler(),
         ));
-        asset_resource.add_storage_with_load_handler::<MaterialAsset, MaterialLoadHandler>(
-            Box::new(MaterialLoadHandler::new(
-                material_resource_manager.material_update_tx().clone(),
-            )),
-        );
-        asset_resource.add_storage_with_load_handler::<MeshAsset, MeshLoadHandler>(Box::new(
-            MeshLoadHandler::new(
-                upload_queue.pending_buffer_tx().clone(),
-                mesh_resource_manager.mesh_update_tx().clone(),
-            ),
-        ));
-        asset_resource.add_storage_with_load_handler::<SpriteAsset, SpriteLoadHandler>(Box::new(
-            SpriteLoadHandler::new(sprite_resource_manager.sprite_update_tx().clone()),
-        ));
+        // asset_resource.add_storage::<MaterialAsset>();
+        // asset_resource.add_storage::<MeshAsset>();
+        // asset_resource.add_storage::<SpriteAsset>();
+
+
+        // //asset_resource.add_storage::<ShaderAsset>();
+        // asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
+        //     ImageLoadHandler::new(
+        //         upload_queue.pending_image_tx().clone(),
+        //         image_resource_manager.image_update_tx().clone(),
+        //         sprite_resource_manager.sprite_update_tx().clone(),
+        //     ),
+        // ));
+        // asset_resource.add_storage_with_load_handler::<MaterialAsset, MaterialLoadHandler>(
+        //     Box::new(MaterialLoadHandler::new(
+        //         material_resource_manager.material_update_tx().clone(),
+        //     )),
+        // );
+        // asset_resource.add_storage_with_load_handler::<MeshAsset, MeshLoadHandler>(Box::new(
+        //     MeshLoadHandler::new(
+        //         upload_queue.pending_buffer_tx().clone(),
+        //         mesh_resource_manager.mesh_update_tx().clone(),
+        //     ),
+        // ));
+        // asset_resource.add_storage_with_load_handler::<SpriteAsset, SpriteLoadHandler>(Box::new(
+        //     SpriteLoadHandler::new(sprite_resource_manager.sprite_update_tx().clone()),
+        // ));
 
         let sprite_material = load_asset::<MaterialAsset2>(
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
@@ -179,16 +188,16 @@ impl GameRenderer {
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
             imgui_event_listener,
-            image_resource_manager,
-            material_resource_manager,
-            sprite_resource_manager,
-            mesh_resource_manager,
+            // image_resource_manager,
+            // material_resource_manager,
+            // sprite_resource_manager,
+            // mesh_resource_manager,
             upload_queue,
             resource_manager,
             sprite_material,
             sprite_material_instance,
             sprite_renderpass: None,
-            mesh_renderpass: None,
+            //mesh_renderpass: None,
         };
 
         wait_for_asset_to_load(
@@ -214,16 +223,16 @@ impl GameRenderer {
     ) {
         //self.pipeline_manager.update();
         self.resource_manager.update();
-        self.upload_queue.update(device_context);
+        self.upload_queue.update();
 
         //self.shader_resource_manager.update();
-        self.image_resource_manager.update();
-        self.material_resource_manager
-            .update(&self.image_resource_manager);
-        self.sprite_resource_manager
-            .update(&self.image_resource_manager);
-        self.mesh_resource_manager
-            .update(&self.material_resource_manager);
+        // self.image_resource_manager.update();
+        // self.material_resource_manager
+        //     .update(&self.image_resource_manager);
+        // self.sprite_resource_manager
+        //     .update(&self.image_resource_manager);
+        // self.mesh_resource_manager
+        //     .update(&self.material_resource_manager);
     }
 
     pub fn update_time(
@@ -263,16 +272,16 @@ impl VkSurfaceEventListener for GameRenderer {
             swapchain,
             sprite_pipeline_info,
             //&mut self.pipeline_manager,
-            &self.sprite_resource_manager,
+            //&self.sprite_resource_manager,
             &swapchain_surface_info,
         )?);
-        log::debug!("Create VkMeshRenderPass");
-        self.mesh_renderpass = Some(VkMeshRenderPass::new(
-            device_context,
-            swapchain,
-            &self.mesh_resource_manager,
-            &self.sprite_resource_manager,
-        )?);
+        // log::debug!("Create VkMeshRenderPass");
+        // self.mesh_renderpass = Some(VkMeshRenderPass::new(
+        //     device_context,
+        //     swapchain,
+        //     &self.mesh_resource_manager,
+        //     &self.sprite_resource_manager,
+        // )?);
         log::debug!("game renderer swapchain_created finished");
 
         VkResult::Ok(())
@@ -291,7 +300,7 @@ impl VkSurfaceEventListener for GameRenderer {
         };
 
         self.sprite_renderpass = None;
-        self.mesh_renderpass = None;
+        //self.mesh_renderpass = None;
         self.resource_manager
             .remove_swapchain(&swapchain_surface_info);
         self.imgui_event_listener
@@ -312,23 +321,23 @@ impl VkSurfaceEventListener for GameRenderer {
             sprite_renderpass.update(
                 present_index,
                 1.0,
-                &self.sprite_resource_manager,
+                //&self.sprite_resource_manager,
                 &self.time_state,
             )?;
             command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
         }
 
-        if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
-            log::trace!("mesh_renderpass update");
-            mesh_renderpass.update(
-                present_index,
-                1.0,
-                &self.mesh_resource_manager,
-                &self.sprite_resource_manager,
-                &self.time_state,
-            )?;
-            command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
-        }
+        // if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
+        //     log::trace!("mesh_renderpass update");
+        //     mesh_renderpass.update(
+        //         present_index,
+        //         1.0,
+        //         &self.mesh_resource_manager,
+        //         &self.sprite_resource_manager,
+        //         &self.time_state,
+        //     )?;
+        //     command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
+        // }
 
         {
             log::trace!("imgui_event_listener update");

@@ -165,7 +165,7 @@ impl VkImGuiRenderPass {
 
         let image_views: Vec<_> = images
             .iter()
-            .map(|image| Self::create_texture_image_view(device_context.device(), &image.image))
+            .map(|image| Self::create_texture_image_view(device_context.device(), &image.image()))
             .collect();
 
         let image_sampler = Self::create_texture_image_sampler(device_context.device());

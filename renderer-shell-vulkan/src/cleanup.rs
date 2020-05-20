@@ -4,17 +4,19 @@ use std::collections::VecDeque;
 use ash::version::DeviceV1_0;
 use std::mem::ManuallyDrop;
 use ash::{Device, vk};
-use crate::{VkImage, VkBuffer};
+use crate::{VkImage, VkBuffer, VkDeviceContext};
+use crate::image::VkImageRaw;
 
 /// Implement to customize how VkResourceDropSink drops resources
-pub trait VkDropSinkResourceImpl {
+pub trait VkResource {
+    //TODO: Error type that is compatible with VMA
     fn destroy(
-        device: &ash::Device,
+        device_context: &VkDeviceContext,
         resource: Self,
     ) -> VkResult<()>;
 }
 
-struct VkDropSinkResourceInFlight<T: VkDropSinkResourceImpl> {
+struct VkDropSinkResourceInFlight<T: VkResource> {
     resource: T,
     live_until_frame: Wrapping<u32>,
 }
@@ -24,7 +26,7 @@ struct VkDropSinkResourceInFlight<T: VkDropSinkResourceImpl> {
 /// drop and a vk::ImageView we would want to call device.destroy_image_view. The reason for not
 /// unilaterally supporting drop for everything is that it requires the resource carrying around
 /// a channel or Arc with the data required to actually perform the drop
-pub struct VkResourceDropSink<T: VkDropSinkResourceImpl> {
+pub struct VkResourceDropSink<T: VkResource> {
     // We are assuming that all resources can survive for the same amount of time so the data in
     // this VecDeque will naturally be orderered such that things that need to be destroyed sooner
     // are at the front
@@ -37,7 +39,7 @@ pub struct VkResourceDropSink<T: VkDropSinkResourceImpl> {
     frame_index: Wrapping<u32>,
 }
 
-impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
+impl<T: VkResource> VkResourceDropSink<T> {
     /// Create a drop sink that will destroy resources after N frames. Keep in mind that if for
     /// example you want to push a single resource per frame, up to N+1 resources will exist
     /// in the sink. If max_in_flight_frames is 2, then you would have a resource that has
@@ -67,7 +69,7 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
     /// presented or a new frame begins
     pub fn on_frame_complete(
         &mut self,
-        device: &ash::Device,
+        device_context: &VkDeviceContext,
     ) {
         self.frame_index += Wrapping(1);
 
@@ -91,7 +93,7 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
             .collect();
         for mut resource_to_drop in resources_to_drop {
             unsafe {
-                T::destroy(device, resource_to_drop.resource);
+                T::destroy(device_context, resource_to_drop.resource);
             }
         }
     }
@@ -100,15 +102,15 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
     /// Calling this function when the device is not idle could result in a deadlock
     pub fn destroy(
         &mut self,
-        device: &ash::Device,
+        device_context: &VkDeviceContext,
     ) -> VkResult<()> {
         unsafe {
-            device.device_wait_idle()?;
+            device_context.device().device_wait_idle()?;
         }
 
         for resource in self.resources_in_flight.drain(..) {
             unsafe {
-                T::destroy(device, resource.resource)?;
+                T::destroy(device_context, resource.resource)?;
             }
         }
 
@@ -117,7 +119,7 @@ impl<T: VkDropSinkResourceImpl> VkResourceDropSink<T> {
 }
 
 // We assume destroy was called
-impl<T: VkDropSinkResourceImpl> Drop for VkResourceDropSink<T> {
+impl<T: VkResource> Drop for VkResourceDropSink<T> {
     fn drop(&mut self) {
         assert!(self.resources_in_flight.is_empty())
     }
@@ -126,9 +128,9 @@ impl<T: VkDropSinkResourceImpl> Drop for VkResourceDropSink<T> {
 //
 // Blanket implementation for anything that is ManuallyDrop
 //
-impl<T> VkDropSinkResourceImpl for ManuallyDrop<T> {
+impl<T> VkResource for ManuallyDrop<T> {
     fn destroy(
-        device: &Device,
+        device_context: &VkDeviceContext,
         mut resource: Self,
     ) -> VkResult<()> {
         unsafe {
@@ -138,16 +140,30 @@ impl<T> VkDropSinkResourceImpl for ManuallyDrop<T> {
     }
 }
 
+impl VkResource for VkImageRaw {
+    fn destroy(
+        device_context: &VkDeviceContext,
+        mut resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device_context.allocator().destroy_image(resource.image, &resource.allocation).map_err(|err| {
+                log::error!("{:?}", err);
+                vk::Result::ERROR_UNKNOWN
+            })
+        }
+    }
+}
+
 //
 // Implementation for ImageViews
 //
-impl VkDropSinkResourceImpl for vk::ImageView {
+impl VkResource for vk::ImageView {
     fn destroy(
-        device: &Device,
+        device_context: &VkDeviceContext,
         resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device.destroy_image_view(resource, None);
+            device_context.device().destroy_image_view(resource, None);
             Ok(())
         }
     }
@@ -156,13 +172,13 @@ impl VkDropSinkResourceImpl for vk::ImageView {
 //
 // Implementation for pipelines
 //
-impl VkDropSinkResourceImpl for vk::Pipeline {
+impl VkResource for vk::Pipeline {
     fn destroy(
-        device: &Device,
+        device_context: &VkDeviceContext,
         resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device.destroy_pipeline(resource, None);
+            device_context.device().destroy_pipeline(resource, None);
             Ok(())
         }
     }
@@ -171,13 +187,13 @@ impl VkDropSinkResourceImpl for vk::Pipeline {
 //
 // Implementation for renderpasses
 //
-impl VkDropSinkResourceImpl for vk::RenderPass {
+impl VkResource for vk::RenderPass {
     fn destroy(
-        device: &Device,
+        device_context: &VkDeviceContext,
         resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device.destroy_render_pass(resource, None);
+            device_context.device().destroy_render_pass(resource, None);
             Ok(())
         }
     }
@@ -186,13 +202,13 @@ impl VkDropSinkResourceImpl for vk::RenderPass {
 //
 // Implementation for pipeline layouts
 //
-impl VkDropSinkResourceImpl for vk::PipelineLayout {
+impl VkResource for vk::PipelineLayout {
     fn destroy(
-        device: &Device,
+        device_context: &VkDeviceContext,
         resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device.destroy_pipeline_layout(resource, None);
+            device_context.device().destroy_pipeline_layout(resource, None);
             Ok(())
         }
     }
@@ -201,13 +217,13 @@ impl VkDropSinkResourceImpl for vk::PipelineLayout {
 //
 // Implementation for pipeline layouts
 //
-impl VkDropSinkResourceImpl for vk::DescriptorSetLayout {
+impl VkResource for vk::DescriptorSetLayout {
     fn destroy(
-        device: &Device,
+        device_context: &VkDeviceContext,
         resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device.destroy_descriptor_set_layout(resource, None);
+            device_context.device().destroy_descriptor_set_layout(resource, None);
             Ok(())
         }
     }
@@ -216,13 +232,13 @@ impl VkDropSinkResourceImpl for vk::DescriptorSetLayout {
 //
 // Implementation for shader modules
 //
-impl VkDropSinkResourceImpl for vk::ShaderModule {
+impl VkResource for vk::ShaderModule {
     fn destroy(
-        device: &Device,
+        device_context: &VkDeviceContext,
         resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device.destroy_shader_module(resource, None);
+            device_context.device().destroy_shader_module(resource, None);
             Ok(())
         }
     }
@@ -312,30 +328,30 @@ impl CombinedDropSink {
 
     pub fn on_frame_complete(
         &mut self,
-        device: &ash::Device,
+        device_context: &VkDeviceContext,
     ) {
-        self.image_views.on_frame_complete(device);
-        self.images.on_frame_complete(device);
-        self.buffers.on_frame_complete(device);
-        self.pipelines.on_frame_complete(device);
-        self.render_passes.on_frame_complete(device);
-        self.pipeline_layouts.on_frame_complete(device);
-        self.descriptor_sets.on_frame_complete(device);
-        self.shader_modules.on_frame_complete(device);
+        self.image_views.on_frame_complete(device_context);
+        self.images.on_frame_complete(device_context);
+        self.buffers.on_frame_complete(device_context);
+        self.pipelines.on_frame_complete(device_context);
+        self.render_passes.on_frame_complete(device_context);
+        self.pipeline_layouts.on_frame_complete(device_context);
+        self.descriptor_sets.on_frame_complete(device_context);
+        self.shader_modules.on_frame_complete(device_context);
     }
 
     pub fn destroy(
         &mut self,
-        device: &ash::Device,
+        device_context: &VkDeviceContext,
     ) -> VkResult<()> {
-        self.image_views.destroy(device)?;
-        self.images.destroy(device)?;
-        self.buffers.destroy(device)?;
-        self.pipelines.destroy(device)?;
-        self.render_passes.destroy(device)?;
-        self.pipeline_layouts.destroy(device)?;
-        self.descriptor_sets.destroy(device)?;
-        self.shader_modules.destroy(device)?;
+        self.image_views.destroy(device_context)?;
+        self.images.destroy(device_context)?;
+        self.buffers.destroy(device_context)?;
+        self.pipelines.destroy(device_context)?;
+        self.render_passes.destroy(device_context)?;
+        self.pipeline_layouts.destroy(device_context)?;
+        self.descriptor_sets.destroy(device_context)?;
+        self.shader_modules.destroy(device_context)?;
         Ok(())
     }
 }

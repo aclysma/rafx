@@ -3,9 +3,9 @@ use std::sync::Weak;
 use crossbeam_channel::{Sender, Receiver};
 use atelier_assets::loader::LoadHandle;
 use fnv::FnvHashMap;
-use ash::vk;
+use ash::{vk, Device};
 use crate::pipeline_description as dsc;
-use renderer_shell_vulkan::{VkDropSinkResourceImpl, VkResourceDropSink, VkDeviceContext, VkPoolAllocator, VkDescriptorPoolAllocator};
+use renderer_shell_vulkan::{VkResource, VkResourceDropSink, VkDeviceContext, VkPoolAllocator, VkDescriptorPoolAllocator, VkImage, VkImageRaw};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use atelier_assets::loader::handle::AssetHandle;
@@ -119,7 +119,7 @@ where
 struct ResourceLookup<KeyT, ResourceT>
 where
     KeyT: Eq + Hash + Clone,
-    ResourceT: VkDropSinkResourceImpl + Copy,
+    ResourceT: VkResource + Copy,
 {
     resources: FnvHashMap<ResourceHash, WeakResourceArc<ResourceT>>,
     drop_sink: VkResourceDropSink<ResourceT>,
@@ -133,7 +133,7 @@ where
 impl<KeyT, ResourceT> ResourceLookup<KeyT, ResourceT>
 where
     KeyT: Eq + Hash + Clone,
-    ResourceT: VkDropSinkResourceImpl + Copy + std::fmt::Debug,
+    ResourceT: VkResource + Copy + std::fmt::Debug,
 {
     fn new(max_frames_in_flight: u32) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
@@ -221,15 +221,15 @@ where
 
     fn on_frame_complete(
         &mut self,
-        device: &ash::Device,
+        device_context: &VkDeviceContext,
     ) {
         self.handle_dropped_resources();
-        self.drop_sink.on_frame_complete(device);
+        self.drop_sink.on_frame_complete(device_context);
     }
 
     fn destroy(
         &mut self,
-        device: &ash::Device,
+        device_context: &VkDeviceContext,
     ) {
         self.handle_dropped_resources();
 
@@ -241,7 +241,7 @@ where
             );
         }
 
-        self.drop_sink.destroy(device);
+        self.drop_sink.destroy(device_context);
     }
 }
 
@@ -266,6 +266,16 @@ struct GraphicsPipelineKey {
     swapchain_surface_info: dsc::SwapchainSurfaceInfo,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ImageKey {
+    load_handle: LoadHandle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ImageViewKey {
+    load_handle: LoadHandle,
+}
+
 //
 // Handles raw lookup and destruction of GPU resources. Everything is reference counted. No safety
 // is provided for dependencies/order of destruction. The general expectation is that anything
@@ -279,6 +289,8 @@ struct ResourceLookupSet {
     pub pipeline_layouts: ResourceLookup<dsc::PipelineLayout, vk::PipelineLayout>,
     pub render_passes: ResourceLookup<RenderPassKey, vk::RenderPass>,
     pub graphics_pipelines: ResourceLookup<GraphicsPipelineKey, vk::Pipeline>,
+    pub images: ResourceLookup<ImageKey, VkImageRaw>,
+    pub image_views: ResourceLookup<ImageViewKey, vk::ImageView>,
 }
 
 impl ResourceLookupSet {
@@ -290,29 +302,33 @@ impl ResourceLookupSet {
             pipeline_layouts: ResourceLookup::new(max_frames_in_flight),
             render_passes: ResourceLookup::new(max_frames_in_flight),
             graphics_pipelines: ResourceLookup::new(max_frames_in_flight),
+            images: ResourceLookup::new(max_frames_in_flight),
+            image_views: ResourceLookup::new(max_frames_in_flight),
         }
     }
 
     fn on_frame_complete(
         &mut self,
     ) {
-        let device = self.device_context.device();
-        self.shader_modules.on_frame_complete(device);
-        self.descriptor_set_layouts.on_frame_complete(device);
-        self.pipeline_layouts.on_frame_complete(device);
-        self.render_passes.on_frame_complete(device);
-        self.graphics_pipelines.on_frame_complete(device);
+        self.shader_modules.on_frame_complete(&self.device_context);
+        self.descriptor_set_layouts.on_frame_complete(&self.device_context);
+        self.pipeline_layouts.on_frame_complete(&self.device_context);
+        self.render_passes.on_frame_complete(&self.device_context);
+        self.graphics_pipelines.on_frame_complete(&self.device_context);
+        self.images.on_frame_complete(&self.device_context);
+        self.image_views.on_frame_complete(&self.device_context);
     }
 
     fn destroy(
         &mut self,
     ) {
-        let device = self.device_context.device();
-        self.shader_modules.destroy(device);
-        self.descriptor_set_layouts.destroy(device);
-        self.pipeline_layouts.destroy(device);
-        self.render_passes.destroy(device);
-        self.graphics_pipelines.destroy(device);
+        self.shader_modules.destroy(&self.device_context);
+        self.descriptor_set_layouts.destroy(&self.device_context);
+        self.pipeline_layouts.destroy(&self.device_context);
+        self.render_passes.destroy(&self.device_context);
+        self.graphics_pipelines.destroy(&self.device_context);
+        self.images.destroy(&self.device_context);
+        self.image_views.destroy(&self.device_context);
     }
 
     fn get_or_create_shader_module(
@@ -471,6 +487,16 @@ impl ResourceLookupSet {
             Ok((renderpass, pipeline))
         }
     }
+
+    fn insert_image(&mut self, load_handle: LoadHandle, image: ManuallyDrop<VkImage>) -> ResourceArc<VkImageRaw> {
+        let image_key = ImageKey {
+            load_handle
+        };
+
+        let hash = ResourceHash::from_key(&image_key);
+        let raw_image = ManuallyDrop::into_inner(image).take_raw().unwrap();
+        self.images.insert(hash, &image_key, raw_image)
+    }
 }
 
 //
@@ -516,6 +542,11 @@ struct LoadedMaterial {
 
 struct LoadedMaterialInstance {
     material_descriptor_sets: Vec<Vec<MaterialInstanceDescriptorSetRef>>
+}
+
+struct LoadedImage {
+    image: ResourceArc<VkImageRaw>,
+
 }
 
 //
@@ -626,10 +657,10 @@ impl<LoadedAssetT> Default for AssetLookup<LoadedAssetT> {
 #[derive(Default)]
 struct LoadedAssetLookupSet {
     pub shader_modules: AssetLookup<LoadedShaderModule>,
-
     pub graphics_pipelines2: AssetLookup<LoadedGraphicsPipeline2>,
     pub materials: AssetLookup<LoadedMaterial>,
-    pub material_instances: AssetLookup<LoadedMaterialInstance>
+    pub material_instances: AssetLookup<LoadedMaterialInstance>,
+    pub images: AssetLookup<LoadedImage>
 }
 
 impl LoadedAssetLookupSet {
@@ -637,6 +668,8 @@ impl LoadedAssetLookupSet {
         self.shader_modules.destroy();
         self.graphics_pipelines2.destroy();
         self.materials.destroy();
+        self.material_instances.destroy();
+        self.images.destroy();
     }
 }
 
@@ -662,11 +695,20 @@ pub struct FreeRequest<T> {
     phantom_data: PhantomData<T>,
 }
 
-#[derive(Clone)]
 pub struct LoadQueuesTx<T> {
     load_request_tx: Sender<LoadRequest<T>>,
     commit_request_tx: Sender<CommitRequest<T>>,
     free_request_tx: Sender<FreeRequest<T>>,
+}
+
+impl<T> Clone for LoadQueuesTx<T> {
+    fn clone(&self) -> Self {
+        LoadQueuesTx {
+            load_request_tx: self.load_request_tx.clone(),
+            commit_request_tx: self.commit_request_tx.clone(),
+            free_request_tx: self.free_request_tx.clone(),
+        }
+    }
 }
 
 pub struct LoadQueuesRx<T> {
@@ -744,6 +786,12 @@ use ash::version::DeviceV1_0;
 use std::collections::VecDeque;
 use itertools::all;
 use renderer_base::slab::{RawSlab, RawSlabKey};
+use std::cmp::max;
+use crate::pipeline::image::ImageAsset;
+use crate::upload::{UploadQueue, PendingImageUpload, ImageUploadOpResult, BufferUploadOpResult, UploadOp};
+use crate::image_utils::DecodedTexture;
+use image::load;
+use std::mem::ManuallyDrop;
 
 pub struct GenericLoadHandler<AssetT>
 where
@@ -813,7 +861,8 @@ struct LoadQueueSet {
     shader_modules: LoadQueues<ShaderAsset>,
     graphics_pipelines2: LoadQueues<PipelineAsset2>,
     materials: LoadQueues<MaterialAsset2>,
-    material_instances: LoadQueues<MaterialInstanceAsset2>
+    material_instances: LoadQueues<MaterialInstanceAsset2>,
+    images: LoadQueues<ImageAsset>
 }
 
 pub struct ActiveSwapchainSurfaceInfoState {
@@ -1154,6 +1203,60 @@ impl MaterialInstanceManager {
 
 
 
+struct UploadManager {
+    upload_queue: UploadQueue,
+
+    image_upload_result_tx: Sender<ImageUploadOpResult>,
+    image_upload_result_rx: Receiver<ImageUploadOpResult>,
+
+    buffer_upload_result_tx: Sender<BufferUploadOpResult>,
+    buffer_upload_result_rx: Receiver<BufferUploadOpResult>,
+}
+
+impl UploadManager {
+    pub fn new(device_context: &VkDeviceContext) -> Self {
+        let (image_upload_result_tx, image_upload_result_rx) = crossbeam_channel::unbounded();
+        let (buffer_upload_result_tx, buffer_upload_result_rx) = crossbeam_channel::unbounded();
+
+        UploadManager {
+            upload_queue: UploadQueue::new(device_context),
+            image_upload_result_rx,
+            image_upload_result_tx,
+            buffer_upload_result_rx,
+            buffer_upload_result_tx
+        }
+    }
+
+    pub fn update(&mut self) -> VkResult<()> {
+        self.upload_queue.update()
+    }
+
+    pub fn upload_image(&self, request: LoadRequest<ImageAsset>) -> VkResult<()> {
+        let decoded_texture = DecodedTexture {
+            width: request.asset.width,
+            height: request.asset.height,
+            data: request.asset.data,
+        };
+
+        self.upload_queue.pending_image_tx().send(PendingImageUpload {
+            load_op: request.load_op,
+            upload_op: UploadOp::new(request.load_handle, self.image_upload_result_tx.clone()),
+            texture: decoded_texture
+        }).map_err(|err| {
+            log::error!("Could not enqueue image upload");
+            vk::Result::ERROR_UNKNOWN
+        })
+    }
+}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1174,6 +1277,7 @@ pub struct ResourceManager {
     load_queues: LoadQueueSet,
     swapchain_surfaces: ActiveSwapchainSurfaceInfoSet,
     material_instances: MaterialInstanceManager,
+    upload_manager: UploadManager,
 }
 
 impl ResourceManager {
@@ -1185,6 +1289,7 @@ impl ResourceManager {
             load_queues: Default::default(),
             swapchain_surfaces: Default::default(),
             material_instances: Default::default(),
+            upload_manager: UploadManager::new(device_context),
         }
     }
 
@@ -1202,6 +1307,10 @@ impl ResourceManager {
 
     pub fn create_material_instance_load_handler(&self) -> GenericLoadHandler<MaterialInstanceAsset2> {
         self.load_queues.material_instances.create_load_handler()
+    }
+
+    pub fn create_image_load_handler(&self) -> GenericLoadHandler<ImageAsset> {
+        self.load_queues.images.create_load_handler()
     }
 
     pub fn get_pipeline_info(
@@ -1302,16 +1411,19 @@ impl ResourceManager {
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self) -> VkResult<()> {
         self.process_shader_load_requests();
         self.process_pipeline_load_requests();
         self.process_material_load_requests();
         self.process_material_instance_load_requests();
+        self.process_image_load_requests();
 
         self.material_instances.update();
+        self.upload_manager.update()?;
 
-        //self.process_material_instance_load_requests();
         //self.dump_stats();
+
+        Ok(())
     }
 
     fn dump_stats(&self) {
@@ -1322,6 +1434,7 @@ impl ResourceManager {
             pipeline_layout_count: usize,
             renderpass_count: usize,
             pipeline_count: usize,
+            image_count: usize,
         }
 
         let resource_counts = ResourceCounts {
@@ -1330,6 +1443,7 @@ impl ResourceManager {
             pipeline_layout_count: self.resources.pipeline_layouts.len(),
             renderpass_count: self.resources.render_passes.len(),
             pipeline_count: self.resources.graphics_pipelines.len(),
+            image_count: self.resources.images.len(),
         };
 
         #[derive(Debug)]
@@ -1338,6 +1452,7 @@ impl ResourceManager {
             pipeline2_count: usize,
             material_count: usize,
             material_instance_count: usize,
+            image_count: usize,
         }
 
         let loaded_asset_counts = LoadedAssetCounts {
@@ -1345,6 +1460,7 @@ impl ResourceManager {
             pipeline2_count: self.loaded_assets.graphics_pipelines2.len(),
             material_count: self.loaded_assets.materials.len(),
             material_instance_count: self.loaded_assets.material_instances.len(),
+            image_count: self.loaded_assets.images.len(),
         };
 
         #[derive(Debug)]
@@ -1428,6 +1544,36 @@ impl ResourceManager {
 
         Self::handle_commit_requests(&mut self.load_queues.material_instances, &mut self.loaded_assets.material_instances);
         Self::handle_free_requests(&mut self.load_queues.material_instances, &mut self.loaded_assets.material_instances);
+    }
+
+    fn process_image_load_requests(&mut self) {
+        for request in self.load_queues.images.take_load_requests() {
+            //TODO: Route the request directly to the upload queue
+            println!("Uploading image {:?}", request.load_handle);
+            self.upload_manager.upload_image(request);
+        }
+
+        for result in self.upload_manager.image_upload_result_rx.try_iter() {
+            match result {
+                ImageUploadOpResult::UploadComplete(load_op, image) => {
+                    let image = self.resources.insert_image(load_op.load_handle(), image);
+                    self.loaded_assets.images.set_uncommitted(load_op.load_handle(), LoadedImage {
+                        image
+                    });
+                    //println!("Creating image {:?}", load_op.load);
+                    load_op.complete();
+                },
+                ImageUploadOpResult::UploadError(load_handle) => {
+                    // Don't need to do anything - the
+                },
+                ImageUploadOpResult::UploadDrop(load_handle) => {
+                    // Don't need to do anything
+                }
+            }
+        }
+
+        Self::handle_commit_requests(&mut self.load_queues.images, &mut self.loaded_assets.images);
+        Self::handle_free_requests(&mut self.load_queues.images, &mut self.loaded_assets.images);
     }
 
     fn handle_load_result<AssetT, LoadedAssetT>(
@@ -1525,6 +1671,26 @@ impl ResourceManager {
             passes,
         })
     }
+
+    // fn begin_load_image(
+    //     &mut self,
+    //     request: LoadRequest<ImageAsset>
+    // ) -> VkResult<LoadedMaterialInstance> {
+    //     let decoded_image = DecodedTexture {
+    //         width: request.asset.width,
+    //         height: request.asset.height,
+    //         data: request.asset.data,
+    //     };
+    //
+    //     self.upload_manager.upload_queue.pending_image_tx().send(PendingImageUpload {
+    //         load_op: request.load_op,
+    //         upload_op: UploadOp::new(request.load_handle, self.upload_manager.image_upload_result_tx.clone()),
+    //         texture: decoded_image
+    //     }).map_err(|err| {
+    //         log::error!("Could not enqueue image upload");
+    //         vk::Result::ERROR_UNKNOWN
+    //     })
+    // }
 
     fn load_material_instance(
         &mut self,
