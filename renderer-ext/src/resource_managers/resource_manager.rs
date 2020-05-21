@@ -10,6 +10,9 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use atelier_assets::loader::handle::AssetHandle;
 
+//TODO: Add the concept of vertex streams?
+
+
 // Hash of a GPU resource
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct ResourceHash(u64);
@@ -533,7 +536,8 @@ impl ResourceLookupSet {
     fn get_or_create_image_view(
         &mut self,
         image_load_handle: LoadHandle,
-        image_view_meta: dsc::ImageViewMeta
+        image_view_meta: &dsc::ImageViewMeta,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<ResourceArc<vk::ImageView>> {
         let image_view_key = ImageViewKey {
             image_load_handle,
@@ -556,6 +560,7 @@ impl ResourceLookupSet {
                 &self.device_context.device(),
                 image.get_raw().image,
                 image_view_meta,
+                swapchain_surface_info
             )?;
             println!("Created image view\n{:#?}", resource);
 
@@ -584,6 +589,11 @@ struct LoadedGraphicsPipeline2 {
     pipeline_asset: PipelineAsset2,
 }
 
+struct SlotLocation {
+    pub layout_index: u32,
+    pub binding_index: u32,
+}
+
 struct LoadedMaterialPass {
     shader_modules: Vec<ResourceArc<vk::ShaderModule>>,
     descriptor_set_layouts: Vec<ResourceArc<vk::DescriptorSetLayout>>,
@@ -599,6 +609,9 @@ struct LoadedMaterialPass {
     //descriptor_set_factory: DescriptorSetFactory,
     shader_interface: MaterialPassShaderInterface,
 
+    //TODO: Use hash instead of string. Probably want to have a "hashed string" type that keeps the
+    // string around only in debug mode. Maybe this could be generalized to a HashOfThing<T>.
+    pass_slot_name_lookup: FnvHashMap<String, Vec<SlotLocation>>,
 }
 
 struct LoadedMaterial {
@@ -607,11 +620,16 @@ struct LoadedMaterial {
 }
 
 struct LoadedMaterialInstance {
-    material_descriptor_sets: Vec<Vec<MaterialInstanceDescriptorSetRef>>
+    material_descriptor_sets: Vec<Vec<DescriptorSetArc>>
 }
 
 struct LoadedImage {
+    image_load_handle: LoadHandle,
+    image_view_meta: dsc::ImageViewMeta,
     image: ResourceArc<VkImageRaw>,
+
+    // One per swapchain
+    image_views: Vec<ResourceArc<vk::ImageView>>
 
 }
 
@@ -844,7 +862,7 @@ use type_uuid::TypeUuid;
 use crate::pipeline::pipeline::{MaterialAsset2, PipelineAsset2, MaterialPass, MaterialInstanceAsset2, DescriptorSetLayoutBindingWithSlotName, MaterialPassShaderInterface};
 use crate::pipeline::shader::ShaderAsset;
 use ash::prelude::VkResult;
-use crate::pipeline_description::SwapchainSurfaceInfo;
+use crate::pipeline_description::{SwapchainSurfaceInfo, DescriptorType};
 use std::borrow::Borrow;
 use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
@@ -1156,58 +1174,153 @@ impl MaterialInstancePool {
 
 */
 
-struct MaterialInstanceDescriptorSetRefInner {
+
+
+
+
+//
+// These represent a write update that can be applied to a descriptor set in a pool
+//
+struct DescriptorSetWriteImage {
+    pub sampler: Option<ResourceArc<vk::Sampler>>,
+    pub image_view: Option<ResourceArc<vk::ImageView>>,
+    // For now going to assume layout is always ShaderReadOnlyOptimal
+}
+
+struct DescriptorSetWriteBuffer {
+    pub buffer: ResourceArc<vk::Buffer>,
+    // For now going to assume offset 0 and range of everything
+}
+
+struct DescriptorSetWrite {
+    //pub dst_set: u32, // a pool index?
+    //pub dst_layout: u32, // a hash?
+    //pub dst_pool_index: u32, // a slab key?
+    //pub dst_set_index: u32,
+
+    //pub descriptor_set: DescriptorSetArc,
+    pub dst_binding: u32,
+    pub dst_array_element: u32,
+    pub descriptor_type: dsc::DescriptorType,
+    pub image_info: Vec<DescriptorSetWriteImage>,
+    pub buffer_info: Vec<DescriptorSetWriteBuffer>,
+    //pub p_texel_buffer_view: *const BufferView,
+}
+
+impl DescriptorSetWrite {
+    fn write_sets(desciptor_set: vk::DescriptorSet, writes: &[DescriptorSetWrite]) {
+        let mut vk_image_infos = Vec::with_capacity(writes.len());
+        let mut vk_buffer_infos = Vec::with_capacity(writes.len());
+
+        for write in writes {
+            let mut builder = vk::WriteDescriptorSet::builder()
+                .dst_set(desciptor_set)
+                .dst_binding(write.dst_binding)
+                .dst_array_element(write.dst_array_element)
+                .descriptor_type(write.descriptor_type.into());
+
+            if !write.image_info.is_empty() {
+                let mut image_infos = &write.image_info;
+                for image_info in image_infos {
+                    let mut image_info_builder = vk::DescriptorImageInfo::builder();
+                    image_info_builder = image_info_builder.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+                    if let Some(image_view) = &image_info.image_view {
+                        image_info_builder = image_info_builder.image_view(image_view.get_raw());
+                    }
+                    if let Some(sampler) = &image_info.sampler {
+                        image_info_builder = image_info_builder.sampler(sampler.get_raw());
+                    }
+
+                    vk_image_infos.push(image_info_builder.build());
+                }
+
+                builder = builder.image_info(&vk_image_infos);
+            }
+
+            if !write.buffer_info.is_empty() {
+            //if let Some(buffer_infos) = &write.buffer_info {
+                let mut buffer_infos = &write.buffer_info;
+                for buffer_info in buffer_infos {
+                    // Need to support buffers and knowing the size of them. Probably need to use
+                    // ResourceArc<BufferRaw>
+                    unimplemented!();
+                    // let mut buffer_info_builder = vk::DescriptorBufferInfo::builder()
+                    //     .buffer(buffer_info.buffer)
+                    //     .offset(0)
+                    //     .range()
+                }
+
+                builder = builder.buffer_info(&vk_buffer_infos);
+            }
+
+            //builder = builder.texel_buffer_view();
+        }
+
+
+
+
+    }
+}
+
+struct RegisteredDescriptorSet {
+    // Anything we'd want to store per descriptor set can go here, but don't have anything yet
+}
+
+
+//
+// Reference counting mechanism to keep descriptor sets allocated
+//
+struct DescriptorSetArcInner {
     // We can't cache the vk::DescriptorSet here because the pools will be cycled
-    slab_key: RawSlabKey<MaterialInstanceDescriptorCreateData>,
-    drop_tx: Sender<RawSlabKey<MaterialInstanceDescriptorCreateData>>
+    slab_key: RawSlabKey<RegisteredDescriptorSet>,
+    drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>
 }
 
-struct MaterialInstanceDescriptorSetRef {
-    inner: Arc<MaterialInstanceDescriptorSetRefInner>
+struct DescriptorSetArc {
+    inner: Arc<DescriptorSetArcInner>
 }
 
-impl MaterialInstanceDescriptorSetRef {
+impl DescriptorSetArc {
     fn new(
-        slab_key: RawSlabKey<MaterialInstanceDescriptorCreateData>,
-        drop_tx: Sender<RawSlabKey<MaterialInstanceDescriptorCreateData>>
+        slab_key: RawSlabKey<RegisteredDescriptorSet>,
+        drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>
     ) -> Self {
-        let inner = MaterialInstanceDescriptorSetRefInner {
+        let inner = DescriptorSetArcInner {
             slab_key,
             drop_tx
         };
 
-        MaterialInstanceDescriptorSetRef {
+        DescriptorSetArc {
             inner: Arc::new(inner)
         }
     }
 }
 
-
-struct MaterialInstanceDescriptorCreateData {
-
+struct PendingDescriptorSetWrite {
+    writes: Vec<DescriptorSetWrite>
 }
 
-struct MaterialInstancePool {
+struct RegisteredDescriptorSetPool {
     //device_context: VkDeviceContext,
     //allocator: VkDescriptorPoolAllocator,
     //descriptor_set_layout_def: dsc::DescriptorSetLayout,
     //descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>, //TODO: This needs to be the same one as is in ResourceLookup
 
-    slab: RawSlab<MaterialInstanceDescriptorCreateData>,
-    pending_allocations: Vec<MaterialInstanceAsset2>,
-    drop_tx: Sender<RawSlabKey<MaterialInstanceDescriptorCreateData>>,
-    drop_rx: Receiver<RawSlabKey<MaterialInstanceDescriptorCreateData>>,
+    slab: RawSlab<RegisteredDescriptorSet>,
+    pending_allocations: Vec<DescriptorSetWrite>,
+    drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
+    drop_rx: Receiver<RawSlabKey<RegisteredDescriptorSet>>,
 
 }
 
-impl MaterialInstancePool {
+impl RegisteredDescriptorSetPool {
     const MAX_DESCRIPTORS_PER_POOL : u32 = 64;
 
     pub fn new() -> Self {
 
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
 
-        MaterialInstancePool {
+        RegisteredDescriptorSetPool {
             slab: RawSlab::with_capacity(Self::MAX_DESCRIPTORS_PER_POOL),
             pending_allocations: Default::default(),
             drop_tx,
@@ -1215,14 +1328,14 @@ impl MaterialInstancePool {
         }
     }
 
-    pub fn insert(&mut self, material_instance: &MaterialInstanceAsset2) -> MaterialInstanceDescriptorSetRef {
-        let create_data = MaterialInstanceDescriptorCreateData {
+    pub fn insert(&mut self, material_instance: &MaterialInstanceAsset2) -> DescriptorSetArc {
+        let registered_set = RegisteredDescriptorSet {
 
         };
 
-        let slab_key = self.slab.allocate(create_data);
+        let slab_key = self.slab.allocate(registered_set);
 
-        MaterialInstanceDescriptorSetRef::new(slab_key, self.drop_tx.clone())
+        DescriptorSetArc::new(slab_key, self.drop_tx.clone())
     }
 
     pub fn update(&mut self) {
@@ -1234,21 +1347,21 @@ impl MaterialInstancePool {
 
 
 
-
 #[derive(Default)]
-struct MaterialInstanceManager {
-    pools: FnvHashMap<ResourceHash, MaterialInstancePool>
+struct RegisteredDescriptorSetPoolManager {
+    pools: FnvHashMap<ResourceHash, RegisteredDescriptorSetPool>
 
 }
 
-impl MaterialInstanceManager {
+impl RegisteredDescriptorSetPoolManager {
     pub fn insert(
-        &mut self, descriptor_set_layout: &dsc::DescriptorSetLayout,
+        &mut self,
+        descriptor_set_layout: &dsc::DescriptorSetLayout,
         material_instance: &MaterialInstanceAsset2
-    ) -> MaterialInstanceDescriptorSetRef {
+    ) -> DescriptorSetArc {
         let hash = ResourceHash::from_key(descriptor_set_layout);
         let pool = self.pools.entry(hash)
-            .or_insert_with(|| MaterialInstancePool::new());
+            .or_insert_with(|| RegisteredDescriptorSetPool::new());
 
         pool.insert(material_instance)
     }
@@ -1342,7 +1455,7 @@ pub struct ResourceManager {
     loaded_assets: LoadedAssetLookupSet,
     load_queues: LoadQueueSet,
     swapchain_surfaces: ActiveSwapchainSurfaceInfoSet,
-    material_instances: MaterialInstanceManager,
+    registered_descriptor_sets: RegisteredDescriptorSetPoolManager,
     upload_manager: UploadManager,
 }
 
@@ -1354,7 +1467,7 @@ impl ResourceManager {
             loaded_assets: Default::default(),
             load_queues: Default::default(),
             swapchain_surfaces: Default::default(),
-            material_instances: Default::default(),
+            registered_descriptor_sets: Default::default(),
             upload_manager: UploadManager::new(device_context),
         }
     }
@@ -1440,6 +1553,28 @@ impl ResourceManager {
                     }
                 }
             }
+
+            for (load_handle, loaded_asset) in &mut self.loaded_assets.images.loaded_assets {
+                if let Some(committed) = &mut loaded_asset.committed {
+                    let image_view = self.resources.get_or_create_image_view(
+                        committed.image_load_handle,
+                        &committed.image_view_meta,
+                        swapchain_surface_info,
+                    )?;
+
+                    committed.image_views.push(image_view);
+                }
+
+                if let Some(uncommitted) = &mut loaded_asset.uncommitted {
+                    let image_view = self.resources.get_or_create_image_view(
+                        uncommitted.image_load_handle,
+                        &uncommitted.image_view_meta,
+                        swapchain_surface_info,
+                    )?;
+
+                    uncommitted.image_views.push(image_view);
+                }
+            }
         }
 
         Ok(())
@@ -1469,6 +1604,16 @@ impl ResourceManager {
                     }
                 }
             }
+
+            for (_, loaded_asset) in &mut self.loaded_assets.images.loaded_assets {
+                if let Some(committed) = &mut loaded_asset.committed {
+                    committed.image_views.swap_remove(remove_index);
+                }
+
+                if let Some(uncommitted) = &mut loaded_asset.uncommitted {
+                    uncommitted.image_views.swap_remove(remove_index);
+                }
+            }
         } else {
             log::error!(
                 "Received a remove swapchain without a matching add\n{:#?}",
@@ -1484,7 +1629,7 @@ impl ResourceManager {
         self.process_material_instance_load_requests();
         self.process_image_load_requests();
 
-        self.material_instances.update();
+        self.registered_descriptor_sets.update();
         self.upload_manager.update()?;
 
         //self.dump_stats();
@@ -1523,8 +1668,8 @@ impl ResourceManager {
             pools: Vec<MaterialInstancePoolStats>
         }
 
-        let mut material_instance_pool_stats = Vec::with_capacity(self.material_instances.pools.len());
-        for (hash, value) in &self.material_instances.pools {
+        let mut material_instance_pool_stats = Vec::with_capacity(self.registered_descriptor_sets.pools.len());
+        for (hash, value) in &self.registered_descriptor_sets.pools {
             material_instance_pool_stats.push(MaterialInstancePoolStats {
                 hash: *hash,
                 allocated_count: value.slab.allocated_count()
@@ -1555,7 +1700,7 @@ impl ResourceManager {
         for request in self.load_queues.shader_modules.take_load_requests() {
             println!("Create shader module {:?}", request.load_handle);
             let loaded_asset = self.load_shader_module(&request.asset);
-            Self::handle_load_result(request, loaded_asset, &mut self.loaded_assets.shader_modules);
+            Self::handle_load_result(request.load_op, loaded_asset, &mut self.loaded_assets.shader_modules);
         }
 
         Self::handle_commit_requests(&mut self.load_queues.shader_modules, &mut self.loaded_assets.shader_modules);
@@ -1566,7 +1711,7 @@ impl ResourceManager {
         for request in self.load_queues.graphics_pipelines2.take_load_requests() {
             println!("Create pipeline2 {:?}", request.load_handle);
             let loaded_asset = self.load_graphics_pipeline(&request.asset);
-            Self::handle_load_result(request, loaded_asset, &mut self.loaded_assets.graphics_pipelines2);
+            Self::handle_load_result(request.load_op, loaded_asset, &mut self.loaded_assets.graphics_pipelines2);
         }
 
         Self::handle_commit_requests(&mut self.load_queues.graphics_pipelines2, &mut self.loaded_assets.graphics_pipelines2);
@@ -1577,7 +1722,7 @@ impl ResourceManager {
         for request in self.load_queues.materials.take_load_requests() {
             println!("Create material {:?}", request.load_handle);
             let loaded_asset = self.load_material(&request.asset);
-            Self::handle_load_result(request, loaded_asset, &mut self.loaded_assets.materials);
+            Self::handle_load_result(request.load_op, loaded_asset, &mut self.loaded_assets.materials);
         }
 
         Self::handle_commit_requests(&mut self.load_queues.materials, &mut self.loaded_assets.materials);
@@ -1588,7 +1733,7 @@ impl ResourceManager {
         for request in self.load_queues.material_instances.take_load_requests() {
             println!("Create material instance {:?}", request.load_handle);
             let loaded_asset = self.load_material_instance(&request.asset);
-            Self::handle_load_result(request, loaded_asset, &mut self.loaded_assets.material_instances);
+            Self::handle_load_result(request.load_op, loaded_asset, &mut self.loaded_assets.material_instances);
         }
 
         Self::handle_commit_requests(&mut self.load_queues.material_instances, &mut self.loaded_assets.material_instances);
@@ -1602,15 +1747,12 @@ impl ResourceManager {
             self.upload_manager.upload_image(request);
         }
 
-        for result in self.upload_manager.image_upload_result_rx.try_iter() {
+        let results : Vec<_> = self.upload_manager.image_upload_result_rx.try_iter().collect();
+        for result in results {
             match result {
                 ImageUploadOpResult::UploadComplete(load_op, image) => {
-                    let image = self.resources.insert_image(load_op.load_handle(), image);
-                    self.loaded_assets.images.set_uncommitted(load_op.load_handle(), LoadedImage {
-                        image
-                    });
-                    //println!("Creating image {:?}", load_op.load);
-                    load_op.complete();
+                    let loaded_asset = self.finish_load_image(load_op.load_handle(), image);
+                    Self::handle_load_result(load_op, loaded_asset, &mut self.loaded_assets.images);
                 },
                 ImageUploadOpResult::UploadError(load_handle) => {
                     // Don't need to do anything - the
@@ -1625,18 +1767,18 @@ impl ResourceManager {
         Self::handle_free_requests(&mut self.load_queues.images, &mut self.loaded_assets.images);
     }
 
-    fn handle_load_result<AssetT, LoadedAssetT>(
-        request: LoadRequest<AssetT>,
+    fn handle_load_result<LoadedAssetT>(
+        load_op: AssetLoadOp,
         loaded_asset: VkResult<LoadedAssetT>,
         asset_lookup: &mut AssetLookup<LoadedAssetT>
     ) {
         match loaded_asset {
             Ok(loaded_asset) => {
-                asset_lookup.set_uncommitted(request.load_handle, loaded_asset);
-                request.load_op.complete()
+                asset_lookup.set_uncommitted(load_op.load_handle(), loaded_asset);
+                load_op.complete()
             }
             Err(err) => {
-                request.load_op.error(err);
+                load_op.error(err);
             }
         }
     }
@@ -1657,6 +1799,45 @@ impl ResourceManager {
         for request in load_queues.take_commit_requests() {
             asset_lookup.commit(request.load_handle);
         }
+    }
+
+    fn finish_load_image(
+        &mut self,
+        image_load_handle: LoadHandle,
+        image: ManuallyDrop<VkImage>,
+    ) -> VkResult<LoadedImage> {
+        let image = self.resources.insert_image(image_load_handle, image);
+
+        let image_view_meta = dsc::ImageViewMeta {
+            view_type: dsc::ImageViewType::Type2D,
+            format: dsc::AttachmentFormat::MatchSwapchain,
+            subresource_range: dsc::ImageSubresourceRange {
+                aspect_mask: dsc::ImageAspectFlags::Color,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1
+            },
+            components: dsc::ComponentMapping {
+                r: dsc::ComponentSwizzle::Identity,
+                g: dsc::ComponentSwizzle::Identity,
+                b: dsc::ComponentSwizzle::Identity,
+                a: dsc::ComponentSwizzle::Identity,
+            }
+        };
+
+        let mut image_views = Vec::with_capacity(self.swapchain_surfaces.unique_swapchain_infos.len());
+        for swapchain_info in &self.swapchain_surfaces.unique_swapchain_infos {
+            let image_view = self.resources.get_or_create_image_view(image_load_handle, &image_view_meta, swapchain_info)?;
+            image_views.push(image_view);
+        }
+
+        Ok(LoadedImage {
+            image_view_meta,
+            image_load_handle,
+            image,
+            image_views
+        })
     }
 
     fn load_shader_module(
@@ -1690,11 +1871,13 @@ impl ResourceManager {
             let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
             let pipeline_create_data = PipelineCreateData::new(self, pipeline_asset, pass)?;
 
+            // Will contain the vulkan resources being created per swapchain
             let mut render_passes =
                 Vec::with_capacity(swapchain_surface_infos.len());
             let mut pipelines =
                 Vec::with_capacity(swapchain_surface_infos.len());
 
+            // Create the pipeline objects
             for swapchain_surface_info in swapchain_surface_infos
             {
                 let (renderpass, pipeline) = self.resources.get_or_create_graphics_pipeline(
@@ -1705,6 +1888,19 @@ impl ResourceManager {
                 pipelines.push(pipeline);
             }
 
+            // Create a lookup of the slot names
+            let mut pass_slot_name_lookup : FnvHashMap<String, Vec<SlotLocation>> = Default::default();
+            for (layout_index, layout) in pass.shader_interface.descriptor_set_layouts.iter().enumerate() {
+                for (binding_index, binding) in layout.descriptor_set_layout_bindings.iter().enumerate() {
+                    pass_slot_name_lookup.entry(binding.slot_name.clone())
+                        .or_default()
+                        .push(SlotLocation {
+                            layout_index: layout_index as u32,
+                            binding_index: binding_index as u32,
+                        });
+                }
+            }
+
             passes.push(LoadedMaterialPass {
                 descriptor_set_layouts: pipeline_create_data.descriptor_set_layout_arcs.clone(),
                 pipeline_layout: pipeline_create_data.pipeline_layout.clone(),
@@ -1712,7 +1908,8 @@ impl ResourceManager {
                 render_passes,
                 pipelines,
                 pipeline_create_data,
-                shader_interface: pass.shader_interface.clone()
+                shader_interface: pass.shader_interface.clone(),
+                pass_slot_name_lookup
             })
         }
 
@@ -1745,33 +1942,107 @@ impl ResourceManager {
         &mut self,
         material_instance_asset: &MaterialInstanceAsset2,
     ) -> VkResult<LoadedMaterialInstance> {
+        // Find the material we will bind over, we need the metadata from it
         let material_asset = self.loaded_assets.materials.get_latest(material_instance_asset.material.load_handle()).unwrap();
 
+        //TODO: Validate the material instance's slot names exist somewhere in the material
+
+        // This will be references to descriptor sets. Indexed by pass, and then by set within the pass.
         let mut material_descriptor_sets = Vec::with_capacity(material_asset.passes.len());
         for pass in &material_asset.passes {
-            let descriptor_set_layouts = &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts;
+            // The metadata for the descriptor sets within this pass, one for each set within the pass
+            let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts;// &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts;
+
+            // This will contain the descriptor sets created for this pass, one for each set within the pass
             let mut pass_descriptor_sets = Vec::with_capacity(descriptor_set_layouts.len());
 
-            for descriptor_set in &pass.shader_interface.descriptor_set_layouts {
+            // This will contain the writers for the descriptor set. Their purpose is to store everything needed to create a vk::WriteDescriptorSet
+            // struct. We will need to keep these around for a few frames.
+            let mut pass_descriptor_set_writers = Vec::with_capacity(pass.shader_interface.descriptor_set_layouts.len());
+            for layout in &pass.shader_interface.descriptor_set_layouts {
+                // This will contain the writers for this set
+                let mut layout_descriptor_set_writers = Vec::with_capacity(layout.descriptor_set_layout_bindings.len());
 
-                // vk::DescriptorSetLayoutBindingBuilder
-                //
-                // let mut bindings = Vec::with_capacity(descriptor_set.descriptor_set_layout_bindings.len());
-                // for binding in descriptor_set.descriptor_set_layout_bindings {
-                //
-                //
-                //
-                //     let write = vk::WriteDescriptorSet::builder() {
-                //
-                //     }
-                // }
+                for (binding_index, binding) in layout.descriptor_set_layout_bindings.iter().enumerate() {
+                    //TODO: Populate the writer for this binding
+                    //TODO: Allocate a set from the pool
+                    // //pub dst_pool_index: u32, // a slab key?
+                    // //pub dst_set_index: u32,
+                    // pub dst_binding: u32,
+                    // pub dst_array_element: u32,
+                    // pub descriptor_type: vk::DescriptorType,
+                    // pub image_info: Option<Vec<DescriptorSetWriteImage>>,
+                    // pub buffer_info: Option<Vec<DescriptorSetWriteBuffer>>,
+                    layout_descriptor_set_writers.push(DescriptorSetWrite {
+                        // pool index
+                        // set index
+                        dst_binding: binding_index as u32,
+                        dst_array_element: 0,
+                        descriptor_type: binding.descriptor_type.into(),
+                        image_info: Default::default(),
+                        buffer_info: Default::default(),
+                    })
+                }
+
+                pass_descriptor_set_writers.push(layout_descriptor_set_writers);
+            }
+
+            for slot in &material_instance_asset.slots {
+                if let Some(slot_locations) = pass.pass_slot_name_lookup.get(&slot.slot_name) {
+                    for location in slot_locations {
+                        let mut writer = &mut pass_descriptor_set_writers[location.layout_index as usize][location.binding_index as usize];
+
+                        let mut bind_samplers = false;
+                        let mut bind_images = false;
+                        match writer.descriptor_type {
+                            DescriptorType::Sampler => {
+                                bind_samplers = true;
+                            },
+                            DescriptorType::CombinedImageSampler => {
+                                bind_samplers = true;
+                                bind_images = true;
+                            },
+                            DescriptorType::SampledImage => {
+                                bind_images = true;
+                            },
+                            _ => { unimplemented!() }
+                        }
+
+                        if bind_images {
+                            if let Some(image) = &slot.image {
+                                let loaded_image = self.loaded_assets.images.get_latest(image.load_handle()).unwrap();
+
+                                // let image_view = dsc::ImageViewMeta {
+                                //     view_type:
+                                // }
+                                //
+                                // let create_view_info = vk::ImageViewCreateInfo::builder()
+                                //     .image(*swapchain_image)
+                                //     .view_type(vk::ImageViewType::TYPE_2D)
+                                //     .format(swapchain_info.surface_format.format)
+                                //     .components(vk::ComponentMapping {
+                                //         r: vk::ComponentSwizzle::IDENTITY,
+                                //         g: vk::ComponentSwizzle::IDENTITY,
+                                //         b: vk::ComponentSwizzle::IDENTITY,
+                                //         a: vk::ComponentSwizzle::IDENTITY,
+                                //     })
+                                //     .subresource_range(vk::ImageSubresourceRange {
+                                //         aspect_mask: vk::ImageAspectFlags::COLOR,
+                                //         base_mip_level: 0,
+                                //         level_count: 1,
+                                //         base_array_layer: 0,
+                                //         layer_count: 1,
+                                //     });
 
 
-
-
-
-
-
+                                // pass_descriptor_set_writers[location.layout_index][location.binding_index].image_info.push(DescriptorSetWriteImage {
+                                //     image_view: loaded_image.image,
+                                //     sampler: None
+                                // })
+                            }
+                        }
+                    }
+                }
             }
 
 
@@ -1847,53 +2118,14 @@ impl ResourceManager {
 
 
 
-/*
-pub struct DescriptorImageInfo {
-    pub sampler: Sampler,
-    pub image_view: ImageView, //ResourceArc<vk::ImageView>
-    pub image_layout: ImageLayout, //dsc::ImageLayout
-}
 
-pub struct DescriptorBufferInfo {
-    pub buffer: Buffer, // I think will need one of these to go with each set?
-    pub offset: DeviceSize,
-    pub range: DeviceSize,
-}
 
-pub struct BufferViewCreateInfo {
-    pub s_type: StructureType,
-    pub p_next: *const c_void,
-    pub flags: BufferViewCreateFlags,
-    pub buffer: Buffer,
-    pub format: Format,
-    pub offset: DeviceSize,
-    pub range: DeviceSize,
-}
 
-pub struct WriteDescriptorSet {
-    pub s_type: StructureType,
-    pub p_next: *const c_void,
-    pub dst_set: DescriptorSet,
-    pub dst_binding: u32,
-    pub dst_array_element: u32,
-    pub descriptor_count: u32,
-    pub descriptor_type: DescriptorType,
-    pub p_image_info: *const DescriptorImageInfo,
-    pub p_buffer_info: *const DescriptorBufferInfo,
-    pub p_texel_buffer_view: *const BufferView,
-}
 
-struct DescriptorSetWrite {
-    //pub dst_set: DescriptorSet,
-    pub dst_binding: u32,
-    pub dst_array_element: u32,
-    pub descriptor_count: u32,
-    pub descriptor_type: dsc::DescriptorType,
-    pub p_image_info: *const DescriptorImageInfo,
-    pub p_buffer_info: *const DescriptorBufferInfo,
-    pub p_texel_buffer_view: *const BufferView,
-}
-*/
+
+//
+//
+//
 
 // struct PendingDescriptorSetWriteImage {
 //

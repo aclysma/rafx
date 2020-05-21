@@ -107,10 +107,10 @@ impl Default for ComponentSwizzle {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ComponentMapping {
-    r: ComponentSwizzle,
-    g: ComponentSwizzle,
-    b: ComponentSwizzle,
-    a: ComponentSwizzle,
+    pub r: ComponentSwizzle,
+    pub g: ComponentSwizzle,
+    pub b: ComponentSwizzle,
+    pub a: ComponentSwizzle,
 }
 
 impl Into<vk::ComponentMapping> for ComponentMapping {
@@ -323,9 +323,24 @@ pub struct ImageViewMeta {
     // Actual image excluded from meta
     //pub image: Image,
     pub view_type: ImageViewType,
-    pub format: Format,
+    pub format: AttachmentFormat,
     pub components: ComponentMapping,
     pub subresource_range: ImageSubresourceRange,
+}
+
+impl ImageViewMeta {
+    pub fn as_builder(
+        &self,
+        image: vk::Image,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> vk::ImageViewCreateInfoBuilder {
+        vk::ImageViewCreateInfo::builder()
+            .image(image)
+            .view_type(self.view_type.into())
+            .format(self.format.as_vk_format(swapchain_surface_info))
+            .components(self.components.clone().into())
+            .subresource_range(self.subresource_range.into())
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

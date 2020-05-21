@@ -116,27 +116,18 @@ pub struct MaterialAsset2 {
 
 
 
-
-
-
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ImageSlotValue {
-    slot_name: String,
-    image: Handle<ImageAsset>
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ScalarSlotValue {
-    slot_name: String,
-    value: f32
+pub struct MaterialInstanceSlot {
+    pub slot_name: String,
+    pub image: Option<Handle<ImageAsset>>,
+    pub scalar_value: Option<f32>
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b"]
 pub struct MaterialInstanceAsset2 {
     pub material: Handle<MaterialAsset2>,
-    pub image_slots: Vec<ImageSlotValue>,
+    pub slots: Vec<MaterialInstanceSlot>,
 }
 
 

@@ -268,15 +268,11 @@ pub fn create_graphics_pipeline(
 pub fn create_image_view(
     device: &ash::Device,
     image: vk::Image,
-    image_view_meta: dsc::ImageViewMeta
+    image_view_meta: &dsc::ImageViewMeta,
+    swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
 ) -> VkResult<vk::ImageView> {
     unsafe {
-        let create_info = vk::ImageViewCreateInfo::builder()
-            .image(image)
-            .view_type(image_view_meta.view_type.into())
-            .format(image_view_meta.format.into())
-            .components(image_view_meta.components.into())
-            .subresource_range(image_view_meta.subresource_range.into());
+        let create_info = image_view_meta.as_builder(image, swapchain_surface_info);
 
         device.create_image_view(
             &*create_info,
