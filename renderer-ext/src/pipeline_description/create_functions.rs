@@ -269,10 +269,9 @@ pub fn create_image_view(
     device: &ash::Device,
     image: vk::Image,
     image_view_meta: &dsc::ImageViewMeta,
-    swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
 ) -> VkResult<vk::ImageView> {
     unsafe {
-        let create_info = image_view_meta.as_builder(image, swapchain_surface_info);
+        let create_info = image_view_meta.as_builder(image);
 
         device.create_image_view(
             &*create_info,

@@ -323,7 +323,7 @@ pub struct ImageViewMeta {
     // Actual image excluded from meta
     //pub image: Image,
     pub view_type: ImageViewType,
-    pub format: AttachmentFormat,
+    pub format: Format,
     pub components: ComponentMapping,
     pub subresource_range: ImageSubresourceRange,
 }
@@ -332,12 +332,11 @@ impl ImageViewMeta {
     pub fn as_builder(
         &self,
         image: vk::Image,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> vk::ImageViewCreateInfoBuilder {
         vk::ImageViewCreateInfo::builder()
             .image(image)
             .view_type(self.view_type.into())
-            .format(self.format.as_vk_format(swapchain_surface_info))
+            .format(self.format.into())
             .components(self.components.clone().into())
             .subresource_range(self.subresource_range.into())
     }
@@ -356,6 +355,12 @@ pub enum DescriptorType {
     UniformBufferDynamic,
     StorageBufferDynamic,
     InputAttachment,
+}
+
+impl DescriptorType {
+    pub fn count() -> usize {
+        vk::DescriptorType::INPUT_ATTACHMENT.as_raw() as usize + 1
+    }
 }
 
 impl Into<vk::DescriptorType> for DescriptorType {

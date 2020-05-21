@@ -537,7 +537,6 @@ impl ResourceLookupSet {
         &mut self,
         image_load_handle: LoadHandle,
         image_view_meta: &dsc::ImageViewMeta,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<ResourceArc<vk::ImageView>> {
         let image_view_key = ImageViewKey {
             image_load_handle,
@@ -560,7 +559,6 @@ impl ResourceLookupSet {
                 &self.device_context.device(),
                 image.get_raw().image,
                 image_view_meta,
-                swapchain_surface_info
             )?;
             println!("Created image view\n{:#?}", resource);
 
@@ -624,12 +622,13 @@ struct LoadedMaterialInstance {
 }
 
 struct LoadedImage {
-    image_load_handle: LoadHandle,
-    image_view_meta: dsc::ImageViewMeta,
+    //image_load_handle: LoadHandle,
+    //image_view_meta: dsc::ImageViewMeta,
     image: ResourceArc<VkImageRaw>,
+    image_view: ResourceArc<vk::ImageView>,
 
     // One per swapchain
-    image_views: Vec<ResourceArc<vk::ImageView>>
+    //image_views: Vec<ResourceArc<vk::ImageView>>
 
 }
 
@@ -876,6 +875,7 @@ use crate::upload::{UploadQueue, PendingImageUpload, ImageUploadOpResult, Buffer
 use crate::image_utils::DecodedTexture;
 use image::load;
 use std::mem::ManuallyDrop;
+use serde::export::Formatter;
 
 pub struct GenericLoadHandler<AssetT>
 where
@@ -1276,6 +1276,14 @@ struct DescriptorSetArcInner {
     drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>
 }
 
+impl std::fmt::Debug for DescriptorSetArcInner {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DescriptorSetArcInner")
+            .field("slab_key", &self.slab_key)
+            .finish()
+    }
+}
+
 struct DescriptorSetArc {
     inner: Arc<DescriptorSetArcInner>
 }
@@ -1296,8 +1304,58 @@ impl DescriptorSetArc {
     }
 }
 
+impl std::fmt::Debug for DescriptorSetArc {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DescriptorSetArc")
+            .field("inner", &self.inner)
+            .finish()
+    }
+}
+
 struct PendingDescriptorSetWrite {
     writes: Vec<DescriptorSetWrite>
+}
+
+struct RegisteredDescriptorSetPoolChunk {
+    // One per frame
+    pools: Vec<vk::DescriptorPool>,
+
+    // write queue
+    writes: Vec<DescriptorSetWrite>,
+}
+
+impl RegisteredDescriptorSetPoolChunk {
+    fn new(device_context: &VkDeviceContext, allocator: &mut VkDescriptorPoolAllocator) -> VkResult<Self> {
+        let mut pools = Vec::with_capacity(RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT);
+        for i in 0..RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT {
+            pools.push(allocator.allocate_pool(device_context.device())?);
+        }
+
+        Ok(RegisteredDescriptorSetPoolChunk {
+            pools,
+            writes: Default::default()
+        })
+    }
+
+    pub fn destroy(&mut self, allocator: &mut VkDescriptorPoolAllocator) {
+        for pool in &mut self.pools {
+            allocator.retire_pool(*pool);
+        }
+        self.pools.clear();
+    }
+
+    fn write(&mut self, slab_key: RawSlabKey<RegisteredDescriptorSet>, mut writers: Vec<DescriptorSetWrite>) {
+        //TODO: Queue writes to occur for next N frames
+        self.writes.append(&mut writers);
+    }
+
+    fn remove(&mut self, slab_key: RawSlabKey<RegisteredDescriptorSet>) {
+        //TODO: Queue removes to occur for next N frames
+    }
+
+    fn update(&mut self, slab: &mut RawSlab<RegisteredDescriptorSet>) {
+        
+    }
 }
 
 struct RegisteredDescriptorSetPool {
@@ -1306,42 +1364,117 @@ struct RegisteredDescriptorSetPool {
     //descriptor_set_layout_def: dsc::DescriptorSetLayout,
     //descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>, //TODO: This needs to be the same one as is in ResourceLookup
 
+    descriptor_set_layout_def: dsc::DescriptorSetLayout,
     slab: RawSlab<RegisteredDescriptorSet>,
     pending_allocations: Vec<DescriptorSetWrite>,
     drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
     drop_rx: Receiver<RawSlabKey<RegisteredDescriptorSet>>,
+    //descriptor_pools: Vec<vk::DescriptorPool>,
+    descriptor_pool_allocator: VkDescriptorPoolAllocator,
 
+    chunks: Vec<RegisteredDescriptorSetPoolChunk>,
 }
 
 impl RegisteredDescriptorSetPool {
     const MAX_DESCRIPTORS_PER_POOL : u32 = 64;
+    const MAX_FRAMES_IN_FLIGHT : usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT;
 
-    pub fn new() -> Self {
-
+    pub fn new(device_context: &VkDeviceContext, descriptor_set_layout_def: &dsc::DescriptorSetLayout) -> Self {
+        //renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
 
+        //
+        // This is a little gross but it creates the pool sizes required for the
+        // DescriptorPoolCreateInfo passed into create_descriptor_pool. Do it here once instead of
+        // in the allocator callback
+        //
+        let mut descriptor_counts = vec![0; dsc::DescriptorType::count()];
+        for desc in &descriptor_set_layout_def.descriptor_set_layout_bindings {
+            let ty : vk::DescriptorType = desc.descriptor_type.into();
+            descriptor_counts[ty.as_raw() as usize] += Self::MAX_DESCRIPTORS_PER_POOL;
+        }
+
+        let mut pool_sizes = Vec::with_capacity(dsc::DescriptorType::count());
+        for (descriptor_type, count) in descriptor_counts.into_iter().enumerate() {
+            if count > 0 {
+                let pool_size = vk::DescriptorPoolSize::builder()
+                    .descriptor_count(count as u32)
+                    .ty(vk::DescriptorType::from_raw(descriptor_type as i32))
+                    .build();
+                pool_sizes.push(pool_size);
+            }
+        }
+
+
+        let descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
+            Self::MAX_FRAMES_IN_FLIGHT as u32,
+            Self::MAX_FRAMES_IN_FLIGHT as u32,
+            move |device| {
+                let pool_builder = vk::DescriptorPoolCreateInfo::builder()
+                    .max_sets(Self::MAX_DESCRIPTORS_PER_POOL)
+                    .pool_sizes(&pool_sizes);
+
+                unsafe {
+                    device.create_descriptor_pool(&*pool_builder, None)
+                }
+            }
+        );
+
         RegisteredDescriptorSetPool {
+            descriptor_set_layout_def: descriptor_set_layout_def.clone(),
             slab: RawSlab::with_capacity(Self::MAX_DESCRIPTORS_PER_POOL),
             pending_allocations: Default::default(),
             drop_tx,
-            drop_rx
+            drop_rx,
+            descriptor_pool_allocator,
+            chunks: Default::default()
         }
     }
 
-    pub fn insert(&mut self, material_instance: &MaterialInstanceAsset2) -> DescriptorSetArc {
+    pub fn insert(
+        &mut self,
+        device_context: &VkDeviceContext,
+        writers: Vec<DescriptorSetWrite>
+    ) -> VkResult<DescriptorSetArc> {
         let registered_set = RegisteredDescriptorSet {
 
         };
 
+        // Use the slab allocator to find an unused index, determine the chunk index from that
         let slab_key = self.slab.allocate(registered_set);
+        let chunk_index = (slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL) as usize;
 
-        DescriptorSetArc::new(slab_key, self.drop_tx.clone())
+        // Add more chunks if necessary
+        while chunk_index as usize >= self.chunks.len() {
+            self.chunks.push(RegisteredDescriptorSetPoolChunk::new(device_context, &mut self.descriptor_pool_allocator)?);
+        }
+
+        // Insert the write into the chunk, it will be applied when update() is next called on it
+        self.chunks[chunk_index].write(slab_key, writers);
+
+        // Return the ref-counted descriptor set
+        let descriptor_set = DescriptorSetArc::new(slab_key, self.drop_tx.clone());
+        Ok(descriptor_set)
     }
 
     pub fn update(&mut self) {
         for dropped in self.drop_rx.try_iter() {
-            self.slab.free(dropped);
+            let chunk_index = (dropped.index() / Self::MAX_DESCRIPTORS_PER_POOL) as usize;
+            self.chunks[chunk_index].remove(dropped);
         }
+
+        for chunk in &mut self.chunks {
+            chunk.update(&mut self.slab);
+        }
+    }
+
+    pub fn destroy(&mut self, device_context: &VkDeviceContext) {
+        for chunk in &mut self.chunks {
+            chunk.destroy(&mut self.descriptor_pool_allocator);
+        }
+
+        self.descriptor_pool_allocator.destroy(device_context.device());
+        self.chunks.clear();
     }
 }
 
@@ -1356,20 +1489,29 @@ struct RegisteredDescriptorSetPoolManager {
 impl RegisteredDescriptorSetPoolManager {
     pub fn insert(
         &mut self,
+        device_context: &VkDeviceContext,
         descriptor_set_layout: &dsc::DescriptorSetLayout,
-        material_instance: &MaterialInstanceAsset2
-    ) -> DescriptorSetArc {
+        writers: Vec<DescriptorSetWrite>
+    ) -> VkResult<DescriptorSetArc> {
         let hash = ResourceHash::from_key(descriptor_set_layout);
         let pool = self.pools.entry(hash)
-            .or_insert_with(|| RegisteredDescriptorSetPool::new());
+            .or_insert_with(|| RegisteredDescriptorSetPool::new(device_context, descriptor_set_layout));
 
-        pool.insert(material_instance)
+        pool.insert(device_context, writers)
     }
 
     pub fn update(&mut self) {
         for pool in self.pools.values_mut() {
             pool.update();
         }
+    }
+
+    pub fn destroy(&mut self, device_context: &VkDeviceContext) {
+        for (hash, pool) in &mut self.pools {
+            pool.destroy(device_context);
+        }
+
+        self.pools.clear();
     }
 }
 
@@ -1553,28 +1695,6 @@ impl ResourceManager {
                     }
                 }
             }
-
-            for (load_handle, loaded_asset) in &mut self.loaded_assets.images.loaded_assets {
-                if let Some(committed) = &mut loaded_asset.committed {
-                    let image_view = self.resources.get_or_create_image_view(
-                        committed.image_load_handle,
-                        &committed.image_view_meta,
-                        swapchain_surface_info,
-                    )?;
-
-                    committed.image_views.push(image_view);
-                }
-
-                if let Some(uncommitted) = &mut loaded_asset.uncommitted {
-                    let image_view = self.resources.get_or_create_image_view(
-                        uncommitted.image_load_handle,
-                        &uncommitted.image_view_meta,
-                        swapchain_surface_info,
-                    )?;
-
-                    uncommitted.image_views.push(image_view);
-                }
-            }
         }
 
         Ok(())
@@ -1602,16 +1722,6 @@ impl ResourceManager {
                         pass.render_passes.swap_remove(remove_index);
                         pass.pipelines.swap_remove(remove_index);
                     }
-                }
-            }
-
-            for (_, loaded_asset) in &mut self.loaded_assets.images.loaded_assets {
-                if let Some(committed) = &mut loaded_asset.committed {
-                    committed.image_views.swap_remove(remove_index);
-                }
-
-                if let Some(uncommitted) = &mut loaded_asset.uncommitted {
-                    uncommitted.image_views.swap_remove(remove_index);
                 }
             }
         } else {
@@ -1664,33 +1774,33 @@ impl ResourceManager {
         }
 
         #[derive(Debug)]
-        struct MaterialInstanceManagerStats {
+        struct RegisteredDescriptorSetStats {
             pools: Vec<MaterialInstancePoolStats>
         }
 
-        let mut material_instance_pool_stats = Vec::with_capacity(self.registered_descriptor_sets.pools.len());
+        let mut registered_descriptor_sets_stats = Vec::with_capacity(self.registered_descriptor_sets.pools.len());
         for (hash, value) in &self.registered_descriptor_sets.pools {
-            material_instance_pool_stats.push(MaterialInstancePoolStats {
+            registered_descriptor_sets_stats.push(MaterialInstancePoolStats {
                 hash: *hash,
                 allocated_count: value.slab.allocated_count()
             });
         }
 
-        let material_instance_stats = MaterialInstanceManagerStats {
-            pools: material_instance_pool_stats
+        let registered_descriptor_sets_stats = RegisteredDescriptorSetStats {
+            pools: registered_descriptor_sets_stats
         };
 
         #[derive(Debug)]
         struct ResourceManagerMetrics {
             resource_metrics: ResourceMetrics,
             loaded_asset_counts: LoadedAssetCounts,
-            material_instance_stats: MaterialInstanceManagerStats
+            registered_descriptor_sets_stats: RegisteredDescriptorSetStats
         }
 
         let metrics = ResourceManagerMetrics {
             resource_metrics,
             loaded_asset_counts,
-            material_instance_stats
+            registered_descriptor_sets_stats
         };
 
         println!("Resource Manager Metrics:\n{:#?}", metrics);
@@ -1755,10 +1865,10 @@ impl ResourceManager {
                     Self::handle_load_result(load_op, loaded_asset, &mut self.loaded_assets.images);
                 },
                 ImageUploadOpResult::UploadError(load_handle) => {
-                    // Don't need to do anything - the
+                    // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 },
                 ImageUploadOpResult::UploadDrop(load_handle) => {
-                    // Don't need to do anything
+                    // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 }
             }
         }
@@ -1810,7 +1920,7 @@ impl ResourceManager {
 
         let image_view_meta = dsc::ImageViewMeta {
             view_type: dsc::ImageViewType::Type2D,
-            format: dsc::AttachmentFormat::MatchSwapchain,
+            format: dsc::Format::R8G8B8A8_UNORM,
             subresource_range: dsc::ImageSubresourceRange {
                 aspect_mask: dsc::ImageAspectFlags::Color,
                 base_mip_level: 0,
@@ -1826,17 +1936,11 @@ impl ResourceManager {
             }
         };
 
-        let mut image_views = Vec::with_capacity(self.swapchain_surfaces.unique_swapchain_infos.len());
-        for swapchain_info in &self.swapchain_surfaces.unique_swapchain_infos {
-            let image_view = self.resources.get_or_create_image_view(image_load_handle, &image_view_meta, swapchain_info)?;
-            image_views.push(image_view);
-        }
+        let image_view = self.resources.get_or_create_image_view(image_load_handle, &image_view_meta)?;
 
         Ok(LoadedImage {
-            image_view_meta,
-            image_load_handle,
             image,
-            image_views
+            image_view
         })
     }
 
@@ -1959,6 +2063,10 @@ impl ResourceManager {
             // This will contain the writers for the descriptor set. Their purpose is to store everything needed to create a vk::WriteDescriptorSet
             // struct. We will need to keep these around for a few frames.
             let mut pass_descriptor_set_writers = Vec::with_capacity(pass.shader_interface.descriptor_set_layouts.len());
+
+            //
+            // Build a "default" descriptor writer for every binding
+            //
             for layout in &pass.shader_interface.descriptor_set_layouts {
                 // This will contain the writers for this set
                 let mut layout_descriptor_set_writers = Vec::with_capacity(layout.descriptor_set_layout_bindings.len());
@@ -1987,6 +2095,9 @@ impl ResourceManager {
                 pass_descriptor_set_writers.push(layout_descriptor_set_writers);
             }
 
+            //
+            // Now modify the descriptor set writers to actually point at the things specified by the material
+            //
             for slot in &material_instance_asset.slots {
                 if let Some(slot_locations) = pass.pass_slot_name_lookup.get(&slot.slot_name) {
                     for location in slot_locations {
@@ -2008,110 +2119,44 @@ impl ResourceManager {
                             _ => { unimplemented!() }
                         }
 
+                        let mut write_image = DescriptorSetWriteImage {
+                            image_view: None,
+                            sampler: None
+                        };
+
                         if bind_images {
                             if let Some(image) = &slot.image {
                                 let loaded_image = self.loaded_assets.images.get_latest(image.load_handle()).unwrap();
-
-                                // let image_view = dsc::ImageViewMeta {
-                                //     view_type:
-                                // }
-                                //
-                                // let create_view_info = vk::ImageViewCreateInfo::builder()
-                                //     .image(*swapchain_image)
-                                //     .view_type(vk::ImageViewType::TYPE_2D)
-                                //     .format(swapchain_info.surface_format.format)
-                                //     .components(vk::ComponentMapping {
-                                //         r: vk::ComponentSwizzle::IDENTITY,
-                                //         g: vk::ComponentSwizzle::IDENTITY,
-                                //         b: vk::ComponentSwizzle::IDENTITY,
-                                //         a: vk::ComponentSwizzle::IDENTITY,
-                                //     })
-                                //     .subresource_range(vk::ImageSubresourceRange {
-                                //         aspect_mask: vk::ImageAspectFlags::COLOR,
-                                //         base_mip_level: 0,
-                                //         level_count: 1,
-                                //         base_array_layer: 0,
-                                //         layer_count: 1,
-                                //     });
-
-
-                                // pass_descriptor_set_writers[location.layout_index][location.binding_index].image_info.push(DescriptorSetWriteImage {
-                                //     image_view: loaded_image.image,
-                                //     sampler: None
-                                // })
+                                write_image.image_view = Some(loaded_image.image_view.clone());
                             }
                         }
+
+                        writer.image_info = vec![write_image];
                     }
                 }
             }
 
+            //
+            // Register the writers into the correct descriptor set pools
+            //
+            for (writers, layout) in pass_descriptor_set_writers.into_iter().zip(&pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts) {
+                let descriptor_set = self.registered_descriptor_sets.insert(
+                    &self.device_context,
+                    layout,
+                    writers,
+                )?;
 
-
-            // for descriptor_set_layout in descriptor_set_layouts {
-            //
-            //
-            //
-            //
-            //     for x in descriptor_set_layout.descriptor_set_layout_bindings {
-            //         x.
-            //     }
-            //
-            //
-            //
-            //     for x in material_instance_asset.image_slots {
-            //
-            //     }
-            //
-            //
-            //
-            //     let descriptor_set = self.material_instances.insert(descriptor_set_layout, material_instance_asset);
-            //     pass_descriptor_sets.push(descriptor_set);
-            //
-            //     // Find the descriptor set pool
-            //     //let hash = ResourceHash::from_key(descriptor_set_layout);
-            //     //self.des
-            // }
+                pass_descriptor_sets.push(descriptor_set);
+            }
 
             material_descriptor_sets.push(pass_descriptor_sets);
         }
 
+        println!("MATERIAL SET\n{:#?}", material_descriptor_sets);
+
         Ok(LoadedMaterialInstance {
             material_descriptor_sets
         })
-
-        // let loaded_pipeline_asset = self.loaded_assets.graphics_pipelines2.get_latest(pass.pipeline.load_handle()).unwrap();
-        // self
-        //
-        //
-        // let loaded_pipeline_asset = self.loaded_assets.graphics_pipelines2.get_latest(pass.pipeline.load_handle()).unwrap();
-        // let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
-        //
-        // let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
-        // let pipeline_create_data = PipelineCreateData::new(self, pipeline_asset, pass)?;
-        //
-        // let mut render_passes =
-        //     Vec::with_capacity(swapchain_surface_infos.len());
-        // let mut pipelines =
-        //     Vec::with_capacity(swapchain_surface_infos.len());
-        //
-        // for swapchain_surface_info in swapchain_surface_infos
-        // {
-        //     let (renderpass, pipeline) = self.resources.get_or_create_graphics_pipeline(
-        //         &pipeline_create_data,
-        //         &swapchain_surface_info,
-        //     )?;
-        //     render_passes.push(renderpass);
-        //     pipelines.push(pipeline);
-        // }
-        //
-        // passes.push(LoadedMaterialPass {
-        //     descriptor_set_layouts: pipeline_create_data.descriptor_set_layout_arcs.clone(),
-        //     pipeline_layout: pipeline_create_data.pipeline_layout.clone(),
-        //     shader_modules: pipeline_create_data.shader_module_arcs.clone(),
-        //     render_passes,
-        //     pipelines,
-        //     pipeline_create_data
-        // })
     }
 }
 
@@ -2150,6 +2195,9 @@ impl Drop for ResourceManager {
 
             // Wipe out any loaded assets. This will potentially drop ref counts on resources
             self.loaded_assets.destroy();
+
+            // Drop all descriptors
+            self.registered_descriptor_sets.destroy(&self.device_context);
 
             // Now drop all resources with a zero ref count and warn for any resources that remain
             self.resources.destroy();
