@@ -316,12 +316,16 @@ impl VkSurfaceEventListener for GameRenderer {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
+        let pass_info = self.resource_manager.get_current_frame_pass_info(&self.sprite_material_instance, 0);
+        let descriptor_set_per_texture = vec![pass_info.descriptor_sets[1]];
+
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");
             sprite_renderpass.update(
                 present_index,
                 1.0,
                 //&self.sprite_resource_manager,
+                &descriptor_set_per_texture,
                 &self.time_state,
             )?;
             command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());

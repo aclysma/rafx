@@ -39,6 +39,18 @@ where
     resource_hash: ResourceHash,
 }
 
+impl<ResourceT> std::fmt::Debug for ResourceWithHash<ResourceT>
+    where
+        ResourceT: std::fmt::Debug + Copy
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ResourceWithHash")
+            .field("resource", &self.resource)
+            .field("resource_hash", &self.resource_hash)
+            .finish()
+    }
+}
+
 struct ResourceArcInner<ResourceT>
 where
     ResourceT: Copy
@@ -53,6 +65,17 @@ where
 {
     fn drop(&mut self) {
         self.drop_tx.send(self.resource.clone());
+    }
+}
+
+impl<ResourceT> std::fmt::Debug for ResourceArcInner<ResourceT>
+    where
+        ResourceT: std::fmt::Debug + Copy
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ResourceArcInner")
+            .field("resource", &self.resource)
+            .finish()
     }
 }
 
@@ -74,6 +97,17 @@ where
         } else {
             None
         }
+    }
+}
+
+impl<ResourceT> std::fmt::Debug for WeakResourceArc<ResourceT>
+    where
+        ResourceT: std::fmt::Debug + Copy
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WeakResourceArc")
+            .field("inner", &self.inner)
+            .finish()
     }
 }
 
@@ -112,6 +146,17 @@ where
     pub fn downgrade(&self) -> WeakResourceArc<ResourceT> {
         let inner = Arc::downgrade(&self.inner);
         WeakResourceArc { inner }
+    }
+}
+
+impl<ResourceT> std::fmt::Debug for ResourceArc<ResourceT>
+where
+    ResourceT: std::fmt::Debug + Copy
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ResourceArc")
+            .field("inner", &self.inner)
+            .finish()
     }
 }
 
@@ -876,6 +921,7 @@ use crate::image_utils::DecodedTexture;
 use image::load;
 use std::mem::ManuallyDrop;
 use serde::export::Formatter;
+use std::num::Wrapping;
 
 pub struct GenericLoadHandler<AssetT>
 where
@@ -1181,17 +1227,58 @@ impl MaterialInstancePool {
 //
 // These represent a write update that can be applied to a descriptor set in a pool
 //
+#[derive(Debug)]
 struct DescriptorSetWriteImage {
     pub sampler: Option<ResourceArc<vk::Sampler>>,
     pub image_view: Option<ResourceArc<vk::ImageView>>,
     // For now going to assume layout is always ShaderReadOnlyOptimal
+    //pub image_info: vk::DescriptorImageInfo,
 }
 
+// impl DescriptorSetWriteImage {
+//     pub fn new() -> Self {
+//         let mut return_value = DescriptorSetWriteImage {
+//             sampler: None,
+//             image_view: None,
+//             //image_info: Default::default()
+//         };
+//
+//         //return_value.image_info.image_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
+//         return_value
+//     }
+//
+//     pub fn set_sampler(&mut self, sampler: ResourceArc<vk::Sampler>) {
+//         self.image_info.sampler = sampler.get_raw();
+//         self.sampler = Some(sampler);
+//     }
+//
+//     pub fn set_image_view(&mut self, image_view: ResourceArc<vk::ImageView>) {
+//         self.image_info.image_view = image_view.get_raw();
+//         self.image_view = Some(image_view);
+//     }
+// }
+
+#[derive(Debug)]
 struct DescriptorSetWriteBuffer {
     pub buffer: ResourceArc<vk::Buffer>,
     // For now going to assume offset 0 and range of everything
+    //pub buffer_info: vk::DescriptorBufferInfo,
 }
 
+// impl DescriptorSetWriteBuffer {
+//     pub fn new(buffer: ResourceArc<vk::Buffer>) -> Self {
+//         unimplemented!();
+//         // let mut return_value = DescriptorSetWriteImage {
+//         //     buffer: None,
+//         //     buffer_info: Default::default()
+//         // };
+//         //
+//         // return_value.image_info.image_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
+//         // return_value
+//     }
+// }
+
+#[derive(Debug)]
 struct DescriptorSetWrite {
     //pub dst_set: u32, // a pool index?
     //pub dst_layout: u32, // a hash?
@@ -1207,65 +1294,82 @@ struct DescriptorSetWrite {
     //pub p_texel_buffer_view: *const BufferView,
 }
 
-impl DescriptorSetWrite {
-    fn write_sets(desciptor_set: vk::DescriptorSet, writes: &[DescriptorSetWrite]) {
-        let mut vk_image_infos = Vec::with_capacity(writes.len());
-        let mut vk_buffer_infos = Vec::with_capacity(writes.len());
+struct DescriptorWriteBuilder {
+    image_infos: Vec<vk::DescriptorImageInfo>,
+    buffer_infos: Vec<vk::DescriptorBufferInfo>,
 
-        for write in writes {
-            let mut builder = vk::WriteDescriptorSet::builder()
-                .dst_set(desciptor_set)
-                .dst_binding(write.dst_binding)
-                .dst_array_element(write.dst_array_element)
-                .descriptor_type(write.descriptor_type.into());
-
-            if !write.image_info.is_empty() {
-                let mut image_infos = &write.image_info;
-                for image_info in image_infos {
-                    let mut image_info_builder = vk::DescriptorImageInfo::builder();
-                    image_info_builder = image_info_builder.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-                    if let Some(image_view) = &image_info.image_view {
-                        image_info_builder = image_info_builder.image_view(image_view.get_raw());
-                    }
-                    if let Some(sampler) = &image_info.sampler {
-                        image_info_builder = image_info_builder.sampler(sampler.get_raw());
-                    }
-
-                    vk_image_infos.push(image_info_builder.build());
-                }
-
-                builder = builder.image_info(&vk_image_infos);
-            }
-
-            if !write.buffer_info.is_empty() {
-            //if let Some(buffer_infos) = &write.buffer_info {
-                let mut buffer_infos = &write.buffer_info;
-                for buffer_info in buffer_infos {
-                    // Need to support buffers and knowing the size of them. Probably need to use
-                    // ResourceArc<BufferRaw>
-                    unimplemented!();
-                    // let mut buffer_info_builder = vk::DescriptorBufferInfo::builder()
-                    //     .buffer(buffer_info.buffer)
-                    //     .offset(0)
-                    //     .range()
-                }
-
-                builder = builder.buffer_info(&vk_buffer_infos);
-            }
-
-            //builder = builder.texel_buffer_view();
-        }
-
-
-
-
-    }
 }
+
+// impl DescriptorSetWrite {
+//     fn write_sets(
+//         desciptor_set: vk::DescriptorSet,
+//         writes: &[&DescriptorSetWrite]
+//     ) {
+//         // This function is a bit tricky unfortunately. We need to build a list of vk::WriteDescriptorSet
+//         // but this struct has a pointer to data in image_infos/buffer_infos. To deal with this, we
+//         // need to push the temporary lists of these infos into these lists. This way they don't
+//         // drop out of scope while we are using them. Ash does do some lifetime tracking, but once
+//         // you call build() it completely trusts that any pointers it holds will stay valid. So
+//         // while these lists are mutable to allow pushing data in, the Vecs inside must not be modified.
+//         let mut vk_image_infos = Vec::with_capacity(writes.len());
+//         //let mut vk_buffer_infos = Vec::with_capacity(writes.len());
+//
+//         for write in writes {
+//             let mut builder = vk::WriteDescriptorSet::builder()
+//                 .dst_set(desciptor_set)
+//                 .dst_binding(write.dst_binding)
+//                 .dst_array_element(write.dst_array_element)
+//                 .descriptor_type(write.descriptor_type.into());
+//
+//             if !write.image_info.is_empty() {
+//                 let mut image_infos = &write.image_info;
+//                 for image_info in image_infos {
+//                     let mut image_info_builder = vk::DescriptorImageInfo::builder();
+//                     image_info_builder = image_info_builder.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+//                     if let Some(image_view) = &image_info.image_view {
+//                         image_info_builder = image_info_builder.image_view(image_view.get_raw());
+//                     }
+//                     if let Some(sampler) = &image_info.sampler {
+//                         image_info_builder = image_info_builder.sampler(sampler.get_raw());
+//                     }
+//
+//                     vk_image_infos.push(image_info_builder.build());
+//                 }
+//
+//                 builder = builder.image_info(&vk_image_infos);
+//             }
+//
+//             if !write.buffer_info.is_empty() {
+//             //if let Some(buffer_infos) = &write.buffer_info {
+//                 let mut buffer_infos = &write.buffer_info;
+//                 for buffer_info in buffer_infos {
+//                     // Need to support buffers and knowing the size of them. Probably need to use
+//                     // ResourceArc<BufferRaw>
+//                     unimplemented!();
+//                     // let mut buffer_info_builder = vk::DescriptorBufferInfo::builder()
+//                     //     .buffer(buffer_info.buffer)
+//                     //     .offset(0)
+//                     //     .range()
+//                 }
+//
+//                 builder = builder.buffer_info(&vk_buffer_infos);
+//             }
+//
+//             //builder = builder.texel_buffer_view();
+//         }
+//
+//
+//
+//
+//     }
+// }
 
 struct RegisteredDescriptorSet {
     // Anything we'd want to store per descriptor set can go here, but don't have anything yet
 }
 
+
+type FrameInFlightIndex = u32;
 
 //
 // Reference counting mechanism to keep descriptor sets allocated
@@ -1273,6 +1377,7 @@ struct RegisteredDescriptorSet {
 struct DescriptorSetArcInner {
     // We can't cache the vk::DescriptorSet here because the pools will be cycled
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
+    descriptor_sets_per_frame: Vec<vk::DescriptorSet>,
     drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>
 }
 
@@ -1291,11 +1396,13 @@ struct DescriptorSetArc {
 impl DescriptorSetArc {
     fn new(
         slab_key: RawSlabKey<RegisteredDescriptorSet>,
+        descriptor_sets_per_frame: Vec<vk::DescriptorSet>,
         drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>
     ) -> Self {
         let inner = DescriptorSetArcInner {
             slab_key,
-            drop_tx
+            descriptor_sets_per_frame,
+            drop_tx,
         };
 
         DescriptorSetArc {
@@ -1312,65 +1419,199 @@ impl std::fmt::Debug for DescriptorSetArc {
     }
 }
 
+#[derive(Debug)]
 struct PendingDescriptorSetWrite {
-    writes: Vec<DescriptorSetWrite>
+    slab_key: RawSlabKey<RegisteredDescriptorSet>,
+    writes: Vec<DescriptorSetWrite>,
+    live_until_frame: FrameInFlightIndex,
 }
+
+// struct PendingDescriptorSetRemove {
+//     writes: Vec<DescriptorSetWrite>,
+//     live_until_frame: Wrapping<u32>,
+// }
 
 struct RegisteredDescriptorSetPoolChunk {
     // One per frame
-    pools: Vec<vk::DescriptorPool>,
+    //pools: Vec<vk::DescriptorPool>,
+    pool: vk::DescriptorPool,
+    descriptor_sets: Vec<Vec<vk::DescriptorSet>>,
 
-    // write queue
-    writes: Vec<DescriptorSetWrite>,
+    // These are stored for RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT frames so that they
+    // are applied to each frame's pool
+    pending_writes: VecDeque<PendingDescriptorSetWrite>,
+
+    //EDIT: This is probably unnecessary
+    // // These are stored for RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT so that the index
+    // // is not free until all frame flush
+    // pending_removes: Vec<PendingDescriptorSetWrite>,
 }
 
 impl RegisteredDescriptorSetPoolChunk {
-    fn new(device_context: &VkDeviceContext, allocator: &mut VkDescriptorPoolAllocator) -> VkResult<Self> {
-        let mut pools = Vec::with_capacity(RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT);
-        for i in 0..RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT {
-            pools.push(allocator.allocate_pool(device_context.device())?);
+    fn new(
+        device_context: &VkDeviceContext,
+        descriptor_set_layout: vk::DescriptorSetLayout,
+        allocator: &mut VkDescriptorPoolAllocator
+    ) -> VkResult<Self> {
+
+        let pool = allocator.allocate_pool(device_context.device())?;
+
+        let descriptor_set_layouts = [descriptor_set_layout; RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1];
+
+        let mut descriptor_sets = Vec::with_capacity(RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1);
+        for i in 0..RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1 {
+            let set_create_info = vk::DescriptorSetAllocateInfo::builder()
+                .descriptor_pool(pool)
+                .set_layouts(&descriptor_set_layouts);
+
+
+            let descriptor_sets_for_frame = unsafe {
+                device_context.device().allocate_descriptor_sets(&*set_create_info)?
+            };
+            descriptor_sets.push(descriptor_sets_for_frame);
         }
 
         Ok(RegisteredDescriptorSetPoolChunk {
-            pools,
-            writes: Default::default()
+            pool,
+            descriptor_sets,
+            pending_writes: Default::default()
         })
     }
 
     pub fn destroy(&mut self, allocator: &mut VkDescriptorPoolAllocator) {
-        for pool in &mut self.pools {
-            allocator.retire_pool(*pool);
-        }
-        self.pools.clear();
+        // for pool in &mut self.pools {
+        //     allocator.retire_pool(*pool);
+        // }
+        allocator.retire_pool(self.pool);
+        //self.pools.clear();
     }
 
-    fn write(&mut self, slab_key: RawSlabKey<RegisteredDescriptorSet>, mut writers: Vec<DescriptorSetWrite>) {
+    fn write(
+        &mut self,
+        slab_key: RawSlabKey<RegisteredDescriptorSet>,
+        mut writes: Vec<DescriptorSetWrite>,
+        frame_in_flight_index: FrameInFlightIndex,
+    ) -> Vec<vk::DescriptorSet> {
+        log::debug!("Schedule a write for descriptor set {:?}\n{:#?}", slab_key, writes);
+        // Use frame_in_flight_index for the live_until_frame because every update, we immediately
+        // increment the frame and *then* do updates. So by setting it to the pre-next-update
+        // frame_in_flight_index, this will make the write stick around for MAX_FRAMES_IN_FLIGHT frames
+        let pending_write = PendingDescriptorSetWrite {
+            slab_key,
+            writes: writes,
+            live_until_frame: frame_in_flight_index,
+        };
+
         //TODO: Queue writes to occur for next N frames
-        self.writes.append(&mut writers);
+        self.pending_writes.push_back(pending_write);
+
+        let descriptor_index = slab_key.index() % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
+        self.descriptor_sets.iter().map(|x| x[descriptor_index as usize]).collect()
     }
 
-    fn remove(&mut self, slab_key: RawSlabKey<RegisteredDescriptorSet>) {
-        //TODO: Queue removes to occur for next N frames
-    }
+    // fn remove(&mut self, slab_key: RawSlabKey<RegisteredDescriptorSet>) {
+    //     let pending_write = PendingDescriptorSetRemove {
+    //         slab_key,
+    //         live_until_frame: frame_in_flight_index + RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1,
+    //     };
+    //
+    //     self.writes.append(&mut writes);
+    // }
 
-    fn update(&mut self, slab: &mut RawSlab<RegisteredDescriptorSet>) {
-        
+    fn update(
+        &mut self,
+        device_context: &VkDeviceContext,
+        //slab: &mut RawSlab<RegisteredDescriptorSet>,
+        frame_in_flight_index: FrameInFlightIndex
+    ) {
+        // This function is a bit tricky unfortunately. We need to build a list of vk::WriteDescriptorSet
+        // but this struct has a pointer to data in image_infos/buffer_infos. To deal with this, we
+        // need to push the temporary lists of these infos into these lists. This way they don't
+        // drop out of scope while we are using them. Ash does do some lifetime tracking, but once
+        // you call build() it completely trusts that any pointers it holds will stay valid. So
+        // while these lists are mutable to allow pushing data in, the Vecs inside must not be modified.
+        let mut vk_image_infos = vec![];
+        //let mut vk_buffer_infos = vec![];
+
+        let mut write_builders = vec![];
+        for pending_write in &self.pending_writes {
+            log::debug!("Process descriptor set pending_write for {:?} frame {}\n{:#?}", pending_write.slab_key, frame_in_flight_index, pending_write);
+            for write in &pending_write.writes {
+                //writes.push(write);
+
+                let descriptor_set_index = pending_write.slab_key.index() % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
+                let descriptor_set = self.descriptor_sets[frame_in_flight_index as usize][descriptor_set_index as usize];
+
+                let mut builder = vk::WriteDescriptorSet::builder()
+                    .dst_set(descriptor_set)
+                    .dst_binding(write.dst_binding)
+                    .dst_array_element(write.dst_array_element)
+                    .descriptor_type(write.descriptor_type.into());
+
+                let mut image_infos = Vec::with_capacity(write.image_info.len());
+                if !write.image_info.is_empty() {
+                    for image_info in &write.image_info {
+                        let mut image_info_builder = vk::DescriptorImageInfo::builder();
+                        image_info_builder = image_info_builder.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+                        if let Some(image_view) = &image_info.image_view {
+                            image_info_builder = image_info_builder.image_view(image_view.get_raw());
+                        }
+                        if let Some(sampler) = &image_info.sampler {
+                            image_info_builder = image_info_builder.sampler(sampler.get_raw());
+                        }
+
+                        image_infos.push(image_info_builder.build());
+                    }
+
+                    builder = builder.image_info(&image_infos);
+                }
+
+                //TODO: DIRTY HACK TO JUST LOAD THE IMAGE
+                if image_infos.is_empty() {
+                    continue;
+                }
+
+                write_builders.push(builder.build());
+                vk_image_infos.push(image_infos);
+            }
+        }
+
+        //DescriptorSetWrite::write_sets(self.sets[frame_in_flight_index], writes);
+
+        //device_context.device().update_descriptor_sets()
+
+        if !write_builders.is_empty() {
+            unsafe {
+                device_context.device().update_descriptor_sets(&write_builders, &[]);
+            }
+        }
+
+
+        // Determine how many writes we can drain
+        let mut pending_writes_to_drain = 0;
+        for pending_write in &self.pending_writes {
+            // If frame_in_flight_index matches or exceeds live_until_frame, then the result will be a very
+            // high value due to wrapping a negative value to u32::MAX
+            if pending_write.live_until_frame == frame_in_flight_index {
+                pending_writes_to_drain += 1;
+            } else {
+                break;
+            }
+        }
+
+        // Drop any writes that have lived long enough to apply to the descriptor set for each frame
+        self.pending_writes.drain(0..pending_writes_to_drain);
     }
 }
 
 struct RegisteredDescriptorSetPool {
-    //device_context: VkDeviceContext,
-    //allocator: VkDescriptorPoolAllocator,
     //descriptor_set_layout_def: dsc::DescriptorSetLayout,
-    //descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>, //TODO: This needs to be the same one as is in ResourceLookup
-
-    descriptor_set_layout_def: dsc::DescriptorSetLayout,
     slab: RawSlab<RegisteredDescriptorSet>,
-    pending_allocations: Vec<DescriptorSetWrite>,
+    //pending_allocations: Vec<DescriptorSetWrite>,
     drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
     drop_rx: Receiver<RawSlabKey<RegisteredDescriptorSet>>,
-    //descriptor_pools: Vec<vk::DescriptorPool>,
     descriptor_pool_allocator: VkDescriptorPoolAllocator,
+    descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
 
     chunks: Vec<RegisteredDescriptorSetPoolChunk>,
 }
@@ -1379,7 +1620,11 @@ impl RegisteredDescriptorSetPool {
     const MAX_DESCRIPTORS_PER_POOL : u32 = 64;
     const MAX_FRAMES_IN_FLIGHT : usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT;
 
-    pub fn new(device_context: &VkDeviceContext, descriptor_set_layout_def: &dsc::DescriptorSetLayout) -> Self {
+    pub fn new(
+        device_context: &VkDeviceContext,
+        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
+        descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+    ) -> Self {
         //renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
 
@@ -1391,7 +1636,7 @@ impl RegisteredDescriptorSetPool {
         let mut descriptor_counts = vec![0; dsc::DescriptorType::count()];
         for desc in &descriptor_set_layout_def.descriptor_set_layout_bindings {
             let ty : vk::DescriptorType = desc.descriptor_type.into();
-            descriptor_counts[ty.as_raw() as usize] += Self::MAX_DESCRIPTORS_PER_POOL;
+            descriptor_counts[ty.as_raw() as usize] += Self::MAX_DESCRIPTORS_PER_POOL * (1 + Self::MAX_FRAMES_IN_FLIGHT as u32);
         }
 
         let mut pool_sizes = Vec::with_capacity(dsc::DescriptorType::count());
@@ -1405,10 +1650,11 @@ impl RegisteredDescriptorSetPool {
             }
         }
 
-
+        // The allocator will produce descriptor sets as needed and destroy them after waiting a few
+        // frames for them to finish any submits that reference them
         let descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
             Self::MAX_FRAMES_IN_FLIGHT as u32,
-            Self::MAX_FRAMES_IN_FLIGHT as u32,
+            Self::MAX_FRAMES_IN_FLIGHT as u32 + 1,
             move |device| {
                 let pool_builder = vk::DescriptorPoolCreateInfo::builder()
                     .max_sets(Self::MAX_DESCRIPTORS_PER_POOL)
@@ -1421,12 +1667,13 @@ impl RegisteredDescriptorSetPool {
         );
 
         RegisteredDescriptorSetPool {
-            descriptor_set_layout_def: descriptor_set_layout_def.clone(),
+            //descriptor_set_layout_def: descriptor_set_layout_def.clone(),
             slab: RawSlab::with_capacity(Self::MAX_DESCRIPTORS_PER_POOL),
-            pending_allocations: Default::default(),
+            //pending_allocations: Default::default(),
             drop_tx,
             drop_rx,
             descriptor_pool_allocator,
+            descriptor_set_layout,
             chunks: Default::default()
         }
     }
@@ -1434,10 +1681,11 @@ impl RegisteredDescriptorSetPool {
     pub fn insert(
         &mut self,
         device_context: &VkDeviceContext,
-        writers: Vec<DescriptorSetWrite>
+        writes: Vec<DescriptorSetWrite>,
+        frame_in_flight_index: FrameInFlightIndex,
     ) -> VkResult<DescriptorSetArc> {
         let registered_set = RegisteredDescriptorSet {
-
+            // Don't have anything to store yet
         };
 
         // Use the slab allocator to find an unused index, determine the chunk index from that
@@ -1446,26 +1694,39 @@ impl RegisteredDescriptorSetPool {
 
         // Add more chunks if necessary
         while chunk_index as usize >= self.chunks.len() {
-            self.chunks.push(RegisteredDescriptorSetPoolChunk::new(device_context, &mut self.descriptor_pool_allocator)?);
+            self.chunks.push(RegisteredDescriptorSetPoolChunk::new(
+                device_context,
+                self.descriptor_set_layout.get_raw(),
+                &mut self.descriptor_pool_allocator
+            )?);
         }
 
         // Insert the write into the chunk, it will be applied when update() is next called on it
-        self.chunks[chunk_index].write(slab_key, writers);
+        let descriptor_sets_per_frame = self.chunks[chunk_index].write(slab_key, writes, frame_in_flight_index);
 
         // Return the ref-counted descriptor set
-        let descriptor_set = DescriptorSetArc::new(slab_key, self.drop_tx.clone());
+        let descriptor_set = DescriptorSetArc::new(slab_key, descriptor_sets_per_frame, self.drop_tx.clone());
         Ok(descriptor_set)
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, device_context: &VkDeviceContext, frame_in_flight_index: FrameInFlightIndex) {
+        // Route messages that indicate a dropped descriptor set to the chunk that owns it
         for dropped in self.drop_rx.try_iter() {
-            let chunk_index = (dropped.index() / Self::MAX_DESCRIPTORS_PER_POOL) as usize;
-            self.chunks[chunk_index].remove(dropped);
+            // let chunk_index = (dropped.index() / Self::MAX_DESCRIPTORS_PER_POOL) as usize;
+            // self.chunks[chunk_index].remove(dropped);
+            self.slab.free(dropped);
         }
 
+        // Commit pending writes/removes, rotate to the descriptor set for the next frame
         for chunk in &mut self.chunks {
-            chunk.update(&mut self.slab);
+            chunk.update(
+                device_context,
+                //&mut self.slab,
+                frame_in_flight_index
+            );
         }
+
+        self.descriptor_pool_allocator.update(device_context.device());
     }
 
     pub fn destroy(&mut self, device_context: &VkDeviceContext) {
@@ -1480,35 +1741,60 @@ impl RegisteredDescriptorSetPool {
 
 
 
-#[derive(Default)]
 struct RegisteredDescriptorSetPoolManager {
-    pools: FnvHashMap<ResourceHash, RegisteredDescriptorSetPool>
+    device_context: VkDeviceContext,
+    pools: FnvHashMap<ResourceHash, RegisteredDescriptorSetPool>,
+    frame_in_flight_index: FrameInFlightIndex,
 
 }
 
 impl RegisteredDescriptorSetPoolManager {
-    pub fn insert(
-        &mut self,
+    pub fn new(
         device_context: &VkDeviceContext,
-        descriptor_set_layout: &dsc::DescriptorSetLayout,
-        writers: Vec<DescriptorSetWrite>
-    ) -> VkResult<DescriptorSetArc> {
-        let hash = ResourceHash::from_key(descriptor_set_layout);
-        let pool = self.pools.entry(hash)
-            .or_insert_with(|| RegisteredDescriptorSetPool::new(device_context, descriptor_set_layout));
-
-        pool.insert(device_context, writers)
-    }
-
-    pub fn update(&mut self) {
-        for pool in self.pools.values_mut() {
-            pool.update();
+    ) -> Self {
+        RegisteredDescriptorSetPoolManager {
+            device_context: device_context.clone(),
+            pools: Default::default(),
+            frame_in_flight_index: 0
         }
     }
 
-    pub fn destroy(&mut self, device_context: &VkDeviceContext) {
+    pub fn descriptor_set(&self, descriptor_set_arc: &DescriptorSetArc) -> vk::DescriptorSet {
+        descriptor_set_arc.inner.descriptor_sets_per_frame[self.frame_in_flight_index as usize]
+    }
+
+    pub fn insert(
+        &mut self,
+        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
+        descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+        //resources: &ResourceLookup<dsc::DescriptorSetLayout, vk::DescriptorSetLayout>,
+        writes: Vec<DescriptorSetWrite>
+    ) -> VkResult<DescriptorSetArc> {
+        let hash = ResourceHash::from_key(descriptor_set_layout_def);
+
+        let device_context = self.device_context.clone();
+        let pool = self.pools.entry(hash)
+            .or_insert_with(|| {
+                RegisteredDescriptorSetPool::new(&device_context, descriptor_set_layout_def, descriptor_set_layout)
+            });
+
+        pool.insert(&device_context, writes, self.frame_in_flight_index)
+    }
+
+    pub fn update(&mut self) {
+        self.frame_in_flight_index += 1;
+        if self.frame_in_flight_index >= RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32 + 1{
+            self.frame_in_flight_index = 0;
+        }
+
+        for pool in self.pools.values_mut() {
+            pool.update(&self.device_context, self.frame_in_flight_index);
+        }
+    }
+
+    pub fn destroy(&mut self) {
         for (hash, pool) in &mut self.pools {
-            pool.destroy(device_context);
+            pool.destroy(&self.device_context);
         }
 
         self.pools.clear();
@@ -1590,6 +1876,10 @@ pub struct PipelineInfo {
     pub pipeline: ResourceArc<vk::Pipeline>,
 }
 
+pub struct CurrentFramePassInfo {
+    pub descriptor_sets: Vec<vk::DescriptorSet>
+}
+
 pub struct ResourceManager {
     device_context: VkDeviceContext,
 
@@ -1609,7 +1899,7 @@ impl ResourceManager {
             loaded_assets: Default::default(),
             load_queues: Default::default(),
             swapchain_surfaces: Default::default(),
-            registered_descriptor_sets: Default::default(),
+            registered_descriptor_sets: RegisteredDescriptorSetPoolManager::new(device_context),
             upload_manager: UploadManager::new(device_context),
         }
     }
@@ -1658,6 +1948,43 @@ impl ResourceManager {
             renderpass: resource.passes[pass_index].render_passes[swapchain_index].clone(),
             pipeline: resource.passes[pass_index].pipelines[swapchain_index].clone(),
         }
+    }
+
+    pub fn get_current_frame_pass_info(
+        &self,
+        handle: &Handle<MaterialInstanceAsset2>,
+        pass_index: usize,
+    ) -> CurrentFramePassInfo {
+        let resource = self
+            .loaded_assets
+            .material_instances
+            .get_committed(handle.load_handle())
+            .unwrap();
+        // let swapchain_index = self
+        //     .swapchain_surfaces
+        //     .ref_counts
+        //     .get(swapchain)
+        //     .unwrap()
+        //     .index;
+
+        // Get the current pass
+        // Get the descriptor sets within the pass (one per layout)
+        // Map the DescriptorSetArc to a vk::DescriptorSet
+        let descriptor_sets : Vec<_> = resource.material_descriptor_sets[pass_index].iter()
+            .map(|x| self.registered_descriptor_sets.descriptor_set(x))
+            .collect();
+
+        CurrentFramePassInfo {
+            descriptor_sets
+        }
+
+
+        // PipelineInfo {
+        //     descriptor_set_layouts: resource.passes[pass_index].descriptor_set_layouts.clone(),
+        //     pipeline_layout: resource.passes[pass_index].pipeline_layout.clone(),
+        //     renderpass: resource.passes[pass_index].render_passes[swapchain_index].clone(),
+        //     pipeline: resource.passes[pass_index].pipelines[swapchain_index].clone(),
+        // }
     }
 
     pub fn add_swapchain(
@@ -2060,16 +2387,16 @@ impl ResourceManager {
             // This will contain the descriptor sets created for this pass, one for each set within the pass
             let mut pass_descriptor_sets = Vec::with_capacity(descriptor_set_layouts.len());
 
-            // This will contain the writers for the descriptor set. Their purpose is to store everything needed to create a vk::WriteDescriptorSet
+            // This will contain the writes for the descriptor set. Their purpose is to store everything needed to create a vk::WriteDescriptorSet
             // struct. We will need to keep these around for a few frames.
-            let mut pass_descriptor_set_writers = Vec::with_capacity(pass.shader_interface.descriptor_set_layouts.len());
+            let mut pass_descriptor_set_writes = Vec::with_capacity(pass.shader_interface.descriptor_set_layouts.len());
 
             //
             // Build a "default" descriptor writer for every binding
             //
             for layout in &pass.shader_interface.descriptor_set_layouts {
-                // This will contain the writers for this set
-                let mut layout_descriptor_set_writers = Vec::with_capacity(layout.descriptor_set_layout_bindings.len());
+                // This will contain the writes for this set
+                let mut layout_descriptor_set_writes = Vec::with_capacity(layout.descriptor_set_layout_bindings.len());
 
                 for (binding_index, binding) in layout.descriptor_set_layout_bindings.iter().enumerate() {
                     //TODO: Populate the writer for this binding
@@ -2081,7 +2408,7 @@ impl ResourceManager {
                     // pub descriptor_type: vk::DescriptorType,
                     // pub image_info: Option<Vec<DescriptorSetWriteImage>>,
                     // pub buffer_info: Option<Vec<DescriptorSetWriteBuffer>>,
-                    layout_descriptor_set_writers.push(DescriptorSetWrite {
+                    layout_descriptor_set_writes.push(DescriptorSetWrite {
                         // pool index
                         // set index
                         dst_binding: binding_index as u32,
@@ -2092,16 +2419,16 @@ impl ResourceManager {
                     })
                 }
 
-                pass_descriptor_set_writers.push(layout_descriptor_set_writers);
+                pass_descriptor_set_writes.push(layout_descriptor_set_writes);
             }
 
             //
-            // Now modify the descriptor set writers to actually point at the things specified by the material
+            // Now modify the descriptor set writes to actually point at the things specified by the material
             //
             for slot in &material_instance_asset.slots {
                 if let Some(slot_locations) = pass.pass_slot_name_lookup.get(&slot.slot_name) {
                     for location in slot_locations {
-                        let mut writer = &mut pass_descriptor_set_writers[location.layout_index as usize][location.binding_index as usize];
+                        let mut writer = &mut pass_descriptor_set_writes[location.layout_index as usize][location.binding_index as usize];
 
                         let mut bind_samplers = false;
                         let mut bind_images = false;
@@ -2137,13 +2464,14 @@ impl ResourceManager {
             }
 
             //
-            // Register the writers into the correct descriptor set pools
+            // Register the writes into the correct descriptor set pools
             //
-            for (writers, layout) in pass_descriptor_set_writers.into_iter().zip(&pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts) {
+            //let layouts = pass.pipeline_create_data.pipeline_layout.iter().zip(&pass.pipeline_create_data.pipeline_layout_def);
+            for (layout_index, layout_writes) in pass_descriptor_set_writes.into_iter().enumerate() {
                 let descriptor_set = self.registered_descriptor_sets.insert(
-                    &self.device_context,
-                    layout,
-                    writers,
+                    &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts[layout_index],
+                    pass.pipeline_create_data.descriptor_set_layout_arcs[layout_index].clone(),
+                    layout_writes,
                 )?;
 
                 pass_descriptor_sets.push(descriptor_set);
@@ -2197,7 +2525,7 @@ impl Drop for ResourceManager {
             self.loaded_assets.destroy();
 
             // Drop all descriptors
-            self.registered_descriptor_sets.destroy(&self.device_context);
+            self.registered_descriptor_sets.destroy();
 
             // Now drop all resources with a zero ref count and warn for any resources that remain
             self.resources.destroy();

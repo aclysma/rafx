@@ -756,6 +756,7 @@ impl VkSpriteRenderPass {
         present_index: usize,
         hidpi_factor: f64,
         //sprite_resource_manager: &SpriteResourceManager,
+        descriptor_set_per_texture: &[vk::DescriptorSet],
         time_state: &TimeState,
     ) -> VkResult<()> {
         //TODO: Integrate this into the command buffer we create below
@@ -776,7 +777,8 @@ impl VkSpriteRenderPass {
             &mut self.index_buffers[present_index],
             &self.descriptor_sets_per_pass[present_index],
             //sprite_resource_manager.descriptor_sets(),
-            &vec![],
+            descriptor_set_per_texture,
+            //&vec![],
             time_state,
         )
     }
