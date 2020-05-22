@@ -8,7 +8,7 @@ use std::io::{Read, Cursor};
 use std::convert::TryInto;
 //use crate::pipeline::sprite::SpriteAsset;
 use atelier_assets::importer::Error as ImportError;
-use crate::pipeline::pipeline::{PipelineAsset2, MaterialAsset2, MaterialInstanceAsset2};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset};
 
 
 
@@ -59,8 +59,8 @@ impl Importer for PipelineImporter2 {
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         *state = PipelineImporterState2(Some(id));
 
-        let pipeline_asset = ron::de::from_reader::<_, PipelineAsset2>(source)?;
-        println!("IMPORTED PIPELINE2:\n{:#?}", pipeline_asset);
+        let pipeline_asset = ron::de::from_reader::<_, PipelineAsset>(source)?;
+        println!("IMPORTED PIPELINE:\n{:#?}", pipeline_asset);
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {
@@ -138,8 +138,8 @@ impl Importer for MaterialImporter2 {
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         *state = MaterialImporterState2(Some(id));
 
-        let material_asset = ron::de::from_reader::<_, MaterialAsset2>(source)?;
-        println!("IMPORTED MATERIAL2:\n{:#?}", material_asset);
+        let material_asset = ron::de::from_reader::<_, MaterialAsset>(source)?;
+        println!("IMPORTED MATERIAL:\n{:#?}", material_asset);
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {
@@ -200,8 +200,8 @@ impl Importer for MaterialInstanceImporter2 {
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         *state = MaterialInstanceImporterState2(Some(id));
 
-        let material_asset = ron::de::from_reader::<_, MaterialInstanceAsset2>(source)?;
-        println!("IMPORTED MATERIALINSTANCE2:\n{:#?}", material_asset);
+        let material_asset = ron::de::from_reader::<_, MaterialInstanceAsset>(source)?;
+        println!("IMPORTED MATERIALINSTANCE:\n{:#?}", material_asset);
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {

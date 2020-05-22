@@ -11,7 +11,7 @@ use fnv::FnvHashMap;
 use atelier_assets::loader::handle::Handle;
 use gltf::Accessor;
 use gltf::mesh::util::indices::CastingIter;
-use crate::pipeline::gltf::{MaterialAsset, MeshAsset, MeshPart, MeshVertex};
+use crate::pipeline::gltf::{GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex};
 use crate::pipeline::image::ImageAsset;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
@@ -315,7 +315,7 @@ fn extract_images_to_import(
 
 struct MaterialToImport {
     id: GltfObjectId,
-    asset: MaterialAsset,
+    asset: GltfMaterialAsset,
 }
 
 fn extract_materials_to_import(
@@ -333,7 +333,7 @@ fn extract_materials_to_import(
             .base_color_texture()
             .map(|base_texture| image_index_to_uuid_lookup[base_texture.texture().index()]);
 
-        let asset = MaterialAsset {
+        let asset = GltfMaterialAsset {
             base_color,
             base_color_texture,
         };

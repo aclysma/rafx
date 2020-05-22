@@ -6,7 +6,7 @@ use ash::vk;
 use crate::pipeline::image::ImageAsset;
 use crate::image_utils::DecodedTexture;
 use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::pipeline::{PipelineAsset2, MaterialAsset2, MaterialInstanceAsset2, MaterialPass};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass};
 use crate::pipeline_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
@@ -39,7 +39,7 @@ use asset_lookup::LoadedShaderModule;
 use asset_lookup::LoadedMaterialInstance;
 use asset_lookup::LoadedMaterial;
 use asset_lookup::LoadedMaterialPass;
-use asset_lookup::LoadedGraphicsPipeline2;
+use asset_lookup::LoadedGraphicsPipeline;
 use asset_lookup::LoadedAssetLookupSet;
 use asset_lookup::AssetLookup;
 use asset_lookup::SlotLocation;
@@ -54,7 +54,6 @@ use descriptor_sets::RegisteredDescriptorSetPoolStats;
 use descriptor_sets::RegisteredDescriptorSetPoolManagerStats;
 
 //use descriptor_sets::
-
 struct UploadManager {
     upload_queue: UploadQueue,
 
@@ -153,15 +152,15 @@ impl ResourceManager {
         self.load_queues.shader_modules.create_load_handler()
     }
 
-    pub fn create_pipeline2_load_handler(&self) -> GenericLoadHandler<PipelineAsset2> {
+    pub fn create_pipeline_load_handler(&self) -> GenericLoadHandler<PipelineAsset> {
         self.load_queues.graphics_pipelines2.create_load_handler()
     }
 
-    pub fn create_material_load_handler(&self) -> GenericLoadHandler<MaterialAsset2> {
+    pub fn create_material_load_handler(&self) -> GenericLoadHandler<MaterialAsset> {
         self.load_queues.materials.create_load_handler()
     }
 
-    pub fn create_material_instance_load_handler(&self) -> GenericLoadHandler<MaterialInstanceAsset2> {
+    pub fn create_material_instance_load_handler(&self) -> GenericLoadHandler<MaterialInstanceAsset> {
         self.load_queues.material_instances.create_load_handler()
     }
 
@@ -171,7 +170,7 @@ impl ResourceManager {
 
     pub fn get_pipeline_info(
         &self,
-        handle: &Handle<MaterialAsset2>,
+        handle: &Handle<MaterialAsset>,
         swapchain: &SwapchainSurfaceInfo,
         pass_index: usize,
     ) -> PipelineInfo {
@@ -197,7 +196,7 @@ impl ResourceManager {
 
     pub fn get_current_frame_pass_info(
         &self,
-        handle: &Handle<MaterialInstanceAsset2>,
+        handle: &Handle<MaterialInstanceAsset>,
         pass_index: usize,
     ) -> CurrentFramePassInfo {
         let resource = self
@@ -330,7 +329,7 @@ impl ResourceManager {
         #[derive(Debug)]
         struct LoadedAssetCounts {
             shader_module_count: usize,
-            pipeline2_count: usize,
+            pipeline_count: usize,
             material_count: usize,
             material_instance_count: usize,
             image_count: usize,
@@ -338,7 +337,7 @@ impl ResourceManager {
 
         let loaded_asset_counts = LoadedAssetCounts {
             shader_module_count: self.loaded_assets.shader_modules.len(),
-            pipeline2_count: self.loaded_assets.graphics_pipelines2.len(),
+            pipeline_count: self.loaded_assets.graphics_pipelines2.len(),
             material_count: self.loaded_assets.materials.len(),
             material_instance_count: self.loaded_assets.material_instances.len(),
             image_count: self.loaded_assets.images.len(),
@@ -394,7 +393,7 @@ impl ResourceManager {
 
     fn process_pipeline_load_requests(&mut self) {
         for request in self.load_queues.graphics_pipelines2.take_load_requests() {
-            println!("Create pipeline2 {:?}", request.load_handle);
+            println!("Create pipeline {:?}", request.load_handle);
             let loaded_asset = self.load_graphics_pipeline(&request.asset);
             Self::handle_load_result(request.load_op, loaded_asset, &mut self.loaded_assets.graphics_pipelines2);
         }
@@ -531,16 +530,16 @@ impl ResourceManager {
 
     fn load_graphics_pipeline(
         &mut self,
-        pipeline_asset: &PipelineAsset2,
-    ) -> VkResult<LoadedGraphicsPipeline2> {
-        Ok(LoadedGraphicsPipeline2 {
+        pipeline_asset: &PipelineAsset,
+    ) -> VkResult<LoadedGraphicsPipeline> {
+        Ok(LoadedGraphicsPipeline {
             pipeline_asset: pipeline_asset.clone()
         })
     }
 
     fn load_material(
         &mut self,
-        material_asset: &MaterialAsset2,
+        material_asset: &MaterialAsset,
     ) -> VkResult<LoadedMaterial> {
         let mut passes = Vec::with_capacity(material_asset.passes.len());
         for pass in &material_asset.passes {
@@ -619,7 +618,7 @@ impl ResourceManager {
 
     fn load_material_instance(
         &mut self,
-        material_instance_asset: &MaterialInstanceAsset2,
+        material_instance_asset: &MaterialInstanceAsset,
     ) -> VkResult<LoadedMaterialInstance> {
         // Find the material we will bind over, we need the metadata from it
         let material_asset = self.loaded_assets.materials.get_latest(material_instance_asset.material.load_handle()).unwrap();
@@ -807,7 +806,7 @@ pub struct PipelineCreateData {
 impl PipelineCreateData {
     pub fn new(
         resource_manager: &mut ResourceManager,
-        pipeline_asset: PipelineAsset2,
+        pipeline_asset: PipelineAsset,
         material_pass: &MaterialPass
     ) -> VkResult<Self> {
         //

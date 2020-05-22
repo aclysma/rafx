@@ -1,6 +1,6 @@
 use super::resource_lookup::ResourceArc;
 use ash::vk;
-use crate::pipeline::pipeline::{PipelineAsset2, MaterialPassShaderInterface};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialPassShaderInterface};
 use super::PipelineCreateData;
 use fnv::FnvHashMap;
 use renderer_shell_vulkan::VkImageRaw;
@@ -19,9 +19,9 @@ pub struct LoadedShaderModule {
 
 // The actual GPU resources are held in Material because the pipeline does not specify everything
 // needed to create the pipeline
-pub struct LoadedGraphicsPipeline2 {
+pub struct LoadedGraphicsPipeline {
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    pub pipeline_asset: PipelineAsset2,
+    pub pipeline_asset: PipelineAsset,
 }
 
 pub struct SlotLocation {
@@ -177,7 +177,7 @@ impl<LoadedAssetT> Default for AssetLookup<LoadedAssetT> {
 #[derive(Default)]
 pub struct LoadedAssetLookupSet {
     pub shader_modules: AssetLookup<LoadedShaderModule>,
-    pub graphics_pipelines2: AssetLookup<LoadedGraphicsPipeline2>,
+    pub graphics_pipelines2: AssetLookup<LoadedGraphicsPipeline>,
     pub materials: AssetLookup<LoadedMaterial>,
     pub material_instances: AssetLookup<LoadedMaterialInstance>,
     pub images: AssetLookup<LoadedImage>

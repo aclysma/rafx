@@ -10,7 +10,7 @@ use std::convert::TryInto;
 
 #[derive(TypeUuid, Serialize, Deserialize)]
 #[uuid = "130a91a8-ba80-4cad-9bce-848326b234c7"]
-pub struct MaterialAsset {
+pub struct GltfMaterialAsset {
     pub base_color: [f32; 4],
     pub base_color_texture: Option<AssetUuid>,
 }

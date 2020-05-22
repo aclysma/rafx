@@ -6,7 +6,7 @@ use crate::asset_storage::{ResourceLoadHandler, ResourceHandle};
 use std::marker::PhantomData;
 use crossbeam_channel::{Sender, Receiver};
 use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::pipeline::{PipelineAsset2, MaterialAsset2, MaterialInstanceAsset2};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset};
 use crate::pipeline::image::ImageAsset;
 use atelier_assets::loader::LoadHandle;
 
@@ -172,8 +172,8 @@ impl<AssetT> ResourceLoadHandler<AssetT> for GenericLoadHandler<AssetT>
 #[derive(Default)]
 pub struct LoadQueueSet {
     pub shader_modules: LoadQueues<ShaderAsset>,
-    pub graphics_pipelines2: LoadQueues<PipelineAsset2>,
-    pub materials: LoadQueues<MaterialAsset2>,
-    pub material_instances: LoadQueues<MaterialInstanceAsset2>,
+    pub graphics_pipelines2: LoadQueues<PipelineAsset>,
+    pub materials: LoadQueues<MaterialAsset>,
+    pub material_instances: LoadQueues<MaterialInstanceAsset>,
     pub images: LoadQueues<ImageAsset>
 }

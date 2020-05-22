@@ -18,14 +18,14 @@ use std::ops::Deref;
 // };
 //use crate::renderpass::VkMeshRenderPass;
 use crate::pipeline_description::SwapchainSurfaceInfo;
-use crate::pipeline::pipeline::{MaterialAsset2, PipelineAsset2, MaterialInstanceAsset2};
+use crate::pipeline::pipeline::{MaterialAsset, PipelineAsset, MaterialInstanceAsset};
 use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
 use crate::upload::UploadQueue;
 //use crate::load_handlers::{ImageLoadHandler, MeshLoadHandler, SpriteLoadHandler, MaterialLoadHandler};
 use crate::pipeline::shader::ShaderAsset;
 use crate::pipeline::image::ImageAsset;
-//use crate::pipeline::gltf::{MaterialAsset, MeshAsset};
+//use crate::pipeline::gltf::{GltfMaterialAsset, MeshAsset};
 //use crate::pipeline::sprite::SpriteAsset;
 use atelier_assets::core::asset_uuid;
 use atelier_assets::loader::LoadStatus;
@@ -90,9 +90,9 @@ pub struct GameRenderer {
 
     resource_manager: ResourceManager,
 
-    sprite_material: Handle<MaterialAsset2>,
+    sprite_material: Handle<MaterialAsset>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
-    sprite_material_instance: Handle<MaterialInstanceAsset2>,
+    sprite_material_instance: Handle<MaterialInstanceAsset>,
 
     //mesh_renderpass: Option<VkMeshRenderPass>,
 }
@@ -136,19 +136,19 @@ impl GameRenderer {
         asset_resource.add_storage_with_load_handler::<ShaderAsset, _>(Box::new(
             resource_manager.create_shader_load_handler(),
         ));
-        asset_resource.add_storage_with_load_handler::<PipelineAsset2, _>(Box::new(
-            resource_manager.create_pipeline2_load_handler(),
+        asset_resource.add_storage_with_load_handler::<PipelineAsset, _>(Box::new(
+            resource_manager.create_pipeline_load_handler(),
         ));
-        asset_resource.add_storage_with_load_handler::<MaterialAsset2, _>(Box::new(
+        asset_resource.add_storage_with_load_handler::<MaterialAsset, _>(Box::new(
             resource_manager.create_material_load_handler(),
         ));
-        asset_resource.add_storage_with_load_handler::<MaterialInstanceAsset2, _>(Box::new(
+        asset_resource.add_storage_with_load_handler::<MaterialInstanceAsset, _>(Box::new(
             resource_manager.create_material_instance_load_handler(),
         ));
         asset_resource.add_storage_with_load_handler::<ImageAsset, _>(Box::new(
             resource_manager.create_image_load_handler(),
         ));
-        // asset_resource.add_storage::<MaterialAsset>();
+        // asset_resource.add_storage::<GltfMaterialAsset>();
         // asset_resource.add_storage::<MeshAsset>();
         // asset_resource.add_storage::<SpriteAsset>();
 
@@ -161,7 +161,7 @@ impl GameRenderer {
         //         sprite_resource_manager.sprite_update_tx().clone(),
         //     ),
         // ));
-        // asset_resource.add_storage_with_load_handler::<MaterialAsset, MaterialLoadHandler>(
+        // asset_resource.add_storage_with_load_handler::<GltfMaterialAsset, MaterialLoadHandler>(
         //     Box::new(MaterialLoadHandler::new(
         //         material_resource_manager.material_update_tx().clone(),
         //     )),
@@ -176,11 +176,11 @@ impl GameRenderer {
         //     SpriteLoadHandler::new(sprite_resource_manager.sprite_update_tx().clone()),
         // ));
 
-        let sprite_material = load_asset::<MaterialAsset2>(
+        let sprite_material = load_asset::<MaterialAsset>(
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
             &asset_resource
         );
-        let sprite_material_instance = load_asset::<MaterialInstanceAsset2>(
+        let sprite_material_instance = load_asset::<MaterialInstanceAsset>(
             asset_uuid!("84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5"),
             &asset_resource
         );

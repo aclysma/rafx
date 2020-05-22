@@ -20,7 +20,7 @@ use crate::pipeline_description::{DescriptorSetLayoutBinding, DescriptorSetLayou
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "0dfa5d9a-89cd-40a1-adac-baf801db61db"]
-pub struct PipelineAsset2 {
+pub struct PipelineAsset {
     pub renderpass: dsc::RenderPass,
     pub input_assembly_state: dsc::PipelineInputAssemblyState,
     pub viewport_state: dsc::PipelineViewportState,
@@ -99,7 +99,7 @@ pub struct MaterialPassShaderInterface {
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 pub struct MaterialPass {
     pub phase: String,
-    pub pipeline: Handle<PipelineAsset2>,
+    pub pipeline: Handle<PipelineAsset>,
     pub shaders: Vec<PipelineShaderStage>,
     pub shader_interface: MaterialPassShaderInterface,
 }
@@ -108,7 +108,7 @@ pub struct MaterialPass {
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "ad94bca2-1f02-4e5f-9117-1a7b03456a11"]
-pub struct MaterialAsset2 {
+pub struct MaterialAsset {
     pub passes: Vec<MaterialPass>,
 }
 
@@ -125,8 +125,8 @@ pub struct MaterialInstanceSlot {
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b"]
-pub struct MaterialInstanceAsset2 {
-    pub material: Handle<MaterialAsset2>,
+pub struct MaterialInstanceAsset {
+    pub material: Handle<MaterialAsset>,
     pub slots: Vec<MaterialInstanceSlot>,
 }
 
