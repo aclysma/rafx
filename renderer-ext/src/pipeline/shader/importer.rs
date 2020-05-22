@@ -52,9 +52,7 @@ impl Importer for ShaderImporter {
 
         let code = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
         let shader_asset = ShaderAsset {
-            shader: dsc::ShaderModule {
-                code
-            }
+            shader: dsc::ShaderModule { code },
         };
 
         Ok(ImporterValue {

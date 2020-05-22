@@ -1,4 +1,3 @@
-
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::core::AssetUuid;
 use type_uuid::TypeUuid;
@@ -56,8 +55,7 @@ pub struct LoadQueues<T> {
     rx: LoadQueuesRx<T>,
 }
 
-impl<T> LoadQueues<T>
-{
+impl<T> LoadQueues<T> {
     pub fn take_load_requests(&mut self) -> Vec<LoadRequest<T>> {
         self.rx.load_request_rx.try_iter().collect()
     }
@@ -72,11 +70,12 @@ impl<T> LoadQueues<T>
 }
 
 impl<T> LoadQueues<T>
-    where T:  TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone
+where
+    T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
 {
     pub fn create_load_handler(&self) -> GenericLoadHandler<T> {
         GenericLoadHandler {
-            load_queues: self.tx.clone()
+            load_queues: self.tx.clone(),
         }
     }
 }
@@ -107,15 +106,15 @@ impl<T> Default for LoadQueues<T> {
 // A generic load handler that allows routing load/commit/free events
 //
 pub struct GenericLoadHandler<AssetT>
-    where
-        AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
+where
+    AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
 {
     load_queues: LoadQueuesTx<AssetT>,
 }
 
 impl<AssetT> ResourceLoadHandler<AssetT> for GenericLoadHandler<AssetT>
-    where
-        AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
+where
+    AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
 {
     fn update_asset(
         &mut self,
@@ -126,7 +125,11 @@ impl<AssetT> ResourceLoadHandler<AssetT> for GenericLoadHandler<AssetT>
         asset: &AssetT,
         load_op: AssetLoadOp,
     ) {
-        println!("ResourceLoadHandler update_asset {} {:?}", core::any::type_name::<AssetT>(), load_handle);
+        println!(
+            "ResourceLoadHandler update_asset {} {:?}",
+            core::any::type_name::<AssetT>(),
+            load_handle
+        );
         let request = LoadRequest {
             load_handle,
             load_op,
@@ -144,7 +147,11 @@ impl<AssetT> ResourceLoadHandler<AssetT> for GenericLoadHandler<AssetT>
         version: u32,
         asset: &AssetT,
     ) {
-        println!("ResourceLoadHandler commit_asset_version {} {:?}", core::any::type_name::<AssetT>(), load_handle);
+        println!(
+            "ResourceLoadHandler commit_asset_version {} {:?}",
+            core::any::type_name::<AssetT>(),
+            load_handle
+        );
         let request = CommitRequest {
             load_handle,
             phantom_data: Default::default(),
@@ -159,7 +166,11 @@ impl<AssetT> ResourceLoadHandler<AssetT> for GenericLoadHandler<AssetT>
         resource_handle: ResourceHandle<AssetT>,
         version: u32,
     ) {
-        println!("ResourceLoadHandler free {} {:?}", core::any::type_name::<AssetT>(), load_handle);
+        println!(
+            "ResourceLoadHandler free {} {:?}",
+            core::any::type_name::<AssetT>(),
+            load_handle
+        );
         let request = FreeRequest {
             load_handle,
             phantom_data: Default::default(),
@@ -175,5 +186,5 @@ pub struct LoadQueueSet {
     pub graphics_pipelines2: LoadQueues<PipelineAsset>,
     pub materials: LoadQueues<MaterialAsset>,
     pub material_instances: LoadQueues<MaterialInstanceAsset>,
-    pub images: LoadQueues<ImageAsset>
+    pub images: LoadQueues<ImageAsset>,
 }

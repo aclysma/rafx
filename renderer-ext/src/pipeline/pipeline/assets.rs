@@ -15,9 +15,6 @@ use crate::pipeline::image::ImageAsset;
 use std::hash::{Hash, Hasher};
 use crate::pipeline_description::{DescriptorSetLayoutBinding, DescriptorSetLayout};
 
-
-
-
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "0dfa5d9a-89cd-40a1-adac-baf801db61db"]
 pub struct PipelineAsset {
@@ -30,20 +27,12 @@ pub struct PipelineAsset {
     pub dynamic_state: dsc::PipelineDynamicState,
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 pub struct PipelineShaderStage {
     pub stage: dsc::ShaderStageFlags,
     pub shader_module: Handle<ShaderAsset>,
     pub entry_name: String,
 }
-
-
-
-
-
-
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct DescriptorSetLayoutBindingWithSlotName {
@@ -52,7 +41,7 @@ pub struct DescriptorSetLayoutBindingWithSlotName {
     pub descriptor_count: u32,
     pub stage_flags: dsc::ShaderStageFlags,
     //samplers: Vec<dsc::Sampler>,
-    pub slot_name: String
+    pub slot_name: String,
 }
 
 impl Into<dsc::DescriptorSetLayoutBinding> for &DescriptorSetLayoutBindingWithSlotName {
@@ -61,7 +50,7 @@ impl Into<dsc::DescriptorSetLayoutBinding> for &DescriptorSetLayoutBindingWithSl
             binding: self.binding,
             descriptor_type: self.descriptor_type,
             descriptor_count: self.descriptor_count,
-            stage_flags: self.stage_flags
+            stage_flags: self.stage_flags,
         }
     }
 }
@@ -73,9 +62,13 @@ pub struct DescriptorSetLayoutWithSlotName {
 
 impl Into<dsc::DescriptorSetLayout> for &DescriptorSetLayoutWithSlotName {
     fn into(self) -> dsc::DescriptorSetLayout {
-        let descriptor_set_layout_bindings = self.descriptor_set_layout_bindings.iter().map(|x| x.into()).collect();
+        let descriptor_set_layout_bindings = self
+            .descriptor_set_layout_bindings
+            .iter()
+            .map(|x| x.into())
+            .collect();
         dsc::DescriptorSetLayout {
-            descriptor_set_layout_bindings
+            descriptor_set_layout_bindings,
         }
     }
 }
@@ -85,9 +78,8 @@ pub struct PushConstantRangeWithSlotName {
     pub stage_flags: dsc::ShaderStageFlags,
     pub offset: u32,
     pub size: u32,
-    pub slot_name: String
+    pub slot_name: String,
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 pub struct MaterialPassShaderInterface {
@@ -104,23 +96,17 @@ pub struct MaterialPass {
     pub shader_interface: MaterialPassShaderInterface,
 }
 
-
-
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "ad94bca2-1f02-4e5f-9117-1a7b03456a11"]
 pub struct MaterialAsset {
     pub passes: Vec<MaterialPass>,
 }
 
-
-
-
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialInstanceSlot {
     pub slot_name: String,
     pub image: Option<Handle<ImageAsset>>,
-    pub scalar_value: Option<f32>
+    pub scalar_value: Option<f32>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -129,5 +115,3 @@ pub struct MaterialInstanceAsset {
     pub material: Handle<MaterialAsset>,
     pub slots: Vec<MaterialInstanceSlot>,
 }
-
-

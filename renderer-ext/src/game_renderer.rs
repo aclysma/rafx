@@ -34,7 +34,6 @@ use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
 use crate::resource_managers::ResourceManager;
 
-
 fn load_asset<T>(
     asset_uuid: AssetUuid,
     asset_resource: &AssetResource,
@@ -85,7 +84,6 @@ pub struct GameRenderer {
     // material_resource_manager: MaterialResourceManager,
     // sprite_resource_manager: SpriteResourceManager,
     // mesh_resource_manager: VkMeshResourceManager,
-
     upload_queue: UploadQueue,
 
     resource_manager: ResourceManager,
@@ -93,7 +91,6 @@ pub struct GameRenderer {
     sprite_material: Handle<MaterialAsset>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
     sprite_material_instance: Handle<MaterialInstanceAsset>,
-
     //mesh_renderpass: Option<VkMeshRenderPass>,
 }
 
@@ -152,7 +149,6 @@ impl GameRenderer {
         // asset_resource.add_storage::<MeshAsset>();
         // asset_resource.add_storage::<SpriteAsset>();
 
-
         // //asset_resource.add_storage::<ShaderAsset>();
         // asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
         //     ImageLoadHandler::new(
@@ -178,11 +174,11 @@ impl GameRenderer {
 
         let sprite_material = load_asset::<MaterialAsset>(
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
-            &asset_resource
+            &asset_resource,
         );
         let sprite_material_instance = load_asset::<MaterialInstanceAsset>(
             asset_uuid!("84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5"),
-            &asset_resource
+            &asset_resource,
         );
 
         let mut renderer = GameRenderer {
@@ -260,9 +256,11 @@ impl VkSurfaceEventListener for GameRenderer {
 
         self.resource_manager.add_swapchain(&swapchain_surface_info);
 
-        let sprite_pipeline_info = self
-            .resource_manager
-            .get_pipeline_info(&self.sprite_material, &swapchain_surface_info, 0);
+        let sprite_pipeline_info = self.resource_manager.get_pipeline_info(
+            &self.sprite_material,
+            &swapchain_surface_info,
+            0,
+        );
 
         // Get the pipeline,
 
@@ -316,7 +314,9 @@ impl VkSurfaceEventListener for GameRenderer {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
-        let pass_info = self.resource_manager.get_current_frame_pass_info(&self.sprite_material_instance, 0);
+        let pass_info = self
+            .resource_manager
+            .get_current_frame_pass_info(&self.sprite_material_instance, 0);
         let descriptor_set_per_texture = vec![pass_info.descriptor_sets[1]];
 
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {

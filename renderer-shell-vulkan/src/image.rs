@@ -31,7 +31,7 @@ pub struct VkImage {
     pub device_context: VkDeviceContext,
     pub extent: vk::Extent3D,
     pub allocation_info: vk_mem::AllocationInfo,
-    pub raw: Option<VkImageRaw>
+    pub raw: Option<VkImageRaw>,
 }
 
 impl fmt::Debug for VkImage {
@@ -84,10 +84,7 @@ impl VkImage {
             .create_image(&image_create_info, &allocation_create_info)
             .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
 
-        let raw = VkImageRaw {
-            image,
-            allocation
-        };
+        let raw = VkImageRaw { image, allocation };
 
         Ok(VkImage {
             device_context: device_context.clone(),

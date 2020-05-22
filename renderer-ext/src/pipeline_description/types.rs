@@ -48,7 +48,6 @@ impl std::hash::Hash for Decimal {
     }
 }
 
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ImageViewType {
     Type1D,
@@ -825,7 +824,7 @@ impl Default for DependencyFlags {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentFormat {
     MatchSwapchain,
-    Format(Format)
+    Format(Format),
 }
 
 impl AttachmentFormat {

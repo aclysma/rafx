@@ -51,11 +51,10 @@ pub struct LoadedMaterialPass {
 
 pub struct LoadedMaterial {
     pub passes: Vec<LoadedMaterialPass>,
-
 }
 
 pub struct LoadedMaterialInstance {
-    pub material_descriptor_sets: Vec<Vec<DescriptorSetArc>>
+    pub material_descriptor_sets: Vec<Vec<DescriptorSetArc>>,
 }
 
 pub struct LoadedImage {
@@ -63,10 +62,8 @@ pub struct LoadedImage {
     //image_view_meta: dsc::ImageViewMeta,
     pub image: ResourceArc<VkImageRaw>,
     pub image_view: ResourceArc<vk::ImageView>,
-
     // One per swapchain
     //image_views: Vec<ResourceArc<vk::ImageView>>
-
 }
 
 //
@@ -180,7 +177,7 @@ pub struct LoadedAssetLookupSet {
     pub graphics_pipelines2: AssetLookup<LoadedGraphicsPipeline>,
     pub materials: AssetLookup<LoadedMaterial>,
     pub material_instances: AssetLookup<LoadedMaterialInstance>,
-    pub images: AssetLookup<LoadedImage>
+    pub images: AssetLookup<LoadedImage>,
 }
 
 impl LoadedAssetLookupSet {

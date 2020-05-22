@@ -23,7 +23,10 @@ impl<T: Sized> Clone for RawSlabKey<T> {
 impl<T: Sized> Copy for RawSlabKey<T> {}
 
 impl<T: Sized> std::fmt::Debug for RawSlabKey<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
         f.debug_struct("RawSlabKey")
             .field("indes", &self.index)
             .finish()

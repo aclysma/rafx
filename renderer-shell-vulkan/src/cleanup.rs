@@ -146,10 +146,13 @@ impl VkResource for VkImageRaw {
         mut resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device_context.allocator().destroy_image(resource.image, &resource.allocation).map_err(|err| {
-                log::error!("{:?}", err);
-                vk::Result::ERROR_UNKNOWN
-            })
+            device_context
+                .allocator()
+                .destroy_image(resource.image, &resource.allocation)
+                .map_err(|err| {
+                    log::error!("{:?}", err);
+                    vk::Result::ERROR_UNKNOWN
+                })
         }
     }
 }
@@ -223,7 +226,9 @@ impl VkResource for vk::PipelineLayout {
         resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device_context.device().destroy_pipeline_layout(resource, None);
+            device_context
+                .device()
+                .destroy_pipeline_layout(resource, None);
             Ok(())
         }
     }
@@ -238,7 +243,9 @@ impl VkResource for vk::DescriptorSetLayout {
         resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device_context.device().destroy_descriptor_set_layout(resource, None);
+            device_context
+                .device()
+                .destroy_descriptor_set_layout(resource, None);
             Ok(())
         }
     }
@@ -253,7 +260,9 @@ impl VkResource for vk::ShaderModule {
         resource: Self,
     ) -> VkResult<()> {
         unsafe {
-            device_context.device().destroy_shader_module(resource, None);
+            device_context
+                .device()
+                .destroy_shader_module(resource, None);
             Ok(())
         }
     }

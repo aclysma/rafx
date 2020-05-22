@@ -18,7 +18,10 @@ pub struct ImageAsset {
 }
 
 impl std::fmt::Debug for ImageAsset {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
         f.debug_struct("Point")
             .field("width", &self.width)
             .field("width", &self.height)

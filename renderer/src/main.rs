@@ -55,59 +55,52 @@ fn create_kitchen_sink_pipeline() -> dsc::GraphicsPipeline {
     let mut kitchen_sink_pipeline = dsc::GraphicsPipeline::default();
     kitchen_sink_pipeline.pipeline_layout.descriptor_set_layouts = vec![
         dsc::DescriptorSetLayout {
-            descriptor_set_layout_bindings: vec! [
+            descriptor_set_layout_bindings: vec![
                 Default::default(),
                 dsc::DescriptorSetLayoutBinding {
                     binding: 1,
                     ..Default::default()
                 },
-            ]
+            ],
         },
         dsc::DescriptorSetLayout {
-            descriptor_set_layout_bindings: vec! [
-                Default::default()
-            ]
-        }
+            descriptor_set_layout_bindings: vec![Default::default()],
+        },
     ];
-    kitchen_sink_pipeline.pipeline_layout.push_constant_ranges = vec![
-        dsc::PushConstantRange {
-            ..Default::default()
-        }
-    ];
-    kitchen_sink_pipeline.renderpass.attachments = vec![
-        Default::default()
-    ];
+    kitchen_sink_pipeline.pipeline_layout.push_constant_ranges = vec![dsc::PushConstantRange {
+        ..Default::default()
+    }];
+    kitchen_sink_pipeline.renderpass.attachments = vec![Default::default()];
 
-    kitchen_sink_pipeline.renderpass.subpasses = vec![
-        Default::default()
-    ];
-    kitchen_sink_pipeline.renderpass.dependencies = vec![
-        Default::default()
-    ];
-    kitchen_sink_pipeline.fixed_function_state.vertex_input_state.binding_descriptions = vec![
-        Default::default()
-    ];
+    kitchen_sink_pipeline.renderpass.subpasses = vec![Default::default()];
+    kitchen_sink_pipeline.renderpass.dependencies = vec![Default::default()];
+    kitchen_sink_pipeline
+        .fixed_function_state
+        .vertex_input_state
+        .binding_descriptions = vec![Default::default()];
 
-    kitchen_sink_pipeline.fixed_function_state.vertex_input_state.attribute_descriptions = vec![
-        Default::default()
-    ];
-    kitchen_sink_pipeline.fixed_function_state.viewport_state.viewports = vec![
-        Default::default()
-    ];
-    kitchen_sink_pipeline.fixed_function_state.viewport_state.scissors = vec![
-        Default::default()
-    ];
-    kitchen_sink_pipeline.fixed_function_state.color_blend_state.attachments = vec![
-        Default::default()
-    ];
-    kitchen_sink_pipeline.fixed_function_state.dynamic_state.dynamic_states = vec![
-        dsc::DynamicState::Viewport,
-        dsc::DynamicState::Scissor
-    ];
+    kitchen_sink_pipeline
+        .fixed_function_state
+        .vertex_input_state
+        .attribute_descriptions = vec![Default::default()];
+    kitchen_sink_pipeline
+        .fixed_function_state
+        .viewport_state
+        .viewports = vec![Default::default()];
+    kitchen_sink_pipeline
+        .fixed_function_state
+        .viewport_state
+        .scissors = vec![Default::default()];
+    kitchen_sink_pipeline
+        .fixed_function_state
+        .color_blend_state
+        .attachments = vec![Default::default()];
+    kitchen_sink_pipeline
+        .fixed_function_state
+        .dynamic_state
+        .dynamic_states = vec![dsc::DynamicState::Viewport, dsc::DynamicState::Scissor];
 
-    kitchen_sink_pipeline.pipeline_shader_stages.stages = vec![
-        Default::default()
-    ];
+    kitchen_sink_pipeline.pipeline_shader_stages.stages = vec![Default::default()];
 
     kitchen_sink_pipeline
 }
@@ -309,7 +302,7 @@ fn main() {
         &window,
         imgui_manager.build_font_atlas(),
         &time,
-        &mut asset_resource
+        &mut asset_resource,
     );
 
     // Check if there were error setting up vulkan
@@ -327,8 +320,11 @@ fn main() {
         .event_pump()
         .expect("Could not create sdl event pump");
 
-
-    fn wait_for_asset_to_load<T>(asset_handle: &atelier_assets::loader::handle::Handle<T>, asset_resource: &mut AssetResource, renderer: &mut GameRendererWithContext) {
+    fn wait_for_asset_to_load<T>(
+        asset_handle: &atelier_assets::loader::handle::Handle<T>,
+        asset_resource: &mut AssetResource,
+        renderer: &mut GameRendererWithContext,
+    ) {
         loop {
             asset_resource.update();
             renderer.update_resources();
@@ -337,21 +333,21 @@ fn main() {
             match asset_handle.load_status(asset_resource.loader()) {
                 LoadStatus::NotRequested => {
                     unreachable!();
-                },
+                }
                 LoadStatus::Loading => {
                     log::info!("blocked waiting for asset to load");
                     // keep waiting
-                },
+                }
                 LoadStatus::Loaded => {
                     break;
-                },
-                LoadStatus::Unloading => { unreachable!() },
+                }
+                LoadStatus::Unloading => unreachable!(),
                 LoadStatus::DoesNotExist => {
                     println!("Essential asset not found");
-                },
+                }
                 LoadStatus::Error(err) => {
                     println!("Error loading essential asset {:?}", err);
-                },
+                }
             }
         }
     }
@@ -360,7 +356,6 @@ fn main() {
     //
     // //SPRITE
     // let sprite_handle = load_asset::<SpriteAsset>(asset_uuid!("0be51c83-73a1-4780-984a-7e4accc65ae7"), &asset_resource);
-
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 

@@ -273,16 +273,13 @@ pub fn create_image_view(
     unsafe {
         let create_info = image_view_meta.as_builder(image);
 
-        device.create_image_view(
-            &*create_info,
-            None
-        )
+        device.create_image_view(&*create_info, None)
     }
 }
 
 pub fn create_sampler(
     device: &ash::Device,
-    sampler: dsc::Sampler
+    sampler: dsc::Sampler,
 ) -> VkResult<vk::Sampler> {
     unsafe {
         let create_info = vk::SamplerCreateInfo::builder()

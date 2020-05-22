@@ -10,20 +10,6 @@ use std::convert::TryInto;
 use atelier_assets::importer::Error as ImportError;
 use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset};
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "25c8b7df-e3a4-4436-b41c-ce32eed76e18"]
 struct PipelineImporterState2(Option<AssetUuid>);
@@ -33,8 +19,8 @@ struct PipelineImporterState2(Option<AssetUuid>);
 struct PipelineImporter2;
 impl Importer for PipelineImporter2 {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         1
     }
@@ -80,29 +66,6 @@ inventory::submit!(SourceFileImporter {
     instantiator: || Box::new(PipelineImporter2 {}),
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "5cfac411-55a1-49dc-b07e-1ac486f9fe98"]
 struct MaterialImporterState2(Option<AssetUuid>);
@@ -112,8 +75,8 @@ struct MaterialImporterState2(Option<AssetUuid>);
 struct MaterialImporter2;
 impl Importer for MaterialImporter2 {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         1
     }
@@ -159,12 +122,6 @@ inventory::submit!(SourceFileImporter {
     instantiator: || Box::new(MaterialImporter2 {}),
 });
 
-
-
-
-
-
-
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "d40e33f3-ba7d-4218-8266-a18d7c65b06e"]
 struct MaterialInstanceImporterState2(Option<AssetUuid>);
@@ -174,8 +131,8 @@ struct MaterialInstanceImporterState2(Option<AssetUuid>);
 struct MaterialInstanceImporter2;
 impl Importer for MaterialInstanceImporter2 {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         2
     }

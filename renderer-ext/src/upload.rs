@@ -28,7 +28,10 @@ pub struct UploadOp<T> {
 }
 
 impl<T> UploadOp<T> {
-    pub fn new(load_handle: LoadHandle, sender: Sender<UploadOpResult<T>>) -> Self {
+    pub fn new(
+        load_handle: LoadHandle,
+        sender: Sender<UploadOpResult<T>>,
+    ) -> Self {
         Self {
             load_handle,
             sender: Some(sender),
@@ -78,7 +81,7 @@ impl<T> UploadOpAwaiter<T> {
 
 pub fn create_upload_op<T>(load_handle: LoadHandle) -> (UploadOp<T>, UploadOpAwaiter<T>) {
     let (tx, rx) = crossbeam_channel::unbounded();
-    let op = UploadOp::new(load_handle,tx);
+    let op = UploadOp::new(load_handle, tx);
     let awaiter = UploadOpAwaiter { receiver: rx };
 
     (op, awaiter)
@@ -405,9 +408,7 @@ impl UploadQueue {
         Ok(())
     }
 
-    fn update_existing_uploads(
-        &mut self,
-    ) {
+    fn update_existing_uploads(&mut self) {
         // iterate backwards so we can use swap_remove
         for i in (0..self.uploads_in_progress.len()).rev() {
             let result = self.uploads_in_progress[i].poll_load(&self.device_context);
@@ -431,9 +432,7 @@ impl UploadQueue {
         }
     }
 
-    pub fn update(
-        &mut self,
-    ) -> VkResult<()> {
+    pub fn update(&mut self) -> VkResult<()> {
         self.start_new_uploads()?;
         self.update_existing_uploads();
         Ok(())

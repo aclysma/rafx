@@ -33,18 +33,21 @@ impl ResourceHash {
 //
 #[derive(Clone)]
 struct ResourceWithHash<ResourceT>
-    where
-        ResourceT: Copy
+where
+    ResourceT: Copy,
 {
     resource: ResourceT,
     resource_hash: ResourceHash,
 }
 
 impl<ResourceT> std::fmt::Debug for ResourceWithHash<ResourceT>
-    where
-        ResourceT: std::fmt::Debug + Copy
+where
+    ResourceT: std::fmt::Debug + Copy,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
         f.debug_struct("ResourceWithHash")
             .field("resource", &self.resource)
             .field("resource_hash", &self.resource_hash)
@@ -53,16 +56,16 @@ impl<ResourceT> std::fmt::Debug for ResourceWithHash<ResourceT>
 }
 
 struct ResourceArcInner<ResourceT>
-    where
-        ResourceT: Copy
+where
+    ResourceT: Copy,
 {
     resource: ResourceWithHash<ResourceT>,
     drop_tx: Sender<ResourceWithHash<ResourceT>>,
 }
 
 impl<ResourceT> Drop for ResourceArcInner<ResourceT>
-    where
-        ResourceT: Copy
+where
+    ResourceT: Copy,
 {
     fn drop(&mut self) {
         self.drop_tx.send(self.resource.clone());
@@ -70,10 +73,13 @@ impl<ResourceT> Drop for ResourceArcInner<ResourceT>
 }
 
 impl<ResourceT> std::fmt::Debug for ResourceArcInner<ResourceT>
-    where
-        ResourceT: std::fmt::Debug + Copy
+where
+    ResourceT: std::fmt::Debug + Copy,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
         f.debug_struct("ResourceArcInner")
             .field("resource", &self.resource)
             .finish()
@@ -82,15 +88,15 @@ impl<ResourceT> std::fmt::Debug for ResourceArcInner<ResourceT>
 
 #[derive(Clone)]
 pub struct WeakResourceArc<ResourceT>
-    where
-        ResourceT: Copy
+where
+    ResourceT: Copy,
 {
     inner: Weak<ResourceArcInner<ResourceT>>,
 }
 
 impl<ResourceT> WeakResourceArc<ResourceT>
-    where
-        ResourceT: Copy
+where
+    ResourceT: Copy,
 {
     pub fn upgrade(&self) -> Option<ResourceArc<ResourceT>> {
         if let Some(upgrade) = self.inner.upgrade() {
@@ -102,10 +108,13 @@ impl<ResourceT> WeakResourceArc<ResourceT>
 }
 
 impl<ResourceT> std::fmt::Debug for WeakResourceArc<ResourceT>
-    where
-        ResourceT: std::fmt::Debug + Copy
+where
+    ResourceT: std::fmt::Debug + Copy,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
         f.debug_struct("WeakResourceArc")
             .field("inner", &self.inner)
             .finish()
@@ -114,15 +123,15 @@ impl<ResourceT> std::fmt::Debug for WeakResourceArc<ResourceT>
 
 #[derive(Clone)]
 pub struct ResourceArc<ResourceT>
-    where
-        ResourceT: Copy
+where
+    ResourceT: Copy,
 {
     inner: Arc<ResourceArcInner<ResourceT>>,
 }
 
 impl<ResourceT> ResourceArc<ResourceT>
-    where
-        ResourceT: Copy
+where
+    ResourceT: Copy,
 {
     fn new(
         resource: ResourceT,
@@ -151,10 +160,13 @@ impl<ResourceT> ResourceArc<ResourceT>
 }
 
 impl<ResourceT> std::fmt::Debug for ResourceArc<ResourceT>
-    where
-        ResourceT: std::fmt::Debug + Copy
+where
+    ResourceT: std::fmt::Debug + Copy,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
         f.debug_struct("ResourceArc")
             .field("inner", &self.inner)
             .finish()
@@ -166,9 +178,9 @@ impl<ResourceT> std::fmt::Debug for ResourceArc<ResourceT>
 // drop. This allows the resources to be collected and disposed of
 //
 pub struct ResourceLookup<KeyT, ResourceT>
-    where
-        KeyT: Eq + Hash + Clone,
-        ResourceT: VkResource + Copy,
+where
+    KeyT: Eq + Hash + Clone,
+    ResourceT: VkResource + Copy,
 {
     resources: FnvHashMap<ResourceHash, WeakResourceArc<ResourceT>>,
     drop_sink: VkResourceDropSink<ResourceT>,
@@ -180,9 +192,9 @@ pub struct ResourceLookup<KeyT, ResourceT>
 }
 
 impl<KeyT, ResourceT> ResourceLookup<KeyT, ResourceT>
-    where
-        KeyT: Eq + Hash + Clone,
-        ResourceT: VkResource + Copy + std::fmt::Debug,
+where
+    KeyT: Eq + Hash + Clone,
+    ResourceT: VkResource + Copy + std::fmt::Debug,
 {
     fn new(max_frames_in_flight: u32) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
@@ -207,8 +219,10 @@ impl<KeyT, ResourceT> ResourceLookup<KeyT, ResourceT>
             let upgrade = resource.upgrade();
 
             #[cfg(debug_assertions)]
-            if upgrade.is_some() {
-                debug_assert!(self.keys.get(&hash).unwrap() == key);
+            {
+                if upgrade.is_some() {
+                    debug_assert!(self.keys.get(&hash).unwrap() == key);
+                }
             }
 
             upgrade
@@ -239,10 +253,10 @@ impl<KeyT, ResourceT> ResourceLookup<KeyT, ResourceT>
         assert!(old.is_none());
 
         #[cfg(debug_assertions)]
-            {
-                self.keys.insert(hash, key.clone());
-                assert!(old.is_none());
-            }
+        {
+            self.keys.insert(hash, key.clone());
+            assert!(old.is_none());
+        }
 
         arc
     }
@@ -258,9 +272,9 @@ impl<KeyT, ResourceT> ResourceLookup<KeyT, ResourceT>
             self.resources.remove(&dropped.resource_hash);
 
             #[cfg(debug_assertions)]
-                {
-                    self.keys.remove(&dropped.resource_hash);
-                }
+            {
+                self.keys.remove(&dropped.resource_hash);
+            }
         }
     }
 
@@ -323,7 +337,7 @@ pub struct ImageKey {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImageViewKey {
     image_load_handle: LoadHandle,
-    image_view_meta: dsc::ImageViewMeta
+    image_view_meta: dsc::ImageViewMeta,
 }
 
 #[derive(Debug)]
@@ -357,7 +371,10 @@ pub struct ResourceLookupSet {
 }
 
 impl ResourceLookupSet {
-    pub fn new(device_context: &VkDeviceContext, max_frames_in_flight: u32) -> Self {
+    pub fn new(
+        device_context: &VkDeviceContext,
+        max_frames_in_flight: u32,
+    ) -> Self {
         ResourceLookupSet {
             device_context: device_context.clone(),
             shader_modules: ResourceLookup::new(max_frames_in_flight),
@@ -371,22 +388,21 @@ impl ResourceLookupSet {
         }
     }
 
-    pub fn on_frame_complete(
-        &mut self,
-    ) {
+    pub fn on_frame_complete(&mut self) {
         self.shader_modules.on_frame_complete(&self.device_context);
-        self.descriptor_set_layouts.on_frame_complete(&self.device_context);
-        self.pipeline_layouts.on_frame_complete(&self.device_context);
+        self.descriptor_set_layouts
+            .on_frame_complete(&self.device_context);
+        self.pipeline_layouts
+            .on_frame_complete(&self.device_context);
         self.render_passes.on_frame_complete(&self.device_context);
-        self.graphics_pipelines.on_frame_complete(&self.device_context);
+        self.graphics_pipelines
+            .on_frame_complete(&self.device_context);
         self.images.on_frame_complete(&self.device_context);
         self.image_views.on_frame_complete(&self.device_context);
         self.samplers.on_frame_complete(&self.device_context);
     }
 
-    pub fn destroy(
-        &mut self,
-    ) {
+    pub fn destroy(&mut self) {
         self.shader_modules.destroy(&self.device_context);
         self.descriptor_set_layouts.destroy(&self.device_context);
         self.pipeline_layouts.destroy(&self.device_context);
@@ -397,9 +413,7 @@ impl ResourceLookupSet {
         self.samplers.destroy(&self.device_context);
     }
 
-    pub fn metrics(
-        &self
-    ) -> ResourceMetrics {
+    pub fn metrics(&self) -> ResourceMetrics {
         ResourceMetrics {
             shader_module_count: self.shader_modules.len(),
             descriptor_set_layout_count: self.descriptor_set_layouts.len(),
@@ -429,9 +443,7 @@ impl ResourceLookupSet {
                 shader_module,
             )?;
             println!("Created shader module {:?}", resource);
-            let shader_module = self
-                .shader_modules
-                .insert(hash, shader_module, resource);
+            let shader_module = self.shader_modules.insert(hash, shader_module, resource);
             Ok(shader_module)
         }
     }
@@ -441,9 +453,8 @@ impl ResourceLookupSet {
         descriptor_set_layout: &dsc::DescriptorSetLayout,
     ) -> VkResult<ResourceArc<vk::DescriptorSetLayout>> {
         let hash = ResourceHash::from_key(descriptor_set_layout);
-        if let Some(descriptor_set_layout) = self
-            .descriptor_set_layouts
-            .get(hash, descriptor_set_layout)
+        if let Some(descriptor_set_layout) =
+            self.descriptor_set_layouts.get(hash, descriptor_set_layout)
         {
             Ok(descriptor_set_layout)
         } else {
@@ -468,10 +479,7 @@ impl ResourceLookupSet {
         pipeline_layout_def: &dsc::PipelineLayout,
     ) -> VkResult<ResourceArc<vk::PipelineLayout>> {
         let hash = ResourceHash::from_key(pipeline_layout_def);
-        if let Some(pipeline_layout) = self
-            .pipeline_layouts
-            .get(hash, pipeline_layout_def)
-        {
+        if let Some(pipeline_layout) = self.pipeline_layouts.get(hash, pipeline_layout_def) {
             Ok(pipeline_layout)
         } else {
             // Keep both the arcs and build an array of vk object pointers
@@ -494,9 +502,9 @@ impl ResourceLookupSet {
                 &descriptor_set_layouts,
             )?;
             println!("Created pipeline layout {:?}", resource);
-            let pipeline_layout =
-                self.pipeline_layouts
-                    .insert(hash, pipeline_layout_def, resource);
+            let pipeline_layout = self
+                .pipeline_layouts
+                .insert(hash, pipeline_layout_def, resource);
 
             Ok(pipeline_layout)
         }
@@ -522,9 +530,7 @@ impl ResourceLookupSet {
                 &swapchain_surface_info,
             )?;
 
-            let renderpass = self
-                .render_passes
-                .insert(hash, &renderpass_key, resource);
+            let renderpass = self.render_passes.insert(hash, &renderpass_key, resource);
             Ok(renderpass)
         }
     }
@@ -543,13 +549,13 @@ impl ResourceLookupSet {
             swapchain_surface_info: swapchain_surface_info.clone(),
         };
 
-        let renderpass = self.get_or_create_renderpass(&pipeline_create_data.renderpass, swapchain_surface_info)?;
+        let renderpass = self
+            .get_or_create_renderpass(&pipeline_create_data.renderpass, swapchain_surface_info)?;
 
         let hash = ResourceHash::from_key(&pipeline_key);
         if let Some(pipeline) = self.graphics_pipelines.get(hash, &pipeline_key) {
             Ok((renderpass, pipeline))
         } else {
-
             println!("Creating pipeline\n{:#?}", pipeline_key);
             let resource = crate::pipeline_description::create_graphics_pipeline(
                 &self.device_context.device(),
@@ -569,10 +575,12 @@ impl ResourceLookupSet {
         }
     }
 
-    pub fn insert_image(&mut self, load_handle: LoadHandle, image: ManuallyDrop<VkImage>) -> ResourceArc<VkImageRaw> {
-        let image_key = ImageKey {
-            load_handle
-        };
+    pub fn insert_image(
+        &mut self,
+        load_handle: LoadHandle,
+        image: ManuallyDrop<VkImage>,
+    ) -> ResourceArc<VkImageRaw> {
+        let image_key = ImageKey { load_handle };
 
         let hash = ResourceHash::from_key(&image_key);
         let raw_image = ManuallyDrop::into_inner(image).take_raw().unwrap();
@@ -593,9 +601,8 @@ impl ResourceLookupSet {
         if let Some(image_view) = self.image_views.get(hash, &image_view_key) {
             Ok(image_view)
         } else {
-
             let image_key = ImageKey {
-                load_handle: image_load_handle
+                load_handle: image_load_handle,
             };
             let image_load_handle_hash = ResourceHash::from_key(&image_load_handle);
             let image = self.images.get(image_load_handle_hash, &image_key).unwrap();
@@ -608,9 +615,7 @@ impl ResourceLookupSet {
             )?;
             println!("Created image view\n{:#?}", resource);
 
-            let image_view = self
-                .image_views
-                .insert(hash, &image_view_key, resource);
+            let image_view = self.image_views.insert(hash, &image_view_key, resource);
             Ok(image_view)
         }
     }
