@@ -14,7 +14,6 @@ pub mod pipeline;
 pub mod image_utils;
 pub mod upload;
 pub mod resource_managers;
-pub mod load_handlers;
 pub mod push_buffer;
 pub mod pipeline_description;
 
