@@ -103,7 +103,7 @@ pub struct MaterialAsset {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct MaterialInstanceSlot {
+pub struct MaterialInstanceSlotAssignment {
     pub slot_name: String,
     pub image: Option<Handle<ImageAsset>>,
     pub scalar_value: Option<f32>,
@@ -113,5 +113,5 @@ pub struct MaterialInstanceSlot {
 #[uuid = "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b"]
 pub struct MaterialInstanceAsset {
     pub material: Handle<MaterialAsset>,
-    pub slots: Vec<MaterialInstanceSlot>,
+    pub slot_assignments: Vec<MaterialInstanceSlotAssignment>,
 }

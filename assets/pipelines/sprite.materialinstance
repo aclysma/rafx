@@ -1,6 +1,6 @@
 (
     material: "sprite.material",
-    slots: [
+    slot_assignments: [
         (
             slot_name: "texture",
             image: Some("../textures/texture2.jpg")

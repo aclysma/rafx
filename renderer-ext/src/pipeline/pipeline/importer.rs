@@ -134,7 +134,7 @@ impl Importer for MaterialInstanceImporter2 {
     where
         Self: Sized,
     {
-        2
+        3
     }
 
     fn version(&self) -> u32 {

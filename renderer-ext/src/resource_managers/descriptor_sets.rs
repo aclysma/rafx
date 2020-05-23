@@ -12,9 +12,9 @@ use super::ResourceHash;
 use crate::pipeline_description as dsc;
 use ash::version::DeviceV1_0;
 use crate::resource_managers::ResourceManager;
-use crate::pipeline::pipeline::{DescriptorSetLayoutWithSlotName, MaterialInstanceSlot};
+use crate::pipeline::pipeline::{DescriptorSetLayoutWithSlotName, MaterialInstanceSlotAssignment, MaterialInstanceAsset};
 //use crate::upload::InProgressUploadPollResult::Pending;
-use crate::resource_managers::asset_lookup::{SlotNameLookup, LoadedAssetLookupSet, LoadedMaterialPass};
+use crate::resource_managers::asset_lookup::{SlotNameLookup, LoadedAssetLookupSet, LoadedMaterialPass, LoadedMaterialInstance, LoadedMaterial};
 use atelier_assets::loader::handle::AssetHandle;
 
 //
@@ -589,8 +589,10 @@ impl RegisteredDescriptorSetPoolManager {
         pool.insert(&self.device_context, write_set, self.frame_in_flight_index)
     }
 
-    pub fn create_uninitialized_dyn_descriptor_set(
+    //TODO: Is creating and immediately modifying causing multiple writes?
+    fn do_create_dyn_descriptor_set(
         &mut self,
+        write_set: DescriptorSetWriteSet,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
         descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
     ) -> VkResult<DynDescriptorSet> {
@@ -605,14 +607,106 @@ impl RegisteredDescriptorSetPoolManager {
             )
         });
 
-        // Allocated a descriptor set
+        // Allocate a descriptor set
         let descriptor_set = pool.insert(&self.device_context, DescriptorSetWriteSet::default(), self.frame_in_flight_index)?;
 
         // Create the DynDescriptorSet
-        let write_set = create_uninitialized_write_set_for_layout(descriptor_set_layout_def);
         let dyn_descriptor_set = DynDescriptorSet::new(write_set, descriptor_set, pool.write_tx.clone());
 
         Ok(dyn_descriptor_set)
+    }
+
+    pub fn create_dyn_descriptor_set_uninitialized(
+        &mut self,
+        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
+        descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+    ) -> VkResult<DynDescriptorSet> {
+        let write_set = create_uninitialized_write_set_for_layout(descriptor_set_layout_def);
+        self.do_create_dyn_descriptor_set(write_set, descriptor_set_layout_def, descriptor_set_layout)
+    }
+
+    pub fn create_dyn_pass_material_instance_uninitialized(
+        &mut self,
+        pass: &LoadedMaterialPass,
+        loaded_assets: &LoadedAssetLookupSet,
+    ) -> VkResult<DynPassMaterialInstance> {
+        let mut dyn_descriptor_sets = Vec::with_capacity(pass.descriptor_set_layouts.len());
+
+        let layout_defs = &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts;
+        for (layout_def, layout) in layout_defs.iter().zip(&pass.descriptor_set_layouts) {
+            let dyn_descriptor_set = self.create_dyn_descriptor_set_uninitialized(layout_def, layout.clone())?;
+            dyn_descriptor_sets.push(dyn_descriptor_set);
+        }
+
+        let dyn_pass_material_instance = DynPassMaterialInstance {
+            descriptor_sets: dyn_descriptor_sets,
+            slot_name_lookup: pass.pass_slot_name_lookup.clone()
+        };
+
+        Ok(dyn_pass_material_instance)
+    }
+
+    pub fn create_dyn_pass_material_instance_from_asset(
+        &mut self,
+        pass: &LoadedMaterialPass,
+        material_instance: &LoadedMaterialInstance,
+        loaded_assets: &LoadedAssetLookupSet,
+    ) -> VkResult<DynPassMaterialInstance> {
+        let write_sets = create_write_sets_for_material_instance_pass(
+            pass,
+            &material_instance.slot_assignments,
+            loaded_assets
+        );
+
+        let mut dyn_descriptor_sets = Vec::with_capacity(write_sets.len());
+
+        for (layout_index, write_set) in write_sets.into_iter().enumerate() {
+            let layout = &pass.descriptor_set_layouts[layout_index];
+            let layout_def = &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts[layout_index];
+
+            let dyn_descriptor_set = self.do_create_dyn_descriptor_set(write_set, layout_def, layout.clone())?;
+            dyn_descriptor_sets.push(dyn_descriptor_set);
+        }
+
+        let dyn_pass_material_instance = DynPassMaterialInstance {
+            descriptor_sets: dyn_descriptor_sets,
+            slot_name_lookup: pass.pass_slot_name_lookup.clone()
+        };
+
+        Ok(dyn_pass_material_instance)
+    }
+
+    pub fn create_dyn_material_instance_uninitialized(
+        &mut self,
+        material: &LoadedMaterial,
+        loaded_assets: &LoadedAssetLookupSet,
+    ) -> VkResult<DynMaterialInstance> {
+        let mut passes = Vec::with_capacity(material.passes.len());
+        for pass in &material.passes {
+            let dyn_pass_material_instance = self.create_dyn_pass_material_instance_uninitialized(pass, loaded_assets)?;
+            passes.push(dyn_pass_material_instance);
+        }
+
+        Ok(DynMaterialInstance {
+            passes
+        })
+    }
+
+    pub fn create_dyn_material_instance_from_asset(
+        &mut self,
+        material: &LoadedMaterial,
+        material_instance: &LoadedMaterialInstance,
+        loaded_assets: &LoadedAssetLookupSet,
+    ) -> VkResult<DynMaterialInstance> {
+        let mut passes = Vec::with_capacity(material.passes.len());
+        for pass in &material.passes {
+            let dyn_pass_material_instance = self.create_dyn_pass_material_instance_from_asset(pass, material_instance, loaded_assets)?;
+            passes.push(dyn_pass_material_instance);
+        }
+
+        Ok(DynMaterialInstance {
+            passes
+        })
     }
 
     pub fn update(&mut self) {
@@ -702,12 +796,12 @@ pub fn create_uninitialized_write_set_for_layout(layout: &dsc::DescriptorSetLayo
 
 
 pub fn apply_material_instance_slot_assignment(
-    slot: &MaterialInstanceSlot,
+    slot_assignment: &MaterialInstanceSlotAssignment,
     pass_slot_name_lookup: &SlotNameLookup,
     assets: &LoadedAssetLookupSet,
     material_pass_write_set: &mut Vec<DescriptorSetWriteSet>
 ) {
-    if let Some(slot_locations) = pass_slot_name_lookup.get(&slot.slot_name) {
+    if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
         for location in slot_locations {
             let mut layout_descriptor_set_writes = &mut material_pass_write_set[location.layout_index as usize];
             let write = layout_descriptor_set_writes.elements.get_mut(&DescriptorSetElementKey {
@@ -737,7 +831,7 @@ pub fn apply_material_instance_slot_assignment(
             };
 
             if bind_images {
-                if let Some(image) = &slot.image {
+                if let Some(image) = &slot_assignment.image {
                     let loaded_image = assets
                         .images
                         .get_latest(image.load_handle())
@@ -751,10 +845,8 @@ pub fn apply_material_instance_slot_assignment(
     }
 }
 
-pub fn create_write_set_for_material_instance(
+pub fn create_uninitialized_write_sets_for_material_pass(
     pass: &LoadedMaterialPass,
-    slots: &Vec<MaterialInstanceSlot>,
-    assets: &LoadedAssetLookupSet,
 ) -> Vec<DescriptorSetWriteSet> {
     // The metadata for the descriptor sets within this pass, one for each set within the pass
     let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts;
@@ -762,6 +854,16 @@ pub fn create_write_set_for_material_instance(
     let mut pass_descriptor_set_writes : Vec<_> = descriptor_set_layouts.iter()
         .map(|layout| create_uninitialized_write_set_for_layout(&layout.into()))
         .collect();
+
+    pass_descriptor_set_writes
+}
+
+pub fn create_write_sets_for_material_instance_pass(
+    pass: &LoadedMaterialPass,
+    slots: &Vec<MaterialInstanceSlotAssignment>,
+    assets: &LoadedAssetLookupSet,
+) -> Vec<DescriptorSetWriteSet> {
+    let mut pass_descriptor_set_writes = create_uninitialized_write_sets_for_material_pass(pass);
 
     //
     // Now modify the descriptor set writes to actually point at the things specified by the material
@@ -794,6 +896,26 @@ impl DynDescriptorSet {
         }
     }
 
+    pub fn descriptor_set(&self) -> &DescriptorSetArc {
+        &self.descriptor_set
+    }
+
+    //TODO: Make a commit-like API so that it's not so easy to forget to call flush
+    pub fn flush(&mut self) {
+        let mut write_set = DescriptorSetWriteSet::default();
+        for dirty_element_key in self.dirty.drain() {
+            let value = self.write_set.elements[&dirty_element_key].clone();
+            write_set.elements.insert(dirty_element_key, value);
+        }
+
+        let pending_descriptor_set_write = SlabKeyDescriptorSetWriteSet {
+            write_set,
+            slab_key: self.descriptor_set.inner.slab_key,
+        };
+
+        self.write_tx.send(pending_descriptor_set_write);
+    }
+
     pub fn set_image(
         &mut self,
         binding_index: u32,
@@ -814,38 +936,78 @@ impl DynDescriptorSet {
         };
 
         if let Some(x) = self.write_set.elements.get_mut(&key) {
-            if let Some(x) = x.image_info.get_mut(array_index) {
-                x.image_view = Some(image_view);
+            let what_to_bind = what_to_bind(x.descriptor_type);
+            if what_to_bind.bind_images {
+                if let Some(x) = x.image_info.get_mut(array_index) {
+                    x.image_view = Some(image_view);
+                    self.dirty.insert(key);
+                } else {
+                    log::warn!("Tried to set image index {} but it did not exist. The image array is {} elements long.", array_index, x.image_info.len());
+                }
             } else {
-                log::warn!("Tried to set image index {} but it did not exist.", array_index)
+                // This is not necessarily an error if the user is binding with a slot name (although not sure
+                // if that's the right approach long term)
+                //log::warn!("Tried to bind an image to a descriptor set where the type does not accept an image", array_index)
             }
-            self.dirty.insert(key);
         } else {
             log::warn!("Tried to set image on a binding index that does not exist");
         }
     }
+}
 
-    pub fn flush(&mut self) {
-        let mut write_set = DescriptorSetWriteSet::default();
-        for dirty_element_key in self.dirty.drain() {
-            let value = self.write_set.elements[&dirty_element_key].clone();
-            write_set.elements.insert(dirty_element_key, value);
-        }
+pub struct DynPassMaterialInstance {
+    descriptor_sets: Vec<DynDescriptorSet>,
+    slot_name_lookup: Arc<SlotNameLookup>,
+}
 
-        let pending_descriptor_set_write = SlabKeyDescriptorSetWriteSet {
-            write_set,
-            slab_key: self.descriptor_set.inner.slab_key,
-        };
-
-        self.write_tx.send(pending_descriptor_set_write);
+impl DynPassMaterialInstance {
+    pub fn descriptor_set_layout(&self, layout_index: u32) -> &DynDescriptorSet {
+        &self.descriptor_sets[layout_index as usize]
     }
 
-    pub fn descriptor_set(&self) -> &DescriptorSetArc {
-        &self.descriptor_set
+    pub fn flush(&mut self) {
+        for set in &mut self.descriptor_sets {
+            set.flush()
+        }
+    }
+
+    pub fn set_image(
+        &mut self,
+        slot_name: &String,
+        image_view: ResourceArc<vk::ImageView>
+    ) {
+        if let Some(slot_locations) = self.slot_name_lookup.get(slot_name) {
+            for slot_location in slot_locations {
+                if let Some(dyn_descriptor_set) = self.descriptor_sets.get_mut(slot_location.layout_index as usize) {
+                    dyn_descriptor_set.set_image(slot_location.binding_index, image_view.clone());
+                }
+            }
+        }
     }
 }
 
 pub struct DynMaterialInstance {
-    descriptor_sets: Vec<DynDescriptorSet>,
-    slot_names: Arc<SlotNameLookup>,
+    passes: Vec<DynPassMaterialInstance>,
+}
+
+impl DynMaterialInstance {
+    pub fn pass(&self, pass_index: u32) -> &DynPassMaterialInstance {
+        &self.passes[pass_index as usize]
+    }
+
+    pub fn flush(&mut self) {
+        for pass in &mut self.passes {
+            pass.flush()
+        }
+    }
+
+    pub fn set_image(
+        &mut self,
+        slot_name: &String,
+        image_view: &ResourceArc<vk::ImageView>
+    ) {
+        for pass in &mut self.passes {
+            pass.set_image(slot_name, image_view.clone())
+        }
+    }
 }

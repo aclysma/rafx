@@ -1,6 +1,6 @@
 use super::resource_lookup::ResourceArc;
 use ash::vk;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialPassShaderInterface, MaterialAsset};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialPassShaderInterface, MaterialAsset, MaterialInstanceSlotAssignment};
 use super::PipelineCreateData;
 use fnv::FnvHashMap;
 use renderer_shell_vulkan::VkImageRaw;
@@ -61,6 +61,7 @@ pub struct LoadedMaterial {
 pub struct LoadedMaterialInstance {
     pub material: Handle<MaterialAsset>,
     pub material_descriptor_sets: Vec<Vec<DescriptorSetArc>>,
+    pub slot_assignments: Vec<MaterialInstanceSlotAssignment>,
 }
 
 pub struct LoadedImage {

@@ -32,7 +32,7 @@ use atelier_assets::loader::LoadStatus;
 use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
-use crate::resource_managers::{ResourceManager, DynDescriptorSet};
+use crate::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance};
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -93,7 +93,7 @@ pub struct GameRenderer {
     sprite_material_instance: Handle<MaterialInstanceAsset>,
     //mesh_renderpass: Option<VkMeshRenderPass>,
 
-    sprite_custom_material: Option<DynDescriptorSet>,
+    sprite_custom_material: Option<DynMaterialInstance>,
 }
 
 impl GameRenderer {
@@ -219,11 +219,19 @@ impl GameRenderer {
             &mut renderer,
         );
 
-        let sprite_pipeline_info = renderer.resource_manager.get_descriptor_set_info(&renderer.sprite_material, 0, 1);
-        let mut sprite_custom_material = renderer.resource_manager.create_uninitialized_dyn_descriptor_set(&sprite_pipeline_info.descriptor_set_layout_def)?;
+        // Example of using a raw descriptor set description. This doesn't have to go through materials.
+        // let sprite_pipeline_info = renderer.resource_manager.get_descriptor_set_info(&renderer.sprite_material, 0, 1);
+        // let mut sprite_custom_material = renderer.resource_manager.create_dyn_descriptor_set_uninitialized(&sprite_pipeline_info.descriptor_set_layout_def)?;
         let image_info = renderer.resource_manager.get_image_info(&override_image);
-        sprite_custom_material.set_image(0, image_info.image_view);
+        // sprite_custom_material.set_image(0, image_info.image_view);
+        // sprite_custom_material.flush();
+
+        //let sprite_pipeline_info = renderer.resource_manager.get_descriptor_set_info(&renderer.sprite_material, 0, 1);
+        let mut sprite_custom_material = renderer.resource_manager.create_dyn_material_instance_from_asset(renderer.sprite_material_instance.clone())?;
+        sprite_custom_material.set_image(&"texture".to_string(), &image_info.image_view);
         sprite_custom_material.flush();
+
+        //renderer.resource_manager.create_dyn_pass_material_instance
 
 
         renderer.sprite_custom_material = Some(sprite_custom_material);
@@ -338,7 +346,10 @@ impl VkSurfaceEventListener for GameRenderer {
         //     .get_current_frame_pass_info(&self.sprite_material_instance, 0);
         //let descriptor_set_per_texture = vec![pass_info.descriptor_sets[1]];
 
-        let descriptor_set_per_texture = vec![self.sprite_custom_material.as_ref().unwrap().descriptor_set().get_raw(&self.resource_manager)];
+        let pass = self.sprite_custom_material.as_ref().unwrap().pass(0);
+        let layout = pass.descriptor_set_layout(1);
+        let descriptor_set = layout.descriptor_set();
+        let descriptor_set_per_texture = vec![descriptor_set.get_raw(&self.resource_manager)];
 
 
 

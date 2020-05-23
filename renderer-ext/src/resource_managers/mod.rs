@@ -8,7 +8,7 @@ use ash::vk;
 use crate::pipeline::image::ImageAsset;
 use crate::image_utils::DecodedTexture;
 use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, MaterialInstanceSlot};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, MaterialInstanceSlotAssignment};
 use crate::pipeline_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
@@ -59,6 +59,8 @@ use descriptor_sets::RegisteredDescriptorSetPoolManagerMetrics;
 use descriptor_sets::DescriptorSetElementKey;
 use descriptor_sets::DescriptorSetElementWrite;
 pub use descriptor_sets::DynDescriptorSet;
+pub use descriptor_sets::DynPassMaterialInstance;
+pub use descriptor_sets::DynMaterialInstance;
 
 mod upload;
 use upload::UploadQueue;
@@ -242,25 +244,6 @@ impl ResourceManager {
             .collect();
 
         MaterialInstanceDescriptorSetsForCurrentFrame { descriptor_sets }
-    }
-
-    fn add_material_for_swapchain(
-        //&mut self,
-        resources: &mut ResourceLookupSet,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
-        loaded_material: &mut LoadedMaterial,
-    ) -> VkResult<()> {
-        for pass in &mut loaded_material.passes {
-            let (renderpass, pipeline) = resources.get_or_create_graphics_pipeline(
-                &pass.pipeline_create_data,
-                swapchain_surface_info,
-            )?;
-
-            pass.render_passes.push(renderpass);
-            pass.pipelines.push(pipeline);
-        }
-
-        Ok(())
     }
 
     pub fn add_swapchain(
@@ -586,14 +569,19 @@ impl ResourceManager {
             .get_latest(material_instance_asset.material.load_handle())
             .unwrap();
 
+        //let mut material_instance_descriptor_set_writes = Vec::with_capacity(material_asset.passes.len());
+
         // This will be references to descriptor sets. Indexed by pass, and then by set within the pass.
         let mut material_descriptor_sets = Vec::with_capacity(material_asset.passes.len());
         for pass in &material_asset.passes {
-            let pass_descriptor_set_writes = descriptor_sets::create_write_set_for_material_instance(
+            let pass_descriptor_set_writes = descriptor_sets::create_write_sets_for_material_instance_pass(
                 pass,
-                &material_instance_asset.slots,
+                &material_instance_asset.slot_assignments,
                 &self.loaded_assets
             );
+
+            // Save the
+            //material_instance_descriptor_set_writes.push(pass_descriptor_set_writes.clone());
 
             // This will contain the descriptor sets created for this pass, one for each set within the pass
             let mut pass_descriptor_sets = Vec::with_capacity(pass_descriptor_set_writes.len());
@@ -624,52 +612,95 @@ impl ResourceManager {
         Ok(LoadedMaterialInstance {
             material: material_instance_asset.material.clone(),
             material_descriptor_sets,
+            slot_assignments: material_instance_asset.slot_assignments.clone(),
         })
     }
 
-    pub fn create_uninitialized_dyn_descriptor_set(
+    pub fn create_dyn_descriptor_set_uninitialized(
         &mut self,
         layout_def: &dsc::DescriptorSetLayout
     ) -> VkResult<DynDescriptorSet> {
         let layout = self.resources.get_or_create_descriptor_set_layout(layout_def)?;
-        self.registered_descriptor_sets.create_uninitialized_dyn_descriptor_set(layout_def, layout)
-
-
-        // let write_set = create_uninitialized_write_set_for_layout(layout_def);
-        // self.registered_descriptor_sets.create_dyn_descriptor_set(
-        //     write_set,
-        //     layout_def,
-        //     layout
-        // )
+        self.registered_descriptor_sets.create_dyn_descriptor_set_uninitialized(layout_def, layout)
     }
-/*
-    pub fn create_uniintialized_dyn_descriptor_set_from_material_instance(
+
+    pub fn create_dyn_pass_material_instance_uninitialized(
         &mut self,
-        material_instance: &Handle<MaterialInstanceAsset>,
-        pass: u32,
-        descriptor_set_index: u32
-    ) -> VkResult<DynDescriptorSet> {
-        let loaded_material_instance = self.loaded_assets.material_instances.get_committed(material_instance.load_handle()).unwrap();
-        let loaded_material = self.loaded_assets.materials.get_committed(loaded_material_instance.material.load_handle()).unwrap();
-        let loaded_pass = &loaded_material.passes[pass as usize];
+        material: Handle<MaterialAsset>,
+        pass_index: u32
+    ) -> VkResult<DynPassMaterialInstance> {
+        let material_asset = self
+            .loaded_assets
+            .materials
+            .get_latest(material.load_handle())
+            .unwrap();
 
-        let slot_lookup = loaded_pass.pass_slot_name_lookup.clone();
-        let layout_def = &loaded_pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts[descriptor_set_index as usize];
-
-
-
-        let layout = self.resources.get_or_create_descriptor_set_layout(layout_def)?;
-        self.registered_descriptor_sets.create_uninitialized_dyn_descriptor_set(
-            layout_def,
-            layout
+        self.registered_descriptor_sets.create_dyn_pass_material_instance_uninitialized(
+            &material_asset.passes[pass_index as usize],
+            &self.loaded_assets
         )
     }
-    */
-}
 
-struct DynMaterialPass {
-    descriptor_sets: Vec<DynDescriptorSet>,
-    slot_lookup: Arc<SlotNameLookup>,
+    pub fn create_dyn_pass_material_instance_from_asset(
+        &mut self,
+        material_instance: Handle<MaterialInstanceAsset>,
+        pass_index: u32
+    ) -> VkResult<DynPassMaterialInstance> {
+        let material_instance_asset = self
+            .loaded_assets
+            .material_instances.get_committed(material_instance.load_handle())
+            .unwrap();
+
+        let material_asset = self
+            .loaded_assets
+            .materials
+            .get_latest(material_instance_asset.material.load_handle())
+            .unwrap();
+
+        self.registered_descriptor_sets.create_dyn_pass_material_instance_from_asset(
+            &material_asset.passes[pass_index as usize],
+            &material_instance_asset,
+            &self.loaded_assets
+        )
+    }
+
+    pub fn create_dyn_material_instance_uninitialized(
+        &mut self,
+        material: Handle<MaterialAsset>,
+    ) -> VkResult<DynMaterialInstance> {
+        let material_asset = self
+            .loaded_assets
+            .materials
+            .get_latest(material.load_handle())
+            .unwrap();
+
+        self.registered_descriptor_sets.create_dyn_material_instance_uninitialized(
+            material_asset,
+            &self.loaded_assets
+        )
+    }
+
+    pub fn create_dyn_material_instance_from_asset(
+        &mut self,
+        material_instance: Handle<MaterialInstanceAsset>,
+    ) -> VkResult<DynMaterialInstance> {
+        let material_instance_asset = self
+            .loaded_assets
+            .material_instances.get_committed(material_instance.load_handle())
+            .unwrap();
+
+        let material_asset = self
+            .loaded_assets
+            .materials
+            .get_latest(material_instance_asset.material.load_handle())
+            .unwrap();
+
+        self.registered_descriptor_sets.create_dyn_material_instance_from_asset(
+            material_asset,
+            material_instance_asset,
+            &self.loaded_assets
+        )
+    }
 }
 
 impl Drop for ResourceManager {
