@@ -13,7 +13,8 @@ use crate::pipeline_description as dsc;
 use ash::version::DeviceV1_0;
 use crate::resource_managers::ResourceManager;
 use crate::pipeline::pipeline::DescriptorSetLayoutWithSlotName;
-use crate::upload::InProgressUploadPollResult::Pending;
+//use crate::upload::InProgressUploadPollResult::Pending;
+use crate::resource_managers::asset_lookup::SlotNameLookup;
 
 //
 // These represent a write update that can be applied to a descriptor set in a pool
@@ -631,29 +632,6 @@ impl RegisteredDescriptorSetPoolManager {
 
 
 
-pub fn create_default_write_set_for_layout_with_slot_names(layout: &DescriptorSetLayoutWithSlotName) -> DescriptorSetWriteSet {
-    // let mut write_set = DescriptorSetWriteSet::default();
-    // for (binding_index, binding) in
-    //     layout.descriptor_set_layout_bindings.iter().enumerate()
-    // {
-    //     let key = DescriptorSetElementKey {
-    //         dst_binding: binding_index as u32,
-    //         //dst_array_element: 0,
-    //     };
-    //
-    //     let element_write = DescriptorSetElementWrite {
-    //         descriptor_type: binding.descriptor_type.into(),
-    //         image_info: Default::default(),
-    //         buffer_info: Default::default(),
-    //     };
-    //
-    //     write_set.elements.insert(key, element_write);
-    // }
-    //
-    // write_set
-
-    create_default_write_set_for_layout(&layout.into())
-}
 
 pub fn create_default_write_set_for_layout(layout: &dsc::DescriptorSetLayout) -> DescriptorSetWriteSet {
     let mut write_set = DescriptorSetWriteSet::default();
@@ -716,6 +694,11 @@ pub fn what_to_bind(descriptor_type: dsc::DescriptorType) -> WhatToBind {
     }
 
     what
+}
+
+pub struct DynMaterialInstance {
+    descriptor_sets: Vec<DynDescriptorSet>,
+    slot_names: Arc<SlotNameLookup>,
 }
 
 pub struct DynDescriptorSet {

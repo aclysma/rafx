@@ -21,7 +21,7 @@ use crate::pipeline_description::SwapchainSurfaceInfo;
 use crate::pipeline::pipeline::{MaterialAsset, PipelineAsset, MaterialInstanceAsset};
 use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
-use crate::upload::UploadQueue;
+//use crate::upload::UploadQueue;
 //use crate::load_handlers::{ImageLoadHandler, MeshLoadHandler, SpriteLoadHandler, MaterialLoadHandler};
 use crate::pipeline::shader::ShaderAsset;
 use crate::pipeline::image::ImageAsset;
@@ -84,7 +84,7 @@ pub struct GameRenderer {
     // material_resource_manager: MaterialResourceManager,
     // sprite_resource_manager: SpriteResourceManager,
     // mesh_resource_manager: VkMeshResourceManager,
-    upload_queue: UploadQueue,
+    //upload_queue: UploadQueue,
 
     resource_manager: ResourceManager,
 
@@ -106,7 +106,7 @@ impl GameRenderer {
     ) -> VkResult<Self> {
         let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
 
-        let mut upload_queue = UploadQueue::new(device_context);
+        //let mut upload_queue = UploadQueue::new(device_context);
 
         // let shader_resource_manager = ShaderResourceManager::new(
         //     device_context,
@@ -196,7 +196,7 @@ impl GameRenderer {
             // material_resource_manager,
             // sprite_resource_manager,
             // mesh_resource_manager,
-            upload_queue,
+            //upload_queue,
             resource_manager,
             sprite_material,
             sprite_material_instance,
@@ -237,7 +237,7 @@ impl GameRenderer {
     ) {
         //self.pipeline_manager.update();
         self.resource_manager.update();
-        self.upload_queue.update();
+        //self.upload_queue.update();
 
         //self.shader_resource_manager.update();
         // self.image_resource_manager.update();

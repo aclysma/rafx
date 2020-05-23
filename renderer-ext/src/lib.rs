@@ -12,7 +12,7 @@ pub mod asset_resource;
 pub mod asset_storage;
 pub mod pipeline;
 pub mod image_utils;
-pub mod upload;
+//pub mod upload;
 pub mod resource_managers;
 pub mod push_buffer;
 pub mod pipeline_description;

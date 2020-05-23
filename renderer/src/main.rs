@@ -28,7 +28,7 @@ use crossbeam_channel::{Sender, Receiver};
 use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
-use renderer_ext::upload::UploadQueue;
+//use renderer_ext::upload::UploadQueue;
 //use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, MaterialLoadHandler, SpriteLoadHandler};
 //use renderer_ext::pipeline_manager::{ShaderLoadHandler, PipelineLoadHandler};
 use renderer_ext::pipeline::image::ImageAsset;
@@ -38,14 +38,14 @@ use renderer_ext::pipeline_description::GraphicsPipeline;
 use std::io::Write;
 use std::collections::hash_map::DefaultHasher;
 
-fn load_asset<T>(
-    asset_uuid: AssetUuid,
-    asset_resource: &AssetResource,
-) -> atelier_assets::loader::handle::Handle<T> {
-    use atelier_loader::Loader;
-    let load_handle = asset_resource.loader().add_ref(asset_uuid);
-    atelier_assets::loader::handle::Handle::<T>::new(asset_resource.tx().clone(), load_handle)
-}
+// fn load_asset<T>(
+//     asset_uuid: AssetUuid,
+//     asset_resource: &AssetResource,
+// ) -> atelier_assets::loader::handle::Handle<T> {
+//     use atelier_loader::Loader;
+//     let load_handle = asset_resource.loader().add_ref(asset_uuid);
+//     atelier_assets::loader::handle::Handle::<T>::new(asset_resource.tx().clone(), load_handle)
+// }
 
 use renderer_ext::pipeline_description as dsc;
 use renderer_ext::pipeline::shader::ShaderAsset;

@@ -12,6 +12,9 @@ use atelier_assets::loader::{LoadHandle, AssetLoadOp};
 use fnv::FnvHashMap;
 use std::sync::Arc;
 use image::load;
+use ash::vk;
+use crate::resource_managers::load_queue::LoadRequest;
+use crate::pipeline::image::ImageAsset;
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result
@@ -436,5 +439,59 @@ impl UploadQueue {
         self.start_new_uploads()?;
         self.update_existing_uploads();
         Ok(())
+    }
+}
+
+
+//use descriptor_sets::
+pub struct UploadManager {
+    upload_queue: UploadQueue,
+
+    pub image_upload_result_tx: Sender<ImageUploadOpResult>,
+    pub image_upload_result_rx: Receiver<ImageUploadOpResult>,
+
+    pub buffer_upload_result_tx: Sender<BufferUploadOpResult>,
+    pub buffer_upload_result_rx: Receiver<BufferUploadOpResult>,
+}
+
+impl UploadManager {
+    pub fn new(device_context: &VkDeviceContext) -> Self {
+        let (image_upload_result_tx, image_upload_result_rx) = crossbeam_channel::unbounded();
+        let (buffer_upload_result_tx, buffer_upload_result_rx) = crossbeam_channel::unbounded();
+
+        UploadManager {
+            upload_queue: UploadQueue::new(device_context),
+            image_upload_result_rx,
+            image_upload_result_tx,
+            buffer_upload_result_rx,
+            buffer_upload_result_tx,
+        }
+    }
+
+    pub fn update(&mut self) -> VkResult<()> {
+        self.upload_queue.update()
+    }
+
+    pub fn upload_image(
+        &self,
+        request: LoadRequest<ImageAsset>,
+    ) -> VkResult<()> {
+        let decoded_texture = DecodedTexture {
+            width: request.asset.width,
+            height: request.asset.height,
+            data: request.asset.data,
+        };
+
+        self.upload_queue
+            .pending_image_tx()
+            .send(PendingImageUpload {
+                load_op: request.load_op,
+                upload_op: UploadOp::new(request.load_handle, self.image_upload_result_tx.clone()),
+                texture: decoded_texture,
+            })
+            .map_err(|err| {
+                log::error!("Could not enqueue image upload");
+                vk::Result::ERROR_UNKNOWN
+            })
     }
 }
