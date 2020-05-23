@@ -26,7 +26,7 @@ use crate::time::TimeState;
 use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
 use crate::asset_resource::AssetResource;
 use std::hint::unreachable_unchecked;
-use crate::resource_managers::PipelineInfo;
+use crate::resource_managers::PipelineSwapchainInfo;
 
 struct SpriteRenderpassStats {
     draw_call_count: u32,
@@ -99,7 +99,7 @@ pub struct VkSpriteRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
-    pipeline_info: PipelineInfo,
+    pipeline_info: PipelineSwapchainInfo,
 
     // This contains bindings for the UBO containing a view/proj matrix and a sampler
     //pub descriptor_set_layout_per_pass: vk::DescriptorSetLayout,
@@ -134,7 +134,7 @@ impl VkSpriteRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        pipeline_info: PipelineInfo,
+        pipeline_info: PipelineSwapchainInfo,
         //pipeline_manager: &mut PipelineManager,
         //sprite_resource_manager: &SpriteResourceManager,
         swapchain_surface_info: &SwapchainSurfaceInfo,

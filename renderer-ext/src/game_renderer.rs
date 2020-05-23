@@ -220,7 +220,7 @@ impl GameRenderer {
         );
 
         let sprite_pipeline_info = renderer.resource_manager.get_descriptor_set_info(&renderer.sprite_material, 0, 1);
-        let mut sprite_custom_material = renderer.resource_manager.create_empty_dyn_descriptor_set(&sprite_pipeline_info.descriptor_set_layout_def)?;
+        let mut sprite_custom_material = renderer.resource_manager.create_uninitialized_dyn_descriptor_set(&sprite_pipeline_info.descriptor_set_layout_def)?;
         let image_info = renderer.resource_manager.get_image_info(&override_image);
         sprite_custom_material.set_image(0, image_info.image_view);
         sprite_custom_material.flush();

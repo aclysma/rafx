@@ -12,9 +12,10 @@ use super::ResourceHash;
 use crate::pipeline_description as dsc;
 use ash::version::DeviceV1_0;
 use crate::resource_managers::ResourceManager;
-use crate::pipeline::pipeline::DescriptorSetLayoutWithSlotName;
+use crate::pipeline::pipeline::{DescriptorSetLayoutWithSlotName, MaterialInstanceSlot};
 //use crate::upload::InProgressUploadPollResult::Pending;
-use crate::resource_managers::asset_lookup::SlotNameLookup;
+use crate::resource_managers::asset_lookup::{SlotNameLookup, LoadedAssetLookupSet, LoadedMaterialPass};
+use atelier_assets::loader::handle::AssetHandle;
 
 //
 // These represent a write update that can be applied to a descriptor set in a pool
@@ -562,7 +563,7 @@ impl RegisteredDescriptorSetPoolManager {
         }
     }
 
-    pub fn descriptor_set(
+    pub fn descriptor_set_for_current_frame(
         &self,
         descriptor_set_arc: &DescriptorSetArc,
     ) -> vk::DescriptorSet {
@@ -588,11 +589,12 @@ impl RegisteredDescriptorSetPoolManager {
         pool.insert(&self.device_context, write_set, self.frame_in_flight_index)
     }
 
-    pub fn create_dyn_descriptor_set(
+    pub fn create_uninitialized_dyn_descriptor_set(
         &mut self,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
         descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
     ) -> VkResult<DynDescriptorSet> {
+        // Get or create the pool for the layout
         let hash = ResourceHash::from_key(descriptor_set_layout_def);
         let device_context = self.device_context.clone();
         let pool = self.pools.entry(hash).or_insert_with(|| {
@@ -603,8 +605,13 @@ impl RegisteredDescriptorSetPoolManager {
             )
         });
 
+        // Allocated a descriptor set
         let descriptor_set = pool.insert(&self.device_context, DescriptorSetWriteSet::default(), self.frame_in_flight_index)?;
-        let dyn_descriptor_set = DynDescriptorSet::new(descriptor_set_layout_def, descriptor_set, pool.write_tx.clone());
+
+        // Create the DynDescriptorSet
+        let write_set = create_uninitialized_write_set_for_layout(descriptor_set_layout_def);
+        let dyn_descriptor_set = DynDescriptorSet::new(write_set, descriptor_set, pool.write_tx.clone());
+
         Ok(dyn_descriptor_set)
     }
 
@@ -628,41 +635,6 @@ impl RegisteredDescriptorSetPoolManager {
 
         self.pools.clear();
     }
-}
-
-
-
-
-pub fn create_default_write_set_for_layout(layout: &dsc::DescriptorSetLayout) -> DescriptorSetWriteSet {
-    let mut write_set = DescriptorSetWriteSet::default();
-    for (binding_index, binding) in
-        layout.descriptor_set_layout_bindings.iter().enumerate()
-    {
-        let key = DescriptorSetElementKey {
-            dst_binding: binding_index as u32,
-            //dst_array_element: 0,
-        };
-
-        let mut element_write = DescriptorSetElementWrite {
-            descriptor_type: binding.descriptor_type.into(),
-            image_info: Default::default(),
-            buffer_info: Default::default(),
-        };
-
-        let what_to_bind = what_to_bind(binding.descriptor_type);
-
-        if what_to_bind.bind_images || what_to_bind.bind_samplers {
-            element_write.image_info.resize(binding.descriptor_count as usize, DescriptorSetWriteElementImage::default());
-        }
-
-        if what_to_bind.bind_buffers {
-            element_write.buffer_info.resize(binding.descriptor_count as usize, DescriptorSetWriteElementBuffer::default());
-        }
-
-        write_set.elements.insert(key, element_write);
-    }
-
-    write_set
 }
 
 #[derive(Default)]
@@ -696,9 +668,109 @@ pub fn what_to_bind(descriptor_type: dsc::DescriptorType) -> WhatToBind {
     what
 }
 
-pub struct DynMaterialInstance {
-    descriptor_sets: Vec<DynDescriptorSet>,
-    slot_names: Arc<SlotNameLookup>,
+pub fn create_uninitialized_write_set_for_layout(layout: &dsc::DescriptorSetLayout) -> DescriptorSetWriteSet {
+    let mut write_set = DescriptorSetWriteSet::default();
+    for (binding_index, binding) in
+        layout.descriptor_set_layout_bindings.iter().enumerate()
+    {
+        let key = DescriptorSetElementKey {
+            dst_binding: binding_index as u32,
+            //dst_array_element: 0,
+        };
+
+        let mut element_write = DescriptorSetElementWrite {
+            descriptor_type: binding.descriptor_type.into(),
+            image_info: Default::default(),
+            buffer_info: Default::default(),
+        };
+
+        let what_to_bind = what_to_bind(binding.descriptor_type);
+
+        if what_to_bind.bind_images || what_to_bind.bind_samplers {
+            element_write.image_info.resize(binding.descriptor_count as usize, DescriptorSetWriteElementImage::default());
+        }
+
+        if what_to_bind.bind_buffers {
+            element_write.buffer_info.resize(binding.descriptor_count as usize, DescriptorSetWriteElementBuffer::default());
+        }
+
+        write_set.elements.insert(key, element_write);
+    }
+
+    write_set
+}
+
+
+pub fn apply_material_instance_slot_assignment(
+    slot: &MaterialInstanceSlot,
+    pass_slot_name_lookup: &SlotNameLookup,
+    assets: &LoadedAssetLookupSet,
+    material_pass_write_set: &mut Vec<DescriptorSetWriteSet>
+) {
+    if let Some(slot_locations) = pass_slot_name_lookup.get(&slot.slot_name) {
+        for location in slot_locations {
+            let mut layout_descriptor_set_writes = &mut material_pass_write_set[location.layout_index as usize];
+            let write = layout_descriptor_set_writes.elements.get_mut(&DescriptorSetElementKey {
+                dst_binding: location.binding_index,
+                //dst_array_element: location.array_index
+            }).unwrap();
+
+            let mut bind_samplers = false;
+            let mut bind_images = false;
+            match write.descriptor_type {
+                dsc::DescriptorType::Sampler => {
+                    bind_samplers = true;
+                }
+                dsc::DescriptorType::CombinedImageSampler => {
+                    bind_samplers = true;
+                    bind_images = true;
+                }
+                dsc::DescriptorType::SampledImage => {
+                    bind_images = true;
+                }
+                _ => unimplemented!(),
+            }
+
+            let mut write_image = DescriptorSetWriteElementImage {
+                image_view: None,
+                sampler: None,
+            };
+
+            if bind_images {
+                if let Some(image) = &slot.image {
+                    let loaded_image = assets
+                        .images
+                        .get_latest(image.load_handle())
+                        .unwrap();
+                    write_image.image_view = Some(loaded_image.image_view.clone());
+                }
+
+                write.image_info = vec![write_image];
+            }
+        }
+    }
+}
+
+pub fn create_write_set_for_material_instance(
+    pass: &LoadedMaterialPass,
+    slots: &Vec<MaterialInstanceSlot>,
+    assets: &LoadedAssetLookupSet,
+) -> Vec<DescriptorSetWriteSet> {
+    // The metadata for the descriptor sets within this pass, one for each set within the pass
+    let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts;
+
+    let mut pass_descriptor_set_writes : Vec<_> = descriptor_set_layouts.iter()
+        .map(|layout| create_uninitialized_write_set_for_layout(&layout.into()))
+        .collect();
+
+    //
+    // Now modify the descriptor set writes to actually point at the things specified by the material
+    //
+    for slot in slots {
+        apply_material_instance_slot_assignment(slot, &pass.pass_slot_name_lookup, assets, &mut pass_descriptor_set_writes);
+    }
+
+    pass_descriptor_set_writes
 }
 
 pub struct DynDescriptorSet {
@@ -710,12 +782,10 @@ pub struct DynDescriptorSet {
 
 impl DynDescriptorSet {
     fn new(
-        layout: &dsc::DescriptorSetLayout,
+        write_set: DescriptorSetWriteSet,
         descriptor_set: DescriptorSetArc,
         write_tx: Sender<SlabKeyDescriptorSetWriteSet>,
     ) -> Self {
-        let write_set = create_default_write_set_for_layout(layout);
-
         DynDescriptorSet {
             descriptor_set,
             write_set,
@@ -773,4 +843,9 @@ impl DynDescriptorSet {
     pub fn descriptor_set(&self) -> &DescriptorSetArc {
         &self.descriptor_set
     }
+}
+
+pub struct DynMaterialInstance {
+    descriptor_sets: Vec<DynDescriptorSet>,
+    slot_names: Arc<SlotNameLookup>,
 }

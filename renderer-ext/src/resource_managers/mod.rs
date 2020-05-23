@@ -73,25 +73,30 @@ use upload::UploadManager;
 //TODO: Support dynamic descriptors tied to command buffers?
 //TODO: Support data inheritance for descriptors
 
-
-pub struct PipelineInfo {
+// Information about a pipeline for a particular swapchain, resources may or may not be shared
+// across swapchains depending on if they are the same size/format
+pub struct PipelineSwapchainInfo {
     pub descriptor_set_layouts: Vec<ResourceArc<vk::DescriptorSetLayout>>,
     pub pipeline_layout: ResourceArc<vk::PipelineLayout>,
     pub renderpass: ResourceArc<vk::RenderPass>,
     pub pipeline: ResourceArc<vk::Pipeline>,
 }
 
+// Information about a single loaded image
 pub struct ImageInfo {
     pub image: ResourceArc<VkImageRaw>,
     pub image_view: ResourceArc<vk::ImageView>,
 }
 
+// Information about a single descriptor set
 pub struct DescriptorSetInfo {
     pub descriptor_set_layout_def: dsc::DescriptorSetLayout,
     pub descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
 }
 
-pub struct CurrentFramePassInfo {
+// Information about a descriptor set for a particular frame. Descriptor sets may be updated
+// every frame and we rotate through them, so this information must not be persisted across frames
+pub struct MaterialInstanceDescriptorSetsForCurrentFrame {
     pub descriptor_sets: Vec<vk::DescriptorSet>,
 }
 
@@ -193,7 +198,7 @@ impl ResourceManager {
         handle: &Handle<MaterialAsset>,
         swapchain: &SwapchainSurfaceInfo,
         pass_index: usize,
-    ) -> PipelineInfo {
+    ) -> PipelineSwapchainInfo {
         let resource = self
             .loaded_assets
             .materials
@@ -206,7 +211,7 @@ impl ResourceManager {
             .unwrap()
             .index;
 
-        PipelineInfo {
+        PipelineSwapchainInfo {
             descriptor_set_layouts: resource.passes[pass_index].descriptor_set_layouts.clone(),
             pipeline_layout: resource.passes[pass_index].pipeline_layout.clone(),
             renderpass: resource.passes[pass_index].render_passes[swapchain_index].clone(),
@@ -214,39 +219,29 @@ impl ResourceManager {
         }
     }
 
-    pub fn get_current_frame_pass_info(
+    pub fn get_material_instance_descriptor_sets_for_current_frame(
         &self,
         handle: &Handle<MaterialInstanceAsset>,
         pass_index: usize,
-    ) -> CurrentFramePassInfo {
+    ) -> MaterialInstanceDescriptorSetsForCurrentFrame {
+        // Get the material instance
         let resource = self
             .loaded_assets
             .material_instances
             .get_committed(handle.load_handle())
             .unwrap();
-        // let swapchain_index = self
-        //     .swapchain_surfaces
-        //     .ref_counts
-        //     .get(swapchain)
-        //     .unwrap()
-        //     .index;
 
         // Get the current pass
+        let current_pass_descriptor_sets = &resource.material_descriptor_sets[pass_index];
+
         // Get the descriptor sets within the pass (one per layout)
         // Map the DescriptorSetArc to a vk::DescriptorSet
-        let descriptor_sets: Vec<_> = resource.material_descriptor_sets[pass_index]
+        let descriptor_sets: Vec<_> = current_pass_descriptor_sets
             .iter()
-            .map(|x| self.registered_descriptor_sets.descriptor_set(x))
+            .map(|x| self.registered_descriptor_sets.descriptor_set_for_current_frame(x))
             .collect();
 
-        CurrentFramePassInfo { descriptor_sets }
-
-        // PipelineInfo {
-        //     descriptor_set_layouts: resource.passes[pass_index].descriptor_set_layouts.clone(),
-        //     pipeline_layout: resource.passes[pass_index].pipeline_layout.clone(),
-        //     renderpass: resource.passes[pass_index].render_passes[swapchain_index].clone(),
-        //     pipeline: resource.passes[pass_index].pipelines[swapchain_index].clone(),
-        // }
+        MaterialInstanceDescriptorSetsForCurrentFrame { descriptor_sets }
     }
 
     fn add_material_for_swapchain(
@@ -273,28 +268,7 @@ impl ResourceManager {
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     ) -> VkResult<()> {
         log::info!("add_swapchain {:?}", swapchain_surface_info);
-        // Add it
-        if self.swapchain_surfaces.add(&swapchain_surface_info) {
-            for (load_handle, loaded_asset) in &mut self.loaded_assets.materials.loaded_assets {
-                if let Some(committed) = &mut loaded_asset.committed {
-                    Self::add_material_for_swapchain(
-                        &mut self.resources,
-                        swapchain_surface_info,
-                        committed,
-                    )?;
-                }
-
-                if let Some(uncommitted) = &mut loaded_asset.uncommitted {
-                    Self::add_material_for_swapchain(
-                        &mut self.resources,
-                        swapchain_surface_info,
-                        uncommitted,
-                    )?;
-                }
-            }
-        }
-
-        Ok(())
+        self.swapchain_surfaces.add(&swapchain_surface_info, &mut self.loaded_assets, &mut self.resources)
     }
 
     pub fn remove_swapchain(
@@ -302,31 +276,7 @@ impl ResourceManager {
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     ) {
         log::info!("remove_swapchain {:?}", swapchain_surface_info);
-        //TODO: Common case is to destroy and re-create the same swapchain surface info, so we can
-        // delay destroying until we also get an additional add/remove. If the next add call is
-        // the same, we can avoid the remove entirely
-        if let Some(remove_index) = self.swapchain_surfaces.remove(swapchain_surface_info) {
-            for (_, loaded_asset) in &mut self.loaded_assets.materials.loaded_assets {
-                if let Some(committed) = &mut loaded_asset.committed {
-                    for pass in &mut committed.passes {
-                        pass.render_passes.swap_remove(remove_index);
-                        pass.pipelines.swap_remove(remove_index);
-                    }
-                }
-
-                if let Some(uncommitted) = &mut loaded_asset.uncommitted {
-                    for pass in &mut uncommitted.passes {
-                        pass.render_passes.swap_remove(remove_index);
-                        pass.pipelines.swap_remove(remove_index);
-                    }
-                }
-            }
-        } else {
-            log::error!(
-                "Received a remove swapchain without a matching add\n{:#?}",
-                swapchain_surface_info
-            );
-        }
+        self.swapchain_surfaces.remove(swapchain_surface_info, &mut self.loaded_assets);
     }
 
     pub fn update(&mut self) -> VkResult<()> {
@@ -624,107 +574,6 @@ impl ResourceManager {
         Ok(LoadedMaterial { passes })
     }
 
-    // fn begin_load_image(
-    //     &mut self,
-    //     request: LoadRequest<ImageAsset>
-    // ) -> VkResult<LoadedMaterialInstance> {
-    //     let decoded_image = DecodedTexture {
-    //         width: request.asset.width,
-    //         height: request.asset.height,
-    //         data: request.asset.data,
-    //     };
-    //
-    //     self.upload_manager.upload_queue.pending_image_tx().send(PendingImageUpload {
-    //         load_op: request.load_op,
-    //         upload_op: UploadOp::new(request.load_handle, self.upload_manager.image_upload_result_tx.clone()),
-    //         texture: decoded_image
-    //     }).map_err(|err| {
-    //         log::error!("Could not enqueue image upload");
-    //         vk::Result::ERROR_UNKNOWN
-    //     })
-    // }
-
-    fn apply_slot_assignments(
-        slot: &MaterialInstanceSlot,
-        pass_slot_name_lookup: &SlotNameLookup,
-        assets: &LoadedAssetLookupSet,
-        material_pass_write_set: &mut Vec<DescriptorSetWriteSet>
-    ) {
-        if let Some(slot_locations) = pass_slot_name_lookup.get(&slot.slot_name) {
-            for location in slot_locations {
-                let mut layout_descriptor_set_writes = &mut material_pass_write_set[location.layout_index as usize];
-                let write = layout_descriptor_set_writes.elements.get_mut(&DescriptorSetElementKey {
-                    dst_binding: location.binding_index,
-                    //dst_array_element: location.array_index
-                }).unwrap();
-
-                let mut bind_samplers = false;
-                let mut bind_images = false;
-                match write.descriptor_type {
-                    dsc::DescriptorType::Sampler => {
-                        bind_samplers = true;
-                    }
-                    dsc::DescriptorType::CombinedImageSampler => {
-                        bind_samplers = true;
-                        bind_images = true;
-                    }
-                    dsc::DescriptorType::SampledImage => {
-                        bind_images = true;
-                    }
-                    _ => unimplemented!(),
-                }
-
-                let mut write_image = DescriptorSetWriteElementImage {
-                    image_view: None,
-                    sampler: None,
-                };
-
-                if bind_images {
-                    if let Some(image) = &slot.image {
-                        let loaded_image = assets
-                            .images
-                            .get_latest(image.load_handle())
-                            .unwrap();
-                        write_image.image_view = Some(loaded_image.image_view.clone());
-                    }
-
-                    write.image_info = vec![write_image];
-                }
-            }
-        }
-    }
-
-    fn generate_descriptor_set_writes_with_slot_assignments(
-        pass: &LoadedMaterialPass,
-        slots: &Vec<MaterialInstanceSlot>,
-        assets: &LoadedAssetLookupSet,
-    ) -> Vec<DescriptorSetWriteSet> {
-        // The metadata for the descriptor sets within this pass, one for each set within the pass
-        let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts;
-
-        // This will contain the writes for the descriptor set. Their purpose is to store everything needed to create a vk::WriteDescriptorSet
-        // struct. We will need to keep these around for a few frames.
-        let mut pass_descriptor_set_writes =
-            Vec::with_capacity(descriptor_set_layouts.len());
-
-        //
-        // Build a "default" descriptor writer for every binding
-        //
-        for layout in descriptor_set_layouts {
-            let write_set = descriptor_sets::create_default_write_set_for_layout(&layout.into());
-            pass_descriptor_set_writes.push(write_set);
-        }
-
-        //
-        // Now modify the descriptor set writes to actually point at the things specified by the material
-        //
-        for slot in slots {
-            Self::apply_slot_assignments(slot, &pass.pass_slot_name_lookup, assets, &mut pass_descriptor_set_writes);
-        }
-
-        pass_descriptor_set_writes
-    }
-
 
     fn load_material_instance(
         &mut self,
@@ -740,7 +589,7 @@ impl ResourceManager {
         // This will be references to descriptor sets. Indexed by pass, and then by set within the pass.
         let mut material_descriptor_sets = Vec::with_capacity(material_asset.passes.len());
         for pass in &material_asset.passes {
-            let pass_descriptor_set_writes = Self::generate_descriptor_set_writes_with_slot_assignments(
+            let pass_descriptor_set_writes = descriptor_sets::create_write_set_for_material_instance(
                 pass,
                 &material_instance_asset.slots,
                 &self.loaded_assets
@@ -778,18 +627,23 @@ impl ResourceManager {
         })
     }
 
-    pub fn create_empty_dyn_descriptor_set(
+    pub fn create_uninitialized_dyn_descriptor_set(
         &mut self,
         layout_def: &dsc::DescriptorSetLayout
     ) -> VkResult<DynDescriptorSet> {
         let layout = self.resources.get_or_create_descriptor_set_layout(layout_def)?;
-        self.registered_descriptor_sets.create_dyn_descriptor_set(
-            layout_def,
-            layout
-        )
-    }
+        self.registered_descriptor_sets.create_uninitialized_dyn_descriptor_set(layout_def, layout)
 
-    pub fn create_dyn_descriptor_set_from_material_instance(
+
+        // let write_set = create_uninitialized_write_set_for_layout(layout_def);
+        // self.registered_descriptor_sets.create_dyn_descriptor_set(
+        //     write_set,
+        //     layout_def,
+        //     layout
+        // )
+    }
+/*
+    pub fn create_uniintialized_dyn_descriptor_set_from_material_instance(
         &mut self,
         material_instance: &Handle<MaterialInstanceAsset>,
         pass: u32,
@@ -805,11 +659,12 @@ impl ResourceManager {
 
 
         let layout = self.resources.get_or_create_descriptor_set_layout(layout_def)?;
-        self.registered_descriptor_sets.create_dyn_descriptor_set(
+        self.registered_descriptor_sets.create_uninitialized_dyn_descriptor_set(
             layout_def,
             layout
         )
     }
+    */
 }
 
 struct DynMaterialPass {
