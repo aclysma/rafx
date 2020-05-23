@@ -2,6 +2,7 @@ use std::prelude::v1::*;
 
 use super::SlabIndexT;
 use std::marker::PhantomData;
+use std::hash::{Hash, Hasher};
 
 /// A key to a value in a RawSlab
 pub struct RawSlabKey<T: Sized> {
@@ -21,6 +22,22 @@ impl<T: Sized> Clone for RawSlabKey<T> {
 }
 
 impl<T: Sized> Copy for RawSlabKey<T> {}
+
+impl<T: Sized> PartialEq for RawSlabKey<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+    }
+}
+
+impl<T: Sized> Eq for RawSlabKey<T> {
+
+}
+
+impl<T: Sized> Hash for RawSlabKey<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.index.hash(state);
+    }
+}
 
 impl<T: Sized> std::fmt::Debug for RawSlabKey<T> {
     fn fmt(

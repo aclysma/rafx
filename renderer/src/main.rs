@@ -245,7 +245,7 @@ fn main() {
         .filter_module("renderer_shell_vulkan::buffer", log::LevelFilter::Debug)
         .filter_module("renderer_ext::game_renderer", log::LevelFilter::Debug)
         //.filter_level(log::LevelFilter::Error)
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Debug)
         .init();
 
     // Spawn the daemon in a background thread. This could be a different process, but

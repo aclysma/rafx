@@ -125,7 +125,7 @@ where
         asset: &AssetT,
         load_op: AssetLoadOp,
     ) {
-        println!(
+        log::trace!(
             "ResourceLoadHandler update_asset {} {:?}",
             core::any::type_name::<AssetT>(),
             load_handle
@@ -147,7 +147,7 @@ where
         version: u32,
         asset: &AssetT,
     ) {
-        println!(
+        log::trace!(
             "ResourceLoadHandler commit_asset_version {} {:?}",
             core::any::type_name::<AssetT>(),
             load_handle
@@ -166,7 +166,7 @@ where
         resource_handle: ResourceHandle<AssetT>,
         version: u32,
     ) {
-        println!(
+        log::trace!(
             "ResourceLoadHandler free {} {:?}",
             core::any::type_name::<AssetT>(),
             load_handle

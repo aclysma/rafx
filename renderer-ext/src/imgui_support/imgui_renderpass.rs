@@ -1020,7 +1020,7 @@ impl VkImGuiRenderPass {
 
 impl Drop for VkImGuiRenderPass {
     fn drop(&mut self) {
-        log::debug!("destroying VkImGuiRenderPass");
+        log::trace!("destroying VkImGuiRenderPass");
 
         fn drop_all_buffer_lists(buffer_list: &mut Vec<Vec<ManuallyDrop<VkBuffer>>>) {
             for buffers in buffer_list {
@@ -1067,6 +1067,6 @@ impl Drop for VkImGuiRenderPass {
             device.destroy_descriptor_set_layout(self.descriptor_set_layout, None);
         }
 
-        log::debug!("destroyed VkImGuiRenderPass");
+        log::trace!("destroyed VkImGuiRenderPass");
     }
 }

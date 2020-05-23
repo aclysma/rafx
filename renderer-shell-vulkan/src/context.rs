@@ -267,13 +267,13 @@ impl VkContext {
 
 impl Drop for VkContext {
     fn drop(&mut self) {
-        debug!("destroying Context");
+        trace!("destroying Context");
 
         unsafe {
             ManuallyDrop::drop(&mut self.device);
             ManuallyDrop::drop(&mut self.instance);
         }
 
-        debug!("destroyed Context");
+        trace!("destroyed Context");
     }
 }

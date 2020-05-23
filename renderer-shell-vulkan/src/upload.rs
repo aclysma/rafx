@@ -105,8 +105,7 @@ impl VkUpload {
         logical_device: &ash::Device,
         queue_family_index: u32,
     ) -> VkResult<vk::CommandPool> {
-        //TODO: Consider a separate transfer queue
-        log::info!(
+        log::trace!(
             "Creating command pool with queue family index {}",
             queue_family_index
         );
@@ -152,7 +151,7 @@ impl VkUpload {
         data: &[u8],
         required_alignment: usize,
     ) -> VkResult<vk::DeviceSize> {
-        log::debug!("Pushing {} bytes into upload", data.len());
+        log::trace!("Pushing {} bytes into upload", data.len());
 
         if self.writable {
             unsafe {
@@ -243,7 +242,7 @@ impl VkUpload {
 
 impl Drop for VkUpload {
     fn drop(&mut self) {
-        log::debug!("destroying VkUpload");
+        log::trace!("destroying VkUpload");
 
         // If the transfer is in flight, wait for it to complete
         self.wait_for_idle();
@@ -259,7 +258,7 @@ impl Drop for VkUpload {
             self.device_context.device().destroy_fence(self.fence, None);
         }
 
-        log::debug!("destroyed VkUpload");
+        log::trace!("destroyed VkUpload");
     }
 }
 
@@ -354,7 +353,7 @@ impl VkTransferUpload {
         logical_device: &ash::Device,
         queue_family_index: u32,
     ) -> VkResult<vk::CommandPool> {
-        log::info!(
+        log::trace!(
             "Creating command pool with queue family index {}",
             queue_family_index
         );
@@ -468,7 +467,7 @@ impl VkTransferUpload {
 
 impl Drop for VkTransferUpload {
     fn drop(&mut self) {
-        log::debug!("destroying VkUpload");
+        log::trace!("destroying VkUpload");
 
         // If the transfer is in flight, wait for it to complete
         self.upload.wait_for_idle();
@@ -483,6 +482,6 @@ impl Drop for VkTransferUpload {
                 .destroy_fence(self.dst_fence, None);
         }
 
-        log::debug!("destroyed VkUpload");
+        log::trace!("destroyed VkUpload");
     }
 }

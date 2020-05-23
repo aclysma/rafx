@@ -108,7 +108,7 @@ impl VkImage {
 
 impl Drop for VkImage {
     fn drop(&mut self) {
-        log::debug!("destroying VkImage");
+        log::trace!("destroying VkImage");
 
         unsafe {
             unsafe {
@@ -120,6 +120,6 @@ impl Drop for VkImage {
             }
         }
 
-        log::debug!("destroyed VkImage");
+        log::trace!("destroyed VkImage");
     }
 }

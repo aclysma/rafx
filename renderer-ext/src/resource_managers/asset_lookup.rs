@@ -1,11 +1,13 @@
 use super::resource_lookup::ResourceArc;
 use ash::vk;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialPassShaderInterface};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialPassShaderInterface, MaterialAsset};
 use super::PipelineCreateData;
 use fnv::FnvHashMap;
 use renderer_shell_vulkan::VkImageRaw;
 use super::DescriptorSetArc;
 use atelier_assets::loader::LoadHandle;
+use atelier_assets::loader::handle::Handle;
+use std::sync::Arc;
 
 //
 // The "loaded" state of assets. Assets may have dependencies. Arcs to those dependencies ensure
@@ -27,7 +29,10 @@ pub struct LoadedGraphicsPipeline {
 pub struct SlotLocation {
     pub layout_index: u32,
     pub binding_index: u32,
+    //pub array_index: u32,
 }
+
+pub type SlotNameLookup = FnvHashMap<String, Vec<SlotLocation>>;
 
 pub struct LoadedMaterialPass {
     pub shader_modules: Vec<ResourceArc<vk::ShaderModule>>,
@@ -46,7 +51,7 @@ pub struct LoadedMaterialPass {
 
     //TODO: Use hash instead of string. Probably want to have a "hashed string" type that keeps the
     // string around only in debug mode. Maybe this could be generalized to a HashOfThing<T>.
-    pub pass_slot_name_lookup: FnvHashMap<String, Vec<SlotLocation>>,
+    pub pass_slot_name_lookup: Arc<SlotNameLookup>,
 }
 
 pub struct LoadedMaterial {
@@ -54,6 +59,7 @@ pub struct LoadedMaterial {
 }
 
 pub struct LoadedMaterialInstance {
+    pub material: Handle<MaterialAsset>,
     pub material_descriptor_sets: Vec<Vec<DescriptorSetArc>>,
 }
 
@@ -168,6 +174,15 @@ impl<LoadedAssetT> Default for AssetLookup<LoadedAssetT> {
     }
 }
 
+#[derive(Debug)]
+pub struct LoadedAssetMetrics {
+    shader_module_count: usize,
+    pipeline_count: usize,
+    material_count: usize,
+    material_instance_count: usize,
+    image_count: usize,
+}
+
 //
 // Lookups by asset for loaded asset state
 //
@@ -181,6 +196,16 @@ pub struct LoadedAssetLookupSet {
 }
 
 impl LoadedAssetLookupSet {
+    pub fn metrics(&self) -> LoadedAssetMetrics {
+        LoadedAssetMetrics {
+            shader_module_count: self.shader_modules.len(),
+            pipeline_count: self.graphics_pipelines2.len(),
+            material_count: self.materials.len(),
+            material_instance_count: self.material_instances.len(),
+            image_count: self.images.len(),
+        }
+    }
+
     pub fn destroy(&mut self) {
         self.shader_modules.destroy();
         self.graphics_pipelines2.destroy();

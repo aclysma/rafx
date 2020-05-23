@@ -358,7 +358,7 @@ impl VkSwapchain {
 
 impl Drop for VkSwapchain {
     fn drop(&mut self) {
-        debug!("destroying VkSwapchain");
+        trace!("destroying VkSwapchain");
 
         unsafe {
             let device = self.device_context.device();
@@ -382,6 +382,6 @@ impl Drop for VkSwapchain {
                 .destroy_swapchain(self.swapchain, None);
         }
 
-        debug!("destroyed VkSwapchain");
+        trace!("destroyed VkSwapchain");
     }
 }

@@ -42,10 +42,10 @@ pub struct VkDebugReporter {
 impl Drop for VkDebugReporter {
     fn drop(&mut self) {
         unsafe {
-            debug!("destroying VkDebugReporter");
+            trace!("destroying VkDebugReporter");
             self.debug_report_loader
                 .destroy_debug_report_callback(self.debug_callback, None);
-            debug!("destroyed VkDebugReporter");
+            trace!("destroyed VkDebugReporter");
         }
     }
 }

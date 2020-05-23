@@ -556,12 +556,12 @@ impl VkDevice {
 
 impl Drop for VkDevice {
     fn drop(&mut self) {
-        debug!("destroying VkDevice");
+        trace!("destroying VkDevice");
         unsafe {
             self.device_context.destroy();
             self.surface_loader.destroy_surface(self.surface, None);
         }
 
-        debug!("destroyed VkDevice");
+        trace!("destroyed VkDevice");
     }
 }

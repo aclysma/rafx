@@ -2,13 +2,13 @@ use crate::upload::{
     UploadQueue, ImageUploadOpResult, BufferUploadOpResult, PendingImageUpload, UploadOp,
 };
 use crossbeam_channel::{Sender, Receiver};
-use renderer_shell_vulkan::{VkDeviceContext, VkImage};
+use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw};
 use ash::prelude::*;
 use ash::vk;
 use crate::pipeline::image::ImageAsset;
 use crate::image_utils::DecodedTexture;
 use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, MaterialInstanceSlot};
 use crate::pipeline_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
@@ -44,15 +44,28 @@ use asset_lookup::LoadedGraphicsPipeline;
 use asset_lookup::LoadedAssetLookupSet;
 use asset_lookup::AssetLookup;
 use asset_lookup::SlotLocation;
+use asset_lookup::LoadedAssetMetrics;
 
 mod descriptor_sets;
 use descriptor_sets::RegisteredDescriptorSetPoolManager;
 use descriptor_sets::DescriptorSetArc;
-use descriptor_sets::DescriptorSetWrite;
-use descriptor_sets::DescriptorSetWriteImage;
-use descriptor_sets::DescriptorSetWriteBuffer;
-use descriptor_sets::RegisteredDescriptorSetPoolStats;
-use descriptor_sets::RegisteredDescriptorSetPoolManagerStats;
+use descriptor_sets::DescriptorSetWriteSet;
+use descriptor_sets::DescriptorSetWriteElementImage;
+use descriptor_sets::DescriptorSetWriteElementBuffer;
+use descriptor_sets::RegisteredDescriptorSetPoolMetrics;
+use descriptor_sets::RegisteredDescriptorSetPoolManagerMetrics;
+use descriptor_sets::DescriptorSetElementKey;
+use descriptor_sets::DescriptorSetElementWrite;
+pub use descriptor_sets::DynDescriptorSet;
+use image::load;
+use crate::resource_managers::asset_lookup::SlotNameLookup;
+use std::sync::Arc;
+
+
+//TODO: Support descriptors that can be different per-view
+//TODO: Support dynamic descriptors tied to command buffers?
+//TODO: Support data inheritance for descriptors
+
 
 //use descriptor_sets::
 struct UploadManager {
@@ -114,8 +127,25 @@ pub struct PipelineInfo {
     pub pipeline: ResourceArc<vk::Pipeline>,
 }
 
+pub struct ImageInfo {
+    pub image: ResourceArc<VkImageRaw>,
+    pub image_view: ResourceArc<vk::ImageView>,
+}
+
+pub struct DescriptorSetInfo {
+    pub descriptor_set_layout_def: dsc::DescriptorSetLayout,
+    pub descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+}
+
 pub struct CurrentFramePassInfo {
     pub descriptor_sets: Vec<vk::DescriptorSet>,
+}
+
+#[derive(Debug)]
+struct ResourceManagerMetrics {
+    resource_metrics: ResourceMetrics,
+    loaded_asset_metrics: LoadedAssetMetrics,
+    registered_descriptor_sets_metrics: RegisteredDescriptorSetPoolManagerMetrics,
 }
 
 pub struct ResourceManager {
@@ -165,6 +195,43 @@ impl ResourceManager {
 
     pub fn create_image_load_handler(&self) -> GenericLoadHandler<ImageAsset> {
         self.load_queues.images.create_load_handler()
+    }
+
+    pub fn get_image_info(
+        &self,
+        handle: &Handle<ImageAsset>,
+    ) -> ImageInfo {
+        let resource = self
+            .loaded_assets
+            .images
+            .get_committed(handle.load_handle())
+            .unwrap();
+
+        ImageInfo {
+            image: resource.image.clone(),
+            image_view: resource.image_view.clone(),
+        }
+    }
+
+    pub fn get_descriptor_set_info(
+        &self,
+        handle: &Handle<MaterialAsset>,
+        pass_index: usize,
+        layout_index: usize,
+    ) -> DescriptorSetInfo {
+        let resource = self
+            .loaded_assets
+            .materials
+            .get_committed(handle.load_handle())
+            .unwrap();
+
+        let descriptor_set_layout_def = resource.passes[pass_index].pipeline_create_data.pipeline_layout_def.descriptor_set_layouts[layout_index].clone();
+        let descriptor_set_layout = resource.passes[pass_index].descriptor_set_layouts[layout_index].clone();
+
+        DescriptorSetInfo {
+            descriptor_set_layout_def,
+            descriptor_set_layout,
+        }
     }
 
     pub fn get_pipeline_info(
@@ -323,64 +390,21 @@ impl ResourceManager {
         Ok(())
     }
 
-    fn dump_stats(&self) {
+    fn metrics(&self) -> ResourceManagerMetrics {
         let resource_metrics = self.resources.metrics();
+        let loaded_asset_metrics = self.loaded_assets.metrics();
+        let registered_descriptor_sets_metrics = self.registered_descriptor_sets.metrics();
 
-        #[derive(Debug)]
-        struct LoadedAssetCounts {
-            shader_module_count: usize,
-            pipeline_count: usize,
-            material_count: usize,
-            material_instance_count: usize,
-            image_count: usize,
-        }
-
-        let loaded_asset_counts = LoadedAssetCounts {
-            shader_module_count: self.loaded_assets.shader_modules.len(),
-            pipeline_count: self.loaded_assets.graphics_pipelines2.len(),
-            material_count: self.loaded_assets.materials.len(),
-            material_instance_count: self.loaded_assets.material_instances.len(),
-            image_count: self.loaded_assets.images.len(),
-        };
-
-        // #[derive(Debug)]
-        // struct RegisteredDescriptorSetStats {
-        //     pools: Vec<MaterialInstancePoolStats>
-        // }
-        //
-        // let mut registered_descriptor_sets_stats = Vec::with_capacity(self.registered_descriptor_sets.pools.len());
-        // for (hash, value) in &self.registered_descriptor_sets.pools {
-        //     registered_descriptor_sets_stats.push(MaterialInstancePoolStats {
-        //         hash: *hash,
-        //         allocated_count: value.slab.allocated_count()
-        //     });
-        // }
-        //
-        // let registered_descriptor_sets_stats = RegisteredDescriptorSetStats {
-        //     pools: registered_descriptor_sets_stats
-        // };
-
-        let registered_descriptor_sets_stats = self.registered_descriptor_sets.metrics();
-
-        #[derive(Debug)]
-        struct ResourceManagerMetrics {
-            resource_metrics: ResourceMetrics,
-            loaded_asset_counts: LoadedAssetCounts,
-            registered_descriptor_sets_stats: RegisteredDescriptorSetPoolManagerStats,
-        }
-
-        let metrics = ResourceManagerMetrics {
+        ResourceManagerMetrics {
             resource_metrics,
-            loaded_asset_counts,
-            registered_descriptor_sets_stats,
-        };
-
-        println!("Resource Manager Metrics:\n{:#?}", metrics);
+            loaded_asset_metrics,
+            registered_descriptor_sets_metrics,
+        }
     }
 
     fn process_shader_load_requests(&mut self) {
         for request in self.load_queues.shader_modules.take_load_requests() {
-            println!("Create shader module {:?}", request.load_handle);
+            log::trace!("Create shader module {:?}", request.load_handle);
             let loaded_asset = self.load_shader_module(&request.asset);
             Self::handle_load_result(
                 request.load_op,
@@ -401,7 +425,7 @@ impl ResourceManager {
 
     fn process_pipeline_load_requests(&mut self) {
         for request in self.load_queues.graphics_pipelines2.take_load_requests() {
-            println!("Create pipeline {:?}", request.load_handle);
+            log::trace!("Create pipeline {:?}", request.load_handle);
             let loaded_asset = self.load_graphics_pipeline(&request.asset);
             Self::handle_load_result(
                 request.load_op,
@@ -422,7 +446,7 @@ impl ResourceManager {
 
     fn process_material_load_requests(&mut self) {
         for request in self.load_queues.materials.take_load_requests() {
-            println!("Create material {:?}", request.load_handle);
+            log::trace!("Create material {:?}", request.load_handle);
             let loaded_asset = self.load_material(&request.asset);
             Self::handle_load_result(
                 request.load_op,
@@ -443,7 +467,7 @@ impl ResourceManager {
 
     fn process_material_instance_load_requests(&mut self) {
         for request in self.load_queues.material_instances.take_load_requests() {
-            println!("Create material instance {:?}", request.load_handle);
+            log::trace!("Create material instance {:?}", request.load_handle);
             let loaded_asset = self.load_material_instance(&request.asset);
             Self::handle_load_result(
                 request.load_op,
@@ -465,7 +489,7 @@ impl ResourceManager {
     fn process_image_load_requests(&mut self) {
         for request in self.load_queues.images.take_load_requests() {
             //TODO: Route the request directly to the upload queue
-            println!("Uploading image {:?}", request.load_handle);
+            log::trace!("Uploading image {:?}", request.load_handle);
             self.upload_manager.upload_image(request);
         }
 
@@ -609,7 +633,7 @@ impl ResourceManager {
             }
 
             // Create a lookup of the slot names
-            let mut pass_slot_name_lookup: FnvHashMap<String, Vec<SlotLocation>> =
+            let mut pass_slot_name_lookup: SlotNameLookup =
                 Default::default();
             for (layout_index, layout) in pass
                 .shader_interface
@@ -626,6 +650,7 @@ impl ResourceManager {
                         .push(SlotLocation {
                             layout_index: layout_index as u32,
                             binding_index: binding_index as u32,
+                            //array_index: 0
                         });
                 }
             }
@@ -638,7 +663,7 @@ impl ResourceManager {
                 pipelines,
                 pipeline_create_data,
                 shader_interface: pass.shader_interface.clone(),
-                pass_slot_name_lookup,
+                pass_slot_name_lookup: Arc::new(pass_slot_name_lookup),
             })
         }
 
@@ -665,6 +690,88 @@ impl ResourceManager {
     //     })
     // }
 
+    fn apply_slot_assignments(
+        slot: &MaterialInstanceSlot,
+        pass_slot_name_lookup: &SlotNameLookup,
+        assets: &LoadedAssetLookupSet,
+        material_pass_write_set: &mut Vec<DescriptorSetWriteSet>
+    ) {
+        if let Some(slot_locations) = pass_slot_name_lookup.get(&slot.slot_name) {
+            for location in slot_locations {
+                let mut layout_descriptor_set_writes = &mut material_pass_write_set[location.layout_index as usize];
+                let write = layout_descriptor_set_writes.elements.get_mut(&DescriptorSetElementKey {
+                    dst_binding: location.binding_index,
+                    //dst_array_element: location.array_index
+                }).unwrap();
+
+                let mut bind_samplers = false;
+                let mut bind_images = false;
+                match write.descriptor_type {
+                    dsc::DescriptorType::Sampler => {
+                        bind_samplers = true;
+                    }
+                    dsc::DescriptorType::CombinedImageSampler => {
+                        bind_samplers = true;
+                        bind_images = true;
+                    }
+                    dsc::DescriptorType::SampledImage => {
+                        bind_images = true;
+                    }
+                    _ => unimplemented!(),
+                }
+
+                let mut write_image = DescriptorSetWriteElementImage {
+                    image_view: None,
+                    sampler: None,
+                };
+
+                if bind_images {
+                    if let Some(image) = &slot.image {
+                        let loaded_image = assets
+                            .images
+                            .get_latest(image.load_handle())
+                            .unwrap();
+                        write_image.image_view = Some(loaded_image.image_view.clone());
+                    }
+
+                    write.image_info = vec![write_image];
+                }
+            }
+        }
+    }
+
+    fn generate_descriptor_set_writes_with_slot_assignments(
+        pass: &LoadedMaterialPass,
+        slots: &Vec<MaterialInstanceSlot>,
+        assets: &LoadedAssetLookupSet,
+    ) -> Vec<DescriptorSetWriteSet> {
+        // The metadata for the descriptor sets within this pass, one for each set within the pass
+        let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts;
+
+        // This will contain the writes for the descriptor set. Their purpose is to store everything needed to create a vk::WriteDescriptorSet
+        // struct. We will need to keep these around for a few frames.
+        let mut pass_descriptor_set_writes =
+            Vec::with_capacity(descriptor_set_layouts.len());
+
+        //
+        // Build a "default" descriptor writer for every binding
+        //
+        for layout in descriptor_set_layouts {
+            let write_set = descriptor_sets::create_default_write_set_for_layout_with_slot_names(layout);
+            pass_descriptor_set_writes.push(write_set);
+        }
+
+        //
+        // Now modify the descriptor set writes to actually point at the things specified by the material
+        //
+        for slot in slots {
+            Self::apply_slot_assignments(slot, &pass.pass_slot_name_lookup, assets, &mut pass_descriptor_set_writes);
+        }
+
+        pass_descriptor_set_writes
+    }
+
+
     fn load_material_instance(
         &mut self,
         material_instance_asset: &MaterialInstanceAsset,
@@ -681,97 +788,83 @@ impl ResourceManager {
         // This will be references to descriptor sets. Indexed by pass, and then by set within the pass.
         let mut material_descriptor_sets = Vec::with_capacity(material_asset.passes.len());
         for pass in &material_asset.passes {
-            // The metadata for the descriptor sets within this pass, one for each set within the pass
-            let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts; // &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts;
+            // // The metadata for the descriptor sets within this pass, one for each set within the pass
+            // let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts; // &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts;
+            //
+            // // This will contain the writes for the descriptor set. Their purpose is to store everything needed to create a vk::WriteDescriptorSet
+            // // struct. We will need to keep these around for a few frames.
+            // let mut pass_descriptor_set_writes =
+            //     Vec::with_capacity(pass.shader_interface.descriptor_set_layouts.len());
+            //
+            // //
+            // // Build a "default" descriptor writer for every binding
+            // //
+            // for layout in &pass.shader_interface.descriptor_set_layouts {
+            //     let write_set = descriptor_sets::create_default_write_set_for_layout_with_slot_names(layout);
+            //     pass_descriptor_set_writes.push(write_set);
+            // }
+            //
+            // //
+            // // Now modify the descriptor set writes to actually point at the things specified by the material
+            // //
+            // for slot in &material_instance_asset.slots {
+            //     if let Some(slot_locations) = pass.pass_slot_name_lookup.get(&slot.slot_name) {
+            //         for location in slot_locations {
+            //             let mut layout_descriptor_set_writes = &mut pass_descriptor_set_writes[location.layout_index as usize];
+            //             let write = layout_descriptor_set_writes.elements.get_mut(&DescriptorSetElementKey {
+            //                 dst_binding: location.binding_index,
+            //                 //dst_array_element: location.array_index
+            //             }).unwrap();
+            //
+            //             let mut bind_samplers = false;
+            //             let mut bind_images = false;
+            //             match write.descriptor_type {
+            //                 dsc::DescriptorType::Sampler => {
+            //                     bind_samplers = true;
+            //                 }
+            //                 dsc::DescriptorType::CombinedImageSampler => {
+            //                     bind_samplers = true;
+            //                     bind_images = true;
+            //                 }
+            //                 dsc::DescriptorType::SampledImage => {
+            //                     bind_images = true;
+            //                 }
+            //                 _ => unimplemented!(),
+            //             }
+            //
+            //             let mut write_image = DescriptorSetWriteElementImage {
+            //                 image_view: None,
+            //                 sampler: None,
+            //             };
+            //
+            //             if bind_images {
+            //                 if let Some(image) = &slot.image {
+            //                     let loaded_image = self
+            //                         .loaded_assets
+            //                         .images
+            //                         .get_latest(image.load_handle())
+            //                         .unwrap();
+            //                     write_image.image_view = Some(loaded_image.image_view.clone());
+            //                 }
+            //
+            //                 write.image_info = vec![write_image];
+            //             }
+            //         }
+            //     }
+            // }
+
+            let pass_descriptor_set_writes = Self::generate_descriptor_set_writes_with_slot_assignments(
+                pass,
+                &material_instance_asset.slots,
+                &self.loaded_assets
+
+                // pass: &LoadedMaterialPass,
+                // slots: &Vec<MaterialInstanceSlot>,
+                // assets: &LoadedAssetLookupSet,
+            );
 
             // This will contain the descriptor sets created for this pass, one for each set within the pass
-            let mut pass_descriptor_sets = Vec::with_capacity(descriptor_set_layouts.len());
-
-            // This will contain the writes for the descriptor set. Their purpose is to store everything needed to create a vk::WriteDescriptorSet
-            // struct. We will need to keep these around for a few frames.
-            let mut pass_descriptor_set_writes =
-                Vec::with_capacity(pass.shader_interface.descriptor_set_layouts.len());
-
-            //
-            // Build a "default" descriptor writer for every binding
-            //
-            for layout in &pass.shader_interface.descriptor_set_layouts {
-                // This will contain the writes for this set
-                let mut layout_descriptor_set_writes =
-                    Vec::with_capacity(layout.descriptor_set_layout_bindings.len());
-
-                for (binding_index, binding) in
-                    layout.descriptor_set_layout_bindings.iter().enumerate()
-                {
-                    //TODO: Populate the writer for this binding
-                    //TODO: Allocate a set from the pool
-                    // //pub dst_pool_index: u32, // a slab key?
-                    // //pub dst_set_index: u32,
-                    // pub dst_binding: u32,
-                    // pub dst_array_element: u32,
-                    // pub descriptor_type: vk::DescriptorType,
-                    // pub image_info: Option<Vec<DescriptorSetWriteImage>>,
-                    // pub buffer_info: Option<Vec<DescriptorSetWriteBuffer>>,
-                    layout_descriptor_set_writes.push(DescriptorSetWrite {
-                        // pool index
-                        // set index
-                        dst_binding: binding_index as u32,
-                        dst_array_element: 0,
-                        descriptor_type: binding.descriptor_type.into(),
-                        image_info: Default::default(),
-                        buffer_info: Default::default(),
-                    })
-                }
-
-                pass_descriptor_set_writes.push(layout_descriptor_set_writes);
-            }
-
-            //
-            // Now modify the descriptor set writes to actually point at the things specified by the material
-            //
-            for slot in &material_instance_asset.slots {
-                if let Some(slot_locations) = pass.pass_slot_name_lookup.get(&slot.slot_name) {
-                    for location in slot_locations {
-                        let mut writer = &mut pass_descriptor_set_writes
-                            [location.layout_index as usize]
-                            [location.binding_index as usize];
-
-                        let mut bind_samplers = false;
-                        let mut bind_images = false;
-                        match writer.descriptor_type {
-                            dsc::DescriptorType::Sampler => {
-                                bind_samplers = true;
-                            }
-                            dsc::DescriptorType::CombinedImageSampler => {
-                                bind_samplers = true;
-                                bind_images = true;
-                            }
-                            dsc::DescriptorType::SampledImage => {
-                                bind_images = true;
-                            }
-                            _ => unimplemented!(),
-                        }
-
-                        let mut write_image = DescriptorSetWriteImage {
-                            image_view: None,
-                            sampler: None,
-                        };
-
-                        if bind_images {
-                            if let Some(image) = &slot.image {
-                                let loaded_image = self
-                                    .loaded_assets
-                                    .images
-                                    .get_latest(image.load_handle())
-                                    .unwrap();
-                                write_image.image_view = Some(loaded_image.image_view.clone());
-                            }
-                        }
-
-                        writer.image_info = vec![write_image];
-                    }
-                }
-            }
+            let mut pass_descriptor_sets = Vec::with_capacity(pass_descriptor_set_writes.len());
 
             //
             // Register the writes into the correct descriptor set pools
@@ -794,32 +887,58 @@ impl ResourceManager {
             material_descriptor_sets.push(pass_descriptor_sets);
         }
 
-        println!("MATERIAL SET\n{:#?}", material_descriptor_sets);
+        log::trace!("Loaded material\n{:#?}", material_descriptor_sets);
 
         Ok(LoadedMaterialInstance {
+            material: material_instance_asset.material.clone(),
             material_descriptor_sets,
         })
     }
+
+    pub fn create_empty_dyn_descriptor_set(
+        &mut self,
+        layout_def: &dsc::DescriptorSetLayout
+    ) -> VkResult<DynDescriptorSet> {
+        let layout = self.resources.get_or_create_descriptor_set_layout(layout_def)?;
+        self.registered_descriptor_sets.create_dyn_descriptor_set(
+            layout_def,
+            layout
+        )
+    }
+
+    pub fn create_dyn_descriptor_set_from_material_instance(
+        &mut self,
+        material_instance: &Handle<MaterialInstanceAsset>,
+        pass: u32,
+        descriptor_set_index: u32
+    ) -> VkResult<DynDescriptorSet> {
+        let loaded_material_instance = self.loaded_assets.material_instances.get_committed(material_instance.load_handle()).unwrap();
+        let loaded_material = self.loaded_assets.materials.get_committed(loaded_material_instance.material.load_handle()).unwrap();
+        let loaded_pass = &loaded_material.passes[pass as usize];
+
+        let slot_lookup = loaded_pass.pass_slot_name_lookup.clone();
+        let layout_def = &loaded_pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts[descriptor_set_index as usize];
+
+
+
+        let layout = self.resources.get_or_create_descriptor_set_layout(layout_def)?;
+        self.registered_descriptor_sets.create_dyn_descriptor_set(
+            layout_def,
+            layout
+        )
+    }
 }
 
-//
-//
-//
-
-// struct PendingDescriptorSetWriteImage {
-//
-//     image: ResourceArc<vk::Image>,
-// }
-//
-// struct PendingDescriptorSetWrite {
-//
-// }
+struct DynMaterialPass {
+    descriptor_sets: Vec<DynDescriptorSet>,
+    slot_lookup: Arc<SlotNameLookup>,
+}
 
 impl Drop for ResourceManager {
     fn drop(&mut self) {
         unsafe {
-            println!("Cleaning up resource manager");
-            self.dump_stats();
+            log::info!("Cleaning up resource manager");
+            log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
 
             // Wipe out any loaded assets. This will potentially drop ref counts on resources
             self.loaded_assets.destroy();
@@ -830,8 +949,8 @@ impl Drop for ResourceManager {
             // Now drop all resources with a zero ref count and warn for any resources that remain
             self.resources.destroy();
 
-            println!("Dropping resource manager");
-            self.dump_stats();
+            log::info!("Dropping resource manager");
+            log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
         }
     }
 }

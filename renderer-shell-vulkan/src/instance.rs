@@ -185,13 +185,13 @@ impl VkInstance {
 
 impl Drop for VkInstance {
     fn drop(&mut self) {
-        debug!("destroying VkInstance");
+        trace!("destroying VkInstance");
         std::mem::drop(self.debug_reporter.take());
 
         unsafe {
             self.instance.destroy_instance(None);
         }
 
-        debug!("destroyed VkInstance");
+        trace!("destroyed VkInstance");
     }
 }

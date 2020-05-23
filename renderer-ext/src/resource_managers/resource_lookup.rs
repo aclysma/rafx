@@ -241,7 +241,7 @@ where
         // wipe out the state we're about to set
         self.handle_dropped_resources();
 
-        println!(
+        log::trace!(
             "insert resource {} {:?}",
             core::any::type_name::<ResourceT>(),
             resource
@@ -263,7 +263,7 @@ where
 
     fn handle_dropped_resources(&mut self) {
         for dropped in self.drop_rx.try_iter() {
-            println!(
+            log::trace!(
                 "dropping {} {:?}",
                 core::any::type_name::<ResourceT>(),
                 dropped.resource
@@ -434,7 +434,7 @@ impl ResourceLookupSet {
         if let Some(shader_module) = self.shader_modules.get(hash, shader_module) {
             Ok(shader_module)
         } else {
-            println!(
+            log::trace!(
                 "Creating shader module\n[bytes: {}]",
                 shader_module.code.len()
             );
@@ -442,7 +442,7 @@ impl ResourceLookupSet {
                 self.device_context.device(),
                 shader_module,
             )?;
-            println!("Created shader module {:?}", resource);
+            log::trace!("Created shader module {:?}", resource);
             let shader_module = self.shader_modules.insert(hash, shader_module, resource);
             Ok(shader_module)
         }
@@ -458,7 +458,7 @@ impl ResourceLookupSet {
         {
             Ok(descriptor_set_layout)
         } else {
-            println!(
+            log::trace!(
                 "Creating descriptor set layout\n{:#?}",
                 descriptor_set_layout
             );
@@ -466,7 +466,7 @@ impl ResourceLookupSet {
                 self.device_context.device(),
                 descriptor_set_layout,
             )?;
-            println!("Created descriptor set layout {:?}", resource);
+            log::trace!("Created descriptor set layout {:?}", resource);
             let descriptor_set_layout =
                 self.descriptor_set_layouts
                     .insert(hash, descriptor_set_layout, resource);
@@ -495,13 +495,13 @@ impl ResourceLookupSet {
                 descriptor_set_layouts.push(loaded_descriptor_set_layout.get_raw());
             }
 
-            println!("Creating pipeline layout\n{:#?}", pipeline_layout_def);
+            log::trace!("Creating pipeline layout\n{:#?}", pipeline_layout_def);
             let resource = crate::pipeline_description::create_pipeline_layout(
                 self.device_context.device(),
                 pipeline_layout_def,
                 &descriptor_set_layouts,
             )?;
-            println!("Created pipeline layout {:?}", resource);
+            log::trace!("Created pipeline layout {:?}", resource);
             let pipeline_layout = self
                 .pipeline_layouts
                 .insert(hash, pipeline_layout_def, resource);
@@ -524,11 +524,13 @@ impl ResourceLookupSet {
         if let Some(renderpass) = self.render_passes.get(hash, &renderpass_key) {
             Ok(renderpass)
         } else {
+            log::trace!("Creating renderpass\n{:#?}", renderpass_key);
             let resource = crate::pipeline_description::create_renderpass(
                 self.device_context.device(),
                 renderpass,
                 &swapchain_surface_info,
             )?;
+            log::trace!("Created renderpass {:?}", resource);
 
             let renderpass = self.render_passes.insert(hash, &renderpass_key, resource);
             Ok(renderpass)
@@ -556,7 +558,7 @@ impl ResourceLookupSet {
         if let Some(pipeline) = self.graphics_pipelines.get(hash, &pipeline_key) {
             Ok((renderpass, pipeline))
         } else {
-            println!("Creating pipeline\n{:#?}", pipeline_key);
+            log::trace!("Creating pipeline\n{:#?}", pipeline_key);
             let resource = crate::pipeline_description::create_graphics_pipeline(
                 &self.device_context.device(),
                 &pipeline_create_data.fixed_function_state,
@@ -566,7 +568,7 @@ impl ResourceLookupSet {
                 &pipeline_create_data.shader_module_vk_objs,
                 swapchain_surface_info,
             )?;
-            println!("Created pipeline {:?}", resource);
+            log::trace!("Created pipeline {:?}", resource);
 
             let pipeline = self
                 .graphics_pipelines
@@ -607,13 +609,13 @@ impl ResourceLookupSet {
             let image_load_handle_hash = ResourceHash::from_key(&image_load_handle);
             let image = self.images.get(image_load_handle_hash, &image_key).unwrap();
 
-            println!("Creating image view\n{:#?}", image_view_key);
+            log::trace!("Creating image view\n{:#?}", image_view_key);
             let resource = crate::pipeline_description::create_image_view(
                 &self.device_context.device(),
                 image.get_raw().image,
                 image_view_meta,
             )?;
-            println!("Created image view\n{:#?}", resource);
+            log::trace!("Created image view\n{:#?}", resource);
 
             let image_view = self.image_views.insert(hash, &image_view_key, resource);
             Ok(image_view)

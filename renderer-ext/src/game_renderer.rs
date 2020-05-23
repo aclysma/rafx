@@ -32,9 +32,9 @@ use atelier_assets::loader::LoadStatus;
 use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
-use crate::resource_managers::ResourceManager;
+use crate::resource_managers::{ResourceManager, DynDescriptorSet};
 
-fn load_asset<T>(
+fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
     asset_resource: &AssetResource,
 ) -> atelier_assets::loader::handle::Handle<T> {
@@ -92,6 +92,8 @@ pub struct GameRenderer {
     sprite_renderpass: Option<VkSpriteRenderPass>,
     sprite_material_instance: Handle<MaterialInstanceAsset>,
     //mesh_renderpass: Option<VkMeshRenderPass>,
+
+    sprite_custom_material: Option<DynDescriptorSet>,
 }
 
 impl GameRenderer {
@@ -128,7 +130,7 @@ impl GameRenderer {
         //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
         // )?;
 
-        let resource_manager = ResourceManager::new(device_context);
+        let mut resource_manager = ResourceManager::new(device_context);
 
         asset_resource.add_storage_with_load_handler::<ShaderAsset, _>(Box::new(
             resource_manager.create_shader_load_handler(),
@@ -172,14 +174,20 @@ impl GameRenderer {
         //     SpriteLoadHandler::new(sprite_resource_manager.sprite_update_tx().clone()),
         // ));
 
-        let sprite_material = load_asset::<MaterialAsset>(
+        let sprite_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
             &asset_resource,
         );
-        let sprite_material_instance = load_asset::<MaterialInstanceAsset>(
+        let sprite_material_instance = begin_load_asset::<MaterialInstanceAsset>(
             asset_uuid!("84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5"),
             &asset_resource,
         );
+        let override_image = begin_load_asset::<ImageAsset>(
+            asset_uuid!("b7753a66-1b26-4152-ad61-93584f4442aa"),
+            &asset_resource,
+        );
+
+        //resource_manager.cre
 
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
@@ -194,6 +202,7 @@ impl GameRenderer {
             sprite_material_instance,
             sprite_renderpass: None,
             //mesh_renderpass: None,
+            sprite_custom_material: None
         };
 
         wait_for_asset_to_load(
@@ -209,6 +218,15 @@ impl GameRenderer {
             asset_resource,
             &mut renderer,
         );
+
+        let sprite_pipeline_info = renderer.resource_manager.get_descriptor_set_info(&renderer.sprite_material, 0, 1);
+        let mut sprite_custom_material = renderer.resource_manager.create_empty_dyn_descriptor_set(&sprite_pipeline_info.descriptor_set_layout_def)?;
+        let image_info = renderer.resource_manager.get_image_info(&override_image);
+        sprite_custom_material.set_image(0, image_info.image_view);
+        sprite_custom_material.flush();
+
+
+        renderer.sprite_custom_material = Some(sprite_custom_material);
 
         Ok(renderer)
     }
@@ -264,7 +282,7 @@ impl VkSurfaceEventListener for GameRenderer {
 
         // Get the pipeline,
 
-        log::debug!("Create VkSpriteRenderPass");
+        log::trace!("Create VkSpriteRenderPass");
         self.sprite_renderpass = Some(VkSpriteRenderPass::new(
             device_context,
             swapchain,
@@ -273,7 +291,7 @@ impl VkSurfaceEventListener for GameRenderer {
             //&self.sprite_resource_manager,
             &swapchain_surface_info,
         )?);
-        // log::debug!("Create VkMeshRenderPass");
+        // log::trace!("Create VkMeshRenderPass");
         // self.mesh_renderpass = Some(VkMeshRenderPass::new(
         //     device_context,
         //     swapchain,
@@ -298,6 +316,7 @@ impl VkSurfaceEventListener for GameRenderer {
         };
 
         self.sprite_renderpass = None;
+        self.sprite_custom_material = None;
         //self.mesh_renderpass = None;
         self.resource_manager
             .remove_swapchain(&swapchain_surface_info);
@@ -314,10 +333,15 @@ impl VkSurfaceEventListener for GameRenderer {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
-        let pass_info = self
-            .resource_manager
-            .get_current_frame_pass_info(&self.sprite_material_instance, 0);
-        let descriptor_set_per_texture = vec![pass_info.descriptor_sets[1]];
+        // let pass_info = self
+        //     .resource_manager
+        //     .get_current_frame_pass_info(&self.sprite_material_instance, 0);
+        //let descriptor_set_per_texture = vec![pass_info.descriptor_sets[1]];
+
+        let descriptor_set_per_texture = vec![self.sprite_custom_material.as_ref().unwrap().descriptor_set().get_raw(&self.resource_manager)];
+
+
+
 
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");

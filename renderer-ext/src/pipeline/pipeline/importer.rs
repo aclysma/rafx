@@ -46,7 +46,7 @@ impl Importer for PipelineImporter2 {
         *state = PipelineImporterState2(Some(id));
 
         let pipeline_asset = ron::de::from_reader::<_, PipelineAsset>(source)?;
-        println!("IMPORTED PIPELINE:\n{:#?}", pipeline_asset);
+        log::trace!("IMPORTED PIPELINE:\n{:#?}", pipeline_asset);
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {
@@ -102,7 +102,7 @@ impl Importer for MaterialImporter2 {
         *state = MaterialImporterState2(Some(id));
 
         let material_asset = ron::de::from_reader::<_, MaterialAsset>(source)?;
-        println!("IMPORTED MATERIAL:\n{:#?}", material_asset);
+        log::trace!("IMPORTED MATERIAL:\n{:#?}", material_asset);
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {
@@ -158,7 +158,7 @@ impl Importer for MaterialInstanceImporter2 {
         *state = MaterialInstanceImporterState2(Some(id));
 
         let material_asset = ron::de::from_reader::<_, MaterialInstanceAsset>(source)?;
-        println!("IMPORTED MATERIALINSTANCE:\n{:#?}", material_asset);
+        log::trace!("IMPORTED MATERIALINSTANCE:\n{:#?}", material_asset);
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {

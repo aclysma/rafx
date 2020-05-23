@@ -886,7 +886,7 @@ impl VkMeshRenderPass {
 
 impl Drop for VkMeshRenderPass {
     fn drop(&mut self) {
-        log::debug!("destroying VkMeshRenderPass");
+        log::trace!("destroying VkMeshRenderPass");
 
         fn drop_all_buffer_lists(buffer_list: &mut Vec<Vec<ManuallyDrop<VkBuffer>>>) {
             for buffers in buffer_list {
@@ -923,7 +923,7 @@ impl Drop for VkMeshRenderPass {
             device.destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
         }
 
-        log::debug!("destroyed VkMeshRenderPass");
+        log::trace!("destroyed VkMeshRenderPass");
     }
 }
 

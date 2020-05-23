@@ -329,7 +329,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         load_op: AssetLoadOp,
         version: u32,
     ) -> Result<(), Box<dyn Error>> {
-        log::info!(
+        log::trace!(
             "update_asset {} {:?} {:?} {}",
             core::any::type_name::<A>(),
             load_handle,
@@ -398,7 +398,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             .remove(&load_handle)
             .expect("asset not present when committing");
 
-        log::info!(
+        log::trace!(
             "commit_asset_version {} {:?} {:?} {}",
             core::any::type_name::<A>(),
             load_handle,
@@ -429,7 +429,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
         let asset_state = self.assets.remove(&load_handle);
 
         if let Some(asset_state) = asset_state {
-            log::info!(
+            log::trace!(
                 "free {} {:?} {:?}",
                 core::any::type_name::<A>(),
                 load_handle,

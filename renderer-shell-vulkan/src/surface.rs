@@ -262,7 +262,7 @@ impl VkSurface {
 
 impl Drop for VkSurface {
     fn drop(&mut self) {
-        debug!("destroying VkSurface");
+        trace!("destroying VkSurface");
 
         // This checks that the device is idle and issues swapchain_destroyed to the event listener
         assert!(self.torn_down);
@@ -271,6 +271,6 @@ impl Drop for VkSurface {
             ManuallyDrop::drop(&mut self.swapchain);
         }
 
-        debug!("destroyed VkSurface");
+        trace!("destroyed VkSurface");
     }
 }

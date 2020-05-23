@@ -181,31 +181,31 @@ impl InProgressUpload {
                 match inner.upload.state() {
                     Ok(state) => match state {
                         VkTransferUploadState::Writable => {
-                            println!("VkTransferUploadState::Writable");
+                            //log::trace!("VkTransferUploadState::Writable");
                             inner
                                 .upload
                                 .submit_transfer(device_context.queues().transfer_queue);
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToTransferQueue => {
-                            println!("VkTransferUploadState::SentToTransferQueue");
+                            //log::trace!("VkTransferUploadState::SentToTransferQueue");
                             self.inner = Some(inner);
                             break InProgressUploadPollResult::Pending;
                         }
                         VkTransferUploadState::PendingSubmitDstQueue => {
-                            println!("VkTransferUploadState::PendingSubmitDstQueue");
+                            //log::trace!("VkTransferUploadState::PendingSubmitDstQueue");
                             inner
                                 .upload
                                 .submit_dst(device_context.queues().graphics_queue);
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToDstQueue => {
-                            println!("VkTransferUploadState::SentToDstQueue");
+                            //log::trace!("VkTransferUploadState::SentToDstQueue");
                             self.inner = Some(inner);
                             break InProgressUploadPollResult::Pending;
                         }
                         VkTransferUploadState::Complete => {
-                            println!("VkTransferUploadState::Complete");
+                            //log::trace!("VkTransferUploadState::Complete");
                             for upload in inner.image_uploads {
                                 upload.upload_op.complete(upload.image, upload.load_op);
                             }
