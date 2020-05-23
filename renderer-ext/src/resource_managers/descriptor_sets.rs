@@ -608,7 +608,7 @@ impl RegisteredDescriptorSetPoolManager {
         });
 
         // Allocate a descriptor set
-        let descriptor_set = pool.insert(&self.device_context, DescriptorSetWriteSet::default(), self.frame_in_flight_index)?;
+        let descriptor_set = pool.insert(&self.device_context, write_set.clone(), self.frame_in_flight_index)?;
 
         // Create the DynDescriptorSet
         let dyn_descriptor_set = DynDescriptorSet::new(write_set, descriptor_set, pool.write_tx.clone());
