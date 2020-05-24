@@ -852,9 +852,6 @@ pub fn apply_material_instance_slot_assignment(
 
             let what_to_bind = what_to_bind(write);
 
-            println!("BINDING {:#?}", write);
-            println!("BINDING {:#?}", what_to_bind);
-
             if what_to_bind.bind_images || what_to_bind.bind_samplers {
                 let mut write_image = DescriptorSetWriteElementImage {
                     image_view: None,

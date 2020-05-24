@@ -9,12 +9,17 @@ use crate::{VkDevice, VkUpload};
 use std::sync::Arc;
 use crate::device::VkDeviceContext;
 
+#[derive(Copy, Clone, Debug)]
+pub struct VkBufferRaw {
+    pub buffer: vk::Buffer,
+    pub allocation: vk_mem::Allocation,
+}
+
 /// Represents a vulkan buffer (vertex, index, image, etc.)
 pub struct VkBuffer {
     pub device_context: VkDeviceContext,
-    pub buffer: vk::Buffer,
-    pub allocation: vk_mem::Allocation,
     pub allocation_info: vk_mem::AllocationInfo,
+    pub raw: Option<VkBufferRaw>,
 }
 
 impl VkBuffer {
@@ -50,11 +55,12 @@ impl VkBuffer {
             .create_buffer(&buffer_info, &allocation_create_info)
             .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
 
+        let raw = VkBufferRaw { buffer, allocation };
+
         Ok(VkBuffer {
             device_context: device_context.clone(),
-            buffer,
-            allocation,
             allocation_info,
+            raw: Some(raw)
         })
     }
 
@@ -62,11 +68,13 @@ impl VkBuffer {
         &mut self,
         data: &[T],
     ) -> VkResult<()> {
+        let allocation = self.allocation();
+
         //TODO: Better way of handling allocator errors
         let ptr = self
             .device_context
             .allocator()
-            .map_memory(&self.allocation)
+            .map_memory(&allocation)
             .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?
             as *mut std::ffi::c_void;
 
@@ -78,12 +86,28 @@ impl VkBuffer {
         //TODO: Better way of handling allocator errors
         self.device_context
             .allocator()
-            .unmap_memory(&self.allocation)
+            .unmap_memory(&allocation)
             .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?;
 
         // The staging buffer is coherent so flushing is not necessary
 
         Ok(())
+    }
+
+    pub fn buffer(&self) -> vk::Buffer {
+        // Raw is only none if take_raw has not been called, and take_raw consumes the VkBuffer
+        self.raw.unwrap().buffer
+    }
+
+    pub fn allocation(&self) -> vk_mem::Allocation {
+        // Raw is only none if take_raw has not been called, and take_raw consumes the VkBuffer
+        self.raw.unwrap().allocation
+    }
+
+    pub fn take_raw(mut self) -> Option<VkBufferRaw> {
+        let mut raw = None;
+        std::mem::swap(&mut raw, &mut self.raw);
+        raw
     }
 }
 
@@ -92,9 +116,11 @@ impl Drop for VkBuffer {
         trace!("destroying VkBuffer");
 
         unsafe {
-            self.device_context
-                .allocator()
-                .destroy_buffer(self.buffer, &self.allocation);
+            if let Some(raw) = &self.raw {
+                self.device_context
+                    .allocator()
+                    .destroy_buffer(raw.buffer, &raw.allocation);
+            }
         }
 
         trace!("destroyed VkBuffer");

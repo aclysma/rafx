@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use ash::version::DeviceV1_0;
 use std::mem::ManuallyDrop;
 use ash::{Device, vk};
-use crate::{VkImage, VkBuffer, VkDeviceContext};
+use crate::{VkImage, VkBuffer, VkDeviceContext, VkBufferRaw};
 use crate::image::VkImageRaw;
 
 /// Implement to customize how VkResourceDropSink drops resources
@@ -136,6 +136,23 @@ impl<T> VkResource for ManuallyDrop<T> {
         unsafe {
             ManuallyDrop::drop(&mut resource);
             Ok(())
+        }
+    }
+}
+
+impl VkResource for VkBufferRaw {
+    fn destroy(
+        device_context: &VkDeviceContext,
+        mut resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device_context
+                .allocator()
+                .destroy_buffer(resource.buffer, &resource.allocation)
+                .map_err(|err| {
+                    log::error!("{:?}", err);
+                    vk::Result::ERROR_UNKNOWN
+                })
         }
     }
 }

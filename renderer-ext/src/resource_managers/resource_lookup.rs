@@ -2,7 +2,7 @@ use crossbeam_channel::{Sender, Receiver};
 use std::fmt::Formatter;
 use std::hash::Hash;
 use std::sync::{Weak, Arc};
-use renderer_shell_vulkan::{VkResource, VkResourceDropSink, VkDeviceContext, VkImageRaw, VkImage};
+use renderer_shell_vulkan::{VkResource, VkResourceDropSink, VkDeviceContext, VkImageRaw, VkImage, VkBufferRaw};
 use fnv::FnvHashMap;
 use std::marker::PhantomData;
 use ash::vk;
@@ -335,6 +335,11 @@ pub struct ImageKey {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BufferKey {
+    load_handle: LoadHandle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImageViewKey {
     image_load_handle: LoadHandle,
     image_view_meta: dsc::ImageViewMeta,
@@ -350,6 +355,7 @@ pub struct ResourceMetrics {
     image_count: usize,
     image_view_count: usize,
     sampler_count: usize,
+    buffer_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -418,6 +424,7 @@ pub struct ResourceLookupSet {
     pub images: ResourceLookup<ImageKey, VkImageRaw>,
     pub image_views: ResourceLookup<ImageViewKey, ImageViewResource>,
     pub samplers: ResourceLookup<dsc::Sampler, vk::Sampler>,
+    pub buffers: ResourceLookup<BufferKey, VkBufferRaw>,
 }
 
 impl ResourceLookupSet {
@@ -435,10 +442,12 @@ impl ResourceLookupSet {
             images: ResourceLookup::new(max_frames_in_flight),
             image_views: ResourceLookup::new(max_frames_in_flight),
             samplers: ResourceLookup::new(max_frames_in_flight),
+            buffers: ResourceLookup::new(max_frames_in_flight),
         }
     }
 
     pub fn on_frame_complete(&mut self) {
+        self.buffers.on_frame_complete(&self.device_context);
         self.shader_modules.on_frame_complete(&self.device_context);
         self.samplers.on_frame_complete(&self.device_context);
         self.descriptor_set_layouts
@@ -463,6 +472,7 @@ impl ResourceLookupSet {
         self.descriptor_set_layouts.destroy(&self.device_context);
         self.samplers.destroy(&self.device_context);
         self.shader_modules.destroy(&self.device_context);
+        self.buffers.destroy(&self.device_context);
     }
 
     pub fn metrics(&self) -> ResourceMetrics {
@@ -475,6 +485,7 @@ impl ResourceLookupSet {
             image_count: self.images.len(),
             image_view_count: self.image_views.len(),
             sampler_count: self.samplers.len(),
+            buffer_count: self.buffers.len(),
         }
     }
 

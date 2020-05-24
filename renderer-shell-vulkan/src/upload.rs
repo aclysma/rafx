@@ -73,7 +73,7 @@ impl VkUpload {
             //TODO: Better way of handling allocator errors
             let buffer_begin = device_context
                 .allocator()
-                .map_memory(&buffer.allocation)
+                .map_memory(&buffer.allocation())
                 .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?
                 as *mut u8;
 
@@ -250,7 +250,7 @@ impl Drop for VkUpload {
         unsafe {
             self.device_context
                 .allocator()
-                .unmap_memory(&self.buffer.allocation);
+                .unmap_memory(&self.buffer.allocation());
             ManuallyDrop::drop(&mut self.buffer);
             self.device_context
                 .device()

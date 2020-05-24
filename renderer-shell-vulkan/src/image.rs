@@ -9,22 +9,10 @@ use std::mem::ManuallyDrop;
 use crate::device::VkDeviceContext;
 use core::fmt;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VkImageRaw {
     pub image: vk::Image,
     pub allocation: vk_mem::Allocation,
-}
-
-impl fmt::Debug for VkImageRaw {
-    fn fmt(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        f.debug_struct("VkImageRaw")
-            .field("image", &self.image)
-            .field("allocation", &self.allocation)
-            .finish()
-    }
 }
 
 pub struct VkImage {
@@ -99,6 +87,11 @@ impl VkImage {
         self.raw.unwrap().image
     }
 
+    pub fn allocation(&self) -> vk_mem::Allocation {
+        // Raw is only none if take_raw has not been called, and take_raw consumes the VkImage
+        self.raw.unwrap().allocation
+    }
+
     pub fn take_raw(mut self) -> Option<VkImageRaw> {
         let mut raw = None;
         std::mem::swap(&mut raw, &mut self.raw);
@@ -111,12 +104,10 @@ impl Drop for VkImage {
         log::trace!("destroying VkImage");
 
         unsafe {
-            unsafe {
-                if let Some(raw) = &self.raw {
-                    self.device_context
-                        .allocator()
-                        .destroy_image(raw.image, &raw.allocation);
-                }
+            if let Some(raw) = &self.raw {
+                self.device_context
+                    .allocator()
+                    .destroy_image(raw.image, &raw.allocation);
             }
         }
 

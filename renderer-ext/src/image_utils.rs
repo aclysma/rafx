@@ -222,7 +222,7 @@ pub fn enqueue_load_images(
         cmd_copy_buffer_to_image(
             device_context.device(),
             upload.transfer_command_buffer(),
-            upload.staging_buffer().buffer,
+            upload.staging_buffer().buffer(),
             offset,
             image.image(),
             &image.extent,
@@ -419,8 +419,8 @@ pub fn enqueue_load_buffers(
         cmd_copy_buffer_to_buffer(
             device_context.device(),
             upload.transfer_command_buffer(),
-            upload.staging_buffer().buffer,
-            dst_buffer.buffer,
+            upload.staging_buffer().buffer(),
+            dst_buffer.buffer(),
             offset,
             size,
         );
@@ -428,7 +428,7 @@ pub fn enqueue_load_buffers(
         cmd_buffer_memory_barrier(
             device_context.device(),
             upload.transfer_command_buffer(),
-            &[dst_buffer.buffer],
+            &[dst_buffer.buffer()],
             BufferMemoryBarrierType::PostUploadTransferQueue,
             transfer_queue_family_index,
             dst_queue_family_index,
@@ -441,7 +441,7 @@ pub fn enqueue_load_buffers(
         cmd_buffer_memory_barrier(
             device_context.device(),
             upload.dst_command_buffer(),
-            &[dst_buffer.buffer],
+            &[dst_buffer.buffer()],
             BufferMemoryBarrierType::PostUploadDstQueue,
             transfer_queue_family_index,
             dst_queue_family_index,

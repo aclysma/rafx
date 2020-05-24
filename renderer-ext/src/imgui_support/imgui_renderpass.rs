@@ -659,7 +659,7 @@ impl VkImGuiRenderPass {
 
             for (image_index, image_view) in image_views.iter().enumerate() {
                 let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
-                    .buffer(uniform_buffers[present_index].buffer)
+                    .buffer(uniform_buffers[present_index].buffer())
                     .offset(0)
                     .range(mem::size_of::<UniformBufferObject>() as u64)
                     .build()];
@@ -821,8 +821,8 @@ impl VkImGuiRenderPass {
 
                     logical_device.cmd_copy_buffer(
                         *command_buffer,
-                        staging_vertex_buffers[i].buffer,
-                        vertex_buffers[i].buffer,
+                        staging_vertex_buffers[i].buffer(),
+                        vertex_buffers[i].buffer(),
                         &buffer_copy_info,
                     );
                 }
@@ -835,8 +835,8 @@ impl VkImGuiRenderPass {
 
                     logical_device.cmd_copy_buffer(
                         *command_buffer,
-                        staging_index_buffers[i].buffer,
-                        index_buffers[i].buffer,
+                        staging_index_buffers[i].buffer(),
+                        index_buffers[i].buffer(),
                         &buffer_copy_info,
                     );
                 }
@@ -869,13 +869,13 @@ impl VkImGuiRenderPass {
                     logical_device.cmd_bind_vertex_buffers(
                         *command_buffer,
                         0, // first binding
-                        &[vertex_buffers[draw_list_index].buffer],
+                        &[vertex_buffers[draw_list_index].buffer()],
                         &[0], // offsets
                     );
 
                     logical_device.cmd_bind_index_buffer(
                         *command_buffer,
-                        index_buffers[draw_list_index].buffer,
+                        index_buffers[draw_list_index].buffer(),
                         0, // offset
                         vk::IndexType::UINT16,
                     );

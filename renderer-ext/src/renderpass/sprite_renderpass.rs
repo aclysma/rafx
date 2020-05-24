@@ -298,7 +298,7 @@ impl VkSpriteRenderPass {
 
         for i in 0..swapchain_image_count {
             let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
-                .buffer(uniform_buffers[i as usize].buffer)
+                .buffer(uniform_buffers[i as usize].buffer())
                 .offset(0)
                 .range(mem::size_of::<SpriteUniformBufferObject>() as u64)
                 .build()];
@@ -612,13 +612,13 @@ impl VkSpriteRenderPass {
                 logical_device.cmd_bind_vertex_buffers(
                     *command_buffer,
                     0, // first binding
-                    &[vertex_buffers[0].buffer],
+                    &[vertex_buffers[0].buffer()],
                     &[0], // offsets
                 );
 
                 logical_device.cmd_bind_index_buffer(
                     *command_buffer,
-                    index_buffers[0].buffer,
+                    index_buffers[0].buffer(),
                     0, // offset
                     vk::IndexType::UINT16,
                 );

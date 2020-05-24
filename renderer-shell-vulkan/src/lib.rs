@@ -40,6 +40,7 @@ pub use swapchain::MAX_FRAMES_IN_FLIGHT;
 
 mod buffer;
 pub use buffer::VkBuffer;
+pub use buffer::VkBufferRaw;
 
 mod image;
 pub use image::VkImage;
