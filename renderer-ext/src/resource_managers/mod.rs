@@ -25,6 +25,7 @@ use resource_lookup::WeakResourceArc;
 use resource_lookup::ResourceHash;
 use resource_lookup::ResourceLookupSet;
 use resource_lookup::ResourceMetrics;
+use resource_lookup::DescriptorSetLayoutResource;
 
 mod load_queue;
 use load_queue::LoadQueues;
@@ -69,6 +70,7 @@ use upload::BufferUploadOpResult;
 use upload::PendingImageUpload;
 use upload::PendingBufferUpload;
 use upload::UploadManager;
+use crate::resource_managers::resource_lookup::{PipelineLayoutResource, PipelineResource, ImageViewResource};
 
 
 //TODO: Support descriptors that can be different per-view
@@ -78,22 +80,22 @@ use upload::UploadManager;
 // Information about a pipeline for a particular swapchain, resources may or may not be shared
 // across swapchains depending on if they are the same size/format
 pub struct PipelineSwapchainInfo {
-    pub descriptor_set_layouts: Vec<ResourceArc<vk::DescriptorSetLayout>>,
-    pub pipeline_layout: ResourceArc<vk::PipelineLayout>,
+    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
+    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
     pub renderpass: ResourceArc<vk::RenderPass>,
-    pub pipeline: ResourceArc<vk::Pipeline>,
+    pub pipeline: ResourceArc<PipelineResource>,
 }
 
 // Information about a single loaded image
 pub struct ImageInfo {
     pub image: ResourceArc<VkImageRaw>,
-    pub image_view: ResourceArc<vk::ImageView>,
+    pub image_view: ResourceArc<ImageViewResource>,
 }
 
 // Information about a single descriptor set
 pub struct DescriptorSetInfo {
     pub descriptor_set_layout_def: dsc::DescriptorSetLayout,
-    pub descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+    pub descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
 }
 
 // Information about a descriptor set for a particular frame. Descriptor sets may be updated
@@ -262,18 +264,24 @@ impl ResourceManager {
         self.swapchain_surfaces.remove(swapchain_surface_info, &mut self.loaded_assets);
     }
 
-    pub fn update(&mut self) -> VkResult<()> {
+    // Call whenever you want to handle assets loading/unloading
+    pub fn update_resources(&mut self) -> VkResult<()> {
         self.process_shader_load_requests();
         self.process_pipeline_load_requests();
         self.process_material_load_requests();
         self.process_material_instance_load_requests();
         self.process_image_load_requests();
 
-        self.registered_descriptor_sets.update();
         self.upload_manager.update()?;
 
         //self.dump_stats();
 
+        Ok(())
+    }
+
+    // Call just before rendering
+    pub fn on_begin_frame(&mut self) -> VkResult<()> {
+        self.registered_descriptor_sets.update();
         Ok(())
     }
 
@@ -511,11 +519,11 @@ impl ResourceManager {
 
             // Create the pipeline objects
             for swapchain_surface_info in swapchain_surface_infos {
-                let (renderpass, pipeline) = self.resources.get_or_create_graphics_pipeline(
+                let pipeline = self.resources.get_or_create_graphics_pipeline(
                     &pipeline_create_data,
                     &swapchain_surface_info,
                 )?;
-                render_passes.push(renderpass);
+                render_passes.push(pipeline.get_raw().renderpass);
                 pipelines.push(pipeline);
             }
 
@@ -577,8 +585,9 @@ impl ResourceManager {
             let pass_descriptor_set_writes = descriptor_sets::create_write_sets_for_material_instance_pass(
                 pass,
                 &material_instance_asset.slot_assignments,
-                &self.loaded_assets
-            );
+                &self.loaded_assets,
+                &mut self.resources
+            )?;
 
             // Save the
             //material_instance_descriptor_set_writes.push(pass_descriptor_set_writes.clone());
@@ -660,7 +669,8 @@ impl ResourceManager {
         self.registered_descriptor_sets.create_dyn_pass_material_instance_from_asset(
             &material_asset.passes[pass_index as usize],
             &material_instance_asset,
-            &self.loaded_assets
+            &self.loaded_assets,
+            &mut self.resources
         )
     }
 
@@ -698,7 +708,8 @@ impl ResourceManager {
         self.registered_descriptor_sets.create_dyn_material_instance_from_asset(
             material_asset,
             material_instance_asset,
-            &self.loaded_assets
+            &self.loaded_assets,
+            &mut self.resources
         )
     }
 }
@@ -712,7 +723,8 @@ impl Drop for ResourceManager {
             // Wipe out any loaded assets. This will potentially drop ref counts on resources
             self.loaded_assets.destroy();
 
-            // Drop all descriptors
+            // Drop all descriptors. These bind to raw resources, so we need to drop them before
+            // dropping resources
             self.registered_descriptor_sets.destroy();
 
             // Now drop all resources with a zero ref count and warn for any resources that remain
@@ -734,12 +746,12 @@ pub struct PipelineCreateData {
     shader_module_arcs: Vec<ResourceArc<vk::ShaderModule>>,
     shader_module_vk_objs: Vec<vk::ShaderModule>,
 
-    descriptor_set_layout_arcs: Vec<ResourceArc<vk::DescriptorSetLayout>>,
+    descriptor_set_layout_arcs: Vec<ResourceArc<DescriptorSetLayoutResource>>,
 
     fixed_function_state: dsc::FixedFunctionState,
 
     pipeline_layout_def: dsc::PipelineLayout,
-    pipeline_layout: ResourceArc<vk::PipelineLayout>,
+    pipeline_layout: ResourceArc<PipelineLayoutResource>,
 
     renderpass: dsc::RenderPass,
 }

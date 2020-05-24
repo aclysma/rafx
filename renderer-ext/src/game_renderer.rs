@@ -79,13 +79,6 @@ pub struct GameRenderer {
     time_state: TimeState,
     imgui_event_listener: ImguiRenderEventListener,
 
-    //shader_resource_manager: ShaderResourceManager,
-    // image_resource_manager: ImageResourceManager,
-    // material_resource_manager: MaterialResourceManager,
-    // sprite_resource_manager: SpriteResourceManager,
-    // mesh_resource_manager: VkMeshResourceManager,
-    //upload_queue: UploadQueue,
-
     resource_manager: ResourceManager,
 
     sprite_material: Handle<MaterialAsset>,
@@ -105,30 +98,6 @@ impl GameRenderer {
         asset_resource: &mut AssetResource,
     ) -> VkResult<Self> {
         let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
-
-        //let mut upload_queue = UploadQueue::new(device_context);
-
-        // let shader_resource_manager = ShaderResourceManager::new(
-        //     device_context,
-        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        // )?;
-        // let image_resource_manager = ImageResourceManager::new(
-        //     device_context,
-        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        // )?;
-        // let material_resource_manager = MaterialResourceManager::new(
-        //     device_context,
-        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        // )?;
-        // let sprite_resource_manager = SpriteResourceManager::new(
-        //     device_context,
-        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        //     &image_resource_manager,
-        // )?;
-        // let mesh_resource_manager = VkMeshResourceManager::new(
-        //     device_context,
-        //     renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        // )?;
 
         let mut resource_manager = ResourceManager::new(device_context);
 
@@ -151,29 +120,6 @@ impl GameRenderer {
         // asset_resource.add_storage::<MeshAsset>();
         // asset_resource.add_storage::<SpriteAsset>();
 
-        // //asset_resource.add_storage::<ShaderAsset>();
-        // asset_resource.add_storage_with_load_handler::<ImageAsset, ImageLoadHandler>(Box::new(
-        //     ImageLoadHandler::new(
-        //         upload_queue.pending_image_tx().clone(),
-        //         image_resource_manager.image_update_tx().clone(),
-        //         sprite_resource_manager.sprite_update_tx().clone(),
-        //     ),
-        // ));
-        // asset_resource.add_storage_with_load_handler::<GltfMaterialAsset, MaterialLoadHandler>(
-        //     Box::new(MaterialLoadHandler::new(
-        //         material_resource_manager.material_update_tx().clone(),
-        //     )),
-        // );
-        // asset_resource.add_storage_with_load_handler::<MeshAsset, MeshLoadHandler>(Box::new(
-        //     MeshLoadHandler::new(
-        //         upload_queue.pending_buffer_tx().clone(),
-        //         mesh_resource_manager.mesh_update_tx().clone(),
-        //     ),
-        // ));
-        // asset_resource.add_storage_with_load_handler::<SpriteAsset, SpriteLoadHandler>(Box::new(
-        //     SpriteLoadHandler::new(sprite_resource_manager.sprite_update_tx().clone()),
-        // ));
-
         let sprite_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
             &asset_resource,
@@ -187,16 +133,9 @@ impl GameRenderer {
             &asset_resource,
         );
 
-        //resource_manager.cre
-
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
             imgui_event_listener,
-            // image_resource_manager,
-            // material_resource_manager,
-            // sprite_resource_manager,
-            // mesh_resource_manager,
-            //upload_queue,
             resource_manager,
             sprite_material,
             sprite_material_instance,
@@ -219,20 +158,11 @@ impl GameRenderer {
             &mut renderer,
         );
 
-        // Example of using a raw descriptor set description. This doesn't have to go through materials.
-        // let sprite_pipeline_info = renderer.resource_manager.get_descriptor_set_info(&renderer.sprite_material, 0, 1);
-        // let mut sprite_custom_material = renderer.resource_manager.create_dyn_descriptor_set_uninitialized(&sprite_pipeline_info.descriptor_set_layout_def)?;
         let image_info = renderer.resource_manager.get_image_info(&override_image);
-        // sprite_custom_material.set_image(0, image_info.image_view);
-        // sprite_custom_material.flush();
 
-        //let sprite_pipeline_info = renderer.resource_manager.get_descriptor_set_info(&renderer.sprite_material, 0, 1);
         let mut sprite_custom_material = renderer.resource_manager.create_dyn_material_instance_from_asset(renderer.sprite_material_instance.clone())?;
         sprite_custom_material.set_image(&"texture".to_string(), &image_info.image_view);
         sprite_custom_material.flush();
-
-        //renderer.resource_manager.create_dyn_pass_material_instance
-
 
         renderer.sprite_custom_material = Some(sprite_custom_material);
 
@@ -243,18 +173,7 @@ impl GameRenderer {
         &mut self,
         device_context: &VkDeviceContext,
     ) {
-        //self.pipeline_manager.update();
-        self.resource_manager.update();
-        //self.upload_queue.update();
-
-        //self.shader_resource_manager.update();
-        // self.image_resource_manager.update();
-        // self.material_resource_manager
-        //     .update(&self.image_resource_manager);
-        // self.sprite_resource_manager
-        //     .update(&self.image_resource_manager);
-        // self.mesh_resource_manager
-        //     .update(&self.material_resource_manager);
+        self.resource_manager.update_resources();
     }
 
     pub fn update_time(
@@ -341,18 +260,13 @@ impl VkSurfaceEventListener for GameRenderer {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
-        // let pass_info = self
-        //     .resource_manager
-        //     .get_current_frame_pass_info(&self.sprite_material_instance, 0);
-        //let descriptor_set_per_texture = vec![pass_info.descriptor_sets[1]];
+        // Flush descriptor set changes
+        self.resource_manager.on_begin_frame();
 
         let pass = self.sprite_custom_material.as_ref().unwrap().pass(0);
         let layout = pass.descriptor_set_layout(1);
         let descriptor_set = layout.descriptor_set();
         let descriptor_set_per_texture = vec![descriptor_set.get_raw(&self.resource_manager)];
-
-
-
 
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");

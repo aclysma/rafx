@@ -15,14 +15,25 @@ pub fn create_shader_module(
 pub fn create_descriptor_set_layout(
     device: &ash::Device,
     descriptor_set_layout: &dsc::DescriptorSetLayout,
+    immutable_samplers: &Vec<Option<Vec<vk::Sampler>>>,
 ) -> VkResult<vk::DescriptorSetLayout> {
-    let bindings: Vec<_> = descriptor_set_layout
-        .descriptor_set_layout_bindings
-        .iter()
-        .map(|binding| binding.as_builder().build())
-        .collect();
+    let mut builders = Vec::with_capacity(descriptor_set_layout.descriptor_set_layout_bindings.len());
 
-    let create_info = vk::DescriptorSetLayoutCreateInfo::builder().bindings(&bindings);
+    for (binding, immutable_samplers) in descriptor_set_layout.descriptor_set_layout_bindings.iter().zip(immutable_samplers) {
+        let mut builder = vk::DescriptorSetLayoutBinding::builder()
+            .binding(binding.binding)
+            .descriptor_type(binding.descriptor_type.into())
+            .descriptor_count(binding.descriptor_count)
+            .stage_flags(binding.stage_flags.into());
+
+        if let Some(immutable_samplers) = immutable_samplers {
+            builder = builder.immutable_samplers(immutable_samplers);
+        }
+
+        builders.push(builder.build());
+    }
+
+    let create_info = vk::DescriptorSetLayoutCreateInfo::builder().bindings(&builders);
 
     unsafe { device.create_descriptor_set_layout(&*create_info, None) }
 }
@@ -279,7 +290,7 @@ pub fn create_image_view(
 
 pub fn create_sampler(
     device: &ash::Device,
-    sampler: dsc::Sampler,
+    sampler: &dsc::Sampler,
 ) -> VkResult<vk::Sampler> {
     unsafe {
         let create_info = vk::SamplerCreateInfo::builder()

@@ -8,6 +8,7 @@ use super::DescriptorSetArc;
 use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::handle::Handle;
 use std::sync::Arc;
+use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource};
 
 //
 // The "loaded" state of assets. Assets may have dependencies. Arcs to those dependencies ensure
@@ -36,12 +37,12 @@ pub type SlotNameLookup = FnvHashMap<String, Vec<SlotLocation>>;
 
 pub struct LoadedMaterialPass {
     pub shader_modules: Vec<ResourceArc<vk::ShaderModule>>,
-    pub descriptor_set_layouts: Vec<ResourceArc<vk::DescriptorSetLayout>>,
-    pub pipeline_layout: ResourceArc<vk::PipelineLayout>,
+    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
+    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
 
     // Potentially one of these per swapchain surface
     pub render_passes: Vec<ResourceArc<vk::RenderPass>>,
-    pub pipelines: Vec<ResourceArc<vk::Pipeline>>,
+    pub pipelines: Vec<ResourceArc<PipelineResource>>,
 
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
     pub pipeline_create_data: PipelineCreateData,
@@ -68,9 +69,9 @@ pub struct LoadedImage {
     //image_load_handle: LoadHandle,
     //image_view_meta: dsc::ImageViewMeta,
     pub image: ResourceArc<VkImageRaw>,
-    pub image_view: ResourceArc<vk::ImageView>,
+    pub image_view: ResourceArc<ImageViewResource>,
     // One per swapchain
-    //image_views: Vec<ResourceArc<vk::ImageView>>
+    //image_views: Vec<ResourceArc<ImageViewResource>>
 }
 
 //

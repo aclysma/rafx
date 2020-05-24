@@ -34,7 +34,7 @@ impl ResourceHash {
 #[derive(Clone)]
 struct ResourceWithHash<ResourceT>
 where
-    ResourceT: Copy,
+    ResourceT: Clone,
 {
     resource: ResourceT,
     resource_hash: ResourceHash,
@@ -42,7 +42,7 @@ where
 
 impl<ResourceT> std::fmt::Debug for ResourceWithHash<ResourceT>
 where
-    ResourceT: std::fmt::Debug + Copy,
+    ResourceT: std::fmt::Debug + Clone,
 {
     fn fmt(
         &self,
@@ -57,7 +57,7 @@ where
 
 struct ResourceArcInner<ResourceT>
 where
-    ResourceT: Copy,
+    ResourceT: Clone,
 {
     resource: ResourceWithHash<ResourceT>,
     drop_tx: Sender<ResourceWithHash<ResourceT>>,
@@ -65,7 +65,7 @@ where
 
 impl<ResourceT> Drop for ResourceArcInner<ResourceT>
 where
-    ResourceT: Copy,
+    ResourceT: Clone,
 {
     fn drop(&mut self) {
         self.drop_tx.send(self.resource.clone());
@@ -74,7 +74,7 @@ where
 
 impl<ResourceT> std::fmt::Debug for ResourceArcInner<ResourceT>
 where
-    ResourceT: std::fmt::Debug + Copy,
+    ResourceT: std::fmt::Debug + Clone,
 {
     fn fmt(
         &self,
@@ -89,14 +89,14 @@ where
 #[derive(Clone)]
 pub struct WeakResourceArc<ResourceT>
 where
-    ResourceT: Copy,
+    ResourceT: Clone,
 {
     inner: Weak<ResourceArcInner<ResourceT>>,
 }
 
 impl<ResourceT> WeakResourceArc<ResourceT>
 where
-    ResourceT: Copy,
+    ResourceT: Clone,
 {
     pub fn upgrade(&self) -> Option<ResourceArc<ResourceT>> {
         if let Some(upgrade) = self.inner.upgrade() {
@@ -109,7 +109,7 @@ where
 
 impl<ResourceT> std::fmt::Debug for WeakResourceArc<ResourceT>
 where
-    ResourceT: std::fmt::Debug + Copy,
+    ResourceT: std::fmt::Debug + Clone,
 {
     fn fmt(
         &self,
@@ -124,14 +124,14 @@ where
 #[derive(Clone)]
 pub struct ResourceArc<ResourceT>
 where
-    ResourceT: Copy,
+    ResourceT: Clone,
 {
     inner: Arc<ResourceArcInner<ResourceT>>,
 }
 
 impl<ResourceT> ResourceArc<ResourceT>
 where
-    ResourceT: Copy,
+    ResourceT: Clone,
 {
     fn new(
         resource: ResourceT,
@@ -150,7 +150,7 @@ where
     }
 
     pub fn get_raw(&self) -> ResourceT {
-        self.inner.resource.borrow().resource
+        self.inner.resource.borrow().resource.clone()
     }
 
     pub fn downgrade(&self) -> WeakResourceArc<ResourceT> {
@@ -161,7 +161,7 @@ where
 
 impl<ResourceT> std::fmt::Debug for ResourceArc<ResourceT>
 where
-    ResourceT: std::fmt::Debug + Copy,
+    ResourceT: std::fmt::Debug + Clone,
 {
     fn fmt(
         &self,
@@ -180,7 +180,7 @@ where
 pub struct ResourceLookup<KeyT, ResourceT>
 where
     KeyT: Eq + Hash + Clone,
-    ResourceT: VkResource + Copy,
+    ResourceT: VkResource + Clone,
 {
     resources: FnvHashMap<ResourceHash, WeakResourceArc<ResourceT>>,
     drop_sink: VkResourceDropSink<ResourceT>,
@@ -194,7 +194,7 @@ where
 impl<KeyT, ResourceT> ResourceLookup<KeyT, ResourceT>
 where
     KeyT: Eq + Hash + Clone,
-    ResourceT: VkResource + Copy + std::fmt::Debug,
+    ResourceT: VkResource + Clone + std::fmt::Debug,
 {
     fn new(max_frames_in_flight: u32) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
@@ -352,6 +352,56 @@ pub struct ResourceMetrics {
     sampler_count: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct DescriptorSetLayoutResource {
+    pub descriptor_set_layout: vk::DescriptorSetLayout,
+    pub immutable_samplers: Vec<ResourceArc<vk::Sampler>>
+}
+
+impl VkResource for DescriptorSetLayoutResource {
+    fn destroy(device_context: &VkDeviceContext, resource: Self) -> VkResult<()> {
+        VkResource::destroy(device_context, resource.descriptor_set_layout)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PipelineLayoutResource {
+    pub pipeline_layout: vk::PipelineLayout,
+    pub descriptor_sets: Vec<ResourceArc<DescriptorSetLayoutResource>>
+}
+
+impl VkResource for PipelineLayoutResource {
+    fn destroy(device_context: &VkDeviceContext, resource: Self) -> VkResult<()> {
+        VkResource::destroy(device_context, resource.pipeline_layout)
+    }
+}
+
+
+#[derive(Debug, Clone)]
+pub struct PipelineResource {
+    pub pipeline: vk::Pipeline,
+    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
+    pub renderpass: ResourceArc<vk::RenderPass>,
+}
+
+impl VkResource for PipelineResource {
+    fn destroy(device_context: &VkDeviceContext, resource: Self) -> VkResult<()> {
+        VkResource::destroy(device_context, resource.pipeline)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ImageViewResource {
+    pub image_view: vk::ImageView,
+    pub image: ResourceArc<VkImageRaw>,
+}
+
+impl VkResource for ImageViewResource {
+    fn destroy(device_context: &VkDeviceContext, resource: Self) -> VkResult<()> {
+        VkResource::destroy(device_context, resource.image_view)
+    }
+}
+
 //
 // Handles raw lookup and destruction of GPU resources. Everything is reference counted. No safety
 // is provided for dependencies/order of destruction. The general expectation is that anything
@@ -361,12 +411,12 @@ pub struct ResourceMetrics {
 pub struct ResourceLookupSet {
     pub device_context: VkDeviceContext,
     pub shader_modules: ResourceLookup<dsc::ShaderModule, vk::ShaderModule>,
-    pub descriptor_set_layouts: ResourceLookup<dsc::DescriptorSetLayout, vk::DescriptorSetLayout>,
-    pub pipeline_layouts: ResourceLookup<dsc::PipelineLayout, vk::PipelineLayout>,
+    pub descriptor_set_layouts: ResourceLookup<dsc::DescriptorSetLayout, DescriptorSetLayoutResource>,
+    pub pipeline_layouts: ResourceLookup<dsc::PipelineLayout, PipelineLayoutResource>,
     pub render_passes: ResourceLookup<RenderPassKey, vk::RenderPass>,
-    pub graphics_pipelines: ResourceLookup<GraphicsPipelineKey, vk::Pipeline>,
+    pub graphics_pipelines: ResourceLookup<GraphicsPipelineKey, PipelineResource>,
     pub images: ResourceLookup<ImageKey, VkImageRaw>,
-    pub image_views: ResourceLookup<ImageViewKey, vk::ImageView>,
+    pub image_views: ResourceLookup<ImageViewKey, ImageViewResource>,
     pub samplers: ResourceLookup<dsc::Sampler, vk::Sampler>,
 }
 
@@ -390,6 +440,7 @@ impl ResourceLookupSet {
 
     pub fn on_frame_complete(&mut self) {
         self.shader_modules.on_frame_complete(&self.device_context);
+        self.samplers.on_frame_complete(&self.device_context);
         self.descriptor_set_layouts
             .on_frame_complete(&self.device_context);
         self.pipeline_layouts
@@ -399,18 +450,19 @@ impl ResourceLookupSet {
             .on_frame_complete(&self.device_context);
         self.images.on_frame_complete(&self.device_context);
         self.image_views.on_frame_complete(&self.device_context);
-        self.samplers.on_frame_complete(&self.device_context);
     }
 
     pub fn destroy(&mut self) {
-        self.shader_modules.destroy(&self.device_context);
-        self.descriptor_set_layouts.destroy(&self.device_context);
-        self.pipeline_layouts.destroy(&self.device_context);
-        self.render_passes.destroy(&self.device_context);
-        self.graphics_pipelines.destroy(&self.device_context);
-        self.images.destroy(&self.device_context);
+        //WARNING: These need to be in order of dependencies to avoid frame-delays on destroying
+        // resources.
         self.image_views.destroy(&self.device_context);
+        self.images.destroy(&self.device_context);
+        self.graphics_pipelines.destroy(&self.device_context);
+        self.render_passes.destroy(&self.device_context);
+        self.pipeline_layouts.destroy(&self.device_context);
+        self.descriptor_set_layouts.destroy(&self.device_context);
         self.samplers.destroy(&self.device_context);
+        self.shader_modules.destroy(&self.device_context);
     }
 
     pub fn metrics(&self) -> ResourceMetrics {
@@ -448,10 +500,36 @@ impl ResourceLookupSet {
         }
     }
 
+    pub fn get_or_create_sampler(
+        &mut self,
+        sampler: &dsc::Sampler
+    ) -> VkResult<ResourceArc<vk::Sampler>> {
+        let hash = ResourceHash::from_key(sampler);
+        if let Some(sampler) = self.samplers.get(hash, sampler) {
+            Ok(sampler)
+        } else {
+            log::trace!(
+                "Creating sampler\n{:#?}",
+                sampler
+            );
+
+            let resource = crate::pipeline_description::create_sampler(
+                self.device_context.device(),
+                sampler
+            )?;
+
+            log::trace!("Created sampler {:?}", resource);
+            let sampler =
+                self.samplers
+                    .insert(hash, sampler, resource);
+            Ok(sampler)
+        }
+    }
+
     pub fn get_or_create_descriptor_set_layout(
         &mut self,
         descriptor_set_layout: &dsc::DescriptorSetLayout,
-    ) -> VkResult<ResourceArc<vk::DescriptorSetLayout>> {
+    ) -> VkResult<ResourceArc<DescriptorSetLayoutResource>> {
         let hash = ResourceHash::from_key(descriptor_set_layout);
         if let Some(descriptor_set_layout) =
             self.descriptor_set_layouts.get(hash, descriptor_set_layout)
@@ -462,10 +540,47 @@ impl ResourceLookupSet {
                 "Creating descriptor set layout\n{:#?}",
                 descriptor_set_layout
             );
+
+            // Put all samplers into a hashmap so that we avoid collecting duplicates. This prevents
+            // samplers from dropping out of scope and being destroyed
+            let mut immutable_sampler_arcs = FnvHashMap::default();
+
+            // But we also need to put raw vk objects into a format compatible with
+            // create_descriptor_set_layout
+            let mut immutable_sampler_vk_objs = Vec::with_capacity(descriptor_set_layout.descriptor_set_layout_bindings.len());
+
+            // Get or create samplers and add them to the two above structures
+            for x in &descriptor_set_layout.descriptor_set_layout_bindings {
+                if let Some(sampler_defs) = &x.immutable_samplers {
+                    let mut samplers = Vec::with_capacity(sampler_defs.len());
+                    for sampler_def in sampler_defs {
+                        let sampler = self.get_or_create_sampler(sampler_def)?;
+                        samplers.push(sampler.get_raw());
+                        immutable_sampler_arcs.insert(sampler_def, sampler);
+                    }
+                    immutable_sampler_vk_objs.push(Some(samplers));
+                } else {
+                    immutable_sampler_vk_objs.push(None);
+                }
+            }
+
+            // Create the descriptor set layout
             let resource = crate::pipeline_description::create_descriptor_set_layout(
                 self.device_context.device(),
                 descriptor_set_layout,
+                &immutable_sampler_vk_objs
             )?;
+
+            // Flatten the hashmap into just the values
+            let immutable_samplers = immutable_sampler_arcs.drain().map(|(_, x)| x).collect();
+
+            // Create the resource object, which contains the descriptor set layout we created plus
+            // ResourceArcs to the samplers, which must remain alive for the lifetime of the descriptor set
+            let resource = DescriptorSetLayoutResource {
+                descriptor_set_layout: resource,
+                immutable_samplers
+            };
+
             log::trace!("Created descriptor set layout {:?}", resource);
             let descriptor_set_layout =
                 self.descriptor_set_layouts
@@ -477,7 +592,7 @@ impl ResourceLookupSet {
     pub fn get_or_create_pipeline_layout(
         &mut self,
         pipeline_layout_def: &dsc::PipelineLayout,
-    ) -> VkResult<ResourceArc<vk::PipelineLayout>> {
+    ) -> VkResult<ResourceArc<PipelineLayoutResource>> {
         let hash = ResourceHash::from_key(pipeline_layout_def);
         if let Some(pipeline_layout) = self.pipeline_layouts.get(hash, pipeline_layout_def) {
             Ok(pipeline_layout)
@@ -492,7 +607,7 @@ impl ResourceLookupSet {
                 let loaded_descriptor_set_layout =
                     self.get_or_create_descriptor_set_layout(descriptor_set_layout_def)?;
                 descriptor_set_layout_arcs.push(loaded_descriptor_set_layout.clone());
-                descriptor_set_layouts.push(loaded_descriptor_set_layout.get_raw());
+                descriptor_set_layouts.push(loaded_descriptor_set_layout.get_raw().descriptor_set_layout);
             }
 
             log::trace!("Creating pipeline layout\n{:#?}", pipeline_layout_def);
@@ -501,6 +616,12 @@ impl ResourceLookupSet {
                 pipeline_layout_def,
                 &descriptor_set_layouts,
             )?;
+
+            let resource = PipelineLayoutResource {
+                pipeline_layout: resource,
+                descriptor_sets: descriptor_set_layout_arcs
+            };
+
             log::trace!("Created pipeline layout {:?}", resource);
             let pipeline_layout = self
                 .pipeline_layouts
@@ -541,7 +662,7 @@ impl ResourceLookupSet {
         &mut self,
         pipeline_create_data: &PipelineCreateData,
         swapchain_surface_info: &SwapchainSurfaceInfo,
-    ) -> VkResult<(ResourceArc<vk::RenderPass>, ResourceArc<vk::Pipeline>)> {
+    ) -> VkResult<ResourceArc<PipelineResource>> {
         let pipeline_key = GraphicsPipelineKey {
             shader_module_load_handles: pipeline_create_data.shader_module_load_handles.clone(),
             shader_module_metas: pipeline_create_data.shader_module_metas.clone(),
@@ -556,13 +677,13 @@ impl ResourceLookupSet {
 
         let hash = ResourceHash::from_key(&pipeline_key);
         if let Some(pipeline) = self.graphics_pipelines.get(hash, &pipeline_key) {
-            Ok((renderpass, pipeline))
+            Ok(pipeline)
         } else {
             log::trace!("Creating pipeline\n{:#?}", pipeline_key);
             let resource = crate::pipeline_description::create_graphics_pipeline(
                 &self.device_context.device(),
                 &pipeline_create_data.fixed_function_state,
-                pipeline_create_data.pipeline_layout.get_raw(),
+                pipeline_create_data.pipeline_layout.get_raw().pipeline_layout,
                 renderpass.get_raw(),
                 &pipeline_create_data.shader_module_metas,
                 &pipeline_create_data.shader_module_vk_objs,
@@ -570,10 +691,16 @@ impl ResourceLookupSet {
             )?;
             log::trace!("Created pipeline {:?}", resource);
 
+            let resource = PipelineResource {
+                pipeline: resource,
+                pipeline_layout: pipeline_create_data.pipeline_layout.clone(),
+                renderpass: renderpass.clone(),
+            };
+
             let pipeline = self
                 .graphics_pipelines
                 .insert(hash, &pipeline_key, resource);
-            Ok((renderpass, pipeline))
+            Ok(pipeline)
         }
     }
 
@@ -593,7 +720,7 @@ impl ResourceLookupSet {
         &mut self,
         image_load_handle: LoadHandle,
         image_view_meta: &dsc::ImageViewMeta,
-    ) -> VkResult<ResourceArc<vk::ImageView>> {
+    ) -> VkResult<ResourceArc<ImageViewResource>> {
         let image_view_key = ImageViewKey {
             image_load_handle,
             image_view_meta: image_view_meta.clone(),
@@ -616,6 +743,11 @@ impl ResourceLookupSet {
                 image_view_meta,
             )?;
             log::trace!("Created image view\n{:#?}", resource);
+
+            let resource = ImageViewResource {
+                image_view: resource,
+                image: image.clone()
+            };
 
             let image_view = self.image_views.insert(hash, &image_view_key, resource);
             Ok(image_view)

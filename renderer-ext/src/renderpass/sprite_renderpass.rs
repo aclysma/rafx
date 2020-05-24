@@ -78,22 +78,6 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 /// Draw order of QUAD_VERTEX_LIST
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
-struct FixedFunctionState<'a> {
-    vertex_input_assembly_state_info: vk::PipelineInputAssemblyStateCreateInfoBuilder<'a>,
-    vertex_input_state_info: vk::PipelineVertexInputStateCreateInfoBuilder<'a>,
-    viewport_state_info: vk::PipelineViewportStateCreateInfoBuilder<'a>,
-    rasterization_info: vk::PipelineRasterizationStateCreateInfoBuilder<'a>,
-    multisample_state_info: vk::PipelineMultisampleStateCreateInfoBuilder<'a>,
-    color_blend_state_info: vk::PipelineColorBlendStateCreateInfoBuilder<'a>,
-    dynamic_state_info: vk::PipelineDynamicStateCreateInfoBuilder<'a>,
-}
-
-struct PipelineResources {
-    pipeline_layout: vk::PipelineLayout,
-    renderpass: vk::RenderPass,
-    pipeline: vk::Pipeline,
-}
-
 /// Draws sprites
 pub struct VkSpriteRenderPass {
     pub device_context: VkDeviceContext,
@@ -127,7 +111,7 @@ pub struct VkSpriteRenderPass {
     pub uniform_buffers: Vec<ManuallyDrop<VkBuffer>>,
 
     // The sampler used to draw a sprite
-    pub image_sampler: vk::Sampler,
+    //pub image_sampler: vk::Sampler,
 }
 
 impl VkSpriteRenderPass {
@@ -135,8 +119,6 @@ impl VkSpriteRenderPass {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         pipeline_info: PipelineSwapchainInfo,
-        //pipeline_manager: &mut PipelineManager,
-        //sprite_resource_manager: &SpriteResourceManager,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<Self> {
         //
@@ -150,22 +132,16 @@ impl VkSpriteRenderPass {
         //
         // Static resources used by GPU
         //
-        let image_sampler = Self::create_texture_image_sampler(&device_context.device());
+        //let image_sampler = Self::create_texture_image_sampler(&device_context.device());
 
         let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
         for _ in 0..swapchain.swapchain_info.image_count {
             uniform_buffers.push(Self::create_uniform_buffer(&device_context)?)
         }
 
-        //let sprite_pipeline_description = create_sprite_pipeline();
-
         //
         // Descriptors
         //
-        // let descriptor_set_layout_per_pass = crate::pipeline_description::create_descriptor_set_layout(
-        //     device_context.device(),
-        //     &sprite_pipeline_description.pipeline_layout.descriptor_set_layouts[0]
-        // )?;
         let descriptor_set_layout_per_pass = pipeline_info.descriptor_set_layouts[0].get_raw();
         let descriptor_set_layout_per_sprite = pipeline_info.descriptor_set_layouts[1].get_raw();
 
@@ -177,54 +153,16 @@ impl VkSpriteRenderPass {
         let descriptor_sets_per_pass = Self::create_descriptor_sets_per_pass(
             &device_context.device(),
             &descriptor_pool_per_pass,
-            descriptor_set_layout_per_pass,
+            descriptor_set_layout_per_pass.descriptor_set_layout,
             swapchain.swapchain_info.image_count,
             &uniform_buffers,
-            &image_sampler,
+            //&image_sampler,
         )?;
 
         let descriptor_set_layouts = [
             descriptor_set_layout_per_pass,
             descriptor_set_layout_per_sprite,
         ];
-
-        // let mut shader_modules = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
-        // let mut shader_modules_meta = Vec::with_capacity(sprite_pipeline_description.pipeline_shader_stages.stages.len());
-        // for stage in &sprite_pipeline_description.pipeline_shader_stages.stages {
-        //     let shader_module = crate::pipeline_description::create_shader_module(device_context.device(), &stage.shader_module)?;
-        //     shader_modules.push(shader_module);
-        //     shader_modules_meta.push(crate::pipeline_description::ShaderModuleMeta {
-        //         stage: stage.stage,
-        //         entry_name: stage.entry_name.clone()
-        //     })
-        // }
-        //
-        // let pipeline_layout = crate::pipeline_description::create_pipeline_layout(
-        //     device_context.device(),
-        //     &sprite_pipeline_description.pipeline_layout,
-        //     &descriptor_set_layouts,
-        // )?;
-        // let renderpass = crate::pipeline_description::create_renderpass(
-        //     device_context.device(),
-        //     &sprite_pipeline_description.renderpass,
-        //     swapchain_surface_info
-        // )?;
-        //
-        // let pipeline = crate::pipeline_description::create_graphics_pipeline(
-        //     device_context.device(),
-        //     &sprite_pipeline_description.fixed_function_state,
-        //     pipeline_layout,
-        //     renderpass,
-        //     &shader_modules_meta,
-        //     &shader_modules,
-        //     swapchain_surface_info
-        // )?;
-
-        // for shader_module in shader_modules {
-        //     unsafe {
-        //         device_context.device().destroy_shader_module(shader_module, None);
-        //     }
-        // }
 
         //
         // Renderpass Resources
@@ -256,10 +194,6 @@ impl VkSpriteRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             pipeline_info,
-            // descriptor_set_layout_per_pass,
-            // pipeline_layout,
-            // renderpass,
-            // pipeline,
             frame_buffers,
             command_pool,
             command_buffers,
@@ -268,14 +202,10 @@ impl VkSpriteRenderPass {
             uniform_buffers,
             descriptor_pool_per_pass,
             descriptor_sets_per_pass,
-            image_sampler,
+            //image_sampler,
         })
     }
-    /*
-        fn update_resources(&mut self, asset_resource: &AssetResource, pipeline_manager: &PipelineManager) {
 
-        }
-    */
     fn create_command_pool(
         logical_device: &ash::Device,
         queue_family_indices: &VkQueueFamilyIndices,
@@ -294,27 +224,6 @@ impl VkSpriteRenderPass {
         unsafe { logical_device.create_command_pool(&pool_create_info, None) }
     }
 
-    pub fn create_texture_image_sampler(logical_device: &ash::Device) -> vk::Sampler {
-        let sampler_info = vk::SamplerCreateInfo::builder()
-            .mag_filter(vk::Filter::LINEAR)
-            .min_filter(vk::Filter::LINEAR)
-            .address_mode_u(vk::SamplerAddressMode::REPEAT)
-            .address_mode_v(vk::SamplerAddressMode::REPEAT)
-            .address_mode_w(vk::SamplerAddressMode::REPEAT)
-            .anisotropy_enable(false)
-            .max_anisotropy(1.0)
-            .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
-            .unnormalized_coordinates(false)
-            .compare_enable(false)
-            .compare_op(vk::CompareOp::ALWAYS)
-            .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
-            .mip_lod_bias(0.0)
-            .min_lod(0.0)
-            .max_lod(0.0);
-
-        unsafe { logical_device.create_sampler(&sampler_info, None).unwrap() }
-    }
-
     fn create_uniform_buffer(device_context: &VkDeviceContext) -> VkResult<ManuallyDrop<VkBuffer>> {
         let buffer = VkBuffer::new(
             device_context,
@@ -326,6 +235,27 @@ impl VkSpriteRenderPass {
 
         Ok(ManuallyDrop::new(buffer?))
     }
+
+    // pub fn create_texture_image_sampler(logical_device: &ash::Device) -> vk::Sampler {
+    //     let sampler_info = vk::SamplerCreateInfo::builder()
+    //         .mag_filter(vk::Filter::LINEAR)
+    //         .min_filter(vk::Filter::LINEAR)
+    //         .address_mode_u(vk::SamplerAddressMode::REPEAT)
+    //         .address_mode_v(vk::SamplerAddressMode::REPEAT)
+    //         .address_mode_w(vk::SamplerAddressMode::REPEAT)
+    //         .anisotropy_enable(false)
+    //         .max_anisotropy(1.0)
+    //         .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
+    //         .unnormalized_coordinates(false)
+    //         .compare_enable(false)
+    //         .compare_op(vk::CompareOp::ALWAYS)
+    //         .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+    //         .mip_lod_bias(0.0)
+    //         .min_lod(0.0)
+    //         .max_lod(0.0);
+    //
+    //     unsafe { logical_device.create_sampler(&sampler_info, None).unwrap() }
+    // }
 
     fn create_descriptor_pool_per_pass(
         logical_device: &ash::Device,
@@ -355,7 +285,7 @@ impl VkSpriteRenderPass {
         descriptor_set_layout: vk::DescriptorSetLayout,
         swapchain_image_count: usize,
         uniform_buffers: &Vec<ManuallyDrop<VkBuffer>>,
-        image_sampler: &vk::Sampler,
+//        image_sampler: &vk::Sampler,
     ) -> VkResult<Vec<vk::DescriptorSet>> {
         // DescriptorSetAllocateInfo expects an array with an element per set
         let descriptor_set_layouts = vec![descriptor_set_layout; swapchain_image_count];
@@ -373,10 +303,10 @@ impl VkSpriteRenderPass {
                 .range(mem::size_of::<SpriteUniformBufferObject>() as u64)
                 .build()];
 
-            let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
-                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .sampler(*image_sampler)
-                .build()];
+            // let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
+            //     .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            //     .sampler(*image_sampler)
+            //     .build()];
 
             let descriptor_writes = [
                 vk::WriteDescriptorSet::builder()
@@ -386,13 +316,13 @@ impl VkSpriteRenderPass {
                     .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
                     .buffer_info(&descriptor_buffer_infos)
                     .build(),
-                vk::WriteDescriptorSet::builder()
-                    .dst_set(descriptor_sets[i])
-                    .dst_binding(1)
-                    .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::SAMPLER)
-                    .image_info(&sampler_descriptor_image_infos)
-                    .build(),
+                // vk::WriteDescriptorSet::builder()
+                //     .dst_set(descriptor_sets[i])
+                //     .dst_binding(1)
+                //     .dst_array_element(0)
+                //     .descriptor_type(vk::DescriptorType::SAMPLER)
+                //     .image_info(&sampler_descriptor_image_infos)
+                //     .build(),
             ];
 
             unsafe {
@@ -770,8 +700,8 @@ impl VkSpriteRenderPass {
             &self.frame_buffers[present_index],
             // &self.pipeline,
             // &self.pipeline_layout,
-            &self.pipeline_info.pipeline.get_raw(),
-            &self.pipeline_info.pipeline_layout.get_raw(),
+            &self.pipeline_info.pipeline.get_raw().pipeline,
+            &self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
             &mut self.vertex_buffers[present_index],
             &mut self.index_buffers[present_index],
@@ -800,7 +730,7 @@ impl Drop for VkSpriteRenderPass {
 
         unsafe {
             let device = self.device_context.device();
-            device.destroy_sampler(self.image_sampler, None);
+            //device.destroy_sampler(self.image_sampler, None);
 
             for uniform_buffer in &mut self.uniform_buffers {
                 ManuallyDrop::drop(uniform_buffer);
@@ -851,164 +781,3 @@ pub fn orthographic_rh_gl(
         [tx, ty, tz, 1.0],
     ]
 }
-/*
-pub fn create_sprite_pipeline() -> crate::pipeline_description::GraphicsPipeline {
-    use crate::pipeline_description as dsc;
-
-    let mut sprite_pipeline = dsc::GraphicsPipeline::default();
-    sprite_pipeline.pipeline_layout.descriptor_set_layouts = vec![
-        dsc::DescriptorSetLayout {
-            descriptor_set_layout_bindings: vec! [
-                dsc::DescriptorSetLayoutBinding {
-                    binding: 0,
-                    descriptor_type: dsc::DescriptorType::UniformBuffer,
-                    descriptor_count: 1,
-                    stage_flags: dsc::ShaderStageFlags::Vertex
-                },
-                dsc::DescriptorSetLayoutBinding {
-                    binding: 1,
-                    descriptor_type: dsc::DescriptorType::Sampler,
-                    descriptor_count: 1,
-                    stage_flags: dsc::ShaderStageFlags::Fragment
-                },
-            ]
-        },
-        dsc::DescriptorSetLayout {
-            descriptor_set_layout_bindings: vec! [
-                dsc::DescriptorSetLayoutBinding {
-                    binding: 0,
-                    descriptor_type: dsc::DescriptorType::SampledImage,
-                    descriptor_count: 1,
-                    stage_flags: dsc::ShaderStageFlags::Fragment
-                }
-            ]
-        }
-    ];
-    sprite_pipeline.fixed_function_state.input_assembly_state.primitive_topology = dsc::PrimitiveTopology::TriangleList;
-    sprite_pipeline.fixed_function_state.vertex_input_state.binding_descriptions = vec![
-        dsc::VertexInputBindingDescription {
-            binding: 0,
-            stride: std::mem::size_of::<SpriteVertex>() as u32,
-            input_rate: dsc::VertexInputRate::Vertex
-        }
-    ];
-    sprite_pipeline.fixed_function_state.vertex_input_state.attribute_descriptions = vec![
-        dsc::VertexInputAttributeDescription {
-            binding: 0,
-            location: 0,
-            format: dsc::Format::R32G32_SFLOAT,
-            offset: renderer_shell_vulkan::offset_of!(SpriteVertex, pos) as u32,
-        },
-        dsc::VertexInputAttributeDescription {
-            binding: 0,
-            location: 1,
-            format: dsc::Format::R32G32_SFLOAT,
-            offset: renderer_shell_vulkan::offset_of!(SpriteVertex, tex_coord) as u32,
-        },
-    ];
-
-    sprite_pipeline.fixed_function_state.viewport_state.viewports = vec![
-        dsc::Viewport {
-            dimensions: Default::default(),
-            min_depth: dsc::Decimal(0.0),
-            max_depth: dsc::Decimal(1.0),
-        }
-    ];
-    sprite_pipeline.fixed_function_state.viewport_state.scissors = vec![
-        Default::default()
-    ];
-
-    sprite_pipeline.fixed_function_state.rasterization_state = dsc::PipelineRasterizationState {
-        front_face: dsc::FrontFace::CounterClockwise,
-        line_width: dsc::Decimal(1.0),
-        polygon_mode: dsc::PolygonMode::Fill,
-        cull_mode: dsc::CullModeFlags::None,
-        ..Default::default()
-    };
-
-    sprite_pipeline.fixed_function_state.multisample_state.rasterization_samples = dsc::SampleCountFlags::SampleCount1;
-
-    sprite_pipeline.fixed_function_state.color_blend_state.attachments = vec![
-        dsc::PipelineColorBlendAttachmentState {
-            color_write_mask: dsc::ColorComponentFlags {
-                red: true,
-                green: true,
-                blue: true,
-                alpha: true
-            },
-            blend_enable: true,
-            src_color_blend_factor: dsc::BlendFactor::SrcAlpha,
-            dst_color_blend_factor: dsc::BlendFactor::OneMinusSrcAlpha,
-            color_blend_op: dsc::BlendOp::Add,
-            src_alpha_blend_factor: dsc::BlendFactor::One,
-            dst_alpha_blend_factor: dsc::BlendFactor::Zero,
-            alpha_blend_op: dsc::BlendOp::Add
-        }
-    ];
-
-    sprite_pipeline.renderpass.attachments = vec![
-        dsc::AttachmentDescription {
-            flags: dsc::AttachmentDescriptionFlags::None,
-            format: dsc::Format::MatchSwapchain,
-            samples: dsc::SampleCountFlags::SampleCount1,
-            load_op: dsc::AttachmentLoadOp::Clear,
-            store_op: dsc::AttachmentStoreOp::Store,
-            stencil_load_op: dsc::AttachmentLoadOp::DontCare,
-            stencil_store_op: dsc::AttachmentStoreOp::DontCare,
-            initial_layout: dsc::ImageLayout::Undefined,
-            final_layout: dsc::ImageLayout::PresentSrcKhr,
-        }
-    ];
-
-    sprite_pipeline.renderpass.subpasses = vec![
-        dsc::SubpassDescription {
-            color_attachments: vec![
-                dsc::AttachmentReference {
-                    attachment: dsc::AttachmentIndex::Index(0),
-                    layout: dsc::ImageLayout::ColorAttachmentOptimal
-                }
-            ],
-            pipeline_bind_point: dsc::PipelineBindPoint::Graphics,
-            ..Default::default()
-        }
-    ];
-
-    sprite_pipeline.renderpass.dependencies = vec![
-        dsc::SubpassDependency {
-            dependency_flags: dsc::DependencyFlags::Empty,
-            src_subpass: dsc::SubpassDependencyIndex::External,
-            dst_subpass: dsc::SubpassDependencyIndex::Index(0),
-            src_stage_mask: dsc::PipelineStageFlags::ColorAttachmentOutput,
-            src_access_mask: vec![],
-            dst_stage_mask: dsc::PipelineStageFlags::ColorAttachmentOutput,
-            dst_access_mask: vec![dsc::AccessFlags::ColorAttachmentRead, dsc::AccessFlags::ColorAttachmentWrite]
-        }
-    ];
-
-    let vert_shader_data = include_bytes!("../../shaders/sprite.vert.spv");
-    let frag_shader_data = include_bytes!("../../shaders/sprite.frag.spv");
-    let vert_code = renderer_shell_vulkan::util::read_spv(&mut std::io::Cursor::new(vert_shader_data.as_ref()))
-        .expect("Failed to read vertex shader spv file");
-    let frag_code = renderer_shell_vulkan::util::read_spv(&mut std::io::Cursor::new(frag_shader_data.as_ref()))
-        .expect("Failed to read frag shader spv file");
-
-    sprite_pipeline.pipeline_shader_stages.stages = vec![
-        dsc::PipelineShaderStage {
-            stage: dsc::ShaderStageFlags::Vertex,
-            entry_name: "main".to_string(),
-            shader_module: dsc::ShaderModule {
-                code: vert_code
-            }
-        },
-        dsc::PipelineShaderStage {
-            stage: dsc::ShaderStageFlags::Fragment,
-            entry_name: "main".to_string(),
-            shader_module: dsc::ShaderModule {
-                code: frag_code
-            }
-        }
-    ];
-
-    sprite_pipeline
-}
-*/

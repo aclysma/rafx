@@ -40,7 +40,7 @@ pub struct DescriptorSetLayoutBindingWithSlotName {
     pub descriptor_type: dsc::DescriptorType,
     pub descriptor_count: u32,
     pub stage_flags: dsc::ShaderStageFlags,
-    //samplers: Vec<dsc::Sampler>,
+    pub immutable_samplers: Option<Vec<dsc::Sampler>>,
     pub slot_name: String,
 }
 
@@ -51,6 +51,7 @@ impl Into<dsc::DescriptorSetLayoutBinding> for &DescriptorSetLayoutBindingWithSl
             descriptor_type: self.descriptor_type,
             descriptor_count: self.descriptor_count,
             stage_flags: self.stage_flags,
+            immutable_samplers: self.immutable_samplers.clone(),
         }
     }
 }
@@ -106,7 +107,8 @@ pub struct MaterialAsset {
 pub struct MaterialInstanceSlotAssignment {
     pub slot_name: String,
     pub image: Option<Handle<ImageAsset>>,
-    pub scalar_value: Option<f32>,
+    pub sampler: Option<dsc::Sampler>,
+    //pub scalar_value: Option<f32>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]

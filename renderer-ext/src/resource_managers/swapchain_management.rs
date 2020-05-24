@@ -26,12 +26,12 @@ impl ActiveSwapchainSurfaceInfoSet {
         loaded_material: &mut LoadedMaterial,
     ) -> VkResult<()> {
         for pass in &mut loaded_material.passes {
-            let (renderpass, pipeline) = resources.get_or_create_graphics_pipeline(
+            let pipeline = resources.get_or_create_graphics_pipeline(
                 &pass.pipeline_create_data,
                 swapchain_surface_info,
             )?;
 
-            pass.render_passes.push(renderpass);
+            pass.render_passes.push(pipeline.get_raw().renderpass);
             pass.pipelines.push(pipeline);
         }
 

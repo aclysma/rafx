@@ -427,24 +427,14 @@ pub struct DescriptorSetLayoutBinding {
     pub descriptor_type: DescriptorType,
     pub descriptor_count: u32,
     pub stage_flags: ShaderStageFlags,
-    //samplers: Vec<Sampler>,
+    pub immutable_samplers: Option<Vec<Sampler>>,
 }
 
-impl DescriptorSetLayoutBinding {
-    pub fn as_builder(&self) -> vk::DescriptorSetLayoutBindingBuilder {
-        vk::DescriptorSetLayoutBinding::builder()
-            .binding(self.binding)
-            .descriptor_type(self.descriptor_type.into())
-            .descriptor_count(self.descriptor_count)
-            .stage_flags(self.stage_flags.into())
-    }
-}
-
-impl Into<vk::DescriptorSetLayoutBinding> for DescriptorSetLayoutBinding {
-    fn into(self) -> vk::DescriptorSetLayoutBinding {
-        self.as_builder().build()
-    }
-}
+// impl Into<vk::DescriptorSetLayoutBinding> for DescriptorSetLayoutBinding {
+//     fn into(self) -> vk::DescriptorSetLayoutBinding {
+//         self.as_builder().build()
+//     }
+// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct DescriptorSetLayout {

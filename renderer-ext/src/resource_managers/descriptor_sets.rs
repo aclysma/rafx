@@ -16,6 +16,7 @@ use crate::pipeline::pipeline::{DescriptorSetLayoutWithSlotName, MaterialInstanc
 //use crate::upload::InProgressUploadPollResult::Pending;
 use crate::resource_managers::asset_lookup::{SlotNameLookup, LoadedAssetLookupSet, LoadedMaterialPass, LoadedMaterialInstance, LoadedMaterial};
 use atelier_assets::loader::handle::AssetHandle;
+use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, ImageViewResource, ResourceLookupSet};
 
 //
 // These represent a write update that can be applied to a descriptor set in a pool
@@ -23,7 +24,7 @@ use atelier_assets::loader::handle::AssetHandle;
 #[derive(Debug, Clone, Default)]
 pub struct DescriptorSetWriteElementImage {
     pub sampler: Option<ResourceArc<vk::Sampler>>,
-    pub image_view: Option<ResourceArc<vk::ImageView>>,
+    pub image_view: Option<ResourceArc<ImageViewResource>>,
     // For now going to assume layout is always ShaderReadOnlyOptimal
     //pub image_info: vk::DescriptorImageInfo,
 }
@@ -45,7 +46,7 @@ pub struct DescriptorSetWriteElementImage {
 //         self.sampler = Some(sampler);
 //     }
 //
-//     pub fn set_image_view(&mut self, image_view: ResourceArc<vk::ImageView>) {
+//     pub fn set_image_view(&mut self, image_view: ResourceArc<ImageViewResource>) {
 //         self.image_info.image_view = image_view.get_raw();
 //         self.image_view = Some(image_view);
 //     }
@@ -73,6 +74,9 @@ pub struct DescriptorSetWriteElementBuffer {
 
 #[derive(Debug, Clone)]
 pub struct DescriptorSetElementWrite {
+    // If true, we are not permitted to modify samplers via the write
+    pub has_immutable_sampler: bool,
+
     //pub dst_set: u32, // a pool index?
     //pub dst_layout: u32, // a hash?
     //pub dst_pool_index: u32, // a slab key?
@@ -84,6 +88,7 @@ pub struct DescriptorSetElementWrite {
     pub descriptor_type: dsc::DescriptorType,
     pub image_info: Vec<DescriptorSetWriteElementImage>,
     pub buffer_info: Vec<DescriptorSetWriteElementBuffer>,
+
     //pub p_texel_buffer_view: *const BufferView,
 }
 
@@ -313,15 +318,25 @@ impl RegisteredDescriptorSetPoolChunk {
             let mut image_infos = Vec::with_capacity(element.image_info.len());
             if !element.image_info.is_empty() {
                 for image_info in &element.image_info {
+                    // Skip any sampler bindings if the binding is populated with an immutable sampler
+                    if element.has_immutable_sampler && element.descriptor_type == dsc::DescriptorType::Sampler {
+                        continue;
+                    }
+
                     let mut image_info_builder = vk::DescriptorImageInfo::builder();
                     image_info_builder = image_info_builder
                         .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
                     if let Some(image_view) = &image_info.image_view {
                         image_info_builder =
-                            image_info_builder.image_view(image_view.get_raw());
+                            image_info_builder.image_view(image_view.get_raw().image_view);
                     }
-                    if let Some(sampler) = &image_info.sampler {
-                        image_info_builder = image_info_builder.sampler(sampler.get_raw());
+
+                    // Skip adding samplers if the binding is populated with an immutable sampler
+                    // (this case is hit when using CombinedImageSampler)
+                    if !element.has_immutable_sampler {
+                        if let Some(sampler) = &image_info.sampler {
+                            image_info_builder = image_info_builder.sampler(sampler.get_raw());
+                        }
                     }
 
                     image_infos.push(image_info_builder.build());
@@ -377,7 +392,7 @@ struct RegisteredDescriptorSetPool {
     write_tx: Sender<SlabKeyDescriptorSetWriteSet>,
     write_rx: Receiver<SlabKeyDescriptorSetWriteSet>,
     descriptor_pool_allocator: VkDescriptorPoolAllocator,
-    descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+    descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
 
     chunks: Vec<RegisteredDescriptorSetPoolChunk>,
 }
@@ -389,7 +404,7 @@ impl RegisteredDescriptorSetPool {
     pub fn new(
         device_context: &VkDeviceContext,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
-        descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+        descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
     ) -> Self {
         //renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
@@ -465,7 +480,7 @@ impl RegisteredDescriptorSetPool {
         while chunk_index as usize >= self.chunks.len() {
             self.chunks.push(RegisteredDescriptorSetPoolChunk::new(
                 device_context,
-                self.descriptor_set_layout.get_raw(),
+                self.descriptor_set_layout.get_raw().descriptor_set_layout,
                 &mut self.descriptor_pool_allocator,
             )?);
         }
@@ -507,6 +522,14 @@ impl RegisteredDescriptorSetPool {
         self.descriptor_pool_allocator
             .update(device_context.device());
     }
+
+    // pub fn flush_changes(
+    //     &mut self,
+    //     device_context: &VkDeviceContext,
+    //     frame_in_flight_index: FrameInFlightIndex,
+    // ) {
+    //
+    // }
 
     pub fn destroy(
         &mut self,
@@ -573,7 +596,7 @@ impl RegisteredDescriptorSetPoolManager {
     pub fn insert(
         &mut self,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
-        descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+        descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
         write_set: DescriptorSetWriteSet,
     ) -> VkResult<DescriptorSetArc> {
         let hash = ResourceHash::from_key(descriptor_set_layout_def);
@@ -594,7 +617,7 @@ impl RegisteredDescriptorSetPoolManager {
         &mut self,
         write_set: DescriptorSetWriteSet,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
-        descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+        descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
     ) -> VkResult<DynDescriptorSet> {
         // Get or create the pool for the layout
         let hash = ResourceHash::from_key(descriptor_set_layout_def);
@@ -619,7 +642,7 @@ impl RegisteredDescriptorSetPoolManager {
     pub fn create_dyn_descriptor_set_uninitialized(
         &mut self,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
-        descriptor_set_layout: ResourceArc<vk::DescriptorSetLayout>,
+        descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
     ) -> VkResult<DynDescriptorSet> {
         let write_set = create_uninitialized_write_set_for_layout(descriptor_set_layout_def);
         self.do_create_dyn_descriptor_set(write_set, descriptor_set_layout_def, descriptor_set_layout)
@@ -651,12 +674,14 @@ impl RegisteredDescriptorSetPoolManager {
         pass: &LoadedMaterialPass,
         material_instance: &LoadedMaterialInstance,
         loaded_assets: &LoadedAssetLookupSet,
+        resources: &mut ResourceLookupSet,
     ) -> VkResult<DynPassMaterialInstance> {
         let write_sets = create_write_sets_for_material_instance_pass(
             pass,
             &material_instance.slot_assignments,
-            loaded_assets
-        );
+            loaded_assets,
+            resources
+        )?;
 
         let mut dyn_descriptor_sets = Vec::with_capacity(write_sets.len());
 
@@ -697,10 +722,16 @@ impl RegisteredDescriptorSetPoolManager {
         material: &LoadedMaterial,
         material_instance: &LoadedMaterialInstance,
         loaded_assets: &LoadedAssetLookupSet,
+        resources: &mut ResourceLookupSet
     ) -> VkResult<DynMaterialInstance> {
         let mut passes = Vec::with_capacity(material.passes.len());
         for pass in &material.passes {
-            let dyn_pass_material_instance = self.create_dyn_pass_material_instance_from_asset(pass, material_instance, loaded_assets)?;
+            let dyn_pass_material_instance = self.create_dyn_pass_material_instance_from_asset(
+                pass,
+                material_instance,
+                loaded_assets,
+                resources
+            )?;
             passes.push(dyn_pass_material_instance);
         }
 
@@ -722,6 +753,12 @@ impl RegisteredDescriptorSetPoolManager {
         }
     }
 
+    // pub fn flush_changes(&mut self) {
+    //     for pool in self.pools.values_mut() {
+    //         pool.flush_changes(&self.device_context, self.frame_in_flight_index);
+    //     }
+    // }
+
     pub fn destroy(&mut self) {
         for (hash, pool) in &mut self.pools {
             pool.destroy(&self.device_context);
@@ -731,25 +768,27 @@ impl RegisteredDescriptorSetPoolManager {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct WhatToBind {
     bind_samplers: bool,
     bind_images: bool,
     bind_buffers: bool,
 }
 
-pub fn what_to_bind(descriptor_type: dsc::DescriptorType) -> WhatToBind {
+pub fn what_to_bind(
+    element_write: &DescriptorSetElementWrite,
+) -> WhatToBind {
     let mut what = WhatToBind::default();
 
     // See https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkWriteDescriptorSet.html
-    match descriptor_type {
+    match element_write.descriptor_type {
         dsc::DescriptorType::Sampler => {
-            //what.bind_samplers = true;
+            what.bind_samplers = !element_write.has_immutable_sampler;
         }
         dsc::DescriptorType::CombinedImageSampler => {
-            //what.bind_samplers = true;
-            //what.bind_images = true;
-        }
+            what.bind_samplers = !element_write.has_immutable_sampler;
+            what.bind_images = true;
+        },
         dsc::DescriptorType::SampledImage => {
             what.bind_images = true;
         }
@@ -773,12 +812,13 @@ pub fn create_uninitialized_write_set_for_layout(layout: &dsc::DescriptorSetLayo
         };
 
         let mut element_write = DescriptorSetElementWrite {
+            has_immutable_sampler: binding.immutable_samplers.is_some(),
             descriptor_type: binding.descriptor_type.into(),
             image_info: Default::default(),
             buffer_info: Default::default(),
         };
 
-        let what_to_bind = what_to_bind(binding.descriptor_type);
+        let what_to_bind = what_to_bind(&element_write);
 
         if what_to_bind.bind_images || what_to_bind.bind_samplers {
             element_write.image_info.resize(binding.descriptor_count as usize, DescriptorSetWriteElementImage::default());
@@ -799,8 +839,9 @@ pub fn apply_material_instance_slot_assignment(
     slot_assignment: &MaterialInstanceSlotAssignment,
     pass_slot_name_lookup: &SlotNameLookup,
     assets: &LoadedAssetLookupSet,
+    resources: &mut ResourceLookupSet,
     material_pass_write_set: &mut Vec<DescriptorSetWriteSet>
-) {
+) -> VkResult<()> {
     if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
         for location in slot_locations {
             let mut layout_descriptor_set_writes = &mut material_pass_write_set[location.layout_index as usize];
@@ -809,40 +850,40 @@ pub fn apply_material_instance_slot_assignment(
                 //dst_array_element: location.array_index
             }).unwrap();
 
-            let mut bind_samplers = false;
-            let mut bind_images = false;
-            match write.descriptor_type {
-                dsc::DescriptorType::Sampler => {
-                    bind_samplers = true;
-                }
-                dsc::DescriptorType::CombinedImageSampler => {
-                    bind_samplers = true;
-                    bind_images = true;
-                }
-                dsc::DescriptorType::SampledImage => {
-                    bind_images = true;
-                }
-                _ => unimplemented!(),
-            }
+            let what_to_bind = what_to_bind(write);
 
-            let mut write_image = DescriptorSetWriteElementImage {
-                image_view: None,
-                sampler: None,
-            };
+            println!("BINDING {:#?}", write);
+            println!("BINDING {:#?}", what_to_bind);
 
-            if bind_images {
-                if let Some(image) = &slot_assignment.image {
-                    let loaded_image = assets
-                        .images
-                        .get_latest(image.load_handle())
-                        .unwrap();
-                    write_image.image_view = Some(loaded_image.image_view.clone());
+            if what_to_bind.bind_images || what_to_bind.bind_samplers {
+                let mut write_image = DescriptorSetWriteElementImage {
+                    image_view: None,
+                    sampler: None,
+                };
+
+                if what_to_bind.bind_images {
+                    if let Some(image) = &slot_assignment.image {
+                        let loaded_image = assets
+                            .images
+                            .get_latest(image.load_handle())
+                            .unwrap();
+                        write_image.image_view = Some(loaded_image.image_view.clone());
+                    }
+                }
+
+                if what_to_bind.bind_samplers {
+                    if let Some(sampler) = &slot_assignment.sampler {
+                        let sampler = resources.get_or_create_sampler(sampler)?;
+                        write_image.sampler = Some(sampler);
+                    }
                 }
 
                 write.image_info = vec![write_image];
             }
         }
     }
+
+    Ok(())
 }
 
 pub fn create_uninitialized_write_sets_for_material_pass(
@@ -862,17 +903,24 @@ pub fn create_write_sets_for_material_instance_pass(
     pass: &LoadedMaterialPass,
     slots: &Vec<MaterialInstanceSlotAssignment>,
     assets: &LoadedAssetLookupSet,
-) -> Vec<DescriptorSetWriteSet> {
+    resources: &mut ResourceLookupSet,
+) -> VkResult<Vec<DescriptorSetWriteSet>> {
     let mut pass_descriptor_set_writes = create_uninitialized_write_sets_for_material_pass(pass);
 
     //
     // Now modify the descriptor set writes to actually point at the things specified by the material
     //
     for slot in slots {
-        apply_material_instance_slot_assignment(slot, &pass.pass_slot_name_lookup, assets, &mut pass_descriptor_set_writes);
+        apply_material_instance_slot_assignment(
+            slot,
+            &pass.pass_slot_name_lookup,
+            assets,
+            resources,
+            &mut pass_descriptor_set_writes
+        )?;
     }
 
-    pass_descriptor_set_writes
+    Ok(pass_descriptor_set_writes)
 }
 
 pub struct DynDescriptorSet {
@@ -919,7 +967,7 @@ impl DynDescriptorSet {
     pub fn set_image(
         &mut self,
         binding_index: u32,
-        image_view: ResourceArc<vk::ImageView>
+        image_view: ResourceArc<ImageViewResource>
     ) {
         self.set_image_array_element(binding_index, 0, image_view)
     }
@@ -928,21 +976,21 @@ impl DynDescriptorSet {
         &mut self,
         binding_index: u32,
         array_index: usize,
-        image_view: ResourceArc<vk::ImageView>
+        image_view: ResourceArc<ImageViewResource>
     ) {
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
             //dst_array_element: 0
         };
 
-        if let Some(x) = self.write_set.elements.get_mut(&key) {
-            let what_to_bind = what_to_bind(x.descriptor_type);
+        if let Some(element) = self.write_set.elements.get_mut(&key) {
+            let what_to_bind = what_to_bind(element);
             if what_to_bind.bind_images {
-                if let Some(x) = x.image_info.get_mut(array_index) {
-                    x.image_view = Some(image_view);
+                if let Some(element_image) = element.image_info.get_mut(array_index) {
+                    element_image.image_view = Some(image_view);
                     self.dirty.insert(key);
                 } else {
-                    log::warn!("Tried to set image index {} but it did not exist. The image array is {} elements long.", array_index, x.image_info.len());
+                    log::warn!("Tried to set image index {} but it did not exist. The image array is {} elements long.", array_index, element.image_info.len());
                 }
             } else {
                 // This is not necessarily an error if the user is binding with a slot name (although not sure
@@ -974,7 +1022,7 @@ impl DynPassMaterialInstance {
     pub fn set_image(
         &mut self,
         slot_name: &String,
-        image_view: ResourceArc<vk::ImageView>
+        image_view: ResourceArc<ImageViewResource>
     ) {
         if let Some(slot_locations) = self.slot_name_lookup.get(slot_name) {
             for slot_location in slot_locations {
@@ -1004,7 +1052,7 @@ impl DynMaterialInstance {
     pub fn set_image(
         &mut self,
         slot_name: &String,
-        image_view: &ResourceArc<vk::ImageView>
+        image_view: &ResourceArc<ImageViewResource>
     ) {
         for pass in &mut self.passes {
             pass.set_image(slot_name, image_view.clone())
