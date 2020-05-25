@@ -279,10 +279,11 @@ impl RegisteredDescriptorSetPoolChunk {
             let mut image_infos = Vec::with_capacity(element.image_info.len());
             if !element.image_info.is_empty() {
                 for image_info in &element.image_info {
-                    // Skip any sampler bindings if the binding is populated with an immutable sampler
+
                     if element.has_immutable_sampler
                         && element.descriptor_type == dsc::DescriptorType::Sampler
                     {
+                        // Skip any sampler bindings if the binding is populated with an immutable sampler
                         continue;
                     }
 

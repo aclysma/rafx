@@ -34,7 +34,7 @@
                                 descriptor_count: 1,
                                 stage_flags: Fragment,
                                 slot_name: "sampler",
-                                
+
                                 immutable_samplers: Some([
                                     (
                                         mag_filter: Linear,
@@ -53,8 +53,7 @@
                                         min_lod: 0,
                                         max_lod: 0
                                     )
-                                ])
-                                
+                                ])                                
                             ),
                         ],
                     ),
