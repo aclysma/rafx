@@ -16,16 +16,12 @@ use renderer_shell_vulkan::util;
 
 use renderer_shell_vulkan::VkImage;
 use image::error::ImageError::Decoding;
-use std::process::exit;
 use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
 use crate::time::TimeState;
-//use crate::resource_managers::{SpriteResourceManager, PipelineInfo};
-//use crate::pipeline_manager::PipelineManager;
 use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
 use crate::asset_resource::AssetResource;
-use std::hint::unreachable_unchecked;
 use crate::resource_managers::PipelineSwapchainInfo;
 
 struct SpriteRenderpassStats {
@@ -78,6 +74,11 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 /// Draw order of QUAD_VERTEX_LIST
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
+
+
+//TODO: Support samplers in a material instance
+//TODO: Remove more stuff from this file
+
 /// Draws sprites
 pub struct VkSpriteRenderPass {
     pub device_context: VkDeviceContext,
@@ -85,17 +86,6 @@ pub struct VkSpriteRenderPass {
 
     pipeline_info: PipelineSwapchainInfo,
 
-    // This contains bindings for the UBO containing a view/proj matrix and a sampler
-    //pub descriptor_set_layout_per_pass: vk::DescriptorSetLayout,
-    pub descriptor_pool_per_pass: vk::DescriptorPool,
-
-    // One per present index
-    pub descriptor_sets_per_pass: Vec<vk::DescriptorSet>,
-
-    // Static resources for the renderpass, including a frame buffer per present index
-    // pub pipeline_layout: vk::PipelineLayout,
-    // pub renderpass: vk::RenderPass,
-    // pub pipeline: vk::Pipeline,
     pub frame_buffers: Vec<vk::Framebuffer>,
 
     // Command pool and list of command buffers, one per present index
@@ -106,12 +96,6 @@ pub struct VkSpriteRenderPass {
     // Indexed by present index, then vertex buffer.
     pub vertex_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
     pub index_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
-
-    // Sends the view/proj matrix to the GPU. One per present index.
-    pub uniform_buffers: Vec<ManuallyDrop<VkBuffer>>,
-
-    // The sampler used to draw a sprite
-    //pub image_sampler: vk::Sampler,
 }
 
 impl VkSpriteRenderPass {
@@ -128,41 +112,6 @@ impl VkSpriteRenderPass {
             &device_context.device(),
             &device_context.queue_family_indices(),
         )?;
-
-        //
-        // Static resources used by GPU
-        //
-        //let image_sampler = Self::create_texture_image_sampler(&device_context.device());
-
-        let mut uniform_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
-        for _ in 0..swapchain.swapchain_info.image_count {
-            uniform_buffers.push(Self::create_uniform_buffer(&device_context)?)
-        }
-
-        //
-        // Descriptors
-        //
-        let descriptor_set_layout_per_pass = pipeline_info.descriptor_set_layouts[0].get_raw();
-        let descriptor_set_layout_per_sprite = pipeline_info.descriptor_set_layouts[1].get_raw();
-
-        let descriptor_pool_per_pass = Self::create_descriptor_pool_per_pass(
-            &device_context.device(),
-            swapchain.swapchain_info.image_count as u32,
-        )?;
-
-        let descriptor_sets_per_pass = Self::create_descriptor_sets_per_pass(
-            &device_context.device(),
-            &descriptor_pool_per_pass,
-            descriptor_set_layout_per_pass.descriptor_set_layout,
-            swapchain.swapchain_info.image_count,
-            &uniform_buffers,
-            //&image_sampler,
-        )?;
-
-        let descriptor_set_layouts = [
-            descriptor_set_layout_per_pass,
-            descriptor_set_layout_per_sprite,
-        ];
 
         //
         // Renderpass Resources
@@ -199,10 +148,6 @@ impl VkSpriteRenderPass {
             command_buffers,
             vertex_buffers,
             index_buffers,
-            uniform_buffers,
-            descriptor_pool_per_pass,
-            descriptor_sets_per_pass,
-            //image_sampler,
         })
     }
 
@@ -222,115 +167,6 @@ impl VkSpriteRenderPass {
             .queue_family_index(queue_family_indices.graphics_queue_family_index);
 
         unsafe { logical_device.create_command_pool(&pool_create_info, None) }
-    }
-
-    fn create_uniform_buffer(device_context: &VkDeviceContext) -> VkResult<ManuallyDrop<VkBuffer>> {
-        let buffer = VkBuffer::new(
-            device_context,
-            vk_mem::MemoryUsage::CpuToGpu,
-            vk::BufferUsageFlags::UNIFORM_BUFFER,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            mem::size_of::<SpriteUniformBufferObject>() as u64,
-        );
-
-        Ok(ManuallyDrop::new(buffer?))
-    }
-
-    // pub fn create_texture_image_sampler(logical_device: &ash::Device) -> vk::Sampler {
-    //     let sampler_info = vk::SamplerCreateInfo::builder()
-    //         .mag_filter(vk::Filter::LINEAR)
-    //         .min_filter(vk::Filter::LINEAR)
-    //         .address_mode_u(vk::SamplerAddressMode::REPEAT)
-    //         .address_mode_v(vk::SamplerAddressMode::REPEAT)
-    //         .address_mode_w(vk::SamplerAddressMode::REPEAT)
-    //         .anisotropy_enable(false)
-    //         .max_anisotropy(1.0)
-    //         .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
-    //         .unnormalized_coordinates(false)
-    //         .compare_enable(false)
-    //         .compare_op(vk::CompareOp::ALWAYS)
-    //         .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
-    //         .mip_lod_bias(0.0)
-    //         .min_lod(0.0)
-    //         .max_lod(0.0);
-    //
-    //     unsafe { logical_device.create_sampler(&sampler_info, None).unwrap() }
-    // }
-
-    fn create_descriptor_pool_per_pass(
-        logical_device: &ash::Device,
-        swapchain_image_count: u32,
-    ) -> VkResult<vk::DescriptorPool> {
-        let pool_sizes = [
-            vk::DescriptorPoolSize::builder()
-                .ty(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(3)
-                .build(),
-            vk::DescriptorPoolSize::builder()
-                .ty(vk::DescriptorType::SAMPLER)
-                .descriptor_count(3)
-                .build(),
-        ];
-
-        let descriptor_pool_info = vk::DescriptorPoolCreateInfo::builder()
-            .pool_sizes(&pool_sizes)
-            .max_sets(3);
-
-        unsafe { logical_device.create_descriptor_pool(&descriptor_pool_info, None) }
-    }
-
-    fn create_descriptor_sets_per_pass(
-        logical_device: &ash::Device,
-        descriptor_pool: &vk::DescriptorPool,
-        descriptor_set_layout: vk::DescriptorSetLayout,
-        swapchain_image_count: usize,
-        uniform_buffers: &Vec<ManuallyDrop<VkBuffer>>,
-//        image_sampler: &vk::Sampler,
-    ) -> VkResult<Vec<vk::DescriptorSet>> {
-        // DescriptorSetAllocateInfo expects an array with an element per set
-        let descriptor_set_layouts = vec![descriptor_set_layout; swapchain_image_count];
-
-        let alloc_info = vk::DescriptorSetAllocateInfo::builder()
-            .descriptor_pool(*descriptor_pool)
-            .set_layouts(descriptor_set_layouts.as_slice());
-
-        let descriptor_sets = unsafe { logical_device.allocate_descriptor_sets(&alloc_info) }?;
-
-        for i in 0..swapchain_image_count {
-            let descriptor_buffer_infos = [vk::DescriptorBufferInfo::builder()
-                .buffer(uniform_buffers[i as usize].buffer())
-                .offset(0)
-                .range(mem::size_of::<SpriteUniformBufferObject>() as u64)
-                .build()];
-
-            // let sampler_descriptor_image_infos = [vk::DescriptorImageInfo::builder()
-            //     .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            //     .sampler(*image_sampler)
-            //     .build()];
-
-            let descriptor_writes = [
-                vk::WriteDescriptorSet::builder()
-                    .dst_set(descriptor_sets[i])
-                    .dst_binding(0)
-                    .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                    .buffer_info(&descriptor_buffer_infos)
-                    .build(),
-                // vk::WriteDescriptorSet::builder()
-                //     .dst_set(descriptor_sets[i])
-                //     .dst_binding(1)
-                //     .dst_array_element(0)
-                //     .descriptor_type(vk::DescriptorType::SAMPLER)
-                //     .image_info(&sampler_descriptor_image_infos)
-                //     .build(),
-            ];
-
-            unsafe {
-                logical_device.update_descriptor_sets(&descriptor_writes, &[]);
-            }
-        }
-
-        Ok(descriptor_sets)
     }
 
     fn create_framebuffers(
@@ -650,67 +486,29 @@ impl VkSpriteRenderPass {
         }
     }
 
-    //TODO: This is doing a GPU idle wait, would be better to integrate it into the command
-    // buffer
-    pub fn update_uniform_buffer(
-        &mut self,
-        swapchain_image_index: usize,
-        extents: vk::Extent2D,
-        hidpi_factor: f64,
-    ) -> VkResult<()> {
-        // // Pixel-perfect rendering...
-        // let half_width = (extents.width as f64 / hidpi_factor) as f32;
-        // let half_height = (extents.height as f64 / hidpi_factor) as f32;
-
-        // Resolution-independent rendering...
-        let fov = extents.width as f32 / extents.height as f32;
-        let half_width = 400.0;
-        let half_height = 400.0 / fov;
-
-        let proj = orthographic_rh_gl(
-            -half_width,
-            half_width,
-            -half_height,
-            half_height,
-            -100.0,
-            100.0,
-        );
-
-        let ubo = SpriteUniformBufferObject { view_proj: proj };
-
-        self.uniform_buffers[swapchain_image_index].write_to_host_visible_buffer(&[ubo])
-    }
-
     pub fn update(
         &mut self,
         present_index: usize,
         hidpi_factor: f64,
-        //sprite_resource_manager: &SpriteResourceManager,
         descriptor_set_per_pass: vk::DescriptorSet,
         descriptor_set_per_texture: &[vk::DescriptorSet],
         time_state: &TimeState,
     ) -> VkResult<()> {
         //TODO: Integrate this into the command buffer we create below
-        self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
+        //self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
 
         Self::update_command_buffer(
             &self.device_context,
             &self.swapchain_info,
-            //&self.renderpass,
             &self.pipeline_info.renderpass.get_raw(),
             &self.frame_buffers[present_index],
-            // &self.pipeline,
-            // &self.pipeline_layout,
             &self.pipeline_info.pipeline.get_raw().pipeline,
             &self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
             &mut self.vertex_buffers[present_index],
             &mut self.index_buffers[present_index],
-            //&self.descriptor_sets_per_pass[present_index],
             &descriptor_set_per_pass,
-            //sprite_resource_manager.descriptor_sets(),
             descriptor_set_per_texture,
-            //&vec![],
             time_state,
         )
     }
@@ -732,11 +530,6 @@ impl Drop for VkSpriteRenderPass {
 
         unsafe {
             let device = self.device_context.device();
-            //device.destroy_sampler(self.image_sampler, None);
-
-            for uniform_buffer in &mut self.uniform_buffers {
-                ManuallyDrop::drop(uniform_buffer);
-            }
 
             drop_all_buffer_lists(&mut self.vertex_buffers);
             drop_all_buffer_lists(&mut self.index_buffers);
@@ -746,13 +539,6 @@ impl Drop for VkSpriteRenderPass {
             for frame_buffer in &self.frame_buffers {
                 device.destroy_framebuffer(*frame_buffer, None);
             }
-
-            // device.destroy_pipeline(self.pipeline, None);
-            // device.destroy_pipeline_layout(self.pipeline_layout, None);
-            // device.destroy_render_pass(self.renderpass, None);
-
-            device.destroy_descriptor_pool(self.descriptor_pool_per_pass, None);
-            //device.destroy_descriptor_set_layout(self.descriptor_set_layout_per_pass, None);
         }
 
         log::trace!("destroyed VkSpriteRenderPass");
