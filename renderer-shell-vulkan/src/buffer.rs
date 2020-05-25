@@ -132,7 +132,7 @@ impl VkBuffer {
                 as *mut u8
         };
 
-        // let dst = unsafe { dst.add(offset as usize) };
+        let dst = unsafe { dst.add(offset as usize) };
         // let src = crate::util::any_as_bytes(&data);
         //
         // assert!(dst_bytes_available >= src.len() as u64);

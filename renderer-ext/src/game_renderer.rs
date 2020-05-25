@@ -259,9 +259,6 @@ impl VkSurfaceEventListener for GameRenderer {
             extents: swapchain.swapchain_info.extents,
         };
 
-        self.sprite_renderpass = None;
-        self.sprite_custom_material = None;
-        //self.mesh_renderpass = None;
         self.resource_manager
             .remove_swapchain(&swapchain_surface_info);
         self.imgui_event_listener
@@ -325,6 +322,14 @@ impl VkSurfaceEventListener for GameRenderer {
         }
 
         VkResult::Ok(command_buffers)
+    }
+}
+
+impl Drop for GameRenderer {
+    fn drop(&mut self) {
+        self.sprite_renderpass = None;
+        self.sprite_custom_material = None;
+        //self.mesh_renderpass = None;
     }
 }
 
