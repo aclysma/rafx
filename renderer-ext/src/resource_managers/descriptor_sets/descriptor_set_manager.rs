@@ -1,5 +1,7 @@
 use ash::vk;
-use crate::resource_managers::resource_lookup::{ResourceHash, ResourceArc, DescriptorSetLayoutResource, ResourceLookupSet};
+use crate::resource_managers::resource_lookup::{
+    ResourceHash, ResourceArc, DescriptorSetLayoutResource, ResourceLookupSet,
+};
 use renderer_shell_vulkan::VkDeviceContext;
 use fnv::FnvHashMap;
 use super::RegisteredDescriptorSetPool;
@@ -7,7 +9,9 @@ use super::{FrameInFlightIndex, DescriptorSetArc, MAX_FRAMES_IN_FLIGHT};
 use super::DescriptorSetWriteSet;
 use ash::prelude::VkResult;
 use crate::resource_managers::{DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance};
-use crate::resource_managers::asset_lookup::{LoadedMaterialPass, LoadedAssetLookupSet, LoadedMaterialInstance, LoadedMaterial};
+use crate::resource_managers::asset_lookup::{
+    LoadedMaterialPass, LoadedAssetLookupSet, LoadedMaterialInstance, LoadedMaterial,
+};
 use crate::pipeline_description as dsc;
 
 #[derive(Debug)]
@@ -107,7 +111,8 @@ impl RegisteredDescriptorSetPoolManager {
         }
 
         // Bump frame in flight index
-        self.frame_in_flight_index = super::add_to_frame_in_flight_index(self.frame_in_flight_index, 1);
+        self.frame_in_flight_index =
+            super::add_to_frame_in_flight_index(self.frame_in_flight_index, 1);
     }
 
     pub fn destroy(&mut self) {
@@ -137,7 +142,11 @@ impl RegisteredDescriptorSetPoolManager {
         });
 
         // Allocate a descriptor set
-        let descriptor_set = pool.insert(&self.device_context, write_set.clone(), self.frame_in_flight_index)?;
+        let descriptor_set = pool.insert(
+            &self.device_context,
+            write_set.clone(),
+            self.frame_in_flight_index,
+        )?;
 
         // Create the DynDescriptorSet
         let dyn_descriptor_set = DynDescriptorSet::new(
@@ -156,7 +165,11 @@ impl RegisteredDescriptorSetPoolManager {
         descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
     ) -> VkResult<DynDescriptorSet> {
         let write_set = super::create_uninitialized_write_set_for_layout(descriptor_set_layout_def);
-        self.do_create_dyn_descriptor_set(write_set, descriptor_set_layout_def, descriptor_set_layout)
+        self.do_create_dyn_descriptor_set(
+            write_set,
+            descriptor_set_layout_def,
+            descriptor_set_layout,
+        )
     }
 
     pub fn create_dyn_pass_material_instance_uninitialized(
@@ -166,13 +179,18 @@ impl RegisteredDescriptorSetPoolManager {
     ) -> VkResult<DynPassMaterialInstance> {
         let mut dyn_descriptor_sets = Vec::with_capacity(pass.descriptor_set_layouts.len());
 
-        let layout_defs = &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts;
+        let layout_defs = &pass
+            .pipeline_create_data
+            .pipeline_layout_def
+            .descriptor_set_layouts;
         for (layout_def, layout) in layout_defs.iter().zip(&pass.descriptor_set_layouts) {
-            let dyn_descriptor_set = self.create_dyn_descriptor_set_uninitialized(layout_def, layout.clone())?;
+            let dyn_descriptor_set =
+                self.create_dyn_descriptor_set_uninitialized(layout_def, layout.clone())?;
             dyn_descriptor_sets.push(dyn_descriptor_set);
         }
 
-        let dyn_pass_material_instance = DynPassMaterialInstance::new(dyn_descriptor_sets, pass.pass_slot_name_lookup.clone());
+        let dyn_pass_material_instance =
+            DynPassMaterialInstance::new(dyn_descriptor_sets, pass.pass_slot_name_lookup.clone());
         Ok(dyn_pass_material_instance)
     }
 
@@ -187,20 +205,25 @@ impl RegisteredDescriptorSetPoolManager {
             pass,
             &material_instance.slot_assignments,
             loaded_assets,
-            resources
+            resources,
         )?;
 
         let mut dyn_descriptor_sets = Vec::with_capacity(write_sets.len());
 
         for (layout_index, write_set) in write_sets.into_iter().enumerate() {
             let layout = &pass.descriptor_set_layouts[layout_index];
-            let layout_def = &pass.pipeline_create_data.pipeline_layout_def.descriptor_set_layouts[layout_index];
+            let layout_def = &pass
+                .pipeline_create_data
+                .pipeline_layout_def
+                .descriptor_set_layouts[layout_index];
 
-            let dyn_descriptor_set = self.do_create_dyn_descriptor_set(write_set, layout_def, layout.clone())?;
+            let dyn_descriptor_set =
+                self.do_create_dyn_descriptor_set(write_set, layout_def, layout.clone())?;
             dyn_descriptor_sets.push(dyn_descriptor_set);
         }
 
-        let dyn_pass_material_instance = DynPassMaterialInstance::new(dyn_descriptor_sets, pass.pass_slot_name_lookup.clone());
+        let dyn_pass_material_instance =
+            DynPassMaterialInstance::new(dyn_descriptor_sets, pass.pass_slot_name_lookup.clone());
         Ok(dyn_pass_material_instance)
     }
 
@@ -211,7 +234,8 @@ impl RegisteredDescriptorSetPoolManager {
     ) -> VkResult<DynMaterialInstance> {
         let mut passes = Vec::with_capacity(material.passes.len());
         for pass in &material.passes {
-            let dyn_pass_material_instance = self.create_dyn_pass_material_instance_uninitialized(pass, loaded_assets)?;
+            let dyn_pass_material_instance =
+                self.create_dyn_pass_material_instance_uninitialized(pass, loaded_assets)?;
             passes.push(dyn_pass_material_instance);
         }
 
@@ -223,7 +247,7 @@ impl RegisteredDescriptorSetPoolManager {
         material: &LoadedMaterial,
         material_instance: &LoadedMaterialInstance,
         loaded_assets: &LoadedAssetLookupSet,
-        resources: &mut ResourceLookupSet
+        resources: &mut ResourceLookupSet,
     ) -> VkResult<DynMaterialInstance> {
         let mut passes = Vec::with_capacity(material.passes.len());
         for pass in &material.passes {
@@ -231,7 +255,7 @@ impl RegisteredDescriptorSetPoolManager {
                 pass,
                 material_instance,
                 loaded_assets,
-                resources
+                resources,
             )?;
             passes.push(dyn_pass_material_instance);
         }
@@ -239,7 +263,3 @@ impl RegisteredDescriptorSetPoolManager {
         Ok(DynMaterialInstance::new(passes))
     }
 }
-
-
-
-

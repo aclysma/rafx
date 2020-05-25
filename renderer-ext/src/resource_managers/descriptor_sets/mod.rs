@@ -12,11 +12,18 @@ use super::ResourceHash;
 use crate::pipeline_description as dsc;
 use ash::version::DeviceV1_0;
 use crate::resource_managers::ResourceManager;
-use crate::pipeline::pipeline::{DescriptorSetLayoutWithSlotName, MaterialInstanceSlotAssignment, MaterialInstanceAsset};
+use crate::pipeline::pipeline::{
+    DescriptorSetLayoutWithSlotName, MaterialInstanceSlotAssignment, MaterialInstanceAsset,
+};
 //use crate::upload::InProgressUploadPollResult::Pending;
-use crate::resource_managers::asset_lookup::{SlotNameLookup, LoadedAssetLookupSet, LoadedMaterialPass, LoadedMaterialInstance, LoadedMaterial};
+use crate::resource_managers::asset_lookup::{
+    SlotNameLookup, LoadedAssetLookupSet, LoadedMaterialPass, LoadedMaterialInstance,
+    LoadedMaterial,
+};
 use atelier_assets::loader::handle::AssetHandle;
-use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, ImageViewResource, ResourceLookupSet};
+use crate::resource_managers::resource_lookup::{
+    DescriptorSetLayoutResource, ImageViewResource, ResourceLookupSet,
+};
 use crate::pipeline_description::{DescriptorType, DescriptorSetLayoutBinding};
 use std::mem::ManuallyDrop;
 use arrayvec::ArrayVec;
@@ -62,7 +69,7 @@ const MAX_FRAMES_IN_FLIGHT_PLUS_1: usize = MAX_FRAMES_IN_FLIGHT + 1;
 // A set of write to buffers that back a descriptor set
 #[derive(Debug, Default, Clone)]
 pub struct DescriptorSetWriteBuffer {
-    pub elements: FnvHashMap<DescriptorSetElementKey, Vec<u8>>
+    pub elements: FnvHashMap<DescriptorSetElementKey, Vec<u8>>,
 }
 
 // A set of writes to descriptors within a descriptor set with the key for the descriptor set that
@@ -90,11 +97,17 @@ struct RegisteredDescriptorSet {
 // We need to track which of the MAX_FRAMES_IN_FLIGHT_PLUS_1 frames of data is currently writable
 type FrameInFlightIndex = u32;
 
-fn add_to_frame_in_flight_index(index: FrameInFlightIndex, value: u32) -> FrameInFlightIndex {
+fn add_to_frame_in_flight_index(
+    index: FrameInFlightIndex,
+    value: u32,
+) -> FrameInFlightIndex {
     (index + value) % MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32
 }
 
-fn subtract_from_frame_in_flight_index(index: FrameInFlightIndex, value: u32) -> FrameInFlightIndex {
+fn subtract_from_frame_in_flight_index(
+    index: FrameInFlightIndex,
+    value: u32,
+) -> FrameInFlightIndex {
     (value + MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32 - index) % MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32
 }
 
@@ -105,9 +118,7 @@ pub struct WhatToBind {
     bind_buffers: bool,
 }
 
-pub fn what_to_bind(
-    element_write: &DescriptorSetElementWrite,
-) -> WhatToBind {
+pub fn what_to_bind(element_write: &DescriptorSetElementWrite) -> WhatToBind {
     let mut what = WhatToBind::default();
 
     // See https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkWriteDescriptorSet.html
@@ -118,7 +129,7 @@ pub fn what_to_bind(
         dsc::DescriptorType::CombinedImageSampler => {
             what.bind_samplers = !element_write.has_immutable_sampler;
             what.bind_images = true;
-        },
+        }
         dsc::DescriptorType::SampledImage => {
             what.bind_images = true;
         }

@@ -442,8 +442,6 @@ impl UploadQueue {
     }
 }
 
-
-//use descriptor_sets::
 pub struct UploadManager {
     upload_queue: UploadQueue,
 

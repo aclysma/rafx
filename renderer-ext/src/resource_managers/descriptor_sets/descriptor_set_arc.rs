@@ -1,4 +1,3 @@
-
 use ash::vk;
 use super::RegisteredDescriptorSet;
 use renderer_base::slab::RawSlabKey;
@@ -6,7 +5,6 @@ use crossbeam_channel::Sender;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use crate::resource_managers::ResourceManager;
-
 
 //
 // Reference counting mechanism to keep descriptor sets allocated
@@ -58,14 +56,24 @@ impl DescriptorSetArc {
         }
     }
 
-    pub fn get_raw_for_cpu_write(&self, resource_manager: &ResourceManager) -> vk::DescriptorSet {
+    pub fn get_raw_for_cpu_write(
+        &self,
+        resource_manager: &ResourceManager,
+    ) -> vk::DescriptorSet {
         //self.inner.descriptor_sets_per_frame[resource_manager.registered_descriptor_sets.frame_in_flight_index as usize]
-        resource_manager.registered_descriptor_sets.descriptor_set_for_cpu_write(self)
+        resource_manager
+            .registered_descriptor_sets
+            .descriptor_set_for_cpu_write(self)
     }
 
-    pub fn get_raw_for_gpu_read(&self, resource_manager: &ResourceManager) -> vk::DescriptorSet {
+    pub fn get_raw_for_gpu_read(
+        &self,
+        resource_manager: &ResourceManager,
+    ) -> vk::DescriptorSet {
         //self.inner.descriptor_sets_per_frame[resource_manager.registered_descriptor_sets.frame_in_flight_index as usize]
-        resource_manager.registered_descriptor_sets.descriptor_set_for_gpu_read(self)
+        resource_manager
+            .registered_descriptor_sets
+            .descriptor_set_for_gpu_read(self)
     }
 }
 

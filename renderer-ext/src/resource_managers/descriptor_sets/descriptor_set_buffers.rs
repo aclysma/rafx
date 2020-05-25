@@ -1,11 +1,12 @@
 use ash::vk;
 use ash::prelude::*;
 use crate::pipeline_description as dsc;
-use crate::resource_managers::descriptor_sets::{DescriptorSetElementKey, MAX_FRAMES_IN_FLIGHT_PLUS_1, MAX_DESCRIPTORS_PER_POOL};
+use crate::resource_managers::descriptor_sets::{
+    DescriptorSetElementKey, MAX_FRAMES_IN_FLIGHT_PLUS_1, MAX_DESCRIPTORS_PER_POOL,
+};
 use std::mem::ManuallyDrop;
 use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
 use fnv::FnvHashMap;
-
 
 #[derive(Clone)]
 pub(super) struct DescriptorSetPoolRequiredBufferInfo {
@@ -24,7 +25,10 @@ pub(super) struct DescriptorBindingBufferSet {
 }
 
 impl DescriptorBindingBufferSet {
-    fn new(device_context: &VkDeviceContext, buffer_info: &DescriptorSetPoolRequiredBufferInfo) -> VkResult<Self> {
+    fn new(
+        device_context: &VkDeviceContext,
+        buffer_info: &DescriptorSetPoolRequiredBufferInfo,
+    ) -> VkResult<Self> {
         //This is the only one we support right now
         assert!(buffer_info.descriptor_type == dsc::DescriptorType::UniformBuffer);
         // X frames in flight, plus one not in flight that is writable
@@ -35,7 +39,7 @@ impl DescriptorBindingBufferSet {
                 vk_mem::MemoryUsage::CpuToGpu,
                 vk::BufferUsageFlags::UNIFORM_BUFFER,
                 vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                (buffer_info.per_descriptor_stride * MAX_DESCRIPTORS_PER_POOL) as u64
+                (buffer_info.per_descriptor_stride * MAX_DESCRIPTORS_PER_POOL) as u64,
             )?;
 
             buffers.push(ManuallyDrop::new(buffer));
@@ -43,7 +47,7 @@ impl DescriptorBindingBufferSet {
 
         Ok(DescriptorBindingBufferSet {
             buffers,
-            buffer_info: buffer_info.clone()
+            buffer_info: buffer_info.clone(),
         })
     }
 }
@@ -52,21 +56,21 @@ impl DescriptorBindingBufferSet {
 // Creates and manages the internal buffers for a descriptor pool chunk
 //
 pub(super) struct DescriptorLayoutBufferSet {
-    pub(super) buffer_sets: FnvHashMap<DescriptorSetElementKey, DescriptorBindingBufferSet>
+    pub(super) buffer_sets: FnvHashMap<DescriptorSetElementKey, DescriptorBindingBufferSet>,
 }
 
 impl DescriptorLayoutBufferSet {
-    pub(super) fn new(device_context: &VkDeviceContext, buffer_infos: &[DescriptorSetPoolRequiredBufferInfo]) -> VkResult<Self> {
-        let mut buffer_sets : FnvHashMap<DescriptorSetElementKey, DescriptorBindingBufferSet> = Default::default();
+    pub(super) fn new(
+        device_context: &VkDeviceContext,
+        buffer_infos: &[DescriptorSetPoolRequiredBufferInfo],
+    ) -> VkResult<Self> {
+        let mut buffer_sets: FnvHashMap<DescriptorSetElementKey, DescriptorBindingBufferSet> =
+            Default::default();
         for buffer_info in buffer_infos {
             let buffer = DescriptorBindingBufferSet::new(device_context, &buffer_info)?;
             buffer_sets.insert(buffer_info.dst_element, buffer);
         }
 
-        Ok(DescriptorLayoutBufferSet {
-            buffer_sets
-        })
+        Ok(DescriptorLayoutBufferSet { buffer_sets })
     }
 }
-
-

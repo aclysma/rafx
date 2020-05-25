@@ -60,14 +60,14 @@ pub struct DescriptorSetElementKey {
 // A set of writes to descriptors within a descriptor set
 #[derive(Debug, Default, Clone)]
 pub struct DescriptorSetWriteSet {
-    pub elements: FnvHashMap<DescriptorSetElementKey, DescriptorSetElementWrite>
+    pub elements: FnvHashMap<DescriptorSetElementKey, DescriptorSetElementWrite>,
 }
 
-pub fn create_uninitialized_write_set_for_layout(layout: &dsc::DescriptorSetLayout) -> DescriptorSetWriteSet {
+pub fn create_uninitialized_write_set_for_layout(
+    layout: &dsc::DescriptorSetLayout
+) -> DescriptorSetWriteSet {
     let mut write_set = DescriptorSetWriteSet::default();
-    for (binding_index, binding) in
-    layout.descriptor_set_layout_bindings.iter().enumerate()
-    {
+    for (binding_index, binding) in layout.descriptor_set_layout_bindings.iter().enumerate() {
         let key = DescriptorSetElementKey {
             dst_binding: binding_index as u32,
             //dst_array_element: 0,
@@ -83,11 +83,17 @@ pub fn create_uninitialized_write_set_for_layout(layout: &dsc::DescriptorSetLayo
         let what_to_bind = super::what_to_bind(&element_write);
 
         if what_to_bind.bind_images || what_to_bind.bind_samplers {
-            element_write.image_info.resize(binding.descriptor_count as usize, DescriptorSetWriteElementImage::default());
+            element_write.image_info.resize(
+                binding.descriptor_count as usize,
+                DescriptorSetWriteElementImage::default(),
+            );
         }
 
         if what_to_bind.bind_buffers {
-            element_write.buffer_info.resize(binding.descriptor_count as usize, DescriptorSetWriteElementBuffer::default());
+            element_write.buffer_info.resize(
+                binding.descriptor_count as usize,
+                DescriptorSetWriteElementBuffer::default(),
+            );
         }
 
         write_set.elements.insert(key, element_write);
@@ -101,15 +107,19 @@ pub fn apply_material_instance_slot_assignment(
     pass_slot_name_lookup: &SlotNameLookup,
     assets: &LoadedAssetLookupSet,
     resources: &mut ResourceLookupSet,
-    material_pass_write_set: &mut Vec<DescriptorSetWriteSet>
+    material_pass_write_set: &mut Vec<DescriptorSetWriteSet>,
 ) -> VkResult<()> {
     if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
         for location in slot_locations {
-            let mut layout_descriptor_set_writes = &mut material_pass_write_set[location.layout_index as usize];
-            let write = layout_descriptor_set_writes.elements.get_mut(&DescriptorSetElementKey {
-                dst_binding: location.binding_index,
-                //dst_array_element: location.array_index
-            }).unwrap();
+            let mut layout_descriptor_set_writes =
+                &mut material_pass_write_set[location.layout_index as usize];
+            let write = layout_descriptor_set_writes
+                .elements
+                .get_mut(&DescriptorSetElementKey {
+                    dst_binding: location.binding_index,
+                    //dst_array_element: location.array_index
+                })
+                .unwrap();
 
             let what_to_bind = super::what_to_bind(write);
 
@@ -121,10 +131,7 @@ pub fn apply_material_instance_slot_assignment(
 
                 if what_to_bind.bind_images {
                     if let Some(image) = &slot_assignment.image {
-                        let loaded_image = assets
-                            .images
-                            .get_latest(image.load_handle())
-                            .unwrap();
+                        let loaded_image = assets.images.get_latest(image.load_handle()).unwrap();
                         write_image.image_view = Some(loaded_image.image_view.clone());
                     }
                 }
@@ -144,14 +151,14 @@ pub fn apply_material_instance_slot_assignment(
     Ok(())
 }
 
-
 pub fn create_uninitialized_write_sets_for_material_pass(
-    pass: &LoadedMaterialPass,
+    pass: &LoadedMaterialPass
 ) -> Vec<DescriptorSetWriteSet> {
     // The metadata for the descriptor sets within this pass, one for each set within the pass
     let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts;
 
-    let mut pass_descriptor_set_writes : Vec<_> = descriptor_set_layouts.iter()
+    let mut pass_descriptor_set_writes: Vec<_> = descriptor_set_layouts
+        .iter()
         .map(|layout| create_uninitialized_write_set_for_layout(&layout.into()))
         .collect();
 
@@ -175,7 +182,7 @@ pub fn create_write_sets_for_material_instance_pass(
             &pass.pass_slot_name_lookup,
             assets,
             resources,
-            &mut pass_descriptor_set_writes
+            &mut pass_descriptor_set_writes,
         )?;
     }
 

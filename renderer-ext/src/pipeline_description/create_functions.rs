@@ -17,9 +17,14 @@ pub fn create_descriptor_set_layout(
     descriptor_set_layout: &dsc::DescriptorSetLayout,
     immutable_samplers: &Vec<Option<Vec<vk::Sampler>>>,
 ) -> VkResult<vk::DescriptorSetLayout> {
-    let mut builders = Vec::with_capacity(descriptor_set_layout.descriptor_set_layout_bindings.len());
+    let mut builders =
+        Vec::with_capacity(descriptor_set_layout.descriptor_set_layout_bindings.len());
 
-    for (binding, immutable_samplers) in descriptor_set_layout.descriptor_set_layout_bindings.iter().zip(immutable_samplers) {
+    for (binding, immutable_samplers) in descriptor_set_layout
+        .descriptor_set_layout_bindings
+        .iter()
+        .zip(immutable_samplers)
+    {
         let mut builder = vk::DescriptorSetLayoutBinding::builder()
             .binding(binding.binding)
             .descriptor_type(binding.descriptor_type.into())

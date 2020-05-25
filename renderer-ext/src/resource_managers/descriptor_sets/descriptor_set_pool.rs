@@ -1,8 +1,12 @@
-
 use crate::pipeline_description as dsc;
 use renderer_base::slab::{RawSlab, RawSlabKey};
 use super::RegisteredDescriptorSet;
-use super::{SlabKeyDescriptorSetWriteSet, SlabKeyDescriptorSetWriteBuffer, DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT_PLUS_1, MAX_FRAMES_IN_FLIGHT, DescriptorSetElementKey, FrameInFlightIndex, DescriptorSetArc, DescriptorSetWriteSet};
+use super::{
+    SlabKeyDescriptorSetWriteSet, SlabKeyDescriptorSetWriteBuffer,
+    DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT_PLUS_1,
+    MAX_FRAMES_IN_FLIGHT, DescriptorSetElementKey, FrameInFlightIndex, DescriptorSetArc,
+    DescriptorSetWriteSet,
+};
 use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, ResourceArc};
 use renderer_shell_vulkan::{VkDescriptorPoolAllocator, VkResourceDropSink, VkBuffer, VkDeviceContext};
 use crossbeam_channel::{Receiver, Sender};
@@ -34,7 +38,6 @@ pub(super) struct RegisteredDescriptorSetPool {
 }
 
 impl RegisteredDescriptorSetPool {
-
     pub fn new(
         device_context: &VkDeviceContext,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
@@ -86,16 +89,21 @@ impl RegisteredDescriptorSetPool {
             if let Some(per_descriptor_size) = binding.internal_buffer_per_descriptor_size {
                 //TODO: 256 is the max allowed by the vulkan spec but we could improve this by using the
                 // actual hardware value given by device limits
-                let required_alignment = device_context.limits().min_uniform_buffer_offset_alignment as u32;
-                let per_descriptor_stride = renderer_shell_vulkan::util::round_size_up_to_alignment_u32(per_descriptor_size, required_alignment);
+                let required_alignment =
+                    device_context.limits().min_uniform_buffer_offset_alignment as u32;
+                let per_descriptor_stride =
+                    renderer_shell_vulkan::util::round_size_up_to_alignment_u32(
+                        per_descriptor_size,
+                        required_alignment,
+                    );
 
                 buffer_infos.push(DescriptorSetPoolRequiredBufferInfo {
                     per_descriptor_size,
                     per_descriptor_stride,
                     descriptor_type: binding.descriptor_type,
                     dst_element: DescriptorSetElementKey {
-                        dst_binding: binding.binding
-                    }
+                        dst_binding: binding.binding,
+                    },
                 })
             }
         }
@@ -112,7 +120,7 @@ impl RegisteredDescriptorSetPool {
             descriptor_set_layout,
             chunks: Default::default(),
             buffer_infos,
-            buffer_drop_sink: VkResourceDropSink::new(MAX_FRAMES_IN_FLIGHT as u32)
+            buffer_drop_sink: VkResourceDropSink::new(MAX_FRAMES_IN_FLIGHT as u32),
         }
     }
 
@@ -157,15 +165,29 @@ impl RegisteredDescriptorSetPool {
         frame_in_flight_index: FrameInFlightIndex,
     ) {
         for write in self.write_set_rx.try_iter() {
-            log::trace!("Received a set write for frame in flight index {}", frame_in_flight_index);
+            log::trace!(
+                "Received a set write for frame in flight index {}",
+                frame_in_flight_index
+            );
             let chunk_index = write.slab_key.index() / MAX_DESCRIPTORS_PER_POOL;
-            self.chunks[chunk_index as usize].schedule_write_set(write.slab_key, write.write_set, frame_in_flight_index);
+            self.chunks[chunk_index as usize].schedule_write_set(
+                write.slab_key,
+                write.write_set,
+                frame_in_flight_index,
+            );
         }
 
         for write in self.write_buffer_rx.try_iter() {
-            log::trace!("Received a buffer write for frame in flight index {}", frame_in_flight_index);
+            log::trace!(
+                "Received a buffer write for frame in flight index {}",
+                frame_in_flight_index
+            );
             let chunk_index = write.slab_key.index() / MAX_DESCRIPTORS_PER_POOL;
-            self.chunks[chunk_index as usize].schedule_write_buffer(write.slab_key, write.write_buffer, frame_in_flight_index);
+            self.chunks[chunk_index as usize].schedule_write_buffer(
+                write.slab_key,
+                write.write_buffer,
+                frame_in_flight_index,
+            );
         }
     }
 
@@ -181,10 +203,7 @@ impl RegisteredDescriptorSetPool {
 
         // Commit pending writes/removes, rotate to the descriptor set for the next frame
         for chunk in &mut self.chunks {
-            chunk.update(
-                device_context,
-                frame_in_flight_index,
-            );
+            chunk.update(device_context, frame_in_flight_index);
         }
 
         self.descriptor_pool_allocator
@@ -196,7 +215,10 @@ impl RegisteredDescriptorSetPool {
         device_context: &VkDeviceContext,
     ) {
         for chunk in &mut self.chunks {
-            chunk.destroy(&mut self.descriptor_pool_allocator, &mut self.buffer_drop_sink);
+            chunk.destroy(
+                &mut self.descriptor_pool_allocator,
+                &mut self.buffer_drop_sink,
+            );
         }
 
         self.descriptor_pool_allocator

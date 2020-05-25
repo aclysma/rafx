@@ -1,6 +1,8 @@
 use super::resource_lookup::ResourceArc;
 use ash::vk;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialPassShaderInterface, MaterialAsset, MaterialInstanceSlotAssignment};
+use crate::pipeline::pipeline::{
+    PipelineAsset, MaterialPassShaderInterface, MaterialAsset, MaterialInstanceSlotAssignment,
+};
 use super::PipelineCreateData;
 use fnv::FnvHashMap;
 use renderer_shell_vulkan::VkImageRaw;
@@ -8,7 +10,10 @@ use super::DescriptorSetArc;
 use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::handle::Handle;
 use std::sync::Arc;
-use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource, ImageKey};
+use crate::resource_managers::resource_lookup::{
+    DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource,
+    ImageKey,
+};
 
 //
 // The "loaded" state of assets. Assets may have dependencies. Arcs to those dependencies ensure

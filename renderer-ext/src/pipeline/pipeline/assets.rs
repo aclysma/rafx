@@ -54,7 +54,7 @@ impl Into<dsc::DescriptorSetLayoutBinding> for &DescriptorSetLayoutBindingWithSl
             descriptor_count: self.descriptor_count,
             stage_flags: self.stage_flags,
             immutable_samplers: self.immutable_samplers.clone(),
-            internal_buffer_per_descriptor_size: self.internal_buffer_per_descriptor_size
+            internal_buffer_per_descriptor_size: self.internal_buffer_per_descriptor_size,
         }
     }
 }

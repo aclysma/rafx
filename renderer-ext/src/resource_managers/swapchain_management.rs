@@ -67,11 +67,7 @@ impl ActiveSwapchainSurfaceInfoSet {
         if added_swapchain {
             for (load_handle, loaded_asset) in &mut loaded_assets.materials.loaded_assets {
                 if let Some(committed) = &mut loaded_asset.committed {
-                    Self::add_material_for_swapchain(
-                        resources,
-                        swapchain_surface_info,
-                        committed,
-                    )?;
+                    Self::add_material_for_swapchain(resources, swapchain_surface_info, committed)?;
                 }
 
                 if let Some(uncommitted) = &mut loaded_asset.uncommitted {

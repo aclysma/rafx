@@ -1,4 +1,3 @@
-
 use super::DescriptorSetArc;
 use super::DescriptorSetWriteSet;
 use super::DescriptorSetWriteBuffer;
@@ -18,7 +17,6 @@ pub struct DynDescriptorSet {
     write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
 
     //dirty: FnvHashSet<DescriptorSetElementKey>,
-
     pending_write_set: DescriptorSetWriteSet,
     pending_write_buffer: DescriptorSetWriteBuffer,
 }
@@ -77,7 +75,7 @@ impl DynDescriptorSet {
     pub fn set_image(
         &mut self,
         binding_index: u32,
-        image_view: ResourceArc<ImageViewResource>
+        image_view: ResourceArc<ImageViewResource>,
     ) {
         self.set_image_array_element(binding_index, 0, image_view)
     }
@@ -86,7 +84,7 @@ impl DynDescriptorSet {
         &mut self,
         binding_index: u32,
         array_index: usize,
-        image_view: ResourceArc<ImageViewResource>
+        image_view: ResourceArc<ImageViewResource>,
     ) {
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
@@ -101,7 +99,7 @@ impl DynDescriptorSet {
 
                     self.pending_write_set.elements.insert(key, element.clone());
 
-                    //self.dirty.insert(key);
+                //self.dirty.insert(key);
                 } else {
                     log::warn!("Tried to set image index {} but it did not exist. The image array is {} elements long.", array_index, element.image_info.len());
                 }
@@ -118,7 +116,7 @@ impl DynDescriptorSet {
     pub fn set_buffer_data<T: Copy>(
         &mut self,
         binding_index: u32,
-        data: &T
+        data: &T,
     ) {
         self.set_buffer_data_array_element(binding_index, 0, data)
     }
@@ -127,7 +125,7 @@ impl DynDescriptorSet {
         &mut self,
         binding_index: u32,
         array_index: usize,
-        data: &T
+        data: &T,
     ) {
         //TODO: Verify that T's size matches the buffer
 
@@ -170,11 +168,14 @@ impl DynPassMaterialInstance {
     ) -> Self {
         DynPassMaterialInstance {
             descriptor_sets,
-            slot_name_lookup
+            slot_name_lookup,
         }
     }
 
-    pub fn descriptor_set_layout(&self, layout_index: u32) -> &DynDescriptorSet {
+    pub fn descriptor_set_layout(
+        &self,
+        layout_index: u32,
+    ) -> &DynDescriptorSet {
         &self.descriptor_sets[layout_index as usize]
     }
 
@@ -187,11 +188,14 @@ impl DynPassMaterialInstance {
     pub fn set_image(
         &mut self,
         slot_name: &String,
-        image_view: ResourceArc<ImageViewResource>
+        image_view: ResourceArc<ImageViewResource>,
     ) {
         if let Some(slot_locations) = self.slot_name_lookup.get(slot_name) {
             for slot_location in slot_locations {
-                if let Some(dyn_descriptor_set) = self.descriptor_sets.get_mut(slot_location.layout_index as usize) {
+                if let Some(dyn_descriptor_set) = self
+                    .descriptor_sets
+                    .get_mut(slot_location.layout_index as usize)
+                {
                     dyn_descriptor_set.set_image(slot_location.binding_index, image_view.clone());
                 }
             }
@@ -201,11 +205,14 @@ impl DynPassMaterialInstance {
     pub fn set_buffer_data<T: Copy>(
         &mut self,
         slot_name: &String,
-        data: &T
+        data: &T,
     ) {
         if let Some(slot_locations) = self.slot_name_lookup.get(slot_name) {
             for slot_location in slot_locations {
-                if let Some(dyn_descriptor_set) = self.descriptor_sets.get_mut(slot_location.layout_index as usize) {
+                if let Some(dyn_descriptor_set) = self
+                    .descriptor_sets
+                    .get_mut(slot_location.layout_index as usize)
+                {
                     dyn_descriptor_set.set_buffer_data(slot_location.binding_index, data);
                 }
             }
@@ -218,15 +225,14 @@ pub struct DynMaterialInstance {
 }
 
 impl DynMaterialInstance {
-    pub(super) fn new(
-        passes: Vec<DynPassMaterialInstance>,
-    ) -> Self {
-        DynMaterialInstance {
-            passes
-        }
+    pub(super) fn new(passes: Vec<DynPassMaterialInstance>) -> Self {
+        DynMaterialInstance { passes }
     }
 
-    pub fn pass(&self, pass_index: u32) -> &DynPassMaterialInstance {
+    pub fn pass(
+        &self,
+        pass_index: u32,
+    ) -> &DynPassMaterialInstance {
         &self.passes[pass_index as usize]
     }
 
@@ -239,7 +245,7 @@ impl DynMaterialInstance {
     pub fn set_image(
         &mut self,
         slot_name: &String,
-        image_view: &ResourceArc<ImageViewResource>
+        image_view: &ResourceArc<ImageViewResource>,
     ) {
         for pass in &mut self.passes {
             pass.set_image(slot_name, image_view.clone())
@@ -249,7 +255,7 @@ impl DynMaterialInstance {
     pub fn set_buffer_data<T: Copy>(
         &mut self,
         slot_name: &String,
-        data: &T
+        data: &T,
     ) {
         for pass in &mut self.passes {
             pass.set_buffer_data(slot_name, data)

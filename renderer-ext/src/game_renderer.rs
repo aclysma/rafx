@@ -85,7 +85,6 @@ pub struct GameRenderer {
     sprite_renderpass: Option<VkSpriteRenderPass>,
     sprite_material_instance: Handle<MaterialInstanceAsset>,
     //mesh_renderpass: Option<VkMeshRenderPass>,
-
     sprite_custom_material: Option<DynMaterialInstance>,
 }
 
@@ -141,7 +140,7 @@ impl GameRenderer {
             sprite_material_instance,
             sprite_renderpass: None,
             //mesh_renderpass: None,
-            sprite_custom_material: None
+            sprite_custom_material: None,
         };
 
         wait_for_asset_to_load(
@@ -160,7 +159,6 @@ impl GameRenderer {
 
         let image_info = renderer.resource_manager.get_image_info(&override_image);
 
-
         let extents_width = 900;
         let extents_height = 600;
         let fov = extents_width as f32 / extents_height as f32;
@@ -175,8 +173,9 @@ impl GameRenderer {
             100.0,
         );
 
-
-        let mut sprite_custom_material = renderer.resource_manager.create_dyn_material_instance_from_asset(renderer.sprite_material_instance.clone())?;
+        let mut sprite_custom_material = renderer
+            .resource_manager
+            .create_dyn_material_instance_from_asset(renderer.sprite_material_instance.clone())?;
         sprite_custom_material.set_image(&"texture".to_string(), &image_info.image_view);
         sprite_custom_material.set_buffer_data(&"view_proj".to_string(), &proj);
         sprite_custom_material.flush();
@@ -282,11 +281,15 @@ impl VkSurfaceEventListener for GameRenderer {
         let pass = self.sprite_custom_material.as_ref().unwrap().pass(0);
 
         // Pass 0 is "global"
-        let descriptor_set_per_pass = pass.descriptor_set_layout(0).descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+        let descriptor_set_per_pass = pass
+            .descriptor_set_layout(0)
+            .descriptor_set()
+            .get_raw_for_gpu_read(&self.resource_manager);
 
         // Pass 1 is per-object
         let descriptor_set_per_texture = pass.descriptor_set_layout(1).descriptor_set();
-        let descriptor_sets_per_texture = vec![descriptor_set_per_texture.get_raw_for_gpu_read(&self.resource_manager)];
+        let descriptor_sets_per_texture =
+            vec![descriptor_set_per_texture.get_raw_for_gpu_read(&self.resource_manager)];
 
         //let descriptor_set_per_pass = vec![descriptor_set.get_raw(&self.resource_manager)];
 
