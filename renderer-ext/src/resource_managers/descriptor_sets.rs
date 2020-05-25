@@ -106,11 +106,23 @@ pub struct DescriptorSetWriteSet {
     pub elements: FnvHashMap<DescriptorSetElementKey, DescriptorSetElementWrite>
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct DescriptorSetWriteBuffer {
+    pub elements: FnvHashMap<DescriptorSetElementKey, Vec<u8>>
+}
+
 #[derive(Debug)]
 struct SlabKeyDescriptorSetWriteSet {
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
     write_set: DescriptorSetWriteSet,
 }
+
+#[derive(Debug)]
+struct SlabKeyDescriptorSetWriteBuffer {
+    slab_key: RawSlabKey<RegisteredDescriptorSet>,
+    write_buffer: DescriptorSetWriteBuffer,
+}
+
 
 struct DescriptorWriteBuilder {
     image_infos: Vec<vk::DescriptorImageInfo>,
@@ -119,7 +131,7 @@ struct DescriptorWriteBuilder {
 
 struct RegisteredDescriptorSet {
     // Anything we'd want to store per descriptor set can go here, but don't have anything yet
-    write_set: DescriptorSetWriteSet,
+    //write_set: DescriptorSetWriteSet,
 }
 
 type FrameInFlightIndex = u32;
@@ -251,9 +263,16 @@ impl DescriptorLayoutBufferSet {
 
 
 #[derive(Debug)]
-struct PendingDescriptorSetWrite {
+struct PendingDescriptorSetWriteSet {
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
     write_set: DescriptorSetWriteSet,
+    live_until_frame: FrameInFlightIndex,
+}
+
+#[derive(Debug)]
+struct PendingDescriptorSetWriteBuffer {
+    slab_key: RawSlabKey<RegisteredDescriptorSet>,
+    write_buffer: DescriptorSetWriteBuffer,
     live_until_frame: FrameInFlightIndex,
 }
 
@@ -265,7 +284,8 @@ struct RegisteredDescriptorSetPoolChunk {
 
     // These are stored for RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT frames so that they
     // are applied to each frame's pool
-    pending_writes: VecDeque<PendingDescriptorSetWrite>,
+    pending_set_writes: VecDeque<PendingDescriptorSetWriteSet>,
+    pending_buffer_writes: VecDeque<PendingDescriptorSetWriteBuffer>,
 
     buffers: DescriptorLayoutBufferSet,
 }
@@ -352,7 +372,8 @@ impl RegisteredDescriptorSetPoolChunk {
         Ok(RegisteredDescriptorSetPoolChunk {
             pool,
             descriptor_sets,
-            pending_writes: Default::default(),
+            pending_set_writes: Default::default(),
+            pending_buffer_writes: Default::default(),
             buffers,
         })
     }
@@ -370,7 +391,7 @@ impl RegisteredDescriptorSetPoolChunk {
         }
     }
 
-    fn write(
+    fn write_set(
         &mut self,
         slab_key: RawSlabKey<RegisteredDescriptorSet>,
         mut write_set: DescriptorSetWriteSet,
@@ -382,7 +403,7 @@ impl RegisteredDescriptorSetPoolChunk {
         // Use frame_in_flight_index for the live_until_frame because every update, we immediately
         // increment the frame and *then* do updates. So by setting it to the pre-next-update
         // frame_in_flight_index, this will make the write stick around for MAX_FRAMES_IN_FLIGHT frames
-        let pending_write = PendingDescriptorSetWrite {
+        let pending_write = PendingDescriptorSetWriteSet {
             slab_key,
             write_set,
             live_until_frame: frame_in_flight_index,
@@ -390,7 +411,37 @@ impl RegisteredDescriptorSetPoolChunk {
 
         //TODO: Consider pushing these into a hashmap for the frame and let the pending write array
         // be a list of hashmaps
-        self.pending_writes.push_back(pending_write);
+        self.pending_set_writes.push_back(pending_write);
+
+        let descriptor_index =
+            slab_key.index() % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
+        self.descriptor_sets
+            .iter()
+            .map(|x| x[descriptor_index as usize])
+            .collect()
+    }
+
+    fn write_buffer(
+        &mut self,
+        slab_key: RawSlabKey<RegisteredDescriptorSet>,
+        mut write_buffer: DescriptorSetWriteBuffer,
+        frame_in_flight_index: FrameInFlightIndex,
+    ) -> Vec<vk::DescriptorSet> {
+        log::trace!("Schedule a buffer write for descriptor set {:?}", slab_key);
+        log::trace!("{:#?}", write_buffer);
+
+        // Use frame_in_flight_index for the live_until_frame because every update, we immediately
+        // increment the frame and *then* do updates. So by setting it to the pre-next-update
+        // frame_in_flight_index, this will make the write stick around for MAX_FRAMES_IN_FLIGHT frames
+        let pending_write = PendingDescriptorSetWriteBuffer {
+            slab_key,
+            write_buffer,
+            live_until_frame: frame_in_flight_index,
+        };
+
+        //TODO: Consider pushing these into a hashmap for the frame and let the pending write array
+        // be a list of hashmaps
+        self.pending_buffer_writes.push_back(pending_write);
 
         let descriptor_index =
             slab_key.index() % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
@@ -419,19 +470,19 @@ impl RegisteredDescriptorSetPoolChunk {
 
         // Flatten the vec of hash maps into a single hashmap. This eliminates any duplicate
         // sets with the most recent set taking precedence
-        let mut all_writes = FnvHashMap::default();
-        for pending_write in &self.pending_writes {
+        let mut all_set_writes = FnvHashMap::default();
+        for pending_write in &self.pending_set_writes {
             for (key, value) in &pending_write.write_set.elements {
-                all_writes.insert(SlabElementKey(pending_write.slab_key, *key), value);
+                all_set_writes.insert(SlabElementKey(pending_write.slab_key, *key), value);
             }
         }
 
         let mut write_builders = vec![];
-        for (key, element) in all_writes {
+        for (key, element) in all_set_writes {
             let slab_key = key.0;
             let element_key = key.1;
 
-            log::trace!("Process descriptor set pending_write for {:?}", slab_key);
+            log::trace!("Process descriptor set pending_write for {:?} {:?}", slab_key, element_key);
             log::trace!("{:#?}", element);
 
             let descriptor_set_index = slab_key.index()
@@ -499,9 +550,40 @@ impl RegisteredDescriptorSetPoolChunk {
             }
         }
 
+        let mut all_buffer_writes = FnvHashMap::default();
+        for pending_buffer_write in &self.pending_buffer_writes {
+            for (key, value) in &pending_buffer_write.write_buffer.elements {
+                all_buffer_writes.insert(SlabElementKey(pending_buffer_write.slab_key, *key), value);
+            }
+        }
+
+        for (key, data) in all_buffer_writes {
+            let slab_key = key.0;
+            let element_key = key.1;
+
+            log::trace!("Process buffer pending_write for {:?} {:?}", slab_key, element_key);
+            log::trace!("{} bytes", data.len());
+
+            let mut buffer = self.buffers.buffer_sets.get_mut(&element_key).unwrap();
+            assert!(data.len() as u32 <= buffer.buffer_info.per_descriptor_size);
+            if data.len() as u32 != buffer.buffer_info.per_descriptor_size {
+                log::warn!("Wrote {} bytes to a descriptor set buffer that holds {} bytes", data.len(), buffer.buffer_info.per_descriptor_size);
+            }
+
+            let descriptor_set_index = slab_key.index()
+                % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
+            let offset = buffer.buffer_info.per_descriptor_stride * descriptor_set_index;
+
+            let buffer = &mut buffer.buffers[frame_in_flight_index as usize];
+
+            buffer.write_to_host_visible_buffer_with_offset(&data, offset as u64);
+        }
+
+
+
         // Determine how many writes we can drain
         let mut pending_writes_to_drain = 0;
-        for pending_write in &self.pending_writes {
+        for pending_write in &self.pending_set_writes {
             // If frame_in_flight_index matches or exceeds live_until_frame, then the result will be a very
             // high value due to wrapping a negative value to u32::MAX
             if pending_write.live_until_frame == frame_in_flight_index {
@@ -512,7 +594,22 @@ impl RegisteredDescriptorSetPoolChunk {
         }
 
         // Drop any writes that have lived long enough to apply to the descriptor set for each frame
-        self.pending_writes.drain(0..pending_writes_to_drain);
+        self.pending_set_writes.drain(0..pending_writes_to_drain);
+
+        // Determine how many writes we can drain
+        let mut pending_writes_to_drain = 0;
+        for pending_write in &self.pending_buffer_writes {
+            // If frame_in_flight_index matches or exceeds live_until_frame, then the result will be a very
+            // high value due to wrapping a negative value to u32::MAX
+            if pending_write.live_until_frame == frame_in_flight_index {
+                pending_writes_to_drain += 1;
+            } else {
+                break;
+            }
+        }
+
+        // Drop any writes that have lived long enough to apply to the descriptor set for each frame
+        self.pending_buffer_writes.drain(0..pending_writes_to_drain);
     }
 }
 
@@ -530,8 +627,10 @@ struct RegisteredDescriptorSetPool {
     //pending_allocations: Vec<DescriptorSetWrite>,
     drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
     drop_rx: Receiver<RawSlabKey<RegisteredDescriptorSet>>,
-    write_tx: Sender<SlabKeyDescriptorSetWriteSet>,
-    write_rx: Receiver<SlabKeyDescriptorSetWriteSet>,
+    write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
+    write_set_rx: Receiver<SlabKeyDescriptorSetWriteSet>,
+    write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
+    write_buffer_rx: Receiver<SlabKeyDescriptorSetWriteBuffer>,
     descriptor_pool_allocator: VkDescriptorPoolAllocator,
     descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
 
@@ -554,7 +653,8 @@ impl RegisteredDescriptorSetPool {
     ) -> Self {
         //renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
-        let (write_tx, write_rx) = crossbeam_channel::unbounded();
+        let (write_set_tx, write_set_rx) = crossbeam_channel::unbounded();
+        let (write_buffer_tx, write_buffer_rx) = crossbeam_channel::unbounded();
 
         //
         // This is a little gross but it creates the pool sizes required for the
@@ -613,13 +713,13 @@ impl RegisteredDescriptorSetPool {
         }
 
         RegisteredDescriptorSetPool {
-            //descriptor_set_layout_def: descriptor_set_layout_def.clone(),
             slab: RawSlab::with_capacity(Self::MAX_DESCRIPTORS_PER_POOL),
-            //pending_allocations: Default::default(),
             drop_tx,
             drop_rx,
-            write_tx,
-            write_rx,
+            write_set_tx,
+            write_set_rx,
+            write_buffer_tx,
+            write_buffer_rx,
             descriptor_pool_allocator,
             descriptor_set_layout,
             chunks: Default::default(),
@@ -636,7 +736,7 @@ impl RegisteredDescriptorSetPool {
     ) -> VkResult<DescriptorSetArc> {
         let registered_set = RegisteredDescriptorSet {
             // Don't have anything to store yet
-            write_set: write_set.clone()
+            //write_set: write_set.clone()
         };
 
         // Use the slab allocator to find an unused index, determine the chunk index from that
@@ -655,7 +755,7 @@ impl RegisteredDescriptorSetPool {
 
         // Insert the write into the chunk, it will be applied when update() is next called on it
         let descriptor_sets_per_frame =
-            self.chunks[chunk_index].write(slab_key, write_set, frame_in_flight_index);
+            self.chunks[chunk_index].write_set(slab_key, write_set, frame_in_flight_index);
 
         // Return the ref-counted descriptor set
         let descriptor_set =
@@ -674,9 +774,14 @@ impl RegisteredDescriptorSetPool {
             self.slab.free(dropped);
         }
 
-        for write in self.write_rx.try_iter() {
+        for write in self.write_set_rx.try_iter() {
             let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
-            self.chunks[chunk_index as usize].write(write.slab_key, write.write_set, frame_in_flight_index);
+            self.chunks[chunk_index as usize].write_set(write.slab_key, write.write_set, frame_in_flight_index);
+        }
+
+        for write in self.write_buffer_rx.try_iter() {
+            let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
+            self.chunks[chunk_index as usize].write_buffer(write.slab_key, write.write_buffer, frame_in_flight_index);
         }
 
         // Commit pending writes/removes, rotate to the descriptor set for the next frame
@@ -803,7 +908,12 @@ impl RegisteredDescriptorSetPoolManager {
         let descriptor_set = pool.insert(&self.device_context, write_set.clone(), self.frame_in_flight_index)?;
 
         // Create the DynDescriptorSet
-        let dyn_descriptor_set = DynDescriptorSet::new(write_set, descriptor_set, pool.write_tx.clone());
+        let dyn_descriptor_set = DynDescriptorSet::new(
+            write_set,
+            descriptor_set,
+            pool.write_set_tx.clone(),
+            pool.write_buffer_tx.clone(),
+        );
 
         Ok(dyn_descriptor_set)
     }
@@ -962,7 +1072,7 @@ pub fn what_to_bind(
             what.bind_images = true;
         }
         dsc::DescriptorType::UniformBuffer => {
-            //what.bind_buffers = true;
+            what.bind_buffers = true;
         }
         _ => unimplemented!(),
     }
@@ -1092,21 +1202,31 @@ pub fn create_write_sets_for_material_instance_pass(
 pub struct DynDescriptorSet {
     descriptor_set: DescriptorSetArc,
     write_set: DescriptorSetWriteSet,
-    write_tx: Sender<SlabKeyDescriptorSetWriteSet>,
-    dirty: FnvHashSet<DescriptorSetElementKey>,
+
+    write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
+    write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
+
+    //dirty: FnvHashSet<DescriptorSetElementKey>,
+
+    pending_write_set: DescriptorSetWriteSet,
+    pending_write_buffer: DescriptorSetWriteBuffer,
 }
 
 impl DynDescriptorSet {
     fn new(
         write_set: DescriptorSetWriteSet,
         descriptor_set: DescriptorSetArc,
-        write_tx: Sender<SlabKeyDescriptorSetWriteSet>,
+        write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
+        write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
     ) -> Self {
         DynDescriptorSet {
             descriptor_set,
             write_set,
-            write_tx,
-            dirty: Default::default(),
+            write_set_tx,
+            write_buffer_tx,
+            //dirty: Default::default(),
+            pending_write_set: Default::default(),
+            pending_write_buffer: Default::default(),
         }
     }
 
@@ -1116,18 +1236,29 @@ impl DynDescriptorSet {
 
     //TODO: Make a commit-like API so that it's not so easy to forget to call flush
     pub fn flush(&mut self) {
-        let mut write_set = DescriptorSetWriteSet::default();
-        for dirty_element_key in self.dirty.drain() {
-            let value = self.write_set.elements[&dirty_element_key].clone();
-            write_set.elements.insert(dirty_element_key, value);
+        if !self.pending_write_set.elements.is_empty() {
+            let mut pending_write_set = Default::default();
+            std::mem::swap(&mut pending_write_set, &mut self.pending_write_set);
+
+            let pending_descriptor_set_write = SlabKeyDescriptorSetWriteSet {
+                write_set: pending_write_set,
+                slab_key: self.descriptor_set.inner.slab_key,
+            };
+
+            self.write_set_tx.send(pending_descriptor_set_write);
         }
 
-        let pending_descriptor_set_write = SlabKeyDescriptorSetWriteSet {
-            write_set,
-            slab_key: self.descriptor_set.inner.slab_key,
-        };
+        if !self.pending_write_buffer.elements.is_empty() {
+            let mut pending_write_buffer = Default::default();
+            std::mem::swap(&mut pending_write_buffer, &mut self.pending_write_buffer);
 
-        self.write_tx.send(pending_descriptor_set_write);
+            let pending_descriptor_set_write = SlabKeyDescriptorSetWriteBuffer {
+                write_buffer: pending_write_buffer,
+                slab_key: self.descriptor_set.inner.slab_key,
+            };
+
+            self.write_buffer_tx.send(pending_descriptor_set_write);
+        }
     }
 
     pub fn set_image(
@@ -1154,7 +1285,10 @@ impl DynDescriptorSet {
             if what_to_bind.bind_images {
                 if let Some(element_image) = element.image_info.get_mut(array_index) {
                     element_image.image_view = Some(image_view);
-                    self.dirty.insert(key);
+
+                    self.pending_write_set.elements.insert(key, element.clone());
+
+                    //self.dirty.insert(key);
                 } else {
                     log::warn!("Tried to set image index {} but it did not exist. The image array is {} elements long.", array_index, element.image_info.len());
                 }
@@ -1165,6 +1299,48 @@ impl DynDescriptorSet {
             }
         } else {
             log::warn!("Tried to set image on a binding index that does not exist");
+        }
+    }
+
+    pub fn set_buffer_data<T: Copy>(
+        &mut self,
+        binding_index: u32,
+        data: &T
+    ) {
+        self.set_buffer_data_array_element(binding_index, 0, data)
+    }
+
+    fn set_buffer_data_array_element<T: Copy>(
+        &mut self,
+        binding_index: u32,
+        array_index: usize,
+        data: &T
+    ) {
+        //TODO: Verify that T's size matches the buffer
+
+        // Not supporting array indices yet
+        assert!(array_index == 0);
+        let key = DescriptorSetElementKey {
+            dst_binding: binding_index,
+            //dst_array_element: 0
+        };
+
+        if let Some(element) = self.write_set.elements.get_mut(&key) {
+            let what_to_bind = what_to_bind(element);
+            if what_to_bind.bind_buffers {
+                let data = renderer_shell_vulkan::util::any_as_bytes(data).into();
+                if element.buffer_info.len() > array_index {
+                    self.pending_write_buffer.elements.insert(key, data);
+                } else {
+                    log::warn!("Tried to set buffer data for index {} but it did not exist. The buffer array is {} elements long.", array_index, element.buffer_info.len());
+                }
+            } else {
+                // This is not necessarily an error if the user is binding with a slot name (although not sure
+                // if that's the right approach long term)
+                //log::warn!("Tried to bind an image to a descriptor set where the type does not accept an image", array_index)
+            }
+        } else {
+            log::warn!("Tried to set buffer data on a binding index that does not exist");
         }
     }
 }
@@ -1198,6 +1374,20 @@ impl DynPassMaterialInstance {
             }
         }
     }
+
+    pub fn set_buffer_data<T: Copy>(
+        &mut self,
+        slot_name: &String,
+        data: &T
+    ) {
+        if let Some(slot_locations) = self.slot_name_lookup.get(slot_name) {
+            for slot_location in slot_locations {
+                if let Some(dyn_descriptor_set) = self.descriptor_sets.get_mut(slot_location.layout_index as usize) {
+                    dyn_descriptor_set.set_buffer_data(slot_location.binding_index, data);
+                }
+            }
+        }
+    }
 }
 
 pub struct DynMaterialInstance {
@@ -1222,6 +1412,16 @@ impl DynMaterialInstance {
     ) {
         for pass in &mut self.passes {
             pass.set_image(slot_name, image_view.clone())
+        }
+    }
+
+    pub fn set_buffer_data<T: Copy>(
+        &mut self,
+        slot_name: &String,
+        data: &T
+    ) {
+        for pass in &mut self.passes {
+            pass.set_buffer_data(slot_name, data)
         }
     }
 }

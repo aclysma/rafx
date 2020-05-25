@@ -18,6 +18,15 @@ pub fn round_size_up_to_alignment(size: vk::DeviceSize, required_alignment: vk::
     return ((size + required_alignment - 1) / required_alignment) * required_alignment
 }
 
+pub fn any_as_bytes<T: Copy>(data: &T) -> &[u8] {
+    let ptr : *const T = data;
+    let ptr = ptr as *const u8;
+    let slice: &[u8] =
+        unsafe { std::slice::from_raw_parts(ptr, std::mem::size_of::<T>()) };
+
+    slice
+}
+
 // Don't actually do this in shipping code
 /*
 /// Fires off a command buffer and then waits for the device to be idle

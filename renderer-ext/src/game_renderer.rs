@@ -160,8 +160,25 @@ impl GameRenderer {
 
         let image_info = renderer.resource_manager.get_image_info(&override_image);
 
+
+        let extents_width = 900;
+        let extents_height = 600;
+        let fov = extents_width as f32 / extents_height as f32;
+        let half_width = 400.0;
+        let half_height = 400.0 / fov;
+        let proj = crate::renderpass::sprite_renderpass::orthographic_rh_gl(
+            -half_width,
+            half_width,
+            -half_height,
+            half_height,
+            -100.0,
+            100.0,
+        );
+
+
         let mut sprite_custom_material = renderer.resource_manager.create_dyn_material_instance_from_asset(renderer.sprite_material_instance.clone())?;
         sprite_custom_material.set_image(&"texture".to_string(), &image_info.image_view);
+        sprite_custom_material.set_buffer_data(&"view_proj".to_string(), &proj);
         sprite_custom_material.flush();
 
         renderer.sprite_custom_material = Some(sprite_custom_material);
@@ -264,9 +281,15 @@ impl VkSurfaceEventListener for GameRenderer {
         self.resource_manager.on_begin_frame();
 
         let pass = self.sprite_custom_material.as_ref().unwrap().pass(0);
-        let layout = pass.descriptor_set_layout(1);
-        let descriptor_set = layout.descriptor_set();
-        let descriptor_set_per_texture = vec![descriptor_set.get_raw(&self.resource_manager)];
+
+        // Pass 0 is "global"
+        let descriptor_set_per_pass = pass.descriptor_set_layout(0).descriptor_set().get_raw(&self.resource_manager);
+
+        // Pass 1 is per-object
+        let descriptor_set_per_texture = pass.descriptor_set_layout(1).descriptor_set();
+        let descriptor_sets_per_texture = vec![descriptor_set_per_texture.get_raw(&self.resource_manager)];
+
+        //let descriptor_set_per_pass = vec![descriptor_set.get_raw(&self.resource_manager)];
 
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");
@@ -274,7 +297,8 @@ impl VkSurfaceEventListener for GameRenderer {
                 present_index,
                 1.0,
                 //&self.sprite_resource_manager,
-                &descriptor_set_per_texture,
+                descriptor_set_per_pass,
+                &descriptor_sets_per_texture,
                 &self.time_state,
             )?;
             command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());

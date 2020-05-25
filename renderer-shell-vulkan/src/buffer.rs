@@ -20,6 +20,7 @@ pub struct VkBuffer {
     pub device_context: VkDeviceContext,
     pub allocation_info: vk_mem::AllocationInfo,
     pub raw: Option<VkBufferRaw>,
+    always_mapped: bool
 }
 
 impl VkBuffer {
@@ -34,9 +35,49 @@ impl VkBuffer {
         required_property_flags: vk::MemoryPropertyFlags,
         size: vk::DeviceSize,
     ) -> VkResult<Self> {
+        Self::new_internal(
+            device_context,
+            memory_usage,
+            buffer_usage,
+            required_property_flags,
+            size,
+            false
+        )
+    }
+
+    pub fn new_always_mapped(
+        device_context: &VkDeviceContext,
+        memory_usage: vk_mem::MemoryUsage,
+        buffer_usage: vk::BufferUsageFlags,
+        required_property_flags: vk::MemoryPropertyFlags,
+        size: vk::DeviceSize,
+    ) -> VkResult<Self> {
+        Self::new_internal(
+            device_context,
+            memory_usage,
+            buffer_usage,
+            required_property_flags,
+            size,
+            true
+        )
+    }
+
+    pub fn new_internal(
+        device_context: &VkDeviceContext,
+        memory_usage: vk_mem::MemoryUsage,
+        buffer_usage: vk::BufferUsageFlags,
+        required_property_flags: vk::MemoryPropertyFlags,
+        size: vk::DeviceSize,
+        always_mapped: bool
+    ) -> VkResult<Self> {
+        let mut flags = vk_mem::AllocationCreateFlags::NONE;
+        if always_mapped {
+            flags |= vk_mem::AllocationCreateFlags::MAPPED;
+        }
+
         let allocation_create_info = vk_mem::AllocationCreateInfo {
             usage: memory_usage,
-            flags: vk_mem::AllocationCreateFlags::NONE,
+            flags,
             required_flags: required_property_flags,
             preferred_flags: vk::MemoryPropertyFlags::empty(),
             memory_type_bits: 0, // Do not exclude any memory types
@@ -60,6 +101,7 @@ impl VkBuffer {
         Ok(VkBuffer {
             device_context: device_context.clone(),
             allocation_info,
+            always_mapped,
             raw: Some(raw)
         })
     }
@@ -68,26 +110,49 @@ impl VkBuffer {
         &mut self,
         data: &[T],
     ) -> VkResult<()> {
+        self.write_to_host_visible_buffer_with_offset(data, 0)
+    }
+
+    pub fn write_to_host_visible_buffer_with_offset<T: Copy>(
+        &mut self,
+        data: &[T],
+        offset: u64,
+    ) -> VkResult<()> {
         let allocation = self.allocation();
 
-        //TODO: Better way of handling allocator errors
-        let ptr = self
-            .device_context
-            .allocator()
-            .map_memory(&allocation)
-            .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?
-            as *mut std::ffi::c_void;
+        let dst_bytes_available = self.size() - offset;
+
+        let dst = if self.always_mapped {
+            self.allocation_info.get_mapped_data()
+        } else {
+            self.device_context
+                .allocator()
+                .map_memory(&allocation)
+                .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?
+                as *mut u8
+        };
+
+        // let dst = unsafe { dst.add(offset as usize) };
+        // let src = crate::util::any_as_bytes(&data);
+        //
+        // assert!(dst_bytes_available >= src.len() as u64);
+        //
+        // unsafe {
+        //     dst.copy_from_nonoverlapping(src.as_ptr(), src.len());
+        // }
 
         let required_alignment = mem::align_of::<T>() as u64;
-        let mut align = unsafe { Align::new(ptr, required_alignment, self.size()) };
-
+        let mut align = unsafe { Align::new(dst as *mut std::ffi::c_void, required_alignment, self.size()) };
         align.copy_from_slice(data);
 
-        //TODO: Better way of handling allocator errors
-        self.device_context
-            .allocator()
-            .unmap_memory(&allocation)
-            .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?;
+        if !self.always_mapped {
+            //TODO: Better way of handling allocator errors
+            self.device_context
+                .allocator()
+                .unmap_memory(&allocation)
+                .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?;
+        }
+
 
         // The staging buffer is coherent so flushing is not necessary
 
