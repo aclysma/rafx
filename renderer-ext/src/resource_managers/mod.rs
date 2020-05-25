@@ -222,7 +222,7 @@ impl ResourceManager {
             pipeline: resource.passes[pass_index].pipelines[swapchain_index].clone(),
         }
     }
-
+/*
     pub fn get_material_instance_descriptor_sets_for_current_frame(
         &self,
         handle: &Handle<MaterialInstanceAsset>,
@@ -247,7 +247,7 @@ impl ResourceManager {
 
         MaterialInstanceDescriptorSetsForCurrentFrame { descriptor_sets }
     }
-
+*/
     pub fn add_swapchain(
         &mut self,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,

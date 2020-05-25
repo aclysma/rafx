@@ -282,11 +282,11 @@ impl VkSurfaceEventListener for GameRenderer {
         let pass = self.sprite_custom_material.as_ref().unwrap().pass(0);
 
         // Pass 0 is "global"
-        let descriptor_set_per_pass = pass.descriptor_set_layout(0).descriptor_set().get_raw(&self.resource_manager);
+        let descriptor_set_per_pass = pass.descriptor_set_layout(0).descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
 
         // Pass 1 is per-object
         let descriptor_set_per_texture = pass.descriptor_set_layout(1).descriptor_set();
-        let descriptor_sets_per_texture = vec![descriptor_set_per_texture.get_raw(&self.resource_manager)];
+        let descriptor_sets_per_texture = vec![descriptor_set_per_texture.get_raw_for_gpu_read(&self.resource_manager)];
 
         //let descriptor_set_per_pass = vec![descriptor_set.get_raw(&self.resource_manager)];
 

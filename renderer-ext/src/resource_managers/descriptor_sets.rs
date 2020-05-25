@@ -5,7 +5,7 @@ use crossbeam_channel::{Sender, Receiver};
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::collections::VecDeque;
-use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkBuffer, VkResourceDropSink};
+use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkBuffer, VkResourceDropSink, MAX_FRAMES_IN_FLIGHT};
 use ash::prelude::VkResult;
 use fnv::{FnvHashMap, FnvHashSet};
 use super::ResourceHash;
@@ -22,8 +22,10 @@ use std::mem::ManuallyDrop;
 use arrayvec::ArrayVec;
 
 //
-// These represent a write update that can be applied to a descriptor set in a pool
+// These represent descriptor updates that can be applied to a descriptor set in a pool
 //
+
+// The information needed to write image metadata for a descriptor
 #[derive(Debug, Clone, Default)]
 pub struct DescriptorSetWriteElementImage {
     pub sampler: Option<ResourceArc<vk::Sampler>>,
@@ -32,29 +34,7 @@ pub struct DescriptorSetWriteElementImage {
     //pub image_info: vk::DescriptorImageInfo,
 }
 
-// impl DescriptorSetWriteImage {
-//     pub fn new() -> Self {
-//         let mut return_value = DescriptorSetWriteImage {
-//             sampler: None,
-//             image_view: None,
-//             //image_info: Default::default()
-//         };
-//
-//         //return_value.image_info.image_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
-//         return_value
-//     }
-//
-//     pub fn set_sampler(&mut self, sampler: ResourceArc<vk::Sampler>) {
-//         self.image_info.sampler = sampler.get_raw();
-//         self.sampler = Some(sampler);
-//     }
-//
-//     pub fn set_image_view(&mut self, image_view: ResourceArc<ImageViewResource>) {
-//         self.image_info.image_view = image_view.get_raw();
-//         self.image_view = Some(image_view);
-//     }
-// }
-
+// The information needed to write buffer metadata for a descriptor
 #[derive(Debug, Clone, Default)]
 pub struct DescriptorSetWriteElementBuffer {
     pub buffer: Option<ResourceArc<vk::Buffer>>,
@@ -62,87 +42,95 @@ pub struct DescriptorSetWriteElementBuffer {
     //pub buffer_info: vk::DescriptorBufferInfo,
 }
 
-// impl DescriptorSetWriteBuffer {
-//     pub fn new(buffer: ResourceArc<vk::Buffer>) -> Self {
-//         unimplemented!();
-//         // let mut return_value = DescriptorSetWriteImage {
-//         //     buffer: None,
-//         //     buffer_info: Default::default()
-//         // };
-//         //
-//         // return_value.image_info.image_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
-//         // return_value
-//     }
-// }
-
+// All the data required to overwrite a descriptor. The image/buffer infos will be populated depending
+// on the descriptor's type
 #[derive(Debug, Clone)]
 pub struct DescriptorSetElementWrite {
-    // If true, we are not permitted to modify samplers via the write
-    pub has_immutable_sampler: bool,
-
-    //pub dst_set: u32, // a pool index?
-    //pub dst_layout: u32, // a hash?
-    //pub dst_pool_index: u32, // a slab key?
-    //pub dst_set_index: u32,
-
-    //pub descriptor_set: DescriptorSetArc,
-    //pub dst_binding: u32,
-    //pub dst_array_element: u32,
+    // This is a complete spec for
     pub descriptor_type: dsc::DescriptorType,
+
+    //TODO: Should these be Option<Vec>?
     pub image_info: Vec<DescriptorSetWriteElementImage>,
     pub buffer_info: Vec<DescriptorSetWriteElementBuffer>,
-
+    //TODO: texel buffer view support
     //pub p_texel_buffer_view: *const BufferView,
+
+    // If true, we are not permitted to modify samplers via the write. It's a bit of a hack having
+    // this here since we are using this struct both to define a write and to store the metadata
+    // for an already-written descriptor. The issue is that I'd like runtime checking that we don't
+    // try to rebind a sampler and the easiest way to track this metadata is to include it here.
+    // Potentially we could have a separate type that contains the other values plus this bool.
+    pub has_immutable_sampler: bool,
 }
 
+// Represents an "index" into a single binding within a layout. A binding can be in the form of an
+// array, but for now this is not supported
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DescriptorSetElementKey {
     pub dst_binding: u32,
     //pub dst_array_element: u32,
 }
 
+// A set of writes to descriptors within a descriptor set
 #[derive(Debug, Default, Clone)]
 pub struct DescriptorSetWriteSet {
     pub elements: FnvHashMap<DescriptorSetElementKey, DescriptorSetElementWrite>
 }
 
+// A set of write to buffers that back a descriptor set
 #[derive(Debug, Default, Clone)]
 pub struct DescriptorSetWriteBuffer {
     pub elements: FnvHashMap<DescriptorSetElementKey, Vec<u8>>
 }
 
+// A set of writes to descriptors within a descriptor set with the key for the descriptor set that
+// should be written
 #[derive(Debug)]
 struct SlabKeyDescriptorSetWriteSet {
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
     write_set: DescriptorSetWriteSet,
 }
 
+// A set of write to buffers that back a descriptor set with the key for the descriptor set that
+// should be written
 #[derive(Debug)]
 struct SlabKeyDescriptorSetWriteBuffer {
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
     write_buffer: DescriptorSetWriteBuffer,
 }
 
-
-struct DescriptorWriteBuilder {
-    image_infos: Vec<vk::DescriptorImageInfo>,
-    buffer_infos: Vec<vk::DescriptorBufferInfo>,
-}
-
+// Slab keys to identify descriptors can carry a payload. Anything we'd want to store per descriptor
+// set can go here, but don't have anything yet
 struct RegisteredDescriptorSet {
-    // Anything we'd want to store per descriptor set can go here, but don't have anything yet
     //write_set: DescriptorSetWriteSet,
 }
 
+// We need to track which of the MAX_FRAMES_IN_FLIGHT + 1 frames of data is currently writable
 type FrameInFlightIndex = u32;
+
+fn add_to_frame_in_flight_index(index: FrameInFlightIndex, value: u32) -> FrameInFlightIndex {
+    (index + value) % RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32
+}
+
+fn subtract_from_frame_in_flight_index(index: FrameInFlightIndex, value: u32) -> FrameInFlightIndex {
+    (value + RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32 - index) % RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32
+}
 
 //
 // Reference counting mechanism to keep descriptor sets allocated
 //
+
+// Data internal to the DescriptorSetArc
 struct DescriptorSetArcInner {
-    // We can't cache the vk::DescriptorSet here because the pools will be cycled
+    // Unique ID of the descriptor set
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
+
+    // We can't cache a single vk::DescriptorSet here because the correct one to use will be
+    // dependent on the current frame in flight index. But to make lookups fast, we can cache the
+    // three possible descriptor sets
     descriptor_sets_per_frame: Vec<vk::DescriptorSet>,
+
+    // When this object is dropped, send a message to the pool to deallocate this descriptor set
     drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
 }
 
@@ -178,8 +166,14 @@ impl DescriptorSetArc {
         }
     }
 
-    pub fn get_raw(&self, resource_manager: &ResourceManager) -> vk::DescriptorSet {
-        self.inner.descriptor_sets_per_frame[resource_manager.registered_descriptor_sets.frame_in_flight_index as usize]
+    pub fn get_raw_for_cpu_write(&self, resource_manager: &ResourceManager) -> vk::DescriptorSet {
+        //self.inner.descriptor_sets_per_frame[resource_manager.registered_descriptor_sets.frame_in_flight_index as usize]
+        resource_manager.registered_descriptor_sets.descriptor_set_for_cpu_write(self)
+    }
+
+    pub fn get_raw_for_gpu_read(&self, resource_manager: &ResourceManager) -> vk::DescriptorSet {
+        //self.inner.descriptor_sets_per_frame[resource_manager.registered_descriptor_sets.frame_in_flight_index as usize]
+        resource_manager.registered_descriptor_sets.descriptor_set_for_gpu_read(self)
     }
 }
 
@@ -196,13 +190,12 @@ impl std::fmt::Debug for DescriptorSetArc {
 
 
 
-
+//
+// Creates and manages the internal buffers for a single binding within a descriptor pool chunk
+//
 struct DescriptorBindingBufferSet {
     buffers: Vec<ManuallyDrop<VkBuffer>>,
     buffer_info: DescriptorSetPoolRequiredBufferInfo,
-    // per_descriptor_stride: u32,
-    // per_descriptor_size: u32,
-    // descriptor_type: DescriptorType
 }
 
 impl DescriptorBindingBufferSet {
@@ -231,7 +224,9 @@ impl DescriptorBindingBufferSet {
     }
 }
 
-
+//
+// Creates and manages the internal buffers for a descriptor pool chunk
+//
 struct DescriptorLayoutBufferSet {
     buffer_sets: FnvHashMap<DescriptorSetElementKey, DescriptorBindingBufferSet>
 }
@@ -261,7 +256,8 @@ impl DescriptorLayoutBufferSet {
 
 
 
-
+// A write to the descriptors within a single descriptor set that has been scheduled (i.e. will occur
+// over the next MAX_FRAMES_IN_FLIGHT frames
 #[derive(Debug)]
 struct PendingDescriptorSetWriteSet {
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
@@ -269,6 +265,8 @@ struct PendingDescriptorSetWriteSet {
     live_until_frame: FrameInFlightIndex,
 }
 
+// A write to the buffers within a single descriptor set that has been scheduled (i.e. will occur
+// over the next MAX_FRAMES_IN_FLIGHT frames
 #[derive(Debug)]
 struct PendingDescriptorSetWriteBuffer {
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
@@ -276,18 +274,27 @@ struct PendingDescriptorSetWriteBuffer {
     live_until_frame: FrameInFlightIndex,
 }
 
+//
+// A single chunk within a pool. This allows us to create MAX_DESCRIPTORS_PER_POOL * MAX_FRAMES_IN_FLIGHT
+// descriptors for a single descriptor set layout
+//
 struct RegisteredDescriptorSetPoolChunk {
     // We only need the layout for logging
     descriptor_set_layout: vk::DescriptorSetLayout,
+
+    // The pool holding all descriptors in this chunk
     pool: vk::DescriptorPool,
+
+    // The MAX_DESCRIPTORS_PER_POOL descriptors
     descriptor_sets: Vec<Vec<vk::DescriptorSet>>,
 
-    // These are stored for RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT frames so that they
-    // are applied to each frame's pool
+    // The buffers that back the descriptor sets
+    buffers: DescriptorLayoutBufferSet,
+
+    // The writes that have been scheduled to occur over the next MAX_FRAMES_IN_FLIGHT frames. This
+    // ensures that each frame's descriptor sets/buffers are appropriately updated
     pending_set_writes: VecDeque<PendingDescriptorSetWriteSet>,
     pending_buffer_writes: VecDeque<PendingDescriptorSetWriteBuffer>,
-
-    buffers: DescriptorLayoutBufferSet,
 }
 
 impl RegisteredDescriptorSetPoolChunk {
@@ -392,7 +399,7 @@ impl RegisteredDescriptorSetPoolChunk {
         }
     }
 
-    fn write_set(
+    fn schedule_write_set(
         &mut self,
         slab_key: RawSlabKey<RegisteredDescriptorSet>,
         mut write_set: DescriptorSetWriteSet,
@@ -422,7 +429,7 @@ impl RegisteredDescriptorSetPoolChunk {
             .collect()
     }
 
-    fn write_buffer(
+    fn schedule_write_buffer(
         &mut self,
         slab_key: RawSlabKey<RegisteredDescriptorSet>,
         mut write_buffer: DescriptorSetWriteBuffer,
@@ -769,7 +776,7 @@ impl RegisteredDescriptorSetPool {
 
         // Insert the write into the chunk, it will be applied when update() is next called on it
         let descriptor_sets_per_frame =
-            self.chunks[chunk_index].write_set(slab_key, write_set, frame_in_flight_index);
+            self.chunks[chunk_index].schedule_write_set(slab_key, write_set, frame_in_flight_index);
 
         // Return the ref-counted descriptor set
         let descriptor_set =
@@ -785,17 +792,16 @@ impl RegisteredDescriptorSetPool {
         for write in self.write_set_rx.try_iter() {
             log::trace!("Received a set write for frame in flight index {}", frame_in_flight_index);
             let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
-            self.chunks[chunk_index as usize].write_set(write.slab_key, write.write_set, frame_in_flight_index);
+            self.chunks[chunk_index as usize].schedule_write_set(write.slab_key, write.write_set, frame_in_flight_index);
         }
 
         for write in self.write_buffer_rx.try_iter() {
             log::trace!("Received a buffer write for frame in flight index {}", frame_in_flight_index);
             let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
-            self.chunks[chunk_index as usize].write_buffer(write.slab_key, write.write_buffer, frame_in_flight_index);
+            self.chunks[chunk_index as usize].schedule_write_buffer(write.slab_key, write.write_buffer, frame_in_flight_index);
         }
     }
 
-    //TODO: May need to decouple flushing writes from frame changes
     pub fn flush_changes(
         &mut self,
         device_context: &VkDeviceContext,
@@ -817,14 +823,6 @@ impl RegisteredDescriptorSetPool {
         self.descriptor_pool_allocator
             .update(device_context.device());
     }
-
-    // pub fn flush_changes(
-    //     &mut self,
-    //     device_context: &VkDeviceContext,
-    //     frame_in_flight_index: FrameInFlightIndex,
-    // ) {
-    //
-    // }
 
     pub fn destroy(
         &mut self,
@@ -882,11 +880,26 @@ impl RegisteredDescriptorSetPoolManager {
         }
     }
 
-    pub fn descriptor_set_for_current_frame(
+    pub fn descriptor_set_for_cpu_write(
         &self,
         descriptor_set_arc: &DescriptorSetArc,
     ) -> vk::DescriptorSet {
         descriptor_set_arc.inner.descriptor_sets_per_frame[self.frame_in_flight_index as usize]
+    }
+
+    pub fn descriptor_set_for_gpu_read(
+        &self,
+        descriptor_set_arc: &DescriptorSetArc,
+    ) -> vk::DescriptorSet {
+        // let gpu_read_frame_in_flight_index = if self.frame_in_flight_index == 0 {
+        //     RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT
+        // } else {
+        //     self.frame_in_flight_index as usize - 1
+        // };
+        //
+        // println!("use index {}", gpu_read_frame_in_flight_index);
+        // descriptor_set_arc.inner.descriptor_sets_per_frame[gpu_read_frame_in_flight_index]
+        self.descriptor_set_for_cpu_write(descriptor_set_arc)
     }
 
     pub fn insert(
@@ -906,6 +919,36 @@ impl RegisteredDescriptorSetPoolManager {
         });
 
         pool.insert(&self.device_context, write_set, self.frame_in_flight_index)
+    }
+
+    pub fn update(&mut self) {
+        println!("Schedule descriptor set changes for frame in flight {}", self.frame_in_flight_index);
+        // Schedule any descriptor set/buffer changes that occurred since the previous update
+        for pool in self.pools.values_mut() {
+            pool.schedule_changes(&self.device_context, self.frame_in_flight_index);
+        }
+
+        // Bump frame in flight index
+        self.frame_in_flight_index += 1;
+        if self.frame_in_flight_index
+            >= RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32 + 1
+        {
+            self.frame_in_flight_index = 0;
+        }
+
+        println!("Flush descriptor set changes for frame in flight {}", self.frame_in_flight_index);
+        // Now process drops and flush writes to GPU
+        for pool in self.pools.values_mut() {
+            pool.flush_changes(&self.device_context, self.frame_in_flight_index);
+        }
+    }
+
+    pub fn destroy(&mut self) {
+        for (hash, pool) in &mut self.pools {
+            pool.destroy(&self.device_context);
+        }
+
+        self.pools.clear();
     }
 
     //TODO: Is creating and immediately modifying causing multiple writes?
@@ -1039,40 +1082,6 @@ impl RegisteredDescriptorSetPoolManager {
         Ok(DynMaterialInstance {
             passes
         })
-    }
-
-    pub fn update(&mut self) {
-        // Schedule any descriptor set/buffer changes that occurred since the previous update
-        for pool in self.pools.values_mut() {
-            pool.schedule_changes(&self.device_context, self.frame_in_flight_index);
-        }
-
-        // Bump frame in flight index
-        self.frame_in_flight_index += 1;
-        if self.frame_in_flight_index
-            >= RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32 + 1
-        {
-            self.frame_in_flight_index = 0;
-        }
-
-        // Now process drops and flush writes to GPU
-        for pool in self.pools.values_mut() {
-            pool.flush_changes(&self.device_context, self.frame_in_flight_index);
-        }
-    }
-
-    // pub fn flush_changes(&mut self) {
-    //     for pool in self.pools.values_mut() {
-    //         pool.flush_changes(&self.device_context, self.frame_in_flight_index);
-    //     }
-    // }
-
-    pub fn destroy(&mut self) {
-        for (hash, pool) in &mut self.pools {
-            pool.destroy(&self.device_context);
-        }
-
-        self.pools.clear();
     }
 }
 
