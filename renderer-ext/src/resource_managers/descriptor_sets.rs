@@ -277,8 +277,8 @@ struct PendingDescriptorSetWriteBuffer {
 }
 
 struct RegisteredDescriptorSetPoolChunk {
-    // One per frame
-    //pools: Vec<vk::DescriptorPool>,
+    // We only need the layout for logging
+    descriptor_set_layout: vk::DescriptorSetLayout,
     pool: vk::DescriptorPool,
     descriptor_sets: Vec<Vec<vk::DescriptorSet>>,
 
@@ -370,6 +370,7 @@ impl RegisteredDescriptorSetPoolChunk {
         }
 
         Ok(RegisteredDescriptorSetPoolChunk {
+            descriptor_set_layout,
             pool,
             descriptor_sets,
             pending_set_writes: Default::default(),
@@ -397,8 +398,8 @@ impl RegisteredDescriptorSetPoolChunk {
         mut write_set: DescriptorSetWriteSet,
         frame_in_flight_index: FrameInFlightIndex,
     ) -> Vec<vk::DescriptorSet> {
-        log::trace!("Schedule a write for descriptor set {:?}", slab_key);
-        log::trace!("{:#?}", write_set);
+        log::trace!("Schedule a write for descriptor set {:?} on frame in flight index {} layout {:?}", slab_key, frame_in_flight_index, self.descriptor_set_layout);
+        //log::trace!("{:#?}", write_set);
 
         // Use frame_in_flight_index for the live_until_frame because every update, we immediately
         // increment the frame and *then* do updates. So by setting it to the pre-next-update
@@ -427,8 +428,8 @@ impl RegisteredDescriptorSetPoolChunk {
         mut write_buffer: DescriptorSetWriteBuffer,
         frame_in_flight_index: FrameInFlightIndex,
     ) -> Vec<vk::DescriptorSet> {
-        log::trace!("Schedule a buffer write for descriptor set {:?}", slab_key);
-        log::trace!("{:#?}", write_buffer);
+        log::trace!("Schedule a buffer write for descriptor set {:?} on frame in flight index {} layout {:?}", slab_key, frame_in_flight_index, self.descriptor_set_layout);
+        //log::trace!("{:#?}", write_buffer);
 
         // Use frame_in_flight_index for the live_until_frame because every update, we immediately
         // increment the frame and *then* do updates. So by setting it to the pre-next-update
@@ -482,8 +483,8 @@ impl RegisteredDescriptorSetPoolChunk {
             let slab_key = key.0;
             let element_key = key.1;
 
-            log::trace!("Process descriptor set pending_write for {:?} {:?}", slab_key, element_key);
-            log::trace!("{:#?}", element);
+            log::trace!("Process descriptor set pending_write for {:?} {:?}. Frame in flight: {} layout {:?}", slab_key, element_key, frame_in_flight_index, self.descriptor_set_layout);
+            //log::trace!("{:#?}", element);
 
             let descriptor_set_index = slab_key.index()
                 % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
@@ -530,9 +531,14 @@ impl RegisteredDescriptorSetPoolChunk {
             }
 
             //TODO: DIRTY HACK TO JUST LOAD THE IMAGE
-            if image_infos.is_empty() {
+            if builder.descriptor_count == 0 {
                 continue;
             }
+
+            //TODO: DIRTY HACK TO JUST LOAD THE IMAGE
+            // if image_infos.is_empty() {
+            //     continue;
+            // }
 
             write_builders.push(builder.build());
             vk_image_infos.push(image_infos);
@@ -561,13 +567,13 @@ impl RegisteredDescriptorSetPoolChunk {
             let slab_key = key.0;
             let element_key = key.1;
 
-            log::trace!("Process buffer pending_write for {:?} {:?}", slab_key, element_key);
+            log::trace!("Process buffer pending_write for {:?} {:?}. Frame in flight: {} layout: {:?}", slab_key, element_key, frame_in_flight_index, self.descriptor_set_layout);
             log::trace!("{} bytes", data.len());
 
             let mut buffer = self.buffers.buffer_sets.get_mut(&element_key).unwrap();
             assert!(data.len() as u32 <= buffer.buffer_info.per_descriptor_size);
             if data.len() as u32 != buffer.buffer_info.per_descriptor_size {
-                log::warn!("Wrote {} bytes to a descriptor set buffer that holds {} bytes", data.len(), buffer.buffer_info.per_descriptor_size);
+                log::warn!("Wrote {} bytes to a descriptor set buffer that holds {} bytes layout: {:?}", data.len(), buffer.buffer_info.per_descriptor_size, self.descriptor_set_layout);
             }
 
             let descriptor_set_index = slab_key.index()
@@ -582,34 +588,42 @@ impl RegisteredDescriptorSetPoolChunk {
 
 
         // Determine how many writes we can drain
-        let mut pending_writes_to_drain = 0;
+        let mut pending_set_writes_to_drain = 0;
         for pending_write in &self.pending_set_writes {
             // If frame_in_flight_index matches or exceeds live_until_frame, then the result will be a very
             // high value due to wrapping a negative value to u32::MAX
             if pending_write.live_until_frame == frame_in_flight_index {
-                pending_writes_to_drain += 1;
+                pending_set_writes_to_drain += 1;
             } else {
                 break;
             }
         }
 
+        if pending_set_writes_to_drain > 0 {
+            log::trace!("Drop {} set writes on frame in flight index {} layout {:?}", pending_set_writes_to_drain, frame_in_flight_index, self.descriptor_set_layout);
+        }
+
         // Drop any writes that have lived long enough to apply to the descriptor set for each frame
-        self.pending_set_writes.drain(0..pending_writes_to_drain);
+        self.pending_set_writes.drain(0..pending_set_writes_to_drain);
 
         // Determine how many writes we can drain
-        let mut pending_writes_to_drain = 0;
+        let mut pending_buffer_writes_to_drain = 0;
         for pending_write in &self.pending_buffer_writes {
             // If frame_in_flight_index matches or exceeds live_until_frame, then the result will be a very
             // high value due to wrapping a negative value to u32::MAX
             if pending_write.live_until_frame == frame_in_flight_index {
-                pending_writes_to_drain += 1;
+                pending_buffer_writes_to_drain += 1;
             } else {
                 break;
             }
         }
 
+        if pending_buffer_writes_to_drain > 0 {
+            log::trace!("Drop {} buffer writes on frame in flight index {} layout {:?}", pending_buffer_writes_to_drain, frame_in_flight_index, self.descriptor_set_layout);
+        }
+
         // Drop any writes that have lived long enough to apply to the descriptor set for each frame
-        self.pending_buffer_writes.drain(0..pending_writes_to_drain);
+        self.pending_buffer_writes.drain(0..pending_buffer_writes_to_drain);
     }
 }
 
@@ -763,8 +777,26 @@ impl RegisteredDescriptorSetPool {
         Ok(descriptor_set)
     }
 
+    pub fn schedule_changes(
+        &mut self,
+        device_context: &VkDeviceContext,
+        frame_in_flight_index: FrameInFlightIndex,
+    ) {
+        for write in self.write_set_rx.try_iter() {
+            log::trace!("Received a set write for frame in flight index {}", frame_in_flight_index);
+            let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
+            self.chunks[chunk_index as usize].write_set(write.slab_key, write.write_set, frame_in_flight_index);
+        }
+
+        for write in self.write_buffer_rx.try_iter() {
+            log::trace!("Received a buffer write for frame in flight index {}", frame_in_flight_index);
+            let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
+            self.chunks[chunk_index as usize].write_buffer(write.slab_key, write.write_buffer, frame_in_flight_index);
+        }
+    }
+
     //TODO: May need to decouple flushing writes from frame changes
-    pub fn update(
+    pub fn flush_changes(
         &mut self,
         device_context: &VkDeviceContext,
         frame_in_flight_index: FrameInFlightIndex,
@@ -772,16 +804,6 @@ impl RegisteredDescriptorSetPool {
         // Route messages that indicate a dropped descriptor set to the chunk that owns it
         for dropped in self.drop_rx.try_iter() {
             self.slab.free(dropped);
-        }
-
-        for write in self.write_set_rx.try_iter() {
-            let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
-            self.chunks[chunk_index as usize].write_set(write.slab_key, write.write_set, frame_in_flight_index);
-        }
-
-        for write in self.write_buffer_rx.try_iter() {
-            let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
-            self.chunks[chunk_index as usize].write_buffer(write.slab_key, write.write_buffer, frame_in_flight_index);
         }
 
         // Commit pending writes/removes, rotate to the descriptor set for the next frame
@@ -1020,6 +1042,12 @@ impl RegisteredDescriptorSetPoolManager {
     }
 
     pub fn update(&mut self) {
+        // Schedule any descriptor set/buffer changes that occurred since the previous update
+        for pool in self.pools.values_mut() {
+            pool.schedule_changes(&self.device_context, self.frame_in_flight_index);
+        }
+
+        // Bump frame in flight index
         self.frame_in_flight_index += 1;
         if self.frame_in_flight_index
             >= RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32 + 1
@@ -1027,8 +1055,9 @@ impl RegisteredDescriptorSetPoolManager {
             self.frame_in_flight_index = 0;
         }
 
+        // Now process drops and flush writes to GPU
         for pool in self.pools.values_mut() {
-            pool.update(&self.device_context, self.frame_in_flight_index);
+            pool.flush_changes(&self.device_context, self.frame_in_flight_index);
         }
     }
 
@@ -1245,6 +1274,7 @@ impl DynDescriptorSet {
                 slab_key: self.descriptor_set.inner.slab_key,
             };
 
+            log::trace!("Sending a set write");
             self.write_set_tx.send(pending_descriptor_set_write);
         }
 
@@ -1257,6 +1287,7 @@ impl DynDescriptorSet {
                 slab_key: self.descriptor_set.inner.slab_key,
             };
 
+            log::trace!("Sending a buffer write");
             self.write_buffer_tx.send(pending_descriptor_set_write);
         }
     }

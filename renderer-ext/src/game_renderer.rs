@@ -274,6 +274,8 @@ impl VkSurfaceEventListener for GameRenderer {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
+        //std::thread::sleep(std::time::Duration::from_millis(100));
+
         // Flush descriptor set changes
         self.resource_manager.on_begin_frame();
 

@@ -242,10 +242,12 @@ fn create_sprite_pipeline() -> dsc::GraphicsPipeline {
 fn main() {
     // Setup logging
     env_logger::Builder::from_default_env()
+        .default_format_timestamp_nanos(true)
         .filter_module("renderer_shell_vulkan::buffer", log::LevelFilter::Debug)
         .filter_module("renderer_ext::game_renderer", log::LevelFilter::Debug)
+        .filter_module("renderer_ext::resource_managers::descriptor_sets", log::LevelFilter::Trace)
         //.filter_level(log::LevelFilter::Error)
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Debug)
         .init();
 
     // Spawn the daemon in a background thread. This could be a different process, but
@@ -423,7 +425,7 @@ fn main() {
             time.current_instant(),
             std::time::Duration::from_secs_f32(1.0),
         ) {
-            println!("FPS: {}", time.updates_per_second());
+            log::info!("FPS: {}", time.updates_per_second());
             //renderer.dump_stats();
         }
     }

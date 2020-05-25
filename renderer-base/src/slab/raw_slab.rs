@@ -45,7 +45,7 @@ impl<T: Sized> std::fmt::Debug for RawSlabKey<T> {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         f.debug_struct("RawSlabKey")
-            .field("indes", &self.index)
+            .field("index", &self.index)
             .finish()
     }
 }
