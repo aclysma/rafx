@@ -24,7 +24,9 @@
                                 descriptor_type: UniformBuffer,
                                 descriptor_count: 1,
                                 stage_flags: Vertex,
-                                slot_name: "view_proj"
+                                slot_name: "view_proj",
+
+                                internal_buffer_per_descriptor_size: Some(64)
                             ),
                             (
                                 binding: 1,

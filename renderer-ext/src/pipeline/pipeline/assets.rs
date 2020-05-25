@@ -40,8 +40,10 @@ pub struct DescriptorSetLayoutBindingWithSlotName {
     pub descriptor_type: dsc::DescriptorType,
     pub descriptor_count: u32,
     pub stage_flags: dsc::ShaderStageFlags,
-    pub immutable_samplers: Option<Vec<dsc::Sampler>>,
     pub slot_name: String,
+
+    pub immutable_samplers: Option<Vec<dsc::Sampler>>,
+    pub internal_buffer_per_descriptor_size: Option<u32>,
 }
 
 impl Into<dsc::DescriptorSetLayoutBinding> for &DescriptorSetLayoutBindingWithSlotName {
@@ -52,6 +54,7 @@ impl Into<dsc::DescriptorSetLayoutBinding> for &DescriptorSetLayoutBindingWithSl
             descriptor_count: self.descriptor_count,
             stage_flags: self.stage_flags,
             immutable_samplers: self.immutable_samplers.clone(),
+            internal_buffer_per_descriptor_size: self.internal_buffer_per_descriptor_size
         }
     }
 }

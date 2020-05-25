@@ -451,7 +451,7 @@ impl ResourceManager {
         image_load_handle: LoadHandle,
         image: ManuallyDrop<VkImage>,
     ) -> VkResult<LoadedImage> {
-        let image = self.resources.insert_image(image_load_handle, image);
+        let (image_key, image) = self.resources.insert_image(image);
 
         let image_view_meta = dsc::ImageViewMeta {
             view_type: dsc::ImageViewType::Type2D,
@@ -473,9 +473,13 @@ impl ResourceManager {
 
         let image_view = self
             .resources
-            .get_or_create_image_view(image_load_handle, &image_view_meta)?;
+            .get_or_create_image_view(image_key, &image_view_meta)?;
 
-        Ok(LoadedImage { image, image_view })
+        Ok(LoadedImage {
+            image_key,
+            image,
+            image_view
+        })
     }
 
     fn load_shader_module(

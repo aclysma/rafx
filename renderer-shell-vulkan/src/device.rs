@@ -36,6 +36,15 @@ pub struct VkQueues {
     pub present_queue: ash::vk::Queue,
 }
 
+#[derive(Clone)]
+pub struct PhysicalDeviceInfo {
+    pub score: i32,
+    pub queue_family_indices: VkQueueFamilyIndices,
+    pub properties: vk::PhysicalDeviceProperties,
+    pub features: vk::PhysicalDeviceFeatures,
+    pub extension_properties: Vec<ash::vk::ExtensionProperties>,
+}
+
 pub struct VkDeviceContextInner {
     instance: ash::Instance,
     device: ash::Device,
@@ -43,7 +52,7 @@ pub struct VkDeviceContextInner {
     surface: vk::SurfaceKHR,
     surface_loader: ash::extensions::khr::Surface,
     physical_device: vk::PhysicalDevice,
-    queue_family_indices: VkQueueFamilyIndices,
+    physical_device_info: PhysicalDeviceInfo,
     queues: VkQueues,
 }
 
@@ -101,11 +110,23 @@ impl VkDeviceContext {
             .physical_device
     }
 
+    pub fn physical_device_info(&self) -> &PhysicalDeviceInfo {
+        &self.inner
+            .as_ref()
+            .expect("inner is only None if VkDevice is dropped")
+            .physical_device_info
+    }
+
+    pub fn limits(&self) -> &vk::PhysicalDeviceLimits {
+        &self.physical_device_info().properties.limits
+    }
+
     pub fn queue_family_indices(&self) -> &VkQueueFamilyIndices {
         &self
             .inner
             .as_ref()
             .expect("inner is only None if VkDevice is dropped")
+            .physical_device_info
             .queue_family_indices
     }
 
@@ -124,8 +145,8 @@ impl VkDeviceContext {
         surface: ash::vk::SurfaceKHR,
         surface_loader: ash::extensions::khr::Surface,
         physical_device: ash::vk::PhysicalDevice,
-        queue_family_indices: &VkQueueFamilyIndices,
-        queues: &VkQueues,
+        physical_device_info: PhysicalDeviceInfo,
+        queues: VkQueues,
     ) -> Self {
         VkDeviceContext {
             inner: Some(Arc::new(ManuallyDrop::new(VkDeviceContextInner {
@@ -135,8 +156,8 @@ impl VkDeviceContext {
                 surface,
                 surface_loader,
                 physical_device,
-                queue_family_indices: queue_family_indices.clone(),
-                queues: queues.clone(),
+                physical_device_info,
+                queues
             }))),
         }
     }
@@ -204,9 +225,10 @@ pub struct VkDevice {
     pub surface: ash::vk::SurfaceKHR,
     pub surface_loader: ash::extensions::khr::Surface,
     pub physical_device: ash::vk::PhysicalDevice,
-    pub queue_family_indices: VkQueueFamilyIndices,
+    pub physical_device_info: PhysicalDeviceInfo,
+    //pub queue_family_indices: VkQueueFamilyIndices,
     pub queues: VkQueues,
-    pub memory_properties: vk::PhysicalDeviceMemoryProperties,
+    //pub memory_properties: vk::PhysicalDeviceMemoryProperties,
 }
 
 impl VkDevice {
@@ -231,7 +253,7 @@ impl VkDevice {
         let surface_loader = khr::Surface::new(&instance.entry, &instance.instance);
 
         // Pick a physical device
-        let (physical_device, queue_family_indices) = Self::choose_physical_device(
+        let (physical_device, physical_device_info) = Self::choose_physical_device(
             &instance.instance,
             &surface_loader,
             surface,
@@ -242,7 +264,7 @@ impl VkDevice {
         let (logical_device, queues) = Self::create_logical_device(
             &instance.instance,
             physical_device,
-            &queue_family_indices,
+            &physical_device_info.queue_family_indices,
         )?;
 
         let allocator_create_info = vk_mem::AllocatorCreateInfo {
@@ -270,8 +292,8 @@ impl VkDevice {
             surface,
             surface_loader.clone(),
             physical_device,
-            &queue_family_indices,
-            &queues,
+            physical_device_info.clone(),
+            queues.clone(),
         );
 
         Ok(VkDevice {
@@ -279,9 +301,8 @@ impl VkDevice {
             surface,
             surface_loader,
             physical_device,
-            queue_family_indices,
+            physical_device_info,
             queues,
-            memory_properties,
         })
     }
 
@@ -290,7 +311,7 @@ impl VkDevice {
         surface_loader: &ash::extensions::khr::Surface,
         surface: ash::vk::SurfaceKHR,
         physical_device_type_priority: &[PhysicalDeviceType],
-    ) -> VkResult<(ash::vk::PhysicalDevice, VkQueueFamilyIndices)> {
+    ) -> VkResult<(ash::vk::PhysicalDevice, PhysicalDeviceInfo)> {
         let physical_devices = unsafe { instance.enumerate_physical_devices()? };
 
         if physical_devices.is_empty() {
@@ -298,10 +319,11 @@ impl VkDevice {
         }
 
         let mut best_physical_device = None;
+        let mut best_physical_device_info = None;
         let mut best_physical_device_score = -1;
-        let mut best_physical_device_queue_family_indices = None;
+        // let mut best_physical_device_queue_family_indices = None;
         for physical_device in physical_devices {
-            let result = Self::get_score_and_queue_families_for_physical_device(
+            let result = Self::query_physical_device_info(
                 instance,
                 physical_device,
                 surface_loader,
@@ -309,20 +331,21 @@ impl VkDevice {
                 physical_device_type_priority,
             );
 
-            if let Some((score, queue_family_indices)) = result? {
-                if score > best_physical_device_score {
+            if let Some(physical_device_info) = result? {
+                if physical_device_info.score > best_physical_device_score {
                     best_physical_device = Some(physical_device);
-                    best_physical_device_score = score;
-                    best_physical_device_queue_family_indices = Some(queue_family_indices);
+                    best_physical_device_score = physical_device_info.score;
+                    best_physical_device_info = Some(physical_device_info);
+
                 }
             }
         }
 
         //TODO: Return an error
         let physical_device = best_physical_device.expect("Could not find suitable device");
-        let queue_family_indices = best_physical_device_queue_family_indices.unwrap();
+        let physical_device_info = best_physical_device_info.unwrap();
 
-        Ok((physical_device, queue_family_indices))
+        Ok((physical_device, physical_device_info))
     }
 
     fn vk_version_to_string(version: u32) -> String {
@@ -334,13 +357,13 @@ impl VkDevice {
         )
     }
 
-    fn get_score_and_queue_families_for_physical_device(
+    fn query_physical_device_info(
         instance: &ash::Instance,
         device: ash::vk::PhysicalDevice,
         surface_loader: &ash::extensions::khr::Surface,
         surface: ash::vk::SurfaceKHR,
         physical_device_type_priority: &[PhysicalDeviceType],
-    ) -> VkResult<Option<(i32, VkQueueFamilyIndices)>> {
+    ) -> VkResult<Option<PhysicalDeviceInfo>> {
         info!(
             "Preferred device types: {:?}",
             physical_device_type_priority
@@ -356,9 +379,9 @@ impl VkDevice {
         };
 
         //TODO: Check that the extensions we want to use are supported
-        let _extensions: Vec<ash::vk::ExtensionProperties> =
+        let extensions: Vec<ash::vk::ExtensionProperties> =
             unsafe { instance.enumerate_device_extension_properties(device)? };
-        let _features: vk::PhysicalDeviceFeatures =
+        let features: vk::PhysicalDeviceFeatures =
             unsafe { instance.get_physical_device_features(device) };
 
         let queue_family_indices =
@@ -390,8 +413,16 @@ impl VkDevice {
                 score
             );
 
+            let result = PhysicalDeviceInfo {
+                score,
+                queue_family_indices,
+                properties,
+                extension_properties: extensions,
+                features
+            };
+
             trace!("{:#?}", properties);
-            Ok(Some((score, queue_family_indices)))
+            Ok(Some(result))
         } else {
             info!(
                 "Found unsuitable device '{}' API: {} DriverVersion: {} could not find queue families",

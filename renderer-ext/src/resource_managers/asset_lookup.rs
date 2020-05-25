@@ -8,7 +8,7 @@ use super::DescriptorSetArc;
 use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::handle::Handle;
 use std::sync::Arc;
-use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource};
+use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource, ImageKey};
 
 //
 // The "loaded" state of assets. Assets may have dependencies. Arcs to those dependencies ensure
@@ -68,6 +68,7 @@ pub struct LoadedMaterialInstance {
 pub struct LoadedImage {
     //image_load_handle: LoadHandle,
     //image_view_meta: dsc::ImageViewMeta,
+    pub image_key: ImageKey,
     pub image: ResourceArc<VkImageRaw>,
     pub image_view: ResourceArc<ImageViewResource>,
     // One per swapchain

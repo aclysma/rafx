@@ -6,6 +6,18 @@ use ash::version::DeviceV1_0;
 /// Loads a shader into a buffer
 pub use ash::util::read_spv;
 
+pub fn round_size_up_to_alignment_u32(size: u32, required_alignment: u32) -> u32
+{
+    assert!(required_alignment > 0);
+    return ((size + required_alignment - 1) / required_alignment) * required_alignment
+}
+
+pub fn round_size_up_to_alignment(size: vk::DeviceSize, required_alignment: vk::DeviceSize) -> vk::DeviceSize
+{
+    assert!(required_alignment > 0);
+    return ((size + required_alignment - 1) / required_alignment) * required_alignment
+}
+
 // Don't actually do this in shipping code
 /*
 /// Fires off a command buffer and then waits for the device to be idle

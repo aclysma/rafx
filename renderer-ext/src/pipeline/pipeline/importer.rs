@@ -16,13 +16,13 @@ struct PipelineImporterState2(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "3906ac10-8782-446d-aee4-e94611c6d61e"]
-struct PipelineImporter2;
-impl Importer for PipelineImporter2 {
+struct PipelineImporter;
+impl Importer for PipelineImporter {
     fn version_static() -> u32
     where
         Self: Sized,
     {
-        1
+        2
     }
 
     fn version(&self) -> u32 {
@@ -63,22 +63,22 @@ impl Importer for PipelineImporter2 {
 
 inventory::submit!(SourceFileImporter {
     extension: "pipeline",
-    instantiator: || Box::new(PipelineImporter2 {}),
+    instantiator: || Box::new(PipelineImporter {}),
 });
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "5cfac411-55a1-49dc-b07e-1ac486f9fe98"]
-struct MaterialImporterState2(Option<AssetUuid>);
+struct MaterialImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "eb9a20b7-3957-46fd-b832-2e7e99852bb0"]
-struct MaterialImporter2;
-impl Importer for MaterialImporter2 {
+struct MaterialImporter;
+impl Importer for MaterialImporter {
     fn version_static() -> u32
     where
         Self: Sized,
     {
-        1
+        2
     }
 
     fn version(&self) -> u32 {
@@ -87,7 +87,7 @@ impl Importer for MaterialImporter2 {
 
     type Options = ();
 
-    type State = MaterialImporterState2;
+    type State = MaterialImporterState;
 
     /// Reads the given bytes and produces assets.
     fn import(
@@ -99,7 +99,7 @@ impl Importer for MaterialImporter2 {
         let id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = MaterialImporterState2(Some(id));
+        *state = MaterialImporterState(Some(id));
 
         let material_asset = ron::de::from_reader::<_, MaterialAsset>(source)?;
         log::trace!("IMPORTED MATERIAL:\n{:#?}", material_asset);
@@ -119,7 +119,7 @@ impl Importer for MaterialImporter2 {
 
 inventory::submit!(SourceFileImporter {
     extension: "material",
-    instantiator: || Box::new(MaterialImporter2 {}),
+    instantiator: || Box::new(MaterialImporter {}),
 });
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
@@ -128,13 +128,13 @@ struct MaterialInstanceImporterState2(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "4ce02143-a5c4-4433-b843-07cdccf013b0"]
-struct MaterialInstanceImporter2;
-impl Importer for MaterialInstanceImporter2 {
+struct MaterialInstanceImporter;
+impl Importer for MaterialInstanceImporter {
     fn version_static() -> u32
     where
         Self: Sized,
     {
-        3
+        5
     }
 
     fn version(&self) -> u32 {
@@ -175,5 +175,5 @@ impl Importer for MaterialInstanceImporter2 {
 
 inventory::submit!(SourceFileImporter {
     extension: "materialinstance",
-    instantiator: || Box::new(MaterialInstanceImporter2 {}),
+    instantiator: || Box::new(MaterialInstanceImporter {}),
 });

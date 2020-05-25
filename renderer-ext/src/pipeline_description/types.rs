@@ -428,6 +428,11 @@ pub struct DescriptorSetLayoutBinding {
     pub descriptor_count: u32,
     pub stage_flags: ShaderStageFlags,
     pub immutable_samplers: Option<Vec<Sampler>>,
+
+    // Used for descriptor sets, if this is non-zero we will allocate a buffer owned by the
+    // descriptor set pool chunk, allowing materials to be used directly without worrying about
+    // buffers.
+    pub internal_buffer_per_descriptor_size: Option<u32>,
 }
 
 // impl Into<vk::DescriptorSetLayoutBinding> for DescriptorSetLayoutBinding {

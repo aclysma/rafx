@@ -2,7 +2,7 @@ use crossbeam_channel::{Sender, Receiver};
 use std::fmt::Formatter;
 use std::hash::Hash;
 use std::sync::{Weak, Arc};
-use renderer_shell_vulkan::{VkResource, VkResourceDropSink, VkDeviceContext, VkImageRaw, VkImage, VkBufferRaw};
+use renderer_shell_vulkan::{VkResource, VkResourceDropSink, VkDeviceContext, VkImageRaw, VkImage, VkBufferRaw, VkBuffer};
 use fnv::FnvHashMap;
 use std::marker::PhantomData;
 use ash::vk;
@@ -329,19 +329,19 @@ pub struct GraphicsPipelineKey {
     swapchain_surface_info: dsc::SwapchainSurfaceInfo,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ImageKey {
-    load_handle: LoadHandle,
+    id: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BufferKey {
-    load_handle: LoadHandle,
+    id: u64
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImageViewKey {
-    image_load_handle: LoadHandle,
+    image_key: ImageKey,
     image_view_meta: dsc::ImageViewMeta,
 }
 
@@ -414,6 +414,9 @@ impl VkResource for ImageViewResource {
 // dropped can safely be destroyed after a few frames have passed (based on max number of frames
 // that can be submitted to the GPU)
 //
+//TODO: Some of the resources like buffers and images don't need to be "keyed" and could probably
+// be kept in a slab. We *do* need a way to access and quickly remove elements though, and whatever
+// key we use is sent through a Sender/Receiver pair to be dropped later.
 pub struct ResourceLookupSet {
     pub device_context: VkDeviceContext,
     pub shader_modules: ResourceLookup<dsc::ShaderModule, vk::ShaderModule>,
@@ -425,6 +428,10 @@ pub struct ResourceLookupSet {
     pub image_views: ResourceLookup<ImageViewKey, ImageViewResource>,
     pub samplers: ResourceLookup<dsc::Sampler, vk::Sampler>,
     pub buffers: ResourceLookup<BufferKey, VkBufferRaw>,
+
+    // Used to generate keys for images/buffers
+    pub next_image_id: u64,
+    pub next_buffer_id: u64,
 }
 
 impl ResourceLookupSet {
@@ -443,6 +450,8 @@ impl ResourceLookupSet {
             image_views: ResourceLookup::new(max_frames_in_flight),
             samplers: ResourceLookup::new(max_frames_in_flight),
             buffers: ResourceLookup::new(max_frames_in_flight),
+            next_image_id: 0,
+            next_buffer_id: 0
         }
     }
 
@@ -717,23 +726,36 @@ impl ResourceLookupSet {
 
     pub fn insert_image(
         &mut self,
-        load_handle: LoadHandle,
         image: ManuallyDrop<VkImage>,
-    ) -> ResourceArc<VkImageRaw> {
-        let image_key = ImageKey { load_handle };
+    ) -> (ImageKey, ResourceArc<VkImageRaw>) {
+        let image_key = ImageKey { id: self.next_image_id };
+        self.next_image_id += 1;
 
         let hash = ResourceHash::from_key(&image_key);
         let raw_image = ManuallyDrop::into_inner(image).take_raw().unwrap();
-        self.images.insert(hash, &image_key, raw_image)
+        let image = self.images.insert(hash, &image_key, raw_image);
+        (image_key, image)
+    }
+
+    pub fn insert_buffer(
+        &mut self,
+        buffer: ManuallyDrop<VkBuffer>,
+    ) -> ResourceArc<VkBufferRaw> {
+        let buffer_key = BufferKey { id: self.next_buffer_id };
+        self.next_buffer_id += 1;
+
+        let hash = ResourceHash::from_key(&buffer_key);
+        let raw_buffer = ManuallyDrop::into_inner(buffer).take_raw().unwrap();
+        self.buffers.insert(hash, &buffer_key, raw_buffer)
     }
 
     pub fn get_or_create_image_view(
         &mut self,
-        image_load_handle: LoadHandle,
+        image_key: ImageKey,
         image_view_meta: &dsc::ImageViewMeta,
     ) -> VkResult<ResourceArc<ImageViewResource>> {
         let image_view_key = ImageViewKey {
-            image_load_handle,
+            image_key,
             image_view_meta: image_view_meta.clone(),
         };
 
@@ -741,11 +763,11 @@ impl ResourceLookupSet {
         if let Some(image_view) = self.image_views.get(hash, &image_view_key) {
             Ok(image_view)
         } else {
-            let image_key = ImageKey {
-                load_handle: image_load_handle,
-            };
-            let image_load_handle_hash = ResourceHash::from_key(&image_load_handle);
-            let image = self.images.get(image_load_handle_hash, &image_key).unwrap();
+            // let image_key = ImageKey {
+            //     image_key: image_load_handle,
+            // };
+            let image_key_hash = ResourceHash::from_key(&image_key);
+            let image = self.images.get(image_key_hash, &image_key).unwrap();
 
             log::trace!("Creating image view\n{:#?}", image_view_key);
             let resource = crate::pipeline_description::create_image_view(

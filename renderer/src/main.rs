@@ -10,7 +10,7 @@ use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
 use renderer_ext::GameRendererWithContext;
-use image::{GenericImageView, load};
+//use image::{GenericImageView, load};
 use atelier_assets::loader as atelier_loader;
 
 use atelier_assets::core::asset_uuid;
@@ -24,7 +24,7 @@ use imgui::{Key, Image};
 use renderer_ext::asset_storage::{ResourceLoadHandler, ResourceHandle};
 use std::mem::ManuallyDrop;
 //use renderer_ext::renderpass::sprite::LoadingSprite;
-use crossbeam_channel::{Sender, Receiver};
+//use crossbeam_channel::{Sender, Receiver};
 use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;

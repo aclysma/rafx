@@ -5,7 +5,7 @@ use crossbeam_channel::{Sender, Receiver};
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::collections::VecDeque;
-use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator};
+use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkBuffer, VkResourceDropSink};
 use ash::prelude::VkResult;
 use fnv::{FnvHashMap, FnvHashSet};
 use super::ResourceHash;
@@ -17,6 +17,9 @@ use crate::pipeline::pipeline::{DescriptorSetLayoutWithSlotName, MaterialInstanc
 use crate::resource_managers::asset_lookup::{SlotNameLookup, LoadedAssetLookupSet, LoadedMaterialPass, LoadedMaterialInstance, LoadedMaterial};
 use atelier_assets::loader::handle::AssetHandle;
 use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, ImageViewResource, ResourceLookupSet};
+use crate::pipeline_description::{DescriptorType, DescriptorSetLayoutBinding};
+use std::mem::ManuallyDrop;
+use arrayvec::ArrayVec;
 
 //
 // These represent a write update that can be applied to a descriptor set in a pool
@@ -179,6 +182,74 @@ impl std::fmt::Debug for DescriptorSetArc {
     }
 }
 
+
+
+
+struct DescriptorBindingBufferSet {
+    buffers: Vec<ManuallyDrop<VkBuffer>>,
+    buffer_info: DescriptorSetPoolRequiredBufferInfo,
+    // per_descriptor_stride: u32,
+    // per_descriptor_size: u32,
+    // descriptor_type: DescriptorType
+}
+
+impl DescriptorBindingBufferSet {
+    fn new(device_context: &VkDeviceContext, buffer_info: &DescriptorSetPoolRequiredBufferInfo) -> VkResult<Self> {
+        //This is the only one we support right now
+        assert!(buffer_info.descriptor_type == DescriptorType::UniformBuffer);
+        // X frames in flight, plus one not in flight that is writable
+        let buffer_count = RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1;
+        let mut buffers = Vec::with_capacity(RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1);
+        for _ in 0..(RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1) {
+            let buffer = VkBuffer::new(
+                device_context,
+                vk_mem::MemoryUsage::CpuToGpu,
+                vk::BufferUsageFlags::UNIFORM_BUFFER,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                (buffer_info.per_descriptor_stride * RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL) as u64
+            )?;
+
+            buffers.push(ManuallyDrop::new(buffer));
+        }
+
+        Ok(DescriptorBindingBufferSet {
+            buffers,
+            buffer_info: buffer_info.clone()
+        })
+    }
+}
+
+
+struct DescriptorLayoutBufferSet {
+    buffer_sets: FnvHashMap<DescriptorSetElementKey, DescriptorBindingBufferSet>
+}
+
+impl DescriptorLayoutBufferSet {
+    fn new(device_context: &VkDeviceContext, buffer_infos: &[DescriptorSetPoolRequiredBufferInfo]) -> VkResult<Self> {
+        let mut buffer_sets : FnvHashMap<DescriptorSetElementKey, DescriptorBindingBufferSet> = Default::default();
+        for buffer_info in buffer_infos {
+            let buffer = DescriptorBindingBufferSet::new(device_context, &buffer_info)?;
+            buffer_sets.insert(buffer_info.dst_element, buffer);
+        }
+
+        Ok(DescriptorLayoutBufferSet {
+            buffer_sets
+        })
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 #[derive(Debug)]
 struct PendingDescriptorSetWrite {
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
@@ -195,22 +266,28 @@ struct RegisteredDescriptorSetPoolChunk {
     // These are stored for RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT frames so that they
     // are applied to each frame's pool
     pending_writes: VecDeque<PendingDescriptorSetWrite>,
+
+    buffers: DescriptorLayoutBufferSet,
 }
 
 impl RegisteredDescriptorSetPoolChunk {
     fn new(
         device_context: &VkDeviceContext,
+        buffer_info: &[DescriptorSetPoolRequiredBufferInfo],
         descriptor_set_layout: vk::DescriptorSetLayout,
         allocator: &mut VkDescriptorPoolAllocator,
     ) -> VkResult<Self> {
         let pool = allocator.allocate_pool(device_context.device())?;
 
+        // This structure describes how the descriptor sets will be allocated.
         let descriptor_set_layouts =
-            [descriptor_set_layout; RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1];
+            [descriptor_set_layout; RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL as usize];
 
+        // We need to allocate the full set once per frame in flight, plus one frame not-in-flight
+        // that we can modify
         let mut descriptor_sets =
             Vec::with_capacity(RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1);
-        for i in 0..RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1 {
+        for _ in 0..RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1 {
             let set_create_info = vk::DescriptorSetAllocateInfo::builder()
                 .descriptor_pool(pool)
                 .set_layouts(&descriptor_set_layouts);
@@ -223,18 +300,74 @@ impl RegisteredDescriptorSetPoolChunk {
             descriptor_sets.push(descriptor_sets_for_frame);
         }
 
+        // Now allocate all the buffers that act as backing-stores for descriptor sets
+        let buffers = DescriptorLayoutBufferSet::new(device_context, buffer_info)?;
+
+
+        // There is some trickiness here, vk::WriteDescriptorSet will hold a pointer to vk::DescriptorBufferInfos
+        // that have been pushed into `write_descriptor_buffer_infos`. We don't want to use a Vec
+        // since it can realloc and invalidate the pointers.
+        const descriptor_count: usize = (RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1) * RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL as usize;
+        let mut write_descriptor_buffer_infos: ArrayVec<[_;descriptor_count]> = ArrayVec::new();
+        let mut descriptor_writes = Vec::new();
+
+        // For every binding/buffer set
+        for (binding_key, binding_buffers) in &buffers.buffer_sets {
+            // For every per-frame buffer
+            for (binding_buffer_for_frame, binding_descriptors_for_frame) in binding_buffers.buffers.iter().zip(&descriptor_sets) {
+                // For every descriptor
+                let mut offset = 0;
+                for descriptor_set in binding_descriptors_for_frame {
+                    let buffer_info = [vk::DescriptorBufferInfo::builder()
+                        .buffer(binding_buffer_for_frame.buffer())
+                        .range(binding_buffers.buffer_info.per_descriptor_size as u64)
+                        .offset(offset)
+                        .build()
+                    ];
+
+                    // The array of buffer infos has to persist until all WriteDescriptorSet are
+                    // built and written
+                    write_descriptor_buffer_infos.push(buffer_info);
+
+                    let descriptor_set_write = vk::WriteDescriptorSet::builder()
+                        .dst_set(*descriptor_set)
+                        .dst_binding(binding_key.dst_binding)
+                        //.dst_array_element(element_key.dst_array_element)
+                        .dst_array_element(0)
+                        .descriptor_type(binding_buffers.buffer_info.descriptor_type.into())
+                        .buffer_info(&*write_descriptor_buffer_infos.last().unwrap())
+                        .build();
+
+                    descriptor_writes.push(descriptor_set_write);
+
+                    offset += binding_buffers.buffer_info.per_descriptor_stride as u64;
+                }
+            }
+        }
+
+        unsafe {
+            device_context.device().update_descriptor_sets(&descriptor_writes, &[]);
+        }
+
         Ok(RegisteredDescriptorSetPoolChunk {
             pool,
             descriptor_sets,
             pending_writes: Default::default(),
+            buffers,
         })
     }
 
     fn destroy(
         &mut self,
-        allocator: &mut VkDescriptorPoolAllocator,
+        pool_allocator: &mut VkDescriptorPoolAllocator,
+        buffer_drop_sink: &mut VkResourceDropSink<ManuallyDrop<VkBuffer>>
     ) {
-        allocator.retire_pool(self.pool);
+        pool_allocator.retire_pool(self.pool);
+        for (key, buffer_set) in self.buffers.buffer_sets.drain() {
+            for buffer in buffer_set.buffers {
+                buffer_drop_sink.retire(buffer);
+            }
+        }
     }
 
     fn write(
@@ -383,6 +516,14 @@ impl RegisteredDescriptorSetPoolChunk {
     }
 }
 
+#[derive(Clone)]
+struct DescriptorSetPoolRequiredBufferInfo {
+    dst_element: DescriptorSetElementKey,
+    descriptor_type: dsc::DescriptorType,
+    per_descriptor_size: u32,
+    per_descriptor_stride: u32,
+}
+
 struct RegisteredDescriptorSetPool {
     //descriptor_set_layout_def: dsc::DescriptorSetLayout,
     slab: RawSlab<RegisteredDescriptorSet>,
@@ -393,6 +534,11 @@ struct RegisteredDescriptorSetPool {
     write_rx: Receiver<SlabKeyDescriptorSetWriteSet>,
     descriptor_pool_allocator: VkDescriptorPoolAllocator,
     descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
+
+    buffer_drop_sink: VkResourceDropSink<ManuallyDrop<VkBuffer>>,
+
+    //descriptor_set_layout_def: dsc::DescriptorSetLayout,
+    buffer_infos: Vec<DescriptorSetPoolRequiredBufferInfo>,
 
     chunks: Vec<RegisteredDescriptorSetPoolChunk>,
 }
@@ -440,12 +586,31 @@ impl RegisteredDescriptorSetPool {
             Self::MAX_FRAMES_IN_FLIGHT as u32 + 1,
             move |device| {
                 let pool_builder = vk::DescriptorPoolCreateInfo::builder()
-                    .max_sets(Self::MAX_DESCRIPTORS_PER_POOL)
+                    .max_sets(Self::MAX_DESCRIPTORS_PER_POOL * (Self::MAX_FRAMES_IN_FLIGHT as u32 + 1))
                     .pool_sizes(&pool_sizes);
 
                 unsafe { device.create_descriptor_pool(&*pool_builder, None) }
             },
         );
+
+        let mut buffer_infos = Vec::new();
+        for binding in &descriptor_set_layout_def.descriptor_set_layout_bindings {
+            if let Some(per_descriptor_size) = binding.internal_buffer_per_descriptor_size {
+                //TODO: 256 is the max allowed by the vulkan spec but we could improve this by using the
+                // actual hardware value given by device limits
+                let required_alignment = device_context.limits().min_uniform_buffer_offset_alignment as u32;
+                let per_descriptor_stride = renderer_shell_vulkan::util::round_size_up_to_alignment_u32(per_descriptor_size, required_alignment);
+
+                buffer_infos.push(DescriptorSetPoolRequiredBufferInfo {
+                    per_descriptor_size,
+                    per_descriptor_stride,
+                    descriptor_type: binding.descriptor_type,
+                    dst_element: DescriptorSetElementKey {
+                        dst_binding: binding.binding
+                    }
+                })
+            }
+        }
 
         RegisteredDescriptorSetPool {
             //descriptor_set_layout_def: descriptor_set_layout_def.clone(),
@@ -458,6 +623,8 @@ impl RegisteredDescriptorSetPool {
             descriptor_pool_allocator,
             descriptor_set_layout,
             chunks: Default::default(),
+            buffer_infos,
+            buffer_drop_sink: VkResourceDropSink::new(Self::MAX_FRAMES_IN_FLIGHT as u32)
         }
     }
 
@@ -480,6 +647,7 @@ impl RegisteredDescriptorSetPool {
         while chunk_index as usize >= self.chunks.len() {
             self.chunks.push(RegisteredDescriptorSetPoolChunk::new(
                 device_context,
+                &self.buffer_infos,
                 self.descriptor_set_layout.get_raw().descriptor_set_layout,
                 &mut self.descriptor_pool_allocator,
             )?);
@@ -536,11 +704,12 @@ impl RegisteredDescriptorSetPool {
         device_context: &VkDeviceContext,
     ) {
         for chunk in &mut self.chunks {
-            chunk.destroy(&mut self.descriptor_pool_allocator);
+            chunk.destroy(&mut self.descriptor_pool_allocator, &mut self.buffer_drop_sink);
         }
 
         self.descriptor_pool_allocator
             .destroy(device_context.device());
+        self.buffer_drop_sink.destroy(&device_context);
         self.chunks.clear();
     }
 }
