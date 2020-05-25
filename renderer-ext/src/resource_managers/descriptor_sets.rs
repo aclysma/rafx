@@ -5,7 +5,7 @@ use crossbeam_channel::{Sender, Receiver};
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::collections::VecDeque;
-use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkBuffer, VkResourceDropSink, MAX_FRAMES_IN_FLIGHT};
+use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkBuffer, VkResourceDropSink};
 use ash::prelude::VkResult;
 use fnv::{FnvHashMap, FnvHashSet};
 use super::ResourceHash;
@@ -20,6 +20,12 @@ use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, Ima
 use crate::pipeline_description::{DescriptorType, DescriptorSetLayoutBinding};
 use std::mem::ManuallyDrop;
 use arrayvec::ArrayVec;
+
+const MAX_DESCRIPTORS_PER_POOL: u32 = 64;
+const MAX_FRAMES_IN_FLIGHT: usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT;
+const MAX_FRAMES_IN_FLIGHT_PLUS_1: usize = MAX_FRAMES_IN_FLIGHT + 1;
+
+//const MAX_FRAMES_IN_FLIGHT: usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT + 1;
 
 //
 // These represent descriptor updates that can be applied to a descriptor set in a pool
@@ -105,15 +111,15 @@ struct RegisteredDescriptorSet {
     //write_set: DescriptorSetWriteSet,
 }
 
-// We need to track which of the MAX_FRAMES_IN_FLIGHT + 1 frames of data is currently writable
+// We need to track which of the MAX_FRAMES_IN_FLIGHT_PLUS_1 frames of data is currently writable
 type FrameInFlightIndex = u32;
 
 fn add_to_frame_in_flight_index(index: FrameInFlightIndex, value: u32) -> FrameInFlightIndex {
-    (index + value) % RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32
+    (index + value) % MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32
 }
 
 fn subtract_from_frame_in_flight_index(index: FrameInFlightIndex, value: u32) -> FrameInFlightIndex {
-    (value + RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32 - index) % RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32
+    (value + MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32 - index) % MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32
 }
 
 //
@@ -188,8 +194,6 @@ impl std::fmt::Debug for DescriptorSetArc {
     }
 }
 
-
-
 //
 // Creates and manages the internal buffers for a single binding within a descriptor pool chunk
 //
@@ -203,15 +207,14 @@ impl DescriptorBindingBufferSet {
         //This is the only one we support right now
         assert!(buffer_info.descriptor_type == DescriptorType::UniformBuffer);
         // X frames in flight, plus one not in flight that is writable
-        let buffer_count = RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1;
-        let mut buffers = Vec::with_capacity(RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1);
-        for _ in 0..(RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1) {
+        let mut buffers = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT_PLUS_1);
+        for _ in 0..MAX_FRAMES_IN_FLIGHT_PLUS_1 {
             let buffer = VkBuffer::new(
                 device_context,
                 vk_mem::MemoryUsage::CpuToGpu,
                 vk::BufferUsageFlags::UNIFORM_BUFFER,
                 vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                (buffer_info.per_descriptor_stride * RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL) as u64
+                (buffer_info.per_descriptor_stride * MAX_DESCRIPTORS_PER_POOL) as u64
             )?;
 
             buffers.push(ManuallyDrop::new(buffer));
@@ -245,19 +248,8 @@ impl DescriptorLayoutBufferSet {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
 // A write to the descriptors within a single descriptor set that has been scheduled (i.e. will occur
-// over the next MAX_FRAMES_IN_FLIGHT frames
+// over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames
 #[derive(Debug)]
 struct PendingDescriptorSetWriteSet {
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
@@ -266,7 +258,7 @@ struct PendingDescriptorSetWriteSet {
 }
 
 // A write to the buffers within a single descriptor set that has been scheduled (i.e. will occur
-// over the next MAX_FRAMES_IN_FLIGHT frames
+// over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames
 #[derive(Debug)]
 struct PendingDescriptorSetWriteBuffer {
     slab_key: RawSlabKey<RegisteredDescriptorSet>,
@@ -275,7 +267,7 @@ struct PendingDescriptorSetWriteBuffer {
 }
 
 //
-// A single chunk within a pool. This allows us to create MAX_DESCRIPTORS_PER_POOL * MAX_FRAMES_IN_FLIGHT
+// A single chunk within a pool. This allows us to create MAX_DESCRIPTORS_PER_POOL * MAX_FRAMES_IN_FLIGHT_PLUS_1
 // descriptors for a single descriptor set layout
 //
 struct RegisteredDescriptorSetPoolChunk {
@@ -291,7 +283,7 @@ struct RegisteredDescriptorSetPoolChunk {
     // The buffers that back the descriptor sets
     buffers: DescriptorLayoutBufferSet,
 
-    // The writes that have been scheduled to occur over the next MAX_FRAMES_IN_FLIGHT frames. This
+    // The writes that have been scheduled to occur over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames. This
     // ensures that each frame's descriptor sets/buffers are appropriately updated
     pending_set_writes: VecDeque<PendingDescriptorSetWriteSet>,
     pending_buffer_writes: VecDeque<PendingDescriptorSetWriteBuffer>,
@@ -308,13 +300,13 @@ impl RegisteredDescriptorSetPoolChunk {
 
         // This structure describes how the descriptor sets will be allocated.
         let descriptor_set_layouts =
-            [descriptor_set_layout; RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL as usize];
+            [descriptor_set_layout; MAX_DESCRIPTORS_PER_POOL as usize];
 
         // We need to allocate the full set once per frame in flight, plus one frame not-in-flight
         // that we can modify
         let mut descriptor_sets =
-            Vec::with_capacity(RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1);
-        for _ in 0..RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1 {
+            Vec::with_capacity(MAX_FRAMES_IN_FLIGHT_PLUS_1);
+        for _ in 0..MAX_FRAMES_IN_FLIGHT_PLUS_1 {
             let set_create_info = vk::DescriptorSetAllocateInfo::builder()
                 .descriptor_pool(pool)
                 .set_layouts(&descriptor_set_layouts);
@@ -334,8 +326,8 @@ impl RegisteredDescriptorSetPoolChunk {
         // There is some trickiness here, vk::WriteDescriptorSet will hold a pointer to vk::DescriptorBufferInfos
         // that have been pushed into `write_descriptor_buffer_infos`. We don't want to use a Vec
         // since it can realloc and invalidate the pointers.
-        const descriptor_count: usize = (RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT + 1) * RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL as usize;
-        let mut write_descriptor_buffer_infos: ArrayVec<[_;descriptor_count]> = ArrayVec::new();
+        const DESCRIPTOR_COUNT: usize = (MAX_FRAMES_IN_FLIGHT_PLUS_1) * MAX_DESCRIPTORS_PER_POOL as usize;
+        let mut write_descriptor_buffer_infos: ArrayVec<[_;DESCRIPTOR_COUNT]> = ArrayVec::new();
         let mut descriptor_writes = Vec::new();
 
         // For every binding/buffer set
@@ -410,11 +402,12 @@ impl RegisteredDescriptorSetPoolChunk {
 
         // Use frame_in_flight_index for the live_until_frame because every update, we immediately
         // increment the frame and *then* do updates. So by setting it to the pre-next-update
-        // frame_in_flight_index, this will make the write stick around for MAX_FRAMES_IN_FLIGHT frames
+        // frame_in_flight_index, this will make the write stick around for this and the next
+        // MAX_FRAMES_IN_FLIGHT frames
         let pending_write = PendingDescriptorSetWriteSet {
             slab_key,
             write_set,
-            live_until_frame: frame_in_flight_index,
+            live_until_frame: add_to_frame_in_flight_index(frame_in_flight_index, MAX_FRAMES_IN_FLIGHT as u32),
         };
 
         //TODO: Consider pushing these into a hashmap for the frame and let the pending write array
@@ -422,7 +415,7 @@ impl RegisteredDescriptorSetPoolChunk {
         self.pending_set_writes.push_back(pending_write);
 
         let descriptor_index =
-            slab_key.index() % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
+            slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
         self.descriptor_sets
             .iter()
             .map(|x| x[descriptor_index as usize])
@@ -440,11 +433,12 @@ impl RegisteredDescriptorSetPoolChunk {
 
         // Use frame_in_flight_index for the live_until_frame because every update, we immediately
         // increment the frame and *then* do updates. So by setting it to the pre-next-update
-        // frame_in_flight_index, this will make the write stick around for MAX_FRAMES_IN_FLIGHT frames
+        // frame_in_flight_index, this will make the write stick around for this and the next
+        // MAX_FRAMES_IN_FLIGHT frames
         let pending_write = PendingDescriptorSetWriteBuffer {
             slab_key,
             write_buffer,
-            live_until_frame: frame_in_flight_index,
+            live_until_frame: add_to_frame_in_flight_index(frame_in_flight_index, MAX_FRAMES_IN_FLIGHT as u32),
         };
 
         //TODO: Consider pushing these into a hashmap for the frame and let the pending write array
@@ -452,7 +446,7 @@ impl RegisteredDescriptorSetPoolChunk {
         self.pending_buffer_writes.push_back(pending_write);
 
         let descriptor_index =
-            slab_key.index() % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
+            slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
         self.descriptor_sets
             .iter()
             .map(|x| x[descriptor_index as usize])
@@ -494,7 +488,7 @@ impl RegisteredDescriptorSetPoolChunk {
             //log::trace!("{:#?}", element);
 
             let descriptor_set_index = slab_key.index()
-                % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
+                % MAX_DESCRIPTORS_PER_POOL;
             let descriptor_set = self.descriptor_sets[frame_in_flight_index as usize]
                 [descriptor_set_index as usize];
 
@@ -537,23 +531,14 @@ impl RegisteredDescriptorSetPoolChunk {
                 builder = builder.image_info(&image_infos);
             }
 
-            //TODO: DIRTY HACK TO JUST LOAD THE IMAGE
+            //TODO: DIRTY HACK
             if builder.descriptor_count == 0 {
                 continue;
             }
 
-            //TODO: DIRTY HACK TO JUST LOAD THE IMAGE
-            // if image_infos.is_empty() {
-            //     continue;
-            // }
-
             write_builders.push(builder.build());
             vk_image_infos.push(image_infos);
         }
-
-        //DescriptorSetWrite::write_sets(self.sets[frame_in_flight_index], writes);
-
-        //device_context.device().update_descriptor_sets()
 
         if !write_builders.is_empty() {
             unsafe {
@@ -584,7 +569,7 @@ impl RegisteredDescriptorSetPoolChunk {
             }
 
             let descriptor_set_index = slab_key.index()
-                % RegisteredDescriptorSetPool::MAX_DESCRIPTORS_PER_POOL;
+                % MAX_DESCRIPTORS_PER_POOL;
             let offset = buffer.buffer_info.per_descriptor_stride * descriptor_set_index;
 
             let buffer = &mut buffer.buffers[frame_in_flight_index as usize];
@@ -664,15 +649,12 @@ struct RegisteredDescriptorSetPool {
 }
 
 impl RegisteredDescriptorSetPool {
-    const MAX_DESCRIPTORS_PER_POOL: u32 = 64;
-    const MAX_FRAMES_IN_FLIGHT: usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT;
 
     pub fn new(
         device_context: &VkDeviceContext,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
         descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
     ) -> Self {
-        //renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
         let (write_set_tx, write_set_rx) = crossbeam_channel::unbounded();
         let (write_buffer_tx, write_buffer_rx) = crossbeam_channel::unbounded();
@@ -686,7 +668,7 @@ impl RegisteredDescriptorSetPool {
         for desc in &descriptor_set_layout_def.descriptor_set_layout_bindings {
             let ty: vk::DescriptorType = desc.descriptor_type.into();
             descriptor_counts[ty.as_raw() as usize] +=
-                Self::MAX_DESCRIPTORS_PER_POOL * (1 + Self::MAX_FRAMES_IN_FLIGHT as u32);
+                MAX_DESCRIPTORS_PER_POOL * (MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32);
         }
 
         let mut pool_sizes = Vec::with_capacity(dsc::DescriptorType::count());
@@ -703,11 +685,11 @@ impl RegisteredDescriptorSetPool {
         // The allocator will produce descriptor sets as needed and destroy them after waiting a few
         // frames for them to finish any submits that reference them
         let descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
-            Self::MAX_FRAMES_IN_FLIGHT as u32,
-            Self::MAX_FRAMES_IN_FLIGHT as u32 + 1,
+            MAX_FRAMES_IN_FLIGHT as u32,
+            MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32,
             move |device| {
                 let pool_builder = vk::DescriptorPoolCreateInfo::builder()
-                    .max_sets(Self::MAX_DESCRIPTORS_PER_POOL * (Self::MAX_FRAMES_IN_FLIGHT as u32 + 1))
+                    .max_sets(MAX_DESCRIPTORS_PER_POOL * MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32)
                     .pool_sizes(&pool_sizes);
 
                 unsafe { device.create_descriptor_pool(&*pool_builder, None) }
@@ -734,7 +716,7 @@ impl RegisteredDescriptorSetPool {
         }
 
         RegisteredDescriptorSetPool {
-            slab: RawSlab::with_capacity(Self::MAX_DESCRIPTORS_PER_POOL),
+            slab: RawSlab::with_capacity(MAX_DESCRIPTORS_PER_POOL),
             drop_tx,
             drop_rx,
             write_set_tx,
@@ -745,7 +727,7 @@ impl RegisteredDescriptorSetPool {
             descriptor_set_layout,
             chunks: Default::default(),
             buffer_infos,
-            buffer_drop_sink: VkResourceDropSink::new(Self::MAX_FRAMES_IN_FLIGHT as u32)
+            buffer_drop_sink: VkResourceDropSink::new(MAX_FRAMES_IN_FLIGHT as u32)
         }
     }
 
@@ -762,7 +744,7 @@ impl RegisteredDescriptorSetPool {
 
         // Use the slab allocator to find an unused index, determine the chunk index from that
         let slab_key = self.slab.allocate(registered_set);
-        let chunk_index = (slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL) as usize;
+        let chunk_index = (slab_key.index() / MAX_DESCRIPTORS_PER_POOL) as usize;
 
         // Add more chunks if necessary
         while chunk_index as usize >= self.chunks.len() {
@@ -791,13 +773,13 @@ impl RegisteredDescriptorSetPool {
     ) {
         for write in self.write_set_rx.try_iter() {
             log::trace!("Received a set write for frame in flight index {}", frame_in_flight_index);
-            let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
+            let chunk_index = write.slab_key.index() / MAX_DESCRIPTORS_PER_POOL;
             self.chunks[chunk_index as usize].schedule_write_set(write.slab_key, write.write_set, frame_in_flight_index);
         }
 
         for write in self.write_buffer_rx.try_iter() {
             log::trace!("Received a buffer write for frame in flight index {}", frame_in_flight_index);
-            let chunk_index = write.slab_key.index() / Self::MAX_DESCRIPTORS_PER_POOL;
+            let chunk_index = write.slab_key.index() / MAX_DESCRIPTORS_PER_POOL;
             self.chunks[chunk_index as usize].schedule_write_buffer(write.slab_key, write.write_buffer, frame_in_flight_index);
         }
     }
@@ -853,6 +835,8 @@ pub struct RegisteredDescriptorSetPoolManagerMetrics {
 pub struct RegisteredDescriptorSetPoolManager {
     device_context: VkDeviceContext,
     pools: FnvHashMap<ResourceHash, RegisteredDescriptorSetPool>,
+
+    // This index represents the set of resources that will be written to when update() is called.
     frame_in_flight_index: FrameInFlightIndex,
 }
 
@@ -891,15 +875,15 @@ impl RegisteredDescriptorSetPoolManager {
         &self,
         descriptor_set_arc: &DescriptorSetArc,
     ) -> vk::DescriptorSet {
-        // let gpu_read_frame_in_flight_index = if self.frame_in_flight_index == 0 {
-        //     RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT
-        // } else {
-        //     self.frame_in_flight_index as usize - 1
-        // };
-        //
-        // println!("use index {}", gpu_read_frame_in_flight_index);
-        // descriptor_set_arc.inner.descriptor_sets_per_frame[gpu_read_frame_in_flight_index]
-        self.descriptor_set_for_cpu_write(descriptor_set_arc)
+        let gpu_read_frame_in_flight_index = if self.frame_in_flight_index == 0 {
+            MAX_FRAMES_IN_FLIGHT
+        } else {
+            self.frame_in_flight_index as usize - 1
+        };
+
+        //println!("use index {}", gpu_read_frame_in_flight_index);
+        descriptor_set_arc.inner.descriptor_sets_per_frame[gpu_read_frame_in_flight_index]
+        //self.descriptor_set_for_cpu_write(descriptor_set_arc)
     }
 
     pub fn insert(
@@ -922,25 +906,19 @@ impl RegisteredDescriptorSetPoolManager {
     }
 
     pub fn update(&mut self) {
-        println!("Schedule descriptor set changes for frame in flight {}", self.frame_in_flight_index);
-        // Schedule any descriptor set/buffer changes that occurred since the previous update
+        // Schedule any descriptor set/buffer changes that occurred since the previous update.
+        //
         for pool in self.pools.values_mut() {
             pool.schedule_changes(&self.device_context, self.frame_in_flight_index);
         }
 
-        // Bump frame in flight index
-        self.frame_in_flight_index += 1;
-        if self.frame_in_flight_index
-            >= RegisteredDescriptorSetPool::MAX_FRAMES_IN_FLIGHT as u32 + 1
-        {
-            self.frame_in_flight_index = 0;
-        }
-
-        println!("Flush descriptor set changes for frame in flight {}", self.frame_in_flight_index);
         // Now process drops and flush writes to GPU
         for pool in self.pools.values_mut() {
             pool.flush_changes(&self.device_context, self.frame_in_flight_index);
         }
+
+        // Bump frame in flight index
+        self.frame_in_flight_index = add_to_frame_in_flight_index(self.frame_in_flight_index, 1);
     }
 
     pub fn destroy(&mut self) {
