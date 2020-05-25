@@ -245,7 +245,8 @@ fn main() {
         .default_format_timestamp_nanos(true)
         .filter_module("renderer_shell_vulkan::buffer", log::LevelFilter::Debug)
         .filter_module("renderer_ext::game_renderer", log::LevelFilter::Debug)
-        .filter_module("renderer_ext::resource_managers::descriptor_sets", log::LevelFilter::Trace)
+        //.filter_module("renderer_ext::resource_managers::descriptor_sets", log::LevelFilter::Trace)
+        .filter_module("renderer_ext::pipeline", log::LevelFilter::Trace)
         //.filter_level(log::LevelFilter::Error)
         .filter_level(log::LevelFilter::Debug)
         .init();

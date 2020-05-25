@@ -1,0 +1,31 @@
+(
+    version: 1,
+    import_hash: Some(17480616685042320799),
+    importer_version: 5,
+    importer_type: "4ce02143-a5c4-4433-b843-07cdccf013b0",
+    importer_options: (),
+    importer_state: (Some("4101d8ef-7a46-4ab8-970c-2c18a91aff06")),
+    assets: [
+        (
+            id: "4101d8ef-7a46-4ab8-970c-2c18a91aff06",
+            search_tags: [
+                ("file_name", Some("mesh.materialinstance")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 7742571123045857442,
+                id: "4101d8ef-7a46-4ab8-970c-2c18a91aff06",
+                build_deps: [
+                    Path("mesh.material"),
+                ],
+                load_deps: [
+                    Path("mesh.material"),
+                ],
+                compression: None,
+                compressed_size: Some(32),
+                uncompressed_size: Some(32),
+                type_id: "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b",
+            )),
+        ),
+    ],
+)

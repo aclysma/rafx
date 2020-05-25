@@ -5,7 +5,7 @@ use renderer_shell_vulkan::{
     VkContext,
 };
 use ash::prelude::VkResult;
-use crate::renderpass::{VkSpriteRenderPass};
+use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass};
 use std::mem::{ManuallyDrop};
 use crate::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
@@ -33,6 +33,7 @@ use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
 use crate::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance};
+use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset};
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -86,6 +87,9 @@ pub struct GameRenderer {
     sprite_material_instance: Handle<MaterialInstanceAsset>,
     //mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_custom_material: Option<DynMaterialInstance>,
+    //mesh: Handle<MeshAsset>,
+    //mesh_material: Handle<MaterialAsset>,
+    //mesh_material_instance: Handle<MaterialInstanceAsset>,
 }
 
 impl GameRenderer {
@@ -115,8 +119,8 @@ impl GameRenderer {
         asset_resource.add_storage_with_load_handler::<ImageAsset, _>(Box::new(
             resource_manager.create_image_load_handler(),
         ));
-        // asset_resource.add_storage::<GltfMaterialAsset>();
-        // asset_resource.add_storage::<MeshAsset>();
+        //asset_resource.add_storage::<GltfMaterialAsset>();
+        //asset_resource.add_storage::<MeshAsset>();
         // asset_resource.add_storage::<SpriteAsset>();
 
         let sprite_material = begin_load_asset::<MaterialAsset>(
@@ -131,6 +135,20 @@ impl GameRenderer {
             asset_uuid!("b7753a66-1b26-4152-ad61-93584f4442aa"),
             &asset_resource,
         );
+        /*
+        let mesh_material = begin_load_asset::<MaterialAsset>(
+            asset_uuid!("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+            &asset_resource,
+        );
+        let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
+            asset_uuid!("4101d8ef-7a46-4ab8-970c-2c18a91aff06"),
+            &asset_resource,
+        );
+        */
+        // let mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"),
+        //     &asset_resource,
+        // );
 
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
@@ -141,6 +159,9 @@ impl GameRenderer {
             sprite_renderpass: None,
             //mesh_renderpass: None,
             sprite_custom_material: None,
+            //mesh,
+            //mesh_material,
+            //mesh_material_instance
         };
 
         wait_for_asset_to_load(
@@ -156,7 +177,21 @@ impl GameRenderer {
             asset_resource,
             &mut renderer,
         );
+/*
+        wait_for_asset_to_load(
+            device_context,
+            &renderer.mesh_material.clone(),
+            asset_resource,
+            &mut renderer,
+        );
 
+        wait_for_asset_to_load(
+            device_context,
+            &renderer.mesh_material_instance.clone(),
+            asset_resource,
+            &mut renderer,
+        );
+*/
         let image_info = renderer.resource_manager.get_image_info(&override_image);
 
         let extents_width = 900;
@@ -223,6 +258,12 @@ impl VkSurfaceEventListener for GameRenderer {
             0,
         );
 
+        // let mesh_pipeline_info = self.resource_manager.get_pipeline_info(
+        //     &self.mesh_material,
+        //     &swapchain_surface_info,
+        //     0,
+        // );
+
         // Get the pipeline,
 
         log::trace!("Create VkSpriteRenderPass");
@@ -230,16 +271,12 @@ impl VkSurfaceEventListener for GameRenderer {
             device_context,
             swapchain,
             sprite_pipeline_info,
-            //&mut self.pipeline_manager,
-            //&self.sprite_resource_manager,
-            &swapchain_surface_info,
         )?);
-        // log::trace!("Create VkMeshRenderPass");
+        log::trace!("Create VkMeshRenderPass");
         // self.mesh_renderpass = Some(VkMeshRenderPass::new(
         //     device_context,
         //     swapchain,
-        //     &self.mesh_resource_manager,
-        //     &self.sprite_resource_manager,
+        //     mesh_pipeline_info,
         // )?);
         log::debug!("game renderer swapchain_created finished");
 
@@ -333,6 +370,7 @@ impl VkSurfaceEventListener for GameRenderer {
 impl Drop for GameRenderer {
     fn drop(&mut self) {
         self.sprite_renderpass = None;
+        //self.mesh_renderpass = None;
         self.sprite_custom_material = None;
         //self.mesh_renderpass = None;
     }

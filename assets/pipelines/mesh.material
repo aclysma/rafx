@@ -1,0 +1,123 @@
+(
+    passes: [
+        (
+            phase: "Opaque",
+            pipeline: "mesh.pipeline",
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/mesh.vert.spv",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/mesh.frag.spv",
+                    entry_name: "main"
+                ),
+            ],
+            shader_interface: (
+                descriptor_set_layouts: [
+                    (
+                        descriptor_set_layout_bindings: [
+                            (
+                                binding: 0,
+                                descriptor_type: UniformBuffer,
+                                descriptor_count: 1,
+                                stage_flags: Vertex,
+                                slot_name: "view_proj",
+
+                                internal_buffer_per_descriptor_size: Some(64)
+                            ),
+                            /*
+                            (
+                                binding: 1,
+                                descriptor_type: Sampler,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "sampler",
+
+                                immutable_samplers: Some([
+                                    (
+                                        mag_filter: Linear,
+                                        min_filter: Linear,
+                                        address_mode_u: Repeat,
+                                        address_mode_v: Repeat,
+                                        address_mode_w: Repeat,
+                                        anisotropy_enable: false,
+                                        max_anisotropy: 1.0, // Could be a setting later
+                                        border_color: IntOpaqueBlack,
+                                        unnormalized_coordinates: false,
+                                        compare_enable: false,
+                                        compare_op: Always,
+                                        mipmap_mode: Linear,
+                                        mip_lod_bias: 0,
+                                        min_lod: 0,
+                                        max_lod: 0
+                                    )
+                                ])                                
+                            ),
+                            */
+                        ],
+                    ),
+                    /*
+                    (
+                        descriptor_set_layout_bindings: [
+                            (
+                                binding: 0,
+                                descriptor_type: SampledImage,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "texture"
+                            ),
+                        ],
+                    ),
+                    */
+                ],
+                push_constant_ranges: [
+                    (
+                        stage_flags: Vertex,
+                        offset: 0,
+                        size: 4,
+                        slot_name: "some_fancy_value"
+                    ),
+                ],
+                // If a mesh has a material, it needs to be cooked so that the verts are in that format
+                // Maybe each binding is a vertex channel?
+                // Actually maybe this works out so that you can have a kitchen-sink blob of vertex
+                // data and automatically determine offsets/strides
+                vertex_input_state: (
+                    binding_descriptions: [
+                        (
+                            binding: 0,
+                            stride: 32,
+                            input_rate: Vertex,
+                        ),
+                    ],
+                    attribute_descriptions: [
+                        (
+                            binding: 0,
+                            location: 0,
+                            format: R32G32B32_SFLOAT,
+                            offset: 0,
+                            //slot_name: "POSITION"
+                        ),
+                        (
+                            binding: 0,
+                            location: 1,
+                            format: R32G32B32_SFLOAT,
+                            offset: 12,
+                            //slot_name: "TEXCOORD_0"
+                        ),
+                        (
+                            binding: 0,
+                            location: 2,
+                            format: R32G32_SFLOAT,
+                            offset: 24,
+                            //slot_name: "TEXCOORD_0"
+                        ),
+                    ],
+                ),
+            ),
+        ),
+    ]
+)

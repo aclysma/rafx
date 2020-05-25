@@ -74,9 +74,6 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 /// Draw order of QUAD_VERTEX_LIST
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
-//TODO: Support samplers in a material instance
-//TODO: Remove more stuff from this file
-
 /// Draws sprites
 pub struct VkSpriteRenderPass {
     pub device_context: VkDeviceContext,
@@ -101,7 +98,6 @@ impl VkSpriteRenderPass {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         pipeline_info: PipelineSwapchainInfo,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<Self> {
         //
         // Command Buffers
