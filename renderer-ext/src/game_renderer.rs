@@ -135,11 +135,16 @@ impl GameRenderer {
             asset_uuid!("b7753a66-1b26-4152-ad61-93584f4442aa"),
             &asset_resource,
         );
+
+        //UNCOMMENTING THIS CAUSES WAITING ON OTHER ASSETS TO LOAD
+        // let mesh_material = begin_load_asset::<MaterialAsset>(
+        //     asset_uuid!("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+        //     &asset_resource,
+        // );
+
+
+
         /*
-        let mesh_material = begin_load_asset::<MaterialAsset>(
-            asset_uuid!("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
-            &asset_resource,
-        );
         let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
             asset_uuid!("4101d8ef-7a46-4ab8-970c-2c18a91aff06"),
             &asset_resource,
@@ -164,6 +169,7 @@ impl GameRenderer {
             //mesh_material_instance
         };
 
+        println!("Wait for the sprite_material");
         wait_for_asset_to_load(
             device_context,
             &renderer.sprite_material.clone(),
@@ -171,12 +177,17 @@ impl GameRenderer {
             &mut renderer,
         );
 
+        println!("Wait for the sprite_material instance");
         wait_for_asset_to_load(
             device_context,
             &renderer.sprite_material_instance.clone(),
             asset_resource,
             &mut renderer,
         );
+
+        println!("all waits complete");
+
+
 /*
         wait_for_asset_to_load(
             device_context,
