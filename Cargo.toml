@@ -8,6 +8,20 @@ exclude = [
     "gltf"
 ]
 
+#[profile.dev.overrides.bincode]
+#opt-level = 2
+
+#[profile.dev.overrides.image]
+#opt-level = 2
+
+# Set the default for dependencies.
+[profile.dev.package."*"]
+opt-level = 2
+
+# Set the settings for build scripts and proc-macros.
+[profile.dev.build-override]
+opt-level = 2
+
 [patch.crates-io]
 gltf = { path = "gltf" }
 

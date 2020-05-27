@@ -479,11 +479,16 @@ impl GameRendererWithContext {
         time_state: &TimeState,
         asset_resource: &mut AssetResource,
     ) -> Result<GameRendererWithContext, VkCreateContextError> {
-        let context = VkContextBuilder::new()
-            .use_vulkan_debug_layer(true)
-            //.use_vulkan_debug_layer(false)
-            .prefer_mailbox_present_mode()
-            .build(window)?;
+        let mut context = VkContextBuilder::new()
+            .use_vulkan_debug_layer(false)
+            .prefer_mailbox_present_mode();
+
+        #[cfg(debug_assertions)]
+        {
+            context = context.use_vulkan_debug_layer(true);
+        }
+
+        let context = context.build(window)?;
 
         let mut game_renderer = GameRenderer::new(
             window,

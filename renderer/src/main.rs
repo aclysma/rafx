@@ -240,15 +240,21 @@ fn create_sprite_pipeline() -> dsc::GraphicsPipeline {
 // }
 
 fn main() {
+    let mut log_level = log::LevelFilter::Info;
+    #[cfg(debug_assertions)]
+    {
+        log_level = log::LevelFilter::Debug;
+    }
+
     // Setup logging
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
-        .filter_module("renderer_shell_vulkan::buffer", log::LevelFilter::Debug)
-        .filter_module("renderer_ext::game_renderer", log::LevelFilter::Debug)
+        //.filter_module("renderer_shell_vulkan::buffer", log::LevelFilter::Debug)
+        //.filter_module("renderer_ext::game_renderer", log::LevelFilter::Debug)
         //.filter_module("renderer_ext::resource_managers::descriptor_sets", log::LevelFilter::Trace)
-        .filter_module("renderer_ext::pipeline", log::LevelFilter::Trace)
+        //.filter_module("renderer_ext::pipeline", log::LevelFilter::Trace)
         //.filter_level(log::LevelFilter::Error)
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log_level)
         .init();
 
     // Spawn the daemon in a background thread. This could be a different process, but
