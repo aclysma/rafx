@@ -5,15 +5,12 @@ use crate::pipeline::pipeline::{
 };
 use super::PipelineCreateData;
 use fnv::FnvHashMap;
-use renderer_shell_vulkan::VkImageRaw;
+use renderer_shell_vulkan::{VkImageRaw, VkBufferRaw};
 use super::DescriptorSetArc;
 use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::handle::Handle;
 use std::sync::Arc;
-use crate::resource_managers::resource_lookup::{
-    DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource,
-    ImageKey,
-};
+use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource, ImageKey, BufferKey};
 
 //
 // The "loaded" state of assets. Assets may have dependencies. Arcs to those dependencies ensure
@@ -78,6 +75,11 @@ pub struct LoadedImage {
     pub image_view: ResourceArc<ImageViewResource>,
     // One per swapchain
     //image_views: Vec<ResourceArc<ImageViewResource>>
+}
+
+pub struct LoadedBuffer {
+    pub buffer_key: BufferKey,
+    pub buffer: ResourceArc<VkBufferRaw>,
 }
 
 //
@@ -189,6 +191,7 @@ pub struct LoadedAssetMetrics {
     material_count: usize,
     material_instance_count: usize,
     image_count: usize,
+    buffer_count: usize,
 }
 
 //
@@ -201,6 +204,7 @@ pub struct LoadedAssetLookupSet {
     pub materials: AssetLookup<LoadedMaterial>,
     pub material_instances: AssetLookup<LoadedMaterialInstance>,
     pub images: AssetLookup<LoadedImage>,
+    pub buffers: AssetLookup<LoadedBuffer>,
 }
 
 impl LoadedAssetLookupSet {
@@ -211,6 +215,7 @@ impl LoadedAssetLookupSet {
             material_count: self.materials.len(),
             material_instance_count: self.material_instances.len(),
             image_count: self.images.len(),
+            buffer_count: self.buffers.len(),
         }
     }
 
@@ -220,5 +225,6 @@ impl LoadedAssetLookupSet {
         self.materials.destroy();
         self.material_instances.destroy();
         self.images.destroy();
+        self.buffers.destroy();
     }
 }

@@ -15,6 +15,7 @@ use image::load;
 use ash::vk;
 use crate::resource_managers::load_queue::LoadRequest;
 use crate::pipeline::image::ImageAsset;
+use crate::pipeline::buffer::BufferAsset;
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result
@@ -489,6 +490,23 @@ impl UploadManager {
             })
             .map_err(|err| {
                 log::error!("Could not enqueue image upload");
+                vk::Result::ERROR_UNKNOWN
+            })
+    }
+
+    pub fn upload_buffer(
+        &self,
+        request: LoadRequest<BufferAsset>,
+    ) -> VkResult<()> {
+        self.upload_queue
+            .pending_buffer_tx()
+            .send(PendingBufferUpload {
+                load_op: request.load_op,
+                upload_op: UploadOp::new(request.load_handle, self.buffer_upload_result_tx.clone()),
+                data: request.asset.data
+            })
+            .map_err(|err| {
+                log::error!("Could not enqueue buffer upload");
                 vk::Result::ERROR_UNKNOWN
             })
     }

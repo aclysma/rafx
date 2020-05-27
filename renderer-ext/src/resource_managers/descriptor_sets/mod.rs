@@ -62,6 +62,11 @@ pub use descriptor_set_manager::RegisteredDescriptorSetPoolManager;
 pub use descriptor_set_manager::RegisteredDescriptorSetPoolManagerMetrics;
 pub use descriptor_set_manager::RegisteredDescriptorSetPoolMetrics;
 
+
+//TODO: Consider instad of N frames of descriptors for every descriptor, just allocate a new single
+// descriptor when something changes.
+
+
 const MAX_DESCRIPTORS_PER_POOL: u32 = 64;
 const MAX_FRAMES_IN_FLIGHT: usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT;
 const MAX_FRAMES_IN_FLIGHT_PLUS_1: usize = MAX_FRAMES_IN_FLIGHT + 1;

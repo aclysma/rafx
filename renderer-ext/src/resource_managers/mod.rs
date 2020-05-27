@@ -2,7 +2,7 @@
 //     UploadQueue, ImageUploadOpResult, BufferUploadOpResult, PendingImageUpload, UploadOp,
 // };
 use crossbeam_channel::{Sender, Receiver};
-use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw};
+use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer};
 use ash::prelude::*;
 use ash::vk;
 use crate::pipeline::image::ImageAsset;
@@ -71,6 +71,9 @@ use upload::UploadManager;
 use crate::resource_managers::resource_lookup::{
     PipelineLayoutResource, PipelineResource, ImageViewResource,
 };
+use crate::pipeline::gltf::MeshAsset;
+use crate::pipeline::buffer::BufferAsset;
+use crate::resource_managers::asset_lookup::LoadedBuffer;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -159,6 +162,14 @@ impl ResourceManager {
         self.load_queues.images.create_load_handler()
     }
 
+    pub fn create_buffer_load_handler(&self) -> GenericLoadHandler<BufferAsset> {
+        self.load_queues.buffers.create_load_handler()
+    }
+
+    // pub fn create_mesh_load_handler(&self) -> GenericLoadHandler<MeshAsset> {
+    //     self.load_queues.meshes.create_load_handler()
+    // }
+
     pub fn get_image_info(
         &self,
         handle: &Handle<ImageAsset>,
@@ -226,32 +237,32 @@ impl ResourceManager {
             pipeline: resource.passes[pass_index].pipelines[swapchain_index].clone(),
         }
     }
-    /*
-        pub fn get_material_instance_descriptor_sets_for_current_frame(
-            &self,
-            handle: &Handle<MaterialInstanceAsset>,
-            pass_index: usize,
-        ) -> MaterialInstanceDescriptorSetsForCurrentFrame {
-            // Get the material instance
-            let resource = self
-                .loaded_assets
-                .material_instances
-                .get_committed(handle.load_handle())
-                .unwrap();
 
-            // Get the current pass
-            let current_pass_descriptor_sets = &resource.material_descriptor_sets[pass_index];
+    pub fn get_material_instance_descriptor_sets_for_current_frame(
+        &self,
+        handle: &Handle<MaterialInstanceAsset>,
+        pass_index: usize,
+    ) -> MaterialInstanceDescriptorSetsForCurrentFrame {
+        // Get the material instance
+        let resource = self
+            .loaded_assets
+            .material_instances
+            .get_committed(handle.load_handle())
+            .unwrap();
 
-            // Get the descriptor sets within the pass (one per layout)
-            // Map the DescriptorSetArc to a vk::DescriptorSet
-            let descriptor_sets: Vec<_> = current_pass_descriptor_sets
-                .iter()
-                .map(|x| self.registered_descriptor_sets.descriptor_set_for_current_frame(x))
-                .collect();
+        // Get the current pass
+        let current_pass_descriptor_sets = &resource.material_descriptor_sets[pass_index];
 
-            MaterialInstanceDescriptorSetsForCurrentFrame { descriptor_sets }
-        }
-    */
+        // Get the descriptor sets within the pass (one per layout)
+        // Map the DescriptorSetArc to a vk::DescriptorSet
+        let descriptor_sets: Vec<_> = current_pass_descriptor_sets
+            .iter()
+            .map(|x| x.get_raw_for_gpu_read(&self))
+            .collect();
+
+        MaterialInstanceDescriptorSetsForCurrentFrame { descriptor_sets }
+    }
+
     pub fn add_swapchain(
         &mut self,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
@@ -280,6 +291,8 @@ impl ResourceManager {
         self.process_material_load_requests();
         self.process_material_instance_load_requests();
         self.process_image_load_requests();
+        self.process_buffer_load_requests();
+        //self.process_mesh_load_requests();
 
         self.upload_manager.update()?;
 
@@ -421,6 +434,37 @@ impl ResourceManager {
         Self::handle_free_requests(&mut self.load_queues.images, &mut self.loaded_assets.images);
     }
 
+    fn process_buffer_load_requests(&mut self) {
+        for request in self.load_queues.buffers.take_load_requests() {
+            //TODO: Route the request directly to the upload queue
+            log::trace!("Uploading buffer {:?}", request.load_handle);
+            self.upload_manager.upload_buffer(request);
+        }
+
+        let results: Vec<_> = self
+            .upload_manager
+            .buffer_upload_result_rx
+            .try_iter()
+            .collect();
+        for result in results {
+            match result {
+                BufferUploadOpResult::UploadComplete(load_op, buffer) => {
+                    let loaded_asset = self.finish_load_buffer(load_op.load_handle(), buffer);
+                    Self::handle_load_result(load_op, loaded_asset, &mut self.loaded_assets.buffers);
+                }
+                BufferUploadOpResult::UploadError(load_handle) => {
+                    // Don't need to do anything - the uploaded should have triggered an error on the load_op
+                }
+                BufferUploadOpResult::UploadDrop(load_handle) => {
+                    // Don't need to do anything - the uploaded should have triggered an error on the load_op
+                }
+            }
+        }
+
+        Self::handle_commit_requests(&mut self.load_queues.buffers, &mut self.loaded_assets.buffers);
+        Self::handle_free_requests(&mut self.load_queues.buffers, &mut self.loaded_assets.buffers);
+    }
+
     fn handle_load_result<LoadedAssetT>(
         load_op: AssetLoadOp,
         loaded_asset: VkResult<LoadedAssetT>,
@@ -488,6 +532,19 @@ impl ResourceManager {
             image_key,
             image,
             image_view,
+        })
+    }
+
+    fn finish_load_buffer(
+        &mut self,
+        buffer_load_handle: LoadHandle,
+        buffer: ManuallyDrop<VkBuffer>,
+    ) -> VkResult<LoadedBuffer> {
+        let (buffer_key, buffer) = self.resources.insert_buffer(buffer);
+
+        Ok(LoadedBuffer {
+            buffer_key,
+            buffer,
         })
     }
 

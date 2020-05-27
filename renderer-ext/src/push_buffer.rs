@@ -89,6 +89,10 @@ impl PushBuffer {
         self.push_bytes(slice, required_alignment)
     }
 
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
     pub fn into_data(self) -> Vec<u8> {
         self.data
     }

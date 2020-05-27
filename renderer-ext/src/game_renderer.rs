@@ -34,6 +34,7 @@ use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
 use crate::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance};
 use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset};
+use crate::pipeline::buffer::BufferAsset;
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -49,6 +50,7 @@ fn wait_for_asset_to_load<T>(
     asset_handle: &atelier_assets::loader::handle::Handle<T>,
     asset_resource: &mut AssetResource,
     renderer: &mut GameRenderer,
+    asset_name: &str
 ) {
     loop {
         asset_resource.update();
@@ -58,7 +60,7 @@ fn wait_for_asset_to_load<T>(
                 unreachable!();
             }
             LoadStatus::Loading => {
-                log::info!("blocked waiting for asset to load");
+                log::info!("blocked waiting for asset to load {} {:?}", asset_name, asset_handle);
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 // keep waiting
             }
@@ -85,11 +87,11 @@ pub struct GameRenderer {
     sprite_material: Handle<MaterialAsset>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
     sprite_material_instance: Handle<MaterialInstanceAsset>,
-    //mesh_renderpass: Option<VkMeshRenderPass>,
+    mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_custom_material: Option<DynMaterialInstance>,
-    //mesh: Handle<MeshAsset>,
-    //mesh_material: Handle<MaterialAsset>,
-    //mesh_material_instance: Handle<MaterialInstanceAsset>,
+    mesh: Handle<MeshAsset>,
+    mesh_material: Handle<MaterialAsset>,
+    mesh_material_instance: Handle<MaterialInstanceAsset>,
 }
 
 impl GameRenderer {
@@ -119,9 +121,18 @@ impl GameRenderer {
         asset_resource.add_storage_with_load_handler::<ImageAsset, _>(Box::new(
             resource_manager.create_image_load_handler(),
         ));
-        //asset_resource.add_storage::<GltfMaterialAsset>();
-        //asset_resource.add_storage::<MeshAsset>();
+        asset_resource.add_storage_with_load_handler::<BufferAsset, _>(Box::new(
+            resource_manager.create_buffer_load_handler(),
+        ));
+        //asset_resource.add_storage::<BufferAsset>();
+
+        asset_resource.add_storage::<GltfMaterialAsset>();
+        asset_resource.add_storage::<MeshAsset>();
         // asset_resource.add_storage::<SpriteAsset>();
+
+        // asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
+        //     resource_manager.create_mesh_load_handler(),
+        // ));
 
         let sprite_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
@@ -136,24 +147,20 @@ impl GameRenderer {
             &asset_resource,
         );
 
-        //UNCOMMENTING THIS CAUSES WAITING ON OTHER ASSETS TO LOAD
-        // let mesh_material = begin_load_asset::<MaterialAsset>(
-        //     asset_uuid!("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
-        //     &asset_resource,
-        // );
+        let mesh_material = begin_load_asset::<MaterialAsset>(
+            asset_uuid!("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+            &asset_resource,
+        );
 
-
-
-        /*
         let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
             asset_uuid!("4101d8ef-7a46-4ab8-970c-2c18a91aff06"),
             &asset_resource,
         );
-        */
-        // let mesh = begin_load_asset::<MeshAsset>(
-        //     asset_uuid!("6b33207a-241c-41ba-9149-3e678557a45c"),
-        //     &asset_resource,
-        // );
+
+        let mesh = begin_load_asset::<MeshAsset>(
+            asset_uuid!("09c3d7e0-5177-49e6-8636-ec167cdd1464"),
+            &asset_resource,
+        );
 
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
@@ -162,11 +169,11 @@ impl GameRenderer {
             sprite_material,
             sprite_material_instance,
             sprite_renderpass: None,
-            //mesh_renderpass: None,
+            mesh_renderpass: None,
             sprite_custom_material: None,
-            //mesh,
-            //mesh_material,
-            //mesh_material_instance
+            mesh,
+            mesh_material,
+            mesh_material_instance
         };
 
         println!("Wait for the sprite_material");
@@ -175,6 +182,7 @@ impl GameRenderer {
             &renderer.sprite_material.clone(),
             asset_resource,
             &mut renderer,
+            "sprite_material"
         );
 
         println!("Wait for the sprite_material instance");
@@ -183,17 +191,16 @@ impl GameRenderer {
             &renderer.sprite_material_instance.clone(),
             asset_resource,
             &mut renderer,
+            "sprite_material_instance"
         );
 
-        println!("all waits complete");
 
-
-/*
         wait_for_asset_to_load(
             device_context,
             &renderer.mesh_material.clone(),
             asset_resource,
             &mut renderer,
+            "mesh material"
         );
 
         wait_for_asset_to_load(
@@ -201,8 +208,20 @@ impl GameRenderer {
             &renderer.mesh_material_instance.clone(),
             asset_resource,
             &mut renderer,
+            "mesh material instance"
         );
-*/
+
+        wait_for_asset_to_load(
+            device_context,
+            &renderer.mesh.clone(),
+            asset_resource,
+            &mut renderer,
+            "mesh"
+        );
+
+
+        println!("all waits complete");
+
         let image_info = renderer.resource_manager.get_image_info(&override_image);
 
         let extents_width = 900;
@@ -269,11 +288,11 @@ impl VkSurfaceEventListener for GameRenderer {
             0,
         );
 
-        // let mesh_pipeline_info = self.resource_manager.get_pipeline_info(
-        //     &self.mesh_material,
-        //     &swapchain_surface_info,
-        //     0,
-        // );
+        let mesh_pipeline_info = self.resource_manager.get_pipeline_info(
+            &self.mesh_material,
+            &swapchain_surface_info,
+            0,
+        );
 
         // Get the pipeline,
 
@@ -284,11 +303,11 @@ impl VkSurfaceEventListener for GameRenderer {
             sprite_pipeline_info,
         )?);
         log::trace!("Create VkMeshRenderPass");
-        // self.mesh_renderpass = Some(VkMeshRenderPass::new(
-        //     device_context,
-        //     swapchain,
-        //     mesh_pipeline_info,
-        // )?);
+        self.mesh_renderpass = Some(VkMeshRenderPass::new(
+            device_context,
+            swapchain,
+            mesh_pipeline_info,
+        )?);
         log::debug!("game renderer swapchain_created finished");
 
         VkResult::Ok(())
@@ -354,17 +373,18 @@ impl VkSurfaceEventListener for GameRenderer {
             command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
         }
 
-        // if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
-        //     log::trace!("mesh_renderpass update");
-        //     mesh_renderpass.update(
-        //         present_index,
-        //         1.0,
-        //         &self.mesh_resource_manager,
-        //         &self.sprite_resource_manager,
-        //         &self.time_state,
-        //     )?;
-        //     command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
-        // }
+        let mesh_descriptors = self.resource_manager.get_material_instance_descriptor_sets_for_current_frame(&self.mesh_material_instance, 0);
+        if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
+            log::trace!("mesh_renderpass update");
+            mesh_renderpass.update(
+                present_index,
+                1.0,
+                mesh_descriptors.descriptor_sets[0],
+                &[],
+                &self.time_state,
+            )?;
+            command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
+        }
 
         {
             log::trace!("imgui_event_listener update");
@@ -381,7 +401,7 @@ impl VkSurfaceEventListener for GameRenderer {
 impl Drop for GameRenderer {
     fn drop(&mut self) {
         self.sprite_renderpass = None;
-        //self.mesh_renderpass = None;
+        self.mesh_renderpass = None;
         self.sprite_custom_material = None;
         //self.mesh_renderpass = None;
     }

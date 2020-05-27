@@ -1,32 +1,35 @@
 (
     version: 1,
-    import_hash: Some(5272337740339199314),
-    importer_version: 11,
+    import_hash: Some(13614141615174490071),
+    importer_version: 14,
     importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
     importer_options: (),
     importer_state: (
-        asset_uuid: Some("ebad610c-0cbb-49dd-95bb-a6fffda0c4b6"),
+        buffer_asset_uuids: {
+            Index(0): "cfb29465-0a28-4cac-84a2-dce31bbcb37a",
+            Index(1): "31bc6893-40ad-4988-8c2d-4b6489cec528",
+        },
         image_asset_uuids: {
-            Name("test_tx2"): "116a16c1-4df4-40e5-9b3c-79c67f5b088d",
+            Name("test_tx2"): "9a74f070-e89b-4ca7-a413-776fbe65e1e3",
         },
         material_asset_uuids: {
-            Name("Material.001"): "ea9e752e-0852-43a8-bc57-fe3e850cc31c",
+            Name("Material.001"): "91c5fc84-fe40-435d-b6bb-4c47d0100db5",
         },
         mesh_asset_uuids: {
-            Name("Cube"): "4f20e498-7b9b-4e69-83ad-bbef654ac005",
+            Name("Cube"): "939ad928-fe98-41b9-9f91-c0c2435a194b",
         },
     ),
     assets: [
         (
-            id: "116a16c1-4df4-40e5-9b3c-79c67f5b088d",
+            id: "9a74f070-e89b-4ca7-a413-776fbe65e1e3",
             search_tags: [
                 ("image_name", Some("test_tx2")),
                 ("file_name", Some("cubic.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 1194552648842392334,
-                id: "116a16c1-4df4-40e5-9b3c-79c67f5b088d",
+                hash: 1001337406937710173,
+                id: "9a74f070-e89b-4ca7-a413-776fbe65e1e3",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -36,42 +39,84 @@
             )),
         ),
         (
-            id: "ea9e752e-0852-43a8-bc57-fe3e850cc31c",
+            id: "91c5fc84-fe40-435d-b6bb-4c47d0100db5",
             search_tags: [
                 ("material_name", Some("Material.001")),
                 ("file_name", Some("cubic.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 11353835331734507135,
-                id: "ea9e752e-0852-43a8-bc57-fe3e850cc31c",
-                build_deps: [],
+                hash: 4133708128909848557,
+                id: "91c5fc84-fe40-435d-b6bb-4c47d0100db5",
+                build_deps: [
+                    Uuid("9a74f070-e89b-4ca7-a413-776fbe65e1e3"),
+                ],
                 load_deps: [
-                    Uuid("116a16c1-4df4-40e5-9b3c-79c67f5b088d"),
+                    Uuid("9a74f070-e89b-4ca7-a413-776fbe65e1e3"),
                 ],
                 compression: None,
-                compressed_size: Some(33),
-                uncompressed_size: Some(33),
+                compressed_size: Some(41),
+                uncompressed_size: Some(41),
                 type_id: "130a91a8-ba80-4cad-9bce-848326b234c7",
             )),
         ),
         (
-            id: "4f20e498-7b9b-4e69-83ad-bbef654ac005",
+            id: "cfb29465-0a28-4cac-84a2-dce31bbcb37a",
+            search_tags: [
+                ("file_name", Some("cubic.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 9983201454662621350,
+                id: "cfb29465-0a28-4cac-84a2-dce31bbcb37a",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(5128),
+                uncompressed_size: Some(5128),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "31bc6893-40ad-4988-8c2d-4b6489cec528",
+            search_tags: [
+                ("file_name", Some("cubic.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 7618823432668757438,
+                id: "31bc6893-40ad-4988-8c2d-4b6489cec528",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(536),
+                uncompressed_size: Some(536),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "939ad928-fe98-41b9-9f91-c0c2435a194b",
             search_tags: [
                 ("mesh_name", Some("Cube")),
                 ("file_name", Some("cubic.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 6375353070187297485,
-                id: "4f20e498-7b9b-4e69-83ad-bbef654ac005",
-                build_deps: [],
+                hash: 1196617175165368975,
+                id: "939ad928-fe98-41b9-9f91-c0c2435a194b",
+                build_deps: [
+                    Uuid("cfb29465-0a28-4cac-84a2-dce31bbcb37a"),
+                    Uuid("31bc6893-40ad-4988-8c2d-4b6489cec528"),
+                    Uuid("91c5fc84-fe40-435d-b6bb-4c47d0100db5"),
+                ],
                 load_deps: [
-                    Uuid("ea9e752e-0852-43a8-bc57-fe3e850cc31c"),
+                    Uuid("31bc6893-40ad-4988-8c2d-4b6489cec528"),
+                    Uuid("cfb29465-0a28-4cac-84a2-dce31bbcb37a"),
+                    Uuid("91c5fc84-fe40-435d-b6bb-4c47d0100db5"),
                 ],
                 compression: None,
-                compressed_size: Some(5689),
-                uncompressed_size: Some(5689),
+                compressed_size: Some(97),
+                uncompressed_size: Some(97),
                 type_id: "cf232526-3757-4d94-98d1-c2f7e27c979f",
             )),
         ),

@@ -9,10 +9,14 @@ use gltf::image::Data as GltfImageData;
 use gltf::buffer::Data as GltfBufferData;
 use fnv::FnvHashMap;
 use atelier_assets::loader::handle::Handle;
-use gltf::Accessor;
+use gltf::{Accessor, Gltf};
 use gltf::mesh::util::indices::CastingIter;
 use crate::pipeline::gltf::{GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex};
 use crate::pipeline::image::ImageAsset;
+use crate::pipeline::buffer::BufferAsset;
+use crate::push_buffer::PushBuffer;
+use atelier_assets::loader::handle::SerdeContext;
+use atelier_assets::loader::handle::AssetHandle;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 enum GltfObjectId {
@@ -20,20 +24,40 @@ enum GltfObjectId {
     Index(usize),
 }
 
-// //TODO: It might not make practical sense to have an overall GLTF asset in the long run, probably
-// // would produce separate image, mesh, prefab assets
-// #[derive(TypeUuid, Serialize, Deserialize)]
-// #[uuid = "122e4e01-d3d3-4e99-8725-c6fcee30ff1a"]
-// pub struct GltfAsset {
-//     base_color: [f32;4]
-// }
+struct ImageToImport {
+    id: GltfObjectId,
+    asset: ImageAsset,
+}
+
+struct MaterialToImport {
+    id: GltfObjectId,
+    asset: GltfMaterialAsset,
+}
+
+struct MeshToImport {
+    id: GltfObjectId,
+    asset: MeshAsset,
+}
+
+struct BufferToImport {
+    id: GltfObjectId,
+    asset: BufferAsset,
+}
+
+fn get_or_create_uuid(option_uuid: &mut Option<AssetUuid>) -> AssetUuid {
+    let uuid = option_uuid.unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+
+    *option_uuid = Some(uuid);
+    uuid
+}
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "807c83b3-c24c-4123-9580-5f9c426260b4"]
 struct GltfImporterState {
-    asset_uuid: Option<AssetUuid>,
+    //asset_uuid: Option<AssetUuid>,
 
     // Asset UUIDs for imported image by name
+    buffer_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
     image_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
     material_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
     mesh_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
@@ -47,7 +71,7 @@ impl Importer for GltfImporter {
     where
         Self: Sized,
     {
-        11
+        14
     }
 
     fn version(&self) -> u32 {
@@ -68,20 +92,32 @@ impl Importer for GltfImporter {
         //
         // Get the asset UUID, or create a new UUID if this is a new gltf file
         //
-        let gltf_asset_uuid = state
-            .asset_uuid
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+        // let gltf_asset_uuid = state
+        //     .asset_uuid
+        //     .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
 
-        state.asset_uuid = Some(gltf_asset_uuid);
+        //
+        // state.asset_uuid = Some(gltf_asset_uuid);
+        //let gltf_asset_uuid = get_or_create_uuid(&mut state.asset_uuid);
 
-        log::info!("Importing mesh {}", gltf_asset_uuid);
+        // let vertex_buffer_uuid = get_or_create_uuid(&mut state.vertex_buffer_uuid);
+        // let index_buffer_uuid = get_or_create_uuid(&mut state.index_buffer_uuid);
+        //
+        // let vertex_buffer_handle = atelier_assets::loader::handle::SerdeContext::with_active(|loader_info_provider, ref_op| {
+        //     loader_info_provider.get_load_handle(&AssetRef::Uuid(vertex_buffer_uuid))
+        // }).unwrap();
+        //
+        // let index_buffer_handle = atelier_assets::loader::handle::SerdeContext::with_active(|loader_info_provider, ref_op| {
+        //     loader_info_provider.get_load_handle(&AssetRef::Uuid(index_buffer_uuid))
+        // }).unwrap();
+
+        //log::info!("Importing mesh {}", gltf_asset_uuid);
 
         //
         // Load the GLTF file
         //
         let mut bytes = Vec::new();
         source.read_to_end(&mut bytes)?;
-        //let (doc, buffers, images) = gltf::import_slice(&bytes).unwrap();
         let result = gltf::import_slice(&bytes);
         if let Err(err) = result {
             log::error!("GLTF Import error: {:?}", err);
@@ -90,13 +126,14 @@ impl Importer for GltfImporter {
 
         let (doc, buffers, images) = gltf::import_slice(&bytes).unwrap();
 
+        // Accumulate everything we will import in this list
         let mut imported_assets = Vec::new();
 
         //
         // Images
         //
         let images_to_import = extract_images_to_import(&doc, &buffers, &images);
-        let mut image_index_to_uuid_lookup = vec![];
+        let mut image_index_to_handle = vec![];
         for image_to_import in images_to_import {
             // Find the UUID associated with this image or create a new one
             let image_uuid = *state
@@ -104,13 +141,20 @@ impl Importer for GltfImporter {
                 .entry(image_to_import.id.clone())
                 .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
 
+            let image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+                let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(image_uuid)).unwrap();
+                Handle::<ImageAsset>::new(ref_op_sender.clone(), load_handle)
+            });
+
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
-            image_index_to_uuid_lookup.push(image_uuid.clone());
+            image_index_to_handle.push(image_handle);
 
             let mut search_tags: Vec<(String, Option<String>)> = vec![];
             if let GltfObjectId::Name(name) = &image_to_import.id {
                 search_tags.push(("image_name".to_string(), Some(name.clone())));
             }
+
+            log::debug!("Importing image uuid {:?}", image_uuid);
 
             // Create the asset
             imported_assets.push(ImportedAsset {
@@ -127,8 +171,8 @@ impl Importer for GltfImporter {
         // Materials
         //
         let materials_to_import =
-            extract_materials_to_import(&doc, &buffers, &images, &image_index_to_uuid_lookup);
-        let mut material_index_to_uuid_lookup = vec![];
+            extract_materials_to_import(&doc, &buffers, &images, &image_index_to_handle);
+        let mut material_index_to_handle = vec![];
         for material_to_import in materials_to_import {
             // Find the UUID associated with this image or create a new one
             let material_uuid = *state
@@ -136,8 +180,13 @@ impl Importer for GltfImporter {
                 .entry(material_to_import.id.clone())
                 .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
 
+            let material_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+                let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(material_uuid)).unwrap();
+                Handle::<GltfMaterialAsset>::new(ref_op_sender.clone(), load_handle)
+            });
+
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
-            material_index_to_uuid_lookup.push(material_uuid.clone());
+            material_index_to_handle.push(material_handle);
 
             let mut search_tags: Vec<(String, Option<String>)> = vec![];
             if let GltfObjectId::Name(name) = &material_to_import.id {
@@ -145,9 +194,15 @@ impl Importer for GltfImporter {
             }
 
             let mut load_deps = vec![];
-            if let Some(image) = material_to_import.asset.base_color_texture {
-                load_deps.push(AssetRef::Uuid(image));
+            if let Some(image) = &material_to_import.asset.base_color_texture {
+                let image_uuid = SerdeContext::with_active(|x, _| {
+                    x.get_asset_id(image.load_handle())
+                }).unwrap();
+
+                load_deps.push(AssetRef::Uuid(image_uuid));
             }
+
+            log::debug!("Importing material uuid {:?}", material_uuid);
 
             // Create the asset
             imported_assets.push(ImportedAsset {
@@ -160,12 +215,51 @@ impl Importer for GltfImporter {
             });
         }
 
+        // let mut vertices = PushBuffer::new(16384);
+        // let mut indices = PushBuffer::new(16384);
+
         //
         // Meshes
         //
-        let meshes_to_import =
-            extract_meshes_to_import(&doc, &buffers, &images, &material_index_to_uuid_lookup);
-        let mut mesh_index_to_uuid_lookup = vec![];
+        let (meshes_to_import, buffers_to_import) =
+            extract_meshes_to_import(
+                state,
+                &doc,
+                &buffers,
+                //&images,
+                &material_index_to_handle,
+            );
+
+        let mut buffer_index_to_handle = vec![];
+        for buffer_to_import in buffers_to_import {
+            // Find the UUID associated with this image or create a new one
+            let buffer_uuid = *state
+                .buffer_asset_uuids
+                .entry(buffer_to_import.id.clone())
+                .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+
+            let buffer_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+                let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(buffer_uuid)).unwrap();
+                Handle::<GltfMaterialAsset>::new(ref_op_sender.clone(), load_handle)
+            });
+
+            // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
+            buffer_index_to_handle.push(buffer_handle);
+
+            log::debug!("Importing buffer uuid {:?}", buffer_uuid);
+
+            // Create the asset
+            imported_assets.push(ImportedAsset {
+                id: buffer_uuid,
+                search_tags: vec![],
+                build_deps: vec![],
+                load_deps: vec![],
+                build_pipeline: None,
+                asset_data: Box::new(buffer_to_import.asset),
+            });
+        }
+
+        //let mut mesh_index_to_uuid_lookup = vec![];
         for mesh_to_import in meshes_to_import {
             // Find the UUID associated with this image or create a new one
             let mesh_uuid = *state
@@ -174,7 +268,7 @@ impl Importer for GltfImporter {
                 .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
-            mesh_index_to_uuid_lookup.push(mesh_uuid.clone());
+            //mesh_index_to_uuid_lookup.push(mesh_uuid.clone());
 
             let mut search_tags: Vec<(String, Option<String>)> = vec![];
             if let GltfObjectId::Name(name) = &mesh_to_import.id {
@@ -182,37 +276,46 @@ impl Importer for GltfImporter {
             }
 
             let mut load_deps = vec![];
+
+            // Vertex buffer dependency
+            let vertex_buffer_uuid = SerdeContext::with_active(|x, _| {
+                x.get_asset_id(mesh_to_import.asset.vertex_buffer.load_handle())
+            }).unwrap();
+            load_deps.push(AssetRef::Uuid(vertex_buffer_uuid));
+
+            // Index buffer dependency
+            let index_buffer_uuid = SerdeContext::with_active(|x, _| {
+                x.get_asset_id(mesh_to_import.asset.index_buffer.load_handle())
+            }).unwrap();
+            load_deps.push(AssetRef::Uuid(index_buffer_uuid));
+
+            // Materials dependencies
             for mesh_part in &mesh_to_import.asset.mesh_parts {
-                if let Some(material) = mesh_part.material {
-                    load_deps.push(AssetRef::Uuid(material));
+                if let Some(material) = &mesh_part.material {
+                    let material_uuid = SerdeContext::with_active(|x, _| {
+                        x.get_asset_id(material.load_handle())
+                    }).unwrap();
+                    load_deps.push(AssetRef::Uuid(material_uuid));
                 }
             }
+
+            log::debug!("Importing mesh uuid {:?}", mesh_uuid);
 
             // Create the asset
             imported_assets.push(ImportedAsset {
                 id: mesh_uuid,
                 search_tags,
                 build_deps: vec![],
-                load_deps,
+                load_deps: vec![],
                 build_pipeline: None,
                 asset_data: Box::new(mesh_to_import.asset),
             });
         }
 
-        // //
-        // let material_asset = GltfMaterialAsset {
-        //     base_color: [1.0, 1.0, 1.0, 1.0]
-        // };
-
         Ok(ImporterValue {
             assets: imported_assets,
         })
     }
-}
-
-struct ImageToImport {
-    id: GltfObjectId,
-    asset: ImageAsset,
 }
 
 fn extract_images_to_import(
@@ -298,7 +401,7 @@ fn extract_images_to_import(
 
         // Verify that we iterate images in order so that our resulting assets are in order
         assert!(image.index() == images_to_import.len());
-        println!(
+        log::debug!(
             "Importing Texture name: {:?} index: {} width: {} height: {} bytes: {}",
             image.name(),
             image.index(),
@@ -313,16 +416,11 @@ fn extract_images_to_import(
     images_to_import
 }
 
-struct MaterialToImport {
-    id: GltfObjectId,
-    asset: GltfMaterialAsset,
-}
-
 fn extract_materials_to_import(
     doc: &gltf::Document,
     buffers: &Vec<GltfBufferData>,
     images: &Vec<GltfImageData>,
-    image_index_to_uuid_lookup: &[AssetUuid],
+    image_index_to_handle: &[Handle<ImageAsset>],
 ) -> Vec<MaterialToImport> {
     let mut materials_to_import = Vec::with_capacity(doc.materials().len());
 
@@ -331,12 +429,13 @@ fn extract_materials_to_import(
         let base_color = pbr_metallic_roughness.base_color_factor();
         let base_color_texture = pbr_metallic_roughness
             .base_color_texture()
-            .map(|base_texture| image_index_to_uuid_lookup[base_texture.texture().index()]);
+            .map(|base_texture| image_index_to_handle[base_texture.texture().index()].clone());
 
         let asset = GltfMaterialAsset {
             base_color,
-            base_color_texture,
+            base_color_texture: base_color_texture.clone(),
         };
+
         let id = material
             .name()
             .map(|s| GltfObjectId::Name(s.to_string()))
@@ -346,7 +445,7 @@ fn extract_materials_to_import(
 
         // Verify that we iterate images in order so that our resulting assets are in order
         assert!(material.index().unwrap() == materials_to_import.len());
-        println!(
+        log::debug!(
             "Importing Material name: {:?} index: {} base_color: {:?} texture: {:?}",
             material.name(),
             material.index().unwrap(),
@@ -358,11 +457,6 @@ fn extract_materials_to_import(
     }
 
     materials_to_import
-}
-
-struct MeshToImport {
-    id: GltfObjectId,
-    asset: MeshAsset,
 }
 
 //TODO: This feels kind of dumb..
@@ -380,16 +474,25 @@ fn convert_to_u16_indices(
 }
 
 fn extract_meshes_to_import(
+    state: &mut GltfImporterState,
     doc: &gltf::Document,
     buffers: &Vec<GltfBufferData>,
-    images: &Vec<GltfImageData>,
-    material_index_to_uuid_lookup: &[AssetUuid],
-) -> Vec<MeshToImport> {
+    //images: &Vec<GltfImageData>,
+    material_index_to_handle: &[Handle<GltfMaterialAsset>],
+) -> (Vec<MeshToImport>, Vec<BufferToImport>) {
     let mut meshes_to_import = Vec::with_capacity(doc.meshes().len());
+    let mut buffers_to_import = Vec::with_capacity(doc.meshes().len() * 2);
 
     for mesh in doc.meshes() {
+        let mut all_vertices = PushBuffer::new(16384);
+        let mut all_indices = PushBuffer::new(16384);
+
         let mut mesh_parts: Vec<MeshPart> = Vec::with_capacity(mesh.primitives().len());
 
+        //
+        // Iterate all mesh parts, building a single vertex and index buffer. Each MeshPart will
+        // hold offsets/lengths to their sections in the vertex/index buffers
+        //
         for primitive in mesh.primitives() {
             let mesh_part = {
                 let reader = primitive.reader(|buffer| buffers.get(buffer.index()).map(|x| &**x));
@@ -401,32 +504,42 @@ fn extract_meshes_to_import(
                 if let (Some(indices), Some(positions), Some(normals), Some(tex_coords)) =
                     (indices, positions, normals, tex_coords)
                 {
-                    let indices = convert_to_u16_indices(indices);
+                    let part_indices = convert_to_u16_indices(indices);
 
-                    if let Ok(indices) = indices {
+                    if let Ok(part_indices) = part_indices {
                         let positions: Vec<_> = positions.collect();
                         let normals: Vec<_> = normals.collect();
                         let tex_coords: Vec<_> = tex_coords.into_f32().collect();
 
-                        let mut vertices = Vec::with_capacity(positions.len());
+                        let vertex_offset = all_vertices.len();
+                        let indices_offset = all_indices.len();
+
                         for i in 0..positions.len() {
-                            vertices.push(MeshVertex {
+                            all_vertices.push(&[MeshVertex {
                                 position: positions[i],
                                 normal: normals[i],
                                 tex_coord: tex_coords[i],
-                            });
+                            }],
+                            1);
                         }
 
+                        all_indices.push(&part_indices, 1);
+
+                        let vertex_size = all_vertices.len() - vertex_offset;
+                        let indices_size = all_indices.len() - indices_offset;
+
                         let material = if let Some(material_index) = primitive.material().index() {
-                            Some(material_index_to_uuid_lookup[material_index])
+                            Some(material_index_to_handle[material_index].clone())
                         } else {
                             None
                         };
 
                         Some(MeshPart {
-                            vertices,
-                            indices,
                             material,
+                            vertex_buffer_offset_in_bytes: vertex_offset as u32,
+                            vertex_buffer_size_in_bytes: vertex_size as u32,
+                            index_buffer_offset_in_bytes: indices_offset as u32,
+                            index_buffer_size_in_bytes: indices_size as u32
                         })
                     } else {
                         log::error!("indices must fit in u16");
@@ -443,17 +556,78 @@ fn extract_meshes_to_import(
             mesh_parts.push(mesh_part.unwrap());
         }
 
-        let asset = MeshAsset { mesh_parts };
-        let id = mesh
+        //
+        // Vertex Buffer
+        //
+        let vertex_buffer_asset = BufferAsset {
+            data: all_vertices.into_data()
+        };
+
+        let vertex_buffer_id = GltfObjectId::Index(buffers_to_import.len());
+        let vertex_buffer_to_import = BufferToImport {
+            asset: vertex_buffer_asset,
+            id: vertex_buffer_id.clone()
+        };
+
+        let vertex_buffer_uuid = *state
+            .buffer_asset_uuids
+            .entry(vertex_buffer_id)
+            .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+
+        buffers_to_import.push(vertex_buffer_to_import);
+
+        let vertex_buffer_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+            let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(vertex_buffer_uuid)).unwrap();
+            Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
+        });
+
+
+        //
+        // Index Buffer
+        //
+        let index_buffer_asset = BufferAsset {
+            data: all_indices.into_data()
+        };
+
+        let index_buffer_id = GltfObjectId::Index(buffers_to_import.len());
+        let index_buffer_to_import = BufferToImport {
+            asset: index_buffer_asset,
+            id: index_buffer_id.clone()
+        };
+
+        let index_buffer_uuid = *state
+            .buffer_asset_uuids
+            .entry(index_buffer_id)
+            .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+
+        buffers_to_import.push(index_buffer_to_import);
+
+        let index_buffer_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+            let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(index_buffer_uuid)).unwrap();
+            Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
+        });
+
+
+
+        let asset = MeshAsset {
+            mesh_parts,
+            vertex_buffer: vertex_buffer_handle,
+            index_buffer: index_buffer_handle,
+        };
+
+        let mesh_id = mesh
             .name()
             .map(|s| GltfObjectId::Name(s.to_string()))
             .unwrap_or(GltfObjectId::Index(mesh.index()));
 
-        let mesh_to_import = MeshToImport { id, asset };
+        let mesh_to_import = MeshToImport {
+            id: mesh_id,
+            asset
+        };
 
-        // Verify that we iterate images in order so that our resulting assets are in order
+        // Verify that we iterate meshes in order so that our resulting assets are in order
         assert!(mesh.index() == meshes_to_import.len());
-        println!(
+        log::debug!(
             "Importing Mesh name: {:?} index: {} mesh_parts count: {}",
             mesh.name(),
             mesh.index(),
@@ -463,7 +637,7 @@ fn extract_meshes_to_import(
         meshes_to_import.push(mesh_to_import);
     }
 
-    meshes_to_import
+    (meshes_to_import, buffers_to_import)
 }
 
 // make a macro to reduce duplication here :)

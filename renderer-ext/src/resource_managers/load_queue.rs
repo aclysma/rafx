@@ -8,6 +8,8 @@ use crate::pipeline::shader::ShaderAsset;
 use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset};
 use crate::pipeline::image::ImageAsset;
 use atelier_assets::loader::LoadHandle;
+use crate::pipeline::gltf::MeshAsset;
+use crate::pipeline::buffer::BufferAsset;
 
 //
 // Message handling for asset load/commit/free events
@@ -187,4 +189,6 @@ pub struct LoadQueueSet {
     pub materials: LoadQueues<MaterialAsset>,
     pub material_instances: LoadQueues<MaterialInstanceAsset>,
     pub images: LoadQueues<ImageAsset>,
+    pub buffers: LoadQueues<BufferAsset>,
+    pub meshes: LoadQueues<MeshAsset>,
 }

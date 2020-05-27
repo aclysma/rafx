@@ -754,7 +754,7 @@ impl ResourceLookupSet {
     pub fn insert_buffer(
         &mut self,
         buffer: ManuallyDrop<VkBuffer>,
-    ) -> ResourceArc<VkBufferRaw> {
+    ) -> (BufferKey, ResourceArc<VkBufferRaw>) {
         let buffer_key = BufferKey {
             id: self.next_buffer_id,
         };
@@ -762,7 +762,8 @@ impl ResourceLookupSet {
 
         let hash = ResourceHash::from_key(&buffer_key);
         let raw_buffer = ManuallyDrop::into_inner(buffer).take_raw().unwrap();
-        self.buffers.insert(hash, &buffer_key, raw_buffer)
+        let buffer = self.buffers.insert(hash, &buffer_key, raw_buffer);
+        (buffer_key, buffer)
     }
 
     pub fn get_or_create_image_view(

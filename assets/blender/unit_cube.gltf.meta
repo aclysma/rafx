@@ -1,30 +1,33 @@
 (
     version: 1,
-    import_hash: Some(5897261294887704589),
-    importer_version: 11,
+    import_hash: Some(13863425719478417145),
+    importer_version: 14,
     importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
     importer_options: (),
     importer_state: (
-        asset_uuid: Some("4ddc48ff-bf3d-4076-9b70-9a98aa359daf"),
+        buffer_asset_uuids: {
+            Index(0): "c1420c79-e0e8-445b-aad2-c6d8dff046d6",
+            Index(1): "1078d161-5655-45d7-be71-be9536bf2984",
+        },
         image_asset_uuids: {},
         material_asset_uuids: {
-            Name("Material"): "a3e2bcb5-f8f4-4a7e-9100-6aac492c280d",
+            Name("Material"): "c4eda648-a20e-49a4-9983-0a97af4d1ddc",
         },
         mesh_asset_uuids: {
-            Name("Cube"): "5c7c907a-9335-4d4a-bb61-4f0c7ff03d07",
+            Name("Cube"): "9e43b805-afbd-4cb2-912c-b10230dce015",
         },
     ),
     assets: [
         (
-            id: "a3e2bcb5-f8f4-4a7e-9100-6aac492c280d",
+            id: "c4eda648-a20e-49a4-9983-0a97af4d1ddc",
             search_tags: [
                 ("material_name", Some("Material")),
                 ("file_name", Some("unit_cube.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 10932088030319360688,
-                id: "a3e2bcb5-f8f4-4a7e-9100-6aac492c280d",
+                hash: 3581902924427063122,
+                id: "c4eda648-a20e-49a4-9983-0a97af4d1ddc",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -34,22 +37,62 @@
             )),
         ),
         (
-            id: "5c7c907a-9335-4d4a-bb61-4f0c7ff03d07",
+            id: "c1420c79-e0e8-445b-aad2-c6d8dff046d6",
+            search_tags: [
+                ("file_name", Some("unit_cube.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 10913373556782122799,
+                id: "c1420c79-e0e8-445b-aad2-c6d8dff046d6",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(776),
+                uncompressed_size: Some(776),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "1078d161-5655-45d7-be71-be9536bf2984",
+            search_tags: [
+                ("file_name", Some("unit_cube.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 14536646546850293095,
+                id: "1078d161-5655-45d7-be71-be9536bf2984",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(80),
+                uncompressed_size: Some(80),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "9e43b805-afbd-4cb2-912c-b10230dce015",
             search_tags: [
                 ("mesh_name", Some("Cube")),
                 ("file_name", Some("unit_cube.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 11889394971789604176,
-                id: "5c7c907a-9335-4d4a-bb61-4f0c7ff03d07",
-                build_deps: [],
+                hash: 3306879212926203328,
+                id: "9e43b805-afbd-4cb2-912c-b10230dce015",
+                build_deps: [
+                    Uuid("1078d161-5655-45d7-be71-be9536bf2984"),
+                    Uuid("c4eda648-a20e-49a4-9983-0a97af4d1ddc"),
+                    Uuid("c1420c79-e0e8-445b-aad2-c6d8dff046d6"),
+                ],
                 load_deps: [
-                    Uuid("a3e2bcb5-f8f4-4a7e-9100-6aac492c280d"),
+                    Uuid("c4eda648-a20e-49a4-9983-0a97af4d1ddc"),
+                    Uuid("c1420c79-e0e8-445b-aad2-c6d8dff046d6"),
+                    Uuid("1078d161-5655-45d7-be71-be9536bf2984"),
                 ],
                 compression: None,
-                compressed_size: Some(881),
-                uncompressed_size: Some(881),
+                compressed_size: Some(97),
+                uncompressed_size: Some(97),
                 type_id: "cf232526-3757-4d94-98d1-c2f7e27c979f",
             )),
         ),
