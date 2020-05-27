@@ -89,6 +89,7 @@ pub struct GameRenderer {
     sprite_material_instance: Handle<MaterialInstanceAsset>,
     mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_custom_material: Option<DynMaterialInstance>,
+    mesh_custom_material: Option<DynMaterialInstance>,
     mesh: Handle<MeshAsset>,
     mesh_material: Handle<MaterialAsset>,
     mesh_material_instance: Handle<MaterialInstanceAsset>,
@@ -124,10 +125,13 @@ impl GameRenderer {
         asset_resource.add_storage_with_load_handler::<BufferAsset, _>(Box::new(
             resource_manager.create_buffer_load_handler(),
         ));
+        asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
+            resource_manager.create_mesh_load_handler(),
+        ));
         //asset_resource.add_storage::<BufferAsset>();
 
         asset_resource.add_storage::<GltfMaterialAsset>();
-        asset_resource.add_storage::<MeshAsset>();
+        //asset_resource.add_storage::<MeshAsset>();
         // asset_resource.add_storage::<SpriteAsset>();
 
         // asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
@@ -143,7 +147,7 @@ impl GameRenderer {
             &asset_resource,
         );
         let override_image = begin_load_asset::<ImageAsset>(
-            asset_uuid!("b7753a66-1b26-4152-ad61-93584f4442aa"),
+            asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
             &asset_resource,
         );
 
@@ -158,7 +162,7 @@ impl GameRenderer {
         );
 
         let mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("09c3d7e0-5177-49e6-8636-ec167cdd1464"),
+            asset_uuid!("939ad928-fe98-41b9-9f91-c0c2435a194b"),
             &asset_resource,
         );
 
@@ -171,6 +175,7 @@ impl GameRenderer {
             sprite_renderpass: None,
             mesh_renderpass: None,
             sprite_custom_material: None,
+            mesh_custom_material: None,
             mesh,
             mesh_material,
             mesh_material_instance
@@ -226,9 +231,9 @@ impl GameRenderer {
 
         let extents_width = 900;
         let extents_height = 600;
-        let fov = extents_width as f32 / extents_height as f32;
+        let aspect_ration = extents_width as f32 / extents_height as f32;
         let half_width = 400.0;
-        let half_height = 400.0 / fov;
+        let half_height = 400.0 / aspect_ration;
         let proj = crate::renderpass::sprite_renderpass::orthographic_rh_gl(
             -half_width,
             half_width,
@@ -246,6 +251,14 @@ impl GameRenderer {
         sprite_custom_material.flush();
 
         renderer.sprite_custom_material = Some(sprite_custom_material);
+
+        let mut mesh_custom_material = renderer
+            .resource_manager
+            .create_dyn_material_instance_from_asset(renderer.mesh_material_instance.clone())?;
+        mesh_custom_material.set_buffer_data(&"view_proj".to_string(), &proj);
+        mesh_custom_material.flush();
+
+        renderer.mesh_custom_material = Some(mesh_custom_material);
 
         Ok(renderer)
     }
@@ -342,6 +355,32 @@ impl VkSurfaceEventListener for GameRenderer {
 
         //std::thread::sleep(std::time::Duration::from_millis(100));
 
+
+
+
+
+
+        let extents_width = 900;
+        let extents_height = 600;
+        let aspect_ratio = extents_width as f32 / extents_height as f32;
+        let half_width = 10.0;
+        let half_height = 10.0 / aspect_ratio;
+
+        let view = glam::Mat4::look_at_rh(glam::Vec3::new(-10.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, 1.0, 0.0));
+        let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 100.0);
+
+        let view_proj = proj * view;
+
+        self.mesh_custom_material.as_mut().unwrap().set_buffer_data(&"view_proj".to_string(), &view_proj);
+        self.mesh_custom_material.as_mut().unwrap().flush();
+
+
+
+
+
+
+
+
         // Flush descriptor set changes
         self.resource_manager.on_begin_frame();
 
@@ -373,14 +412,29 @@ impl VkSurfaceEventListener for GameRenderer {
             command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
         }
 
-        let mesh_descriptors = self.resource_manager.get_material_instance_descriptor_sets_for_current_frame(&self.mesh_material_instance, 0);
+        // let mesh_descriptors = self.resource_manager.get_material_instance_descriptor_sets_for_current_frame(
+        //     &self.mesh_material_instance,
+        //     0
+        // );
+
+        let mesh_info = self.resource_manager.get_mesh_info(&self.mesh);
+        let pass = self.mesh_custom_material.as_ref().unwrap().pass(0);
+
+        // Pass 0 is "global"
+        let descriptor_set_per_pass = pass
+            .descriptor_set_layout(0)
+            .descriptor_set()
+            .get_raw_for_gpu_read(&self.resource_manager);
+
         if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
             log::trace!("mesh_renderpass update");
             mesh_renderpass.update(
                 present_index,
                 1.0,
-                mesh_descriptors.descriptor_sets[0],
+                //mesh_descriptors.descriptor_sets[0],
+                descriptor_set_per_pass,
                 &[],
+                &[mesh_info],
                 &self.time_state,
             )?;
             command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
@@ -403,6 +457,7 @@ impl Drop for GameRenderer {
         self.sprite_renderpass = None;
         self.mesh_renderpass = None;
         self.sprite_custom_material = None;
+        self.mesh_custom_material = None;
         //self.mesh_renderpass = None;
     }
 }

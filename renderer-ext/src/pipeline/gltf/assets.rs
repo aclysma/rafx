@@ -27,7 +27,7 @@ pub struct MeshVertex {
     pub tex_coord: [f32; 2],
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MeshPart {
     pub vertex_buffer_offset_in_bytes: u32,
     pub vertex_buffer_size_in_bytes: u32,
@@ -36,7 +36,7 @@ pub struct MeshPart {
     pub material: Option<Handle<GltfMaterialAsset>>,
 }
 
-#[derive(TypeUuid, Serialize, Deserialize)]
+#[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "cf232526-3757-4d94-98d1-c2f7e27c979f"]
 pub struct MeshAsset {
     pub mesh_parts: Vec<MeshPart>,

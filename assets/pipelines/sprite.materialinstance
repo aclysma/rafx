@@ -3,7 +3,7 @@
     slot_assignments: [
         (
             slot_name: "texture",
-            image: Some("../textures/texture2.jpg")
+            image: Some("../textures/texture.jpg")
         ),
         /*
         (

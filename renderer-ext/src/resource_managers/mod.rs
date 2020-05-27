@@ -2,7 +2,7 @@
 //     UploadQueue, ImageUploadOpResult, BufferUploadOpResult, PendingImageUpload, UploadOp,
 // };
 use crossbeam_channel::{Sender, Receiver};
-use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer};
+use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer, VkBufferRaw};
 use ash::prelude::*;
 use ash::vk;
 use crate::pipeline::image::ImageAsset;
@@ -73,7 +73,7 @@ use crate::resource_managers::resource_lookup::{
 };
 use crate::pipeline::gltf::MeshAsset;
 use crate::pipeline::buffer::BufferAsset;
-use crate::resource_managers::asset_lookup::LoadedBuffer;
+use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh};
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -98,6 +98,12 @@ pub struct ImageInfo {
 pub struct DescriptorSetInfo {
     pub descriptor_set_layout_def: dsc::DescriptorSetLayout,
     pub descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
+}
+
+pub struct MeshInfo {
+    pub vertex_buffer: ResourceArc<VkBufferRaw>,
+    pub index_buffer: ResourceArc<VkBufferRaw>,
+    pub mesh_asset: MeshAsset,
 }
 
 // Information about a descriptor set for a particular frame. Descriptor sets may be updated
@@ -166,9 +172,9 @@ impl ResourceManager {
         self.load_queues.buffers.create_load_handler()
     }
 
-    // pub fn create_mesh_load_handler(&self) -> GenericLoadHandler<MeshAsset> {
-    //     self.load_queues.meshes.create_load_handler()
-    // }
+    pub fn create_mesh_load_handler(&self) -> GenericLoadHandler<MeshAsset> {
+        self.load_queues.meshes.create_load_handler()
+    }
 
     pub fn get_image_info(
         &self,
@@ -238,6 +244,19 @@ impl ResourceManager {
         }
     }
 
+    pub fn get_mesh_info(
+        &self,
+        handle: &Handle<MeshAsset>
+    ) -> MeshInfo {
+        let resource = self.loaded_assets.meshes.get_committed(handle.load_handle()).unwrap();
+
+        MeshInfo {
+            vertex_buffer: resource.vertex_buffer.clone(),
+            index_buffer: resource.index_buffer.clone(),
+            mesh_asset: resource.asset.clone(),
+        }
+    }
+
     pub fn get_material_instance_descriptor_sets_for_current_frame(
         &self,
         handle: &Handle<MaterialInstanceAsset>,
@@ -292,7 +311,7 @@ impl ResourceManager {
         self.process_material_instance_load_requests();
         self.process_image_load_requests();
         self.process_buffer_load_requests();
-        //self.process_mesh_load_requests();
+        self.process_mesh_load_requests();
 
         self.upload_manager.update()?;
 
@@ -400,6 +419,27 @@ impl ResourceManager {
         Self::handle_free_requests(
             &mut self.load_queues.material_instances,
             &mut self.loaded_assets.material_instances,
+        );
+    }
+
+    fn process_mesh_load_requests(&mut self) {
+        for request in self.load_queues.meshes.take_load_requests() {
+            log::trace!("Create mesh {:?}", request.load_handle);
+            let loaded_asset = self.load_mesh(&request.asset);
+            Self::handle_load_result(
+                request.load_op,
+                loaded_asset,
+                &mut self.loaded_assets.meshes,
+            );
+        }
+
+        Self::handle_commit_requests(
+            &mut self.load_queues.meshes,
+            &mut self.loaded_assets.meshes,
+        );
+        Self::handle_free_requests(
+            &mut self.load_queues.meshes,
+            &mut self.loaded_assets.meshes,
         );
     }
 
@@ -691,6 +731,22 @@ impl ResourceManager {
             material: material_instance_asset.material.clone(),
             material_descriptor_sets,
             slot_assignments: material_instance_asset.slot_assignments.clone(),
+        })
+    }
+
+    fn load_mesh(
+        &mut self,
+        mesh_asset: &MeshAsset,
+    ) -> VkResult<LoadedMesh> {
+
+        let vertex_buffer = self.loaded_assets.buffers.get_latest(mesh_asset.vertex_buffer.load_handle()).unwrap().buffer.clone();
+        let index_buffer = self.loaded_assets.buffers.get_latest(mesh_asset.index_buffer.load_handle()).unwrap().buffer.clone();
+        //TODO: materials
+
+        Ok(LoadedMesh {
+            vertex_buffer,
+            index_buffer,
+            asset: mesh_asset.clone()
         })
     }
 

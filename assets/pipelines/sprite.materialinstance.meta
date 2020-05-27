@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(18242588006498000246),
+    import_hash: Some(432303079791765932),
     importer_version: 5,
     importer_type: "4ce02143-a5c4-4433-b843-07cdccf013b0",
     importer_options: (),
@@ -13,15 +13,15 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 6071191247474695159,
+                hash: 13539457927075409057,
                 id: "84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5",
                 build_deps: [
-                    Path("../textures/texture2.jpg"),
+                    Path("../textures/texture.jpg"),
                     Path("sprite.material"),
                 ],
                 load_deps: [
+                    Path("../textures/texture.jpg"),
                     Path("sprite.material"),
-                    Path("../textures/texture2.jpg"),
                 ],
                 compression: None,
                 compressed_size: Some(73),

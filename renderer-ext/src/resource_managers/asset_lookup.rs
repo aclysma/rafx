@@ -11,6 +11,7 @@ use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::handle::Handle;
 use std::sync::Arc;
 use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource, ImageKey, BufferKey};
+use crate::pipeline::gltf::MeshAsset;
 
 //
 // The "loaded" state of assets. Assets may have dependencies. Arcs to those dependencies ensure
@@ -80,6 +81,12 @@ pub struct LoadedImage {
 pub struct LoadedBuffer {
     pub buffer_key: BufferKey,
     pub buffer: ResourceArc<VkBufferRaw>,
+}
+
+pub struct LoadedMesh {
+    pub vertex_buffer: ResourceArc<VkBufferRaw>,
+    pub index_buffer: ResourceArc<VkBufferRaw>,
+    pub asset: MeshAsset,
 }
 
 //
@@ -192,6 +199,7 @@ pub struct LoadedAssetMetrics {
     material_instance_count: usize,
     image_count: usize,
     buffer_count: usize,
+    mesh_count: usize,
 }
 
 //
@@ -205,6 +213,7 @@ pub struct LoadedAssetLookupSet {
     pub material_instances: AssetLookup<LoadedMaterialInstance>,
     pub images: AssetLookup<LoadedImage>,
     pub buffers: AssetLookup<LoadedBuffer>,
+    pub meshes: AssetLookup<LoadedMesh>,
 }
 
 impl LoadedAssetLookupSet {
@@ -216,6 +225,7 @@ impl LoadedAssetLookupSet {
             material_instance_count: self.material_instances.len(),
             image_count: self.images.len(),
             buffer_count: self.buffers.len(),
+            mesh_count: self.meshes.len(),
         }
     }
 
@@ -226,5 +236,6 @@ impl LoadedAssetLookupSet {
         self.material_instances.destroy();
         self.images.destroy();
         self.buffers.destroy();
+        self.meshes.destroy();
     }
 }

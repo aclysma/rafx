@@ -22,7 +22,7 @@ use ash::vk::ShaderStageFlags;
 
 use crate::time::TimeState;
 
-use crate::resource_managers::PipelineSwapchainInfo;
+use crate::resource_managers::{PipelineSwapchainInfo, MeshInfo};
 use crate::pipeline::gltf::MeshVertex;
 
 /// Per-pass "global" data
@@ -45,11 +45,6 @@ pub struct VkMeshRenderPass {
     // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
-
-    // Buffers for sending data to be rendered to the GPU
-    // Indexed by present index, then vertex buffer.
-    pub vertex_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
-    pub index_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
 }
 
 impl VkMeshRenderPass {
@@ -82,24 +77,12 @@ impl VkMeshRenderPass {
             &command_pool,
         )?;
 
-        //
-        // Containers for dynamically-allocated resources
-        //
-        let mut vertex_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
-        let mut index_buffers = Vec::with_capacity(swapchain.swapchain_info.image_count);
-        for _ in 0..swapchain.swapchain_info.image_count {
-            vertex_buffers.push(vec![]);
-            index_buffers.push(vec![]);
-        }
-
         Ok(VkMeshRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             frame_buffers,
             command_pool,
             command_buffers,
-            vertex_buffers,
-            index_buffers,
             pipeline_info
         })
     }
@@ -170,12 +153,11 @@ impl VkMeshRenderPass {
         pipeline: &vk::Pipeline,
         pipeline_layout: &vk::PipelineLayout,
         command_buffer: &vk::CommandBuffer,
-        vertex_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
-        index_buffers: &mut Vec<ManuallyDrop<VkBuffer>>,
         descriptor_set_per_pass: &vk::DescriptorSet,
         descriptor_set_per_texture: &[vk::DescriptorSet],
         //meshes: &[Option<Mesh>], // loaded mesh?
         time_state: &TimeState,
+        meshes: &[MeshInfo],
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
@@ -184,56 +166,6 @@ impl VkMeshRenderPass {
                 float32: [0.0, 0.0, 0.0, 1.0],
             },
         }];
-
-        fn drop_old_buffers(buffers: &mut Vec<ManuallyDrop<VkBuffer>>) {
-            for b in buffers.iter_mut() {
-                unsafe {
-                    ManuallyDrop::drop(b);
-                }
-            }
-
-            buffers.clear();
-        }
-
-        drop_old_buffers(vertex_buffers);
-        drop_old_buffers(index_buffers);
-
-        // let mut draw_list_count = 0;
-        // if !sprites.is_empty() {
-        //     let vertex_buffer = {
-        //         let vertex_buffer_size =
-        //             vertex_list.len() as u64 * std::mem::size_of::<Vertex>() as u64;
-        //         let mut vertex_buffer = VkBuffer::new(
-        //             device_context,
-        //             vk_mem::MemoryUsage::CpuToGpu,
-        //             vk::BufferUsageFlags::VERTEX_BUFFER,
-        //             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-        //             vertex_buffer_size,
-        //         )?;
-        //
-        //         vertex_buffer.write_to_host_visible_buffer(vertex_list.as_slice())?;
-        //         vertex_buffer
-        //     };
-        //
-        //     //TODO: Duplicated code here
-        //     let index_buffer = {
-        //         let index_buffer_size = index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
-        //         let mut index_buffer = VkBuffer::new(
-        //             device_context,
-        //             vk_mem::MemoryUsage::CpuToGpu,
-        //             vk::BufferUsageFlags::INDEX_BUFFER,
-        //             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-        //             index_buffer_size,
-        //         )?;
-        //
-        //         index_buffer.write_to_host_visible_buffer(index_list.as_slice())?;
-        //         index_buffer
-        //     };
-        //
-        //     vertex_buffers.push(ManuallyDrop::new(vertex_buffer));
-        //     index_buffers.push(ManuallyDrop::new(index_buffer));
-        //     draw_list_count += 1;
-        // }
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(*renderpass)
@@ -254,7 +186,7 @@ impl VkMeshRenderPass {
                 &render_pass_begin_info,
                 vk::SubpassContents::INLINE,
             );
-/*
+
             if !meshes.is_empty() {
                 logical_device.cmd_bind_pipeline(
                     *command_buffer,
@@ -273,48 +205,45 @@ impl VkMeshRenderPass {
                 );
 
                 for mesh in meshes {
-                    if let Some(mesh) = mesh {
-                        for mesh_part in &mesh.render_info.mesh_parts {
-                            logical_device.cmd_bind_vertex_buffers(
-                                *command_buffer,
-                                0, // first binding
-                                &[mesh.render_info.buffer.buffer],
-                                &[mesh_part.vertex_offset as u64], // offsets
-                            );
+                    for mesh_part in &mesh.mesh_asset.mesh_parts {
+                        logical_device.cmd_bind_vertex_buffers(
+                            *command_buffer,
+                            0, // first binding
+                            &[mesh.vertex_buffer.get_raw().buffer],
+                            &[mesh_part.vertex_buffer_offset_in_bytes as u64], // offsets
+                        );
 
-                            logical_device.cmd_bind_index_buffer(
-                                *command_buffer,
-                                mesh.render_info.buffer.buffer,
-                                mesh_part.index_offset as u64, // offset
-                                vk::IndexType::UINT16,
-                            );
+                        logical_device.cmd_bind_index_buffer(
+                            *command_buffer,
+                            mesh.index_buffer.get_raw().buffer,
+                            mesh_part.index_buffer_offset_in_bytes as u64, // offset
+                            vk::IndexType::UINT16,
+                        );
 
-                            // // Bind per-draw-call data (i.e. texture)
-                            // logical_device.cmd_bind_descriptor_sets(
-                            //     *command_buffer,
-                            //     vk::PipelineBindPoint::GRAPHICS,
-                            //     *pipeline_layout,
-                            //     1,
-                            //     //&[/*descriptor_set_per_texture[mesh_part.image_handle as usize]*/ descriptor_set_per_texture[0]],
-                            //     &[descr]
-                            //     &[],
-                            // );
+                        // // Bind per-draw-call data (i.e. texture)
+                        // logical_device.cmd_bind_descriptor_sets(
+                        //     *command_buffer,
+                        //     vk::PipelineBindPoint::GRAPHICS,
+                        //     *pipeline_layout,
+                        //     1,
+                        //     //&[/*descriptor_set_per_texture[mesh_part.image_handle as usize]*/ descriptor_set_per_texture[0]],
+                        //     &[descr]
+                        //     &[],
+                        // );
 
-                            //mesh_part.mesh_part.index_size[]
+                        //mesh_part.mesh_part.index_size[]
 
-                            logical_device.cmd_draw_indexed(
-                                *command_buffer,
-                                mesh_part.index_size / 2,
-                                1,
-                                0,
-                                0,
-                                0,
-                            );
-                        }
+                        logical_device.cmd_draw_indexed(
+                            *command_buffer,
+                            mesh_part.index_buffer_size_in_bytes / 2, //sizeof(u16)
+                            1,
+                            0,
+                            0,
+                            0,
+                        );
                     }
                 }
             }
-            */
 
             logical_device.cmd_end_render_pass(*command_buffer);
             logical_device.end_command_buffer(*command_buffer)
@@ -327,6 +256,7 @@ impl VkMeshRenderPass {
         hidpi_factor: f64,
         descriptor_set_per_pass: vk::DescriptorSet,
         descriptor_set_per_texture: &[vk::DescriptorSet],
+        mesh_info: &[MeshInfo],
         time_state: &TimeState,
     ) -> VkResult<()> {
         Self::update_command_buffer(
@@ -337,11 +267,10 @@ impl VkMeshRenderPass {
             &self.pipeline_info.pipeline.get_raw().pipeline,
             &self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
-            &mut self.vertex_buffers[present_index],
-            &mut self.index_buffers[present_index],
             &descriptor_set_per_pass,
             descriptor_set_per_texture,
             time_state,
+            mesh_info,
         )
     }
 }
@@ -350,21 +279,8 @@ impl Drop for VkMeshRenderPass {
     fn drop(&mut self) {
         log::trace!("destroying VkMeshRenderPass");
 
-        fn drop_all_buffer_lists(buffer_list: &mut Vec<Vec<ManuallyDrop<VkBuffer>>>) {
-            for buffers in buffer_list {
-                for mut b in &mut *buffers {
-                    unsafe {
-                        ManuallyDrop::drop(&mut b);
-                    }
-                }
-            }
-        }
-
         unsafe {
             let device = self.device_context.device();
-
-            drop_all_buffer_lists(&mut self.vertex_buffers);
-            drop_all_buffer_lists(&mut self.index_buffers);
 
             device.destroy_command_pool(self.command_pool, None);
 
