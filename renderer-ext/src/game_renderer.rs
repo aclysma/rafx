@@ -366,7 +366,7 @@ impl VkSurfaceEventListener for GameRenderer {
         let half_width = 10.0;
         let half_height = 10.0 / aspect_ratio;
 
-        let view = glam::Mat4::look_at_rh(glam::Vec3::new(-10.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, 1.0, 0.0));
+        let view = glam::Mat4::look_at_rh(glam::Vec3::new(-10.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, -1.0, 0.0));
         let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 100.0);
 
         let view_proj = proj * view;
