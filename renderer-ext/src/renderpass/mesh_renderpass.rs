@@ -154,7 +154,8 @@ impl VkMeshRenderPass {
         pipeline_layout: &vk::PipelineLayout,
         command_buffer: &vk::CommandBuffer,
         descriptor_set_per_pass: &vk::DescriptorSet,
-        descriptor_set_per_texture: &[vk::DescriptorSet],
+        descriptor_set_per_material: &[vk::DescriptorSet],
+        descriptor_set_per_instance: &[vk::DescriptorSet],
         //meshes: &[Option<Mesh>], // loaded mesh?
         time_state: &TimeState,
         meshes: &[MeshInfo],
@@ -201,6 +202,24 @@ impl VkMeshRenderPass {
                     *pipeline_layout,
                     0,
                     &[*descriptor_set_per_pass],
+                    &[],
+                );
+
+                logical_device.cmd_bind_descriptor_sets(
+                    *command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    *pipeline_layout,
+                    1,
+                    &[descriptor_set_per_material[0]],
+                    &[],
+                );
+
+                logical_device.cmd_bind_descriptor_sets(
+                    *command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    *pipeline_layout,
+                    2,
+                    &[descriptor_set_per_instance[0]],
                     &[],
                 );
 
@@ -255,7 +274,8 @@ impl VkMeshRenderPass {
         present_index: usize,
         hidpi_factor: f64,
         descriptor_set_per_pass: vk::DescriptorSet,
-        descriptor_set_per_texture: &[vk::DescriptorSet],
+        descriptor_set_per_material: &[vk::DescriptorSet],
+        descriptor_set_per_instance: &[vk::DescriptorSet],
         mesh_info: &[MeshInfo],
         time_state: &TimeState,
     ) -> VkResult<()> {
@@ -268,7 +288,8 @@ impl VkMeshRenderPass {
             &self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
             &descriptor_set_per_pass,
-            descriptor_set_per_texture,
+            descriptor_set_per_material,
+            descriptor_set_per_instance,
             time_state,
             mesh_info,
         )

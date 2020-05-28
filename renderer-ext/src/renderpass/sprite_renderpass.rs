@@ -464,14 +464,14 @@ impl VkSpriteRenderPass {
                         &[],
                     );
 
-                    logical_device.cmd_draw_indexed(
-                        *command_buffer,
-                        draw_call.index_buffer_count as u32,
-                        1,
-                        draw_call.index_buffer_first_element as u32,
-                        0,
-                        0,
-                    );
+                    // logical_device.cmd_draw_indexed(
+                    //     *command_buffer,
+                    //     draw_call.index_buffer_count as u32,
+                    //     1,
+                    //     draw_call.index_buffer_first_element as u32,
+                    //     0,
+                    //     0,
+                    // );
                 }
             }
 

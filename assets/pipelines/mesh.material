@@ -15,24 +15,17 @@
                     entry_name: "main"
                 ),
             ],
+
             shader_interface: (
                 descriptor_set_layouts: [
+
+                    // Global data
                     (
                         descriptor_set_layout_bindings: [
                             (
                                 binding: 0,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Vertex,
-                                slot_name: "view_proj",
-
-                                internal_buffer_per_descriptor_size: Some(64)
-                            ),
-                            /*
-                            (
-                                binding: 1,
                                 descriptor_type: Sampler,
-                                descriptor_count: 1,
+                                descriptor_count: 0,
                                 stage_flags: Fragment,
                                 slot_name: "sampler",
 
@@ -56,31 +49,50 @@
                                     )
                                 ])                                
                             ),
-                            */
                         ],
                     ),
-                    /*
+
+                    // Per-material values
                     (
                         descriptor_set_layout_bindings: [
                             (
                                 binding: 0,
+                                descriptor_type: UniformBuffer,
+                                descriptor_count: 1,
+                                stage_flags: Vertex,
+                                slot_name: "material_data",
+
+                                internal_buffer_per_descriptor_size: Some(52)
+                            ),
+                            (
+                                binding: 1,
                                 descriptor_type: SampledImage,
                                 descriptor_count: 1,
                                 stage_flags: Fragment,
-                                slot_name: "texture"
+                                slot_name: "base_color_texture"
                             ),
-                        ],
+                        ]
                     ),
-                    */
+
+                    // Per-instance values
+                    (
+                        descriptor_set_layout_bindings: [
+                            (
+                                binding: 0,
+                                descriptor_type: UniformBuffer,
+                                descriptor_count: 1,
+                                stage_flags: Vertex,
+                                slot_name: "view_proj",
+
+                                internal_buffer_per_descriptor_size: Some(64)
+                            ),
+                        ]
+                    ),
                 ],
                 push_constant_ranges: [
-                    (
-                        stage_flags: Vertex,
-                        offset: 0,
-                        size: 4,
-                        slot_name: "some_fancy_value"
-                    ),
+                    
                 ],
+
                 // If a mesh has a material, it needs to be cooked so that the verts are in that format
                 // Maybe each binding is a vertex channel?
                 // Actually maybe this works out so that you can have a kitchen-sink blob of vertex

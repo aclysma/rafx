@@ -157,12 +157,12 @@ impl GameRenderer {
         );
 
         let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-            asset_uuid!("4101d8ef-7a46-4ab8-970c-2c18a91aff06"),
+            asset_uuid!("e7824acf-05a5-4757-a085-8b73136940e9"),
             &asset_resource,
         );
 
         let mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("939ad928-fe98-41b9-9f91-c0c2435a194b"),
+            asset_uuid!("93ed839e-1ad8-44e4-927d-e82f5c986d46"),
             &asset_resource,
         );
 
@@ -357,7 +357,14 @@ impl VkSurfaceEventListener for GameRenderer {
 
 
 
+        //let loop_time = (self.time_state.total_time().as_millis() % 500) as f32 / 500.0;
+        let loop_time = self.time_state.total_time().as_secs_f32();
 
+        let eye = glam::Vec3::new(
+            10.0 * f32::cos(loop_time),
+            0.0,
+            10.0 * f32::sin(loop_time)
+        );
 
 
         let extents_width = 900;
@@ -366,7 +373,7 @@ impl VkSurfaceEventListener for GameRenderer {
         let half_width = 10.0;
         let half_height = 10.0 / aspect_ratio;
 
-        let view = glam::Mat4::look_at_rh(glam::Vec3::new(-10.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, -1.0, 0.0));
+        let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, -1.0, 0.0));
         let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 100.0);
 
         let view_proj = proj * view;
@@ -426,6 +433,16 @@ impl VkSurfaceEventListener for GameRenderer {
             .descriptor_set()
             .get_raw_for_gpu_read(&self.resource_manager);
 
+        let descriptor_set_per_material = pass
+            .descriptor_set_layout(1)
+            .descriptor_set()
+            .get_raw_for_gpu_read(&self.resource_manager);
+
+        let descriptor_set_per_texture = pass
+            .descriptor_set_layout(2)
+            .descriptor_set()
+            .get_raw_for_gpu_read(&self.resource_manager);
+
         if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
             log::trace!("mesh_renderpass update");
             mesh_renderpass.update(
@@ -433,7 +450,8 @@ impl VkSurfaceEventListener for GameRenderer {
                 1.0,
                 //mesh_descriptors.descriptor_sets[0],
                 descriptor_set_per_pass,
-                &[],
+                &[descriptor_set_per_material],
+                &[descriptor_set_per_texture],
                 &[mesh_info],
                 &self.time_state,
             )?;

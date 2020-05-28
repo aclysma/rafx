@@ -1,7 +1,7 @@
 (
     version: 1,
-    import_hash: Some(13863425719478417145),
-    importer_version: 14,
+    import_hash: Some(16270320588604701327),
+    importer_version: 15,
     importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
     importer_options: (),
     importer_state: (
@@ -26,13 +26,13 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 3581902924427063122,
+                hash: 12555825939944017448,
                 id: "c4eda648-a20e-49a4-9983-0a97af4d1ddc",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
-                compressed_size: Some(17),
-                uncompressed_size: Some(17),
+                compressed_size: Some(53),
+                uncompressed_size: Some(53),
                 type_id: "130a91a8-ba80-4cad-9bce-848326b234c7",
             )),
         ),
@@ -43,7 +43,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 10913373556782122799,
+                hash: 2720572289650945446,
                 id: "c1420c79-e0e8-445b-aad2-c6d8dff046d6",
                 build_deps: [],
                 load_deps: [],
@@ -60,7 +60,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 14536646546850293095,
+                hash: 12630148257597162366,
                 id: "1078d161-5655-45d7-be71-be9536bf2984",
                 build_deps: [],
                 load_deps: [],
@@ -78,17 +78,17 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 3306879212926203328,
+                hash: 6755724525297322779,
                 id: "9e43b805-afbd-4cb2-912c-b10230dce015",
                 build_deps: [
-                    Uuid("1078d161-5655-45d7-be71-be9536bf2984"),
                     Uuid("c4eda648-a20e-49a4-9983-0a97af4d1ddc"),
+                    Uuid("1078d161-5655-45d7-be71-be9536bf2984"),
                     Uuid("c1420c79-e0e8-445b-aad2-c6d8dff046d6"),
                 ],
                 load_deps: [
-                    Uuid("c4eda648-a20e-49a4-9983-0a97af4d1ddc"),
                     Uuid("c1420c79-e0e8-445b-aad2-c6d8dff046d6"),
                     Uuid("1078d161-5655-45d7-be71-be9536bf2984"),
+                    Uuid("c4eda648-a20e-49a4-9983-0a97af4d1ddc"),
                 ],
                 compression: None,
                 compressed_size: Some(97),

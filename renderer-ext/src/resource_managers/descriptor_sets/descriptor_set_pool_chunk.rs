@@ -287,6 +287,11 @@ impl RegisteredDescriptorSetPoolChunk {
                         continue;
                     }
 
+                    if image_info.sampler.is_none() && image_info.image_view.is_none() {
+                        // Don't bind anything that has both a null sampler and image_view
+                        continue;
+                    }
+
                     let mut image_info_builder = vk::DescriptorImageInfo::builder();
                     image_info_builder =
                         image_info_builder.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
