@@ -102,6 +102,33 @@
         ],
         blend_constants: (0, 0, 0, 0),
     ),
+    depth_stencil_state: (
+        depth_test_enable: false,
+        depth_write_enable: false,
+        depth_compare_op: Never,
+        depth_bounds_test_enable: false,
+        min_depth_bounds: 0.0,
+        max_depth_bounds: 1.0,
+        stencil_test_enable: false,
+        front: (
+            fail_op: Keep,
+            pass_op: Keep,
+            depth_fail_op: Keep,
+            compare_op: Never,
+            compare_mask: 0,
+            write_mask: 0,
+            reference: 0
+        ),
+        back: (
+            fail_op: Keep,
+            pass_op: Keep,
+            depth_fail_op: Keep,
+            compare_op: Never,
+            compare_mask: 0,
+            write_mask: 0,
+            reference: 0
+        )
+    ),
     dynamic_state: (
         dynamic_states: [],
     ),

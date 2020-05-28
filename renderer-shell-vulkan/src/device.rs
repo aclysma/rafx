@@ -157,7 +157,7 @@ impl VkDeviceContext {
                 surface_loader,
                 physical_device,
                 physical_device_info,
-                queues
+                queues,
             }))),
         }
     }

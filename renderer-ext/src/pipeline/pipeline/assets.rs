@@ -25,6 +25,7 @@ pub struct PipelineAsset {
     pub multisample_state: dsc::PipelineMultisampleState,
     pub color_blend_state: dsc::PipelineColorBlendState,
     pub dynamic_state: dsc::PipelineDynamicState,
+    pub depth_stencil_state: dsc::PipelineDepthStencilState,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]

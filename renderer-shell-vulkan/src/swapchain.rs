@@ -2,13 +2,14 @@ use ash::vk;
 use ash::prelude::VkResult;
 use ash::extensions::khr;
 
-use ash::version::DeviceV1_0;
+use ash::version::{DeviceV1_0, InstanceV1_0};
 
 use super::VkInstance;
 use super::VkDevice;
 use super::VkQueueFamilyIndices;
-use crate::{PresentMode, VkDeviceContext};
+use crate::{PresentMode, VkDeviceContext, VkImage};
 use super::Window;
+use std::mem::ManuallyDrop;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 
@@ -30,6 +31,10 @@ pub struct VkSwapchain {
     pub swapchain: vk::SwapchainKHR,
     pub swapchain_images: Vec<vk::Image>,
     pub swapchain_image_views: Vec<vk::ImageView>,
+
+    pub depth_format: vk::Format,
+    pub depth_image: ManuallyDrop<VkImage>,
+    pub depth_image_view: vk::ImageView,
 
     // One per MAX_FRAMES_IN_FLIGHT
     pub image_available_semaphores: Vec<vk::Semaphore>,
@@ -61,6 +66,9 @@ impl VkSwapchain {
         let swapchain_image_views =
             Self::create_image_views(device_context.device(), &swapchain_info, &swapchain_images)?;
 
+        let depth_format = Self::choose_depth_format(device_context);
+        let (depth_image, depth_image_view) = Self::create_depth_image(device_context, depth_format, &swapchain_info)?;
+
         let image_available_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
         let render_finished_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
         let in_flight_fences = Self::allocate_fences_per_frame(&device_context)?;
@@ -72,10 +80,54 @@ impl VkSwapchain {
             swapchain,
             swapchain_images,
             swapchain_image_views,
+            depth_format,
+            depth_image,
+            depth_image_view,
             image_available_semaphores,
             render_finished_semaphores,
             in_flight_fences,
         })
+    }
+
+    fn create_depth_image(
+        device_context: &VkDeviceContext,
+        depth_format: vk::Format,
+        swapchain_info: &SwapchainInfo,
+    ) -> VkResult<(ManuallyDrop<VkImage>, vk::ImageView)> {
+        let extents = vk::Extent3D {
+            width: swapchain_info.extents.width,
+            height: swapchain_info.extents.height,
+            depth: 1,
+        };
+
+        let image = VkImage::new(
+            device_context,
+            vk_mem::MemoryUsage::GpuOnly,
+            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+            extents,
+            depth_format,
+            vk::ImageTiling::OPTIMAL,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL
+        )?;
+
+        let subresource_range = vk::ImageSubresourceRange::builder()
+            .aspect_mask(vk::ImageAspectFlags::DEPTH)
+            .base_mip_level(0)
+            .level_count(1)
+            .base_array_layer(0)
+            .layer_count(1);
+
+        let image_view_create_info = vk::ImageViewCreateInfo::builder()
+            .image(image.image())
+            .view_type(vk::ImageViewType::TYPE_2D)
+            .format(depth_format)
+            .subresource_range(*subresource_range);
+
+        let image_view = unsafe {
+            device_context.device().create_image_view(&*image_view_create_info, None)?
+        };
+
+        Ok((ManuallyDrop::new(image), image_view))
     }
 
     fn allocate_semaphores_per_frame(
@@ -243,6 +295,38 @@ impl VkSwapchain {
         }
     }
 
+    fn find_supported_format(
+        instance: &ash::Instance,
+        physical_device: vk::PhysicalDevice,
+        candidates: &[vk::Format],
+        image_tiling: vk::ImageTiling,
+        features: vk::FormatFeatureFlags
+    ) -> Option<vk::Format> {
+        for candidate in candidates {
+            let props = unsafe {
+                instance.get_physical_device_format_properties(physical_device, *candidate)
+            };
+
+            if image_tiling == vk::ImageTiling::LINEAR && (props.linear_tiling_features & features) == features {
+                return Some(*candidate);
+            } else if image_tiling == vk::ImageTiling::OPTIMAL && (props.optimal_tiling_features & features) == features {
+                return Some(*candidate);
+            }
+        }
+
+        None
+    }
+
+    fn choose_depth_format(device_context: &VkDeviceContext) -> vk::Format {
+        Self::find_supported_format(
+            device_context.instance(),
+            device_context.physical_device(),
+            &[vk::Format::D32_SFLOAT, vk::Format::D32_SFLOAT_S8_UINT, vk::Format::D24_UNORM_S8_UINT],
+            vk::ImageTiling::OPTIMAL,
+            vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
+        ).unwrap()
+    }
+
     fn choose_present_mode(
         available_present_modes: &[vk::PresentModeKHR],
         present_mode_priority: &[PresentMode],
@@ -377,6 +461,9 @@ impl Drop for VkSwapchain {
             for &swapchain_image_view in self.swapchain_image_views.iter() {
                 device.destroy_image_view(swapchain_image_view, None);
             }
+
+            device.destroy_image_view(self.depth_image_view, None);
+            ManuallyDrop::drop(&mut self.depth_image);
 
             self.swapchain_loader
                 .destroy_swapchain(self.swapchain, None);

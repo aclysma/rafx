@@ -247,6 +247,8 @@ pub fn create_graphics_pipeline(
     let dynamic_state =
         vk::PipelineDynamicStateCreateInfo::builder().dynamic_states(&dynamic_states);
 
+    let depth_stencil_state = fixed_function_state.depth_stencil_state.as_builder();
+
     let mut stages = Vec::with_capacity(shader_modules_meta.len());
     let mut entry_names: Vec<std::ffi::CString> = Vec::with_capacity(shader_modules_meta.len());
     for (meta, module) in shader_modules_meta.iter().zip(shader_modules) {
@@ -268,6 +270,7 @@ pub fn create_graphics_pipeline(
         .multisample_state(&multisample_state)
         .color_blend_state(&color_blend_state)
         .dynamic_state(&dynamic_state)
+        .depth_stencil_state(&depth_stencil_state)
         .layout(pipeline_layout)
         .render_pass(renderpass)
         .stages(&stages)

@@ -515,6 +515,7 @@ impl Default for AttachmentDescriptionFlags {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct SwapchainSurfaceInfo {
     pub surface_format: vk::SurfaceFormatKHR,
+    pub depth_format: vk::Format,
     pub extents: vk::Extent2D,
 }
 
@@ -819,6 +820,7 @@ impl Default for DependencyFlags {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentFormat {
     MatchSwapchain,
+    MatchSwapchainDepth,
     Format(Format),
 }
 
@@ -829,6 +831,7 @@ impl AttachmentFormat {
     ) -> vk::Format {
         match self {
             AttachmentFormat::MatchSwapchain => swapchain_surface_info.surface_format.format,
+            AttachmentFormat::MatchSwapchainDepth => swapchain_surface_info.depth_format,
             AttachmentFormat::Format(format) => (*format).into(),
         }
     }
@@ -2025,6 +2028,100 @@ pub struct PipelineDynamicState {
     pub dynamic_states: Vec<DynamicState>,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StencilOp {
+    Keep,
+    Zero,
+    Replace,
+    IncrementAndClamp,
+    DecrementAndClamp,
+    Invert,
+    IncrementAndWrap,
+    DecrementAndWrap,
+}
+
+impl Into<vk::StencilOp> for StencilOp {
+    fn into(self) -> vk::StencilOp {
+        match self {
+            StencilOp::Keep => vk::StencilOp::KEEP,
+            StencilOp::Zero => vk::StencilOp::ZERO,
+            StencilOp::Replace => vk::StencilOp::REPLACE,
+            StencilOp::IncrementAndClamp => vk::StencilOp::INCREMENT_AND_CLAMP,
+            StencilOp::DecrementAndClamp => vk::StencilOp::DECREMENT_AND_CLAMP,
+            StencilOp::Invert => vk::StencilOp::INVERT,
+            StencilOp::IncrementAndWrap => vk::StencilOp::INCREMENT_AND_WRAP,
+            StencilOp::DecrementAndWrap => vk::StencilOp::DECREMENT_AND_WRAP,
+        }
+    }
+}
+
+impl Default for StencilOp {
+    fn default() -> StencilOp {
+        StencilOp::Keep
+    }
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct StencilOpState {
+    pub fail_op: StencilOp,
+    pub pass_op: StencilOp,
+    pub depth_fail_op: StencilOp,
+    pub compare_op: CompareOp,
+    pub compare_mask: u32,
+    pub write_mask: u32,
+    pub reference: u32,
+}
+
+
+impl StencilOpState {
+    pub fn as_builder(&self) -> vk::StencilOpStateBuilder {
+        vk::StencilOpState::builder()
+            .fail_op(self.fail_op.into())
+            .pass_op(self.pass_op.into())
+            .depth_fail_op(self.depth_fail_op.into())
+            .compare_op(self.compare_op.into())
+            .compare_mask(self.compare_mask)
+            .write_mask(self.write_mask)
+            .reference(self.reference)
+    }
+}
+
+impl Into<vk::StencilOpState> for StencilOpState {
+    fn into(self) -> vk::StencilOpState {
+        self.as_builder().build()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct PipelineDepthStencilState {
+    pub depth_test_enable: bool,
+    pub depth_write_enable: bool,
+    pub depth_compare_op: CompareOp,
+    pub depth_bounds_test_enable: bool,
+    pub min_depth_bounds: Decimal,
+    pub max_depth_bounds: Decimal,
+    pub stencil_test_enable: bool,
+    pub front: StencilOpState,
+    pub back: StencilOpState,
+}
+
+
+impl PipelineDepthStencilState {
+    pub fn as_builder(&self) -> vk::PipelineDepthStencilStateCreateInfoBuilder {
+        vk::PipelineDepthStencilStateCreateInfo::builder()
+            .depth_test_enable(self.depth_test_enable)
+            .depth_write_enable(self.depth_write_enable)
+            .depth_compare_op(self.depth_compare_op.into())
+            .depth_bounds_test_enable(self.depth_bounds_test_enable)
+            .min_depth_bounds(self.min_depth_bounds.to_f32())
+            .max_depth_bounds(self.max_depth_bounds.to_f32())
+            .stencil_test_enable(self.stencil_test_enable)
+            .front(self.front.clone().into())
+            .back(self.back.clone().into())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct FixedFunctionState {
     pub vertex_input_state: PipelineVertexInputState,
@@ -2034,6 +2131,7 @@ pub struct FixedFunctionState {
     pub multisample_state: PipelineMultisampleState,
     pub color_blend_state: PipelineColorBlendState,
     pub dynamic_state: PipelineDynamicState,
+    pub depth_stencil_state: PipelineDepthStencilState,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]

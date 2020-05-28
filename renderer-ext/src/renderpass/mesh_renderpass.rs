@@ -67,6 +67,7 @@ impl VkMeshRenderPass {
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
             &swapchain.swapchain_image_views,
+            swapchain.depth_image_view,
             &swapchain.swapchain_info,
             &pipeline_info.renderpass.get_raw(),
         );
@@ -108,13 +109,14 @@ impl VkMeshRenderPass {
     fn create_framebuffers(
         logical_device: &ash::Device,
         swapchain_image_views: &Vec<vk::ImageView>,
+        depth_image_view: vk::ImageView,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
     ) -> Vec<vk::Framebuffer> {
         swapchain_image_views
             .iter()
             .map(|&swapchain_image_view| {
-                let framebuffer_attachments = [swapchain_image_view];
+                let framebuffer_attachments = [swapchain_image_view, depth_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)
@@ -162,11 +164,19 @@ impl VkMeshRenderPass {
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
-        let clear_values = [vk::ClearValue {
-            color: vk::ClearColorValue {
-                float32: [0.0, 0.0, 0.0, 1.0],
+        let clear_values = [
+            vk::ClearValue {
+                color: vk::ClearColorValue {
+                    float32: [0.0, 0.0, 0.0, 1.0],
+                },
             },
-        }];
+            vk::ClearValue {
+                depth_stencil: vk::ClearDepthStencilValue {
+                    depth: 1.0,
+                    stencil: 0
+                }
+            }
+        ];
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(*renderpass)

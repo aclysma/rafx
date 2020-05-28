@@ -12,6 +12,17 @@
                 initial_layout: PresentSrcKhr,
                 final_layout: PresentSrcKhr,
             ),
+            (
+                flags: None,
+                format: MatchSwapchainDepth,
+                samples: SampleCount1,
+                load_op: Clear,
+                store_op: DontCare,
+                stencil_load_op: DontCare,
+                stencil_store_op: DontCare,
+                initial_layout: Undefined,
+                final_layout: DepthStencilAttachmentOptimal,
+            ),
         ],
         subpasses: [
             (
@@ -24,7 +35,12 @@
                     ),
                 ],
                 resolve_attachments: [],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(
+                    (
+                        attachment: Index(1),
+                        layout: DepthStencilAttachmentOptimal
+                    )
+                ),
             ),
         ],
         dependencies: [
@@ -101,6 +117,33 @@
             ),
         ],
         blend_constants: (0, 0, 0, 0),
+    ),
+    depth_stencil_state: (
+        depth_test_enable: true,
+        depth_write_enable: true,
+        depth_compare_op: Less,
+        depth_bounds_test_enable: false,
+        min_depth_bounds: 0.0,
+        max_depth_bounds: 1.0,
+        stencil_test_enable: false,
+        front: (
+            fail_op: Keep,
+            pass_op: Keep,
+            depth_fail_op: Keep,
+            compare_op: Never,
+            compare_mask: 0,
+            write_mask: 0,
+            reference: 0
+        ),
+        back: (
+            fail_op: Keep,
+            pass_op: Keep,
+            depth_fail_op: Keep,
+            compare_op: Never,
+            compare_mask: 0,
+            write_mask: 0,
+            reference: 0
+        )
     ),
     dynamic_state: (
         dynamic_states: [],

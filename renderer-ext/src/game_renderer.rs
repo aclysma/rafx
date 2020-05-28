@@ -6,7 +6,7 @@ use renderer_shell_vulkan::{
 };
 use ash::prelude::VkResult;
 use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass};
-use std::mem::{ManuallyDrop};
+use std::mem::{ManuallyDrop, swap};
 use crate::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
 use crate::time::{ScopeTimer, TimeState};
@@ -290,6 +290,7 @@ impl VkSurfaceEventListener for GameRenderer {
 
         let swapchain_surface_info = SwapchainSurfaceInfo {
             surface_format: swapchain.swapchain_info.surface_format,
+            depth_format: swapchain.depth_format,
             extents: swapchain.swapchain_info.extents,
         };
 
@@ -335,6 +336,7 @@ impl VkSurfaceEventListener for GameRenderer {
 
         let swapchain_surface_info = SwapchainSurfaceInfo {
             surface_format: swapchain.swapchain_info.surface_format,
+            depth_format: swapchain.depth_format,
             extents: swapchain.swapchain_info.extents,
         };
 

@@ -958,6 +958,7 @@ impl PipelineCreateData {
             multisample_state: pipeline_asset.multisample_state,
             color_blend_state: pipeline_asset.color_blend_state,
             dynamic_state: pipeline_asset.dynamic_state,
+            depth_stencil_state: pipeline_asset.depth_stencil_state,
         };
 
         Ok(PipelineCreateData {
