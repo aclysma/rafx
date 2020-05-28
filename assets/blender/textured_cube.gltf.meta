@@ -1,35 +1,38 @@
 (
     version: 1,
-    import_hash: Some(3614175888640751719),
-    importer_version: 15,
+    import_hash: Some(10216001149625873656),
+    importer_version: 18,
     importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
     importer_options: (),
     importer_state: (
         buffer_asset_uuids: {
-            Index(0): "6badba7d-42a0-43b5-b534-a4ed269a20b0",
-            Index(1): "aef2b388-1423-43b4-841b-655542b3163b",
+            Index(0): "62f6107f-7bce-4eb0-aa48-861baa750578",
+            Index(1): "d0eb0275-84e4-4e60-87e9-aae3b129e7e4",
         },
         image_asset_uuids: {
-            Name("texture2"): "addbe252-e0f7-435f-94c4-0d8b65b5041b",
+            Name("texture2"): "94cfb9d4-5eef-4600-a656-3edbc5bcfa43",
         },
         material_asset_uuids: {
-            Name("Material"): "2d8b8770-0d8a-4e98-b0ac-9d64205ff739",
+            Name("Material"): "b254be4c-c10f-4998-87b1-e16d8173bfb8",
+        },
+        material_instance_asset_uuids: {
+            Name("Material"): "cdd1b1a3-d609-47e3-b21d-49e511b088ec",
         },
         mesh_asset_uuids: {
-            Name("Cube"): "09c3d7e0-5177-49e6-8636-ec167cdd1464",
+            Name("Cube"): "a0bff2a6-2ee8-44d6-b114-33d1b2bc5fff",
         },
     ),
     assets: [
         (
-            id: "addbe252-e0f7-435f-94c4-0d8b65b5041b",
+            id: "94cfb9d4-5eef-4600-a656-3edbc5bcfa43",
             search_tags: [
                 ("image_name", Some("texture2")),
                 ("file_name", Some("textured_cube.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 8483559396337234239,
-                id: "addbe252-e0f7-435f-94c4-0d8b65b5041b",
+                hash: 8159670629076827363,
+                id: "94cfb9d4-5eef-4600-a656-3edbc5bcfa43",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -39,20 +42,20 @@
             )),
         ),
         (
-            id: "2d8b8770-0d8a-4e98-b0ac-9d64205ff739",
+            id: "b254be4c-c10f-4998-87b1-e16d8173bfb8",
             search_tags: [
                 ("material_name", Some("Material")),
                 ("file_name", Some("textured_cube.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 752887098146890201,
-                id: "2d8b8770-0d8a-4e98-b0ac-9d64205ff739",
+                hash: 1567731954470417774,
+                id: "b254be4c-c10f-4998-87b1-e16d8173bfb8",
                 build_deps: [
-                    Uuid("addbe252-e0f7-435f-94c4-0d8b65b5041b"),
+                    Uuid("94cfb9d4-5eef-4600-a656-3edbc5bcfa43"),
                 ],
                 load_deps: [
-                    Uuid("addbe252-e0f7-435f-94c4-0d8b65b5041b"),
+                    Uuid("94cfb9d4-5eef-4600-a656-3edbc5bcfa43"),
                 ],
                 compression: None,
                 compressed_size: Some(77),
@@ -61,14 +64,38 @@
             )),
         ),
         (
-            id: "6badba7d-42a0-43b5-b534-a4ed269a20b0",
+            id: "cdd1b1a3-d609-47e3-b21d-49e511b088ec",
+            search_tags: [
+                ("material_name", Some("Material")),
+                ("file_name", Some("textured_cube.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 16355867811566423344,
+                id: "cdd1b1a3-d609-47e3-b21d-49e511b088ec",
+                build_deps: [
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                    Uuid("94cfb9d4-5eef-4600-a656-3edbc5bcfa43"),
+                ],
+                load_deps: [
+                    Uuid("94cfb9d4-5eef-4600-a656-3edbc5bcfa43"),
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                ],
+                compression: None,
+                compressed_size: Some(84),
+                uncompressed_size: Some(84),
+                type_id: "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b",
+            )),
+        ),
+        (
+            id: "62f6107f-7bce-4eb0-aa48-861baa750578",
             search_tags: [
                 ("file_name", Some("textured_cube.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 14860944886630715074,
-                id: "6badba7d-42a0-43b5-b534-a4ed269a20b0",
+                hash: 1373216669491323092,
+                id: "62f6107f-7bce-4eb0-aa48-861baa750578",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -78,14 +105,14 @@
             )),
         ),
         (
-            id: "aef2b388-1423-43b4-841b-655542b3163b",
+            id: "d0eb0275-84e4-4e60-87e9-aae3b129e7e4",
             search_tags: [
                 ("file_name", Some("textured_cube.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 4630697913887016849,
-                id: "aef2b388-1423-43b4-841b-655542b3163b",
+                hash: 15223396956095917613,
+                id: "d0eb0275-84e4-4e60-87e9-aae3b129e7e4",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -95,28 +122,30 @@
             )),
         ),
         (
-            id: "09c3d7e0-5177-49e6-8636-ec167cdd1464",
+            id: "a0bff2a6-2ee8-44d6-b114-33d1b2bc5fff",
             search_tags: [
                 ("mesh_name", Some("Cube")),
                 ("file_name", Some("textured_cube.gltf")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 8904286358019217370,
-                id: "09c3d7e0-5177-49e6-8636-ec167cdd1464",
+                hash: 4668470330035786288,
+                id: "a0bff2a6-2ee8-44d6-b114-33d1b2bc5fff",
                 build_deps: [
-                    Uuid("aef2b388-1423-43b4-841b-655542b3163b"),
-                    Uuid("2d8b8770-0d8a-4e98-b0ac-9d64205ff739"),
-                    Uuid("6badba7d-42a0-43b5-b534-a4ed269a20b0"),
+                    Uuid("62f6107f-7bce-4eb0-aa48-861baa750578"),
+                    Uuid("cdd1b1a3-d609-47e3-b21d-49e511b088ec"),
+                    Uuid("d0eb0275-84e4-4e60-87e9-aae3b129e7e4"),
+                    Uuid("b254be4c-c10f-4998-87b1-e16d8173bfb8"),
                 ],
                 load_deps: [
-                    Uuid("aef2b388-1423-43b4-841b-655542b3163b"),
-                    Uuid("2d8b8770-0d8a-4e98-b0ac-9d64205ff739"),
-                    Uuid("6badba7d-42a0-43b5-b534-a4ed269a20b0"),
+                    Uuid("d0eb0275-84e4-4e60-87e9-aae3b129e7e4"),
+                    Uuid("b254be4c-c10f-4998-87b1-e16d8173bfb8"),
+                    Uuid("62f6107f-7bce-4eb0-aa48-861baa750578"),
+                    Uuid("cdd1b1a3-d609-47e3-b21d-49e511b088ec"),
                 ],
                 compression: None,
-                compressed_size: Some(97),
-                uncompressed_size: Some(97),
+                compressed_size: Some(122),
+                uncompressed_size: Some(122),
                 type_id: "cf232526-3757-4d94-98d1-c2f7e27c979f",
             )),
         ),

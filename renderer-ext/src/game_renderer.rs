@@ -156,15 +156,27 @@ impl GameRenderer {
             &asset_resource,
         );
 
+        // cubic
+        // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
+        //     asset_uuid!("e7824acf-05a5-4757-a085-8b73136940e9"),
+        //     &asset_resource,
+        // );
+        // let mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("93ed839e-1ad8-44e4-927d-e82f5c986d46"),
+        //     &asset_resource,
+        // );
+
+        // textured cube
         let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-            asset_uuid!("e7824acf-05a5-4757-a085-8b73136940e9"),
+            asset_uuid!("cdd1b1a3-d609-47e3-b21d-49e511b088ec"),
+            &asset_resource,
+        );
+        let mesh = begin_load_asset::<MeshAsset>(
+            asset_uuid!("a0bff2a6-2ee8-44d6-b114-33d1b2bc5fff"),
             &asset_resource,
         );
 
-        let mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("93ed839e-1ad8-44e4-927d-e82f5c986d46"),
-            &asset_resource,
-        );
+
 
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
@@ -364,7 +376,7 @@ impl VkSurfaceEventListener for GameRenderer {
 
         let eye = glam::Vec3::new(
             10.0 * f32::cos(loop_time),
-            0.0,
+            5.0,
             10.0 * f32::sin(loop_time)
         );
 
