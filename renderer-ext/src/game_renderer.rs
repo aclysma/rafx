@@ -1,9 +1,5 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
-use renderer_shell_vulkan::{
-    VkDevice, VkSwapchain, VkSurfaceEventListener, VkSurface, Window, VkTransferUpload,
-    VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError,
-    VkContext,
-};
+use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener};
 use ash::prelude::VkResult;
 use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass};
 use std::mem::{ManuallyDrop, swap};
@@ -290,7 +286,7 @@ impl GameRenderer {
     }
 }
 
-impl VkSurfaceEventListener for GameRenderer {
+impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
     fn swapchain_created(
         &mut self,
         device_context: &VkDeviceContext,
@@ -357,9 +353,12 @@ impl VkSurfaceEventListener for GameRenderer {
         self.imgui_event_listener
             .swapchain_destroyed(device_context, swapchain);
     }
+}
 
+impl GameRenderer {
     fn render(
         &mut self,
+        asset_resource: &mut AssetResource,
         window: &Window,
         device_context: &VkDeviceContext,
         present_index: usize,
@@ -387,8 +386,8 @@ impl VkSurfaceEventListener for GameRenderer {
         let half_width = 10.0;
         let half_height = 10.0 / aspect_ratio;
 
-        let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, -1.0, 0.0));
-        let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 100.0);
+        let view = glam::Mat4::look_at_lh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, -1.0, 0.0));
+        let proj = glam::Mat4::perspective_lh(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 100.0);
 
         let view_proj = proj * view;
 
@@ -546,11 +545,14 @@ impl GameRendererWithContext {
 
     pub fn draw(
         &mut self,
+        asset_resource: &mut AssetResource,
         window: &dyn Window,
         time_state: &TimeState,
     ) -> VkResult<()> {
         self.game_renderer.update_time(time_state);
-        self.surface.draw(window, Some(&mut *self.game_renderer))
+        self.surface.draw_with(&mut *self.game_renderer, window, |game_renderer, device_context, present_index| {
+            game_renderer.render(asset_resource, window, device_context, present_index)
+        })
     }
 
     pub fn dump_stats(&mut self) {

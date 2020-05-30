@@ -20,8 +20,34 @@ use super::Window;
 use crate::{VkContext, VkDeviceContext};
 //use crate::submit::PendingCommandBuffer;
 
-/// May be implemented to get callbacks related to the VkSurface (window) and framebuffer usage
-pub trait VkSurfaceEventListener {
+pub struct FrameInFlight {
+    sync_frame_index: usize,
+    present_index: u32,
+    is_suboptimal: bool,
+}
+
+impl FrameInFlight {
+    // I'm not aware of any reason to expose this.
+    // // A value guaranteed to increase up to MAX_FRAMES_IN_FLIGHT, then return to zero
+    // fn sync_frame_index(&self) -> usize {
+    //     self.sync_frame_index
+    // }
+
+    // A value that stays in step with the image index returned by the swapchain. There is no
+    // guarantee on the ordering of present image index (i.e. it may decrease). It is only promised
+    // to not be in use by a frame in flight
+    fn present_index(&self) -> u32 {
+        self.present_index
+    }
+
+    // If true, consider recreating the swapchain
+    fn is_suboptimal(&self) -> bool {
+        self.is_suboptimal
+    }
+}
+
+/// May be implemented to get callbacks related to the swapchain being created/destroyed
+pub trait VkSurfaceSwapchainLifetimeListener {
     /// Called whenever the swapchain needs to be created (the first time, and in cases where the
     /// swapchain needs to be recreated)
     fn swapchain_created(
@@ -37,22 +63,14 @@ pub trait VkSurfaceEventListener {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
     );
-
-    /// Called when we are presenting a new frame. The returned command buffer will be submitted
-    /// with command buffers for the skia canvas
-    fn render(
-        &mut self,
-        window: &dyn Window,
-        device_context: &VkDeviceContext,
-        present_index: usize,
-    ) -> VkResult<Vec<vk::CommandBuffer>>;
 }
 
-/// Sets up a vulkan instance, device, and swapchain. Sends callbacks to a VkSurfaceEventListener
-/// provided by the end user
+/// Sets up a vulkan swapchain. Sends callbacks to a VkSurfaceEventListener provided by the end user
+/// This struct can remain in use throughout the lifetime of a window. The swapchain contained
+/// within (both the vk::Swapchain and VkSwapchain) may be destroyed/recreated as needed. This
+/// struct has the logic to kick off recreating it.
 pub struct VkSurface {
     device_context: VkDeviceContext,
-    physical_device: vk::PhysicalDevice,
     swapchain: ManuallyDrop<VkSwapchain>,
     present_mode_priority: Vec<PresentMode>,
 
@@ -72,7 +90,7 @@ impl VkSurface {
     pub fn new(
         context: &VkContext,
         window: &dyn Window,
-        event_listener: Option<&mut dyn VkSurfaceEventListener>,
+        event_listener: Option<&mut dyn VkSurfaceSwapchainLifetimeListener>,
     ) -> VkResult<VkSurface> {
         let swapchain = ManuallyDrop::new(VkSwapchain::new(
             &context.device().device_context,
@@ -91,7 +109,6 @@ impl VkSurface {
 
         Ok(VkSurface {
             device_context: context.device().device_context.clone(),
-            physical_device: context.device().physical_device,
             swapchain,
             sync_frame_index,
             previous_inner_size,
@@ -103,7 +120,7 @@ impl VkSurface {
 
     pub fn tear_down(
         &mut self,
-        event_listener: Option<&mut dyn VkSurfaceEventListener>,
+        event_listener: Option<&mut dyn VkSurfaceSwapchainLifetimeListener>,
     ) {
         unsafe {
             self.device_context.device().device_wait_idle().unwrap();
@@ -117,26 +134,25 @@ impl VkSurface {
         self.torn_down = true;
     }
 
-    /// Call to render a frame. This can block for certain presentation modes. This will rebuild
-    /// the swapchain if necessary.
-    pub fn draw(
+    pub fn draw_with<T, F>(
         &mut self,
+        mut event_listener: &mut T,
         window: &dyn Window,
-        mut event_listener: Option<&mut dyn VkSurfaceEventListener>,
-    ) -> VkResult<()> {
-        if window.physical_size() != self.previous_inner_size {
-            debug!("Detected window inner size change, rebuilding swapchain");
-            self.rebuild_swapchain(window, &mut event_listener)?;
-        }
-
-        let result = self.do_draw(window, &mut event_listener);
+        f: F
+    ) -> VkResult<()>
+        where
+            T : VkSurfaceSwapchainLifetimeListener,
+            F : FnOnce(&mut T, &VkDeviceContext, usize) -> VkResult<Vec<vk::CommandBuffer>>
+    {
+        let result = self.try_draw_with(event_listener, window, f);
         if let Err(e) = result {
             match e {
                 ash::vk::Result::ERROR_OUT_OF_DATE_KHR => {
-                    self.rebuild_swapchain(window, &mut event_listener)
+                    self.rebuild_swapchain(window, &mut Some(event_listener))
                 }
                 ash::vk::Result::SUCCESS => Ok(()),
                 ash::vk::Result::SUBOPTIMAL_KHR => Ok(()),
+                //ash::vk::Result::TIMEOUT => Ok(()),
                 _ => {
                     warn!("Unexpected rendering error");
                     Err(e)
@@ -147,11 +163,120 @@ impl VkSurface {
         }
     }
 
-    fn rebuild_swapchain(
+    /// Do the render
+    fn try_draw_with<T, F>(
+        &mut self,
+        event_listener: &mut T,
+        window: &dyn Window,
+        mut f: F
+    ) -> VkResult<()>
+        where
+            T : VkSurfaceSwapchainLifetimeListener,
+            F : FnOnce(&mut T, &VkDeviceContext, usize) -> VkResult<Vec<vk::CommandBuffer>>
+    {
+        let frame_in_flight = self.acquire_next_swapchain_image(window)?;
+
+        let mut command_buffers = f(event_listener, &self.device_context, frame_in_flight.present_index as usize)?;
+
+        self.present(window, frame_in_flight, &command_buffers)?;
+        Ok(())
+    }
+
+    fn acquire_next_swapchain_image(
         &mut self,
         window: &dyn Window,
-        event_listener: &mut Option<&mut dyn VkSurfaceEventListener>,
+    ) -> VkResult<FrameInFlight> {
+        if window.physical_size() != self.previous_inner_size {
+            return Err(vk::Result::ERROR_OUT_OF_DATE_KHR);
+        }
+
+        let frame_fence = self.swapchain.in_flight_fences[self.sync_frame_index];
+
+        //TODO: Dont lock up forever (don't use std::u64::MAX)
+        //TODO: Can part of this run in a separate thread from the window pump?
+        //TODO: Should we be passing along the sync_index instead of the present_index to downstream
+        // event listeners?
+
+        // Wait if two frame are already in flight
+        unsafe {
+            self.device_context
+                .device()
+                .wait_for_fences(&[frame_fence], true, std::u64::MAX)?;
+            self.device_context.device().reset_fences(&[frame_fence])?;
+        }
+
+        let (present_index, is_suboptimal) = unsafe {
+            self.swapchain.swapchain_loader.acquire_next_image(
+                self.swapchain.swapchain,
+                std::u64::MAX,
+                self.swapchain.image_available_semaphores[self.sync_frame_index],
+                vk::Fence::null(),
+            )?
+        };
+
+        Ok(FrameInFlight {
+            sync_frame_index: self.sync_frame_index,
+            present_index,
+            is_suboptimal
+        })
+    }
+
+    fn present(
+        &mut self,
+        window: &dyn Window,
+        frame_in_flight: FrameInFlight,
+        command_buffers: &[vk::CommandBuffer],
     ) -> VkResult<()> {
+        // A present can only occur using the result from the previous acquire_next_image call
+        assert!(self.sync_frame_index == frame_in_flight.sync_frame_index);
+        let frame_fence = self.swapchain.in_flight_fences[self.sync_frame_index];
+
+        let wait_semaphores = [self.swapchain.image_available_semaphores[self.sync_frame_index]];
+        let signal_semaphores = [self.swapchain.render_finished_semaphores[self.sync_frame_index]];
+
+        let wait_dst_stage_mask = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
+
+        //add fence to queue submit
+        let submit_info = [vk::SubmitInfo::builder()
+            .wait_semaphores(&wait_semaphores)
+            .signal_semaphores(&signal_semaphores)
+            .wait_dst_stage_mask(&wait_dst_stage_mask)
+            .command_buffers(&command_buffers)
+            .build()];
+
+        unsafe {
+            self.device_context.device().queue_submit(
+                self.device_context.queues().graphics_queue,
+                &submit_info,
+                frame_fence,
+            )?;
+        }
+
+        let wait_semaphors = [self.swapchain.render_finished_semaphores[self.sync_frame_index]];
+        let swapchains = [self.swapchain.swapchain];
+        let image_indices = [frame_in_flight.present_index];
+        let present_info = vk::PresentInfoKHR::builder()
+            .wait_semaphores(&wait_semaphors) // &base.rendering_complete_semaphore)
+            .swapchains(&swapchains)
+            .image_indices(&image_indices);
+
+        unsafe {
+            self.swapchain
+                .swapchain_loader
+                .queue_present(self.device_context.queues().present_queue, &present_info)?;
+        }
+
+        self.sync_frame_index = (self.sync_frame_index + 1) % MAX_FRAMES_IN_FLIGHT;
+
+        Ok(())
+    }
+
+    pub fn rebuild_swapchain(
+        &mut self,
+        window: &dyn Window,
+        event_listener: &mut Option<&mut VkSurfaceSwapchainLifetimeListener>,
+    ) -> VkResult<()>
+    {
         // Let event listeners know the swapchain will be destroyed
         unsafe {
             self.device_context.device().device_wait_idle()?;
@@ -178,83 +303,6 @@ impl VkSurface {
         }
 
         self.previous_inner_size = window.physical_size();
-
-        Ok(())
-    }
-
-    /// Do the render
-    fn do_draw(
-        &mut self,
-        window: &dyn Window,
-        event_listener: &mut Option<&mut dyn VkSurfaceEventListener>,
-    ) -> VkResult<()> {
-        let frame_fence = self.swapchain.in_flight_fences[self.sync_frame_index];
-
-        //TODO: Dont lock up forever (don't use std::u64::MAX)
-        //TODO: Can part of this run in a separate thread from the window pump?
-        //TODO: Should we be passing along the sync_index instead of the present_index to downstream
-        // event listeners?
-
-        // Wait if two frame are already in flight
-        unsafe {
-            self.device_context
-                .device()
-                .wait_for_fences(&[frame_fence], true, std::u64::MAX)?;
-            self.device_context.device().reset_fences(&[frame_fence])?;
-        }
-
-        let (present_index, _is_suboptimal) = unsafe {
-            self.swapchain.swapchain_loader.acquire_next_image(
-                self.swapchain.swapchain,
-                std::u64::MAX,
-                self.swapchain.image_available_semaphores[self.sync_frame_index],
-                vk::Fence::null(),
-            )?
-        };
-
-        let mut command_buffers = vec![];
-        if let Some(event_listener) = event_listener {
-            let mut buffers =
-                event_listener.render(window, &self.device_context, present_index as usize)?;
-            command_buffers.append(&mut buffers);
-        }
-
-        let wait_semaphores = [self.swapchain.image_available_semaphores[self.sync_frame_index]];
-        let signal_semaphores = [self.swapchain.render_finished_semaphores[self.sync_frame_index]];
-
-        let wait_dst_stage_mask = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
-
-        //add fence to queue submit
-        let submit_info = [vk::SubmitInfo::builder()
-            .wait_semaphores(&wait_semaphores)
-            .signal_semaphores(&signal_semaphores)
-            .wait_dst_stage_mask(&wait_dst_stage_mask)
-            .command_buffers(&command_buffers)
-            .build()];
-
-        unsafe {
-            self.device_context.device().queue_submit(
-                self.device_context.queues().graphics_queue,
-                &submit_info,
-                frame_fence,
-            )?;
-        }
-
-        let wait_semaphors = [self.swapchain.render_finished_semaphores[self.sync_frame_index]];
-        let swapchains = [self.swapchain.swapchain];
-        let image_indices = [present_index];
-        let present_info = vk::PresentInfoKHR::builder()
-            .wait_semaphores(&wait_semaphors) // &base.rendering_complete_semaphore)
-            .swapchains(&swapchains)
-            .image_indices(&image_indices);
-
-        unsafe {
-            self.swapchain
-                .swapchain_loader
-                .queue_present(self.device_context.queues().present_queue, &present_info)?;
-        }
-
-        self.sync_frame_index = (self.sync_frame_index + 1) % MAX_FRAMES_IN_FLIGHT;
 
         Ok(())
     }

@@ -63,7 +63,7 @@ pub use context::VkCreateContextError;
 #[allow(clippy::module_inception)]
 mod surface;
 pub use surface::VkSurface;
-pub use surface::VkSurfaceEventListener;
+pub use surface::VkSurfaceSwapchainLifetimeListener;
 
 mod coordinates;
 pub use coordinates::Size;

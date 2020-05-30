@@ -22,7 +22,7 @@ impl ImguiRenderEventListener {
     }
 }
 
-impl renderer_shell_vulkan::VkSurfaceEventListener for ImguiRenderEventListener {
+impl renderer_shell_vulkan::VkSurfaceSwapchainLifetimeListener for ImguiRenderEventListener {
     fn swapchain_created(
         &mut self,
         device_context: &VkDeviceContext,
@@ -43,8 +43,11 @@ impl renderer_shell_vulkan::VkSurfaceEventListener for ImguiRenderEventListener 
     ) {
         self.imgui_renderpass = None;
     }
+}
 
-    fn render(
+impl ImguiRenderEventListener {
+
+    pub fn render(
         &mut self,
         window: &dyn Window,
         device_context: &VkDeviceContext,
