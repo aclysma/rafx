@@ -29,7 +29,7 @@
                                 stage_flags: Fragment,
                                 slot_name: "global_shader_param",
 
-                                internal_buffer_per_descriptor_size: Some(3712)
+                                internal_buffer_per_descriptor_size: Some(3728)
                             ),
                             (
                                 binding: 1,
@@ -71,7 +71,7 @@
                                 stage_flags: Fragment,
                                 slot_name: "material_data",
 
-                                internal_buffer_per_descriptor_size: Some(52)
+                                internal_buffer_per_descriptor_size: Some(80)
                             ),
                             (
                                 binding: 1,
@@ -79,6 +79,34 @@
                                 descriptor_count: 1,
                                 stage_flags: Fragment,
                                 slot_name: "base_color_texture"
+                            ),
+                            (
+                                binding: 2,
+                                descriptor_type: SampledImage,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "metallic_roughness_texture"
+                            ),
+                            (
+                                binding: 3,
+                                descriptor_type: SampledImage,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "normal_texture"
+                            ),
+                            (
+                                binding: 4,
+                                descriptor_type: SampledImage,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "occlusion_texture"
+                            ),
+                            (
+                                binding: 5,
+                                descriptor_type: SampledImage,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "emissive_texture"
                             ),
                         ]
                     ),

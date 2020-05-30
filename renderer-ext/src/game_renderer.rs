@@ -29,7 +29,7 @@ use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
 use crate::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance};
-use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData};
+use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam};
 use crate::pipeline::buffer::BufferAsset;
 
 #[derive(Default, Copy, Clone)]
@@ -40,7 +40,7 @@ struct PointLight {
     color: glam::Vec4, // +32
     range: f32, // +48
     intensity: f32, // +52
-    enabled: bool, //+56
+    //enabled: bool, //+56
 } // 4*16 = 64 bytes
 
 #[derive(Default, Copy, Clone)]
@@ -51,7 +51,7 @@ struct DirectionalLight {
     color: glam::Vec4, // +32
     spotlight_half_angle: f32, // +48
     intensity: f32, // +52
-    enabled: bool, // +56
+    //enabled: bool, // +56
 } // 4*16 = 64 bytes
 
 #[derive(Default, Copy, Clone)]
@@ -65,19 +65,22 @@ struct SpotLight {
     spotlight_half_angle: f32, //+80
     range: f32, // +84
     intensity: f32, // +88
-    enabled: bool, // +92
-    pad: [bool; 3] //
+    //enabled: bool, // +92
+    //pad: [bool; 3] //
 } // 6*16 = 96 bytes
 
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
-struct GlobalShaderParam {
+struct PerFrameDataShaderParam {
     view: glam::Mat4, // +0
     proj: glam::Mat4, // +64
-    point_lights: [PointLight; 16], // +128 (64*16 = 1024),
-    directional_lights: [DirectionalLight; 16], // +1152 (64*16 = 1024),
-    spot_lights: [SpotLight; 16], // +2176 (96*16 = 1536)
-} // 3712 bytes
+    point_light_count: u32, // +128
+    directional_light_count: u32, // +132
+    spot_light_count: u32, // +136
+    point_lights: [PointLight; 16], // +144 (64*16 = 1024),
+    directional_lights: [DirectionalLight; 16], // +1168 (64*16 = 1024),
+    spot_lights: [SpotLight; 16], // +2192 (96*16 = 1536)
+} // 3728 bytes
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -441,18 +444,21 @@ impl GameRenderer {
 
         let material = self.mesh_custom_material.as_mut().unwrap();
 
-        let mut global_shader_param = GlobalShaderParam::default();
-        global_shader_param.point_lights[0].position_world = [5.0, 5.0, 5.0].into();
-        global_shader_param.point_lights[0].position_view = [5.0, 5.0, 5.0].into();
-        global_shader_param.point_lights[0].range = 25.0;
-        global_shader_param.point_lights[0].color = [1.0, 0.0, 0.0, 1.0].into();
-        global_shader_param.point_lights[0].intensity = 1.0;
-        global_shader_param.point_lights[0].enabled = true;
+        let mut per_frame_data_shader_param = PerFrameDataShaderParam::default();
+        per_frame_data_shader_param.point_lights[0].position_world = [5.0, 5.0, 5.0].into();
+        per_frame_data_shader_param.point_lights[0].position_view = [5.0, 5.0, 5.0].into();
+        per_frame_data_shader_param.point_lights[0].range = 25.0;
+        per_frame_data_shader_param.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
+        per_frame_data_shader_param.point_lights[0].intensity = 1.0;
+        //global_shader_param.point_lights[0].enabled = true;
 
 
         let mut material_data = GltfMaterialData::default();
+        material_data.base_color_factor = [1.0, 0.0, 1.0, 1.0].into();
+        material_data.has_base_color_texture = true;
+        let material_data : GltfMaterialDataShaderParam = material_data.into();
 
-        material.set_buffer_data(&"global_shader_param".to_string(), &global_shader_param);
+        material.set_buffer_data(&"per_frame_data".to_string(), &per_frame_data_shader_param);
         material.set_buffer_data(&"material_data".to_string(), &material_data);
         material.set_buffer_data(&"view_proj".to_string(), &view_proj);
         material.flush();
