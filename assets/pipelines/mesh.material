@@ -24,6 +24,15 @@
                         descriptor_set_layout_bindings: [
                             (
                                 binding: 0,
+                                descriptor_type: UniformBuffer,
+                                descriptor_count: 1,
+                                stage_flags: Vertex,
+                                slot_name: "global_shader_param",
+
+                                internal_buffer_per_descriptor_size: Some(3712)
+                            ),
+                            (
+                                binding: 1,
                                 descriptor_type: Sampler,
                                 descriptor_count: 0,
                                 stage_flags: Fragment,

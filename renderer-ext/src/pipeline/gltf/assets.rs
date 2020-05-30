@@ -27,16 +27,32 @@ use crate::pipeline::pipeline::MaterialInstanceAsset;
 
 // This is non-texture data associated with the material. It's appropriate to be loaded as a uniform
 // for a shader
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone)]
 #[repr(C)]
 pub struct GltfMaterialData {
     pub base_color_factor: [f32; 4], // default: 1,1,1,1
-    pub emissive_factor: [f32; 3],
+    pub emissive_factor: [f32; 3], // default: 0,0,0
+    pub pad0: f32,
     pub metallic_factor: f32, //default: 1,
     pub roughness_factor: f32, // default: 1,
     pub normal_texture_scale: f32, // default: 1
     pub occlusion_texture_strength: f32, // default 1
     pub alpha_cutoff: f32, // default 0.5
+}
+
+impl Default for GltfMaterialData {
+    fn default() -> Self {
+        GltfMaterialData {
+            base_color_factor: [1.0, 1.0, 1.0, 1.0],
+            emissive_factor: [0.0, 0.0, 0.0],
+            pad0: 0.0,
+            metallic_factor: 1.0,
+            roughness_factor: 1.0,
+            normal_texture_scale: 1.0,
+            occlusion_texture_strength: 1.0,
+            alpha_cutoff: 0.5
+        }
+    }
 }
 
 // We would need to change the pipeline for these
