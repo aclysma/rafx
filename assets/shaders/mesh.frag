@@ -30,6 +30,7 @@ layout (set = 0, binding = 1) uniform sampler smp;
 layout (set = 1, binding = 0) uniform MaterialData {
     vec4 base_color_factor;
     vec3 emissive_factor;
+    float pad0;
     float metallic_factor;
     float roughness_factor;
     float normal_texture_scale;
@@ -64,7 +65,7 @@ void main() {
     
     
     // Point Lights
-    for (uint i = 0; i < global_shader_param.point_light_count; ++i) {
-        uFragColor = uFragColor * global_shader_param.point_lights[0].color;
+    for (uint i = 0; i < per_frame_data.point_light_count; ++i) {
+        uFragColor = uFragColor * per_frame_data.point_lights[0].color;
     }
 }

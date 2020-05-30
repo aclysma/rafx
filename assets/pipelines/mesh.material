@@ -27,7 +27,7 @@
                                 descriptor_type: UniformBuffer,
                                 descriptor_count: 1,
                                 stage_flags: Fragment,
-                                slot_name: "global_shader_param",
+                                slot_name: "per_frame_data",
 
                                 internal_buffer_per_descriptor_size: Some(3728)
                             ),
