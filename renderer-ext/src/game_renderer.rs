@@ -35,9 +35,9 @@ use crate::pipeline::buffer::BufferAsset;
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 struct PointLight {
-    position_world: [f32; 3], // +0
-    position_view: [f32; 3], // +16
-    color: [f32; 4], // +32
+    position_world: glam::Vec3, // +0
+    position_view: glam::Vec3, // +16
+    color: glam::Vec4, // +32
     range: f32, // +48
     intensity: f32, // +52
     enabled: bool, //+56
@@ -46,9 +46,9 @@ struct PointLight {
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 struct DirectionalLight {
-    direction_world: [f32; 3], // +0
-    direction_view: [f32; 3], // +16
-    color: [f32; 4], // +32
+    direction_world: glam::Vec3, // +0
+    direction_view: glam::Vec3, // +16
+    color: glam::Vec4, // +32
     spotlight_half_angle: f32, // +48
     intensity: f32, // +52
     enabled: bool, // +56
@@ -57,11 +57,11 @@ struct DirectionalLight {
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 struct SpotLight {
-    position_world: [f32; 3], // +0
-    direction_world: [f32; 3], // +16
-    position_view: [f32; 3], // +32
-    direction_view: [f32; 3], // +48
-    color: [f32; 4], // +64
+    position_world: glam::Vec3, // +0
+    direction_world: glam::Vec3, // +16
+    position_view: glam::Vec3, // +32
+    direction_view: glam::Vec3, // +48
+    color: glam::Vec4, // +64
     spotlight_half_angle: f32, //+80
     range: f32, // +84
     intensity: f32, // +88
@@ -442,10 +442,10 @@ impl GameRenderer {
         let material = self.mesh_custom_material.as_mut().unwrap();
 
         let mut global_shader_param = GlobalShaderParam::default();
-        global_shader_param.point_lights[0].position_world = [5.0, 5.0, 5.0];
-        global_shader_param.point_lights[0].position_view = [5.0, 5.0, 5.0];
+        global_shader_param.point_lights[0].position_world = [5.0, 5.0, 5.0].into();
+        global_shader_param.point_lights[0].position_view = [5.0, 5.0, 5.0].into();
         global_shader_param.point_lights[0].range = 25.0;
-        global_shader_param.point_lights[0].color = [1.0, 0.0, 0.0, 1.0];
+        global_shader_param.point_lights[0].color = [1.0, 0.0, 0.0, 1.0].into();
         global_shader_param.point_lights[0].intensity = 1.0;
         global_shader_param.point_lights[0].enabled = true;
 

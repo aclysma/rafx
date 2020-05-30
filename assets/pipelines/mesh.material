@@ -26,7 +26,7 @@
                                 binding: 0,
                                 descriptor_type: UniformBuffer,
                                 descriptor_count: 1,
-                                stage_flags: Vertex,
+                                stage_flags: Fragment,
                                 slot_name: "global_shader_param",
 
                                 internal_buffer_per_descriptor_size: Some(3712)
@@ -68,7 +68,7 @@
                                 binding: 0,
                                 descriptor_type: UniformBuffer,
                                 descriptor_count: 1,
-                                stage_flags: Vertex,
+                                stage_flags: Fragment,
                                 slot_name: "material_data",
 
                                 internal_buffer_per_descriptor_size: Some(52)

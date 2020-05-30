@@ -44,5 +44,5 @@ void main() {
 
     uFragColor = texture(sampler2D(base_color_texture, smp), o_uv);
 
-    //uFragColor = uFragColor * global_shader_param.point_lights[0].color;
+    uFragColor = uFragColor * global_shader_param.point_lights[0].color;
 }

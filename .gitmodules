@@ -3,4 +3,4 @@
 	url = https://github.com/aclysma/gltf.git
 [submodule "atelier-assets.git"]
 	path = atelier-assets
-	url = https://github.com/amethyst/atelier-assets.git
+	url = https://github.com/aclysma/atelier-assets.git
