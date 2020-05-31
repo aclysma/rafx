@@ -14,6 +14,8 @@ use serde::export::Formatter;
 pub struct ImageAsset {
     pub width: u32,
     pub height: u32,
+
+    #[serde(with = "serde_bytes")]
     pub data: Vec<u8>,
 }
 

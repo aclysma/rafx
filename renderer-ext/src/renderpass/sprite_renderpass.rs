@@ -254,7 +254,7 @@ impl VkSpriteRenderPass {
             texture_descriptor_index: u32,
         }
 
-        const SPRITE_COUNT: usize = 50;
+        const SPRITE_COUNT: usize = 5;
         let mut sprites = Vec::with_capacity(SPRITE_COUNT);
 
         if !descriptor_set_per_texture.is_empty() {
@@ -464,14 +464,14 @@ impl VkSpriteRenderPass {
                         &[],
                     );
 
-                    // logical_device.cmd_draw_indexed(
-                    //     *command_buffer,
-                    //     draw_call.index_buffer_count as u32,
-                    //     1,
-                    //     draw_call.index_buffer_first_element as u32,
-                    //     0,
-                    //     0,
-                    // );
+                    logical_device.cmd_draw_indexed(
+                        *command_buffer,
+                        draw_call.index_buffer_count as u32,
+                        1,
+                        draw_call.index_buffer_first_element as u32,
+                        0,
+                        0,
+                    );
                 }
             }
 

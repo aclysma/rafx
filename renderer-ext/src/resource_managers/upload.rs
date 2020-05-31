@@ -305,6 +305,7 @@ impl UploadQueue {
         let mut decoded_textures = vec![];
 
         for pending_upload in self.pending_image_rx.try_iter() {
+            log::trace!("start image upload size: {}", pending_upload.texture.data.len());
             ops.push((pending_upload.load_op, pending_upload.upload_op));
             decoded_textures.push(pending_upload.texture);
 
@@ -347,6 +348,7 @@ impl UploadQueue {
         let mut buffer_data = vec![];
 
         for pending_upload in self.pending_buffer_rx.try_iter() {
+            log::trace!("start buffer upload size: {}", pending_upload.data.len());
             ops.push((pending_upload.load_op, pending_upload.upload_op));
             buffer_data.push(pending_upload.data);
 
@@ -394,7 +396,7 @@ impl UploadQueue {
             self.device_context
                 .queue_family_indices()
                 .graphics_queue_family_index,
-            1024 * 1024 * 16,
+            1024 * 1024 * 256,
         )?;
 
         let in_flight_image_uploads = self.start_new_image_uploads(&mut upload)?;

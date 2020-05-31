@@ -1,0 +1,175 @@
+(
+    version: 1,
+    import_hash: Some(14693346251574516499),
+    importer_version: 18,
+    importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
+    importer_options: (),
+    importer_state: (
+        buffer_asset_uuids: {
+            Index(0): "419b7680-cda3-4baf-9d4a-af447bfea6f3",
+            Index(1): "8e0d92dc-2524-4962-8074-392ee7997e0e",
+        },
+        image_asset_uuids: {
+            Name("rough-wet-cobble-albedo"): "a2b8c2c7-482e-465a-9bb7-d18e9d9d0206",
+            Name("rough-wet-cobble-metallic-rough-wet-cobble-roughness"): "0ed8cf40-d588-4ac1-87d0-f0d9c760d091",
+            Name("rough-wet-cobble-normal-ogl"): "71899749-ae59-4d82-8f51-9b34e9a61e82",
+        },
+        material_asset_uuids: {
+            Name("Material"): "70ac3f40-c14b-4687-9f62-2d787d9c7a89",
+        },
+        material_instance_asset_uuids: {
+            Name("Material"): "2eb77796-a5c0-42c7-bc03-1580041e4dfe",
+        },
+        mesh_asset_uuids: {
+            Name("Cube"): "6a1efc0f-1e67-4a6f-b5ee-185607cb3b0f",
+        },
+    ),
+    assets: [
+        (
+            id: "71899749-ae59-4d82-8f51-9b34e9a61e82",
+            search_tags: [
+                ("image_name", Some("rough-wet-cobble-normal-ogl")),
+                ("file_name", Some("cobblestone.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 3901108894434268500,
+                id: "71899749-ae59-4d82-8f51-9b34e9a61e82",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(16777232),
+                uncompressed_size: Some(16777232),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+        (
+            id: "a2b8c2c7-482e-465a-9bb7-d18e9d9d0206",
+            search_tags: [
+                ("image_name", Some("rough-wet-cobble-albedo")),
+                ("file_name", Some("cobblestone.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 18295949287397529094,
+                id: "a2b8c2c7-482e-465a-9bb7-d18e9d9d0206",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(16777232),
+                uncompressed_size: Some(16777232),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+        (
+            id: "70ac3f40-c14b-4687-9f62-2d787d9c7a89",
+            search_tags: [
+                ("material_name", Some("Material")),
+                ("file_name", Some("cobblestone.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 12018810243090993942,
+                id: "70ac3f40-c14b-4687-9f62-2d787d9c7a89",
+                build_deps: [
+                    Uuid("71899749-ae59-4d82-8f51-9b34e9a61e82"),
+                    Uuid("a2b8c2c7-482e-465a-9bb7-d18e9d9d0206"),
+                ],
+                load_deps: [
+                    Uuid("71899749-ae59-4d82-8f51-9b34e9a61e82"),
+                    Uuid("a2b8c2c7-482e-465a-9bb7-d18e9d9d0206"),
+                ],
+                compression: None,
+                compressed_size: Some(106),
+                uncompressed_size: Some(106),
+                type_id: "130a91a8-ba80-4cad-9bce-848326b234c7",
+            )),
+        ),
+        (
+            id: "2eb77796-a5c0-42c7-bc03-1580041e4dfe",
+            search_tags: [
+                ("material_name", Some("Material")),
+                ("file_name", Some("cobblestone.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 13564346992486012959,
+                id: "2eb77796-a5c0-42c7-bc03-1580041e4dfe",
+                build_deps: [
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                    Uuid("a2b8c2c7-482e-465a-9bb7-d18e9d9d0206"),
+                ],
+                load_deps: [
+                    Uuid("a2b8c2c7-482e-465a-9bb7-d18e9d9d0206"),
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                ],
+                compression: None,
+                compressed_size: Some(84),
+                uncompressed_size: Some(84),
+                type_id: "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b",
+            )),
+        ),
+        (
+            id: "419b7680-cda3-4baf-9d4a-af447bfea6f3",
+            search_tags: [
+                ("file_name", Some("cobblestone.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 14674455035020253744,
+                id: "419b7680-cda3-4baf-9d4a-af447bfea6f3",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1064),
+                uncompressed_size: Some(1064),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "8e0d92dc-2524-4962-8074-392ee7997e0e",
+            search_tags: [
+                ("file_name", Some("cobblestone.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 6921452367443392537,
+                id: "8e0d92dc-2524-4962-8074-392ee7997e0e",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(80),
+                uncompressed_size: Some(80),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "6a1efc0f-1e67-4a6f-b5ee-185607cb3b0f",
+            search_tags: [
+                ("mesh_name", Some("Cube")),
+                ("file_name", Some("cobblestone.gltf")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 7804210627132982900,
+                id: "6a1efc0f-1e67-4a6f-b5ee-185607cb3b0f",
+                build_deps: [
+                    Uuid("2eb77796-a5c0-42c7-bc03-1580041e4dfe"),
+                    Uuid("419b7680-cda3-4baf-9d4a-af447bfea6f3"),
+                    Uuid("70ac3f40-c14b-4687-9f62-2d787d9c7a89"),
+                    Uuid("8e0d92dc-2524-4962-8074-392ee7997e0e"),
+                ],
+                load_deps: [
+                    Uuid("70ac3f40-c14b-4687-9f62-2d787d9c7a89"),
+                    Uuid("2eb77796-a5c0-42c7-bc03-1580041e4dfe"),
+                    Uuid("8e0d92dc-2524-4962-8074-392ee7997e0e"),
+                    Uuid("419b7680-cda3-4baf-9d4a-af447bfea6f3"),
+                ],
+                compression: None,
+                compressed_size: Some(122),
+                uncompressed_size: Some(122),
+                type_id: "cf232526-3757-4d94-98d1-c2f7e27c979f",
+            )),
+        ),
+    ],
+)

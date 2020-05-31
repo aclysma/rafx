@@ -106,7 +106,7 @@ fn wait_for_asset_to_load<T>(
                 unreachable!();
             }
             LoadStatus::Loading => {
-                log::info!("blocked waiting for asset to load {} {:?}", asset_name, asset_handle);
+                //log::info!("blocked waiting for asset to load {} {:?}", asset_name, asset_handle);
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 // keep waiting
             }
@@ -131,14 +131,16 @@ pub struct GameRenderer {
     resource_manager: ResourceManager,
 
     sprite_material: Handle<MaterialAsset>,
-    sprite_renderpass: Option<VkSpriteRenderPass>,
     sprite_material_instance: Handle<MaterialInstanceAsset>,
-    mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_custom_material: Option<DynMaterialInstance>,
     mesh_custom_material: Option<DynMaterialInstance>,
     mesh: Handle<MeshAsset>,
     mesh_material: Handle<MaterialAsset>,
     mesh_material_instance: Handle<MaterialInstanceAsset>,
+
+    mesh_renderpass: Option<VkMeshRenderPass>,
+    sprite_renderpass: Option<VkSpriteRenderPass>,
+    swapchain_surface_info: Option<SwapchainSurfaceInfo>,
 }
 
 impl GameRenderer {
@@ -213,30 +215,52 @@ impl GameRenderer {
         // );
 
         // textured cube
+        // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
+        //     asset_uuid!("cdd1b1a3-d609-47e3-b21d-49e511b088ec"),
+        //     &asset_resource,
+        // );
+        // let mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("a0bff2a6-2ee8-44d6-b114-33d1b2bc5fff"),
+        //     &asset_resource,
+        // );
+
+        // spaceship
+        // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
+        //     asset_uuid!("b822771c-f9e8-4c2c-af4a-6d38005c59e2"),
+        //     &asset_resource,
+        // );
+        // let mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("76143607-6937-433b-b2a7-d1719f5211be"),
+        //     &asset_resource,
+        // );
+
+        // cobblestone
         let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-            asset_uuid!("cdd1b1a3-d609-47e3-b21d-49e511b088ec"),
+            asset_uuid!("2eb77796-a5c0-42c7-bc03-1580041e4dfe"),
             &asset_resource,
         );
         let mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("a0bff2a6-2ee8-44d6-b114-33d1b2bc5fff"),
+            asset_uuid!("6a1efc0f-1e67-4a6f-b5ee-185607cb3b0f"),
             &asset_resource,
         );
-
 
 
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
             imgui_event_listener,
             resource_manager,
+
             sprite_material,
             sprite_material_instance,
-            sprite_renderpass: None,
-            mesh_renderpass: None,
             sprite_custom_material: None,
-            mesh_custom_material: None,
             mesh,
             mesh_material,
-            mesh_material_instance
+            mesh_material_instance,
+            mesh_custom_material: None,
+
+            swapchain_surface_info: None,
+            sprite_renderpass: None,
+            mesh_renderpass: None,
         };
 
         println!("Wait for the sprite_material");
@@ -352,34 +376,36 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             extents: swapchain.swapchain_info.extents,
         };
 
+        self.swapchain_surface_info = Some(swapchain_surface_info.clone());
         self.resource_manager.add_swapchain(&swapchain_surface_info);
 
+        log::trace!("Create VkSpriteRenderPass");
         let sprite_pipeline_info = self.resource_manager.get_pipeline_info(
             &self.sprite_material,
             &swapchain_surface_info,
             0,
         );
 
+        self.sprite_renderpass = Some(VkSpriteRenderPass::new(
+            device_context,
+            swapchain,
+            sprite_pipeline_info,
+        )?);
+
+
+        log::trace!("Create VkMeshRenderPass");
         let mesh_pipeline_info = self.resource_manager.get_pipeline_info(
             &self.mesh_material,
             &swapchain_surface_info,
             0,
         );
 
-        // Get the pipeline,
-
-        log::trace!("Create VkSpriteRenderPass");
-        self.sprite_renderpass = Some(VkSpriteRenderPass::new(
-            device_context,
-            swapchain,
-            sprite_pipeline_info,
-        )?);
-        log::trace!("Create VkMeshRenderPass");
         self.mesh_renderpass = Some(VkMeshRenderPass::new(
             device_context,
             swapchain,
             mesh_pipeline_info,
         )?);
+
         log::debug!("game renderer swapchain_created finished");
 
         VkResult::Ok(())
@@ -402,6 +428,8 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             .remove_swapchain(&swapchain_surface_info);
         self.imgui_event_listener
             .swapchain_destroyed(device_context, swapchain);
+
+        self.swapchain_surface_info = None;
     }
 }
 
@@ -416,19 +444,17 @@ impl GameRenderer {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
-        //std::thread::sleep(std::time::Duration::from_millis(100));
-
-
-
-        //let loop_time = (self.time_state.total_time().as_millis() % 500) as f32 / 500.0;
         let loop_time = self.time_state.total_time().as_secs_f32();
 
+        //
+        // Camera Management
+        //
+        let camera_distance_multiplier = 1.0;
         let eye = glam::Vec3::new(
-            10.0 * f32::cos(loop_time),
-            5.0,
-            10.0 * f32::sin(loop_time)
+            camera_distance_multiplier * 10.0 * f32::cos(loop_time),
+            camera_distance_multiplier * 5.0,
+            camera_distance_multiplier * 10.0 * f32::sin(loop_time)
         );
-
 
         let extents_width = 900;
         let extents_height = 600;
@@ -437,97 +463,102 @@ impl GameRenderer {
         let half_height = 10.0 / aspect_ratio;
 
         let view = glam::Mat4::look_at_lh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, -1.0, 0.0));
-        let proj = glam::Mat4::perspective_lh(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 100.0);
-
+        let proj = glam::Mat4::perspective_lh(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 20.0 * camera_distance_multiplier);
         let view_proj = proj * view;
 
-
-        let material = self.mesh_custom_material.as_mut().unwrap();
-
+        //
+        // Push latest light/camera info into the mesh material
+        //
         let mut per_frame_data_shader_param = PerFrameDataShaderParam::default();
         per_frame_data_shader_param.point_lights[0].position_world = [5.0, 5.0, 5.0].into();
         per_frame_data_shader_param.point_lights[0].position_view = [5.0, 5.0, 5.0].into();
         per_frame_data_shader_param.point_lights[0].range = 25.0;
         per_frame_data_shader_param.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
         per_frame_data_shader_param.point_lights[0].intensity = 1.0;
-        //global_shader_param.point_lights[0].enabled = true;
-
 
         let mut material_data = GltfMaterialData::default();
-        material_data.base_color_factor = [1.0, 0.0, 1.0, 1.0].into();
+        material_data.base_color_factor = [1.0, 1.0, 1.0, 1.0].into();
         material_data.has_base_color_texture = true;
         let material_data : GltfMaterialDataShaderParam = material_data.into();
 
+        let material = self.mesh_custom_material.as_mut().unwrap();
         material.set_buffer_data(&"per_frame_data".to_string(), &per_frame_data_shader_param);
         material.set_buffer_data(&"material_data".to_string(), &material_data);
         material.set_buffer_data(&"view_proj".to_string(), &view_proj);
         material.flush();
 
-
-
-
-
-
-
-
-        // Flush descriptor set changes
+        //
+        // Update Resources and flush descriptor set changes
+        //
         self.resource_manager.on_begin_frame();
 
-        let pass = self.sprite_custom_material.as_ref().unwrap().pass(0);
-
-        // Pass 0 is "global"
-        let descriptor_set_per_pass = pass
-            .descriptor_set_layout(0)
-            .descriptor_set()
-            .get_raw_for_gpu_read(&self.resource_manager);
-
-        // Pass 1 is per-object
-        let descriptor_set_per_texture = pass.descriptor_set_layout(1).descriptor_set();
-        let descriptor_sets_per_texture =
-            vec![descriptor_set_per_texture.get_raw_for_gpu_read(&self.resource_manager)];
-
-        //let descriptor_set_per_pass = vec![descriptor_set.get_raw(&self.resource_manager)];
-
+        //
+        // Sprite renderpass
+        //
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");
+            let dyn_pass_material_instance = self.sprite_custom_material.as_ref().unwrap().pass(0);
+            let static_pass_material_instance = self.resource_manager.get_material_instance_descriptor_sets_for_current_frame(&self.sprite_material_instance, 0);
+
+            //let pass = self.sprite_material_instance.asset.as_ref().unwrap().pass(0);
+
+            // Pass 0 is "global"
+            let descriptor_set_per_pass = dyn_pass_material_instance
+                .descriptor_set_layout(0)
+                .descriptor_set()
+                .get_raw_for_gpu_read(&self.resource_manager);
+
+            // Pass 1 is per-object
+            // let descriptor_set_per_texture = pass
+            //     .descriptor_set_layout(1)
+            //     .descriptor_set()
+            //     .get_raw_for_gpu_read(&self.resource_manager);
+            let descriptor_set_per_texture = static_pass_material_instance.descriptor_sets[1];
+
             sprite_renderpass.update(
                 present_index,
                 1.0,
                 //&self.sprite_resource_manager,
                 descriptor_set_per_pass,
-                &descriptor_sets_per_texture,
+                &[descriptor_set_per_texture],
                 &self.time_state,
             )?;
+
             command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
         }
 
-        // let mesh_descriptors = self.resource_manager.get_material_instance_descriptor_sets_for_current_frame(
-        //     &self.mesh_material_instance,
-        //     0
-        // );
-
-        let mesh_info = self.resource_manager.get_mesh_info(&self.mesh);
-        let pass = self.mesh_custom_material.as_ref().unwrap().pass(0);
-
-        // Pass 0 is "global"
-        let descriptor_set_per_pass = pass
-            .descriptor_set_layout(0)
-            .descriptor_set()
-            .get_raw_for_gpu_read(&self.resource_manager);
-
-        let descriptor_set_per_material = pass
-            .descriptor_set_layout(1)
-            .descriptor_set()
-            .get_raw_for_gpu_read(&self.resource_manager);
-
-        let descriptor_set_per_texture = pass
-            .descriptor_set_layout(2)
-            .descriptor_set()
-            .get_raw_for_gpu_read(&self.resource_manager);
-
+        //
+        // Mesh renderpass
+        //
         if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
             log::trace!("mesh_renderpass update");
+            let mesh_pipeline_info = self.resource_manager.get_pipeline_info(
+                &self.mesh_material,
+                self.swapchain_surface_info.as_ref().unwrap(),
+                0,
+            );
+
+            let mesh_info = self.resource_manager.get_mesh_info(&self.mesh);
+            let pass = self.mesh_custom_material.as_ref().unwrap().pass(0);
+
+            // Pass 0 is "global"
+            let descriptor_set_per_pass = pass
+                .descriptor_set_layout(0)
+                .descriptor_set()
+                .get_raw_for_gpu_read(&self.resource_manager);
+
+            let descriptor_set_per_material = pass
+                .descriptor_set_layout(1)
+                .descriptor_set()
+                .get_raw_for_gpu_read(&self.resource_manager);
+
+            let descriptor_set_per_texture = pass
+                .descriptor_set_layout(2)
+                .descriptor_set()
+                .get_raw_for_gpu_read(&self.resource_manager);
+
             mesh_renderpass.update(
+                &mesh_pipeline_info,
                 present_index,
                 1.0,
                 //mesh_descriptors.descriptor_sets[0],
@@ -540,6 +571,9 @@ impl GameRenderer {
             command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
         }
 
+        //
+        // imgui
+        //
         {
             log::trace!("imgui_event_listener update");
             let mut commands =

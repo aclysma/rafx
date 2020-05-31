@@ -13,15 +13,15 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 13539457927075409057,
+                hash: 2537973697824340902,
                 id: "84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5",
                 build_deps: [
-                    Path("../textures/texture.jpg"),
                     Path("sprite.material"),
+                    Path("../textures/texture.jpg"),
                 ],
                 load_deps: [
-                    Path("../textures/texture.jpg"),
                     Path("sprite.material"),
+                    Path("../textures/texture.jpg"),
                 ],
                 compression: None,
                 compressed_size: Some(73),

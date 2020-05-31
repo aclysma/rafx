@@ -49,8 +49,9 @@ layout (set = 1, binding = 3) uniform texture2D normal_texture;
 layout (set = 1, binding = 4) uniform texture2D occlusion_texture;
 layout (set = 1, binding = 5) uniform texture2D emissive_texture;
 
-layout (location = 0) in vec3 o_normal;
-layout (location = 1) in vec2 o_uv;
+layout (location = 0) in vec3 in_normal;
+layout (location = 1) in vec3 in_tangent;
+layout (location = 2) in vec2 in_uv;
 
 layout (location = 0) out vec4 uFragColor;
 
@@ -59,13 +60,13 @@ void main() {
     uFragColor = vec4(1.0, 1.0, 1.0, 1.0);
     uFragColor *= uFragColor * material_data.base_color_factor;
     if (material_data.has_base_color_texture) {
-        uFragColor *= texture(sampler2D(base_color_texture, smp), o_uv);
+        uFragColor *= texture(sampler2D(base_color_texture, smp), in_uv);
     }
 
     
     
     // Point Lights
     for (uint i = 0; i < per_frame_data.point_light_count; ++i) {
-        uFragColor = uFragColor * per_frame_data.point_lights[0].color;
+        //uFragColor = uFragColor * per_frame_data.point_lights[0].color;
     }
 }

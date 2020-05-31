@@ -138,7 +138,7 @@
                     binding_descriptions: [
                         (
                             binding: 0,
-                            stride: 32,
+                            stride: 44,
                             input_rate: Vertex,
                         ),
                     ],
@@ -155,13 +155,20 @@
                             location: 1,
                             format: R32G32B32_SFLOAT,
                             offset: 12,
-                            //slot_name: "TEXCOORD_0"
+                            //slot_name: "NORMAL"
                         ),
                         (
                             binding: 0,
                             location: 2,
-                            format: R32G32_SFLOAT,
+                            format: R32G32B32_SFLOAT,
                             offset: 24,
+                            //slot_name: "TANGENT"
+                        ),
+                        (
+                            binding: 0,
+                            location: 3,
+                            format: R32G32_SFLOAT,
+                            offset: 36,
                             //slot_name: "TEXCOORD_0"
                         ),
                     ],

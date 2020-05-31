@@ -12,7 +12,7 @@ use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAs
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "25c8b7df-e3a4-4436-b41c-ce32eed76e18"]
-struct PipelineImporterState2(Option<AssetUuid>);
+struct PipelineImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "3906ac10-8782-446d-aee4-e94611c6d61e"]
@@ -31,7 +31,7 @@ impl Importer for PipelineImporter {
 
     type Options = ();
 
-    type State = PipelineImporterState2;
+    type State = PipelineImporterState;
 
     /// Reads the given bytes and produces assets.
     fn import(
@@ -43,7 +43,7 @@ impl Importer for PipelineImporter {
         let id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = PipelineImporterState2(Some(id));
+        *state = PipelineImporterState(Some(id));
 
         let pipeline_asset = ron::de::from_reader::<_, PipelineAsset>(source)?;
         log::trace!("IMPORTED PIPELINE:\n{:#?}", pipeline_asset);
@@ -124,7 +124,7 @@ inventory::submit!(SourceFileImporter {
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "d40e33f3-ba7d-4218-8266-a18d7c65b06e"]
-struct MaterialInstanceImporterState2(Option<AssetUuid>);
+struct MaterialInstanceImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "4ce02143-a5c4-4433-b843-07cdccf013b0"]
@@ -143,7 +143,7 @@ impl Importer for MaterialInstanceImporter {
 
     type Options = ();
 
-    type State = MaterialInstanceImporterState2;
+    type State = MaterialInstanceImporterState;
 
     /// Reads the given bytes and produces assets.
     fn import(
@@ -155,7 +155,7 @@ impl Importer for MaterialInstanceImporter {
         let id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = MaterialInstanceImporterState2(Some(id));
+        *state = MaterialInstanceImporterState(Some(id));
 
         let material_asset = ron::de::from_reader::<_, MaterialInstanceAsset>(source)?;
         log::trace!("IMPORTED MATERIALINSTANCE:\n{:#?}", material_asset);

@@ -155,6 +155,8 @@ where
         self.inner.resource.borrow().resource.clone()
     }
 
+    pub fn get_hash(&self) -> ResourceHash { self.inner.resource.resource_hash }
+
     pub fn downgrade(&self) -> WeakResourceArc<ResourceT> {
         let inner = Arc::downgrade(&self.inner);
         WeakResourceArc { inner }
@@ -327,7 +329,7 @@ pub struct GraphicsPipelineKey {
     renderpass: dsc::RenderPass,
     fixed_function_state: dsc::FixedFunctionState,
     shader_module_metas: Vec<dsc::ShaderModuleMeta>,
-    shader_module_load_handles: Vec<LoadHandle>,
+    shader_module_hashes: Vec<ResourceHash>,
     swapchain_surface_info: dsc::SwapchainSurfaceInfo,
 }
 
@@ -693,7 +695,7 @@ impl ResourceLookupSet {
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<ResourceArc<PipelineResource>> {
         let pipeline_key = GraphicsPipelineKey {
-            shader_module_load_handles: pipeline_create_data.shader_module_load_handles.clone(),
+            shader_module_hashes: pipeline_create_data.shader_module_hashes.clone(),
             shader_module_metas: pipeline_create_data.shader_module_metas.clone(),
             pipeline_layout: pipeline_create_data.pipeline_layout_def.clone(),
             fixed_function_state: pipeline_create_data.fixed_function_state.clone(),

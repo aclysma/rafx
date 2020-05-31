@@ -37,14 +37,14 @@ pub struct VkMeshRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
-    pipeline_info: PipelineSwapchainInfo,
-
     // Static resources for the renderpass, including a frame buffer per present index
     pub frame_buffers: Vec<vk::Framebuffer>,
 
     // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
+
+    renderpass: vk::RenderPass,
 }
 
 impl VkMeshRenderPass {
@@ -84,7 +84,7 @@ impl VkMeshRenderPass {
             frame_buffers,
             command_pool,
             command_buffers,
-            pipeline_info
+            renderpass: pipeline_info.renderpass.get_raw()
         })
     }
 
@@ -281,6 +281,7 @@ impl VkMeshRenderPass {
 
     pub fn update(
         &mut self,
+        pipeline_info: &PipelineSwapchainInfo,
         present_index: usize,
         hidpi_factor: f64,
         descriptor_set_per_pass: vk::DescriptorSet,
@@ -289,13 +290,14 @@ impl VkMeshRenderPass {
         mesh_info: &[MeshInfo],
         time_state: &TimeState,
     ) -> VkResult<()> {
+        assert!(self.renderpass == pipeline_info.renderpass.get_raw());
         Self::update_command_buffer(
             &self.device_context,
             &self.swapchain_info,
-            &self.pipeline_info.renderpass.get_raw(),
+            &pipeline_info.renderpass.get_raw(),
             &self.frame_buffers[present_index],
-            &self.pipeline_info.pipeline.get_raw().pipeline,
-            &self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
+            &pipeline_info.pipeline.get_raw().pipeline,
+            &pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
             &descriptor_set_per_pass,
             descriptor_set_per_material,

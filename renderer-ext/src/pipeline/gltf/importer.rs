@@ -525,19 +525,25 @@ fn extract_materials_to_import(
 
         material_asset.base_color_texture = pbr_metallic_roughness
             .base_color_texture()
-            .map(|base_texture| image_index_to_handle[base_texture.texture().index()].clone());
+            .map(|texture| image_index_to_handle[texture.texture().source().index()].clone());
         material_asset.metallic_roughness_texture = pbr_metallic_roughness
             .metallic_roughness_texture()
-            .map(|base_texture| image_index_to_handle[base_texture.texture().index()].clone());
+            .map(|texture| image_index_to_handle[texture.texture().source().index()].clone());
         material_asset.normal_texture = material
             .normal_texture()
-            .map(|base_texture| image_index_to_handle[base_texture.texture().index()].clone());
+            .map(|texture| image_index_to_handle[texture.texture().source().index()].clone());
         material_asset.occlusion_texture = material
-            .normal_texture()
-            .map(|base_texture| image_index_to_handle[base_texture.texture().index()].clone());
+            .occlusion_texture()
+            .map(|texture| image_index_to_handle[texture.texture().source().index()].clone());
         material_asset.emissive_texture = material
             .emissive_texture()
-            .map(|base_texture| image_index_to_handle[base_texture.texture().index()].clone());
+            .map(|texture| image_index_to_handle[texture.texture().source().index()].clone());
+
+        material_asset.material_data.has_base_color_texture = material_asset.base_color_texture.is_some();
+        material_asset.material_data.has_metallic_roughness_texture = material_asset.metallic_roughness_texture.is_some();
+        material_asset.material_data.has_normal_texture = material_asset.normal_texture.is_some();
+        material_asset.material_data.has_occlusion_texture = material_asset.occlusion_texture.is_some();
+        material_asset.material_data.has_emissive_texture = material_asset.emissive_texture.is_some();
 
 
 
@@ -608,19 +614,23 @@ fn extract_meshes_to_import(
         for primitive in mesh.primitives() {
             let mesh_part = {
                 let reader = primitive.reader(|buffer| buffers.get(buffer.index()).map(|x| &**x));
+
                 let positions = reader.read_positions();
                 let normals = reader.read_normals();
+                let tangents = reader.read_tangents();
+                //let colors = reader.read_colors();
                 let tex_coords = reader.read_tex_coords(0);
                 let indices = reader.read_indices();
 
-                if let (Some(indices), Some(positions), Some(normals), Some(tex_coords)) =
-                    (indices, positions, normals, tex_coords)
+                if let (Some(indices), Some(positions), Some(normals), Some(tangents), Some(tex_coords)) =
+                    (indices, positions, normals, tangents, tex_coords)
                 {
                     let part_indices = convert_to_u16_indices(indices);
 
                     if let Ok(part_indices) = part_indices {
                         let positions: Vec<_> = positions.collect();
                         let normals: Vec<_> = normals.collect();
+                        let tangents: Vec<_> = tangents.collect();
                         let tex_coords: Vec<_> = tex_coords.into_f32().collect();
 
                         let vertex_offset = all_vertices.len();
@@ -630,6 +640,7 @@ fn extract_meshes_to_import(
                             all_vertices.push(&[MeshVertex {
                                 position: positions[i],
                                 normal: normals[i],
+                                tangent: [tangents[i][0], tangents[i][1], tangents[i][2]],
                                 tex_coord: tex_coords[i],
                             }],
                             1);

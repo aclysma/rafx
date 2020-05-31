@@ -526,6 +526,7 @@ impl ResourceManager {
         asset_lookup: &mut AssetLookup<LoadedAssetT>,
     ) {
         for request in load_queues.take_commit_requests() {
+            log::info!("commit asset {:?} {}", request.load_handle, core::any::type_name::<AssetT>());
             asset_lookup.commit(request.load_handle);
         }
     }
@@ -618,10 +619,17 @@ impl ResourceManager {
                 .graphics_pipelines2
                 .get_latest(pass.pipeline.load_handle())
                 .unwrap();
+
+
             let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
 
+            let shader_hashes : Vec<_> = pass.shaders.iter().map(|shader| {
+                let shader_module = self.loaded_assets.shader_modules.get_latest(shader.shader_module.load_handle()).unwrap();
+                shader_module.shader_module.get_hash()
+            }).collect();
+
             let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
-            let pipeline_create_data = PipelineCreateData::new(self, pipeline_asset, pass)?;
+            let pipeline_create_data = PipelineCreateData::new(self, pipeline_asset, pass, shader_hashes)?;
 
             // Will contain the vulkan resources being created per swapchain
             let mut render_passes = Vec::with_capacity(swapchain_surface_infos.len());
@@ -872,8 +880,11 @@ impl Drop for ResourceManager {
 // here
 #[derive(Clone)]
 pub struct PipelineCreateData {
+    // We store the shader module hash rather than the shader module itself because it's a large
+    // binary blob. We don't use it to create or even look up the shader, just so that the hash of
+    // the pipeline we create doesn't conflict with the same pipeline using reloaded (different) shaders
     shader_module_metas: Vec<dsc::ShaderModuleMeta>,
-    shader_module_load_handles: Vec<LoadHandle>,
+    shader_module_hashes: Vec<ResourceHash>,
     shader_module_arcs: Vec<ResourceArc<vk::ShaderModule>>,
     shader_module_vk_objs: Vec<vk::ShaderModule>,
 
@@ -892,19 +903,18 @@ impl PipelineCreateData {
         resource_manager: &mut ResourceManager,
         pipeline_asset: PipelineAsset,
         material_pass: &MaterialPass,
+        shader_module_hashes: Vec<ResourceHash>,
     ) -> VkResult<Self> {
         //
         // Shader module metadata (required to create the pipeline key)
         //
         let mut shader_module_metas = Vec::with_capacity(material_pass.shaders.len());
-        let mut shader_module_load_handles = Vec::with_capacity(material_pass.shaders.len());
         for stage in &material_pass.shaders {
             let shader_module_meta = dsc::ShaderModuleMeta {
                 stage: stage.stage,
                 entry_name: stage.entry_name.clone(),
             };
             shader_module_metas.push(shader_module_meta);
-            shader_module_load_handles.push(stage.shader_module.load_handle());
         }
 
         //
@@ -963,7 +973,7 @@ impl PipelineCreateData {
 
         Ok(PipelineCreateData {
             shader_module_metas,
-            shader_module_load_handles,
+            shader_module_hashes,
             shader_module_arcs,
             shader_module_vk_objs,
             descriptor_set_layout_arcs,
