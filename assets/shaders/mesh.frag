@@ -51,7 +51,8 @@ layout (set = 1, binding = 5) uniform texture2D emissive_texture;
 
 layout (location = 0) in vec3 in_normal;
 layout (location = 1) in vec3 in_tangent;
-layout (location = 2) in vec2 in_uv;
+layout (location = 2) in vec2 in_binormal;
+layout (location = 3) in vec2 in_uv;
 
 layout (location = 0) out vec4 uFragColor;
 

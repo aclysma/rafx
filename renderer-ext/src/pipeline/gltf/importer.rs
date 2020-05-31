@@ -628,6 +628,7 @@ fn extract_meshes_to_import(
                     let part_indices = convert_to_u16_indices(indices);
 
                     if let Ok(part_indices) = part_indices {
+                        //TODO: Consider computing binormal (bitangent) here
                         let positions: Vec<_> = positions.collect();
                         let normals: Vec<_> = normals.collect();
                         let tangents: Vec<_> = tangents.collect();
@@ -640,7 +641,7 @@ fn extract_meshes_to_import(
                             all_vertices.push(&[MeshVertex {
                                 position: positions[i],
                                 normal: normals[i],
-                                tangent: [tangents[i][0], tangents[i][1], tangents[i][2]],
+                                tangent: tangents[i],
                                 tex_coord: tex_coords[i],
                             }],
                             1);
@@ -773,5 +774,11 @@ fn extract_meshes_to_import(
 // make a macro to reduce duplication here :)
 inventory::submit!(SourceFileImporter {
     extension: "gltf",
+    instantiator: || Box::new(GltfImporter {}),
+});
+
+// make a macro to reduce duplication here :)
+inventory::submit!(SourceFileImporter {
+    extension: "glb",
     instantiator: || Box::new(GltfImporter {}),
 });

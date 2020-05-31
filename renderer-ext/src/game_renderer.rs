@@ -234,13 +234,23 @@ impl GameRenderer {
         //     &asset_resource,
         // );
 
-        // cobblestone
+        // cobblestone gltf
+        // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
+        //     asset_uuid!("2eb77796-a5c0-42c7-bc03-1580041e4dfe"),
+        //     &asset_resource,
+        // );
+        // let mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("6a1efc0f-1e67-4a6f-b5ee-185607cb3b0f"),
+        //     &asset_resource,
+        // );
+
+        // cobblestone glb
         let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-            asset_uuid!("2eb77796-a5c0-42c7-bc03-1580041e4dfe"),
+            asset_uuid!("fbf19e7c-d416-4290-a86c-638409d15b3c"),
             &asset_resource,
         );
         let mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("6a1efc0f-1e67-4a6f-b5ee-185607cb3b0f"),
+            asset_uuid!("3244889f-da82-474a-a7fe-e4ec37adedde"),
             &asset_resource,
         );
 

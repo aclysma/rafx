@@ -42,10 +42,18 @@ fn main() {
         .default_format_timestamp_nanos(true)
         //.filter_module("renderer_shell_vulkan::buffer", log::LevelFilter::Debug)
         //.filter_module("renderer_ext::game_renderer", log::LevelFilter::Debug)
-        //.filter_module("renderer_ext::resource_managers::descriptor_sets", log::LevelFilter::Trace)
+        .filter_module("renderer_ext::resource_managers::descriptor_sets", log::LevelFilter::Info)
         //.filter_module("renderer_ext::pipeline", log::LevelFilter::Trace)
         //.filter_level(log::LevelFilter::Error)
         .filter_level(log_level)
+        // .format(|buf, record| { //TODO: Get a frame count in here
+        //     writeln!(buf,
+        //              "{} [{}] - {}",
+        //              chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
+        //              record.level(),
+        //              record.args()
+        //     )
+        // })
         .init();
 
     // Spawn the daemon in a background thread. This could be a different process, but
