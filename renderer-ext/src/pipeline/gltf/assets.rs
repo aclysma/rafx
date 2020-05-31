@@ -70,7 +70,6 @@ impl Into<GltfMaterialDataShaderParam> for GltfMaterialData {
         GltfMaterialDataShaderParam {
             base_color_factor: self.base_color_factor.into(),
             emissive_factor: self.emissive_factor.into(),
-            pad0: 0.0,
             metallic_factor: self.metallic_factor,
             roughness_factor: self.roughness_factor,
             normal_texture_scale: self.normal_texture_scale,
@@ -87,12 +86,11 @@ impl Into<GltfMaterialDataShaderParam> for GltfMaterialData {
 
 // This is non-texture data associated with the material. It's appropriate to be loaded as a uniform
 // for a shader
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct GltfMaterialDataShaderParam {
     pub base_color_factor: glam::Vec4, // default: 1,1,1,1
     pub emissive_factor: glam::Vec3, // default: 0,0,0
-    pub pad0: f32,
     pub metallic_factor: f32, //default: 1,
     pub roughness_factor: f32, // default: 1,
     pub normal_texture_scale: f32, // default: 1
