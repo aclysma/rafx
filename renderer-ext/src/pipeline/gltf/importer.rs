@@ -74,7 +74,7 @@ impl Importer for GltfImporter {
     where
         Self: Sized,
     {
-        18
+        21
     }
 
     fn version(&self) -> u32 {
@@ -252,12 +252,76 @@ impl Importer for GltfImporter {
 
             let mut slot_assignments = vec![];
 
+
+            let mut load_deps = Vec::new();
             if let Some(base_color_texture) = &material_to_import.asset.base_color_texture {
                 slot_assignments.push(MaterialInstanceSlotAssignment {
                     slot_name: "base_color_texture".to_string(),
                     image: Some(base_color_texture.clone()),
                     sampler: None
                 });
+
+                // let image_uuid = SerdeContext::with_active(|x, _| {
+                //     x.get_asset_id(base_color_texture.load_handle())
+                // }).unwrap();
+                //
+                // load_deps.push(AssetRef::Uuid(image_uuid));
+            }
+
+            if let Some(metallic_roughness_texture) = &material_to_import.asset.metallic_roughness_texture {
+                slot_assignments.push(MaterialInstanceSlotAssignment {
+                    slot_name: "metallic_roughness_texture".to_string(),
+                    image: Some(metallic_roughness_texture.clone()),
+                    sampler: None
+                });
+
+                // let image_uuid = SerdeContext::with_active(|x, _| {
+                //     x.get_asset_id(metallic_roughness_texture.load_handle())
+                // }).unwrap();
+                //
+                // load_deps.push(AssetRef::Uuid(image_uuid));
+            }
+
+            if let Some(normal_texture) = &material_to_import.asset.normal_texture {
+                slot_assignments.push(MaterialInstanceSlotAssignment {
+                    slot_name: "normal_texture".to_string(),
+                    image: Some(normal_texture.clone()),
+                    sampler: None
+                });
+
+                // let image_uuid = SerdeContext::with_active(|x, _| {
+                //     x.get_asset_id(normal_texture.load_handle())
+                // }).unwrap();
+                //
+                // load_deps.push(AssetRef::Uuid(image_uuid));
+            }
+
+            if let Some(occlusion_texture) = &material_to_import.asset.occlusion_texture {
+                slot_assignments.push(MaterialInstanceSlotAssignment {
+                    slot_name: "occlusion_texture".to_string(),
+                    image: Some(occlusion_texture.clone()),
+                    sampler: None
+                });
+
+                // let image_uuid = SerdeContext::with_active(|x, _| {
+                //     x.get_asset_id(occlusion_texture.load_handle())
+                // }).unwrap();
+                //
+                // load_deps.push(AssetRef::Uuid(image_uuid));
+            }
+
+            if let Some(emissive_texture) = &material_to_import.asset.emissive_texture {
+                slot_assignments.push(MaterialInstanceSlotAssignment {
+                    slot_name: "emissive_texture".to_string(),
+                    image: Some(emissive_texture.clone()),
+                    sampler: None
+                });
+
+                // let image_uuid = SerdeContext::with_active(|x, _| {
+                //     x.get_asset_id(emissive_texture.load_handle())
+                // }).unwrap();
+                //
+                // load_deps.push(AssetRef::Uuid(image_uuid));
             }
 
             let material_instance_asset = MaterialInstanceAsset {
@@ -272,7 +336,7 @@ impl Importer for GltfImporter {
                 id: material_instance_uuid,
                 search_tags,
                 build_deps: vec![],
-                load_deps: vec![],
+                load_deps,//: vec![],
                 build_pipeline: None,
                 asset_data: Box::new(material_instance_asset),
             });
@@ -678,13 +742,15 @@ fn extract_meshes_to_import(
                     }
                 } else {
                     log::error!(
-                        "Mesh primitives must specify indices, positions, normals, and tex_coords"
+                        "Mesh primitives must specify indices, positions, normals, tangents, and tex_coords"
                     );
                     None
                 }
             };
 
-            mesh_parts.push(mesh_part.unwrap());
+            if let Some(mesh_part) = mesh_part {
+                mesh_parts.push(mesh_part);
+            }
         }
 
         //

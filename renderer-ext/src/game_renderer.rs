@@ -82,6 +82,14 @@ struct PerFrameDataShaderParam {
     spot_lights: [SpotLight; 16], // +2192 (96*16 = 1536)
 } // 3728 bytes
 
+#[derive(Default, Copy, Clone)]
+#[repr(C)]
+struct PerObjectDataShaderParam {
+    model_view: glam::Mat4, // +0
+    model_view_proj: glam::Mat4, // +64
+} // 128 bytes
+
+
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
     asset_resource: &AssetResource,
@@ -204,53 +212,23 @@ impl GameRenderer {
             &asset_resource,
         );
 
-        // cubic
-        // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-        //     asset_uuid!("e7824acf-05a5-4757-a085-8b73136940e9"),
-        //     &asset_resource,
-        // );
-        // let mesh = begin_load_asset::<MeshAsset>(
-        //     asset_uuid!("93ed839e-1ad8-44e4-927d-e82f5c986d46"),
-        //     &asset_resource,
-        // );
-
-        // textured cube
-        // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-        //     asset_uuid!("cdd1b1a3-d609-47e3-b21d-49e511b088ec"),
-        //     &asset_resource,
-        // );
-        // let mesh = begin_load_asset::<MeshAsset>(
-        //     asset_uuid!("a0bff2a6-2ee8-44d6-b114-33d1b2bc5fff"),
-        //     &asset_resource,
-        // );
-
-        // spaceship
-        // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-        //     asset_uuid!("b822771c-f9e8-4c2c-af4a-6d38005c59e2"),
-        //     &asset_resource,
-        // );
-        // let mesh = begin_load_asset::<MeshAsset>(
-        //     asset_uuid!("76143607-6937-433b-b2a7-d1719f5211be"),
-        //     &asset_resource,
-        // );
-
         // cobblestone gltf
         // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-        //     asset_uuid!("2eb77796-a5c0-42c7-bc03-1580041e4dfe"),
+        //     asset_uuid!("dc740f08-8e06-4341-806e-a01ae37df314"),
         //     &asset_resource,
         // );
         // let mesh = begin_load_asset::<MeshAsset>(
-        //     asset_uuid!("6a1efc0f-1e67-4a6f-b5ee-185607cb3b0f"),
+        //     asset_uuid!("ef79835d-25de-4df0-99e8-1968d2826d05"),
         //     &asset_resource,
         // );
 
         // cobblestone glb
         let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-            asset_uuid!("fbf19e7c-d416-4290-a86c-638409d15b3c"),
+            asset_uuid!("a4a2d899-ded3-498e-aefb-c7b715856509"),
             &asset_resource,
         );
         let mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("3244889f-da82-474a-a7fe-e4ec37adedde"),
+            asset_uuid!("015283c2-d071-4a69-93a0-f25923a4240c"),
             &asset_resource,
         );
 
@@ -347,8 +325,6 @@ impl GameRenderer {
         let mut mesh_custom_material = renderer
             .resource_manager
             .create_dyn_material_instance_from_asset(renderer.mesh_material_instance.clone())?;
-        mesh_custom_material.set_buffer_data(&"view_proj".to_string(), &proj);
-        mesh_custom_material.flush();
 
         renderer.mesh_custom_material = Some(mesh_custom_material);
 
@@ -479,22 +455,43 @@ impl GameRenderer {
         //
         // Push latest light/camera info into the mesh material
         //
-        let mut per_frame_data_shader_param = PerFrameDataShaderParam::default();
-        per_frame_data_shader_param.point_lights[0].position_world = [5.0, 5.0, 5.0].into();
-        per_frame_data_shader_param.point_lights[0].position_view = [5.0, 5.0, 5.0].into();
-        per_frame_data_shader_param.point_lights[0].range = 25.0;
-        per_frame_data_shader_param.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data_shader_param.point_lights[0].intensity = 1.0;
+        let mut per_frame_data = PerFrameDataShaderParam::default();
+        per_frame_data.point_lights[0].position_world = [5.0, 5.0, 5.0].into();
+        per_frame_data.point_lights[0].position_view = [5.0, 5.0, 5.0].into();
+        per_frame_data.point_lights[0].range = 25.0;
+        per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
+        per_frame_data.point_lights[0].intensity = 1.0;
 
-        let mut material_data = GltfMaterialData::default();
-        material_data.base_color_factor = [1.0, 1.0, 1.0, 1.0].into();
-        material_data.has_base_color_texture = true;
-        let material_data : GltfMaterialDataShaderParam = material_data.into();
+        // clearly the best code I've ever written
+        let per_material_data = self
+            .mesh
+            .asset(asset_resource.storage())
+            .as_ref()
+            .unwrap()
+            .mesh_parts[0]
+            .material
+            .as_ref()
+            .unwrap()
+            .asset(asset_resource.storage())
+            .as_ref()
+            .unwrap()
+            .material_data
+            .clone();
+        //let per_material_data = mesh_part.material.unwrap().asset(asset_resource.storage()).unwrap().material_data;
+
+        //let mut per_material_data = GltfMaterialData::default();
+        // per_material_data.base_color_factor = [1.0, 1.0, 1.0, 1.0].into();
+        // per_material_data.has_base_color_texture = true;
+        let per_material_data : GltfMaterialDataShaderParam = per_material_data.into();
+
+        let mut per_object_data = PerObjectDataShaderParam::default();
+        per_object_data.model_view = view;
+        per_object_data.model_view_proj = proj * view;
 
         let material = self.mesh_custom_material.as_mut().unwrap();
-        material.set_buffer_data(&"per_frame_data".to_string(), &per_frame_data_shader_param);
-        material.set_buffer_data(&"material_data".to_string(), &material_data);
-        material.set_buffer_data(&"view_proj".to_string(), &view_proj);
+        material.set_buffer_data(&"per_frame_data".to_string(), &per_frame_data);
+        material.set_buffer_data(&"per_material_data".to_string(), &per_material_data);
+        material.set_buffer_data(&"per_object_data".to_string(), &per_object_data);
         material.flush();
 
         //

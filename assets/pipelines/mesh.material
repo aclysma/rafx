@@ -69,7 +69,7 @@
                                 descriptor_type: UniformBuffer,
                                 descriptor_count: 1,
                                 stage_flags: Fragment,
-                                slot_name: "material_data",
+                                slot_name: "per_material_data",
 
                                 internal_buffer_per_descriptor_size: Some(80)
                             ),
@@ -119,9 +119,9 @@
                                 descriptor_type: UniformBuffer,
                                 descriptor_count: 1,
                                 stage_flags: Vertex,
-                                slot_name: "view_proj",
+                                slot_name: "per_object_data",
 
-                                internal_buffer_per_descriptor_size: Some(64)
+                                internal_buffer_per_descriptor_size: Some(128)
                             ),
                         ]
                     ),
