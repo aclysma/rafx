@@ -481,29 +481,22 @@ impl GameRenderer {
         // Push latest light/camera info into the mesh material
         //
         //let light_world_transform = glam::Mat4::from_translation(glam::Vec3::new(5.0, 5.0, 5.0));
-        let light_position = glam::Vec4::new(5.0, 5.0, 5.0, 1.0);
+        let light_position = glam::Vec4::new(3.0, 3.0, 3.0, 1.0);
         let light_position_vs = view * light_position;
+        println!("light_position_vs {:?}", light_position_vs);
         let mut per_frame_data = PerFrameDataShaderParam::default();
+        per_frame_data.point_light_count = 1;
         per_frame_data.point_lights[0].position_world = light_position.truncate().into();
         per_frame_data.point_lights[0].position_view = light_position_vs.truncate().into();
         per_frame_data.point_lights[0].range = 25.0;
-        per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
+        per_frame_data.point_lights[0].color = [1.0, 0.0, 0.0, 1.0].into();
         per_frame_data.point_lights[0].intensity = 1.0;
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
-
-        let mut per_object_data = PerObjectDataShaderParam::default();
-        per_object_data.model_view = view;
-        per_object_data.model_view_proj = proj * view;
+        self.mesh_material_per_frame_data.flush();
 
         for mesh in &mut self.meshes {
             mesh.set_view_proj(view, proj);
         }
-
-
-        // let material = self.mesh_custom_material.as_mut().unwrap();
-        // material.set_buffer_data(&"per_frame_data".to_string(), &per_frame_data);
-        // material.set_buffer_data(&"per_object_data".to_string(), &per_object_data);
-        // material.flush();
 
         //
         // Update Resources and flush descriptor set changes
