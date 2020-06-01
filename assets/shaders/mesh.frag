@@ -106,10 +106,10 @@ void main() {
 
     // just pick something
     //vec3 light_vs = normalize(per_frame_data.point_lights[0].position_view);
-    vec3 light_vs = normalize(vec3(-5, -5, -5));
+    //vec3 light_vs = normalize(vec3(-5, -5, -5));
 
-    float NdotL = max(dot(normal_vs.xyz, light_vs), 0);
-    base_color = vec4(base_color.xyz * NdotL, 1);
+    //float NdotL = max(dot(normal_vs.xyz, light_vs), 0);
+    //base_color = vec4(base_color.xyz * NdotL, 1);
 
 
 

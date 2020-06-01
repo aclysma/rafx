@@ -197,6 +197,18 @@ impl GameRenderer {
             &asset_resource,
         );
 
+        // axis z-up (blender format)
+        let axis_mesh = begin_load_asset::<MeshAsset>(
+            asset_uuid!("21ba465c-57f7-47de-9dd5-6b22060eaec3"),
+            &asset_resource,
+        );
+
+        // axis y-up (gltf standard)
+        // let axis_mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("2365fe99-b618-4299-8bfc-0c2482bec5cd"),
+        //     &asset_resource,
+        // );
+
         println!("Wait for the sprite_material");
         wait_for_asset_to_load(
             device_context,
@@ -248,6 +260,14 @@ impl GameRenderer {
             "light mesh"
         );
 
+        wait_for_asset_to_load(
+            device_context,
+            &axis_mesh,
+            asset_resource,
+            &mut resource_manager,
+            "axis"
+        );
+
         println!("all waits complete");
 
 
@@ -263,6 +283,13 @@ impl GameRenderer {
 
         let mesh_instance = StaticMeshInstance::new(&mut resource_manager, &mesh, &mesh_material, glam::Vec3::new(0.0, 0.0, 0.0))?;
         let light_mesh_instance = StaticMeshInstance::new(&mut resource_manager, &light_mesh, &mesh_material, glam::Vec3::new(3.0, 3.0, 3.0))?;
+        let axis_instance = StaticMeshInstance::new(&mut resource_manager, &axis_mesh, &mesh_material, glam::Vec3::new(0.0, 0.0, 0.0))?;
+
+        let meshes = vec![
+            mesh_instance,
+            light_mesh_instance,
+            axis_instance
+        ];
 
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
@@ -275,7 +302,7 @@ impl GameRenderer {
 
             mesh_material,
             mesh_material_per_frame_data,
-            meshes: vec![mesh_instance, light_mesh_instance],
+            meshes,
 
             // mesh,
             // mesh_material_instance,
@@ -435,18 +462,19 @@ impl GameRenderer {
         let camera_distance_multiplier = 1.0;
         let eye = glam::Vec3::new(
             camera_distance_multiplier * 10.0 * f32::cos(loop_time / 4.0),
+            camera_distance_multiplier * 10.0 * f32::sin(loop_time / 4.0),
             camera_distance_multiplier * 5.0,
-            camera_distance_multiplier * 10.0 * f32::sin(loop_time / 4.0)
         );
 
         let extents_width = 900;
         let extents_height = 600;
         let aspect_ratio = extents_width as f32 / extents_height as f32;
-        let half_width = 10.0;
-        let half_height = 10.0 / aspect_ratio;
+        //let half_width = 10.0;
+        //let half_height = 10.0 / aspect_ratio;
 
-        let view = glam::Mat4::look_at_lh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, -1.0, 0.0));
-        let proj = glam::Mat4::perspective_lh(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 20.0 * camera_distance_multiplier);
+        let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 1.0));
+        let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 20.0);
+        let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
         let view_proj = proj * view;
 
         //
