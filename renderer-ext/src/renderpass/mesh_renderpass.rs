@@ -235,6 +235,13 @@ impl VkMeshRenderPass {
 
                 for mesh in meshes {
                     for mesh_part in &mesh.mesh_asset.mesh_parts {
+
+                        // Get material
+
+
+
+
+
                         logical_device.cmd_bind_vertex_buffers(
                             *command_buffer,
                             0, // first binding

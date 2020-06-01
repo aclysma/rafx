@@ -1,0 +1,129 @@
+(
+    version: 1,
+    import_hash: Some(1055977270040206484),
+    importer_version: 22,
+    importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
+    importer_options: (),
+    importer_state: (
+        buffer_asset_uuids: {
+            Index(0): "30c78714-81d6-4ecd-bc20-6c85fd65a8e6",
+            Index(1): "1fbf8225-2de5-4aa6-a26c-d5249ee4505d",
+        },
+        image_asset_uuids: {},
+        material_asset_uuids: {
+            Name("Material"): "6ce9d738-8def-4ee9-9dfd-ce1765927843",
+        },
+        material_instance_asset_uuids: {
+            Name("Material"): "c529f286-e874-4284-8a74-34b879caedfa",
+        },
+        mesh_asset_uuids: {
+            Name("Cube"): "df8eb5bd-6593-4847-8a37-4b249e8671d1",
+        },
+    ),
+    assets: [
+        (
+            id: "6ce9d738-8def-4ee9-9dfd-ce1765927843",
+            search_tags: [
+                ("material_name", Some("Material")),
+                ("file_name", Some("light.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 415188580339343353,
+                id: "6ce9d738-8def-4ee9-9dfd-ce1765927843",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(58),
+                uncompressed_size: Some(58),
+                type_id: "130a91a8-ba80-4cad-9bce-848326b234c7",
+            )),
+        ),
+        (
+            id: "c529f286-e874-4284-8a74-34b879caedfa",
+            search_tags: [
+                ("material_name", Some("Material")),
+                ("file_name", Some("light.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 2074804439637805394,
+                id: "c529f286-e874-4284-8a74-34b879caedfa",
+                build_deps: [
+                    Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                ],
+                load_deps: [
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                    Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
+                ],
+                compression: None,
+                compressed_size: Some(293),
+                uncompressed_size: Some(293),
+                type_id: "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b",
+            )),
+        ),
+        (
+            id: "30c78714-81d6-4ecd-bc20-6c85fd65a8e6",
+            search_tags: [
+                ("file_name", Some("light.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 18332312636707963893,
+                id: "30c78714-81d6-4ecd-bc20-6c85fd65a8e6",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1160),
+                uncompressed_size: Some(1160),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "1fbf8225-2de5-4aa6-a26c-d5249ee4505d",
+            search_tags: [
+                ("file_name", Some("light.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 3699894653663856166,
+                id: "1fbf8225-2de5-4aa6-a26c-d5249ee4505d",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(80),
+                uncompressed_size: Some(80),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "df8eb5bd-6593-4847-8a37-4b249e8671d1",
+            search_tags: [
+                ("mesh_name", Some("Cube")),
+                ("file_name", Some("light.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 16034488192301701428,
+                id: "df8eb5bd-6593-4847-8a37-4b249e8671d1",
+                build_deps: [
+                    Uuid("c529f286-e874-4284-8a74-34b879caedfa"),
+                    Uuid("30c78714-81d6-4ecd-bc20-6c85fd65a8e6"),
+                    Uuid("6ce9d738-8def-4ee9-9dfd-ce1765927843"),
+                    Uuid("1fbf8225-2de5-4aa6-a26c-d5249ee4505d"),
+                ],
+                load_deps: [
+                    Uuid("1fbf8225-2de5-4aa6-a26c-d5249ee4505d"),
+                    Uuid("c529f286-e874-4284-8a74-34b879caedfa"),
+                    Uuid("6ce9d738-8def-4ee9-9dfd-ce1765927843"),
+                    Uuid("30c78714-81d6-4ecd-bc20-6c85fd65a8e6"),
+                ],
+                compression: None,
+                compressed_size: Some(122),
+                uncompressed_size: Some(122),
+                type_id: "cf232526-3757-4d94-98d1-c2f7e27c979f",
+            )),
+        ),
+    ],
+)

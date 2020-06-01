@@ -6,6 +6,7 @@ use crate::resource_managers::asset_lookup::{LoadedMaterialPass, LoadedAssetLook
 use crate::pipeline::pipeline::MaterialInstanceSlotAssignment;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::AssetHandle;
+use crate::resource_managers::descriptor_sets::DescriptorSetWriteBuffer;
 
 //
 // These represent descriptor updates that can be applied to a descriptor set in a pool
@@ -20,12 +21,29 @@ pub struct DescriptorSetWriteElementImage {
     //pub image_info: vk::DescriptorImageInfo,
 }
 
+// Info needed to write a buffer reference to a descriptor set
+#[derive(Debug, Clone)]
+pub struct DescriptorSetWriteElementBufferDataBufferRef {
+    pub buffer: ResourceArc<vk::Buffer>,
+    pub offset: vk::DeviceSize,
+    pub size: vk::DeviceSize, // may use vk::WHOLE_SIZE
+}
+
+#[derive(Debug, Clone)]
+pub enum DescriptorSetWriteElementBufferData {
+    BufferRef(DescriptorSetWriteElementBufferDataBufferRef),
+    Data(Vec<u8>)
+}
+
 // The information needed to write buffer metadata for a descriptor
 #[derive(Debug, Clone, Default)]
 pub struct DescriptorSetWriteElementBuffer {
-    pub buffer: Option<ResourceArc<vk::Buffer>>,
+    //pub buffer: Option<ResourceArc<vk::Buffer>>,
+    //pub buffer_data: Option<Vec<u8>>,
     // For now going to assume offset 0 and range of everything
     //pub buffer_info: vk::DescriptorBufferInfo,
+
+    pub buffer: Option<DescriptorSetWriteElementBufferData>
 }
 
 // All the data required to overwrite a descriptor. The image/buffer infos will be populated depending
@@ -144,6 +162,16 @@ pub fn apply_material_instance_slot_assignment(
                 }
 
                 write.image_info = vec![write_image];
+            }
+
+            if what_to_bind.bind_buffers {
+                let mut write_buffer = DescriptorSetWriteElementBuffer {
+                    buffer: None
+                };
+
+                if let Some(buffer_data) = &slot_assignment.buffer_data {
+                    write_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(buffer_data.clone()));
+                }
             }
         }
     }

@@ -112,6 +112,10 @@ pub struct MaterialInstanceSlotAssignment {
     pub slot_name: String,
     pub image: Option<Handle<ImageAsset>>,
     pub sampler: Option<dsc::Sampler>,
+
+    //#[serde(with = "serde_bytes")]
+    //pub buffer_data: Option<Vec<u8>>,
+    pub buffer_data: Option<Vec<u8>>,
     //pub scalar_value: Option<f32>,
 }
 

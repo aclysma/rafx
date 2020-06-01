@@ -13,7 +13,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 836895716864006222,
+                hash: 330930910926049841,
                 id: "267e0388-2611-441c-9c78-2d39d1bd3cf1",
                 build_deps: [
                     Path("mesh.pipeline"),
@@ -21,9 +21,9 @@
                     Path("../shaders/mesh.vert.spv"),
                 ],
                 load_deps: [
-                    Path("../shaders/mesh.frag.spv"),
                     Path("mesh.pipeline"),
                     Path("../shaders/mesh.vert.spv"),
+                    Path("../shaders/mesh.frag.spv"),
                 ],
                 compression: None,
                 compressed_size: Some(731),

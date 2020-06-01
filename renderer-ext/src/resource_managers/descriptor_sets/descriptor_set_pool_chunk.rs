@@ -13,6 +13,7 @@ use std::mem::ManuallyDrop;
 use renderer_base::slab::RawSlabKey;
 use fnv::FnvHashMap;
 use crate::pipeline_description as dsc;
+use super::DescriptorSetWriteElementBufferData;
 
 // A write to the descriptors within a single descriptor set that has been scheduled (i.e. will occur
 // over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames
@@ -52,7 +53,7 @@ pub(super) struct RegisteredDescriptorSetPoolChunk {
     // The writes that have been scheduled to occur over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames. This
     // ensures that each frame's descriptor sets/buffers are appropriately updated
     pending_set_writes: VecDeque<PendingDescriptorSetWriteSet>,
-    pending_buffer_writes: VecDeque<PendingDescriptorSetWriteBuffer>,
+    //pending_buffer_writes: VecDeque<PendingDescriptorSetWriteBuffer>,
 }
 
 impl RegisteredDescriptorSetPoolChunk {
@@ -140,7 +141,7 @@ impl RegisteredDescriptorSetPoolChunk {
             pool,
             descriptor_sets,
             pending_set_writes: Default::default(),
-            pending_buffer_writes: Default::default(),
+            //pending_buffer_writes: Default::default(),
             buffers,
         })
     }
@@ -195,7 +196,7 @@ impl RegisteredDescriptorSetPoolChunk {
             .map(|x| x[descriptor_index as usize])
             .collect()
     }
-
+/*
     pub(super) fn schedule_write_buffer(
         &mut self,
         slab_key: RawSlabKey<RegisteredDescriptorSet>,
@@ -228,7 +229,7 @@ impl RegisteredDescriptorSetPoolChunk {
             .map(|x| x[descriptor_index as usize])
             .collect()
     }
-
+*/
     pub(super) fn update(
         &mut self,
         device_context: &VkDeviceContext,
@@ -279,7 +280,6 @@ impl RegisteredDescriptorSetPoolChunk {
             let mut image_infos = Vec::with_capacity(element.image_info.len());
             if !element.image_info.is_empty() {
                 for image_info in &element.image_info {
-
                     if element.has_immutable_sampler
                         && element.descriptor_type == dsc::DescriptorType::Sampler
                     {
@@ -314,6 +314,41 @@ impl RegisteredDescriptorSetPoolChunk {
                 builder = builder.image_info(&image_infos);
             }
 
+            if !element.buffer_info.is_empty() {
+                for buffer_info in &element.buffer_info {
+                    if let Some(buffer_info) = &buffer_info.buffer {
+                        let mut buffer_info_builder = vk::DescriptorBufferInfo::builder();
+                        match buffer_info {
+                            DescriptorSetWriteElementBufferData::BufferRef(buffer) => {
+                                buffer_info_builder = buffer_info_builder
+                                    .buffer(buffer.buffer.get_raw())
+                                    .range(buffer.size)
+                                    .offset(buffer.offset);
+                            },
+                            DescriptorSetWriteElementBufferData::Data(data) => {
+                                let mut buffer = self.buffers.buffer_sets.get_mut(&element_key).unwrap();
+                                assert!(data.len() as u32 <= buffer.buffer_info.per_descriptor_size);
+                                if data.len() as u32 != buffer.buffer_info.per_descriptor_size {
+                                    log::warn!(
+                                        "Wrote {} bytes to a descriptor set buffer that holds {} bytes layout: {:?}",
+                                        data.len(),
+                                        buffer.buffer_info.per_descriptor_size,
+                                        self.descriptor_set_layout
+                                    );
+                                }
+
+                                let descriptor_set_index = slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
+                                let offset = buffer.buffer_info.per_descriptor_stride * descriptor_set_index;
+
+                                let buffer = &mut buffer.buffers[frame_in_flight_index as usize];
+
+                                buffer.write_to_host_visible_buffer_with_offset(&data, offset as u64);
+                            }
+                        }
+                    }
+                }
+            }
+
             //TODO: DIRTY HACK
             if builder.descriptor_count == 0 {
                 continue;
@@ -330,7 +365,7 @@ impl RegisteredDescriptorSetPoolChunk {
                     .update_descriptor_sets(&write_builders, &[]);
             }
         }
-
+/*
         let mut all_buffer_writes = FnvHashMap::default();
         for pending_buffer_write in &self.pending_buffer_writes {
             for (key, value) in &pending_buffer_write.write_buffer.elements {
@@ -370,6 +405,7 @@ impl RegisteredDescriptorSetPoolChunk {
 
             buffer.write_to_host_visible_buffer_with_offset(&data, offset as u64);
         }
+        */
 
         // Determine how many writes we can drain
         let mut pending_set_writes_to_drain = 0;
@@ -396,6 +432,7 @@ impl RegisteredDescriptorSetPoolChunk {
         self.pending_set_writes
             .drain(0..pending_set_writes_to_drain);
 
+        /*
         // Determine how many writes we can drain
         let mut pending_buffer_writes_to_drain = 0;
         for pending_write in &self.pending_buffer_writes {
@@ -420,5 +457,6 @@ impl RegisteredDescriptorSetPoolChunk {
         // Drop any writes that have lived long enough to apply to the descriptor set for each frame
         self.pending_buffer_writes
             .drain(0..pending_buffer_writes_to_drain);
+            */
     }
 }

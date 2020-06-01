@@ -24,8 +24,8 @@ pub(super) struct RegisteredDescriptorSetPool {
     drop_rx: Receiver<RawSlabKey<RegisteredDescriptorSet>>,
     pub(super) write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
     write_set_rx: Receiver<SlabKeyDescriptorSetWriteSet>,
-    pub(super) write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
-    write_buffer_rx: Receiver<SlabKeyDescriptorSetWriteBuffer>,
+    //pub(super) write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
+    //write_buffer_rx: Receiver<SlabKeyDescriptorSetWriteBuffer>,
     descriptor_pool_allocator: VkDescriptorPoolAllocator,
     descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
 
@@ -45,7 +45,7 @@ impl RegisteredDescriptorSetPool {
     ) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
         let (write_set_tx, write_set_rx) = crossbeam_channel::unbounded();
-        let (write_buffer_tx, write_buffer_rx) = crossbeam_channel::unbounded();
+        //let (write_buffer_tx, write_buffer_rx) = crossbeam_channel::unbounded();
 
         //
         // This is a little gross but it creates the pool sizes required for the
@@ -114,8 +114,8 @@ impl RegisteredDescriptorSetPool {
             drop_rx,
             write_set_tx,
             write_set_rx,
-            write_buffer_tx,
-            write_buffer_rx,
+            //write_buffer_tx,
+            //write_buffer_rx,
             descriptor_pool_allocator,
             descriptor_set_layout,
             chunks: Default::default(),
@@ -176,7 +176,7 @@ impl RegisteredDescriptorSetPool {
                 frame_in_flight_index,
             );
         }
-
+/*
         for write in self.write_buffer_rx.try_iter() {
             log::trace!(
                 "Received a buffer write for frame in flight index {}",
@@ -189,6 +189,7 @@ impl RegisteredDescriptorSetPool {
                 frame_in_flight_index,
             );
         }
+        */
     }
 
     pub fn flush_changes(

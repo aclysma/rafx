@@ -1,7 +1,7 @@
 (
     version: 1,
-    import_hash: Some(17480616685042320799),
-    importer_version: 5,
+    import_hash: Some(10251506256590965393),
+    importer_version: 6,
     importer_type: "4ce02143-a5c4-4433-b843-07cdccf013b0",
     importer_options: (),
     importer_state: (Some("4101d8ef-7a46-4ab8-970c-2c18a91aff06")),
@@ -13,7 +13,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 7742571123045857442,
+                hash: 5017358694263403923,
                 id: "4101d8ef-7a46-4ab8-970c-2c18a91aff06",
                 build_deps: [
                     Path("mesh.material"),

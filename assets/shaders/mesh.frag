@@ -63,8 +63,13 @@ layout(early_fragment_tests) in;
 layout (location = 0) out vec4 out_color;
 
 vec4 normal_map(mat3 tangent_normal_binormal, texture2D t, sampler s, vec2 uv) {
+    // Sample the normal and unflatten it from the texture (i.e. convert
+    // range of [0, 1] to [-1, 1])
     vec3 normal = texture(sampler2D(t, s), uv).xyz;
     normal = normal * 2.0 - 1.0;
+
+    // Transform the normal from the texture with the TNB matrix, which will put
+    // it into the TNB's space (view space))
     normal = normal * tangent_normal_binormal;
     return normalize(vec4(normal, 0.0));
 }
@@ -72,25 +77,47 @@ vec4 normal_map(mat3 tangent_normal_binormal, texture2D t, sampler s, vec2 uv) {
 void main() {
     //TODO: Consider adding a global ambient color to per_frame_data
     // Base color
+
+    // Sample the base color, if it exists
     vec4 base_color = material_data.base_color_factor;
     if (material_data.has_base_color_texture) {
         base_color *= texture(sampler2D(base_color_texture, smp), in_uv);
     }
 
+    // Sample the emissive color, if it exists
     vec4 emissive_color = vec4(material_data.emissive_factor, 1);
     if (material_data.has_emissive_texture) {
         emissive_color *= texture(sampler2D(emissive_texture, smp), in_uv);
+        base_color = vec4(1.0, 1.0, 0.0, 1.0);
     }
 
-    vec4 normal;
+    // Calculate the normal (use the normal map if it exists)
+    vec4 normal_vs;
     if (material_data.has_normal_texture) {
         mat3 tbn = mat3(in_tangent_vs, in_binormal_vs, in_normal_vs);
-        normal = normal_map(tbn, normal_texture, smp, in_uv);
-        base_color = vec4(1.0, 0.0, 0.0, 1.0);
+        normal_vs = normal_map(tbn, normal_texture, smp, in_uv);
     } else {
-        normal = normalize(vec4(in_normal_vs, 0));
-        base_color = vec4(0.0, 0.0, 1.0, 1.0);
+        normal_vs = normalize(vec4(in_normal_vs, 0));
     }
+
+
+    // view space eye is 0,0,0
+    //vec3 eye_position_vs = vec3(0, 0, 0);
+    //vec3 eye_direction = in_position_vs - eye_position_vs;
+
+
+    // just pick something
+    vec3 light_vs = normalize(vec3(-5, -5, -5));
+
+    float NdotL = max(dot(normal_vs.xyz, light_vs), 0);
+    base_color = vec4(base_color.xyz * NdotL, 1);
+
+
+
+
+
+
+
     
     // Point Lights
     for (uint i = 0; i < per_frame_data.point_light_count; ++i) {

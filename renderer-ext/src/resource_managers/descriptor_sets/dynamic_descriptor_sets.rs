@@ -8,17 +8,18 @@ use crate::resource_managers::resource_lookup::{ResourceArc, ImageViewResource};
 use crate::resource_managers::asset_lookup::SlotNameLookup;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
+use crate::resource_managers::descriptor_sets::descriptor_write_set::DescriptorSetWriteElementBufferData;
 
 pub struct DynDescriptorSet {
     descriptor_set: DescriptorSetArc,
     write_set: DescriptorSetWriteSet,
 
     write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
-    write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
+    //write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
 
     //dirty: FnvHashSet<DescriptorSetElementKey>,
     pending_write_set: DescriptorSetWriteSet,
-    pending_write_buffer: DescriptorSetWriteBuffer,
+    //pending_write_buffer: DescriptorSetWriteBuffer,
 }
 
 impl DynDescriptorSet {
@@ -26,16 +27,16 @@ impl DynDescriptorSet {
         write_set: DescriptorSetWriteSet,
         descriptor_set: DescriptorSetArc,
         write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
-        write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
+        //write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
     ) -> Self {
         DynDescriptorSet {
             descriptor_set,
             write_set,
             write_set_tx,
-            write_buffer_tx,
+            //write_buffer_tx,
             //dirty: Default::default(),
             pending_write_set: Default::default(),
-            pending_write_buffer: Default::default(),
+            //pending_write_buffer: Default::default(),
         }
     }
 
@@ -58,18 +59,18 @@ impl DynDescriptorSet {
             self.write_set_tx.send(pending_descriptor_set_write);
         }
 
-        if !self.pending_write_buffer.elements.is_empty() {
-            let mut pending_write_buffer = Default::default();
-            std::mem::swap(&mut pending_write_buffer, &mut self.pending_write_buffer);
-
-            let pending_descriptor_set_write = SlabKeyDescriptorSetWriteBuffer {
-                write_buffer: pending_write_buffer,
-                slab_key: self.descriptor_set.inner.slab_key,
-            };
-
-            log::trace!("Sending a buffer write");
-            self.write_buffer_tx.send(pending_descriptor_set_write);
-        }
+        // if !self.pending_write_buffer.elements.is_empty() {
+        //     let mut pending_write_buffer = Default::default();
+        //     std::mem::swap(&mut pending_write_buffer, &mut self.pending_write_buffer);
+        //
+        //     let pending_descriptor_set_write = SlabKeyDescriptorSetWriteBuffer {
+        //         write_buffer: pending_write_buffer,
+        //         slab_key: self.descriptor_set.inner.slab_key,
+        //     };
+        //
+        //     log::trace!("Sending a buffer write");
+        //     self.write_buffer_tx.send(pending_descriptor_set_write);
+        // }
     }
 
     pub fn set_image(
@@ -140,11 +141,19 @@ impl DynDescriptorSet {
             let what_to_bind = super::what_to_bind(element);
             if what_to_bind.bind_buffers {
                 let data = renderer_shell_vulkan::util::any_as_bytes(data).into();
-                if element.buffer_info.len() > array_index {
-                    self.pending_write_buffer.elements.insert(key, data);
+                if let Some(element_image) = element.buffer_info.get_mut(array_index) {
+                    element_image.buffer = Some(DescriptorSetWriteElementBufferData::Data(data));
+                    self.pending_write_set.elements.insert(key, element.clone());
                 } else {
                     log::warn!("Tried to set buffer data for index {} but it did not exist. The buffer array is {} elements long.", array_index, element.buffer_info.len());
                 }
+
+
+                // if element.buffer_info.len() > array_index {
+                //     self.pending_write_buffer.elements.insert(key, data);
+                // } else {
+                //     log::warn!("Tried to set buffer data for index {} but it did not exist. The buffer array is {} elements long.", array_index, element.buffer_info.len());
+                // }
             } else {
                 // This is not necessarily an error if the user is binding with a slot name (although not sure
                 // if that's the right approach long term)

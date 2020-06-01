@@ -27,7 +27,7 @@ use crate::pipeline::pipeline::MaterialInstanceAsset;
 
 // This is non-texture data associated with the material. It's appropriate to be loaded as a uniform
 // for a shader
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 #[repr(C)]
 pub struct GltfMaterialData {
     // Using f32 arrays for serde support

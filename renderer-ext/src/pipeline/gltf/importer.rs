@@ -74,7 +74,7 @@ impl Importer for GltfImporter {
     where
         Self: Sized,
     {
-        21
+        22
     }
 
     fn version(&self) -> u32 {
@@ -227,6 +227,16 @@ impl Importer for GltfImporter {
             Handle::<MaterialAsset>::new(ref_op_sender.clone(), material_load_handle)
         });
 
+        let null_image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+            let material_uuid_str = "be831a21-f4f6-45d4-b9eb-e1bb6fc19d22";
+            let material_uuid = AssetUuid(*uuid::Uuid::from_str(material_uuid_str).unwrap().as_bytes());
+
+            let material_load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(material_uuid)).unwrap();
+            Handle::<ImageAsset>::new(ref_op_sender.clone(), material_load_handle)
+        });
+
+
+
         //
         // Material instance
         //
@@ -252,77 +262,57 @@ impl Importer for GltfImporter {
 
             let mut slot_assignments = vec![];
 
+            slot_assignments.push(MaterialInstanceSlotAssignment {
+                slot_name: "per_material_data".to_string(),
+                image: None,
+                sampler: None,
+                buffer_data: Some(renderer_shell_vulkan::util::any_as_bytes(&material_to_import.asset.material_data).into())
+            });
 
-            let mut load_deps = Vec::new();
-            if let Some(base_color_texture) = &material_to_import.asset.base_color_texture {
+            fn push_image_slot_assignment(
+                slot_name: &str,
+                slot_assignments: &mut Vec<MaterialInstanceSlotAssignment>,
+                image: &Option<Handle<ImageAsset>>,
+                default_image: &Handle<ImageAsset>
+            ) {
                 slot_assignments.push(MaterialInstanceSlotAssignment {
-                    slot_name: "base_color_texture".to_string(),
-                    image: Some(base_color_texture.clone()),
-                    sampler: None
+                    slot_name: slot_name.to_string(),
+                    image: Some(image.as_ref().map_or(default_image, |x| x).clone()),
+                    sampler: None,
+                    buffer_data: None
                 });
-
-                // let image_uuid = SerdeContext::with_active(|x, _| {
-                //     x.get_asset_id(base_color_texture.load_handle())
-                // }).unwrap();
-                //
-                // load_deps.push(AssetRef::Uuid(image_uuid));
             }
 
-            if let Some(metallic_roughness_texture) = &material_to_import.asset.metallic_roughness_texture {
-                slot_assignments.push(MaterialInstanceSlotAssignment {
-                    slot_name: "metallic_roughness_texture".to_string(),
-                    image: Some(metallic_roughness_texture.clone()),
-                    sampler: None
-                });
-
-                // let image_uuid = SerdeContext::with_active(|x, _| {
-                //     x.get_asset_id(metallic_roughness_texture.load_handle())
-                // }).unwrap();
-                //
-                // load_deps.push(AssetRef::Uuid(image_uuid));
-            }
-
-            if let Some(normal_texture) = &material_to_import.asset.normal_texture {
-                slot_assignments.push(MaterialInstanceSlotAssignment {
-                    slot_name: "normal_texture".to_string(),
-                    image: Some(normal_texture.clone()),
-                    sampler: None
-                });
-
-                // let image_uuid = SerdeContext::with_active(|x, _| {
-                //     x.get_asset_id(normal_texture.load_handle())
-                // }).unwrap();
-                //
-                // load_deps.push(AssetRef::Uuid(image_uuid));
-            }
-
-            if let Some(occlusion_texture) = &material_to_import.asset.occlusion_texture {
-                slot_assignments.push(MaterialInstanceSlotAssignment {
-                    slot_name: "occlusion_texture".to_string(),
-                    image: Some(occlusion_texture.clone()),
-                    sampler: None
-                });
-
-                // let image_uuid = SerdeContext::with_active(|x, _| {
-                //     x.get_asset_id(occlusion_texture.load_handle())
-                // }).unwrap();
-                //
-                // load_deps.push(AssetRef::Uuid(image_uuid));
-            }
-
-            if let Some(emissive_texture) = &material_to_import.asset.emissive_texture {
-                slot_assignments.push(MaterialInstanceSlotAssignment {
-                    slot_name: "emissive_texture".to_string(),
-                    image: Some(emissive_texture.clone()),
-                    sampler: None
-                });
-
-                // let image_uuid = SerdeContext::with_active(|x, _| {
-                //     x.get_asset_id(emissive_texture.load_handle())
-                // }).unwrap();
-                //
-                // load_deps.push(AssetRef::Uuid(image_uuid));
-            }
+            push_image_slot_assignment(
+                "base_color_texture",
+                &mut slot_assignments,
+                &material_to_import.asset.base_color_texture,
+                &null_image_handle
+            );
+            push_image_slot_assignment(
+                "metallic_roughness_texture",
+                &mut slot_assignments,
+                &material_to_import.asset.metallic_roughness_texture,
+                &null_image_handle
+            );
+            push_image_slot_assignment(
+                "normal_texture",
+                &mut slot_assignments,
+                &material_to_import.asset.normal_texture,
+                &null_image_handle
+            );
+            push_image_slot_assignment(
+                "occlusion_texture",
+                &mut slot_assignments,
+                &material_to_import.asset.occlusion_texture,
+                &null_image_handle
+            );
+            push_image_slot_assignment(
+                "emissive_texture",
+                &mut slot_assignments,
+                &material_to_import.asset.emissive_texture,
+                &null_image_handle
+            );
 
             let material_instance_asset = MaterialInstanceAsset {
                 material: material_handle.clone(),
@@ -336,7 +326,7 @@ impl Importer for GltfImporter {
                 id: material_instance_uuid,
                 search_tags,
                 build_deps: vec![],
-                load_deps,//: vec![],
+                load_deps: vec![],
                 build_pipeline: None,
                 asset_data: Box::new(material_instance_asset),
             });

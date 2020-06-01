@@ -48,6 +48,8 @@ use descriptor_set_buffers::DescriptorLayoutBufferSet;
 
 mod descriptor_write_set;
 use descriptor_write_set::DescriptorSetWriteElementImage;
+use descriptor_write_set::DescriptorSetWriteElementBufferDataBufferRef;
+use descriptor_write_set::DescriptorSetWriteElementBufferData;
 use descriptor_write_set::DescriptorSetWriteElementBuffer;
 use descriptor_write_set::DescriptorSetElementWrite;
 use descriptor_write_set::DescriptorSetElementKey;

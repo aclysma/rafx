@@ -84,3 +84,7 @@ inventory::submit!(SourceFileImporter {
     extension: "tga",
     instantiator: || Box::new(ImageImporter {}),
 });
+inventory::submit!(SourceFileImporter {
+    extension: "bmp",
+    instantiator: || Box::new(ImageImporter {}),
+});

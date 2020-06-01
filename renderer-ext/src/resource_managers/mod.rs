@@ -23,7 +23,7 @@ use atelier_assets::loader::handle::AssetHandle;
 use std::sync::Arc;
 
 mod resource_lookup;
-use resource_lookup::ResourceArc;
+pub use resource_lookup::ResourceArc;
 use resource_lookup::WeakResourceArc;
 use resource_lookup::ResourceHash;
 use resource_lookup::ResourceLookupSet;

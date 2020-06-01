@@ -9,6 +9,8 @@ layout(set = 2, binding = 0) uniform PerObjectData {
 
 layout (location = 0) in vec3 in_pos;
 layout (location = 1) in vec3 in_normal;
+// w component is a sign value (-1 or +1) indicating handedness of the tangent basis
+// see GLTF spec for more info
 layout (location = 2) in vec4 in_tangent;
 layout (location = 3) in vec2 in_uv;
 
@@ -16,8 +18,6 @@ layout (location = 3) in vec2 in_uv;
 // forward rendering (vs = view space)
 layout (location = 0) out vec3 out_position_vs;
 layout (location = 1) out vec3 out_normal_vs;
-// w component is a sign value (-1 or +1) indicating handedness of the tangent basis
-// see GLTF spec for more info
 layout (location = 2) out vec3 out_tangent_vs;
 layout (location = 3) out vec3 out_binormal_vs;
 layout (location = 4) out vec2 out_uv;

@@ -1,7 +1,7 @@
 (
     version: 1,
-    import_hash: Some(10539402273698006380),
-    importer_version: 21,
+    import_hash: Some(7184048078324118619),
+    importer_version: 22,
     importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
     importer_options: (),
     importer_state: (
@@ -33,7 +33,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 5894962759716203681,
+                hash: 10750275988879799829,
                 id: "3c9c1438-974b-4eb6-adca-7785fd4dacc6",
                 build_deps: [],
                 load_deps: [],
@@ -51,7 +51,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 2059612585342239361,
+                hash: 17687177687754800797,
                 id: "161d42c4-b44f-4516-a5ca-79f965f19f0f",
                 build_deps: [],
                 load_deps: [],
@@ -69,7 +69,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 3069815513861269302,
+                hash: 11369485777943474943,
                 id: "a870ef63-92a5-4b6b-9dc5-5d17cb6e6d56",
                 build_deps: [],
                 load_deps: [],
@@ -87,7 +87,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 6377435047129042428,
+                hash: 16088481614103566205,
                 id: "3068df27-965d-4a77-8457-1c03aefbe830",
                 build_deps: [
                     Uuid("a870ef63-92a5-4b6b-9dc5-5d17cb6e6d56"),
@@ -95,8 +95,8 @@
                     Uuid("161d42c4-b44f-4516-a5ca-79f965f19f0f"),
                 ],
                 load_deps: [
-                    Uuid("3c9c1438-974b-4eb6-adca-7785fd4dacc6"),
                     Uuid("a870ef63-92a5-4b6b-9dc5-5d17cb6e6d56"),
+                    Uuid("3c9c1438-974b-4eb6-adca-7785fd4dacc6"),
                     Uuid("161d42c4-b44f-4516-a5ca-79f965f19f0f"),
                 ],
                 compression: None,
@@ -113,23 +113,25 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 17290382599056568026,
+                hash: 16616951798508474105,
                 id: "dc740f08-8e06-4341-806e-a01ae37df314",
                 build_deps: [
+                    Uuid("161d42c4-b44f-4516-a5ca-79f965f19f0f"),
                     Uuid("3c9c1438-974b-4eb6-adca-7785fd4dacc6"),
+                    Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
                     Uuid("a870ef63-92a5-4b6b-9dc5-5d17cb6e6d56"),
                     Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
-                    Uuid("161d42c4-b44f-4516-a5ca-79f965f19f0f"),
                 ],
                 load_deps: [
                     Uuid("a870ef63-92a5-4b6b-9dc5-5d17cb6e6d56"),
-                    Uuid("3c9c1438-974b-4eb6-adca-7785fd4dacc6"),
-                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
                     Uuid("161d42c4-b44f-4516-a5ca-79f965f19f0f"),
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                    Uuid("3c9c1438-974b-4eb6-adca-7785fd4dacc6"),
+                    Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
                 ],
                 compression: None,
-                compressed_size: Some(192),
-                uncompressed_size: Some(192),
+                compressed_size: Some(293),
+                uncompressed_size: Some(293),
                 type_id: "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b",
             )),
         ),
@@ -140,7 +142,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 8821259671583337695,
+                hash: 14617095595762106089,
                 id: "2c80b9ff-1b67-4f96-9c60-7a9e9c65d9f3",
                 build_deps: [],
                 load_deps: [],
@@ -157,7 +159,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 1362752970014596741,
+                hash: 8933164819905078278,
                 id: "0edf958d-5c68-4a3d-a57a-d81a1dffdec1",
                 build_deps: [],
                 load_deps: [],
@@ -175,19 +177,19 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 7586756811844380201,
+                hash: 2536059593570904034,
                 id: "ef79835d-25de-4df0-99e8-1968d2826d05",
                 build_deps: [
-                    Uuid("3068df27-965d-4a77-8457-1c03aefbe830"),
-                    Uuid("dc740f08-8e06-4341-806e-a01ae37df314"),
                     Uuid("0edf958d-5c68-4a3d-a57a-d81a1dffdec1"),
                     Uuid("2c80b9ff-1b67-4f96-9c60-7a9e9c65d9f3"),
+                    Uuid("3068df27-965d-4a77-8457-1c03aefbe830"),
+                    Uuid("dc740f08-8e06-4341-806e-a01ae37df314"),
                 ],
                 load_deps: [
                     Uuid("0edf958d-5c68-4a3d-a57a-d81a1dffdec1"),
-                    Uuid("dc740f08-8e06-4341-806e-a01ae37df314"),
-                    Uuid("2c80b9ff-1b67-4f96-9c60-7a9e9c65d9f3"),
                     Uuid("3068df27-965d-4a77-8457-1c03aefbe830"),
+                    Uuid("2c80b9ff-1b67-4f96-9c60-7a9e9c65d9f3"),
+                    Uuid("dc740f08-8e06-4341-806e-a01ae37df314"),
                 ],
                 compression: None,
                 compressed_size: Some(122),

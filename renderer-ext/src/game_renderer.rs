@@ -28,10 +28,12 @@ use atelier_assets::loader::LoadStatus;
 use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
-use crate::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance};
+use crate::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance, MeshInfo};
 use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam};
 use crate::pipeline::buffer::BufferAsset;
+use crate::resource_managers::ResourceArc;
 
+// Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 struct PointLight {
@@ -43,6 +45,7 @@ struct PointLight {
     //enabled: bool, //+56
 } // 4*16 = 64 bytes
 
+// Represents the data uploaded to the GPU to represent a single directional light
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 struct DirectionalLight {
@@ -54,6 +57,7 @@ struct DirectionalLight {
     //enabled: bool, // +56
 } // 4*16 = 64 bytes
 
+// Represents the data uploaded to the GPU to represent a single spot light
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 struct SpotLight {
@@ -69,6 +73,8 @@ struct SpotLight {
     //pad: [bool; 3] //
 } // 6*16 = 96 bytes
 
+// Represents the data uploaded to the GPU to provide all data necessary to render meshes
+//TODO: Remove view/proj, they aren't being used. Add ambient light constant
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 struct PerFrameDataShaderParam {
@@ -89,6 +95,37 @@ struct PerObjectDataShaderParam {
     model_view_proj: glam::Mat4, // +64
 } // 128 bytes
 
+// A mesh that, aside from moving around, does not change. (i.e. no material changes)
+pub struct StaticMeshInstance {
+    // Contains buffers, where to bind within the buffers
+    pub mesh_info: MeshInfo,
+
+    // Immutable descriptor set for material data
+    pub material_descriptor_set: ResourceArc<vk::DescriptorSet>,
+
+    // Dynamic descriptor for position
+    pub object_descriptor_set: DynDescriptorSet,
+}
+
+impl StaticMeshInstance {
+    fn set_model_view_proj(
+        &mut self,
+        model: glam::Mat4,
+        view: glam::Mat4,
+        proj: glam::Mat4,
+    ) {
+        let model_view = view * model;
+        let model_view_proj = proj * model_view;
+
+        let per_object_param = PerObjectDataShaderParam {
+            model_view,
+            model_view_proj
+        };
+
+        self.object_descriptor_set.set_buffer_data(0, &per_object_param);
+        self.object_descriptor_set.flush();
+    }
+}
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -141,10 +178,18 @@ pub struct GameRenderer {
     sprite_material: Handle<MaterialAsset>,
     sprite_material_instance: Handle<MaterialInstanceAsset>,
     sprite_custom_material: Option<DynMaterialInstance>,
-    mesh_custom_material: Option<DynMaterialInstance>,
-    mesh: Handle<MeshAsset>,
+
     mesh_material: Handle<MaterialAsset>,
     mesh_material_instance: Handle<MaterialInstanceAsset>,
+    mesh_custom_material: Option<DynMaterialInstance>,
+    mesh: Handle<MeshAsset>,
+
+    light_mesh: Handle<MeshAsset>,
+    //light_mesh_material_instance: Handle<Materia>
+    //light_mesh_material_instance: Handle<MaterialInstanceAsset>,
+    //mesh_custom_material: Option<DynMaterialInstance>,
+    light_mesh_material_instances: Vec<DynMaterialInstance>,
+
 
     mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
@@ -233,6 +278,13 @@ impl GameRenderer {
         );
 
 
+        // light
+        let light_mesh = begin_load_asset::<MeshAsset>(
+            asset_uuid!("df8eb5bd-6593-4847-8a37-4b249e8671d1"),
+            &asset_resource,
+        );
+
+
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
             imgui_event_listener,
@@ -241,10 +293,14 @@ impl GameRenderer {
             sprite_material,
             sprite_material_instance,
             sprite_custom_material: None,
+
             mesh,
             mesh_material,
             mesh_material_instance,
             mesh_custom_material: None,
+
+            light_mesh,
+            light_mesh_material_instances: vec![],
 
             swapchain_surface_info: None,
             sprite_renderpass: None,
@@ -294,6 +350,13 @@ impl GameRenderer {
             "mesh"
         );
 
+        wait_for_asset_to_load(
+            device_context,
+            &renderer.light_mesh.clone(),
+            asset_resource,
+            &mut renderer,
+            "light mesh"
+        );
 
         println!("all waits complete");
 
@@ -327,6 +390,11 @@ impl GameRenderer {
             .create_dyn_material_instance_from_asset(renderer.mesh_material_instance.clone())?;
 
         renderer.mesh_custom_material = Some(mesh_custom_material);
+
+        let light_material_instance_asset = renderer.light_mesh.asset(asset_resource.storage()).unwrap().mesh_parts[0].material_instance.as_ref().unwrap().clone();
+        let light_material_instance = renderer.resource_manager.create_dyn_material_instance_from_asset(light_material_instance_asset)?;
+        renderer.light_mesh_material_instances.push(light_material_instance);
+
 
         Ok(renderer)
     }
@@ -490,7 +558,7 @@ impl GameRenderer {
 
         let material = self.mesh_custom_material.as_mut().unwrap();
         material.set_buffer_data(&"per_frame_data".to_string(), &per_frame_data);
-        material.set_buffer_data(&"per_material_data".to_string(), &per_material_data);
+        //material.set_buffer_data(&"per_material_data".to_string(), &per_material_data);
         material.set_buffer_data(&"per_object_data".to_string(), &per_object_data);
         material.flush();
 
@@ -545,8 +613,17 @@ impl GameRenderer {
                 0,
             );
 
+            //let mut mesh_infos = vec![];
+            //let mut per_material_descriptors = vec![];
+            //let mut per_object_descriptors = vec![];
+
             let mesh_info = self.resource_manager.get_mesh_info(&self.mesh);
             let pass = self.mesh_custom_material.as_ref().unwrap().pass(0);
+
+            // let light_mesh_info = self.resource_manager.get_mesh_info(&self.light_mesh);
+            // let light_descriptors = self.light_mesh_material_instances.iter().map(|x| {
+            //     x.pass(0).descriptor_set_layout(2).descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+            // });
 
             // Pass 0 is "global"
             let descriptor_set_per_pass = pass
@@ -554,10 +631,14 @@ impl GameRenderer {
                 .descriptor_set()
                 .get_raw_for_gpu_read(&self.resource_manager);
 
-            let descriptor_set_per_material = pass
-                .descriptor_set_layout(1)
-                .descriptor_set()
-                .get_raw_for_gpu_read(&self.resource_manager);
+            // let descriptor_set_per_material = pass
+            //     .descriptor_set_layout(1)
+            //     .descriptor_set()
+            //     .get_raw_for_gpu_read(&self.resource_manager);
+
+            let descriptor_set_per_material = self.resource_manager
+                .get_material_instance_descriptor_sets_for_current_frame(&self.mesh_material_instance, 0)
+                .descriptor_sets[1];
 
             let descriptor_set_per_texture = pass
                 .descriptor_set_layout(2)
@@ -599,6 +680,7 @@ impl Drop for GameRenderer {
         self.mesh_renderpass = None;
         self.sprite_custom_material = None;
         self.mesh_custom_material = None;
+        self.light_mesh_material_instances.clear();
         //self.mesh_renderpass = None;
     }
 }
