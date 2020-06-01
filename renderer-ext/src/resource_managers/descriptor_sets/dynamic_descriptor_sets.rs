@@ -15,11 +15,7 @@ pub struct DynDescriptorSet {
     write_set: DescriptorSetWriteSet,
 
     write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
-    //write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
-
-    //dirty: FnvHashSet<DescriptorSetElementKey>,
     pending_write_set: DescriptorSetWriteSet,
-    //pending_write_buffer: DescriptorSetWriteBuffer,
 }
 
 impl DynDescriptorSet {
@@ -27,16 +23,12 @@ impl DynDescriptorSet {
         write_set: DescriptorSetWriteSet,
         descriptor_set: DescriptorSetArc,
         write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
-        //write_buffer_tx: Sender<SlabKeyDescriptorSetWriteBuffer>,
     ) -> Self {
         DynDescriptorSet {
             descriptor_set,
             write_set,
             write_set_tx,
-            //write_buffer_tx,
-            //dirty: Default::default(),
             pending_write_set: Default::default(),
-            //pending_write_buffer: Default::default(),
         }
     }
 
@@ -58,19 +50,6 @@ impl DynDescriptorSet {
             log::trace!("Sending a set write");
             self.write_set_tx.send(pending_descriptor_set_write);
         }
-
-        // if !self.pending_write_buffer.elements.is_empty() {
-        //     let mut pending_write_buffer = Default::default();
-        //     std::mem::swap(&mut pending_write_buffer, &mut self.pending_write_buffer);
-        //
-        //     let pending_descriptor_set_write = SlabKeyDescriptorSetWriteBuffer {
-        //         write_buffer: pending_write_buffer,
-        //         slab_key: self.descriptor_set.inner.slab_key,
-        //     };
-        //
-        //     log::trace!("Sending a buffer write");
-        //     self.write_buffer_tx.send(pending_descriptor_set_write);
-        // }
     }
 
     pub fn set_image(
@@ -147,13 +126,6 @@ impl DynDescriptorSet {
                 } else {
                     log::warn!("Tried to set buffer data for index {} but it did not exist. The buffer array is {} elements long.", array_index, element.buffer_info.len());
                 }
-
-
-                // if element.buffer_info.len() > array_index {
-                //     self.pending_write_buffer.elements.insert(key, data);
-                // } else {
-                //     log::warn!("Tried to set buffer data for index {} but it did not exist. The buffer array is {} elements long.", array_index, element.buffer_info.len());
-                // }
             } else {
                 // This is not necessarily an error if the user is binding with a slot name (although not sure
                 // if that's the right approach long term)

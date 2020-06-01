@@ -695,6 +695,9 @@ impl ResourceManager {
 
         //let mut material_instance_descriptor_set_writes = Vec::with_capacity(material_asset.passes.len());
 
+
+        log::trace!("load_material_instance slot assignments\n{:#?}", material_instance_asset.slot_assignments);
+
         // This will be references to descriptor sets. Indexed by pass, and then by set within the pass.
         let mut material_descriptor_sets = Vec::with_capacity(material_asset.passes.len());
         for pass in &material_asset.passes {
@@ -705,6 +708,8 @@ impl ResourceManager {
                     &self.loaded_assets,
                     &mut self.resources,
                 )?;
+
+            log::trace!("load_material_instance descriptor set write\n{:#?}", pass_descriptor_set_writes);
 
             // Save the
             //material_instance_descriptor_set_writes.push(pass_descriptor_set_writes.clone());

@@ -153,7 +153,6 @@ impl RegisteredDescriptorSetPoolManager {
             write_set,
             descriptor_set,
             pool.write_set_tx.clone(),
-            //pool.write_buffer_tx.clone(),
         );
 
         Ok(dyn_descriptor_set)

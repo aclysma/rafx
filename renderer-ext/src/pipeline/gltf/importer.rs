@@ -11,7 +11,7 @@ use fnv::FnvHashMap;
 use atelier_assets::loader::handle::Handle;
 use gltf::{Accessor, Gltf};
 use gltf::mesh::util::indices::CastingIter;
-use crate::pipeline::gltf::{GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex, GltfMaterialData};
+use crate::pipeline::gltf::{GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex, GltfMaterialData, GltfMaterialDataShaderParam};
 use crate::pipeline::image::ImageAsset;
 use crate::pipeline::buffer::BufferAsset;
 use crate::push_buffer::PushBuffer;
@@ -262,11 +262,12 @@ impl Importer for GltfImporter {
 
             let mut slot_assignments = vec![];
 
+            let material_data_shader_param : GltfMaterialDataShaderParam = material_to_import.asset.material_data.clone().into();
             slot_assignments.push(MaterialInstanceSlotAssignment {
                 slot_name: "per_material_data".to_string(),
                 image: None,
                 sampler: None,
-                buffer_data: Some(renderer_shell_vulkan::util::any_as_bytes(&material_to_import.asset.material_data).into())
+                buffer_data: Some(renderer_shell_vulkan::util::any_as_bytes(&material_data_shader_param).into())
             });
 
             fn push_image_slot_assignment(

@@ -113,10 +113,9 @@ pub struct MaterialInstanceSlotAssignment {
     pub image: Option<Handle<ImageAsset>>,
     pub sampler: Option<dsc::Sampler>,
 
+    // Would be nice to use this, but I don't think it works with Option
     //#[serde(with = "serde_bytes")]
-    //pub buffer_data: Option<Vec<u8>>,
     pub buffer_data: Option<Vec<u8>>,
-    //pub scalar_value: Option<f32>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(13048314589648991296),
+    import_hash: Some(2521065078369283925),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,16 +13,16 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 330930910926049841,
+                hash: 12348123542785216144,
                 id: "267e0388-2611-441c-9c78-2d39d1bd3cf1",
                 build_deps: [
+                    Path("../shaders/mesh.vert.spv"),
                     Path("mesh.pipeline"),
                     Path("../shaders/mesh.frag.spv"),
-                    Path("../shaders/mesh.vert.spv"),
                 ],
                 load_deps: [
-                    Path("mesh.pipeline"),
                     Path("../shaders/mesh.vert.spv"),
+                    Path("mesh.pipeline"),
                     Path("../shaders/mesh.frag.spv"),
                 ],
                 compression: None,

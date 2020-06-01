@@ -42,7 +42,6 @@ struct PointLight {
     color: glam::Vec4, // +32
     range: f32, // +48
     intensity: f32, // +52
-    //enabled: bool, //+56
 } // 4*16 = 64 bytes
 
 // Represents the data uploaded to the GPU to represent a single directional light
@@ -54,7 +53,6 @@ struct DirectionalLight {
     color: glam::Vec4, // +32
     spotlight_half_angle: f32, // +48
     intensity: f32, // +52
-    //enabled: bool, // +56
 } // 4*16 = 64 bytes
 
 // Represents the data uploaded to the GPU to represent a single spot light
@@ -69,8 +67,6 @@ struct SpotLight {
     spotlight_half_angle: f32, //+80
     range: f32, // +84
     intensity: f32, // +88
-    //enabled: bool, // +92
-    //pad: [bool; 3] //
 } // 6*16 = 96 bytes
 
 // Represents the data uploaded to the GPU to provide all data necessary to render meshes
@@ -78,15 +74,13 @@ struct SpotLight {
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 struct PerFrameDataShaderParam {
-    view: glam::Mat4, // +0
-    proj: glam::Mat4, // +64
-    point_light_count: u32, // +128
-    directional_light_count: u32, // +132
-    spot_light_count: u32, // +136
-    point_lights: [PointLight; 16], // +144 (64*16 = 1024),
-    directional_lights: [DirectionalLight; 16], // +1168 (64*16 = 1024),
-    spot_lights: [SpotLight; 16], // +2192 (96*16 = 1536)
-} // 3728 bytes
+    point_light_count: u32, // +0
+    directional_light_count: u32, // +4
+    spot_light_count: u32, // +8
+    point_lights: [PointLight; 16], // +16 (64*16 = 1024),
+    directional_lights: [DirectionalLight; 16], // +1040 (64*16 = 1024),
+    spot_lights: [SpotLight; 16], // +2064 (96*16 = 1536)
+} // 3600 bytes
 
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
@@ -530,35 +524,12 @@ impl GameRenderer {
         per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
         per_frame_data.point_lights[0].intensity = 1.0;
 
-        // clearly the best code I've ever written
-        let per_material_data = self
-            .mesh
-            .asset(asset_resource.storage())
-            .as_ref()
-            .unwrap()
-            .mesh_parts[0]
-            .material
-            .as_ref()
-            .unwrap()
-            .asset(asset_resource.storage())
-            .as_ref()
-            .unwrap()
-            .material_data
-            .clone();
-        //let per_material_data = mesh_part.material.unwrap().asset(asset_resource.storage()).unwrap().material_data;
-
-        //let mut per_material_data = GltfMaterialData::default();
-        // per_material_data.base_color_factor = [1.0, 1.0, 1.0, 1.0].into();
-        // per_material_data.has_base_color_texture = true;
-        let per_material_data : GltfMaterialDataShaderParam = per_material_data.into();
-
         let mut per_object_data = PerObjectDataShaderParam::default();
         per_object_data.model_view = view;
         per_object_data.model_view_proj = proj * view;
 
         let material = self.mesh_custom_material.as_mut().unwrap();
         material.set_buffer_data(&"per_frame_data".to_string(), &per_frame_data);
-        //material.set_buffer_data(&"per_material_data".to_string(), &per_material_data);
         material.set_buffer_data(&"per_object_data".to_string(), &per_object_data);
         material.flush();
 
@@ -584,11 +555,11 @@ impl GameRenderer {
                 .get_raw_for_gpu_read(&self.resource_manager);
 
             // Pass 1 is per-object
-            // let descriptor_set_per_texture = pass
-            //     .descriptor_set_layout(1)
-            //     .descriptor_set()
-            //     .get_raw_for_gpu_read(&self.resource_manager);
-            let descriptor_set_per_texture = static_pass_material_instance.descriptor_sets[1];
+            let descriptor_set_per_texture = dyn_pass_material_instance
+                .descriptor_set_layout(1)
+                .descriptor_set()
+                .get_raw_for_gpu_read(&self.resource_manager);
+            //let descriptor_set_per_texture = static_pass_material_instance.descriptor_sets[1];
 
             sprite_renderpass.update(
                 present_index,
@@ -630,11 +601,6 @@ impl GameRenderer {
                 .descriptor_set_layout(0)
                 .descriptor_set()
                 .get_raw_for_gpu_read(&self.resource_manager);
-
-            // let descriptor_set_per_material = pass
-            //     .descriptor_set_layout(1)
-            //     .descriptor_set()
-            //     .get_raw_for_gpu_read(&self.resource_manager);
 
             let descriptor_set_per_material = self.resource_manager
                 .get_material_instance_descriptor_sets_for_current_frame(&self.mesh_material_instance, 0)

@@ -14,8 +14,6 @@ struct PointLight {
 };
 
 layout (set = 0, binding = 0) uniform PerFrameData {
-    mat4 view;
-    mat4 proj;
     uint point_light_count;
     uint directional_light_count;
     uint spot_light_count;
@@ -120,9 +118,9 @@ void main() {
 
     
     // Point Lights
-    for (uint i = 0; i < per_frame_data.point_light_count; ++i) {
-        //uFragColor = uFragColor * per_frame_data.point_lights[0].color;
-    }
+    //for (uint i = 0; i < per_frame_data.point_light_count; ++i) {
+    //    base_color = base_color * per_frame_data.point_lights[0].color;
+    //}
 
     out_color = base_color;
 }

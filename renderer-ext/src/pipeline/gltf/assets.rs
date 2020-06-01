@@ -25,9 +25,9 @@ use crate::pipeline::pipeline::MaterialInstanceAsset;
 // Normal: NG, Roughness: B, Metallic: A
 //MSFT_packing_occlusionRoughnessMetallic: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_packing_occlusionRoughnessMetallic/README.md
 
-// This is non-texture data associated with the material. It's appropriate to be loaded as a uniform
-// for a shader
-#[derive(Serialize, Deserialize, Clone, Copy)]
+// This is non-texture data associated with the material. Must convert to
+// GltfMaterialDataShaderParam to bind to a shader uniform
+#[derive(Serialize, Deserialize, Clone)]
 #[repr(C)]
 pub struct GltfMaterialData {
     // Using f32 arrays for serde support

@@ -38,11 +38,6 @@ pub enum DescriptorSetWriteElementBufferData {
 // The information needed to write buffer metadata for a descriptor
 #[derive(Debug, Clone, Default)]
 pub struct DescriptorSetWriteElementBuffer {
-    //pub buffer: Option<ResourceArc<vk::Buffer>>,
-    //pub buffer_data: Option<Vec<u8>>,
-    // For now going to assume offset 0 and range of everything
-    //pub buffer_info: vk::DescriptorBufferInfo,
-
     pub buffer: Option<DescriptorSetWriteElementBufferData>
 }
 
@@ -172,6 +167,8 @@ pub fn apply_material_instance_slot_assignment(
                 if let Some(buffer_data) = &slot_assignment.buffer_data {
                     write_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(buffer_data.clone()));
                 }
+
+                write.buffer_info = vec![write_buffer];
             }
         }
     }
