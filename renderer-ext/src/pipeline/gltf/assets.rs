@@ -147,8 +147,8 @@ pub struct MeshPart {
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
-    pub material: Option<Handle<GltfMaterialAsset>>,
-    pub material_instance: Option<Handle<MaterialInstanceAsset>>,
+    pub material: Handle<GltfMaterialAsset>,
+    pub material_instance: Handle<MaterialInstanceAsset>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]

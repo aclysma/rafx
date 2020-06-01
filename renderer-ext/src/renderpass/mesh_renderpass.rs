@@ -18,18 +18,123 @@ use renderer_shell_vulkan::VkImage;
 use image::error::ImageError::Decoding;
 use std::process::exit;
 use image::{GenericImageView, ImageFormat};
-use ash::vk::ShaderStageFlags;
+use ash::vk::{ShaderStageFlags};
 
 use crate::time::TimeState;
 
-use crate::resource_managers::{PipelineSwapchainInfo, MeshInfo};
-use crate::pipeline::gltf::MeshVertex;
+use crate::resource_managers::{PipelineSwapchainInfo, MeshInfo, DynDescriptorSet, ResourceManager};
+use crate::pipeline::gltf::{MeshVertex, MeshAsset};
+use crate::pipeline::pipeline::MaterialAsset;
+use atelier_assets::loader::handle::Handle;
+use crate::asset_resource::AssetResource;
 
-/// Per-pass "global" data
-#[derive(Clone, Debug, Copy)]
-struct MeshUniformBufferObject {
-    // View and projection matrices
-    view_proj: [[f32; 4]; 4],
+
+// Represents the data uploaded to the GPU to represent a single point light
+#[derive(Default, Copy, Clone)]
+#[repr(C)]
+pub struct PointLight {
+    pub position_world: glam::Vec3, // +0
+    pub position_view: glam::Vec3, // +16
+    pub color: glam::Vec4, // +32
+    pub range: f32, // +48
+    pub intensity: f32, // +52
+} // 4*16 = 64 bytes
+
+// Represents the data uploaded to the GPU to represent a single directional light
+#[derive(Default, Copy, Clone)]
+#[repr(C)]
+pub struct DirectionalLight {
+    pub direction_world: glam::Vec3, // +0
+    pub direction_view: glam::Vec3, // +16
+    pub color: glam::Vec4, // +32
+    pub spotlight_half_angle: f32, // +48
+    pub intensity: f32, // +52
+} // 4*16 = 64 bytes
+
+// Represents the data uploaded to the GPU to represent a single spot light
+#[derive(Default, Copy, Clone)]
+#[repr(C)]
+pub struct SpotLight {
+    pub position_world: glam::Vec3, // +0
+    pub direction_world: glam::Vec3, // +16
+    pub position_view: glam::Vec3, // +32
+    pub direction_view: glam::Vec3, // +48
+    pub color: glam::Vec4, // +64
+    pub spotlight_half_angle: f32, //+80
+    pub range: f32, // +84
+    pub intensity: f32, // +88
+} // 6*16 = 96 bytes
+
+// Represents the data uploaded to the GPU to provide all data necessary to render meshes
+//TODO: Remove view/proj, they aren't being used. Add ambient light constant
+#[derive(Default, Copy, Clone)]
+#[repr(C)]
+pub struct PerFrameDataShaderParam {
+    pub point_light_count: u32, // +0
+    pub directional_light_count: u32, // +4
+    pub spot_light_count: u32, // +8
+    pub point_lights: [PointLight; 16], // +16 (64*16 = 1024),
+    pub directional_lights: [DirectionalLight; 16], // +1040 (64*16 = 1024),
+    pub spot_lights: [SpotLight; 16], // +2064 (96*16 = 1536)
+} // 3600 bytes
+
+#[derive(Default, Copy, Clone)]
+#[repr(C)]
+pub struct PerObjectDataShaderParam {
+    pub model_view: glam::Mat4, // +0
+    pub model_view_proj: glam::Mat4, // +64
+} // 128 bytes
+
+
+// A mesh that, aside from moving around, does not change. (i.e. no material changes)
+pub struct StaticMeshInstance {
+    // Contains buffers, where to bind within the buffers
+    pub mesh_info: MeshInfo,
+
+    // Dynamic descriptor for position/view. These are bound to layout 2.
+    // These really should be per-view so there probably needs to be a better way of handling this
+    pub per_object_descriptor_set: DynDescriptorSet,
+
+    // world-space transform (position/rotation/translation)
+    pub world_transform: glam::Mat4,
+}
+
+impl StaticMeshInstance {
+    pub fn new(
+        resource_manager: &mut ResourceManager,
+        mesh: &Handle<MeshAsset>,
+        mesh_material: &Handle<MaterialAsset>,
+        position: glam::Vec3,
+    ) -> VkResult<Self> {
+        let mesh_info = resource_manager.get_mesh_info(mesh);
+        let object_descriptor_set = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
+        let per_object_descriptor_set = resource_manager.create_dyn_descriptor_set_uninitialized(&object_descriptor_set.descriptor_set_layout_def)?;
+
+        let world_transform = glam::Mat4::from_translation(position);
+
+        Ok(StaticMeshInstance {
+            mesh_info,
+            per_object_descriptor_set,
+            world_transform
+        })
+    }
+
+    pub fn set_view_proj(
+        &mut self,
+        view: glam::Mat4,
+        proj: glam::Mat4,
+    ) {
+        let model_view = view * self.world_transform;
+        let model_view_proj = proj * model_view;
+
+        let per_object_param = PerObjectDataShaderParam {
+            model_view,
+            model_view_proj
+        };
+
+        self.per_object_descriptor_set.set_buffer_data(0, &per_object_param);
+        self.per_object_descriptor_set.flush();
+    }
 }
 
 /// Draws sprites
@@ -155,12 +260,10 @@ impl VkMeshRenderPass {
         pipeline: &vk::Pipeline,
         pipeline_layout: &vk::PipelineLayout,
         command_buffer: &vk::CommandBuffer,
-        descriptor_set_per_pass: &vk::DescriptorSet,
-        descriptor_set_per_material: &[vk::DescriptorSet],
-        descriptor_set_per_instance: &[vk::DescriptorSet],
-        //meshes: &[Option<Mesh>], // loaded mesh?
-        time_state: &TimeState,
-        meshes: &[MeshInfo],
+        descriptor_set_per_pass: vk::DescriptorSet,
+        meshes: &[StaticMeshInstance],
+        asset_resource: &AssetResource,
+        resource_manager: &ResourceManager,
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
@@ -211,63 +314,67 @@ impl VkMeshRenderPass {
                     vk::PipelineBindPoint::GRAPHICS,
                     *pipeline_layout,
                     0,
-                    &[*descriptor_set_per_pass],
+                    &[descriptor_set_per_pass],
                     &[],
                 );
 
-                logical_device.cmd_bind_descriptor_sets(
-                    *command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    *pipeline_layout,
-                    1,
-                    &[descriptor_set_per_material[0]],
-                    &[],
-                );
-
-                logical_device.cmd_bind_descriptor_sets(
-                    *command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    *pipeline_layout,
-                    2,
-                    &[descriptor_set_per_instance[0]],
-                    &[],
-                );
+                // logical_device.cmd_bind_descriptor_sets(
+                //     *command_buffer,
+                //     vk::PipelineBindPoint::GRAPHICS,
+                //     *pipeline_layout,
+                //     1,
+                //     &[descriptor_set_per_material[0]],
+                //     &[],
+                // );
+                //
+                // logical_device.cmd_bind_descriptor_sets(
+                //     *command_buffer,
+                //     vk::PipelineBindPoint::GRAPHICS,
+                //     *pipeline_layout,
+                //     2,
+                //     &[descriptor_set_per_instance[0]],
+                //     &[],
+                // );
 
                 for mesh in meshes {
-                    for mesh_part in &mesh.mesh_asset.mesh_parts {
+                    let per_object_descriptor_set = mesh.per_object_descriptor_set.descriptor_set().get_raw_for_gpu_read(resource_manager);
 
-                        // Get material
+                    logical_device.cmd_bind_descriptor_sets(
+                        *command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        *pipeline_layout,
+                        2,
+                        &[per_object_descriptor_set],
+                        &[],
+                    );
 
+                    for mesh_part in &mesh.mesh_info.mesh_asset.mesh_parts {
 
+                        let material_descriptor_set = resource_manager
+                            .get_material_instance_descriptor_sets_for_current_frame(&mesh_part.material_instance, 0).descriptor_sets[1];
 
-
+                        logical_device.cmd_bind_descriptor_sets(
+                            *command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            *pipeline_layout,
+                            1,
+                            &[material_descriptor_set],
+                            &[],
+                        );
 
                         logical_device.cmd_bind_vertex_buffers(
                             *command_buffer,
                             0, // first binding
-                            &[mesh.vertex_buffer.get_raw().buffer],
+                            &[mesh.mesh_info.vertex_buffer.get_raw().buffer],
                             &[mesh_part.vertex_buffer_offset_in_bytes as u64], // offsets
                         );
 
                         logical_device.cmd_bind_index_buffer(
                             *command_buffer,
-                            mesh.index_buffer.get_raw().buffer,
+                            mesh.mesh_info.index_buffer.get_raw().buffer,
                             mesh_part.index_buffer_offset_in_bytes as u64, // offset
                             vk::IndexType::UINT16,
                         );
-
-                        // // Bind per-draw-call data (i.e. texture)
-                        // logical_device.cmd_bind_descriptor_sets(
-                        //     *command_buffer,
-                        //     vk::PipelineBindPoint::GRAPHICS,
-                        //     *pipeline_layout,
-                        //     1,
-                        //     //&[/*descriptor_set_per_texture[mesh_part.image_handle as usize]*/ descriptor_set_per_texture[0]],
-                        //     &[descr]
-                        //     &[],
-                        // );
-
-                        //mesh_part.mesh_part.index_size[]
 
                         logical_device.cmd_draw_indexed(
                             *command_buffer,
@@ -290,12 +397,12 @@ impl VkMeshRenderPass {
         &mut self,
         pipeline_info: &PipelineSwapchainInfo,
         present_index: usize,
-        hidpi_factor: f64,
         descriptor_set_per_pass: vk::DescriptorSet,
-        descriptor_set_per_material: &[vk::DescriptorSet],
-        descriptor_set_per_instance: &[vk::DescriptorSet],
-        mesh_info: &[MeshInfo],
-        time_state: &TimeState,
+        meshes: &[StaticMeshInstance],
+        asset_resource: &AssetResource,
+        resource_manager: &ResourceManager,
+        // descriptor_set_per_material: &[vk::DescriptorSet],
+        // descriptor_set_per_instance: &[vk::DescriptorSet],
     ) -> VkResult<()> {
         assert!(self.renderpass == pipeline_info.renderpass.get_raw());
         Self::update_command_buffer(
@@ -306,11 +413,10 @@ impl VkMeshRenderPass {
             &pipeline_info.pipeline.get_raw().pipeline,
             &pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
-            &descriptor_set_per_pass,
-            descriptor_set_per_material,
-            descriptor_set_per_instance,
-            time_state,
-            mesh_info,
+            descriptor_set_per_pass,
+            meshes,
+            asset_resource,
+            resource_manager
         )
     }
 }

@@ -1,7 +1,7 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener};
 use ash::prelude::VkResult;
-use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass};
+use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam};
 use std::mem::{ManuallyDrop, swap};
 use crate::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
@@ -33,93 +33,6 @@ use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, Gltf
 use crate::pipeline::buffer::BufferAsset;
 use crate::resource_managers::ResourceArc;
 
-// Represents the data uploaded to the GPU to represent a single point light
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-struct PointLight {
-    position_world: glam::Vec3, // +0
-    position_view: glam::Vec3, // +16
-    color: glam::Vec4, // +32
-    range: f32, // +48
-    intensity: f32, // +52
-} // 4*16 = 64 bytes
-
-// Represents the data uploaded to the GPU to represent a single directional light
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-struct DirectionalLight {
-    direction_world: glam::Vec3, // +0
-    direction_view: glam::Vec3, // +16
-    color: glam::Vec4, // +32
-    spotlight_half_angle: f32, // +48
-    intensity: f32, // +52
-} // 4*16 = 64 bytes
-
-// Represents the data uploaded to the GPU to represent a single spot light
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-struct SpotLight {
-    position_world: glam::Vec3, // +0
-    direction_world: glam::Vec3, // +16
-    position_view: glam::Vec3, // +32
-    direction_view: glam::Vec3, // +48
-    color: glam::Vec4, // +64
-    spotlight_half_angle: f32, //+80
-    range: f32, // +84
-    intensity: f32, // +88
-} // 6*16 = 96 bytes
-
-// Represents the data uploaded to the GPU to provide all data necessary to render meshes
-//TODO: Remove view/proj, they aren't being used. Add ambient light constant
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-struct PerFrameDataShaderParam {
-    point_light_count: u32, // +0
-    directional_light_count: u32, // +4
-    spot_light_count: u32, // +8
-    point_lights: [PointLight; 16], // +16 (64*16 = 1024),
-    directional_lights: [DirectionalLight; 16], // +1040 (64*16 = 1024),
-    spot_lights: [SpotLight; 16], // +2064 (96*16 = 1536)
-} // 3600 bytes
-
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-struct PerObjectDataShaderParam {
-    model_view: glam::Mat4, // +0
-    model_view_proj: glam::Mat4, // +64
-} // 128 bytes
-
-// A mesh that, aside from moving around, does not change. (i.e. no material changes)
-pub struct StaticMeshInstance {
-    // Contains buffers, where to bind within the buffers
-    pub mesh_info: MeshInfo,
-
-    // Immutable descriptor set for material data
-    pub material_descriptor_set: ResourceArc<vk::DescriptorSet>,
-
-    // Dynamic descriptor for position
-    pub object_descriptor_set: DynDescriptorSet,
-}
-
-impl StaticMeshInstance {
-    fn set_model_view_proj(
-        &mut self,
-        model: glam::Mat4,
-        view: glam::Mat4,
-        proj: glam::Mat4,
-    ) {
-        let model_view = view * model;
-        let model_view_proj = proj * model_view;
-
-        let per_object_param = PerObjectDataShaderParam {
-            model_view,
-            model_view_proj
-        };
-
-        self.object_descriptor_set.set_buffer_data(0, &per_object_param);
-        self.object_descriptor_set.flush();
-    }
-}
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -134,18 +47,19 @@ fn wait_for_asset_to_load<T>(
     device_context: &VkDeviceContext,
     asset_handle: &atelier_assets::loader::handle::Handle<T>,
     asset_resource: &mut AssetResource,
-    renderer: &mut GameRenderer,
+    resource_manager: &mut ResourceManager,
+    //renderer: &mut GameRenderer,
     asset_name: &str
 ) {
     loop {
         asset_resource.update();
-        renderer.update_resources(device_context);
+        resource_manager.update_resources();
         match asset_handle.load_status(asset_resource.loader()) {
             LoadStatus::NotRequested => {
                 unreachable!();
             }
             LoadStatus::Loading => {
-                //log::info!("blocked waiting for asset to load {} {:?}", asset_name, asset_handle);
+                log::info!("blocked waiting for asset to load {} {:?}", asset_name, asset_handle);
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 // keep waiting
             }
@@ -173,16 +87,21 @@ pub struct GameRenderer {
     sprite_material_instance: Handle<MaterialInstanceAsset>,
     sprite_custom_material: Option<DynMaterialInstance>,
 
-    mesh_material: Handle<MaterialAsset>,
-    mesh_material_instance: Handle<MaterialInstanceAsset>,
-    mesh_custom_material: Option<DynMaterialInstance>,
-    mesh: Handle<MeshAsset>,
 
-    light_mesh: Handle<MeshAsset>,
+    // binding 0, contains info about lights
+    mesh_material: Handle<MaterialAsset>,
+    mesh_material_per_frame_data: DynDescriptorSet,
+    meshes: Vec<StaticMeshInstance>,
+
+    //mesh_material_instance: Handle<MaterialInstanceAsset>,
+    //mesh_custom_material: Option<DynMaterialInstance>,
+    //mesh: Handle<MeshAsset>,
+
+    //light_mesh: Handle<MeshAsset>,
     //light_mesh_material_instance: Handle<Materia>
     //light_mesh_material_instance: Handle<MaterialInstanceAsset>,
     //mesh_custom_material: Option<DynMaterialInstance>,
-    light_mesh_material_instances: Vec<DynMaterialInstance>,
+    //light_mesh_material_instances: Vec<DynMaterialInstance>,
 
 
     mesh_renderpass: Option<VkMeshRenderPass>,
@@ -274,10 +193,76 @@ impl GameRenderer {
 
         // light
         let light_mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("df8eb5bd-6593-4847-8a37-4b249e8671d1"),
+            asset_uuid!("eb44a445-2670-42ba-9faa-5fb4ec4a2242"),
             &asset_resource,
         );
 
+        println!("Wait for the sprite_material");
+        wait_for_asset_to_load(
+            device_context,
+            &sprite_material,
+            asset_resource,
+            &mut resource_manager,
+            "sprite_material"
+        );
+
+        println!("Wait for the sprite_material instance");
+        wait_for_asset_to_load(
+            device_context,
+            &sprite_material_instance,
+            asset_resource,
+            &mut resource_manager,
+            "sprite_material_instance"
+        );
+
+
+        wait_for_asset_to_load(
+            device_context,
+            &mesh_material,
+            asset_resource,
+            &mut resource_manager,
+            "mesh material"
+        );
+
+        wait_for_asset_to_load(
+            device_context,
+            &mesh_material_instance,
+            asset_resource,
+            &mut resource_manager,
+            "mesh material instance"
+        );
+
+        wait_for_asset_to_load(
+            device_context,
+            &mesh,
+            asset_resource,
+            &mut resource_manager,
+            "mesh"
+        );
+
+        wait_for_asset_to_load(
+            device_context,
+            &light_mesh,
+            asset_resource,
+            &mut resource_manager,
+            "light mesh"
+        );
+
+        println!("all waits complete");
+
+
+        let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(&mesh_material, 0, 0);
+        let mesh_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout_def)?;
+        //
+        // let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
+        //
+        // let static_mesh_instance = StaticMeshInstance {
+        //     mesh_info: resource_manager.get_mesh_info(mesh),
+        //     object_descriptor_set:
+        // }
+
+        let mesh_instance = StaticMeshInstance::new(&mut resource_manager, &mesh, &mesh_material, glam::Vec3::new(0.0, 0.0, 0.0))?;
+        let light_mesh_instance = StaticMeshInstance::new(&mut resource_manager, &light_mesh, &mesh_material, glam::Vec3::new(3.0, 3.0, 3.0))?;
 
         let mut renderer = GameRenderer {
             time_state: time_state.clone(),
@@ -288,71 +273,21 @@ impl GameRenderer {
             sprite_material_instance,
             sprite_custom_material: None,
 
-            mesh,
             mesh_material,
-            mesh_material_instance,
-            mesh_custom_material: None,
+            mesh_material_per_frame_data,
+            meshes: vec![mesh_instance, light_mesh_instance],
 
-            light_mesh,
-            light_mesh_material_instances: vec![],
+            // mesh,
+            // mesh_material_instance,
+            // mesh_custom_material: None,
+            //
+            // light_mesh,
+            // light_mesh_material_instances: vec![],
 
             swapchain_surface_info: None,
             sprite_renderpass: None,
             mesh_renderpass: None,
         };
-
-        println!("Wait for the sprite_material");
-        wait_for_asset_to_load(
-            device_context,
-            &renderer.sprite_material.clone(),
-            asset_resource,
-            &mut renderer,
-            "sprite_material"
-        );
-
-        println!("Wait for the sprite_material instance");
-        wait_for_asset_to_load(
-            device_context,
-            &renderer.sprite_material_instance.clone(),
-            asset_resource,
-            &mut renderer,
-            "sprite_material_instance"
-        );
-
-
-        wait_for_asset_to_load(
-            device_context,
-            &renderer.mesh_material.clone(),
-            asset_resource,
-            &mut renderer,
-            "mesh material"
-        );
-
-        wait_for_asset_to_load(
-            device_context,
-            &renderer.mesh_material_instance.clone(),
-            asset_resource,
-            &mut renderer,
-            "mesh material instance"
-        );
-
-        wait_for_asset_to_load(
-            device_context,
-            &renderer.mesh.clone(),
-            asset_resource,
-            &mut renderer,
-            "mesh"
-        );
-
-        wait_for_asset_to_load(
-            device_context,
-            &renderer.light_mesh.clone(),
-            asset_resource,
-            &mut renderer,
-            "light mesh"
-        );
-
-        println!("all waits complete");
 
         let image_info = renderer.resource_manager.get_image_info(&override_image);
 
@@ -379,15 +314,15 @@ impl GameRenderer {
 
         renderer.sprite_custom_material = Some(sprite_custom_material);
 
-        let mut mesh_custom_material = renderer
-            .resource_manager
-            .create_dyn_material_instance_from_asset(renderer.mesh_material_instance.clone())?;
-
-        renderer.mesh_custom_material = Some(mesh_custom_material);
-
-        let light_material_instance_asset = renderer.light_mesh.asset(asset_resource.storage()).unwrap().mesh_parts[0].material_instance.as_ref().unwrap().clone();
-        let light_material_instance = renderer.resource_manager.create_dyn_material_instance_from_asset(light_material_instance_asset)?;
-        renderer.light_mesh_material_instances.push(light_material_instance);
+        // let mut mesh_custom_material = renderer
+        //     .resource_manager
+        //     .create_dyn_material_instance_from_asset(renderer.mesh_material_instance.clone())?;
+        //
+        // renderer.mesh_custom_material = Some(mesh_custom_material);
+        //
+        // let light_material_instance_asset = renderer.light_mesh.asset(asset_resource.storage()).unwrap().mesh_parts[0].material_instance.as_ref().unwrap().clone();
+        // let light_material_instance = renderer.resource_manager.create_dyn_material_instance_from_asset(light_material_instance_asset)?;
+        // renderer.light_mesh_material_instances.push(light_material_instance);
 
 
         Ok(renderer)
@@ -499,9 +434,9 @@ impl GameRenderer {
         //
         let camera_distance_multiplier = 1.0;
         let eye = glam::Vec3::new(
-            camera_distance_multiplier * 10.0 * f32::cos(loop_time),
+            camera_distance_multiplier * 10.0 * f32::cos(loop_time / 4.0),
             camera_distance_multiplier * 5.0,
-            camera_distance_multiplier * 10.0 * f32::sin(loop_time)
+            camera_distance_multiplier * 10.0 * f32::sin(loop_time / 4.0)
         );
 
         let extents_width = 900;
@@ -517,21 +452,30 @@ impl GameRenderer {
         //
         // Push latest light/camera info into the mesh material
         //
+        //let light_world_transform = glam::Mat4::from_translation(glam::Vec3::new(5.0, 5.0, 5.0));
+        let light_position = glam::Vec4::new(5.0, 5.0, 5.0, 1.0);
+        let light_position_vs = view * light_position;
         let mut per_frame_data = PerFrameDataShaderParam::default();
-        per_frame_data.point_lights[0].position_world = [5.0, 5.0, 5.0].into();
-        per_frame_data.point_lights[0].position_view = [5.0, 5.0, 5.0].into();
+        per_frame_data.point_lights[0].position_world = light_position.truncate().into();
+        per_frame_data.point_lights[0].position_view = light_position_vs.truncate().into();
         per_frame_data.point_lights[0].range = 25.0;
         per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
         per_frame_data.point_lights[0].intensity = 1.0;
+        self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
 
         let mut per_object_data = PerObjectDataShaderParam::default();
         per_object_data.model_view = view;
         per_object_data.model_view_proj = proj * view;
 
-        let material = self.mesh_custom_material.as_mut().unwrap();
-        material.set_buffer_data(&"per_frame_data".to_string(), &per_frame_data);
-        material.set_buffer_data(&"per_object_data".to_string(), &per_object_data);
-        material.flush();
+        for mesh in &mut self.meshes {
+            mesh.set_view_proj(view, proj);
+        }
+
+
+        // let material = self.mesh_custom_material.as_mut().unwrap();
+        // material.set_buffer_data(&"per_frame_data".to_string(), &per_frame_data);
+        // material.set_buffer_data(&"per_object_data".to_string(), &per_object_data);
+        // material.flush();
 
         //
         // Update Resources and flush descriptor set changes
@@ -584,43 +528,34 @@ impl GameRenderer {
                 0,
             );
 
-            //let mut mesh_infos = vec![];
-            //let mut per_material_descriptors = vec![];
-            //let mut per_object_descriptors = vec![];
+            //let pass = self.mesh_custom_material.as_ref().unwrap().pass(0);
 
-            let mesh_info = self.resource_manager.get_mesh_info(&self.mesh);
-            let pass = self.mesh_custom_material.as_ref().unwrap().pass(0);
+            // Global data (lights)
+            // let descriptor_set_per_pass = pass
+            //     .descriptor_set_layout(0)
+            //     .descriptor_set()
+            //     .get_raw_for_gpu_read(&self.resource_manager);
 
-            // let light_mesh_info = self.resource_manager.get_mesh_info(&self.light_mesh);
-            // let light_descriptors = self.light_mesh_material_instances.iter().map(|x| {
-            //     x.pass(0).descriptor_set_layout(2).descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
-            // });
+            // Material data (textures, other data)
+            // let descriptor_set_per_material = self.resource_manager
+            //     .get_material_instance_descriptor_sets_for_current_frame(&self.mesh_material_instance, 0)
+            //     .descriptor_sets[1];
 
-            // Pass 0 is "global"
-            let descriptor_set_per_pass = pass
-                .descriptor_set_layout(0)
-                .descriptor_set()
-                .get_raw_for_gpu_read(&self.resource_manager);
+            // // Object data (world/view/proj)
+            // let descriptor_set_per_texture = pass
+            //     .descriptor_set_layout(2)
+            //     .descriptor_set()
+            //     .get_raw_for_gpu_read(&self.resource_manager);
 
-            let descriptor_set_per_material = self.resource_manager
-                .get_material_instance_descriptor_sets_for_current_frame(&self.mesh_material_instance, 0)
-                .descriptor_sets[1];
-
-            let descriptor_set_per_texture = pass
-                .descriptor_set_layout(2)
-                .descriptor_set()
-                .get_raw_for_gpu_read(&self.resource_manager);
+            let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get_raw_for_cpu_write(&self.resource_manager);
 
             mesh_renderpass.update(
                 &mesh_pipeline_info,
                 present_index,
-                1.0,
-                //mesh_descriptors.descriptor_sets[0],
                 descriptor_set_per_pass,
-                &[descriptor_set_per_material],
-                &[descriptor_set_per_texture],
-                &[mesh_info],
-                &self.time_state,
+                &self.meshes,
+                asset_resource,
+                &self.resource_manager
             )?;
             command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
         }
@@ -645,8 +580,9 @@ impl Drop for GameRenderer {
         self.sprite_renderpass = None;
         self.mesh_renderpass = None;
         self.sprite_custom_material = None;
-        self.mesh_custom_material = None;
-        self.light_mesh_material_instances.clear();
+        self.meshes.clear();
+        //self.mesh_custom_material = None;
+        //self.light_mesh_material_instances.clear();
         //self.mesh_renderpass = None;
     }
 }

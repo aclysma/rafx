@@ -19,6 +19,32 @@ use atelier_assets::loader::handle::SerdeContext;
 use atelier_assets::loader::handle::AssetHandle;
 use crate::pipeline::pipeline::{MaterialInstanceAsset, MaterialAsset, MaterialInstanceSlotAssignment};
 use std::str::FromStr;
+// use atelier_assets::importer::Result as ImporterResult;
+// use atelier_assets::importer::Error as ImporterError;
+use serde::export::Formatter;
+
+#[derive(Debug)]
+struct GltfImportError {
+    error_message: String
+}
+
+impl GltfImportError {
+    pub fn new(error_message: &str) -> Self {
+        GltfImportError {
+            error_message: error_message.to_string()
+        }
+    }
+}
+
+impl std::error::Error for GltfImportError {
+
+}
+
+impl std::fmt::Display for GltfImportError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.error_message)
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 enum GltfObjectId {
@@ -349,7 +375,7 @@ impl Importer for GltfImporter {
                 //&images,
                 &material_index_to_handle,
                 &material_instance_index_to_handle
-            );
+            )?;
 
         let mut buffer_index_to_handle = vec![];
         for buffer_to_import in buffers_to_import {
@@ -652,7 +678,7 @@ fn extract_meshes_to_import(
     //images: &Vec<GltfImageData>,
     material_index_to_handle: &[Handle<GltfMaterialAsset>],
     material_instance_index_to_handle: &[Handle<MaterialInstanceAsset>],
-) -> (Vec<MeshToImport>, Vec<BufferToImport>) {
+) -> atelier_assets::importer::Result<(Vec<MeshToImport>, Vec<BufferToImport>)> {
     let mut meshes_to_import = Vec::with_capacity(doc.meshes().len());
     let mut buffers_to_import = Vec::with_capacity(doc.meshes().len() * 2);
 
@@ -707,16 +733,13 @@ fn extract_meshes_to_import(
                         let vertex_size = all_vertices.len() - vertex_offset;
                         let indices_size = all_indices.len() - indices_offset;
 
-                        let material = if let Some(material_index) = primitive.material().index() {
-                            Some(material_index_to_handle[material_index].clone())
+                        let (material, material_instance) = if let Some(material_index) = primitive.material().index() {
+                            (
+                                material_index_to_handle[material_index].clone(),
+                                material_instance_index_to_handle[material_index].clone()
+                            )
                         } else {
-                            None
-                        };
-
-                        let material_instance = if let Some(material_index) = primitive.material().index() {
-                            Some(material_instance_index_to_handle[material_index].clone())
-                        } else {
-                            None
+                            return Err(atelier_assets::importer::Error::Boxed(Box::new(GltfImportError::new("A mesh primitive did not have a material"))));
                         };
 
                         Some(MeshPart {
@@ -825,7 +848,7 @@ fn extract_meshes_to_import(
         meshes_to_import.push(mesh_to_import);
     }
 
-    (meshes_to_import, buffers_to_import)
+    Ok((meshes_to_import, buffers_to_import))
 }
 
 // make a macro to reduce duplication here :)
