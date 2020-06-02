@@ -72,25 +72,15 @@ impl DebugDraw3DResource {
         }
     }
 
-    // // The circle will be placed at 0,0,0 around the y axis. Use the transform to point at something
-    // pub fn add_circle_xform(
-    //     &mut self,
-    //     transform: glam::Mat4,
-    //     radius: f32,
-    //     color: glam::Vec4,
-    //     segments: u32,
-    // ) {
-    //     let mut points = Vec::with_capacity(segments as usize + 1);
-    //     for index in 0..segments {
-    //         let fraction = (index as f32 / segments as f32) * std::f32::consts::PI * 2.0;
-    //
-    //         let position = glam::Vec4::new(fraction.sin() * radius, fraction.cos() * radius, 0.0, 1.0);
-    //         let transformed = transform * position;
-    //         points.push(transformed.truncate());
-    //     }
-    //
-    //     self.add_line_loop(points, color);
-    // }
+    pub fn add_line(
+        &mut self,
+        p0: glam::Vec3,
+        p1: glam::Vec3,
+        color: glam::Vec4,
+    ) {
+        let points = vec![p0, p1];
+        self.add_line_strip(points, color);
+    }
 
     // Takes an X/Y axis pair and center position
     pub fn add_circle_xy(
@@ -117,23 +107,28 @@ impl DebugDraw3DResource {
         self.add_line_loop(points, color);
     }
 
+    pub fn normal_to_xy(normal: glam::Vec3) -> (glam::Vec3, glam::Vec3) {
+        if normal.dot(glam::Vec3::unit_z()).abs() > 0.9999 {
+            // Can't cross the Z axis with the up vector, so special case that here
+            (glam::Vec3::unit_x(), glam::Vec3::unit_y())
+        } else {
+            let x_dir = normal.cross(glam::Vec3::unit_z());
+            let y_dir = x_dir.cross(normal);
+            (x_dir, y_dir)
+        }
+    }
+
     // Takes a normal and center position
     pub fn add_circle(
         &mut self,
-        normal: glam::Vec3,
         center: glam::Vec3,
+        normal: glam::Vec3,
         radius: f32,
         color: glam::Vec4,
         segments: u32,
     ) {
-        if normal.dot(glam::Vec3::unit_z()).abs() > 0.9999 {
-            // Can't cross the Z axis with the up vector, so special case that here
-            self.add_circle_xy(center, glam::Vec3::unit_x(), glam::Vec3::unit_y(), radius, color, segments);
-        } else {
-            let x_dir = normal.cross(glam::Vec3::unit_z());
-            let y_dir = x_dir.cross(normal);
-            self.add_circle_xy(center, x_dir, y_dir, radius, color, segments);
-        };
+        let (x_dir, y_dir) = Self::normal_to_xy(normal);
+        self.add_circle_xy(center, x_dir, y_dir, radius, color, segments);
     }
 
     pub fn add_sphere(
@@ -179,22 +174,31 @@ impl DebugDraw3DResource {
 
     pub fn add_cone(
         &mut self,
-        transform: glam::Mat4,
+        vertex: glam::Vec3, // (position of the pointy bit)
+        base_center: glam::Vec3, // (position of the center of the base of the cone)
         radius: f32,
         color: glam::Vec4,
         segments: u32,
     ) {
+        let base_to_vertex = vertex - base_center;
+        let base_to_vertex_normal = base_to_vertex.normalize();
+        let (x_dir, y_dir) = Self::normal_to_xy(base_to_vertex_normal);
+        for index in 0..segments {
+            let fraction = (index as f32 / segments as f32);
 
-    }
+            let center = base_center + base_to_vertex * fraction;
+            self.add_circle_xy(center, x_dir, y_dir, radius * (1.0 - fraction), color, segments);
+        }
 
-    pub fn add_line(
-        &mut self,
-        p0: glam::Vec3,
-        p1: glam::Vec3,
-        color: glam::Vec4,
-    ) {
-        let points = vec![p0, p1];
-        self.add_line_strip(points, color);
+        for index in 0..segments/2 {
+            let fraction = (index as f32 / (segments/2) as f32) * std::f32::consts::PI;
+            let offset = ((x_dir * fraction.cos()) + (y_dir * fraction.sin())) * radius;
+
+            let p0 = base_center + offset;
+            let p1 = vertex;
+            let p2 = base_center - offset;
+            self.add_line_strip(vec![p0, p1, p2], color);
+        }
     }
 
     // Returns the draw data, leaving this object in an empty state

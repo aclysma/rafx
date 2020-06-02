@@ -514,44 +514,55 @@ impl GameRenderer {
         //self.debug_draw_3d.add_line(glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(3.0, 3.0, 3.0), glam::Vec4::new(1.0, 1.0, 0.0, 1.0));
         //self.debug_draw_3d.add_circle(glam::Mat4::identity(), 4.0, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), 12);71
         //self.debug_draw_3d.add_sphere(glam::Vec3::new(0.0, 0.0, 3.0), 1.5, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), 32);
-        self.debug_draw_3d.add_circle(
-            glam::Vec3::unit_x(),
-            glam::Vec3::unit_x() * 2.0,
-            1.5,
+
+        self.debug_draw_3d.add_cone(
+            glam::Vec3::new(4.0, 0.0, 0.0),
+            glam::Vec3::new(2.0, 0.0, 0.0),
+            0.5,
             glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
             12
         );
 
-        self.debug_draw_3d.add_circle(
-            glam::Vec3::unit_y(),
-            glam::Vec3::unit_y() * 2.0,
-            1.5,
-            glam::Vec4::new(0.0, 1.0, 0.0, 1.0),
-            12
-        );
 
-        self.debug_draw_3d.add_circle(
-            glam::Vec3::unit_z(),
-            glam::Vec3::unit_z() * 2.0,
-            1.5,
-            glam::Vec4::new(0.0, 0.0, 1.0, 1.0),
-            12
-        );
 
-        self.debug_draw_3d.add_circle(
-            glam::Vec3::new(1.0, 1.0, 1.0).normalize(),
-            glam::Vec3::new(1.0, 1.0, 1.0) * 2.0,
-            1.5,
-            glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
-            12
-        );
-
-        self.debug_draw_3d.add_sphere(
-            glam::Vec3::new(0.0, 0.0, 2.5),
-            2.0,
-            glam::Vec4::new(1.0, 1.0, 0.0, 1.0),
-            32
-        );
+        // self.debug_draw_3d.add_circle(
+        //     glam::Vec3::unit_x() * 2.0,
+        //     glam::Vec3::unit_x(),
+        //     1.5,
+        //     glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
+        //     12
+        // );
+        //
+        // self.debug_draw_3d.add_circle(
+        //     glam::Vec3::unit_y() * 2.0,
+        //     glam::Vec3::unit_y(),
+        //     1.5,
+        //     glam::Vec4::new(0.0, 1.0, 0.0, 1.0),
+        //     12
+        // );
+        //
+        // self.debug_draw_3d.add_circle(
+        //     glam::Vec3::unit_z() * 2.0,
+        //     glam::Vec3::unit_z(),
+        //     1.5,
+        //     glam::Vec4::new(0.0, 0.0, 1.0, 1.0),
+        //     12
+        // );
+        //
+        // self.debug_draw_3d.add_circle(
+        //     glam::Vec3::new(1.0, 1.0, 1.0) * 2.0,
+        //     glam::Vec3::new(1.0, 1.0, 1.0).normalize(),
+        //     1.5,
+        //     glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
+        //     12
+        // );
+        //
+        // self.debug_draw_3d.add_sphere(
+        //     glam::Vec3::new(0.0, 0.0, 2.5),
+        //     2.0,
+        //     glam::Vec4::new(1.0, 1.0, 0.0, 1.0),
+        //     32
+        // );
 
         //
         // Push latest light/camera info into the mesh material
