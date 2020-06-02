@@ -1,7 +1,7 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener};
 use ash::prelude::VkResult;
-use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam};
+use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass};
 use std::mem::{ManuallyDrop, swap};
 use crate::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
@@ -32,6 +32,7 @@ use crate::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialIns
 use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam};
 use crate::pipeline::buffer::BufferAsset;
 use crate::resource_managers::ResourceArc;
+use crate::renderpass::debug_renderpass::DebugDraw3DResource;
 
 
 fn begin_load_asset<T>(
@@ -87,25 +88,18 @@ pub struct GameRenderer {
     sprite_material_instance: Handle<MaterialInstanceAsset>,
     sprite_custom_material: Option<DynMaterialInstance>,
 
+    debug_material: Handle<MaterialAsset>,
+    debug_material_per_frame_data: DynDescriptorSet,
+    debug_draw_3d: DebugDraw3DResource,
 
     // binding 0, contains info about lights
     mesh_material: Handle<MaterialAsset>,
     mesh_material_per_frame_data: DynDescriptorSet,
     meshes: Vec<StaticMeshInstance>,
 
-    //mesh_material_instance: Handle<MaterialInstanceAsset>,
-    //mesh_custom_material: Option<DynMaterialInstance>,
-    //mesh: Handle<MeshAsset>,
-
-    //light_mesh: Handle<MeshAsset>,
-    //light_mesh_material_instance: Handle<Materia>
-    //light_mesh_material_instance: Handle<MaterialInstanceAsset>,
-    //mesh_custom_material: Option<DynMaterialInstance>,
-    //light_mesh_material_instances: Vec<DynMaterialInstance>,
-
-
     mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
+    debug_renderpass: Option<VkDebugRenderPass>,
     swapchain_surface_info: Option<SwapchainSurfaceInfo>,
 }
 
@@ -152,6 +146,10 @@ impl GameRenderer {
         //     resource_manager.create_mesh_load_handler(),
         // ));
 
+
+        //
+        // Sprite resources
+        //
         let sprite_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
             &asset_resource,
@@ -164,6 +162,18 @@ impl GameRenderer {
             asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
             &asset_resource,
         );
+
+        //
+        // Debug resources
+        //
+        let debug_material = begin_load_asset::<MaterialAsset>(
+            asset_uuid!("11d3b144-f564-42c9-b31f-82c8a938bf85"),
+            &asset_resource,
+        );
+
+        //
+        // Mesh resources
+        //
 
         let mesh_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
@@ -190,7 +200,6 @@ impl GameRenderer {
             &asset_resource,
         );
 
-
         // light
         let light_mesh = begin_load_asset::<MeshAsset>(
             asset_uuid!("eb44a445-2670-42ba-9faa-5fb4ec4a2242"),
@@ -209,7 +218,6 @@ impl GameRenderer {
         //     &asset_resource,
         // );
 
-        println!("Wait for the sprite_material");
         wait_for_asset_to_load(
             device_context,
             &sprite_material,
@@ -218,7 +226,6 @@ impl GameRenderer {
             "sprite_material"
         );
 
-        println!("Wait for the sprite_material instance");
         wait_for_asset_to_load(
             device_context,
             &sprite_material_instance,
@@ -227,6 +234,14 @@ impl GameRenderer {
             "sprite_material_instance"
         );
 
+
+        wait_for_asset_to_load(
+            device_context,
+            &debug_material,
+            asset_resource,
+            &mut resource_manager,
+            "debub material"
+        );
 
         wait_for_asset_to_load(
             device_context,
@@ -270,6 +285,8 @@ impl GameRenderer {
 
         println!("all waits complete");
 
+        let debug_per_frame_layout = resource_manager.get_descriptor_set_info(&debug_material, 0, 0);
+        let debug_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&debug_per_frame_layout.descriptor_set_layout_def)?;
 
         let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(&mesh_material, 0, 0);
         let mesh_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout_def)?;
@@ -300,6 +317,10 @@ impl GameRenderer {
             sprite_material_instance,
             sprite_custom_material: None,
 
+            debug_material,
+            debug_material_per_frame_data,
+            debug_draw_3d: DebugDraw3DResource::new(),
+
             mesh_material,
             mesh_material_per_frame_data,
             meshes,
@@ -314,6 +335,7 @@ impl GameRenderer {
             swapchain_surface_info: None,
             sprite_renderpass: None,
             mesh_renderpass: None,
+            debug_renderpass: None,
         };
 
         let image_info = renderer.resource_manager.get_image_info(&override_image);
@@ -416,6 +438,19 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             mesh_pipeline_info,
         )?);
 
+        log::trace!("Create VkDebugRenderPass");
+        let debug_pipeline_info = self.resource_manager.get_pipeline_info(
+            &self.debug_material,
+            &swapchain_surface_info,
+            0,
+        );
+
+        self.debug_renderpass = Some(VkDebugRenderPass::new(
+            device_context,
+            swapchain,
+            debug_pipeline_info,
+        )?);
+
         log::debug!("game renderer swapchain_created finished");
 
         VkResult::Ok(())
@@ -469,13 +504,14 @@ impl GameRenderer {
         let extents_width = 900;
         let extents_height = 600;
         let aspect_ratio = extents_width as f32 / extents_height as f32;
-        //let half_width = 10.0;
-        //let half_height = 10.0 / aspect_ratio;
 
         let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 1.0));
         let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.5, 20.0);
         let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
         let view_proj = proj * view;
+
+
+        self.debug_draw_3d.add_line(glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(3.0, 3.0, 3.0), glam::Vec4::new(1.0, 1.0, 0.0, 1.0));
 
         //
         // Push latest light/camera info into the mesh material
@@ -497,6 +533,9 @@ impl GameRenderer {
         for mesh in &mut self.meshes {
             mesh.set_view_proj(view, proj);
         }
+
+        self.debug_material_per_frame_data.set_buffer_data(0, &view_proj);
+        self.debug_material_per_frame_data.flush();
 
         //
         // Update Resources and flush descriptor set changes
@@ -549,25 +588,6 @@ impl GameRenderer {
                 0,
             );
 
-            //let pass = self.mesh_custom_material.as_ref().unwrap().pass(0);
-
-            // Global data (lights)
-            // let descriptor_set_per_pass = pass
-            //     .descriptor_set_layout(0)
-            //     .descriptor_set()
-            //     .get_raw_for_gpu_read(&self.resource_manager);
-
-            // Material data (textures, other data)
-            // let descriptor_set_per_material = self.resource_manager
-            //     .get_material_instance_descriptor_sets_for_current_frame(&self.mesh_material_instance, 0)
-            //     .descriptor_sets[1];
-
-            // // Object data (world/view/proj)
-            // let descriptor_set_per_texture = pass
-            //     .descriptor_set_layout(2)
-            //     .descriptor_set()
-            //     .get_raw_for_gpu_read(&self.resource_manager);
-
             let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get_raw_for_cpu_write(&self.resource_manager);
 
             mesh_renderpass.update(
@@ -581,6 +601,24 @@ impl GameRenderer {
             command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
         }
 
+        if let Some(debug_renderpass) = &mut self.debug_renderpass {
+            log::trace!("debug_renderpass update");
+            let debug_pipeline_info = self.resource_manager.get_pipeline_info(
+                &self.debug_material,
+                self.swapchain_surface_info.as_ref().unwrap(),
+                0,
+            );
+
+            let descriptor_set_per_pass = self.debug_material_per_frame_data.descriptor_set().get_raw_for_cpu_write(&self.resource_manager);
+
+            debug_renderpass.update(
+                present_index,
+                descriptor_set_per_pass,
+                self.debug_draw_3d.take_line_lists(),
+            )?;
+            command_buffers.push(debug_renderpass.command_buffers[present_index].clone());
+        }
+
         //
         // imgui
         //
@@ -592,6 +630,7 @@ impl GameRenderer {
             command_buffers.append(&mut commands);
         }
 
+        self.debug_draw_3d.clear();
         VkResult::Ok(command_buffers)
     }
 }
@@ -601,6 +640,7 @@ impl Drop for GameRenderer {
         self.sprite_renderpass = None;
         self.mesh_renderpass = None;
         self.sprite_custom_material = None;
+        self.debug_renderpass = None;
         self.meshes.clear();
         //self.mesh_custom_material = None;
         //self.light_mesh_material_instances.clear();

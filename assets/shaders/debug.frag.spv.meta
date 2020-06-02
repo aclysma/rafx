@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(16032929833592275652),
+    importer_version: 3,
+    importer_type: "90fdad4b-cec1-4f59-b679-97895711b6e1",
+    importer_options: (),
+    importer_state: (Some("f1ad7e24-8ebf-46dc-8292-a5537a6f446c")),
+    assets: [
+        (
+            id: "f1ad7e24-8ebf-46dc-8292-a5537a6f446c",
+            search_tags: [
+                ("file_name", Some("debug.frag.spv")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 1017040238510204028,
+                id: "f1ad7e24-8ebf-46dc-8292-a5537a6f446c",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(496),
+                uncompressed_size: Some(496),
+                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
+            )),
+        ),
+    ],
+)

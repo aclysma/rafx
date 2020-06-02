@@ -540,7 +540,8 @@ impl VkDevice {
         //TODO: Ideally we would set up validation layers for the logical device too.
 
         let device_extension_names_raw = [khr::Swapchain::name().as_ptr()];
-        let features = vk::PhysicalDeviceFeatures::builder();
+        let features = vk::PhysicalDeviceFeatures::builder()
+            .fill_mode_non_solid(true);
         let priorities = [1.0];
 
         let mut queue_families_to_create = std::collections::HashSet::new();

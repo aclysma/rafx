@@ -16,11 +16,11 @@
                 flags: None,
                 format: MatchSwapchainDepth,
                 samples: SampleCount1,
-                load_op: Clear,
-                store_op: Store,
+                load_op: Load,
+                store_op: DontCare,
                 stencil_load_op: DontCare,
                 stencil_store_op: DontCare,
-                initial_layout: Undefined,
+                initial_layout: DepthStencilAttachmentOptimal,
                 final_layout: DepthStencilAttachmentOptimal,
             ),
         ],
@@ -59,7 +59,7 @@
         ],
     ),
     input_assembly_state: (
-        primitive_topology: TriangleList,
+        primitive_topology: TriangleStrip,
         primitive_restart_enable: false,
     ),
     viewport_state: (
@@ -79,7 +79,7 @@
     rasterization_state: (
         depth_clamp_enable: false,
         rasterizer_discard_enable: false,
-        polygon_mode: Fill,
+        polygon_mode: Line,
         cull_mode: None,
         front_face: CounterClockwise,
         depth_bias_enable: false,

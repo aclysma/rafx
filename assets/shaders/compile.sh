@@ -9,3 +9,6 @@ glslc imgui.frag -o imgui.frag.spv
 
 glslc mesh.vert -o mesh.vert.spv
 glslc mesh.frag -o mesh.frag.spv
+
+glslc debug.vert -o debug.vert.spv
+glslc debug.frag -o debug.frag.spv

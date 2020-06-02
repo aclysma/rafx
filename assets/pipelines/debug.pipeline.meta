@@ -1,20 +1,20 @@
 (
     version: 1,
-    import_hash: Some(6229681162636197693),
+    import_hash: Some(7502999184761501528),
     importer_version: 2,
     importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
     importer_options: (),
-    importer_state: (Some("dec88bbb-db9d-4f26-b60a-dde119013bf3")),
+    importer_state: (Some("66300934-cc1a-4db4-83b7-c12f77f343bb")),
     assets: [
         (
-            id: "dec88bbb-db9d-4f26-b60a-dde119013bf3",
+            id: "66300934-cc1a-4db4-83b7-c12f77f343bb",
             search_tags: [
-                ("file_name", Some("mesh.pipeline")),
+                ("file_name", Some("debug.pipeline")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 16475962899981509323,
-                id: "dec88bbb-db9d-4f26-b60a-dde119013bf3",
+                hash: 1773939693465966660,
+                id: "66300934-cc1a-4db4-83b7-c12f77f343bb",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
