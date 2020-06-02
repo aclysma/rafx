@@ -72,6 +72,121 @@ impl DebugDraw3DResource {
         }
     }
 
+    // // The circle will be placed at 0,0,0 around the y axis. Use the transform to point at something
+    // pub fn add_circle_xform(
+    //     &mut self,
+    //     transform: glam::Mat4,
+    //     radius: f32,
+    //     color: glam::Vec4,
+    //     segments: u32,
+    // ) {
+    //     let mut points = Vec::with_capacity(segments as usize + 1);
+    //     for index in 0..segments {
+    //         let fraction = (index as f32 / segments as f32) * std::f32::consts::PI * 2.0;
+    //
+    //         let position = glam::Vec4::new(fraction.sin() * radius, fraction.cos() * radius, 0.0, 1.0);
+    //         let transformed = transform * position;
+    //         points.push(transformed.truncate());
+    //     }
+    //
+    //     self.add_line_loop(points, color);
+    // }
+
+    // Takes an X/Y axis pair and center position
+    pub fn add_circle_xy(
+        &mut self,
+        center: glam::Vec3,
+        x_dir: glam::Vec3,
+        y_dir: glam::Vec3,
+        radius: f32,
+        color: glam::Vec4,
+        segments: u32,
+    ) {
+        let x_dir = x_dir * radius;
+        let y_dir = y_dir * radius;
+
+        let mut points = Vec::with_capacity(segments as usize + 1);
+        for index in 0..segments {
+            let fraction = (index as f32 / segments as f32) * std::f32::consts::PI * 2.0;
+
+            //let position = glam::Vec4::new(fraction.sin() * radius, fraction.cos() * radius, 0.0, 1.0);
+            //let transformed = transform * position;
+            points.push(center + (fraction.cos() * x_dir) + (fraction.sin() * y_dir));
+        }
+
+        self.add_line_loop(points, color);
+    }
+
+    // Takes a normal and center position
+    pub fn add_circle(
+        &mut self,
+        normal: glam::Vec3,
+        center: glam::Vec3,
+        radius: f32,
+        color: glam::Vec4,
+        segments: u32,
+    ) {
+        if normal.dot(glam::Vec3::unit_z()).abs() > 0.9999 {
+            // Can't cross the Z axis with the up vector, so special case that here
+            self.add_circle_xy(center, glam::Vec3::unit_x(), glam::Vec3::unit_y(), radius, color, segments);
+        } else {
+            let x_dir = normal.cross(glam::Vec3::unit_z());
+            let y_dir = x_dir.cross(normal);
+            self.add_circle_xy(center, x_dir, y_dir, radius, color, segments);
+        };
+    }
+
+    pub fn add_sphere(
+        &mut self,
+        center: glam::Vec3,
+        radius: f32,
+        color: glam::Vec4,
+        segments: u32
+    ) {
+        let world_tranform = glam::Mat4::from_translation(center);
+
+        // Draw the vertical rings
+        for index in 0..segments {
+            // Rotate around whole sphere (2pi)
+            let fraction = (index as f32 / segments as f32) * std::f32::consts::PI * 2.0;
+            //let transform = world_tranform * glam::Mat4::from_rotation_z(fraction) * glam::Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2);
+
+            let x_dir = glam::Vec3::new(fraction.cos(), fraction.sin(), 0.0);
+            let y_dir = glam::Vec3::unit_z();
+
+
+            self.add_circle_xy(center, x_dir, y_dir, radius, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), segments);
+        }
+
+        // Draw the center horizontal ring
+        self.add_circle_xy(center, glam::Vec3::unit_x(), glam::Vec3::unit_y(), radius, glam::Vec4::new(0.0, 0.0, 1.0, 1.0), segments);
+
+        // Draw the off-center horizontal rings
+        for index in 1..(segments / 2) {
+            let fraction = (index as f32 / segments as f32) * std::f32::consts::PI * 2.0;
+
+            let r = radius * fraction.cos();
+            let z_offset = radius * fraction.sin() * glam::Vec3::unit_z();
+
+            //let transform = glam::Mat4::from_translation(center + glam::Vec3::new(0.0, 0.0, z_offset));
+            self.add_circle_xy(center + z_offset, glam::Vec3::unit_x(), glam::Vec3::unit_y(), r, glam::Vec4::new(1.0, 0.0, 0.0, 1.0), segments);
+
+
+            //let transform = glam::Mat4::from_translation(center - glam::Vec3::new(0.0, 0.0, z_offset));
+            self.add_circle_xy(center - z_offset, glam::Vec3::unit_x(), glam::Vec3::unit_y(), r, glam::Vec4::new(1.0, 0.0, 0.0, 1.0), segments);
+        }
+    }
+
+    pub fn add_cone(
+        &mut self,
+        transform: glam::Mat4,
+        radius: f32,
+        color: glam::Vec4,
+        segments: u32,
+    ) {
+
+    }
+
     pub fn add_line(
         &mut self,
         p0: glam::Vec3,
@@ -79,8 +194,7 @@ impl DebugDraw3DResource {
         color: glam::Vec4,
     ) {
         let points = vec![p0, p1];
-
-        self.line_lists.push(LineList3D::new(points, color));
+        self.add_line_strip(points, color);
     }
 
     // Returns the draw data, leaving this object in an empty state

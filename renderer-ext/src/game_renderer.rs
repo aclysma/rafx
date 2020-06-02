@@ -511,7 +511,47 @@ impl GameRenderer {
         let view_proj = proj * view;
 
 
-        self.debug_draw_3d.add_line(glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(3.0, 3.0, 3.0), glam::Vec4::new(1.0, 1.0, 0.0, 1.0));
+        //self.debug_draw_3d.add_line(glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(3.0, 3.0, 3.0), glam::Vec4::new(1.0, 1.0, 0.0, 1.0));
+        //self.debug_draw_3d.add_circle(glam::Mat4::identity(), 4.0, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), 12);71
+        //self.debug_draw_3d.add_sphere(glam::Vec3::new(0.0, 0.0, 3.0), 1.5, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), 32);
+        self.debug_draw_3d.add_circle(
+            glam::Vec3::unit_x(),
+            glam::Vec3::unit_x() * 2.0,
+            1.5,
+            glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
+            12
+        );
+
+        self.debug_draw_3d.add_circle(
+            glam::Vec3::unit_y(),
+            glam::Vec3::unit_y() * 2.0,
+            1.5,
+            glam::Vec4::new(0.0, 1.0, 0.0, 1.0),
+            12
+        );
+
+        self.debug_draw_3d.add_circle(
+            glam::Vec3::unit_z(),
+            glam::Vec3::unit_z() * 2.0,
+            1.5,
+            glam::Vec4::new(0.0, 0.0, 1.0, 1.0),
+            12
+        );
+
+        self.debug_draw_3d.add_circle(
+            glam::Vec3::new(1.0, 1.0, 1.0).normalize(),
+            glam::Vec3::new(1.0, 1.0, 1.0) * 2.0,
+            1.5,
+            glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
+            12
+        );
+
+        self.debug_draw_3d.add_sphere(
+            glam::Vec3::new(0.0, 0.0, 2.5),
+            2.0,
+            glam::Vec4::new(1.0, 1.0, 0.0, 1.0),
+            32
+        );
 
         //
         // Push latest light/camera info into the mesh material
@@ -525,7 +565,7 @@ impl GameRenderer {
         per_frame_data.point_lights[0].position_world = light_position.truncate().into();
         per_frame_data.point_lights[0].position_view = light_position_vs.truncate().into();
         per_frame_data.point_lights[0].range = 25.0;
-        per_frame_data.point_lights[0].color = [1.0, 0.0, 0.0, 1.0].into();
+        per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
         per_frame_data.point_lights[0].intensity = 1.0;
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
         self.mesh_material_per_frame_data.flush();
