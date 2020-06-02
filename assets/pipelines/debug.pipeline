@@ -59,7 +59,7 @@
         ],
     ),
     input_assembly_state: (
-        primitive_topology: TriangleStrip,
+        primitive_topology: LineStrip,
         primitive_restart_enable: false,
     ),
     viewport_state: (

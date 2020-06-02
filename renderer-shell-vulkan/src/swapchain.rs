@@ -321,7 +321,11 @@ impl VkSwapchain {
         Self::find_supported_format(
             device_context.instance(),
             device_context.physical_device(),
-            &[vk::Format::D32_SFLOAT, vk::Format::D32_SFLOAT_S8_UINT, vk::Format::D24_UNORM_S8_UINT],
+            &[
+                vk::Format::D32_SFLOAT, // 100% coverage with optimal
+                vk::Format::D32_SFLOAT_S8_UINT, // 100% coverage with optimal
+                vk::Format::D24_UNORM_S8_UINT
+            ],
             vk::ImageTiling::OPTIMAL,
             vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
         ).unwrap()

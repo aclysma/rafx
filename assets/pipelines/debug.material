@@ -45,7 +45,7 @@
                     binding_descriptions: [
                         (
                             binding: 0,
-                            stride: 56,
+                            stride: 28,
                             input_rate: Vertex,
                         ),
                     ],

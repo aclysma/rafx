@@ -541,6 +541,8 @@ impl VkDevice {
 
         let device_extension_names_raw = [khr::Swapchain::name().as_ptr()];
         let features = vk::PhysicalDeviceFeatures::builder()
+            // Not guaranteed by spec, but vulkan.gpuinfo.org has this as 100%. Required for drawing
+            // lines and points
             .fill_mode_non_solid(true);
         let priorities = [1.0];
 

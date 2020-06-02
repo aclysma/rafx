@@ -48,8 +48,19 @@ impl DebugDraw3DResource {
         DebugDraw3DResource { line_lists: vec![] }
     }
 
+    pub fn add_line_strip(
+        &mut self,
+        mut points: Vec<glam::Vec3>,
+        color: glam::Vec4,
+    ) {
+        // Nothing will draw if we don't have at least 2 points
+        if points.len() > 1 {
+            self.line_lists.push(LineList3D::new(points, color));
+        }
+    }
+
     // Adds a single polygon
-    pub fn add_polygon(
+    pub fn add_line_loop(
         &mut self,
         mut points: Vec<glam::Vec3>,
         color: glam::Vec4,
@@ -57,56 +68,9 @@ impl DebugDraw3DResource {
         // Nothing will draw if we don't have at least 2 points
         if points.len() > 1 {
             points.push(points[0].clone());
-            self.line_lists.push(LineList3D::new(points, color));
+            self.add_line_strip(points, color);
         }
     }
-
-    pub fn add_tristrip(
-        &mut self,
-        points: &Vec<glam::Vec3>,
-        color: glam::Vec4,
-    ) {
-        // Nothing will draw if we don't have at least 2 points
-        for index in 0..(points.len() - 2) {
-            let v = vec![points[index], points[index + 1], points[index + 2]];
-            self.add_polygon(v, color);
-        }
-    }
-
-    // pub fn add_circle(
-    //     &mut self,
-    //     center: glam::Vec3,
-    //     radius: f32,
-    //     color: glam::Vec4,
-    // ) {
-    //     let point_count = 12;
-    //
-    //     let mut points = Vec::with_capacity(point_count);
-    //     for index in 0..point_count {
-    //         let fraction = (index as f32 / point_count as f32) * std::f32::consts::PI * 2.0;
-    //
-    //         points.push(glam::Vec3::new(fraction.sin() * radius, fraction.cos() * radius) + center);
-    //     }
-    //
-    //     self.add_polygon(points, color);
-    // }
-    //
-    // pub fn add_rect(
-    //     &mut self,
-    //     p0: glam::Vec3,
-    //     p1: glam::Vec3,
-    //     color: glam::Vec4,
-    // ) {
-    //     let points = vec![
-    //         p0,
-    //         glam::vec3(p0.x(), p1.y()),
-    //         p1,
-    //         glam::vec3(p1.x(), p0.y()),
-    //         p0,
-    //     ];
-    //
-    //     self.add_polygon(points, color);
-    // }
 
     pub fn add_line(
         &mut self,
@@ -116,7 +80,7 @@ impl DebugDraw3DResource {
     ) {
         let points = vec![p0, p1];
 
-        self.add_polygon(points, color);
+        self.line_lists.push(LineList3D::new(points, color));
     }
 
     // Returns the draw data, leaving this object in an empty state
