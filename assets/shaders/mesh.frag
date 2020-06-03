@@ -216,6 +216,21 @@ LightingResult spot_light(
     return result;
 }
 
+LightingResult directional_light(
+    DirectionalLight light,
+    MaterialData material,
+    vec3 surface_to_eye_dir_vs,
+    vec3 surface_position_vs,
+    vec3 normal_vs
+) {
+    vec3 surface_to_light_dir = -light.direction_vs;
+
+    LightingResult result;
+    result.diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * light.intensity;
+    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * light.intensity;
+    return result;
+}
+
 
 void main() {
     // Sample the base color, if it exists
@@ -266,6 +281,20 @@ void main() {
 
         LightingResult iter_result = spot_light(
             per_frame_data.spot_lights[i],
+            material_data_ubo.data,
+            surface_to_eye_vs,
+            in_position_vs,
+            in_normal_vs
+        );
+
+        total_result.diffuse += iter_result.diffuse;
+        total_result.specular += iter_result.specular;
+    }
+
+    // directional Lights
+    for (uint i = 0; i < per_frame_data.directional_light_count; ++i) {
+        LightingResult iter_result = directional_light(
+            per_frame_data.directional_lights[i],
             material_data_ubo.data,
             surface_to_eye_vs,
             in_position_vs,

@@ -513,14 +513,25 @@ impl GameRenderer {
         //
         // Push latest light/camera info into the mesh material
         //
-        //let light_world_transform = glam::Mat4::from_translation(glam::Vec3::new(5.0, 5.0, 5.0));
-        let light_position = glam::Vec4::new(3.0, 3.0, 3.0, 1.0);
-        let light_position_vs = view * light_position;
         let mut per_frame_data = PerFrameDataShaderParam::default();
         per_frame_data.ambient_light = glam::Vec4::new(0.05, 0.05, 0.05, 1.0);
+        per_frame_data.directional_light_count = 1;
         per_frame_data.point_light_count = 2;
         per_frame_data.spot_light_count = 1;
 
+
+        let light_from = glam::Vec3::new(5.0, 0.0, 0.0);
+        let light_from_vs = (view * light_from.extend(1.0)).truncate();
+        let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
+        let light_to_vs = (view * light_to.extend(1.0)).truncate();
+        let light_direction = (light_to - light_from).normalize();
+        let light_direction_vs = (light_to_vs - light_from_vs).normalize();
+        per_frame_data.directional_lights[0].direction_ws = light_direction;
+        per_frame_data.directional_lights[0].direction_vs = light_direction_vs;
+        per_frame_data.directional_lights[0].intensity = 1.0;
+        per_frame_data.directional_lights[0].color = glam::Vec4::new(1.0, 0.0, 0.0, 1.0);
+
+        self.debug_draw_3d.add_line(light_from, light_to, glam::Vec4::new(1.0, 1.0, 1.0, 1.0));
 
         let light_position = glam::Vec3::new(3.0, 0.0, 3.0);
         let light_position_vs = (view * light_position.extend(1.0)).truncate();
@@ -575,6 +586,8 @@ impl GameRenderer {
                 8
             );
         }
+
+
 
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
         self.mesh_material_per_frame_data.flush();
