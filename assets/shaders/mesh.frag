@@ -13,11 +13,24 @@ struct PointLight {
     float intensity;
 };
 
+
+struct SpotLight {
+    vec3 position_world;
+    vec3 direction_world;
+    vec3 position_view;
+    vec3 direction_view;
+    vec4 color;
+    float spotlight_half_angle;
+    float range;
+    float intensity;
+};
+
 layout (set = 0, binding = 0) uniform PerFrameData {
     uint point_light_count;
     uint directional_light_count;
     uint spot_light_count;
     PointLight point_lights[16];
+    SpotLight spot_lights[16];
 } per_frame_data;
 
 layout (set = 0, binding = 1) uniform sampler smp;
@@ -81,16 +94,12 @@ vec4 normal_map(
     return normalize(vec4(normal, 0.0));
 }
 
-
-
-
-
-
 vec4 diffuse_light(
     vec3 surface_to_light_dir, 
     vec3 normal, 
     vec4 light_color
 ) {
+    // Diffuse light - just dot the normal vector with the surface to light dir.
     float NdotL = max(dot(surface_to_light_dir, normal), 0);
     return light_color * NdotL;
 }
@@ -101,8 +110,13 @@ vec4 specular_light(
     vec3 normal, 
     vec4 light_color
 ) {
+    // Calculate the angle that light might reflect at
     vec3 reflect_dir = normalize(reflect(-surface_to_light_dir, normal));
+
+    // Dot the reflection with the view angle
     float RdotV = max(dot(reflect_dir, surface_to_eye_dir), 0);
+
+    // Raise to a power to get the specular effect on a narrow viewing angle
     return light_color * pow(RdotV, 4.0); // hardcode a spec power, will switch to BSDF later
 }
 
@@ -140,17 +154,61 @@ LightingResult point_light(
     float distance = length(surface_to_light_dir);
     surface_to_light_dir = surface_to_light_dir / distance;
 
+    // Figure out the falloff of light intensity due to distance from light source
     float attenuation = attenuate_light(light.range, distance);
+
+    // Calculate lighting components
     LightingResult result;
     result.diffuse = diffuse_light(surface_to_light_dir, normal, light.color) * attenuation * light.intensity;
-    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir, normal, light.color * attenuation * light.intensity);
+    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir, normal, light.color) * attenuation * light.intensity;
     return result;
 }
 
+float spotlight_cone_falloff(
+    vec3 surface_to_light_dir,
+    vec3 spotlight_dir,
+    float spotlight_half_angle
+) {
+    // If we dot -spotlight_dir with surface_to_light_dir:
+    // - the result will be 1 if the spotlight is pointed straight at the surface position
+    // - the result will be 0 if the spotlight direction is orthogonal to the surface position
+    float cos_angle = dot(-spotlight_dir, surface_to_light_dir);
 
+    // spotlight_half_angle will indicate the minimum result necessary to receive lighting contribution
+    // this indicates the "edge" of the ring on the surface formed by the spotlight where there is no longer a lighting
+    // contribution
+    float min_cos = cos(spotlight_half_angle);
 
+    // Pick an angle at which to start reducing lighting contribution based on direction of the spotlight
+    float max_cos = mix(min_cos, 1, 0.5); // mix is lerp
 
+    // based on the angle found in cos_angle, calculate the contribution
+    return smoothstep(min_cos, max_cos, cos_angle);
+}
 
+LightingResult spot_light(
+    SpotLight light,
+    MaterialData material,
+    vec3 surface_to_eye_dir,
+    vec3 surface_position,
+    vec3 normal
+) {
+    // Get the distance to the light and normalize the surface_to_light direction. (Not
+    // using normalize since we want the distance too)
+    vec3 surface_to_light_dir = light.position_view - surface_position;
+    float distance = length(surface_to_light_dir);
+    surface_to_light_dir = surface_to_light_dir / distance;
+
+    // Figure out the falloff of light intensity due to distance from light source
+    float attenuation = attenuate_light(light.range, distance);
+    float spotlight_direction_intensity = spotlight_cone_falloff(surface_to_light_dir, light.direction_view, light.spotlight_half_angle);
+
+    // Calculate lighting components
+    LightingResult result;
+    result.diffuse = diffuse_light(surface_to_light_dir, normal, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
+    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir, normal, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
+    return result;
+}
 
 
 void main() {
@@ -211,6 +269,22 @@ void main() {
             material_data_ubo.data, 
             surface_to_eye, 
             in_position_vs, 
+            in_normal_vs
+        );
+
+        total_result.diffuse += iter_result.diffuse;
+        total_result.specular += iter_result.specular;
+    }
+
+    // Spot Lights
+    for (uint i = 0; i < per_frame_data.spot_light_count; ++i) {
+        // TODO: Early out by distance?
+
+        LightingResult iter_result = spot_light(
+            per_frame_data.spot_lights[i],
+            material_data_ubo.data,
+            surface_to_eye,
+            in_position_vs,
             in_normal_vs
         );
 
