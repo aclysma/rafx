@@ -91,7 +91,7 @@ vec4 diffuse_light(
     vec3 normal, 
     vec4 light_color
 ) {
-    float NdotL = max(dot(surface_to_light_dir, surface_to_light_dir), 0);
+    float NdotL = max(dot(surface_to_light_dir, normal), 0);
     return light_color * NdotL;
 }
 

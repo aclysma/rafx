@@ -515,13 +515,14 @@ impl GameRenderer {
         //self.debug_draw_3d.add_circle(glam::Mat4::identity(), 4.0, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), 12);71
         //self.debug_draw_3d.add_sphere(glam::Vec3::new(0.0, 0.0, 3.0), 1.5, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), 32);
 
-        self.debug_draw_3d.add_cone(
-            glam::Vec3::new(4.0, 0.0, 0.0),
-            glam::Vec3::new(2.0, 0.0, 0.0),
-            0.5,
-            glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
-            12
-        );
+
+//        self.debug_draw_3d.add_cone(
+//            glam::Vec3::new(4.0, 0.0, 0.0),
+//            glam::Vec3::new(2.0, 0.0, 0.0),
+//            0.5,
+//            glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
+//            12
+//        );
 
 
 
@@ -572,14 +573,34 @@ impl GameRenderer {
         let light_position_vs = view * light_position;
         println!("light_position_vs {:?}", light_position_vs);
         let mut per_frame_data = PerFrameDataShaderParam::default();
-        per_frame_data.point_light_count = 1;
+        per_frame_data.point_light_count = 2;
+
+
+        let light_position = glam::Vec4::new(3.0, 0.0, 3.0, 1.0);
+        let light_position_vs = view * light_position;
         per_frame_data.point_lights[0].position_world = light_position.truncate().into();
         per_frame_data.point_lights[0].position_view = light_position_vs.truncate().into();
         per_frame_data.point_lights[0].range = 25.0;
-        per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
+        per_frame_data.point_lights[0].color = [1.0, 0.0, 0.0, 1.0].into();
         per_frame_data.point_lights[0].intensity = 1.0;
+
+        let light_position = glam::Vec4::new(0.0, 3.0, 3.0, 1.0);
+        let light_position_vs = view * light_position;
+        per_frame_data.point_lights[1].position_world = light_position.truncate().into();
+        per_frame_data.point_lights[1].position_view = light_position_vs.truncate().into();
+        per_frame_data.point_lights[1].range = 25.0;
+        per_frame_data.point_lights[1].color = [0.0, 1.0, 0.0, 1.0].into();
+        per_frame_data.point_lights[1].intensity = 1.0;
+
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
         self.mesh_material_per_frame_data.flush();
+
+        self.debug_draw_3d.add_sphere(
+            glam::Vec3::new(3.0, 3.0, 3.0),
+            0.75,
+            glam::Vec4::new(1.0, 1.0, 0.0, 1.0),
+            12
+        );
 
         for mesh in &mut self.meshes {
             mesh.set_view_proj(view, proj);
