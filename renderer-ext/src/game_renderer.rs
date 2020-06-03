@@ -573,6 +573,7 @@ impl GameRenderer {
         let light_position_vs = view * light_position;
         println!("light_position_vs {:?}", light_position_vs);
         let mut per_frame_data = PerFrameDataShaderParam::default();
+        per_frame_data.ambient_light = glam::Vec4::new(0.05, 0.05, 0.05, 1.0);
         per_frame_data.point_light_count = 2;
         per_frame_data.spot_light_count = 1;
 

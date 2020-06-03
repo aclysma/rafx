@@ -47,8 +47,7 @@ pub struct DirectionalLight {
     pub direction_world: glam::Vec3, // +0
     pub direction_view: glam::Vec3, // +16
     pub color: glam::Vec4, // +32
-    pub spotlight_half_angle: f32, // +48
-    pub intensity: f32, // +52
+    pub intensity: f32, // +48
 } // 4*16 = 64 bytes
 
 // Represents the data uploaded to the GPU to represent a single spot light
@@ -70,13 +69,14 @@ pub struct SpotLight {
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct PerFrameDataShaderParam {
-    pub point_light_count: u32, // +0
-    pub directional_light_count: u32, // +4
-    pub spot_light_count: u32, // +8
-    pub point_lights: [PointLight; 16], // +16 (64*16 = 1024),
-    pub directional_lights: [DirectionalLight; 16], // +1040 (64*16 = 1024),
-    pub spot_lights: [SpotLight; 16], // +2064 (96*16 = 1536)
-} // 3600 bytes
+    pub ambient_light: glam::Vec4, // +0
+    pub point_light_count: u32, // +16
+    pub directional_light_count: u32, // 20
+    pub spot_light_count: u32, // +24
+    pub point_lights: [PointLight; 16], // +32 (64*16 = 1024),
+    pub directional_lights: [DirectionalLight; 16], // +1056 (64*16 = 1024),
+    pub spot_lights: [SpotLight; 16], // +2080 (96*16 = 1536)
+} // 3616 bytes
 
 #[derive(Default, Copy, Clone)]
 #[repr(C)]

@@ -29,7 +29,7 @@
                                 stage_flags: Fragment,
                                 slot_name: "per_frame_data",
 
-                                internal_buffer_per_descriptor_size: Some(3600)
+                                internal_buffer_per_descriptor_size: Some(3616)
                             ),
                             (
                                 binding: 1,

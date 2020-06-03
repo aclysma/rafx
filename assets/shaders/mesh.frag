@@ -13,6 +13,12 @@ struct PointLight {
     float intensity;
 };
 
+struct DirectionalLight {
+    vec3 direction_world;
+    vec3 direction_view;
+    vec4 color;
+    float intensity;
+};
 
 struct SpotLight {
     vec3 position_world;
@@ -26,10 +32,12 @@ struct SpotLight {
 };
 
 layout (set = 0, binding = 0) uniform PerFrameData {
+    vec4 ambient_light;
     uint point_light_count;
     uint directional_light_count;
     uint spot_light_count;
     PointLight point_lights[16];
+    DirectionalLight directional_lights[16];
     SpotLight spot_lights[16];
 } per_frame_data;
 
@@ -292,9 +300,6 @@ void main() {
         total_result.specular += iter_result.specular;
     }
 
-    base_color *= total_result.diffuse;
-
-
-    out_color = /* ambient + */ emissive_color + base_color;
-    //out_color = base_color;
+    base_color *= (per_frame_data.ambient_light + total_result.diffuse + total_result.specular);
+    out_color = emissive_color + base_color;
 }
