@@ -496,8 +496,8 @@ impl GameRenderer {
         //
         let camera_distance_multiplier = 1.0;
         let eye = glam::Vec3::new(
-            camera_distance_multiplier * 10.0 * f32::cos(loop_time / 4.0),
-            camera_distance_multiplier * 10.0 * f32::sin(loop_time / 4.0),
+            camera_distance_multiplier * 10.0 * f32::cos(loop_time / 2.0),
+            camera_distance_multiplier * 10.0 * f32::sin(loop_time / 2.0),
             camera_distance_multiplier * 5.0,
         );
 
@@ -524,21 +524,21 @@ impl GameRenderer {
 
         let light_position = glam::Vec3::new(3.0, 0.0, 3.0);
         let light_position_vs = (view * light_position.extend(1.0)).truncate();
-        per_frame_data.point_lights[0].position_world = light_position.into();
-        per_frame_data.point_lights[0].position_view = light_position_vs.into();
+        per_frame_data.point_lights[0].position_ws = light_position.into();
+        per_frame_data.point_lights[0].position_vs = light_position_vs.into();
         per_frame_data.point_lights[0].range = 25.0;
         per_frame_data.point_lights[0].color = [1.0, 0.0, 0.0, 1.0].into();
         per_frame_data.point_lights[0].intensity = 1.0;
 
         let light_position = glam::Vec3::new(0.0, 3.0, 3.0);
         let light_position_vs = (view * light_position.extend(1.0)).truncate();
-        per_frame_data.point_lights[1].position_world = light_position.into();
-        per_frame_data.point_lights[1].position_view = light_position_vs.into();
+        per_frame_data.point_lights[1].position_ws = light_position.into();
+        per_frame_data.point_lights[1].position_vs = light_position_vs.into();
         per_frame_data.point_lights[1].range = 25.0;
         per_frame_data.point_lights[1].color = [0.0, 1.0, 0.0, 1.0].into();
         per_frame_data.point_lights[1].intensity = 1.0;
 
-        let light_from = glam::Vec3::new(-3.0, -3.0, 4.0);
+        let light_from = glam::Vec3::new(-3.0, -3.0, 0.0);
         let light_from_vs = (view * light_from.extend(1.0)).truncate();
         let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
         let light_to_vs = (view * light_to.extend(1.0)).truncate();
@@ -546,11 +546,11 @@ impl GameRenderer {
         let light_direction = (light_to - light_from).normalize();
         let light_direction_vs = (light_to_vs - light_from_vs).normalize();
 
-        per_frame_data.spot_lights[0].position_world = light_from.into();
-        per_frame_data.spot_lights[0].position_view = light_from_vs.into();
-        per_frame_data.spot_lights[0].direction_world = light_direction.into();
-        per_frame_data.spot_lights[0].direction_view = light_direction_vs.into();
-        per_frame_data.spot_lights[0].spotlight_half_angle = 15.0 * (std::f32::consts::PI / 180.0);
+        per_frame_data.spot_lights[0].position_ws = light_from.into();
+        per_frame_data.spot_lights[0].position_vs = light_from_vs.into();
+        per_frame_data.spot_lights[0].direction_ws = light_direction.into();
+        per_frame_data.spot_lights[0].direction_vs = light_direction_vs.into();
+        per_frame_data.spot_lights[0].spotlight_half_angle = 10.0 * (std::f32::consts::PI / 180.0);
         per_frame_data.spot_lights[0].range = 8.0;
         per_frame_data.spot_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
         per_frame_data.spot_lights[0].intensity = 1.0;
@@ -558,8 +558,8 @@ impl GameRenderer {
         for i in 0..per_frame_data.point_light_count {
             let light = &per_frame_data.point_lights[i as usize];
             self.debug_draw_3d.add_sphere(
-                light.position_world,
-                0.5,
+                light.position_ws,
+                0.25,
                 light.color,
                 12
             );
@@ -568,8 +568,8 @@ impl GameRenderer {
         for i in 0..per_frame_data.spot_light_count {
             let light = &per_frame_data.spot_lights[i as usize];
             self.debug_draw_3d.add_cone(
-                light.position_world,
-                light.position_world + (light.range * light.direction_world),
+                light.position_ws,
+                light.position_ws + (light.range * light.direction_ws),
                 light.range * light.spotlight_half_angle.tan(),
                 light.color,
                 8
@@ -579,12 +579,12 @@ impl GameRenderer {
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
         self.mesh_material_per_frame_data.flush();
 
-        self.debug_draw_3d.add_sphere(
-            glam::Vec3::new(3.0, 3.0, 3.0),
-            0.75,
-            glam::Vec4::new(1.0, 1.0, 0.0, 1.0),
-            12
-        );
+        // self.debug_draw_3d.add_sphere(
+        //     glam::Vec3::new(3.0, 3.0, 3.0),
+        //     0.75,
+        //     glam::Vec4::new(1.0, 1.0, 0.0, 1.0),
+        //     12
+        // );
 
         for mesh in &mut self.meshes {
             mesh.set_view_proj(view, proj);

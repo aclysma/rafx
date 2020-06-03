@@ -33,8 +33,8 @@ use crate::asset_resource::AssetResource;
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct PointLight {
-    pub position_world: glam::Vec3, // +0
-    pub position_view: glam::Vec3, // +16
+    pub position_ws: glam::Vec3, // +0
+    pub position_vs: glam::Vec3, // +16
     pub color: glam::Vec4, // +32
     pub range: f32, // +48
     pub intensity: f32, // +52
@@ -44,8 +44,8 @@ pub struct PointLight {
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct DirectionalLight {
-    pub direction_world: glam::Vec3, // +0
-    pub direction_view: glam::Vec3, // +16
+    pub direction_ws: glam::Vec3, // +0
+    pub direction_vs: glam::Vec3, // +16
     pub color: glam::Vec4, // +32
     pub intensity: f32, // +48
 } // 4*16 = 64 bytes
@@ -54,10 +54,10 @@ pub struct DirectionalLight {
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct SpotLight {
-    pub position_world: glam::Vec3, // +0
-    pub direction_world: glam::Vec3, // +16
-    pub position_view: glam::Vec3, // +32
-    pub direction_view: glam::Vec3, // +48
+    pub position_ws: glam::Vec3, // +0
+    pub direction_ws: glam::Vec3, // +16
+    pub position_vs: glam::Vec3, // +32
+    pub direction_vs: glam::Vec3, // +48
     pub color: glam::Vec4, // +64
     pub spotlight_half_angle: f32, //+80
     pub range: f32, // +84

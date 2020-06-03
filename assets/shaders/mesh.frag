@@ -6,25 +6,25 @@
 // Per-Frame Pass
 //
 struct PointLight {
-    vec3 position_world;
-    vec3 position_view;
+    vec3 position_ws;
+    vec3 position_vs;
     vec4 color;
     float range;
     float intensity;
 };
 
 struct DirectionalLight {
-    vec3 direction_world;
-    vec3 direction_view;
+    vec3 direction_ws;
+    vec3 direction_vs;
     vec4 color;
     float intensity;
 };
 
 struct SpotLight {
-    vec3 position_world;
-    vec3 direction_world;
-    vec3 position_view;
-    vec3 direction_view;
+    vec3 position_ws;
+    vec3 direction_ws;
+    vec3 position_vs;
+    vec3 direction_vs;
     vec4 color;
     float spotlight_half_angle;
     float range;
@@ -137,12 +137,6 @@ float attenuate_light(
 }
 
 
-
-
-
-
-
-
 struct LightingResult
 {
     vec4 diffuse;
@@ -158,7 +152,7 @@ LightingResult point_light(
 ) {
     // Get the distance to the light and normalize the surface_to_light direction. (Not
     // using normalize since we want the distance too)
-    vec3 surface_to_light_dir = light.position_view - surface_position_vs;
+    vec3 surface_to_light_dir = light.position_vs - surface_position_vs;
     float distance = length(surface_to_light_dir);
     surface_to_light_dir = surface_to_light_dir / distance;
 
@@ -203,7 +197,7 @@ LightingResult spot_light(
 ) {
     // Get the distance to the light and normalize the surface_to_light direction. (Not
     // using normalize since we want the distance too)
-    vec3 surface_to_light_dir = light.position_view - surface_position_vs;
+    vec3 surface_to_light_dir = light.position_vs - surface_position_vs;
     float distance = length(surface_to_light_dir);
     surface_to_light_dir = surface_to_light_dir / distance;
 
@@ -211,7 +205,7 @@ LightingResult spot_light(
     float attenuation = attenuate_light(light.range, distance);
     float spotlight_direction_intensity = spotlight_cone_falloff(
         surface_to_light_dir,
-        light.direction_view,
+        light.direction_vs,
         light.spotlight_half_angle
     );
 
@@ -224,9 +218,6 @@ LightingResult spot_light(
 
 
 void main() {
-    //TODO: Consider adding a global ambient color to per_frame_data
-    // Base color
-
     // Sample the base color, if it exists
     vec4 base_color = material_data_ubo.data.base_color_factor;
     if (material_data_ubo.data.has_base_color_texture) {
@@ -248,25 +239,6 @@ void main() {
     } else {
         normal_vs = normalize(vec4(in_normal_vs, 0));
     }
-
-
-    // view space eye is 0,0,0
-    //vec3 eye_position_vs = vec3(0, 0, 0);
-    //vec3 eye_direction = in_position_vs - eye_position_vs;
-
-
-    // just pick something
-    //vec3 light_vs = normalize(per_frame_data.point_lights[0].position_view);
-    //vec3 light_vs = normalize(vec3(-5, -5, -5));
-
-    //float NdotL = max(dot(normal_vs.xyz, light_vs), 0);
-    //base_color = vec4(base_color.xyz * NdotL, 1);
-
-
-
-
-
-
 
     vec3 eye_position_vs = vec3(0, 0, 0);
     vec3 surface_to_eye_vs = normalize(eye_position_vs - in_position_vs);
