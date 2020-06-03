@@ -510,68 +510,12 @@ impl GameRenderer {
         let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
         let view_proj = proj * view;
 
-
-        //self.debug_draw_3d.add_line(glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(3.0, 3.0, 3.0), glam::Vec4::new(1.0, 1.0, 0.0, 1.0));
-        //self.debug_draw_3d.add_circle(glam::Mat4::identity(), 4.0, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), 12);71
-        //self.debug_draw_3d.add_sphere(glam::Vec3::new(0.0, 0.0, 3.0), 1.5, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), 32);
-
-
-//        self.debug_draw_3d.add_cone(
-//            glam::Vec3::new(4.0, 0.0, 0.0),
-//            glam::Vec3::new(2.0, 0.0, 0.0),
-//            0.5,
-//            glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
-//            12
-//        );
-
-
-
-        // self.debug_draw_3d.add_circle(
-        //     glam::Vec3::unit_x() * 2.0,
-        //     glam::Vec3::unit_x(),
-        //     1.5,
-        //     glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
-        //     12
-        // );
-        //
-        // self.debug_draw_3d.add_circle(
-        //     glam::Vec3::unit_y() * 2.0,
-        //     glam::Vec3::unit_y(),
-        //     1.5,
-        //     glam::Vec4::new(0.0, 1.0, 0.0, 1.0),
-        //     12
-        // );
-        //
-        // self.debug_draw_3d.add_circle(
-        //     glam::Vec3::unit_z() * 2.0,
-        //     glam::Vec3::unit_z(),
-        //     1.5,
-        //     glam::Vec4::new(0.0, 0.0, 1.0, 1.0),
-        //     12
-        // );
-        //
-        // self.debug_draw_3d.add_circle(
-        //     glam::Vec3::new(1.0, 1.0, 1.0) * 2.0,
-        //     glam::Vec3::new(1.0, 1.0, 1.0).normalize(),
-        //     1.5,
-        //     glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
-        //     12
-        // );
-        //
-        // self.debug_draw_3d.add_sphere(
-        //     glam::Vec3::new(0.0, 0.0, 2.5),
-        //     2.0,
-        //     glam::Vec4::new(1.0, 1.0, 0.0, 1.0),
-        //     32
-        // );
-
         //
         // Push latest light/camera info into the mesh material
         //
         //let light_world_transform = glam::Mat4::from_translation(glam::Vec3::new(5.0, 5.0, 5.0));
         let light_position = glam::Vec4::new(3.0, 3.0, 3.0, 1.0);
         let light_position_vs = view * light_position;
-        println!("light_position_vs {:?}", light_position_vs);
         let mut per_frame_data = PerFrameDataShaderParam::default();
         per_frame_data.ambient_light = glam::Vec4::new(0.05, 0.05, 0.05, 1.0);
         per_frame_data.point_light_count = 2;
@@ -594,12 +538,16 @@ impl GameRenderer {
         per_frame_data.point_lights[1].color = [0.0, 1.0, 0.0, 1.0].into();
         per_frame_data.point_lights[1].intensity = 1.0;
 
-        let light_position = glam::Vec3::new(-3.0, -3.0, 3.0);
-        let light_position_vs = (view * light_position.extend(1.0)).truncate();
-        let light_direction = (glam::Vec3::new(0.0, 0.0, 0.0) - light_position).normalize();
-        let light_direction_vs = (view * light_direction.extend(1.0)).truncate().normalize();
-        per_frame_data.spot_lights[0].position_world = light_position.into();
-        per_frame_data.spot_lights[0].position_view = light_position_vs.into();
+        let light_from = glam::Vec3::new(-3.0, -3.0, 4.0);
+        let light_from_vs = (view * light_from.extend(1.0)).truncate();
+        let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
+        let light_to_vs = (view * light_to.extend(1.0)).truncate();
+
+        let light_direction = (light_to - light_from).normalize();
+        let light_direction_vs = (light_to_vs - light_from_vs).normalize();
+
+        per_frame_data.spot_lights[0].position_world = light_from.into();
+        per_frame_data.spot_lights[0].position_view = light_from_vs.into();
         per_frame_data.spot_lights[0].direction_world = light_direction.into();
         per_frame_data.spot_lights[0].direction_view = light_direction_vs.into();
         per_frame_data.spot_lights[0].spotlight_half_angle = 15.0 * (std::f32::consts::PI / 180.0);
@@ -607,18 +555,26 @@ impl GameRenderer {
         per_frame_data.spot_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
         per_frame_data.spot_lights[0].intensity = 1.0;
 
+        for i in 0..per_frame_data.point_light_count {
+            let light = &per_frame_data.point_lights[i as usize];
+            self.debug_draw_3d.add_sphere(
+                light.position_world,
+                0.5,
+                light.color,
+                12
+            );
+        }
 
-        let range = per_frame_data.spot_lights[0].range;
-        let half_angle = per_frame_data.spot_lights[0].spotlight_half_angle;
-        self.debug_draw_3d.add_cone(
-            light_position,
-            light_position + (range * light_direction),
-            range * half_angle.tan(),
-            glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
-            8
-        );
-
-
+        for i in 0..per_frame_data.spot_light_count {
+            let light = &per_frame_data.spot_lights[i as usize];
+            self.debug_draw_3d.add_cone(
+                light.position_world,
+                light.position_world + (light.range * light.direction_world),
+                light.range * light.spotlight_half_angle.tan(),
+                light.color,
+                8
+            );
+        }
 
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
         self.mesh_material_per_frame_data.flush();

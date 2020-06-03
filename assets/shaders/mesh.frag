@@ -152,13 +152,13 @@ struct LightingResult
 LightingResult point_light(
     PointLight light,
     MaterialData material,
-    vec3 surface_to_eye_dir,
-    vec3 surface_position,
-    vec3 normal
+    vec3 surface_to_eye_dir_vs,
+    vec3 surface_position_vs,
+    vec3 normal_vs
 ) {
     // Get the distance to the light and normalize the surface_to_light direction. (Not
     // using normalize since we want the distance too)
-    vec3 surface_to_light_dir = light.position_view - surface_position;
+    vec3 surface_to_light_dir = light.position_view - surface_position_vs;
     float distance = length(surface_to_light_dir);
     surface_to_light_dir = surface_to_light_dir / distance;
 
@@ -167,8 +167,8 @@ LightingResult point_light(
 
     // Calculate lighting components
     LightingResult result;
-    result.diffuse = diffuse_light(surface_to_light_dir, normal, light.color) * attenuation * light.intensity;
-    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir, normal, light.color) * attenuation * light.intensity;
+    result.diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * attenuation * light.intensity;
+    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * attenuation * light.intensity;
     return result;
 }
 
@@ -197,24 +197,28 @@ float spotlight_cone_falloff(
 LightingResult spot_light(
     SpotLight light,
     MaterialData material,
-    vec3 surface_to_eye_dir,
-    vec3 surface_position,
-    vec3 normal
+    vec3 surface_to_eye_dir_vs,
+    vec3 surface_position_vs,
+    vec3 normal_vs
 ) {
     // Get the distance to the light and normalize the surface_to_light direction. (Not
     // using normalize since we want the distance too)
-    vec3 surface_to_light_dir = light.position_view - surface_position;
+    vec3 surface_to_light_dir = light.position_view - surface_position_vs;
     float distance = length(surface_to_light_dir);
     surface_to_light_dir = surface_to_light_dir / distance;
 
     // Figure out the falloff of light intensity due to distance from light source
     float attenuation = attenuate_light(light.range, distance);
-    float spotlight_direction_intensity = spotlight_cone_falloff(surface_to_light_dir, light.direction_view, light.spotlight_half_angle);
+    float spotlight_direction_intensity = spotlight_cone_falloff(
+        surface_to_light_dir,
+        light.direction_view,
+        light.spotlight_half_angle
+    );
 
     // Calculate lighting components
     LightingResult result;
-    result.diffuse = diffuse_light(surface_to_light_dir, normal, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
-    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir, normal, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
+    result.diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
+    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
     return result;
 }
 
@@ -265,7 +269,7 @@ void main() {
 
 
     vec3 eye_position_vs = vec3(0, 0, 0);
-    vec3 surface_to_eye = normalize(eye_position_vs - in_position_vs);
+    vec3 surface_to_eye_vs = normalize(eye_position_vs - in_position_vs);
     LightingResult total_result = {vec4(0,0,0,0), vec4(0,0,0,0)};
     
     // Point Lights
@@ -275,7 +279,7 @@ void main() {
         LightingResult iter_result = point_light(
             per_frame_data.point_lights[i], 
             material_data_ubo.data, 
-            surface_to_eye, 
+            surface_to_eye_vs,
             in_position_vs, 
             in_normal_vs
         );
@@ -291,7 +295,7 @@ void main() {
         LightingResult iter_result = spot_light(
             per_frame_data.spot_lights[i],
             material_data_ubo.data,
-            surface_to_eye,
+            surface_to_eye_vs,
             in_position_vs,
             in_normal_vs
         );

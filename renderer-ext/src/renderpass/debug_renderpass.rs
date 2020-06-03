@@ -144,17 +144,28 @@ impl DebugDraw3DResource {
         for index in 0..segments {
             // Rotate around whole sphere (2pi)
             let fraction = (index as f32 / segments as f32) * std::f32::consts::PI * 2.0;
-            //let transform = world_tranform * glam::Mat4::from_rotation_z(fraction) * glam::Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2);
-
             let x_dir = glam::Vec3::new(fraction.cos(), fraction.sin(), 0.0);
             let y_dir = glam::Vec3::unit_z();
 
-
-            self.add_circle_xy(center, x_dir, y_dir, radius, glam::Vec4::new(0.0, 1.0, 0.0, 1.0), segments);
+            self.add_circle_xy(
+                center,
+                x_dir,
+                y_dir,
+                radius,
+                color,
+                segments
+            );
         }
 
         // Draw the center horizontal ring
-        self.add_circle_xy(center, glam::Vec3::unit_x(), glam::Vec3::unit_y(), radius, glam::Vec4::new(0.0, 0.0, 1.0, 1.0), segments);
+        self.add_circle_xy(
+            center,
+            glam::Vec3::unit_x(),
+            glam::Vec3::unit_y(),
+            radius,
+            color,
+            segments
+        );
 
         // Draw the off-center horizontal rings
         for index in 1..(segments / 2) {
@@ -164,11 +175,23 @@ impl DebugDraw3DResource {
             let z_offset = radius * fraction.sin() * glam::Vec3::unit_z();
 
             //let transform = glam::Mat4::from_translation(center + glam::Vec3::new(0.0, 0.0, z_offset));
-            self.add_circle_xy(center + z_offset, glam::Vec3::unit_x(), glam::Vec3::unit_y(), r, glam::Vec4::new(1.0, 0.0, 0.0, 1.0), segments);
+            self.add_circle_xy(
+                center + z_offset,
+                glam::Vec3::unit_x(),
+                glam::Vec3::unit_y(),
+                r,
+                color,
+                segments
+            );
 
-
-            //let transform = glam::Mat4::from_translation(center - glam::Vec3::new(0.0, 0.0, z_offset));
-            self.add_circle_xy(center - z_offset, glam::Vec3::unit_x(), glam::Vec3::unit_y(), r, glam::Vec4::new(1.0, 0.0, 0.0, 1.0), segments);
+            self.add_circle_xy(
+                center - z_offset,
+                glam::Vec3::unit_x(),
+                glam::Vec3::unit_y(),
+                r,
+                color,
+                segments
+            );
         }
     }
 
