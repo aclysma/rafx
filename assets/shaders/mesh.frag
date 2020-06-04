@@ -112,7 +112,7 @@ vec4 diffuse_light(
     return light_color * NdotL;
 }
 
-vec4 specular_light(
+vec4 specular_light_phong(
     vec3 surface_to_light_dir, 
     vec3 surface_to_eye_dir, 
     vec3 normal, 
@@ -126,6 +126,37 @@ vec4 specular_light(
 
     // Raise to a power to get the specular effect on a narrow viewing angle
     return light_color * pow(RdotV, 4.0); // hardcode a spec power, will switch to BSDF later
+}
+
+vec4 specular_light_blinn_phong(
+    vec3 surface_to_light_dir,
+    vec3 surface_to_eye_dir,
+    vec3 normal,
+    vec4 light_color
+) {
+    // Calculate the angle that light might reflect at
+    vec3 halfway_dir = normalize(surface_to_light_dir + surface_to_eye_dir);
+
+    // Dot the reflection with the view angle
+    float RdotV = max(dot(normal, halfway_dir), 0);
+
+    // Raise to a power to get the specular effect on a narrow viewing angle
+    return light_color * pow(RdotV, 4.0); // hardcode a spec power, will switch to BSDF later
+}
+
+
+vec4 specular_light(
+    vec3 surface_to_light_dir,
+    vec3 surface_to_eye_dir,
+    vec3 normal,
+    vec4 light_color
+) {
+    return specular_light_blinn_phong(
+        surface_to_light_dir,
+        surface_to_eye_dir,
+        normal,
+        light_color
+    );
 }
 
 float attenuate_light(
@@ -230,7 +261,6 @@ LightingResult directional_light(
     result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * light.intensity;
     return result;
 }
-
 
 void main() {
     // Sample the base color, if it exists

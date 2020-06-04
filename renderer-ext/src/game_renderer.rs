@@ -520,7 +520,7 @@ impl GameRenderer {
         per_frame_data.spot_light_count = 1;
 
 
-        let light_from = glam::Vec3::new(5.0, 0.0, 0.0);
+        let light_from = glam::Vec3::new(-5.0, 0.0, 0.0);
         let light_from_vs = (view * light_from.extend(1.0)).truncate();
         let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
         let light_to_vs = (view * light_to.extend(1.0)).truncate();
