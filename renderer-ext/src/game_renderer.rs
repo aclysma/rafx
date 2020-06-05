@@ -523,11 +523,11 @@ impl GameRenderer {
         let mut per_frame_data = PerFrameDataShaderParam::default();
         per_frame_data.ambient_light = glam::Vec4::new(0.05, 0.05, 0.05, 1.0);
         per_frame_data.directional_light_count = 1;
-        per_frame_data.point_light_count = 1;
+        per_frame_data.point_light_count = 2;
         per_frame_data.spot_light_count = 1;
 
 
-        let light_from = glam::Vec3::new(-5.0, 0.0, 0.0);
+        let light_from = glam::Vec3::new(5.0, 5.0, 5.0);
         let light_from_vs = (view * light_from.extend(1.0)).truncate();
         let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
         let light_to_vs = (view * light_to.extend(1.0)).truncate();
@@ -535,12 +535,12 @@ impl GameRenderer {
         let light_direction_vs = (light_to_vs - light_from_vs).normalize();
         per_frame_data.directional_lights[0].direction_ws = light_direction;
         per_frame_data.directional_lights[0].direction_vs = light_direction_vs;
-        per_frame_data.directional_lights[0].intensity = 1.0;
-        per_frame_data.directional_lights[0].color = glam::Vec4::new(1.0, 0.0, 0.0, 1.0);
+        per_frame_data.directional_lights[0].intensity = 5.0;
+        per_frame_data.directional_lights[0].color = glam::Vec4::new(1.0, 1.0, 1.0, 1.0);
 
         self.debug_draw_3d.add_line(light_from, light_to, glam::Vec4::new(1.0, 1.0, 1.0, 1.0));
 
-        let light_position = glam::Vec3::new(2.268, 0.415, 1.2088);
+        let light_position = glam::Vec3::new(5.0, 5.0, 5.0);
         let light_position_vs = (view * light_position.extend(1.0)).truncate();
         per_frame_data.point_lights[0].position_ws = light_position.into();
         per_frame_data.point_lights[0].position_vs = light_position_vs.into();
@@ -571,7 +571,7 @@ impl GameRenderer {
         per_frame_data.spot_lights[0].spotlight_half_angle = 10.0 * (std::f32::consts::PI / 180.0);
         per_frame_data.spot_lights[0].range = 8.0;
         per_frame_data.spot_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.spot_lights[0].intensity = 1.0;
+        per_frame_data.spot_lights[0].intensity = 100.0;
 /*
         for i in 0..per_frame_data.point_light_count {
             let light = &per_frame_data.point_lights[i as usize];
