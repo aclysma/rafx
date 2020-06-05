@@ -144,7 +144,6 @@ vec4 specular_light_blinn_phong(
     return light_color * pow(RdotV, 4.0); // hardcode a spec power, will switch to BSDF later
 }
 
-
 vec4 specular_light(
     vec3 surface_to_light_dir,
     vec3 surface_to_eye_dir,
@@ -167,14 +166,7 @@ float attenuate_light(
     return 1.0 - smoothstep(light_range * .75, light_range, distance);
 }
 
-
-struct LightingResult
-{
-    vec4 diffuse;
-    vec4 specular;
-};
-
-LightingResult point_light(
+vec4 point_light(
     PointLight light,
     MaterialData material,
     vec3 surface_to_eye_dir_vs,
@@ -191,10 +183,9 @@ LightingResult point_light(
     float attenuation = attenuate_light(light.range, distance);
 
     // Calculate lighting components
-    LightingResult result;
-    result.diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * attenuation * light.intensity;
-    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * attenuation * light.intensity;
-    return result;
+    vec4 diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * attenuation * light.intensity;
+    vec4 specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * attenuation * light.intensity;
+    return diffuse + specular;
 }
 
 float spotlight_cone_falloff(
@@ -219,7 +210,7 @@ float spotlight_cone_falloff(
     return smoothstep(min_cos, max_cos, cos_angle);
 }
 
-LightingResult spot_light(
+vec4 spot_light(
     SpotLight light,
     MaterialData material,
     vec3 surface_to_eye_dir_vs,
@@ -241,13 +232,12 @@ LightingResult spot_light(
     );
 
     // Calculate lighting components
-    LightingResult result;
-    result.diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
-    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
-    return result;
+    vec4 diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
+    vec4 specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * attenuation * light.intensity * spotlight_direction_intensity;
+    return diffuse + specular;
 }
 
-LightingResult directional_light(
+vec4 directional_light(
     DirectionalLight light,
     MaterialData material,
     vec3 surface_to_eye_dir_vs,
@@ -256,11 +246,121 @@ LightingResult directional_light(
 ) {
     vec3 surface_to_light_dir = -light.direction_vs;
 
-    LightingResult result;
-    result.diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * light.intensity;
-    result.specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * light.intensity;
-    return result;
+    vec4 diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * light.intensity;
+    vec4 specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * light.intensity;
+    return diffuse + specular;
 }
+
+
+
+
+// References:
+// https://www.3dgep.com/forward-plus/
+// - Basic framework for forward/deferred/forward+ in non-PBR
+// https://learnopengl.com/PBR/Theory
+// - PBR
+
+const float PI = 3.14159265359;
+
+float distribution_ggx(vec3 N, vec3 H, float roughness)
+{
+    float a      = roughness*roughness;
+    float a2     = a*a;
+    float NdotH  = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+
+    float num   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return num / denom;
+}
+
+float geometry_schlick_ggx(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float num   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return num / denom;
+}
+
+float geometry_smith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2  = geometry_schlick_ggx(NdotV, roughness);
+    float ggx1  = geometry_schlick_ggx(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+vec3 fresnel_schlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+
+
+
+
+
+vec3 point_light_pbr(
+    PointLight light,
+    MaterialData material,
+    vec3 surface_to_eye_dir_vs,
+    vec3 surface_position_vs,
+    vec3 normal_vs,
+    vec3 F0,
+    vec3 base_color,
+    float roughness,
+    float metalness
+) {
+    // Get the distance to the light and normalize the surface_to_light direction. (Not
+    // using normalize since we want the distance too)
+    vec3 surface_to_light_dir_vs = light.position_vs - surface_position_vs;
+    float distance = length(surface_to_light_dir_vs);
+    surface_to_light_dir_vs = surface_to_light_dir_vs / distance;
+
+    vec3 halfway_dir_vs = normalize(surface_to_light_dir_vs + surface_to_eye_dir_vs);
+
+    // Figure out the falloff of light intensity due to distance from light source
+    float attenuation = 1.0 / (distance * distance);
+    vec3 radiance = light.color.rgb * attenuation * light.intensity;
+
+    float NDF = distribution_ggx(normal_vs, halfway_dir_vs, roughness);
+    float G = geometry_smith(normal_vs, surface_to_eye_dir_vs, surface_to_light_dir_vs, roughness);
+    vec3 F = fresnel_schlick(max(dot(halfway_dir_vs, surface_to_eye_dir_vs), 0.0), F0);
+
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metalness;
+
+    vec3 top = NDF * G * F;
+    float bottom = 4.0 * max(dot(normal_vs, surface_to_eye_dir_vs), 0.0) * max(dot(normal_vs, surface_to_light_dir_vs), 0.0);
+    vec3 specular = top / max(bottom, 0.001);
+
+    float NdotL = max(dot(normal_vs, surface_to_light_dir_vs), 0.0);
+    return (kD * base_color / PI + specular) * radiance * NdotL;
+
+//    // Calculate lighting components
+//    vec4 diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * attenuation * light.intensity;
+//    vec4 specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * attenuation * light.intensity;
+//    return diffuse + specular;
+}
+
+
+
+
+//vec3 lighting() {
+//    vec3 F0 = vec3(0.04);
+//    F0 = mix(F0, albedo, metallic);
+//}
+
+
+//GGX for D, the Fresnel-Schlick approximation for F, and the Smith's Schlick-GGX for G.
 
 void main() {
     // Sample the base color, if it exists
@@ -276,6 +376,15 @@ void main() {
         base_color = vec4(1.0, 1.0, 0.0, 1.0);
     }
 
+    // Sample metalness/roughness
+    float metalness = material_data_ubo.data.metallic_factor;
+    float roughness = material_data_ubo.data.roughness_factor;
+    if (material_data_ubo.data.has_metallic_roughness_texture) {
+        vec4 sampled = texture(sampler2D(metallic_roughness_texture, smp), in_uv);
+        metalness *= sampled.r;
+        roughness *= sampled.g;
+    }
+
     // Calculate the normal (use the normal map if it exists)
     vec4 normal_vs;
     if (material_data_ubo.data.has_normal_texture) {
@@ -285,56 +394,96 @@ void main() {
         normal_vs = normalize(vec4(in_normal_vs, 0));
     }
 
+    //TOOD: AO
+
     vec3 eye_position_vs = vec3(0, 0, 0);
     vec3 surface_to_eye_vs = normalize(eye_position_vs - in_position_vs);
-    LightingResult total_result = {vec4(0,0,0,0), vec4(0,0,0,0)};
+
+    // used in fresnel, non-metals use 0.04 and metals use the base color
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, base_color.rgb, vec3(metalness));
     
     // Point Lights
+    vec3 total_light = vec3(0.0);
     for (uint i = 0; i < per_frame_data.point_light_count; ++i) {
         // TODO: Early out by distance?
 
-        LightingResult iter_result = point_light(
-            per_frame_data.point_lights[i], 
-            material_data_ubo.data, 
-            surface_to_eye_vs,
-            in_position_vs, 
-            in_normal_vs
-        );
+//        total_light += point_light(
+//            per_frame_data.point_lights[i],
+//            material_data_ubo.data,
+//            surface_to_eye_vs,
+//            in_position_vs,
+//            in_normal_vs
+//        );
 
-        total_result.diffuse += iter_result.diffuse;
-        total_result.specular += iter_result.specular;
-    }
-
-    // Spot Lights
-    for (uint i = 0; i < per_frame_data.spot_light_count; ++i) {
-        // TODO: Early out by distance?
-
-        LightingResult iter_result = spot_light(
-            per_frame_data.spot_lights[i],
+        total_light += point_light_pbr(
+            per_frame_data.point_lights[i],
             material_data_ubo.data,
             surface_to_eye_vs,
             in_position_vs,
-            in_normal_vs
+            in_normal_vs,
+            F0,
+            base_color.rgb,
+            roughness,
+            metalness
         );
-
-        total_result.diffuse += iter_result.diffuse;
-        total_result.specular += iter_result.specular;
     }
 
-    // directional Lights
-    for (uint i = 0; i < per_frame_data.directional_light_count; ++i) {
-        LightingResult iter_result = directional_light(
-            per_frame_data.directional_lights[i],
-            material_data_ubo.data,
-            surface_to_eye_vs,
-            in_position_vs,
-            in_normal_vs
-        );
+//    // Spot Lights
+//    for (uint i = 0; i < per_frame_data.spot_light_count; ++i) {
+//        // TODO: Early out by distance?
+//
+//        total_light += spot_light(
+//            per_frame_data.spot_lights[i],
+//            material_data_ubo.data,
+//            surface_to_eye_vs,
+//            in_position_vs,
+//            in_normal_vs
+//        ).rgb;
+//    }
+//
+//    // directional Lights
+//    for (uint i = 0; i < per_frame_data.directional_light_count; ++i) {
+//        total_light += directional_light(
+//            per_frame_data.directional_lights[i],
+//            material_data_ubo.data,
+//            surface_to_eye_vs,
+//            in_position_vs,
+//            in_normal_vs
+//        ).rgb;
+//    }
 
-        total_result.diffuse += iter_result.diffuse;
-        total_result.specular += iter_result.specular;
-    }
+//    base_color *= (per_frame_data.ambient_light + total_light);
+//    out_color = emissive_color + base_color;
 
-    base_color *= (per_frame_data.ambient_light + total_result.diffuse + total_result.specular);
-    out_color = emissive_color + base_color;
+    vec3 ambient = per_frame_data.ambient_light.rbg * base_color.rgb; //TODO: Multiply ao in here
+    vec3 lit = total_light * base_color.rgb;
+    vec3 color = ambient + lit + emissive_color.rgb;
+
+
+    // tonemapping
+    vec3 mapped = color.rgb / (color.rgb + vec3(1.0));
+
+    // gamma correction
+    const float gamma = 2.2;
+    //mapped = pow(mapped, vec3(1.0 / gamma));
+
+    // output
+    out_color = vec4(mapped, base_color.a);
+
+
+
+//    out_color = color;
+
+
+//
+//    //TODO: Not sure alpha should be involved here...
+//    //color = color / (color + vec4(1.0));
+//    //color = vec4(pow(color.xyz, vec3(1.0/2.2)), color.w);
+//
+//    out_color = color;
+
+//
+//    //base_color *= (per_frame_data.ambient_light + lighting);
+//    //out_color = emissive_color + base_color;
 }
