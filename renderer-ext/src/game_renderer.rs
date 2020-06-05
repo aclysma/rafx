@@ -495,23 +495,24 @@ impl GameRenderer {
         // Camera Management
         //
         let camera_distance_multiplier = 1.0;
-        // let eye = glam::Vec3::new(
-        //     camera_distance_multiplier * 10.0 * f32::cos(loop_time / 2.0),
-        //     camera_distance_multiplier * 10.0 * f32::sin(loop_time / 2.0),
-        //     camera_distance_multiplier * 5.0,
-        // );
-
         let eye = glam::Vec3::new(
-            -0.67656,
-            -1.0097,
-            1.1479,
+            camera_distance_multiplier * 10.0 * f32::cos(loop_time / 2.0),
+            camera_distance_multiplier * 10.0 * f32::sin(loop_time / 2.0),
+            camera_distance_multiplier * 5.0,
         );
+
+        // let eye = glam::Vec3::new(
+        //     -0.67656,
+        //     -1.0097,
+        //     1.1479,
+        // );
 
         let extents_width = 900;
         let extents_height = 600;
         let aspect_ratio = extents_width as f32 / extents_height as f32;
 
-        let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(2.268, 0.415, 1.2088), glam::Vec3::new(0.0, 0.0, 1.0));
+        //let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(2.268, 0.415, 1.2088), glam::Vec3::new(0.0, 0.0, 1.0));
+        let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 1.0));
         let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.01, 20.0);
         let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
         let view_proj = proj * view;
@@ -545,7 +546,7 @@ impl GameRenderer {
         per_frame_data.point_lights[0].position_vs = light_position_vs.into();
         per_frame_data.point_lights[0].range = 25.0;
         per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.point_lights[0].intensity = 1000.0;
+        per_frame_data.point_lights[0].intensity = 100.0;
 
         let light_position = glam::Vec3::new(0.0, 3.0, 3.0);
         let light_position_vs = (view * light_position.extend(1.0)).truncate();

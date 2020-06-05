@@ -251,61 +251,76 @@ vec4 directional_light(
     return diffuse + specular;
 }
 
-
-
-
 // References:
 // https://www.3dgep.com/forward-plus/
 // - Basic framework for forward/deferred/forward+ in non-PBR
 // https://learnopengl.com/PBR/Theory
 // - PBR
+// https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
 
 const float PI = 3.14159265359;
 
-float distribution_ggx(vec3 N, vec3 H, float roughness)
-{
-    float a      = roughness*roughness;
-    float a2     = a*a;
-    float NdotH  = max(dot(N, H), 0.0);
-    float NdotH2 = NdotH*NdotH;
+//
+// Normal distribution function approximates the relative surface area where microfacets are aligned to the halfway
+// vector, producing specular-like results. (GGX/Trowbridge-Reitz)
+//
+float ndf_ggx(
+    vec3 n,
+    vec3 h,
+    float roughness
+) {
+    // disney/epic squre roughness
+    // https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
+    float a = roughness * roughness;
+    float a2 = a * a;
 
-    float num   = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
-
-    return num / denom;
+    float n_dot_h = max(dot(n, h), 0.0);
+    float bottom_part = (n_dot_h * n_dot_h * (a2 - 1.0) + 1.0);
+    float bottom = PI * bottom_part * bottom_part;
+    return a2 / bottom;
 }
 
-float geometry_schlick_ggx(float NdotV, float roughness)
-{
-    float r = (roughness + 1.0);
-    float k = (r*r) / 8.0;
-
-    float num   = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-
-    return num / denom;
+//
+// geometric attenuation, approximates light rays being trapped within micro-surfaces of the material
+//
+float geometric_attenuation_schlick_ggx(
+    float dot_product,
+    float k
+) {
+    float bottom = (dot_product * (1.0 - k)) + k;
+    return dot_product / bottom;
 }
 
-float geometry_smith(vec3 N, vec3 V, vec3 L, float roughness)
-{
-    float NdotV = max(dot(N, V), 0.0);
-    float NdotL = max(dot(N, L), 0.0);
-    float ggx2  = geometry_schlick_ggx(NdotV, roughness);
-    float ggx1  = geometry_schlick_ggx(NdotL, roughness);
+float geometric_attenuation_smith(
+    vec3 n,
+    vec3 v,
+    vec3 l,
+    float roughness
+) {
+    // This is appropriate for analytic lights, not image-based
+    float r_plus_1 = (roughness + 1.0);
+    float k = r_plus_1 * r_plus_1 / 8.0;
 
-    return ggx1 * ggx2;
+    float v_factor = geometric_attenuation_schlick_ggx(max(dot(n, v), 0.0), k);
+    float l_factor = geometric_attenuation_schlick_ggx(max(dot(n, l), 0.0), k);
+    return v_factor * l_factor;
 }
 
-vec3 fresnel_schlick(float cosTheta, vec3 F0)
-{
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+//
+// fresnel_base is specular reflectance at normal incidence
+//
+vec3 fresnel_schlick(
+    vec3 v,
+    vec3 h,
+    vec3 fresnel_base
+) {
+    float v_dot_h = max(dot(v, h), 0.0);
+
+    // approximation for pow(1 - v_dot_h, 5)
+    // https://seblagarde.wordpress.com/2012/06/03/spherical-gaussien-approximation-for-blinn-phong-phong-and-fresnel/
+    // https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
+    return fresnel_base + (1.0 - fresnel_base) * exp2((-5.55473 * v_dot_h - 6.98316) * v_dot_h);
 }
-
-
-
-
-
 
 vec3 point_light_pbr(
     PointLight light,
@@ -330,37 +345,31 @@ vec3 point_light_pbr(
     float attenuation = 1.0 / (distance * distance);
     vec3 radiance = light.color.rgb * attenuation * light.intensity;
 
-    float NDF = distribution_ggx(normal_vs, halfway_dir_vs, roughness);
-    float G = geometry_smith(normal_vs, surface_to_eye_dir_vs, surface_to_light_dir_vs, roughness);
-    vec3 F = fresnel_schlick(max(dot(halfway_dir_vs, surface_to_eye_dir_vs), 0.0), F0);
+    float NDF = ndf_ggx(normal_vs, halfway_dir_vs, roughness);
+    float G = geometric_attenuation_smith(normal_vs, surface_to_eye_dir_vs, surface_to_light_dir_vs, roughness);
+    vec3 F = fresnel_schlick(surface_to_eye_dir_vs, halfway_dir_vs, F0);
 
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metalness;
+    // fresnel defines ratio of light energy that contributes to specular lighting
+    vec3 fresnel_specular = F;
+    vec3 fresnel_diffuse = vec3(1.0) - fresnel_specular;
 
+    // As the surface becomes more metallic, remove the diffuse term
+    fresnel_diffuse *= 1.0 - metalness;
+
+    // Cook-Torrance specular BRDF
+    float n_dot_l = max(dot(normal_vs, surface_to_light_dir_vs), 0.0);
+    float n_dot_v = max(dot(normal_vs, surface_to_eye_dir_vs), 0.0);
     vec3 top = NDF * G * F;
-    float bottom = 4.0 * max(dot(normal_vs, surface_to_eye_dir_vs), 0.0) * max(dot(normal_vs, surface_to_light_dir_vs), 0.0);
+    float bottom = 4.0 * n_dot_v * n_dot_l;
     vec3 specular = top / max(bottom, 0.001);
 
-    float NdotL = max(dot(normal_vs, surface_to_light_dir_vs), 0.0);
-    return (kD * base_color / PI + specular) * radiance * NdotL;
-
-//    // Calculate lighting components
-//    vec4 diffuse = diffuse_light(surface_to_light_dir, normal_vs, light.color) * attenuation * light.intensity;
-//    vec4 specular = specular_light(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color) * attenuation * light.intensity;
-//    return diffuse + specular;
+    return ((fresnel_diffuse * base_color / PI) + specular) * radiance * n_dot_l;
 }
 
 
 
 
-//vec3 lighting() {
-//    vec3 F0 = vec3(0.04);
-//    F0 = mix(F0, albedo, metallic);
-//}
 
-
-//GGX for D, the Fresnel-Schlick approximation for F, and the Smith's Schlick-GGX for G.
 
 void main() {
     // Sample the base color, if it exists
@@ -400,8 +409,8 @@ void main() {
     vec3 surface_to_eye_vs = normalize(eye_position_vs - in_position_vs);
 
     // used in fresnel, non-metals use 0.04 and metals use the base color
-    vec3 F0 = vec3(0.04);
-    F0 = mix(F0, base_color.rgb, vec3(metalness));
+    vec3 fresnel_base = vec3(0.04);
+    fresnel_base = mix(fresnel_base, base_color.rgb, vec3(metalness));
     
     // Point Lights
     vec3 total_light = vec3(0.0);
@@ -422,7 +431,7 @@ void main() {
             surface_to_eye_vs,
             in_position_vs,
             in_normal_vs,
-            F0,
+            fresnel_base,
             base_color.rgb,
             roughness,
             metalness
@@ -456,9 +465,8 @@ void main() {
 //    base_color *= (per_frame_data.ambient_light + total_light);
 //    out_color = emissive_color + base_color;
 
-    vec3 ambient = per_frame_data.ambient_light.rbg * base_color.rgb; //TODO: Multiply ao in here
-    vec3 lit = total_light * base_color.rgb;
-    vec3 color = ambient + lit + emissive_color.rgb;
+    vec3 ambient = per_frame_data.ambient_light.rgb * base_color.rgb; //TODO: Multiply ao in here
+    vec3 color = ambient + total_light + emissive_color.rgb;
 
 
     // tonemapping
