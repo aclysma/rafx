@@ -259,7 +259,7 @@ pub struct VkDebugRenderPass {
 
     pipeline_info: PipelineSwapchainInfo,
 
-    pub frame_buffers: Vec<vk::Framebuffer>,
+    pub frame_buffer: vk::Framebuffer,
 
     // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
@@ -287,13 +287,13 @@ impl VkDebugRenderPass {
         //
         // Renderpass Resources
         //
-        let frame_buffers = Self::create_framebuffers(
+        let frame_buffer = Self::create_framebuffers(
             &device_context.device(),
-            &swapchain.swapchain_image_views,
+            swapchain.color_image_view,
             swapchain.depth_image_view,
             &swapchain.swapchain_info,
             &pipeline_info.renderpass.get_raw(),
-        );
+        )?;
 
         let command_buffers = Self::create_command_buffers(
             &device_context.device(),
@@ -313,7 +313,7 @@ impl VkDebugRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             pipeline_info,
-            frame_buffers,
+            frame_buffer,
             command_pool,
             command_buffers,
             vertex_buffers,
@@ -340,30 +340,23 @@ impl VkDebugRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
-        swapchain_image_views: &Vec<vk::ImageView>,
+        color_image_view: vk::ImageView,
         depth_image_view: vk::ImageView,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
-    ) -> Vec<vk::Framebuffer> {
-        swapchain_image_views
-            .iter()
-            .map(|&swapchain_image_view| {
-                let framebuffer_attachments = [swapchain_image_view, depth_image_view];
-                let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
-                    .render_pass(*renderpass)
-                    .attachments(&framebuffer_attachments)
-                    .width(swapchain_info.extents.width)
-                    .height(swapchain_info.extents.height)
-                    .layers(1);
+    ) -> VkResult<vk::Framebuffer> {
+        let framebuffer_attachments = [color_image_view, depth_image_view];
+        let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
+            .render_pass(*renderpass)
+            .attachments(&framebuffer_attachments)
+            .width(swapchain_info.extents.width)
+            .height(swapchain_info.extents.height)
+            .layers(1);
 
-                unsafe {
-                    //TODO: Pass this error up
-                    logical_device
-                        .create_framebuffer(&frame_buffer_create_info, None)
-                        .unwrap()
-                }
-            })
-            .collect()
+        unsafe {
+            logical_device
+                .create_framebuffer(&frame_buffer_create_info, None)
+        }
     }
 
     fn create_command_buffers(
@@ -383,7 +376,7 @@ impl VkDebugRenderPass {
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
-        framebuffer: &vk::Framebuffer,
+        framebuffer: vk::Framebuffer,
         pipeline: &vk::Pipeline,
         pipeline_layout: &vk::PipelineLayout,
         command_buffer: &vk::CommandBuffer,
@@ -472,7 +465,7 @@ impl VkDebugRenderPass {
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(*renderpass)
-            .framebuffer(*framebuffer)
+            .framebuffer(framebuffer)
             .render_area(vk::Rect2D {
                 offset: vk::Offset2D { x: 0, y: 0 },
                 extent: swapchain_info.extents.clone(),
@@ -543,7 +536,7 @@ impl VkDebugRenderPass {
             &self.device_context,
             &self.swapchain_info,
             &self.pipeline_info.renderpass.get_raw(),
-            &self.frame_buffers[present_index],
+            self.frame_buffer,
             &self.pipeline_info.pipeline.get_raw().pipeline,
             &self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
@@ -575,9 +568,7 @@ impl Drop for VkDebugRenderPass {
 
             device.destroy_command_pool(self.command_pool, None);
 
-            for frame_buffer in &self.frame_buffers {
-                device.destroy_framebuffer(*frame_buffer, None);
-            }
+            device.destroy_framebuffer(self.frame_buffer, None);
         }
 
         log::trace!("destroyed VkSpriteRenderPass");

@@ -854,6 +854,7 @@ impl Default for AttachmentFormat {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub enum Format {
     UNDEFINED,
     R4G4_UNORM_PACK8,

@@ -184,7 +184,7 @@ impl Drop for VkBuffer {
             if let Some(raw) = &self.raw {
                 self.device_context
                     .allocator()
-                    .destroy_buffer(raw.buffer, &raw.allocation);
+                    .destroy_buffer(raw.buffer, &raw.allocation).unwrap();
             }
         }
 

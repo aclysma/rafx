@@ -115,7 +115,7 @@ impl Drop for VkImage {
             if let Some(raw) = &self.raw {
                 self.device_context
                     .allocator()
-                    .destroy_image(raw.image, &raw.allocation);
+                    .destroy_image(raw.image, &raw.allocation).unwrap();
             }
         }
 

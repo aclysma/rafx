@@ -75,13 +75,13 @@ mod fence;
 /// 1x, 2x, 4x, etc. antialiasing
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MsaaLevel {
-    Sample1 = 1,
-    Sample2 = 2,
-    Sample4 = 4,
-    Sample8 = 8,
-    Sample16 = 16,
-    Sample32 = 32,
-    Sample64 = 64,
+    Sample1,
+    Sample2,
+    Sample4,
+    Sample8,
+    Sample16,
+    Sample32,
+    Sample64,
 }
 
 impl Default for MsaaLevel {
@@ -93,13 +93,13 @@ impl Default for MsaaLevel {
 impl Into<vk::SampleCountFlags> for MsaaLevel {
     fn into(self) -> SampleCountFlags {
         match self {
-            Sample1 => vk::SampleCountFlags::TYPE_1,
-            Sample2 => vk::SampleCountFlags::TYPE_2,
-            Sample4 => vk::SampleCountFlags::TYPE_4,
-            Sample8 => vk::SampleCountFlags::TYPE_8,
-            Sample16 => vk::SampleCountFlags::TYPE_16,
-            Sample32 => vk::SampleCountFlags::TYPE_32,
-            Sample64 => vk::SampleCountFlags::TYPE_64,
+            MsaaLevel::Sample1 => vk::SampleCountFlags::TYPE_1,
+            MsaaLevel::Sample2 => vk::SampleCountFlags::TYPE_2,
+            MsaaLevel::Sample4 => vk::SampleCountFlags::TYPE_4,
+            MsaaLevel::Sample8 => vk::SampleCountFlags::TYPE_8,
+            MsaaLevel::Sample16 => vk::SampleCountFlags::TYPE_16,
+            MsaaLevel::Sample32 => vk::SampleCountFlags::TYPE_32,
+            MsaaLevel::Sample64 => vk::SampleCountFlags::TYPE_64,
         }
     }
 }

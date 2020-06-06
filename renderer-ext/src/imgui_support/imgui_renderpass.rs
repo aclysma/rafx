@@ -113,6 +113,7 @@ impl VkImGuiRenderPass {
 
         let frame_buffers = Self::create_framebuffers(
             device_context.device(),
+            swapchain.color_image_view,
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
             &pipeline_resources.renderpass,
@@ -319,19 +320,21 @@ impl VkImGuiRenderPass {
         // Skip depth/stencil testing
 
         let multisample_state_info = vk::PipelineMultisampleStateCreateInfo::builder()
-            .rasterization_samples(vk::SampleCountFlags::TYPE_1);
+            .rasterization_samples(swapchain_info.msaa_level.into());
 
         // Applies to the current framebuffer
-        let color_blend_attachment_states = [vk::PipelineColorBlendAttachmentState::builder()
-            .color_write_mask(vk::ColorComponentFlags::all())
-            .blend_enable(true)
-            .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
-            .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
-            .color_blend_op(vk::BlendOp::ADD)
-            .src_alpha_blend_factor(vk::BlendFactor::ONE)
-            .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
-            .alpha_blend_op(vk::BlendOp::ADD)
-            .build()];
+        let color_blend_attachment_states = [
+            vk::PipelineColorBlendAttachmentState::builder()
+                .color_write_mask(vk::ColorComponentFlags::all())
+                .blend_enable(true)
+                .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
+                .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+                .color_blend_op(vk::BlendOp::ADD)
+                .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                .alpha_blend_op(vk::BlendOp::ADD)
+                .build(),
+        ];
 
         // Applies globally
         let color_blend_state_info = vk::PipelineColorBlendStateCreateInfo::builder()
@@ -358,43 +361,71 @@ impl VkImGuiRenderPass {
         swapchain_info: &SwapchainInfo,
         mut f: F,
     ) -> VkResult<()> {
-        let renderpass_attachments = [vk::AttachmentDescription::builder()
-            .format(swapchain_info.surface_format.format)
-            .samples(vk::SampleCountFlags::TYPE_1)
-            .load_op(vk::AttachmentLoadOp::LOAD)
-            .store_op(vk::AttachmentStoreOp::STORE)
-            .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-            .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-            .initial_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-            .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-            .build()];
+        let renderpass_attachments = [
+            vk::AttachmentDescription::builder()
+                .format(swapchain_info.color_format)
+                .samples(swapchain_info.msaa_level.into())
+                .load_op(vk::AttachmentLoadOp::LOAD)
+                .store_op(vk::AttachmentStoreOp::STORE)
+                .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+                .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+                .initial_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                .build(),
 
-        let color_attachment_refs = [vk::AttachmentReference {
-            attachment: 0,
-            layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-        }];
+            vk::AttachmentDescription::builder()
+                .format(swapchain_info.surface_format.format)
+                .samples(vk::SampleCountFlags::TYPE_1)
+                .load_op(vk::AttachmentLoadOp::DONT_CARE)
+                .store_op(vk::AttachmentStoreOp::STORE)
+                .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+                .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+                .initial_layout(vk::ImageLayout::UNDEFINED)
+                .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+                .build(),
+        ];
 
-        let subpasses = [vk::SubpassDescription::builder()
-            .color_attachments(&color_attachment_refs)
-            .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-            .build()];
+        let color_attachment_refs = [
+            vk::AttachmentReference {
+                attachment: 0,
+                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+            }
+        ];
 
-        let dependencies = [vk::SubpassDependency::builder()
-            .src_subpass(vk::SUBPASS_EXTERNAL)
-            .dst_subpass(0)
-            .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-            .src_access_mask(vk::AccessFlags::default())
-            .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-            .dst_access_mask(
-                vk::AccessFlags::COLOR_ATTACHMENT_READ | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-            )
-            .build()];
+        let resolve_attachment_refs = [
+            vk::AttachmentReference {
+                attachment: 1,
+                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+            }
+        ];
+
+        let subpasses = [
+            vk::SubpassDescription::builder()
+                .color_attachments(&color_attachment_refs)
+                .resolve_attachments(&resolve_attachment_refs)
+                .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+                .build()
+        ];
+
+        let dependencies = [
+            vk::SubpassDependency::builder()
+                .src_subpass(vk::SUBPASS_EXTERNAL)
+                .dst_subpass(0)
+                .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+                .src_access_mask(vk::AccessFlags::default())
+                .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+                .dst_access_mask(
+                    vk::AccessFlags::COLOR_ATTACHMENT_READ | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+                )
+                .build()
+        ];
 
         let renderpass_create_info = vk::RenderPassCreateInfo::builder()
             .attachments(&renderpass_attachments)
             .subpasses(&subpasses)
             .dependencies(&dependencies);
 
+        println!("create_renderpass_create_info returned");
         f(&renderpass_create_info)
     }
 
@@ -500,6 +531,7 @@ impl VkImGuiRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
+        color_image_view: vk::ImageView,
         swapchain_image_views: &Vec<vk::ImageView>,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
@@ -507,7 +539,7 @@ impl VkImGuiRenderPass {
         swapchain_image_views
             .iter()
             .map(|&swapchain_image_view| {
-                let framebuffer_attachments = [swapchain_image_view];
+                let framebuffer_attachments = [color_image_view, swapchain_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)

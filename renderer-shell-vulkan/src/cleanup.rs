@@ -70,7 +70,7 @@ impl<T: VkResource> VkResourceDropSink<T> {
     pub fn on_frame_complete(
         &mut self,
         device_context: &VkDeviceContext,
-    ) {
+    ) -> VkResult<()> {
         self.frame_index += Wrapping(1);
 
         // Determine how many resources we should drain
@@ -93,9 +93,11 @@ impl<T: VkResource> VkResourceDropSink<T> {
             .collect();
         for mut resource_to_drop in resources_to_drop {
             unsafe {
-                T::destroy(device_context, resource_to_drop.resource);
+                T::destroy(device_context, resource_to_drop.resource)?;
             }
         }
+
+        Ok(())
     }
 
     /// Immediately destroy everything. We assume the device is idle and nothing is in flight.
@@ -370,15 +372,16 @@ impl CombinedDropSink {
     pub fn on_frame_complete(
         &mut self,
         device_context: &VkDeviceContext,
-    ) {
-        self.image_views.on_frame_complete(device_context);
-        self.images.on_frame_complete(device_context);
-        self.buffers.on_frame_complete(device_context);
-        self.pipelines.on_frame_complete(device_context);
-        self.render_passes.on_frame_complete(device_context);
-        self.pipeline_layouts.on_frame_complete(device_context);
-        self.descriptor_sets.on_frame_complete(device_context);
-        self.shader_modules.on_frame_complete(device_context);
+    ) -> VkResult<()> {
+        self.image_views.on_frame_complete(device_context)?;
+        self.images.on_frame_complete(device_context)?;
+        self.buffers.on_frame_complete(device_context)?;
+        self.pipelines.on_frame_complete(device_context)?;
+        self.render_passes.on_frame_complete(device_context)?;
+        self.pipeline_layouts.on_frame_complete(device_context)?;
+        self.descriptor_sets.on_frame_complete(device_context)?;
+        self.shader_modules.on_frame_complete(device_context)?;
+        Ok(())
     }
 
     pub fn destroy(

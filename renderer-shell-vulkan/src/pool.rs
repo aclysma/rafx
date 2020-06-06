@@ -108,7 +108,7 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
     pub fn update(
         &mut self,
         device: &ash::Device,
-    ) {
+    ) -> VkResult<()> {
         self.frame_index += Wrapping(1);
 
         // Determine how many pools we can drain
@@ -127,11 +127,13 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
         let pools_to_reset: Vec<_> = self.in_flight_pools.drain(0..pools_to_drain).collect();
         for mut pool_to_reset in pools_to_reset {
             unsafe {
-                T::reset(device, &mut pool_to_reset.pool);
+                T::reset(device, &mut pool_to_reset.pool)?;
             }
 
             self.reset_pools.push(pool_to_reset.pool);
         }
+
+        Ok(())
     }
 
     /// Immediately destroy everything. We assume the device is idle and nothing is in flight.
@@ -141,7 +143,7 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
         device: &ash::Device,
     ) -> VkResult<()> {
         unsafe {
-            device.device_wait_idle();
+            device.device_wait_idle()?;
         }
 
         for pool in self.in_flight_pools.drain(..) {

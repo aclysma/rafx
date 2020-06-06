@@ -3,14 +3,25 @@
         attachments: [
             (
                 flags: None,
-                format: MatchSwapchain,
-                samples: SampleCount1,
+                format: MatchColorAttachment,
+                samples: MatchSwapchain,
                 load_op: Clear,
                 store_op: Store,
                 stencil_load_op: DontCare,
                 stencil_store_op: DontCare,
                 initial_layout: Undefined,
-                final_layout: PresentSrcKhr,
+                final_layout: ColorAttachmentOptimal,
+            ),
+            (
+                flags: None,
+                format: MatchDepthAttachment,
+                samples: MatchSwapchain,
+                load_op: Clear,
+                store_op: Store,
+                stencil_load_op: DontCare,
+                stencil_store_op: DontCare,
+                initial_layout: Undefined,
+                final_layout: DepthStencilAttachmentOptimal,
             ),
         ],
         subpasses: [
@@ -24,7 +35,12 @@
                     ),
                 ],
                 resolve_attachments: [],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(
+                    (
+                        attachment: Index(1),
+                        layout: DepthStencilAttachmentOptimal
+                    )
+                ),
             ),
         ],
         dependencies: [
@@ -73,7 +89,7 @@
         line_width: 1,
     ),
     multisample_state: (
-        rasterization_samples: SampleCount1,
+        rasterization_samples: MatchSwapchain,
         sample_shading_enable: false,
         min_sample_shading: 0,
         sample_mask: None,
