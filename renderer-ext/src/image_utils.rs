@@ -293,6 +293,15 @@ pub fn enqueue_load_images(
             &image.extent,
         );
 
+        cmd_image_memory_barrier(
+            device_context.device(),
+            upload.transfer_command_buffer(),
+            &[image.image()],
+            ImageMemoryBarrierType::PostUploadTransferQueue,
+            transfer_queue_family_index,
+            dst_queue_family_index,
+        );
+
         if generate_mips {
             // Generating mipmaps includes image barriers, so this function will handle writing the
             // image barriers required to pass from the transfer queue to the dst queue
@@ -305,15 +314,6 @@ pub fn enqueue_load_images(
                 mip_level_count
             );
         } else {
-            cmd_image_memory_barrier(
-                device_context.device(),
-                upload.transfer_command_buffer(),
-                &[image.image()],
-                ImageMemoryBarrierType::PostUploadTransferQueue,
-                transfer_queue_family_index,
-                dst_queue_family_index,
-            );
-
             cmd_image_memory_barrier(
                 device_context.device(),
                 upload.dst_command_buffer(),
@@ -346,7 +346,7 @@ fn generate_mips_for_image(
 
     transition_for_mipmap(
         device_context.device(),
-        upload.transfer_command_buffer(),
+        upload.dst_command_buffer(),
         image.image(),
         vk::AccessFlags::empty(),
         vk::AccessFlags::TRANSFER_READ,
@@ -355,14 +355,14 @@ fn generate_mips_for_image(
         vk::PipelineStageFlags::TOP_OF_PIPE, // ignored, we are acquiring resources from the transfer queue
         vk::PipelineStageFlags::TRANSFER,
         transfer_queue_family_index,
-        transfer_queue_family_index,
+        dst_queue_family_index,
         &first_mip_range
     );
 
     do_generate_mips_for_image(
         device_context,
-        upload.transfer_command_buffer(),
-        transfer_queue_family_index,
+        upload.dst_command_buffer(),
+        dst_queue_family_index,
         &image,
         mip_level_count
     );
@@ -376,7 +376,7 @@ fn generate_mips_for_image(
     // Everything is in transfer read mode, transition it to our final layout
     transition_for_mipmap(
         device_context.device(),
-        upload.transfer_command_buffer(),
+        upload.dst_command_buffer(),
         image.image(),
         vk::AccessFlags::TRANSFER_READ,
         vk::AccessFlags::SHADER_READ,
@@ -384,7 +384,7 @@ fn generate_mips_for_image(
         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         vk::PipelineStageFlags::TRANSFER,
         vk::PipelineStageFlags::FRAGMENT_SHADER,
-        transfer_queue_family_index,
+        dst_queue_family_index,
         dst_queue_family_index,
         &all_mips_range
     );
@@ -400,7 +400,7 @@ fn generate_mips_for_image(
         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         vk::PipelineStageFlags::TRANSFER,
         vk::PipelineStageFlags::FRAGMENT_SHADER,
-        transfer_queue_family_index,
+        dst_queue_family_index,
         dst_queue_family_index,
         &all_mips_range
     );
