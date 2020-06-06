@@ -61,7 +61,7 @@ fn wait_for_asset_to_load<T>(
             }
             LoadStatus::Loading => {
                 log::info!("blocked waiting for asset to load {} {:?}", asset_name, asset_handle);
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                std::thread::sleep(std::time::Duration::from_millis(10));
                 // keep waiting
             }
             LoadStatus::Loaded => {
