@@ -107,6 +107,7 @@ impl VkSwapchain {
             extents,
             depth_format,
             vk::ImageTiling::OPTIMAL,
+            1,
             vk::MemoryPropertyFlags::DEVICE_LOCAL
         )?;
 

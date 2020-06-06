@@ -22,11 +22,52 @@ use std::process::exit;
 use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
+#[derive(Copy, Clone, Debug)]
+pub struct DecodedTextureMipInfo {
+    pub mip_level_count: u32
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum DecodedTextureMips {
+    // No mips - this should only be set if mip_level_count == 1
+    None,
+
+    // Mips should be generated from the loaded data at runtime
+    Runtime(DecodedTextureMipInfo),
+
+    // Mips, if any, are already computed and included in the loaded data
+    Precomputed(DecodedTextureMipInfo)
+}
+
+impl DecodedTextureMips {
+    fn mip_level_count(&self) -> u32 {
+        match self {
+            DecodedTextureMips::None => 1,
+            DecodedTextureMips::Runtime(info) => info.mip_level_count,
+            DecodedTextureMips::Precomputed(info) => info.mip_level_count,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct DecodedTexture {
     pub width: u32,
     pub height: u32,
+    pub mips: DecodedTextureMips,
     pub data: Vec<u8>,
+}
+
+// Provides default settings for an image that's loaded without metadata specifying mip settings
+pub fn default_mip_settings_for_image(width: u32, height: u32) -> DecodedTextureMips {
+    let max_dimension = std::cmp::max(width, height);
+    let mip_level_count = (max_dimension as f32).log2().floor() as u32 + 1;
+    let decoded_texture_mip_info = DecodedTextureMipInfo {
+        mip_level_count
+    };
+
+    DecodedTextureMips::Runtime(decoded_texture_mip_info)
+
+    //DecodedTextureMips::None
 }
 
 pub fn decode_texture(
@@ -36,9 +77,12 @@ pub fn decode_texture(
     let example_image = image::load_from_memory_with_format(buf, format).unwrap();
     let dimensions = example_image.dimensions();
     let example_image = example_image.to_rgba().into_raw();
+    let decoded_texture_mip_info = default_mip_settings_for_image(dimensions.0, dimensions.1);
+
     DecodedTexture {
         width: dimensions.0,
         height: dimensions.1,
+        mips: decoded_texture_mip_info,
         data: example_image,
     }
 }
@@ -94,14 +138,14 @@ pub fn cmd_image_memory_barrier(
             src_access_mask: vk::AccessFlags::TRANSFER_WRITE,
             dst_access_mask: vk::AccessFlags::empty(),
             src_stage: vk::PipelineStageFlags::TRANSFER,
-            dst_stage: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+            dst_stage: vk::PipelineStageFlags::BOTTOM_OF_PIPE, // ignored, this is a release of resources to another queue
             src_layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             dst_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         },
         ImageMemoryBarrierType::PostUploadDstQueue => SyncInfo {
             src_access_mask: vk::AccessFlags::empty(),
             dst_access_mask: vk::AccessFlags::SHADER_READ,
-            src_stage: vk::PipelineStageFlags::TOP_OF_PIPE,
+            src_stage: vk::PipelineStageFlags::TOP_OF_PIPE, // ignored, this is an acquire of resources from another queue
             dst_stage: vk::PipelineStageFlags::FRAGMENT_SHADER,
             src_layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             dst_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
@@ -193,23 +237,43 @@ pub fn enqueue_load_images(
             depth: 1,
         };
 
+        let (mip_level_count, generate_mips) = match decoded_texture.mips {
+            DecodedTextureMips::None => (1, false),
+            DecodedTextureMips::Precomputed(info) => unimplemented!(), //(info.mip_level_count, false),
+            DecodedTextureMips::Runtime(info) => (info.mip_level_count, true)
+        };
+
         // Arbitrary, not sure if there is any requirement
         const REQUIRED_ALIGNMENT: usize = 16;
 
         // Push data into the staging buffer
         let offset = upload.push(&decoded_texture.data, REQUIRED_ALIGNMENT)?;
 
+        let mut image_usage = vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED;
+        if generate_mips {
+            image_usage |= vk::ImageUsageFlags::TRANSFER_SRC;
+        };
+
         // Allocate an image
         let image = ManuallyDrop::new(VkImage::new(
             device_context,
             vk_mem::MemoryUsage::GpuOnly,
-            vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+            image_usage,
             extent,
             vk::Format::R8G8B8A8_UNORM,
             vk::ImageTiling::OPTIMAL,
+            mip_level_count,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
         )?);
 
+        //
+        // Write into the transfer command buffer
+        // - transition destination memory to receive the data
+        // - copy the data
+        // - transition the destination to the graphics queue
+        //
+
+        // This just copies first mip of the chain
         cmd_image_memory_barrier(
             device_context.device(),
             upload.transfer_command_buffer(),
@@ -237,21 +301,225 @@ pub fn enqueue_load_images(
             dst_queue_family_index,
         );
 
+        if generate_mips {
+            generate_mips_for_image(
+                device_context,
+                upload.dst_command_buffer(),
+                transfer_queue_family_index,
+                dst_queue_family_index,
+                dst_queue_family_index,
+                &image,
+                mip_level_count
+            );
+        } else {
+            cmd_image_memory_barrier(
+                device_context.device(),
+                upload.dst_command_buffer(),
+                &[image.image()],
+                ImageMemoryBarrierType::PostUploadDstQueue,
+                transfer_queue_family_index,
+                dst_queue_family_index,
+            );
+        }
+
         images.push(image);
     }
 
-    for image in &images {
-        cmd_image_memory_barrier(
+    Ok(images)
+}
+
+fn generate_mips_for_image(
+    device_context: &VkDeviceContext,
+    command_buffer: vk::CommandBuffer,
+    src_queue_family_index: u32, // queue family from before generating mips
+    mips_queue_family_index: u32, // queue family that will do mip generation
+    dst_queue_family_index: u32, // queue family that will receive the image mips
+    image: &ManuallyDrop<VkImage>,
+    mip_level_count: u32,
+) {
+    log::debug!("Generating mipmaps");
+
+    // Transition mip 0 into read access
+    {
+        let first_mip_range = vk::ImageSubresourceRange::builder()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .layer_count(1)
+            .level_count(1)
+            .build();
+
+        transition_for_mipmap(
             device_context.device(),
-            upload.dst_command_buffer(),
-            &[image.image()],
-            ImageMemoryBarrierType::PostUploadDstQueue,
-            transfer_queue_family_index,
-            dst_queue_family_index,
+            command_buffer,
+            image.image(),
+            vk::AccessFlags::empty(),
+            vk::AccessFlags::TRANSFER_READ,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            vk::PipelineStageFlags::TOP_OF_PIPE, // ignored, we are acquiring resources from the transfer queue
+            vk::PipelineStageFlags::TRANSFER,
+            src_queue_family_index,
+            mips_queue_family_index,
+            &first_mip_range
         );
     }
 
-    Ok(images)
+    // Walk through each mip level n:
+    // - put level n+1 into write mode
+    // - blit from n to n+1
+    // - put level n+1 into read mode
+    for dst_level in 1..mip_level_count {
+        log::debug!("Generating mipmap level {}", dst_level);
+        let src_level = dst_level - 1;
+
+        let src_subresource = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .layer_count(1)
+            .mip_level(src_level);
+
+        let src_offsets = [
+            vk::Offset3D::default(),
+            vk::Offset3D::builder()
+                .x((image.extent.width as i32 >> src_level as i32).max(1))
+                .y((image.extent.height as i32 >> src_level as i32).max(1))
+                .z(1)
+                .build()
+        ];
+
+        let dst_subresource = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .layer_count(1)
+            .mip_level(dst_level);
+
+        let dst_offsets = [
+            vk::Offset3D::default(),
+            vk::Offset3D::builder()
+                .x((image.extent.width as i32 >> dst_level as i32).max(1))
+                .y((image.extent.height as i32 >> dst_level as i32).max(1))
+                .z(1)
+                .build()
+        ];
+
+        println!("src {:?}", src_offsets[1]);
+        println!("dst {:?}", dst_offsets[1]);
+
+        let mip_subrange = vk::ImageSubresourceRange::builder()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .base_mip_level(dst_level)
+            .level_count(1)
+            .layer_count(1);
+
+
+        log::debug!("  transition to write");
+        transition_for_mipmap(
+            device_context.device(),
+            command_buffer,
+            image.image(),
+            vk::AccessFlags::empty(),
+            vk::AccessFlags::TRANSFER_WRITE,
+            vk::ImageLayout::UNDEFINED,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::TRANSFER,
+            mips_queue_family_index,
+            mips_queue_family_index,
+            &mip_subrange
+        );
+
+        let image_blit = vk::ImageBlit::builder()
+            .src_offsets(src_offsets)
+            .src_subresource(*src_subresource)
+            .dst_offsets(dst_offsets)
+            .dst_subresource(*dst_subresource);
+
+        log::debug!("  blit");
+        unsafe {
+            device_context.device().cmd_blit_image(
+                command_buffer,
+                image.image(),
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                image.image(),
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[*image_blit],
+                vk::Filter::LINEAR
+            );
+        }
+
+        log::debug!("  transition to read");
+        transition_for_mipmap(
+            device_context.device(),
+            command_buffer,
+            image.image(),
+            vk::AccessFlags::TRANSFER_WRITE,
+            vk::AccessFlags::TRANSFER_READ,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::TRANSFER,
+            mips_queue_family_index,
+            mips_queue_family_index,
+            &mip_subrange
+        );
+    }
+
+    let all_mips_range = vk::ImageSubresourceRange::builder()
+        .aspect_mask(vk::ImageAspectFlags::COLOR)
+        .layer_count(1)
+        .level_count(mip_level_count)
+        .build();
+
+    // Everything is in transfer read mode, transition it to our final layout
+    transition_for_mipmap(
+        device_context.device(),
+        command_buffer,
+        image.image(),
+        vk::AccessFlags::TRANSFER_READ,
+        vk::AccessFlags::SHADER_READ,
+        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+        vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        vk::PipelineStageFlags::TRANSFER,
+        vk::PipelineStageFlags::FRAGMENT_SHADER,
+        mips_queue_family_index,
+        dst_queue_family_index,
+        &all_mips_range
+    );
+}
+
+fn transition_for_mipmap(
+    logical_device: &ash::Device,
+    command_buffer: vk::CommandBuffer,
+    image: vk::Image,
+    src_access_mask: vk::AccessFlags,
+    dst_access_mask: vk::AccessFlags,
+    src_layout: vk::ImageLayout,
+    dst_layout: vk::ImageLayout,
+    src_stage: vk::PipelineStageFlags,
+    dst_stage: vk::PipelineStageFlags,
+    src_queue_family: u32,
+    dst_queue_family: u32,
+    subresource_range: &vk::ImageSubresourceRange,
+) {
+    let barrier = vk::ImageMemoryBarrier::builder()
+        .src_access_mask(src_access_mask)
+        .dst_access_mask(dst_access_mask)
+        .old_layout(src_layout)
+        .new_layout(dst_layout)
+        .src_queue_family_index(src_queue_family)
+        .dst_queue_family_index(dst_queue_family)
+        .image(image)
+        .subresource_range(*subresource_range)
+        .build();
+
+    unsafe {
+        logical_device.cmd_pipeline_barrier(
+            command_buffer,
+            src_stage,
+            dst_stage,
+            vk::DependencyFlags::BY_REGION,
+            &[],
+            &[],
+            &[barrier],
+        );
+    }
 }
 
 pub fn load_images(

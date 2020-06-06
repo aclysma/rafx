@@ -18,6 +18,9 @@ pub struct VkImageRaw {
 pub struct VkImage {
     pub device_context: VkDeviceContext,
     pub extent: vk::Extent3D,
+    pub format: vk::Format,
+    pub tiling: vk::ImageTiling,
+    pub mip_level_count: u32,
     pub allocation_info: vk_mem::AllocationInfo,
     pub raw: Option<VkImageRaw>,
 }
@@ -42,6 +45,7 @@ impl VkImage {
         extent: vk::Extent3D,
         format: vk::Format,
         tiling: vk::ImageTiling,
+        mip_level_count: u32,
         required_property_flags: vk::MemoryPropertyFlags,
     ) -> VkResult<Self> {
         let allocation_create_info = vk_mem::AllocationCreateInfo {
@@ -57,7 +61,7 @@ impl VkImage {
         let image_create_info = vk::ImageCreateInfo::builder()
             .image_type(vk::ImageType::TYPE_2D)
             .extent(extent)
-            .mip_levels(1)
+            .mip_levels(mip_level_count)
             .array_layers(1)
             .format(format)
             .tiling(tiling)
@@ -77,6 +81,9 @@ impl VkImage {
         Ok(VkImage {
             device_context: device_context.clone(),
             extent,
+            format,
+            tiling,
+            mip_level_count,
             allocation_info,
             raw: Some(raw),
         })

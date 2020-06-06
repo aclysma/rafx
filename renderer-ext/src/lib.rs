@@ -20,7 +20,6 @@ pub mod pipeline_description;
 use legion::prelude::*;
 use glam::Vec3;
 use renderer_base::visibility::DynamicAabbVisibilityNodeHandle;
-use crate::image_utils::DecodedTexture;
 
 //
 // Everything below this point is only being used by the api_design example for prototyping purposes

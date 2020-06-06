@@ -477,9 +477,15 @@ impl UploadManager {
         &self,
         request: LoadRequest<ImageAsset>,
     ) -> VkResult<()> {
+        let mips = crate::image_utils::default_mip_settings_for_image(
+            request.asset.width,
+            request.asset.height
+        );
+
         let decoded_texture = DecodedTexture {
             width: request.asset.width,
             height: request.asset.height,
+            mips,
             data: request.asset.data,
         };
 

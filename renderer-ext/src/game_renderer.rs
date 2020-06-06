@@ -745,7 +745,7 @@ impl GameRendererWithContext {
             .use_vulkan_debug_layer(false)
             .prefer_mailbox_present_mode();
 
-        #[cfg(debug_assertions)]
+        //#[cfg(debug_assertions)]
         {
             context = context.use_vulkan_debug_layer(true);
         }

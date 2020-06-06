@@ -54,7 +54,7 @@
                                         mipmap_mode: Linear,
                                         mip_lod_bias: 0,
                                         min_lod: 0,
-                                        max_lod: 0
+                                        max_lod: 5000
                                     )
                                 ])                                
                             ),

@@ -6,7 +6,6 @@ use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer, VkBu
 use ash::prelude::*;
 use ash::vk;
 use crate::pipeline::image::ImageAsset;
-use crate::image_utils::DecodedTexture;
 use crate::pipeline::shader::ShaderAsset;
 use crate::pipeline::pipeline::{
     PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass,
@@ -545,15 +544,18 @@ impl ResourceManager {
         image_load_handle: LoadHandle,
         image: ManuallyDrop<VkImage>,
     ) -> VkResult<LoadedImage> {
-        let (image_key, image) = self.resources.insert_image(image);
+        let format = image.format.into();
+        let mip_level_count = image.mip_level_count;
+
+        let (image_key, image_arc) = self.resources.insert_image(image);
 
         let image_view_meta = dsc::ImageViewMeta {
             view_type: dsc::ImageViewType::Type2D,
-            format: dsc::Format::R8G8B8A8_UNORM,
+            format,
             subresource_range: dsc::ImageSubresourceRange {
                 aspect_mask: dsc::ImageAspectFlags::Color,
                 base_mip_level: 0,
-                level_count: 1,
+                level_count: mip_level_count,
                 base_array_layer: 0,
                 layer_count: 1,
             },
@@ -571,7 +573,7 @@ impl ResourceManager {
 
         Ok(LoadedImage {
             image_key,
-            image,
+            image: image_arc,
             image_view,
         })
     }

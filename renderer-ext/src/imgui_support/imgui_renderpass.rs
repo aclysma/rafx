@@ -18,6 +18,8 @@ use renderer_shell_vulkan::VkImage;
 
 use super::VkImGuiRenderPassFontAtlas;
 use crate::image_utils::DecodedTexture;
+use crate::image_utils::DecodedTextureMips;
+use crate::image_utils::DecodedTextureMipInfo;
 
 #[derive(Clone, Debug, Copy)]
 struct UniformBufferObject {
@@ -147,6 +149,7 @@ impl VkImGuiRenderPass {
             width: font_atlas.width,
             height: font_atlas.height,
             data: font_atlas.data.clone(),
+            mips: DecodedTextureMips::None,
         };
 
         //let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
