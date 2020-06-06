@@ -11,6 +11,7 @@ use std::collections::hash_map::Entry::Occupied;
 
 use std::ffi::CString;
 use serde::{Serialize, Deserialize};
+use renderer_shell_vulkan::MsaaLevel;
 
 //TODO: Rename all this from description to definition
 
@@ -514,13 +515,16 @@ impl Default for AttachmentDescriptionFlags {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct SwapchainSurfaceInfo {
-    pub surface_format: vk::SurfaceFormatKHR,
-    pub depth_format: vk::Format,
     pub extents: vk::Extent2D,
+    pub msaa_level: MsaaLevel,
+    pub surface_format: vk::SurfaceFormatKHR,
+    pub color_format: vk::Format,
+    pub depth_format: vk::Format,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SampleCountFlags {
+    MatchSwapchain,
     SampleCount1,
     SampleCount2,
     SampleCount4,
@@ -530,9 +534,13 @@ pub enum SampleCountFlags {
     SampleCount64,
 }
 
-impl Into<vk::SampleCountFlags> for SampleCountFlags {
-    fn into(self) -> vk::SampleCountFlags {
+impl SampleCountFlags {
+    fn as_vk_sample_count_flags(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> vk::SampleCountFlags {
         match self {
+            SampleCountFlags::MatchSwapchain => swapchain_surface_info.msaa_level.into(),
             SampleCountFlags::SampleCount1 => vk::SampleCountFlags::TYPE_1,
             SampleCountFlags::SampleCount2 => vk::SampleCountFlags::TYPE_2,
             SampleCountFlags::SampleCount4 => vk::SampleCountFlags::TYPE_4,
@@ -819,8 +827,9 @@ impl Default for DependencyFlags {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentFormat {
-    MatchSwapchain,
-    MatchSwapchainDepth,
+    MatchSurface,
+    MatchColorAttachment,
+    MatchDepthAttachment,
     Format(Format),
 }
 
@@ -830,8 +839,9 @@ impl AttachmentFormat {
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> vk::Format {
         match self {
-            AttachmentFormat::MatchSwapchain => swapchain_surface_info.surface_format.format,
-            AttachmentFormat::MatchSwapchainDepth => swapchain_surface_info.depth_format,
+            AttachmentFormat::MatchSurface => swapchain_surface_info.surface_format.format,
+            AttachmentFormat::MatchColorAttachment => swapchain_surface_info.color_format,
+            AttachmentFormat::MatchDepthAttachment => swapchain_surface_info.depth_format,
             AttachmentFormat::Format(format) => (*format).into(),
         }
     }
@@ -839,7 +849,7 @@ impl AttachmentFormat {
 
 impl Default for AttachmentFormat {
     fn default() -> Self {
-        AttachmentFormat::MatchSwapchain
+        AttachmentFormat::MatchColorAttachment
     }
 }
 
@@ -1443,7 +1453,7 @@ impl AttachmentDescription {
         vk::AttachmentDescription::builder()
             .flags(self.flags.into())
             .format(self.format.as_vk_format(swapchain_surface_info))
-            .samples(self.samples.into())
+            .samples(self.samples.as_vk_sample_count_flags(swapchain_surface_info))
             .load_op(self.load_op.into())
             .store_op(self.store_op.into())
             .stencil_load_op(self.stencil_load_op.into())
@@ -1956,9 +1966,12 @@ pub struct PipelineMultisampleState {
 }
 
 impl PipelineMultisampleState {
-    pub fn as_builder(&self) -> vk::PipelineMultisampleStateCreateInfoBuilder {
+    pub fn as_builder(
+        &self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> vk::PipelineMultisampleStateCreateInfoBuilder {
         let mut builder = vk::PipelineMultisampleStateCreateInfo::builder()
-            .rasterization_samples(self.rasterization_samples.into())
+            .rasterization_samples(self.rasterization_samples.as_vk_sample_count_flags(swapchain_surface_info))
             .sample_shading_enable(self.sample_shading_enable)
             .min_sample_shading(self.min_sample_shading.to_f32())
             .alpha_to_coverage_enable(self.alpha_to_coverage_enable)

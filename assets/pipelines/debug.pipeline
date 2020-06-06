@@ -14,7 +14,7 @@
             ),
             (
                 flags: None,
-                format: MatchSwapchainDepth,
+                format: MatchDepthAttachment,
                 samples: SampleCount1,
                 load_op: Load,
                 store_op: DontCare,

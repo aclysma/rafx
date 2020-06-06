@@ -45,6 +45,7 @@ impl VkImage {
         extent: vk::Extent3D,
         format: vk::Format,
         tiling: vk::ImageTiling,
+        samples: vk::SampleCountFlags,
         mip_level_count: u32,
         required_property_flags: vk::MemoryPropertyFlags,
     ) -> VkResult<Self> {
@@ -68,7 +69,7 @@ impl VkImage {
             .initial_layout(vk::ImageLayout::UNDEFINED)
             .usage(image_usage)
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
-            .samples(vk::SampleCountFlags::TYPE_1);
+            .samples(samples);
 
         //let allocator = device.allocator().clone();
         let (image, allocation, allocation_info) = device_context

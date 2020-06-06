@@ -306,6 +306,12 @@ impl VkDevice {
         })
     }
 
+    fn multisample_level(limits: &vk::PhysicalDeviceLimits, ) {
+        let supported_sample_counts = limits.framebuffer_color_sample_counts & limits.framebuffer_depth_sample_counts;
+
+
+    }
+
     fn choose_physical_device(
         instance: &ash::Instance,
         surface_loader: &ash::extensions::khr::Surface,
@@ -540,10 +546,15 @@ impl VkDevice {
         //TODO: Ideally we would set up validation layers for the logical device too.
 
         let device_extension_names_raw = [khr::Swapchain::name().as_ptr()];
+
+        // Features enabled here by default are supported very widely (only unsupported devices on
+        // vulkan.gpuinfo.org are SwiftShader, a software renderer.
         let features = vk::PhysicalDeviceFeatures::builder()
-            // Not guaranteed by spec, but vulkan.gpuinfo.org has this as 100%. Required for drawing
-            // lines and points
+            .sampler_anisotropy(true)
+            .sample_rate_shading(true)
+            // Used for debug drawing lines/points
             .fill_mode_non_solid(true);
+
         let priorities = [1.0];
 
         let mut queue_families_to_create = std::collections::HashSet::new();

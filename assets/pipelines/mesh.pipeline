@@ -3,7 +3,7 @@
         attachments: [
             (
                 flags: None,
-                format: MatchSwapchain,
+                format: MatchSurface,
                 samples: SampleCount1,
                 load_op: Load,
                 store_op: Store,
@@ -14,7 +14,7 @@
             ),
             (
                 flags: None,
-                format: MatchSwapchainDepth,
+                format: MatchDepthAttachment,
                 samples: SampleCount1,
                 load_op: Clear,
                 store_op: Store,

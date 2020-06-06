@@ -1,5 +1,5 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
-use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener};
+use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel};
 use ash::prelude::VkResult;
 use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass};
 use std::mem::{ManuallyDrop, swap};
@@ -403,9 +403,11 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             .swapchain_created(device_context, swapchain)?;
 
         let swapchain_surface_info = SwapchainSurfaceInfo {
-            surface_format: swapchain.swapchain_info.surface_format,
-            depth_format: swapchain.depth_format,
             extents: swapchain.swapchain_info.extents,
+            msaa_level: swapchain.swapchain_info.msaa_level,
+            surface_format: swapchain.swapchain_info.surface_format,
+            color_format: swapchain.color_format,
+            depth_format: swapchain.depth_format,
         };
 
         self.swapchain_surface_info = Some(swapchain_surface_info.clone());
@@ -464,9 +466,12 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
         log::debug!("game renderer swapchain destroyed");
 
         let swapchain_surface_info = SwapchainSurfaceInfo {
-            surface_format: swapchain.swapchain_info.surface_format,
-            depth_format: swapchain.depth_format,
             extents: swapchain.swapchain_info.extents,
+            msaa_level: swapchain.swapchain_info.msaa_level,
+            surface_format: swapchain.swapchain_info.surface_format,
+            color_format: swapchain.color_format,
+            depth_format: swapchain.depth_format,
+
         };
 
         self.resource_manager
@@ -743,6 +748,7 @@ impl GameRendererWithContext {
     ) -> Result<GameRendererWithContext, VkCreateContextError> {
         let mut context = VkContextBuilder::new()
             .use_vulkan_debug_layer(false)
+            .msaa_level_priority(vec![MsaaLevel::Sample4])
             .prefer_mailbox_present_mode();
 
         //#[cfg(debug_assertions)]

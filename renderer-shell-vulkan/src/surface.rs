@@ -17,7 +17,7 @@ use super::PresentMode;
 use super::PhysicalDeviceType;
 use super::PhysicalSize;
 use super::Window;
-use crate::{VkContext, VkDeviceContext};
+use crate::{VkContext, VkDeviceContext, MsaaLevel};
 //use crate::submit::PendingCommandBuffer;
 
 pub struct FrameInFlight {
@@ -73,6 +73,7 @@ pub struct VkSurface {
     device_context: VkDeviceContext,
     swapchain: ManuallyDrop<VkSwapchain>,
     present_mode_priority: Vec<PresentMode>,
+    msaa_level_priority: Vec<MsaaLevel>,
 
     // Increase until > MAX_FRAMES_IN_FLIGHT, then set to 0, or -1 if no frame drawn yet
     sync_frame_index: usize,
@@ -97,6 +98,7 @@ impl VkSurface {
             window,
             None,
             context.present_mode_priority(),
+            context.msaa_level_priority()
         )?);
 
         if let Some(event_listener) = event_listener {
@@ -113,6 +115,7 @@ impl VkSurface {
             sync_frame_index,
             previous_inner_size,
             present_mode_priority: context.present_mode_priority().clone(),
+            msaa_level_priority: context.msaa_level_priority().clone(),
             //event_listeners,
             torn_down: false,
         })
@@ -290,6 +293,7 @@ impl VkSurface {
             window,
             Some(self.swapchain.swapchain),
             &self.present_mode_priority,
+            &self.msaa_level_priority
         )?);
 
         unsafe {

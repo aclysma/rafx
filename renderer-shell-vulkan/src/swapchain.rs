@@ -7,7 +7,7 @@ use ash::version::{DeviceV1_0, InstanceV1_0};
 use super::VkInstance;
 use super::VkDevice;
 use super::VkQueueFamilyIndices;
-use crate::{PresentMode, VkDeviceContext, VkImage};
+use crate::{PresentMode, VkDeviceContext, VkImage, MsaaLevel};
 use super::Window;
 use std::mem::ManuallyDrop;
 
@@ -19,6 +19,9 @@ pub struct SwapchainInfo {
     pub present_mode: vk::PresentModeKHR,
     pub extents: vk::Extent2D,
     pub image_count: usize,
+    pub msaa_level: MsaaLevel,
+    pub color_format: vk::Format,
+    pub depth_format: vk::Format,
 }
 
 /// Handles setting up the swapchain resources required to present
@@ -31,6 +34,10 @@ pub struct VkSwapchain {
     pub swapchain: vk::SwapchainKHR,
     pub swapchain_images: Vec<vk::Image>,
     pub swapchain_image_views: Vec<vk::ImageView>,
+
+    pub color_format: vk::Format,
+    pub color_image: ManuallyDrop<VkImage>,
+    pub color_image_view: vk::ImageView,
 
     pub depth_format: vk::Format,
     pub depth_image: ManuallyDrop<VkImage>,
@@ -48,7 +55,17 @@ impl VkSwapchain {
         window: &dyn Window,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[PresentMode],
+        msaa_level_priority: &[MsaaLevel]
     ) -> VkResult<VkSwapchain> {
+        let msaa_level = Self::choose_msaa_level(device_context.limits(), msaa_level_priority);
+        log::debug!("MSAA level: {:?}", msaa_level);
+
+        let color_format = Self::choose_color_format(device_context);
+        log::debug!("Color format: {:?}", color_format);
+
+        let depth_format = Self::choose_depth_format(device_context);
+        log::debug!("Depth format: {:?}", color_format);
+
         let (swapchain_info, swapchain_loader, swapchain) = Self::create_swapchain(
             device_context.instance(),
             device_context.physical_device(),
@@ -59,15 +76,28 @@ impl VkSwapchain {
             window,
             old_swapchain,
             present_mode_priority,
+            msaa_level,
+            color_format,
+            depth_format,
         )?;
 
         let swapchain_images = unsafe { swapchain_loader.get_swapchain_images(swapchain)? };
-
         let swapchain_image_views =
-            Self::create_image_views(device_context.device(), &swapchain_info, &swapchain_images)?;
+            Self::create_swapchain_image_views(device_context.device(), &swapchain_info, &swapchain_images)?;
 
-        let depth_format = Self::choose_depth_format(device_context);
-        let (depth_image, depth_image_view) = Self::create_depth_image(device_context, depth_format, &swapchain_info)?;
+        let (color_image, color_image_view) = Self::create_color_image(
+            device_context,
+            color_format,
+            &swapchain_info,
+            msaa_level
+        )?;
+
+        let (depth_image, depth_image_view) = Self::create_depth_image(
+            device_context,
+            depth_format,
+            &swapchain_info,
+            msaa_level
+        )?;
 
         let image_available_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
         let render_finished_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
@@ -80,6 +110,9 @@ impl VkSwapchain {
             swapchain,
             swapchain_images,
             swapchain_image_views,
+            color_format,
+            color_image,
+            color_image_view,
             depth_format,
             depth_image,
             depth_image_view,
@@ -87,168 +120,6 @@ impl VkSwapchain {
             render_finished_semaphores,
             in_flight_fences,
         })
-    }
-
-    fn create_depth_image(
-        device_context: &VkDeviceContext,
-        depth_format: vk::Format,
-        swapchain_info: &SwapchainInfo,
-    ) -> VkResult<(ManuallyDrop<VkImage>, vk::ImageView)> {
-        let extents = vk::Extent3D {
-            width: swapchain_info.extents.width,
-            height: swapchain_info.extents.height,
-            depth: 1,
-        };
-
-        let image = VkImage::new(
-            device_context,
-            vk_mem::MemoryUsage::GpuOnly,
-            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-            extents,
-            depth_format,
-            vk::ImageTiling::OPTIMAL,
-            1,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL
-        )?;
-
-        let subresource_range = vk::ImageSubresourceRange::builder()
-            .aspect_mask(vk::ImageAspectFlags::DEPTH)
-            .base_mip_level(0)
-            .level_count(1)
-            .base_array_layer(0)
-            .layer_count(1);
-
-        let image_view_create_info = vk::ImageViewCreateInfo::builder()
-            .image(image.image())
-            .view_type(vk::ImageViewType::TYPE_2D)
-            .format(depth_format)
-            .subresource_range(*subresource_range);
-
-        let image_view = unsafe {
-            device_context.device().create_image_view(&*image_view_create_info, None)?
-        };
-
-        Ok((ManuallyDrop::new(image), image_view))
-    }
-
-    fn allocate_semaphores_per_frame(
-        device_context: &VkDeviceContext
-    ) -> VkResult<Vec<vk::Semaphore>> {
-        let mut semaphores = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT);
-        for _ in 0..MAX_FRAMES_IN_FLIGHT {
-            let semaphore_create_info = vk::SemaphoreCreateInfo::builder();
-            let semaphore = unsafe {
-                device_context
-                    .device()
-                    .create_semaphore(&semaphore_create_info, None)?
-            };
-            semaphores.push(semaphore);
-        }
-
-        Ok(semaphores)
-    }
-
-    fn allocate_fences_per_frame(device_context: &VkDeviceContext) -> VkResult<Vec<vk::Fence>> {
-        let mut fences = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT);
-        for _ in 0..MAX_FRAMES_IN_FLIGHT {
-            let fence_create_info =
-                vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::SIGNALED);
-
-            let fence = unsafe {
-                device_context
-                    .device()
-                    .create_fence(&fence_create_info, None)?
-            };
-            fences.push(fence);
-        }
-
-        Ok(fences)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn create_swapchain(
-        instance: &ash::Instance,
-        physical_device: ash::vk::PhysicalDevice,
-        logical_device: &ash::Device,
-        surface_loader: &ash::extensions::khr::Surface,
-        surface: ash::vk::SurfaceKHR,
-        queue_family_indices: &VkQueueFamilyIndices,
-        window: &dyn Window,
-        old_swapchain: Option<vk::SwapchainKHR>,
-        present_mode_priority: &[PresentMode],
-    ) -> VkResult<(SwapchainInfo, khr::Swapchain, vk::SwapchainKHR)> {
-        let (available_formats, available_present_modes, surface_capabilities) =
-            Self::query_swapchain_support(physical_device, surface_loader, surface)?;
-
-        let surface_format = Self::choose_format(&available_formats);
-        info!("Surface format: {:?}", surface_format);
-
-        let extents = Self::choose_extents(&surface_capabilities, window);
-        info!("Extents: {:?}", extents);
-
-        let present_mode =
-            Self::choose_present_mode(&available_present_modes, present_mode_priority);
-        info!("Present mode: {:?}", present_mode);
-
-        // "simply sticking to this minimum means that we may sometimes have to wait on the driver
-        // to complete internal operations before we can acquire another image to render to.
-        // Therefore it is recommended to request at least one more image than the minimum"
-        let mut min_image_count = surface_capabilities.min_image_count + 1;
-
-        // But if there is a limit, we must not exceed it
-        if surface_capabilities.max_image_count > 0 {
-            min_image_count = u32::min(min_image_count, surface_capabilities.max_image_count);
-        }
-
-        let swapchain_loader = khr::Swapchain::new(instance, logical_device);
-
-        let mut swapchain_create_info = vk::SwapchainCreateInfoKHR::builder()
-            .surface(surface)
-            .min_image_count(min_image_count)
-            .image_format(surface_format.format)
-            .image_color_space(surface_format.color_space)
-            .image_extent(extents)
-            .image_array_layers(1)
-            .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
-            .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
-            .pre_transform(surface_capabilities.current_transform)
-            .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
-            .present_mode(present_mode)
-            .clipped(true);
-
-        if let Some(old_swapchain) = old_swapchain {
-            swapchain_create_info = swapchain_create_info.old_swapchain(old_swapchain);
-        }
-
-        // We must choose concurrent or exclusive image sharing mode. We only choose concurrent if
-        // the queue families are not the same, which is uncommon. If we do choose concurrent, we
-        // must provide this list of queue families.
-        let queue_families = [
-            queue_family_indices.graphics_queue_family_index,
-            queue_family_indices.present_queue_family_index,
-        ];
-
-        if queue_family_indices.graphics_queue_family_index
-            != queue_family_indices.present_queue_family_index
-        {
-            swapchain_create_info = swapchain_create_info
-                .image_sharing_mode(vk::SharingMode::CONCURRENT)
-                .queue_family_indices(&queue_families);
-        }
-
-        let swapchain = unsafe { swapchain_loader.create_swapchain(&swapchain_create_info, None)? };
-
-        let swapchain_images = unsafe { swapchain_loader.get_swapchain_images(swapchain)? };
-        let image_count = swapchain_images.len();
-
-        let swapchain_info = SwapchainInfo {
-            surface_format,
-            present_mode,
-            extents,
-            image_count,
-        };
-
-        Ok((swapchain_info, swapchain_loader, swapchain))
     }
 
     fn query_swapchain_support(
@@ -279,7 +150,7 @@ impl VkSwapchain {
         ))
     }
 
-    fn choose_format(available_formats: &[vk::SurfaceFormatKHR]) -> vk::SurfaceFormatKHR {
+    fn choose_swapchain_format(available_formats: &[vk::SurfaceFormatKHR]) -> vk::SurfaceFormatKHR {
         let mut best_format = None;
 
         for available_format in available_formats {
@@ -294,42 +165,6 @@ impl VkSwapchain {
             Some(format) => *format,
             None => available_formats[0],
         }
-    }
-
-    fn find_supported_format(
-        instance: &ash::Instance,
-        physical_device: vk::PhysicalDevice,
-        candidates: &[vk::Format],
-        image_tiling: vk::ImageTiling,
-        features: vk::FormatFeatureFlags
-    ) -> Option<vk::Format> {
-        for candidate in candidates {
-            let props = unsafe {
-                instance.get_physical_device_format_properties(physical_device, *candidate)
-            };
-
-            if image_tiling == vk::ImageTiling::LINEAR && (props.linear_tiling_features & features) == features {
-                return Some(*candidate);
-            } else if image_tiling == vk::ImageTiling::OPTIMAL && (props.optimal_tiling_features & features) == features {
-                return Some(*candidate);
-            }
-        }
-
-        None
-    }
-
-    fn choose_depth_format(device_context: &VkDeviceContext) -> vk::Format {
-        Self::find_supported_format(
-            device_context.instance(),
-            device_context.physical_device(),
-            &[
-                vk::Format::D32_SFLOAT, // 100% coverage with optimal
-                vk::Format::D32_SFLOAT_S8_UINT, // 100% coverage with optimal
-                vk::Format::D24_UNORM_S8_UINT
-            ],
-            vk::ImageTiling::OPTIMAL,
-            vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
-        ).unwrap()
     }
 
     fn choose_present_mode(
@@ -410,7 +245,99 @@ impl VkSwapchain {
         }
     }
 
-    fn create_image_views(
+    #[allow(clippy::too_many_arguments)]
+    fn create_swapchain(
+        instance: &ash::Instance,
+        physical_device: ash::vk::PhysicalDevice,
+        logical_device: &ash::Device,
+        surface_loader: &ash::extensions::khr::Surface,
+        surface: ash::vk::SurfaceKHR,
+        queue_family_indices: &VkQueueFamilyIndices,
+        window: &dyn Window,
+        old_swapchain: Option<vk::SwapchainKHR>,
+        present_mode_priority: &[PresentMode],
+        msaa_level: MsaaLevel,
+        color_format: vk::Format,
+        depth_format: vk::Format,
+    ) -> VkResult<(SwapchainInfo, khr::Swapchain, vk::SwapchainKHR)> {
+        let (available_formats, available_present_modes, surface_capabilities) =
+            Self::query_swapchain_support(physical_device, surface_loader, surface)?;
+
+        let surface_format = Self::choose_swapchain_format(&available_formats);
+        info!("Surface format: {:?}", surface_format);
+
+        let extents = Self::choose_extents(&surface_capabilities, window);
+        info!("Extents: {:?}", extents);
+
+        let present_mode =
+            Self::choose_present_mode(&available_present_modes, present_mode_priority);
+        info!("Present mode: {:?}", present_mode);
+
+        // "simply sticking to this minimum means that we may sometimes have to wait on the driver
+        // to complete internal operations before we can acquire another image to render to.
+        // Therefore it is recommended to request at least one more image than the minimum"
+        let mut min_image_count = surface_capabilities.min_image_count + 1;
+
+        // But if there is a limit, we must not exceed it
+        if surface_capabilities.max_image_count > 0 {
+            min_image_count = u32::min(min_image_count, surface_capabilities.max_image_count);
+        }
+
+        let swapchain_loader = khr::Swapchain::new(instance, logical_device);
+
+        let mut swapchain_create_info = vk::SwapchainCreateInfoKHR::builder()
+            .surface(surface)
+            .min_image_count(min_image_count)
+            .image_format(surface_format.format)
+            .image_color_space(surface_format.color_space)
+            .image_extent(extents)
+            .image_array_layers(1)
+            .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
+            .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
+            .pre_transform(surface_capabilities.current_transform)
+            .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
+            .present_mode(present_mode)
+            .clipped(true);
+
+        if let Some(old_swapchain) = old_swapchain {
+            swapchain_create_info = swapchain_create_info.old_swapchain(old_swapchain);
+        }
+
+        // We must choose concurrent or exclusive image sharing mode. We only choose concurrent if
+        // the queue families are not the same, which is uncommon. If we do choose concurrent, we
+        // must provide this list of queue families.
+        let queue_families = [
+            queue_family_indices.graphics_queue_family_index,
+            queue_family_indices.present_queue_family_index,
+        ];
+
+        if queue_family_indices.graphics_queue_family_index
+            != queue_family_indices.present_queue_family_index
+        {
+            swapchain_create_info = swapchain_create_info
+                .image_sharing_mode(vk::SharingMode::CONCURRENT)
+                .queue_family_indices(&queue_families);
+        }
+
+        let swapchain = unsafe { swapchain_loader.create_swapchain(&swapchain_create_info, None)? };
+
+        let swapchain_images = unsafe { swapchain_loader.get_swapchain_images(swapchain)? };
+        let image_count = swapchain_images.len();
+
+        let swapchain_info = SwapchainInfo {
+            surface_format,
+            present_mode,
+            extents,
+            image_count,
+            msaa_level,
+            color_format,
+            depth_format,
+        };
+
+        Ok((swapchain_info, swapchain_loader, swapchain))
+    }
+
+    fn create_swapchain_image_views(
         logical_device: &ash::Device,
         swapchain_info: &SwapchainInfo,
         swapchain_images: &[vk::Image],
@@ -443,6 +370,189 @@ impl VkSwapchain {
 
         Ok(image_views)
     }
+
+    fn choose_msaa_level(
+        limits: &vk::PhysicalDeviceLimits,
+        msaa_level_priority: &[MsaaLevel],
+    ) -> MsaaLevel {
+        for msaa_level in msaa_level_priority {
+            if (*msaa_level as u32 & limits.framebuffer_depth_sample_counts.as_raw() & limits.framebuffer_color_sample_counts.as_raw()) != 0 {
+                log::trace!("MSAA level {:?} is supported", msaa_level);
+                return *msaa_level;
+            } else {
+                log::trace!("MSAA level {:?} is unsupported", msaa_level);
+            }
+        }
+
+        log::trace!("None of the provided MSAA levels are supported defaulting to {:?}", MsaaLevel::Sample1);
+        MsaaLevel::Sample1
+    }
+
+    fn find_supported_format(
+        instance: &ash::Instance,
+        physical_device: vk::PhysicalDevice,
+        candidates: &[vk::Format],
+        image_tiling: vk::ImageTiling,
+        features: vk::FormatFeatureFlags
+    ) -> Option<vk::Format> {
+        for candidate in candidates {
+            let props = unsafe {
+                instance.get_physical_device_format_properties(physical_device, *candidate)
+            };
+
+            if image_tiling == vk::ImageTiling::LINEAR && (props.linear_tiling_features & features) == features {
+                return Some(*candidate);
+            } else if image_tiling == vk::ImageTiling::OPTIMAL && (props.optimal_tiling_features & features) == features {
+                return Some(*candidate);
+            }
+        }
+
+        None
+    }
+
+    fn choose_color_format(device_context: &VkDeviceContext) -> vk::Format {
+        let format = Self::find_supported_format(
+            device_context.instance(),
+            device_context.physical_device(),
+            &[ //TODO: Don't hardcode
+                vk::Format::R32G32B32A32_SFLOAT, // 100% coverage with optimal
+            ],
+            vk::ImageTiling::OPTIMAL,
+            vk::FormatFeatureFlags::COLOR_ATTACHMENT,
+        ).unwrap();
+
+        log::trace!("Chose color format {:?}", format);
+        format
+    }
+
+    fn choose_depth_format(device_context: &VkDeviceContext) -> vk::Format {
+        let format = Self::find_supported_format(
+            device_context.instance(),
+            device_context.physical_device(),
+            &[ //TODO: Don't hardcode
+                vk::Format::D32_SFLOAT, // 100% coverage with optimal
+                vk::Format::D32_SFLOAT_S8_UINT, // 100% coverage with optimal
+                vk::Format::D24_UNORM_S8_UINT
+            ],
+            vk::ImageTiling::OPTIMAL,
+            vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
+        ).unwrap();
+
+        log::trace!("Chose depth format {:?}", format);
+        format
+    }
+
+    fn create_renderpass_attachment(
+        device_context: &VkDeviceContext,
+        swapchain_info: &SwapchainInfo,
+        format: vk::Format,
+        image_aspect_flags: vk::ImageAspectFlags,
+        image_usage: vk::ImageUsageFlags,
+        msaa_level: MsaaLevel,
+    ) -> VkResult<(ManuallyDrop<VkImage>, vk::ImageView)> {
+        let extents = vk::Extent3D {
+            width: swapchain_info.extents.width,
+            height: swapchain_info.extents.height,
+            depth: 1,
+        };
+
+        let image = VkImage::new(
+            device_context,
+            vk_mem::MemoryUsage::GpuOnly,
+            image_usage,
+            extents,
+            format,
+            vk::ImageTiling::OPTIMAL,
+            msaa_level.into(),
+            1,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL
+        )?;
+
+        let subresource_range = vk::ImageSubresourceRange::builder()
+            .aspect_mask(image_aspect_flags)
+            .base_mip_level(0)
+            .level_count(1)
+            .base_array_layer(0)
+            .layer_count(1);
+
+        let image_view_create_info = vk::ImageViewCreateInfo::builder()
+            .image(image.image())
+            .view_type(vk::ImageViewType::TYPE_2D)
+            .format(format)
+            .subresource_range(*subresource_range);
+
+        let image_view = unsafe {
+            device_context.device().create_image_view(&*image_view_create_info, None)?
+        };
+
+        Ok((ManuallyDrop::new(image), image_view))
+    }
+
+    fn create_color_image(
+        device_context: &VkDeviceContext,
+        format: vk::Format,
+        swapchain_info: &SwapchainInfo,
+        msaa_level: MsaaLevel,
+    ) -> VkResult<(ManuallyDrop<VkImage>, vk::ImageView)> {
+        Self::create_renderpass_attachment(
+            device_context,
+            swapchain_info,
+            format,
+            vk::ImageAspectFlags::COLOR,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT,
+            msaa_level
+        )
+    }
+
+    fn create_depth_image(
+        device_context: &VkDeviceContext,
+        format: vk::Format,
+        swapchain_info: &SwapchainInfo,
+        msaa_level: MsaaLevel,
+    ) -> VkResult<(ManuallyDrop<VkImage>, vk::ImageView)> {
+        Self::create_renderpass_attachment(
+            device_context,
+            swapchain_info,
+            format,
+            vk::ImageAspectFlags::DEPTH,
+            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+            msaa_level
+        )
+    }
+
+    fn allocate_semaphores_per_frame(
+        device_context: &VkDeviceContext
+    ) -> VkResult<Vec<vk::Semaphore>> {
+        let mut semaphores = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT);
+        for _ in 0..MAX_FRAMES_IN_FLIGHT {
+            let semaphore_create_info = vk::SemaphoreCreateInfo::builder();
+            let semaphore = unsafe {
+                device_context
+                    .device()
+                    .create_semaphore(&semaphore_create_info, None)?
+            };
+            semaphores.push(semaphore);
+        }
+
+        Ok(semaphores)
+    }
+
+    fn allocate_fences_per_frame(device_context: &VkDeviceContext) -> VkResult<Vec<vk::Fence>> {
+        let mut fences = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT);
+        for _ in 0..MAX_FRAMES_IN_FLIGHT {
+            let fence_create_info =
+                vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::SIGNALED);
+
+            let fence = unsafe {
+                device_context
+                    .device()
+                    .create_fence(&fence_create_info, None)?
+            };
+            fences.push(fence);
+        }
+
+        Ok(fences)
+    }
 }
 
 impl Drop for VkSwapchain {
@@ -467,7 +577,9 @@ impl Drop for VkSwapchain {
                 device.destroy_image_view(swapchain_image_view, None);
             }
 
+            device.destroy_image_view(self.color_image_view, None);
             device.destroy_image_view(self.depth_image_view, None);
+            ManuallyDrop::drop(&mut self.color_image);
             ManuallyDrop::drop(&mut self.depth_image);
 
             self.swapchain_loader
