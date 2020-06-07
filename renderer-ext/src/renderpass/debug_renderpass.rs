@@ -289,7 +289,7 @@ impl VkDebugRenderPass {
         //
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
-            //swapchain.color_image_view,
+            swapchain.color_image_view,
             &swapchain.swapchain_image_views,
             swapchain.depth_image_view,
             &swapchain.swapchain_info,
@@ -341,7 +341,7 @@ impl VkDebugRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
-        //color_image_view: vk::ImageView,
+        color_image_view: vk::ImageView,
         swapchain_image_views: &[vk::ImageView],
         depth_image_view: vk::ImageView,
         swapchain_info: &SwapchainInfo,
@@ -350,7 +350,7 @@ impl VkDebugRenderPass {
         swapchain_image_views
             .iter()
             .map(|&swapchain_image_view| {
-                let framebuffer_attachments = [swapchain_image_view, depth_image_view];
+                let framebuffer_attachments = [color_image_view, depth_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)
@@ -536,9 +536,6 @@ impl VkDebugRenderPass {
         descriptor_set_per_pass: vk::DescriptorSet,
         line_lists: Vec<LineList3D>,
     ) -> VkResult<()> {
-        //TODO: Integrate this into the command buffer we create below
-        //self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
-
         Self::update_command_buffer(
             &self.device_context,
             &self.swapchain_info,

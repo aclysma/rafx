@@ -1032,9 +1032,6 @@ impl VkImGuiRenderPass {
         present_index: usize,
         hidpi_factor: f64,
     ) -> VkResult<()> {
-        //TODO: Integrate this into the command buffer we create below
-        self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
-
         Self::record_command_buffer(
             imgui_draw_data,
             &self.device_context,

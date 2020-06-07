@@ -77,10 +77,6 @@
                         slot_name: "some_fancy_value"
                     ),
                 ],
-                // If a mesh has a material, it needs to be cooked so that the verts are in that format
-                // Maybe each binding is a vertex channel?
-                // Actually maybe this works out so that you can have a kitchen-sink blob of vertex
-                // data and automatically determine offsets/strides
                 vertex_input_state: (
                     binding_descriptions: [
                         (

@@ -262,7 +262,7 @@ impl RegisteredDescriptorSetPoolChunk {
                         image_info_builder.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
                     if let Some(image_view) = &image_info.image_view {
                         image_info_builder =
-                            image_info_builder.image_view(image_view.get_raw().image_view);
+                            image_info_builder.image_view(image_view.get_raw());
                     }
 
                     // Skip adding samplers if the binding is populated with an immutable sampler

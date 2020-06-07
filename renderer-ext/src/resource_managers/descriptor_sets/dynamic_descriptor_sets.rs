@@ -8,7 +8,8 @@ use crate::resource_managers::resource_lookup::{ResourceArc, ImageViewResource};
 use crate::resource_managers::asset_lookup::SlotNameLookup;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
-use crate::resource_managers::descriptor_sets::descriptor_write_set::DescriptorSetWriteElementBufferData;
+use crate::resource_managers::descriptor_sets::descriptor_write_set::{DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue};
+use ash::vk;
 
 pub struct DynDescriptorSet {
     descriptor_set: DescriptorSetArc,
@@ -57,14 +58,22 @@ impl DynDescriptorSet {
         binding_index: u32,
         image_view: ResourceArc<ImageViewResource>,
     ) {
-        self.set_image_array_element(binding_index, 0, image_view)
+        self.set_image_array_element(binding_index, 0, DescriptorSetWriteElementImageValue::Resource(image_view))
+    }
+
+    pub fn set_image_raw(
+        &mut self,
+        binding_index: u32,
+        image_view: vk::ImageView,
+    ) {
+        self.set_image_array_element(binding_index, 0, DescriptorSetWriteElementImageValue::Raw(image_view))
     }
 
     pub fn set_image_array_element(
         &mut self,
         binding_index: u32,
         array_index: usize,
-        image_view: ResourceArc<ImageViewResource>,
+        image_view: DescriptorSetWriteElementImageValue,
     ) {
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,

@@ -113,7 +113,6 @@ impl VkSwapchain {
         let swapchain_image_views =
             Self::create_swapchain_image_views(device_context.device(), &swapchain_info, &swapchain_images)?;
 
-
         let (color_image, color_image_view) = Self::create_color_image(
             device_context,
             color_format,
@@ -121,12 +120,16 @@ impl VkSwapchain {
             msaa_level
         )?;
 
+        log::debug!("Created color attachment image: {:?}", color_image);
+
         let (depth_image, depth_image_view) = Self::create_depth_image(
             device_context,
             depth_format,
             &swapchain_info,
             msaa_level
         )?;
+
+        log::debug!("Created depth attachment image: {:?}", depth_image);
 
         let image_available_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
         let render_finished_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
@@ -500,7 +503,7 @@ impl VkSwapchain {
             swapchain_info,
             format,
             vk::ImageAspectFlags::COLOR,
-            vk::ImageUsageFlags::COLOR_ATTACHMENT,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
             msaa_level
         )
     }

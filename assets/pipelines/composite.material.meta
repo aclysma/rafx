@@ -1,0 +1,35 @@
+(
+    version: 1,
+    import_hash: Some(5017229124206706074),
+    importer_version: 2,
+    importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
+    importer_options: (),
+    importer_state: (Some("822c8e08-2720-4002-81da-fd9c4d61abdd")),
+    assets: [
+        (
+            id: "822c8e08-2720-4002-81da-fd9c4d61abdd",
+            search_tags: [
+                ("file_name", Some("composite.material")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 13259182933936956015,
+                id: "822c8e08-2720-4002-81da-fd9c4d61abdd",
+                build_deps: [
+                    Path("composite.pipeline"),
+                    Path("../shaders/composite.vert.spv"),
+                    Path("../shaders/composite.frag.spv"),
+                ],
+                load_deps: [
+                    Path("composite.pipeline"),
+                    Path("../shaders/composite.vert.spv"),
+                    Path("../shaders/composite.frag.spv"),
+                ],
+                compression: None,
+                compressed_size: Some(315),
+                uncompressed_size: Some(315),
+                type_id: "ad94bca2-1f02-4e5f-9117-1a7b03456a11",
+            )),
+        ),
+    ],
+)

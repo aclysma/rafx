@@ -11,12 +11,26 @@ use crate::resource_managers::descriptor_sets::DescriptorSetWriteBuffer;
 //
 // These represent descriptor updates that can be applied to a descriptor set in a pool
 //
+#[derive(Debug, Clone)]
+pub enum DescriptorSetWriteElementImageValue {
+    Raw(vk::ImageView),
+    Resource(ResourceArc<ImageViewResource>),
+}
+
+impl DescriptorSetWriteElementImageValue {
+    pub fn get_raw(&self) -> vk::ImageView {
+        match self {
+            DescriptorSetWriteElementImageValue::Raw(view) => *view,
+            DescriptorSetWriteElementImageValue::Resource(resource) => resource.get_raw().image_view
+        }
+    }
+}
 
 // The information needed to write image metadata for a descriptor
 #[derive(Debug, Clone, Default)]
 pub struct DescriptorSetWriteElementImage {
     pub sampler: Option<ResourceArc<vk::Sampler>>,
-    pub image_view: Option<ResourceArc<ImageViewResource>>,
+    pub image_view: Option<DescriptorSetWriteElementImageValue>,
     // For now going to assume layout is always ShaderReadOnlyOptimal
     //pub image_info: vk::DescriptorImageInfo,
 }
@@ -145,7 +159,7 @@ pub fn apply_material_instance_slot_assignment(
                 if what_to_bind.bind_images {
                     if let Some(image) = &slot_assignment.image {
                         let loaded_image = assets.images.get_latest(image.load_handle()).unwrap();
-                        write_image.image_view = Some(loaded_image.image_view.clone());
+                        write_image.image_view = Some(DescriptorSetWriteElementImageValue::Resource(loaded_image.image_view.clone()));
                     }
                 }
 

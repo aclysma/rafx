@@ -33,6 +33,7 @@ use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, Gltf
 use crate::pipeline::buffer::BufferAsset;
 use crate::resource_managers::ResourceArc;
 use crate::renderpass::debug_renderpass::DebugDraw3DResource;
+use crate::renderpass::VkCompositeRenderPass;
 
 
 fn begin_load_asset<T>(
@@ -97,9 +98,13 @@ pub struct GameRenderer {
     mesh_material_per_frame_data: DynDescriptorSet,
     meshes: Vec<StaticMeshInstance>,
 
+    composite_material: Handle<MaterialAsset>,
+    composite_material_dyn_set: DynDescriptorSet,
+
     mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
     debug_renderpass: Option<VkDebugRenderPass>,
+    composite_renderpass: Option<VkCompositeRenderPass>,
     swapchain_surface_info: Option<SwapchainSurfaceInfo>,
 }
 
@@ -168,6 +173,14 @@ impl GameRenderer {
         //
         let debug_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("11d3b144-f564-42c9-b31f-82c8a938bf85"),
+            &asset_resource,
+        );
+
+        //
+        // Composite resources
+        //
+        let composite_material = begin_load_asset::<MaterialAsset>(
+            asset_uuid!("822c8e08-2720-4002-81da-fd9c4d61abdd"),
             &asset_resource,
         );
 
@@ -245,6 +258,14 @@ impl GameRenderer {
 
         wait_for_asset_to_load(
             device_context,
+            &composite_material,
+            asset_resource,
+            &mut resource_manager,
+            "composite material"
+        );
+
+        wait_for_asset_to_load(
+            device_context,
             &mesh_material,
             asset_resource,
             &mut resource_manager,
@@ -290,6 +311,9 @@ impl GameRenderer {
 
         let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(&mesh_material, 0, 0);
         let mesh_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout_def)?;
+
+        let composite_layout = resource_manager.get_descriptor_set_info(&composite_material, 0, 0);
+        let composite_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&composite_layout.descriptor_set_layout_def)?;
         //
         // let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
         //
@@ -325,6 +349,9 @@ impl GameRenderer {
             mesh_material_per_frame_data,
             meshes,
 
+            composite_material,
+            composite_material_dyn_set,
+
             // mesh,
             // mesh_material_instance,
             // mesh_custom_material: None,
@@ -336,6 +363,7 @@ impl GameRenderer {
             sprite_renderpass: None,
             mesh_renderpass: None,
             debug_renderpass: None,
+            composite_renderpass: None,
         };
 
         let image_info = renderer.resource_manager.get_image_info(&override_image);
@@ -453,7 +481,22 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             debug_pipeline_info,
         )?);
 
+        let composite_pipeline_info = self.resource_manager.get_pipeline_info(
+            &self.composite_material,
+            &swapchain_surface_info,
+            0,
+        );
+
+        self.composite_renderpass = Some(VkCompositeRenderPass::new(
+            device_context,
+            swapchain,
+            composite_pipeline_info,
+        )?);
+
         log::debug!("game renderer swapchain_created finished");
+
+        self.composite_material_dyn_set.set_image_raw(0, swapchain.color_image_view);
+        self.composite_material_dyn_set.flush();
 
         VkResult::Ok(())
     }
@@ -669,7 +712,7 @@ impl GameRenderer {
                 0,
             );
 
-            let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get_raw_for_cpu_write(&self.resource_manager);
+            let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
 
             mesh_renderpass.update(
                 &mesh_pipeline_info,
@@ -690,7 +733,7 @@ impl GameRenderer {
                 0,
             );
 
-            let descriptor_set_per_pass = self.debug_material_per_frame_data.descriptor_set().get_raw_for_cpu_write(&self.resource_manager);
+            let descriptor_set_per_pass = self.debug_material_per_frame_data.descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
 
             debug_renderpass.update(
                 present_index,
@@ -698,6 +741,26 @@ impl GameRenderer {
                 self.debug_draw_3d.take_line_lists(),
             )?;
             command_buffers.push(debug_renderpass.command_buffers[present_index].clone());
+        }
+
+        //
+        // composite
+        //
+        if let Some(composite_renderpass) = &mut self.composite_renderpass {
+            log::trace!("composite_renderpass update");
+            let composite_pipeline_info = self.resource_manager.get_pipeline_info(
+                &self.composite_material,
+                self.swapchain_surface_info.as_ref().unwrap(),
+                0,
+            );
+
+            let descriptor_set_per_pass = self.composite_material_dyn_set.descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+
+            composite_renderpass.update(
+                present_index,
+                descriptor_set_per_pass
+            )?;
+            command_buffers.push(composite_renderpass.command_buffers[present_index].clone());
         }
 
         //
@@ -722,6 +785,7 @@ impl Drop for GameRenderer {
         self.mesh_renderpass = None;
         self.sprite_custom_material = None;
         self.debug_renderpass = None;
+        self.composite_renderpass = None;
         self.meshes.clear();
         //self.mesh_custom_material = None;
         //self.light_mesh_material_instances.clear();

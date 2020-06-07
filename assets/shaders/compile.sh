@@ -12,3 +12,6 @@ glslc mesh.frag -o mesh.frag.spv
 
 glslc debug.vert -o debug.vert.spv
 glslc debug.frag -o debug.frag.spv
+
+glslc composite.vert -o composite.vert.spv
+glslc composite.frag -o composite.frag.spv

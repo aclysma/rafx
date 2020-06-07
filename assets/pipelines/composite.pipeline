@@ -5,26 +5,12 @@
                 flags: None,
                 format: MatchColorAttachment,
                 samples: MatchSwapchain,
-                load_op: Load,
-                store_op: DontCare,
+                load_op: Clear,
+                store_op: Store,
                 stencil_load_op: DontCare,
                 stencil_store_op: DontCare,
-                initial_layout: ColorAttachmentOptimal,
-
-                // This pipeline passes results to the compositor. The compositor will be reading our color attachment
-                // via a sampler
-                final_layout: ShaderReadOnlyOptimal,
-            ),
-            (
-                flags: None,
-                format: MatchDepthAttachment,
-                samples: MatchSwapchain,
-                load_op: Load,
-                store_op: DontCare,
-                stencil_load_op: DontCare,
-                stencil_store_op: DontCare,
-                initial_layout: DepthStencilAttachmentOptimal,
-                final_layout: DepthStencilAttachmentOptimal,
+                initial_layout: Undefined,
+                final_layout: ColorAttachmentOptimal,
             ),
         ],
         subpasses: [
@@ -38,12 +24,7 @@
                     ),
                 ],
                 resolve_attachments: [],
-                depth_stencil_attachment: Some(
-                    (
-                        attachment: Index(1),
-                        layout: DepthStencilAttachmentOptimal
-                    )
-                ),
+                depth_stencil_attachment: None,
             ),
         ],
         dependencies: [
@@ -62,7 +43,7 @@
         ],
     ),
     input_assembly_state: (
-        primitive_topology: LineStrip,
+        primitive_topology: TriangleList,
         primitive_restart_enable: false,
     ),
     viewport_state: (
@@ -82,7 +63,7 @@
     rasterization_state: (
         depth_clamp_enable: false,
         rasterizer_discard_enable: false,
-        polygon_mode: Line,
+        polygon_mode: Fill,
         cull_mode: None,
         front_face: CounterClockwise,
         depth_bias_enable: false,
@@ -104,7 +85,7 @@
         logic_op: Clear,
         attachments: [
             (
-                blend_enable: true,
+                blend_enable: false,
                 src_color_blend_factor: SrcAlpha,
                 dst_color_blend_factor: OneMinusSrcAlpha,
                 color_blend_op: Add,
@@ -122,9 +103,9 @@
         blend_constants: (0, 0, 0, 0),
     ),
     depth_stencil_state: (
-        depth_test_enable: true,
-        depth_write_enable: true,
-        depth_compare_op: Less,
+        depth_test_enable: false,
+        depth_write_enable: false,
+        depth_compare_op: Never,
         depth_bounds_test_enable: false,
         min_depth_bounds: 0.0,
         max_depth_bounds: 1.0,

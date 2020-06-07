@@ -11,3 +11,6 @@ pub use sprite_renderpass::SpriteVertex;
 pub mod debug_renderpass;
 pub use debug_renderpass::VkDebugRenderPass;
 pub use debug_renderpass::DebugVertex;
+
+pub mod composite_renderpass;
+pub use composite_renderpass::VkCompositeRenderPass;
