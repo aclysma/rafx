@@ -376,7 +376,8 @@ impl VkSwapchain {
         msaa_level_priority: &[MsaaLevel],
     ) -> MsaaLevel {
         for msaa_level in msaa_level_priority {
-            if (*msaa_level as u32 & limits.framebuffer_depth_sample_counts.as_raw() & limits.framebuffer_color_sample_counts.as_raw()) != 0 {
+            let sample_count : vk::SampleCountFlags = msaa_level.clone().into();
+            if (sample_count.as_raw() & limits.framebuffer_depth_sample_counts.as_raw() & limits.framebuffer_color_sample_counts.as_raw()) != 0 {
                 log::trace!("MSAA level {:?} is supported", msaa_level);
                 return *msaa_level;
             } else {

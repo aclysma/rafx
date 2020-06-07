@@ -113,7 +113,7 @@ impl VkImGuiRenderPass {
 
         let frame_buffers = Self::create_framebuffers(
             device_context.device(),
-            swapchain.color_image_view,
+            //swapchain.color_image_view,
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
             &pipeline_resources.renderpass,
@@ -370,19 +370,19 @@ impl VkImGuiRenderPass {
                 .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
                 .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
                 .initial_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                .build(),
-
-            vk::AttachmentDescription::builder()
-                .format(swapchain_info.surface_format.format)
-                .samples(vk::SampleCountFlags::TYPE_1)
-                .load_op(vk::AttachmentLoadOp::DONT_CARE)
-                .store_op(vk::AttachmentStoreOp::STORE)
-                .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-                .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-                .initial_layout(vk::ImageLayout::UNDEFINED)
                 .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
                 .build(),
+
+            // vk::AttachmentDescription::builder()
+            //     .format(swapchain_info.surface_format.format)
+            //     .samples(vk::SampleCountFlags::TYPE_1)
+            //     .load_op(vk::AttachmentLoadOp::DONT_CARE)
+            //     .store_op(vk::AttachmentStoreOp::STORE)
+            //     .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+            //     .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+            //     .initial_layout(vk::ImageLayout::UNDEFINED)
+            //     .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+            //     .build(),
         ];
 
         let color_attachment_refs = [
@@ -392,17 +392,17 @@ impl VkImGuiRenderPass {
             }
         ];
 
-        let resolve_attachment_refs = [
-            vk::AttachmentReference {
-                attachment: 1,
-                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-            }
-        ];
+        // let resolve_attachment_refs = [
+        //     vk::AttachmentReference {
+        //         attachment: 1,
+        //         layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+        //     }
+        // ];
 
         let subpasses = [
             vk::SubpassDescription::builder()
                 .color_attachments(&color_attachment_refs)
-                .resolve_attachments(&resolve_attachment_refs)
+                //.resolve_attachments(&resolve_attachment_refs)
                 .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
                 .build()
         ];
@@ -531,7 +531,7 @@ impl VkImGuiRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
-        color_image_view: vk::ImageView,
+        //color_image_view: vk::ImageView,
         swapchain_image_views: &Vec<vk::ImageView>,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
@@ -539,7 +539,7 @@ impl VkImGuiRenderPass {
         swapchain_image_views
             .iter()
             .map(|&swapchain_image_view| {
-                let framebuffer_attachments = [color_image_view, swapchain_image_view];
+                let framebuffer_attachments = [swapchain_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)

@@ -748,7 +748,7 @@ impl GameRendererWithContext {
     ) -> Result<GameRendererWithContext, VkCreateContextError> {
         let mut context = VkContextBuilder::new()
             .use_vulkan_debug_layer(false)
-            .msaa_level_priority(vec![MsaaLevel::Sample4])
+            .msaa_level_priority(vec![MsaaLevel::Sample1])
             //.msaa_level_priority(vec![MsaaLevel::Sample4])
             .prefer_mailbox_present_mode();
 
