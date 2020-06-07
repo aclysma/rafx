@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(5017229124206706074),
+    import_hash: Some(170225584895641740),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,17 +13,17 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 13259182933936956015,
+                hash: 16670391002799224521,
                 id: "822c8e08-2720-4002-81da-fd9c4d61abdd",
                 build_deps: [
-                    Path("composite.pipeline"),
-                    Path("../shaders/composite.vert.spv"),
                     Path("../shaders/composite.frag.spv"),
+                    Path("../shaders/composite.vert.spv"),
+                    Path("composite.pipeline"),
                 ],
                 load_deps: [
-                    Path("composite.pipeline"),
-                    Path("../shaders/composite.vert.spv"),
                     Path("../shaders/composite.frag.spv"),
+                    Path("../shaders/composite.vert.spv"),
+                    Path("composite.pipeline"),
                 ],
                 compression: None,
                 compressed_size: Some(315),

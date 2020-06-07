@@ -3,7 +3,7 @@
         attachments: [
             (
                 flags: None,
-                format: MatchColorAttachment,
+                format: MatchSurface,
                 samples: MatchSwapchain,
                 load_op: Clear,
                 store_op: Store,

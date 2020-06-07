@@ -82,8 +82,7 @@ impl VkSwapchain {
         let msaa_level = Self::choose_msaa_level(device_context.limits(), msaa_level_priority);
         log::debug!("MSAA level: {:?}", msaa_level);
 
-        // let color_format = Self::choose_color_format(device_context);
-        let color_format = surface_format.format;
+        let color_format = Self::choose_color_format(device_context);
         log::debug!("Color format: {:?}", color_format);
 
         let depth_format = Self::choose_depth_format(device_context);
@@ -414,20 +413,20 @@ impl VkSwapchain {
         None
     }
 
-    // fn choose_color_format(device_context: &VkDeviceContext) -> vk::Format {
-    //     let format = Self::find_supported_format(
-    //         device_context.instance(),
-    //         device_context.physical_device(),
-    //         &[ //TODO: Don't hardcode
-    //             vk::Format::R32G32B32A32_SFLOAT, // 100% coverage with optimal
-    //         ],
-    //         vk::ImageTiling::OPTIMAL,
-    //         vk::FormatFeatureFlags::COLOR_ATTACHMENT,
-    //     ).unwrap();
-    //
-    //     log::trace!("Chose color format {:?}", format);
-    //     format
-    // }
+    fn choose_color_format(device_context: &VkDeviceContext) -> vk::Format {
+        let format = Self::find_supported_format(
+            device_context.instance(),
+            device_context.physical_device(),
+            &[ //TODO: Don't hardcode
+                vk::Format::R32G32B32A32_SFLOAT, // 100% coverage with optimal
+            ],
+            vk::ImageTiling::OPTIMAL,
+            vk::FormatFeatureFlags::COLOR_ATTACHMENT,
+        ).unwrap();
+
+        log::trace!("Chose color format {:?}", format);
+        format
+    }
 
     fn choose_depth_format(device_context: &VkDeviceContext) -> vk::Format {
         let format = Self::find_supported_format(

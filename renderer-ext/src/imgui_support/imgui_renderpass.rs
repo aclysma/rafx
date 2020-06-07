@@ -363,7 +363,7 @@ impl VkImGuiRenderPass {
     ) -> VkResult<()> {
         let renderpass_attachments = [
             vk::AttachmentDescription::builder()
-                .format(swapchain_info.color_format)
+                .format(swapchain_info.surface_format.format)
                 .samples(swapchain_info.msaa_level.into())
                 .load_op(vk::AttachmentLoadOp::LOAD)
                 .store_op(vk::AttachmentStoreOp::STORE)
