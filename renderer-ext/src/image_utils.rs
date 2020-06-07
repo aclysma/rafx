@@ -293,15 +293,6 @@ pub fn enqueue_load_images(
             &image.extent,
         );
 
-        cmd_image_memory_barrier(
-            device_context.device(),
-            upload.transfer_command_buffer(),
-            &[image.image()],
-            ImageMemoryBarrierType::PostUploadTransferQueue,
-            transfer_queue_family_index,
-            dst_queue_family_index,
-        );
-
         if generate_mips {
             // Generating mipmaps includes image barriers, so this function will handle writing the
             // image barriers required to pass from the transfer queue to the dst queue
@@ -314,6 +305,15 @@ pub fn enqueue_load_images(
                 mip_level_count
             );
         } else {
+            cmd_image_memory_barrier(
+                device_context.device(),
+                upload.transfer_command_buffer(),
+                &[image.image()],
+                ImageMemoryBarrierType::PostUploadTransferQueue,
+                transfer_queue_family_index,
+                dst_queue_family_index,
+            );
+
             cmd_image_memory_barrier(
                 device_context.device(),
                 upload.dst_command_buffer(),
@@ -346,13 +346,28 @@ fn generate_mips_for_image(
 
     transition_for_mipmap(
         device_context.device(),
-        upload.dst_command_buffer(),
+        upload.transfer_command_buffer(),
         image.image(),
-        vk::AccessFlags::empty(),
+        vk::AccessFlags::TRANSFER_WRITE,
         vk::AccessFlags::TRANSFER_READ,
         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-        vk::PipelineStageFlags::TOP_OF_PIPE, // ignored, we are acquiring resources from the transfer queue
+        vk::PipelineStageFlags::TRANSFER,
+        vk::PipelineStageFlags::TRANSFER,
+        transfer_queue_family_index,
+        dst_queue_family_index,
+        &first_mip_range
+    );
+
+    transition_for_mipmap(
+        device_context.device(),
+        upload.dst_command_buffer(),
+        image.image(),
+        vk::AccessFlags::TRANSFER_WRITE,
+        vk::AccessFlags::TRANSFER_READ,
+        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+        vk::PipelineStageFlags::TRANSFER,
         vk::PipelineStageFlags::TRANSFER,
         transfer_queue_family_index,
         dst_queue_family_index,
@@ -372,22 +387,6 @@ fn generate_mips_for_image(
         .layer_count(1)
         .level_count(mip_level_count)
         .build();
-
-    // Everything is in transfer read mode, transition it to our final layout
-    transition_for_mipmap(
-        device_context.device(),
-        upload.dst_command_buffer(),
-        image.image(),
-        vk::AccessFlags::TRANSFER_READ,
-        vk::AccessFlags::SHADER_READ,
-        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-        vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-        vk::PipelineStageFlags::TRANSFER,
-        vk::PipelineStageFlags::FRAGMENT_SHADER,
-        dst_queue_family_index,
-        dst_queue_family_index,
-        &all_mips_range
-    );
 
     // Everything is in transfer read mode, transition it to our final layout
     transition_for_mipmap(
