@@ -1004,8 +1004,6 @@ impl VkImGuiRenderPass {
         ]
     }
 
-    //TODO: This is doing a GPU idle wait, would be better to integrate it into the command
-    // buffer
     pub fn update_uniform_buffer(
         &mut self,
         swapchain_image_index: usize,
@@ -1032,6 +1030,8 @@ impl VkImGuiRenderPass {
         present_index: usize,
         hidpi_factor: f64,
     ) -> VkResult<()> {
+        self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
+
         Self::record_command_buffer(
             imgui_draw_data,
             &self.device_context,

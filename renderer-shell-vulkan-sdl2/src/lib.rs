@@ -30,7 +30,7 @@ impl<'a> Window for Sdl2Window<'a> {
     fn scale_factor(&self) -> f64 {
         let physical_size = self.window.vulkan_drawable_size();
         let logical_size = self.window.size();
-        logical_size.0 as f64 / physical_size.0 as f64
+        physical_size.0 as f64 / logical_size.0 as f64
     }
 
     fn create_vulkan_surface(
