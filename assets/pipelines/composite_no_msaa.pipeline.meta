@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(217252963001471953),
+    import_hash: Some(2559993767021543697),
     importer_version: 2,
     importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
     importer_options: (),
@@ -9,11 +9,11 @@
         (
             id: "1e30b884-ed80-4950-a209-f426f3cbb997",
             search_tags: [
-                ("file_name", Some("composite.pipeline")),
+                ("file_name", Some("composite_no_msaa.pipeline")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 11065644159958970370,
+                hash: 4798346516175417585,
                 id: "1e30b884-ed80-4950-a209-f426f3cbb997",
                 build_deps: [],
                 load_deps: [],

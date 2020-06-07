@@ -221,7 +221,6 @@ pub fn create_graphics_pipeline(
     let rasterization_state = fixed_function_state.rasterization_state.as_builder();
 
     let multisample_state = fixed_function_state.multisample_state.as_builder(swapchain_surface_info);
-
     let color_blend_attachments: Vec<_> = fixed_function_state
         .color_blend_state
         .attachments

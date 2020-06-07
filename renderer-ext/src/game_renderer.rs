@@ -99,7 +99,7 @@ pub struct GameRenderer {
     meshes: Vec<StaticMeshInstance>,
 
     composite_material: Handle<MaterialAsset>,
-    composite_material_dyn_set: DynDescriptorSet,
+    composite_material_dyn_set: Option<DynDescriptorSet>,
 
     mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
@@ -311,9 +311,6 @@ impl GameRenderer {
 
         let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(&mesh_material, 0, 0);
         let mesh_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout_def)?;
-
-        let composite_layout = resource_manager.get_descriptor_set_info(&composite_material, 0, 0);
-        let composite_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&composite_layout.descriptor_set_layout_def)?;
         //
         // let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
         //
@@ -350,7 +347,7 @@ impl GameRenderer {
             meshes,
 
             composite_material,
-            composite_material_dyn_set,
+            composite_material_dyn_set: None,
 
             // mesh,
             // mesh_material_instance,
@@ -481,10 +478,23 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             debug_pipeline_info,
         )?);
 
+        log::trace!("Create VkCompositeRenderPass");
+        let composite_pass_index = if swapchain_surface_info.msaa_level == MsaaLevel::Sample1 {
+            0 // no MSAA
+        } else {
+            1 // with MSAA
+        };
+
+        let composite_layout = self.resource_manager.get_descriptor_set_info(
+            &self.composite_material,
+            composite_pass_index,
+            0
+        );
+
         let composite_pipeline_info = self.resource_manager.get_pipeline_info(
             &self.composite_material,
             &swapchain_surface_info,
-            0,
+            composite_pass_index,
         );
 
         self.composite_renderpass = Some(VkCompositeRenderPass::new(
@@ -493,10 +503,12 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             composite_pipeline_info,
         )?);
 
-        log::debug!("game renderer swapchain_created finished");
+        let mut composite_material_dyn_set = self.resource_manager.create_dyn_descriptor_set_uninitialized(&composite_layout.descriptor_set_layout_def)?;
+        composite_material_dyn_set.set_image_raw(0, swapchain.color_attachment.resolved_image_view());
+        composite_material_dyn_set.flush();
+        self.composite_material_dyn_set = Some(composite_material_dyn_set);
 
-        self.composite_material_dyn_set.set_image_raw(0, swapchain.color_image_view);
-        self.composite_material_dyn_set.flush();
+        log::debug!("game renderer swapchain_created finished");
 
         VkResult::Ok(())
     }
@@ -748,13 +760,7 @@ impl GameRenderer {
         //
         if let Some(composite_renderpass) = &mut self.composite_renderpass {
             log::trace!("composite_renderpass update");
-            let composite_pipeline_info = self.resource_manager.get_pipeline_info(
-                &self.composite_material,
-                self.swapchain_surface_info.as_ref().unwrap(),
-                0,
-            );
-
-            let descriptor_set_per_pass = self.composite_material_dyn_set.descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+            let descriptor_set_per_pass = self.composite_material_dyn_set.as_ref().unwrap().descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
 
             composite_renderpass.update(
                 present_index,

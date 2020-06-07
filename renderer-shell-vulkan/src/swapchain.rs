@@ -29,6 +29,147 @@ pub struct SwapchainInfo {
     pub depth_format: vk::Format,
 }
 
+pub struct RenderpassAttachmentImage {
+    pub msaa_image: Option<ManuallyDrop<VkImage>>,
+    pub msaa_image_view: Option<vk::ImageView>,
+    pub resolved_image: ManuallyDrop<VkImage>,
+    pub resolved_image_view: vk::ImageView,
+}
+
+impl RenderpassAttachmentImage {
+    fn new(
+        device_context: &VkDeviceContext,
+        swapchain_info: &SwapchainInfo,
+        format: vk::Format,
+        image_aspect_flags: vk::ImageAspectFlags,
+        msaa_image_usage: vk::ImageUsageFlags,
+        resolved_image_usage: vk::ImageUsageFlags,
+        msaa_level: MsaaLevel,
+    ) -> VkResult<Self> {
+        let mut msaa_image = None;
+        let mut msaa_image_view = None;
+
+        if msaa_level != MsaaLevel::Sample1 {
+            let (image, image_view) = Self::create_renderpass_attachment(
+                device_context,
+                swapchain_info,
+                format,
+                image_aspect_flags,
+                msaa_image_usage,
+                msaa_level
+            )?;
+
+            msaa_image = Some(image);
+            msaa_image_view = Some(image_view);
+        }
+
+        let (resolved_image, resolved_image_view) = Self::create_renderpass_attachment(
+            device_context,
+            swapchain_info,
+            format,
+            image_aspect_flags,
+            resolved_image_usage,
+            MsaaLevel::Sample1
+        )?;
+
+        Ok(RenderpassAttachmentImage {
+            msaa_image,
+            msaa_image_view,
+            resolved_image,
+            resolved_image_view
+        })
+    }
+
+    fn create_renderpass_attachment(
+        device_context: &VkDeviceContext,
+        swapchain_info: &SwapchainInfo,
+        format: vk::Format,
+        image_aspect_flags: vk::ImageAspectFlags,
+        image_usage: vk::ImageUsageFlags,
+        msaa_level: MsaaLevel,
+    ) -> VkResult<(ManuallyDrop<VkImage>, vk::ImageView)> {
+        let extents = vk::Extent3D {
+            width: swapchain_info.extents.width,
+            height: swapchain_info.extents.height,
+            depth: 1,
+        };
+
+        let image = VkImage::new(
+            device_context,
+            vk_mem::MemoryUsage::GpuOnly,
+            image_usage,
+            extents,
+            format,
+            vk::ImageTiling::OPTIMAL,
+            msaa_level.into(),
+            1,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL
+        )?;
+
+        let subresource_range = vk::ImageSubresourceRange::builder()
+            .aspect_mask(image_aspect_flags)
+            .base_mip_level(0)
+            .level_count(1)
+            .base_array_layer(0)
+            .layer_count(1);
+
+        let image_view_create_info = vk::ImageViewCreateInfo::builder()
+            .image(image.image())
+            .view_type(vk::ImageViewType::TYPE_2D)
+            .format(format)
+            .subresource_range(*subresource_range);
+
+        let image_view = unsafe {
+            device_context.device().create_image_view(&*image_view_create_info, None)?
+        };
+
+        Ok((ManuallyDrop::new(image), image_view))
+    }
+
+    //
+    // The "target" image/image view are the resources that should be written to and may or may not
+    // be MSAA
+    //
+    pub fn target_image(&self) -> vk::Image {
+        self.msaa_image.as_ref().unwrap_or(&self.resolved_image).image()
+    }
+
+    pub fn target_image_view(&self) -> vk::ImageView {
+        self.msaa_image_view.unwrap_or(self.resolved_image_view)
+    }
+
+    //
+    // The "resolved" image/image view are the resources that should be read from. Either it will be
+    // resolved from the MSAA image, or the target image will have been the resolved image from the
+    // start
+    //
+    pub fn resolved_image(&self) -> vk::Image {
+        self.resolved_image.image()
+    }
+
+    pub fn resolved_image_view(&self) -> vk::ImageView {
+        self.resolved_image_view
+    }
+
+    fn destroy(
+        &mut self,
+        device_context: &VkDeviceContext,
+    ) {
+        unsafe {
+            if let Some(image_view) = &mut self.msaa_image_view {
+                device_context.device().destroy_image_view(*image_view, None);
+            }
+
+            if let Some(image) = &mut self.msaa_image {
+                ManuallyDrop::drop(image);
+            }
+
+            device_context.device().destroy_image_view(self.resolved_image_view, None);
+            ManuallyDrop::drop(&mut self.resolved_image);
+        }
+    }
+}
+
 /// Handles setting up the swapchain resources required to present
 pub struct VkSwapchain {
     //pub device: ash::Device, // VkDevice is responsible for cleaning this up
@@ -41,12 +182,10 @@ pub struct VkSwapchain {
     pub swapchain_image_views: Vec<vk::ImageView>,
 
     pub color_format: vk::Format,
-    pub color_image: ManuallyDrop<VkImage>,
-    pub color_image_view: vk::ImageView,
+    pub color_attachment: RenderpassAttachmentImage,
 
     pub depth_format: vk::Format,
-    pub depth_image: ManuallyDrop<VkImage>,
-    pub depth_image_view: vk::ImageView,
+    pub depth_attachment: RenderpassAttachmentImage,
 
     // One per MAX_FRAMES_IN_FLIGHT
     pub image_available_semaphores: Vec<vk::Semaphore>,
@@ -112,23 +251,29 @@ impl VkSwapchain {
         let swapchain_image_views =
             Self::create_swapchain_image_views(device_context.device(), &swapchain_info, &swapchain_images)?;
 
-        let (color_image, color_image_view) = Self::create_color_image(
+        let color_attachment = RenderpassAttachmentImage::new(
             device_context,
+            &swapchain_info,
             color_format,
-            &swapchain_info,
+            vk::ImageAspectFlags::COLOR,
+            // the msaa image won't actually be sampled, but it's being passed from the debug renderpass to the
+            // composite renderpass with layout ShaderReadOnlyOptimal for the non-msaa case. If msaa is enabled
+            // it will get resolved to the resolved image and we will sample that. If msaa is off, we don't even
+            // create an msaa image
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
             msaa_level
         )?;
 
-        log::debug!("Created color attachment image: {:?}", color_image);
-
-        let (depth_image, depth_image_view) = Self::create_depth_image(
+        let depth_attachment = RenderpassAttachmentImage::new(
             device_context,
-            depth_format,
             &swapchain_info,
+            depth_format,
+            vk::ImageAspectFlags::DEPTH,
+            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
             msaa_level
         )?;
-
-        log::debug!("Created depth attachment image: {:?}", depth_image);
 
         let image_available_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
         let render_finished_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
@@ -142,11 +287,9 @@ impl VkSwapchain {
             swapchain_images,
             swapchain_image_views,
             color_format,
-            color_image,
-            color_image_view,
+            color_attachment,
             depth_format,
-            depth_image,
-            depth_image_view,
+            depth_attachment,
             image_available_semaphores,
             render_finished_semaphores,
             in_flight_fences,
@@ -445,84 +588,6 @@ impl VkSwapchain {
         format
     }
 
-    fn create_renderpass_attachment(
-        device_context: &VkDeviceContext,
-        swapchain_info: &SwapchainInfo,
-        format: vk::Format,
-        image_aspect_flags: vk::ImageAspectFlags,
-        image_usage: vk::ImageUsageFlags,
-        msaa_level: MsaaLevel,
-    ) -> VkResult<(ManuallyDrop<VkImage>, vk::ImageView)> {
-        let extents = vk::Extent3D {
-            width: swapchain_info.extents.width,
-            height: swapchain_info.extents.height,
-            depth: 1,
-        };
-
-        let image = VkImage::new(
-            device_context,
-            vk_mem::MemoryUsage::GpuOnly,
-            image_usage,
-            extents,
-            format,
-            vk::ImageTiling::OPTIMAL,
-            msaa_level.into(),
-            1,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL
-        )?;
-
-        let subresource_range = vk::ImageSubresourceRange::builder()
-            .aspect_mask(image_aspect_flags)
-            .base_mip_level(0)
-            .level_count(1)
-            .base_array_layer(0)
-            .layer_count(1);
-
-        let image_view_create_info = vk::ImageViewCreateInfo::builder()
-            .image(image.image())
-            .view_type(vk::ImageViewType::TYPE_2D)
-            .format(format)
-            .subresource_range(*subresource_range);
-
-        let image_view = unsafe {
-            device_context.device().create_image_view(&*image_view_create_info, None)?
-        };
-
-        Ok((ManuallyDrop::new(image), image_view))
-    }
-
-    fn create_color_image(
-        device_context: &VkDeviceContext,
-        format: vk::Format,
-        swapchain_info: &SwapchainInfo,
-        msaa_level: MsaaLevel,
-    ) -> VkResult<(ManuallyDrop<VkImage>, vk::ImageView)> {
-        Self::create_renderpass_attachment(
-            device_context,
-            swapchain_info,
-            format,
-            vk::ImageAspectFlags::COLOR,
-            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
-            msaa_level
-        )
-    }
-
-    fn create_depth_image(
-        device_context: &VkDeviceContext,
-        format: vk::Format,
-        swapchain_info: &SwapchainInfo,
-        msaa_level: MsaaLevel,
-    ) -> VkResult<(ManuallyDrop<VkImage>, vk::ImageView)> {
-        Self::create_renderpass_attachment(
-            device_context,
-            swapchain_info,
-            format,
-            vk::ImageAspectFlags::DEPTH,
-            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-            msaa_level
-        )
-    }
-
     fn allocate_semaphores_per_frame(
         device_context: &VkDeviceContext
     ) -> VkResult<Vec<vk::Semaphore>> {
@@ -580,10 +645,8 @@ impl Drop for VkSwapchain {
                 device.destroy_image_view(swapchain_image_view, None);
             }
 
-            device.destroy_image_view(self.color_image_view, None);
-            device.destroy_image_view(self.depth_image_view, None);
-            ManuallyDrop::drop(&mut self.color_image);
-            ManuallyDrop::drop(&mut self.depth_image);
+            self.color_attachment.destroy(&self.device_context);
+            self.depth_attachment.destroy(&self.device_context);
 
             self.swapchain_loader
                 .destroy_swapchain(self.swapchain, None);

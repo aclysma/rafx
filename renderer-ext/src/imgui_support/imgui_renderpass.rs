@@ -320,7 +320,7 @@ impl VkImGuiRenderPass {
         // Skip depth/stencil testing
 
         let multisample_state_info = vk::PipelineMultisampleStateCreateInfo::builder()
-            .rasterization_samples(swapchain_info.msaa_level.into());
+            .rasterization_samples(vk::SampleCountFlags::TYPE_1);
 
         // Applies to the current framebuffer
         let color_blend_attachment_states = [
@@ -364,7 +364,7 @@ impl VkImGuiRenderPass {
         let renderpass_attachments = [
             vk::AttachmentDescription::builder()
                 .format(swapchain_info.surface_format.format)
-                .samples(swapchain_info.msaa_level.into())
+                .samples(vk::SampleCountFlags::TYPE_1)
                 .load_op(vk::AttachmentLoadOp::LOAD)
                 .store_op(vk::AttachmentStoreOp::STORE)
                 .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)

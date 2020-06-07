@@ -171,9 +171,9 @@ impl VkMeshRenderPass {
         //
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
-            swapchain.color_image_view,
+            swapchain.color_attachment.target_image_view(),
             &swapchain.swapchain_image_views,
-            swapchain.depth_image_view,
+            swapchain.depth_attachment.target_image_view(),
             &swapchain.swapchain_info,
             &pipeline_info.renderpass.get_raw(),
         )?;

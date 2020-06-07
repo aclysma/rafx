@@ -228,6 +228,7 @@ impl ResourceManager {
             .materials
             .get_committed(handle.load_handle())
             .unwrap();
+
         let swapchain_index = self
             .swapchain_surfaces
             .ref_counts
@@ -615,13 +616,13 @@ impl ResourceManager {
         material_asset: &MaterialAsset,
     ) -> VkResult<LoadedMaterial> {
         let mut passes = Vec::with_capacity(material_asset.passes.len());
+
         for pass in &material_asset.passes {
             let loaded_pipeline_asset = self
                 .loaded_assets
                 .graphics_pipelines2
                 .get_latest(pass.pipeline.load_handle())
                 .unwrap();
-
 
             let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
 

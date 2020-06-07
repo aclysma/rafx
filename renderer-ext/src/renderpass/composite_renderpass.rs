@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkDeviceContext};
+use renderer_shell_vulkan::{VkDevice, VkDeviceContext, MsaaLevel};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -56,6 +56,8 @@ impl VkCompositeRenderPass {
         //
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
+            swapchain.color_attachment.target_image_view(),
+            swapchain.color_attachment.resolved_image_view(),
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
             &pipeline_info.renderpass.get_raw(),
@@ -97,6 +99,8 @@ impl VkCompositeRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
+        color_msaa_image_view: vk::ImageView,
+        color_resolve_image_view: vk::ImageView,
         swapchain_image_views: &[vk::ImageView],
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
@@ -104,7 +108,14 @@ impl VkCompositeRenderPass {
         swapchain_image_views
             .iter()
             .map(|&swapchain_image_view| {
-                let framebuffer_attachments = [swapchain_image_view];
+
+                let framebuffer_attachments =
+                if swapchain_info.msaa_level == MsaaLevel::Sample1 {
+                    vec![swapchain_image_view]
+                } else {
+                    vec![color_msaa_image_view, color_resolve_image_view, swapchain_image_view]
+                };
+
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)
@@ -152,11 +163,15 @@ impl VkCompositeRenderPass {
                 },
             },
             vk::ClearValue {
-                depth_stencil: vk::ClearDepthStencilValue {
-                    depth: 1.0,
-                    stencil: 0
-                }
-            }
+                color: vk::ClearColorValue {
+                    float32: [0.0, 0.0, 0.0, 1.0],
+                },
+            },
+            vk::ClearValue {
+                color: vk::ClearColorValue {
+                    float32: [0.0, 0.0, 0.0, 1.0],
+                },
+            },
         ];
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()

@@ -4,7 +4,7 @@
             (
                 flags: None,
                 format: MatchSurface,
-                samples: MatchSwapchain,
+                samples: SampleCount1,
                 load_op: Clear,
                 store_op: Store,
                 stencil_load_op: DontCare,
@@ -25,7 +25,7 @@
                 ],
                 resolve_attachments: [],
                 depth_stencil_attachment: None,
-            ),
+            )
         ],
         dependencies: [
             (
@@ -73,7 +73,7 @@
         line_width: 1,
     ),
     multisample_state: (
-        rasterization_samples: MatchSwapchain,
+        rasterization_samples: SampleCount1,
         sample_shading_enable: false,
         min_sample_shading: 0,
         sample_mask: None,
