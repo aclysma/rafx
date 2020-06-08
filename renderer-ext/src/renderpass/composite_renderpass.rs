@@ -109,13 +109,7 @@ impl VkCompositeRenderPass {
             .iter()
             .map(|&swapchain_image_view| {
 
-                let framebuffer_attachments =
-                if swapchain_info.msaa_level == MsaaLevel::Sample1 {
-                    vec![swapchain_image_view]
-                } else {
-                    vec![color_msaa_image_view, color_resolve_image_view, swapchain_image_view]
-                };
-
+                let framebuffer_attachments = [swapchain_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)

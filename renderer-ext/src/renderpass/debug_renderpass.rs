@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkDeviceContext};
+use renderer_shell_vulkan::{VkDevice, VkDeviceContext, MsaaLevel};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -290,6 +290,7 @@ impl VkDebugRenderPass {
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
             swapchain.color_attachment.target_image_view(),
+            swapchain.color_attachment.resolved_image_view(),
             &swapchain.swapchain_image_views,
             swapchain.depth_attachment.target_image_view(),
             &swapchain.swapchain_info,
@@ -341,7 +342,8 @@ impl VkDebugRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
-        color_image_view: vk::ImageView,
+        color_target_image_view: vk::ImageView,
+        color_resolved_image_view: vk::ImageView,
         swapchain_image_views: &[vk::ImageView],
         depth_image_view: vk::ImageView,
         swapchain_info: &SwapchainInfo,
@@ -350,7 +352,13 @@ impl VkDebugRenderPass {
         swapchain_image_views
             .iter()
             .map(|&swapchain_image_view| {
-                let framebuffer_attachments = [color_image_view, depth_image_view];
+                let framebuffer_attachments =
+                    if swapchain_info.msaa_level == MsaaLevel::Sample1 {
+                        vec![color_target_image_view, depth_image_view]
+                    } else {
+                        vec![color_target_image_view, depth_image_view, color_resolved_image_view]
+                    };
+
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)

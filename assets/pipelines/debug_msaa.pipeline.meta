@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(7736324668036513703),
+    importer_version: 2,
+    importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
+    importer_options: (),
+    importer_state: (Some("cd0bfea7-65ae-4605-a009-e2710499f1f5")),
+    assets: [
+        (
+            id: "cd0bfea7-65ae-4605-a009-e2710499f1f5",
+            search_tags: [
+                ("file_name", Some("debug_msaa.pipeline")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 1238333341996652607,
+                id: "cd0bfea7-65ae-4605-a009-e2710499f1f5",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(515),
+                uncompressed_size: Some(515),
+                type_id: "0dfa5d9a-89cd-40a1-adac-baf801db61db",
+            )),
+        ),
+    ],
+)

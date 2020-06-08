@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(16041510437116861009),
+    import_hash: Some(634782861419457975),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,17 +13,17 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 4526052810347409756,
+                hash: 10386856664593969767,
                 id: "11d3b144-f564-42c9-b31f-82c8a938bf85",
                 build_deps: [
                     Path("../shaders/debug.frag.spv"),
-                    Path("debug.pipeline"),
+                    Path("debug_msaa.pipeline"),
                     Path("../shaders/debug.vert.spv"),
                 ],
                 load_deps: [
                     Path("../shaders/debug.vert.spv"),
-                    Path("debug.pipeline"),
                     Path("../shaders/debug.frag.spv"),
+                    Path("debug_msaa.pipeline"),
                 ],
                 compression: None,
                 compressed_size: Some(262),
