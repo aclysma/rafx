@@ -593,7 +593,7 @@ impl GameRenderer {
         per_frame_data.directional_lights[0].intensity = 5.0;
         per_frame_data.directional_lights[0].color = glam::Vec4::new(1.0, 1.0, 1.0, 1.0);
 
-        self.debug_draw_3d.add_line(light_from, light_to, glam::Vec4::new(1.0, 1.0, 1.0, 1.0));
+        self.debug_draw_3d.add_line(light_from, light_to, glam::Vec4::new(15.0, 15.0, 15.0, 1.0));
 
         let light_position = glam::Vec3::new(5.0, 5.0, 5.0);
         let light_position_vs = (view * light_position.extend(1.0)).truncate();

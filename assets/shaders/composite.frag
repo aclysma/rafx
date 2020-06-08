@@ -10,5 +10,11 @@ layout (location = 0) out vec4 outColor;
 
 void main()
 {
-    outColor = texture(sampler2D(tex, smp), inUV);
+    vec4 color = texture(sampler2D(tex, smp), inUV);
+    //outColor = color;
+
+    // tonemapping
+    vec3 mapped = color.rgb / (color.rgb + vec3(1.0));
+
+    outColor = vec4(mapped, color.a);
 }
