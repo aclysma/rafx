@@ -479,22 +479,17 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
         )?);
 
         log::trace!("Create VkCompositeRenderPass");
-        let composite_pass_index = if swapchain_surface_info.msaa_level == MsaaLevel::Sample1 {
-            0 // no MSAA
-        } else {
-            1 // with MSAA
-        };
 
         let composite_layout = self.resource_manager.get_descriptor_set_info(
             &self.composite_material,
-            composite_pass_index,
+            0,
             0
         );
 
         let composite_pipeline_info = self.resource_manager.get_pipeline_info(
             &self.composite_material,
             &swapchain_surface_info,
-            composite_pass_index,
+            0,
         );
 
         self.composite_renderpass = Some(VkCompositeRenderPass::new(
