@@ -2,7 +2,7 @@
     passes: [
         (
             phase: "Opaque",
-            pipeline: "debug.pipeline",
+            pipeline: "debug_msaa.pipeline",
             shaders: [
                 (
                     stage: Vertex,
