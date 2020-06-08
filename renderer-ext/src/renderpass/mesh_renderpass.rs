@@ -410,7 +410,7 @@ impl VkMeshRenderPass {
             &self.swapchain_info,
             &pipeline_info.renderpass.get_raw(),
             self.frame_buffers[present_index],
-            &pipeline_info.pipeline.get_raw().pipeline,
+            &pipeline_info.pipeline.get_raw().pipelines[0],
             &pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
             descriptor_set_per_pass,

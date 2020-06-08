@@ -165,7 +165,7 @@ pub fn create_renderpass(
     unsafe { device.create_render_pass(&*create_info, None) }
 }
 
-pub fn create_graphics_pipeline(
+pub fn create_graphics_pipelines(
     device: &ash::Device,
     //graphics_pipeline: &dsc::GraphicsPipeline,
     fixed_function_state: &dsc::FixedFunctionState,
@@ -174,7 +174,8 @@ pub fn create_graphics_pipeline(
     shader_modules_meta: &[dsc::ShaderModuleMeta],
     shader_modules: &[vk::ShaderModule],
     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-) -> VkResult<vk::Pipeline> {
+    subpass_count: u32
+) -> VkResult<Vec<vk::Pipeline>> {
     //let fixed_function_state = &graphics_pipeline.fixed_function_state;
 
     let input_assembly_state = fixed_function_state
@@ -261,23 +262,26 @@ pub fn create_graphics_pipeline(
         );
     }
 
-    let pipeline_info = vk::GraphicsPipelineCreateInfo::builder()
-        .input_assembly_state(&input_assembly_state)
-        .vertex_input_state(&vertex_input_state)
-        .viewport_state(&viewport_state)
-        .rasterization_state(&rasterization_state)
-        .multisample_state(&multisample_state)
-        .color_blend_state(&color_blend_state)
-        .dynamic_state(&dynamic_state)
-        .depth_stencil_state(&depth_stencil_state)
-        .layout(pipeline_layout)
-        .render_pass(renderpass)
-        .stages(&stages)
-        .build();
+    let pipeline_infos : Vec<_> = (0..subpass_count).map(|subpass_index| {
+        vk::GraphicsPipelineCreateInfo::builder()
+            .input_assembly_state(&input_assembly_state)
+            .vertex_input_state(&vertex_input_state)
+            .viewport_state(&viewport_state)
+            .rasterization_state(&rasterization_state)
+            .multisample_state(&multisample_state)
+            .color_blend_state(&color_blend_state)
+            .dynamic_state(&dynamic_state)
+            .depth_stencil_state(&depth_stencil_state)
+            .layout(pipeline_layout)
+            .render_pass(renderpass)
+            .stages(&stages)
+            .subpass(subpass_index)
+            .build()
+    }).collect();
 
     unsafe {
-        match device.create_graphics_pipelines(vk::PipelineCache::null(), &[pipeline_info], None) {
-            Ok(result) => Ok(result[0]),
+        match device.create_graphics_pipelines(vk::PipelineCache::null(), &pipeline_infos, None) {
+            Ok(result) => Ok(result),
             Err(e) => Err(e.1),
         }
     }

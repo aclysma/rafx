@@ -541,7 +541,7 @@ impl VkDebugRenderPass {
             &self.swapchain_info,
             &self.pipeline_info.renderpass.get_raw(),
             self.frame_buffers[present_index],
-            &self.pipeline_info.pipeline.get_raw().pipeline,
+            &self.pipeline_info.pipeline.get_raw().pipelines[0],
             &self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
             &mut self.vertex_buffers[present_index],

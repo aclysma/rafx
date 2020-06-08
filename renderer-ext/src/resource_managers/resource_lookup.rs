@@ -394,7 +394,7 @@ impl VkResource for PipelineLayoutResource {
 
 #[derive(Debug, Clone)]
 pub struct PipelineResource {
-    pub pipeline: vk::Pipeline,
+    pub pipelines: Vec<vk::Pipeline>,
     pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
     pub renderpass: ResourceArc<vk::RenderPass>,
 }
@@ -404,7 +404,11 @@ impl VkResource for PipelineResource {
         device_context: &VkDeviceContext,
         resource: Self,
     ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.pipeline)
+        for pipeline in resource.pipelines {
+            VkResource::destroy(device_context, pipeline)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -711,7 +715,7 @@ impl ResourceLookupSet {
             Ok(pipeline)
         } else {
             log::trace!("Creating pipeline\n{:#?}", pipeline_key);
-            let resource = crate::pipeline_description::create_graphics_pipeline(
+            let resources = crate::pipeline_description::create_graphics_pipelines(
                 &self.device_context.device(),
                 &pipeline_create_data.fixed_function_state,
                 pipeline_create_data
@@ -722,11 +726,12 @@ impl ResourceLookupSet {
                 &pipeline_create_data.shader_module_metas,
                 &pipeline_create_data.shader_module_vk_objs,
                 swapchain_surface_info,
+                pipeline_create_data.renderpass.subpasses.len() as u32
             )?;
-            log::trace!("Created pipeline {:?}", resource);
+            log::trace!("Created pipelines {:?}", resources);
 
             let resource = PipelineResource {
-                pipeline: resource,
+                pipelines: resources,
                 pipeline_layout: pipeline_create_data.pipeline_layout.clone(),
                 renderpass: renderpass.clone(),
             };
