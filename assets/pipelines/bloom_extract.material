@@ -4,16 +4,16 @@
         // difference between the two is a different pipeline is referenced
         (
             phase: "Opaque",
-            pipeline: "composite.pipeline",
+            pipeline: "bloom_extract.pipeline",
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/composite.vert.spv",
+                    shader_module: "../shaders/bloom_extract.vert.spv",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/composite.frag.spv",
+                    shader_module: "../shaders/bloom_extract.frag.spv",
                     entry_name: "main"
                 ),
             ],

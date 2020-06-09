@@ -1,6 +1,7 @@
 (
     renderpass: (
         attachments: [
+            // Write out SDR to the swapchain
             (
                 flags: None,
                 format: MatchSurface,
@@ -12,6 +13,19 @@
                 initial_layout: Undefined,
                 final_layout: ColorAttachmentOptimal,
             ),
+            // Write out the HDR brightness image for bloom
+            (
+                flags: None,
+                format: MatchColorAttachment,
+                samples: SampleCount1,
+                load_op: Clear,
+                store_op: Store,
+                stencil_load_op: DontCare,
+                stencil_store_op: DontCare,
+                initial_layout: Undefined,
+                // Outputs to bloom
+                final_layout: ShaderReadOnlyOptimal,
+            ),
         ],
         subpasses: [
             (
@@ -20,6 +34,10 @@
                 color_attachments: [
                     (
                         attachment: Index(0),
+                        layout: ColorAttachmentOptimal,
+                    ),
+                    (
+                        attachment: Index(1),
                         layout: ColorAttachmentOptimal,
                     ),
                 ],
@@ -84,6 +102,21 @@
         logic_op_enable: false,
         logic_op: Clear,
         attachments: [
+            (
+                blend_enable: false,
+                src_color_blend_factor: SrcAlpha,
+                dst_color_blend_factor: OneMinusSrcAlpha,
+                color_blend_op: Add,
+                src_alpha_blend_factor: One,
+                dst_alpha_blend_factor: Zero,
+                alpha_blend_op: Add,
+                color_write_mask: (
+                    red: true,
+                    green: true,
+                    blue: true,
+                    alpha: true,
+                ),
+            ),
             (
                 blend_enable: false,
                 src_color_blend_factor: SrcAlpha,

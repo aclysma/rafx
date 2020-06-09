@@ -13,5 +13,8 @@ glslc mesh.frag -o mesh.frag.spv
 glslc debug.vert -o debug.vert.spv
 glslc debug.frag -o debug.frag.spv
 
-glslc composite.vert -o composite.vert.spv
-glslc composite.frag -o composite.frag.spv
+glslc bloom_extract.vert -o bloom_extract.vert.spv
+glslc bloom_extract.frag -o bloom_extract.frag.spv
+
+glslc bloom_blur.vert -o bloom_blur.vert.spv
+glslc bloom_blur.frag -o bloom_blur.frag.spv

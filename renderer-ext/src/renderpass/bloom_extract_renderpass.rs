@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkDeviceContext, MsaaLevel};
+use renderer_shell_vulkan::{VkDevice, VkDeviceContext, MsaaLevel, RenderpassAttachmentImage};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -24,7 +24,7 @@ use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
 use crate::asset_resource::AssetResource;
 use crate::resource_managers::PipelineSwapchainInfo;
 
-pub struct VkCompositeRenderPass {
+pub struct VkBloomExtractRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
@@ -35,14 +35,26 @@ pub struct VkCompositeRenderPass {
     // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
+
+    bloom_image: ManuallyDrop<VkImage>,
+    bloom_image_view: vk::ImageView,
 }
 
-impl VkCompositeRenderPass {
+impl VkBloomExtractRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         pipeline_info: PipelineSwapchainInfo,
     ) -> VkResult<Self> {
+        let (bloom_image, bloom_image_view) = RenderpassAttachmentImage::create_image_and_view(
+            device_context,
+            &swapchain.swapchain_info,
+            swapchain.color_format,
+            vk::ImageAspectFlags::COLOR,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
+            MsaaLevel::Sample1
+        )?;
+
         //
         // Command Buffers
         //
@@ -58,6 +70,7 @@ impl VkCompositeRenderPass {
             &device_context.device(),
             swapchain.color_attachment.target_image_view(),
             swapchain.color_attachment.resolved_image_view(),
+            bloom_image_view,
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
             &pipeline_info.renderpass.get_raw(),
@@ -69,13 +82,15 @@ impl VkCompositeRenderPass {
             &command_pool,
         )?;
 
-        Ok(VkCompositeRenderPass {
+        Ok(VkBloomExtractRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             pipeline_info,
             frame_buffers,
             command_pool,
             command_buffers,
+            bloom_image,
+            bloom_image_view
         })
     }
 
@@ -101,6 +116,7 @@ impl VkCompositeRenderPass {
         logical_device: &ash::Device,
         color_msaa_image_view: vk::ImageView,
         color_resolve_image_view: vk::ImageView,
+        bloom_image_view: vk::ImageView,
         swapchain_image_views: &[vk::ImageView],
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
@@ -109,7 +125,7 @@ impl VkCompositeRenderPass {
             .iter()
             .map(|&swapchain_image_view| {
 
-                let framebuffer_attachments = [swapchain_image_view];
+                let framebuffer_attachments = [swapchain_image_view, bloom_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)
@@ -151,11 +167,6 @@ impl VkCompositeRenderPass {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
         let clear_values = [
-            vk::ClearValue {
-                color: vk::ClearColorValue {
-                    float32: [0.0, 0.0, 0.0, 1.0],
-                },
-            },
             vk::ClearValue {
                 color: vk::ClearColorValue {
                     float32: [0.0, 0.0, 0.0, 1.0],
@@ -234,7 +245,7 @@ impl VkCompositeRenderPass {
     }
 }
 
-impl Drop for VkCompositeRenderPass {
+impl Drop for VkBloomExtractRenderPass {
     fn drop(&mut self) {
         log::trace!("destroying VkSpriteRenderPass");
 
@@ -245,6 +256,9 @@ impl Drop for VkCompositeRenderPass {
             for frame_buffer in &self.frame_buffers {
                 device.destroy_framebuffer(*frame_buffer, None);
             }
+
+            device.destroy_image_view(self.bloom_image_view, None);
+            ManuallyDrop::drop(&mut self.bloom_image);
         }
 
         log::trace!("destroyed VkSpriteRenderPass");

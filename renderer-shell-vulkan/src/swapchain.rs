@@ -13,6 +13,8 @@ use std::mem::ManuallyDrop;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 
+
+
 struct CreateSwapchainResult {
     swapchain_loader: khr::Swapchain,
     swapchain: vk::SwapchainKHR
@@ -50,7 +52,7 @@ impl RenderpassAttachmentImage {
         let mut msaa_image_view = None;
 
         if msaa_level != MsaaLevel::Sample1 {
-            let (image, image_view) = Self::create_renderpass_attachment(
+            let (image, image_view) = Self::create_image_and_view(
                 device_context,
                 swapchain_info,
                 format,
@@ -63,7 +65,7 @@ impl RenderpassAttachmentImage {
             msaa_image_view = Some(image_view);
         }
 
-        let (resolved_image, resolved_image_view) = Self::create_renderpass_attachment(
+        let (resolved_image, resolved_image_view) = Self::create_image_and_view(
             device_context,
             swapchain_info,
             format,
@@ -80,7 +82,7 @@ impl RenderpassAttachmentImage {
         })
     }
 
-    fn create_renderpass_attachment(
+    pub fn create_image_and_view(
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         format: vk::Format,

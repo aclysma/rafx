@@ -33,7 +33,7 @@ use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, Gltf
 use crate::pipeline::buffer::BufferAsset;
 use crate::resource_managers::ResourceArc;
 use crate::renderpass::debug_renderpass::DebugDraw3DResource;
-use crate::renderpass::VkCompositeRenderPass;
+use crate::renderpass::VkBloomExtractRenderPass;
 
 
 fn begin_load_asset<T>(
@@ -98,13 +98,13 @@ pub struct GameRenderer {
     mesh_material_per_frame_data: DynDescriptorSet,
     meshes: Vec<StaticMeshInstance>,
 
-    composite_material: Handle<MaterialAsset>,
-    composite_material_dyn_set: Option<DynDescriptorSet>,
+    bloom_extract_material: Handle<MaterialAsset>,
+    bloom_extract_material_dyn_set: Option<DynDescriptorSet>,
 
     mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
     debug_renderpass: Option<VkDebugRenderPass>,
-    composite_renderpass: Option<VkCompositeRenderPass>,
+    bloom_extract_renderpass: Option<VkBloomExtractRenderPass>,
     swapchain_surface_info: Option<SwapchainSurfaceInfo>,
 }
 
@@ -177,9 +177,9 @@ impl GameRenderer {
         );
 
         //
-        // Composite resources
+        // Bloom extract resources
         //
-        let composite_material = begin_load_asset::<MaterialAsset>(
+        let bloom_extract_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("822c8e08-2720-4002-81da-fd9c4d61abdd"),
             &asset_resource,
         );
@@ -258,10 +258,10 @@ impl GameRenderer {
 
         wait_for_asset_to_load(
             device_context,
-            &composite_material,
+            &bloom_extract_material,
             asset_resource,
             &mut resource_manager,
-            "composite material"
+            "bloom extract material"
         );
 
         wait_for_asset_to_load(
@@ -346,8 +346,8 @@ impl GameRenderer {
             mesh_material_per_frame_data,
             meshes,
 
-            composite_material,
-            composite_material_dyn_set: None,
+            bloom_extract_material,
+            bloom_extract_material_dyn_set: None,
 
             // mesh,
             // mesh_material_instance,
@@ -360,7 +360,7 @@ impl GameRenderer {
             sprite_renderpass: None,
             mesh_renderpass: None,
             debug_renderpass: None,
-            composite_renderpass: None,
+            bloom_extract_renderpass: None,
         };
 
         let image_info = renderer.resource_manager.get_image_info(&override_image);
@@ -478,30 +478,30 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             debug_pipeline_info,
         )?);
 
-        log::trace!("Create VkCompositeRenderPass");
+        log::trace!("Create VkBloomExtractRenderPass");
 
-        let composite_layout = self.resource_manager.get_descriptor_set_info(
-            &self.composite_material,
+        let bloom_extract_layout = self.resource_manager.get_descriptor_set_info(
+            &self.bloom_extract_material,
             0,
             0
         );
 
-        let composite_pipeline_info = self.resource_manager.get_pipeline_info(
-            &self.composite_material,
+        let bloom_extract_pipeline_info = self.resource_manager.get_pipeline_info(
+            &self.bloom_extract_material,
             &swapchain_surface_info,
             0,
         );
 
-        self.composite_renderpass = Some(VkCompositeRenderPass::new(
+        self.bloom_extract_renderpass = Some(VkBloomExtractRenderPass::new(
             device_context,
             swapchain,
-            composite_pipeline_info,
+            bloom_extract_pipeline_info,
         )?);
 
-        let mut composite_material_dyn_set = self.resource_manager.create_dyn_descriptor_set_uninitialized(&composite_layout.descriptor_set_layout_def)?;
-        composite_material_dyn_set.set_image_raw(0, swapchain.color_attachment.resolved_image_view());
-        composite_material_dyn_set.flush();
-        self.composite_material_dyn_set = Some(composite_material_dyn_set);
+        let mut bloom_extract_material_dyn_set = self.resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout_def)?;
+        bloom_extract_material_dyn_set.set_image_raw(0, swapchain.color_attachment.resolved_image_view());
+        bloom_extract_material_dyn_set.flush();
+        self.bloom_extract_material_dyn_set = Some(bloom_extract_material_dyn_set);
 
         log::debug!("game renderer swapchain_created finished");
 
@@ -751,17 +751,17 @@ impl GameRenderer {
         }
 
         //
-        // composite
+        // bloom extract
         //
-        if let Some(composite_renderpass) = &mut self.composite_renderpass {
-            log::trace!("composite_renderpass update");
-            let descriptor_set_per_pass = self.composite_material_dyn_set.as_ref().unwrap().descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+        if let Some(bloom_extract_renderpass) = &mut self.bloom_extract_renderpass {
+            log::trace!("bloom_extract_renderpass update");
+            let descriptor_set_per_pass = self.bloom_extract_material_dyn_set.as_ref().unwrap().descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
 
-            composite_renderpass.update(
+            bloom_extract_renderpass.update(
                 present_index,
                 descriptor_set_per_pass
             )?;
-            command_buffers.push(composite_renderpass.command_buffers[present_index].clone());
+            command_buffers.push(bloom_extract_renderpass.command_buffers[present_index].clone());
         }
 
         //
@@ -786,7 +786,7 @@ impl Drop for GameRenderer {
         self.mesh_renderpass = None;
         self.sprite_custom_material = None;
         self.debug_renderpass = None;
-        self.composite_renderpass = None;
+        self.bloom_extract_renderpass = None;
         self.meshes.clear();
         //self.mesh_custom_material = None;
         //self.light_mesh_material_instances.clear();

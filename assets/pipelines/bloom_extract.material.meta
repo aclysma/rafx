@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(4458414824058986707),
+    import_hash: Some(14284326758255703564),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -9,21 +9,21 @@
         (
             id: "822c8e08-2720-4002-81da-fd9c4d61abdd",
             search_tags: [
-                ("file_name", Some("composite.material")),
+                ("file_name", Some("bloom_extract.material")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 1540866690524616909,
+                hash: 10031782066457560437,
                 id: "822c8e08-2720-4002-81da-fd9c4d61abdd",
                 build_deps: [
-                    Path("../shaders/composite.vert.spv"),
-                    Path("../shaders/composite.frag.spv"),
-                    Path("composite.pipeline"),
+                    Path("../shaders/bloom_extract.vert.spv"),
+                    Path("bloom_extract.pipeline"),
+                    Path("../shaders/bloom_extract.frag.spv"),
                 ],
                 load_deps: [
-                    Path("../shaders/composite.frag.spv"),
-                    Path("../shaders/composite.vert.spv"),
-                    Path("composite.pipeline"),
+                    Path("../shaders/bloom_extract.frag.spv"),
+                    Path("../shaders/bloom_extract.vert.spv"),
+                    Path("bloom_extract.pipeline"),
                 ],
                 compression: None,
                 compressed_size: Some(315),

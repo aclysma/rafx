@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(14976476702177629687),
+    importer_version: 2,
+    importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
+    importer_options: (),
+    importer_state: (Some("1e30b884-ed80-4950-a209-f426f3cbb997")),
+    assets: [
+        (
+            id: "1e30b884-ed80-4950-a209-f426f3cbb997",
+            search_tags: [
+                ("file_name", Some("bloom_extract.pipeline")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 15625618042795506176,
+                id: "1e30b884-ed80-4950-a209-f426f3cbb997",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(496),
+                uncompressed_size: Some(496),
+                type_id: "0dfa5d9a-89cd-40a1-adac-baf801db61db",
+            )),
+        ),
+    ],
+)

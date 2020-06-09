@@ -1,25 +1,25 @@
 (
     version: 1,
-    import_hash: Some(12943200719501033628),
+    import_hash: Some(6716975235597501404),
     importer_version: 3,
     importer_type: "90fdad4b-cec1-4f59-b679-97895711b6e1",
     importer_options: (),
-    importer_state: (Some("0f825a2b-4564-486d-a397-1617064d9fc3")),
+    importer_state: (Some("4ab2c558-b12f-4da0-b2df-989fb89f6670")),
     assets: [
         (
-            id: "0f825a2b-4564-486d-a397-1617064d9fc3",
+            id: "4ab2c558-b12f-4da0-b2df-989fb89f6670",
             search_tags: [
-                ("file_name", Some("composite.frag.spv")),
+                ("file_name", Some("bloom_blur.vert.spv")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 7185472771346693182,
-                id: "0f825a2b-4564-486d-a397-1617064d9fc3",
+                hash: 513800650532032123,
+                id: "4ab2c558-b12f-4da0-b2df-989fb89f6670",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
-                compressed_size: Some(1288),
-                uncompressed_size: Some(1288),
+                compressed_size: Some(1036),
+                uncompressed_size: Some(1036),
                 type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
             )),
         ),

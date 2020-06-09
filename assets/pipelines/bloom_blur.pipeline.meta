@@ -1,20 +1,20 @@
 (
     version: 1,
-    import_hash: Some(2559993767021543697),
+    import_hash: Some(6487684729371323856),
     importer_version: 2,
     importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
     importer_options: (),
-    importer_state: (Some("1e30b884-ed80-4950-a209-f426f3cbb997")),
+    importer_state: (Some("52006b44-a5ac-406c-ae03-1daccdd4a346")),
     assets: [
         (
-            id: "1e30b884-ed80-4950-a209-f426f3cbb997",
+            id: "52006b44-a5ac-406c-ae03-1daccdd4a346",
             search_tags: [
-                ("file_name", Some("composite_no_msaa.pipeline")),
+                ("file_name", Some("bloom_blur.pipeline")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 4798346516175417585,
-                id: "1e30b884-ed80-4950-a209-f426f3cbb997",
+                hash: 13210055314821785259,
+                id: "52006b44-a5ac-406c-ae03-1daccdd4a346",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
