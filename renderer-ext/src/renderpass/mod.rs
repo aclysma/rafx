@@ -14,6 +14,7 @@ pub use debug_renderpass::DebugVertex;
 
 pub mod bloom_extract_renderpass;
 pub use bloom_extract_renderpass::VkBloomExtractRenderPass;
+pub use bloom_extract_renderpass::VkBloomRenderPassResources;
 
 pub mod bloom_blur_renderpass;
-pub use bloom_blur_renderpass::VkBloomRenderPass;
+pub use bloom_blur_renderpass::VkBloomBlurRenderPass;

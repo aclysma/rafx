@@ -13,7 +13,7 @@ void main()
 {
     vec4 color = texture(sampler2D(tex, smp), inUV);
 
-    // tonemapping
+    // tonemapping, TODO: Do this after bloom
     vec3 mapped = color.rgb / (color.rgb + vec3(1.0));
 
     if (dot(mapped, mapped) > 1.0f) {

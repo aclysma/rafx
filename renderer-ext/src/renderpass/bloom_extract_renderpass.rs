@@ -19,10 +19,94 @@ use image::error::ImageError::Decoding;
 use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
+use atelier_assets::loader::handle::Handle;
+
 use crate::time::TimeState;
 use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
 use crate::asset_resource::AssetResource;
-use crate::resource_managers::PipelineSwapchainInfo;
+use crate::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
+use crate::pipeline::pipeline::MaterialAsset;
+
+
+pub struct VkBloomRenderPassResources {
+    pub device_context: VkDeviceContext,
+    pub bloom_blur_material: Handle<MaterialAsset>,
+    pub bloom_images: [ManuallyDrop<VkImage>; 2],
+    pub bloom_image_views: [vk::ImageView; 2],
+    pub bloom_image_descriptor_sets: [DynDescriptorSet; 2]
+}
+
+impl VkBloomRenderPassResources {
+    pub fn new(
+        device_context: &VkDeviceContext,
+        swapchain: &VkSwapchain,
+        resource_manager: &mut ResourceManager,
+        bloom_blur_material: Handle<MaterialAsset>
+    ) -> VkResult<Self> {
+        let (bloom_image0, bloom_image_view0) = RenderpassAttachmentImage::create_image_and_view(
+            device_context,
+            &swapchain.swapchain_info,
+            swapchain.color_format,
+            vk::ImageAspectFlags::COLOR,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
+            MsaaLevel::Sample1
+        )?;
+
+        let (bloom_image1, bloom_image_view1) = RenderpassAttachmentImage::create_image_and_view(
+            device_context,
+            &swapchain.swapchain_info,
+            swapchain.color_format,
+            vk::ImageAspectFlags::COLOR,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
+            MsaaLevel::Sample1
+        )?;
+
+
+        println!("image0: {:?}", bloom_image0);
+        println!("image1: {:?}", bloom_image1);
+
+
+        let bloom_blur_layout = resource_manager.get_descriptor_set_info(
+            &bloom_blur_material,
+            0,
+            0
+        );
+
+
+        let mut bloom_blur_material_dyn_set0 = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_blur_layout.descriptor_set_layout_def)?;
+        bloom_blur_material_dyn_set0.set_image_raw(0, bloom_image_view0);
+        bloom_blur_material_dyn_set0.set_buffer_data(2, &false);
+        bloom_blur_material_dyn_set0.flush();
+
+        let mut bloom_blur_material_dyn_set1 = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_blur_layout.descriptor_set_layout_def)?;
+        bloom_blur_material_dyn_set1.set_image_raw(0, bloom_image_view1);
+        bloom_blur_material_dyn_set0.set_buffer_data(2, &false);
+        bloom_blur_material_dyn_set1.flush();
+
+        Ok(VkBloomRenderPassResources {
+            device_context: device_context.clone(),
+            bloom_blur_material,
+            bloom_images: [bloom_image0, bloom_image1],
+            bloom_image_views: [bloom_image_view0, bloom_image_view1],
+            bloom_image_descriptor_sets: [bloom_blur_material_dyn_set0, bloom_blur_material_dyn_set1]
+        })
+    }
+}
+
+impl Drop for VkBloomRenderPassResources {
+    fn drop(&mut self) {
+        log::trace!("destroying VkBloomRenderPassResources");
+
+        unsafe {
+            self.device_context.device().destroy_image_view(self.bloom_image_views[0], None);
+            self.device_context.device().destroy_image_view(self.bloom_image_views[1], None);
+            ManuallyDrop::drop(&mut self.bloom_images[0]);
+            ManuallyDrop::drop(&mut self.bloom_images[1]);
+        }
+
+        log::trace!("destroyed VkBloomRenderPassResources");
+    }
+}
 
 pub struct VkBloomExtractRenderPass {
     pub device_context: VkDeviceContext,
@@ -36,8 +120,6 @@ pub struct VkBloomExtractRenderPass {
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
 
-    bloom_image: ManuallyDrop<VkImage>,
-    bloom_image_view: vk::ImageView,
 }
 
 impl VkBloomExtractRenderPass {
@@ -45,16 +127,8 @@ impl VkBloomExtractRenderPass {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         pipeline_info: PipelineSwapchainInfo,
+        bloom_resources: &VkBloomRenderPassResources
     ) -> VkResult<Self> {
-        let (bloom_image, bloom_image_view) = RenderpassAttachmentImage::create_image_and_view(
-            device_context,
-            &swapchain.swapchain_info,
-            swapchain.color_format,
-            vk::ImageAspectFlags::COLOR,
-            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
-            MsaaLevel::Sample1
-        )?;
-
         //
         // Command Buffers
         //
@@ -68,9 +142,7 @@ impl VkBloomExtractRenderPass {
         //
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
-            swapchain.color_attachment.target_image_view(),
-            swapchain.color_attachment.resolved_image_view(),
-            bloom_image_view,
+            bloom_resources.bloom_image_views[0],
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
             &pipeline_info.renderpass.get_raw(),
@@ -89,8 +161,6 @@ impl VkBloomExtractRenderPass {
             frame_buffers,
             command_pool,
             command_buffers,
-            bloom_image,
-            bloom_image_view
         })
     }
 
@@ -114,8 +184,6 @@ impl VkBloomExtractRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
-        color_msaa_image_view: vk::ImageView,
-        color_resolve_image_view: vk::ImageView,
         bloom_image_view: vk::ImageView,
         swapchain_image_views: &[vk::ImageView],
         swapchain_info: &SwapchainInfo,
@@ -256,9 +324,6 @@ impl Drop for VkBloomExtractRenderPass {
             for frame_buffer in &self.frame_buffers {
                 device.destroy_framebuffer(*frame_buffer, None);
             }
-
-            device.destroy_image_view(self.bloom_image_view, None);
-            ManuallyDrop::drop(&mut self.bloom_image);
         }
 
         log::trace!("destroyed VkSpriteRenderPass");

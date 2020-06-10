@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(9674278601905888612),
+    import_hash: Some(372475224809203838),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,12 +13,12 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 13501532446199735458,
+                hash: 17833733750034336389,
                 id: "22aae4c1-fd0f-414a-9de1-7f68bdf1bfb1",
                 build_deps: [
-                    Path("../shaders/bloom_blur.vert.spv"),
-                    Path("../shaders/bloom_blur.frag.spv"),
                     Path("bloom_blur.pipeline"),
+                    Path("../shaders/bloom_blur.frag.spv"),
+                    Path("../shaders/bloom_blur.vert.spv"),
                 ],
                 load_deps: [
                     Path("../shaders/bloom_blur.vert.spv"),
@@ -26,8 +26,8 @@
                     Path("../shaders/bloom_blur.frag.spv"),
                 ],
                 compression: None,
-                compressed_size: Some(315),
-                uncompressed_size: Some(315),
+                compressed_size: Some(359),
+                uncompressed_size: Some(359),
                 type_id: "ad94bca2-1f02-4e5f-9117-1a7b03456a11",
             )),
         ),

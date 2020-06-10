@@ -4,14 +4,14 @@
             // Add the blur to the swapchain
             (
                 flags: None,
-                format: MatchSurface,
+                format: MatchColorAttachment,
                 samples: SampleCount1,
-                load_op: Load,
+                load_op: Clear,
                 store_op: Store,
                 stencil_load_op: DontCare,
                 stencil_store_op: DontCare,
                 initial_layout: Undefined,
-                final_layout: ColorAttachmentOptimal,
+                final_layout: ShaderReadOnlyOptimal,
             ),
         ],
         subpasses: [

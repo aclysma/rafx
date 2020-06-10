@@ -1,7 +1,7 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel};
 use ash::prelude::VkResult;
-use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass};
+use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass, VkBloomRenderPassResources};
 use std::mem::{ManuallyDrop, swap};
 use crate::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
@@ -34,6 +34,7 @@ use crate::pipeline::buffer::BufferAsset;
 use crate::resource_managers::ResourceArc;
 use crate::renderpass::debug_renderpass::DebugDraw3DResource;
 use crate::renderpass::VkBloomExtractRenderPass;
+use crate::renderpass::VkBloomBlurRenderPass;
 
 
 fn begin_load_asset<T>(
@@ -98,13 +99,18 @@ pub struct GameRenderer {
     mesh_material_per_frame_data: DynDescriptorSet,
     meshes: Vec<StaticMeshInstance>,
 
+    bloom_resources: Option<VkBloomRenderPassResources>,
+
     bloom_extract_material: Handle<MaterialAsset>,
     bloom_extract_material_dyn_set: Option<DynDescriptorSet>,
+
+    bloom_blur_material: Handle<MaterialAsset>,
 
     mesh_renderpass: Option<VkMeshRenderPass>,
     sprite_renderpass: Option<VkSpriteRenderPass>,
     debug_renderpass: Option<VkDebugRenderPass>,
     bloom_extract_renderpass: Option<VkBloomExtractRenderPass>,
+    bloom_blur_renderpass: Option<VkBloomBlurRenderPass>,
     swapchain_surface_info: Option<SwapchainSurfaceInfo>,
 }
 
@@ -181,6 +187,14 @@ impl GameRenderer {
         //
         let bloom_extract_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("822c8e08-2720-4002-81da-fd9c4d61abdd"),
+            &asset_resource,
+        );
+
+        //
+        // Bloom blur resources
+        //
+        let bloom_blur_material = begin_load_asset::<MaterialAsset>(
+            asset_uuid!("22aae4c1-fd0f-414a-9de1-7f68bdf1bfb1"),
             &asset_resource,
         );
 
@@ -266,6 +280,14 @@ impl GameRenderer {
 
         wait_for_asset_to_load(
             device_context,
+            &bloom_blur_material,
+            asset_resource,
+            &mut resource_manager,
+            "bloom blur material"
+        );
+
+        wait_for_asset_to_load(
+            device_context,
             &mesh_material,
             asset_resource,
             &mut resource_manager,
@@ -346,8 +368,12 @@ impl GameRenderer {
             mesh_material_per_frame_data,
             meshes,
 
+            bloom_resources: None,
+
             bloom_extract_material,
             bloom_extract_material_dyn_set: None,
+
+            bloom_blur_material,
 
             // mesh,
             // mesh_material_instance,
@@ -361,6 +387,7 @@ impl GameRenderer {
             mesh_renderpass: None,
             debug_renderpass: None,
             bloom_extract_renderpass: None,
+            bloom_blur_renderpass: None,
         };
 
         let image_info = renderer.resource_manager.get_image_info(&override_image);
@@ -480,6 +507,18 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
 
         log::trace!("Create VkBloomExtractRenderPass");
 
+        self.bloom_resources = Some(VkBloomRenderPassResources::new(
+            device_context,
+            swapchain,
+            &mut self.resource_manager,
+            self.bloom_blur_material.clone()
+        )?);
+
+        // HACK HACK HACK - VkBloomRenderPassResources writes descriptors that VkBloomBlurRenderPass
+        // immediately uses to record command buffers. Flush now so that the descriptors get
+        // initialized
+        self.resource_manager.on_begin_frame();
+
         let bloom_extract_layout = self.resource_manager.get_descriptor_set_info(
             &self.bloom_extract_material,
             0,
@@ -496,12 +535,35 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             device_context,
             swapchain,
             bloom_extract_pipeline_info,
+            self.bloom_resources.as_ref().unwrap()
         )?);
 
         let mut bloom_extract_material_dyn_set = self.resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout_def)?;
         bloom_extract_material_dyn_set.set_image_raw(0, swapchain.color_attachment.resolved_image_view());
         bloom_extract_material_dyn_set.flush();
         self.bloom_extract_material_dyn_set = Some(bloom_extract_material_dyn_set);
+
+        log::trace!("Create VkBloomBlurRenderPass");
+
+        // let bloom_blur_layout = self.resource_manager.get_descriptor_set_info(
+        //     &self.bloom_blur_material,
+        //     0,
+        //     0
+        // );
+
+        let bloom_blur_pipeline_info = self.resource_manager.get_pipeline_info(
+            &self.bloom_blur_material,
+            &swapchain_surface_info,
+            0,
+        );
+
+        self.bloom_blur_renderpass = Some(VkBloomBlurRenderPass::new(
+            device_context,
+            swapchain,
+            bloom_blur_pipeline_info,
+            &self.resource_manager,
+            self.bloom_resources.as_ref().unwrap()
+        )?);
 
         log::debug!("game renderer swapchain_created finished");
 
@@ -765,6 +827,32 @@ impl GameRenderer {
         }
 
         //
+        // bloom blur
+        //
+        if let Some(bloom_blur_renderpass) = &mut self.bloom_blur_renderpass {
+            log::trace!("bloom_blur_renderpass update");
+            //let descriptor_set_per_pass0 = self.bloom_resources.as_ref().unwrap().bloom_image_descriptor_sets[0].descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+            //let descriptor_set_per_pass1 = self.bloom_resources.as_ref().unwrap().bloom_image_descriptor_sets[1].descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+
+            // bloom_blur_renderpass.update(
+            //     present_index,
+            //     //descriptor_set_per_pass,
+            //     &self.resource_manager,
+            //     self.bloom_resources.as_ref().unwrap()
+            // )?;
+            command_buffers.push(bloom_blur_renderpass.command_buffers[0].clone());
+            command_buffers.push(bloom_blur_renderpass.command_buffers[1].clone());
+            command_buffers.push(bloom_blur_renderpass.command_buffers[0].clone());
+            command_buffers.push(bloom_blur_renderpass.command_buffers[1].clone());
+            command_buffers.push(bloom_blur_renderpass.command_buffers[0].clone());
+            command_buffers.push(bloom_blur_renderpass.command_buffers[1].clone());
+            command_buffers.push(bloom_blur_renderpass.command_buffers[0].clone());
+            command_buffers.push(bloom_blur_renderpass.command_buffers[1].clone());
+            command_buffers.push(bloom_blur_renderpass.command_buffers[0].clone());
+            command_buffers.push(bloom_blur_renderpass.command_buffers[1].clone());
+        }
+
+        //
         // imgui
         //
         {
@@ -787,6 +875,7 @@ impl Drop for GameRenderer {
         self.sprite_custom_material = None;
         self.debug_renderpass = None;
         self.bloom_extract_renderpass = None;
+        self.bloom_blur_renderpass = None;
         self.meshes.clear();
         //self.mesh_custom_material = None;
         //self.light_mesh_material_instances.clear();

@@ -9,7 +9,7 @@
         (
             id: "0f825a2b-4564-486d-a397-1617064d9fc3",
             search_tags: [
-                ("file_name", Some("composite.frag.spv")),
+                ("file_name", Some("bloom_extract.frag.spv")),
             ],
             build_pipeline: None,
             artifact: Some((
