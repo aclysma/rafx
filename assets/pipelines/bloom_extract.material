@@ -1,7 +1,5 @@
 (
     passes: [
-        // Order of passes matters here, the code will use index 0 if MSAA is off and index 1 if MSAA is on. The only
-        // difference between the two is a different pipeline is referenced
         (
             phase: "Opaque",
             pipeline: "bloom_extract.pipeline",

@@ -1,25 +1,25 @@
 (
     version: 1,
-    import_hash: Some(4639952948119323268),
+    import_hash: Some(18222104046817754388),
     importer_version: 2,
     importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
     importer_options: (),
-    importer_state: (Some("1e30b884-ed80-4950-a209-f426f3cbb997")),
+    importer_state: (Some("a1b1a4bf-c2a9-4158-8f9f-8aaee234b45d")),
     assets: [
         (
-            id: "1e30b884-ed80-4950-a209-f426f3cbb997",
+            id: "a1b1a4bf-c2a9-4158-8f9f-8aaee234b45d",
             search_tags: [
-                ("file_name", Some("bloom_extract.pipeline")),
+                ("file_name", Some("bloom_combine.pipeline")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 11785413461472982227,
-                id: "1e30b884-ed80-4950-a209-f426f3cbb997",
+                hash: 5959969884996638013,
+                id: "a1b1a4bf-c2a9-4158-8f9f-8aaee234b45d",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
-                compressed_size: Some(496),
-                uncompressed_size: Some(496),
+                compressed_size: Some(419),
+                uncompressed_size: Some(419),
                 type_id: "0dfa5d9a-89cd-40a1-adac-baf801db61db",
             )),
         ),

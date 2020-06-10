@@ -14,11 +14,8 @@ layout (location = 0) out vec4 out_blur;
 void main()
 {
     if (config.horizontal) {
-        out_blur = texture(sampler2D(tex, smp), inUV) * vec4(1.0, 0.0, 0.0, 1.0);
+        out_blur = texture(sampler2D(tex, smp), inUV);
     } else {
-        out_blur = texture(sampler2D(tex, smp), inUV) * vec4(0.0, 0.0, 1.0, 1.0);
+        out_blur = texture(sampler2D(tex, smp), inUV);
     }
 }
-
-//TODO: Add a bloom pass - need to take resolved image and write it out to two buffers, then sample for the blur,
-// then sample the original + blurred

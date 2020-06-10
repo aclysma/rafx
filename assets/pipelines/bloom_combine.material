@@ -2,16 +2,16 @@
     passes: [
         (
             phase: "Opaque",
-            pipeline: "bloom_blur.pipeline",
+            pipeline: "bloom_combine.pipeline",
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/bloom_blur.vert.spv",
+                    shader_module: "../shaders/bloom_combine.vert.spv",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/bloom_blur.frag.spv",
+                    shader_module: "../shaders/bloom_combine.frag.spv",
                     entry_name: "main"
                 ),
             ],
@@ -24,10 +24,17 @@
                                 descriptor_type: SampledImage,
                                 descriptor_count: 1,
                                 stage_flags: Fragment,
-                                slot_name: "texture"
+                                slot_name: "color"
                             ),
                             (
                                 binding: 1,
+                                descriptor_type: SampledImage,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "bloom"
+                            ),
+                            (
+                                binding: 2,
                                 descriptor_type: Sampler,
                                 descriptor_count: 1,
                                 stage_flags: Fragment,
@@ -53,16 +60,6 @@
                                     )
                                 ])
                             ),
-                            (
-                                binding: 2,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "per_frame_data",
-
-                                // 256 bytes required internally to transmit a boolean, lol :(
-                                internal_buffer_per_descriptor_size: Some(4)
-                            )
                         ],
                     ),
                 ],
