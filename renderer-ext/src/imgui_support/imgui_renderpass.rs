@@ -596,7 +596,7 @@ impl VkImGuiRenderPass {
         let image_view_info = vk::ImageViewCreateInfo::builder()
             .image(*image)
             .view_type(vk::ImageViewType::TYPE_2D)
-            .format(vk::Format::R8G8B8A8_UNORM)
+            .format(vk::Format::R8G8B8A8_SRGB)
             .subresource_range(*subresource_range);
 
         unsafe {

@@ -733,7 +733,7 @@ impl GameRenderer {
         per_frame_data.point_lights[0].position_vs = light_position_vs.into();
         per_frame_data.point_lights[0].range = 25.0;
         per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.point_lights[0].intensity = 100.0;
+        per_frame_data.point_lights[0].intensity = 130.0;
 
         let light_position = glam::Vec3::new(-3.0, 3.0, 3.0);
         let light_position_vs = (view * light_position.extend(1.0)).truncate();
@@ -741,7 +741,7 @@ impl GameRenderer {
         per_frame_data.point_lights[1].position_vs = light_position_vs.into();
         per_frame_data.point_lights[1].range = 100.0;
         per_frame_data.point_lights[1].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.point_lights[1].intensity = 100.0;
+        per_frame_data.point_lights[1].intensity = 130.0;
 
 
         let light_position = glam::Vec3::new(-3.0, 0.1, -1.0);
@@ -750,7 +750,7 @@ impl GameRenderer {
         per_frame_data.point_lights[2].position_vs = light_position_vs.into();
         per_frame_data.point_lights[2].range = 25.0;
         per_frame_data.point_lights[2].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.point_lights[2].intensity = 200.0;
+        per_frame_data.point_lights[2].intensity = 250.0;
 
         let light_from = glam::Vec3::new(-3.0, -3.0, 0.0);
         let light_from_vs = (view * light_from.extend(1.0)).truncate();
