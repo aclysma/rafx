@@ -1,7 +1,7 @@
 (
     version: 1,
-    import_hash: Some(5020606938467986532),
-    importer_version: 22,
+    import_hash: Some(14802514281628104509),
+    importer_version: 23,
     importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
     importer_options: (),
     importer_state: (
@@ -29,7 +29,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 16982881156346008478,
+                hash: 13216475984362986372,
                 id: "3fb96c1b-d372-4abe-bb85-167789ef473c",
                 build_deps: [],
                 load_deps: [],
@@ -47,7 +47,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 13919612545135705849,
+                hash: 224537387907016002,
                 id: "98962dc7-76fe-4e64-b5b4-93020ffa700c",
                 build_deps: [
                     Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
@@ -70,7 +70,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 3155037307536280411,
+                hash: 11277070010602491601,
                 id: "cb187401-b17a-4076-89b0-076647c7da33",
                 build_deps: [],
                 load_deps: [],
@@ -87,7 +87,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 14792414516828882800,
+                hash: 944343196870781541,
                 id: "ccd69f7a-45a5-415b-899c-20f16df7d20b",
                 build_deps: [],
                 load_deps: [],
@@ -105,19 +105,19 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 8734914830896817932,
+                hash: 3212157055434169107,
                 id: "68bd146e-1b82-42f6-9cb5-d071870677ab",
                 build_deps: [
-                    Uuid("98962dc7-76fe-4e64-b5b4-93020ffa700c"),
-                    Uuid("ccd69f7a-45a5-415b-899c-20f16df7d20b"),
-                    Uuid("cb187401-b17a-4076-89b0-076647c7da33"),
                     Uuid("3fb96c1b-d372-4abe-bb85-167789ef473c"),
+                    Uuid("98962dc7-76fe-4e64-b5b4-93020ffa700c"),
+                    Uuid("cb187401-b17a-4076-89b0-076647c7da33"),
+                    Uuid("ccd69f7a-45a5-415b-899c-20f16df7d20b"),
                 ],
                 load_deps: [
+                    Uuid("98962dc7-76fe-4e64-b5b4-93020ffa700c"),
                     Uuid("3fb96c1b-d372-4abe-bb85-167789ef473c"),
                     Uuid("cb187401-b17a-4076-89b0-076647c7da33"),
                     Uuid("ccd69f7a-45a5-415b-899c-20f16df7d20b"),
-                    Uuid("98962dc7-76fe-4e64-b5b4-93020ffa700c"),
                 ],
                 compression: None,
                 compressed_size: Some(120),

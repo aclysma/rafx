@@ -482,10 +482,13 @@ impl UploadManager {
             request.asset.height
         );
 
+        let color_space = request.asset.color_space.into();
+
         let decoded_texture = DecodedTexture {
             width: request.asset.width,
             height: request.asset.height,
             mips,
+            color_space,
             data: request.asset.data,
         };
 

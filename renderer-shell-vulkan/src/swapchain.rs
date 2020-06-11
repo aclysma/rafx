@@ -330,7 +330,7 @@ impl VkSwapchain {
         let mut best_format = None;
 
         for available_format in available_formats {
-            if available_format.format == ash::vk::Format::B8G8R8A8_UNORM
+            if available_format.format == ash::vk::Format::B8G8R8A8_SRGB
                 && available_format.color_space == ash::vk::ColorSpaceKHR::SRGB_NONLINEAR
             {
                 best_format = Some(available_format);

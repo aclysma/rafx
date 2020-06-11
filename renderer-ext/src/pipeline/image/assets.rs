@@ -9,11 +9,27 @@ use std::io::Read;
 use std::convert::TryInto;
 use serde::export::Formatter;
 
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+pub enum ColorSpace {
+    Srgb,
+    Linear
+}
+
+impl Into<crate::image_utils::ColorSpace> for ColorSpace {
+    fn into(self) -> crate::image_utils::ColorSpace {
+        match self {
+            ColorSpace::Srgb => crate::image_utils::ColorSpace::Srgb,
+            ColorSpace::Linear => crate::image_utils::ColorSpace::Linear,
+        }
+    }
+}
+
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "e6166902-8716-401b-9d2e-8b01701c5626"]
 pub struct ImageAsset {
     pub width: u32,
     pub height: u32,
+    pub color_space: ColorSpace,
 
     #[serde(with = "serde_bytes")]
     pub data: Vec<u8>,

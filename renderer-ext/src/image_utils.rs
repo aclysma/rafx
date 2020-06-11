@@ -23,6 +23,12 @@ use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
 #[derive(Copy, Clone, Debug)]
+pub enum ColorSpace {
+    Srgb,
+    Linear
+}
+
+#[derive(Copy, Clone, Debug)]
 pub struct DecodedTextureMipInfo {
     pub mip_level_count: u32
 }
@@ -53,6 +59,7 @@ impl DecodedTextureMips {
 pub struct DecodedTexture {
     pub width: u32,
     pub height: u32,
+    pub color_space: ColorSpace,
     pub mips: DecodedTextureMips,
     pub data: Vec<u8>,
 }
@@ -84,6 +91,7 @@ pub fn decode_texture(
         height: dimensions.1,
         mips: decoded_texture_mip_info,
         data: example_image,
+        color_space: ColorSpace::Srgb,
     }
 }
 
@@ -254,13 +262,18 @@ pub fn enqueue_load_images(
             image_usage |= vk::ImageUsageFlags::TRANSFER_SRC;
         };
 
+        let format = match decoded_texture.color_space {
+            ColorSpace::Linear => vk::Format::R8G8B8A8_UNORM,
+            ColorSpace::Srgb => vk::Format::R8G8B8A8_SRGB,
+        };
+
         // Allocate an image
         let image = ManuallyDrop::new(VkImage::new(
             device_context,
             vk_mem::MemoryUsage::GpuOnly,
             image_usage,
             extent,
-            vk::Format::R8G8B8A8_UNORM,
+            format,
             vk::ImageTiling::OPTIMAL,
             vk::SampleCountFlags::TYPE_1,
             mip_level_count,
