@@ -99,7 +99,7 @@ layout(early_fragment_tests) in;
 layout (location = 0) out vec4 out_color;
 
 vec4 normal_map(
-    mat3 tangent_normal_binormal, 
+    mat3 tangent_binormal_normal,
     texture2D t, 
     sampler s, 
     vec2 uv
@@ -111,7 +111,7 @@ vec4 normal_map(
 
     // Transform the normal from the texture with the TNB matrix, which will put
     // it into the TNB's space (view space))
-    normal = normal * tangent_normal_binormal;
+    normal = tangent_binormal_normal * normal;
     return normalize(vec4(normal, 0.0));
 }
 
@@ -482,7 +482,6 @@ vec4 non_pbr_path(
             in_position_vs,
             normal_vs
         ).rgb;
-
     }
 
     // Spot Lights
@@ -506,8 +505,9 @@ vec4 non_pbr_path(
         ).rgb;
     }
 
-    base_color *= (per_frame_data.ambient_light + vec4(total_light, 1.0));
-    return emissive_color + base_color;
+    vec3 rgb_color = base_color.rgb;
+    rgb_color *= (per_frame_data.ambient_light.rgb + vec3(total_light));
+    return vec4(emissive_color.rgb + rgb_color, 1.0);
 }
 
 //TODO: Light range is not being considered. Will want a method of tapering it to zero
@@ -610,6 +610,11 @@ void main() {
         metalness *= sampled.r;
         roughness *= sampled.g;
     }
+
+    // Extremely smooth surfaces can produce sharp reflections that, while accurate for point lights, can produce
+    // very sharp contrasts in color which look "weird" - and with bloom can produce flickering.
+    const float specularity_reduction = 0.00;
+    roughness = (roughness + specularity_reduction) / (1.0 + specularity_reduction);
 
     // Calculate the normal (use the normal map if it exists)
     vec3 normal_vs;

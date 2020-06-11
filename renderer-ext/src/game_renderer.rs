@@ -220,24 +220,37 @@ impl GameRenderer {
         );
 
         // cobblestone gltf
+        // ORIGINAL
+        let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
+            asset_uuid!("dc740f08-8e06-4341-806e-a01ae37df314"),
+            &asset_resource,
+        );
+        let mesh = begin_load_asset::<MeshAsset>(
+            asset_uuid!("ef79835d-25de-4df0-99e8-1968d2826d05"),
+            &asset_resource,
+        );
+
+        // cobblestone glb
+        // UNWRAPPED ALL SIDES EQUAL
         // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-        //     asset_uuid!("dc740f08-8e06-4341-806e-a01ae37df314"),
+        //     asset_uuid!("0dc01376-ebfe-4da4-9b3c-05eaf7c848a1"),
         //     &asset_resource,
         // );
         // let mesh = begin_load_asset::<MeshAsset>(
-        //     asset_uuid!("ef79835d-25de-4df0-99e8-1968d2826d05"),
+        //     asset_uuid!("ffc9b240-0a17-4ff4-bb7d-72d13cc6e261"),
         //     &asset_resource,
         // );
 
         // cobblestone glb
-        let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-            asset_uuid!("a4a2d899-ded3-498e-aefb-c7b715856509"),
-            &asset_resource,
-        );
-        let mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("015283c2-d071-4a69-93a0-f25923a4240c"),
-            &asset_resource,
-        );
+        // FLAT NORMALS
+        // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
+        //     asset_uuid!("3ef917f7-9aeb-427d-af6b-9914c6bf9d93"),
+        //     &asset_resource,
+        // );
+        // let mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("e386d9bf-5dcf-4e5e-bca7-43f48a32b8c8"),
+        //     &asset_resource,
+        // );
 
         // light
         let light_mesh = begin_load_asset::<MeshAsset>(
@@ -662,12 +675,16 @@ impl GameRenderer {
         //
         // Camera Management
         //
+        let camera_rotate_speed = 1.0;
         let camera_distance_multiplier = 1.0;
         let eye = glam::Vec3::new(
-            camera_distance_multiplier * 10.0 * f32::cos(loop_time / 2.0),
-            camera_distance_multiplier * 10.0 * f32::sin(loop_time / 2.0),
+            camera_distance_multiplier * 10.0 * f32::cos(camera_rotate_speed * loop_time / 2.0),
+            camera_distance_multiplier * 10.0 * f32::sin(camera_rotate_speed * loop_time / 2.0),
             camera_distance_multiplier * 5.0,
         );
+
+
+        //self.meshes[0].world_transform = glam::Mat4::from_rotation_z(loop_time / 2.0);
 
         // let eye = glam::Vec3::new(
         //     -0.67656,
@@ -689,8 +706,8 @@ impl GameRenderer {
         // Push latest light/camera info into the mesh material
         //
         let mut per_frame_data = PerFrameDataShaderParam::default();
-        per_frame_data.ambient_light = glam::Vec4::new(0.05, 0.05, 0.05, 1.0);
-        per_frame_data.directional_light_count = 1;
+        per_frame_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0);
+        per_frame_data.directional_light_count = 0;
         per_frame_data.point_light_count = 2;
         per_frame_data.spot_light_count = 1;
 
@@ -706,23 +723,23 @@ impl GameRenderer {
         per_frame_data.directional_lights[0].intensity = 5.0;
         per_frame_data.directional_lights[0].color = glam::Vec4::new(1.0, 1.0, 1.0, 1.0);
 
-        self.debug_draw_3d.add_line(light_from, light_to, glam::Vec4::new(15.0, 15.0, 15.0, 1.0));
+        self.debug_draw_3d.add_line(light_from, light_to, glam::Vec4::new(1.0, 1.0, 1.0, 1.0));
 
-        let light_position = glam::Vec3::new(5.0, 5.0, 5.0);
+        let light_position = glam::Vec3::new(3.0, 3.0, 3.0);
         let light_position_vs = (view * light_position.extend(1.0)).truncate();
         per_frame_data.point_lights[0].position_ws = light_position.into();
         per_frame_data.point_lights[0].position_vs = light_position_vs.into();
         per_frame_data.point_lights[0].range = 25.0;
         per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.point_lights[0].intensity = 100.0;
+        per_frame_data.point_lights[0].intensity = 200.0;
 
-        let light_position = glam::Vec3::new(0.0, 3.0, 3.0);
+        let light_position = glam::Vec3::new(-3.0, 3.0, 3.0);
         let light_position_vs = (view * light_position.extend(1.0)).truncate();
         per_frame_data.point_lights[1].position_ws = light_position.into();
         per_frame_data.point_lights[1].position_vs = light_position_vs.into();
         per_frame_data.point_lights[1].range = 25.0;
-        per_frame_data.point_lights[1].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.point_lights[1].intensity = 1000.0;
+        per_frame_data.point_lights[1].color = [0.0, 1.0, 1.0, 1.0].into();
+        per_frame_data.point_lights[1].intensity = 200.0;
 
         let light_from = glam::Vec3::new(-3.0, -3.0, 0.0);
         let light_from_vs = (view * light_from.extend(1.0)).truncate();
@@ -739,8 +756,9 @@ impl GameRenderer {
         per_frame_data.spot_lights[0].spotlight_half_angle = 10.0 * (std::f32::consts::PI / 180.0);
         per_frame_data.spot_lights[0].range = 8.0;
         per_frame_data.spot_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.spot_lights[0].intensity = 100.0;
-/*
+        per_frame_data.spot_lights[0].intensity = 400.0;
+
+        /*
         for i in 0..per_frame_data.point_light_count {
             let light = &per_frame_data.point_lights[i as usize];
             self.debug_draw_3d.add_sphere(
@@ -761,7 +779,8 @@ impl GameRenderer {
                 8
             );
         }
-*/
+        */
+
 
 
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);

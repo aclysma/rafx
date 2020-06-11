@@ -25,9 +25,12 @@ layout (location = 4) out vec2 out_uv;
 void main() {
     gl_Position = per_object_data.model_view_proj * vec4(in_pos, 1.0);
     out_position_vs = (per_object_data.model_view * vec4(in_pos, 1.0)).xyz;
+
+    // NOTE: Not sure if I need to normalize after the matrix multiply
     out_normal_vs = mat3(per_object_data.model_view) * in_normal;
     out_tangent_vs = mat3(per_object_data.model_view) * in_tangent.xyz;
     vec3 binormal = cross(in_normal, in_tangent.xyz) * in_tangent.w;
     out_binormal_vs = mat3(per_object_data.model_view) * binormal;
+
     out_uv = in_uv;
 }
