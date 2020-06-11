@@ -11,10 +11,11 @@ layout (location = 0) out vec4 out_sdr;
 
 void main()
 {
-    vec4 color = texture(sampler2D(in_color, smp), inUV) + texture(sampler2D(in_blur, smp), inUV);
+    vec4 color = texture(sampler2D(in_color, smp), inUV) /*+ texture(sampler2D(in_blur, smp), inUV)*/;
+    //out_sdr = color;
 
     // tonemapping
     vec3 mapped = color.rgb / (color.rgb + vec3(1.0));
-
+    mapped = pow(mapped, vec3(1.0/2.2));
     out_sdr = vec4(mapped, color.a);
 }
