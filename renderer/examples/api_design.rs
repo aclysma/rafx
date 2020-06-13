@@ -1,14 +1,14 @@
 use renderer::visibility::*;
-use renderer::features::sprite::*;
-use renderer::features::static_quad::*;
+use renderer::features::demo::*;
 use renderer::phases::draw_opaque::*;
 use renderer::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
 use renderer::RenderRegistryBuilder;
 use renderer::RenderViewSet;
 use legion::prelude::*;
 use glam::Vec3;
-use renderer_ext::{ExtractSource, PositionComponent, SpriteComponent, CommandWriter};
+use renderer_ext::{ExtractSource, PositionComponent, DemoComponent, DemoCommandWriterContext};
 use renderer_ext::phases::draw_transparent::DrawTransparentRenderPhase;
+use renderer_ext::features::demo::{create_demo_extract_job, DemoRenderFeature};
 
 fn main() {
     // Setup logging
@@ -20,8 +20,7 @@ fn main() {
     // Setup render features
     //
     let render_registry = RenderRegistryBuilder::default()
-        .register_feature::<SpriteRenderFeature>()
-        .register_feature::<StaticQuadRenderFeature>()
+        .register_feature::<DemoRenderFeature>()
         .register_render_phase::<DrawOpaqueRenderPhase>()
         .register_render_phase::<DrawTransparentRenderPhase>()
         .build();
@@ -39,7 +38,7 @@ fn main() {
     // In theory we could pre-cook static visibility in chunks and stream them in
     let static_visibility_node_set = StaticVisibilityNodeSet::default();
     let mut dynamic_visibility_node_set = DynamicVisibilityNodeSet::default();
-    let sprite_render_nodes = SpriteRenderNodeSet::new();
+    let demo_render_nodes = DemoRenderNodeSet::default();
 
     //
     // Init an example world state
@@ -48,16 +47,17 @@ fn main() {
     let mut world = universe.create_world();
     let mut resources = legion::systems::resource::Resources::default();
 
-    resources.insert(sprite_render_nodes);
+    resources.insert(demo_render_nodes);
 
     {
-        let sprites = ["sprite1", "sprite2", "sprite3"];
+        // This could be data like references to sprite assets
+        let demo_component_names = ["sprite1", "sprite2", "sprite3"];
         for i in 0..100 {
             let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
             let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
-            let _sprite = sprites[i % sprites.len()];
+            let _demo_component_names = demo_component_names[i % demo_component_names.len()];
 
-            let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
+            let mut demo_render_nodes = resources.get_mut::<DemoRenderNodeSet>().unwrap();
 
             // User calls functions to register render objects
             // - This is a retained API because render object existence can trigger loading streaming assets and
@@ -67,9 +67,10 @@ fn main() {
             // - the `_with_handle` variant allows us to get the handle of the value that's going to be allocated
             //   This resolves a circular dependency where the component needs the render node handle and the
             //   render node needs the entity.
-            sprite_render_nodes.register_sprite_with_handle(|sprite_handle| {
+            // - ALTERNATIVE: Could create an empty entity, create the components, and then add all of them
+            demo_render_nodes.register_demo_component_with_handle(|render_node_handle| {
                 let aabb_info = DynamicAabbVisibilityNode {
-                    handle: sprite_handle.into(),
+                    handle: render_node_handle.into(),
                     // aabb bounds
                 };
 
@@ -79,22 +80,22 @@ fn main() {
                     dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
 
                 let position_component = PositionComponent { position };
-                let sprite_component = SpriteComponent {
-                    sprite_handle,
+                let demo_component = DemoComponent {
+                    render_node_handle,
                     visibility_handle,
                     alpha,
                 };
 
                 let entity = world.insert(
                     (),
-                    (0..1).map(|_| (position_component, sprite_component.clone())),
+                    (0..1).map(|_| (position_component, demo_component.clone())),
                 )[0];
 
                 println!("create entity {:?}", entity);
                 world.get_component::<PositionComponent>(entity).unwrap();
 
-                SpriteRenderNode {
-                    entity, // sprite asset
+                DemoRenderNode {
+                    entity, // demo component
                 }
             });
         }
@@ -190,11 +191,6 @@ fn main() {
         // The frame packet builder will merge visibility results and hold extracted data from simulation. During
         // the extract window, render nodes cannot be added/removed
 
-        let sprite_render_nodes = resources.get::<SpriteRenderNodeSet>().unwrap();
-        let mut all_render_nodes = AllRenderNodes::new();
-        all_render_nodes.add_render_nodes(&*sprite_render_nodes);
-
-        let frame_packet_builder = FramePacketBuilder::new(&all_render_nodes);
 
         // User calls functions to start jobs that calculate dynamic visibility for FPS view
         let main_view_dynamic_visibility_result =
@@ -214,6 +210,12 @@ fn main() {
             "main view dynamic node count: {}",
             main_view_dynamic_visibility_result.handles.len()
         );
+
+        let demo_render_nodes = resources.get::<DemoRenderNodeSet>().unwrap();
+        let mut all_render_nodes = AllRenderNodes::new();
+        all_render_nodes.add_render_nodes(&*demo_render_nodes);
+
+        let frame_packet_builder = FramePacketBuilder::new(&all_render_nodes);
 
         // After these jobs end, user calls functions to start jobs that extract data
         frame_packet_builder.add_view(
@@ -240,7 +242,7 @@ fn main() {
         // create the feature impls per frame allows them to make system-level data available to
         // the callbacks. (Like maybe a reference to world?)
         // let mut extract_impl_set = RenderFeatureExtractImplSet::new();
-        // extract_impl_set.add_impl(Box::new(SpriteRenderFeature));
+        // extract_impl_set.add_impl(Box::new(DemoRenderFeature));
         // extract_impl_set.add_impl(Box::new(StaticQuadRenderFeature));
 
         let frame_packet = frame_packet_builder.build();
@@ -248,8 +250,8 @@ fn main() {
 
         let prepare_job_set = {
             let mut extract_job_set = ExtractJobSet::new();
-            extract_job_set.add_job(create_sprite_extract_job());
-            extract_job_set.add_job(create_static_quad_extract_job());
+            extract_job_set.add_job(create_demo_extract_job());
+            // Other features can be added here
 
             let extract_source = ExtractSource::new(&world, &resources);
             extract_job_set.extract(&extract_source, &frame_packet, &[&main_view, &minimap_view])
@@ -275,7 +277,7 @@ fn main() {
         // At this point the end-user can kick off the final write job per view/phase pair. The
         // output of this is left up to the end user and would likely be something like a GPU
         // command buffer.
-        let mut write_context = CommandWriter {};
+        let mut write_context = DemoCommandWriterContext {};
         prepared_render_data
             .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
         prepared_render_data
@@ -289,16 +291,11 @@ fn main() {
     //
     // Unregister render nodes/visibility objects
     //
-    let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
-    let query = <Read<SpriteComponent>>::query();
-    for sprite_component in query.iter(&mut world) {
-        sprite_render_nodes.unregister_sprite(sprite_component.sprite_handle);
-        dynamic_visibility_node_set.unregister_dynamic_aabb(sprite_component.visibility_handle);
+    let mut demo_render_nodes = resources.get_mut::<DemoRenderNodeSet>().unwrap();
+    let query = <Read<DemoComponent>>::query();
+    for demo_component in query.iter(&mut world) {
+        demo_render_nodes.unregister_demo_component(demo_component.render_node_handle);
+        dynamic_visibility_node_set.unregister_dynamic_aabb(demo_component.visibility_handle);
     }
 }
 
-//TODO:
-// - Render graph of non-transparents and then transparents
-// - maybe add 2d lighting?
-// - Add support for streaming chunks?
-// - tilemap?

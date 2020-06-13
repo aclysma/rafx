@@ -1,7 +1,7 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel};
 use ash::prelude::VkResult;
-use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass, VkBloomRenderPassResources};
+use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
 use std::mem::{ManuallyDrop, swap};
 use crate::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
@@ -36,6 +36,14 @@ use crate::renderpass::debug_renderpass::DebugDraw3DResource;
 use crate::renderpass::VkBloomExtractRenderPass;
 use crate::renderpass::VkBloomBlurRenderPass;
 use crate::renderpass::VkBloomCombineRenderPass;
+use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderFeature, create_sprite_extract_job};
+use renderer_base::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
+use renderer_base::{RenderRegistryBuilder, RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet, AllRenderNodes, FramePacketBuilder, ExtractJobSet};
+use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use crate::phases::draw_transparent::DrawTransparentRenderPhase;
+use legion::prelude::*;
+use crate::ExtractSource;
+use crate::CommandWriterContext;
 
 
 fn begin_load_asset<T>(
@@ -82,7 +90,7 @@ fn wait_for_asset_to_load<T>(
 }
 
 pub struct GameRenderer {
-    time_state: TimeState,
+    //time_state: TimeState,
     imgui_event_listener: ImguiRenderEventListener,
 
     resource_manager: ResourceManager,
@@ -110,8 +118,19 @@ pub struct GameRenderer {
     bloom_combine_material: Handle<MaterialAsset>,
     bloom_combine_material_dyn_set: Option<DynDescriptorSet>,
 
-    mesh_renderpass: Option<VkMeshRenderPass>,
+
+
+    render_registry: RenderRegistry,
+    main_camera_render_phase_mask: RenderPhaseMask,
+    //
+    // sprite_render_nodes: SpriteRenderNodeSet,
+    //
+    // static_visibility_node_set: StaticVisibilityNodeSet,
+    // dynamic_visibility_node_set: DynamicVisibilityNodeSet,
+
     sprite_renderpass: Option<VkSpriteRenderPass>,
+    opaque_renderpass: Option<VkOpaqueRenderPass>,
+    mesh_renderpass: Option<VkMeshRenderPass>,
     debug_renderpass: Option<VkDebugRenderPass>,
     bloom_extract_renderpass: Option<VkBloomExtractRenderPass>,
     bloom_blur_renderpass: Option<VkBloomBlurRenderPass>,
@@ -124,12 +143,28 @@ impl GameRenderer {
         window: &dyn Window,
         device_context: &VkDeviceContext,
         imgui_font_atlas: VkImGuiRenderPassFontAtlas,
-        time_state: &TimeState,
-        asset_resource: &mut AssetResource,
+        resources: &Resources,
+        //time_state: &TimeState,
+        //asset_resource: &mut AssetResource,
     ) -> VkResult<Self> {
+        let render_registry = RenderRegistryBuilder::default()
+            .register_feature::<SpriteRenderFeature>()
+            .register_render_phase::<DrawOpaqueRenderPhase>()
+            .register_render_phase::<DrawTransparentRenderPhase>()
+            .build();
+
+        let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
+            .add_render_phase::<DrawOpaqueRenderPhase>()
+            .add_render_phase::<DrawTransparentRenderPhase>()
+            .build();
+
         let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
 
         let mut resource_manager = ResourceManager::new(device_context);
+
+        let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
+        let asset_resource = &mut *asset_resource_fetch;
+        //let time_state = resources.get::<TimeState>().unwrap();
 
         asset_resource.add_storage_with_load_handler::<ShaderAsset, _>(Box::new(
             resource_manager.create_shader_load_handler(),
@@ -161,6 +196,7 @@ impl GameRenderer {
         // asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
         //     resource_manager.create_mesh_load_handler(),
         // ));
+
 
 
         //
@@ -385,7 +421,7 @@ impl GameRenderer {
         ];
 
         let mut renderer = GameRenderer {
-            time_state: time_state.clone(),
+            //time_state: time_state.clone(),
             imgui_event_listener,
             resource_manager,
 
@@ -418,8 +454,17 @@ impl GameRenderer {
             // light_mesh,
             // light_mesh_material_instances: vec![],
 
+            render_registry,
+            main_camera_render_phase_mask,
+
+            // sprite_render_nodes: Default::default(),
+            //
+            // static_visibility_node_set: Default::default(),
+            // dynamic_visibility_node_set: Default::default(),
+
             swapchain_surface_info: None,
             sprite_renderpass: None,
+            opaque_renderpass: None,
             mesh_renderpass: None,
             debug_renderpass: None,
             bloom_extract_renderpass: None,
@@ -473,12 +518,12 @@ impl GameRenderer {
         self.resource_manager.update_resources();
     }
 
-    pub fn update_time(
-        &mut self,
-        time_state: &TimeState,
-    ) {
-        self.time_state = time_state.clone();
-    }
+    // pub fn update_time(
+    //     &mut self,
+    //     time_state: &TimeState,
+    // ) {
+    //     self.time_state = time_state.clone();
+    // }
 }
 
 impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
@@ -515,6 +560,19 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             sprite_pipeline_info,
         )?);
 
+        log::trace!("Create VkOpaqueRenderPass");
+        //TODO: We probably want to move to just using a pipeline here and not a specific material
+        let opaque_pipeline_info = self.resource_manager.get_pipeline_info(
+            &self.mesh_material,
+            &swapchain_surface_info,
+            0,
+        );
+
+        self.opaque_renderpass = Some(VkOpaqueRenderPass::new(
+            device_context,
+            swapchain,
+            opaque_pipeline_info,
+        )?);
 
         log::trace!("Create VkMeshRenderPass");
         let mesh_pipeline_info = self.resource_manager.get_pipeline_info(
@@ -662,47 +720,94 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
 impl GameRenderer {
     fn render(
         &mut self,
-        asset_resource: &mut AssetResource,
+        world: &World,
+        resources: &Resources,
         window: &Window,
         device_context: &VkDeviceContext,
         present_index: usize,
     ) -> VkResult<Vec<ash::vk::CommandBuffer>> {
-        log::trace!("game renderer render");
-        let mut command_buffers = vec![];
+        //
+        // Fetch resources
+        //
+        let asset_resource_fetch = resources.get::<AssetResource>().unwrap();
+        let asset_resource = &* asset_resource_fetch;
 
-        let loop_time = self.time_state.total_time().as_secs_f32();
+        let time_state_fetch = resources.get::<TimeState>().unwrap();
+        let time_state = &* time_state_fetch;
+
+        let static_visibility_node_set_fetch = resources.get::<StaticVisibilityNodeSet>().unwrap();
+        let static_visibility_node_set = &* static_visibility_node_set_fetch;
+
+        let dynamic_visibility_node_set_fetch = resources.get::<DynamicVisibilityNodeSet>().unwrap();
+        let dynamic_visibility_node_set = &* dynamic_visibility_node_set_fetch;
 
         //
-        // Camera Management
+        // View Management
         //
         let camera_rotate_speed = 1.0;
         let camera_distance_multiplier = 1.0;
+        let loop_time = time_state.total_time().as_secs_f32();
         let eye = glam::Vec3::new(
             camera_distance_multiplier * 8.0 * f32::cos(camera_rotate_speed * loop_time / 2.0),
             camera_distance_multiplier * 8.0 * f32::sin(camera_rotate_speed * loop_time / 2.0),
             camera_distance_multiplier * 5.0,
         );
 
-        //let eye = glam::Vec3::new(-3.0, 0.0, 0.0);
-
-
-        //self.meshes[0].world_transform = glam::Mat4::from_rotation_z(loop_time / 2.0);
-
-        // let eye = glam::Vec3::new(
-        //     -0.67656,
-        //     -1.0097,
-        //     1.1479,
-        // );
-
         let extents_width = 900;
         let extents_height = 600;
         let aspect_ratio = extents_width as f32 / extents_height as f32;
 
-        //let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(2.268, 0.415, 1.2088), glam::Vec3::new(0.0, 0.0, 1.0));
         let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 1.0));
         let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.01, 20.0);
         let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
         let view_proj = proj * view;
+
+        let render_view_set = RenderViewSet::default();
+        let main_view = render_view_set.create_view(
+            eye,
+            view_proj,
+            self.main_camera_render_phase_mask,
+            "main".to_string(),
+        );
+
+        //
+        // Visibility
+        //
+        let main_view_static_visibility_result =
+            static_visibility_node_set.calculate_static_visibility(&main_view);
+        let main_view_dynamic_visibility_result =
+            dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
+
+        log::info!(
+            "main view static node count: {}",
+            main_view_static_visibility_result.handles.len()
+        );
+
+        log::info!(
+            "main view dynamic node count: {}",
+            main_view_dynamic_visibility_result.handles.len()
+        );
+
+        let sprite_render_nodes = resources.get::<SpriteRenderNodeSet>().unwrap();
+        let mut all_render_nodes = AllRenderNodes::new();
+        all_render_nodes.add_render_nodes(&*sprite_render_nodes);
+
+        let frame_packet_builder = FramePacketBuilder::new(&all_render_nodes);
+
+        // After these jobs end, user calls functions to start jobs that extract data
+        frame_packet_builder.add_view(
+            &main_view,
+            &[
+                main_view_static_visibility_result,
+                main_view_dynamic_visibility_result,
+            ],
+        );
+
+        //
+        // Gather lighting data
+        //
+        log::trace!("game renderer render");
+        let mut command_buffers = vec![];
 
         //
         // Push latest light/camera info into the mesh material
@@ -791,18 +896,8 @@ impl GameRenderer {
             );
         }
 
-
-
-
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
         self.mesh_material_per_frame_data.flush();
-
-        // self.debug_draw_3d.add_sphere(
-        //     glam::Vec3::new(3.0, 3.0, 3.0),
-        //     0.75,
-        //     glam::Vec4::new(1.0, 1.0, 0.0, 1.0),
-        //     12
-        // );
 
         for mesh in &mut self.meshes {
             mesh.set_view_proj(view, proj);
@@ -811,10 +906,43 @@ impl GameRenderer {
         self.debug_material_per_frame_data.set_buffer_data(0, &view_proj);
         self.debug_material_per_frame_data.flush();
 
+
+
+
+        //
+        // Extract Jobs
+        //
+        let frame_packet = frame_packet_builder.build();
+        let prepare_job_set = {
+            let mut extract_job_set = ExtractJobSet::new();
+            extract_job_set.add_job(create_sprite_extract_job());
+
+            let extract_source = ExtractSource::new(&world, &resources);
+            extract_job_set.extract(&extract_source, &frame_packet, &[&main_view])
+        };
+
+        //
+        // Prepare Jobs
+        //
+        let prepared_render_data = prepare_job_set.prepare(
+            &frame_packet,
+            &[&main_view],
+            &self.render_registry,
+        );
+
         //
         // Update Resources and flush descriptor set changes
         //
         self.resource_manager.on_begin_frame();
+
+        //
+        // Write Jobs
+        //
+        let mut write_context = CommandWriterContext {};
+        prepared_render_data
+            .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
+        prepared_render_data
+            .write_view_phase::<DrawTransparentRenderPhase>(&main_view, &mut write_context);
 
         //
         // Sprite renderpass
@@ -845,10 +973,30 @@ impl GameRenderer {
                 //&self.sprite_resource_manager,
                 descriptor_set_per_pass,
                 &[descriptor_set_per_texture],
-                &self.time_state,
+                time_state,
             )?;
 
             command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
+        }
+
+        //
+        // Opaque renderpass
+        //
+        if let Some(opaque_renderpass) = &mut self.opaque_renderpass {
+            log::trace!("opaque_renderpass update");
+            let opaque_pipeline_info = self.resource_manager.get_pipeline_info(
+                &self.mesh_material,
+                self.swapchain_surface_info.as_ref().unwrap(),
+                0,
+            );
+
+            opaque_renderpass.update(
+                &opaque_pipeline_info,
+                present_index,
+                &*prepared_render_data,
+                &main_view
+            )?;
+            command_buffers.push(opaque_renderpass.command_buffers[present_index].clone());
         }
 
         //
@@ -875,6 +1023,9 @@ impl GameRenderer {
             command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
         }
 
+        //
+        // Debug Renderpass
+        //
         if let Some(debug_renderpass) = &mut self.debug_renderpass {
             log::trace!("debug_renderpass update");
             let debug_pipeline_info = self.resource_manager.get_pipeline_info(
@@ -966,6 +1117,7 @@ impl GameRenderer {
 impl Drop for GameRenderer {
     fn drop(&mut self) {
         self.sprite_renderpass = None;
+        self.opaque_renderpass = None;
         self.mesh_renderpass = None;
         self.sprite_custom_material = None;
         self.debug_renderpass = None;
@@ -993,8 +1145,9 @@ impl GameRendererWithContext {
     pub fn new(
         window: &dyn Window,
         imgui_font_atlas: VkImGuiRenderPassFontAtlas,
-        time_state: &TimeState,
-        asset_resource: &mut AssetResource,
+        resources: &Resources,
+        // time_state: &TimeState,
+        // asset_resource: &mut AssetResource,
     ) -> Result<GameRendererWithContext, VkCreateContextError> {
         let mut context = VkContextBuilder::new()
             .use_vulkan_debug_layer(false)
@@ -1013,8 +1166,9 @@ impl GameRendererWithContext {
             window,
             &context.device().device_context,
             imgui_font_atlas,
-            time_state,
-            asset_resource,
+            // time_state,
+            // asset_resource,
+            resources
         )?;
 
         let surface = VkSurface::new(&context, window, Some(&mut game_renderer))?;
@@ -1033,13 +1187,15 @@ impl GameRendererWithContext {
 
     pub fn draw(
         &mut self,
-        asset_resource: &mut AssetResource,
         window: &dyn Window,
-        time_state: &TimeState,
+        world: &World,
+        resources: &Resources
     ) -> VkResult<()> {
-        self.game_renderer.update_time(time_state);
+        // {
+        //     self.game_renderer.update_time(time_state);
+        // }
         self.surface.draw_with(&mut *self.game_renderer, window, |game_renderer, device_context, present_index| {
-            game_renderer.render(asset_resource, window, device_context, present_index)
+            game_renderer.render(world, resources, window, device_context, present_index)
         })
     }
 

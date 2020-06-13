@@ -7,7 +7,7 @@ use std::convert::TryInto;
 use renderer_base::{FramePacket, GenericRenderNodeHandle, ExtractJob, RenderView, PrepareJob};
 use renderer_base::{DefaultExtractJob, DefaultExtractJobImpl};
 use renderer_base::{PerFrameNode, PerViewNode};
-use crate::{ExtractSource, CommandWriter};
+use crate::{ExtractSource, CommandWriterContext};
 
 static STATIC_QUAD_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
@@ -30,7 +30,7 @@ impl RenderFeature for StaticQuadRenderFeature {
 #[derive(Default)]
 struct StaticQuadExtractJobImpl {}
 
-impl DefaultExtractJobImpl<ExtractSource, CommandWriter> for StaticQuadExtractJobImpl {
+impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for StaticQuadExtractJobImpl {
     fn extract_begin(
         &mut self,
         _source: &ExtractSource,
@@ -75,7 +75,7 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriter> for StaticQuadExtractJo
     fn extract_frame_finalize(
         self,
         _source: &ExtractSource,
-    ) -> Box<dyn PrepareJob<CommandWriter>> {
+    ) -> Box<dyn PrepareJob<CommandWriterContext>> {
         log::debug!("extract_frame_finalize {}", self.feature_debug_name());
         Box::new(StaticQuadPrepareJob {})
     }
@@ -123,19 +123,19 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriter> for StaticQuadExtractJo
 //     }
 // }
 
-pub fn create_static_quad_extract_job() -> Box<dyn ExtractJob<ExtractSource, CommandWriter>> {
+pub fn create_static_quad_extract_job() -> Box<dyn ExtractJob<ExtractSource, CommandWriterContext>> {
     Box::new(DefaultExtractJob::new(StaticQuadExtractJobImpl::default()))
 }
 
 struct StaticQuadPrepareJob {}
 
-impl PrepareJob<CommandWriter> for StaticQuadPrepareJob {
+impl PrepareJob<CommandWriterContext> for StaticQuadPrepareJob {
     fn prepare(
         self: Box<Self>,
         _frame_packet: &FramePacket,
         _views: &[&RenderView],
     ) -> (
-        Box<dyn FeatureCommandWriter<CommandWriter>>,
+        Box<dyn FeatureCommandWriter<CommandWriterContext>>,
         FeatureSubmitNodes,
     ) {
         (
@@ -155,17 +155,17 @@ impl PrepareJob<CommandWriter> for StaticQuadPrepareJob {
 
 struct StaticQuadCommandWriter {}
 
-impl FeatureCommandWriter<CommandWriter> for StaticQuadCommandWriter {
+impl FeatureCommandWriter<CommandWriterContext> for StaticQuadCommandWriter {
     fn apply_setup(
         &self,
-        _write_context: &mut CommandWriter,
+        _write_context: &mut CommandWriterContext,
     ) {
         log::debug!("apply_setup {}", self.feature_debug_name());
     }
 
     fn render_element(
         &self,
-        _write_context: &mut CommandWriter,
+        _write_context: &mut CommandWriterContext,
         index: u32,
     ) {
         log::debug!("render_element {} id: {}", self.feature_debug_name(), index);
@@ -173,7 +173,7 @@ impl FeatureCommandWriter<CommandWriter> for StaticQuadCommandWriter {
 
     fn revert_setup(
         &self,
-        _write_context: &mut CommandWriter,
+        _write_context: &mut CommandWriterContext,
     ) {
         log::debug!("revert_setup {}", self.feature_debug_name());
     }

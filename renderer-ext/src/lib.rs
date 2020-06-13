@@ -26,8 +26,11 @@ use renderer_base::visibility::DynamicAabbVisibilityNodeHandle;
 //
 pub mod features;
 use features::sprite::SpriteRenderNodeHandle;
+use crate::features::demo::DemoRenderNodeHandle;
 
 pub mod phases;
+
+pub struct CommandWriterContext;
 
 #[derive(Copy, Clone)]
 pub struct PositionComponent {
@@ -60,10 +63,19 @@ impl ExtractSource {
     }
 }
 
-pub struct CommandWriter {}
-
-impl CommandWriter {}
-
 unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
     std::mem::transmute(value)
+}
+
+
+//
+// Just for demonstration of minimal API
+//
+pub struct DemoCommandWriterContext;
+
+#[derive(Clone)]
+pub struct DemoComponent {
+    pub render_node_handle: DemoRenderNodeHandle,
+    pub visibility_handle: DynamicAabbVisibilityNodeHandle,
+    pub alpha: f32,
 }

@@ -9,8 +9,9 @@ use ash::prelude::VkResult;
 use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
-use renderer_ext::GameRendererWithContext;
+use renderer_ext::{GameRendererWithContext, PositionComponent, SpriteComponent};
 use atelier_assets::loader as atelier_loader;
+use legion::prelude::*;
 
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
@@ -29,6 +30,10 @@ use renderer_ext::pipeline::image::ImageAsset;
 use renderer_ext::pipeline_description::GraphicsPipeline;
 use std::io::Write;
 use std::collections::hash_map::DefaultHasher;
+use renderer_ext::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
+use renderer_base::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
+use renderer_ext::time::TimeState;
+use glam::f32::Vec3;
 
 fn main() {
     let mut log_level = log::LevelFilter::Info;
@@ -63,8 +68,8 @@ fn main() {
     });
 
     // Something to track time
-    let mut time = renderer_ext::time::TimeState::new();
-    time.update();
+    let mut time_state = TimeState::new();
+    time_state.update();
 
     // Setup SDL
     let sdl_context = sdl2::init().expect("Failed to initialize sdl2");
@@ -105,12 +110,20 @@ fn main() {
     // asset types
     let mut asset_resource = AssetResource::default();
 
+    let universe = Universe::new();
+    let mut world = universe.create_world();
+    let mut resources = Resources::default();
+    resources.insert(SpriteRenderNodeSet::default());
+    resources.insert(StaticVisibilityNodeSet::default());
+    resources.insert(DynamicVisibilityNodeSet::default());
+    resources.insert(AssetResource::default());
+    resources.insert(time_state);
+
     // Create the renderer, this will init the vulkan instance, device, and set up a swap chain
     let renderer = GameRendererWithContext::new(
         &window,
         imgui_manager.build_font_atlas(),
-        &time,
-        &mut asset_resource,
+        &resources
     );
 
     // Check if there were error setting up vulkan
@@ -127,6 +140,80 @@ fn main() {
     let mut event_pump = sdl_context
         .event_pump()
         .expect("Could not create sdl event pump");
+
+
+
+
+
+
+
+
+
+
+    {
+        let sprites = ["sprite1", "sprite2", "sprite3"];
+        for i in 0..100 {
+            let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
+            let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
+            let _sprite = sprites[i % sprites.len()];
+
+            let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
+            let mut dynamic_visibility_node_set = resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
+
+            // User calls functions to register render objects
+            // - This is a retained API because render object existence can trigger loading streaming assets and
+            //   keep them resident in memory
+            // - Some render objects might not correspond to legion entities, and some people might not be using
+            //   legion at all
+            // - the `_with_handle` variant allows us to get the handle of the value that's going to be allocated
+            //   This resolves a circular dependency where the component needs the render node handle and the
+            //   render node needs the entity.
+            // - ALTERNATIVE: Could create an empty entity, create the components, and then add all of them
+            sprite_render_nodes.register_sprite_with_handle(|sprite_handle| {
+                let aabb_info = DynamicAabbVisibilityNode {
+                    handle: sprite_handle.into(),
+                    // aabb bounds
+                };
+
+                // User calls functions to register visibility objects
+                // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
+                let visibility_handle =
+                    dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
+
+                let position_component = PositionComponent { position };
+                let sprite_component = SpriteComponent {
+                    sprite_handle,
+                    visibility_handle,
+                    alpha,
+                };
+
+                let entity = world.insert(
+                    (),
+                    (0..1).map(|_| (position_component, sprite_component.clone())),
+                )[0];
+
+                log::debug!("create entity {:?}", entity);
+                world.get_component::<PositionComponent>(entity).unwrap();
+
+                SpriteRenderNode {
+                    entity, // sprite asset
+                }
+            });
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 
@@ -174,9 +261,10 @@ fn main() {
             //let mut opened = true;
             //ui.show_demo_window(&mut opened);
             ui.main_menu_bar(|| {
+                let time_state = resources.get::<TimeState>().unwrap();
                 ui.text(imgui::im_str!(
                     "FPS: {:.1}",
-                    time.updates_per_second_smoothed()
+                    time_state.updates_per_second_smoothed()
                 ));
             });
         });
@@ -186,15 +274,18 @@ fn main() {
         //
         // Redraw
         //
-        renderer.draw(&mut asset_resource, &window, &time).unwrap();
-        time.update();
+        renderer.draw(&window, &world, &resources).unwrap();
+        resources.get_mut::<TimeState>().unwrap().update();
 
-        if print_time_event.try_take_event(
-            time.current_instant(),
-            std::time::Duration::from_secs_f32(1.0),
-        ) {
-            log::info!("FPS: {}", time.updates_per_second());
-            //renderer.dump_stats();
+        {
+            let time_state = resources.get::<TimeState>().unwrap();
+            if print_time_event.try_take_event(
+                time_state.current_instant(),
+                std::time::Duration::from_secs_f32(1.0),
+            ) {
+                log::info!("FPS: {}", time_state.updates_per_second());
+                //renderer.dump_stats();
+            }
         }
     }
 }
