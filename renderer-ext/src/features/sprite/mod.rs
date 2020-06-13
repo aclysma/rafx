@@ -14,9 +14,60 @@ use prepare::SpritePrepareJobImpl;
 
 mod write;
 use write::SpriteCommandWriter;
+use renderer_shell_vulkan::VkDeviceContext;
 
-pub fn create_sprite_extract_job() -> Box<dyn ExtractJob<ExtractSource, CommandWriterContext>> {
-    Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::default()))
+struct SpriteRenderpassStats {
+    draw_call_count: u32,
+}
+
+/// Per-pass "global" data
+#[derive(Clone, Debug, Copy)]
+struct SpriteUniformBufferObject {
+    // View and projection matrices
+    view_proj: [[f32; 4]; 4],
+}
+
+/// Vertex format for vertices sent to the GPU
+#[derive(Clone, Debug, Copy)]
+#[repr(C)]
+pub struct SpriteVertex {
+    pub pos: [f32; 2],
+    pub tex_coord: [f32; 2],
+    //color: [u8; 4],
+}
+
+/// Used as static data to represent a quad
+#[derive(Clone, Debug, Copy)]
+struct QuadVertex {
+    pos: [f32; 3],
+    tex_coord: [f32; 2],
+}
+
+/// Static data the represents a "unit" quad
+const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
+    QuadVertex {
+        pos: [-0.5, -0.5, 0.0],
+        tex_coord: [1.0, 0.0],
+    },
+    QuadVertex {
+        pos: [0.5, -0.5, 0.0],
+        tex_coord: [0.0, 0.0],
+    },
+    QuadVertex {
+        pos: [0.5, 0.5, 0.0],
+        tex_coord: [0.0, 1.0],
+    },
+    QuadVertex {
+        pos: [-0.5, 0.5, 0.0],
+        tex_coord: [1.0, 1.0],
+    },
+];
+
+/// Draw order of QUAD_VERTEX_LIST
+const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
+
+pub fn create_sprite_extract_job(device_context: VkDeviceContext) -> Box<dyn ExtractJob<ExtractSource, CommandWriterContext>> {
+    Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(device_context)))
 }
 
 //
@@ -100,8 +151,19 @@ impl RenderFeature for SpriteRenderFeature {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(self) struct ExtractedSpriteData {
-    position: Vec3,
-    alpha: f32,
+    position: glam::Vec3,
+    texture_size: glam::Vec2,
+    scale: f32,
+    rotation: f32,
+    texture_descriptor_index: u32,
+    alpha: f32
+}
+
+#[derive(Debug)]
+pub struct SpriteDrawCall {
+    index_buffer_first_element: u16,
+    index_buffer_count: u16,
+    texture_descriptor_index: u32,
 }

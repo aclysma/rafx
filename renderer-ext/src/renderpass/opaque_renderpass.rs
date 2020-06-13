@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkDeviceContext};
+use renderer_shell_vulkan::{VkDevice, VkDeviceContext, MAX_FRAMES_IN_FLIGHT};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -30,6 +30,7 @@ use crate::asset_resource::AssetResource;
 use renderer_base::{PreparedRenderData, RenderView};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use crate::CommandWriterContext;
+use renderer_shell_vulkan::cleanup::VkCombinedDropSink;
 
 /// Draws sprites
 pub struct VkOpaqueRenderPass {
@@ -42,6 +43,8 @@ pub struct VkOpaqueRenderPass {
     // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
+
+    pub drop_sink: VkCombinedDropSink,
 
     renderpass: vk::RenderPass,
 }
@@ -84,7 +87,8 @@ impl VkOpaqueRenderPass {
             frame_buffers,
             command_pool,
             command_buffers,
-            renderpass: pipeline_info.renderpass.get_raw()
+            renderpass: pipeline_info.renderpass.get_raw(),
+            drop_sink: VkCombinedDropSink::new(MAX_FRAMES_IN_FLIGHT as u32)
         })
     }
 
@@ -154,6 +158,7 @@ impl VkOpaqueRenderPass {
         command_buffer: &vk::CommandBuffer,
         prepared_render_data: &PreparedRenderData<CommandWriterContext>,
         view: &RenderView,
+        drop_sink: &VkCombinedDropSink,
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
@@ -191,7 +196,9 @@ impl VkOpaqueRenderPass {
                 vk::SubpassContents::INLINE,
             );
 
-            let mut write_context = CommandWriterContext {};
+            let mut write_context = CommandWriterContext {
+                //drop_sink: &drop_sink
+            };
             prepared_render_data
                 .write_view_phase::<DrawOpaqueRenderPhase>(&view, &mut write_context);
 
@@ -215,7 +222,8 @@ impl VkOpaqueRenderPass {
             self.frame_buffers[present_index],
             &self.command_buffers[present_index],
             prepared_render_data,
-            view
+            view,
+            &self.drop_sink,
         )
     }
 }

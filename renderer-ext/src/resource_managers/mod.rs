@@ -150,7 +150,7 @@ impl ResourceManager {
     }
 
     pub fn create_pipeline_load_handler(&self) -> GenericLoadHandler<PipelineAsset> {
-        self.load_queues.graphics_pipelines2.create_load_handler()
+        self.load_queues.graphics_pipelines.create_load_handler()
     }
 
     pub fn create_material_load_handler(&self) -> GenericLoadHandler<MaterialAsset> {
@@ -360,23 +360,23 @@ impl ResourceManager {
     }
 
     fn process_pipeline_load_requests(&mut self) {
-        for request in self.load_queues.graphics_pipelines2.take_load_requests() {
+        for request in self.load_queues.graphics_pipelines.take_load_requests() {
             log::trace!("Create pipeline {:?}", request.load_handle);
             let loaded_asset = self.load_graphics_pipeline(&request.asset);
             Self::handle_load_result(
                 request.load_op,
                 loaded_asset,
-                &mut self.loaded_assets.graphics_pipelines2,
+                &mut self.loaded_assets.graphics_pipelines,
             );
         }
 
         Self::handle_commit_requests(
-            &mut self.load_queues.graphics_pipelines2,
-            &mut self.loaded_assets.graphics_pipelines2,
+            &mut self.load_queues.graphics_pipelines,
+            &mut self.loaded_assets.graphics_pipelines,
         );
         Self::handle_free_requests(
-            &mut self.load_queues.graphics_pipelines2,
-            &mut self.loaded_assets.graphics_pipelines2,
+            &mut self.load_queues.graphics_pipelines,
+            &mut self.loaded_assets.graphics_pipelines,
         );
     }
 
@@ -620,7 +620,7 @@ impl ResourceManager {
         for pass in &material_asset.passes {
             let loaded_pipeline_asset = self
                 .loaded_assets
-                .graphics_pipelines2
+                .graphics_pipelines
                 .get_latest(pass.pipeline.load_handle())
                 .unwrap();
 

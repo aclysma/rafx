@@ -27,10 +27,13 @@ use renderer_base::visibility::DynamicAabbVisibilityNodeHandle;
 pub mod features;
 use features::sprite::SpriteRenderNodeHandle;
 use crate::features::demo::DemoRenderNodeHandle;
+use renderer_shell_vulkan::VkResourceDropSink;
 
 pub mod phases;
 
-pub struct CommandWriterContext;
+pub struct CommandWriterContext {
+
+}
 
 #[derive(Copy, Clone)]
 pub struct PositionComponent {

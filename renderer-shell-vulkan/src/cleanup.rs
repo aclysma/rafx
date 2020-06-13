@@ -288,7 +288,7 @@ impl VkResource for vk::ShaderModule {
 }
 
 /// Provides DropSinks for all the things in a single struct
-pub struct CombinedDropSink {
+pub struct VkCombinedDropSink {
     buffers: VkResourceDropSink<ManuallyDrop<VkBuffer>>,
     images: VkResourceDropSink<ManuallyDrop<VkImage>>,
     image_views: VkResourceDropSink<vk::ImageView>,
@@ -299,9 +299,9 @@ pub struct CombinedDropSink {
     shader_modules: VkResourceDropSink<vk::ShaderModule>,
 }
 
-impl CombinedDropSink {
+impl VkCombinedDropSink {
     pub fn new(max_in_flight_frames: u32) -> Self {
-        CombinedDropSink {
+        VkCombinedDropSink {
             buffers: VkResourceDropSink::new(max_in_flight_frames),
             images: VkResourceDropSink::new(max_in_flight_frames),
             image_views: VkResourceDropSink::new(max_in_flight_frames),

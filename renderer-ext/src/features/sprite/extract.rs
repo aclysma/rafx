@@ -3,10 +3,20 @@ use crate::{ExtractSource, PositionComponent, SpriteComponent, CommandWriterCont
 use renderer_base::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
 use renderer_base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJobImpl;
+use renderer_shell_vulkan::VkDeviceContext;
 
-#[derive(Default)]
 pub struct SpriteExtractJobImpl {
-    per_frame_data: Vec<ExtractedSpriteData>,
+    device_context: VkDeviceContext,
+    extracted_sprite_data: Vec<ExtractedSpriteData>,
+}
+
+impl SpriteExtractJobImpl {
+    pub fn new(device_context: VkDeviceContext) -> Self {
+        SpriteExtractJobImpl {
+            device_context,
+            extracted_sprite_data: Default::default()
+        }
+    }
 }
 
 impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for SpriteExtractJobImpl {
@@ -16,7 +26,7 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for SpriteExtrac
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
-        self.per_frame_data
+        self.extracted_sprite_data
             .reserve(frame_packet.frame_node_count(self.feature_index()) as usize);
     }
 
@@ -41,8 +51,12 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for SpriteExtrac
             .get_component::<SpriteComponent>(sprite_render_node.entity)
             .unwrap();
 
-        self.per_frame_data.push(ExtractedSpriteData {
+        self.extracted_sprite_data.push(ExtractedSpriteData {
             position: position_component.position,
+            texture_size: glam::Vec2::new(100.0, 100.0),
+            scale: 1.0,
+            rotation: 0.0,
+            texture_descriptor_index: 0,
             alpha: sprite_component.alpha,
         });
     }
@@ -69,9 +83,10 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for SpriteExtrac
         self,
         _source: &ExtractSource,
     ) -> Box<dyn PrepareJob<CommandWriterContext>> {
-        let prepare_impl = SpritePrepareJobImpl {
-            per_frame_data: self.per_frame_data,
-        };
+        let prepare_impl = SpritePrepareJobImpl::new(
+            self.device_context,
+            self.extracted_sprite_data
+        );
 
         Box::new(DefaultPrepareJob::new(prepare_impl))
     }

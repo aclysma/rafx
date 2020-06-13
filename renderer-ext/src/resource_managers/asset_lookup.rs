@@ -208,7 +208,7 @@ pub struct LoadedAssetMetrics {
 #[derive(Default)]
 pub struct LoadedAssetLookupSet {
     pub shader_modules: AssetLookup<LoadedShaderModule>,
-    pub graphics_pipelines2: AssetLookup<LoadedGraphicsPipeline>,
+    pub graphics_pipelines: AssetLookup<LoadedGraphicsPipeline>,
     pub materials: AssetLookup<LoadedMaterial>,
     pub material_instances: AssetLookup<LoadedMaterialInstance>,
     pub images: AssetLookup<LoadedImage>,
@@ -220,7 +220,7 @@ impl LoadedAssetLookupSet {
     pub fn metrics(&self) -> LoadedAssetMetrics {
         LoadedAssetMetrics {
             shader_module_count: self.shader_modules.len(),
-            pipeline_count: self.graphics_pipelines2.len(),
+            pipeline_count: self.graphics_pipelines.len(),
             material_count: self.materials.len(),
             material_instance_count: self.material_instances.len(),
             image_count: self.images.len(),
@@ -231,7 +231,7 @@ impl LoadedAssetLookupSet {
 
     pub fn destroy(&mut self) {
         self.shader_modules.destroy();
-        self.graphics_pipelines2.destroy();
+        self.graphics_pipelines.destroy();
         self.materials.destroy();
         self.material_instances.destroy();
         self.images.destroy();

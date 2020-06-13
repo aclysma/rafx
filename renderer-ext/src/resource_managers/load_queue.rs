@@ -185,7 +185,7 @@ where
 #[derive(Default)]
 pub struct LoadQueueSet {
     pub shader_modules: LoadQueues<ShaderAsset>,
-    pub graphics_pipelines2: LoadQueues<PipelineAsset>,
+    pub graphics_pipelines: LoadQueues<PipelineAsset>,
     pub materials: LoadQueues<MaterialAsset>,
     pub material_instances: LoadQueues<MaterialInstanceAsset>,
     pub images: LoadQueues<ImageAsset>,

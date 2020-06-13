@@ -915,7 +915,7 @@ impl GameRenderer {
         let frame_packet = frame_packet_builder.build();
         let prepare_job_set = {
             let mut extract_job_set = ExtractJobSet::new();
-            extract_job_set.add_job(create_sprite_extract_job());
+            extract_job_set.add_job(create_sprite_extract_job(device_context.clone()));
 
             let extract_source = ExtractSource::new(&world, &resources);
             extract_job_set.extract(&extract_source, &frame_packet, &[&main_view])
