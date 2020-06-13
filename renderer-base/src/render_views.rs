@@ -77,7 +77,7 @@ impl RenderView {
         render_phase_mask: RenderPhaseMask,
         debug_name: String,
     ) -> RenderView {
-        log::debug!("Allocate view {} {}", debug_name, view_index);
+        log::trace!("Allocate view {} {}", debug_name, view_index);
         Self {
             eye_position,
             view_proj,

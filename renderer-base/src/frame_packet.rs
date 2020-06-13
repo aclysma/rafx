@@ -162,7 +162,7 @@ impl FramePacketBuilder {
         for (feature_index, max_render_node_count) in
             max_render_node_count_by_type.iter().enumerate()
         {
-            log::debug!(
+            log::trace!(
                 "node count for feature {}: {}",
                 feature_index,
                 max_render_node_count
@@ -194,7 +194,7 @@ impl FramePacketBuilder {
     ) {
         let feature_count = RenderRegistry::registered_feature_count();
 
-        log::info!("Allocate frame packet nodes for {}", view.debug_name());
+        log::trace!("Allocate frame packet nodes for {}", view.debug_name());
         let view_packet_builder = ViewPacketBuilder::new(feature_count);
 
         for visibility_result in visibility_results {

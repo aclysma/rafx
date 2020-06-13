@@ -778,12 +778,12 @@ impl GameRenderer {
         let main_view_dynamic_visibility_result =
             dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
 
-        log::info!(
+        log::trace!(
             "main view static node count: {}",
             main_view_static_visibility_result.handles.len()
         );
 
-        log::info!(
+        log::trace!(
             "main view dynamic node count: {}",
             main_view_dynamic_visibility_result.handles.len()
         );
@@ -936,13 +936,13 @@ impl GameRenderer {
         self.resource_manager.on_begin_frame();
 
         //
-        // Write Jobs
+        // Write Jobs - called from within renderpasses for now
         //
         let mut write_context = CommandWriterContext {};
-        prepared_render_data
-            .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
-        prepared_render_data
-            .write_view_phase::<DrawTransparentRenderPhase>(&main_view, &mut write_context);
+        // prepared_render_data
+        //     .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
+        // prepared_render_data
+        //     .write_view_phase::<DrawTransparentRenderPhase>(&main_view, &mut write_context);
 
         //
         // Sprite renderpass

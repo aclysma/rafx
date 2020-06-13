@@ -202,11 +202,11 @@ fn main() {
         let minimap_dynamic_visibility_result =
             dynamic_visibility_node_set.calculate_dynamic_visibility(&minimap_view);
 
-        log::info!(
+        log::trace!(
             "main view static node count: {}",
             main_view_static_visibility_result.handles.len()
         );
-        log::info!(
+        log::trace!(
             "main view dynamic node count: {}",
             main_view_dynamic_visibility_result.handles.len()
         );

@@ -64,7 +64,7 @@ impl ViewSubmitNodes {
         distance_from_camera: f32,
     ) {
         if self.render_phase_mask.is_included::<RenderPhaseT>() {
-            log::debug!("add submit node render phase: {} feature: {} submit node id: {} sort key: {} distance: {}", RenderPhaseT::render_phase_index(), self.feature_index, submit_node_id, sort_key, distance_from_camera);
+            log::trace!("add submit node render phase: {} feature: {} submit node id: {} sort key: {} distance: {}", RenderPhaseT::render_phase_index(), self.feature_index, submit_node_id, sort_key, distance_from_camera);
             self.submit_nodes[RenderPhaseT::render_phase_index() as usize].push(SubmitNode {
                 feature_index: self.feature_index,
                 submit_node_id,

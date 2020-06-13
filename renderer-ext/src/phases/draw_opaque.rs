@@ -19,7 +19,7 @@ impl RenderPhase for DrawOpaqueRenderPhase {
 
     fn sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
         // Sort by feature
-        log::info!("Sort phase {}", Self::render_phase_debug_name());
+        log::trace!("Sort phase {}", Self::render_phase_debug_name());
         submit_nodes.sort_unstable_by(|a, b| a.feature_index().cmp(&b.feature_index()));
 
         submit_nodes

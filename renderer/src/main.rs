@@ -192,7 +192,6 @@ fn main() {
                     (0..1).map(|_| (position_component, sprite_component.clone())),
                 )[0];
 
-                log::debug!("create entity {:?}", entity);
                 world.get_component::<PositionComponent>(entity).unwrap();
 
                 SpriteRenderNode {

@@ -42,11 +42,11 @@ impl<SourceT, WriteT> ExtractJobSet<SourceT, WriteT> {
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> PrepareJobSet<WriteT> {
-        log::debug!("Start extract job set");
+        log::trace!("Start extract job set");
 
         let mut prepare_jobs = vec![];
         for extract_job in self.extract_jobs {
-            log::debug!("Start job {}", extract_job.feature_debug_name());
+            log::trace!("Start job {}", extract_job.feature_debug_name());
 
             let prepare_job = extract_job.extract(source, frame_packet, views);
             prepare_jobs.push(prepare_job);
@@ -123,21 +123,20 @@ impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
     ) -> Box<dyn PrepareJob<WriteT>> {
         let feature_index = self.extract_impl.feature_index();
 
-        log::debug!("DefaultExtractJob::extract");
-
         // In the future, make features run in parallel
-        log::debug!("extract_begin {}", self.extract_impl.feature_debug_name());
+        log::trace!("extract_begin feature: {}", self.extract_impl.feature_debug_name());
         self.extract_impl.extract_begin(source, frame_packet, views);
-
-        log::debug!(
-            "extract_frame_node {}",
-            self.extract_impl.feature_debug_name()
-        );
 
         // foreach frame node, call extract
         for (frame_node_index, frame_node) in
             frame_packet.frame_nodes(feature_index).iter().enumerate()
         {
+            log::trace!(
+                "extract_frame_node feature: {} frame node: {}",
+                self.extract_impl.feature_debug_name(),
+                frame_node_index
+            );
+
             self.extract_impl
                 .extract_frame_node(source, *frame_node, frame_node_index as u32);
         }
@@ -145,8 +144,8 @@ impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
         // foreach view node, call extract
         //TODO: Views can run in parallel
         for view in views {
-            log::debug!(
-                "extract_frame_node {} {}",
+            log::trace!(
+                "extract_view_nodes feature: {} view: {}",
                 self.extract_impl.feature_debug_name(),
                 view.debug_name()
             );
@@ -154,6 +153,13 @@ impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
             let view_nodes = frame_packet.view_nodes(view, feature_index);
             if let Some(view_nodes) = view_nodes {
                 for (view_node_index, view_node) in view_nodes.iter().enumerate() {
+                    log::trace!(
+                        "extract_view_node feature: {} view node: {} node index: {}",
+                        self.extract_impl.feature_debug_name(),
+                        view.debug_name(),
+                        view_node_index
+                    );
+
                     self.extract_impl.extract_view_node(
                         source,
                         view,
@@ -164,8 +170,8 @@ impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
             }
 
             // call once after all view nodes extracted
-            log::debug!(
-                "extract_view_finalize {} {}",
+            log::trace!(
+                "extract_view_finalize feature: {} view: {}",
                 self.extract_impl.feature_debug_name(),
                 view.debug_name()
             );
@@ -173,7 +179,7 @@ impl<SourceT, WriteT, ExtractImplT: DefaultExtractJobImpl<SourceT, WriteT>>
         }
 
         // call once after all nodes extracted
-        log::debug!(
+        log::trace!(
             "extract_frame_finalize {}",
             self.extract_impl.feature_debug_name()
         );

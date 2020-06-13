@@ -112,22 +112,22 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
 
         let mut submit_nodes = FeatureSubmitNodes::default();
 
-        log::debug!("DefaultExtractJob::extract");
-
         // In the future, make features run in parallel
-        log::debug!("extract_begin {}", self.prepare_impl.feature_debug_name());
+        log::trace!("prepare_begin feature: {}", self.prepare_impl.feature_debug_name());
         self.prepare_impl
             .prepare_begin(frame_packet, views, &mut submit_nodes);
 
-        log::debug!(
-            "extract_frame_node {}",
-            self.prepare_impl.feature_debug_name()
-        );
 
         // foreach frame node, call extract
         for (frame_node_index, frame_node) in
             frame_packet.frame_nodes(feature_index).iter().enumerate()
         {
+            log::trace!(
+                "prepare_frame_node feature: {} frame node: {}",
+                self.prepare_impl.feature_debug_name(),
+                frame_node_index
+            );
+
             self.prepare_impl.prepare_frame_node(
                 *frame_node,
                 frame_node_index as u32,
@@ -142,8 +142,8 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
                 ViewSubmitNodes::new(self.prepare_impl.feature_index(), view.render_phase_mask());
 
             // foreach view node, call extract
-            log::debug!(
-                "extract_frame_node {} {}",
+            log::trace!(
+                "prepare_view_nodes feature: {} view: {}",
                 self.prepare_impl.feature_debug_name(),
                 view.debug_name()
             );
@@ -151,6 +151,13 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
             let view_nodes = frame_packet.view_nodes(view, feature_index);
             if let Some(view_nodes) = view_nodes {
                 for (view_node_index, view_node) in view_nodes.iter().enumerate() {
+                    log::trace!(
+                        "prepare_view_node feature: {} view: {} node index: {}",
+                        self.prepare_impl.feature_debug_name(),
+                        view.debug_name(),
+                        view_node_index
+                    );
+
                     self.prepare_impl.prepare_view_node(
                         view,
                         *view_node,
@@ -161,8 +168,8 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
             }
 
             // call once after all view nodes extracted
-            log::debug!(
-                "extract_view_finalize {} {}",
+            log::trace!(
+                "prepare_view_finalize feature: {} view: {}",
                 self.prepare_impl.feature_debug_name(),
                 view.debug_name()
             );
@@ -174,8 +181,8 @@ impl<WriteT, PrepareImplT: DefaultPrepareJobImpl<WriteT>> PrepareJob<WriteT>
         }
 
         // call once after all nodes extracted
-        log::debug!(
-            "extract_frame_finalize {}",
+        log::trace!(
+            "prepare_frame_finalize {}",
             self.prepare_impl.feature_debug_name()
         );
 

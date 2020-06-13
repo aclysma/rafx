@@ -28,7 +28,7 @@ impl StaticVisibilityNodeSet {
         &self,
         view: &RenderView,
     ) -> VisibilityResult {
-        log::debug!("Calculate static visibility for {}", view.debug_name());
+        log::trace!("Calculate static visibility for {}", view.debug_name());
         let mut result = VisibilityResult::default();
 
         for (_, aabb) in self.static_aabb.iter() {

@@ -326,7 +326,7 @@ impl VkDebugRenderPass {
         logical_device: &ash::Device,
         queue_family_indices: &VkQueueFamilyIndices,
     ) -> VkResult<vk::CommandPool> {
-        log::info!(
+        log::trace!(
             "Creating command pool with queue family index {}",
             queue_family_indices.graphics_queue_family_index
         );

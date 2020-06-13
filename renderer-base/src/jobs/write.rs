@@ -63,7 +63,7 @@ impl<WriteT> PreparedRenderData<WriteT> {
             if submit_node.feature_index() as i32 != previous_node_feature_index {
                 if previous_node_feature_index != -1 {
                     // call revert setup
-                    log::debug!("revert setup for feature {}", previous_node_feature_index);
+                    log::trace!("revert setup for feature {}", previous_node_feature_index);
                     self.feature_writers[previous_node_feature_index as usize]
                         .as_ref()
                         .unwrap()
@@ -71,14 +71,14 @@ impl<WriteT> PreparedRenderData<WriteT> {
                 }
 
                 // call apply setup
-                log::debug!("apply setup for feature {}", submit_node.feature_index());
+                log::trace!("apply setup for feature {}", submit_node.feature_index());
                 self.feature_writers[submit_node.feature_index() as usize]
                     .as_ref()
                     .unwrap()
                     .apply_setup(write_context);
             }
 
-            log::debug!(
+            log::trace!(
                 "draw render node feature: {} node id: {}",
                 submit_node.feature_index(),
                 submit_node.submit_node_id()
@@ -92,7 +92,7 @@ impl<WriteT> PreparedRenderData<WriteT> {
 
         if previous_node_feature_index != -1 {
             // call revert setup
-            log::debug!("revert setup for feature: {}", previous_node_feature_index);
+            log::trace!("revert setup for feature: {}", previous_node_feature_index);
         }
     }
 }

@@ -28,7 +28,7 @@ impl DynamicVisibilityNodeSet {
         &self,
         view: &RenderView,
     ) -> VisibilityResult {
-        log::debug!("Calculate dynamic visibility for {}", view.debug_name());
+        log::trace!("Calculate dynamic visibility for {}", view.debug_name());
         let mut result = VisibilityResult::default();
 
         for (_, aabb) in self.dynamic_aabb.iter() {
