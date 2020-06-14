@@ -6,6 +6,8 @@ use std::mem::ManuallyDrop;
 use ash::{Device, vk};
 use crate::{VkImage, VkBuffer, VkDeviceContext, VkBufferRaw};
 use crate::image::VkImageRaw;
+use std::sync::Arc;
+use crossbeam_channel::{Sender, Receiver};
 
 /// Implement to customize how VkResourceDropSink drops resources
 pub trait VkResource {
@@ -126,6 +128,49 @@ impl<T: VkResource> Drop for VkResourceDropSink<T> {
         assert!(self.resources_in_flight.is_empty())
     }
 }
+
+
+//
+// A simple helper to put a thread-friendly shell around VkResourceDropSink
+//
+pub struct VkResourceDropSinkChannel<T: VkResource> {
+    tx: Sender<T>,
+    rx: Receiver<T>
+}
+
+impl<T: VkResource> VkResourceDropSinkChannel<T> {
+    pub fn new() -> Self {
+        let (tx, rx) = crossbeam_channel::unbounded();
+
+        VkResourceDropSinkChannel {
+            tx,
+            rx
+        }
+    }
+
+    pub fn retire(
+        &mut self,
+        resource: T,
+    ) {
+        self.tx.send(resource).unwrap();
+    }
+
+    pub fn retire_queued_resources(&self, drop_sink: &mut VkResourceDropSink<T>) {
+        for resource in self.rx.try_iter() {
+            drop_sink.retire(resource);
+        }
+    }
+}
+
+impl<T: VkResource> Clone for VkResourceDropSinkChannel<T> {
+    fn clone(&self) -> Self {
+        VkResourceDropSinkChannel {
+            tx: self.tx.clone(),
+            rx: self.rx.clone(),
+        }
+    }
+}
+
 
 //
 // Blanket implementation for anything that is ManuallyDrop

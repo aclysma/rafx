@@ -21,13 +21,18 @@ use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::handle::AssetHandle;
 use std::sync::Arc;
 
+mod resource_arc;
+use resource_arc::ResourceId;
+pub use resource_arc::ResourceArc;
+use resource_arc::WeakResourceArc;
+
 mod resource_lookup;
-pub use resource_lookup::ResourceArc;
-use resource_lookup::WeakResourceArc;
 use resource_lookup::ResourceHash;
 use resource_lookup::ResourceLookupSet;
-use resource_lookup::ResourceMetrics;
 use resource_lookup::DescriptorSetLayoutResource;
+
+mod dyn_resource_lookup;
+pub use dyn_resource_lookup::DynResourceLookupSet;
 
 mod load_queue;
 use load_queue::LoadQueues;
@@ -73,6 +78,7 @@ use crate::resource_managers::resource_lookup::{
 use crate::pipeline::gltf::MeshAsset;
 use crate::pipeline::buffer::BufferAsset;
 use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh};
+use crate::resource_managers::dyn_resource_lookup::DynResourceLookupManagerSet;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -113,7 +119,8 @@ pub struct MaterialInstanceDescriptorSetsForCurrentFrame {
 
 #[derive(Debug)]
 struct ResourceManagerMetrics {
-    resource_metrics: ResourceMetrics,
+    dyn_resource_metrics: dyn_resource_lookup::ResourceMetrics,
+    resource_metrics: resource_lookup::ResourceMetrics,
     loaded_asset_metrics: LoadedAssetMetrics,
     registered_descriptor_sets_metrics: RegisteredDescriptorSetPoolManagerMetrics,
 }
@@ -121,6 +128,7 @@ struct ResourceManagerMetrics {
 pub struct ResourceManager {
     device_context: VkDeviceContext,
 
+    dyn_resources: DynResourceLookupManagerSet,
     resources: ResourceLookupSet,
     loaded_assets: LoadedAssetLookupSet,
     load_queues: LoadQueueSet,
@@ -133,6 +141,10 @@ impl ResourceManager {
     pub fn new(device_context: &VkDeviceContext) -> Self {
         ResourceManager {
             device_context: device_context.clone(),
+            dyn_resources: DynResourceLookupManagerSet::new(
+                device_context,
+                renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+            ),
             resources: ResourceLookupSet::new(
                 device_context,
                 renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
@@ -173,6 +185,10 @@ impl ResourceManager {
 
     pub fn create_mesh_load_handler(&self) -> GenericLoadHandler<MeshAsset> {
         self.load_queues.meshes.create_load_handler()
+    }
+
+    pub fn create_dyn_resource_allocator_set(&self) -> DynResourceLookupSet {
+        self.dyn_resources.create_allocator_set()
     }
 
     pub fn get_image_info(
@@ -326,12 +342,20 @@ impl ResourceManager {
         Ok(())
     }
 
+    pub fn on_frame_complete(&mut self) -> VkResult<()> {
+        self.resources.on_frame_complete();
+        self.dyn_resources.on_frame_complete();
+        Ok(())
+    }
+
     fn metrics(&self) -> ResourceManagerMetrics {
+        let dyn_resource_metrics = self.dyn_resources.metrics();
         let resource_metrics = self.resources.metrics();
         let loaded_asset_metrics = self.loaded_assets.metrics();
         let registered_descriptor_sets_metrics = self.registered_descriptor_sets.metrics();
 
         ResourceManagerMetrics {
+            dyn_resource_metrics,
             resource_metrics,
             loaded_asset_metrics,
             registered_descriptor_sets_metrics,
@@ -628,11 +652,16 @@ impl ResourceManager {
 
             let shader_hashes : Vec<_> = pass.shaders.iter().map(|shader| {
                 let shader_module = self.loaded_assets.shader_modules.get_latest(shader.shader_module.load_handle()).unwrap();
-                shader_module.shader_module.get_hash()
+                shader_module.shader_module.get_hash().into()
             }).collect();
 
             let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
-            let pipeline_create_data = PipelineCreateData::new(self, pipeline_asset, pass, shader_hashes)?;
+            let pipeline_create_data = PipelineCreateData::new(
+                self,
+                pipeline_asset,
+                pass,
+                shader_hashes
+            )?;
 
             // Will contain the vulkan resources being created per swapchain
             let mut render_passes = Vec::with_capacity(swapchain_surface_infos.len());
@@ -876,6 +905,7 @@ impl Drop for ResourceManager {
 
             // Now drop all resources with a zero ref count and warn for any resources that remain
             self.resources.destroy();
+            self.dyn_resources.destroy();
 
             log::info!("Dropping resource manager");
             log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());

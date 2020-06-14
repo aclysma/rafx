@@ -7,7 +7,7 @@ use super::{
     MAX_FRAMES_IN_FLIGHT, DescriptorSetElementKey, FrameInFlightIndex, DescriptorSetArc,
     DescriptorSetWriteSet,
 };
-use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, ResourceArc};
+use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource};
 use renderer_shell_vulkan::{VkDescriptorPoolAllocator, VkResourceDropSink, VkBuffer, VkDeviceContext};
 use crossbeam_channel::{Receiver, Sender};
 use std::mem::ManuallyDrop;
@@ -15,6 +15,7 @@ use ash::vk;
 use ash::version::DeviceV1_0;
 use ash::prelude::VkResult;
 use super::RegisteredDescriptorSetPoolChunk;
+use crate::resource_managers::ResourceArc;
 
 pub(super) struct RegisteredDescriptorSetPool {
     //descriptor_set_layout_def: dsc::DescriptorSetLayout,

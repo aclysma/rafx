@@ -1,5 +1,5 @@
 use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
-use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel};
+use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer};
 use ash::prelude::VkResult;
 use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
 use std::mem::{ManuallyDrop, swap};
@@ -31,7 +31,6 @@ use atelier_assets::core::AssetUuid;
 use crate::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance, MeshInfo};
 use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam};
 use crate::pipeline::buffer::BufferAsset;
-use crate::resource_managers::ResourceArc;
 use crate::renderpass::debug_renderpass::DebugDraw3DResource;
 use crate::renderpass::VkBloomExtractRenderPass;
 use crate::renderpass::VkBloomBlurRenderPass;
@@ -42,8 +41,9 @@ use renderer_base::{RenderRegistryBuilder, RenderPhaseMaskBuilder, RenderPhaseMa
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use crate::phases::draw_transparent::DrawTransparentRenderPhase;
 use legion::prelude::*;
-use crate::ExtractSource;
-use crate::CommandWriterContext;
+use crate::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContextFactory};
+use crate::RenderJobWriteContext;
+use renderer_shell_vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
 
 
 fn begin_load_asset<T>(
@@ -117,6 +117,8 @@ pub struct GameRenderer {
 
     bloom_combine_material: Handle<MaterialAsset>,
     bloom_combine_material_dyn_set: Option<DynDescriptorSet>,
+
+    //drop_sink: VkCombinedDropSink,
 
 
 
@@ -456,6 +458,8 @@ impl GameRenderer {
 
             render_registry,
             main_camera_render_phase_mask,
+
+            //drop_sink: VkCombinedDropSink::new(MAX_FRAMES_IN_FLIGHT as u32),
 
             // sprite_render_nodes: Default::default(),
             //
@@ -907,7 +911,10 @@ impl GameRenderer {
         self.debug_material_per_frame_data.flush();
 
 
-
+        //
+        // let gpu_context = GpuContext {
+        //     device_context: device_context.clone()
+        // }
 
         //
         // Extract Jobs
@@ -917,14 +924,18 @@ impl GameRenderer {
             let mut extract_job_set = ExtractJobSet::new();
             extract_job_set.add_job(create_sprite_extract_job(device_context.clone()));
 
-            let extract_source = ExtractSource::new(&world, &resources);
-            extract_job_set.extract(&extract_source, &frame_packet, &[&main_view])
+            let extract_context = RenderJobExtractContext::new(&world, &resources);
+            extract_job_set.extract(&extract_context, &frame_packet, &[&main_view])
         };
+
+        //let buffer_drop_sink = VkResourceDropSinkChannel::<ManuallyDrop<VkBuffer>>::new();
+        let prepare_context = RenderJobPrepareContext::new(self.resource_manager.create_dyn_resource_allocator_set());
 
         //
         // Prepare Jobs
         //
         let prepared_render_data = prepare_job_set.prepare(
+            &prepare_context,
             &frame_packet,
             &[&main_view],
             &self.render_registry,
@@ -938,7 +949,12 @@ impl GameRenderer {
         //
         // Write Jobs - called from within renderpasses for now
         //
-        let mut write_context = CommandWriterContext {};
+        let mut write_context_factory = RenderJobWriteContextFactory::new(
+            device_context.clone(),
+            prepare_context.dyn_resource_lookups
+        );
+
+
         // prepared_render_data
         //     .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
         // prepared_render_data
@@ -994,7 +1010,8 @@ impl GameRenderer {
                 &opaque_pipeline_info,
                 present_index,
                 &*prepared_render_data,
-                &main_view
+                &main_view,
+                &write_context_factory
             )?;
             command_buffers.push(opaque_renderpass.command_buffers[present_index].clone());
         }

@@ -4,7 +4,7 @@ use crate::features::sprite::{SpriteRenderFeature, ExtractedSpriteData, QUAD_VER
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use glam::Vec3;
 use super::SpriteCommandWriter;
-use crate::CommandWriterContext;
+use crate::{RenderJobWriteContext, RenderJobPrepareContext};
 use crate::renderpass::SpriteVertex;
 use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
@@ -35,9 +35,10 @@ impl SpritePrepareJobImpl {
     }
 }
 
-impl DefaultPrepareJobImpl<CommandWriterContext> for SpritePrepareJobImpl {
+impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepareJobImpl {
     fn prepare_begin(
         &mut self,
+        prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         _views: &[&RenderView],
         _submit_nodes: &mut FeatureSubmitNodes,
@@ -89,6 +90,7 @@ impl DefaultPrepareJobImpl<CommandWriterContext> for SpritePrepareJobImpl {
 
     fn prepare_frame_node(
         &mut self,
+        prepare_context: &RenderJobPrepareContext,
         _frame_node: PerFrameNode,
         frame_node_index: u32,
         _submit_nodes: &mut FeatureSubmitNodes,
@@ -98,6 +100,7 @@ impl DefaultPrepareJobImpl<CommandWriterContext> for SpritePrepareJobImpl {
 
     fn prepare_view_node(
         &mut self,
+        prepare_context: &RenderJobPrepareContext,
         view: &RenderView,
         view_node: PerViewNode,
         view_node_index: u32,
@@ -121,6 +124,7 @@ impl DefaultPrepareJobImpl<CommandWriterContext> for SpritePrepareJobImpl {
 
     fn prepare_view_finalize(
         &mut self,
+        prepare_context: &RenderJobPrepareContext,
         _view: &RenderView,
         _submit_nodes: &mut ViewSubmitNodes,
     ) {
@@ -129,8 +133,9 @@ impl DefaultPrepareJobImpl<CommandWriterContext> for SpritePrepareJobImpl {
 
     fn prepare_frame_finalize(
         self,
+        prepare_context: &RenderJobPrepareContext,
         _submit_nodes: &mut FeatureSubmitNodes,
-    ) -> Box<dyn FeatureCommandWriter<CommandWriterContext>> {
+    ) -> Box<dyn FeatureCommandWriter<RenderJobWriteContext>> {
         //TODO: It's likely unnecessary to put all the data into a Vec and then copy it into the buffer. We could
         // write to the buffer to begin with
         let vertex_buffer = {
@@ -145,6 +150,8 @@ impl DefaultPrepareJobImpl<CommandWriterContext> for SpritePrepareJobImpl {
             ).unwrap();
 
             vertex_buffer.write_to_host_visible_buffer(self.vertex_list.as_slice()).unwrap();
+
+            let vertex_buffer = prepare_context.dyn_resource_lookups.insert_buffer(vertex_buffer);
             vertex_buffer
         };
 
@@ -159,14 +166,16 @@ impl DefaultPrepareJobImpl<CommandWriterContext> for SpritePrepareJobImpl {
             ).unwrap();
 
             index_buffer.write_to_host_visible_buffer(self.index_list.as_slice()).unwrap();
+
+            let index_buffer = prepare_context.dyn_resource_lookups.insert_buffer(index_buffer);
             index_buffer
         };
 
         //TODO: indexes are u16 so we may need to produce more than one set of buffers
         let mut vertex_buffers = Vec::with_capacity(1);
         let mut index_buffers = Vec::with_capacity(1);
-        vertex_buffers.push(ManuallyDrop::new(vertex_buffer));
-        index_buffers.push(ManuallyDrop::new(index_buffer));
+        vertex_buffers.push(vertex_buffer);
+        index_buffers.push(index_buffer);
 
         Box::new(SpriteCommandWriter {
             draw_calls: self.draw_calls,

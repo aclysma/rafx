@@ -1,5 +1,5 @@
 use crate::features::demo::{ExtractedDemoData, DemoRenderNodeSet, DemoRenderFeature, DemoRenderNode};
-use crate::{ExtractSource, DemoCommandWriterContext, PositionComponent, DemoComponent};
+use crate::{DemoExtractContext, DemoWriteContext, PositionComponent, DemoComponent, DemoPrepareContext};
 use renderer_base::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
 use renderer_base::slab::RawSlabKey;
 use crate::features::demo::prepare::DemoPrepareJobImpl;
@@ -10,10 +10,10 @@ pub struct DemoExtractJobImpl {
     per_view_data: Vec<Vec<ExtractedDemoData>>,
 }
 
-impl DefaultExtractJobImpl<ExtractSource, DemoCommandWriterContext> for DemoExtractJobImpl {
+impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteContext> for DemoExtractJobImpl {
     fn extract_begin(
         &mut self,
-        _source: &ExtractSource,
+        _extract_context: &DemoExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
@@ -31,7 +31,7 @@ impl DefaultExtractJobImpl<ExtractSource, DemoCommandWriterContext> for DemoExtr
 
     fn extract_frame_node(
         &mut self,
-        source: &ExtractSource,
+        source: &DemoExtractContext,
         frame_node: PerFrameNode,
         frame_node_index: u32,
     ) {
@@ -63,7 +63,7 @@ impl DefaultExtractJobImpl<ExtractSource, DemoCommandWriterContext> for DemoExtr
 
     fn extract_view_node(
         &mut self,
-        _source: &ExtractSource,
+        _extract_context: &DemoExtractContext,
         view: &RenderView,
         view_node: PerViewNode,
         view_node_index: u32,
@@ -80,7 +80,7 @@ impl DefaultExtractJobImpl<ExtractSource, DemoCommandWriterContext> for DemoExtr
 
     fn extract_view_finalize(
         &mut self,
-        _source: &ExtractSource,
+        _extract_context: &DemoExtractContext,
         _view: &RenderView,
     ) {
         log::debug!("extract_view_finalize {}", self.feature_debug_name());
@@ -88,8 +88,8 @@ impl DefaultExtractJobImpl<ExtractSource, DemoCommandWriterContext> for DemoExtr
 
     fn extract_frame_finalize(
         self,
-        _source: &ExtractSource,
-    ) -> Box<dyn PrepareJob<DemoCommandWriterContext>> {
+        _extract_context: &DemoExtractContext,
+    ) -> Box<dyn PrepareJob<DemoPrepareContext, DemoWriteContext>> {
         log::debug!("extract_frame_finalize {}", self.feature_debug_name());
 
         let prepare_impl = DemoPrepareJobImpl {

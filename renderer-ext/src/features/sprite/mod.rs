@@ -1,7 +1,7 @@
 use renderer_base::{RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle, RenderNodeSet, RenderNodeCount};
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use crate::{ExtractSource, CommandWriterContext};
+use crate::{RenderJobExtractContext, RenderJobWriteContext, DemoPrepareContext, RenderJobPrepareContext};
 use legion::prelude::Entity;
 use renderer_base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
@@ -66,7 +66,7 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 /// Draw order of QUAD_VERTEX_LIST
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
-pub fn create_sprite_extract_job(device_context: VkDeviceContext) -> Box<dyn ExtractJob<ExtractSource, CommandWriterContext>> {
+pub fn create_sprite_extract_job(device_context: VkDeviceContext) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(device_context)))
 }
 

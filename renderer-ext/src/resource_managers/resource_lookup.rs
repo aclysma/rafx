@@ -15,6 +15,17 @@ use std::mem::ManuallyDrop;
 use std::borrow::Borrow;
 use crate::pipeline_description as dsc;
 use atelier_assets::loader::LoadHandle;
+use crate::resource_managers::ResourceArc;
+use crate::resource_managers::resource_arc::{WeakResourceArc, ResourceWithHash, ResourceId};
+
+// #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+// pub(super) struct ResourceId(pub(super) u64);
+
+// impl From<ResourceHash> for ResourceId {
+//     fn from(resource_hash: ResourceHash) -> Self {
+//         ResourceId(resource_hash.0)
+//     }
+// }
 
 // Hash of a GPU resource
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -30,150 +41,15 @@ impl ResourceHash {
     }
 }
 
-//
-// A reference counted object that sends a signal when it's dropped
-//
-#[derive(Clone)]
-struct ResourceWithHash<ResourceT>
-where
-    ResourceT: Clone,
-{
-    resource: ResourceT,
-    resource_hash: ResourceHash,
-}
-
-impl<ResourceT> std::fmt::Debug for ResourceWithHash<ResourceT>
-where
-    ResourceT: std::fmt::Debug + Clone,
-{
-    fn fmt(
-        &self,
-        f: &mut Formatter<'_>,
-    ) -> std::fmt::Result {
-        f.debug_struct("ResourceWithHash")
-            .field("resource", &self.resource)
-            .field("resource_hash", &self.resource_hash)
-            .finish()
+impl From<ResourceId> for ResourceHash {
+    fn from(resource_id: ResourceId) -> Self {
+        ResourceHash(resource_id.0)
     }
 }
 
-struct ResourceArcInner<ResourceT>
-where
-    ResourceT: Clone,
-{
-    resource: ResourceWithHash<ResourceT>,
-    drop_tx: Sender<ResourceWithHash<ResourceT>>,
-}
-
-impl<ResourceT> Drop for ResourceArcInner<ResourceT>
-where
-    ResourceT: Clone,
-{
-    fn drop(&mut self) {
-        self.drop_tx.send(self.resource.clone());
-    }
-}
-
-impl<ResourceT> std::fmt::Debug for ResourceArcInner<ResourceT>
-where
-    ResourceT: std::fmt::Debug + Clone,
-{
-    fn fmt(
-        &self,
-        f: &mut Formatter<'_>,
-    ) -> std::fmt::Result {
-        f.debug_struct("ResourceArcInner")
-            .field("resource", &self.resource)
-            .finish()
-    }
-}
-
-#[derive(Clone)]
-pub struct WeakResourceArc<ResourceT>
-where
-    ResourceT: Clone,
-{
-    inner: Weak<ResourceArcInner<ResourceT>>,
-}
-
-impl<ResourceT> WeakResourceArc<ResourceT>
-where
-    ResourceT: Clone,
-{
-    pub fn upgrade(&self) -> Option<ResourceArc<ResourceT>> {
-        if let Some(upgrade) = self.inner.upgrade() {
-            Some(ResourceArc { inner: upgrade })
-        } else {
-            None
-        }
-    }
-}
-
-impl<ResourceT> std::fmt::Debug for WeakResourceArc<ResourceT>
-where
-    ResourceT: std::fmt::Debug + Clone,
-{
-    fn fmt(
-        &self,
-        f: &mut Formatter<'_>,
-    ) -> std::fmt::Result {
-        f.debug_struct("WeakResourceArc")
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-#[derive(Clone)]
-pub struct ResourceArc<ResourceT>
-where
-    ResourceT: Clone,
-{
-    inner: Arc<ResourceArcInner<ResourceT>>,
-}
-
-impl<ResourceT> ResourceArc<ResourceT>
-where
-    ResourceT: Clone,
-{
-    fn new(
-        resource: ResourceT,
-        resource_hash: ResourceHash,
-        drop_tx: Sender<ResourceWithHash<ResourceT>>,
-    ) -> Self {
-        ResourceArc {
-            inner: Arc::new(ResourceArcInner {
-                resource: ResourceWithHash {
-                    resource,
-                    resource_hash,
-                },
-                drop_tx,
-            }),
-        }
-    }
-
-    pub fn get_raw(&self) -> ResourceT {
-        self.inner.resource.borrow().resource.clone()
-    }
-
-    pub fn get_hash(&self) -> ResourceHash { self.inner.resource.resource_hash }
-
-    pub fn downgrade(&self) -> WeakResourceArc<ResourceT> {
-        let inner = Arc::downgrade(&self.inner);
-        WeakResourceArc { inner }
-    }
-}
-
-impl<ResourceT> std::fmt::Debug for ResourceArc<ResourceT>
-where
-    ResourceT: std::fmt::Debug + Clone,
-{
-    fn fmt(
-        &self,
-        f: &mut Formatter<'_>,
-    ) -> std::fmt::Result {
-        f.debug_struct("ResourceArc")
-            .field("inner", &self.inner)
-            .finish()
+impl Into<ResourceId> for ResourceHash {
+    fn into(self) -> ResourceId {
+        ResourceId(self.0)
     }
 }
 
@@ -251,7 +127,7 @@ where
             resource
         );
 
-        let arc = ResourceArc::new(resource, hash, self.drop_tx.clone());
+        let arc = ResourceArc::new(resource, hash.into(), self.drop_tx.clone());
         let downgraded = arc.downgrade();
         let old = self.resources.insert(hash, downgraded);
         assert!(old.is_none());
@@ -273,11 +149,11 @@ where
                 dropped.resource
             );
             self.drop_sink.retire(dropped.resource);
-            self.resources.remove(&dropped.resource_hash);
+            self.resources.remove(&dropped.resource_hash.into());
 
             #[cfg(debug_assertions)]
             {
-                self.keys.remove(&dropped.resource_hash);
+                self.keys.remove(&dropped.resource_hash.into());
             }
         }
     }

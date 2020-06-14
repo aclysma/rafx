@@ -1,6 +1,6 @@
 use ash::vk;
 use crate::resource_managers::resource_lookup::{
-    ResourceHash, ResourceArc, DescriptorSetLayoutResource, ResourceLookupSet,
+    ResourceHash, DescriptorSetLayoutResource, ResourceLookupSet,
 };
 use renderer_shell_vulkan::VkDeviceContext;
 use fnv::FnvHashMap;
@@ -8,7 +8,7 @@ use super::RegisteredDescriptorSetPool;
 use super::{FrameInFlightIndex, DescriptorSetArc, MAX_FRAMES_IN_FLIGHT};
 use super::DescriptorSetWriteSet;
 use ash::prelude::VkResult;
-use crate::resource_managers::{DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance};
+use crate::resource_managers::{DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc};
 use crate::resource_managers::asset_lookup::{
     LoadedMaterialPass, LoadedAssetLookupSet, LoadedMaterialInstance, LoadedMaterial,
 };

@@ -3,37 +3,37 @@ use crate::{
     SubmitNodeId,
 };
 
-pub trait FeatureCommandWriter<WriteT> {
+pub trait FeatureCommandWriter<WriteContextT> {
     fn apply_setup(
         &self,
-        write_context: &mut WriteT,
+        write_context: &mut WriteContextT,
     );
     fn render_element(
         &self,
-        write_context: &mut WriteT,
+        write_context: &mut WriteContextT,
         index: SubmitNodeId,
     );
     fn revert_setup(
         &self,
-        write_context: &mut WriteT,
+        write_context: &mut WriteContextT,
     );
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
-// pub struct FeatureCommandWriterSet<WriteT> {
-//     prepare_jobs: Vec<Box<dyn FeatureCommandWriter<WriteT>>>,
+// pub struct FeatureCommandWriterSet<WriteContextT> {
+//     prepare_jobs: Vec<Box<dyn FeatureCommandWriter<WriteContextT>>>,
 // }
 
-pub struct PreparedRenderData<WriteT> {
-    feature_writers: Vec<Option<Box<dyn FeatureCommandWriter<WriteT>>>>,
+pub struct PreparedRenderData<WriteContextT> {
+    feature_writers: Vec<Option<Box<dyn FeatureCommandWriter<WriteContextT>>>>,
     submit_nodes: MergedFrameSubmitNodes,
 }
 
-impl<WriteT> PreparedRenderData<WriteT> {
+impl<WriteContextT> PreparedRenderData<WriteContextT> {
     pub fn new(
-        feature_writers: Vec<Box<dyn FeatureCommandWriter<WriteT>>>,
+        feature_writers: Vec<Box<dyn FeatureCommandWriter<WriteContextT>>>,
         submit_nodes: MergedFrameSubmitNodes,
     ) -> Self {
         let mut writers: Vec<_> = (0..RenderRegistry::registered_feature_count())
@@ -54,7 +54,7 @@ impl<WriteT> PreparedRenderData<WriteT> {
     pub fn write_view_phase<PhaseT: RenderPhase>(
         &self,
         view: &RenderView,
-        write_context: &mut WriteT,
+        write_context: &mut WriteContextT,
     ) {
         let submit_nodes = self.submit_nodes.submit_nodes::<PhaseT>(view);
 

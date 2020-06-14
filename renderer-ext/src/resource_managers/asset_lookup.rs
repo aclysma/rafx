@@ -1,4 +1,3 @@
-use super::resource_lookup::ResourceArc;
 use ash::vk;
 use crate::pipeline::pipeline::{
     PipelineAsset, MaterialPassShaderInterface, MaterialAsset, MaterialInstanceSlotAssignment,
@@ -12,6 +11,7 @@ use atelier_assets::loader::handle::Handle;
 use std::sync::Arc;
 use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource, ImageKey, BufferKey};
 use crate::pipeline::gltf::MeshAsset;
+use crate::resource_managers::ResourceArc;
 
 //
 // The "loaded" state of assets. Assets may have dependencies. Arcs to those dependencies ensure

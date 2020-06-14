@@ -6,7 +6,7 @@ use renderer::RenderRegistryBuilder;
 use renderer::RenderViewSet;
 use legion::prelude::*;
 use glam::Vec3;
-use renderer_ext::{ExtractSource, PositionComponent, DemoComponent, DemoCommandWriterContext};
+use renderer_ext::{DemoExtractContext, DemoPrepareContext, PositionComponent, DemoComponent, DemoWriteContext};
 use renderer_ext::phases::draw_transparent::DrawTransparentRenderPhase;
 use renderer_ext::features::demo::{create_demo_extract_job, DemoRenderFeature};
 
@@ -253,8 +253,8 @@ fn main() {
             extract_job_set.add_job(create_demo_extract_job());
             // Other features can be added here
 
-            let extract_source = ExtractSource::new(&world, &resources);
-            extract_job_set.extract(&extract_source, &frame_packet, &[&main_view, &minimap_view])
+            let extract_context = DemoExtractContext::new(&world, &resources);
+            extract_job_set.extract(&extract_context, &frame_packet, &[&main_view, &minimap_view])
         };
 
         //
@@ -268,7 +268,9 @@ fn main() {
         // The submit nodes will be sorted by the the callback on the phase. This could, for example
         // sort transparent stuff back to front, or sort by meshes that could be rendered by
         // instancing
+        let prepare_context = DemoPrepareContext;
         let prepared_render_data = prepare_job_set.prepare(
+            &prepare_context,
             &frame_packet,
             &[&main_view, &minimap_view],
             &render_registry,
@@ -277,7 +279,7 @@ fn main() {
         // At this point the end-user can kick off the final write job per view/phase pair. The
         // output of this is left up to the end user and would likely be something like a GPU
         // command buffer.
-        let mut write_context = DemoCommandWriterContext {};
+        let mut write_context = DemoWriteContext {};
         prepared_render_data
             .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
         prepared_render_data

@@ -38,6 +38,7 @@ uuid = "0.8"
 type-uuid = "0.1"
 image2 = { version = "0.11", features = [ "ser" ] }
 inventory = "0.1"
+dashmap = { version = "3.11" }
 
 # We need this PR (https://github.com/servo/bincode/pull/288) but it's not published yet
 #bincode = "1.2"

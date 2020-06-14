@@ -29,7 +29,7 @@ use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
 use renderer_base::{PreparedRenderData, RenderView};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
-use crate::CommandWriterContext;
+use crate::{RenderJobWriteContext, RenderJobWriteContextFactory};
 use renderer_shell_vulkan::cleanup::VkCombinedDropSink;
 
 /// Draws sprites
@@ -156,9 +156,9 @@ impl VkOpaqueRenderPass {
         renderpass: &vk::RenderPass,
         framebuffer: vk::Framebuffer,
         command_buffer: &vk::CommandBuffer,
-        prepared_render_data: &PreparedRenderData<CommandWriterContext>,
+        prepared_render_data: &PreparedRenderData<RenderJobWriteContext>,
         view: &RenderView,
-        drop_sink: &VkCombinedDropSink,
+        write_context_factory: &RenderJobWriteContextFactory,
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
@@ -196,9 +196,8 @@ impl VkOpaqueRenderPass {
                 vk::SubpassContents::INLINE,
             );
 
-            let mut write_context = CommandWriterContext {
-                //drop_sink: &drop_sink
-            };
+            let mut write_context = write_context_factory.create_context(*command_buffer);
+
             prepared_render_data
                 .write_view_phase::<DrawOpaqueRenderPhase>(&view, &mut write_context);
 
@@ -211,8 +210,9 @@ impl VkOpaqueRenderPass {
         &mut self,
         pipeline_info: &PipelineSwapchainInfo,
         present_index: usize,
-        prepared_render_data: &PreparedRenderData<CommandWriterContext>,
+        prepared_render_data: &PreparedRenderData<RenderJobWriteContext>,
         view: &RenderView,
+        write_context_factory: &RenderJobWriteContextFactory,
     ) -> VkResult<()> {
         assert!(self.renderpass == pipeline_info.renderpass.get_raw());
         Self::update_command_buffer(
@@ -223,7 +223,7 @@ impl VkOpaqueRenderPass {
             &self.command_buffers[present_index],
             prepared_render_data,
             view,
-            &self.drop_sink,
+            write_context_factory
         )
     }
 }

@@ -1,4 +1,3 @@
-use super::resource_lookup::ResourceArc;
 use ash::vk;
 use renderer_base::slab::{RawSlabKey, RawSlab};
 use crossbeam_channel::{Sender, Receiver};

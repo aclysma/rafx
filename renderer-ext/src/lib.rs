@@ -27,13 +27,13 @@ use renderer_base::visibility::DynamicAabbVisibilityNodeHandle;
 pub mod features;
 use features::sprite::SpriteRenderNodeHandle;
 use crate::features::demo::DemoRenderNodeHandle;
-use renderer_shell_vulkan::VkResourceDropSink;
+use renderer_shell_vulkan::{VkResourceDropSink, VkBuffer, VkDeviceContext};
+use renderer_shell_vulkan::cleanup::VkResourceDropSinkChannel;
+use std::mem::ManuallyDrop;
+use ash::vk;
+use crate::resource_managers::DynResourceLookupSet;
 
 pub mod phases;
-
-pub struct CommandWriterContext {
-
-}
 
 #[derive(Copy, Clone)]
 pub struct PositionComponent {
@@ -47,24 +47,88 @@ pub struct SpriteComponent {
     pub alpha: f32,
 }
 
-pub struct ExtractSource {
+pub struct RenderJobExtractContext {
     world: &'static World,
     resources: &'static Resources,
 }
 
-impl ExtractSource {
+impl RenderJobExtractContext {
     pub fn new<'a>(
         world: &'a World,
         resources: &'a Resources,
     ) -> Self {
         unsafe {
-            ExtractSource {
+            RenderJobExtractContext {
                 world: force_to_static_lifetime(world),
                 resources: force_to_static_lifetime(resources),
             }
         }
     }
 }
+
+pub struct RenderJobPrepareContext {
+    pub dyn_resource_lookups: DynResourceLookupSet
+}
+
+impl RenderJobPrepareContext {
+    pub fn new(
+        resource_allocators: DynResourceLookupSet,
+    ) -> Self {
+        RenderJobPrepareContext {
+            dyn_resource_lookups: resource_allocators
+        }
+    }
+}
+
+
+pub struct RenderJobWriteContextFactory {
+    pub device_context: VkDeviceContext,
+    pub dyn_resource_lookups: DynResourceLookupSet
+}
+
+impl RenderJobWriteContextFactory {
+    pub fn new(
+        device_context: VkDeviceContext,
+        resource_allocators: DynResourceLookupSet,
+    ) -> Self {
+        RenderJobWriteContextFactory {
+            device_context,
+            dyn_resource_lookups: resource_allocators
+        }
+    }
+
+    pub fn create_context(
+        &self,
+        command_buffer: vk::CommandBuffer
+    ) -> RenderJobWriteContext {
+        RenderJobWriteContext {
+            device_context: self.device_context.clone(),
+            dyn_resource_lookups: self.dyn_resource_lookups.clone(),
+            command_buffer
+        }
+    }
+}
+
+pub struct RenderJobWriteContext {
+    pub device_context: VkDeviceContext,
+    pub dyn_resource_lookups: DynResourceLookupSet,
+    pub command_buffer: vk::CommandBuffer,
+}
+
+impl RenderJobWriteContext {
+    pub fn new(
+        device_context: VkDeviceContext,
+        resource_allocators: DynResourceLookupSet,
+        command_buffer: vk::CommandBuffer,
+    ) -> Self {
+        RenderJobWriteContext {
+            device_context,
+            dyn_resource_lookups: resource_allocators,
+            command_buffer
+        }
+    }
+}
+
 
 unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
     std::mem::transmute(value)
@@ -74,7 +138,27 @@ unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
 //
 // Just for demonstration of minimal API
 //
-pub struct DemoCommandWriterContext;
+pub struct DemoExtractContext {
+    world: &'static World,
+    resources: &'static Resources,
+}
+
+impl DemoExtractContext {
+    pub fn new<'a>(
+        world: &'a World,
+        resources: &'a Resources,
+    ) -> Self {
+        unsafe {
+            DemoExtractContext {
+                world: force_to_static_lifetime(world),
+                resources: force_to_static_lifetime(resources),
+            }
+        }
+    }
+}
+
+pub struct DemoPrepareContext;
+pub struct DemoWriteContext;
 
 #[derive(Clone)]
 pub struct DemoComponent {

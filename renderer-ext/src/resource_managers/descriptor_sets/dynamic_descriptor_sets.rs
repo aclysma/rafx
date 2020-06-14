@@ -4,12 +4,13 @@ use super::DescriptorSetWriteBuffer;
 use super::SlabKeyDescriptorSetWriteSet;
 use super::SlabKeyDescriptorSetWriteBuffer;
 use super::DescriptorSetElementKey;
-use crate::resource_managers::resource_lookup::{ResourceArc, ImageViewResource};
+use crate::resource_managers::resource_lookup::{ImageViewResource};
 use crate::resource_managers::asset_lookup::SlotNameLookup;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
 use crate::resource_managers::descriptor_sets::descriptor_write_set::{DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue};
 use ash::vk;
+use crate::resource_managers::ResourceArc;
 
 pub struct DynDescriptorSet {
     descriptor_set: DescriptorSetArc,

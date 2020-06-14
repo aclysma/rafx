@@ -1,5 +1,5 @@
 use crate::features::sprite::{ExtractedSpriteData, SpriteRenderNodeSet, SpriteRenderFeature, SpriteRenderNode};
-use crate::{ExtractSource, PositionComponent, SpriteComponent, CommandWriterContext};
+use crate::{RenderJobExtractContext, PositionComponent, SpriteComponent, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer_base::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
 use renderer_base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJobImpl;
@@ -19,10 +19,10 @@ impl SpriteExtractJobImpl {
     }
 }
 
-impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for SpriteExtractJobImpl {
+impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext> for SpriteExtractJobImpl {
     fn extract_begin(
         &mut self,
-        _source: &ExtractSource,
+        _extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
@@ -32,7 +32,7 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for SpriteExtrac
 
     fn extract_frame_node(
         &mut self,
-        source: &ExtractSource,
+        source: &RenderJobExtractContext,
         frame_node: PerFrameNode,
         frame_node_index: u32,
     ) {
@@ -63,7 +63,7 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for SpriteExtrac
 
     fn extract_view_node(
         &mut self,
-        _source: &ExtractSource,
+        _extract_context: &RenderJobExtractContext,
         view: &RenderView,
         view_node: PerViewNode,
         view_node_index: u32,
@@ -73,7 +73,7 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for SpriteExtrac
 
     fn extract_view_finalize(
         &mut self,
-        _source: &ExtractSource,
+        _extract_context: &RenderJobExtractContext,
         _view: &RenderView,
     ) {
 
@@ -81,8 +81,8 @@ impl DefaultExtractJobImpl<ExtractSource, CommandWriterContext> for SpriteExtrac
 
     fn extract_frame_finalize(
         self,
-        _source: &ExtractSource,
-    ) -> Box<dyn PrepareJob<CommandWriterContext>> {
+        _extract_context: &RenderJobExtractContext,
+    ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
         let prepare_impl = SpritePrepareJobImpl::new(
             self.device_context,
             self.extracted_sprite_data

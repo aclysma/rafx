@@ -1,6 +1,6 @@
 use crate::phases::draw_transparent::DrawTransparentRenderPhase;
 use renderer_base::{RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex, FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature};
-use crate::DemoCommandWriterContext;
+use crate::{DemoWriteContext, DemoPrepareContext, RenderJobPrepareContext};
 use crate::features::demo::{DemoRenderFeature, ExtractedDemoData};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use glam::Vec3;
@@ -11,9 +11,10 @@ pub struct DemoPrepareJobImpl {
     pub(super) per_view_data: Vec<Vec<ExtractedDemoData>>,
 }
 
-impl DefaultPrepareJobImpl<DemoCommandWriterContext> for DemoPrepareJobImpl {
+impl DefaultPrepareJobImpl<DemoPrepareContext, DemoWriteContext> for DemoPrepareJobImpl {
     fn prepare_begin(
         &mut self,
+        _prepare_context: &DemoPrepareContext,
         _frame_packet: &FramePacket,
         _views: &[&RenderView],
         _submit_nodes: &mut FeatureSubmitNodes,
@@ -23,6 +24,7 @@ impl DefaultPrepareJobImpl<DemoCommandWriterContext> for DemoPrepareJobImpl {
 
     fn prepare_frame_node(
         &mut self,
+        _prepare_context: &DemoPrepareContext,
         _frame_node: PerFrameNode,
         frame_node_index: u32,
         _submit_nodes: &mut FeatureSubmitNodes,
@@ -36,6 +38,7 @@ impl DefaultPrepareJobImpl<DemoCommandWriterContext> for DemoPrepareJobImpl {
 
     fn prepare_view_node(
         &mut self,
+        _prepare_context: &DemoPrepareContext,
         view: &RenderView,
         view_node: PerViewNode,
         view_node_index: u32,
@@ -67,6 +70,7 @@ impl DefaultPrepareJobImpl<DemoCommandWriterContext> for DemoPrepareJobImpl {
 
     fn prepare_view_finalize(
         &mut self,
+        _prepare_context: &DemoPrepareContext,
         _view: &RenderView,
         _submit_nodes: &mut ViewSubmitNodes,
     ) {
@@ -75,8 +79,9 @@ impl DefaultPrepareJobImpl<DemoCommandWriterContext> for DemoPrepareJobImpl {
 
     fn prepare_frame_finalize(
         self,
+        _prepare_context: &DemoPrepareContext,
         _submit_nodes: &mut FeatureSubmitNodes,
-    ) -> Box<dyn FeatureCommandWriter<DemoCommandWriterContext>> {
+    ) -> Box<dyn FeatureCommandWriter<DemoWriteContext>> {
         log::debug!("prepare_frame_finalize {}", self.feature_debug_name());
         Box::new(DemoCommandWriter {})
     }
