@@ -264,7 +264,7 @@ impl VkSpriteRenderPass {
             texture_descriptor_index: u32,
         }
 
-        const SPRITE_COUNT: usize = 100;
+        const SPRITE_COUNT: usize = 0;
         let mut sprites = Vec::with_capacity(SPRITE_COUNT);
 
         if !descriptor_set_per_texture.is_empty() {

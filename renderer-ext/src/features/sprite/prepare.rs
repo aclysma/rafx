@@ -9,11 +9,14 @@ use crate::renderpass::SpriteVertex;
 use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
 use std::mem::ManuallyDrop;
+use crate::resource_managers::PipelineSwapchainInfo;
 
 pub struct SpritePrepareJobImpl {
-    pub(super) extracted_sprite_data: Vec<ExtractedSpriteData>,
-
     device_context: VkDeviceContext,
+    pipeline_info: PipelineSwapchainInfo,
+    descriptor_set_per_pass: vk::DescriptorSet,
+    extracted_sprite_data: Vec<ExtractedSpriteData>,
+
     draw_calls: Vec<SpriteDrawCall>,
     vertex_list: Vec<SpriteVertex>,
     index_list: Vec<u16>,
@@ -22,12 +25,16 @@ pub struct SpritePrepareJobImpl {
 impl SpritePrepareJobImpl {
     pub(super) fn new(
         device_context: VkDeviceContext,
-        extracted_sprite_data: Vec<ExtractedSpriteData>
+        pipeline_info: PipelineSwapchainInfo,
+        descriptor_set_per_pass: vk::DescriptorSet,
+        extracted_sprite_data: Vec<ExtractedSpriteData>,
     ) -> Self {
         let sprite_count = extracted_sprite_data.len();
         SpritePrepareJobImpl {
             device_context,
             extracted_sprite_data,
+            pipeline_info,
+            descriptor_set_per_pass,
             draw_calls: Vec::with_capacity(sprite_count),
             vertex_list: Vec::with_capacity(sprite_count * QUAD_VERTEX_LIST.len()),
             index_list: Vec::with_capacity(sprite_count * QUAD_INDEX_LIST.len()),
@@ -47,7 +54,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
             let draw_call = SpriteDrawCall {
                 index_buffer_first_element: 0,
                 index_buffer_count: 4,
-                texture_descriptor_index: sprite.texture_descriptor_index,
+                texture_descriptor_set: sprite.texture_descriptor_set,
             };
 
             const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
@@ -81,7 +88,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
             let draw_call = SpriteDrawCall {
                 index_buffer_first_element,
                 index_buffer_count: QUAD_INDEX_LIST.len() as u16,
-                texture_descriptor_index: sprite.texture_descriptor_index,
+                texture_descriptor_set: sprite.texture_descriptor_set,
             };
 
             self.draw_calls.push(draw_call);
@@ -106,16 +113,20 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
         view_node_index: u32,
         submit_nodes: &mut ViewSubmitNodes,
     ) {
+        // Use the frame node index as the submit ID since we don't have any view-specific data
+        // to cache
+        let frame_node_index = view_node.frame_node_index();
+
         // This can read per-frame and per-view data
         let extracted_data =
-            &self.extracted_sprite_data[view_node.frame_node_index() as usize];
+            &self.extracted_sprite_data[frame_node_index as usize];
 
         if extracted_data.alpha >= 1.0 {
-            submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(view_node_index, 0, 0.0);
+            submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(frame_node_index, 0, 0.0);
         } else {
             let distance_from_camera = Vec3::length(extracted_data.position - view.eye_position());
             submit_nodes.add_submit_node::<DrawTransparentRenderPhase>(
-                view_node_index,
+                frame_node_index,
                 0,
                 distance_from_camera,
             );
@@ -180,7 +191,9 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
         Box::new(SpriteCommandWriter {
             draw_calls: self.draw_calls,
             vertex_buffers,
-            index_buffers
+            index_buffers,
+            pipeline_info: self.pipeline_info,
+            descriptor_set_per_pass: self.descriptor_set_per_pass,
         })
     }
 

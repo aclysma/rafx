@@ -15,6 +15,8 @@ use prepare::SpritePrepareJobImpl;
 mod write;
 use write::SpriteCommandWriter;
 use renderer_shell_vulkan::VkDeviceContext;
+use ash::vk;
+use crate::resource_managers::PipelineSwapchainInfo;
 
 struct SpriteRenderpassStats {
     draw_call_count: u32,
@@ -66,8 +68,18 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 /// Draw order of QUAD_VERTEX_LIST
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
-pub fn create_sprite_extract_job(device_context: VkDeviceContext) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
-    Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(device_context)))
+pub fn create_sprite_extract_job(
+    device_context: VkDeviceContext,
+    pipeline_info: PipelineSwapchainInfo,
+    descriptor_set_per_pass: vk::DescriptorSet,
+    descriptor_set_per_texture: vk::DescriptorSet,
+) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
+    Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(
+        device_context,
+        pipeline_info,
+        descriptor_set_per_pass,
+        descriptor_set_per_texture,
+    )))
 }
 
 //
@@ -157,13 +169,13 @@ pub(self) struct ExtractedSpriteData {
     texture_size: glam::Vec2,
     scale: f32,
     rotation: f32,
-    texture_descriptor_index: u32,
-    alpha: f32
+    alpha: f32,
+    texture_descriptor_set: vk::DescriptorSet,
 }
 
 #[derive(Debug)]
 pub struct SpriteDrawCall {
     index_buffer_first_element: u16,
     index_buffer_count: u16,
-    texture_descriptor_index: u32,
+    texture_descriptor_set: vk::DescriptorSet,
 }

@@ -45,6 +45,7 @@ pub struct SpriteComponent {
     pub sprite_handle: SpriteRenderNodeHandle,
     pub visibility_handle: DynamicAabbVisibilityNodeHandle,
     pub alpha: f32,
+    //pub texture_material: ResourceArc<>
 }
 
 pub struct RenderJobExtractContext {

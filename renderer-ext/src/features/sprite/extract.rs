@@ -4,17 +4,30 @@ use renderer_base::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode,
 use renderer_base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJobImpl;
 use renderer_shell_vulkan::VkDeviceContext;
+use crate::resource_managers::PipelineSwapchainInfo;
+use ash::vk;
 
 pub struct SpriteExtractJobImpl {
     device_context: VkDeviceContext,
+    pipeline_info: PipelineSwapchainInfo,
+    descriptor_set_per_pass: vk::DescriptorSet,
     extracted_sprite_data: Vec<ExtractedSpriteData>,
+    descriptor_set_per_texture: vk::DescriptorSet,
 }
 
 impl SpriteExtractJobImpl {
-    pub fn new(device_context: VkDeviceContext) -> Self {
+    pub fn new(
+        device_context: VkDeviceContext,
+        pipeline_info: PipelineSwapchainInfo,
+        descriptor_set_per_pass: vk::DescriptorSet,
+        descriptor_set_per_texture: vk::DescriptorSet, //TODO: TEMPORARY
+    ) -> Self {
         SpriteExtractJobImpl {
             device_context,
-            extracted_sprite_data: Default::default()
+            pipeline_info,
+            descriptor_set_per_pass,
+            extracted_sprite_data: Default::default(),
+            descriptor_set_per_texture
         }
     }
 }
@@ -56,8 +69,8 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             texture_size: glam::Vec2::new(100.0, 100.0),
             scale: 1.0,
             rotation: 0.0,
-            texture_descriptor_index: 0,
             alpha: sprite_component.alpha,
+            texture_descriptor_set: self.descriptor_set_per_texture
         });
     }
 
@@ -85,7 +98,9 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
         let prepare_impl = SpritePrepareJobImpl::new(
             self.device_context,
-            self.extracted_sprite_data
+            self.pipeline_info,
+            self.descriptor_set_per_pass,
+            self.extracted_sprite_data,
         );
 
         Box::new(DefaultPrepareJob::new(prepare_impl))

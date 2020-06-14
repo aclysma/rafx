@@ -919,10 +919,34 @@ impl GameRenderer {
         //
         // Extract Jobs
         //
+
+
         let frame_packet = frame_packet_builder.build();
         let prepare_job_set = {
+            let sprite_pipeline_info = self.resource_manager.get_pipeline_info(
+                &self.sprite_material,
+                self.swapchain_surface_info.as_ref().unwrap(),
+                0,
+            );
+
+            let dyn_pass_material_instance = self.sprite_custom_material.as_ref().unwrap().pass(0);
+            let descriptor_set_per_pass = dyn_pass_material_instance
+                .descriptor_set_layout(0)
+                .descriptor_set()
+                .get_raw_for_gpu_read(&self.resource_manager);
+
+            let descriptor_set_per_texture = dyn_pass_material_instance
+                .descriptor_set_layout(1)
+                .descriptor_set()
+                .get_raw_for_gpu_read(&self.resource_manager);
+
             let mut extract_job_set = ExtractJobSet::new();
-            extract_job_set.add_job(create_sprite_extract_job(device_context.clone()));
+            extract_job_set.add_job(create_sprite_extract_job(
+                device_context.clone(),
+                sprite_pipeline_info,
+                descriptor_set_per_pass,
+                descriptor_set_per_texture
+            ));
 
             let extract_context = RenderJobExtractContext::new(&world, &resources);
             extract_job_set.extract(&extract_context, &frame_packet, &[&main_view])

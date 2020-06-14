@@ -81,7 +81,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
             log::trace!(
                 "draw render node feature: {} node id: {}",
                 submit_node.feature_index(),
-                submit_node.submit_node_id()
+                submit_node.submit_node_id(),
             );
             self.feature_writers[submit_node.feature_index() as usize]
                 .as_ref()
