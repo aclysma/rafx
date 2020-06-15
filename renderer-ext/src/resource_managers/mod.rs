@@ -58,7 +58,7 @@ use asset_lookup::SlotNameLookup;
 
 mod descriptor_sets;
 use descriptor_sets::RegisteredDescriptorSetPoolManager;
-use descriptor_sets::DescriptorSetArc;
+pub use descriptor_sets::DescriptorSetArc;
 use descriptor_sets::RegisteredDescriptorSetPoolMetrics;
 use descriptor_sets::RegisteredDescriptorSetPoolManagerMetrics;
 pub use descriptor_sets::DynDescriptorSet;

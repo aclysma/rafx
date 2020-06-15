@@ -11,6 +11,7 @@ use std::sync::Arc;
 use crate::resource_managers::descriptor_sets::descriptor_write_set::{DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue};
 use ash::vk;
 use crate::resource_managers::ResourceArc;
+use std::fmt::Formatter;
 
 pub struct DynDescriptorSet {
     descriptor_set: DescriptorSetArc,
@@ -18,6 +19,17 @@ pub struct DynDescriptorSet {
 
     write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
     pending_write_set: DescriptorSetWriteSet,
+}
+
+impl std::fmt::Debug for DynDescriptorSet {
+    fn fmt(
+        &self,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("DynDescriptorSet")
+            .field("descriptor_set", &self.descriptor_set)
+            .finish()
+    }
 }
 
 impl DynDescriptorSet {

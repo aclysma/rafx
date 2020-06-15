@@ -34,7 +34,7 @@ use renderer_shell_vulkan::{VkResourceDropSink, VkBuffer, VkDeviceContext};
 use renderer_shell_vulkan::cleanup::VkResourceDropSinkChannel;
 use std::mem::ManuallyDrop;
 use ash::vk;
-use crate::resource_managers::DynResourceLookupSet;
+use crate::resource_managers::{DynResourceLookupSet, ResourceManager};
 use atelier_assets::loader::handle::Handle;
 use crate::pipeline::image::ImageAsset;
 
@@ -57,17 +57,20 @@ pub struct SpriteComponent {
 pub struct RenderJobExtractContext {
     world: &'static World,
     resources: &'static Resources,
+    resource_manager: &'static mut ResourceManager,
 }
 
 impl RenderJobExtractContext {
     pub fn new<'a>(
         world: &'a World,
         resources: &'a Resources,
+        resource_manager: &'a mut ResourceManager,
     ) -> Self {
         unsafe {
             RenderJobExtractContext {
                 world: force_to_static_lifetime(world),
                 resources: force_to_static_lifetime(resources),
+                resource_manager: force_to_static_lifetime_mut(resource_manager)
             }
         }
     }
@@ -138,6 +141,9 @@ impl RenderJobWriteContext {
 
 
 unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
+    std::mem::transmute(value)
+}
+unsafe fn force_to_static_lifetime_mut<T>(value: &mut T) -> &'static mut T {
     std::mem::transmute(value)
 }
 

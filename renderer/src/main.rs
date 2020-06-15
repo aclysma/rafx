@@ -202,11 +202,7 @@ fn logging_init() {
     // Setup logging
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
-        //.filter_module("renderer_shell_vulkan::buffer", log::LevelFilter::Debug)
-        //.filter_module("renderer_ext::game_renderer", log::LevelFilter::Debug)
         .filter_module("renderer_ext::resource_managers::descriptor_sets", log::LevelFilter::Info)
-        //.filter_module("renderer_ext::pipeline", log::LevelFilter::Trace)
-        //.filter_level(log::LevelFilter::Error)
         .filter_level(log_level)
         // .format(|buf, record| { //TODO: Get a frame count in here
         //     writeln!(buf,

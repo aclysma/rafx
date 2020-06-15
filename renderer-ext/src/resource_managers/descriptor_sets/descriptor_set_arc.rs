@@ -35,6 +35,7 @@ impl std::fmt::Debug for DescriptorSetArcInner {
     }
 }
 
+#[derive(Clone)]
 pub struct DescriptorSetArc {
     pub(super) inner: Arc<DescriptorSetArcInner>,
 }

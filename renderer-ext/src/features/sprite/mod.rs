@@ -5,6 +5,7 @@ use crate::{RenderJobExtractContext, RenderJobWriteContext, DemoPrepareContext, 
 use legion::prelude::Entity;
 use renderer_base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
+use atelier_assets::loader::handle::Handle;
 
 mod extract;
 use extract::SpriteExtractJobImpl;
@@ -16,7 +17,8 @@ mod write;
 use write::SpriteCommandWriter;
 use renderer_shell_vulkan::VkDeviceContext;
 use ash::vk;
-use crate::resource_managers::PipelineSwapchainInfo;
+use crate::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc};
+use crate::pipeline::pipeline::MaterialAsset;
 
 struct SpriteRenderpassStats {
     draw_call_count: u32,
@@ -71,14 +73,14 @@ const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 pub fn create_sprite_extract_job(
     device_context: VkDeviceContext,
     pipeline_info: PipelineSwapchainInfo,
+    sprite_material: &Handle<MaterialAsset>,
     descriptor_set_per_pass: vk::DescriptorSet,
-    descriptor_set_per_texture: vk::DescriptorSet,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(
         device_context,
         pipeline_info,
+        sprite_material,
         descriptor_set_per_pass,
-        descriptor_set_per_texture,
     )))
 }
 
@@ -170,7 +172,7 @@ pub(self) struct ExtractedSpriteData {
     scale: f32,
     rotation: f32,
     alpha: f32,
-    texture_descriptor_set: vk::DescriptorSet,
+    texture_descriptor_set: vk::DescriptorSet, //TODO: I'd prefer to use something ref-counted
 }
 
 #[derive(Debug)]

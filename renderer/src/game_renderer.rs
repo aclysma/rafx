@@ -926,11 +926,11 @@ impl GameRenderer {
             extract_job_set.add_job(create_sprite_extract_job(
                 device_context.clone(),
                 sprite_pipeline_info,
+                &self.sprite_material,
                 descriptor_set_per_pass,
-                descriptor_set_per_texture
             ));
 
-            let extract_context = RenderJobExtractContext::new(&world, &resources);
+            let extract_context = RenderJobExtractContext::new(&world, &resources, &resource_manager);
             extract_job_set.extract(&extract_context, &frame_packet, &[&main_view])
         };
 
