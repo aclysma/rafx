@@ -3,8 +3,13 @@ pub mod renderpass;
 pub mod imgui_support;
 
 mod game_renderer;
+//pub use game_renderer::GameRendererSystems;
+pub use game_renderer::SwapchainLifetimeListener;
 pub use game_renderer::GameRenderer;
-pub use game_renderer::GameRendererWithContext;
+pub use game_renderer::init_renderer;
+pub use game_renderer::update_renderer;
+pub use game_renderer::destroy_renderer;
+//pub use game_renderer::GameRendererWithContext;
 
 pub mod time;
 
@@ -32,6 +37,8 @@ use renderer_shell_vulkan::cleanup::VkResourceDropSinkChannel;
 use std::mem::ManuallyDrop;
 use ash::vk;
 use crate::resource_managers::DynResourceLookupSet;
+use atelier_assets::loader::handle::Handle;
+use crate::pipeline::image::ImageAsset;
 
 pub mod phases;
 
@@ -45,6 +52,7 @@ pub struct SpriteComponent {
     pub sprite_handle: SpriteRenderNodeHandle,
     pub visibility_handle: DynamicAabbVisibilityNodeHandle,
     pub alpha: f32,
+    pub image: Handle<ImageAsset>,
     //pub texture_material: ResourceArc<>
 }
 
@@ -81,7 +89,7 @@ impl RenderJobPrepareContext {
     }
 }
 
-
+// Used to produce RenderJobWriteContexts per each job
 pub struct RenderJobWriteContextFactory {
     pub device_context: VkDeviceContext,
     pub dyn_resource_lookups: DynResourceLookupSet

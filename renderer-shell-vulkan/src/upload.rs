@@ -46,6 +46,7 @@ pub struct VkUpload {
 }
 
 unsafe impl Send for VkUpload {}
+unsafe impl Sync for VkUpload {}
 
 impl VkUpload {
     pub fn new(

@@ -1,15 +1,12 @@
-use renderer_shell_vulkan::{
-    LogicalSize, Window, VkDevice, VkSwapchain, VkSurface, VkDeviceContext,
-    VkTransferUpload, VkTransferUploadState, VkImage,
-};
+use renderer_shell_vulkan::{LogicalSize, Window, VkDevice, VkSwapchain, VkSurface, VkDeviceContext, VkTransferUpload, VkTransferUploadState, VkImage, VkContextBuilder, MsaaLevel, VkCreateContextError, VkContext};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use ash::prelude::VkResult;
-use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas};
+use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
-use renderer_ext::{GameRendererWithContext, PositionComponent, SpriteComponent};
+use renderer_ext::{PositionComponent, SpriteComponent, GameRenderer};
 use atelier_assets::loader as atelier_loader;
 use legion::prelude::*;
 
@@ -34,8 +31,165 @@ use renderer_ext::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
 use renderer_base::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
 use renderer_ext::time::TimeState;
 use glam::f32::Vec3;
+use renderer_ext::resource_managers::ResourceManager;
+use renderer_base::RenderRegistry;
+use sdl2::event::EventType::RenderDeviceReset;
+
+fn begin_load_asset<T>(
+    asset_uuid: AssetUuid,
+    asset_resource: &AssetResource,
+) -> atelier_assets::loader::handle::Handle<T> {
+    use atelier_assets::loader::Loader;
+    let load_handle = asset_resource.loader().add_ref(asset_uuid);
+    atelier_assets::loader::handle::Handle::<T>::new(asset_resource.tx().clone(), load_handle)
+}
 
 fn main() {
+    logging_init();
+
+    // Spawn the daemon in a background thread. This could be a different process, but
+    // for simplicity we'll launch it here.
+    std::thread::spawn(move || {
+        daemon::run();
+    });
+
+    let mut resources = Resources::default();
+    resources.insert(TimeState::new());
+
+    atelier_init(&mut resources);
+
+    let sdl2_systems = sdl2_init();
+    imgui_init(&mut resources, &sdl2_systems.window);
+    rendering_init(&mut resources, &sdl2_systems.window);
+
+    log::info!("Starting window event loop");
+    let mut event_pump = sdl2_systems.context
+        .event_pump()
+        .expect("Could not create sdl event pump");
+
+    let universe = Universe::new();
+    let mut world = universe.create_world();
+
+    populate_test_entities(&mut resources, &mut world);
+
+    let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
+
+    'running: loop {
+        //
+        // Update time
+        //
+        {
+            resources.get_mut::<TimeState>().unwrap().update();
+        }
+
+
+        //
+        // Print FPS
+        //
+        {
+            let time_state = resources.get::<TimeState>().unwrap();
+            if print_time_event.try_take_event(
+                time_state.current_instant(),
+                std::time::Duration::from_secs_f32(1.0),
+            ) {
+                log::info!("FPS: {}", time_state.updates_per_second());
+                //renderer.dump_stats();
+            }
+        }
+
+        //
+        // Notify imgui of frame begin
+        //
+        {
+            let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
+            let window = Sdl2Window::new(&sdl2_systems.window);
+            imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
+        }
+
+        //
+        // Update assets
+        //
+        {
+            let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
+            asset_resource.update();
+        }
+
+        //
+        // Update graphics resources
+        //
+        {
+            // let device = resources.get::<VkDeviceContext>().unwrap();
+            // let mut game_renderer = resources.get_mut::<Game>().unwrap();
+            // game_renderer.update_resources(&*device);
+            renderer_ext::update_renderer(&resources);
+        }
+
+        //
+        // Process input
+        //
+        if !process_input(&resources, &mut event_pump) {
+            break 'running;
+        }
+
+        //
+        // imgui debug draw,
+        //
+        {
+            let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
+            let time_state = resources.get::<TimeState>().unwrap();
+            imgui_manager.with_ui(|ui| {
+                ui.main_menu_bar(|| {
+                    ui.text(imgui::im_str!(
+                        "FPS: {:.1}",
+                        time_state.updates_per_second_smoothed()
+                    ));
+                });
+            });
+        }
+
+        //
+        // Close imgui input for this frame and render the results to memory
+        //
+        {
+            let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
+            imgui_manager.render(&sdl2_systems.window);
+        }
+
+        //
+        // Redraw
+        //
+        {
+            let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
+            let mut render_registry = resources.get_mut::<RenderRegistry>().unwrap();
+            let mut game_renderer = resources.get_mut::<GameRenderer>().unwrap();
+            let mut surface = resources.get_mut::<VkSurface>().unwrap();
+            let window = Sdl2Window::new(&sdl2_systems.window);
+
+            let mut lifetime_listener = renderer_ext::SwapchainLifetimeListener {
+                resources: &resources,
+                resource_manager: &mut *resource_manager,
+                render_registry: & *render_registry,
+                game_renderer: &mut *game_renderer
+            };
+
+            surface.draw_with(&mut lifetime_listener, &window, |lifetime_listener, device_context, present_index| {
+                lifetime_listener.game_renderer.render(
+                    &world,
+                    &resources,
+                    lifetime_listener.resource_manager,
+                    lifetime_listener.render_registry,
+                    &window,
+                    device_context,
+                    present_index
+                )
+            }).unwrap();
+        }
+    }
+
+    rendering_destroy(&mut resources);
+}
+
+fn logging_init() {
     let mut log_level = log::LevelFilter::Info;
     #[cfg(debug_assertions)]
     {
@@ -60,20 +214,24 @@ fn main() {
         //     )
         // })
         .init();
+}
 
-    // Spawn the daemon in a background thread. This could be a different process, but
-    // for simplicity we'll launch it here.
-    std::thread::spawn(move || {
-        daemon::run();
-    });
+fn atelier_init(
+    resources: &mut Resources,
+) {
+    resources.insert(AssetResource::default());
+}
 
-    // Something to track time
-    let mut time_state = TimeState::new();
-    time_state.update();
+struct Sdl2Systems {
+    pub context: sdl2::Sdl,
+    pub video_subsystem: sdl2::VideoSubsystem,
+    pub window: sdl2::video::Window,
+}
 
+fn sdl2_init() -> Sdl2Systems {
     // Setup SDL
-    let sdl_context = sdl2::init().expect("Failed to initialize sdl2");
-    let video_subsystem = sdl_context
+    let context = sdl2::init().expect("Failed to initialize sdl2");
+    let video_subsystem = context
         .video()
         .expect("Failed to create sdl video subsystem");
 
@@ -84,7 +242,7 @@ fn main() {
     };
 
     // Create the window
-    let sdl_window = video_subsystem
+    let window = video_subsystem
         .window(
             "Renderer Prototype",
             logical_size.width,
@@ -97,195 +255,208 @@ fn main() {
         .build()
         .expect("Failed to create window");
 
-    log::info!("window created");
+    Sdl2Systems {
+        context,
+        video_subsystem,
+        window
+    }
+}
 
+// Should occur *before* the renderer starts
+fn imgui_init(
+    resources: &mut Resources,
+    sdl2_window: &sdl2::video::Window,
+) {
     // Load imgui, we do it a little early because it wants to have the actual SDL2 window and
     // doesn't work with the thin window wrapper
-    let imgui_manager = renderer_ext::imgui_support::init_imgui_manager(&sdl_window);
+    let imgui_manager = renderer_ext::imgui_support::init_imgui_manager(sdl2_window);
+    resources.insert(imgui_manager);
+}
 
+fn rendering_init(
+    resources: &mut Resources,
+    sdl2_window: &sdl2::video::Window,
+) {
     // Thin window wrapper to decouple the renderer from a specific windowing crate
-    let window = Sdl2Window::new(&sdl_window);
+    let window_wrapper = Sdl2Window::new(&sdl2_window);
 
-    // Assets will be stored here, we init it ahead of the renderer as it will register its own
-    // asset types
-    let mut asset_resource = AssetResource::default();
-
-    let universe = Universe::new();
-    let mut world = universe.create_world();
-    let mut resources = Resources::default();
     resources.insert(SpriteRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
-    resources.insert(AssetResource::default());
-    resources.insert(time_state);
 
-    // Create the renderer, this will init the vulkan instance, device, and set up a swap chain
-    let renderer = GameRendererWithContext::new(
-        &window,
-        imgui_manager.build_font_atlas(),
-        &resources
-    );
+    let mut context = VkContextBuilder::new()
+        .use_vulkan_debug_layer(false)
+        .msaa_level_priority(vec![MsaaLevel::Sample4])
+        .prefer_mailbox_present_mode();
 
-    // Check if there were error setting up vulkan
-    if let Err(e) = renderer {
-        log::error!("Error during renderer construction: {:?}", e);
-        return;
-    }
-
-    log::info!("renderer created");
-
-    let mut renderer = renderer.unwrap();
-
-    log::info!("Starting window event loop");
-    let mut event_pump = sdl_context
-        .event_pump()
-        .expect("Could not create sdl event pump");
-
-
-
-
-
-
-
-
-
-
+    //#[cfg(debug_assertions)]
     {
-        let sprites = ["sprite1", "sprite2", "sprite3"];
-        for i in 0..100 {
-            let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
-            //let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
-            let alpha = 1.0;
-            let _sprite = sprites[i % sprites.len()];
-
-            let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
-            let mut dynamic_visibility_node_set = resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
-
-            // User calls functions to register render objects
-            // - This is a retained API because render object existence can trigger loading streaming assets and
-            //   keep them resident in memory
-            // - Some render objects might not correspond to legion entities, and some people might not be using
-            //   legion at all
-            // - the `_with_handle` variant allows us to get the handle of the value that's going to be allocated
-            //   This resolves a circular dependency where the component needs the render node handle and the
-            //   render node needs the entity.
-            // - ALTERNATIVE: Could create an empty entity, create the components, and then add all of them
-            sprite_render_nodes.register_sprite_with_handle(|sprite_handle| {
-                let aabb_info = DynamicAabbVisibilityNode {
-                    handle: sprite_handle.into(),
-                    // aabb bounds
-                };
-
-                // User calls functions to register visibility objects
-                // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-                let visibility_handle =
-                    dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
-
-                let position_component = PositionComponent { position };
-                let sprite_component = SpriteComponent {
-                    sprite_handle,
-                    visibility_handle,
-                    alpha,
-                };
-
-                let entity = world.insert(
-                    (),
-                    (0..1).map(|_| (position_component, sprite_component.clone())),
-                )[0];
-
-                world.get_component::<PositionComponent>(entity).unwrap();
-
-                SpriteRenderNode {
-                    entity, // sprite asset
-                }
-            });
-        }
+        context = context.use_vulkan_debug_layer(true);
     }
 
+    let vk_context = context.build(&window_wrapper).unwrap();
+    let device_context = vk_context.device_context().clone();
+    resources.insert(vk_context);
+    resources.insert(device_context);
 
+    renderer_ext::init_renderer(resources);
 
+    let mut game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
+    resources.insert(game_renderer);
 
+    let window_surface = {
+        let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
+        let render_registry = resources.get::<RenderRegistry>().unwrap();
+        let mut game_renderer = resources.get_mut::<GameRenderer>().unwrap();
+        // let mut game_renderer = resources.get_mut::<GameRenderer>().unwrap();
+        // let mut surface = resources.get_mut::<VkSurface>().unwrap();
+        // let window = Sdl2Window::new(&sdl2_systems.window);
 
+        let mut lifetime_listener = renderer_ext::SwapchainLifetimeListener {
+            resources: &resources,
+            resource_manager: &mut *resource_manager,
+            render_registry: & *render_registry,
+            game_renderer: &mut *game_renderer
+        };
 
+        VkSurface::new(
+            &*resources.get::<VkContext>().unwrap(),
+            &window_wrapper,
+            Some(&mut lifetime_listener)
+        ).unwrap()
+    };
+    resources.insert(window_surface);
+}
 
+fn rendering_destroy(
+    resources: &mut Resources
+) {
+    // Destroy these first
+    {
+        {
+            let mut surface = resources.remove::<VkSurface>().unwrap();
+            let mut game_renderer = resources.remove::<GameRenderer>().unwrap();
+            let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
+            let render_registry = resources.get::<RenderRegistry>().unwrap();
 
+            let mut lifetime_listener = renderer_ext::SwapchainLifetimeListener {
+                resources: &resources,
+                resource_manager: &mut *resource_manager,
+                render_registry: & *render_registry,
+                game_renderer: &mut game_renderer
+            };
 
+            surface.tear_down(Some(&mut lifetime_listener));
+        }
 
+        resources.remove::<VkDeviceContext>();
+        resources.remove::<SpriteRenderNodeSet>();
+        resources.remove::<StaticVisibilityNodeSet>();
+        resources.remove::<DynamicVisibilityNodeSet>();
 
+        renderer_ext::destroy_renderer(resources);
+    }
 
+    // Drop this one last
+    resources.remove::<VkContext>();
+}
 
+fn populate_test_entities(resources: &mut Resources, world: &mut World) {
+    let sprite_image = {
+        let mut asset_resource = resources.get::<AssetResource>().unwrap();
+        begin_load_asset::<ImageAsset>(
+            asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
+            &asset_resource,
+        )
+    };
 
-    let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
+    let sprites = ["sprite1", "sprite2", "sprite3"];
+    for i in 0..100 {
+        let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
+        //let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
+        let alpha = 1.0;
+        let _sprite = sprites[i % sprites.len()];
 
-    'running: loop {
-        for event in event_pump.poll_iter() {
-            imgui_manager.handle_event(&event);
-            if !imgui_manager.ignore_event(&event) {
-                //log::trace!("{:?}", event);
-                match event {
-                    //
-                    // Halt if the user requests to close the window
-                    //
-                    Event::Quit { .. } => break 'running,
+        let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
+        let mut dynamic_visibility_node_set = resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
 
-                    //
-                    // Close if the escape key is hit
-                    //
-                    Event::KeyDown {
-                        keycode: Some(keycode),
-                        keymod: modifiers,
-                        ..
-                    } => {
-                        //log::trace!("Key Down {:?} {:?}", keycode, modifiers);
-                        if keycode == Keycode::Escape {
-                            break 'running;
-                        }
+        // User calls functions to register render objects
+        // - This is a retained API because render object existence can trigger loading streaming assets and
+        //   keep them resident in memory
+        // - Some render objects might not correspond to legion entities, and some people might not be using
+        //   legion at all
+        // - the `_with_handle` variant allows us to get the handle of the value that's going to be allocated
+        //   This resolves a circular dependency where the component needs the render node handle and the
+        //   render node needs the entity.
+        // - ALTERNATIVE: Could create an empty entity, create the components, and then add all of them
+        sprite_render_nodes.register_sprite_with_handle(|sprite_handle| {
+            let aabb_info = DynamicAabbVisibilityNode {
+                handle: sprite_handle.into(),
+                // aabb bounds
+            };
 
-                        if keycode == Keycode::D {
-                            renderer.dump_stats();
-                        }
+            // User calls functions to register visibility objects
+            // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
+            let visibility_handle =
+                dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
+
+            let position_component = PositionComponent { position };
+            let sprite_component = SpriteComponent {
+                sprite_handle,
+                visibility_handle,
+                alpha,
+                image: sprite_image.clone(),
+            };
+
+            let entity = world.insert(
+                (),
+                (0..1).map(|_| (position_component, sprite_component.clone())),
+            )[0];
+
+            world.get_component::<PositionComponent>(entity).unwrap();
+
+            SpriteRenderNode {
+                entity, // sprite asset
+            }
+        });
+    }
+}
+
+fn process_input(resources: &Resources, event_pump: &mut sdl2::EventPump) -> bool {
+    let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
+    for event in event_pump.poll_iter() {
+        imgui_manager.handle_event(&event);
+        if !imgui_manager.ignore_event(&event) {
+            //log::trace!("{:?}", event);
+            match event {
+                //
+                // Halt if the user requests to close the window
+                //
+                Event::Quit { .. } => return false,
+
+                //
+                // Close if the escape key is hit
+                //
+                Event::KeyDown {
+                    keycode: Some(keycode),
+                    keymod: modifiers,
+                    ..
+                } => {
+                    //log::trace!("Key Down {:?} {:?}", keycode, modifiers);
+                    if keycode == Keycode::Escape {
+                        return false;
                     }
 
-                    _ => {}
+                    if keycode == Keycode::D {
+                        let stats = resources.get::<VkDeviceContext>().unwrap().allocator().calculate_stats().unwrap();
+                        println!("{:#?}", stats);
+                    }
                 }
-            }
-        }
 
-        let window = Sdl2Window::new(&sdl_window);
-        imgui_manager.begin_frame(&sdl_window, &MouseState::new(&event_pump));
-
-        asset_resource.update();
-        renderer.update_resources();
-
-        imgui_manager.with_ui(|ui| {
-            //let mut opened = true;
-            //ui.show_demo_window(&mut opened);
-            ui.main_menu_bar(|| {
-                let time_state = resources.get::<TimeState>().unwrap();
-                ui.text(imgui::im_str!(
-                    "FPS: {:.1}",
-                    time_state.updates_per_second_smoothed()
-                ));
-            });
-        });
-
-        imgui_manager.render(&sdl_window);
-
-        //
-        // Redraw
-        //
-        renderer.draw(&window, &world, &resources).unwrap();
-        resources.get_mut::<TimeState>().unwrap().update();
-
-        {
-            let time_state = resources.get::<TimeState>().unwrap();
-            if print_time_event.try_take_event(
-                time_state.current_instant(),
-                std::time::Duration::from_secs_f32(1.0),
-            ) {
-                log::info!("FPS: {}", time_state.updates_per_second());
-                //renderer.dump_stats();
+                _ => {}
             }
         }
     }
+
+    true
 }

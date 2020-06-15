@@ -45,24 +45,31 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
     fn extract_frame_node(
         &mut self,
-        source: &RenderJobExtractContext,
+        extract_context: &RenderJobExtractContext,
         frame_node: PerFrameNode,
         frame_node_index: u32,
     ) {
         let render_node_index = frame_node.render_node_index();
         let render_node_handle = RawSlabKey::<SpriteRenderNode>::new(render_node_index);
 
-        let sprite_nodes = source.resources.get::<SpriteRenderNodeSet>().unwrap();
+        let sprite_nodes = extract_context.resources.get::<SpriteRenderNodeSet>().unwrap();
         let sprite_render_node = sprite_nodes.sprites.get(render_node_handle).unwrap();
 
-        let position_component = source
+        let position_component = extract_context
             .world
             .get_component::<PositionComponent>(sprite_render_node.entity)
             .unwrap();
-        let sprite_component = source
+        let sprite_component = extract_context
             .world
             .get_component::<SpriteComponent>(sprite_render_node.entity)
             .unwrap();
+
+        //TODO: Consider having cached descriptor set in sprite_render_node
+        //sprite_render_node.
+
+        let image = sprite_component.image.clone();
+        //extract_context.resources.get_mut::<Res>
+        // make descriptor set?
 
         self.extracted_sprite_data.push(ExtractedSpriteData {
             position: position_component.position,

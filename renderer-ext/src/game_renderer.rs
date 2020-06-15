@@ -1,4 +1,4 @@
-use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener};
+use crate::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener, Sdl2ImguiManager};
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer};
 use ash::prelude::VkResult;
 use crate::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
@@ -89,11 +89,84 @@ fn wait_for_asset_to_load<T>(
     }
 }
 
+// pub struct GameRendererSystems {
+//     render_registry: RenderRegistry,
+//     resource_manager: ResourceManager,
+// }
+
+pub fn init_renderer(
+    resources: &mut Resources,
+) {
+    //
+    // Register features/phases
+    //
+    let render_registry = RenderRegistryBuilder::default()
+        .register_feature::<SpriteRenderFeature>()
+        .register_render_phase::<DrawOpaqueRenderPhase>()
+        .register_render_phase::<DrawTransparentRenderPhase>()
+        .build();
+    resources.insert(render_registry);
+
+    //
+    // Create the resource manager
+    //
+    let device_context = resources.get_mut::<VkDeviceContext>().unwrap().clone();
+    let mut resource_manager = ResourceManager::new(&device_context);
+    resources.insert(resource_manager);
+
+    //
+    // Connect the asset system with the resource manager
+    //
+    let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
+    let asset_resource = &mut *asset_resource_fetch;
+
+    let mut resource_manager_fetch = resources.get_mut::<ResourceManager>().unwrap();
+    let resource_manager = &mut *resource_manager_fetch;
+
+    asset_resource.add_storage_with_load_handler::<ShaderAsset, _>(Box::new(
+        resource_manager.create_shader_load_handler(),
+    ));
+    asset_resource.add_storage_with_load_handler::<PipelineAsset, _>(Box::new(
+        resource_manager.create_pipeline_load_handler(),
+    ));
+    asset_resource.add_storage_with_load_handler::<MaterialAsset, _>(Box::new(
+        resource_manager.create_material_load_handler(),
+    ));
+    asset_resource.add_storage_with_load_handler::<MaterialInstanceAsset, _>(Box::new(
+        resource_manager.create_material_instance_load_handler(),
+    ));
+    asset_resource.add_storage_with_load_handler::<ImageAsset, _>(Box::new(
+        resource_manager.create_image_load_handler(),
+    ));
+    asset_resource.add_storage_with_load_handler::<BufferAsset, _>(Box::new(
+        resource_manager.create_buffer_load_handler(),
+    ));
+    asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
+        resource_manager.create_mesh_load_handler(),
+    ));
+
+    asset_resource.add_storage::<GltfMaterialAsset>();
+}
+
+pub fn update_renderer(
+    resources: &Resources
+) -> VkResult<()> {
+    resources.get_mut::<ResourceManager>().unwrap().update_resources()
+}
+
+pub fn destroy_renderer(
+    resources: &mut Resources,
+) {
+    resources.remove::<ResourceManager>();
+    resources.remove::<RenderRegistry>();
+}
+
+
 pub struct GameRenderer {
     //time_state: TimeState,
     imgui_event_listener: ImguiRenderEventListener,
 
-    resource_manager: ResourceManager,
+    //resource_manager: ResourceManager,
 
     sprite_material: Handle<MaterialAsset>,
     sprite_material_instance: Handle<MaterialInstanceAsset>,
@@ -122,7 +195,7 @@ pub struct GameRenderer {
 
 
 
-    render_registry: RenderRegistry,
+    //render_registry: RenderRegistry,
     main_camera_render_phase_mask: RenderPhaseMask,
     //
     // sprite_render_nodes: SpriteRenderNodeSet,
@@ -143,63 +216,27 @@ pub struct GameRenderer {
 impl GameRenderer {
     pub fn new(
         window: &dyn Window,
-        device_context: &VkDeviceContext,
-        imgui_font_atlas: VkImGuiRenderPassFontAtlas,
         resources: &Resources,
-        //time_state: &TimeState,
-        //asset_resource: &mut AssetResource,
     ) -> VkResult<Self> {
-        let render_registry = RenderRegistryBuilder::default()
-            .register_feature::<SpriteRenderFeature>()
-            .register_render_phase::<DrawOpaqueRenderPhase>()
-            .register_render_phase::<DrawTransparentRenderPhase>()
-            .build();
+        let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
+        let asset_resource = &mut *asset_resource_fetch;
+
+        let mut resource_manager_fetch = resources.get_mut::<ResourceManager>().unwrap();
+        let mut resource_manager = &mut *resource_manager_fetch;
+
+        let mut render_registry_fetch = resources.get::<RenderRegistry>().unwrap();
+        let render_registry = &*render_registry_fetch;
+
+        let vk_context = resources.get_mut::<VkContext>().unwrap();
+        let device_context = vk_context.device_context();
+
+        let imgui_font_atlas = resources.get::<Sdl2ImguiManager>().unwrap().build_font_atlas();
+        let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
 
         let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
             .add_render_phase::<DrawOpaqueRenderPhase>()
             .add_render_phase::<DrawTransparentRenderPhase>()
             .build();
-
-        let imgui_event_listener = ImguiRenderEventListener::new(imgui_font_atlas);
-
-        let mut resource_manager = ResourceManager::new(device_context);
-
-        let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
-        let asset_resource = &mut *asset_resource_fetch;
-        //let time_state = resources.get::<TimeState>().unwrap();
-
-        asset_resource.add_storage_with_load_handler::<ShaderAsset, _>(Box::new(
-            resource_manager.create_shader_load_handler(),
-        ));
-        asset_resource.add_storage_with_load_handler::<PipelineAsset, _>(Box::new(
-            resource_manager.create_pipeline_load_handler(),
-        ));
-        asset_resource.add_storage_with_load_handler::<MaterialAsset, _>(Box::new(
-            resource_manager.create_material_load_handler(),
-        ));
-        asset_resource.add_storage_with_load_handler::<MaterialInstanceAsset, _>(Box::new(
-            resource_manager.create_material_instance_load_handler(),
-        ));
-        asset_resource.add_storage_with_load_handler::<ImageAsset, _>(Box::new(
-            resource_manager.create_image_load_handler(),
-        ));
-        asset_resource.add_storage_with_load_handler::<BufferAsset, _>(Box::new(
-            resource_manager.create_buffer_load_handler(),
-        ));
-        asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
-            resource_manager.create_mesh_load_handler(),
-        ));
-        //asset_resource.add_storage::<BufferAsset>();
-
-        asset_resource.add_storage::<GltfMaterialAsset>();
-        //asset_resource.add_storage::<MeshAsset>();
-        // asset_resource.add_storage::<SpriteAsset>();
-
-        // asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
-        //     resource_manager.create_mesh_load_handler(),
-        // ));
-
-
 
         //
         // Sprite resources
@@ -425,7 +462,7 @@ impl GameRenderer {
         let mut renderer = GameRenderer {
             //time_state: time_state.clone(),
             imgui_event_listener,
-            resource_manager,
+            //resource_manager,
 
             sprite_material,
             sprite_material_instance,
@@ -456,7 +493,7 @@ impl GameRenderer {
             // light_mesh,
             // light_mesh_material_instances: vec![],
 
-            render_registry,
+            //render_registry,
             main_camera_render_phase_mask,
 
             //drop_sink: VkCombinedDropSink::new(MAX_FRAMES_IN_FLIGHT as u32),
@@ -476,7 +513,7 @@ impl GameRenderer {
             bloom_combine_renderpass: None,
         };
 
-        let image_info = renderer.resource_manager.get_image_info(&override_image);
+        let image_info = resource_manager.get_image_info(&override_image);
 
         let extents_width = 900;
         let extents_height = 600;
@@ -492,8 +529,7 @@ impl GameRenderer {
             100.0,
         );
 
-        let mut sprite_custom_material = renderer
-            .resource_manager
+        let mut sprite_custom_material = resource_manager
             .create_dyn_material_instance_from_asset(renderer.sprite_material_instance.clone())?;
         sprite_custom_material.set_image(&"texture".to_string(), &image_info.image_view);
         sprite_custom_material.set_buffer_data(&"view_proj".to_string(), &proj);
@@ -515,12 +551,12 @@ impl GameRenderer {
         Ok(renderer)
     }
 
-    pub fn update_resources(
-        &mut self,
-        device_context: &VkDeviceContext,
-    ) {
-        self.resource_manager.update_resources();
-    }
+    // pub fn update_resources(
+    //     &mut self,
+    //     device_context: &VkDeviceContext,
+    // ) {
+    //     self.resource_manager.update_resources();
+    // }
 
     // pub fn update_time(
     //     &mut self,
@@ -530,14 +566,26 @@ impl GameRenderer {
     // }
 }
 
-impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
+
+pub struct SwapchainLifetimeListener<'a> {
+    pub resources: &'a Resources,
+    pub resource_manager: &'a mut ResourceManager,
+    pub render_registry: &'a RenderRegistry,
+    pub game_renderer: &'a mut GameRenderer
+}
+
+impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
     fn swapchain_created(
         &mut self,
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
     ) -> VkResult<()> {
+        //let mut resource_manager_fetch = self.resources.get_mut::<ResourceManager>().unwrap();
+        //let resource_manager = &mut *resource_manager_fetch;
+        let mut resource_manager = &mut self.resource_manager;
+
         log::debug!("game renderer swapchain_created called");
-        self.imgui_event_listener
+        self.game_renderer.imgui_event_listener
             .swapchain_created(device_context, swapchain)?;
 
         let swapchain_surface_info = SwapchainSurfaceInfo {
@@ -548,17 +596,17 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
             depth_format: swapchain.depth_format,
         };
 
-        self.swapchain_surface_info = Some(swapchain_surface_info.clone());
-        self.resource_manager.add_swapchain(&swapchain_surface_info);
+        self.game_renderer.swapchain_surface_info = Some(swapchain_surface_info.clone());
+        resource_manager.add_swapchain(&swapchain_surface_info);
 
         log::trace!("Create VkSpriteRenderPass");
-        let sprite_pipeline_info = self.resource_manager.get_pipeline_info(
-            &self.sprite_material,
+        let sprite_pipeline_info = resource_manager.get_pipeline_info(
+            &self.game_renderer.sprite_material,
             &swapchain_surface_info,
             0,
         );
 
-        self.sprite_renderpass = Some(VkSpriteRenderPass::new(
+        self.game_renderer.sprite_renderpass = Some(VkSpriteRenderPass::new(
             device_context,
             swapchain,
             sprite_pipeline_info,
@@ -566,39 +614,39 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
 
         log::trace!("Create VkOpaqueRenderPass");
         //TODO: We probably want to move to just using a pipeline here and not a specific material
-        let opaque_pipeline_info = self.resource_manager.get_pipeline_info(
-            &self.mesh_material,
+        let opaque_pipeline_info = resource_manager.get_pipeline_info(
+            &self.game_renderer.mesh_material,
             &swapchain_surface_info,
             0,
         );
 
-        self.opaque_renderpass = Some(VkOpaqueRenderPass::new(
+        self.game_renderer.opaque_renderpass = Some(VkOpaqueRenderPass::new(
             device_context,
             swapchain,
             opaque_pipeline_info,
         )?);
 
         log::trace!("Create VkMeshRenderPass");
-        let mesh_pipeline_info = self.resource_manager.get_pipeline_info(
-            &self.mesh_material,
+        let mesh_pipeline_info = resource_manager.get_pipeline_info(
+            &self.game_renderer.mesh_material,
             &swapchain_surface_info,
             0,
         );
 
-        self.mesh_renderpass = Some(VkMeshRenderPass::new(
+        self.game_renderer.mesh_renderpass = Some(VkMeshRenderPass::new(
             device_context,
             swapchain,
             mesh_pipeline_info,
         )?);
 
         log::trace!("Create VkDebugRenderPass");
-        let debug_pipeline_info = self.resource_manager.get_pipeline_info(
-            &self.debug_material,
+        let debug_pipeline_info = resource_manager.get_pipeline_info(
+            &self.game_renderer.debug_material,
             &swapchain_surface_info,
             0,
         );
 
-        self.debug_renderpass = Some(VkDebugRenderPass::new(
+        self.game_renderer.debug_renderpass = Some(VkDebugRenderPass::new(
             device_context,
             swapchain,
             debug_pipeline_info,
@@ -606,90 +654,90 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
 
         log::trace!("Create VkBloomExtractRenderPass");
 
-        self.bloom_resources = Some(VkBloomRenderPassResources::new(
+        self.game_renderer.bloom_resources = Some(VkBloomRenderPassResources::new(
             device_context,
             swapchain,
-            &mut self.resource_manager,
-            self.bloom_blur_material.clone()
+            resource_manager,
+            self.game_renderer.bloom_blur_material.clone()
         )?);
 
         // HACK HACK HACK - VkBloomRenderPassResources writes descriptors that VkBloomBlurRenderPass
         // immediately uses to record command buffers. Flush now so that the descriptors get
         // initialized
-        self.resource_manager.on_begin_frame();
+        resource_manager.on_begin_frame();
 
-        let bloom_extract_layout = self.resource_manager.get_descriptor_set_info(
-            &self.bloom_extract_material,
+        let bloom_extract_layout = resource_manager.get_descriptor_set_info(
+            &self.game_renderer.bloom_extract_material,
             0,
             0
         );
 
-        let bloom_extract_pipeline_info = self.resource_manager.get_pipeline_info(
-            &self.bloom_extract_material,
+        let bloom_extract_pipeline_info = resource_manager.get_pipeline_info(
+            &self.game_renderer.bloom_extract_material,
             &swapchain_surface_info,
             0,
         );
 
-        self.bloom_extract_renderpass = Some(VkBloomExtractRenderPass::new(
+        self.game_renderer.bloom_extract_renderpass = Some(VkBloomExtractRenderPass::new(
             device_context,
             swapchain,
             bloom_extract_pipeline_info,
-            self.bloom_resources.as_ref().unwrap()
+            self.game_renderer.bloom_resources.as_ref().unwrap()
         )?);
 
-        let mut bloom_extract_material_dyn_set = self.resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout_def)?;
+        let mut bloom_extract_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout_def)?;
         bloom_extract_material_dyn_set.set_image_raw(0, swapchain.color_attachment.resolved_image_view());
         bloom_extract_material_dyn_set.flush();
-        self.bloom_extract_material_dyn_set = Some(bloom_extract_material_dyn_set);
+        self.game_renderer.bloom_extract_material_dyn_set = Some(bloom_extract_material_dyn_set);
 
         log::trace!("Create VkBloomBlurRenderPass");
 
-        // let bloom_blur_layout = self.resource_manager.get_descriptor_set_info(
+        // let bloom_blur_layout = resource_manager.get_descriptor_set_info(
         //     &self.bloom_blur_material,
         //     0,
         //     0
         // );
 
-        let bloom_blur_pipeline_info = self.resource_manager.get_pipeline_info(
-            &self.bloom_blur_material,
+        let bloom_blur_pipeline_info = resource_manager.get_pipeline_info(
+            &self.game_renderer.bloom_blur_material,
             &swapchain_surface_info,
             0,
         );
 
-        self.bloom_blur_renderpass = Some(VkBloomBlurRenderPass::new(
+        self.game_renderer.bloom_blur_renderpass = Some(VkBloomBlurRenderPass::new(
             device_context,
             swapchain,
             bloom_blur_pipeline_info,
-            &self.resource_manager,
-            self.bloom_resources.as_ref().unwrap()
+            resource_manager,
+            self.game_renderer.bloom_resources.as_ref().unwrap()
         )?);
 
         log::trace!("Create VkBloomCombineRenderPass");
 
-        let bloom_combine_layout = self.resource_manager.get_descriptor_set_info(
-            &self.bloom_combine_material,
+        let bloom_combine_layout = resource_manager.get_descriptor_set_info(
+            &self.game_renderer.bloom_combine_material,
             0,
             0
         );
 
-        let bloom_combine_pipeline_info = self.resource_manager.get_pipeline_info(
-            &self.bloom_combine_material,
+        let bloom_combine_pipeline_info = resource_manager.get_pipeline_info(
+            &self.game_renderer.bloom_combine_material,
             &swapchain_surface_info,
             0,
         );
 
-        self.bloom_combine_renderpass = Some(VkBloomCombineRenderPass::new(
+        self.game_renderer.bloom_combine_renderpass = Some(VkBloomCombineRenderPass::new(
             device_context,
             swapchain,
             bloom_combine_pipeline_info,
-            self.bloom_resources.as_ref().unwrap()
+            self.game_renderer.bloom_resources.as_ref().unwrap()
         )?);
 
-        let mut bloom_combine_material_dyn_set = self.resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout_def)?;
-        bloom_combine_material_dyn_set.set_image_raw(0, self.bloom_resources.as_ref().unwrap().color_image_view);
-        bloom_combine_material_dyn_set.set_image_raw(1, self.bloom_resources.as_ref().unwrap().bloom_image_views[0]);
+        let mut bloom_combine_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout_def)?;
+        bloom_combine_material_dyn_set.set_image_raw(0, self.game_renderer.bloom_resources.as_ref().unwrap().color_image_view);
+        bloom_combine_material_dyn_set.set_image_raw(1, self.game_renderer.bloom_resources.as_ref().unwrap().bloom_image_views[0]);
         bloom_combine_material_dyn_set.flush();
-        self.bloom_combine_material_dyn_set = Some(bloom_combine_material_dyn_set);
+        self.game_renderer.bloom_combine_material_dyn_set = Some(bloom_combine_material_dyn_set);
 
         log::debug!("game renderer swapchain_created finished");
 
@@ -714,22 +762,30 @@ impl VkSurfaceSwapchainLifetimeListener for GameRenderer {
 
         self.resource_manager
             .remove_swapchain(&swapchain_surface_info);
-        self.imgui_event_listener
+        self.game_renderer.imgui_event_listener
             .swapchain_destroyed(device_context, swapchain);
 
-        self.swapchain_surface_info = None;
+        self.game_renderer.swapchain_surface_info = None;
     }
 }
 
 impl GameRenderer {
-    fn render(
+    pub fn render(
         &mut self,
         world: &World,
         resources: &Resources,
+        resource_manager: &mut ResourceManager,
+        render_registry: &RenderRegistry,
         window: &Window,
         device_context: &VkDeviceContext,
         present_index: usize,
     ) -> VkResult<Vec<ash::vk::CommandBuffer>> {
+        // let mut resource_manager_fetch = resources.get_mut::<ResourceManager>().unwrap();
+        // let mut resource_manager = &mut *resource_manager_fetch;
+        //
+        // let mut render_registry_fetch = resources.get_mut::<RenderRegistry>().unwrap();
+        // let mut render_registry = &mut *render_registry_fetch;
+
         //
         // Fetch resources
         //
@@ -923,7 +979,7 @@ impl GameRenderer {
 
         let frame_packet = frame_packet_builder.build();
         let prepare_job_set = {
-            let sprite_pipeline_info = self.resource_manager.get_pipeline_info(
+            let sprite_pipeline_info = resource_manager.get_pipeline_info(
                 &self.sprite_material,
                 self.swapchain_surface_info.as_ref().unwrap(),
                 0,
@@ -933,12 +989,12 @@ impl GameRenderer {
             let descriptor_set_per_pass = dyn_pass_material_instance
                 .descriptor_set_layout(0)
                 .descriptor_set()
-                .get_raw_for_gpu_read(&self.resource_manager);
+                .get_raw_for_gpu_read(resource_manager);
 
             let descriptor_set_per_texture = dyn_pass_material_instance
                 .descriptor_set_layout(1)
                 .descriptor_set()
-                .get_raw_for_gpu_read(&self.resource_manager);
+                .get_raw_for_gpu_read(resource_manager);
 
             let mut extract_job_set = ExtractJobSet::new();
             extract_job_set.add_job(create_sprite_extract_job(
@@ -953,7 +1009,7 @@ impl GameRenderer {
         };
 
         //let buffer_drop_sink = VkResourceDropSinkChannel::<ManuallyDrop<VkBuffer>>::new();
-        let prepare_context = RenderJobPrepareContext::new(self.resource_manager.create_dyn_resource_allocator_set());
+        let prepare_context = RenderJobPrepareContext::new(resource_manager.create_dyn_resource_allocator_set());
 
         //
         // Prepare Jobs
@@ -962,13 +1018,13 @@ impl GameRenderer {
             &prepare_context,
             &frame_packet,
             &[&main_view],
-            &self.render_registry,
+            render_registry,
         );
 
         //
         // Update Resources and flush descriptor set changes
         //
-        self.resource_manager.on_begin_frame();
+        resource_manager.on_begin_frame();
 
         //
         // Write Jobs - called from within renderpasses for now
@@ -990,7 +1046,7 @@ impl GameRenderer {
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");
             let dyn_pass_material_instance = self.sprite_custom_material.as_ref().unwrap().pass(0);
-            let static_pass_material_instance = self.resource_manager.get_material_instance_descriptor_sets_for_current_frame(&self.sprite_material_instance, 0);
+            let static_pass_material_instance = resource_manager.get_material_instance_descriptor_sets_for_current_frame(&self.sprite_material_instance, 0);
 
             //let pass = self.sprite_material_instance.asset.as_ref().unwrap().pass(0);
 
@@ -998,13 +1054,13 @@ impl GameRenderer {
             let descriptor_set_per_pass = dyn_pass_material_instance
                 .descriptor_set_layout(0)
                 .descriptor_set()
-                .get_raw_for_gpu_read(&self.resource_manager);
+                .get_raw_for_gpu_read(resource_manager);
 
             // Pass 1 is per-object
             let descriptor_set_per_texture = dyn_pass_material_instance
                 .descriptor_set_layout(1)
                 .descriptor_set()
-                .get_raw_for_gpu_read(&self.resource_manager);
+                .get_raw_for_gpu_read(resource_manager);
             //let descriptor_set_per_texture = static_pass_material_instance.descriptor_sets[1];
 
             sprite_renderpass.update(
@@ -1024,7 +1080,7 @@ impl GameRenderer {
         //
         if let Some(opaque_renderpass) = &mut self.opaque_renderpass {
             log::trace!("opaque_renderpass update");
-            let opaque_pipeline_info = self.resource_manager.get_pipeline_info(
+            let opaque_pipeline_info = resource_manager.get_pipeline_info(
                 &self.mesh_material,
                 self.swapchain_surface_info.as_ref().unwrap(),
                 0,
@@ -1045,13 +1101,13 @@ impl GameRenderer {
         //
         if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
             log::trace!("mesh_renderpass update");
-            let mesh_pipeline_info = self.resource_manager.get_pipeline_info(
+            let mesh_pipeline_info = resource_manager.get_pipeline_info(
                 &self.mesh_material,
                 self.swapchain_surface_info.as_ref().unwrap(),
                 0,
             );
 
-            let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+            let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get_raw_for_gpu_read(resource_manager);
 
             mesh_renderpass.update(
                 &mesh_pipeline_info,
@@ -1059,7 +1115,7 @@ impl GameRenderer {
                 descriptor_set_per_pass,
                 &self.meshes,
                 asset_resource,
-                &self.resource_manager
+                resource_manager
             )?;
             command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
         }
@@ -1069,13 +1125,13 @@ impl GameRenderer {
         //
         if let Some(debug_renderpass) = &mut self.debug_renderpass {
             log::trace!("debug_renderpass update");
-            let debug_pipeline_info = self.resource_manager.get_pipeline_info(
+            let debug_pipeline_info = resource_manager.get_pipeline_info(
                 &self.debug_material,
                 self.swapchain_surface_info.as_ref().unwrap(),
                 0,
             );
 
-            let descriptor_set_per_pass = self.debug_material_per_frame_data.descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+            let descriptor_set_per_pass = self.debug_material_per_frame_data.descriptor_set().get_raw_for_gpu_read(resource_manager);
 
             debug_renderpass.update(
                 present_index,
@@ -1090,7 +1146,7 @@ impl GameRenderer {
         //
         if let Some(bloom_extract_renderpass) = &mut self.bloom_extract_renderpass {
             log::trace!("bloom_extract_renderpass update");
-            let descriptor_set_per_pass = self.bloom_extract_material_dyn_set.as_ref().unwrap().descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+            let descriptor_set_per_pass = self.bloom_extract_material_dyn_set.as_ref().unwrap().descriptor_set().get_raw_for_gpu_read(resource_manager);
 
             bloom_extract_renderpass.update(
                 present_index,
@@ -1104,13 +1160,13 @@ impl GameRenderer {
         //
         if let Some(bloom_blur_renderpass) = &mut self.bloom_blur_renderpass {
             log::trace!("bloom_blur_renderpass update");
-            //let descriptor_set_per_pass0 = self.bloom_resources.as_ref().unwrap().bloom_image_descriptor_sets[0].descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
-            //let descriptor_set_per_pass1 = self.bloom_resources.as_ref().unwrap().bloom_image_descriptor_sets[1].descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+            //let descriptor_set_per_pass0 = self.bloom_resources.as_ref().unwrap().bloom_image_descriptor_sets[0].descriptor_set().get_raw_for_gpu_read(resource_manager);
+            //let descriptor_set_per_pass1 = self.bloom_resources.as_ref().unwrap().bloom_image_descriptor_sets[1].descriptor_set().get_raw_for_gpu_read(resource_manager);
 
             // bloom_blur_renderpass.update(
             //     present_index,
             //     //descriptor_set_per_pass,
-            //     &self.resource_manager,
+            //     resource_manager,
             //     self.bloom_resources.as_ref().unwrap()
             // )?;
             command_buffers.push(bloom_blur_renderpass.command_buffers[0].clone());
@@ -1130,7 +1186,7 @@ impl GameRenderer {
         //
         if let Some(bloom_combine_renderpass) = &mut self.bloom_combine_renderpass {
             log::trace!("bloom_combine_renderpass update");
-            let descriptor_set_per_pass = self.bloom_combine_material_dyn_set.as_ref().unwrap().descriptor_set().get_raw_for_gpu_read(&self.resource_manager);
+            let descriptor_set_per_pass = self.bloom_combine_material_dyn_set.as_ref().unwrap().descriptor_set().get_raw_for_gpu_read(resource_manager);
 
             bloom_combine_renderpass.update(
                 present_index,
@@ -1169,92 +1225,5 @@ impl Drop for GameRenderer {
         //self.mesh_custom_material = None;
         //self.light_mesh_material_instances.clear();
         //self.mesh_renderpass = None;
-    }
-}
-
-// The context is separate from the renderer so that we can create it before creating the swapchain.
-// This is required because the API design is for VkSurface to be passed temporary borrows to the
-// renderer rather than owning the renderer
-pub struct GameRendererWithContext {
-    // Handles setting up device/instance
-    context: VkContext,
-    game_renderer: ManuallyDrop<GameRenderer>,
-    surface: ManuallyDrop<VkSurface>,
-}
-
-impl GameRendererWithContext {
-    pub fn new(
-        window: &dyn Window,
-        imgui_font_atlas: VkImGuiRenderPassFontAtlas,
-        resources: &Resources,
-        // time_state: &TimeState,
-        // asset_resource: &mut AssetResource,
-    ) -> Result<GameRendererWithContext, VkCreateContextError> {
-        let mut context = VkContextBuilder::new()
-            .use_vulkan_debug_layer(false)
-            //.msaa_level_priority(vec![MsaaLevel::Sample1])
-            .msaa_level_priority(vec![MsaaLevel::Sample4])
-            .prefer_mailbox_present_mode();
-
-        //#[cfg(debug_assertions)]
-        {
-            context = context.use_vulkan_debug_layer(true);
-        }
-
-        let context = context.build(window)?;
-
-        let mut game_renderer = GameRenderer::new(
-            window,
-            &context.device().device_context,
-            imgui_font_atlas,
-            // time_state,
-            // asset_resource,
-            resources
-        )?;
-
-        let surface = VkSurface::new(&context, window, Some(&mut game_renderer))?;
-
-        Ok(GameRendererWithContext {
-            context,
-            game_renderer: ManuallyDrop::new(game_renderer),
-            surface: ManuallyDrop::new(surface),
-        })
-    }
-
-    pub fn update_resources(&mut self) {
-        self.game_renderer
-            .update_resources(self.context.device_context());
-    }
-
-    pub fn draw(
-        &mut self,
-        window: &dyn Window,
-        world: &World,
-        resources: &Resources
-    ) -> VkResult<()> {
-        // {
-        //     self.game_renderer.update_time(time_state);
-        // }
-        self.surface.draw_with(&mut *self.game_renderer, window, |game_renderer, device_context, present_index| {
-            game_renderer.render(world, resources, window, device_context, present_index)
-        })
-    }
-
-    pub fn dump_stats(&mut self) {
-        if let Ok(stats) = self.context.device().allocator().calculate_stats() {
-            println!("{:#?}", stats);
-        } else {
-            log::error!("failed to calculate stats");
-        }
-    }
-}
-
-impl Drop for GameRendererWithContext {
-    fn drop(&mut self) {
-        self.surface.tear_down(Some(&mut *self.game_renderer));
-        unsafe {
-            ManuallyDrop::drop(&mut self.surface);
-            ManuallyDrop::drop(&mut self.game_renderer);
-        }
     }
 }

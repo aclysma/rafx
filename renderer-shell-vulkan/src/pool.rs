@@ -4,7 +4,7 @@ use ash::{vk, Device};
 use std::collections::VecDeque;
 use std::num::Wrapping;
 
-pub type VkPoolResourceAllocatorAllocFn<T: VkPoolResourceImpl> = Fn(&ash::Device) -> VkResult<T>;
+pub type VkPoolResourceAllocatorAllocFn<T: VkPoolResourceImpl> = dyn Fn(&ash::Device) -> VkResult<T> + Send + Sync;
 
 /// Implement to customize how VkPoolAllocator resets and destroys pools
 pub trait VkPoolResourceImpl {
@@ -59,7 +59,7 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
     /// in the sink. If max_in_flight_frames is 2, then you would have a resource that has
     /// likely not been submitted to the GPU yet, plus a resource per the N frames that have
     /// been submitted
-    pub fn new<F: Fn(&ash::Device) -> VkResult<T> + 'static>(
+    pub fn new<F: Fn(&ash::Device) -> VkResult<T> + Send + Sync + 'static>(
         max_in_flight_frames: u32,
         max_pool_count: u32,
         allocate_fn: F,

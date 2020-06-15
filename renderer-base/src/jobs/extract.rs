@@ -3,7 +3,7 @@ use crate::{FramePacket, RenderView, PrepareJob, PrepareJobSet};
 pub trait ExtractJob<ExtractContextT, PrepareContextT, WriteContextT> {
     fn extract(
         self: Box<Self>,
-        source: &ExtractContextT,
+        extract_context: &ExtractContextT,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> Box<dyn PrepareJob<PrepareContextT, WriteContextT>>;
@@ -38,7 +38,7 @@ impl<ExtractContextT, PrepareContextT, WriteContextT> ExtractJobSet<ExtractConte
 
     pub fn extract(
         self,
-        source: &ExtractContextT,
+        extract_context: &ExtractContextT,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> PrepareJobSet<PrepareContextT, WriteContextT> {
@@ -48,7 +48,7 @@ impl<ExtractContextT, PrepareContextT, WriteContextT> ExtractJobSet<ExtractConte
         for extract_job in self.extract_jobs {
             log::trace!("Start job {}", extract_job.feature_debug_name());
 
-            let prepare_job = extract_job.extract(source, frame_packet, views);
+            let prepare_job = extract_job.extract(extract_context, frame_packet, views);
             prepare_jobs.push(prepare_job);
         }
 
@@ -64,31 +64,31 @@ use crate::{PerFrameNode, PerViewNode};
 pub trait DefaultExtractJobImpl<ExtractContextT, PrepareContextT, WriteContextT> {
     fn extract_begin(
         &mut self,
-        source: &ExtractContextT,
+        extract_context: &ExtractContextT,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     );
     fn extract_frame_node(
         &mut self,
-        source: &ExtractContextT,
+        extract_context: &ExtractContextT,
         frame_node: PerFrameNode,
         frame_node_index: u32,
     );
     fn extract_view_node(
         &mut self,
-        source: &ExtractContextT,
+        extract_context: &ExtractContextT,
         view: &RenderView,
         view_node: PerViewNode,
         view_node_index: u32,
     );
     fn extract_view_finalize(
         &mut self,
-        source: &ExtractContextT,
+        extract_context: &ExtractContextT,
         view: &RenderView,
     );
     fn extract_frame_finalize(
         self,
-        source: &ExtractContextT,
+        extract_context: &ExtractContextT,
     ) -> Box<dyn PrepareJob<PrepareContextT, WriteContextT>>;
 
     fn feature_debug_name(&self) -> &'static str;
@@ -117,7 +117,7 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
 {
     fn extract(
         mut self: Box<Self>,
-        source: &ExtractContextT,
+        extract_context: &ExtractContextT,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> Box<dyn PrepareJob<PrepareContextT, WriteContextT>> {
@@ -125,7 +125,7 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
 
         // In the future, make features run in parallel
         log::trace!("extract_begin feature: {}", self.extract_impl.feature_debug_name());
-        self.extract_impl.extract_begin(source, frame_packet, views);
+        self.extract_impl.extract_begin(extract_context, frame_packet, views);
 
         // foreach frame node, call extract
         for (frame_node_index, frame_node) in
@@ -138,7 +138,7 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
             );
 
             self.extract_impl
-                .extract_frame_node(source, *frame_node, frame_node_index as u32);
+                .extract_frame_node(extract_context, *frame_node, frame_node_index as u32);
         }
 
         // foreach view node, call extract
@@ -161,7 +161,7 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
                     );
 
                     self.extract_impl.extract_view_node(
-                        source,
+                        extract_context,
                         view,
                         *view_node,
                         view_node_index as u32,
@@ -175,7 +175,7 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
                 self.extract_impl.feature_debug_name(),
                 view.debug_name()
             );
-            self.extract_impl.extract_view_finalize(source, view);
+            self.extract_impl.extract_view_finalize(extract_context, view);
         }
 
         // call once after all nodes extracted
@@ -183,7 +183,7 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
             "extract_frame_finalize {}",
             self.extract_impl.feature_debug_name()
         );
-        self.extract_impl.extract_frame_finalize(source)
+        self.extract_impl.extract_frame_finalize(extract_context)
     }
 
     fn feature_debug_name(&self) -> &'static str {
