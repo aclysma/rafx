@@ -28,5 +28,6 @@ legion = { git = "https://github.com/TomGillen/legion.git" }
 atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
 
 structopt = "0.3"
+crossbeam-channel = "0.4.2"
 
 [dev-dependencies]

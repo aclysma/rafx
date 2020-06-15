@@ -6,7 +6,7 @@ use ash::prelude::VkResult;
 use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
-use renderer_ext::{PositionComponent, SpriteComponent, GameRenderer};
+use renderer_ext::{PositionComponent, SpriteComponent};
 use atelier_assets::loader as atelier_loader;
 use legion::prelude::*;
 
@@ -14,7 +14,6 @@ use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
 
-mod daemon;
 use renderer_ext::asset_resource::AssetResource;
 use renderer_ext::image_utils::{DecodedTexture, enqueue_load_images};
 use imgui::{Key, Image};
@@ -34,6 +33,10 @@ use glam::f32::Vec3;
 use renderer_ext::resource_managers::ResourceManager;
 use renderer_base::RenderRegistry;
 use sdl2::event::EventType::RenderDeviceReset;
+use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
+
+mod game_renderer;
+mod daemon;
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -165,7 +168,7 @@ fn main() {
             let mut surface = resources.get_mut::<VkSurface>().unwrap();
             let window = Sdl2Window::new(&sdl2_systems.window);
 
-            let mut lifetime_listener = renderer_ext::SwapchainLifetimeListener {
+            let mut lifetime_listener = SwapchainLifetimeListener {
                 resources: &resources,
                 resource_manager: &mut *resource_manager,
                 render_registry: & *render_registry,
@@ -312,7 +315,7 @@ fn rendering_init(
         // let mut surface = resources.get_mut::<VkSurface>().unwrap();
         // let window = Sdl2Window::new(&sdl2_systems.window);
 
-        let mut lifetime_listener = renderer_ext::SwapchainLifetimeListener {
+        let mut lifetime_listener = SwapchainLifetimeListener {
             resources: &resources,
             resource_manager: &mut *resource_manager,
             render_registry: & *render_registry,
@@ -339,7 +342,7 @@ fn rendering_destroy(
             let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
             let render_registry = resources.get::<RenderRegistry>().unwrap();
 
-            let mut lifetime_listener = renderer_ext::SwapchainLifetimeListener {
+            let mut lifetime_listener = SwapchainLifetimeListener {
                 resources: &resources,
                 resource_manager: &mut *resource_manager,
                 render_registry: & *render_registry,

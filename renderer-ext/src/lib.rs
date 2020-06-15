@@ -4,8 +4,6 @@ pub mod imgui_support;
 
 mod game_renderer;
 //pub use game_renderer::GameRendererSystems;
-pub use game_renderer::SwapchainLifetimeListener;
-pub use game_renderer::GameRenderer;
 pub use game_renderer::init_renderer;
 pub use game_renderer::update_renderer;
 pub use game_renderer::destroy_renderer;
