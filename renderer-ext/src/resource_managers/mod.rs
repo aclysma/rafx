@@ -73,8 +73,10 @@ use upload::PendingImageUpload;
 use upload::PendingBufferUpload;
 use upload::UploadManager;
 use crate::resource_managers::resource_lookup::{
-    PipelineLayoutResource, PipelineResource, ImageViewResource,
+    PipelineLayoutResource, PipelineResource,
 };
+
+pub use resource_lookup::ImageViewResource;
 use crate::pipeline::gltf::MeshAsset;
 use crate::pipeline::buffer::BufferAsset;
 use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh};
@@ -113,7 +115,7 @@ pub struct MeshInfo {
 
 // Information about a descriptor set for a particular frame. Descriptor sets may be updated
 // every frame and we rotate through them, so this information must not be persisted across frames
-pub struct MaterialInstanceDescriptorSetsForCurrentFrame {
+pub struct MaterialInstanceDescriptorSets {
     pub descriptor_sets: Vec<vk::DescriptorSet>,
 }
 
@@ -273,11 +275,11 @@ impl ResourceManager {
         }
     }
 
-    pub fn get_material_instance_descriptor_sets_for_current_frame(
+    pub fn get_material_instance_descriptor_sets(
         &self,
         handle: &Handle<MaterialInstanceAsset>,
         pass_index: usize,
-    ) -> MaterialInstanceDescriptorSetsForCurrentFrame {
+    ) -> MaterialInstanceDescriptorSets {
         // Get the material instance
         let resource = self
             .loaded_assets
@@ -292,10 +294,10 @@ impl ResourceManager {
         // Map the DescriptorSetArc to a vk::DescriptorSet
         let descriptor_sets: Vec<_> = current_pass_descriptor_sets
             .iter()
-            .map(|x| x.get_raw_for_gpu_read(&self))
+            .map(|x| x.get())
             .collect();
 
-        MaterialInstanceDescriptorSetsForCurrentFrame { descriptor_sets }
+        MaterialInstanceDescriptorSets { descriptor_sets }
     }
 
     pub fn add_swapchain(

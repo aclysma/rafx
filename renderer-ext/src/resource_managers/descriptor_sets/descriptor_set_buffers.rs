@@ -2,12 +2,15 @@ use ash::vk;
 use ash::prelude::*;
 use crate::pipeline_description as dsc;
 use crate::resource_managers::descriptor_sets::{
-    DescriptorSetElementKey, MAX_FRAMES_IN_FLIGHT_PLUS_1, MAX_DESCRIPTORS_PER_POOL,
+    DescriptorSetElementKey, MAX_DESCRIPTORS_PER_POOL,
 };
 use std::mem::ManuallyDrop;
 use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
 use fnv::FnvHashMap;
 
+//
+// Metadata about a buffer for a particular descriptor in a descriptor layout
+//
 #[derive(Clone)]
 pub(super) struct DescriptorSetPoolRequiredBufferInfo {
     pub(super) dst_element: DescriptorSetElementKey,
@@ -20,7 +23,7 @@ pub(super) struct DescriptorSetPoolRequiredBufferInfo {
 // Creates and manages the internal buffers for a single binding within a descriptor pool chunk
 //
 pub(super) struct DescriptorBindingBufferSet {
-    pub(super) buffers: Vec<ManuallyDrop<VkBuffer>>,
+    pub(super) buffer: ManuallyDrop<VkBuffer>,
     pub(super) buffer_info: DescriptorSetPoolRequiredBufferInfo,
 }
 
@@ -31,22 +34,17 @@ impl DescriptorBindingBufferSet {
     ) -> VkResult<Self> {
         //This is the only one we support right now
         assert!(buffer_info.descriptor_type == dsc::DescriptorType::UniformBuffer);
-        // X frames in flight, plus one not in flight that is writable
-        let mut buffers = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT_PLUS_1);
-        for _ in 0..MAX_FRAMES_IN_FLIGHT_PLUS_1 {
-            let buffer = VkBuffer::new(
-                device_context,
-                vk_mem::MemoryUsage::CpuToGpu,
-                vk::BufferUsageFlags::UNIFORM_BUFFER,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                (buffer_info.per_descriptor_stride * MAX_DESCRIPTORS_PER_POOL) as u64,
-            )?;
 
-            buffers.push(ManuallyDrop::new(buffer));
-        }
+        let buffer = VkBuffer::new(
+            device_context,
+            vk_mem::MemoryUsage::CpuToGpu,
+            vk::BufferUsageFlags::UNIFORM_BUFFER,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            (buffer_info.per_descriptor_stride * MAX_DESCRIPTORS_PER_POOL) as u64,
+        )?;
 
         Ok(DescriptorBindingBufferSet {
-            buffers,
+            buffer: ManuallyDrop::new(buffer),
             buffer_info: buffer_info.clone(),
         })
     }

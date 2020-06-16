@@ -73,8 +73,8 @@ impl VkBloomBlurRenderPass {
             &command_pool,
         )?;
 
-        let descriptor_set_per_pass0 = bloom_resources.bloom_image_descriptor_sets[0].descriptor_set().get_raw_for_gpu_read(&resource_manager);
-        let descriptor_set_per_pass1 = bloom_resources.bloom_image_descriptor_sets[1].descriptor_set().get_raw_for_gpu_read(&resource_manager);
+        let descriptor_set_per_pass0 = bloom_resources.bloom_image_descriptor_sets[0].descriptor_set().get();
+        let descriptor_set_per_pass1 = bloom_resources.bloom_image_descriptor_sets[1].descriptor_set().get();
 
         Self::update_command_buffer(
             &device_context,

@@ -16,6 +16,13 @@ use ash::version::DeviceV1_0;
 use ash::prelude::VkResult;
 use super::RegisteredDescriptorSetPoolChunk;
 use crate::resource_managers::ResourceArc;
+use std::collections::VecDeque;
+use crate::resource_managers::upload::InProgressUploadPollResult::Pending;
+
+struct PendingDescriptorSetDrop {
+    slab_key: RawSlabKey<RegisteredDescriptorSet>,
+    live_until_frame: u32,
+}
 
 pub(super) struct RegisteredDescriptorSetPool {
     //descriptor_set_layout_def: dsc::DescriptorSetLayout,
@@ -34,6 +41,8 @@ pub(super) struct RegisteredDescriptorSetPool {
     buffer_infos: Vec<DescriptorSetPoolRequiredBufferInfo>,
 
     chunks: Vec<RegisteredDescriptorSetPoolChunk>,
+
+    pending_drops: VecDeque<PendingDescriptorSetDrop>,
 }
 
 impl RegisteredDescriptorSetPool {
@@ -53,8 +62,7 @@ impl RegisteredDescriptorSetPool {
         let mut descriptor_counts = vec![0; dsc::DescriptorType::count()];
         for desc in &descriptor_set_layout_def.descriptor_set_layout_bindings {
             let ty: vk::DescriptorType = desc.descriptor_type.into();
-            descriptor_counts[ty.as_raw() as usize] +=
-                MAX_DESCRIPTORS_PER_POOL * (MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32);
+            descriptor_counts[ty.as_raw() as usize] += MAX_DESCRIPTORS_PER_POOL;
         }
 
         let mut pool_sizes = Vec::with_capacity(dsc::DescriptorType::count());
@@ -72,10 +80,10 @@ impl RegisteredDescriptorSetPool {
         // frames for them to finish any submits that reference them
         let descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
             MAX_FRAMES_IN_FLIGHT as u32,
-            /*MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32*/ u32::MAX,
+            u32::MAX, // No upper bound on pool count
             move |device| {
                 let pool_builder = vk::DescriptorPoolCreateInfo::builder()
-                    .max_sets(MAX_DESCRIPTORS_PER_POOL * MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32)
+                    .max_sets(MAX_DESCRIPTORS_PER_POOL)
                     .pool_sizes(&pool_sizes);
 
                 unsafe { device.create_descriptor_pool(&*pool_builder, None) }
@@ -85,7 +93,7 @@ impl RegisteredDescriptorSetPool {
         let mut buffer_infos = Vec::new();
         for binding in &descriptor_set_layout_def.descriptor_set_layout_bindings {
             if let Some(per_descriptor_size) = binding.internal_buffer_per_descriptor_size {
-                //TODO: 256 is the max allowed by the vulkan spec but we could improve this by using the
+                // 256 is the max allowed by the vulkan spec but we can improve this by using the
                 // actual hardware value given by device limits
                 let required_alignment =
                     device_context.limits().min_uniform_buffer_offset_alignment as u32;
@@ -117,6 +125,7 @@ impl RegisteredDescriptorSetPool {
             chunks: Default::default(),
             buffer_infos,
             buffer_drop_sink: VkResourceDropSink::new(MAX_FRAMES_IN_FLIGHT as u32),
+            pending_drops: Default::default(),
         }
     }
 
@@ -124,7 +133,6 @@ impl RegisteredDescriptorSetPool {
         &mut self,
         device_context: &VkDeviceContext,
         write_set: DescriptorSetWriteSet,
-        frame_in_flight_index: FrameInFlightIndex,
     ) -> VkResult<DescriptorSetArc> {
         let registered_set = RegisteredDescriptorSet {
             // Don't have anything to store yet
@@ -147,7 +155,7 @@ impl RegisteredDescriptorSetPool {
 
         // Insert the write into the chunk, it will be applied when update() is next called on it
         let descriptor_sets_per_frame =
-            self.chunks[chunk_index].schedule_write_set(slab_key, write_set, frame_in_flight_index);
+            self.chunks[chunk_index].schedule_write_set(slab_key, write_set);
 
         // Return the ref-counted descriptor set
         let descriptor_set =
@@ -155,39 +163,60 @@ impl RegisteredDescriptorSetPool {
         Ok(descriptor_set)
     }
 
-    pub fn schedule_changes(
+    pub fn flush_changes(
         &mut self,
         device_context: &VkDeviceContext,
         frame_in_flight_index: FrameInFlightIndex,
     ) {
         for write in self.write_set_rx.try_iter() {
             log::trace!(
-                "Received a set write for frame in flight index {} {:?}",
-                frame_in_flight_index,
+                "Received a set write for {:?}",
                 write.slab_key,
             );
             let chunk_index = write.slab_key.index() / MAX_DESCRIPTORS_PER_POOL;
             self.chunks[chunk_index as usize].schedule_write_set(
                 write.slab_key,
                 write.write_set,
-                frame_in_flight_index,
             );
         }
-    }
 
-    pub fn flush_changes(
-        &mut self,
-        device_context: &VkDeviceContext,
-        frame_in_flight_index: FrameInFlightIndex,
-    ) {
         // Route messages that indicate a dropped descriptor set to the chunk that owns it
         for dropped in self.drop_rx.try_iter() {
-            self.slab.free(dropped);
+            self.pending_drops.push_back(PendingDescriptorSetDrop {
+                slab_key: dropped,
+                live_until_frame: super::add_to_frame_in_flight_index(frame_in_flight_index, MAX_FRAMES_IN_FLIGHT as u32)
+            });
         }
+
+        // Determine how many drops we can drain (we keep them around for MAX_FRAMES_IN_FLIGHT frames
+        let mut pending_drops_to_drain = 0;
+        for pending_drop in &self.pending_drops {
+            // If frame_in_flight_index matches or exceeds live_until_frame, then the result will be a very
+            // high value due to wrapping a negative value to u32::MAX
+            if pending_drop.live_until_frame == frame_in_flight_index {
+                self.slab.free(pending_drop.slab_key);
+                pending_drops_to_drain += 1;
+            } else {
+                break;
+            }
+        }
+
+        if pending_drops_to_drain > 0 {
+            log::trace!(
+                "Free {} descriptors on frame in flight index {} layout {:?}",
+                pending_drops_to_drain,
+                frame_in_flight_index,
+                self.descriptor_set_layout
+            );
+        }
+
+        // Drain any drops that have expired
+        self.pending_drops
+            .drain(0..pending_drops_to_drain);
 
         // Commit pending writes/removes, rotate to the descriptor set for the next frame
         for chunk in &mut self.chunks {
-            chunk.update(device_context, frame_in_flight_index);
+            chunk.update(device_context);
         }
 
         self.descriptor_pool_allocator

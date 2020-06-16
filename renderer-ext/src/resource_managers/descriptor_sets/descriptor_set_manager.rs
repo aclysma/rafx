@@ -57,28 +57,6 @@ impl RegisteredDescriptorSetPoolManager {
         }
     }
 
-    pub fn descriptor_set_for_cpu_write(
-        &self,
-        descriptor_set_arc: &DescriptorSetArc,
-    ) -> vk::DescriptorSet {
-        descriptor_set_arc.inner.descriptor_sets_per_frame[self.frame_in_flight_index as usize]
-    }
-
-    pub fn descriptor_set_for_gpu_read(
-        &self,
-        descriptor_set_arc: &DescriptorSetArc,
-    ) -> vk::DescriptorSet {
-        let gpu_read_frame_in_flight_index = if self.frame_in_flight_index == 0 {
-            MAX_FRAMES_IN_FLIGHT
-        } else {
-            self.frame_in_flight_index as usize - 1
-        };
-
-        //println!("use index {}", gpu_read_frame_in_flight_index);
-        descriptor_set_arc.inner.descriptor_sets_per_frame[gpu_read_frame_in_flight_index]
-        //self.descriptor_set_for_cpu_write(descriptor_set_arc)
-    }
-
     pub fn insert(
         &mut self,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
@@ -95,16 +73,10 @@ impl RegisteredDescriptorSetPoolManager {
             )
         });
 
-        pool.insert(&self.device_context, write_set, self.frame_in_flight_index)
+        pool.insert(&self.device_context, write_set)
     }
 
     pub fn update(&mut self) {
-        // Schedule any descriptor set/buffer changes that occurred since the previous update.
-        //
-        for pool in self.pools.values_mut() {
-            pool.schedule_changes(&self.device_context, self.frame_in_flight_index);
-        }
-
         // Now process drops and flush writes to GPU
         for pool in self.pools.values_mut() {
             pool.flush_changes(&self.device_context, self.frame_in_flight_index);
@@ -145,7 +117,6 @@ impl RegisteredDescriptorSetPoolManager {
         let descriptor_set = pool.insert(
             &self.device_context,
             write_set.clone(),
-            self.frame_in_flight_index,
         )?;
 
         // Create the DynDescriptorSet

@@ -147,46 +147,49 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
         prepare_context: &RenderJobPrepareContext,
         _submit_nodes: &mut FeatureSubmitNodes,
     ) -> Box<dyn FeatureCommandWriter<RenderJobWriteContext>> {
-        //TODO: It's likely unnecessary to put all the data into a Vec and then copy it into the buffer. We could
-        // write to the buffer to begin with
-        let vertex_buffer = {
-            let vertex_buffer_size =
-                self.vertex_list.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
-            let mut vertex_buffer = VkBuffer::new(
-                &self.device_context,
-                vk_mem::MemoryUsage::CpuToGpu,
-                vk::BufferUsageFlags::VERTEX_BUFFER,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                vertex_buffer_size,
-            ).unwrap();
-
-            vertex_buffer.write_to_host_visible_buffer(self.vertex_list.as_slice()).unwrap();
-
-            let vertex_buffer = prepare_context.dyn_resource_lookups.insert_buffer(vertex_buffer);
-            vertex_buffer
-        };
-
-        let index_buffer = {
-            let index_buffer_size = self.index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
-            let mut index_buffer = VkBuffer::new(
-                &self.device_context,
-                vk_mem::MemoryUsage::CpuToGpu,
-                vk::BufferUsageFlags::INDEX_BUFFER,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                index_buffer_size,
-            ).unwrap();
-
-            index_buffer.write_to_host_visible_buffer(self.index_list.as_slice()).unwrap();
-
-            let index_buffer = prepare_context.dyn_resource_lookups.insert_buffer(index_buffer);
-            index_buffer
-        };
-
         //TODO: indexes are u16 so we may need to produce more than one set of buffers
         let mut vertex_buffers = Vec::with_capacity(1);
         let mut index_buffers = Vec::with_capacity(1);
-        vertex_buffers.push(vertex_buffer);
-        index_buffers.push(index_buffer);
+
+        if self.draw_calls.len() > 0 {
+            //TODO: It's likely unnecessary to put all the data into a Vec and then copy it into the buffer. We could
+            // write to the buffer to begin with
+            let vertex_buffer = {
+                let vertex_buffer_size =
+                    self.vertex_list.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
+                let mut vertex_buffer = VkBuffer::new(
+                    &self.device_context,
+                    vk_mem::MemoryUsage::CpuToGpu,
+                    vk::BufferUsageFlags::VERTEX_BUFFER,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    vertex_buffer_size,
+                ).unwrap();
+
+                vertex_buffer.write_to_host_visible_buffer(self.vertex_list.as_slice()).unwrap();
+
+                let vertex_buffer = prepare_context.dyn_resource_lookups.insert_buffer(vertex_buffer);
+                vertex_buffer
+            };
+
+            let index_buffer = {
+                let index_buffer_size = self.index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
+                let mut index_buffer = VkBuffer::new(
+                    &self.device_context,
+                    vk_mem::MemoryUsage::CpuToGpu,
+                    vk::BufferUsageFlags::INDEX_BUFFER,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    index_buffer_size,
+                ).unwrap();
+
+                index_buffer.write_to_host_visible_buffer(self.index_list.as_slice()).unwrap();
+
+                let index_buffer = prepare_context.dyn_resource_lookups.insert_buffer(index_buffer);
+                index_buffer
+            };
+
+            vertex_buffers.push(vertex_buffer);
+            index_buffers.push(index_buffer);
+        }
 
         Box::new(SpriteCommandWriter {
             draw_calls: self.draw_calls,

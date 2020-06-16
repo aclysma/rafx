@@ -291,7 +291,7 @@ fn rendering_init(
 
     //#[cfg(debug_assertions)]
     {
-        //context = context.use_vulkan_debug_layer(true);
+        context = context.use_vulkan_debug_layer(true);
     }
 
     let vk_context = context.build(&window_wrapper).unwrap();
@@ -371,7 +371,7 @@ fn populate_test_entities(resources: &mut Resources, world: &mut World) {
     };
 
     let sprites = ["sprite1", "sprite2", "sprite3"];
-    for i in 0..200 {
+    for i in 0..10 {
         let position = Vec3::new(((i / 10) * 25) as f32, ((i % 10) * 25) as f32, 0.0);
         //let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
         let alpha = 1.0;

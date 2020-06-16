@@ -15,6 +15,8 @@ use std::fmt::Formatter;
 
 pub struct DynDescriptorSet {
     descriptor_set: DescriptorSetArc,
+
+    // All the data required to update the descriptor set
     write_set: DescriptorSetWriteSet,
 
     write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,

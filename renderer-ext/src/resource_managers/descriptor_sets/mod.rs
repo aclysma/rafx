@@ -63,11 +63,6 @@ pub use descriptor_set_manager::RegisteredDescriptorSetPoolManager;
 pub use descriptor_set_manager::RegisteredDescriptorSetPoolManagerMetrics;
 pub use descriptor_set_manager::RegisteredDescriptorSetPoolMetrics;
 
-
-//TODO: Consider instad of N frames of descriptors for every descriptor, just allocate a new single
-// descriptor when something changes.
-
-
 const MAX_DESCRIPTORS_PER_POOL: u32 = 64;
 const MAX_FRAMES_IN_FLIGHT: usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT;
 const MAX_FRAMES_IN_FLIGHT_PLUS_1: usize = MAX_FRAMES_IN_FLIGHT + 1;
@@ -100,7 +95,7 @@ struct RegisteredDescriptorSet {
     //write_set: DescriptorSetWriteSet,
 }
 
-// We need to track which of the MAX_FRAMES_IN_FLIGHT_PLUS_1 frames of data is currently writable
+// We need to delay dropping descriptor sets for MAX_FRAMES_IN_FLIGHT frames
 type FrameInFlightIndex = u32;
 
 fn add_to_frame_in_flight_index(

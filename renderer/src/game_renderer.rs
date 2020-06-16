@@ -28,7 +28,7 @@ use atelier_assets::loader::LoadStatus;
 use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
-use renderer_ext::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance, MeshInfo};
+use renderer_ext::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance, MeshInfo, ResourceArc, ImageViewResource};
 use renderer_ext::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam};
 use renderer_ext::pipeline::buffer::BufferAsset;
 use renderer_ext::renderpass::debug_renderpass::DebugDraw3DResource;
@@ -97,6 +97,8 @@ pub struct GameRenderer {
     sprite_material: Handle<MaterialAsset>,
     sprite_material_instance: Handle<MaterialInstanceAsset>,
     sprite_custom_material: Option<DynMaterialInstance>,
+    sprite_override_image: ResourceArc<ImageViewResource>,
+    sprite_override_image2: ResourceArc<ImageViewResource>,
 
     debug_material: Handle<MaterialAsset>,
     debug_material_per_frame_data: DynDescriptorSet,
@@ -177,6 +179,10 @@ impl GameRenderer {
         );
         let override_image = begin_load_asset::<ImageAsset>(
             asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
+            &asset_resource,
+        );
+        let override_image2 = begin_load_asset::<ImageAsset>(
+            asset_uuid!("b7753a66-1b26-4152-ad61-93584f4442aa"),
             &asset_resource,
         );
 
@@ -385,6 +391,9 @@ impl GameRenderer {
             axis_instance
         ];
 
+        let image_info = resource_manager.get_image_info(&override_image);
+        let image_info2 = resource_manager.get_image_info(&override_image2);
+
         let mut renderer = GameRenderer {
             //time_state: time_state.clone(),
             imgui_event_listener,
@@ -392,6 +401,8 @@ impl GameRenderer {
 
             sprite_material,
             sprite_material_instance,
+            sprite_override_image: image_info.image_view,
+            sprite_override_image2: image_info2.image_view,
             sprite_custom_material: None,
 
             debug_material,
@@ -439,7 +450,6 @@ impl GameRenderer {
             bloom_combine_renderpass: None,
         };
 
-        let image_info = resource_manager.get_image_info(&override_image);
 
         let extents_width = 900;
         let extents_height = 600;
@@ -457,7 +467,7 @@ impl GameRenderer {
 
         let mut sprite_custom_material = resource_manager
             .create_dyn_material_instance_from_asset(renderer.sprite_material_instance.clone())?;
-        sprite_custom_material.set_image(&"texture".to_string(), &image_info.image_view);
+        sprite_custom_material.set_image(&"texture".to_string(), &renderer.sprite_override_image);
         sprite_custom_material.set_buffer_data(&"view_proj".to_string(), &proj);
         sprite_custom_material.flush();
 
@@ -894,6 +904,18 @@ impl GameRenderer {
         self.debug_material_per_frame_data.set_buffer_data(0, &view_proj);
         self.debug_material_per_frame_data.flush();
 
+        if let Some(dyn_material_instance) = self.sprite_custom_material.as_mut() {
+
+            let sprite_override_image = if time_state.update_count() % 1 == 0 {
+                &self.sprite_override_image
+            } else {
+                &self.sprite_override_image2
+            };
+
+            dyn_material_instance.set_image(&"texture".to_string(), sprite_override_image);
+            dyn_material_instance.flush();
+        }
+
 
         //
         // let gpu_context = GpuContext {
@@ -917,12 +939,12 @@ impl GameRenderer {
             let descriptor_set_per_pass = dyn_pass_material_instance
                 .descriptor_set_layout(0)
                 .descriptor_set()
-                .get_raw_for_gpu_read(resource_manager);
+                .get();
 
             let descriptor_set_per_texture = dyn_pass_material_instance
                 .descriptor_set_layout(1)
                 .descriptor_set()
-                .get_raw_for_gpu_read(resource_manager);
+                .get();
 
             let mut extract_job_set = ExtractJobSet::new();
             extract_job_set.add_job(create_sprite_extract_job(
@@ -981,7 +1003,7 @@ impl GameRenderer {
         if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
             log::trace!("sprite_renderpass update");
             let dyn_pass_material_instance = self.sprite_custom_material.as_ref().unwrap().pass(0);
-            let static_pass_material_instance = resource_manager.get_material_instance_descriptor_sets_for_current_frame(&self.sprite_material_instance, 0);
+            let static_pass_material_instance = resource_manager.get_material_instance_descriptor_sets(&self.sprite_material_instance, 0);
 
             //let pass = self.sprite_material_instance.asset.as_ref().unwrap().pass(0);
 
@@ -989,13 +1011,13 @@ impl GameRenderer {
             let descriptor_set_per_pass = dyn_pass_material_instance
                 .descriptor_set_layout(0)
                 .descriptor_set()
-                .get_raw_for_gpu_read(resource_manager);
+                .get();
 
             // Pass 1 is per-object
             let descriptor_set_per_texture = dyn_pass_material_instance
                 .descriptor_set_layout(1)
                 .descriptor_set()
-                .get_raw_for_gpu_read(resource_manager);
+                .get();
             //let descriptor_set_per_texture = static_pass_material_instance.descriptor_sets[1];
 
             sprite_renderpass.update(
@@ -1042,7 +1064,7 @@ impl GameRenderer {
                 0,
             );
 
-            let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get_raw_for_gpu_read(resource_manager);
+            let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get();
 
             mesh_renderpass.update(
                 &mesh_pipeline_info,
@@ -1066,7 +1088,7 @@ impl GameRenderer {
                 0,
             );
 
-            let descriptor_set_per_pass = self.debug_material_per_frame_data.descriptor_set().get_raw_for_gpu_read(resource_manager);
+            let descriptor_set_per_pass = self.debug_material_per_frame_data.descriptor_set().get();
 
             debug_renderpass.update(
                 present_index,
@@ -1081,7 +1103,7 @@ impl GameRenderer {
         //
         if let Some(bloom_extract_renderpass) = &mut self.bloom_extract_renderpass {
             log::trace!("bloom_extract_renderpass update");
-            let descriptor_set_per_pass = self.bloom_extract_material_dyn_set.as_ref().unwrap().descriptor_set().get_raw_for_gpu_read(resource_manager);
+            let descriptor_set_per_pass = self.bloom_extract_material_dyn_set.as_ref().unwrap().descriptor_set().get();
 
             bloom_extract_renderpass.update(
                 present_index,
@@ -1121,7 +1143,7 @@ impl GameRenderer {
         //
         if let Some(bloom_combine_renderpass) = &mut self.bloom_combine_renderpass {
             log::trace!("bloom_combine_renderpass update");
-            let descriptor_set_per_pass = self.bloom_combine_material_dyn_set.as_ref().unwrap().descriptor_set().get_raw_for_gpu_read(resource_manager);
+            let descriptor_set_per_pass = self.bloom_combine_material_dyn_set.as_ref().unwrap().descriptor_set().get();
 
             bloom_combine_renderpass.update(
                 present_index,

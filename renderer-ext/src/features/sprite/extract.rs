@@ -110,7 +110,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         ).unwrap();
 
 
-        let texture_descriptor_set = texture_descriptor_set_arc.get_raw_for_cpu_write(&*extract_context.resource_manager);
+        let texture_descriptor_set = texture_descriptor_set_arc.get();
         //let texture_descriptor_set = texture_descriptor_set_arc.get_raw_for_gpu_read(&*resource_manager);
 
         self.extracted_sprite_data.push(ExtractedSpriteData {

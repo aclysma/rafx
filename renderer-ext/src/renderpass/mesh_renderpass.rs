@@ -337,7 +337,7 @@ impl VkMeshRenderPass {
                 // );
 
                 for mesh in meshes {
-                    let per_object_descriptor_set = mesh.per_object_descriptor_set.descriptor_set().get_raw_for_gpu_read(resource_manager);
+                    let per_object_descriptor_set = mesh.per_object_descriptor_set.descriptor_set().get();
 
                     logical_device.cmd_bind_descriptor_sets(
                         *command_buffer,
@@ -351,7 +351,7 @@ impl VkMeshRenderPass {
                     for mesh_part in &mesh.mesh_info.mesh_asset.mesh_parts {
 
                         let material_descriptor_set = resource_manager
-                            .get_material_instance_descriptor_sets_for_current_frame(&mesh_part.material_instance, 0).descriptor_sets[1];
+                            .get_material_instance_descriptor_sets(&mesh_part.material_instance, 0).descriptor_sets[1];
 
                         logical_device.cmd_bind_descriptor_sets(
                             *command_buffer,
