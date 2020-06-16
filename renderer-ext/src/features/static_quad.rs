@@ -33,7 +33,7 @@ struct StaticQuadExtractJobImpl {}
 impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext> for StaticQuadExtractJobImpl {
     fn extract_begin(
         &mut self,
-        _extract_context: &RenderJobExtractContext,
+        _extract_context: &mut RenderJobExtractContext,
         _frame_packet: &FramePacket,
         _views: &[&RenderView],
     ) {
@@ -41,7 +41,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
     }
     fn extract_frame_node(
         &mut self,
-        _extract_context: &RenderJobExtractContext,
+        _extract_context: &mut RenderJobExtractContext,
         _frame_node: PerFrameNode,
         frame_node_index: u32,
     ) {
@@ -54,7 +54,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
     fn extract_view_node(
         &mut self,
-        _extract_context: &RenderJobExtractContext,
+        _extract_context: &mut RenderJobExtractContext,
         _view: &RenderView,
         _view_node: PerViewNode,
         view_node_index: u32,
@@ -67,14 +67,14 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
     }
     fn extract_view_finalize(
         &mut self,
-        _extract_context: &RenderJobExtractContext,
+        _extract_context: &mut RenderJobExtractContext,
         _view: &RenderView,
     ) {
         log::debug!("extract_view_finalize {}", self.feature_debug_name());
     }
     fn extract_frame_finalize(
         self,
-        _extract_context: &RenderJobExtractContext,
+        _extract_context: &mut RenderJobExtractContext,
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
         log::debug!("extract_frame_finalize {}", self.feature_debug_name());
         Box::new(StaticQuadPrepareJob {})

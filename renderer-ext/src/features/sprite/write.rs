@@ -125,19 +125,3 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
         SpriteRenderFeature::feature_index()
     }
 }
-
-// impl Drop for SpriteCommandWriter {
-//     fn drop(&mut self) {
-//         for buffer in &mut self.vertex_buffers {
-//             unsafe {
-//                 ManuallyDrop::drop(buffer);
-//             }
-//         }
-//
-//         for buffer in &mut self.index_buffers {
-//             unsafe {
-//                 ManuallyDrop::drop(buffer);
-//             }
-//         }
-//     }
-// }

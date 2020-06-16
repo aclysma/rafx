@@ -118,11 +118,11 @@ pub struct MaterialInstanceDescriptorSetsForCurrentFrame {
 }
 
 #[derive(Debug)]
-struct ResourceManagerMetrics {
-    dyn_resource_metrics: dyn_resource_lookup::ResourceMetrics,
-    resource_metrics: resource_lookup::ResourceMetrics,
-    loaded_asset_metrics: LoadedAssetMetrics,
-    registered_descriptor_sets_metrics: RegisteredDescriptorSetPoolManagerMetrics,
+pub struct ResourceManagerMetrics {
+    pub dyn_resource_metrics: dyn_resource_lookup::ResourceMetrics,
+    pub resource_metrics: resource_lookup::ResourceMetrics,
+    pub loaded_asset_metrics: LoadedAssetMetrics,
+    pub registered_descriptor_sets_metrics: RegisteredDescriptorSetPoolManagerMetrics,
 }
 
 pub struct ResourceManager {
@@ -348,7 +348,7 @@ impl ResourceManager {
         Ok(())
     }
 
-    fn metrics(&self) -> ResourceManagerMetrics {
+    pub fn metrics(&self) -> ResourceManagerMetrics {
         let dyn_resource_metrics = self.dyn_resources.metrics();
         let resource_metrics = self.resources.metrics();
         let loaded_asset_metrics = self.loaded_assets.metrics();

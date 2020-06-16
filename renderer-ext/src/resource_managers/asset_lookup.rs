@@ -193,13 +193,13 @@ impl<LoadedAssetT> Default for AssetLookup<LoadedAssetT> {
 
 #[derive(Debug)]
 pub struct LoadedAssetMetrics {
-    shader_module_count: usize,
-    pipeline_count: usize,
-    material_count: usize,
-    material_instance_count: usize,
-    image_count: usize,
-    buffer_count: usize,
-    mesh_count: usize,
+    pub shader_module_count: usize,
+    pub pipeline_count: usize,
+    pub material_count: usize,
+    pub material_instance_count: usize,
+    pub image_count: usize,
+    pub buffer_count: usize,
+    pub mesh_count: usize,
 }
 
 //

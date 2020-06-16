@@ -61,7 +61,7 @@ impl DynDescriptorSet {
                 slab_key: self.descriptor_set.inner.slab_key,
             };
 
-            log::trace!("Sending a set write");
+            log::trace!("Sending a set write for {:?}", self.descriptor_set);
             self.write_set_tx.send(pending_descriptor_set_write);
         }
     }

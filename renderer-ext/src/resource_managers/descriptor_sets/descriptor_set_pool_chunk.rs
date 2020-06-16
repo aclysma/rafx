@@ -226,12 +226,13 @@ impl RegisteredDescriptorSetPoolChunk {
             let slab_key = key.0;
             let element_key = key.1;
 
-            log::trace!("Process descriptor set pending_write for {:?} {:?}. Frame in flight: {} layout {:?}", slab_key, element_key, frame_in_flight_index, self.descriptor_set_layout);
             //log::trace!("{:#?}", element);
 
             let descriptor_set_index = slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
             let descriptor_set =
                 self.descriptor_sets[frame_in_flight_index as usize][descriptor_set_index as usize];
+
+            log::trace!("Process descriptor set pending_write for {:?} {:?}. Frame in flight: {} layout {:?} set {:?}", slab_key, element_key, frame_in_flight_index, self.descriptor_set_layout, descriptor_set);
 
             let mut builder = vk::WriteDescriptorSet::builder()
                 .dst_set(descriptor_set)

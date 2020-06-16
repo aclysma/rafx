@@ -227,15 +227,15 @@ pub struct ImageViewKey {
 
 #[derive(Debug)]
 pub struct ResourceMetrics {
-    shader_module_count: usize,
-    descriptor_set_layout_count: usize,
-    pipeline_layout_count: usize,
-    renderpass_count: usize,
-    pipeline_count: usize,
-    image_count: usize,
-    image_view_count: usize,
-    sampler_count: usize,
-    buffer_count: usize,
+    pub shader_module_count: usize,
+    pub descriptor_set_layout_count: usize,
+    pub pipeline_layout_count: usize,
+    pub renderpass_count: usize,
+    pub pipeline_count: usize,
+    pub image_count: usize,
+    pub image_view_count: usize,
+    pub sampler_count: usize,
+    pub buffer_count: usize,
 }
 
 #[derive(Debug, Clone)]

@@ -13,7 +13,7 @@ pub struct DemoExtractJobImpl {
 impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteContext> for DemoExtractJobImpl {
     fn extract_begin(
         &mut self,
-        _extract_context: &DemoExtractContext,
+        _extract_context: &mut DemoExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
@@ -31,7 +31,7 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
 
     fn extract_frame_node(
         &mut self,
-        source: &DemoExtractContext,
+        extract_context: &mut DemoExtractContext,
         frame_node: PerFrameNode,
         frame_node_index: u32,
     ) {
@@ -44,13 +44,13 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
         let render_node_index = frame_node.render_node_index();
         let render_node_handle = RawSlabKey::<DemoRenderNode>::new(render_node_index);
 
-        let demo_nodes = source.resources.get::<DemoRenderNodeSet>().unwrap();
+        let demo_nodes = extract_context.resources.get::<DemoRenderNodeSet>().unwrap();
         let demo_render_node = demo_nodes.demos.get(render_node_handle).unwrap();
-        let position_component = source
+        let position_component = extract_context
             .world
             .get_component::<PositionComponent>(demo_render_node.entity)
             .unwrap();
-        let demo_component = source
+        let demo_component = extract_context
             .world
             .get_component::<DemoComponent>(demo_render_node.entity)
             .unwrap();
@@ -63,7 +63,7 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
 
     fn extract_view_node(
         &mut self,
-        _extract_context: &DemoExtractContext,
+        _extract_context: &mut DemoExtractContext,
         view: &RenderView,
         view_node: PerViewNode,
         view_node_index: u32,
@@ -80,7 +80,7 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
 
     fn extract_view_finalize(
         &mut self,
-        _extract_context: &DemoExtractContext,
+        _extract_context: &mut DemoExtractContext,
         _view: &RenderView,
     ) {
         log::debug!("extract_view_finalize {}", self.feature_debug_name());
@@ -88,7 +88,7 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
 
     fn extract_frame_finalize(
         self,
-        _extract_context: &DemoExtractContext,
+        _extract_context: &mut DemoExtractContext,
     ) -> Box<dyn PrepareJob<DemoPrepareContext, DemoWriteContext>> {
         log::debug!("extract_frame_finalize {}", self.feature_debug_name());
 

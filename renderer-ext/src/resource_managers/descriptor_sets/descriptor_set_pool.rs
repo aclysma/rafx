@@ -72,7 +72,7 @@ impl RegisteredDescriptorSetPool {
         // frames for them to finish any submits that reference them
         let descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
             MAX_FRAMES_IN_FLIGHT as u32,
-            MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32,
+            /*MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32*/ u32::MAX,
             move |device| {
                 let pool_builder = vk::DescriptorPoolCreateInfo::builder()
                     .max_sets(MAX_DESCRIPTORS_PER_POOL * MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32)
@@ -162,8 +162,9 @@ impl RegisteredDescriptorSetPool {
     ) {
         for write in self.write_set_rx.try_iter() {
             log::trace!(
-                "Received a set write for frame in flight index {}",
-                frame_in_flight_index
+                "Received a set write for frame in flight index {} {:?}",
+                frame_in_flight_index,
+                write.slab_key,
             );
             let chunk_index = write.slab_key.index() / MAX_DESCRIPTORS_PER_POOL;
             self.chunks[chunk_index as usize].schedule_write_set(

@@ -203,6 +203,7 @@ fn logging_init() {
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
         .filter_module("renderer_ext::resource_managers::descriptor_sets", log::LevelFilter::Info)
+        .filter_module("renderer_base", log::LevelFilter::Info)
         .filter_level(log_level)
         // .format(|buf, record| { //TODO: Get a frame count in here
         //     writeln!(buf,
@@ -290,7 +291,7 @@ fn rendering_init(
 
     //#[cfg(debug_assertions)]
     {
-        context = context.use_vulkan_debug_layer(true);
+        //context = context.use_vulkan_debug_layer(true);
     }
 
     let vk_context = context.build(&window_wrapper).unwrap();
@@ -370,8 +371,8 @@ fn populate_test_entities(resources: &mut Resources, world: &mut World) {
     };
 
     let sprites = ["sprite1", "sprite2", "sprite3"];
-    for i in 0..100 {
-        let position = Vec3::new(((i / 10) * 100) as f32, ((i % 10) * 100) as f32, 0.0);
+    for i in 0..200 {
+        let position = Vec3::new(((i / 10) * 25) as f32, ((i % 10) * 25) as f32, 0.0);
         //let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
         let alpha = 1.0;
         let _sprite = sprites[i % sprites.len()];
@@ -449,6 +450,11 @@ fn process_input(resources: &Resources, event_pump: &mut sdl2::EventPump) -> boo
                     if keycode == Keycode::D {
                         let stats = resources.get::<VkDeviceContext>().unwrap().allocator().calculate_stats().unwrap();
                         println!("{:#?}", stats);
+                    }
+
+                    if keycode == Keycode::M {
+                        let metrics = resources.get::<ResourceManager>().unwrap().metrics();
+                        println!("{:#?}", metrics);
                     }
                 }
 

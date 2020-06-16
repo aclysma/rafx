@@ -182,8 +182,8 @@ where
 
 #[derive(Debug)]
 pub struct ResourceMetrics {
-    image_count: usize,
-    buffer_count: usize,
+    pub image_count: usize,
+    pub buffer_count: usize,
 }
 
 #[derive(Clone)]

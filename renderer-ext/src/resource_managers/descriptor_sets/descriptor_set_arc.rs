@@ -24,6 +24,12 @@ pub(super) struct DescriptorSetArcInner {
     drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
 }
 
+impl Drop for DescriptorSetArcInner {
+    fn drop(&mut self) {
+        self.drop_tx.send(self.slab_key);
+    }
+}
+
 impl std::fmt::Debug for DescriptorSetArcInner {
     fn fmt(
         &self,

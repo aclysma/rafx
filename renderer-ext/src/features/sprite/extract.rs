@@ -58,7 +58,7 @@ impl SpriteExtractJobImpl {
 impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext> for SpriteExtractJobImpl {
     fn extract_begin(
         &mut self,
-        _extract_context: &RenderJobExtractContext,
+        _extract_context: &mut RenderJobExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
@@ -71,7 +71,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
     fn extract_frame_node(
         &mut self,
-        extract_context: &RenderJobExtractContext,
+        extract_context: &mut RenderJobExtractContext,
         frame_node: PerFrameNode,
         frame_node_index: u32,
     ) {
@@ -96,7 +96,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         // let image = sprite_component.image.clone();
         // //extract_context.resources.get_mut::<Res>
         // // make descriptor set?
-        // let resource_manager = extract_context.resources.get::<ResourceManager>().unwrap();
+        //let mut resource_manager = extract_context.resources.get_mut::<ResourceManager>().unwrap();
         //
         // resource_manager.create_dyn_descriptor_set_uninitialized();
         // resource_manager.get_image_info();
@@ -104,11 +104,14 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         //let mut resource_manager = extract_context.resources.get_mut::<ResourceManager>().unwrap();
         let texture_descriptor_set_arc = create_per_image_descriptor(
             &mut extract_context.resource_manager, //TODO: We need a thread-safe way to create descriptor sets..
+            //&mut *resource_manager,
             &self.sprite_material,
             &sprite_component.image
         ).unwrap();
 
-        let texture_descriptor_set = texture_descriptor_set_arc.get_raw_for_gpu_read(&*extract_context.resource_manager);
+
+        let texture_descriptor_set = texture_descriptor_set_arc.get_raw_for_cpu_write(&*extract_context.resource_manager);
+        //let texture_descriptor_set = texture_descriptor_set_arc.get_raw_for_gpu_read(&*resource_manager);
 
         self.extracted_sprite_data.push(ExtractedSpriteData {
             position: position_component.position,
@@ -122,7 +125,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
     fn extract_view_node(
         &mut self,
-        _extract_context: &RenderJobExtractContext,
+        _extract_context: &mut RenderJobExtractContext,
         view: &RenderView,
         view_node: PerViewNode,
         view_node_index: u32,
@@ -132,7 +135,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
     fn extract_view_finalize(
         &mut self,
-        _extract_context: &RenderJobExtractContext,
+        _extract_context: &mut RenderJobExtractContext,
         _view: &RenderView,
     ) {
 
@@ -140,7 +143,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
     fn extract_frame_finalize(
         self,
-        _extract_context: &RenderJobExtractContext,
+        _extract_context: &mut RenderJobExtractContext,
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
         let prepare_impl = SpritePrepareJobImpl::new(
             self.device_context,

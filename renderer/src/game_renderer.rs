@@ -706,6 +706,8 @@ impl GameRenderer {
         device_context: &VkDeviceContext,
         present_index: usize,
     ) -> VkResult<Vec<ash::vk::CommandBuffer>> {
+        resource_manager.on_frame_complete();
+
         // let mut resource_manager_fetch = resources.get_mut::<ResourceManager>().unwrap();
         // let mut resource_manager = &mut *resource_manager_fetch;
         //
@@ -904,7 +906,7 @@ impl GameRenderer {
 
 
         let frame_packet = frame_packet_builder.build();
-        let prepare_job_set = {
+        let extract_job_set = {
             let sprite_pipeline_info = resource_manager.get_pipeline_info(
                 &self.sprite_material,
                 self.swapchain_surface_info.as_ref().unwrap(),
@@ -929,10 +931,17 @@ impl GameRenderer {
                 &self.sprite_material,
                 descriptor_set_per_pass,
             ));
-
-            let extract_context = RenderJobExtractContext::new(&world, &resources, &resource_manager);
-            extract_job_set.extract(&extract_context, &frame_packet, &[&main_view])
+            extract_job_set
         };
+
+
+
+        let mut extract_context = RenderJobExtractContext::new(&world, &resources, resource_manager);
+        let prepare_job_set = extract_job_set.extract(
+            &mut extract_context,
+            &frame_packet,
+            &[&main_view]
+        );
 
         //let buffer_drop_sink = VkResourceDropSinkChannel::<ManuallyDrop<VkBuffer>>::new();
         let prepare_context = RenderJobPrepareContext::new(resource_manager.create_dyn_resource_allocator_set());
