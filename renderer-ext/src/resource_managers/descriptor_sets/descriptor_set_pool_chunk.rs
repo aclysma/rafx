@@ -23,14 +23,6 @@ struct PendingDescriptorSetWriteSet {
     write_set: DescriptorSetWriteSet,
 }
 
-// A write to the buffers within a single descriptor set that has been scheduled (i.e. will occur
-// over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames
-#[derive(Debug)]
-struct PendingDescriptorSetWriteBuffer {
-    slab_key: RawSlabKey<RegisteredDescriptorSet>,
-    write_buffer: DescriptorSetWriteBuffer,
-}
-
 //
 // A single chunk within a pool. This allows us to create MAX_DESCRIPTORS_PER_POOL * MAX_FRAMES_IN_FLIGHT_PLUS_1
 // descriptors for a single descriptor set layout

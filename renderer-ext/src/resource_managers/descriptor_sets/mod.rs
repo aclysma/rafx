@@ -73,22 +73,6 @@ pub struct DescriptorSetWriteBuffer {
     pub elements: FnvHashMap<DescriptorSetElementKey, Vec<u8>>,
 }
 
-// A set of writes to descriptors within a descriptor set with the key for the descriptor set that
-// should be written
-#[derive(Debug)]
-struct SlabKeyDescriptorSetWriteSet {
-    slab_key: RawSlabKey<RegisteredDescriptorSet>,
-    write_set: DescriptorSetWriteSet,
-}
-
-// A set of write to buffers that back a descriptor set with the key for the descriptor set that
-// should be written
-#[derive(Debug)]
-struct SlabKeyDescriptorSetWriteBuffer {
-    slab_key: RawSlabKey<RegisteredDescriptorSet>,
-    write_buffer: DescriptorSetWriteBuffer,
-}
-
 // Slab keys to identify descriptors can carry a payload. Anything we'd want to store per descriptor
 // set can go here, but don't have anything yet
 struct RegisteredDescriptorSet {

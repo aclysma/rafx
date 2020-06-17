@@ -26,7 +26,7 @@ fn create_per_image_descriptor(
 
     let image_info = resource_manager.get_image_info(image_handle);
     sprite_texture_descriptor.set_image(0, image_info.image_view);
-    sprite_texture_descriptor.flush();
+    sprite_texture_descriptor.flush(resource_manager);
     Ok(sprite_texture_descriptor.descriptor_set().clone())
 }
 

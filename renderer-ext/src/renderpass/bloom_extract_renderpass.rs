@@ -85,12 +85,12 @@ impl VkBloomRenderPassResources {
         let mut bloom_blur_material_dyn_set0 = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_blur_layout.descriptor_set_layout_def)?;
         bloom_blur_material_dyn_set0.set_image_raw(0, bloom_image_view0);
         bloom_blur_material_dyn_set0.set_buffer_data(2, &(0 as u32));
-        bloom_blur_material_dyn_set0.flush();
+        bloom_blur_material_dyn_set0.flush(resource_manager);
 
         let mut bloom_blur_material_dyn_set1 = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_blur_layout.descriptor_set_layout_def)?;
         bloom_blur_material_dyn_set1.set_image_raw(0, bloom_image_view1);
         bloom_blur_material_dyn_set1.set_buffer_data(2, &(1 as u32));
-        bloom_blur_material_dyn_set1.flush();
+        bloom_blur_material_dyn_set1.flush(resource_manager);
 
         Ok(VkBloomRenderPassResources {
             device_context: device_context.clone(),

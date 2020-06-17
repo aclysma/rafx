@@ -2,7 +2,6 @@ use crate::pipeline_description as dsc;
 use renderer_base::slab::{RawSlab, RawSlabKey};
 use super::RegisteredDescriptorSet;
 use super::{
-    SlabKeyDescriptorSetWriteSet, SlabKeyDescriptorSetWriteBuffer,
     DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT_PLUS_1,
     MAX_FRAMES_IN_FLIGHT, DescriptorSetElementKey, FrameInFlightIndex, DescriptorSetArc,
     DescriptorSetWriteSet,
@@ -25,23 +24,31 @@ struct PendingDescriptorSetDrop {
 }
 
 pub(super) struct RegisteredDescriptorSetPool {
-    //descriptor_set_layout_def: dsc::DescriptorSetLayout,
+    // Keeps track of descriptor sets that are in use
     pub(super) slab: RawSlab<RegisteredDescriptorSet>,
-    //pending_allocations: Vec<DescriptorSetWrite>,
+
+    // Used to allow DescriptorSetArc to trigger dropping descriptor sets
     drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
     drop_rx: Receiver<RawSlabKey<RegisteredDescriptorSet>>,
-    pub(super) write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
-    write_set_rx: Receiver<SlabKeyDescriptorSetWriteSet>,
+
+    // Used to create new pools
     descriptor_pool_allocator: VkDescriptorPoolAllocator,
+
+    // The layout of descriptor sets that this pool contains
     descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
 
+    // Defers dropping buffers
+    //TODO: We defer dropping descriptor sets so we may not need to defer dropping buffers
     buffer_drop_sink: VkResourceDropSink<ManuallyDrop<VkBuffer>>,
 
-    //descriptor_set_layout_def: dsc::DescriptorSetLayout,
+    // Metadata about buffers that back data in descriptor sets (this is an opt-in feature per binding)
     buffer_infos: Vec<DescriptorSetPoolRequiredBufferInfo>,
 
+    // The chunks that make up the pool. We allocate in batches as the pool becomes empty
     chunks: Vec<RegisteredDescriptorSetPoolChunk>,
 
+    // The drops that we will process later. This allows us to defer dropping bindings until
+    // MAX_FRAMES_IN_FLIGHT frames have passed
     pending_drops: VecDeque<PendingDescriptorSetDrop>,
 }
 
@@ -52,7 +59,6 @@ impl RegisteredDescriptorSetPool {
         descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
     ) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
-        let (write_set_tx, write_set_rx) = crossbeam_channel::unbounded();
 
         //
         // This is a little gross but it creates the pool sizes required for the
@@ -118,8 +124,6 @@ impl RegisteredDescriptorSetPool {
             slab: RawSlab::with_capacity(MAX_DESCRIPTORS_PER_POOL),
             drop_tx,
             drop_rx,
-            write_set_tx,
-            write_set_rx,
             descriptor_pool_allocator,
             descriptor_set_layout,
             chunks: Default::default(),
@@ -168,18 +172,6 @@ impl RegisteredDescriptorSetPool {
         device_context: &VkDeviceContext,
         frame_in_flight_index: FrameInFlightIndex,
     ) {
-        for write in self.write_set_rx.try_iter() {
-            log::trace!(
-                "Received a set write for {:?}",
-                write.slab_key,
-            );
-            let chunk_index = write.slab_key.index() / MAX_DESCRIPTORS_PER_POOL;
-            self.chunks[chunk_index as usize].schedule_write_set(
-                write.slab_key,
-                write.write_set,
-            );
-        }
-
         // Route messages that indicate a dropped descriptor set to the chunk that owns it
         for dropped in self.drop_rx.try_iter() {
             self.pending_drops.push_back(PendingDescriptorSetDrop {

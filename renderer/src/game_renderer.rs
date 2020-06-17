@@ -366,7 +366,7 @@ impl GameRenderer {
             "axis"
         );
 
-        println!("all waits complete");
+        log::info!("all waits complete");
 
         let debug_per_frame_layout = resource_manager.get_descriptor_set_info(&debug_material, 0, 0);
         let debug_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&debug_per_frame_layout.descriptor_set_layout_def)?;
@@ -469,7 +469,7 @@ impl GameRenderer {
             .create_dyn_material_instance_from_asset(renderer.sprite_material_instance.clone())?;
         sprite_custom_material.set_image(&"texture".to_string(), &renderer.sprite_override_image);
         sprite_custom_material.set_buffer_data(&"view_proj".to_string(), &proj);
-        sprite_custom_material.flush();
+        sprite_custom_material.flush(resource_manager);
 
         renderer.sprite_custom_material = Some(sprite_custom_material);
 
@@ -623,7 +623,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
 
         let mut bloom_extract_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout_def)?;
         bloom_extract_material_dyn_set.set_image_raw(0, swapchain.color_attachment.resolved_image_view());
-        bloom_extract_material_dyn_set.flush();
+        bloom_extract_material_dyn_set.flush(resource_manager);
         self.game_renderer.bloom_extract_material_dyn_set = Some(bloom_extract_material_dyn_set);
 
         log::trace!("Create VkBloomBlurRenderPass");
@@ -672,7 +672,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         let mut bloom_combine_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout_def)?;
         bloom_combine_material_dyn_set.set_image_raw(0, self.game_renderer.bloom_resources.as_ref().unwrap().color_image_view);
         bloom_combine_material_dyn_set.set_image_raw(1, self.game_renderer.bloom_resources.as_ref().unwrap().bloom_image_views[0]);
-        bloom_combine_material_dyn_set.flush();
+        bloom_combine_material_dyn_set.flush(resource_manager);
         self.game_renderer.bloom_combine_material_dyn_set = Some(bloom_combine_material_dyn_set);
 
         log::debug!("game renderer swapchain_created finished");
@@ -895,25 +895,25 @@ impl GameRenderer {
         }
 
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
-        self.mesh_material_per_frame_data.flush();
+        self.mesh_material_per_frame_data.flush(resource_manager);
 
         for mesh in &mut self.meshes {
-            mesh.set_view_proj(view, proj);
+            mesh.set_view_proj(view, proj, resource_manager);
         }
 
         self.debug_material_per_frame_data.set_buffer_data(0, &view_proj);
-        self.debug_material_per_frame_data.flush();
+        self.debug_material_per_frame_data.flush(resource_manager);
 
         if let Some(dyn_material_instance) = self.sprite_custom_material.as_mut() {
 
-            let sprite_override_image = if time_state.update_count() % 1 == 0 {
+            let sprite_override_image = if time_state.update_count() % 2 == 1 {
                 &self.sprite_override_image
             } else {
                 &self.sprite_override_image2
             };
 
             dyn_material_instance.set_image(&"texture".to_string(), sprite_override_image);
-            dyn_material_instance.flush();
+            dyn_material_instance.flush(resource_manager);
         }
 
 

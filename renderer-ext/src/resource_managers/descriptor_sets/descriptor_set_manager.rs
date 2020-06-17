@@ -95,12 +95,54 @@ impl RegisteredDescriptorSetPoolManager {
         self.pools.clear();
     }
 
+    pub fn create_descriptor_set_by_hash(
+        &mut self,
+        descriptor_set_layout_hash: ResourceHash,
+        write_set: DescriptorSetWriteSet,
+    ) -> VkResult<Option<DescriptorSetArc>> {
+        let pool = self.pools.get_mut(&descriptor_set_layout_hash);
+
+        if let Some(pool) = pool {
+            // Allocate a descriptor set
+            Ok(Some(pool.insert(
+                &self.device_context,
+                write_set.clone(),
+            )?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn create_descriptor_set(
+        &mut self,
+        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
+        descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
+        write_set: DescriptorSetWriteSet,
+    ) -> VkResult<DescriptorSetArc> {
+        // Get or create the pool for the layout
+        let hash = ResourceHash::from_key(descriptor_set_layout_def);
+        let device_context = self.device_context.clone();
+        let pool = self.pools.entry(hash).or_insert_with(|| {
+            RegisteredDescriptorSetPool::new(
+                &device_context,
+                descriptor_set_layout_def,
+                descriptor_set_layout,
+            )
+        });
+
+        // Allocate a descriptor set
+        pool.insert(
+            &self.device_context,
+            write_set.clone(),
+        )
+    }
+
     //TODO: Is creating and immediately modifying causing multiple writes?
     fn do_create_dyn_descriptor_set(
         &mut self,
-        write_set: DescriptorSetWriteSet,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
         descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
+        write_set: DescriptorSetWriteSet,
     ) -> VkResult<DynDescriptorSet> {
         // Get or create the pool for the layout
         let hash = ResourceHash::from_key(descriptor_set_layout_def);
@@ -121,9 +163,9 @@ impl RegisteredDescriptorSetPoolManager {
 
         // Create the DynDescriptorSet
         let dyn_descriptor_set = DynDescriptorSet::new(
-            write_set,
+            hash,
             descriptor_set,
-            pool.write_set_tx.clone(),
+            write_set,
         );
 
         Ok(dyn_descriptor_set)
@@ -136,9 +178,9 @@ impl RegisteredDescriptorSetPoolManager {
     ) -> VkResult<DynDescriptorSet> {
         let write_set = super::create_uninitialized_write_set_for_layout(descriptor_set_layout_def);
         self.do_create_dyn_descriptor_set(
-            write_set,
             descriptor_set_layout_def,
             descriptor_set_layout,
+            write_set,
         )
     }
 
@@ -187,8 +229,11 @@ impl RegisteredDescriptorSetPoolManager {
                 .pipeline_layout_def
                 .descriptor_set_layouts[layout_index];
 
-            let dyn_descriptor_set =
-                self.do_create_dyn_descriptor_set(write_set, layout_def, layout.clone())?;
+            let dyn_descriptor_set = self.do_create_dyn_descriptor_set(
+                layout_def,
+                layout.clone(),
+                write_set
+            )?;
             dyn_descriptor_sets.push(dyn_descriptor_set);
         }
 

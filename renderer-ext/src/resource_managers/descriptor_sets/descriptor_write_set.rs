@@ -91,6 +91,14 @@ pub struct DescriptorSetWriteSet {
     pub elements: FnvHashMap<DescriptorSetElementKey, DescriptorSetElementWrite>,
 }
 
+impl DescriptorSetWriteSet {
+    pub fn copy_from(&mut self, other: &DescriptorSetWriteSet) {
+        for (k, v) in other.elements.iter() {
+            self.elements.insert(k.clone(), v.clone());
+        }
+    }
+}
+
 pub fn create_uninitialized_write_set_for_layout(
     layout: &dsc::DescriptorSetLayout
 ) -> DescriptorSetWriteSet {

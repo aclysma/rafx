@@ -1,25 +1,30 @@
 use super::DescriptorSetArc;
 use super::DescriptorSetWriteSet;
 use super::DescriptorSetWriteBuffer;
-use super::SlabKeyDescriptorSetWriteSet;
-use super::SlabKeyDescriptorSetWriteBuffer;
 use super::DescriptorSetElementKey;
-use crate::resource_managers::resource_lookup::{ImageViewResource};
+use crate::resource_managers::resource_lookup::{ImageViewResource, ResourceHash};
 use crate::resource_managers::asset_lookup::SlotNameLookup;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
 use crate::resource_managers::descriptor_sets::descriptor_write_set::{DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue};
 use ash::vk;
-use crate::resource_managers::ResourceArc;
+use crate::resource_managers::{ResourceArc, ResourceManager};
 use std::fmt::Formatter;
+use ash::prelude::VkResult;
 
 pub struct DynDescriptorSet {
+    // Hash to the descriptor set layout. We use the hash to quickly look up the layout and we
+    // assume the pool for the layout will already exist in the descriptor set manager
+    descriptor_set_layout_hash: ResourceHash,
+
+    // The actual descriptor set
     descriptor_set: DescriptorSetArc,
 
-    // All the data required to update the descriptor set
+    // A full copy of the data the descriptor set has been assigned
     write_set: DescriptorSetWriteSet,
 
-    write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
+    // As we add modifications to the set, we will insert them here. They are merged with write_set
+    // when we finally flush the descriptor set
     pending_write_set: DescriptorSetWriteSet,
 }
 
@@ -36,14 +41,14 @@ impl std::fmt::Debug for DynDescriptorSet {
 
 impl DynDescriptorSet {
     pub(super) fn new(
-        write_set: DescriptorSetWriteSet,
+        descriptor_set_layout_hash: ResourceHash,
         descriptor_set: DescriptorSetArc,
-        write_set_tx: Sender<SlabKeyDescriptorSetWriteSet>,
+        write_set: DescriptorSetWriteSet,
     ) -> Self {
         DynDescriptorSet {
+            descriptor_set_layout_hash,
             descriptor_set,
             write_set,
-            write_set_tx,
             pending_write_set: Default::default(),
         }
     }
@@ -53,19 +58,21 @@ impl DynDescriptorSet {
     }
 
     //TODO: Make a commit-like API so that it's not so easy to forget to call flush
-    pub fn flush(&mut self) {
+    pub fn flush(&mut self, resource_manager: &mut ResourceManager) -> VkResult<()> {
         if !self.pending_write_set.elements.is_empty() {
             let mut pending_write_set = Default::default();
             std::mem::swap(&mut pending_write_set, &mut self.pending_write_set);
 
-            let pending_descriptor_set_write = SlabKeyDescriptorSetWriteSet {
-                write_set: pending_write_set,
-                slab_key: self.descriptor_set.inner.slab_key,
-            };
+            self.write_set.copy_from(&pending_write_set);
 
-            log::trace!("Sending a set write for {:?}", self.descriptor_set);
-            self.write_set_tx.send(pending_descriptor_set_write);
+            // create it
+            self.descriptor_set = resource_manager.registered_descriptor_sets.create_descriptor_set_by_hash(
+                self.descriptor_set_layout_hash,
+                pending_write_set
+            )?.unwrap();
         }
+
+        Ok(())
     }
 
     pub fn set_image(
@@ -184,10 +191,12 @@ impl DynPassMaterialInstance {
         &self.descriptor_sets[layout_index as usize]
     }
 
-    pub fn flush(&mut self) {
+    pub fn flush(&mut self, resource_manager: &mut ResourceManager) -> VkResult<()> {
         for set in &mut self.descriptor_sets {
-            set.flush()
+            set.flush(resource_manager)?
         }
+
+        Ok(())
     }
 
     pub fn set_image(
@@ -241,10 +250,12 @@ impl DynMaterialInstance {
         &self.passes[pass_index as usize]
     }
 
-    pub fn flush(&mut self) {
+    pub fn flush(&mut self, resource_manager: &mut ResourceManager) -> VkResult<()> {
         for pass in &mut self.passes {
-            pass.flush()
+            pass.flush(resource_manager)?
         }
+
+        Ok(())
     }
 
     pub fn set_image(

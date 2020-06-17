@@ -123,6 +123,7 @@ impl StaticMeshInstance {
         &mut self,
         view: glam::Mat4,
         proj: glam::Mat4,
+        resource_manager: &mut ResourceManager
     ) {
         let model_view = view * self.world_transform;
         let model_view_proj = proj * model_view;
@@ -133,7 +134,7 @@ impl StaticMeshInstance {
         };
 
         self.per_object_descriptor_set.set_buffer_data(0, &per_object_param);
-        self.per_object_descriptor_set.flush();
+        self.per_object_descriptor_set.flush(resource_manager);
     }
 }
 

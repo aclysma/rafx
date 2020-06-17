@@ -407,7 +407,6 @@ impl VkImGuiRenderPass {
             .subpasses(&subpasses)
             .dependencies(&dependencies);
 
-        println!("create_renderpass_create_info returned");
         f(&renderpass_create_info)
     }
 
