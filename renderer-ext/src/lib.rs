@@ -34,7 +34,7 @@ use renderer_shell_vulkan::{VkResourceDropSink, VkBuffer, VkDeviceContext};
 use renderer_shell_vulkan::cleanup::VkResourceDropSinkChannel;
 use std::mem::ManuallyDrop;
 use ash::vk;
-use crate::resource_managers::{DynResourceLookupSet, ResourceManager};
+use crate::resource_managers::{DynResourceAllocatorSet, ResourceManager};
 use atelier_assets::loader::handle::Handle;
 use crate::pipeline::image::ImageAsset;
 
@@ -77,12 +77,12 @@ impl RenderJobExtractContext {
 }
 
 pub struct RenderJobPrepareContext {
-    pub dyn_resource_lookups: DynResourceLookupSet
+    pub dyn_resource_lookups: DynResourceAllocatorSet
 }
 
 impl RenderJobPrepareContext {
     pub fn new(
-        resource_allocators: DynResourceLookupSet,
+        resource_allocators: DynResourceAllocatorSet,
     ) -> Self {
         RenderJobPrepareContext {
             dyn_resource_lookups: resource_allocators
@@ -93,13 +93,13 @@ impl RenderJobPrepareContext {
 // Used to produce RenderJobWriteContexts per each job
 pub struct RenderJobWriteContextFactory {
     pub device_context: VkDeviceContext,
-    pub dyn_resource_lookups: DynResourceLookupSet
+    pub dyn_resource_lookups: DynResourceAllocatorSet
 }
 
 impl RenderJobWriteContextFactory {
     pub fn new(
         device_context: VkDeviceContext,
-        resource_allocators: DynResourceLookupSet,
+        resource_allocators: DynResourceAllocatorSet,
     ) -> Self {
         RenderJobWriteContextFactory {
             device_context,
@@ -121,14 +121,14 @@ impl RenderJobWriteContextFactory {
 
 pub struct RenderJobWriteContext {
     pub device_context: VkDeviceContext,
-    pub dyn_resource_lookups: DynResourceLookupSet,
+    pub dyn_resource_lookups: DynResourceAllocatorSet,
     pub command_buffer: vk::CommandBuffer,
 }
 
 impl RenderJobWriteContext {
     pub fn new(
         device_context: VkDeviceContext,
-        resource_allocators: DynResourceLookupSet,
+        resource_allocators: DynResourceAllocatorSet,
         command_buffer: vk::CommandBuffer,
     ) -> Self {
         RenderJobWriteContext {

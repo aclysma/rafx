@@ -31,8 +31,8 @@ use resource_lookup::ResourceHash;
 use resource_lookup::ResourceLookupSet;
 use resource_lookup::DescriptorSetLayoutResource;
 
-mod dyn_resource_lookup;
-pub use dyn_resource_lookup::DynResourceLookupSet;
+mod dyn_resource_allocator;
+pub use dyn_resource_allocator::DynResourceAllocatorSet;
 
 mod load_queue;
 use load_queue::LoadQueues;
@@ -80,7 +80,7 @@ pub use resource_lookup::ImageViewResource;
 use crate::pipeline::gltf::MeshAsset;
 use crate::pipeline::buffer::BufferAsset;
 use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh};
-use crate::resource_managers::dyn_resource_lookup::DynResourceLookupManagerSet;
+use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -121,7 +121,7 @@ pub struct MaterialInstanceDescriptorSets {
 
 #[derive(Debug)]
 pub struct ResourceManagerMetrics {
-    pub dyn_resource_metrics: dyn_resource_lookup::ResourceMetrics,
+    pub dyn_resource_metrics: dyn_resource_allocator::ResourceMetrics,
     pub resource_metrics: resource_lookup::ResourceMetrics,
     pub loaded_asset_metrics: LoadedAssetMetrics,
     pub registered_descriptor_sets_metrics: RegisteredDescriptorSetPoolManagerMetrics,
@@ -130,7 +130,7 @@ pub struct ResourceManagerMetrics {
 pub struct ResourceManager {
     device_context: VkDeviceContext,
 
-    dyn_resources: DynResourceLookupManagerSet,
+    dyn_resources: DynResourceAllocatorManagerSet,
     resources: ResourceLookupSet,
     loaded_assets: LoadedAssetLookupSet,
     load_queues: LoadQueueSet,
@@ -143,7 +143,7 @@ impl ResourceManager {
     pub fn new(device_context: &VkDeviceContext) -> Self {
         ResourceManager {
             device_context: device_context.clone(),
-            dyn_resources: DynResourceLookupManagerSet::new(
+            dyn_resources: DynResourceAllocatorManagerSet::new(
                 device_context,
                 renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
             ),
@@ -189,7 +189,7 @@ impl ResourceManager {
         self.load_queues.meshes.create_load_handler()
     }
 
-    pub fn create_dyn_resource_allocator_set(&self) -> DynResourceLookupSet {
+    pub fn create_dyn_resource_allocator_set(&self) -> DynResourceAllocatorSet {
         self.dyn_resources.create_allocator_set()
     }
 

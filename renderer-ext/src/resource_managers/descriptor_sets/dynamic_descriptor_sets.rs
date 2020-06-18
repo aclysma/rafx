@@ -12,6 +12,9 @@ use crate::resource_managers::{ResourceArc, ResourceManager};
 use std::fmt::Formatter;
 use ash::prelude::VkResult;
 
+//TODO: Create a builder that is not initialized, this will help avoid forgetting to call flush
+// as well as prevent double-allocating (allocating a descriptor set based on a material instance
+// just to immediately modify one part of it and reallocate it)
 pub struct DynDescriptorSet {
     // Hash to the descriptor set layout. We use the hash to quickly look up the layout and we
     // assume the pool for the layout will already exist in the descriptor set manager

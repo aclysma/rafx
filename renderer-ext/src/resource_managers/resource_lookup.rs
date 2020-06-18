@@ -619,6 +619,9 @@ impl ResourceLookupSet {
         }
     }
 
+    // A key difference between this insert_image and the insert_image in a DynResourceAllocator
+    // is that these can be retrieved. However, a mutable reference is required. This one is
+    // more appropriate to use with loaded assets, and DynResourceAllocator with runtime assets
     pub fn insert_image(
         &mut self,
         image: ManuallyDrop<VkImage>,
@@ -634,6 +637,9 @@ impl ResourceLookupSet {
         (image_key, image)
     }
 
+    // A key difference between this insert_buffer and the insert_buffer in a DynResourceAllocator
+    // is that these can be retrieved. However, a mutable reference is required. This one is
+    // more appropriate to use with loaded assets, and DynResourceAllocator with runtime assets
     pub fn insert_buffer(
         &mut self,
         buffer: ManuallyDrop<VkBuffer>,
