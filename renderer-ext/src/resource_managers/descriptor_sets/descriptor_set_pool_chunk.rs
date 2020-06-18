@@ -2,7 +2,7 @@ use ash::vk;
 use ash::version::DeviceV1_0;
 use super::{
     DescriptorLayoutBufferSet, DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL,
-    MAX_FRAMES_IN_FLIGHT_PLUS_1, RegisteredDescriptorSet, DescriptorSetWriteSet,
+    MAX_FRAMES_IN_FLIGHT_PLUS_1, ManagedDescriptorSet, DescriptorSetWriteSet,
     FrameInFlightIndex, MAX_FRAMES_IN_FLIGHT, DescriptorSetWriteBuffer, DescriptorSetElementKey,
 };
 use std::collections::VecDeque;
@@ -19,7 +19,7 @@ use super::DescriptorSetWriteElementBufferData;
 // over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames
 #[derive(Debug)]
 struct PendingDescriptorSetWriteSet {
-    slab_key: RawSlabKey<RegisteredDescriptorSet>,
+    slab_key: RawSlabKey<ManagedDescriptorSet>,
     write_set: DescriptorSetWriteSet,
 }
 
@@ -27,7 +27,7 @@ struct PendingDescriptorSetWriteSet {
 // A single chunk within a pool. This allows us to create MAX_DESCRIPTORS_PER_POOL * MAX_FRAMES_IN_FLIGHT_PLUS_1
 // descriptors for a single descriptor set layout
 //
-pub(super) struct RegisteredDescriptorSetPoolChunk {
+pub(super) struct ManagedDescriptorSetPoolChunk {
     // We only need the layout for logging
     descriptor_set_layout: vk::DescriptorSetLayout,
 
@@ -45,7 +45,7 @@ pub(super) struct RegisteredDescriptorSetPoolChunk {
     pending_set_writes: VecDeque<PendingDescriptorSetWriteSet>,
 }
 
-impl RegisteredDescriptorSetPoolChunk {
+impl ManagedDescriptorSetPoolChunk {
     pub(super) fn new(
         device_context: &VkDeviceContext,
         buffer_info: &[DescriptorSetPoolRequiredBufferInfo],
@@ -115,7 +115,7 @@ impl RegisteredDescriptorSetPoolChunk {
                 .update_descriptor_sets(&descriptor_writes, &[]);
         }
 
-        Ok(RegisteredDescriptorSetPoolChunk {
+        Ok(ManagedDescriptorSetPoolChunk {
             descriptor_set_layout,
             pool,
             descriptor_sets,
@@ -137,7 +137,7 @@ impl RegisteredDescriptorSetPoolChunk {
 
     pub(super) fn schedule_write_set(
         &mut self,
-        slab_key: RawSlabKey<RegisteredDescriptorSet>,
+        slab_key: RawSlabKey<ManagedDescriptorSet>,
         mut write_set: DescriptorSetWriteSet,
     ) -> vk::DescriptorSet {
         log::trace!(
@@ -178,7 +178,7 @@ impl RegisteredDescriptorSetPoolChunk {
         //let mut vk_buffer_infos = vec![];
 
         #[derive(PartialEq, Eq, Hash, Debug)]
-        struct SlabElementKey(RawSlabKey<RegisteredDescriptorSet>, DescriptorSetElementKey);
+        struct SlabElementKey(RawSlabKey<ManagedDescriptorSet>, DescriptorSetElementKey);
 
         // Flatten the vec of hash maps into a single hashmap. This eliminates any duplicate
         // sets with the most recent set taking precedence

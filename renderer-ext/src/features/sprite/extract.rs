@@ -4,7 +4,7 @@ use renderer_base::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode,
 use renderer_base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJobImpl;
 use renderer_shell_vulkan::VkDeviceContext;
-use crate::resource_managers::{PipelineSwapchainInfo, ResourceManager};
+use crate::resource_managers::{PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef};
 use ash::vk;
 use crate::pipeline::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
@@ -16,22 +16,25 @@ use crate::resource_managers::DescriptorSetArc;
 // but I'd prefer descriptor set creation occur during the prepare phase
 fn create_per_image_descriptor(
     resource_manager: &mut ResourceManager,
+    descriptor_set_allocator: &mut DescriptorSetAllocatorRef,
     sprite_material: &Handle<MaterialAsset>,
     image_handle: &Handle<ImageAsset>,
 ) -> VkResult<DescriptorSetArc> {
+
     let descriptor_set_info = resource_manager.get_descriptor_set_info(sprite_material, 0, 1);
-    let mut sprite_texture_descriptor = resource_manager.create_dyn_descriptor_set_uninitialized(
+    let mut sprite_texture_descriptor = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
         &descriptor_set_info.descriptor_set_layout,
     )?;
 
     let image_info = resource_manager.get_image_info(image_handle);
     sprite_texture_descriptor.set_image(0, image_info.image_view);
-    sprite_texture_descriptor.flush(resource_manager);
+    sprite_texture_descriptor.flush(descriptor_set_allocator);
     Ok(sprite_texture_descriptor.descriptor_set().clone())
 }
 
 pub struct SpriteExtractJobImpl {
     device_context: VkDeviceContext,
+    descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     sprite_material: Handle<MaterialAsset>,
     descriptor_set_per_pass: vk::DescriptorSet,
@@ -41,12 +44,14 @@ pub struct SpriteExtractJobImpl {
 impl SpriteExtractJobImpl {
     pub fn new(
         device_context: VkDeviceContext,
+        descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
         sprite_material: &Handle<MaterialAsset>,
         descriptor_set_per_pass: vk::DescriptorSet,
     ) -> Self {
         SpriteExtractJobImpl {
             device_context,
+            descriptor_set_allocator,
             pipeline_info,
             sprite_material: sprite_material.clone(),
             descriptor_set_per_pass,
@@ -58,7 +63,7 @@ impl SpriteExtractJobImpl {
 impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext> for SpriteExtractJobImpl {
     fn extract_begin(
         &mut self,
-        _extract_context: &mut RenderJobExtractContext,
+        extract_context: &mut RenderJobExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
@@ -104,7 +109,9 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         //let mut resource_manager = extract_context.resources.get_mut::<ResourceManager>().unwrap();
         let texture_descriptor_set_arc = create_per_image_descriptor(
             &mut extract_context.resource_manager, //TODO: We need a thread-safe way to create descriptor sets..
+            &mut self.descriptor_set_allocator,
             //&mut *resource_manager,
+            //self.
             &self.sprite_material,
             &sprite_component.image
         ).unwrap();

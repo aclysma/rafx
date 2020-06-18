@@ -58,12 +58,15 @@ use asset_lookup::SlotNameLookup;
 
 mod descriptor_sets;
 use descriptor_sets::DescriptorSetAllocator;
+pub use descriptor_sets::DescriptorSetAllocatorRef;
+pub use descriptor_sets::DescriptorSetAllocatorProvider;
 pub use descriptor_sets::DescriptorSetArc;
 use descriptor_sets::DescriptorSetPoolMetrics;
 use descriptor_sets::DescriptorSetAllocatorMetrics;
 pub use descriptor_sets::DynDescriptorSet;
 pub use descriptor_sets::DynPassMaterialInstance;
 pub use descriptor_sets::DynMaterialInstance;
+use descriptor_sets::DescriptorSetWriteSet;
 
 mod upload;
 use upload::UploadQueue;
@@ -81,6 +84,7 @@ use crate::pipeline::gltf::MeshAsset;
 use crate::pipeline::buffer::BufferAsset;
 use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh};
 use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
+use crate::resource_managers::descriptor_sets::{DescriptorSetAllocatorManager};
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -124,7 +128,7 @@ pub struct ResourceManagerMetrics {
     pub dyn_resource_metrics: dyn_resource_allocator::ResourceMetrics,
     pub resource_metrics: resource_lookup::ResourceMetrics,
     pub loaded_asset_metrics: LoadedAssetMetrics,
-    pub registered_descriptor_sets_metrics: DescriptorSetAllocatorMetrics,
+    pub resource_descriptor_sets_metrics: DescriptorSetAllocatorMetrics,
 }
 
 pub struct ResourceManager {
@@ -135,7 +139,8 @@ pub struct ResourceManager {
     loaded_assets: LoadedAssetLookupSet,
     load_queues: LoadQueueSet,
     swapchain_surfaces: ActiveSwapchainSurfaceInfoSet,
-    registered_descriptor_sets: DescriptorSetAllocator,
+    resource_descriptor_sets: DescriptorSetAllocator,
+    descriptor_set_allocator: DescriptorSetAllocatorManager,
     upload_manager: UploadManager,
 }
 
@@ -154,7 +159,8 @@ impl ResourceManager {
             loaded_assets: Default::default(),
             load_queues: Default::default(),
             swapchain_surfaces: Default::default(),
-            registered_descriptor_sets: DescriptorSetAllocator::new(device_context),
+            resource_descriptor_sets: DescriptorSetAllocator::new(device_context),
+            descriptor_set_allocator: DescriptorSetAllocatorManager::new(device_context),
             upload_manager: UploadManager::new(device_context),
         }
     }
@@ -191,6 +197,14 @@ impl ResourceManager {
 
     pub fn create_dyn_resource_allocator_set(&self) -> DynResourceAllocatorSet {
         self.dyn_resources.create_allocator_set()
+    }
+
+    pub fn create_descriptor_set_allocator(&self) -> DescriptorSetAllocatorRef {
+        self.descriptor_set_allocator.get_allocator()
+    }
+
+    pub fn create_descriptor_set_allocator_provider(&self) -> DescriptorSetAllocatorProvider {
+        self.descriptor_set_allocator.create_allocator_provider()
     }
 
     pub fn get_image_info(
@@ -340,13 +354,15 @@ impl ResourceManager {
 
     // Call just before rendering
     pub fn on_begin_frame(&mut self) -> VkResult<()> {
-        self.registered_descriptor_sets.update();
+        self.resource_descriptor_sets.flush_changes();
         Ok(())
     }
 
     pub fn on_frame_complete(&mut self) -> VkResult<()> {
         self.resources.on_frame_complete();
         self.dyn_resources.on_frame_complete();
+        self.resource_descriptor_sets.on_frame_complete();
+        self.descriptor_set_allocator.on_frame_complete();
         Ok(())
     }
 
@@ -354,13 +370,13 @@ impl ResourceManager {
         let dyn_resource_metrics = self.dyn_resources.metrics();
         let resource_metrics = self.resources.metrics();
         let loaded_asset_metrics = self.loaded_assets.metrics();
-        let registered_descriptor_sets_metrics = self.registered_descriptor_sets.metrics();
+        let resource_descriptor_sets_metrics = self.resource_descriptor_sets.metrics();
 
         ResourceManagerMetrics {
             dyn_resource_metrics,
             resource_metrics,
             loaded_asset_metrics,
-            registered_descriptor_sets_metrics,
+            resource_descriptor_sets_metrics,
         }
     }
 
@@ -727,8 +743,7 @@ impl ResourceManager {
             .get_latest(material_instance_asset.material.load_handle())
             .unwrap();
 
-        //let mut material_instance_descriptor_set_writes = Vec::with_capacity(material_asset.passes.len());
-
+        let mut material_instance_descriptor_set_writes = Vec::with_capacity(material_asset.passes.len());
 
         log::trace!("load_material_instance slot assignments\n{:#?}", material_instance_asset.slot_assignments);
 
@@ -746,7 +761,7 @@ impl ResourceManager {
             log::trace!("load_material_instance descriptor set write\n{:#?}", pass_descriptor_set_writes);
 
             // Save the
-            //material_instance_descriptor_set_writes.push(pass_descriptor_set_writes.clone());
+            material_instance_descriptor_set_writes.push(pass_descriptor_set_writes.clone());
 
             // This will contain the descriptor sets created for this pass, one for each set within the pass
             let mut pass_descriptor_sets = Vec::with_capacity(pass_descriptor_set_writes.len());
@@ -757,7 +772,7 @@ impl ResourceManager {
             //let layouts = pass.pipeline_create_data.pipeline_layout.iter().zip(&pass.pipeline_create_data.pipeline_layout_def);
             for (layout_index, layout_writes) in pass_descriptor_set_writes.into_iter().enumerate()
             {
-                let descriptor_set = self.registered_descriptor_sets.create_descriptor_set(
+                let descriptor_set = self.resource_descriptor_sets.create_descriptor_set(
                     &pass.pipeline_create_data.descriptor_set_layout_arcs[layout_index],
                     layout_writes,
                 )?;
@@ -774,6 +789,7 @@ impl ResourceManager {
             material: material_instance_asset.material.clone(),
             material_descriptor_sets,
             slot_assignments: material_instance_asset.slot_assignments.clone(),
+            descriptor_set_writes: material_instance_descriptor_set_writes,
         })
     }
 
@@ -794,15 +810,17 @@ impl ResourceManager {
     }
 
     pub fn create_dyn_descriptor_set_uninitialized(
-        &mut self,
+        &self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
     ) -> VkResult<DynDescriptorSet> {
-        self.registered_descriptor_sets
+        descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(descriptor_set_layout)
     }
 
     pub fn create_dyn_pass_material_instance_uninitialized(
-        &mut self,
+        &self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
         material: Handle<MaterialAsset>,
         pass_index: u32,
     ) -> VkResult<DynPassMaterialInstance> {
@@ -812,7 +830,7 @@ impl ResourceManager {
             .get_latest(material.load_handle())
             .unwrap();
 
-        self.registered_descriptor_sets
+        descriptor_set_allocator
             .create_dyn_pass_material_instance_uninitialized(
                 &material_asset.passes[pass_index as usize],
                 &self.loaded_assets,
@@ -821,6 +839,7 @@ impl ResourceManager {
 
     pub fn create_dyn_pass_material_instance_from_asset(
         &mut self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
         material_instance: Handle<MaterialInstanceAsset>,
         pass_index: u32,
     ) -> VkResult<DynPassMaterialInstance> {
@@ -836,17 +855,16 @@ impl ResourceManager {
             .get_latest(material_instance_asset.material.load_handle())
             .unwrap();
 
-        self.registered_descriptor_sets
+        descriptor_set_allocator
             .create_dyn_pass_material_instance_from_asset(
                 &material_asset.passes[pass_index as usize],
-                &material_instance_asset,
-                &self.loaded_assets,
-                &mut self.resources,
+                material_instance_asset.descriptor_set_writes[pass_index as usize].clone(),
             )
     }
 
     pub fn create_dyn_material_instance_uninitialized(
-        &mut self,
+        &self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
         material: Handle<MaterialAsset>,
     ) -> VkResult<DynMaterialInstance> {
         let material_asset = self
@@ -855,12 +873,13 @@ impl ResourceManager {
             .get_latest(material.load_handle())
             .unwrap();
 
-        self.registered_descriptor_sets
+        descriptor_set_allocator
             .create_dyn_material_instance_uninitialized(material_asset, &self.loaded_assets)
     }
 
     pub fn create_dyn_material_instance_from_asset(
-        &mut self,
+        &self, // mut required because the asset may describe a sampler that needs to be created
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
         material_instance: Handle<MaterialInstanceAsset>,
     ) -> VkResult<DynMaterialInstance> {
         let material_instance_asset = self
@@ -875,12 +894,10 @@ impl ResourceManager {
             .get_latest(material_instance_asset.material.load_handle())
             .unwrap();
 
-        self.registered_descriptor_sets
+        descriptor_set_allocator
             .create_dyn_material_instance_from_asset(
                 material_asset,
                 material_instance_asset,
-                &self.loaded_assets,
-                &mut self.resources,
             )
     }
 }
@@ -896,7 +913,7 @@ impl Drop for ResourceManager {
 
             // Drop all descriptors. These bind to raw resources, so we need to drop them before
             // dropping resources
-            self.registered_descriptor_sets.destroy();
+            self.resource_descriptor_sets.destroy();
 
             // Now drop all resources with a zero ref count and warn for any resources that remain
             self.resources.destroy();

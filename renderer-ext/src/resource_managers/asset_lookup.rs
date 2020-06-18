@@ -12,6 +12,7 @@ use std::sync::Arc;
 use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource, ImageKey, BufferKey};
 use crate::pipeline::gltf::MeshAsset;
 use crate::resource_managers::ResourceArc;
+use super::DescriptorSetWriteSet;
 
 //
 // The "loaded" state of assets. Assets may have dependencies. Arcs to those dependencies ensure
@@ -66,6 +67,7 @@ pub struct LoadedMaterialInstance {
     pub material: Handle<MaterialAsset>,
     pub material_descriptor_sets: Vec<Vec<DescriptorSetArc>>,
     pub slot_assignments: Vec<MaterialInstanceSlotAssignment>,
+    pub descriptor_set_writes: Vec<Vec<DescriptorSetWriteSet>>,
 }
 
 pub struct LoadedImage {

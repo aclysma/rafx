@@ -108,7 +108,8 @@ impl StaticMeshInstance {
     ) -> VkResult<Self> {
         let mesh_info = resource_manager.get_mesh_info(mesh);
         let object_descriptor_set = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
-        let per_object_descriptor_set = resource_manager.create_dyn_descriptor_set_uninitialized(&object_descriptor_set.descriptor_set_layout)?;
+        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
+        let per_object_descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&object_descriptor_set.descriptor_set_layout)?;
 
         let world_transform = glam::Mat4::from_translation(position);
 
@@ -133,8 +134,9 @@ impl StaticMeshInstance {
             model_view_proj
         };
 
+        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
         self.per_object_descriptor_set.set_buffer_data(0, &per_object_param);
-        self.per_object_descriptor_set.flush(resource_manager);
+        self.per_object_descriptor_set.flush(&mut descriptor_set_allocator);
     }
 }
 

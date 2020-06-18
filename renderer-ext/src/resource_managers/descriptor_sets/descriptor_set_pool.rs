@@ -1,6 +1,6 @@
 use crate::pipeline_description as dsc;
 use renderer_base::slab::{RawSlab, RawSlabKey};
-use super::RegisteredDescriptorSet;
+use super::ManagedDescriptorSet;
 use super::{
     DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT_PLUS_1,
     MAX_FRAMES_IN_FLIGHT, DescriptorSetElementKey, FrameInFlightIndex, DescriptorSetArc,
@@ -13,23 +13,23 @@ use std::mem::ManuallyDrop;
 use ash::vk;
 use ash::version::DeviceV1_0;
 use ash::prelude::VkResult;
-use super::RegisteredDescriptorSetPoolChunk;
+use super::ManagedDescriptorSetPoolChunk;
 use crate::resource_managers::ResourceArc;
 use std::collections::VecDeque;
 use crate::resource_managers::upload::InProgressUploadPollResult::Pending;
 
 struct PendingDescriptorSetDrop {
-    slab_key: RawSlabKey<RegisteredDescriptorSet>,
+    slab_key: RawSlabKey<ManagedDescriptorSet>,
     live_until_frame: u32,
 }
 
-pub(super) struct RegisteredDescriptorSetPool {
+pub(super) struct ManagedDescriptorSetPool {
     // Keeps track of descriptor sets that are in use
-    pub(super) slab: RawSlab<RegisteredDescriptorSet>,
+    pub(super) slab: RawSlab<ManagedDescriptorSet>,
 
     // Used to allow DescriptorSetArc to trigger dropping descriptor sets
-    drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
-    drop_rx: Receiver<RawSlabKey<RegisteredDescriptorSet>>,
+    drop_tx: Sender<RawSlabKey<ManagedDescriptorSet>>,
+    drop_rx: Receiver<RawSlabKey<ManagedDescriptorSet>>,
 
     // Used to create new pools
     descriptor_pool_allocator: VkDescriptorPoolAllocator,
@@ -45,14 +45,14 @@ pub(super) struct RegisteredDescriptorSetPool {
     buffer_infos: Vec<DescriptorSetPoolRequiredBufferInfo>,
 
     // The chunks that make up the pool. We allocate in batches as the pool becomes empty
-    chunks: Vec<RegisteredDescriptorSetPoolChunk>,
+    chunks: Vec<ManagedDescriptorSetPoolChunk>,
 
     // The drops that we will process later. This allows us to defer dropping bindings until
     // MAX_FRAMES_IN_FLIGHT frames have passed
     pending_drops: VecDeque<PendingDescriptorSetDrop>,
 }
 
-impl RegisteredDescriptorSetPool {
+impl ManagedDescriptorSetPool {
     pub fn new(
         device_context: &VkDeviceContext,
         descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
@@ -119,7 +119,7 @@ impl RegisteredDescriptorSetPool {
             }
         }
 
-        RegisteredDescriptorSetPool {
+        ManagedDescriptorSetPool {
             slab: RawSlab::with_capacity(MAX_DESCRIPTORS_PER_POOL),
             drop_tx,
             drop_rx,
@@ -137,7 +137,7 @@ impl RegisteredDescriptorSetPool {
         device_context: &VkDeviceContext,
         write_set: DescriptorSetWriteSet,
     ) -> VkResult<DescriptorSetArc> {
-        let registered_set = RegisteredDescriptorSet {
+        let registered_set = ManagedDescriptorSet {
             // Don't have anything to store yet
             //write_set: write_set.clone()
         };
@@ -148,7 +148,7 @@ impl RegisteredDescriptorSetPool {
 
         // Add more chunks if necessary
         while chunk_index as usize >= self.chunks.len() {
-            self.chunks.push(RegisteredDescriptorSetPoolChunk::new(
+            self.chunks.push(ManagedDescriptorSetPoolChunk::new(
                 device_context,
                 &self.buffer_infos,
                 self.descriptor_set_layout.get_raw().descriptor_set_layout,

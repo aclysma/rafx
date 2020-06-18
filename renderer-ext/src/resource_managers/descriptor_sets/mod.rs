@@ -36,23 +36,23 @@ pub use dynamic_descriptor_sets::DynPassMaterialInstance;
 pub use dynamic_descriptor_sets::DynMaterialInstance;
 
 mod descriptor_set_pool;
-use descriptor_set_pool::RegisteredDescriptorSetPool;
+use descriptor_set_pool::ManagedDescriptorSetPool;
 
 mod descriptor_set_pool_chunk;
-use descriptor_set_pool_chunk::RegisteredDescriptorSetPoolChunk;
+use descriptor_set_pool_chunk::ManagedDescriptorSetPoolChunk;
 
 mod descriptor_set_buffers;
 use descriptor_set_buffers::DescriptorSetPoolRequiredBufferInfo;
 use descriptor_set_buffers::DescriptorLayoutBufferSet;
 
 mod descriptor_write_set;
-use descriptor_write_set::DescriptorSetWriteElementImage;
-use descriptor_write_set::DescriptorSetWriteElementBufferDataBufferRef;
-use descriptor_write_set::DescriptorSetWriteElementBufferData;
-use descriptor_write_set::DescriptorSetWriteElementBuffer;
-use descriptor_write_set::DescriptorSetElementWrite;
-use descriptor_write_set::DescriptorSetElementKey;
-use descriptor_write_set::DescriptorSetWriteSet;
+pub use descriptor_write_set::DescriptorSetWriteElementImage;
+pub use descriptor_write_set::DescriptorSetWriteElementBufferDataBufferRef;
+pub use descriptor_write_set::DescriptorSetWriteElementBufferData;
+pub use descriptor_write_set::DescriptorSetWriteElementBuffer;
+pub use descriptor_write_set::DescriptorSetElementWrite;
+pub use descriptor_write_set::DescriptorSetElementKey;
+pub use descriptor_write_set::DescriptorSetWriteSet;
 pub use descriptor_write_set::create_uninitialized_write_set_for_layout;
 pub use descriptor_write_set::create_uninitialized_write_sets_for_material_pass;
 pub use descriptor_write_set::create_write_sets_for_material_instance_pass;
@@ -62,6 +62,11 @@ mod descriptor_set_allocator;
 pub use descriptor_set_allocator::DescriptorSetAllocator;
 pub use descriptor_set_allocator::DescriptorSetAllocatorMetrics;
 pub use descriptor_set_allocator::DescriptorSetPoolMetrics;
+
+mod descriptor_set_allocator_manager;
+pub(super) use descriptor_set_allocator_manager::DescriptorSetAllocatorManager;
+pub use descriptor_set_allocator_manager::DescriptorSetAllocatorRef;
+pub use descriptor_set_allocator_manager::DescriptorSetAllocatorProvider;
 
 const MAX_DESCRIPTORS_PER_POOL: u32 = 64;
 const MAX_FRAMES_IN_FLIGHT: usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT;
@@ -75,7 +80,7 @@ pub struct DescriptorSetWriteBuffer {
 
 // Slab keys to identify descriptors can carry a payload. Anything we'd want to store per descriptor
 // set can go here, but don't have anything yet
-struct RegisteredDescriptorSet {
+struct ManagedDescriptorSet {
     //write_set: DescriptorSetWriteSet,
 }
 

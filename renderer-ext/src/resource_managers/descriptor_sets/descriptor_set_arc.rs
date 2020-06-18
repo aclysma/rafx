@@ -1,5 +1,5 @@
 use ash::vk;
-use super::RegisteredDescriptorSet;
+use super::ManagedDescriptorSet;
 use renderer_base::slab::RawSlabKey;
 use crossbeam_channel::Sender;
 use std::fmt::Formatter;
@@ -13,13 +13,13 @@ use crate::resource_managers::ResourceManager;
 // Data internal to the DescriptorSetArc
 pub(super) struct DescriptorSetArcInner {
     // Unique ID of the descriptor set
-    pub(super) slab_key: RawSlabKey<RegisteredDescriptorSet>,
+    pub(super) slab_key: RawSlabKey<ManagedDescriptorSet>,
 
     // Cache the raw descriptor set here
     pub(super) descriptor_set: vk::DescriptorSet,
 
     // When this object is dropped, send a message to the pool to deallocate this descriptor set
-    drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
+    drop_tx: Sender<RawSlabKey<ManagedDescriptorSet>>,
 }
 
 impl Drop for DescriptorSetArcInner {
@@ -46,9 +46,9 @@ pub struct DescriptorSetArc {
 
 impl DescriptorSetArc {
     pub(super) fn new(
-        slab_key: RawSlabKey<RegisteredDescriptorSet>,
+        slab_key: RawSlabKey<ManagedDescriptorSet>,
         descriptor_set: vk::DescriptorSet,
-        drop_tx: Sender<RawSlabKey<RegisteredDescriptorSet>>,
+        drop_tx: Sender<RawSlabKey<ManagedDescriptorSet>>,
     ) -> Self {
         let inner = DescriptorSetArcInner {
             slab_key,

@@ -368,11 +368,12 @@ impl GameRenderer {
 
         log::info!("all waits complete");
 
+        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
         let debug_per_frame_layout = resource_manager.get_descriptor_set_info(&debug_material, 0, 0);
-        let debug_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&debug_per_frame_layout.descriptor_set_layout)?;
+        let debug_material_per_frame_data = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&debug_per_frame_layout.descriptor_set_layout)?;
 
         let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(&mesh_material, 0, 0);
-        let mesh_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout)?;
+        let mesh_material_per_frame_data = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout)?;
         //
         // let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
         //
@@ -466,10 +467,10 @@ impl GameRenderer {
         );
 
         let mut sprite_custom_material = resource_manager
-            .create_dyn_material_instance_from_asset(renderer.sprite_material_instance.clone())?;
+            .create_dyn_material_instance_from_asset(&mut descriptor_set_allocator, renderer.sprite_material_instance.clone())?;
         sprite_custom_material.set_image(&"texture".to_string(), &renderer.sprite_override_image);
         sprite_custom_material.set_buffer_data(&"view_proj".to_string(), &proj);
-        sprite_custom_material.flush(resource_manager);
+        sprite_custom_material.flush(&mut descriptor_set_allocator);
 
         renderer.sprite_custom_material = Some(sprite_custom_material);
 
@@ -621,9 +622,10 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             self.game_renderer.bloom_resources.as_ref().unwrap()
         )?);
 
-        let mut bloom_extract_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout)?;
+        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
+        let mut bloom_extract_material_dyn_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout)?;
         bloom_extract_material_dyn_set.set_image_raw(0, swapchain.color_attachment.resolved_image_view());
-        bloom_extract_material_dyn_set.flush(resource_manager);
+        bloom_extract_material_dyn_set.flush(&mut descriptor_set_allocator);
         self.game_renderer.bloom_extract_material_dyn_set = Some(bloom_extract_material_dyn_set);
 
         log::trace!("Create VkBloomBlurRenderPass");
@@ -669,10 +671,10 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             self.game_renderer.bloom_resources.as_ref().unwrap()
         )?);
 
-        let mut bloom_combine_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout)?;
+        let mut bloom_combine_material_dyn_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout)?;
         bloom_combine_material_dyn_set.set_image_raw(0, self.game_renderer.bloom_resources.as_ref().unwrap().color_image_view);
         bloom_combine_material_dyn_set.set_image_raw(1, self.game_renderer.bloom_resources.as_ref().unwrap().bloom_image_views[0]);
-        bloom_combine_material_dyn_set.flush(resource_manager);
+        bloom_combine_material_dyn_set.flush(&mut descriptor_set_allocator);
         self.game_renderer.bloom_combine_material_dyn_set = Some(bloom_combine_material_dyn_set);
 
         log::debug!("game renderer swapchain_created finished");
@@ -894,15 +896,16 @@ impl GameRenderer {
             );
         }
 
+        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
-        self.mesh_material_per_frame_data.flush(resource_manager);
+        self.mesh_material_per_frame_data.flush(&mut descriptor_set_allocator);
 
         for mesh in &mut self.meshes {
             mesh.set_view_proj(view, proj, resource_manager);
         }
 
         self.debug_material_per_frame_data.set_buffer_data(0, &view_proj);
-        self.debug_material_per_frame_data.flush(resource_manager);
+        self.debug_material_per_frame_data.flush(&mut descriptor_set_allocator);
 
         if let Some(dyn_material_instance) = self.sprite_custom_material.as_mut() {
 
@@ -913,7 +916,7 @@ impl GameRenderer {
             };
 
             dyn_material_instance.set_image(&"texture".to_string(), sprite_override_image);
-            dyn_material_instance.flush(resource_manager);
+            dyn_material_instance.flush(&mut descriptor_set_allocator);
         }
 
 
@@ -949,6 +952,7 @@ impl GameRenderer {
             let mut extract_job_set = ExtractJobSet::new();
             extract_job_set.add_job(create_sprite_extract_job(
                 device_context.clone(),
+                resource_manager.create_descriptor_set_allocator(),
                 sprite_pipeline_info,
                 &self.sprite_material,
                 descriptor_set_per_pass,

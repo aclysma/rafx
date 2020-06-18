@@ -11,6 +11,7 @@ use ash::vk;
 use crate::resource_managers::{ResourceArc, ResourceManager};
 use std::fmt::Formatter;
 use ash::prelude::VkResult;
+use crate::resource_managers::descriptor_sets::DescriptorSetAllocator;
 
 //TODO: Create a builder that is not initialized, this will help avoid forgetting to call flush
 // as well as prevent double-allocating (allocating a descriptor set based on a material instance
@@ -61,7 +62,7 @@ impl DynDescriptorSet {
     }
 
     //TODO: Make a commit-like API so that it's not so easy to forget to call flush
-    pub fn flush(&mut self, resource_manager: &mut ResourceManager) -> VkResult<()> {
+    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
         if !self.pending_write_set.elements.is_empty() {
             let mut pending_write_set = Default::default();
             std::mem::swap(&mut pending_write_set, &mut self.pending_write_set);
@@ -69,7 +70,7 @@ impl DynDescriptorSet {
             self.write_set.copy_from(&pending_write_set);
 
             // create it
-            self.descriptor_set = resource_manager.registered_descriptor_sets.create_descriptor_set(
+            self.descriptor_set = descriptor_set_allocator.create_descriptor_set(
                 &self.descriptor_set_layout,
                 pending_write_set
             )?;
@@ -194,9 +195,9 @@ impl DynPassMaterialInstance {
         &self.descriptor_sets[layout_index as usize]
     }
 
-    pub fn flush(&mut self, resource_manager: &mut ResourceManager) -> VkResult<()> {
+    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
         for set in &mut self.descriptor_sets {
-            set.flush(resource_manager)?
+            set.flush(descriptor_set_allocator)?
         }
 
         Ok(())
@@ -253,9 +254,9 @@ impl DynMaterialInstance {
         &self.passes[pass_index as usize]
     }
 
-    pub fn flush(&mut self, resource_manager: &mut ResourceManager) -> VkResult<()> {
+    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
         for pass in &mut self.passes {
-            pass.flush(resource_manager)?
+            pass.flush(descriptor_set_allocator)?
         }
 
         Ok(())
