@@ -2,7 +2,7 @@ use super::DescriptorSetArc;
 use super::DescriptorSetWriteSet;
 use super::DescriptorSetWriteBuffer;
 use super::DescriptorSetElementKey;
-use crate::resource_managers::resource_lookup::{ImageViewResource, ResourceHash};
+use crate::resource_managers::resource_lookup::{ImageViewResource, ResourceHash, DescriptorSetLayoutResource};
 use crate::resource_managers::asset_lookup::SlotNameLookup;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
@@ -18,7 +18,7 @@ use ash::prelude::VkResult;
 pub struct DynDescriptorSet {
     // Hash to the descriptor set layout. We use the hash to quickly look up the layout and we
     // assume the pool for the layout will already exist in the descriptor set manager
-    descriptor_set_layout_hash: ResourceHash,
+    descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
 
     // The actual descriptor set
     descriptor_set: DescriptorSetArc,
@@ -44,12 +44,12 @@ impl std::fmt::Debug for DynDescriptorSet {
 
 impl DynDescriptorSet {
     pub(super) fn new(
-        descriptor_set_layout_hash: ResourceHash,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         descriptor_set: DescriptorSetArc,
         write_set: DescriptorSetWriteSet,
     ) -> Self {
         DynDescriptorSet {
-            descriptor_set_layout_hash,
+            descriptor_set_layout: descriptor_set_layout.clone(),
             descriptor_set,
             write_set,
             pending_write_set: Default::default(),
@@ -69,10 +69,10 @@ impl DynDescriptorSet {
             self.write_set.copy_from(&pending_write_set);
 
             // create it
-            self.descriptor_set = resource_manager.registered_descriptor_sets.create_descriptor_set_by_hash(
-                self.descriptor_set_layout_hash,
+            self.descriptor_set = resource_manager.registered_descriptor_sets.create_descriptor_set(
+                &self.descriptor_set_layout,
                 pending_write_set
-            )?.unwrap();
+            )?;
         }
 
         Ok(())

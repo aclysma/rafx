@@ -369,10 +369,10 @@ impl GameRenderer {
         log::info!("all waits complete");
 
         let debug_per_frame_layout = resource_manager.get_descriptor_set_info(&debug_material, 0, 0);
-        let debug_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&debug_per_frame_layout.descriptor_set_layout_def)?;
+        let debug_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&debug_per_frame_layout.descriptor_set_layout)?;
 
         let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(&mesh_material, 0, 0);
-        let mesh_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout_def)?;
+        let mesh_material_per_frame_data = resource_manager.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout)?;
         //
         // let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
         //
@@ -621,7 +621,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             self.game_renderer.bloom_resources.as_ref().unwrap()
         )?);
 
-        let mut bloom_extract_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout_def)?;
+        let mut bloom_extract_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout)?;
         bloom_extract_material_dyn_set.set_image_raw(0, swapchain.color_attachment.resolved_image_view());
         bloom_extract_material_dyn_set.flush(resource_manager);
         self.game_renderer.bloom_extract_material_dyn_set = Some(bloom_extract_material_dyn_set);
@@ -669,7 +669,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             self.game_renderer.bloom_resources.as_ref().unwrap()
         )?);
 
-        let mut bloom_combine_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout_def)?;
+        let mut bloom_combine_material_dyn_set = resource_manager.create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout)?;
         bloom_combine_material_dyn_set.set_image_raw(0, self.game_renderer.bloom_resources.as_ref().unwrap().color_image_view);
         bloom_combine_material_dyn_set.set_image_raw(1, self.game_renderer.bloom_resources.as_ref().unwrap().bloom_image_views[0]);
         bloom_combine_material_dyn_set.flush(resource_manager);

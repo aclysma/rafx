@@ -108,7 +108,7 @@ impl StaticMeshInstance {
     ) -> VkResult<Self> {
         let mesh_info = resource_manager.get_mesh_info(mesh);
         let object_descriptor_set = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
-        let per_object_descriptor_set = resource_manager.create_dyn_descriptor_set_uninitialized(&object_descriptor_set.descriptor_set_layout_def)?;
+        let per_object_descriptor_set = resource_manager.create_dyn_descriptor_set_uninitialized(&object_descriptor_set.descriptor_set_layout)?;
 
         let world_transform = glam::Mat4::from_translation(position);
 

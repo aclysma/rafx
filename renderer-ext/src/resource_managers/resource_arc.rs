@@ -3,6 +3,8 @@ use crossbeam_channel::Sender;
 use std::sync::{Weak, Arc};
 use std::borrow::Borrow;
 
+//TODO: Maybe this should be an enum of ResourceHash and ResourceIndex
+
 // Hijack ResourceHash for now
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(super) struct ResourceId(pub(super) u64);

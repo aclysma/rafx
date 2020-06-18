@@ -57,10 +57,10 @@ use asset_lookup::LoadedAssetMetrics;
 use asset_lookup::SlotNameLookup;
 
 mod descriptor_sets;
-use descriptor_sets::RegisteredDescriptorSetPoolManager;
+use descriptor_sets::DescriptorSetAllocator;
 pub use descriptor_sets::DescriptorSetArc;
-use descriptor_sets::RegisteredDescriptorSetPoolMetrics;
-use descriptor_sets::RegisteredDescriptorSetPoolManagerMetrics;
+use descriptor_sets::DescriptorSetPoolMetrics;
+use descriptor_sets::DescriptorSetAllocatorMetrics;
 pub use descriptor_sets::DynDescriptorSet;
 pub use descriptor_sets::DynPassMaterialInstance;
 pub use descriptor_sets::DynMaterialInstance;
@@ -124,7 +124,7 @@ pub struct ResourceManagerMetrics {
     pub dyn_resource_metrics: dyn_resource_allocator::ResourceMetrics,
     pub resource_metrics: resource_lookup::ResourceMetrics,
     pub loaded_asset_metrics: LoadedAssetMetrics,
-    pub registered_descriptor_sets_metrics: RegisteredDescriptorSetPoolManagerMetrics,
+    pub registered_descriptor_sets_metrics: DescriptorSetAllocatorMetrics,
 }
 
 pub struct ResourceManager {
@@ -135,7 +135,7 @@ pub struct ResourceManager {
     loaded_assets: LoadedAssetLookupSet,
     load_queues: LoadQueueSet,
     swapchain_surfaces: ActiveSwapchainSurfaceInfoSet,
-    registered_descriptor_sets: RegisteredDescriptorSetPoolManager,
+    registered_descriptor_sets: DescriptorSetAllocator,
     upload_manager: UploadManager,
 }
 
@@ -154,7 +154,7 @@ impl ResourceManager {
             loaded_assets: Default::default(),
             load_queues: Default::default(),
             swapchain_surfaces: Default::default(),
-            registered_descriptor_sets: RegisteredDescriptorSetPoolManager::new(device_context),
+            registered_descriptor_sets: DescriptorSetAllocator::new(device_context),
             upload_manager: UploadManager::new(device_context),
         }
     }
@@ -757,12 +757,8 @@ impl ResourceManager {
             //let layouts = pass.pipeline_create_data.pipeline_layout.iter().zip(&pass.pipeline_create_data.pipeline_layout_def);
             for (layout_index, layout_writes) in pass_descriptor_set_writes.into_iter().enumerate()
             {
-                let descriptor_set = self.registered_descriptor_sets.insert(
-                    &pass
-                        .pipeline_create_data
-                        .pipeline_layout_def
-                        .descriptor_set_layouts[layout_index],
-                    pass.pipeline_create_data.descriptor_set_layout_arcs[layout_index].clone(),
+                let descriptor_set = self.registered_descriptor_sets.create_descriptor_set(
+                    &pass.pipeline_create_data.descriptor_set_layout_arcs[layout_index],
                     layout_writes,
                 )?;
 
@@ -799,13 +795,10 @@ impl ResourceManager {
 
     pub fn create_dyn_descriptor_set_uninitialized(
         &mut self,
-        layout_def: &dsc::DescriptorSetLayout,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
     ) -> VkResult<DynDescriptorSet> {
-        let layout = self
-            .resources
-            .get_or_create_descriptor_set_layout(layout_def)?;
         self.registered_descriptor_sets
-            .create_dyn_descriptor_set_uninitialized(layout_def, layout)
+            .create_dyn_descriptor_set_uninitialized(descriptor_set_layout)
     }
 
     pub fn create_dyn_pass_material_instance_uninitialized(

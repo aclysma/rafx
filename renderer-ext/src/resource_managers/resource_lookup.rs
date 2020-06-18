@@ -241,6 +241,7 @@ pub struct ResourceMetrics {
 #[derive(Debug, Clone)]
 pub struct DescriptorSetLayoutResource {
     pub descriptor_set_layout: vk::DescriptorSetLayout,
+    pub descriptor_set_layout_def: dsc::DescriptorSetLayout,
     pub immutable_samplers: Vec<ResourceArc<vk::Sampler>>,
 }
 
@@ -256,6 +257,7 @@ impl VkResource for DescriptorSetLayoutResource {
 #[derive(Debug, Clone)]
 pub struct PipelineLayoutResource {
     pub pipeline_layout: vk::PipelineLayout,
+    pub pipeline_layout_def: dsc::PipelineLayout,
     pub descriptor_sets: Vec<ResourceArc<DescriptorSetLayoutResource>>,
 }
 
@@ -437,17 +439,17 @@ impl ResourceLookupSet {
 
     pub fn get_or_create_descriptor_set_layout(
         &mut self,
-        descriptor_set_layout: &dsc::DescriptorSetLayout,
+        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
     ) -> VkResult<ResourceArc<DescriptorSetLayoutResource>> {
-        let hash = ResourceHash::from_key(descriptor_set_layout);
+        let hash = ResourceHash::from_key(descriptor_set_layout_def);
         if let Some(descriptor_set_layout) =
-            self.descriptor_set_layouts.get(hash, descriptor_set_layout)
+            self.descriptor_set_layouts.get(hash, descriptor_set_layout_def)
         {
             Ok(descriptor_set_layout)
         } else {
             log::trace!(
                 "Creating descriptor set layout\n{:#?}",
-                descriptor_set_layout
+                descriptor_set_layout_def
             );
 
             // Put all samplers into a hashmap so that we avoid collecting duplicates. This prevents
@@ -457,10 +459,10 @@ impl ResourceLookupSet {
             // But we also need to put raw vk objects into a format compatible with
             // create_descriptor_set_layout
             let mut immutable_sampler_vk_objs =
-                Vec::with_capacity(descriptor_set_layout.descriptor_set_layout_bindings.len());
+                Vec::with_capacity(descriptor_set_layout_def.descriptor_set_layout_bindings.len());
 
             // Get or create samplers and add them to the two above structures
-            for x in &descriptor_set_layout.descriptor_set_layout_bindings {
+            for x in &descriptor_set_layout_def.descriptor_set_layout_bindings {
                 if let Some(sampler_defs) = &x.immutable_samplers {
                     let mut samplers = Vec::with_capacity(sampler_defs.len());
                     for sampler_def in sampler_defs {
@@ -477,7 +479,7 @@ impl ResourceLookupSet {
             // Create the descriptor set layout
             let resource = crate::pipeline_description::create_descriptor_set_layout(
                 self.device_context.device(),
-                descriptor_set_layout,
+                descriptor_set_layout_def,
                 &immutable_sampler_vk_objs,
             )?;
 
@@ -488,13 +490,14 @@ impl ResourceLookupSet {
             // ResourceArcs to the samplers, which must remain alive for the lifetime of the descriptor set
             let resource = DescriptorSetLayoutResource {
                 descriptor_set_layout: resource,
+                descriptor_set_layout_def: descriptor_set_layout_def.clone(),
                 immutable_samplers,
             };
 
             log::trace!("Created descriptor set layout {:?}", resource);
             let descriptor_set_layout =
                 self.descriptor_set_layouts
-                    .insert(hash, descriptor_set_layout, resource);
+                    .insert(hash, descriptor_set_layout_def, resource);
             Ok(descriptor_set_layout)
         }
     }
@@ -530,6 +533,7 @@ impl ResourceLookupSet {
 
             let resource = PipelineLayoutResource {
                 pipeline_layout: resource,
+                pipeline_layout_def: pipeline_layout_def.clone(),
                 descriptor_sets: descriptor_set_layout_arcs,
             };
 

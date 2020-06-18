@@ -55,7 +55,6 @@ pub(super) struct RegisteredDescriptorSetPool {
 impl RegisteredDescriptorSetPool {
     pub fn new(
         device_context: &VkDeviceContext,
-        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
         descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
     ) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
@@ -66,7 +65,7 @@ impl RegisteredDescriptorSetPool {
         // in the allocator callback
         //
         let mut descriptor_counts = vec![0; dsc::DescriptorType::count()];
-        for desc in &descriptor_set_layout_def.descriptor_set_layout_bindings {
+        for desc in &descriptor_set_layout.get_raw().descriptor_set_layout_def.descriptor_set_layout_bindings {
             let ty: vk::DescriptorType = desc.descriptor_type.into();
             descriptor_counts[ty.as_raw() as usize] += MAX_DESCRIPTORS_PER_POOL;
         }
@@ -97,7 +96,7 @@ impl RegisteredDescriptorSetPool {
         );
 
         let mut buffer_infos = Vec::new();
-        for binding in &descriptor_set_layout_def.descriptor_set_layout_bindings {
+        for binding in &descriptor_set_layout.get_raw().descriptor_set_layout_def.descriptor_set_layout_bindings {
             if let Some(per_descriptor_size) = binding.internal_buffer_per_descriptor_size {
                 // 256 is the max allowed by the vulkan spec but we can improve this by using the
                 // actual hardware value given by device limits

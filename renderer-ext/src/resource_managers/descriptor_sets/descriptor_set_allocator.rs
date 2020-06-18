@@ -15,17 +15,17 @@ use crate::resource_managers::asset_lookup::{
 use crate::pipeline_description as dsc;
 
 #[derive(Debug)]
-pub struct RegisteredDescriptorSetPoolMetrics {
+pub struct DescriptorSetPoolMetrics {
     pub hash: ResourceHash,
     pub allocated_count: usize,
 }
 
 #[derive(Debug)]
-pub struct RegisteredDescriptorSetPoolManagerMetrics {
-    pub pools: Vec<RegisteredDescriptorSetPoolMetrics>,
+pub struct DescriptorSetAllocatorMetrics {
+    pub pools: Vec<DescriptorSetPoolMetrics>,
 }
 
-pub struct RegisteredDescriptorSetPoolManager {
+pub struct DescriptorSetAllocator {
     device_context: VkDeviceContext,
     pools: FnvHashMap<ResourceHash, RegisteredDescriptorSetPool>,
 
@@ -33,47 +33,28 @@ pub struct RegisteredDescriptorSetPoolManager {
     frame_in_flight_index: FrameInFlightIndex,
 }
 
-impl RegisteredDescriptorSetPoolManager {
+impl DescriptorSetAllocator {
     pub fn new(device_context: &VkDeviceContext) -> Self {
-        RegisteredDescriptorSetPoolManager {
+        DescriptorSetAllocator {
             device_context: device_context.clone(),
             pools: Default::default(),
             frame_in_flight_index: 0,
         }
     }
 
-    pub fn metrics(&self) -> RegisteredDescriptorSetPoolManagerMetrics {
+    pub fn metrics(&self) -> DescriptorSetAllocatorMetrics {
         let mut registered_descriptor_sets_stats = Vec::with_capacity(self.pools.len());
         for (hash, value) in &self.pools {
-            let pool_stats = RegisteredDescriptorSetPoolMetrics {
+            let pool_stats = DescriptorSetPoolMetrics {
                 hash: *hash,
                 allocated_count: value.slab.allocated_count(),
             };
             registered_descriptor_sets_stats.push(pool_stats);
         }
 
-        RegisteredDescriptorSetPoolManagerMetrics {
+        DescriptorSetAllocatorMetrics {
             pools: registered_descriptor_sets_stats,
         }
-    }
-
-    pub fn insert(
-        &mut self,
-        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
-        descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
-        write_set: DescriptorSetWriteSet,
-    ) -> VkResult<DescriptorSetArc> {
-        let hash = ResourceHash::from_key(descriptor_set_layout_def);
-        let device_context = self.device_context.clone();
-        let pool = self.pools.entry(hash).or_insert_with(|| {
-            RegisteredDescriptorSetPool::new(
-                &device_context,
-                descriptor_set_layout_def,
-                descriptor_set_layout,
-            )
-        });
-
-        pool.insert(&self.device_context, write_set)
     }
 
     pub fn update(&mut self) {
@@ -95,75 +76,39 @@ impl RegisteredDescriptorSetPoolManager {
         self.pools.clear();
     }
 
-    pub fn create_descriptor_set_by_hash(
-        &mut self,
-        descriptor_set_layout_hash: ResourceHash,
-        write_set: DescriptorSetWriteSet,
-    ) -> VkResult<Option<DescriptorSetArc>> {
-        let pool = self.pools.get_mut(&descriptor_set_layout_hash);
-
-        if let Some(pool) = pool {
-            // Allocate a descriptor set
-            Ok(Some(pool.insert(
-                &self.device_context,
-                write_set.clone(),
-            )?))
-        } else {
-            Ok(None)
-        }
-    }
-
     pub fn create_descriptor_set(
         &mut self,
-        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
-        descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         write_set: DescriptorSetWriteSet,
     ) -> VkResult<DescriptorSetArc> {
         // Get or create the pool for the layout
-        let hash = ResourceHash::from_key(descriptor_set_layout_def);
+        let hash = descriptor_set_layout.get_hash().into();
         let device_context = self.device_context.clone();
         let pool = self.pools.entry(hash).or_insert_with(|| {
             RegisteredDescriptorSetPool::new(
                 &device_context,
-                descriptor_set_layout_def,
-                descriptor_set_layout,
+                descriptor_set_layout.clone(),
             )
         });
 
         // Allocate a descriptor set
         pool.insert(
             &self.device_context,
-            write_set.clone(),
+            write_set,
         )
     }
 
     //TODO: Is creating and immediately modifying causing multiple writes?
     fn do_create_dyn_descriptor_set(
         &mut self,
-        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
-        descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         write_set: DescriptorSetWriteSet,
     ) -> VkResult<DynDescriptorSet> {
-        // Get or create the pool for the layout
-        let hash = ResourceHash::from_key(descriptor_set_layout_def);
-        let device_context = self.device_context.clone();
-        let pool = self.pools.entry(hash).or_insert_with(|| {
-            RegisteredDescriptorSetPool::new(
-                &device_context,
-                descriptor_set_layout_def,
-                descriptor_set_layout,
-            )
-        });
-
-        // Allocate a descriptor set
-        let descriptor_set = pool.insert(
-            &self.device_context,
-            write_set.clone(),
-        )?;
+        let descriptor_set = self.create_descriptor_set(descriptor_set_layout, write_set.clone())?;
 
         // Create the DynDescriptorSet
         let dyn_descriptor_set = DynDescriptorSet::new(
-            hash,
+            descriptor_set_layout,
             descriptor_set,
             write_set,
         );
@@ -173,12 +118,10 @@ impl RegisteredDescriptorSetPoolManager {
 
     pub fn create_dyn_descriptor_set_uninitialized(
         &mut self,
-        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
-        descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
     ) -> VkResult<DynDescriptorSet> {
-        let write_set = super::create_uninitialized_write_set_for_layout(descriptor_set_layout_def);
+        let write_set = super::create_uninitialized_write_set_for_layout(&descriptor_set_layout.get_raw().descriptor_set_layout_def);
         self.do_create_dyn_descriptor_set(
-            descriptor_set_layout_def,
             descriptor_set_layout,
             write_set,
         )
@@ -197,7 +140,7 @@ impl RegisteredDescriptorSetPoolManager {
             .descriptor_set_layouts;
         for (layout_def, layout) in layout_defs.iter().zip(&pass.descriptor_set_layouts) {
             let dyn_descriptor_set =
-                self.create_dyn_descriptor_set_uninitialized(layout_def, layout.clone())?;
+                self.create_dyn_descriptor_set_uninitialized(&layout)?;
             dyn_descriptor_sets.push(dyn_descriptor_set);
         }
 
@@ -224,14 +167,8 @@ impl RegisteredDescriptorSetPoolManager {
 
         for (layout_index, write_set) in write_sets.into_iter().enumerate() {
             let layout = &pass.descriptor_set_layouts[layout_index];
-            let layout_def = &pass
-                .pipeline_create_data
-                .pipeline_layout_def
-                .descriptor_set_layouts[layout_index];
-
             let dyn_descriptor_set = self.do_create_dyn_descriptor_set(
-                layout_def,
-                layout.clone(),
+                layout,
                 write_set
             )?;
             dyn_descriptor_sets.push(dyn_descriptor_set);

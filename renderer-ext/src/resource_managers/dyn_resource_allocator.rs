@@ -83,6 +83,9 @@ impl<ResourceT> DynResourceAllocator<ResourceT>
         &self,
         resource: ResourceT,
     ) -> ResourceArc<ResourceT> {
+        // This index is not strictly necessary. However, we do want to be compatible with ResourceArc,
+        // and in other usecases a working index is necessary. Since we have the index anyways, we
+        // might as well produce some sort of index if only to make logging easier to follow
         let resource_index = DynResourceIndex(self.inner.next_index.fetch_add(1, Ordering::Relaxed));
         self.inner.active_count.fetch_add(1, Ordering::Relaxed);
 

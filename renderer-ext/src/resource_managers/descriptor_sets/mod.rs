@@ -58,10 +58,10 @@ pub use descriptor_write_set::create_uninitialized_write_sets_for_material_pass;
 pub use descriptor_write_set::create_write_sets_for_material_instance_pass;
 pub use descriptor_write_set::apply_material_instance_slot_assignment;
 
-mod descriptor_set_manager;
-pub use descriptor_set_manager::RegisteredDescriptorSetPoolManager;
-pub use descriptor_set_manager::RegisteredDescriptorSetPoolManagerMetrics;
-pub use descriptor_set_manager::RegisteredDescriptorSetPoolMetrics;
+mod descriptor_set_allocator;
+pub use descriptor_set_allocator::DescriptorSetAllocator;
+pub use descriptor_set_allocator::DescriptorSetAllocatorMetrics;
+pub use descriptor_set_allocator::DescriptorSetPoolMetrics;
 
 const MAX_DESCRIPTORS_PER_POOL: u32 = 64;
 const MAX_FRAMES_IN_FLIGHT: usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT;

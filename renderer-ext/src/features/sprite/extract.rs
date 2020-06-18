@@ -21,7 +21,7 @@ fn create_per_image_descriptor(
 ) -> VkResult<DescriptorSetArc> {
     let descriptor_set_info = resource_manager.get_descriptor_set_info(sprite_material, 0, 1);
     let mut sprite_texture_descriptor = resource_manager.create_dyn_descriptor_set_uninitialized(
-        &descriptor_set_info.descriptor_set_layout_def,
+        &descriptor_set_info.descriptor_set_layout,
     )?;
 
     let image_info = resource_manager.get_image_info(image_handle);
