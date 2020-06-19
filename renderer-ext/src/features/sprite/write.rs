@@ -73,7 +73,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
                 vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
                 1,
-                &[draw_call.texture_descriptor_set],
+                &[draw_call.texture_descriptor_set.get()],
                 &[],
             );
 

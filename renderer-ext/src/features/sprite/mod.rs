@@ -174,12 +174,12 @@ pub(self) struct ExtractedSpriteData {
     scale: f32,
     rotation: f32,
     alpha: f32,
-    texture_descriptor_set: vk::DescriptorSet, //TODO: I'd prefer to use something ref-counted
+    texture_descriptor_set: DescriptorSetArc, //TODO: I'd prefer to use something ref-counted
 }
 
 #[derive(Debug)]
 pub struct SpriteDrawCall {
     index_buffer_first_element: u16,
     index_buffer_count: u16,
-    texture_descriptor_set: vk::DescriptorSet,
+    texture_descriptor_set: DescriptorSetArc,
 }

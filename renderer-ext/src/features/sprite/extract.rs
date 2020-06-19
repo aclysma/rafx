@@ -12,26 +12,6 @@ use crate::pipeline::image::ImageAsset;
 use ash::prelude::VkResult;
 use crate::resource_managers::DescriptorSetArc;
 
-//TODO: Some of the work being done during extraction may be ok (like looking up an image handle)
-// but I'd prefer descriptor set creation occur during the prepare phase
-fn create_per_image_descriptor(
-    resource_manager: &mut ResourceManager,
-    descriptor_set_allocator: &mut DescriptorSetAllocatorRef,
-    sprite_material: &Handle<MaterialAsset>,
-    image_handle: &Handle<ImageAsset>,
-) -> VkResult<DescriptorSetArc> {
-
-    let descriptor_set_info = resource_manager.get_descriptor_set_info(sprite_material, 0, 1);
-    let mut sprite_texture_descriptor = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
-        &descriptor_set_info.descriptor_set_layout,
-    )?;
-
-    let image_info = resource_manager.get_image_info(image_handle);
-    sprite_texture_descriptor.set_image(0, image_info.image_view);
-    sprite_texture_descriptor.flush(descriptor_set_allocator);
-    Ok(sprite_texture_descriptor.descriptor_set().clone())
-}
-
 pub struct SpriteExtractJobImpl {
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
@@ -71,9 +51,6 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .reserve(frame_packet.frame_node_count(self.feature_index()) as usize);
     }
 
-
-
-
     fn extract_frame_node(
         &mut self,
         extract_context: &mut RenderJobExtractContext,
@@ -95,30 +72,15 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .get_component::<SpriteComponent>(sprite_render_node.entity)
             .unwrap();
 
-        //TODO: Consider having cached descriptor set in sprite_render_node
-        //sprite_render_node.
-
-        // let image = sprite_component.image.clone();
-        // //extract_context.resources.get_mut::<Res>
-        // // make descriptor set?
-        //let mut resource_manager = extract_context.resources.get_mut::<ResourceManager>().unwrap();
-        //
-        // resource_manager.create_dyn_descriptor_set_uninitialized();
-        // resource_manager.get_image_info();
-
-        //let mut resource_manager = extract_context.resources.get_mut::<ResourceManager>().unwrap();
-        let texture_descriptor_set_arc = create_per_image_descriptor(
-            &mut extract_context.resource_manager, //TODO: We need a thread-safe way to create descriptor sets..
-            &mut self.descriptor_set_allocator,
-            //&mut *resource_manager,
-            //self.
-            &self.sprite_material,
-            &sprite_component.image
+        let descriptor_set_info = extract_context.resource_manager.get_descriptor_set_info(&self.sprite_material, 0, 1);
+        let mut sprite_texture_descriptor = self.descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
+            &descriptor_set_info.descriptor_set_layout,
         ).unwrap();
 
-
-        let texture_descriptor_set = texture_descriptor_set_arc.get();
-        //let texture_descriptor_set = texture_descriptor_set_arc.get_raw_for_gpu_read(&*resource_manager);
+        let image_info = extract_context.resource_manager.get_image_info(&sprite_component.image);
+        sprite_texture_descriptor.set_image(0, image_info.image_view);
+        sprite_texture_descriptor.flush(&mut self.descriptor_set_allocator).unwrap();
+        let texture_descriptor_set = sprite_texture_descriptor.descriptor_set().clone();
 
         self.extracted_sprite_data.push(ExtractedSpriteData {
             position: position_component.position,

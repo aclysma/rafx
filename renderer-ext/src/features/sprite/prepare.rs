@@ -54,7 +54,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
             let draw_call = SpriteDrawCall {
                 index_buffer_first_element: 0,
                 index_buffer_count: 4,
-                texture_descriptor_set: sprite.texture_descriptor_set,
+                texture_descriptor_set: sprite.texture_descriptor_set.clone(),
             };
 
             const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
@@ -88,7 +88,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
             let draw_call = SpriteDrawCall {
                 index_buffer_first_element,
                 index_buffer_count: QUAD_INDEX_LIST.len() as u16,
-                texture_descriptor_set: sprite.texture_descriptor_set,
+                texture_descriptor_set: sprite.texture_descriptor_set.clone(),
             };
 
             self.draw_calls.push(draw_call);
