@@ -2,11 +2,11 @@ pub mod renderpass;
 
 pub mod imgui_support;
 
-mod game_renderer;
+mod renderer_init;
 //pub use game_renderer::GameRendererSystems;
-pub use game_renderer::init_renderer;
-pub use game_renderer::update_renderer;
-pub use game_renderer::destroy_renderer;
+pub use renderer_init::init_renderer;
+pub use renderer_init::update_renderer;
+pub use renderer_init::destroy_renderer;
 //pub use game_renderer::GameRendererWithContext;
 
 pub mod time;
@@ -57,20 +57,20 @@ pub struct SpriteComponent {
 pub struct RenderJobExtractContext {
     world: &'static World,
     resources: &'static Resources,
-    resource_manager: &'static mut ResourceManager,
+    resource_manager: &'static ResourceManager,
 }
 
 impl RenderJobExtractContext {
     pub fn new<'a>(
         world: &'a World,
         resources: &'a Resources,
-        resource_manager: &'a mut ResourceManager,
+        resource_manager: &'a ResourceManager,
     ) -> Self {
         unsafe {
             RenderJobExtractContext {
                 world: force_to_static_lifetime(world),
                 resources: force_to_static_lifetime(resources),
-                resource_manager: force_to_static_lifetime_mut(resource_manager)
+                resource_manager: force_to_static_lifetime(resource_manager)
             }
         }
     }

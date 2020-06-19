@@ -1,7 +1,7 @@
 use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener, Sdl2ImguiManager};
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer};
 use ash::prelude::VkResult;
-use renderer_ext::renderpass::{VkSpriteRenderPass, VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
+use renderer_ext::renderpass::{VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
 use std::mem::{ManuallyDrop, swap};
 use renderer_ext::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
@@ -44,6 +44,31 @@ use legion::prelude::*;
 use renderer_ext::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContextFactory};
 use renderer_ext::RenderJobWriteContext;
 use renderer_shell_vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
+
+// This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
+// single function
+pub fn orthographic_rh_gl(
+    left: f32,
+    right: f32,
+    bottom: f32,
+    top: f32,
+    near: f32,
+    far: f32,
+) -> [[f32; 4]; 4] {
+    let a = 2.0 / (right - left);
+    let b = 2.0 / (top - bottom);
+    let c = -2.0 / (far - near);
+    let tx = -(right + left) / (right - left);
+    let ty = -(top + bottom) / (top - bottom);
+    let tz = -(far + near) / (far - near);
+
+    [
+        [a, 0.0, 0.0, 0.0],
+        [0.0, b, 0.0, 0.0],
+        [0.0, 0.0, c, 0.0],
+        [tx, ty, tz, 1.0],
+    ]
+}
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -131,7 +156,6 @@ pub struct GameRenderer {
     // static_visibility_node_set: StaticVisibilityNodeSet,
     // dynamic_visibility_node_set: DynamicVisibilityNodeSet,
 
-    sprite_renderpass: Option<VkSpriteRenderPass>,
     opaque_renderpass: Option<VkOpaqueRenderPass>,
     mesh_renderpass: Option<VkMeshRenderPass>,
     debug_renderpass: Option<VkDebugRenderPass>,
@@ -442,7 +466,6 @@ impl GameRenderer {
             // dynamic_visibility_node_set: Default::default(),
 
             swapchain_surface_info: None,
-            sprite_renderpass: None,
             opaque_renderpass: None,
             mesh_renderpass: None,
             debug_renderpass: None,
@@ -457,7 +480,7 @@ impl GameRenderer {
         let aspect_ration = extents_width as f32 / extents_height as f32;
         let half_width = 400.0;
         let half_height = 400.0 / aspect_ration;
-        let proj = renderer_ext::renderpass::sprite_renderpass::orthographic_rh_gl(
+        let proj = orthographic_rh_gl(
             -half_width,
             half_width,
             -half_height,
@@ -536,23 +559,10 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         self.game_renderer.swapchain_surface_info = Some(swapchain_surface_info.clone());
         resource_manager.add_swapchain(&swapchain_surface_info);
 
-        log::trace!("Create VkSpriteRenderPass");
-        let sprite_pipeline_info = resource_manager.get_pipeline_info(
-            &self.game_renderer.sprite_material,
-            &swapchain_surface_info,
-            0,
-        );
-
-        self.game_renderer.sprite_renderpass = Some(VkSpriteRenderPass::new(
-            device_context,
-            swapchain,
-            sprite_pipeline_info,
-        )?);
-
         log::trace!("Create VkOpaqueRenderPass");
         //TODO: We probably want to move to just using a pipeline here and not a specific material
         let opaque_pipeline_info = resource_manager.get_pipeline_info(
-            &self.game_renderer.mesh_material,
+            &self.game_renderer.sprite_material,
             &swapchain_surface_info,
             0,
         );
@@ -1001,40 +1011,6 @@ impl GameRenderer {
         // prepared_render_data
         //     .write_view_phase::<DrawTransparentRenderPhase>(&main_view, &mut write_context);
 
-        //
-        // Sprite renderpass
-        //
-        if let Some(sprite_renderpass) = &mut self.sprite_renderpass {
-            log::trace!("sprite_renderpass update");
-            let dyn_pass_material_instance = self.sprite_custom_material.as_ref().unwrap().pass(0);
-            let static_pass_material_instance = resource_manager.get_material_instance_descriptor_sets(&self.sprite_material_instance, 0);
-
-            //let pass = self.sprite_material_instance.asset.as_ref().unwrap().pass(0);
-
-            // Pass 0 is "global"
-            let descriptor_set_per_pass = dyn_pass_material_instance
-                .descriptor_set_layout(0)
-                .descriptor_set()
-                .get();
-
-            // Pass 1 is per-object
-            let descriptor_set_per_texture = dyn_pass_material_instance
-                .descriptor_set_layout(1)
-                .descriptor_set()
-                .get();
-            //let descriptor_set_per_texture = static_pass_material_instance.descriptor_sets[1];
-
-            sprite_renderpass.update(
-                present_index,
-                1.0,
-                //&self.sprite_resource_manager,
-                descriptor_set_per_pass,
-                &[descriptor_set_per_texture],
-                time_state,
-            )?;
-
-            command_buffers.push(sprite_renderpass.command_buffers[present_index].clone());
-        }
 
         //
         // Opaque renderpass
@@ -1042,7 +1018,7 @@ impl GameRenderer {
         if let Some(opaque_renderpass) = &mut self.opaque_renderpass {
             log::trace!("opaque_renderpass update");
             let opaque_pipeline_info = resource_manager.get_pipeline_info(
-                &self.mesh_material,
+                &self.sprite_material,
                 self.swapchain_surface_info.as_ref().unwrap(),
                 0,
             );
@@ -1174,7 +1150,6 @@ impl GameRenderer {
 
 impl Drop for GameRenderer {
     fn drop(&mut self) {
-        self.sprite_renderpass = None;
         self.opaque_renderpass = None;
         self.mesh_renderpass = None;
         self.sprite_custom_material = None;
