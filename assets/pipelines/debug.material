@@ -3,6 +3,7 @@
         (
             phase: "Opaque",
             pipeline: "debug_msaa.pipeline",
+            renderpass: "debug_msaa.renderpass",
             shaders: [
                 (
                     stage: Vertex,

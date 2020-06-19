@@ -7,10 +7,7 @@ use ash::prelude::*;
 use ash::vk;
 use crate::pipeline::image::ImageAsset;
 use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::pipeline::{
-    PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass,
-    MaterialInstanceSlotAssignment,
-};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, MaterialInstanceSlotAssignment, RenderpassAsset};
 use crate::pipeline_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
@@ -82,7 +79,7 @@ use crate::resource_managers::resource_lookup::{
 pub use resource_lookup::ImageViewResource;
 use crate::pipeline::gltf::MeshAsset;
 use crate::pipeline::buffer::BufferAsset;
-use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh};
+use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh, LoadedRenderpass};
 use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 use crate::resource_managers::descriptor_sets::{DescriptorSetAllocatorManager};
 
@@ -171,6 +168,10 @@ impl ResourceManager {
 
     pub fn create_pipeline_load_handler(&self) -> GenericLoadHandler<PipelineAsset> {
         self.load_queues.graphics_pipelines.create_load_handler()
+    }
+
+    pub fn create_renderpass_load_handler(&self) -> GenericLoadHandler<RenderpassAsset> {
+        self.load_queues.renderpasses.create_load_handler()
     }
 
     pub fn create_material_load_handler(&self) -> GenericLoadHandler<MaterialAsset> {
@@ -339,6 +340,7 @@ impl ResourceManager {
     pub fn update_resources(&mut self) -> VkResult<()> {
         self.process_shader_load_requests();
         self.process_pipeline_load_requests();
+        self.process_renderpass_load_requests();
         self.process_material_load_requests();
         self.process_material_instance_load_requests();
         self.process_image_load_requests();
@@ -419,6 +421,27 @@ impl ResourceManager {
         Self::handle_free_requests(
             &mut self.load_queues.graphics_pipelines,
             &mut self.loaded_assets.graphics_pipelines,
+        );
+    }
+
+    fn process_renderpass_load_requests(&mut self) {
+        for request in self.load_queues.renderpasses.take_load_requests() {
+            log::trace!("Create renderpass {:?}", request.load_handle);
+            let loaded_asset = self.load_renderpass(&request.asset);
+            Self::handle_load_result(
+                request.load_op,
+                loaded_asset,
+                &mut self.loaded_assets.renderpasses,
+            );
+        }
+
+        Self::handle_commit_requests(
+            &mut self.load_queues.renderpasses,
+            &mut self.loaded_assets.renderpasses,
+        );
+        Self::handle_free_requests(
+            &mut self.load_queues.renderpasses,
+            &mut self.loaded_assets.renderpasses,
         );
     }
 
@@ -653,6 +676,15 @@ impl ResourceManager {
         })
     }
 
+    fn load_renderpass(
+        &mut self,
+        renderpass_asset: &RenderpassAsset,
+    ) -> VkResult<LoadedRenderpass> {
+        Ok(LoadedRenderpass {
+            renderpass_asset: renderpass_asset.clone(),
+        })
+    }
+
     fn load_material(
         &mut self,
         material_asset: &MaterialAsset,
@@ -665,8 +697,14 @@ impl ResourceManager {
                 .graphics_pipelines
                 .get_latest(pass.pipeline.load_handle())
                 .unwrap();
-
             let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
+
+            let loaded_renderpass_asset = self
+                .loaded_assets
+                .renderpasses
+                .get_latest(pass.renderpass.load_handle())
+                .unwrap();
+            let renderpass_asset = loaded_renderpass_asset.renderpass_asset.clone();
 
             let shader_hashes : Vec<_> = pass.shaders.iter().map(|shader| {
                 let shader_module = self.loaded_assets.shader_modules.get_latest(shader.shader_module.load_handle()).unwrap();
@@ -677,6 +715,7 @@ impl ResourceManager {
             let pipeline_create_data = PipelineCreateData::new(
                 self,
                 pipeline_asset,
+                renderpass_asset,
                 pass,
                 shader_hashes
             )?;
@@ -953,6 +992,7 @@ impl PipelineCreateData {
     pub fn new(
         resource_manager: &mut ResourceManager,
         pipeline_asset: PipelineAsset,
+        renderpass_asset: RenderpassAsset,
         material_pass: &MaterialPass,
         shader_module_hashes: Vec<ResourceHash>,
     ) -> VkResult<Self> {
@@ -1031,7 +1071,7 @@ impl PipelineCreateData {
             fixed_function_state,
             pipeline_layout_def,
             pipeline_layout,
-            renderpass: pipeline_asset.renderpass,
+            renderpass: renderpass_asset.renderpass,
         })
     }
 }

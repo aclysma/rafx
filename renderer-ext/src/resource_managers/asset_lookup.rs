@@ -1,7 +1,5 @@
 use ash::vk;
-use crate::pipeline::pipeline::{
-    PipelineAsset, MaterialPassShaderInterface, MaterialAsset, MaterialInstanceSlotAssignment,
-};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialPassShaderInterface, MaterialAsset, MaterialInstanceSlotAssignment, RenderpassAsset};
 use super::PipelineCreateData;
 use fnv::FnvHashMap;
 use renderer_shell_vulkan::{VkImageRaw, VkBufferRaw};
@@ -29,6 +27,11 @@ pub struct LoadedShaderModule {
 pub struct LoadedGraphicsPipeline {
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
     pub pipeline_asset: PipelineAsset,
+}
+
+pub struct LoadedRenderpass {
+    // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
+    pub renderpass_asset: RenderpassAsset,
 }
 
 pub struct SlotLocation {
@@ -197,6 +200,7 @@ impl<LoadedAssetT> Default for AssetLookup<LoadedAssetT> {
 pub struct LoadedAssetMetrics {
     pub shader_module_count: usize,
     pub pipeline_count: usize,
+    pub renderpass_count: usize,
     pub material_count: usize,
     pub material_instance_count: usize,
     pub image_count: usize,
@@ -211,6 +215,7 @@ pub struct LoadedAssetMetrics {
 pub struct LoadedAssetLookupSet {
     pub shader_modules: AssetLookup<LoadedShaderModule>,
     pub graphics_pipelines: AssetLookup<LoadedGraphicsPipeline>,
+    pub renderpasses: AssetLookup<LoadedRenderpass>,
     pub materials: AssetLookup<LoadedMaterial>,
     pub material_instances: AssetLookup<LoadedMaterialInstance>,
     pub images: AssetLookup<LoadedImage>,
@@ -223,6 +228,7 @@ impl LoadedAssetLookupSet {
         LoadedAssetMetrics {
             shader_module_count: self.shader_modules.len(),
             pipeline_count: self.graphics_pipelines.len(),
+            renderpass_count: self.renderpasses.len(),
             material_count: self.materials.len(),
             material_instance_count: self.material_instances.len(),
             image_count: self.images.len(),
@@ -234,6 +240,7 @@ impl LoadedAssetLookupSet {
     pub fn destroy(&mut self) {
         self.shader_modules.destroy();
         self.graphics_pipelines.destroy();
+        self.renderpasses.destroy();
         self.materials.destroy();
         self.material_instances.destroy();
         self.images.destroy();

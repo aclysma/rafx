@@ -1,0 +1,64 @@
+(
+    renderpass: (
+        attachments: [
+            (
+                flags: None,
+                format: MatchColorAttachment,
+                samples: MatchSwapchain,
+                load_op: Load,
+                store_op: Store,
+                stencil_load_op: DontCare,
+                stencil_store_op: DontCare,
+                initial_layout: ColorAttachmentOptimal,
+
+                // This pipeline passes results to the compositor. The compositor will be reading our color attachment
+                // via a sampler
+                final_layout: ShaderReadOnlyOptimal,
+            ),
+            (
+                flags: None,
+                format: MatchDepthAttachment,
+                samples: MatchSwapchain,
+                load_op: Load,
+                store_op: DontCare,
+                stencil_load_op: DontCare,
+                stencil_store_op: DontCare,
+                initial_layout: DepthStencilAttachmentOptimal,
+                final_layout: DepthStencilAttachmentOptimal,
+            ),
+        ],
+        subpasses: [
+            (
+                pipeline_bind_point: Graphics,
+                input_attachments: [],
+                color_attachments: [
+                    (
+                        attachment: Index(0),
+                        layout: ColorAttachmentOptimal,
+                    ),
+                ],
+                resolve_attachments: [],
+                depth_stencil_attachment: Some(
+                    (
+                        attachment: Index(1),
+                        layout: DepthStencilAttachmentOptimal
+                    )
+                ),
+            ),
+        ],
+        dependencies: [
+            (
+                src_subpass: External,
+                dst_subpass: Index(0),
+                src_stage_mask: ColorAttachmentOutput,
+                dst_stage_mask: ColorAttachmentOutput,
+                src_access_mask: [],
+                dst_access_mask: [
+                    ColorAttachmentRead,
+                    ColorAttachmentWrite,
+                ],
+                dependency_flags: Empty,
+            ),
+        ],
+    ),
+)

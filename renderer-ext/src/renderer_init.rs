@@ -7,7 +7,7 @@ use renderer_shell_vulkan::VkDeviceContext;
 use crate::resource_managers::ResourceManager;
 use crate::asset_resource::AssetResource;
 use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
 use crate::pipeline::image::ImageAsset;
 use crate::pipeline::buffer::BufferAsset;
 use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset};
@@ -47,6 +47,9 @@ pub fn init_renderer(
     ));
     asset_resource.add_storage_with_load_handler::<PipelineAsset, _>(Box::new(
         resource_manager.create_pipeline_load_handler(),
+    ));
+    asset_resource.add_storage_with_load_handler::<RenderpassAsset, _>(Box::new(
+        resource_manager.create_renderpass_load_handler(),
     ));
     asset_resource.add_storage_with_load_handler::<MaterialAsset, _>(Box::new(
         resource_manager.create_material_load_handler(),

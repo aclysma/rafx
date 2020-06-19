@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(9944004607766836937),
+    importer_version: 2,
+    importer_type: "a188149d-bb0c-4c7d-8a43-0267a528bec6",
+    importer_options: (),
+    importer_state: (Some("54931d31-770c-4327-bb17-fc6481e5c7a6")),
+    assets: [
+        (
+            id: "54931d31-770c-4327-bb17-fc6481e5c7a6",
+            search_tags: [
+                ("file_name", Some("bloom_blur.renderpass")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 6879515987244016566,
+                id: "54931d31-770c-4327-bb17-fc6481e5c7a6",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(149),
+                uncompressed_size: Some(149),
+                type_id: "366d277d-6cb5-430a-a8fa-007d8ae69886",
+            )),
+        ),
+    ],
+)

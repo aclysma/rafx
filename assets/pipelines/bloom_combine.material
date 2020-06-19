@@ -3,6 +3,7 @@
         (
             phase: "Opaque",
             pipeline: "bloom_combine.pipeline",
+            renderpass: "bloom_combine.renderpass",
             shaders: [
                 (
                     stage: Vertex,

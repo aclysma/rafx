@@ -5,7 +5,7 @@ use crate::asset_storage::{ResourceLoadHandler, ResourceHandle};
 use std::marker::PhantomData;
 use crossbeam_channel::{Sender, Receiver};
 use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset};
+use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
 use crate::pipeline::image::ImageAsset;
 use atelier_assets::loader::LoadHandle;
 use crate::pipeline::gltf::MeshAsset;
@@ -186,6 +186,7 @@ where
 pub struct LoadQueueSet {
     pub shader_modules: LoadQueues<ShaderAsset>,
     pub graphics_pipelines: LoadQueues<PipelineAsset>,
+    pub renderpasses: LoadQueues<RenderpassAsset>,
     pub materials: LoadQueues<MaterialAsset>,
     pub material_instances: LoadQueues<MaterialInstanceAsset>,
     pub images: LoadQueues<ImageAsset>,

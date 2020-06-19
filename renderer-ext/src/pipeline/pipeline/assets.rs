@@ -16,9 +16,14 @@ use std::hash::{Hash, Hasher};
 use crate::pipeline_description::{DescriptorSetLayoutBinding, DescriptorSetLayout};
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
+#[uuid = "366d277d-6cb5-430a-a8fa-007d8ae69886"]
+pub struct RenderpassAsset {
+    pub renderpass: dsc::RenderPass,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "0dfa5d9a-89cd-40a1-adac-baf801db61db"]
 pub struct PipelineAsset {
-    pub renderpass: dsc::RenderPass,
     pub input_assembly_state: dsc::PipelineInputAssemblyState,
     pub viewport_state: dsc::PipelineViewportState,
     pub rasterization_state: dsc::PipelineRasterizationState,
@@ -97,6 +102,7 @@ pub struct MaterialPassShaderInterface {
 pub struct MaterialPass {
     pub phase: String,
     pub pipeline: Handle<PipelineAsset>,
+    pub renderpass: Handle<RenderpassAsset>,
     pub shaders: Vec<PipelineShaderStage>,
     pub shader_interface: MaterialPassShaderInterface,
 }

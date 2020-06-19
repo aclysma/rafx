@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(13256797611193715982),
+    importer_version: 2,
+    importer_type: "a188149d-bb0c-4c7d-8a43-0267a528bec6",
+    importer_options: (),
+    importer_state: (Some("6b6ab9dc-6dfe-436b-bbcc-16a9c33769de")),
+    assets: [
+        (
+            id: "6b6ab9dc-6dfe-436b-bbcc-16a9c33769de",
+            search_tags: [
+                ("file_name", Some("mesh.renderpass")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 16848707427863884976,
+                id: "6b6ab9dc-6dfe-436b-bbcc-16a9c33769de",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(197),
+                uncompressed_size: Some(197),
+                type_id: "366d277d-6cb5-430a-a8fa-007d8ae69886",
+            )),
+        ),
+    ],
+)
