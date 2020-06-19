@@ -27,8 +27,9 @@ use crate::pipeline::gltf::{MeshVertex, MeshAsset};
 use crate::pipeline::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
 use crate::asset_resource::AssetResource;
+use crate::features::mesh::StaticMeshInstance;
 
-
+/*
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
@@ -139,6 +140,7 @@ impl StaticMeshInstance {
         self.per_object_descriptor_set.flush(&mut descriptor_set_allocator);
     }
 }
+*/
 
 /// Draws sprites
 pub struct VkMeshRenderPass {
@@ -353,8 +355,9 @@ impl VkMeshRenderPass {
 
                     for mesh_part in &mesh.mesh_info.mesh_asset.mesh_parts {
 
+                        // pass 0, set 1
                         let material_descriptor_set = resource_manager
-                            .get_material_instance_descriptor_sets(&mesh_part.material_instance, 0).descriptor_sets[1];
+                            .get_material_instance_info(&mesh_part.material_instance).descriptor_sets[0][1].get();
 
                         logical_device.cmd_bind_descriptor_sets(
                             *command_buffer,

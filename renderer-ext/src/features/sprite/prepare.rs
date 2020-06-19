@@ -8,12 +8,12 @@ use crate::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
 use std::mem::ManuallyDrop;
-use crate::resource_managers::PipelineSwapchainInfo;
+use crate::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct SpritePrepareJobImpl {
     device_context: VkDeviceContext,
     pipeline_info: PipelineSwapchainInfo,
-    descriptor_set_per_pass: vk::DescriptorSet,
+    descriptor_set_per_pass: DescriptorSetArc,
     extracted_sprite_data: Vec<ExtractedSpriteData>,
 
     draw_calls: Vec<SpriteDrawCall>,
@@ -25,7 +25,7 @@ impl SpritePrepareJobImpl {
     pub(super) fn new(
         device_context: VkDeviceContext,
         pipeline_info: PipelineSwapchainInfo,
-        descriptor_set_per_pass: vk::DescriptorSet,
+        descriptor_set_per_pass: DescriptorSetArc,
         extracted_sprite_data: Vec<ExtractedSpriteData>,
     ) -> Self {
         let sprite_count = extracted_sprite_data.len();

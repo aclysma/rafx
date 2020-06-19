@@ -2,7 +2,7 @@
     passes: [
         (
             phase: "Opaque",
-            pipeline: "debug_msaa.pipeline",
+            pipeline: "debug.pipeline",
             renderpass: "debug_msaa.renderpass",
             shaders: [
                 (

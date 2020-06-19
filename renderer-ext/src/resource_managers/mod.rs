@@ -79,7 +79,7 @@ use crate::resource_managers::resource_lookup::{
 pub use resource_lookup::ImageViewResource;
 use crate::pipeline::gltf::MeshAsset;
 use crate::pipeline::buffer::BufferAsset;
-use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh, LoadedRenderpass};
+use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh, LoadedRenderpass, LoadedMeshPart};
 use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 use crate::resource_managers::descriptor_sets::{DescriptorSetAllocatorManager};
 
@@ -108,16 +108,22 @@ pub struct DescriptorSetInfo {
     pub descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
 }
 
+pub struct MeshPartInfo {
+    //pub draw_info: LoadedMeshPart,
+    pub material_instance: Vec<Vec<DescriptorSetArc>>
+}
+
 pub struct MeshInfo {
     pub vertex_buffer: ResourceArc<VkBufferRaw>,
     pub index_buffer: ResourceArc<VkBufferRaw>,
     pub mesh_asset: MeshAsset,
+    pub mesh_parts: Vec<MeshPartInfo>
 }
 
 // Information about a descriptor set for a particular frame. Descriptor sets may be updated
 // every frame and we rotate through them, so this information must not be persisted across frames
-pub struct MaterialInstanceDescriptorSets {
-    pub descriptor_sets: Vec<vk::DescriptorSet>,
+pub struct MaterialInstanceInfo {
+    pub descriptor_sets: Vec<Vec<DescriptorSetArc>>,
 }
 
 #[derive(Debug)]
@@ -282,19 +288,24 @@ impl ResourceManager {
         handle: &Handle<MeshAsset>
     ) -> MeshInfo {
         let resource = self.loaded_assets.meshes.get_committed(handle.load_handle()).unwrap();
+        let mesh_parts : Vec<_> = resource.mesh_parts.iter().map(|x| {
+            MeshPartInfo {
+                material_instance: x.material_instance.clone()
+            }
+        }).collect();
 
         MeshInfo {
             vertex_buffer: resource.vertex_buffer.clone(),
             index_buffer: resource.index_buffer.clone(),
             mesh_asset: resource.asset.clone(),
+            mesh_parts
         }
     }
 
-    pub fn get_material_instance_descriptor_sets(
+    pub fn get_material_instance_info(
         &self,
         handle: &Handle<MaterialInstanceAsset>,
-        pass_index: usize,
-    ) -> MaterialInstanceDescriptorSets {
+    ) -> MaterialInstanceInfo {
         // Get the material instance
         let resource = self
             .loaded_assets
@@ -302,17 +313,9 @@ impl ResourceManager {
             .get_committed(handle.load_handle())
             .unwrap();
 
-        // Get the current pass
-        let current_pass_descriptor_sets = &resource.material_descriptor_sets[pass_index];
-
-        // Get the descriptor sets within the pass (one per layout)
-        // Map the DescriptorSetArc to a vk::DescriptorSet
-        let descriptor_sets: Vec<_> = current_pass_descriptor_sets
-            .iter()
-            .map(|x| x.get())
-            .collect();
-
-        MaterialInstanceDescriptorSets { descriptor_sets }
+        MaterialInstanceInfo {
+            descriptor_sets: resource.material_descriptor_sets.clone()
+        }
     }
 
     pub fn add_swapchain(
@@ -839,12 +842,21 @@ impl ResourceManager {
 
         let vertex_buffer = self.loaded_assets.buffers.get_latest(mesh_asset.vertex_buffer.load_handle()).unwrap().buffer.clone();
         let index_buffer = self.loaded_assets.buffers.get_latest(mesh_asset.index_buffer.load_handle()).unwrap().buffer.clone();
-        //TODO: materials
+
+        let mut mesh_parts = Vec::with_capacity(mesh_asset.mesh_parts.len());
+
+        for part in &mesh_asset.mesh_parts {
+            let material_instance_info = self.get_material_instance_info(&part.material_instance);
+            mesh_parts.push(LoadedMeshPart {
+                material_instance: material_instance_info.descriptor_sets.clone()
+            })
+        }
 
         Ok(LoadedMesh {
             vertex_buffer,
             index_buffer,
-            asset: mesh_asset.clone()
+            asset: mesh_asset.clone(),
+            mesh_parts
         })
     }
 

@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(2132641202738586393),
+    import_hash: Some(16878419823416599851),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,19 +13,19 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 4322154306423577396,
+                hash: 1058220216520340499,
                 id: "267e0388-2611-441c-9c78-2d39d1bd3cf1",
                 build_deps: [
-                    Path("../shaders/mesh.frag.spv"),
-                    Path("mesh.renderpass"),
-                    Path("mesh.pipeline"),
+                    Path("opaque.renderpass"),
                     Path("../shaders/mesh.vert.spv"),
+                    Path("mesh.pipeline"),
+                    Path("../shaders/mesh.frag.spv"),
                 ],
                 load_deps: [
                     Path("../shaders/mesh.frag.spv"),
-                    Path("mesh.renderpass"),
-                    Path("mesh.pipeline"),
                     Path("../shaders/mesh.vert.spv"),
+                    Path("opaque.renderpass"),
+                    Path("mesh.pipeline"),
                 ],
                 compression: None,
                 compressed_size: Some(755),

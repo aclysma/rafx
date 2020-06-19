@@ -41,7 +41,8 @@ impl RenderViewSet {
     pub fn create_view(
         &self,
         eye_position: Vec3,
-        view_proj: Mat4,
+        view: Mat4,
+        proj: Mat4,
         render_phase_mask: RenderPhaseMask,
         debug_name: String,
     ) -> RenderView {
@@ -49,7 +50,8 @@ impl RenderViewSet {
         RenderView::new(
             view_index,
             eye_position,
-            view_proj,
+            view,
+            proj,
             render_phase_mask,
             debug_name,
         )
@@ -63,7 +65,8 @@ impl RenderViewSet {
 ////////////////// Views //////////////////
 pub struct RenderView {
     eye_position: Vec3,
-    view_proj: Mat4,
+    view: Mat4,
+    proj: Mat4,
     view_index: RenderViewIndex,
     render_phase_mask: RenderPhaseMask,
     debug_name: String,
@@ -73,14 +76,16 @@ impl RenderView {
     pub fn new(
         view_index: RenderViewIndex,
         eye_position: Vec3,
-        view_proj: Mat4,
+        view: Mat4,
+        proj: Mat4,
         render_phase_mask: RenderPhaseMask,
         debug_name: String,
     ) -> RenderView {
         log::trace!("Allocate view {} {}", debug_name, view_index);
         Self {
             eye_position,
-            view_proj,
+            view,
+            proj,
             view_index,
             render_phase_mask,
             debug_name,
@@ -91,9 +96,15 @@ impl RenderView {
         self.eye_position
     }
 
-    pub fn view_proj(&self) -> Mat4 {
-        self.view_proj
+    pub fn view_matrix(&self) -> Mat4 {
+        self.view
     }
+    pub fn projection_matrix(&self) -> Mat4 {
+        self.proj
+    }
+    // pub fn view_proj(&self) -> Mat4 {
+    //     self.view_proj
+    // }
 
     pub fn view_index(&self) -> RenderViewIndex {
         self.view_index

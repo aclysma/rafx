@@ -1,7 +1,7 @@
 use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener, Sdl2ImguiManager};
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer};
 use ash::prelude::VkResult;
-use renderer_ext::renderpass::{VkMeshRenderPass, StaticMeshInstance, PerFrameDataShaderParam, PerObjectDataShaderParam, VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
+use renderer_ext::renderpass::{VkMeshRenderPass, VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
 use std::mem::{ManuallyDrop, swap};
 use renderer_ext::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
@@ -44,6 +44,7 @@ use legion::prelude::*;
 use renderer_ext::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContextFactory};
 use renderer_ext::RenderJobWriteContext;
 use renderer_shell_vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
+use renderer_ext::features::mesh::{StaticMeshInstance, MeshPerFrameShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
 // single function
@@ -775,7 +776,8 @@ impl GameRenderer {
         let render_view_set = RenderViewSet::default();
         let main_view = render_view_set.create_view(
             eye,
-            view_proj,
+            view,
+            proj,
             self.main_camera_render_phase_mask,
             "main".to_string(),
         );
@@ -799,8 +801,10 @@ impl GameRenderer {
         );
 
         let sprite_render_nodes = resources.get::<SpriteRenderNodeSet>().unwrap();
+        let mesh_render_nodes = resources.get::<MeshRenderNodeSet>().unwrap();
         let mut all_render_nodes = AllRenderNodes::new();
         all_render_nodes.add_render_nodes(&*sprite_render_nodes);
+        all_render_nodes.add_render_nodes(&*mesh_render_nodes);
 
         let frame_packet_builder = FramePacketBuilder::new(&all_render_nodes);
 
@@ -822,7 +826,7 @@ impl GameRenderer {
         //
         // Push latest light/camera info into the mesh material
         //
-        let mut per_frame_data = PerFrameDataShaderParam::default();
+        let mut per_frame_data = MeshPerFrameShaderParam::default();
         per_frame_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0);
         per_frame_data.directional_light_count = 0;
         per_frame_data.point_light_count = 2;
@@ -948,16 +952,17 @@ impl GameRenderer {
                 0,
             );
 
-            let dyn_pass_material_instance = self.sprite_custom_material.as_ref().unwrap().pass(0);
-            let descriptor_set_per_pass = dyn_pass_material_instance
+            let sprite_dyn_pass_material_instance = self.sprite_custom_material.as_ref().unwrap().pass(0);
+            let sprite_descriptor_set_per_pass = sprite_dyn_pass_material_instance
                 .descriptor_set_layout(0)
-                .descriptor_set()
-                .get();
+                .descriptor_set();
 
-            let descriptor_set_per_texture = dyn_pass_material_instance
-                .descriptor_set_layout(1)
-                .descriptor_set()
-                .get();
+
+            let mesh_pipeline_info = resource_manager.get_pipeline_info(
+                &self.mesh_material,
+                self.swapchain_surface_info.as_ref().unwrap(),
+                0,
+            );
 
             let mut extract_job_set = ExtractJobSet::new();
             extract_job_set.add_job(create_sprite_extract_job(
@@ -965,7 +970,14 @@ impl GameRenderer {
                 resource_manager.create_descriptor_set_allocator(),
                 sprite_pipeline_info,
                 &self.sprite_material,
-                descriptor_set_per_pass,
+                sprite_descriptor_set_per_pass.clone(),
+            ));
+            extract_job_set.add_job(create_mesh_extract_job(
+                device_context.clone(),
+                resource_manager.create_descriptor_set_allocator(),
+                mesh_pipeline_info,
+                &self.mesh_material,
+                self.mesh_material_per_frame_data.descriptor_set().clone(),
             ));
             extract_job_set
         };
@@ -1036,26 +1048,26 @@ impl GameRenderer {
         //
         // Mesh renderpass
         //
-        if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
-            log::trace!("mesh_renderpass update");
-            let mesh_pipeline_info = resource_manager.get_pipeline_info(
-                &self.mesh_material,
-                self.swapchain_surface_info.as_ref().unwrap(),
-                0,
-            );
-
-            let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get();
-
-            mesh_renderpass.update(
-                &mesh_pipeline_info,
-                present_index,
-                descriptor_set_per_pass,
-                &self.meshes,
-                asset_resource,
-                resource_manager
-            )?;
-            command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
-        }
+        // if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
+        //     log::trace!("mesh_renderpass update");
+        //     let mesh_pipeline_info = resource_manager.get_pipeline_info(
+        //         &self.mesh_material,
+        //         self.swapchain_surface_info.as_ref().unwrap(),
+        //         0,
+        //     );
+        //
+        //     let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get();
+        //
+        //     mesh_renderpass.update(
+        //         &mesh_pipeline_info,
+        //         present_index,
+        //         descriptor_set_per_pass,
+        //         &self.meshes,
+        //         asset_resource,
+        //         resource_manager
+        //     )?;
+        //     command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
+        // }
 
         //
         // Debug Renderpass

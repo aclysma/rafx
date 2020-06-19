@@ -3,7 +3,7 @@ use renderer_base::{RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureComm
 use crate::RenderJobWriteContext;
 use renderer_shell_vulkan::{VkBuffer, VkBufferRaw};
 use std::mem::ManuallyDrop;
-use crate::resource_managers::{ResourceArc, PipelineSwapchainInfo};
+use crate::resource_managers::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
 use ash::vk;
 use ash::version::DeviceV1_0;
 
@@ -12,7 +12,7 @@ pub struct SpriteCommandWriter {
     pub index_buffers: Vec<ResourceArc<VkBufferRaw>>,
     pub draw_calls: Vec<SpriteDrawCall>,
     pub pipeline_info: PipelineSwapchainInfo,
-    pub descriptor_set_per_pass: vk::DescriptorSet,
+    pub descriptor_set_per_pass: DescriptorSetArc,
 }
 
 impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
@@ -36,7 +36,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
                 vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
                 0,
-                &[self.descriptor_set_per_pass],
+                &[self.descriptor_set_per_pass.get()],
                 &[],
             );
 

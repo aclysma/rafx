@@ -37,6 +37,8 @@ use ash::vk;
 use crate::resource_managers::{DynResourceAllocatorSet, ResourceManager};
 use atelier_assets::loader::handle::Handle;
 use crate::pipeline::image::ImageAsset;
+use crate::features::mesh::{MeshRenderNodeHandle, StaticMeshInstance};
+use crate::pipeline::gltf::MeshAsset;
 
 pub mod phases;
 
@@ -52,6 +54,13 @@ pub struct SpriteComponent {
     pub alpha: f32,
     pub image: Handle<ImageAsset>,
     //pub texture_material: ResourceArc<>
+}
+
+#[derive(Clone)]
+pub struct MeshComponent {
+    pub mesh_handle: MeshRenderNodeHandle,
+    pub visibility_handle: DynamicAabbVisibilityNodeHandle,
+    pub mesh: Handle<MeshAsset>,
 }
 
 pub struct RenderJobExtractContext {

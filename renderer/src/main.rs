@@ -6,7 +6,7 @@ use ash::prelude::VkResult;
 use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
-use renderer_ext::{PositionComponent, SpriteComponent};
+use renderer_ext::{PositionComponent, SpriteComponent, MeshComponent};
 use atelier_assets::loader as atelier_loader;
 use legion::prelude::*;
 
@@ -34,6 +34,8 @@ use renderer_ext::resource_managers::ResourceManager;
 use renderer_base::RenderRegistry;
 use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
+use renderer_ext::pipeline::gltf::MeshAsset;
+use renderer_ext::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
 
 mod game_renderer;
 mod daemon;
@@ -73,7 +75,8 @@ fn main() {
     let universe = Universe::new();
     let mut world = universe.create_world();
 
-    populate_test_entities(&mut resources, &mut world);
+    populate_test_sprite_entities(&mut resources, &mut world);
+    populate_test_mesh_entities(&mut resources, &mut world);
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 
@@ -281,6 +284,7 @@ fn rendering_init(
     let window_wrapper = Sdl2Window::new(&sdl2_window);
 
     resources.insert(SpriteRenderNodeSet::default());
+    resources.insert(MeshRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
 
@@ -351,6 +355,7 @@ fn rendering_destroy(
 
         resources.remove::<VkDeviceContext>();
         resources.remove::<SpriteRenderNodeSet>();
+        resources.remove::<MeshRenderNodeSet>();
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
 
@@ -361,7 +366,7 @@ fn rendering_destroy(
     resources.remove::<VkContext>();
 }
 
-fn populate_test_entities(resources: &mut Resources, world: &mut World) {
+fn populate_test_sprite_entities(resources: &mut Resources, world: &mut World) {
     let sprite_image = {
         let mut asset_resource = resources.get::<AssetResource>().unwrap();
         begin_load_asset::<ImageAsset>(
@@ -416,6 +421,62 @@ fn populate_test_entities(resources: &mut Resources, world: &mut World) {
             world.get_component::<PositionComponent>(entity).unwrap();
 
             SpriteRenderNode {
+                entity, // sprite asset
+            }
+        });
+    }
+}
+
+fn populate_test_mesh_entities(resources: &mut Resources, world: &mut World) {
+    let mesh = {
+        let mut asset_resource = resources.get::<AssetResource>().unwrap();
+        begin_load_asset::<MeshAsset>(
+            asset_uuid!("ffc9b240-0a17-4ff4-bb7d-72d13cc6e261"),
+            &asset_resource,
+        )
+    };
+
+    for i in 0..10 {
+        let position = Vec3::new(((i / 10) * 3) as f32, ((i % 10) * 3) as f32, 0.0);
+
+        let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
+        let mut dynamic_visibility_node_set = resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
+
+        // User calls functions to register render objects
+        // - This is a retained API because render object existence can trigger loading streaming assets and
+        //   keep them resident in memory
+        // - Some render objects might not correspond to legion entities, and some people might not be using
+        //   legion at all
+        // - the `_with_handle` variant allows us to get the handle of the value that's going to be allocated
+        //   This resolves a circular dependency where the component needs the render node handle and the
+        //   render node needs the entity.
+        // - ALTERNATIVE: Could create an empty entity, create the components, and then add all of them
+        mesh_render_nodes.register_mesh_with_handle(|mesh_handle| {
+            let aabb_info = DynamicAabbVisibilityNode {
+                handle: mesh_handle.into(),
+                // aabb bounds
+            };
+
+            // User calls functions to register visibility objects
+            // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
+            let visibility_handle =
+                dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
+
+            let position_component = PositionComponent { position };
+            let mesh_component = MeshComponent {
+                mesh_handle,
+                visibility_handle,
+                mesh: mesh.clone()
+            };
+
+            let entity = world.insert(
+                (),
+                (0..1).map(|_| (position_component, mesh_component.clone())),
+            )[0];
+
+            world.get_component::<PositionComponent>(entity).unwrap();
+
+            MeshRenderNode {
                 entity, // sprite asset
             }
         });

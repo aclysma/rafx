@@ -17,7 +17,7 @@ pub struct SpriteExtractJobImpl {
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     sprite_material: Handle<MaterialAsset>,
-    descriptor_set_per_pass: vk::DescriptorSet,
+    descriptor_set_per_pass: DescriptorSetArc,
     extracted_sprite_data: Vec<ExtractedSpriteData>,
 }
 
@@ -27,7 +27,7 @@ impl SpriteExtractJobImpl {
         descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
         sprite_material: &Handle<MaterialAsset>,
-        descriptor_set_per_pass: vk::DescriptorSet,
+        descriptor_set_per_pass: DescriptorSetArc,
     ) -> Self {
         SpriteExtractJobImpl {
             device_context,

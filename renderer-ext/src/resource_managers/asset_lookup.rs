@@ -88,7 +88,13 @@ pub struct LoadedBuffer {
     pub buffer: ResourceArc<VkBufferRaw>,
 }
 
+pub struct LoadedMeshPart {
+    //pub material: ResourceArc<LoadedMaterial>,
+    pub material_instance: Vec<Vec<DescriptorSetArc>>,
+}
+
 pub struct LoadedMesh {
+    pub mesh_parts: Vec<LoadedMeshPart>,
     pub vertex_buffer: ResourceArc<VkBufferRaw>,
     pub index_buffer: ResourceArc<VkBufferRaw>,
     pub asset: MeshAsset,

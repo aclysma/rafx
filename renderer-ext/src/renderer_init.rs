@@ -12,6 +12,7 @@ use crate::pipeline::image::ImageAsset;
 use crate::pipeline::buffer::BufferAsset;
 use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset};
 use ash::prelude::VkResult;
+use crate::features::mesh::MeshRenderFeature;
 
 pub fn init_renderer(
     resources: &mut Resources,
@@ -21,6 +22,7 @@ pub fn init_renderer(
     //
     let render_registry = RenderRegistryBuilder::default()
         .register_feature::<SpriteRenderFeature>()
+        .register_feature::<MeshRenderFeature>()
         .register_render_phase::<DrawOpaqueRenderPhase>()
         .register_render_phase::<DrawTransparentRenderPhase>()
         .build();

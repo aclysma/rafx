@@ -3,7 +3,7 @@
         (
             phase: "Opaque",
             pipeline: "sprite.pipeline",
-            renderpass: "sprite.renderpass",
+            renderpass: "opaque.renderpass",
             shaders: [
                 (
                     stage: Vertex,

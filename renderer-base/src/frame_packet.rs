@@ -217,6 +217,7 @@ impl FramePacketBuilder {
     ) -> FrameNodeIndex {
         let mut guard = self.inner.lock().unwrap();
 
+        // A crash here likely means render nodes for this feature weren't registered
         let index = guard.frame_node_assignments[handle.render_feature_index() as usize]
             [handle.render_node_index() as usize];
 

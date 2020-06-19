@@ -20,10 +20,6 @@ use ash::vk;
 use crate::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef};
 use crate::pipeline::pipeline::MaterialAsset;
 
-struct SpriteRenderpassStats {
-    draw_call_count: u32,
-}
-
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
 struct SpriteUniformBufferObject {
@@ -75,7 +71,7 @@ pub fn create_sprite_extract_job(
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     sprite_material: &Handle<MaterialAsset>,
-    descriptor_set_per_pass: vk::DescriptorSet,
+    descriptor_set_per_pass: DescriptorSetArc,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(
         device_context,
