@@ -6,7 +6,7 @@ use ash::prelude::VkResult;
 use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
-use renderer_ext::{PositionComponent, SpriteComponent, MeshComponent};
+use renderer_ext::{PositionComponent, SpriteComponent, MeshComponent, PointLightComponent, SpotLightComponent, DirectionalLightComponent};
 use atelier_assets::loader as atelier_loader;
 use legion::prelude::*;
 
@@ -36,6 +36,7 @@ use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
 use renderer_ext::pipeline::gltf::MeshAsset;
 use renderer_ext::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
+use renderer_ext::renderpass::debug_renderpass::DebugDraw3DResource;
 
 mod game_renderer;
 mod daemon;
@@ -77,6 +78,7 @@ fn main() {
 
     populate_test_sprite_entities(&mut resources, &mut world);
     populate_test_mesh_entities(&mut resources, &mut world);
+    populate_test_lights(&mut resources, &mut world);
 
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 
@@ -136,6 +138,8 @@ fn main() {
         if !process_input(&resources, &mut event_pump) {
             break 'running;
         }
+
+        add_light_debug_draw(&resources, &world);
 
         //
         // imgui debug draw,
@@ -480,6 +484,145 @@ fn populate_test_mesh_entities(resources: &mut Resources, world: &mut World) {
                 entity, // sprite asset
             }
         });
+    }
+}
+
+fn populate_test_lights(
+    resources: &mut Resources,
+    world: &mut World,
+) {
+    add_point_light(
+        resources,
+        world,
+        glam::Vec3::new(-3.0, -3.0, 3.0),
+        PointLightComponent {
+            color: [1.0, 1.0, 1.0, 1.0].into(),
+            intensity: 130.0,
+            range: 25.0
+        }
+    );
+
+    add_point_light(
+        resources,
+        world,
+        glam::Vec3::new(-3.0, 3.0, 3.0),
+        PointLightComponent {
+            color: [1.0, 1.0, 1.0, 1.0].into(),
+            intensity: 130.0,
+            range: 25.0
+        }
+    );
+
+    let light_from = glam::Vec3::new(-3.0, -3.0, 0.0);
+    let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
+    let light_direction = (light_to - light_from).normalize();
+    add_spot_light(
+        resources,
+        world,
+        light_from,
+        SpotLightComponent {
+            direction: light_direction,
+            spotlight_half_angle: 10.0 * (std::f32::consts::PI / 180.0),
+            range: 8.0,
+            color: [1.0, 1.0, 1.0, 1.0].into(),
+            intensity: 1000.0,
+        }
+    );
+
+    let light_from = glam::Vec3::new(5.0, 5.0, 5.0);
+    let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
+    let light_direction = (light_to - light_from).normalize();
+    add_directional_light(
+        resources,
+        world,
+        DirectionalLightComponent {
+            direction: light_direction,
+            intensity: 5.0,
+            color: [1.0, 1.0, 1.0, 1.0].into()
+        }
+    );
+}
+
+fn add_directional_light(
+    resources: &mut Resources,
+    world: &mut World,
+    light_component: DirectionalLightComponent
+) {
+    world.insert(
+        (),
+        vec![(light_component,)],
+    );
+}
+
+fn add_spot_light(
+    resources: &mut Resources,
+    world: &mut World,
+    position: glam::Vec3,
+    light_component: SpotLightComponent
+) {
+    let position_component = PositionComponent {
+        position
+    };
+
+    world.insert(
+        (),
+        vec![(position_component, light_component)],
+    );
+}
+
+fn add_point_light(
+    resources: &mut Resources,
+    world: &mut World,
+    position: glam::Vec3,
+    light_component: PointLightComponent
+) {
+    let position_component = PositionComponent {
+        position
+    };
+
+    world.insert(
+        (),
+        vec![(position_component, light_component)],
+    );
+}
+
+fn add_light_debug_draw(
+    resources: &Resources,
+    world: &World,
+) {
+    let mut debug_draw = resources.get_mut::<DebugDraw3DResource>().unwrap();
+
+    let query = <(Read<DirectionalLightComponent>)>::query();
+    for light in query.iter(world) {
+        let light_from = glam::Vec3::new(0.0, 0.0, 0.0);
+        let light_to = light.direction;
+
+        debug_draw.add_line(light_from, light_to, light.color);
+    }
+
+    let query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
+    for (position, light) in query.iter(world) {
+        debug_draw.add_sphere(
+            position.position,
+            0.25,
+            light.color,
+            12
+        );
+    }
+
+    let query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
+    for (position, light) in query.iter(world) {
+        let light_from = position.position;
+        let light_to = position.position + light.direction;
+        let light_direction = (light_to - light_from).normalize();
+
+        debug_draw.add_cone(
+            light_from,
+            light_from + (light.range * light_direction),
+            light.range * light.spotlight_half_angle.tan(),
+            light.color,
+            8
+        );
     }
 }
 

@@ -79,77 +79,17 @@ pub struct MeshPerObjectShaderParam {
     pub model_view_proj: glam::Mat4, // +64
 } // 128 bytes
 
-
-// A mesh that, aside from moving around, does not change. (i.e. no material changes)
-pub struct StaticMeshInstance {
-    // Contains buffers, where to bind within the buffers
-    pub mesh_info: MeshInfo,
-
-    // Dynamic descriptor for position/view. These are bound to layout 2.
-    // These really should be per-view so there probably needs to be a better way of handling this
-    pub per_object_descriptor_set: DynDescriptorSet,
-
-    // world-space transform (position/rotation/translation)
-    pub world_transform: glam::Mat4,
-}
-
-impl StaticMeshInstance {
-    pub fn new(
-        resource_manager: &mut ResourceManager,
-        mesh: &Handle<MeshAsset>,
-        mesh_material: &Handle<MaterialAsset>,
-        position: glam::Vec3,
-    ) -> VkResult<Self> {
-        let mesh_info = resource_manager.get_mesh_info(mesh);
-        let object_descriptor_set = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
-        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
-        let per_object_descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&object_descriptor_set.descriptor_set_layout)?;
-
-        let world_transform = glam::Mat4::from_translation(position);
-
-        Ok(StaticMeshInstance {
-            mesh_info,
-            per_object_descriptor_set,
-            world_transform
-        })
-    }
-
-    pub fn set_view_proj(
-        &mut self,
-        view: glam::Mat4,
-        proj: glam::Mat4,
-        resource_manager: &mut ResourceManager
-    ) {
-        let model_view = view * self.world_transform;
-        let model_view_proj = proj * model_view;
-
-        let per_object_param = MeshPerObjectShaderParam {
-            model_view,
-            model_view_proj
-        };
-
-        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
-        self.per_object_descriptor_set.set_buffer_data(0, &per_object_param);
-        self.per_object_descriptor_set.flush(&mut descriptor_set_allocator);
-    }
-}
-
-
-
-
 pub fn create_mesh_extract_job(
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     mesh_material: &Handle<MaterialAsset>,
-    descriptor_set_per_pass: DescriptorSetArc,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(MeshExtractJobImpl::new(
         device_context,
         descriptor_set_allocator,
         pipeline_info,
         mesh_material,
-        descriptor_set_per_pass,
     )))
 }
 

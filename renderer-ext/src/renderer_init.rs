@@ -13,6 +13,7 @@ use crate::pipeline::buffer::BufferAsset;
 use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset};
 use ash::prelude::VkResult;
 use crate::features::mesh::MeshRenderFeature;
+use crate::renderpass::debug_renderpass::DebugDraw3DResource;
 
 pub fn init_renderer(
     resources: &mut Resources,
@@ -27,6 +28,7 @@ pub fn init_renderer(
         .register_render_phase::<DrawTransparentRenderPhase>()
         .build();
     resources.insert(render_registry);
+    resources.insert(DebugDraw3DResource::new());
 
     //
     // Create the resource manager
@@ -83,6 +85,7 @@ pub fn destroy_renderer(
 ) {
     resources.remove::<ResourceManager>();
     resources.remove::<RenderRegistry>();
+    resources.remove::<DebugDraw3DResource>();
 }
 
 

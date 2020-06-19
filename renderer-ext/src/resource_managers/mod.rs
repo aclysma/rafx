@@ -286,20 +286,21 @@ impl ResourceManager {
     pub fn get_mesh_info(
         &self,
         handle: &Handle<MeshAsset>
-    ) -> MeshInfo {
-        let resource = self.loaded_assets.meshes.get_committed(handle.load_handle()).unwrap();
-        let mesh_parts : Vec<_> = resource.mesh_parts.iter().map(|x| {
-            MeshPartInfo {
-                material_instance: x.material_instance.clone()
-            }
-        }).collect();
+    ) -> Option<MeshInfo> {
+        self.loaded_assets.meshes.get_committed(handle.load_handle()).map(|loaded_mesh| {
+            let mesh_parts : Vec<_> = loaded_mesh.mesh_parts.iter().map(|x| {
+                MeshPartInfo {
+                    material_instance: x.material_instance.clone()
+                }
+            }).collect();
 
-        MeshInfo {
-            vertex_buffer: resource.vertex_buffer.clone(),
-            index_buffer: resource.index_buffer.clone(),
-            mesh_asset: resource.asset.clone(),
-            mesh_parts
-        }
+            MeshInfo {
+                vertex_buffer: loaded_mesh.vertex_buffer.clone(),
+                index_buffer: loaded_mesh.index_buffer.clone(),
+                mesh_asset: loaded_mesh.asset.clone(),
+                mesh_parts
+            }
+        })
     }
 
     pub fn get_material_instance_info(

@@ -35,7 +35,7 @@ use legion::prelude::*;
 use renderer_ext::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContextFactory};
 use renderer_ext::RenderJobWriteContext;
 use renderer_shell_vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
-use renderer_ext::features::mesh::{StaticMeshInstance, MeshPerFrameShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
+use renderer_ext::features::mesh::{MeshPerFrameShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -86,11 +86,9 @@ pub struct GameRenderer {
 
     debug_material: Handle<MaterialAsset>,
     debug_material_per_frame_data: DynDescriptorSet,
-    debug_draw_3d: DebugDraw3DResource,
 
     // binding 0, contains info about lights
     mesh_material: Handle<MaterialAsset>,
-    mesh_material_per_frame_data: DynDescriptorSet,
 
     bloom_resources: Option<VkBloomRenderPassResources>,
 
@@ -198,14 +196,14 @@ impl GameRenderer {
 
         // cobblestone glb
         // UNWRAPPED ALL SIDES EQUAL
-        let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-            asset_uuid!("0dc01376-ebfe-4da4-9b3c-05eaf7c848a1"),
-            &asset_resource,
-        );
-        let mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("ffc9b240-0a17-4ff4-bb7d-72d13cc6e261"),
-            &asset_resource,
-        );
+        // let mesh_material_instance = begin_load_asset::<MaterialInstanceAsset>(
+        //     asset_uuid!("0dc01376-ebfe-4da4-9b3c-05eaf7c848a1"),
+        //     &asset_resource,
+        // );
+        // let mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("ffc9b240-0a17-4ff4-bb7d-72d13cc6e261"),
+        //     &asset_resource,
+        // );
 
         // cobblestone glb
         // FLAT NORMALS
@@ -219,16 +217,16 @@ impl GameRenderer {
         // );
 
         // light
-        let light_mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("eb44a445-2670-42ba-9faa-5fb4ec4a2242"),
-            &asset_resource,
-        );
-
-        // axis z-up (blender format)
-        let axis_mesh = begin_load_asset::<MeshAsset>(
-            asset_uuid!("21ba465c-57f7-47de-9dd5-6b22060eaec3"),
-            &asset_resource,
-        );
+        // let light_mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("eb44a445-2670-42ba-9faa-5fb4ec4a2242"),
+        //     &asset_resource,
+        // );
+        //
+        // // axis z-up (blender format)
+        // let axis_mesh = begin_load_asset::<MeshAsset>(
+        //     asset_uuid!("21ba465c-57f7-47de-9dd5-6b22060eaec3"),
+        //     &asset_resource,
+        // );
 
         // axis y-up (gltf standard)
         // let axis_mesh = begin_load_asset::<MeshAsset>(
@@ -284,46 +282,11 @@ impl GameRenderer {
             "mesh material"
         );
 
-        wait_for_asset_to_load(
-            device_context,
-            &mesh_material_instance,
-            asset_resource,
-            &mut resource_manager,
-            "mesh material instance"
-        );
-
-        wait_for_asset_to_load(
-            device_context,
-            &mesh,
-            asset_resource,
-            &mut resource_manager,
-            "mesh"
-        );
-
-        wait_for_asset_to_load(
-            device_context,
-            &light_mesh,
-            asset_resource,
-            &mut resource_manager,
-            "light mesh"
-        );
-
-        wait_for_asset_to_load(
-            device_context,
-            &axis_mesh,
-            asset_resource,
-            &mut resource_manager,
-            "axis"
-        );
-
         log::info!("all waits complete");
 
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
         let debug_per_frame_layout = resource_manager.get_descriptor_set_info(&debug_material, 0, 0);
         let debug_material_per_frame_data = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&debug_per_frame_layout.descriptor_set_layout)?;
-
-        let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(&mesh_material, 0, 0);
-        let mesh_material_per_frame_data = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout)?;
 
         let mut renderer = GameRenderer {
             imgui_event_listener,
@@ -332,10 +295,8 @@ impl GameRenderer {
 
             debug_material,
             debug_material_per_frame_data,
-            debug_draw_3d: DebugDraw3DResource::new(),
 
             mesh_material,
-            mesh_material_per_frame_data,
 
             bloom_resources: None,
 
@@ -555,6 +516,8 @@ impl GameRenderer {
         let dynamic_visibility_node_set_fetch = resources.get::<DynamicVisibilityNodeSet>().unwrap();
         let dynamic_visibility_node_set = &* dynamic_visibility_node_set_fetch;
 
+        let mut debug_draw_3d_line_lists = resources.get_mut::<DebugDraw3DResource>().unwrap().take_line_lists();
+
         //
         // View Management
         //
@@ -626,97 +589,7 @@ impl GameRenderer {
         log::trace!("game renderer render");
         let mut command_buffers = vec![];
 
-        //
-        // Push latest light/camera info into the mesh material
-        //
-        let mut per_frame_data = MeshPerFrameShaderParam::default();
-        per_frame_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0);
-        per_frame_data.directional_light_count = 0;
-        per_frame_data.point_light_count = 2;
-        per_frame_data.spot_light_count = 1;
-
-
-        let light_from = glam::Vec3::new(5.0, 5.0, 5.0);
-        let light_from_vs = (view * light_from.extend(1.0)).truncate();
-        let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
-        let light_to_vs = (view * light_to.extend(1.0)).truncate();
-        let light_direction = (light_to - light_from).normalize();
-        let light_direction_vs = (light_to_vs - light_from_vs).normalize();
-        per_frame_data.directional_lights[0].direction_ws = light_direction;
-        per_frame_data.directional_lights[0].direction_vs = light_direction_vs;
-        per_frame_data.directional_lights[0].intensity = 5.0;
-        per_frame_data.directional_lights[0].color = glam::Vec4::new(1.0, 1.0, 1.0, 1.0);
-
-        self.debug_draw_3d.add_line(light_from, light_to, glam::Vec4::new(1.0, 1.0, 1.0, 1.0));
-
-        let light_position = glam::Vec3::new(-3.0, -3.0, 3.0);
-        let light_position_vs = (view * light_position.extend(1.0)).truncate();
-        per_frame_data.point_lights[0].position_ws = light_position.into();
-        per_frame_data.point_lights[0].position_vs = light_position_vs.into();
-        per_frame_data.point_lights[0].range = 25.0;
-        per_frame_data.point_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.point_lights[0].intensity = 130.0;
-
-        let light_position = glam::Vec3::new(-3.0, 3.0, 3.0);
-        let light_position_vs = (view * light_position.extend(1.0)).truncate();
-        per_frame_data.point_lights[1].position_ws = light_position.into();
-        per_frame_data.point_lights[1].position_vs = light_position_vs.into();
-        per_frame_data.point_lights[1].range = 100.0;
-        per_frame_data.point_lights[1].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.point_lights[1].intensity = 130.0;
-
-
-        let light_position = glam::Vec3::new(-3.0, 0.1, -1.0);
-        let light_position_vs = (view * light_position.extend(1.0)).truncate();
-        per_frame_data.point_lights[2].position_ws = light_position.into();
-        per_frame_data.point_lights[2].position_vs = light_position_vs.into();
-        per_frame_data.point_lights[2].range = 25.0;
-        per_frame_data.point_lights[2].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.point_lights[2].intensity = 250.0;
-
-        let light_from = glam::Vec3::new(-3.0, -3.0, 0.0);
-        let light_from_vs = (view * light_from.extend(1.0)).truncate();
-        let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
-        let light_to_vs = (view * light_to.extend(1.0)).truncate();
-
-        let light_direction = (light_to - light_from).normalize();
-        let light_direction_vs = (light_to_vs - light_from_vs).normalize();
-
-        per_frame_data.spot_lights[0].position_ws = light_from.into();
-        per_frame_data.spot_lights[0].position_vs = light_from_vs.into();
-        per_frame_data.spot_lights[0].direction_ws = light_direction.into();
-        per_frame_data.spot_lights[0].direction_vs = light_direction_vs.into();
-        per_frame_data.spot_lights[0].spotlight_half_angle = 10.0 * (std::f32::consts::PI / 180.0);
-        per_frame_data.spot_lights[0].range = 8.0;
-        per_frame_data.spot_lights[0].color = [1.0, 1.0, 1.0, 1.0].into();
-        per_frame_data.spot_lights[0].intensity = 1000.0;
-
-
-        for i in 0..per_frame_data.point_light_count {
-            let light = &per_frame_data.point_lights[i as usize];
-            self.debug_draw_3d.add_sphere(
-                light.position_ws,
-                0.25,
-                light.color,
-                12
-            );
-        }
-
-        for i in 0..per_frame_data.spot_light_count {
-            let light = &per_frame_data.spot_lights[i as usize];
-            self.debug_draw_3d.add_cone(
-                light.position_ws,
-                light.position_ws + (light.range * light.direction_ws),
-                light.range * light.spotlight_half_angle.tan(),
-                light.color,
-                8
-            );
-        }
-
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
-        self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
-        self.mesh_material_per_frame_data.flush(&mut descriptor_set_allocator);
-
         self.debug_material_per_frame_data.set_buffer_data(0, &view_proj);
         self.debug_material_per_frame_data.flush(&mut descriptor_set_allocator);
 
@@ -724,8 +597,6 @@ impl GameRenderer {
         // Update Resources and flush descriptor set changes
         //
         resource_manager.on_begin_frame();
-
-        let debug_draw_3d_line_lists = self.debug_draw_3d.take_line_lists();
 
         //
         // Extract Jobs
@@ -760,7 +631,6 @@ impl GameRenderer {
                 resource_manager.create_descriptor_set_allocator(),
                 mesh_pipeline_info,
                 &self.mesh_material,
-                self.mesh_material_per_frame_data.descriptor_set().clone(),
             ));
             extract_job_set
         };
@@ -889,7 +759,6 @@ impl GameRenderer {
             command_buffers.append(&mut commands);
         }
 
-        self.debug_draw_3d.clear();
         VkResult::Ok(command_buffers)
     }
 }

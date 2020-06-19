@@ -10,8 +10,8 @@ use ash::version::DeviceV1_0;
 pub struct MeshCommandWriter {
     pub pipeline_info: PipelineSwapchainInfo,
     pub descriptor_set_per_pass: DescriptorSetArc,
-    pub extracted_frame_node_mesh_data: Vec<ExtractedFrameNodeMeshData>,
-    pub extracted_view_node_mesh_data: Vec<ExtractedViewNodeMeshData>,
+    pub extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
+    pub extracted_view_node_mesh_data: Vec<Option<ExtractedViewNodeMeshData>>,
 }
 
 impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
@@ -50,8 +50,8 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
         let command_buffer = write_context.command_buffer;
         //let draw_call = &self.draw_calls[index as usize];
 
-        let view_node_data = &self.extracted_view_node_mesh_data[index as usize];
-        let frame_node_data = &self.extracted_frame_node_mesh_data[view_node_data.frame_node_index as usize];
+        let view_node_data = self.extracted_view_node_mesh_data[index as usize].as_ref().unwrap();
+        let frame_node_data = self.extracted_frame_node_mesh_data[view_node_data.frame_node_index as usize].as_ref().unwrap();
 
         unsafe {
             logical_device.cmd_bind_descriptor_sets(

@@ -15,8 +15,8 @@ pub struct MeshPrepareJobImpl {
     device_context: VkDeviceContext,
     pipeline_info: PipelineSwapchainInfo,
     descriptor_set_per_pass: DescriptorSetArc,
-    extracted_frame_node_mesh_data: Vec<ExtractedFrameNodeMeshData>,
-    extracted_view_node_mesh_data: Vec<ExtractedViewNodeMeshData>,
+    extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
+    extracted_view_node_mesh_data: Vec<Option<ExtractedViewNodeMeshData>>,
 }
 
 impl MeshPrepareJobImpl {
@@ -24,8 +24,8 @@ impl MeshPrepareJobImpl {
         device_context: VkDeviceContext,
         pipeline_info: PipelineSwapchainInfo,
         descriptor_set_per_pass: DescriptorSetArc,
-        extracted_frame_node_mesh_data: Vec<ExtractedFrameNodeMeshData>,
-        extracted_view_node_mesh_data: Vec<ExtractedViewNodeMeshData>,
+        extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
+        extracted_view_node_mesh_data: Vec<Option<ExtractedViewNodeMeshData>>,
     ) -> Self {
         MeshPrepareJobImpl {
             device_context,
@@ -71,12 +71,14 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for M
             &self.extracted_frame_node_mesh_data[frame_node_index as usize];
 
         //TODO: calculate distance
-        let distance_from_camera = Vec3::length(extracted_data.world_transform.w_axis().truncate() - view.eye_position());
-        submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(
-            view_node_index,
-            0,
-            distance_from_camera,
-        );
+        if let Some(extracted_data) = extracted_data {
+            let distance_from_camera = Vec3::length(extracted_data.world_transform.w_axis().truncate() - view.eye_position());
+            submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(
+                view_node_index,
+                0,
+                distance_from_camera,
+            );
+        }
     }
 
     fn prepare_view_finalize(

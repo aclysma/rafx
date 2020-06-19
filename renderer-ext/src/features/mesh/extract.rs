@@ -1,5 +1,5 @@
-use crate::features::mesh::{ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode, MeshDrawCall, MeshPerObjectShaderParam, ExtractedViewNodeMeshData};
-use crate::{RenderJobExtractContext, PositionComponent, MeshComponent, RenderJobWriteContext, RenderJobPrepareContext};
+use crate::features::mesh::{ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode, MeshDrawCall, MeshPerObjectShaderParam, ExtractedViewNodeMeshData, MeshPerFrameShaderParam};
+use crate::{RenderJobExtractContext, PositionComponent, MeshComponent, RenderJobWriteContext, RenderJobPrepareContext, PointLightComponent, SpotLightComponent, DirectionalLightComponent};
 use renderer_base::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
 use renderer_base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
@@ -11,15 +11,16 @@ use atelier_assets::loader::handle::Handle;
 use crate::pipeline::image::ImageAsset;
 use ash::prelude::VkResult;
 use crate::resource_managers::DescriptorSetArc;
+use legion::prelude::*;
 
 pub struct MeshExtractJobImpl {
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     mesh_material: Handle<MaterialAsset>,
-    descriptor_set_per_pass: DescriptorSetArc,
-    extracted_frame_node_mesh_data: Vec<ExtractedFrameNodeMeshData>,
-    extracted_view_node_mesh_data: Vec<ExtractedViewNodeMeshData>,
+    descriptor_sets_per_view: Vec<DescriptorSetArc>,
+    extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
+    extracted_view_node_mesh_data: Vec<Option<ExtractedViewNodeMeshData>>,
 }
 
 impl MeshExtractJobImpl {
@@ -28,14 +29,13 @@ impl MeshExtractJobImpl {
         descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
         mesh_material: &Handle<MaterialAsset>,
-        descriptor_set_per_pass: DescriptorSetArc,
     ) -> Self {
         MeshExtractJobImpl {
             device_context,
             descriptor_set_allocator,
             pipeline_info,
             mesh_material: mesh_material.clone(),
-            descriptor_set_per_pass,
+            descriptor_sets_per_view: Default::default(),
             extracted_frame_node_mesh_data: Default::default(),
             extracted_view_node_mesh_data: Default::default(),
         }
@@ -75,6 +75,11 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .unwrap();
 
         let mesh_info = extract_context.resource_manager.get_mesh_info(&mesh_component.mesh);
+        if mesh_info.is_none() {
+            self.extracted_frame_node_mesh_data.push(None);
+            return;
+        }
+        let mesh_info = mesh_info.unwrap();
 
         let draw_calls : Vec<_> = mesh_info.mesh_asset.mesh_parts.iter().map(|mesh_part| {
             let material_instance_info = extract_context.resource_manager.get_material_instance_info(&mesh_part.material_instance);
@@ -90,12 +95,12 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
         let world_transform = glam::Mat4::from_translation(position_component.position);
 
-        self.extracted_frame_node_mesh_data.push(ExtractedFrameNodeMeshData {
+        self.extracted_frame_node_mesh_data.push(Some(ExtractedFrameNodeMeshData {
             world_transform,
             vertex_buffer: mesh_info.vertex_buffer.clone(),
             index_buffer: mesh_info.index_buffer.clone(),
             draw_calls,
-        });
+        }));
     }
 
     fn extract_view_node(
@@ -106,6 +111,11 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         view_node_index: u32,
     ) {
         let frame_node_data = &self.extracted_frame_node_mesh_data[view_node.frame_node_index() as usize];
+        if frame_node_data.is_none() {
+            self.extracted_view_node_mesh_data.push(None);
+            return;
+        }
+        let frame_node_data = frame_node_data.as_ref().unwrap();
 
         let model_view = view.view_matrix() * frame_node_data.world_transform;
         let model_view_proj = view.projection_matrix() * model_view;
@@ -121,18 +131,96 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         descriptor_set.set_buffer_data(0, &per_object_param);
         descriptor_set.flush(&mut self.descriptor_set_allocator);
 
-        self.extracted_view_node_mesh_data.push(ExtractedViewNodeMeshData {
+        self.extracted_view_node_mesh_data.push(Some(ExtractedViewNodeMeshData {
             per_instance_descriptor: descriptor_set.descriptor_set().clone(),
             frame_node_index: view_node.frame_node_index()
-        })
+        }))
     }
 
     fn extract_view_finalize(
         &mut self,
-        _extract_context: &mut RenderJobExtractContext,
-        _view: &RenderView,
+        extract_context: &mut RenderJobExtractContext,
+        view: &RenderView,
     ) {
+        let mut per_frame_data = MeshPerFrameShaderParam::default();
 
+        let query = <(Read<DirectionalLightComponent>)>::query();
+        for light in query.iter(&extract_context.world) {
+            let light_count = per_frame_data.directional_light_count as usize;
+            if light_count > per_frame_data.directional_lights.len() {
+                break;
+            }
+
+            let light_from = glam::Vec3::new(0.0, 0.0, 0.0);
+            let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
+            let light_to = light.direction;
+            let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();
+
+            let light_direction = (light_to - light_from).normalize();
+            let light_direction_vs = (light_to_vs - light_from_vs).normalize();
+
+            let out = &mut per_frame_data.directional_lights[light_count];
+            out.direction_ws = light_direction.into();
+            out.direction_vs = light_direction_vs.into();
+            out.color = light.color;
+            out.intensity = light.intensity;
+
+            per_frame_data.directional_light_count += 1;
+        }
+
+        let query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
+        for (position, light) in query.iter(&extract_context.world) {
+            let light_count = per_frame_data.point_light_count as usize;
+            if light_count > per_frame_data.point_lights.len() {
+                break;
+            }
+
+            let out = &mut per_frame_data.point_lights[light_count];
+            out.position_ws = position.position;
+            out.position_vs = (view.view_matrix() * position.position.extend(1.0)).truncate();
+            out.color = light.color;
+            out.range = light.range;
+            out.intensity = light.intensity;
+
+            per_frame_data.point_light_count += 1;
+        }
+
+        let query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
+        for (position, light) in query.iter(&extract_context.world) {
+            let light_count = per_frame_data.spot_light_count as usize;
+            if light_count > per_frame_data.spot_lights.len() {
+                break;
+            }
+
+            let light_from = position.position;
+            let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
+            let light_to = position.position + light.direction;
+            let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();
+
+            let light_direction = (light_to - light_from).normalize();
+            let light_direction_vs = (light_to_vs - light_from_vs).normalize();
+
+            let out = &mut per_frame_data.spot_lights[light_count];
+            out.position_ws = light_from.into();
+            out.position_vs = light_from_vs.into();
+            out.direction_ws = light_direction.into();
+            out.direction_vs = light_direction_vs.into();
+            out.spotlight_half_angle = light.spotlight_half_angle;
+            out.color = light.color;
+            out.range = light.range;
+            out.intensity = light.intensity;
+
+            per_frame_data.spot_light_count += 1;
+        }
+
+        //TODO: We should probably set these up per view (so we can pick the best lights based on
+        // the view)
+        let layout = extract_context.resource_manager.get_descriptor_set_info(&self.mesh_material, 0, 0);
+        let mut descriptor_set = self.descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout).unwrap();
+        descriptor_set.set_buffer_data(0, &per_frame_data);
+        descriptor_set.flush(&mut self.descriptor_set_allocator);
+
+        self.descriptor_sets_per_view.push(descriptor_set.descriptor_set().clone());
     }
 
     fn extract_frame_finalize(
@@ -142,7 +230,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         let prepare_impl = MeshPrepareJobImpl::new(
             self.device_context,
             self.pipeline_info,
-            self.descriptor_set_per_pass,
+            self.descriptor_sets_per_view[0].clone(),
             self.extracted_frame_node_mesh_data,
             self.extracted_view_node_mesh_data
         );

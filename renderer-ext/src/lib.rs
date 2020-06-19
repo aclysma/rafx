@@ -37,7 +37,7 @@ use ash::vk;
 use crate::resource_managers::{DynResourceAllocatorSet, ResourceManager};
 use atelier_assets::loader::handle::Handle;
 use crate::pipeline::image::ImageAsset;
-use crate::features::mesh::{MeshRenderNodeHandle, StaticMeshInstance};
+use crate::features::mesh::{MeshRenderNodeHandle};
 use crate::pipeline::gltf::MeshAsset;
 
 pub mod phases;
@@ -45,6 +45,29 @@ pub mod phases;
 #[derive(Copy, Clone)]
 pub struct PositionComponent {
     pub position: Vec3,
+}
+
+#[derive(Clone)]
+pub struct PointLightComponent {
+    pub color: glam::Vec4,
+    pub range: f32,
+    pub intensity: f32,
+}
+
+#[derive(Clone)]
+pub struct DirectionalLightComponent {
+    pub direction: glam::Vec3,
+    pub color: glam::Vec4,
+    pub intensity: f32,
+}
+
+#[derive(Clone)]
+pub struct SpotLightComponent {
+    pub direction: glam::Vec3,
+    pub color: glam::Vec4,
+    pub spotlight_half_angle: f32,
+    pub range: f32,
+    pub intensity: f32,
 }
 
 #[derive(Clone)]
