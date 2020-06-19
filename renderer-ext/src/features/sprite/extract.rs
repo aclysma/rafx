@@ -12,13 +12,38 @@ use crate::pipeline::image::ImageAsset;
 use ash::prelude::VkResult;
 use crate::resource_managers::DescriptorSetArc;
 
+// This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
+// single function
+pub fn orthographic_rh_gl(
+    left: f32,
+    right: f32,
+    bottom: f32,
+    top: f32,
+    near: f32,
+    far: f32,
+) -> [[f32; 4]; 4] {
+    let a = 2.0 / (right - left);
+    let b = 2.0 / (top - bottom);
+    let c = -2.0 / (far - near);
+    let tx = -(right + left) / (right - left);
+    let ty = -(top + bottom) / (top - bottom);
+    let tz = -(far + near) / (far - near);
+
+    [
+        [a, 0.0, 0.0, 0.0],
+        [0.0, b, 0.0, 0.0],
+        [0.0, 0.0, c, 0.0],
+        [tx, ty, tz, 1.0],
+    ]
+}
+
 pub struct SpriteExtractJobImpl {
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     sprite_material: Handle<MaterialAsset>,
-    descriptor_set_per_pass: DescriptorSetArc,
     extracted_sprite_data: Vec<ExtractedSpriteData>,
+    per_view_descriptors: Vec<DescriptorSetArc>,
 }
 
 impl SpriteExtractJobImpl {
@@ -27,15 +52,15 @@ impl SpriteExtractJobImpl {
         descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
         sprite_material: &Handle<MaterialAsset>,
-        descriptor_set_per_pass: DescriptorSetArc,
     ) -> Self {
         SpriteExtractJobImpl {
             device_context,
             descriptor_set_allocator,
             pipeline_info,
             sprite_material: sprite_material.clone(),
-            descriptor_set_per_pass,
+            //descriptor_set_per_pass,
             extracted_sprite_data: Default::default(),
+            per_view_descriptors: Default::default()
         }
     }
 }
@@ -49,6 +74,40 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
     ) {
         self.extracted_sprite_data
             .reserve(frame_packet.frame_node_count(self.feature_index()) as usize);
+
+        // for view in views {
+        //     let layout = extract_context.resource_manager.get_descriptor_set_info(&self.sprite_material, 0, 0);
+        //     let mut descriptor_set = self.descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout).unwrap();
+        //
+        //     let view_proj = view.projection_matrix() * view.view_matrix();
+        //
+        //     descriptor_set.set_buffer_data(0, &view_proj);
+        //     descriptor_set.flush(&mut self.descriptor_set_allocator);
+        //
+        //     self.per_view_descriptors.push(descriptor_set.descriptor_set().clone());
+        // }
+
+        let extents_width = 900;
+        let extents_height = 600;
+        let aspect_ration = extents_width as f32 / extents_height as f32;
+        let half_width = 400.0;
+        let half_height = 400.0 / aspect_ration;
+        let view_proj = orthographic_rh_gl(
+            -half_width,
+            half_width,
+            -half_height,
+            half_height,
+            -100.0,
+            100.0,
+        );
+
+        let layout = extract_context.resource_manager.get_descriptor_set_info(&self.sprite_material, 0, 0);
+        let mut descriptor_set = self.descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout).unwrap();
+
+        descriptor_set.set_buffer_data(0, &view_proj);
+        descriptor_set.flush(&mut self.descriptor_set_allocator);
+
+        self.per_view_descriptors.push(descriptor_set.descriptor_set().clone());
     }
 
     fn extract_frame_node(
@@ -84,7 +143,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
         self.extracted_sprite_data.push(ExtractedSpriteData {
             position: position_component.position,
-            texture_size: glam::Vec2::new(100.0, 100.0),
+            texture_size: glam::Vec2::new(50.0, 50.0),
             scale: 1.0,
             rotation: 0.0,
             alpha: sprite_component.alpha,
@@ -104,10 +163,9 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
     fn extract_view_finalize(
         &mut self,
-        _extract_context: &mut RenderJobExtractContext,
-        _view: &RenderView,
+        extract_context: &mut RenderJobExtractContext,
+        view: &RenderView,
     ) {
-
     }
 
     fn extract_frame_finalize(
@@ -117,7 +175,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         let prepare_impl = SpritePrepareJobImpl::new(
             self.device_context,
             self.pipeline_info,
-            self.descriptor_set_per_pass,
+            self.per_view_descriptors[0].clone(),
             self.extracted_sprite_data,
         );
 

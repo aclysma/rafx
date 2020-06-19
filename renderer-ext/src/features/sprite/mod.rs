@@ -71,14 +71,12 @@ pub fn create_sprite_extract_job(
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     sprite_material: &Handle<MaterialAsset>,
-    descriptor_set_per_pass: DescriptorSetArc,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(
         device_context,
         descriptor_set_allocator,
         pipeline_info,
         sprite_material,
-        descriptor_set_per_pass,
     )))
 }
 

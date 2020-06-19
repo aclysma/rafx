@@ -1,28 +1,19 @@
 use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener, Sdl2ImguiManager};
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer};
 use ash::prelude::VkResult;
-use renderer_ext::renderpass::{VkMeshRenderPass, VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
+use renderer_ext::renderpass::{VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
 use std::mem::{ManuallyDrop, swap};
 use renderer_ext::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
 use renderer_ext::time::{ScopeTimer, TimeState};
 use crossbeam_channel::Sender;
 use std::ops::Deref;
-// use renderer_ext::resource_managers::{
-//     SpriteResourceManager, VkMeshResourceManager, ImageResourceManager,
-//     MaterialResourceManager,
-// };
-//use renderer_ext::renderpass::VkMeshRenderPass;
 use renderer_ext::pipeline_description::SwapchainSurfaceInfo;
 use renderer_ext::pipeline::pipeline::{MaterialAsset, PipelineAsset, MaterialInstanceAsset};
 use atelier_assets::loader::handle::Handle;
 use renderer_ext::asset_resource::AssetResource;
-//use renderer_ext::upload::UploadQueue;
-//use renderer_ext::load_handlers::{ImageLoadHandler, MeshLoadHandler, SpriteLoadHandler, MaterialLoadHandler};
 use renderer_ext::pipeline::shader::ShaderAsset;
 use renderer_ext::pipeline::image::ImageAsset;
-//use renderer_ext::pipeline::gltf::{GltfMaterialAsset, MeshAsset};
-//use renderer_ext::pipeline::sprite::SpriteAsset;
 use atelier_assets::core::asset_uuid;
 use atelier_assets::loader::LoadStatus;
 use atelier_assets::loader::handle::AssetHandle;
@@ -85,7 +76,6 @@ fn wait_for_asset_to_load<T>(
     asset_handle: &atelier_assets::loader::handle::Handle<T>,
     asset_resource: &mut AssetResource,
     resource_manager: &mut ResourceManager,
-    //renderer: &mut GameRenderer,
     asset_name: &str
 ) {
     loop {
@@ -115,14 +105,10 @@ fn wait_for_asset_to_load<T>(
 }
 
 pub struct GameRenderer {
-    //time_state: TimeState,
     imgui_event_listener: ImguiRenderEventListener,
-
-    //resource_manager: ResourceManager,
 
     sprite_material: Handle<MaterialAsset>,
     sprite_material_instance: Handle<MaterialInstanceAsset>,
-    sprite_custom_material: Option<DynMaterialInstance>,
     sprite_override_image: ResourceArc<ImageViewResource>,
     sprite_override_image2: ResourceArc<ImageViewResource>,
 
@@ -145,20 +131,9 @@ pub struct GameRenderer {
     bloom_combine_material: Handle<MaterialAsset>,
     bloom_combine_material_dyn_set: Option<DynDescriptorSet>,
 
-    //drop_sink: VkCombinedDropSink,
-
-
-
-    //render_registry: RenderRegistry,
     main_camera_render_phase_mask: RenderPhaseMask,
-    //
-    // sprite_render_nodes: SpriteRenderNodeSet,
-    //
-    // static_visibility_node_set: StaticVisibilityNodeSet,
-    // dynamic_visibility_node_set: DynamicVisibilityNodeSet,
 
     opaque_renderpass: Option<VkOpaqueRenderPass>,
-    mesh_renderpass: Option<VkMeshRenderPass>,
     debug_renderpass: Option<VkDebugRenderPass>,
     bloom_extract_renderpass: Option<VkBloomExtractRenderPass>,
     bloom_blur_renderpass: Option<VkBloomBlurRenderPass>,
@@ -399,13 +374,6 @@ impl GameRenderer {
 
         let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(&mesh_material, 0, 0);
         let mesh_material_per_frame_data = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout)?;
-        //
-        // let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(mesh_material, 0, 2);
-        //
-        // let static_mesh_instance = StaticMeshInstance {
-        //     mesh_info: resource_manager.get_mesh_info(mesh),
-        //     object_descriptor_set:
-        // }
 
         let mesh_instance = StaticMeshInstance::new(&mut resource_manager, &mesh, &mesh_material, glam::Vec3::new(0.0, 0.0, 0.0))?;
         let light_mesh_instance = StaticMeshInstance::new(&mut resource_manager, &light_mesh, &mesh_material, glam::Vec3::new(3.0, 3.0, 3.0))?;
@@ -421,15 +389,12 @@ impl GameRenderer {
         let image_info2 = resource_manager.get_image_info(&override_image2);
 
         let mut renderer = GameRenderer {
-            //time_state: time_state.clone(),
             imgui_event_listener,
-            //resource_manager,
 
             sprite_material,
             sprite_material_instance,
             sprite_override_image: image_info.image_view,
             sprite_override_image2: image_info2.image_view,
-            sprite_custom_material: None,
 
             debug_material,
             debug_material_per_frame_data,
@@ -449,26 +414,11 @@ impl GameRenderer {
             bloom_combine_material,
             bloom_combine_material_dyn_set: None,
 
-            // mesh,
-            // mesh_material_instance,
-            // mesh_custom_material: None,
-            //
-            // light_mesh,
-            // light_mesh_material_instances: vec![],
-
             //render_registry,
             main_camera_render_phase_mask,
 
-            //drop_sink: VkCombinedDropSink::new(MAX_FRAMES_IN_FLIGHT as u32),
-
-            // sprite_render_nodes: Default::default(),
-            //
-            // static_visibility_node_set: Default::default(),
-            // dynamic_visibility_node_set: Default::default(),
-
             swapchain_surface_info: None,
             opaque_renderpass: None,
-            mesh_renderpass: None,
             debug_renderpass: None,
             bloom_extract_renderpass: None,
             bloom_blur_renderpass: None,
@@ -490,41 +440,8 @@ impl GameRenderer {
             100.0,
         );
 
-        let mut sprite_custom_material = resource_manager
-            .create_dyn_material_instance_from_asset(&mut descriptor_set_allocator, renderer.sprite_material_instance.clone())?;
-        sprite_custom_material.set_image(&"texture".to_string(), &renderer.sprite_override_image);
-        sprite_custom_material.set_buffer_data(&"view_proj".to_string(), &proj);
-        sprite_custom_material.flush(&mut descriptor_set_allocator);
-
-        renderer.sprite_custom_material = Some(sprite_custom_material);
-
-        // let mut mesh_custom_material = renderer
-        //     .resource_manager
-        //     .create_dyn_material_instance_from_asset(renderer.mesh_material_instance.clone())?;
-        //
-        // renderer.mesh_custom_material = Some(mesh_custom_material);
-        //
-        // let light_material_instance_asset = renderer.light_mesh.asset(asset_resource.storage()).unwrap().mesh_parts[0].material_instance.as_ref().unwrap().clone();
-        // let light_material_instance = renderer.resource_manager.create_dyn_material_instance_from_asset(light_material_instance_asset)?;
-        // renderer.light_mesh_material_instances.push(light_material_instance);
-
-
         Ok(renderer)
     }
-
-    // pub fn update_resources(
-    //     &mut self,
-    //     device_context: &VkDeviceContext,
-    // ) {
-    //     self.resource_manager.update_resources();
-    // }
-
-    // pub fn update_time(
-    //     &mut self,
-    //     time_state: &TimeState,
-    // ) {
-    //     self.time_state = time_state.clone();
-    // }
 }
 
 
@@ -572,19 +489,6 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             device_context,
             swapchain,
             opaque_pipeline_info,
-        )?);
-
-        log::trace!("Create VkMeshRenderPass");
-        let mesh_pipeline_info = resource_manager.get_pipeline_info(
-            &self.game_renderer.mesh_material,
-            &swapchain_surface_info,
-            0,
-        );
-
-        self.game_renderer.mesh_renderpass = Some(VkMeshRenderPass::new(
-            device_context,
-            swapchain,
-            mesh_pipeline_info,
         )?);
 
         log::trace!("Create VkDebugRenderPass");
@@ -921,18 +825,6 @@ impl GameRenderer {
         self.debug_material_per_frame_data.set_buffer_data(0, &view_proj);
         self.debug_material_per_frame_data.flush(&mut descriptor_set_allocator);
 
-        if let Some(dyn_material_instance) = self.sprite_custom_material.as_mut() {
-
-            let sprite_override_image = if time_state.update_count() % 2 == 1 {
-                &self.sprite_override_image
-            } else {
-                &self.sprite_override_image2
-            };
-
-            dyn_material_instance.set_image(&"texture".to_string(), sprite_override_image);
-            dyn_material_instance.flush(&mut descriptor_set_allocator);
-        }
-
 
         //
         // let gpu_context = GpuContext {
@@ -952,12 +844,6 @@ impl GameRenderer {
                 0,
             );
 
-            let sprite_dyn_pass_material_instance = self.sprite_custom_material.as_ref().unwrap().pass(0);
-            let sprite_descriptor_set_per_pass = sprite_dyn_pass_material_instance
-                .descriptor_set_layout(0)
-                .descriptor_set();
-
-
             let mesh_pipeline_info = resource_manager.get_pipeline_info(
                 &self.mesh_material,
                 self.swapchain_surface_info.as_ref().unwrap(),
@@ -965,13 +851,16 @@ impl GameRenderer {
             );
 
             let mut extract_job_set = ExtractJobSet::new();
+
+            // Sprites
             extract_job_set.add_job(create_sprite_extract_job(
                 device_context.clone(),
                 resource_manager.create_descriptor_set_allocator(),
                 sprite_pipeline_info,
                 &self.sprite_material,
-                sprite_descriptor_set_per_pass.clone(),
             ));
+
+            // Meshes
             extract_job_set.add_job(create_mesh_extract_job(
                 device_context.clone(),
                 resource_manager.create_descriptor_set_allocator(),
@@ -1044,30 +933,6 @@ impl GameRenderer {
             )?;
             command_buffers.push(opaque_renderpass.command_buffers[present_index].clone());
         }
-
-        //
-        // Mesh renderpass
-        //
-        // if let Some(mesh_renderpass) = &mut self.mesh_renderpass {
-        //     log::trace!("mesh_renderpass update");
-        //     let mesh_pipeline_info = resource_manager.get_pipeline_info(
-        //         &self.mesh_material,
-        //         self.swapchain_surface_info.as_ref().unwrap(),
-        //         0,
-        //     );
-        //
-        //     let descriptor_set_per_pass = self.mesh_material_per_frame_data.descriptor_set().get();
-        //
-        //     mesh_renderpass.update(
-        //         &mesh_pipeline_info,
-        //         present_index,
-        //         descriptor_set_per_pass,
-        //         &self.meshes,
-        //         asset_resource,
-        //         resource_manager
-        //     )?;
-        //     command_buffers.push(mesh_renderpass.command_buffers[present_index].clone());
-        // }
 
         //
         // Debug Renderpass
@@ -1163,8 +1028,6 @@ impl GameRenderer {
 impl Drop for GameRenderer {
     fn drop(&mut self) {
         self.opaque_renderpass = None;
-        self.mesh_renderpass = None;
-        self.sprite_custom_material = None;
         self.debug_renderpass = None;
         self.bloom_extract_renderpass = None;
         self.bloom_blur_renderpass = None;
@@ -1172,6 +1035,5 @@ impl Drop for GameRenderer {
         self.meshes.clear();
         //self.mesh_custom_material = None;
         //self.light_mesh_material_instances.clear();
-        //self.mesh_renderpass = None;
     }
 }

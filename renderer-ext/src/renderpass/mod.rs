@@ -1,9 +1,3 @@
-mod mesh_renderpass;
-pub use mesh_renderpass::VkMeshRenderPass;
-//pub use mesh_renderpass::PerObjectDataShaderParam;
-//pub use mesh_renderpass::PerFrameDataShaderParam;
-//pub use mesh_renderpass::StaticMeshInstance;
-
 pub mod debug_renderpass;
 pub use debug_renderpass::VkDebugRenderPass;
 pub use debug_renderpass::DebugVertex;
