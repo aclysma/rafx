@@ -217,17 +217,17 @@ impl ResourceManager {
     pub fn get_image_info(
         &self,
         handle: &Handle<ImageAsset>,
-    ) -> ImageInfo {
-        let resource = self
+    ) -> Option<ImageInfo> {
+        self
             .loaded_assets
             .images
             .get_committed(handle.load_handle())
-            .unwrap();
-
-        ImageInfo {
-            image: resource.image.clone(),
-            image_view: resource.image_view.clone(),
-        }
+            .map(|loaded_image| {
+                ImageInfo {
+                    image: loaded_image.image.clone(),
+                    image_view: loaded_image.image_view.clone(),
+                }
+            })
     }
 
     pub fn get_descriptor_set_info(

@@ -37,31 +37,6 @@ use renderer_ext::RenderJobWriteContext;
 use renderer_shell_vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
 use renderer_ext::features::mesh::{StaticMeshInstance, MeshPerFrameShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
 
-// This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
-// single function
-pub fn orthographic_rh_gl(
-    left: f32,
-    right: f32,
-    bottom: f32,
-    top: f32,
-    near: f32,
-    far: f32,
-) -> [[f32; 4]; 4] {
-    let a = 2.0 / (right - left);
-    let b = 2.0 / (top - bottom);
-    let c = -2.0 / (far - near);
-    let tx = -(right + left) / (right - left);
-    let ty = -(top + bottom) / (top - bottom);
-    let tz = -(far + near) / (far - near);
-
-    [
-        [a, 0.0, 0.0, 0.0],
-        [0.0, b, 0.0, 0.0],
-        [0.0, 0.0, c, 0.0],
-        [tx, ty, tz, 1.0],
-    ]
-}
-
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
     asset_resource: &AssetResource,
@@ -108,9 +83,6 @@ pub struct GameRenderer {
     imgui_event_listener: ImguiRenderEventListener,
 
     sprite_material: Handle<MaterialAsset>,
-    sprite_material_instance: Handle<MaterialInstanceAsset>,
-    sprite_override_image: ResourceArc<ImageViewResource>,
-    sprite_override_image2: ResourceArc<ImageViewResource>,
 
     debug_material: Handle<MaterialAsset>,
     debug_material_per_frame_data: DynDescriptorSet,
@@ -119,7 +91,6 @@ pub struct GameRenderer {
     // binding 0, contains info about lights
     mesh_material: Handle<MaterialAsset>,
     mesh_material_per_frame_data: DynDescriptorSet,
-    meshes: Vec<StaticMeshInstance>,
 
     bloom_resources: Option<VkBloomRenderPassResources>,
 
@@ -171,18 +142,6 @@ impl GameRenderer {
         //
         let sprite_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
-            &asset_resource,
-        );
-        let sprite_material_instance = begin_load_asset::<MaterialInstanceAsset>(
-            asset_uuid!("84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5"),
-            &asset_resource,
-        );
-        let override_image = begin_load_asset::<ImageAsset>(
-            asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
-            &asset_resource,
-        );
-        let override_image2 = begin_load_asset::<ImageAsset>(
-            asset_uuid!("b7753a66-1b26-4152-ad61-93584f4442aa"),
             &asset_resource,
         );
 
@@ -287,15 +246,6 @@ impl GameRenderer {
 
         wait_for_asset_to_load(
             device_context,
-            &sprite_material_instance,
-            asset_resource,
-            &mut resource_manager,
-            "sprite_material_instance"
-        );
-
-
-        wait_for_asset_to_load(
-            device_context,
             &debug_material,
             asset_resource,
             &mut resource_manager,
@@ -375,26 +325,10 @@ impl GameRenderer {
         let mesh_per_frame_layout = resource_manager.get_descriptor_set_info(&mesh_material, 0, 0);
         let mesh_material_per_frame_data = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&mesh_per_frame_layout.descriptor_set_layout)?;
 
-        let mesh_instance = StaticMeshInstance::new(&mut resource_manager, &mesh, &mesh_material, glam::Vec3::new(0.0, 0.0, 0.0))?;
-        let light_mesh_instance = StaticMeshInstance::new(&mut resource_manager, &light_mesh, &mesh_material, glam::Vec3::new(3.0, 3.0, 3.0))?;
-        let axis_instance = StaticMeshInstance::new(&mut resource_manager, &axis_mesh, &mesh_material, glam::Vec3::new(0.0, 0.0, 0.0))?;
-
-        let meshes = vec![
-            mesh_instance,
-            light_mesh_instance,
-            axis_instance
-        ];
-
-        let image_info = resource_manager.get_image_info(&override_image);
-        let image_info2 = resource_manager.get_image_info(&override_image2);
-
         let mut renderer = GameRenderer {
             imgui_event_listener,
 
             sprite_material,
-            sprite_material_instance,
-            sprite_override_image: image_info.image_view,
-            sprite_override_image2: image_info2.image_view,
 
             debug_material,
             debug_material_per_frame_data,
@@ -402,7 +336,6 @@ impl GameRenderer {
 
             mesh_material,
             mesh_material_per_frame_data,
-            meshes,
 
             bloom_resources: None,
 
@@ -414,7 +347,6 @@ impl GameRenderer {
             bloom_combine_material,
             bloom_combine_material_dyn_set: None,
 
-            //render_registry,
             main_camera_render_phase_mask,
 
             swapchain_surface_info: None,
@@ -424,21 +356,6 @@ impl GameRenderer {
             bloom_blur_renderpass: None,
             bloom_combine_renderpass: None,
         };
-
-
-        let extents_width = 900;
-        let extents_height = 600;
-        let aspect_ration = extents_width as f32 / extents_height as f32;
-        let half_width = 400.0;
-        let half_height = 400.0 / aspect_ration;
-        let proj = orthographic_rh_gl(
-            -half_width,
-            half_width,
-            -half_height,
-            half_height,
-            -100.0,
-            100.0,
-        );
 
         Ok(renderer)
     }
@@ -458,8 +375,6 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
     ) -> VkResult<()> {
-        //let mut resource_manager_fetch = self.resources.get_mut::<ResourceManager>().unwrap();
-        //let resource_manager = &mut *resource_manager_fetch;
         let mut resource_manager = &mut self.resource_manager;
 
         log::debug!("game renderer swapchain_created called");
@@ -513,11 +428,6 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             self.game_renderer.bloom_blur_material.clone()
         )?);
 
-        // HACK HACK HACK - VkBloomRenderPassResources writes descriptors that VkBloomBlurRenderPass
-        // immediately uses to record command buffers. Flush now so that the descriptors get
-        // initialized
-        resource_manager.on_begin_frame();
-
         let bloom_extract_layout = resource_manager.get_descriptor_set_info(
             &self.game_renderer.bloom_extract_material,
             0,
@@ -544,12 +454,6 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         self.game_renderer.bloom_extract_material_dyn_set = Some(bloom_extract_material_dyn_set);
 
         log::trace!("Create VkBloomBlurRenderPass");
-
-        // let bloom_blur_layout = resource_manager.get_descriptor_set_info(
-        //     &self.bloom_blur_material,
-        //     0,
-        //     0
-        // );
 
         let bloom_blur_pipeline_info = resource_manager.get_pipeline_info(
             &self.game_renderer.bloom_blur_material,
@@ -633,13 +537,8 @@ impl GameRenderer {
         device_context: &VkDeviceContext,
         present_index: usize,
     ) -> VkResult<Vec<ash::vk::CommandBuffer>> {
+        // Call this here - represents that the previous frame was completed
         resource_manager.on_frame_complete();
-
-        // let mut resource_manager_fetch = resources.get_mut::<ResourceManager>().unwrap();
-        // let mut resource_manager = &mut *resource_manager_fetch;
-        //
-        // let mut render_registry_fetch = resources.get_mut::<RenderRegistry>().unwrap();
-        // let mut render_registry = &mut *render_registry_fetch;
 
         //
         // Fetch resources
@@ -818,24 +717,19 @@ impl GameRenderer {
         self.mesh_material_per_frame_data.set_buffer_data(0, &per_frame_data);
         self.mesh_material_per_frame_data.flush(&mut descriptor_set_allocator);
 
-        for mesh in &mut self.meshes {
-            mesh.set_view_proj(view, proj, resource_manager);
-        }
-
         self.debug_material_per_frame_data.set_buffer_data(0, &view_proj);
         self.debug_material_per_frame_data.flush(&mut descriptor_set_allocator);
 
-
         //
-        // let gpu_context = GpuContext {
-        //     device_context: device_context.clone()
-        // }
+        // Update Resources and flush descriptor set changes
+        //
+        resource_manager.on_begin_frame();
+
+        let debug_draw_3d_line_lists = self.debug_draw_3d.take_line_lists();
 
         //
         // Extract Jobs
         //
-
-
         let frame_packet = frame_packet_builder.build();
         let extract_job_set = {
             let sprite_pipeline_info = resource_manager.get_pipeline_info(
@@ -871,8 +765,6 @@ impl GameRenderer {
             extract_job_set
         };
 
-
-
         let mut extract_context = RenderJobExtractContext::new(&world, &resources, resource_manager);
         let prepare_job_set = extract_job_set.extract(
             &mut extract_context,
@@ -880,12 +772,10 @@ impl GameRenderer {
             &[&main_view]
         );
 
-        //let buffer_drop_sink = VkResourceDropSinkChannel::<ManuallyDrop<VkBuffer>>::new();
+        //
+        // Prepare Jobs - everything beyond this point could be done in parallel with the main thread
+        //
         let prepare_context = RenderJobPrepareContext::new(resource_manager.create_dyn_resource_allocator_set());
-
-        //
-        // Prepare Jobs
-        //
         let prepared_render_data = prepare_job_set.prepare(
             &prepare_context,
             &frame_packet,
@@ -894,24 +784,12 @@ impl GameRenderer {
         );
 
         //
-        // Update Resources and flush descriptor set changes
-        //
-        resource_manager.on_begin_frame();
-
-        //
         // Write Jobs - called from within renderpasses for now
         //
         let mut write_context_factory = RenderJobWriteContextFactory::new(
             device_context.clone(),
             prepare_context.dyn_resource_lookups
         );
-
-
-        // prepared_render_data
-        //     .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
-        // prepared_render_data
-        //     .write_view_phase::<DrawTransparentRenderPhase>(&main_view, &mut write_context);
-
 
         //
         // Opaque renderpass
@@ -950,7 +828,7 @@ impl GameRenderer {
             debug_renderpass.update(
                 present_index,
                 descriptor_set_per_pass,
-                self.debug_draw_3d.take_line_lists(),
+                debug_draw_3d_line_lists,
             )?;
             command_buffers.push(debug_renderpass.command_buffers[present_index].clone());
         }
@@ -974,15 +852,6 @@ impl GameRenderer {
         //
         if let Some(bloom_blur_renderpass) = &mut self.bloom_blur_renderpass {
             log::trace!("bloom_blur_renderpass update");
-            //let descriptor_set_per_pass0 = self.bloom_resources.as_ref().unwrap().bloom_image_descriptor_sets[0].descriptor_set().get_raw_for_gpu_read(resource_manager);
-            //let descriptor_set_per_pass1 = self.bloom_resources.as_ref().unwrap().bloom_image_descriptor_sets[1].descriptor_set().get_raw_for_gpu_read(resource_manager);
-
-            // bloom_blur_renderpass.update(
-            //     present_index,
-            //     //descriptor_set_per_pass,
-            //     resource_manager,
-            //     self.bloom_resources.as_ref().unwrap()
-            // )?;
             command_buffers.push(bloom_blur_renderpass.command_buffers[0].clone());
             command_buffers.push(bloom_blur_renderpass.command_buffers[1].clone());
             command_buffers.push(bloom_blur_renderpass.command_buffers[0].clone());
@@ -1022,18 +891,5 @@ impl GameRenderer {
 
         self.debug_draw_3d.clear();
         VkResult::Ok(command_buffers)
-    }
-}
-
-impl Drop for GameRenderer {
-    fn drop(&mut self) {
-        self.opaque_renderpass = None;
-        self.debug_renderpass = None;
-        self.bloom_extract_renderpass = None;
-        self.bloom_blur_renderpass = None;
-        self.bloom_combine_renderpass = None;
-        self.meshes.clear();
-        //self.mesh_custom_material = None;
-        //self.light_mesh_material_instances.clear();
     }
 }

@@ -42,7 +42,7 @@ pub struct SpriteExtractJobImpl {
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     sprite_material: Handle<MaterialAsset>,
-    extracted_sprite_data: Vec<ExtractedSpriteData>,
+    extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
     per_view_descriptors: Vec<DescriptorSetArc>,
 }
 
@@ -131,24 +131,30 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .get_component::<SpriteComponent>(sprite_render_node.entity)
             .unwrap();
 
+        let image_info = extract_context.resource_manager.get_image_info(&sprite_component.image);
+        if image_info.is_none() {
+            self.extracted_sprite_data.push(None);
+            return;
+        }
+        let image_info = image_info.unwrap();
+
         let descriptor_set_info = extract_context.resource_manager.get_descriptor_set_info(&self.sprite_material, 0, 1);
         let mut sprite_texture_descriptor = self.descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
             &descriptor_set_info.descriptor_set_layout,
         ).unwrap();
 
-        let image_info = extract_context.resource_manager.get_image_info(&sprite_component.image);
         sprite_texture_descriptor.set_image(0, image_info.image_view);
         sprite_texture_descriptor.flush(&mut self.descriptor_set_allocator).unwrap();
         let texture_descriptor_set = sprite_texture_descriptor.descriptor_set().clone();
 
-        self.extracted_sprite_data.push(ExtractedSpriteData {
+        self.extracted_sprite_data.push(Some(ExtractedSpriteData {
             position: position_component.position,
             texture_size: glam::Vec2::new(50.0, 50.0),
             scale: 1.0,
             rotation: 0.0,
             alpha: sprite_component.alpha,
             texture_descriptor_set
-        });
+        }));
     }
 
     fn extract_view_node(

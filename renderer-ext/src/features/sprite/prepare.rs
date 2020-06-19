@@ -14,7 +14,7 @@ pub struct SpritePrepareJobImpl {
     device_context: VkDeviceContext,
     pipeline_info: PipelineSwapchainInfo,
     descriptor_set_per_pass: DescriptorSetArc,
-    extracted_sprite_data: Vec<ExtractedSpriteData>,
+    extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
 
     draw_calls: Vec<SpriteDrawCall>,
     vertex_list: Vec<SpriteVertex>,
@@ -26,7 +26,7 @@ impl SpritePrepareJobImpl {
         device_context: VkDeviceContext,
         pipeline_info: PipelineSwapchainInfo,
         descriptor_set_per_pass: DescriptorSetArc,
-        extracted_sprite_data: Vec<ExtractedSpriteData>,
+        extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
     ) -> Self {
         let sprite_count = extracted_sprite_data.len();
         SpritePrepareJobImpl {
@@ -50,47 +50,49 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
         _submit_nodes: &mut FeatureSubmitNodes,
     ) {
         for sprite in &self.extracted_sprite_data {
-            let draw_call = SpriteDrawCall {
-                index_buffer_first_element: 0,
-                index_buffer_count: 4,
-                texture_descriptor_set: sprite.texture_descriptor_set.clone(),
-            };
+            if let Some(sprite) = sprite {
+                let draw_call = SpriteDrawCall {
+                    index_buffer_first_element: 0,
+                    index_buffer_count: 4,
+                    texture_descriptor_set: sprite.texture_descriptor_set.clone(),
+                };
 
-            const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
+                const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
 
-            let matrix = glam::Mat4::from_translation(sprite.position)
-                * glam::Mat4::from_rotation_z(sprite.rotation * DEG_TO_RAD)
-                * glam::Mat4::from_scale(glam::Vec3::new(
-                sprite.texture_size.x() * sprite.scale,
-                sprite.texture_size.y() * sprite.scale,
-                1.0,
-            ));
+                let matrix = glam::Mat4::from_translation(sprite.position)
+                    * glam::Mat4::from_rotation_z(sprite.rotation * DEG_TO_RAD)
+                    * glam::Mat4::from_scale(glam::Vec3::new(
+                    sprite.texture_size.x() * sprite.scale,
+                    sprite.texture_size.y() * sprite.scale,
+                    1.0,
+                ));
 
-            let vertex_buffer_first_element = self.vertex_list.len() as u16;
+                let vertex_buffer_first_element = self.vertex_list.len() as u16;
 
-            for vertex in &QUAD_VERTEX_LIST {
-                //let pos = vertex.pos;
-                let transformed_pos = matrix.transform_point3(vertex.pos.into());
+                for vertex in &QUAD_VERTEX_LIST {
+                    //let pos = vertex.pos;
+                    let transformed_pos = matrix.transform_point3(vertex.pos.into());
 
-                self.vertex_list.push(SpriteVertex {
-                    pos: transformed_pos.truncate().into(),
-                    tex_coord: vertex.tex_coord,
-                    //color: [255, 255, 255, 255]
-                });
+                    self.vertex_list.push(SpriteVertex {
+                        pos: transformed_pos.truncate().into(),
+                        tex_coord: vertex.tex_coord,
+                        //color: [255, 255, 255, 255]
+                    });
+                }
+
+                let index_buffer_first_element = self.index_list.len() as u16;
+                for index in &QUAD_INDEX_LIST {
+                    self.index_list.push((*index + vertex_buffer_first_element));
+                }
+
+                let draw_call = SpriteDrawCall {
+                    index_buffer_first_element,
+                    index_buffer_count: QUAD_INDEX_LIST.len() as u16,
+                    texture_descriptor_set: sprite.texture_descriptor_set.clone(),
+                };
+
+                self.draw_calls.push(draw_call);
             }
-
-            let index_buffer_first_element = self.index_list.len() as u16;
-            for index in &QUAD_INDEX_LIST {
-                self.index_list.push((*index + vertex_buffer_first_element));
-            }
-
-            let draw_call = SpriteDrawCall {
-                index_buffer_first_element,
-                index_buffer_count: QUAD_INDEX_LIST.len() as u16,
-                texture_descriptor_set: sprite.texture_descriptor_set.clone(),
-            };
-
-            self.draw_calls.push(draw_call);
         }
     }
 
@@ -117,18 +119,17 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
         let frame_node_index = view_node.frame_node_index();
 
         // This can read per-frame and per-view data
-        let extracted_data =
-            &self.extracted_sprite_data[frame_node_index as usize];
-
-        if extracted_data.alpha >= 1.0 {
-            submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(frame_node_index, 0, 0.0);
-        } else {
-            let distance_from_camera = Vec3::length(extracted_data.position - view.eye_position());
-            submit_nodes.add_submit_node::<DrawTransparentRenderPhase>(
-                frame_node_index,
-                0,
-                distance_from_camera,
-            );
+        if let Some(extracted_data) = &self.extracted_sprite_data[frame_node_index as usize] {
+            if extracted_data.alpha >= 1.0 {
+                submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(frame_node_index, 0, 0.0);
+            } else {
+                let distance_from_camera = Vec3::length(extracted_data.position - view.eye_position());
+                submit_nodes.add_submit_node::<DrawTransparentRenderPhase>(
+                    frame_node_index,
+                    0,
+                    distance_from_camera,
+                );
+            }
         }
     }
 
