@@ -35,7 +35,7 @@ use legion::prelude::*;
 use renderer_ext::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContextFactory};
 use renderer_ext::RenderJobWriteContext;
 use renderer_shell_vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
-use renderer_ext::features::mesh::{MeshPerFrameShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
+use renderer_ext::features::mesh::{MeshPerViewShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -534,19 +534,43 @@ impl GameRenderer {
         let extents_height = 600;
         let aspect_ratio = extents_width as f32 / extents_height as f32;
 
-        let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 1.0));
-        let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.01, 20.0);
-        let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
-        let view_proj = proj * view;
-
         let render_view_set = RenderViewSet::default();
-        let main_view = render_view_set.create_view(
-            eye,
-            view,
-            proj,
-            self.main_camera_render_phase_mask,
-            "main".to_string(),
-        );
+        let (main_view, view_proj) = {
+            let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 1.0));
+            let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.01, 20.0);
+            let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
+            let view_proj = proj * view;
+
+            let main_view = render_view_set.create_view(
+                eye,
+                view,
+                proj,
+                self.main_camera_render_phase_mask,
+                "main".to_string(),
+            );
+
+            (main_view, view_proj)
+        };
+
+        let second_view = {
+            let eye = glam::Vec3::new(
+                camera_distance_multiplier * 4.0,
+                camera_distance_multiplier * 4.0,
+                camera_distance_multiplier * 5.0,
+            );
+
+            let view = glam::Mat4::look_at_rh(eye, glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::new(0.0, 0.0, 1.0));
+            let proj = glam::Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_4, aspect_ratio, 0.01, 20.0);
+            let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
+
+            render_view_set.create_view(
+                eye,
+                view,
+                proj,
+                self.main_camera_render_phase_mask,
+                "second".to_string(),
+            )
+        };
 
         //
         // Visibility
@@ -555,6 +579,11 @@ impl GameRenderer {
             static_visibility_node_set.calculate_static_visibility(&main_view);
         let main_view_dynamic_visibility_result =
             dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
+
+        let second_view_static_visibility_result =
+            static_visibility_node_set.calculate_static_visibility(&second_view);
+        let second_view_dynamic_visibility_result =
+            dynamic_visibility_node_set.calculate_dynamic_visibility(&second_view);
 
         log::trace!(
             "main view static node count: {}",
@@ -580,6 +609,14 @@ impl GameRenderer {
             &[
                 main_view_static_visibility_result,
                 main_view_dynamic_visibility_result,
+            ],
+        );
+
+        frame_packet_builder.add_view(
+            &second_view,
+            &[
+                second_view_static_visibility_result,
+                second_view_dynamic_visibility_result,
             ],
         );
 
@@ -639,7 +676,7 @@ impl GameRenderer {
         let prepare_job_set = extract_job_set.extract(
             &mut extract_context,
             &frame_packet,
-            &[&main_view]
+            &[&main_view, &second_view]
         );
 
         //
@@ -649,7 +686,7 @@ impl GameRenderer {
         let prepared_render_data = prepare_job_set.prepare(
             &prepare_context,
             &frame_packet,
-            &[&main_view],
+            &[&main_view, &second_view],
             render_registry,
         );
 
@@ -676,7 +713,7 @@ impl GameRenderer {
                 &opaque_pipeline_info,
                 present_index,
                 &*prepared_render_data,
-                &main_view,
+                &[&main_view, &second_view],
                 &write_context_factory
             )?;
             command_buffers.push(opaque_renderpass.command_buffers[present_index].clone());

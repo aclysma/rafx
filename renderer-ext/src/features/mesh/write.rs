@@ -1,5 +1,5 @@
-use crate::features::mesh::{MeshRenderFeature, MeshDrawCall, ExtractedFrameNodeMeshData, ExtractedViewNodeMeshData};
-use renderer_base::{RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter};
+use crate::features::mesh::{MeshRenderFeature, MeshDrawCall, ExtractedFrameNodeMeshData, ExtractedViewNodeMeshData, PreparedViewNodeMeshData};
+use renderer_base::{RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView};
 use crate::RenderJobWriteContext;
 use renderer_shell_vulkan::{VkBuffer, VkBufferRaw};
 use std::mem::ManuallyDrop;
@@ -9,15 +9,16 @@ use ash::version::DeviceV1_0;
 
 pub struct MeshCommandWriter {
     pub pipeline_info: PipelineSwapchainInfo,
-    pub descriptor_set_per_pass: DescriptorSetArc,
+    pub descriptor_sets_per_view: Vec<DescriptorSetArc>,
     pub extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
-    pub extracted_view_node_mesh_data: Vec<Option<ExtractedViewNodeMeshData>>,
+    pub prepared_view_node_mesh_data: Vec<PreparedViewNodeMeshData>,
 }
 
 impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
+        view: &RenderView,
     ) {
         // println!("render");
         let logical_device = write_context.device_context.device();
@@ -28,32 +29,32 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
                 vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline_info.pipeline.get_raw().pipelines[0],
             );
-
-            // Bind per-pass data (UBO with view/proj matrix, sampler)
-            logical_device.cmd_bind_descriptor_sets(
-                command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
-                0,
-                &[self.descriptor_set_per_pass.get()],
-                &[],
-            );
         }
     }
 
     fn render_element(
         &self,
         write_context: &mut RenderJobWriteContext,
+        view: &RenderView,
         index: SubmitNodeId,
     ) {
         let logical_device = write_context.device_context.device();
         let command_buffer = write_context.command_buffer;
-        //let draw_call = &self.draw_calls[index as usize];
 
-        let view_node_data = self.extracted_view_node_mesh_data[index as usize].as_ref().unwrap();
+        let view_node_data = &self.prepared_view_node_mesh_data[index as usize];
         let frame_node_data = self.extracted_frame_node_mesh_data[view_node_data.frame_node_index as usize].as_ref().unwrap();
 
         unsafe {
+            // Bind per-pass data (UBO with view/proj matrix, sampler)
+            logical_device.cmd_bind_descriptor_sets(
+                command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
+                0,
+                &[view_node_data.per_view_descriptor.get()],
+                &[],
+            );
+
             logical_device.cmd_bind_descriptor_sets(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
@@ -103,6 +104,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
     fn revert_setup(
         &self,
         _write_context: &mut RenderJobWriteContext,
+        view: &RenderView,
     ) {
 
     }

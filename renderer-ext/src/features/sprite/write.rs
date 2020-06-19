@@ -1,5 +1,5 @@
 use crate::features::sprite::{SpriteRenderFeature, SpriteDrawCall};
-use renderer_base::{RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter};
+use renderer_base::{RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView};
 use crate::RenderJobWriteContext;
 use renderer_shell_vulkan::{VkBuffer, VkBufferRaw};
 use std::mem::ManuallyDrop;
@@ -19,6 +19,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
+        view: &RenderView,
     ) {
         // println!("render");
         let logical_device = write_context.device_context.device();
@@ -59,6 +60,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
     fn render_element(
         &self,
         write_context: &mut RenderJobWriteContext,
+        view: &RenderView,
         index: SubmitNodeId,
     ) {
         // //println!("render");
@@ -113,6 +115,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
     fn revert_setup(
         &self,
         _write_context: &mut RenderJobWriteContext,
+        view: &RenderView,
     ) {
 
     }

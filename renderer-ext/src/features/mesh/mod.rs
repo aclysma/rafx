@@ -62,7 +62,7 @@ pub struct SpotLight {
 //TODO: Remove view/proj, they aren't being used. Add ambient light constant
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
-pub struct MeshPerFrameShaderParam {
+pub struct MeshPerViewShaderParam {
     pub ambient_light: glam::Vec4, // +0
     pub point_light_count: u32, // +16
     pub directional_light_count: u32, // 20
@@ -188,11 +188,17 @@ pub struct MeshDrawCall {
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
-    pub per_material_descriptor: DescriptorSetArc,
+    pub per_material_descriptor: DescriptorSetArc, // set 1
 }
 
 #[derive(Debug)]
 pub struct ExtractedViewNodeMeshData {
-    pub per_instance_descriptor: DescriptorSetArc,
+    pub per_instance_descriptor: DescriptorSetArc, // set 2
+}
+
+#[derive(Debug)]
+pub struct PreparedViewNodeMeshData {
+    pub per_instance_descriptor: DescriptorSetArc, // set 2
     pub frame_node_index: FrameNodeIndex,
+    pub per_view_descriptor: DescriptorSetArc, // set 0
 }

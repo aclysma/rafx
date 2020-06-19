@@ -7,15 +7,18 @@ pub trait FeatureCommandWriter<WriteContextT> {
     fn apply_setup(
         &self,
         write_context: &mut WriteContextT,
+        view: &RenderView,
     );
     fn render_element(
         &self,
         write_context: &mut WriteContextT,
+        view: &RenderView,
         index: SubmitNodeId,
     );
     fn revert_setup(
         &self,
         write_context: &mut WriteContextT,
+        view: &RenderView,
     );
 
     fn feature_debug_name(&self) -> &'static str;
@@ -67,7 +70,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                     self.feature_writers[previous_node_feature_index as usize]
                         .as_ref()
                         .unwrap()
-                        .revert_setup(write_context);
+                        .revert_setup(write_context, view);
                 }
 
                 // call apply setup
@@ -75,7 +78,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                 self.feature_writers[submit_node.feature_index() as usize]
                     .as_ref()
                     .unwrap()
-                    .apply_setup(write_context);
+                    .apply_setup(write_context, view);
             }
 
             log::trace!(
@@ -86,7 +89,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
             self.feature_writers[submit_node.feature_index() as usize]
                 .as_ref()
                 .unwrap()
-                .render_element(write_context, submit_node.submit_node_id());
+                .render_element(write_context, view, submit_node.submit_node_id());
             previous_node_feature_index = submit_node.feature_index() as i32;
         }
 

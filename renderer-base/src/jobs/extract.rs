@@ -145,9 +145,10 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
         //TODO: Views can run in parallel
         for view in views {
             log::trace!(
-                "extract_view_nodes feature: {} view: {}",
+                "extract_view_nodes feature: {} view: {}, eye_position: {:?}",
                 self.extract_impl.feature_debug_name(),
-                view.debug_name()
+                view.debug_name(),
+                view.eye_position()
             );
 
             let view_nodes = frame_packet.view_nodes(view, feature_index);

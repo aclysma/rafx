@@ -87,6 +87,8 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         //     self.per_view_descriptors.push(descriptor_set.descriptor_set().clone());
         // }
 
+        //TODO: Multi-view support for sprites. Not clear on if we want to do a screen-space view specifically
+        // for sprites
         let extents_width = 900;
         let extents_height = 600;
         let aspect_ration = extents_width as f32 / extents_height as f32;
