@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(4579299882968015477),
+    importer_version: 2,
+    importer_type: "a188149d-bb0c-4c7d-8a43-0267a528bec6",
+    importer_options: (),
+    importer_state: (Some("0cc8a6a3-10de-48d5-b04f-92fbcca815a1")),
+    assets: [
+        (
+            id: "0cc8a6a3-10de-48d5-b04f-92fbcca815a1",
+            search_tags: [
+                ("file_name", Some("opaque.renderpass")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 1578485588270153040,
+                id: "0cc8a6a3-10de-48d5-b04f-92fbcca815a1",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(197),
+                uncompressed_size: Some(197),
+                type_id: "366d277d-6cb5-430a-a8fa-007d8ae69886",
+            )),
+        ),
+    ],
+)
