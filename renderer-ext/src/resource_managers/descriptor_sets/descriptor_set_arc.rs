@@ -35,6 +35,7 @@ impl std::fmt::Debug for DescriptorSetArcInner {
     ) -> std::fmt::Result {
         f.debug_struct("DescriptorSetArcInner")
             .field("slab_key", &self.slab_key)
+            .field("raw", &self.descriptor_set)
             .finish()
     }
 }

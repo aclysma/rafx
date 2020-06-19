@@ -50,7 +50,8 @@ impl DerefMut for DescriptorSetAllocatorRef {
 
 impl Drop for DescriptorSetAllocatorRef {
     fn drop(&mut self) {
-        let allocator = self.allocator.take().unwrap();
+        let mut allocator = self.allocator.take().unwrap();
+        allocator.allocator.flush_changes();
         self.drop_tx.send(allocator);
     }
 }
@@ -149,8 +150,22 @@ impl DescriptorSetAllocatorManagerInner {
         );
 
         for allocator in allocators.iter_mut() {
-            allocator.flush_changes();
             allocator.on_frame_complete();
+        }
+    }
+
+    fn destroy(&self) {
+        let frame_index = self.frame_index.load(Ordering::Relaxed);
+        let mut allocators = self.allocators.lock().unwrap();
+
+        Self::drain_drop_rx(
+            &self.drop_rx,
+            &mut *allocators,
+            frame_index
+        );
+
+        for mut allocator in allocators.drain(..).into_iter() {
+            allocator.destroy();
         }
     }
 }
@@ -188,5 +203,9 @@ impl DescriptorSetAllocatorManager {
 
     pub fn on_frame_complete(&self) {
         self.inner.on_frame_complete();
+    }
+
+    pub fn destroy(&mut self) {
+        self.inner.destroy();
     }
 }

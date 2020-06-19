@@ -914,6 +914,7 @@ impl Drop for ResourceManager {
             // Drop all descriptors. These bind to raw resources, so we need to drop them before
             // dropping resources
             self.resource_descriptor_sets.destroy();
+            self.descriptor_set_allocator.destroy();
 
             // Now drop all resources with a zero ref count and warn for any resources that remain
             self.resources.destroy();

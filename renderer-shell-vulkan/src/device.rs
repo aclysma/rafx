@@ -165,12 +165,14 @@ impl VkDeviceContext {
     unsafe fn destroy(&mut self) {
         let mut inner = None;
         std::mem::swap(&mut inner, &mut self.inner);
-        if let Ok(mut inner) = Arc::try_unwrap(inner.unwrap()) {
+        let inner = inner.unwrap();
+        let strong_count = Arc::strong_count(&inner);
+        if let Ok(mut inner) = Arc::try_unwrap(inner) {
             inner.allocator.destroy();
             inner.device.destroy_device(None);
             ManuallyDrop::drop(&mut inner);
         } else {
-            panic!("Could not free the allocator, something is holding a reference to it. Have all allocations been dropped?")
+            panic!("Could not free the allocator, {} references exist. Have all allocations been dropped?", strong_count);
         }
     }
 }

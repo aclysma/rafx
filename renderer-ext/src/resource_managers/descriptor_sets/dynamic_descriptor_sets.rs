@@ -70,10 +70,13 @@ impl DynDescriptorSet {
             self.write_set.copy_from(&pending_write_set);
 
             // create it
-            self.descriptor_set = descriptor_set_allocator.create_descriptor_set(
+            let new_descriptor_set = descriptor_set_allocator.create_descriptor_set(
                 &self.descriptor_set_layout,
                 pending_write_set
             )?;
+
+            log::trace!("DynDescriptorSet::flush {:?} -> {:?}", self.descriptor_set, new_descriptor_set);
+            self.descriptor_set = new_descriptor_set;
         }
 
         Ok(())
