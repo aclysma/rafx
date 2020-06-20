@@ -65,6 +65,7 @@ pub use context::VkCreateContextError;
 mod surface;
 pub use surface::VkSurface;
 pub use surface::VkSurfaceSwapchainLifetimeListener;
+pub use surface::FrameInFlight;
 
 mod coordinates;
 pub use coordinates::Size;

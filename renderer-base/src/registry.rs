@@ -2,6 +2,7 @@ use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use fnv::FnvHashMap;
 use crate::SubmitNode;
+use std::sync::Arc;
 
 pub type RenderFeatureIndex = u32;
 pub type RenderFeatureCount = u32;
@@ -72,13 +73,14 @@ impl RenderRegistryBuilder {
 
     pub fn build(self) -> RenderRegistry {
         RenderRegistry {
-            registered_phases: self.registered_phases,
+            registered_phases: Arc::new(self.registered_phases),
         }
     }
 }
 
+#[derive(Clone)]
 pub struct RenderRegistry {
-    registered_phases: FnvHashMap<RenderPhaseIndex, RegisteredPhase>,
+    registered_phases: Arc<FnvHashMap<RenderPhaseIndex, RegisteredPhase>>,
 }
 
 impl RenderRegistry {

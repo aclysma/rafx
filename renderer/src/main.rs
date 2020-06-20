@@ -169,30 +169,9 @@ fn main() {
         // Redraw
         //
         {
-            let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
-            let mut render_registry = resources.get_mut::<RenderRegistry>().unwrap();
-            let mut game_renderer = resources.get_mut::<GameRenderer>().unwrap();
-            let mut surface = resources.get_mut::<VkSurface>().unwrap();
             let window = Sdl2Window::new(&sdl2_systems.window);
-
-            let mut lifetime_listener = SwapchainLifetimeListener {
-                resources: &resources,
-                resource_manager: &mut *resource_manager,
-                render_registry: & *render_registry,
-                game_renderer: &mut *game_renderer
-            };
-
-            surface.draw_with(&mut lifetime_listener, &window, |lifetime_listener, device_context, present_index| {
-                lifetime_listener.game_renderer.render(
-                    &world,
-                    &resources,
-                    lifetime_listener.resource_manager,
-                    lifetime_listener.render_registry,
-                    &window,
-                    device_context,
-                    present_index
-                )
-            }).unwrap();
+            let mut game_renderer = resources.get::<GameRenderer>().unwrap();
+            game_renderer.begin_render(&resources, &world, &window);
         }
     }
 

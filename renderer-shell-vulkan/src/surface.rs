@@ -5,6 +5,7 @@ use ash::prelude::VkResult;
 
 use std::mem::ManuallyDrop;
 use ash::vk;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::VkInstance;
 use super::VkCreateInstanceError;
@@ -36,12 +37,12 @@ impl FrameInFlight {
     // A value that stays in step with the image index returned by the swapchain. There is no
     // guarantee on the ordering of present image index (i.e. it may decrease). It is only promised
     // to not be in use by a frame in flight
-    fn present_index(&self) -> u32 {
+    pub fn present_index(&self) -> u32 {
         self.present_index
     }
 
     // If true, consider recreating the swapchain
-    fn is_suboptimal(&self) -> bool {
+    pub fn is_suboptimal(&self) -> bool {
         self.is_suboptimal
     }
 }
@@ -76,7 +77,7 @@ pub struct VkSurface {
     msaa_level_priority: Vec<MsaaLevel>,
 
     // Increase until > MAX_FRAMES_IN_FLIGHT, then set to 0, or -1 if no frame drawn yet
-    sync_frame_index: usize,
+    sync_frame_index: AtomicUsize,
 
     previous_inner_size: PhysicalSize,
 
@@ -105,7 +106,7 @@ impl VkSurface {
             event_listener.swapchain_created(&context.device().device_context, &swapchain)?;
         }
 
-        let sync_frame_index = 0;
+        let sync_frame_index = AtomicUsize::new(0);
 
         let previous_inner_size = window.physical_size();
 
@@ -181,19 +182,21 @@ impl VkSurface {
 
         let mut command_buffers = f(event_listener, &self.device_context, frame_in_flight.present_index as usize)?;
 
-        self.present(window, frame_in_flight, &command_buffers)?;
+        self.present(frame_in_flight, &command_buffers)?;
         Ok(())
     }
 
-    fn acquire_next_swapchain_image(
-        &mut self,
+    pub fn acquire_next_swapchain_image(
+        &self,
         window: &dyn Window,
     ) -> VkResult<FrameInFlight> {
         if window.physical_size() != self.previous_inner_size {
             return Err(vk::Result::ERROR_OUT_OF_DATE_KHR);
         }
 
-        let frame_fence = self.swapchain.in_flight_fences[self.sync_frame_index];
+        let sync_frame_index = self.sync_frame_index.load(Ordering::Relaxed);
+
+        let frame_fence = self.swapchain.in_flight_fences[sync_frame_index];
 
         //TODO: Dont lock up forever (don't use std::u64::MAX)
         //TODO: Can part of this run in a separate thread from the window pump?
@@ -212,30 +215,30 @@ impl VkSurface {
             self.swapchain.swapchain_loader.acquire_next_image(
                 self.swapchain.swapchain,
                 std::u64::MAX,
-                self.swapchain.image_available_semaphores[self.sync_frame_index],
+                self.swapchain.image_available_semaphores[sync_frame_index],
                 vk::Fence::null(),
             )?
         };
 
         Ok(FrameInFlight {
-            sync_frame_index: self.sync_frame_index,
+            sync_frame_index,
             present_index,
             is_suboptimal
         })
     }
 
-    fn present(
-        &mut self,
-        window: &dyn Window,
+    pub fn present(
+        &self,
         frame_in_flight: FrameInFlight,
         command_buffers: &[vk::CommandBuffer],
     ) -> VkResult<()> {
         // A present can only occur using the result from the previous acquire_next_image call
-        assert!(self.sync_frame_index == frame_in_flight.sync_frame_index);
-        let frame_fence = self.swapchain.in_flight_fences[self.sync_frame_index];
+        let sync_frame_index = self.sync_frame_index.load(Ordering::Relaxed);
+        assert!(sync_frame_index == frame_in_flight.sync_frame_index);
+        let frame_fence = self.swapchain.in_flight_fences[sync_frame_index];
 
-        let wait_semaphores = [self.swapchain.image_available_semaphores[self.sync_frame_index]];
-        let signal_semaphores = [self.swapchain.render_finished_semaphores[self.sync_frame_index]];
+        let wait_semaphores = [self.swapchain.image_available_semaphores[sync_frame_index]];
+        let signal_semaphores = [self.swapchain.render_finished_semaphores[sync_frame_index]];
 
         let wait_dst_stage_mask = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
 
@@ -255,7 +258,7 @@ impl VkSurface {
             )?;
         }
 
-        let wait_semaphors = [self.swapchain.render_finished_semaphores[self.sync_frame_index]];
+        let wait_semaphors = [self.swapchain.render_finished_semaphores[sync_frame_index]];
         let swapchains = [self.swapchain.swapchain];
         let image_indices = [frame_in_flight.present_index];
         let present_info = vk::PresentInfoKHR::builder()
@@ -269,7 +272,7 @@ impl VkSurface {
                 .queue_present(self.device_context.queues().present_queue, &present_info)?;
         }
 
-        self.sync_frame_index = (self.sync_frame_index + 1) % MAX_FRAMES_IN_FLIGHT;
+        self.sync_frame_index.store((sync_frame_index + 1) % MAX_FRAMES_IN_FLIGHT, Ordering::Relaxed);
 
         Ok(())
     }

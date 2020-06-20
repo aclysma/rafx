@@ -49,9 +49,9 @@ impl ImguiRenderEventListener {
 
     pub fn render(
         &mut self,
-        window: &dyn Window,
         device_context: &VkDeviceContext,
         present_index: usize,
+        window_scale_factor: f64,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let draw_data = unsafe { imgui::sys::igGetDrawData() };
         if draw_data.is_null() {
@@ -66,7 +66,7 @@ impl ImguiRenderEventListener {
         renderpass.update(
             Some(&draw_data),
             present_index as usize,
-            window.scale_factor(),
+            window_scale_factor,
         )?;
 
         Ok(vec![renderpass.command_buffers[present_index].clone()])

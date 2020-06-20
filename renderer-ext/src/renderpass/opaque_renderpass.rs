@@ -157,7 +157,7 @@ impl VkOpaqueRenderPass {
         framebuffer: vk::Framebuffer,
         command_buffer: &vk::CommandBuffer,
         prepared_render_data: &PreparedRenderData<RenderJobWriteContext>,
-        views: &[&RenderView],
+        view: &RenderView,
         write_context_factory: &RenderJobWriteContextFactory,
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
@@ -198,10 +198,8 @@ impl VkOpaqueRenderPass {
 
             let mut write_context = write_context_factory.create_context(*command_buffer);
 
-            for view in views {
-                prepared_render_data
-                    .write_view_phase::<DrawOpaqueRenderPhase>(&view, &mut write_context);
-            }
+            prepared_render_data
+                .write_view_phase::<DrawOpaqueRenderPhase>(&view, &mut write_context);
 
             logical_device.cmd_end_render_pass(*command_buffer);
             logical_device.end_command_buffer(*command_buffer)
@@ -213,7 +211,7 @@ impl VkOpaqueRenderPass {
         pipeline_info: &PipelineSwapchainInfo,
         present_index: usize,
         prepared_render_data: &PreparedRenderData<RenderJobWriteContext>,
-        view: &[&RenderView],
+        view: &RenderView,
         write_context_factory: &RenderJobWriteContextFactory,
     ) -> VkResult<()> {
         assert!(self.renderpass == pipeline_info.renderpass.get_raw());
