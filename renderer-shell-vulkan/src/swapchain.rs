@@ -262,8 +262,8 @@ impl VkSwapchain {
             // composite renderpass with layout ShaderReadOnlyOptimal for the non-msaa case. If msaa is enabled
             // it will get resolved to the resolved image and we will sample that. If msaa is off, we don't even
             // create an msaa image
-            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
-            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_SRC,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST,
             msaa_level
         )?;
 

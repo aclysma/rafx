@@ -3,8 +3,8 @@
         attachments: [
             (
                 flags: None,
-                format: MatchColorAttachment,
-                samples: MatchSwapchain,
+                format: MatchColorAttachment, // R32G32B32A32_SFLOAT
+                samples: MatchSwapchain, // SampleCount4
                 load_op: Load,
                 store_op: DontCare,
                 stencil_load_op: DontCare,
@@ -14,8 +14,8 @@
             ),
             (
                 flags: None,
-                format: MatchDepthAttachment,
-                samples: MatchSwapchain,
+                format: MatchDepthAttachment, // D32_SFLOAT
+                samples: MatchSwapchain, // SampleCount4
                 load_op: Load,
                 store_op: DontCare,
                 stencil_load_op: DontCare,
@@ -25,7 +25,7 @@
             ),
             (
                 flags: None,
-                format: MatchColorAttachment,
+                format: MatchColorAttachment, // R32G32B32A32_SFLOAT
                 samples: SampleCount1,
                 load_op: DontCare,
                 store_op: Store,
@@ -33,8 +33,7 @@
                 stencil_store_op: DontCare,
                 initial_layout: Undefined,
 
-                // This pipeline passes results to the compositor. The compositor will be reading our color attachment
-                // via a sampler
+                // This pipeline passes results to the bloom pass which will be reading our color attachment via a sampler
                 final_layout: ShaderReadOnlyOptimal,
             )
         ],
@@ -51,7 +50,7 @@
                 resolve_attachments: [
                     (
                         attachment: Index(2),
-                        layout: ShaderReadOnlyOptimal,
+                        layout: ColorAttachmentOptimal,
                     ),
                 ],
                 depth_stencil_attachment: Some(
@@ -70,7 +69,6 @@
                 dst_stage_mask: ColorAttachmentOutput,
                 src_access_mask: [],
                 dst_access_mask: [
-                    ColorAttachmentRead,
                     ColorAttachmentWrite,
                 ],
                 dependency_flags: Empty,
