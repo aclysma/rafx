@@ -684,6 +684,7 @@ impl GameRenderer {
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
         guard.debug_material_per_frame_data.set_buffer_data(0, &view_proj);
         guard.debug_material_per_frame_data.flush(&mut descriptor_set_allocator);
+        descriptor_set_allocator.flush_changes();
 
         //
         // Update Resources and flush descriptor set changes

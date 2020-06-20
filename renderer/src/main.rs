@@ -153,6 +153,11 @@ fn main() {
                         "FPS: {:.1}",
                         time_state.updates_per_second_smoothed()
                     ));
+                    ui.separator();
+                    ui.text(imgui::im_str!(
+                        "Frame: {}",
+                        time_state.update_count()
+                    ));
                 });
             });
         }

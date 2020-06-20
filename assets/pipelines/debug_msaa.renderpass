@@ -6,7 +6,7 @@
                 format: MatchColorAttachment,
                 samples: MatchSwapchain,
                 load_op: Load,
-                store_op: Store,
+                store_op: DontCare,
                 stencil_load_op: DontCare,
                 stencil_store_op: DontCare,
                 initial_layout: ColorAttachmentOptimal,
