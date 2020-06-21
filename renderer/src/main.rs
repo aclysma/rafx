@@ -284,7 +284,7 @@ fn rendering_init(
 
     //#[cfg(debug_assertions)]
     {
-        context = context.use_vulkan_debug_layer(true);
+        //context = context.use_vulkan_debug_layer(true);
     }
 
     let vk_context = context.build(&window_wrapper).unwrap();
