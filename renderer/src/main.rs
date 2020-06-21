@@ -17,7 +17,7 @@ use atelier_assets::core::AssetUuid;
 use renderer_ext::asset_resource::AssetResource;
 use renderer_ext::image_utils::{DecodedTexture, enqueue_load_images};
 use imgui::{Key, Image};
-use renderer_ext::asset_storage::{ResourceLoadHandler, ResourceHandle};
+use renderer_ext::asset_storage::{ResourceLoadHandler};
 use std::mem::ManuallyDrop;
 use std::time::Duration;
 use atelier_loader::AssetLoadOp;

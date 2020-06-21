@@ -99,12 +99,10 @@ impl RenderView {
     pub fn view_matrix(&self) -> Mat4 {
         self.view
     }
+
     pub fn projection_matrix(&self) -> Mat4 {
         self.proj
     }
-    // pub fn view_proj(&self) -> Mat4 {
-    //     self.view_proj
-    // }
 
     pub fn view_index(&self) -> RenderViewIndex {
         self.view_index

@@ -6,7 +6,7 @@ use ash::prelude::VkResult;
 use std::time::Duration;
 use crate::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffers};
 use std::mem::ManuallyDrop;
-use crate::asset_storage::{ResourceHandle, ResourceLoadHandler};
+use crate::asset_storage::{ResourceLoadHandler};
 use std::error::Error;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
 use fnv::FnvHashMap;

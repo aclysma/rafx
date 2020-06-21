@@ -24,17 +24,21 @@ impl<T: Sized> Clone for RawSlabKey<T> {
 impl<T: Sized> Copy for RawSlabKey<T> {}
 
 impl<T: Sized> PartialEq for RawSlabKey<T> {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
         self.index == other.index
     }
 }
 
-impl<T: Sized> Eq for RawSlabKey<T> {
-
-}
+impl<T: Sized> Eq for RawSlabKey<T> {}
 
 impl<T: Sized> Hash for RawSlabKey<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+    ) {
         self.index.hash(state);
     }
 }

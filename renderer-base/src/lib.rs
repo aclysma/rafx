@@ -45,5 +45,3 @@ pub use registry::RenderFeature;
 pub use registry::RenderPhase;
 pub use registry::RenderFeatureIndex;
 pub use registry::RenderPhaseIndex;
-
-mod resources;

@@ -1,7 +1,7 @@
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::core::AssetUuid;
 use type_uuid::TypeUuid;
-use crate::asset_storage::{ResourceLoadHandler, ResourceHandle};
+use crate::asset_storage::{ResourceLoadHandler};
 use std::marker::PhantomData;
 use crossbeam_channel::{Sender, Receiver};
 use crate::pipeline::shader::ShaderAsset;
@@ -122,7 +122,6 @@ where
         &mut self,
         load_handle: LoadHandle,
         asset_uuid: &AssetUuid,
-        resource_handle: ResourceHandle<AssetT>,
         version: u32,
         asset: &AssetT,
         load_op: AssetLoadOp,
@@ -145,7 +144,6 @@ where
         &mut self,
         load_handle: LoadHandle,
         asset_uuid: &AssetUuid,
-        resource_handle: ResourceHandle<AssetT>,
         version: u32,
         asset: &AssetT,
     ) {
@@ -165,7 +163,6 @@ where
     fn free(
         &mut self,
         load_handle: LoadHandle,
-        resource_handle: ResourceHandle<AssetT>,
         version: u32,
     ) {
         log::trace!(

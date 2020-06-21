@@ -1,5 +1,4 @@
 use ash::vk;
-use crate::asset_storage::ResourceHandle;
 use image2::Hash;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;

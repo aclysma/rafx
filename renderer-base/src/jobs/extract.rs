@@ -16,7 +16,9 @@ pub struct ExtractJobSet<ExtractContextT, PrepareContextT, WriteContextT> {
     extract_jobs: Vec<Box<dyn ExtractJob<ExtractContextT, PrepareContextT, WriteContextT>>>,
 }
 
-impl<ExtractContextT, PrepareContextT, WriteContextT> Default for ExtractJobSet<ExtractContextT, PrepareContextT, WriteContextT> {
+impl<ExtractContextT, PrepareContextT, WriteContextT> Default
+    for ExtractJobSet<ExtractContextT, PrepareContextT, WriteContextT>
+{
     fn default() -> Self {
         ExtractJobSet {
             extract_jobs: Default::default(),
@@ -24,7 +26,9 @@ impl<ExtractContextT, PrepareContextT, WriteContextT> Default for ExtractJobSet<
     }
 }
 
-impl<ExtractContextT, PrepareContextT, WriteContextT> ExtractJobSet<ExtractContextT, PrepareContextT, WriteContextT> {
+impl<ExtractContextT, PrepareContextT, WriteContextT>
+    ExtractJobSet<ExtractContextT, PrepareContextT, WriteContextT>
+{
     pub fn new() -> Self {
         Default::default()
     }
@@ -95,14 +99,22 @@ pub trait DefaultExtractJobImpl<ExtractContextT, PrepareContextT, WriteContextT>
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
-pub struct DefaultExtractJob<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtractJobImpl<ExtractContextT, PrepareContextT, WriteContextT>>
-{
+pub struct DefaultExtractJob<
+    ExtractContextT,
+    PrepareContextT,
+    WriteContextT,
+    ExtractImplT: DefaultExtractJobImpl<ExtractContextT, PrepareContextT, WriteContextT>,
+> {
     extract_impl: ExtractImplT,
     phantom_data: PhantomData<(ExtractContextT, PrepareContextT, WriteContextT)>,
 }
 
-impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtractJobImpl<ExtractContextT, PrepareContextT, WriteContextT>>
-    DefaultExtractJob<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT>
+impl<
+        ExtractContextT,
+        PrepareContextT,
+        WriteContextT,
+        ExtractImplT: DefaultExtractJobImpl<ExtractContextT, PrepareContextT, WriteContextT>,
+    > DefaultExtractJob<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT>
 {
     pub fn new(extract_impl: ExtractImplT) -> Self {
         DefaultExtractJob {
@@ -112,8 +124,13 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
     }
 }
 
-impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtractJobImpl<ExtractContextT, PrepareContextT, WriteContextT>>
-    ExtractJob<ExtractContextT, PrepareContextT, WriteContextT> for DefaultExtractJob<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT>
+impl<
+        ExtractContextT,
+        PrepareContextT,
+        WriteContextT,
+        ExtractImplT: DefaultExtractJobImpl<ExtractContextT, PrepareContextT, WriteContextT>,
+    > ExtractJob<ExtractContextT, PrepareContextT, WriteContextT>
+    for DefaultExtractJob<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT>
 {
     fn extract(
         mut self: Box<Self>,
@@ -124,8 +141,12 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
         let feature_index = self.extract_impl.feature_index();
 
         // In the future, make features run in parallel
-        log::trace!("extract_begin feature: {}", self.extract_impl.feature_debug_name());
-        self.extract_impl.extract_begin(extract_context, frame_packet, views);
+        log::trace!(
+            "extract_begin feature: {}",
+            self.extract_impl.feature_debug_name()
+        );
+        self.extract_impl
+            .extract_begin(extract_context, frame_packet, views);
 
         // foreach frame node, call extract
         for (frame_node_index, frame_node) in
@@ -137,8 +158,11 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
                 frame_node_index
             );
 
-            self.extract_impl
-                .extract_frame_node(extract_context, *frame_node, frame_node_index as u32);
+            self.extract_impl.extract_frame_node(
+                extract_context,
+                *frame_node,
+                frame_node_index as u32,
+            );
         }
 
         // foreach view node, call extract
@@ -176,7 +200,8 @@ impl<ExtractContextT, PrepareContextT, WriteContextT, ExtractImplT: DefaultExtra
                 self.extract_impl.feature_debug_name(),
                 view.debug_name()
             );
-            self.extract_impl.extract_view_finalize(extract_context, view);
+            self.extract_impl
+                .extract_view_finalize(extract_context, view);
         }
 
         // call once after all nodes extracted

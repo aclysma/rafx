@@ -9,7 +9,6 @@ use std::{sync::Mutex, collections::HashMap, error::Error, sync::Arc};
 use atelier_assets::importer as atelier_importer;
 use atelier_assets::loader as atelier_loader;
 use atelier_assets::core::AssetUuid;
-use renderer_base::slab::{GenSlab, GenSlabKey};
 use std::marker::PhantomData;
 
 // Used to catch asset changes and upload them to the GPU (or some other system)
@@ -21,7 +20,6 @@ where
         &mut self,
         load_handle: LoadHandle,
         asset_uuid: &AssetUuid,
-        resource_handle: ResourceHandle<T>,
         version: u32,
         asset: &T,
         load_op: AssetLoadOp,
@@ -31,7 +29,6 @@ where
         &mut self,
         load_handle: LoadHandle,
         asset_uuid: &AssetUuid,
-        resource_handle: ResourceHandle<T>,
         version: u32,
         asset: &T,
     );
@@ -39,52 +36,9 @@ where
     fn free(
         &mut self,
         load_handle: LoadHandle,
-        resource_handle: ResourceHandle<T>,
         version: u32,
     );
 }
-
-pub struct ResourceHandle<A> {
-    key: GenSlabKey<LoadHandle>,
-    phantom_data: PhantomData<A>,
-}
-
-impl<A> ResourceHandle<A> {
-    pub fn new(key: GenSlabKey<LoadHandle>) -> Self {
-        ResourceHandle {
-            key,
-            phantom_data: Default::default(),
-        }
-    }
-
-    pub fn index(&self) -> renderer_base::slab::SlabIndexT {
-        self.key.index()
-    }
-}
-
-// Can't use derive because of phantom data
-impl<A> Clone for ResourceHandle<A> {
-    fn clone(&self) -> Self {
-        ResourceHandle {
-            key: self.key,
-            phantom_data: Default::default(),
-        }
-    }
-}
-
-impl<A> std::fmt::Debug for ResourceHandle<A> {
-    fn fmt(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        f.debug_struct("ResourceHandle")
-            .field("key", &self.key.index())
-            .finish()
-    }
-}
-
-// Can't use derive because of phantom data
-impl<A> Copy for ResourceHandle<A> {}
 
 // Used to dynamic dispatch into a storage, supports checked downcasting
 pub trait TypedStorage: Any + Send {
@@ -136,6 +90,12 @@ impl GenericAssetStorage {
         );
     }
 
+    //TODO: This could be redesigned to integrate better with the contents of asset_storage.rs
+    // - Currently, we make a Storage<T> with T being the raw asset, and proxy events to the load handler
+    // - The load handler goes through load queues and puts the instantiated asset in the resource
+    //   manager's asset_lookup
+    // - This means the asset storage has a fairly useless asset, and the actually useful struct
+    //   (i.e. LoadedMesh vs. MeshAsset) has to be retrieved through a totally different path
     pub fn add_storage_with_load_handler<T, U>(
         &self,
         load_handler: Box<U>,
@@ -272,7 +232,6 @@ impl<A: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send> TypedAssetSt
 
 struct AssetState<A> {
     version: u32,
-    resource_handle: ResourceHandle<A>,
     asset_uuid: AssetUuid,
     asset: A,
 }
@@ -282,7 +241,6 @@ pub struct Storage<A: TypeUuid> {
     refop_sender: Arc<Sender<RefOp>>,
     assets: HashMap<LoadHandle, AssetState<A>>,
     uncommitted: HashMap<LoadHandle, AssetState<A>>,
-    slab: GenSlab<LoadHandle>,
     load_handler: Option<Box<dyn ResourceLoadHandler<A>>>,
 }
 impl<A: TypeUuid> Storage<A> {
@@ -294,7 +252,6 @@ impl<A: TypeUuid> Storage<A> {
             refop_sender: sender,
             assets: HashMap::new(),
             uncommitted: HashMap::new(),
-            slab: GenSlab::<LoadHandle>::new(),
             load_handler,
         }
     }
@@ -344,14 +301,6 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             || bincode::deserialize::<A>(data),
         )?;
 
-        // Find or allocate the slab key. This is used to generate a unique value appropriate for
-        // indexing into arrays
-        let resource_handle = self
-            .assets
-            .get(&load_handle)
-            .map(|x| x.resource_handle)
-            .unwrap_or_else(|| ResourceHandle::new(self.slab.allocate(load_handle)));
-
         let asset_uuid = loader_info.get_asset_id(load_handle).unwrap();
 
         // Add to list of uncommitted assets
@@ -360,7 +309,6 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             AssetState {
                 asset_uuid,
                 asset,
-                resource_handle,
                 version,
             },
         );
@@ -374,7 +322,6 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             load_handler.update_asset(
                 load_handle,
                 &asset_uuid,
-                resource_handle,
                 version,
                 &asset_state.asset,
                 load_op,
@@ -411,7 +358,6 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             load_handler.commit_asset_version(
                 load_handle,
                 &asset_state.asset_uuid,
-                asset_state.resource_handle,
                 version,
                 &asset_state.asset,
             );
@@ -440,13 +386,9 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
             if let Some(load_handler) = &mut self.load_handler {
                 load_handler.free(
                     load_handle,
-                    asset_state.resource_handle,
                     asset_state.version,
                 );
             }
-
-            // Free the ResourceHandle
-            self.slab.free(&asset_state.resource_handle.key);
         }
     }
 

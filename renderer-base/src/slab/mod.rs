@@ -23,23 +23,16 @@ pub type GenerationCounterT = u32;
 /// someone to write custom storage code for it
 pub type SlabIndexT = u32;
 
-mod gen_slab;
-mod generation;
-mod keyed_rc_slab;
 mod raw_slab;
-mod rc_slab;
-
-pub use generation::Generation;
-pub use generation::GenerationIndex;
-
 pub use raw_slab::RawSlab;
 pub use raw_slab::RawSlabKey;
 
-pub use gen_slab::GenSlab;
-pub use gen_slab::GenSlabKey;
+// GenSlab not currently in use anywhere
 
-pub use rc_slab::RcSlab;
-pub use rc_slab::RcSlabEntry;
-pub use rc_slab::WeakSlabEntry;
+//mod generation;
+//pub use generation::Generation;
+//pub use generation::GenerationIndex;
 
-pub use keyed_rc_slab::KeyedRcSlab;
+//mod gen_slab;
+// pub use gen_slab::GenSlab;
+// pub use gen_slab::GenSlabKey;

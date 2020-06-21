@@ -5,13 +5,16 @@ use crate::{
 };
 use std::marker::PhantomData;
 
-pub trait PrepareJob<PrepareContextT, WriteContextT> : Send {
+pub trait PrepareJob<PrepareContextT, WriteContextT>: Send {
     fn prepare(
         self: Box<Self>,
         prepare_context: &PrepareContextT,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> (Box<dyn FeatureCommandWriter<WriteContextT>>, FeatureSubmitNodes);
+    ) -> (
+        Box<dyn FeatureCommandWriter<WriteContextT>>,
+        FeatureSubmitNodes,
+    );
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
@@ -54,7 +57,7 @@ impl<PrepareContextT, WriteContextT> PrepareJobSet<PrepareContextT, WriteContext
     }
 }
 
-pub trait DefaultPrepareJobImpl<PrepareContextT, WriteContextT> : Send {
+pub trait DefaultPrepareJobImpl<PrepareContextT, WriteContextT>: Send {
     fn prepare_begin(
         &mut self,
         prepare_context: &PrepareContextT,
@@ -93,12 +96,21 @@ pub trait DefaultPrepareJobImpl<PrepareContextT, WriteContextT> : Send {
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
-pub struct DefaultPrepareJob<PrepareContextT, WriteContextT, PrepareImplT: DefaultPrepareJobImpl<PrepareContextT, WriteContextT>> {
+pub struct DefaultPrepareJob<
+    PrepareContextT,
+    WriteContextT,
+    PrepareImplT: DefaultPrepareJobImpl<PrepareContextT, WriteContextT>,
+> {
     prepare_impl: PrepareImplT,
     phantom_data: PhantomData<(PrepareContextT, WriteContextT)>,
 }
 
-impl<PrepareContextT, WriteContextT, PrepareImplT: DefaultPrepareJobImpl<PrepareContextT, WriteContextT>> DefaultPrepareJob<PrepareContextT, WriteContextT, PrepareImplT> {
+impl<
+        PrepareContextT,
+        WriteContextT,
+        PrepareImplT: DefaultPrepareJobImpl<PrepareContextT, WriteContextT>,
+    > DefaultPrepareJob<PrepareContextT, WriteContextT, PrepareImplT>
+{
     pub fn new(prepare_impl: PrepareImplT) -> Self {
         DefaultPrepareJob {
             prepare_impl,
@@ -107,7 +119,11 @@ impl<PrepareContextT, WriteContextT, PrepareImplT: DefaultPrepareJobImpl<Prepare
     }
 }
 
-impl<PrepareContextT: Send, WriteContextT: Send, PrepareImplT: DefaultPrepareJobImpl<PrepareContextT, WriteContextT>> PrepareJob<PrepareContextT, WriteContextT>
+impl<
+        PrepareContextT: Send,
+        WriteContextT: Send,
+        PrepareImplT: DefaultPrepareJobImpl<PrepareContextT, WriteContextT>,
+    > PrepareJob<PrepareContextT, WriteContextT>
     for DefaultPrepareJob<PrepareContextT, WriteContextT, PrepareImplT>
 {
     fn prepare(
@@ -115,16 +131,21 @@ impl<PrepareContextT: Send, WriteContextT: Send, PrepareImplT: DefaultPrepareJob
         prepare_context: &PrepareContextT,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> (Box<dyn FeatureCommandWriter<WriteContextT>>, FeatureSubmitNodes) {
+    ) -> (
+        Box<dyn FeatureCommandWriter<WriteContextT>>,
+        FeatureSubmitNodes,
+    ) {
         let feature_index = self.prepare_impl.feature_index();
 
         let mut submit_nodes = FeatureSubmitNodes::default();
 
         // In the future, make features run in parallel
-        log::trace!("prepare_begin feature: {}", self.prepare_impl.feature_debug_name());
+        log::trace!(
+            "prepare_begin feature: {}",
+            self.prepare_impl.feature_debug_name()
+        );
         self.prepare_impl
             .prepare_begin(prepare_context, frame_packet, views, &mut submit_nodes);
-
 
         // foreach frame node, call extract
         for (frame_node_index, frame_node) in
@@ -196,7 +217,9 @@ impl<PrepareContextT: Send, WriteContextT: Send, PrepareImplT: DefaultPrepareJob
             self.prepare_impl.feature_debug_name()
         );
 
-        let writer = self.prepare_impl.prepare_frame_finalize(prepare_context, &mut submit_nodes);
+        let writer = self
+            .prepare_impl
+            .prepare_frame_finalize(prepare_context, &mut submit_nodes);
         (writer, submit_nodes)
     }
 
