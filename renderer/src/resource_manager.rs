@@ -172,15 +172,14 @@ impl GameResourceManager {
             .buffer
             .clone();
 
-        let mut mesh_parts = Vec::with_capacity(mesh_asset.mesh_parts.len());
-
-        for part in &mesh_asset.mesh_parts {
+        let mesh_parts : Vec<_> = mesh_asset.mesh_parts.iter().map(|mesh_part| {
             let material_instance_info =
-                resource_manager.get_material_instance_info(&part.material_instance);
-            mesh_parts.push(LoadedMeshPart {
+                resource_manager.get_material_instance_info(&mesh_part.material_instance);
+
+            LoadedMeshPart {
                 material_instance: material_instance_info.descriptor_sets.clone(),
-            })
-        }
+            }
+        }).collect();
 
         Ok(LoadedMesh {
             vertex_buffer,
@@ -194,14 +193,14 @@ impl GameResourceManager {
 impl Drop for GameResourceManager {
     fn drop(&mut self) {
         unsafe {
-            log::info!("Cleaning up resource manager");
-            log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
+            log::info!("Cleaning up game resource manager");
+            log::trace!("Game Resource Manager Metrics:\n{:#?}", self.metrics());
 
             // Wipe out any loaded assets. This will potentially drop ref counts on resources
             self.loaded_assets.destroy();
 
-            log::info!("Dropping resource manager");
-            log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
+            log::info!("Dropping game resource manager");
+            log::trace!("Resource Game Manager Metrics:\n{:#?}", self.metrics());
         }
     }
 }
