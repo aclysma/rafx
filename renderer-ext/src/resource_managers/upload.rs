@@ -91,13 +91,13 @@ pub fn create_upload_op<T>(load_handle: LoadHandle) -> (UploadOp<T>, UploadOpAwa
     (op, awaiter)
 }
 
-pub type ImageUploadOpResult = UploadOpResult<ManuallyDrop<VkImage>>;
-pub type ImageUploadOp = UploadOp<ManuallyDrop<VkImage>>;
-pub type ImageUploadOpAwaiter = UploadOpAwaiter<ManuallyDrop<VkImage>>;
+pub type ImageUploadOpResult = UploadOpResult<VkImage>;
+pub type ImageUploadOp = UploadOp<VkImage>;
+pub type ImageUploadOpAwaiter = UploadOpAwaiter<VkImage>;
 
-pub type BufferUploadOpResult = UploadOpResult<ManuallyDrop<VkBuffer>>;
-pub type BufferUploadOp = UploadOp<ManuallyDrop<VkBuffer>>;
-pub type BufferUploadOpAwaiter = UploadOpAwaiter<ManuallyDrop<VkBuffer>>;
+pub type BufferUploadOpResult = UploadOpResult<VkBuffer>;
+pub type BufferUploadOp = UploadOp<VkBuffer>;
+pub type BufferUploadOpAwaiter = UploadOpAwaiter<VkBuffer>;
 
 //
 // Represents a single request inserted into the upload queue that hasn't started yet
@@ -210,12 +210,14 @@ impl InProgressUpload {
                         }
                         VkTransferUploadState::Complete => {
                             //log::trace!("VkTransferUploadState::Complete");
-                            for upload in inner.image_uploads {
-                                upload.upload_op.complete(upload.image, upload.load_op);
+                            for mut upload in inner.image_uploads {
+                                let image = unsafe { ManuallyDrop::take(&mut upload.image) };
+                                upload.upload_op.complete(image, upload.load_op);
                             }
 
-                            for upload in inner.buffer_uploads {
-                                upload.upload_op.complete(upload.buffer, upload.load_op);
+                            for mut upload in inner.buffer_uploads {
+                                let buffer = unsafe { ManuallyDrop::take(&mut upload.buffer) };
+                                upload.upload_op.complete(buffer, upload.load_op);
                             }
 
                             break InProgressUploadPollResult::Complete;
@@ -252,6 +254,20 @@ impl InProgressUpload {
         let mut inner = None;
         std::mem::swap(&mut self.inner, &mut inner);
         inner
+    }
+}
+
+impl Drop for InProgressUpload {
+    fn drop(&mut self) {
+        if let Some(mut inner) = self.take_inner() {
+            for image in &mut inner.image_uploads {
+                unsafe { ManuallyDrop::drop(&mut image.image); }
+            }
+
+            for buffer in &mut inner.buffer_uploads {
+                unsafe { ManuallyDrop::drop(&mut buffer.buffer); }
+            }
+        }
     }
 }
 

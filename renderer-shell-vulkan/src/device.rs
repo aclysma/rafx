@@ -13,6 +13,10 @@ use crate::{PhysicalDeviceType /*, VkSubmitQueue*/};
 use std::mem::ManuallyDrop;
 
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
+use std::collections::HashMap;
 
 pub struct VkQueue {
     pub queue_family_index: u32,
@@ -54,13 +58,34 @@ pub struct VkDeviceContextInner {
     physical_device: vk::PhysicalDevice,
     physical_device_info: PhysicalDeviceInfo,
     queues: VkQueues,
+
+    #[cfg(debug_assertions)]
+    next_create_index: AtomicU64,
+
+    #[cfg(debug_assertions)]
+    all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>
 }
 
 /// A lighter-weight structure that can be cached on downstream users. It includes
 /// access to vk::Device and allocators.
-#[derive(Clone)]
 pub struct VkDeviceContext {
     inner: Option<Arc<ManuallyDrop<VkDeviceContextInner>>>,
+    #[cfg(debug_assertions)]
+    create_index: u64,
+}
+
+impl Clone for VkDeviceContext {
+    fn clone(&self) -> Self {
+        let create_backtrace = backtrace::Backtrace::new_unresolved();
+        let create_index = self.inner.as_ref().unwrap().next_create_index.fetch_add(1, Ordering::Relaxed);
+        self.inner.as_ref().unwrap().all_contexts.lock().unwrap().insert(create_index, create_backtrace);
+        trace!("Cloned VkDeviceContext create_index {}", create_index);
+        VkDeviceContext {
+            inner: self.inner.clone(),
+            #[cfg(debug_assertions)]
+            create_index,
+        }
+    }
 }
 
 impl VkDeviceContext {
@@ -148,6 +173,11 @@ impl VkDeviceContext {
         physical_device_info: PhysicalDeviceInfo,
         queues: VkQueues,
     ) -> Self {
+        #[cfg(debug_assertions)]
+        let create_backtrace = backtrace::Backtrace::new_unresolved();
+        let mut all_contexts : fnv::FnvHashMap<u64, backtrace::Backtrace> = Default::default();
+        all_contexts.insert(0, create_backtrace);
+
         VkDeviceContext {
             inner: Some(Arc::new(ManuallyDrop::new(VkDeviceContextInner {
                 instance,
@@ -158,21 +188,49 @@ impl VkDeviceContext {
                 physical_device,
                 physical_device_info,
                 queues,
+
+                #[cfg(debug_assertions)]
+                all_contexts: Mutex::new(all_contexts),
+
+                #[cfg(debug_assertions)]
+                next_create_index: AtomicU64::new(1)
             }))),
+            #[cfg(debug_assertions)]
+            create_index: 0,
         }
     }
 
+    // Gets called by VkDevice when it is destroyed. This will be called one time for all cloned device contexts.
     unsafe fn destroy(&mut self) {
         let mut inner = None;
         std::mem::swap(&mut inner, &mut self.inner);
         let inner = inner.unwrap();
         let strong_count = Arc::strong_count(&inner);
-        if let Ok(mut inner) = Arc::try_unwrap(inner) {
-            inner.allocator.destroy();
-            inner.device.destroy_device(None);
-            ManuallyDrop::drop(&mut inner);
-        } else {
-            panic!("Could not free the allocator, {} references exist. Have all allocations been dropped?", strong_count);
+
+        match Arc::try_unwrap(inner) {
+            Ok(mut inner) => {
+                inner.allocator.destroy();
+                inner.device.destroy_device(None);
+                ManuallyDrop::drop(&mut inner);
+            },
+            Err(arc) => {
+                error!("Could not free the allocator, {} other references exist. Have all allocations been dropped?", strong_count - 1);
+                let mut all_contexts = arc.all_contexts.lock().unwrap();
+                all_contexts.remove(&self.create_index);
+                for (k, v) in all_contexts.iter_mut() {
+                    v.resolve();
+                    println!("context allocation: {}\n{:?}", k, v);
+                }
+            }
+        }
+    }
+}
+
+impl Drop for VkDeviceContext {
+    fn drop(&mut self) {
+        #[cfg(debug_assertions)]
+        if let Some(inner) = &self.inner {
+            inner.all_contexts.lock().unwrap().remove(&self.create_index);
         }
     }
 }

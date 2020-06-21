@@ -9,6 +9,8 @@ edition = "2018"
 [dependencies]
 ash = ">=0.30"
 vk-mem = "0.2"
+backtrace = "0.3"
+fnv = "1.0"
 
 log="0.4"
 crossbeam-channel = "0.4"

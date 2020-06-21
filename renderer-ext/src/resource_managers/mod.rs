@@ -612,12 +612,12 @@ impl ResourceManager {
     fn finish_load_image(
         &mut self,
         image_load_handle: LoadHandle,
-        image: ManuallyDrop<VkImage>,
+        image: VkImage,
     ) -> VkResult<LoadedImage> {
         let format = image.format.into();
         let mip_level_count = image.mip_level_count;
 
-        let (image_key, image_arc) = self.resources.insert_image(image);
+        let (image_key, image_arc) = self.resources.insert_image(ManuallyDrop::new(image));
 
         let image_view_meta = dsc::ImageViewMeta {
             view_type: dsc::ImageViewType::Type2D,
@@ -651,9 +651,9 @@ impl ResourceManager {
     fn finish_load_buffer(
         &mut self,
         buffer_load_handle: LoadHandle,
-        buffer: ManuallyDrop<VkBuffer>,
+        buffer: VkBuffer,
     ) -> VkResult<LoadedBuffer> {
-        let (buffer_key, buffer) = self.resources.insert_buffer(buffer);
+        let (buffer_key, buffer) = self.resources.insert_buffer(ManuallyDrop::new(buffer));
 
         Ok(LoadedBuffer {
             buffer_key,
