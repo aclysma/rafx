@@ -20,7 +20,7 @@ pub struct VkBuffer {
     pub device_context: VkDeviceContext,
     pub allocation_info: vk_mem::AllocationInfo,
     pub raw: Option<VkBufferRaw>,
-    always_mapped: bool
+    always_mapped: bool,
 }
 
 impl VkBuffer {
@@ -41,7 +41,7 @@ impl VkBuffer {
             buffer_usage,
             required_property_flags,
             size,
-            false
+            false,
         )
     }
 
@@ -58,7 +58,7 @@ impl VkBuffer {
             buffer_usage,
             required_property_flags,
             size,
-            true
+            true,
         )
     }
 
@@ -68,7 +68,7 @@ impl VkBuffer {
         buffer_usage: vk::BufferUsageFlags,
         required_property_flags: vk::MemoryPropertyFlags,
         size: vk::DeviceSize,
-        always_mapped: bool
+        always_mapped: bool,
     ) -> VkResult<Self> {
         let mut flags = vk_mem::AllocationCreateFlags::NONE;
         if always_mapped {
@@ -102,7 +102,7 @@ impl VkBuffer {
             device_context: device_context.clone(),
             allocation_info,
             always_mapped,
-            raw: Some(raw)
+            raw: Some(raw),
         })
     }
 
@@ -128,8 +128,7 @@ impl VkBuffer {
             self.device_context
                 .allocator()
                 .map_memory(&allocation)
-                .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?
-                as *mut u8
+                .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)? as *mut u8
         };
 
         let dst = unsafe { dst.add(offset as usize) };
@@ -142,7 +141,13 @@ impl VkBuffer {
         // }
 
         let required_alignment = mem::align_of::<T>() as u64;
-        let mut align = unsafe { Align::new(dst as *mut std::ffi::c_void, required_alignment, self.size()) };
+        let mut align = unsafe {
+            Align::new(
+                dst as *mut std::ffi::c_void,
+                required_alignment,
+                self.size(),
+            )
+        };
         align.copy_from_slice(data);
 
         if !self.always_mapped {
@@ -152,7 +157,6 @@ impl VkBuffer {
                 .unmap_memory(&allocation)
                 .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?;
         }
-
 
         // The staging buffer is coherent so flushing is not necessary
 
@@ -184,7 +188,8 @@ impl Drop for VkBuffer {
             if let Some(raw) = &self.raw {
                 self.device_context
                     .allocator()
-                    .destroy_buffer(raw.buffer, &raw.allocation).unwrap();
+                    .destroy_buffer(raw.buffer, &raw.allocation)
+                    .unwrap();
             }
         }
 

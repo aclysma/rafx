@@ -42,7 +42,7 @@ impl VkContextBuilder {
                 PhysicalDeviceType::DiscreteGpu,
                 PhysicalDeviceType::IntegratedGpu,
             ],
-            msaa_level_priority: vec![MsaaLevel::Sample1]
+            msaa_level_priority: vec![MsaaLevel::Sample1],
         }
     }
 
@@ -168,7 +168,7 @@ impl VkContextBuilder {
             self.validation_layer_debug_report_flags,
             self.physical_device_type_priority.clone(),
             self.present_mode_priority.clone(),
-            self.msaa_level_priority.clone()
+            self.msaa_level_priority.clone(),
         )
     }
 }
@@ -232,7 +232,7 @@ pub struct VkContext {
     device: ManuallyDrop<VkDevice>,
 
     present_mode_priority: Vec<PresentMode>,
-    msaa_level_priority: Vec<MsaaLevel>
+    msaa_level_priority: Vec<MsaaLevel>,
 }
 
 impl VkContext {
@@ -243,7 +243,7 @@ impl VkContext {
         validation_layer_debug_report_flags: vk::DebugReportFlagsEXT,
         physical_device_type_priority: Vec<PhysicalDeviceType>,
         present_mode_priority: Vec<PresentMode>,
-        msaa_level_priority: Vec<MsaaLevel>
+        msaa_level_priority: Vec<MsaaLevel>,
     ) -> Result<VkContext, VkCreateContextError> {
         let instance = ManuallyDrop::new(VkInstance::new(
             window,
@@ -261,7 +261,7 @@ impl VkContext {
             instance,
             device,
             present_mode_priority,
-            msaa_level_priority
+            msaa_level_priority,
         })
     }
 

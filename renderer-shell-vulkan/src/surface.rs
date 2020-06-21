@@ -59,32 +59,28 @@ impl FrameInFlight {
         self.is_suboptimal
     }
 
-    // fn signal_render_finished_semaphore(&self) -> VkResult<()> {
-    //     let semaphore_info = vk::SemaphoreSignalInfo::builder()
-    //         .semaphore(self.render_finished_semaphore);
-    //
-    //     unsafe {
-    //         self.device_context.device().signal_semaphore(&*semaphore_info)
-    //     }
-    // }
-
-    pub fn cancel_present(self, result: VkResult<()>) {
+    // Can be called by the end user to end the frame early and defer a result to the next acquire
+    // image call
+    pub fn cancel_present(
+        self,
+        result: VkResult<()>,
+    ) {
+        //TODO: AFAIK there is no way to simply trigger the semaphore and skip calling do_present
+        // with no command buffers. The downside of doing this is that we end up with both the
+        // end user's result and a result from do_present and have no sensible way of merging them
         match self.do_present(&vec![]) {
             Ok(_) => self.result_tx.send(result),
-            Err(e) => self.result_tx.send(result)
+            Err(e) => self.result_tx.send(result),
         };
-        //self.signal_render_finished_semaphore().unwrap();
     }
 
+    // submit the given command buffers and preset the swapchain image for this frame
     pub fn present(
         self,
         command_buffers: &[vk::CommandBuffer],
     ) -> VkResult<()> {
         let result = self.do_present(command_buffers);
         self.result_tx.send(result);
-        // if result.is_err() {
-        //     self.signal_render_finished_semaphore().unwrap();
-        // }
         result
     }
 
@@ -112,11 +108,9 @@ impl FrameInFlight {
 
         unsafe {
             let queue = self.device_context.queues().graphics_queue.lock().unwrap();
-            self.device_context.device().queue_submit(
-                *queue,
-                &submit_info,
-                frame_fence,
-            )?;
+            self.device_context
+                .device()
+                .queue_submit(*queue, &submit_info, frame_fence)?;
         }
 
         let wait_semaphors = [self.render_finished_semaphore];
@@ -129,11 +123,13 @@ impl FrameInFlight {
 
         unsafe {
             let queue = self.device_context.queues().present_queue.lock().unwrap();
-            self.swapchain_loader
-                .queue_present(*queue, &present_info)?;
+            self.swapchain_loader.queue_present(*queue, &present_info)?;
         }
 
-        self.shared_sync_frame_index.store((sync_frame_index + 1) % MAX_FRAMES_IN_FLIGHT, Ordering::Relaxed);
+        self.shared_sync_frame_index.store(
+            (sync_frame_index + 1) % MAX_FRAMES_IN_FLIGHT,
+            Ordering::Relaxed,
+        );
 
         Ok(())
     }
@@ -195,7 +191,7 @@ impl VkSurface {
             window,
             None,
             context.present_mode_priority(),
-            context.msaa_level_priority()
+            context.msaa_level_priority(),
         )?);
 
         if let Some(event_listener) = event_listener {
@@ -311,8 +307,7 @@ impl VkSurface {
         &mut self,
         window: &dyn Window,
         event_listener: &mut Option<&mut VkSurfaceSwapchainLifetimeListener>,
-    ) -> VkResult<()>
-    {
+    ) -> VkResult<()> {
         // If a frame_in_flight from a previous acquire_next_swapchain_image() call is still
         // outstanding, wait for it to finish. It is referencing resources that we are about to
         // destroy.
@@ -334,7 +329,7 @@ impl VkSurface {
             window,
             Some(self.swapchain.swapchain),
             &self.present_mode_priority,
-            &self.msaa_level_priority
+            &self.msaa_level_priority,
         )?);
 
         unsafe {

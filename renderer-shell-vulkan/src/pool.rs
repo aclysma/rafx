@@ -4,7 +4,8 @@ use ash::{vk, Device};
 use std::collections::VecDeque;
 use std::num::Wrapping;
 
-pub type VkPoolResourceAllocatorAllocFn<T: VkPoolResourceImpl> = dyn Fn(&ash::Device) -> VkResult<T> + Send + Sync;
+pub type VkPoolResourceAllocatorAllocFn<T: VkPoolResourceImpl> =
+    dyn Fn(&ash::Device) -> VkResult<T> + Send + Sync;
 
 /// Implement to customize how VkPoolAllocator resets and destroys pools
 pub trait VkPoolResourceImpl {

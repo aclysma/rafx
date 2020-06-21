@@ -129,23 +129,19 @@ impl<T: VkResource> Drop for VkResourceDropSink<T> {
     }
 }
 
-
 //
 // A simple helper to put a thread-friendly shell around VkResourceDropSink
 //
 pub struct VkResourceDropSinkChannel<T: VkResource> {
     tx: Sender<T>,
-    rx: Receiver<T>
+    rx: Receiver<T>,
 }
 
 impl<T: VkResource> VkResourceDropSinkChannel<T> {
     pub fn new() -> Self {
         let (tx, rx) = crossbeam_channel::unbounded();
 
-        VkResourceDropSinkChannel {
-            tx,
-            rx
-        }
+        VkResourceDropSinkChannel { tx, rx }
     }
 
     pub fn retire(
@@ -155,7 +151,10 @@ impl<T: VkResource> VkResourceDropSinkChannel<T> {
         self.tx.send(resource).unwrap();
     }
 
-    pub fn retire_queued_resources(&self, drop_sink: &mut VkResourceDropSink<T>) {
+    pub fn retire_queued_resources(
+        &self,
+        drop_sink: &mut VkResourceDropSink<T>,
+    ) {
         for resource in self.rx.try_iter() {
             drop_sink.retire(resource);
         }
@@ -170,7 +169,6 @@ impl<T: VkResource> Clone for VkResourceDropSinkChannel<T> {
         }
     }
 }
-
 
 //
 // Blanket implementation for anything that is ManuallyDrop

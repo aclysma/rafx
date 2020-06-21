@@ -13,11 +13,9 @@ use std::mem::ManuallyDrop;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 
-
-
 struct CreateSwapchainResult {
     swapchain_loader: khr::Swapchain,
-    swapchain: vk::SwapchainKHR
+    swapchain: vk::SwapchainKHR,
 }
 
 #[derive(Clone)]
@@ -58,7 +56,7 @@ impl RenderpassAttachmentImage {
                 format,
                 image_aspect_flags,
                 msaa_image_usage,
-                msaa_level
+                msaa_level,
             )?;
 
             msaa_image = Some(image);
@@ -71,14 +69,14 @@ impl RenderpassAttachmentImage {
             format,
             image_aspect_flags,
             resolved_image_usage,
-            MsaaLevel::Sample1
+            MsaaLevel::Sample1,
         )?;
 
         Ok(RenderpassAttachmentImage {
             msaa_image,
             msaa_image_view,
             resolved_image,
-            resolved_image_view
+            resolved_image_view,
         })
     }
 
@@ -105,7 +103,7 @@ impl RenderpassAttachmentImage {
             vk::ImageTiling::OPTIMAL,
             msaa_level.into(),
             1,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
         )?;
 
         let subresource_range = vk::ImageSubresourceRange::builder()
@@ -122,7 +120,9 @@ impl RenderpassAttachmentImage {
             .subresource_range(*subresource_range);
 
         let image_view = unsafe {
-            device_context.device().create_image_view(&*image_view_create_info, None)?
+            device_context
+                .device()
+                .create_image_view(&*image_view_create_info, None)?
         };
 
         Ok((ManuallyDrop::new(image), image_view))
@@ -133,7 +133,10 @@ impl RenderpassAttachmentImage {
     // be MSAA
     //
     pub fn target_image(&self) -> vk::Image {
-        self.msaa_image.as_ref().unwrap_or(&self.resolved_image).image()
+        self.msaa_image
+            .as_ref()
+            .unwrap_or(&self.resolved_image)
+            .image()
     }
 
     pub fn target_image_view(&self) -> vk::ImageView {
@@ -159,14 +162,18 @@ impl RenderpassAttachmentImage {
     ) {
         unsafe {
             if let Some(image_view) = &mut self.msaa_image_view {
-                device_context.device().destroy_image_view(*image_view, None);
+                device_context
+                    .device()
+                    .destroy_image_view(*image_view, None);
             }
 
             if let Some(image) = &mut self.msaa_image {
                 ManuallyDrop::drop(image);
             }
 
-            device_context.device().destroy_image_view(self.resolved_image_view, None);
+            device_context
+                .device()
+                .destroy_image_view(self.resolved_image_view, None);
             ManuallyDrop::drop(&mut self.resolved_image);
         }
     }
@@ -201,13 +208,13 @@ impl VkSwapchain {
         window: &dyn Window,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[PresentMode],
-        msaa_level_priority: &[MsaaLevel]
+        msaa_level_priority: &[MsaaLevel],
     ) -> VkResult<VkSwapchain> {
         let (available_formats, available_present_modes, surface_capabilities) =
             Self::query_swapchain_support(
                 device_context.physical_device(),
                 device_context.surface_loader(),
-                device_context.surface()
+                device_context.surface(),
             )?;
 
         let surface_format = Self::choose_swapchain_format(&available_formats);
@@ -238,7 +245,11 @@ impl VkSwapchain {
             old_swapchain,
         )?;
 
-        let swapchain_images = unsafe { create_swapchain_result.swapchain_loader.get_swapchain_images(create_swapchain_result.swapchain)? };
+        let swapchain_images = unsafe {
+            create_swapchain_result
+                .swapchain_loader
+                .get_swapchain_images(create_swapchain_result.swapchain)?
+        };
 
         let swapchain_info = SwapchainInfo {
             surface_format,
@@ -247,11 +258,14 @@ impl VkSwapchain {
             msaa_level,
             depth_format,
             color_format,
-            image_count: swapchain_images.len()
+            image_count: swapchain_images.len(),
         };
 
-        let swapchain_image_views =
-            Self::create_swapchain_image_views(device_context.device(), &swapchain_info, &swapchain_images)?;
+        let swapchain_image_views = Self::create_swapchain_image_views(
+            device_context.device(),
+            &swapchain_info,
+            &swapchain_images,
+        )?;
 
         let color_attachment = RenderpassAttachmentImage::new(
             device_context,
@@ -262,9 +276,13 @@ impl VkSwapchain {
             // composite renderpass with layout ShaderReadOnlyOptimal for the non-msaa case. If msaa is enabled
             // it will get resolved to the resolved image and we will sample that. If msaa is off, we don't even
             // create an msaa image
-            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_SRC,
-            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST,
-            msaa_level
+            vk::ImageUsageFlags::COLOR_ATTACHMENT
+                | vk::ImageUsageFlags::SAMPLED
+                | vk::ImageUsageFlags::TRANSFER_SRC,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT
+                | vk::ImageUsageFlags::SAMPLED
+                | vk::ImageUsageFlags::TRANSFER_DST,
+            msaa_level,
         )?;
 
         let depth_attachment = RenderpassAttachmentImage::new(
@@ -274,7 +292,7 @@ impl VkSwapchain {
             vk::ImageAspectFlags::DEPTH,
             vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
             vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-            msaa_level
+            msaa_level,
         )?;
 
         let image_available_semaphores = Self::allocate_semaphores_per_frame(&device_context)?;
@@ -440,7 +458,8 @@ impl VkSwapchain {
             min_image_count = u32::min(min_image_count, surface_capabilities.max_image_count);
         }
 
-        let swapchain_loader = khr::Swapchain::new(device_context.instance(), device_context.device());
+        let swapchain_loader =
+            khr::Swapchain::new(device_context.instance(), device_context.device());
 
         let mut swapchain_create_info = vk::SwapchainCreateInfoKHR::builder()
             .surface(device_context.surface())
@@ -464,12 +483,20 @@ impl VkSwapchain {
         // the queue families are not the same, which is uncommon. If we do choose concurrent, we
         // must provide this list of queue families.
         let queue_families = [
-            device_context.queue_family_indices().graphics_queue_family_index,
-            device_context.queue_family_indices().present_queue_family_index,
+            device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            device_context
+                .queue_family_indices()
+                .present_queue_family_index,
         ];
 
-        if device_context.queue_family_indices().graphics_queue_family_index
-            != device_context.queue_family_indices().present_queue_family_index
+        if device_context
+            .queue_family_indices()
+            .graphics_queue_family_index
+            != device_context
+                .queue_family_indices()
+                .present_queue_family_index
         {
             swapchain_create_info = swapchain_create_info
                 .image_sharing_mode(vk::SharingMode::CONCURRENT)
@@ -480,7 +507,7 @@ impl VkSwapchain {
 
         Ok(CreateSwapchainResult {
             swapchain_loader,
-            swapchain
+            swapchain,
         })
     }
 
@@ -523,8 +550,12 @@ impl VkSwapchain {
         msaa_level_priority: &[MsaaLevel],
     ) -> MsaaLevel {
         for msaa_level in msaa_level_priority {
-            let sample_count : vk::SampleCountFlags = msaa_level.clone().into();
-            if (sample_count.as_raw() & limits.framebuffer_depth_sample_counts.as_raw() & limits.framebuffer_color_sample_counts.as_raw()) != 0 {
+            let sample_count: vk::SampleCountFlags = msaa_level.clone().into();
+            if (sample_count.as_raw()
+                & limits.framebuffer_depth_sample_counts.as_raw()
+                & limits.framebuffer_color_sample_counts.as_raw())
+                != 0
+            {
                 log::trace!("MSAA level {:?} is supported", msaa_level);
                 return *msaa_level;
             } else {
@@ -532,7 +563,10 @@ impl VkSwapchain {
             }
         }
 
-        log::trace!("None of the provided MSAA levels are supported defaulting to {:?}", MsaaLevel::Sample1);
+        log::trace!(
+            "None of the provided MSAA levels are supported defaulting to {:?}",
+            MsaaLevel::Sample1
+        );
         MsaaLevel::Sample1
     }
 
@@ -541,16 +575,20 @@ impl VkSwapchain {
         physical_device: vk::PhysicalDevice,
         candidates: &[vk::Format],
         image_tiling: vk::ImageTiling,
-        features: vk::FormatFeatureFlags
+        features: vk::FormatFeatureFlags,
     ) -> Option<vk::Format> {
         for candidate in candidates {
             let props = unsafe {
                 instance.get_physical_device_format_properties(physical_device, *candidate)
             };
 
-            if image_tiling == vk::ImageTiling::LINEAR && (props.linear_tiling_features & features) == features {
+            if image_tiling == vk::ImageTiling::LINEAR
+                && (props.linear_tiling_features & features) == features
+            {
                 return Some(*candidate);
-            } else if image_tiling == vk::ImageTiling::OPTIMAL && (props.optimal_tiling_features & features) == features {
+            } else if image_tiling == vk::ImageTiling::OPTIMAL
+                && (props.optimal_tiling_features & features) == features
+            {
                 return Some(*candidate);
             }
         }
@@ -562,12 +600,14 @@ impl VkSwapchain {
         let format = Self::find_supported_format(
             device_context.instance(),
             device_context.physical_device(),
-            &[ //TODO: Don't hardcode
+            &[
+                //TODO: Don't hardcode
                 vk::Format::R32G32B32A32_SFLOAT, // 100% coverage with optimal
             ],
             vk::ImageTiling::OPTIMAL,
             vk::FormatFeatureFlags::COLOR_ATTACHMENT,
-        ).unwrap();
+        )
+        .unwrap();
 
         log::trace!("Chose color format {:?}", format);
         format
@@ -577,14 +617,16 @@ impl VkSwapchain {
         let format = Self::find_supported_format(
             device_context.instance(),
             device_context.physical_device(),
-            &[ //TODO: Don't hardcode
-                vk::Format::D32_SFLOAT, // 100% coverage with optimal
+            &[
+                //TODO: Don't hardcode
+                vk::Format::D32_SFLOAT,         // 100% coverage with optimal
                 vk::Format::D32_SFLOAT_S8_UINT, // 100% coverage with optimal
-                vk::Format::D24_UNORM_S8_UINT
+                vk::Format::D24_UNORM_S8_UINT,
             ],
             vk::ImageTiling::OPTIMAL,
             vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
-        ).unwrap();
+        )
+        .unwrap();
 
         log::trace!("Chose depth format {:?}", format);
         format

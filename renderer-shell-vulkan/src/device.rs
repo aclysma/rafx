@@ -63,7 +63,7 @@ pub struct VkDeviceContextInner {
     next_create_index: AtomicU64,
 
     #[cfg(debug_assertions)]
-    all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>
+    all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 }
 
 /// A lighter-weight structure that can be cached on downstream users. It includes
@@ -77,8 +77,19 @@ pub struct VkDeviceContext {
 impl Clone for VkDeviceContext {
     fn clone(&self) -> Self {
         let create_backtrace = backtrace::Backtrace::new_unresolved();
-        let create_index = self.inner.as_ref().unwrap().next_create_index.fetch_add(1, Ordering::Relaxed);
-        self.inner.as_ref().unwrap().all_contexts.lock().unwrap().insert(create_index, create_backtrace);
+        let create_index = self
+            .inner
+            .as_ref()
+            .unwrap()
+            .next_create_index
+            .fetch_add(1, Ordering::Relaxed);
+        self.inner
+            .as_ref()
+            .unwrap()
+            .all_contexts
+            .lock()
+            .unwrap()
+            .insert(create_index, create_backtrace);
         trace!("Cloned VkDeviceContext create_index {}", create_index);
         VkDeviceContext {
             inner: self.inner.clone(),
@@ -136,7 +147,8 @@ impl VkDeviceContext {
     }
 
     pub fn physical_device_info(&self) -> &PhysicalDeviceInfo {
-        &self.inner
+        &self
+            .inner
             .as_ref()
             .expect("inner is only None if VkDevice is dropped")
             .physical_device_info
@@ -175,7 +187,7 @@ impl VkDeviceContext {
     ) -> Self {
         #[cfg(debug_assertions)]
         let create_backtrace = backtrace::Backtrace::new_unresolved();
-        let mut all_contexts : fnv::FnvHashMap<u64, backtrace::Backtrace> = Default::default();
+        let mut all_contexts: fnv::FnvHashMap<u64, backtrace::Backtrace> = Default::default();
         all_contexts.insert(0, create_backtrace);
 
         VkDeviceContext {
@@ -193,7 +205,7 @@ impl VkDeviceContext {
                 all_contexts: Mutex::new(all_contexts),
 
                 #[cfg(debug_assertions)]
-                next_create_index: AtomicU64::new(1)
+                next_create_index: AtomicU64::new(1),
             }))),
             #[cfg(debug_assertions)]
             create_index: 0,
@@ -212,7 +224,7 @@ impl VkDeviceContext {
                 inner.allocator.destroy();
                 inner.device.destroy_device(None);
                 ManuallyDrop::drop(&mut inner);
-            },
+            }
             Err(arc) => {
                 error!("Could not free the allocator, {} other references exist. Have all allocations been dropped?", strong_count - 1);
                 let mut all_contexts = arc.all_contexts.lock().unwrap();
@@ -229,8 +241,14 @@ impl VkDeviceContext {
 impl Drop for VkDeviceContext {
     fn drop(&mut self) {
         #[cfg(debug_assertions)]
-        if let Some(inner) = &self.inner {
-            inner.all_contexts.lock().unwrap().remove(&self.create_index);
+        {
+            if let Some(inner) = &self.inner {
+                inner
+                    .all_contexts
+                    .lock()
+                    .unwrap()
+                    .remove(&self.create_index);
+            }
         }
     }
 }
@@ -286,9 +304,7 @@ pub struct VkDevice {
     pub surface_loader: ash::extensions::khr::Surface,
     pub physical_device: ash::vk::PhysicalDevice,
     pub physical_device_info: PhysicalDeviceInfo,
-    //pub queue_family_indices: VkQueueFamilyIndices,
     pub queues: VkQueues,
-    //pub memory_properties: vk::PhysicalDeviceMemoryProperties,
 }
 
 impl VkDevice {
@@ -366,10 +382,9 @@ impl VkDevice {
         })
     }
 
-    fn multisample_level(limits: &vk::PhysicalDeviceLimits, ) {
-        let supported_sample_counts = limits.framebuffer_color_sample_counts & limits.framebuffer_depth_sample_counts;
-
-
+    fn multisample_level(limits: &vk::PhysicalDeviceLimits) {
+        let supported_sample_counts =
+            limits.framebuffer_color_sample_counts & limits.framebuffer_depth_sample_counts;
     }
 
     fn choose_physical_device(
@@ -402,7 +417,6 @@ impl VkDevice {
                     best_physical_device = Some(physical_device);
                     best_physical_device_score = physical_device_info.score;
                     best_physical_device_info = Some(physical_device_info);
-
                 }
             }
         }
@@ -484,7 +498,7 @@ impl VkDevice {
                 queue_family_indices,
                 properties,
                 extension_properties: extensions,
-                features
+                features,
             };
 
             trace!("{:#?}", properties);
