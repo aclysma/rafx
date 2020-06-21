@@ -8,10 +8,10 @@ use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkBuffer
 use ash::prelude::VkResult;
 use fnv::{FnvHashMap, FnvHashSet};
 use super::ResourceHash;
-use renderer_assets::pipeline_description as dsc;
+use renderer_assets::vk_description as dsc;
 use ash::version::DeviceV1_0;
 use crate::resource_managers::ResourceManager;
-use renderer_assets::pipeline::pipeline::{
+use renderer_assets::assets::pipeline::{
     DescriptorSetLayoutWithSlotName, MaterialInstanceSlotAssignment, MaterialInstanceAsset,
 };
 //use crate::upload::InProgressUploadPollResult::Pending;
@@ -23,7 +23,7 @@ use atelier_assets::loader::handle::AssetHandle;
 use crate::resource_managers::resource_lookup::{
     DescriptorSetLayoutResource, ImageViewResource, ResourceLookupSet,
 };
-use renderer_assets::pipeline_description::{DescriptorType, DescriptorSetLayoutBinding};
+use renderer_assets::vk_description::{DescriptorType, DescriptorSetLayoutBinding};
 use std::mem::ManuallyDrop;
 use arrayvec::ArrayVec;
 

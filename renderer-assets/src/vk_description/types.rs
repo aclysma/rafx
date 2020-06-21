@@ -1,5 +1,4 @@
 use ash::vk;
-use image2::Hash;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 

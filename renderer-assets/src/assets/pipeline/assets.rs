@@ -8,12 +8,12 @@ use type_uuid::*;
 use std::io::Read;
 use std::convert::TryInto;
 
-use crate::pipeline_description as dsc;
+use crate::vk_description as dsc;
 use atelier_assets::loader::handle::Handle;
-use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::image::ImageAsset;
+use crate::assets::shader::ShaderAsset;
+use crate::assets::image::ImageAsset;
 use std::hash::{Hash, Hasher};
-use crate::pipeline_description::{DescriptorSetLayoutBinding, DescriptorSetLayout};
+use crate::vk_description::{DescriptorSetLayoutBinding, DescriptorSetLayout};
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "366d277d-6cb5-430a-a8fa-007d8ae69886"]

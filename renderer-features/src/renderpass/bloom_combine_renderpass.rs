@@ -23,7 +23,7 @@ use atelier_assets::loader::handle::Handle;
 
 use renderer_base::time::TimeState;
 use renderer_resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
-use renderer_assets::pipeline::pipeline::MaterialAsset;
+use renderer_assets::assets::pipeline::MaterialAsset;
 use crate::renderpass::VkBloomRenderPassResources;
 
 pub struct VkBloomCombineRenderPass {

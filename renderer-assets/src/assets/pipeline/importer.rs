@@ -8,7 +8,7 @@ use std::io::{Read, Cursor};
 use std::convert::TryInto;
 //use crate::pipeline::sprite::SpriteAsset;
 use atelier_assets::importer::Error as ImportError;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
+use crate::assets::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "25c8b7df-e3a4-4436-b41c-ce32eed76e18"]

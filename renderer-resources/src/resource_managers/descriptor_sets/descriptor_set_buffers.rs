@@ -1,6 +1,6 @@
 use ash::vk;
 use ash::prelude::*;
-use renderer_assets::pipeline_description as dsc;
+use renderer_assets::vk_description as dsc;
 use crate::resource_managers::descriptor_sets::{
     DescriptorSetElementKey, MAX_DESCRIPTORS_PER_POOL,
 };

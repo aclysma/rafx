@@ -14,8 +14,8 @@ use std::sync::Arc;
 use image::load;
 use ash::vk;
 use crate::resource_managers::load_queue::LoadRequest;
-use renderer_assets::pipeline::image::ImageAsset;
-use renderer_assets::pipeline::buffer::BufferAsset;
+use renderer_assets::assets::image::ImageAsset;
+use renderer_assets::assets::buffer::BufferAsset;
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result

@@ -12,7 +12,7 @@ use crate::resource_managers::{DynDescriptorSet, DynPassMaterialInstance, DynMat
 use crate::resource_managers::asset_lookup::{
     LoadedMaterialPass, LoadedAssetLookupSet, LoadedMaterialInstance, LoadedMaterial,
 };
-use renderer_assets::pipeline_description as dsc;
+use renderer_assets::vk_description as dsc;
 
 #[derive(Debug)]
 pub struct DescriptorSetPoolMetrics {

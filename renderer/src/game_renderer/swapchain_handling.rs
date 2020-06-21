@@ -5,7 +5,7 @@ use ash::prelude::VkResult;
 use renderer_resources::resource_managers::ResourceManager;
 use renderer_base::RenderRegistry;
 use crate::game_renderer::swapchain_resources::SwapchainResources;
-use renderer_assets::pipeline_description::SwapchainSurfaceInfo;
+use renderer_assets::vk_description::SwapchainSurfaceInfo;
 
 pub struct SwapchainLifetimeListener<'a> {
     pub resources: &'a Resources,

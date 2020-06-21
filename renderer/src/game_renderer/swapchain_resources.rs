@@ -2,7 +2,7 @@ use renderer_features::renderpass::{VkOpaqueRenderPass, VkDebugRenderPass, VkBlo
 use renderer_shell_vulkan::{VkDeviceContext, VkSwapchain};
 use crate::game_renderer::GameRendererInner;
 use renderer_resources::resource_managers::{ResourceManager, DynDescriptorSet};
-use renderer_assets::pipeline_description::SwapchainSurfaceInfo;
+use renderer_assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
 
 pub struct SwapchainResources {
