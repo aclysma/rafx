@@ -1,8 +1,4 @@
 use legion::prelude::*;
-use renderer_base::{RenderRegistryBuilder, RenderRegistry};
-use crate::features::sprite::SpriteRenderFeature;
-use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
-use crate::phases::draw_transparent::DrawTransparentRenderPhase;
 use renderer_shell_vulkan::VkDeviceContext;
 use crate::resource_managers::ResourceManager;
 use crate::asset_resource::AssetResource;
@@ -12,24 +8,10 @@ use crate::pipeline::image::ImageAsset;
 use crate::pipeline::buffer::BufferAsset;
 use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset};
 use ash::prelude::VkResult;
-use crate::features::mesh::MeshRenderFeature;
-use crate::renderpass::debug_renderpass::DebugDraw3DResource;
 
-pub fn init_renderer(
+pub fn init_renderer_assets(
     resources: &mut Resources,
 ) {
-    //
-    // Register features/phases
-    //
-    let render_registry = RenderRegistryBuilder::default()
-        .register_feature::<SpriteRenderFeature>()
-        .register_feature::<MeshRenderFeature>()
-        .register_render_phase::<DrawOpaqueRenderPhase>()
-        .register_render_phase::<DrawTransparentRenderPhase>()
-        .build();
-    resources.insert(render_registry);
-    resources.insert(DebugDraw3DResource::new());
-
     //
     // Create the resource manager
     //
@@ -74,18 +56,16 @@ pub fn init_renderer(
     asset_resource.add_storage::<GltfMaterialAsset>();
 }
 
-pub fn update_renderer(
+pub fn update_renderer_assets(
     resources: &Resources
 ) -> VkResult<()> {
     resources.get_mut::<ResourceManager>().unwrap().update_resources()
 }
 
-pub fn destroy_renderer(
+pub fn destroy_renderer_assets(
     resources: &mut Resources,
 ) {
     resources.remove::<ResourceManager>();
-    resources.remove::<RenderRegistry>();
-    resources.remove::<DebugDraw3DResource>();
 }
 
 

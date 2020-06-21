@@ -17,9 +17,9 @@ use renderer_shell_vulkan::util;
 use renderer_shell_vulkan::VkImage;
 
 use super::ImGuiFontAtlas;
-use crate::image_utils::{DecodedTexture, ColorSpace};
-use crate::image_utils::DecodedTextureMips;
-use crate::image_utils::DecodedTextureMipInfo;
+use renderer_ext::image_utils::{DecodedTexture, ColorSpace};
+use renderer_ext::image_utils::DecodedTextureMips;
+use renderer_ext::image_utils::DecodedTextureMipInfo;
 use crate::imgui_support::{ImGuiDrawData, ImGuiDrawCmd};
 
 #[derive(Clone, Debug, Copy)]
@@ -156,7 +156,7 @@ impl VkImGuiRenderPass {
         };
 
         //let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
-        let images = crate::image_utils::load_images(
+        let images = renderer_ext::image_utils::load_images(
             &device_context,
             device_context
                 .queue_family_indices()

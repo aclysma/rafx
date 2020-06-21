@@ -17,8 +17,8 @@ mod write;
 use write::SpriteCommandWriter;
 use renderer_shell_vulkan::VkDeviceContext;
 use ash::vk;
-use crate::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef};
-use crate::pipeline::pipeline::MaterialAsset;
+use renderer_ext::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef};
+use renderer_ext::pipeline::pipeline::MaterialAsset;
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]

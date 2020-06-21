@@ -2,6 +2,8 @@ pub mod slab;
 
 pub mod visibility;
 
+pub mod time;
+
 mod render_nodes;
 pub use render_nodes::GenericRenderNodeHandle;
 pub use render_nodes::RenderNodeSet;

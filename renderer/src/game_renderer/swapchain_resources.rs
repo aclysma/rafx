@@ -1,4 +1,4 @@
-use renderer_ext::renderpass::{VkOpaqueRenderPass, VkDebugRenderPass, VkBloomRenderPassResources, VkBloomExtractRenderPass, VkBloomBlurRenderPass, VkBloomCombineRenderPass};
+use renderer_features::renderpass::{VkOpaqueRenderPass, VkDebugRenderPass, VkBloomRenderPassResources, VkBloomExtractRenderPass, VkBloomBlurRenderPass, VkBloomCombineRenderPass};
 use renderer_shell_vulkan::{VkDeviceContext, VkSwapchain};
 use crate::game_renderer::GameRendererInner;
 use renderer_ext::resource_managers::{ResourceManager, DynDescriptorSet};

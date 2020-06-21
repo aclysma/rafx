@@ -19,10 +19,8 @@ use image::error::ImageError::Decoding;
 use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
-use crate::time::TimeState;
-use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
-use crate::asset_resource::AssetResource;
-use crate::resource_managers::PipelineSwapchainInfo;
+use renderer_base::time::TimeState;
+use renderer_ext::resource_managers::PipelineSwapchainInfo;
 
 
 pub struct LineList3D {

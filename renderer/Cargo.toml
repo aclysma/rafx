@@ -17,6 +17,7 @@ renderer-shell-vulkan-sdl2 = { path = "../renderer-shell-vulkan-sdl2"}
 
 renderer-base = { path = "../renderer-base" }
 renderer-ext = { path = "../renderer-ext" }
+renderer-features = { path = "../renderer-features" }
 
 log="0.4"
 env_logger = "0.6"

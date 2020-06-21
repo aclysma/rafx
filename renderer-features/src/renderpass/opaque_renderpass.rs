@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkDeviceContext, MsaaLevel, RenderpassAttachmentImage};
+use renderer_shell_vulkan::{VkDevice, VkDeviceContext, MAX_FRAMES_IN_FLIGHT};
 use renderer_shell_vulkan::VkSwapchain;
 use renderer_shell_vulkan::offset_of;
 use renderer_shell_vulkan::SwapchainInfo;
@@ -16,37 +16,43 @@ use renderer_shell_vulkan::util;
 
 use renderer_shell_vulkan::VkImage;
 use image::error::ImageError::Decoding;
+use std::process::exit;
 use image::{GenericImageView, ImageFormat};
-use ash::vk::ShaderStageFlags;
+use ash::vk::{ShaderStageFlags};
 
-use crate::time::TimeState;
-use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
-use crate::asset_resource::AssetResource;
-use crate::resource_managers::{PipelineSwapchainInfo, ResourceManager};
-use crate::renderpass::{VkBloomExtractRenderPass, VkBloomRenderPassResources};
+use renderer_base::time::TimeState;
 
-pub struct VkBloomBlurRenderPass {
+use renderer_ext::resource_managers::{PipelineSwapchainInfo, MeshInfo, DynDescriptorSet, ResourceManager};
+use renderer_ext::pipeline::gltf::{MeshVertex, MeshAsset};
+use renderer_ext::pipeline::pipeline::MaterialAsset;
+use atelier_assets::loader::handle::Handle;
+use renderer_base::{PreparedRenderData, RenderView};
+use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use crate::{RenderJobWriteContext, RenderJobWriteContextFactory};
+use renderer_shell_vulkan::cleanup::VkCombinedDropSink;
+
+/// Draws sprites
+pub struct VkOpaqueRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
-    pipeline_info: PipelineSwapchainInfo,
-
+    // Static resources for the renderpass, including a frame buffer per present index
     pub frame_buffers: Vec<vk::Framebuffer>,
 
-    // Command pool and list of command buffers. We ping-pong the blur filter, so there are two
-    // command buffers, two framebuffers, two images, to descriptor sets, etc.
+    // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
+
+    pub drop_sink: VkCombinedDropSink,
+
+    renderpass: vk::RenderPass,
 }
 
-impl VkBloomBlurRenderPass {
+impl VkOpaqueRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         pipeline_info: PipelineSwapchainInfo,
-        //bloom_extract_renderpass: VkBloomExtractRenderPass,
-        resource_manager: &ResourceManager,
-        bloom_resources: &VkBloomRenderPassResources
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -61,8 +67,9 @@ impl VkBloomBlurRenderPass {
         //
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
-            //&swapchain.swapchain_image_views,
-            &bloom_resources.bloom_image_views,
+            swapchain.color_attachment.target_image_view(),
+            &swapchain.swapchain_image_views,
+            swapchain.depth_attachment.target_image_view(),
             &swapchain.swapchain_info,
             &pipeline_info.renderpass.get_raw(),
         )?;
@@ -73,40 +80,14 @@ impl VkBloomBlurRenderPass {
             &command_pool,
         )?;
 
-        let descriptor_set_per_pass0 = bloom_resources.bloom_image_descriptor_sets[0].descriptor_set().get();
-        let descriptor_set_per_pass1 = bloom_resources.bloom_image_descriptor_sets[1].descriptor_set().get();
-
-        Self::update_command_buffer(
-            &device_context,
-            &swapchain.swapchain_info,
-            pipeline_info.renderpass.get_raw(),
-            frame_buffers[1],
-            command_buffers[0],
-            pipeline_info.pipeline.get_raw().pipelines[0],
-            pipeline_info.pipeline_layout.get_raw().pipeline_layout,
-            descriptor_set_per_pass0
-        )?;
-
-        Self::update_command_buffer(
-            &device_context,
-            &swapchain.swapchain_info,
-            pipeline_info.renderpass.get_raw(),
-            frame_buffers[0],
-            command_buffers[1],
-            pipeline_info.pipeline.get_raw().pipelines[0],
-            pipeline_info.pipeline_layout.get_raw().pipeline_layout,
-            descriptor_set_per_pass1
-        )?;
-
-        Ok(VkBloomBlurRenderPass {
+        Ok(VkOpaqueRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
-            pipeline_info,
             frame_buffers,
             command_pool,
             command_buffers,
-            // bloom_image,
-            // bloom_image_view
+            renderpass: pipeline_info.renderpass.get_raw(),
+            drop_sink: VkCombinedDropSink::new(MAX_FRAMES_IN_FLIGHT as u32)
         })
     }
 
@@ -119,6 +100,10 @@ impl VkBloomBlurRenderPass {
             queue_family_indices.graphics_queue_family_index
         );
         let pool_create_info = vk::CommandPoolCreateInfo::builder()
+            .flags(
+                vk::CommandPoolCreateFlags::TRANSIENT
+                    | vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER,
+            )
             .queue_family_index(queue_family_indices.graphics_queue_family_index);
 
         unsafe { logical_device.create_command_pool(&pool_create_info, None) }
@@ -126,14 +111,16 @@ impl VkBloomBlurRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
-        bloom_image_views: &[vk::ImageView],
+        color_image_view: vk::ImageView,
+        swapchain_image_views: &[vk::ImageView],
+        depth_image_view: vk::ImageView,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
     ) -> VkResult<Vec<vk::Framebuffer>> {
-        bloom_image_views
+        swapchain_image_views
             .iter()
-            .map(|&bloom_image_view| {
-                let framebuffer_attachments = [bloom_image_view];
+            .map(|&swapchain_image_view| {
+                let framebuffer_attachments = [color_image_view, depth_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)
@@ -165,15 +152,14 @@ impl VkBloomBlurRenderPass {
     fn update_command_buffer(
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
-        renderpass: vk::RenderPass,
+        renderpass: &vk::RenderPass,
         framebuffer: vk::Framebuffer,
-        command_buffer: vk::CommandBuffer,
-        pipeline: vk::Pipeline,
-        pipeline_layout: vk::PipelineLayout,
-        descriptor_set: vk::DescriptorSet,
+        command_buffer: &vk::CommandBuffer,
+        prepared_render_data: &PreparedRenderData<RenderJobWriteContext>,
+        view: &RenderView,
+        write_context_factory: &RenderJobWriteContextFactory,
     ) -> VkResult<()> {
-        let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
-            .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE);
+        let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
         let clear_values = [
             vk::ClearValue {
@@ -181,10 +167,16 @@ impl VkBloomBlurRenderPass {
                     float32: [0.0, 0.0, 0.0, 1.0],
                 },
             },
+            vk::ClearValue {
+                depth_stencil: vk::ClearDepthStencilValue {
+                    depth: 1.0,
+                    stencil: 0
+                }
+            }
         ];
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-            .render_pass(renderpass)
+            .render_pass(*renderpass)
             .framebuffer(framebuffer)
             .render_area(vk::Rect2D {
                 offset: vk::Offset2D { x: 0, y: 0 },
@@ -195,49 +187,53 @@ impl VkBloomBlurRenderPass {
         // Implicitly resets the command buffer
         unsafe {
             let logical_device = device_context.device();
-            logical_device.begin_command_buffer(command_buffer, &command_buffer_begin_info)?;
+            logical_device.begin_command_buffer(*command_buffer, &command_buffer_begin_info)?;
 
             logical_device.cmd_begin_render_pass(
-                command_buffer,
+                *command_buffer,
                 &render_pass_begin_info,
                 vk::SubpassContents::INLINE,
             );
 
-            logical_device.cmd_bind_pipeline(
-                command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                pipeline,
-            );
+            let mut write_context = write_context_factory.create_context(*command_buffer);
 
-            logical_device.cmd_bind_descriptor_sets(
-                command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                pipeline_layout,
-                0,
-                &[descriptor_set],
-                &[]
-            );
+            prepared_render_data
+                .write_view_phase::<DrawOpaqueRenderPhase>(&view, &mut write_context);
 
-            logical_device.cmd_draw(
-                command_buffer,
-                3,
-                1,
-                0,
-                0,
-            );
-
-            logical_device.cmd_end_render_pass(command_buffer);
-            logical_device.end_command_buffer(command_buffer)
+            logical_device.cmd_end_render_pass(*command_buffer);
+            logical_device.end_command_buffer(*command_buffer)
         }
+    }
+
+    pub fn update(
+        &mut self,
+        pipeline_info: &PipelineSwapchainInfo,
+        present_index: usize,
+        prepared_render_data: &PreparedRenderData<RenderJobWriteContext>,
+        view: &RenderView,
+        write_context_factory: &RenderJobWriteContextFactory,
+    ) -> VkResult<()> {
+        assert!(self.renderpass == pipeline_info.renderpass.get_raw());
+        Self::update_command_buffer(
+            &self.device_context,
+            &self.swapchain_info,
+            &pipeline_info.renderpass.get_raw(),
+            self.frame_buffers[present_index],
+            &self.command_buffers[present_index],
+            prepared_render_data,
+            view,
+            write_context_factory
+        )
     }
 }
 
-impl Drop for VkBloomBlurRenderPass {
+impl Drop for VkOpaqueRenderPass {
     fn drop(&mut self) {
-        log::trace!("destroying VkSpriteRenderPass");
+        log::trace!("destroying VkOpaqueRenderPass");
 
         unsafe {
             let device = self.device_context.device();
+
             device.destroy_command_pool(self.command_pool, None);
 
             for frame_buffer in &self.frame_buffers {
@@ -245,7 +241,6 @@ impl Drop for VkBloomBlurRenderPass {
             }
         }
 
-        log::trace!("destroyed VkSpriteRenderPass");
+        log::trace!("destroyed VkOpaqueRenderPass");
     }
 }
-

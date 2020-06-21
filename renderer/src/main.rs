@@ -3,10 +3,10 @@ use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use ash::prelude::VkResult;
-use renderer_ext::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
+use renderer_features::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
-use renderer_ext::{PositionComponent, SpriteComponent, MeshComponent, PointLightComponent, SpotLightComponent, DirectionalLightComponent};
+use renderer_features::{PositionComponent, SpriteComponent, MeshComponent, PointLightComponent, SpotLightComponent, DirectionalLightComponent};
 use atelier_assets::loader as atelier_loader;
 use legion::prelude::*;
 
@@ -26,7 +26,7 @@ use renderer_ext::pipeline::image::ImageAsset;
 use renderer_ext::pipeline_description::GraphicsPipeline;
 use std::io::Write;
 use std::collections::hash_map::DefaultHasher;
-use renderer_ext::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
+use renderer_features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
 use renderer_base::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
 use renderer_ext::time::TimeState;
 use glam::f32::Vec3;
@@ -35,8 +35,8 @@ use renderer_base::RenderRegistry;
 use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
 use renderer_ext::pipeline::gltf::MeshAsset;
-use renderer_ext::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
-use renderer_ext::renderpass::debug_renderpass::DebugDraw3DResource;
+use renderer_features::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
+use renderer_features::renderpass::debug_renderpass::DebugDraw3DResource;
 
 mod game_renderer;
 mod daemon;
@@ -130,7 +130,7 @@ fn main() {
             // let device = resources.get::<VkDeviceContext>().unwrap();
             // let mut game_renderer = resources.get_mut::<Game>().unwrap();
             // game_renderer.update_resources(&*device);
-            renderer_ext::update_renderer(&resources);
+            renderer_ext::update_renderer_assets(&resources);
         }
 
         //
@@ -267,7 +267,7 @@ fn imgui_init(
 ) {
     // Load imgui, we do it a little early because it wants to have the actual SDL2 window and
     // doesn't work with the thin window wrapper
-    let imgui_manager = renderer_ext::imgui_support::init_imgui_manager(sdl2_window);
+    let imgui_manager = renderer_features::imgui_support::init_imgui_manager(sdl2_window);
     resources.insert(imgui_manager);
 }
 
@@ -299,7 +299,8 @@ fn rendering_init(
     resources.insert(vk_context);
     resources.insert(device_context);
 
-    renderer_ext::init_renderer(resources);
+    renderer_ext::init_renderer_assets(resources);
+    renderer_features::init_renderer_features(resources);
 
     let mut game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
     resources.insert(game_renderer);
@@ -322,7 +323,8 @@ fn rendering_destroy(
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
 
-        renderer_ext::destroy_renderer(resources);
+        renderer_features::destroy_renderer_features(resources);
+        renderer_ext::destroy_renderer_assets(resources);
     }
 
     // Drop this one last

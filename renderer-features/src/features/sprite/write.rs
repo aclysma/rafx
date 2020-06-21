@@ -3,7 +3,7 @@ use renderer_base::{RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureComm
 use crate::RenderJobWriteContext;
 use renderer_shell_vulkan::{VkBuffer, VkBufferRaw};
 use std::mem::ManuallyDrop;
-use crate::resource_managers::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
+use renderer_ext::resource_managers::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
 use ash::vk;
 use ash::version::DeviceV1_0;
 

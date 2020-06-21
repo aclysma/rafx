@@ -8,8 +8,8 @@ use crate::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
 use std::mem::ManuallyDrop;
-use crate::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
-use crate::pipeline::gltf::MeshVertex;
+use renderer_ext::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer_ext::pipeline::gltf::MeshVertex;
 
 pub struct MeshPrepareJobImpl {
     device_context: VkDeviceContext,

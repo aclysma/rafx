@@ -21,11 +21,9 @@ use ash::vk::ShaderStageFlags;
 
 use atelier_assets::loader::handle::Handle;
 
-use crate::time::TimeState;
-use crate::pipeline_description::{AttachmentReference, SwapchainSurfaceInfo};
-use crate::asset_resource::AssetResource;
-use crate::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
-use crate::pipeline::pipeline::MaterialAsset;
+use renderer_base::time::TimeState;
+use renderer_ext::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
+use renderer_ext::pipeline::pipeline::MaterialAsset;
 
 
 pub struct VkBloomRenderPassResources {
