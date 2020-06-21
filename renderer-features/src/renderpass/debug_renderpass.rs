@@ -20,7 +20,7 @@ use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
 use renderer_base::time::TimeState;
-use renderer_assets::resource_managers::PipelineSwapchainInfo;
+use renderer_resources::resource_managers::PipelineSwapchainInfo;
 
 
 pub struct LineList3D {

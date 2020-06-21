@@ -1,7 +1,7 @@
 use renderer_features::renderpass::{VkOpaqueRenderPass, VkDebugRenderPass, VkBloomRenderPassResources, VkBloomExtractRenderPass, VkBloomBlurRenderPass, VkBloomCombineRenderPass};
 use renderer_shell_vulkan::{VkDeviceContext, VkSwapchain};
 use crate::game_renderer::GameRendererInner;
-use renderer_assets::resource_managers::{ResourceManager, DynDescriptorSet};
+use renderer_resources::resource_managers::{ResourceManager, DynDescriptorSet};
 use renderer_assets::pipeline_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
 

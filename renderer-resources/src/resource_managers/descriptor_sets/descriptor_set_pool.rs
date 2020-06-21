@@ -1,4 +1,4 @@
-use crate::pipeline_description as dsc;
+use renderer_assets::pipeline_description as dsc;
 use renderer_base::slab::{RawSlab, RawSlabKey};
 use super::ManagedDescriptorSet;
 use super::{

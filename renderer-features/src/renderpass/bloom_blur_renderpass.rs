@@ -20,7 +20,7 @@ use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
 use renderer_base::time::TimeState;
-use renderer_assets::resource_managers::{PipelineSwapchainInfo, ResourceManager};
+use renderer_resources::resource_managers::{PipelineSwapchainInfo, ResourceManager};
 use crate::renderpass::{VkBloomExtractRenderPass, VkBloomRenderPassResources};
 
 pub struct VkBloomBlurRenderPass {

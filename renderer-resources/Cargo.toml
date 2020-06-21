@@ -1,5 +1,5 @@
 [package]
-name = "renderer-features"
+name = "renderer-resources"
 version = "0.1.0"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
@@ -20,7 +20,6 @@ vk-mem = "0.2"
 
 renderer-base = { path = "../renderer-base" }
 renderer-assets = { path = "../renderer-assets" }
-renderer-resources = { path = "../renderer-resources" }
 
 renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 

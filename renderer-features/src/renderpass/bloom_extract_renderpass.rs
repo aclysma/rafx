@@ -22,7 +22,7 @@ use ash::vk::ShaderStageFlags;
 use atelier_assets::loader::handle::Handle;
 
 use renderer_base::time::TimeState;
-use renderer_assets::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
+use renderer_resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
 use renderer_assets::pipeline::pipeline::MaterialAsset;
 
 

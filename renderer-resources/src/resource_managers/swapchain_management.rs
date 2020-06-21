@@ -1,8 +1,8 @@
 use fnv::FnvHashMap;
-use crate::pipeline_description as dsc;
+use renderer_assets::pipeline_description as dsc;
 use crate::resource_managers::asset_lookup::{LoadedAssetLookupSet, LoadedMaterial};
 use crate::resource_managers::resource_lookup::ResourceLookupSet;
-use crate::pipeline_description::SwapchainSurfaceInfo;
+use renderer_assets::pipeline_description::SwapchainSurfaceInfo;
 use ash::prelude::*;
 
 pub struct ActiveSwapchainSurfaceInfoState {

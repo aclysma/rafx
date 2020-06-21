@@ -15,7 +15,7 @@ use renderer_assets::asset_resource::AssetResource;
 use renderer_assets::pipeline::shader::ShaderAsset;
 use renderer_assets::pipeline::image::ImageAsset;
 use atelier_assets::core::asset_uuid;
-use renderer_assets::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance, MeshInfo, ResourceArc, ImageViewResource, DynResourceAllocatorSet, PipelineSwapchainInfo};
+use renderer_resources::resource_managers::{ResourceManager, DynDescriptorSet, DynMaterialInstance, MeshInfo, ResourceArc, ImageViewResource, DynResourceAllocatorSet, PipelineSwapchainInfo};
 use renderer_assets::pipeline::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam};
 use renderer_assets::pipeline::buffer::BufferAsset;
 use renderer_features::renderpass::debug_renderpass::{DebugDraw3DResource, LineList3D};

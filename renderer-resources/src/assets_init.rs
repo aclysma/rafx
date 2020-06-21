@@ -1,12 +1,12 @@
 use legion::prelude::*;
 use renderer_shell_vulkan::VkDeviceContext;
 use crate::resource_managers::ResourceManager;
-use crate::asset_resource::AssetResource;
-use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
-use crate::pipeline::image::ImageAsset;
-use crate::pipeline::buffer::BufferAsset;
-use crate::pipeline::gltf::{MeshAsset, GltfMaterialAsset};
+use renderer_assets::asset_resource::AssetResource;
+use renderer_assets::pipeline::shader::ShaderAsset;
+use renderer_assets::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
+use renderer_assets::pipeline::image::ImageAsset;
+use renderer_assets::pipeline::buffer::BufferAsset;
+use renderer_assets::pipeline::gltf::{MeshAsset, GltfMaterialAsset};
 use ash::prelude::VkResult;
 
 pub fn init_renderer_assets(

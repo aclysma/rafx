@@ -1,15 +1,15 @@
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::core::AssetUuid;
 use type_uuid::TypeUuid;
-use crate::asset_storage::{ResourceLoadHandler};
+use renderer_assets::asset_storage::{ResourceLoadHandler};
 use std::marker::PhantomData;
 use crossbeam_channel::{Sender, Receiver};
-use crate::pipeline::shader::ShaderAsset;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
-use crate::pipeline::image::ImageAsset;
+use renderer_assets::pipeline::shader::ShaderAsset;
+use renderer_assets::pipeline::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
+use renderer_assets::pipeline::image::ImageAsset;
 use atelier_assets::loader::LoadHandle;
-use crate::pipeline::gltf::MeshAsset;
-use crate::pipeline::buffer::BufferAsset;
+use renderer_assets::pipeline::gltf::MeshAsset;
+use renderer_assets::pipeline::buffer::BufferAsset;
 
 //
 // Message handling for asset load/commit/free events

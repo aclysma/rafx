@@ -4,13 +4,13 @@ use renderer_base::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode,
 use renderer_base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
 use renderer_shell_vulkan::VkDeviceContext;
-use renderer_assets::resource_managers::{PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef};
+use renderer_resources::resource_managers::{PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef};
 use ash::vk;
 use renderer_assets::pipeline::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
 use renderer_assets::pipeline::image::ImageAsset;
 use ash::prelude::VkResult;
-use renderer_assets::resource_managers::DescriptorSetArc;
+use renderer_resources::resource_managers::DescriptorSetArc;
 use legion::prelude::*;
 
 pub struct MeshExtractJobImpl {

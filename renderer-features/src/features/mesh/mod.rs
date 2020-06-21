@@ -17,7 +17,7 @@ mod write;
 use write::MeshCommandWriter;
 use renderer_shell_vulkan::{VkDeviceContext, VkBufferRaw};
 use ash::vk;
-use renderer_assets::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef, MeshInfo, ResourceManager, ResourceArc};
+use renderer_resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef, MeshInfo, ResourceManager, ResourceArc};
 use renderer_assets::pipeline::pipeline::MaterialAsset;
 use renderer_assets::pipeline::gltf::MeshAsset;
 use ash::prelude::VkResult;

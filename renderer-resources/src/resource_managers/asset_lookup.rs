@@ -1,5 +1,5 @@
 use ash::vk;
-use crate::pipeline::pipeline::{PipelineAsset, MaterialPassShaderInterface, MaterialAsset, MaterialInstanceSlotAssignment, RenderpassAsset};
+use renderer_assets::pipeline::pipeline::{PipelineAsset, MaterialPassShaderInterface, MaterialAsset, MaterialInstanceSlotAssignment, RenderpassAsset};
 use super::PipelineCreateData;
 use fnv::FnvHashMap;
 use renderer_shell_vulkan::{VkImageRaw, VkBufferRaw};
@@ -8,7 +8,7 @@ use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::handle::Handle;
 use std::sync::Arc;
 use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource, ImageKey, BufferKey};
-use crate::pipeline::gltf::MeshAsset;
+use renderer_assets::pipeline::gltf::MeshAsset;
 use crate::resource_managers::ResourceArc;
 use super::DescriptorSetWriteSet;
 

@@ -4,9 +4,9 @@ use renderer_shell_vulkan::{
 use crossbeam_channel::{Sender, Receiver};
 use ash::prelude::VkResult;
 use std::time::Duration;
-use crate::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffers};
+use renderer_assets::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffers};
 use std::mem::ManuallyDrop;
-use crate::asset_storage::{ResourceLoadHandler};
+use renderer_assets::asset_storage::{ResourceLoadHandler};
 use std::error::Error;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
 use fnv::FnvHashMap;
@@ -14,8 +14,8 @@ use std::sync::Arc;
 use image::load;
 use ash::vk;
 use crate::resource_managers::load_queue::LoadRequest;
-use crate::pipeline::image::ImageAsset;
-use crate::pipeline::buffer::BufferAsset;
+use renderer_assets::pipeline::image::ImageAsset;
+use renderer_assets::pipeline::buffer::BufferAsset;
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result
@@ -493,7 +493,7 @@ impl UploadManager {
         &self,
         request: LoadRequest<ImageAsset>,
     ) -> VkResult<()> {
-        let mips = crate::image_utils::default_mip_settings_for_image(
+        let mips = renderer_assets::image_utils::default_mip_settings_for_image(
             request.asset.width,
             request.asset.height
         );

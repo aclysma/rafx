@@ -1,5 +1,5 @@
 use renderer_assets::asset_resource::AssetResource;
-use renderer_assets::resource_managers::ResourceManager;
+use renderer_resources::resource_managers::ResourceManager;
 use renderer_assets::pipeline::pipeline::MaterialAsset;
 use ash::vk;
 use atelier_assets::loader::handle::Handle;

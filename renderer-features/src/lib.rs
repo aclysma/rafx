@@ -25,7 +25,7 @@ use atelier_assets::loader::handle::Handle;
 use crate::features::mesh::{MeshRenderNodeHandle};
 use renderer_assets::pipeline::image::ImageAsset;
 use renderer_assets::pipeline::gltf::MeshAsset;
-use renderer_assets::resource_managers::{ResourceManager, DynResourceAllocatorSet};
+use renderer_resources::resource_managers::{ResourceManager, DynResourceAllocatorSet};
 
 
 #[derive(Copy, Clone)]

@@ -30,7 +30,7 @@ use renderer_features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode}
 use renderer_base::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
 use renderer_base::time::TimeState;
 use glam::f32::Vec3;
-use renderer_assets::resource_managers::ResourceManager;
+use renderer_resources::resource_managers::ResourceManager;
 use renderer_base::RenderRegistry;
 use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
@@ -130,7 +130,7 @@ fn main() {
             // let device = resources.get::<VkDeviceContext>().unwrap();
             // let mut game_renderer = resources.get_mut::<Game>().unwrap();
             // game_renderer.update_resources(&*device);
-            renderer_assets::update_renderer_assets(&resources);
+            renderer_resources::update_renderer_assets(&resources);
         }
 
         //
@@ -200,7 +200,7 @@ fn logging_init() {
     // Setup logging
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
-        .filter_module("renderer_assets::resource_managers::descriptor_sets", log::LevelFilter::Info)
+        .filter_module("renderer_resources::resource_managers::descriptor_sets", log::LevelFilter::Info)
         .filter_module("renderer_base", log::LevelFilter::Info)
         .filter_level(log_level)
         // .format(|buf, record| { //TODO: Get a frame count in here
@@ -299,7 +299,7 @@ fn rendering_init(
     resources.insert(vk_context);
     resources.insert(device_context);
 
-    renderer_assets::init_renderer_assets(resources);
+    renderer_resources::init_renderer_assets(resources);
     renderer_features::init_renderer_features(resources);
 
     let mut game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
@@ -324,7 +324,7 @@ fn rendering_destroy(
         resources.remove::<DynamicVisibilityNodeSet>();
 
         renderer_features::destroy_renderer_features(resources);
-        renderer_assets::destroy_renderer_assets(resources);
+        renderer_resources::destroy_renderer_assets(resources);
     }
 
     // Drop this one last
