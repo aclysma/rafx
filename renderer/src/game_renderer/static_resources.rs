@@ -1,6 +1,6 @@
-use renderer_ext::asset_resource::AssetResource;
-use renderer_ext::resource_managers::ResourceManager;
-use renderer_ext::pipeline::pipeline::MaterialAsset;
+use renderer_assets::asset_resource::AssetResource;
+use renderer_assets::resource_managers::ResourceManager;
+use renderer_assets::pipeline::pipeline::MaterialAsset;
 use ash::vk;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::core::asset_uuid;

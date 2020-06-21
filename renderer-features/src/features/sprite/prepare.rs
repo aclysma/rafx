@@ -8,7 +8,7 @@ use crate::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
 use std::mem::ManuallyDrop;
-use renderer_ext::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer_assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct SpritePrepareJobImpl {
     device_context: VkDeviceContext,

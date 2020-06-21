@@ -1,2 +1,2 @@
 pub use renderer_base::*;
-pub use renderer_ext::*;
+pub use renderer_assets::*;

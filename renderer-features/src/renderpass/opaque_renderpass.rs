@@ -22,9 +22,9 @@ use ash::vk::{ShaderStageFlags};
 
 use renderer_base::time::TimeState;
 
-use renderer_ext::resource_managers::{PipelineSwapchainInfo, MeshInfo, DynDescriptorSet, ResourceManager};
-use renderer_ext::pipeline::gltf::{MeshVertex, MeshAsset};
-use renderer_ext::pipeline::pipeline::MaterialAsset;
+use renderer_assets::resource_managers::{PipelineSwapchainInfo, MeshInfo, DynDescriptorSet, ResourceManager};
+use renderer_assets::pipeline::gltf::{MeshVertex, MeshAsset};
+use renderer_assets::pipeline::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
 use renderer_base::{PreparedRenderData, RenderView};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;

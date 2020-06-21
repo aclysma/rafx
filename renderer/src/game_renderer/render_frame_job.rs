@@ -1,7 +1,7 @@
 use crate::game_renderer::{GameRenderer, GameRendererInner};
 use renderer_base::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
 use renderer_features::{RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory};
-use renderer_ext::resource_managers::{DynResourceAllocatorSet, PipelineSwapchainInfo};
+use renderer_assets::resource_managers::{DynResourceAllocatorSet, PipelineSwapchainInfo};
 use renderer_shell_vulkan::{VkDeviceContext, FrameInFlight};
 use renderer_features::renderpass::debug_renderpass::LineList3D;
 use std::sync::MutexGuard;

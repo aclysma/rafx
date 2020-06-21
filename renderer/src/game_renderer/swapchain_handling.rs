@@ -2,10 +2,10 @@ use renderer_shell_vulkan::{VkContext, VkSurface, Window, VkSurfaceSwapchainLife
 use crate::game_renderer::GameRenderer;
 use legion::prelude::Resources;
 use ash::prelude::VkResult;
-use renderer_ext::resource_managers::ResourceManager;
+use renderer_assets::resource_managers::ResourceManager;
 use renderer_base::RenderRegistry;
 use crate::game_renderer::swapchain_resources::SwapchainResources;
-use renderer_ext::pipeline_description::SwapchainSurfaceInfo;
+use renderer_assets::pipeline_description::SwapchainSurfaceInfo;
 
 pub struct SwapchainLifetimeListener<'a> {
     pub resources: &'a Resources,

@@ -23,9 +23,9 @@ use std::mem::ManuallyDrop;
 use ash::vk;
 use atelier_assets::loader::handle::Handle;
 use crate::features::mesh::{MeshRenderNodeHandle};
-use renderer_ext::pipeline::image::ImageAsset;
-use renderer_ext::pipeline::gltf::MeshAsset;
-use renderer_ext::resource_managers::{ResourceManager, DynResourceAllocatorSet};
+use renderer_assets::pipeline::image::ImageAsset;
+use renderer_assets::pipeline::gltf::MeshAsset;
+use renderer_assets::resource_managers::{ResourceManager, DynResourceAllocatorSet};
 
 
 #[derive(Copy, Clone)]

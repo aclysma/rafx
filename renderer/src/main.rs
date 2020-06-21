@@ -14,27 +14,27 @@ use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
 
-use renderer_ext::asset_resource::AssetResource;
-use renderer_ext::image_utils::{DecodedTexture, enqueue_load_images};
+use renderer_assets::asset_resource::AssetResource;
+use renderer_assets::image_utils::{DecodedTexture, enqueue_load_images};
 use imgui::{Key, Image};
-use renderer_ext::asset_storage::{ResourceLoadHandler};
+use renderer_assets::asset_storage::{ResourceLoadHandler};
 use std::mem::ManuallyDrop;
 use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
-use renderer_ext::pipeline::image::ImageAsset;
-use renderer_ext::pipeline_description::GraphicsPipeline;
+use renderer_assets::pipeline::image::ImageAsset;
+use renderer_assets::pipeline_description::GraphicsPipeline;
 use std::io::Write;
 use std::collections::hash_map::DefaultHasher;
 use renderer_features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
 use renderer_base::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
-use renderer_ext::time::TimeState;
+use renderer_base::time::TimeState;
 use glam::f32::Vec3;
-use renderer_ext::resource_managers::ResourceManager;
+use renderer_assets::resource_managers::ResourceManager;
 use renderer_base::RenderRegistry;
 use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
-use renderer_ext::pipeline::gltf::MeshAsset;
+use renderer_assets::pipeline::gltf::MeshAsset;
 use renderer_features::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
 use renderer_features::renderpass::debug_renderpass::DebugDraw3DResource;
 
@@ -80,7 +80,7 @@ fn main() {
     populate_test_mesh_entities(&mut resources, &mut world);
     populate_test_lights(&mut resources, &mut world);
 
-    let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
+    let mut print_time_event = renderer_base::time::PeriodicEvent::default();
 
     'running: loop {
         let t0 = std::time::Instant::now();
@@ -130,7 +130,7 @@ fn main() {
             // let device = resources.get::<VkDeviceContext>().unwrap();
             // let mut game_renderer = resources.get_mut::<Game>().unwrap();
             // game_renderer.update_resources(&*device);
-            renderer_ext::update_renderer_assets(&resources);
+            renderer_assets::update_renderer_assets(&resources);
         }
 
         //
@@ -200,7 +200,7 @@ fn logging_init() {
     // Setup logging
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
-        .filter_module("renderer_ext::resource_managers::descriptor_sets", log::LevelFilter::Info)
+        .filter_module("renderer_assets::resource_managers::descriptor_sets", log::LevelFilter::Info)
         .filter_module("renderer_base", log::LevelFilter::Info)
         .filter_level(log_level)
         // .format(|buf, record| { //TODO: Get a frame count in here
@@ -299,7 +299,7 @@ fn rendering_init(
     resources.insert(vk_context);
     resources.insert(device_context);
 
-    renderer_ext::init_renderer_assets(resources);
+    renderer_assets::init_renderer_assets(resources);
     renderer_features::init_renderer_features(resources);
 
     let mut game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
@@ -324,7 +324,7 @@ fn rendering_destroy(
         resources.remove::<DynamicVisibilityNodeSet>();
 
         renderer_features::destroy_renderer_features(resources);
-        renderer_ext::destroy_renderer_assets(resources);
+        renderer_assets::destroy_renderer_assets(resources);
     }
 
     // Drop this one last

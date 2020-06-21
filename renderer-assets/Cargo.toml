@@ -1,5 +1,5 @@
 [package]
-name = "renderer-ext"
+name = "renderer-assets"
 version = "0.1.0"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"

@@ -6,9 +6,9 @@ use renderer::RenderRegistryBuilder;
 use renderer::RenderViewSet;
 use legion::prelude::*;
 use glam::Vec3;
-use renderer_ext::{DemoExtractContext, DemoPrepareContext, PositionComponent, DemoComponent, DemoWriteContext};
-use renderer_ext::phases::draw_transparent::DrawTransparentRenderPhase;
-use renderer_ext::features::demo::{create_demo_extract_job, DemoRenderFeature};
+use renderer_assets::{DemoExtractContext, DemoPrepareContext, PositionComponent, DemoComponent, DemoWriteContext};
+use renderer_assets::phases::draw_transparent::DrawTransparentRenderPhase;
+use renderer_assets::features::demo::{create_demo_extract_job, DemoRenderFeature};
 
 fn main() {
     // Setup logging
