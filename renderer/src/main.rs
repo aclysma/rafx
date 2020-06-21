@@ -83,6 +83,7 @@ fn main() {
     let mut print_time_event = renderer_ext::time::PeriodicEvent::default();
 
     'running: loop {
+        let t0 = std::time::Instant::now();
         //
         // Update time
         //
@@ -170,6 +171,9 @@ fn main() {
             imgui_manager.render(&sdl2_systems.window);
         }
 
+        let t1 = std::time::Instant::now();
+        log::info!("[main] simulation took {} ms", (t1 - t0).as_secs_f32() * 1000.0);
+
         //
         // Redraw
         //
@@ -178,6 +182,9 @@ fn main() {
             let mut game_renderer = resources.get::<GameRenderer>().unwrap();
             game_renderer.begin_render(&resources, &world, &window);
         }
+
+        //let t2 = std::time::Instant::now();
+        //log::info!("main thread took {} ms", (t2 - t0).as_secs_f32() * 1000.0);
     }
 
     rendering_destroy(&mut resources);
@@ -365,7 +372,7 @@ fn populate_test_sprite_entities(resources: &mut Resources, world: &mut World) {
     };
 
     let sprites = ["sprite1", "sprite2", "sprite3"];
-    for i in 0..100 {
+    for i in 0..1000 {
         let position = Vec3::new(((i / 10) * 25) as f32, ((i % 10) * 25) as f32, 0.0);
         //let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
         let alpha = 1.0;
@@ -425,7 +432,7 @@ fn populate_test_mesh_entities(resources: &mut Resources, world: &mut World) {
         )
     };
 
-    for i in 0..10 {
+    for i in 0..100 {
         let position = Vec3::new(((i / 10) * 3) as f32, ((i % 10) * 3) as f32, 0.0);
 
         let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();

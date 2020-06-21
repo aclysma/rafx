@@ -235,11 +235,11 @@ impl RenderThread {
         loop {
             match job_rx.recv()? {
                 RenderThreadMessage::Render(prepared_frame) => {
-                    log::info!("kick off render");
+                    log::trace!("kick off render");
                     prepared_frame.render_async();
                 },
                 RenderThreadMessage::Finish => {
-                    log::info!("finishing render thread");
+                    log::trace!("finishing render thread");
                     break Ok(())
                 }
             }
@@ -554,8 +554,11 @@ impl GameRenderer {
         world: &World,
         window: &dyn Window
     ) -> VkResult<()> {
+        let t0 = std::time::Instant::now();
         // This lock will delay until the previous frame completes being submitted to GPU
         resources.get_mut::<VkSurface>().unwrap().wait_until_frame_not_in_flight();
+        let t1 = std::time::Instant::now();
+        log::info!("[main] wait for previous frame present {} ms", (t1 - t0).as_secs_f32() * 1000.0);
 
         // Here, we error check from the previous frame. This includes checking for errors that happened
         // during setup (i.e. before we finished building the frame job). So
@@ -609,7 +612,11 @@ impl GameRenderer {
         // Fetch the next swapchain image
         let frame_in_flight = {
             let mut surface = resources.get_mut::<VkSurface>().unwrap();
-            surface.acquire_next_swapchain_image(window)?
+            let t0 = std::time::Instant::now();
+            let result = surface.acquire_next_swapchain_image(window);
+            let t1 = std::time::Instant::now();
+            log::info!("[main] wait for swapchain image took {} ms", (t1 - t0).as_secs_f32() * 1000.0);
+            result?
         };
 
         // Get command buffers to submit
@@ -803,7 +810,7 @@ impl GameRenderer {
         let dyn_resource_allocator_set = resource_manager.create_dyn_resource_allocator_set();
 
         let t1 = std::time::Instant::now();
-        log::info!("prepare render took {} ms", (t1 - t0).as_secs_f32() * 1000.0);
+        log::info!("[main] render extract took {} ms", (t1 - t0).as_secs_f32() * 1000.0);
 
         let game_renderer = self.clone();
 
@@ -849,7 +856,7 @@ impl PreparedFrame {
         let t0 = std::time::Instant::now();
         let mut guard = self.game_renderer.inner.lock().unwrap();
 
-        match Self::do_render_async(
+        let result = Self::do_render_async(
             guard,
             self.prepare_job_set,
             self.dyn_resource_allocator_set,
@@ -862,7 +869,12 @@ impl PreparedFrame {
             self.debug_draw_3d_line_lists,
             self.window_scale_factor,
             self.frame_in_flight.present_index() as usize,
-        ) {
+        );
+
+        let t1 = std::time::Instant::now();
+        //log::info!("[async] render took {} ms", (t1 - t0).as_secs_f32() * 1000.0);
+
+        match result {
             Ok(command_buffers) => {
                 // ignore the error, we will receive it when we try to acquire the next image
                 self.frame_in_flight.present(command_buffers.as_slice());
@@ -873,8 +885,9 @@ impl PreparedFrame {
                 self.frame_in_flight.cancel_present(Err(err));
             }
         }
-        let t1 = std::time::Instant::now();
-        log::info!("async render took {} ms", (t1 - t0).as_secs_f32() * 1000.0);
+
+        let t2 = std::time::Instant::now();
+        log::info!("[async] present took {} ms", (t2 - t1).as_secs_f32() * 1000.0);
     }
 
     fn do_render_async(
@@ -891,6 +904,7 @@ impl PreparedFrame {
         window_scale_factor: f64,
         present_index: usize
     ) -> VkResult<Vec<vk::CommandBuffer>> {
+        let t0 = std::time::Instant::now();
         //let mut guard = self.inner.lock().unwrap();
         let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
 
@@ -906,6 +920,8 @@ impl PreparedFrame {
             &[&main_view],
             &render_registry,
         );
+        let t1 = std::time::Instant::now();
+        log::info!("[async] render prepare took {} ms", (t1 - t0).as_secs_f32() * 1000.0);
 
         //
         // Write Jobs - called from within renderpasses for now
@@ -990,6 +1006,9 @@ impl PreparedFrame {
         //             .render(&device_context, present_index, window_scale_factor)?;
         //     command_buffers.append(&mut commands);
         // }
+
+        let t2 = std::time::Instant::now();
+        log::info!("[async] render write took {} ms", (t2 - t1).as_secs_f32() * 1000.0);
 
         Ok(command_buffers)
     }
