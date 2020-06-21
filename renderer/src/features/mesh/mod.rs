@@ -4,7 +4,7 @@ use renderer_nodes::{
 };
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use crate::{
+use renderer_features::{
     RenderJobExtractContext, RenderJobWriteContext, DemoPrepareContext, RenderJobPrepareContext,
 };
 use legion::prelude::Entity;
@@ -23,11 +23,10 @@ use write::MeshCommandWriter;
 use renderer_shell_vulkan::{VkDeviceContext, VkBufferRaw};
 use ash::vk;
 use renderer_resources::resource_managers::{
-    PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef, MeshInfo,
+    PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef,
     ResourceManager, ResourceArc,
 };
 use renderer_assets::assets::pipeline::MaterialAsset;
-use renderer_assets::assets::gltf::MeshAsset;
 use ash::prelude::VkResult;
 
 // Represents the data uploaded to the GPU to represent a single point light

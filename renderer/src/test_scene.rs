@@ -3,13 +3,17 @@ use renderer_assets::asset_resource::AssetResource;
 use glam::f32::Vec3;
 use renderer_features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
 use renderer_visibility::{DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
-use renderer_features::{PositionComponent, SpriteComponent, MeshComponent, PointLightComponent, SpotLightComponent, DirectionalLightComponent};
-use renderer_assets::assets::gltf::MeshAsset;
+use renderer_features::{
+    PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
+    DirectionalLightComponent,
+};
+use renderer::assets::gltf::MeshAsset;
 use renderer_assets::assets::image::ImageAsset;
-use renderer_features::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
+use renderer::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
+use renderer::components::MeshComponent;
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,

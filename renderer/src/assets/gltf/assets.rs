@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::Read;
 use std::convert::TryInto;
-use crate::assets::buffer::BufferAsset;
+use renderer_assets::assets::buffer::BufferAsset;
 use atelier_assets::loader::handle::Handle;
-use crate::assets::image::ImageAsset;
-use crate::assets::pipeline::MaterialInstanceAsset;
+use renderer_assets::assets::image::ImageAsset;
+use renderer_assets::assets::pipeline::MaterialInstanceAsset;
 
 //TODO: These are extensions that might be interesting to try supporting. In particular, lights,
 // LOD, and clearcoat

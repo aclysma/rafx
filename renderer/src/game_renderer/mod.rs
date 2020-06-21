@@ -22,10 +22,10 @@ use renderer_assets::assets::shader::ShaderAsset;
 use renderer_assets::assets::image::ImageAsset;
 use atelier_assets::core::asset_uuid;
 use renderer_resources::resource_managers::{
-    ResourceManager, DynDescriptorSet, DynMaterialInstance, MeshInfo, ResourceArc,
-    ImageViewResource, DynResourceAllocatorSet, PipelineSwapchainInfo,
+    ResourceManager, DynDescriptorSet, DynMaterialInstance, ResourceArc, ImageViewResource,
+    DynResourceAllocatorSet, PipelineSwapchainInfo,
 };
-use renderer_assets::assets::gltf::{
+use renderer::assets::gltf::{
     MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam,
 };
 use renderer_assets::assets::buffer::BufferAsset;
@@ -49,9 +49,7 @@ use renderer_features::{
 };
 use renderer_features::RenderJobWriteContext;
 use renderer_shell_vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
-use renderer_features::features::mesh::{
-    MeshPerViewShaderParam, create_mesh_extract_job, MeshRenderNodeSet,
-};
+use renderer::features::mesh::{MeshPerViewShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{Thread, JoinHandle};
 use crossbeam_channel::internal::SelectHandle;

@@ -15,12 +15,14 @@ use crate::assets::gltf::{
     GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex, GltfMaterialData,
     GltfMaterialDataShaderParam,
 };
-use crate::assets::image::{ImageAsset, ColorSpace};
-use crate::assets::buffer::BufferAsset;
+use renderer_assets::assets::image::{ImageAsset, ColorSpace};
+use renderer_assets::assets::buffer::BufferAsset;
 use crate::push_buffer::PushBuffer;
 use atelier_assets::loader::handle::SerdeContext;
 use atelier_assets::loader::handle::AssetHandle;
-use crate::assets::pipeline::{MaterialInstanceAsset, MaterialAsset, MaterialInstanceSlotAssignment};
+use renderer_assets::assets::pipeline::{
+    MaterialInstanceAsset, MaterialAsset, MaterialInstanceSlotAssignment,
+};
 use std::str::FromStr;
 // use atelier_assets::importer::Result as ImporterResult;
 // use atelier_assets::importer::Error as ImporterError;

@@ -10,7 +10,7 @@ use renderer_features::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
 use renderer_features::{
-    PositionComponent, SpriteComponent, MeshComponent, PointLightComponent, SpotLightComponent,
+    PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
     DirectionalLightComponent,
 };
 use atelier_assets::loader as atelier_loader;
@@ -42,9 +42,10 @@ use renderer_resources::resource_managers::ResourceManager;
 use renderer_nodes::RenderRegistry;
 use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
-use renderer_assets::assets::gltf::MeshAsset;
-use renderer_features::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
+use renderer::assets::gltf::MeshAsset;
+use renderer::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
 use renderer_features::renderpass::debug_renderpass::DebugDraw3DResource;
+use renderer::resource_manager::GameResourceManager;
 
 mod game_renderer;
 mod daemon;
@@ -132,6 +133,11 @@ fn main() {
             // let mut game_renderer = resources.get_mut::<Game>().unwrap();
             // game_renderer.update_resources(&*device);
             renderer_resources::update_renderer_assets(&resources);
+
+            let resource_manager = resources.get::<ResourceManager>().unwrap();
+            let mut game_resource_manager = resources.get_mut::<GameResourceManager>().unwrap();
+
+            game_resource_manager.update_resources(&*resource_manager);
         }
 
         //

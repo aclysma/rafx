@@ -8,7 +8,6 @@ use renderer_assets::assets::pipeline::{
 };
 use renderer_assets::assets::image::ImageAsset;
 use renderer_assets::assets::buffer::BufferAsset;
-use renderer_assets::assets::gltf::{MeshAsset, GltfMaterialAsset};
 use ash::prelude::VkResult;
 
 pub fn init_renderer_assets(resources: &mut Resources) {
@@ -49,11 +48,6 @@ pub fn init_renderer_assets(resources: &mut Resources) {
     asset_resource.add_storage_with_load_handler::<BufferAsset, _>(Box::new(
         resource_manager.create_buffer_load_handler(),
     ));
-    asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
-        resource_manager.create_mesh_load_handler(),
-    ));
-
-    asset_resource.add_storage::<GltfMaterialAsset>();
 }
 
 pub fn update_renderer_assets(resources: &Resources) -> VkResult<()> {

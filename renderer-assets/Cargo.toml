@@ -8,20 +8,19 @@ edition = "2018"
 
 [dependencies]
 ash = ">0.30"
+sdl2 = { version = "0.33", features = ["bundled", "static-link"] }
 imgui = "0.3"
 imgui-sdl2 = "0.9.0"
-sdl2 = { version = "0.33", features = ["bundled", "static-link"] }
 image = "0.23"
-gltf = "0.15"
 
-crossbeam-channel = "0.4.2"
-
-vk-mem = "0.2"
+renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 
 renderer-base = { path = "../renderer-base" }
 renderer-nodes = { path = "../renderer-nodes" }
 
-renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
+crossbeam-channel = "0.4.2"
+
+vk-mem = "0.2"
 
 legion = { git = "https://github.com/TomGillen/legion.git" }
 atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
@@ -39,7 +38,6 @@ uuid = "0.8"
 type-uuid = "0.1"
 image2 = { version = "0.11", features = [ "ser" ] }
 inventory = "0.1"
-dashmap = { version = "3.11" }
 
 # We need this PR (https://github.com/servo/bincode/pull/288) but it's not published yet
 #bincode = "1.2"

@@ -14,7 +14,6 @@ use crate::resource_managers::resource_lookup::{
     DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource,
     ImageKey, BufferKey,
 };
-use renderer_assets::assets::gltf::MeshAsset;
 use crate::resource_managers::ResourceArc;
 use super::DescriptorSetWriteSet;
 
@@ -92,18 +91,6 @@ pub struct LoadedImage {
 pub struct LoadedBuffer {
     pub buffer_key: BufferKey,
     pub buffer: ResourceArc<VkBufferRaw>,
-}
-
-pub struct LoadedMeshPart {
-    //pub material: ResourceArc<LoadedMaterial>,
-    pub material_instance: Vec<Vec<DescriptorSetArc>>,
-}
-
-pub struct LoadedMesh {
-    pub mesh_parts: Vec<LoadedMeshPart>,
-    pub vertex_buffer: ResourceArc<VkBufferRaw>,
-    pub index_buffer: ResourceArc<VkBufferRaw>,
-    pub asset: MeshAsset,
 }
 
 //
@@ -195,7 +182,7 @@ impl<LoadedAssetT> AssetLookup<LoadedAssetT> {
         self.loaded_assets.len()
     }
 
-    fn destroy(&mut self) {
+    pub fn destroy(&mut self) {
         self.loaded_assets.clear();
     }
 }
@@ -217,7 +204,6 @@ pub struct LoadedAssetMetrics {
     pub material_instance_count: usize,
     pub image_count: usize,
     pub buffer_count: usize,
-    pub mesh_count: usize,
 }
 
 //
@@ -232,7 +218,6 @@ pub struct LoadedAssetLookupSet {
     pub material_instances: AssetLookup<LoadedMaterialInstance>,
     pub images: AssetLookup<LoadedImage>,
     pub buffers: AssetLookup<LoadedBuffer>,
-    pub meshes: AssetLookup<LoadedMesh>,
 }
 
 impl LoadedAssetLookupSet {
@@ -245,7 +230,6 @@ impl LoadedAssetLookupSet {
             material_instance_count: self.material_instances.len(),
             image_count: self.images.len(),
             buffer_count: self.buffers.len(),
-            mesh_count: self.meshes.len(),
         }
     }
 
@@ -257,6 +241,5 @@ impl LoadedAssetLookupSet {
         self.material_instances.destroy();
         self.images.destroy();
         self.buffers.destroy();
-        self.meshes.destroy();
     }
 }

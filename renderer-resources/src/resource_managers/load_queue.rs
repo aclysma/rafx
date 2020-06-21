@@ -10,7 +10,6 @@ use renderer_assets::assets::pipeline::{
 };
 use renderer_assets::assets::image::ImageAsset;
 use atelier_assets::loader::LoadHandle;
-use renderer_assets::assets::gltf::MeshAsset;
 use renderer_assets::assets::buffer::BufferAsset;
 
 //
@@ -190,5 +189,4 @@ pub struct LoadQueueSet {
     pub material_instances: LoadQueues<MaterialInstanceAsset>,
     pub images: LoadQueues<ImageAsset>,
     pub buffers: LoadQueues<BufferAsset>,
-    pub meshes: LoadQueues<MeshAsset>,
 }

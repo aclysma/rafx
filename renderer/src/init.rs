@@ -1,11 +1,17 @@
 use renderer_assets::asset_resource::AssetResource;
 use legion::prelude::Resources;
-use renderer_shell_vulkan::{LogicalSize, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, VkContext};
+use renderer_shell_vulkan::{
+    LogicalSize, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, VkContext,
+};
 use renderer_features::features::sprite::SpriteRenderNodeSet;
-use renderer_features::features::mesh::MeshRenderNodeSet;
+use renderer::features::mesh::{MeshRenderNodeSet, MeshRenderFeature};
 use renderer_visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use crate::game_renderer::{SwapchainLifetimeListener, GameRenderer};
+use renderer_features::renderpass::debug_renderpass::DebugDraw3DResource;
+use renderer_nodes::RenderRegistry;
+use renderer::assets::gltf::{MeshAsset, GltfMaterialAsset};
+use renderer::resource_manager::GameResourceManager;
 
 pub fn logging_init() {
     let mut log_level = log::LevelFilter::Info;
@@ -118,6 +124,34 @@ pub fn rendering_init(
     resources.insert(device_context);
 
     renderer_resources::init_renderer_assets(resources);
+
+    {
+        //
+        // Create the game resource manager
+        //
+        let device_context = resources.get_mut::<VkDeviceContext>().unwrap().clone();
+        let mut resource_manager = GameResourceManager::new(&device_context);
+        resources.insert(resource_manager);
+
+        let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
+        let asset_resource = &mut *asset_resource_fetch;
+
+        let mut resource_manager_fetch = resources.get_mut::<GameResourceManager>().unwrap();
+        let resource_manager = &mut *resource_manager_fetch;
+
+        asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
+            resource_manager.create_mesh_load_handler(),
+        ));
+
+        asset_resource.add_storage::<GltfMaterialAsset>();
+    }
+
+    let mut render_registry_builder = renderer_features::create_default_registry_builder();
+    let render_registry = render_registry_builder
+        .register_feature::<MeshRenderFeature>()
+        .build();
+    resources.insert(render_registry);
+
     renderer_features::init_renderer_features(resources);
 
     let mut game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
@@ -141,6 +175,10 @@ pub fn rendering_destroy(resources: &mut Resources) {
         resources.remove::<DynamicVisibilityNodeSet>();
 
         renderer_features::destroy_renderer_features(resources);
+
+        resources.remove::<GameResourceManager>();
+
+        resources.remove::<RenderRegistry>();
         renderer_resources::destroy_renderer_assets(resources);
     }
 

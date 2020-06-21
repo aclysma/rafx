@@ -22,10 +22,7 @@ use ash::vk::{ShaderStageFlags};
 
 use renderer_base::time::TimeState;
 
-use renderer_resources::resource_managers::{
-    PipelineSwapchainInfo, MeshInfo, DynDescriptorSet, ResourceManager,
-};
-use renderer_assets::assets::gltf::{MeshVertex, MeshAsset};
+use renderer_resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
 use renderer_assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
 use renderer_nodes::{PreparedRenderData, RenderView};

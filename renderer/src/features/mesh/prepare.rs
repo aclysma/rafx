@@ -1,4 +1,4 @@
-use crate::phases::draw_transparent::DrawTransparentRenderPhase;
+use renderer_features::phases::draw_transparent::DrawTransparentRenderPhase;
 use renderer_nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
@@ -7,15 +7,14 @@ use crate::features::mesh::{
     MeshRenderFeature, ExtractedFrameNodeMeshData, MeshDrawCall, ExtractedViewNodeMeshData,
     PreparedViewNodeMeshData,
 };
-use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use renderer_features::phases::draw_opaque::DrawOpaqueRenderPhase;
 use glam::Vec3;
 use super::MeshCommandWriter;
-use crate::{RenderJobWriteContext, RenderJobPrepareContext};
+use renderer_features::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
 use std::mem::ManuallyDrop;
 use renderer_resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
-use renderer_assets::assets::gltf::MeshVertex;
 
 pub struct MeshPrepareJobImpl {
     device_context: VkDeviceContext,

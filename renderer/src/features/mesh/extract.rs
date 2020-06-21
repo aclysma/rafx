@@ -2,9 +2,9 @@ use crate::features::mesh::{
     ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode, MeshDrawCall,
     MeshPerObjectShaderParam, ExtractedViewNodeMeshData, MeshPerViewShaderParam,
 };
-use crate::{
-    RenderJobExtractContext, PositionComponent, MeshComponent, RenderJobWriteContext,
-    RenderJobPrepareContext, PointLightComponent, SpotLightComponent, DirectionalLightComponent,
+use renderer_features::{
+    RenderJobExtractContext, PositionComponent, RenderJobWriteContext, RenderJobPrepareContext,
+    PointLightComponent, SpotLightComponent, DirectionalLightComponent,
 };
 use renderer_nodes::{
     DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
@@ -23,6 +23,8 @@ use renderer_assets::assets::image::ImageAsset;
 use ash::prelude::VkResult;
 use renderer_resources::resource_managers::DescriptorSetArc;
 use legion::prelude::*;
+use crate::components::MeshComponent;
+use crate::resource_manager::GameResourceManager;
 
 pub struct MeshExtractJobImpl {
     device_context: VkDeviceContext,
@@ -97,9 +99,12 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .get_component::<MeshComponent>(mesh_render_node.entity)
             .unwrap();
 
-        let mesh_info = extract_context
-            .resource_manager
-            .get_mesh_info(&mesh_component.mesh);
+        let game_resource_manager = extract_context
+            .resources
+            .get::<GameResourceManager>()
+            .unwrap();
+
+        let mesh_info = game_resource_manager.get_mesh_info(&mesh_component.mesh);
         if mesh_info.is_none() {
             self.extracted_frame_node_mesh_data.push(None);
             return;

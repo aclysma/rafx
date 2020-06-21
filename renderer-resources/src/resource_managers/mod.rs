@@ -35,8 +35,8 @@ mod dyn_resource_allocator;
 pub use dyn_resource_allocator::DynResourceAllocatorSet;
 
 mod load_queue;
-use load_queue::LoadQueues;
-use load_queue::GenericLoadHandler;
+pub use load_queue::LoadQueues;
+pub use load_queue::GenericLoadHandler;
 use load_queue::LoadRequest;
 use load_queue::LoadQueueSet;
 
@@ -51,7 +51,7 @@ use asset_lookup::LoadedMaterial;
 use asset_lookup::LoadedMaterialPass;
 use asset_lookup::LoadedGraphicsPipeline;
 use asset_lookup::LoadedAssetLookupSet;
-use asset_lookup::AssetLookup;
+pub use asset_lookup::AssetLookup;
 use asset_lookup::SlotLocation;
 use asset_lookup::LoadedAssetMetrics;
 use asset_lookup::SlotNameLookup;
@@ -78,11 +78,8 @@ use upload::UploadManager;
 use crate::resource_managers::resource_lookup::{PipelineLayoutResource, PipelineResource};
 
 pub use resource_lookup::ImageViewResource;
-use renderer_assets::assets::gltf::MeshAsset;
 use renderer_assets::assets::buffer::BufferAsset;
-use crate::resource_managers::asset_lookup::{
-    LoadedBuffer, LoadedMesh, LoadedRenderpass, LoadedMeshPart,
-};
+use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedRenderpass};
 use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 use crate::resource_managers::descriptor_sets::{DescriptorSetAllocatorManager};
 
@@ -109,18 +106,6 @@ pub struct ImageInfo {
 pub struct DescriptorSetInfo {
     pub descriptor_set_layout_def: dsc::DescriptorSetLayout,
     pub descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
-}
-
-pub struct MeshPartInfo {
-    //pub draw_info: LoadedMeshPart,
-    pub material_instance: Vec<Vec<DescriptorSetArc>>,
-}
-
-pub struct MeshInfo {
-    pub vertex_buffer: ResourceArc<VkBufferRaw>,
-    pub index_buffer: ResourceArc<VkBufferRaw>,
-    pub mesh_asset: MeshAsset,
-    pub mesh_parts: Vec<MeshPartInfo>,
 }
 
 // Information about a descriptor set for a particular frame. Descriptor sets may be updated
@@ -171,6 +156,10 @@ impl ResourceManager {
         }
     }
 
+    pub fn loaded_assets(&self) -> &LoadedAssetLookupSet {
+        &self.loaded_assets
+    }
+
     pub fn create_shader_load_handler(&self) -> GenericLoadHandler<ShaderAsset> {
         self.load_queues.shader_modules.create_load_handler()
     }
@@ -199,10 +188,6 @@ impl ResourceManager {
 
     pub fn create_buffer_load_handler(&self) -> GenericLoadHandler<BufferAsset> {
         self.load_queues.buffers.create_load_handler()
-    }
-
-    pub fn create_mesh_load_handler(&self) -> GenericLoadHandler<MeshAsset> {
-        self.load_queues.meshes.create_load_handler()
     }
 
     pub fn create_dyn_resource_allocator_set(&self) -> DynResourceAllocatorSet {
@@ -283,31 +268,6 @@ impl ResourceManager {
         }
     }
 
-    pub fn get_mesh_info(
-        &self,
-        handle: &Handle<MeshAsset>,
-    ) -> Option<MeshInfo> {
-        self.loaded_assets
-            .meshes
-            .get_committed(handle.load_handle())
-            .map(|loaded_mesh| {
-                let mesh_parts: Vec<_> = loaded_mesh
-                    .mesh_parts
-                    .iter()
-                    .map(|x| MeshPartInfo {
-                        material_instance: x.material_instance.clone(),
-                    })
-                    .collect();
-
-                MeshInfo {
-                    vertex_buffer: loaded_mesh.vertex_buffer.clone(),
-                    index_buffer: loaded_mesh.index_buffer.clone(),
-                    mesh_asset: loaded_mesh.asset.clone(),
-                    mesh_parts,
-                }
-            })
-    }
-
     pub fn get_material_instance_info(
         &self,
         handle: &Handle<MaterialInstanceAsset>,
@@ -354,7 +314,6 @@ impl ResourceManager {
         self.process_material_instance_load_requests();
         self.process_image_load_requests();
         self.process_buffer_load_requests();
-        self.process_mesh_load_requests();
 
         self.upload_manager.update()?;
 
@@ -494,21 +453,6 @@ impl ResourceManager {
             &mut self.load_queues.material_instances,
             &mut self.loaded_assets.material_instances,
         );
-    }
-
-    fn process_mesh_load_requests(&mut self) {
-        for request in self.load_queues.meshes.take_load_requests() {
-            log::trace!("Create mesh {:?}", request.load_handle);
-            let loaded_asset = self.load_mesh(&request.asset);
-            Self::handle_load_result(
-                request.load_op,
-                loaded_asset,
-                &mut self.loaded_assets.meshes,
-            );
-        }
-
-        Self::handle_commit_requests(&mut self.load_queues.meshes, &mut self.loaded_assets.meshes);
-        Self::handle_free_requests(&mut self.load_queues.meshes, &mut self.loaded_assets.meshes);
     }
 
     fn process_image_load_requests(&mut self) {
@@ -858,42 +802,6 @@ impl ResourceManager {
             material_descriptor_sets,
             slot_assignments: material_instance_asset.slot_assignments.clone(),
             descriptor_set_writes: material_instance_descriptor_set_writes,
-        })
-    }
-
-    fn load_mesh(
-        &mut self,
-        mesh_asset: &MeshAsset,
-    ) -> VkResult<LoadedMesh> {
-        let vertex_buffer = self
-            .loaded_assets
-            .buffers
-            .get_latest(mesh_asset.vertex_buffer.load_handle())
-            .unwrap()
-            .buffer
-            .clone();
-        let index_buffer = self
-            .loaded_assets
-            .buffers
-            .get_latest(mesh_asset.index_buffer.load_handle())
-            .unwrap()
-            .buffer
-            .clone();
-
-        let mut mesh_parts = Vec::with_capacity(mesh_asset.mesh_parts.len());
-
-        for part in &mesh_asset.mesh_parts {
-            let material_instance_info = self.get_material_instance_info(&part.material_instance);
-            mesh_parts.push(LoadedMeshPart {
-                material_instance: material_instance_info.descriptor_sets.clone(),
-            })
-        }
-
-        Ok(LoadedMesh {
-            vertex_buffer,
-            index_buffer,
-            asset: mesh_asset.clone(),
-            mesh_parts,
         })
     }
 

@@ -4,6 +4,7 @@ pub mod features;
 pub mod phases;
 
 mod features_init;
+pub use features_init::create_default_registry_builder;
 pub use features_init::init_renderer_features;
 pub use features_init::destroy_renderer_features;
 
@@ -21,9 +22,7 @@ use renderer_shell_vulkan::cleanup::VkResourceDropSinkChannel;
 use std::mem::ManuallyDrop;
 use ash::vk;
 use atelier_assets::loader::handle::Handle;
-use crate::features::mesh::{MeshRenderNodeHandle};
 use renderer_assets::assets::image::ImageAsset;
-use renderer_assets::assets::gltf::MeshAsset;
 use renderer_resources::resource_managers::{ResourceManager, DynResourceAllocatorSet};
 
 #[derive(Copy, Clone)]
@@ -63,17 +62,10 @@ pub struct SpriteComponent {
     //pub texture_material: ResourceArc<>
 }
 
-#[derive(Clone)]
-pub struct MeshComponent {
-    pub mesh_handle: MeshRenderNodeHandle,
-    pub visibility_handle: DynamicAabbVisibilityNodeHandle,
-    pub mesh: Handle<MeshAsset>,
-}
-
 pub struct RenderJobExtractContext {
-    world: &'static World,
-    resources: &'static Resources,
-    resource_manager: &'static ResourceManager,
+    pub world: &'static World,
+    pub resources: &'static Resources,
+    pub resource_manager: &'static ResourceManager,
 }
 
 impl RenderJobExtractContext {
