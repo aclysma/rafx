@@ -35,9 +35,9 @@ pub struct VkQueueFamilyIndices {
 /// An instantiated queue per queue family. We only need one queue per family.
 #[derive(Clone)]
 pub struct VkQueues {
-    pub transfer_queue: ash::vk::Queue,
-    pub graphics_queue: ash::vk::Queue,
-    pub present_queue: ash::vk::Queue,
+    pub transfer_queue: Arc<Mutex<ash::vk::Queue>>,
+    pub graphics_queue: Arc<Mutex<ash::vk::Queue>>,
+    pub present_queue: Arc<Mutex<ash::vk::Queue>>,
 }
 
 #[derive(Clone)]
@@ -650,9 +650,9 @@ impl VkDevice {
             unsafe { device.get_device_queue(queue_family_indices.transfer_queue_family_index, 0) };
 
         let queues = VkQueues {
-            graphics_queue,
-            present_queue,
-            transfer_queue,
+            graphics_queue: Arc::new(Mutex::new(graphics_queue)),
+            present_queue: Arc::new(Mutex::new(present_queue)),
+            transfer_queue: Arc::new(Mutex::new(transfer_queue)),
         };
 
         Ok((device, queues))

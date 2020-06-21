@@ -161,11 +161,11 @@ impl VkImGuiRenderPass {
             device_context
                 .queue_family_indices()
                 .transfer_queue_family_index,
-            device_context.queues().transfer_queue,
+            &device_context.queues().transfer_queue,
             device_context
                 .queue_family_indices()
                 .graphics_queue_family_index,
-            device_context.queues().graphics_queue,
+            &device_context.queues().graphics_queue,
             &[decoded_texture],
         )?;
 

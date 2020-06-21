@@ -10,6 +10,7 @@ use std::os::raw::c_void;
 use ash::vk::MappedMemoryRange;
 use std::ops::Deref;
 use log::Level::Trace;
+use std::sync::{Arc, Mutex};
 
 // Based on UploadHeap in cauldron
 // (https://github.com/GPUOpen-LibrariesAndSDKs/Cauldron/blob/5acc12602c55e469cc1f9181967dbcb122f8e6c7/src/VK/base/UploadHeap.h)
@@ -188,7 +189,7 @@ impl VkUpload {
 
     pub fn submit(
         &mut self,
-        queue: vk::Queue,
+        queue: &Arc<Mutex<vk::Queue>>,
     ) -> VkResult<()> {
         if self.writable {
             unsafe {
@@ -202,9 +203,12 @@ impl VkUpload {
                 .build();
 
             unsafe {
-                self.device_context
-                    .device()
-                    .queue_submit(queue, &[submit], self.fence)?;
+                {
+                    let q = queue.lock().unwrap();
+                    self.device_context
+                        .device()
+                        .queue_submit(*q, &[submit], self.fence)?;
+                }
                 self.writable = false;
             }
         }
@@ -397,14 +401,14 @@ impl VkTransferUpload {
 
     pub fn submit_transfer(
         &mut self,
-        transfer_queue: vk::Queue,
+        transfer_queue: &Arc<Mutex<vk::Queue>>,
     ) -> VkResult<()> {
         self.upload.submit(transfer_queue)
     }
 
     pub fn submit_dst(
         &mut self,
-        dst_queue: vk::Queue,
+        dst_queue: &Arc<Mutex<vk::Queue>>,
     ) -> VkResult<()> {
         if self.state()? == VkTransferUploadState::PendingSubmitDstQueue {
             unsafe {
@@ -418,9 +422,10 @@ impl VkTransferUpload {
                 .build();
 
             unsafe {
+                let queue = dst_queue.lock().unwrap();
                 self.device_context
                     .device()
-                    .queue_submit(dst_queue, &[submit], self.dst_fence)?;
+                    .queue_submit(*queue, &[submit], self.dst_fence)?;
                 self.sent_to_dst_queue = true;
             }
         }

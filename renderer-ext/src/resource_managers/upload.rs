@@ -188,7 +188,7 @@ impl InProgressUpload {
                             //log::trace!("VkTransferUploadState::Writable");
                             inner
                                 .upload
-                                .submit_transfer(device_context.queues().transfer_queue);
+                                .submit_transfer(&device_context.queues().transfer_queue);
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToTransferQueue => {
@@ -200,7 +200,7 @@ impl InProgressUpload {
                             //log::trace!("VkTransferUploadState::PendingSubmitDstQueue");
                             inner
                                 .upload
-                                .submit_dst(device_context.queues().graphics_queue);
+                                .submit_dst(&device_context.queues().graphics_queue);
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToDstQueue => {
@@ -419,7 +419,7 @@ impl UploadQueue {
         let in_flight_buffer_uploads = self.start_new_buffer_uploads(&mut upload)?;
 
         if !in_flight_image_uploads.is_empty() || !in_flight_buffer_uploads.is_empty() {
-            upload.submit_transfer(self.device_context.queues().transfer_queue)?;
+            upload.submit_transfer(&self.device_context.queues().transfer_queue)?;
             self.uploads_in_progress.push(InProgressUpload::new(
                 in_flight_image_uploads,
                 in_flight_buffer_uploads,

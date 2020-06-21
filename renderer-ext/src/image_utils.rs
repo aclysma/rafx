@@ -21,6 +21,7 @@ use image::error::ImageError::Decoding;
 use std::process::exit;
 use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
+use std::sync::{Mutex, Arc};
 
 #[derive(Copy, Clone, Debug)]
 pub enum ColorSpace {
@@ -567,9 +568,9 @@ fn transition_for_mipmap(
 pub fn load_images(
     device_context: &VkDeviceContext,
     transfer_queue_family_index: u32,
-    transfer_queue: vk::Queue,
+    transfer_queue: &Arc<Mutex<vk::Queue>>,
     dst_queue_family_index: u32,
-    dst_queue: vk::Queue,
+    dst_queue: &Arc<Mutex<vk::Queue>>,
     decoded_textures: &[DecodedTexture],
 ) -> VkResult<Vec<ManuallyDrop<VkImage>>> {
     let mut upload = VkTransferUpload::new(
@@ -595,6 +596,7 @@ pub fn load_images(
     }
 
     upload.submit_dst(dst_queue)?;
+
     loop {
         if upload.state()? == VkTransferUploadState::Complete {
             break;

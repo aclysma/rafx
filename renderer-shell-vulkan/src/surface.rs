@@ -111,8 +111,9 @@ impl FrameInFlight {
             .build()];
 
         unsafe {
+            let queue = self.device_context.queues().graphics_queue.lock().unwrap();
             self.device_context.device().queue_submit(
-                self.device_context.queues().graphics_queue,
+                *queue,
                 &submit_info,
                 frame_fence,
             )?;
@@ -127,8 +128,9 @@ impl FrameInFlight {
             .image_indices(&image_indices);
 
         unsafe {
+            let queue = self.device_context.queues().present_queue.lock().unwrap();
             self.swapchain_loader
-                .queue_present(self.device_context.queues().present_queue, &present_info)?;
+                .queue_present(*queue, &present_info)?;
         }
 
         self.shared_sync_frame_index.store((sync_frame_index + 1) % MAX_FRAMES_IN_FLIGHT, Ordering::Relaxed);
