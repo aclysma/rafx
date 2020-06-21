@@ -304,27 +304,7 @@ fn rendering_init(
     let mut game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
     resources.insert(game_renderer);
 
-    let window_surface = {
-        let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
-        let render_registry = resources.get::<RenderRegistry>().unwrap();
-        let mut game_renderer = resources.get_mut::<GameRenderer>().unwrap();
-        // let mut game_renderer = resources.get_mut::<GameRenderer>().unwrap();
-        // let mut surface = resources.get_mut::<VkSurface>().unwrap();
-        // let window = Sdl2Window::new(&sdl2_systems.window);
-
-        let mut lifetime_listener = SwapchainLifetimeListener {
-            resources: &resources,
-            resource_manager: &mut *resource_manager,
-            render_registry: & *render_registry,
-            game_renderer: &mut *game_renderer
-        };
-
-        VkSurface::new(
-            &*resources.get::<VkContext>().unwrap(),
-            &window_wrapper,
-            Some(&mut lifetime_listener)
-        ).unwrap()
-    };
+    let window_surface = SwapchainLifetimeListener::create_surface(resources, &window_wrapper).unwrap();
     resources.insert(window_surface);
 }
 
@@ -333,22 +313,10 @@ fn rendering_destroy(
 ) {
     // Destroy these first
     {
-        {
-            let mut surface = resources.remove::<VkSurface>().unwrap();
-            let mut game_renderer = resources.remove::<GameRenderer>().unwrap();
-            let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
-            let render_registry = resources.get::<RenderRegistry>().unwrap();
+        SwapchainLifetimeListener::tear_down(resources);
 
-            let mut lifetime_listener = SwapchainLifetimeListener {
-                resources: &resources,
-                resource_manager: &mut *resource_manager,
-                render_registry: & *render_registry,
-                game_renderer: &mut game_renderer
-            };
-
-            surface.tear_down(Some(&mut lifetime_listener));
-        }
-
+        resources.remove::<VkSurface>();
+        resources.remove::<GameRenderer>();
         resources.remove::<VkDeviceContext>();
         resources.remove::<SpriteRenderNodeSet>();
         resources.remove::<MeshRenderNodeSet>();
