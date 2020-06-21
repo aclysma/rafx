@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use ash::version::DeviceV1_0;
+use ash::version::{DeviceV1_0};
 use ash::prelude::VkResult;
 
 use std::mem::ManuallyDrop;
@@ -59,8 +59,21 @@ impl FrameInFlight {
         self.is_suboptimal
     }
 
+    // fn signal_render_finished_semaphore(&self) -> VkResult<()> {
+    //     let semaphore_info = vk::SemaphoreSignalInfo::builder()
+    //         .semaphore(self.render_finished_semaphore);
+    //
+    //     unsafe {
+    //         self.device_context.device().signal_semaphore(&*semaphore_info)
+    //     }
+    // }
+
     pub fn cancel_present(self, result: VkResult<()>) {
-        self.result_tx.send(result);
+        match self.do_present(&vec![]) {
+            Ok(_) => self.result_tx.send(result),
+            Err(e) => self.result_tx.send(result)
+        };
+        //self.signal_render_finished_semaphore().unwrap();
     }
 
     pub fn present(
@@ -69,6 +82,9 @@ impl FrameInFlight {
     ) -> VkResult<()> {
         let result = self.do_present(command_buffers);
         self.result_tx.send(result);
+        // if result.is_err() {
+        //     self.signal_render_finished_semaphore().unwrap();
+        // }
         result
     }
 
@@ -219,54 +235,6 @@ impl VkSurface {
         // self will drop
         self.torn_down = true;
     }
-
-    // pub fn draw_with<T, F>(
-    //     &mut self,
-    //     mut event_listener: &mut T,
-    //     window: &dyn Window,
-    //     f: F
-    // ) -> VkResult<()>
-    //     where
-    //         T : VkSurfaceSwapchainLifetimeListener,
-    //         F : FnOnce(&mut T, &VkDeviceContext, usize) -> VkResult<Vec<vk::CommandBuffer>>
-    // {
-    //     let result = self.try_draw_with(event_listener, window, f);
-    //     if let Err(e) = result {
-    //         match e {
-    //             ash::vk::Result::ERROR_OUT_OF_DATE_KHR => {
-    //                 self.rebuild_swapchain(window, &mut Some(event_listener))
-    //             }
-    //             ash::vk::Result::SUCCESS => Ok(()),
-    //             ash::vk::Result::SUBOPTIMAL_KHR => Ok(()),
-    //             //ash::vk::Result::TIMEOUT => Ok(()),
-    //             _ => {
-    //                 warn!("Unexpected rendering error");
-    //                 Err(e)
-    //             }
-    //         }
-    //     } else {
-    //         Ok(())
-    //     }
-    // }
-    //
-    // /// Do the render
-    // fn try_draw_with<T, F>(
-    //     &mut self,
-    //     event_listener: &mut T,
-    //     window: &dyn Window,
-    //     mut f: F
-    // ) -> VkResult<()>
-    //     where
-    //         T : VkSurfaceSwapchainLifetimeListener,
-    //         F : FnOnce(&mut T, &VkDeviceContext, usize) -> VkResult<Vec<vk::CommandBuffer>>
-    // {
-    //     let frame_in_flight = self.acquire_next_swapchain_image(window)?;
-    //
-    //     let mut command_buffers = f(event_listener, &self.device_context, frame_in_flight.present_index as usize)?;
-    //
-    //     frame_in_flight.present(&command_buffers)?;
-    //     Ok(())
-    // }
 
     // If a frame is in flight, block until it completes
     pub fn wait_until_frame_not_in_flight(&self) -> VkResult<()> {

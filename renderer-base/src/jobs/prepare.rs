@@ -5,7 +5,7 @@ use crate::{
 };
 use std::marker::PhantomData;
 
-pub trait PrepareJob<PrepareContextT, WriteContextT> {
+pub trait PrepareJob<PrepareContextT, WriteContextT> : Send {
     fn prepare(
         self: Box<Self>,
         prepare_context: &PrepareContextT,
@@ -54,7 +54,7 @@ impl<PrepareContextT, WriteContextT> PrepareJobSet<PrepareContextT, WriteContext
     }
 }
 
-pub trait DefaultPrepareJobImpl<PrepareContextT, WriteContextT> {
+pub trait DefaultPrepareJobImpl<PrepareContextT, WriteContextT> : Send {
     fn prepare_begin(
         &mut self,
         prepare_context: &PrepareContextT,
@@ -107,7 +107,7 @@ impl<PrepareContextT, WriteContextT, PrepareImplT: DefaultPrepareJobImpl<Prepare
     }
 }
 
-impl<PrepareContextT, WriteContextT, PrepareImplT: DefaultPrepareJobImpl<PrepareContextT, WriteContextT>> PrepareJob<PrepareContextT, WriteContextT>
+impl<PrepareContextT: Send, WriteContextT: Send, PrepareImplT: DefaultPrepareJobImpl<PrepareContextT, WriteContextT>> PrepareJob<PrepareContextT, WriteContextT>
     for DefaultPrepareJob<PrepareContextT, WriteContextT, PrepareImplT>
 {
     fn prepare(

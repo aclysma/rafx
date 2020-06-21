@@ -197,7 +197,7 @@ impl GameRendererStaticResources {
 }
 
 enum RenderThreadMessage {
-    Render,
+    Render(PreparedFrame),
     Finish,
 }
 
@@ -222,8 +222,8 @@ impl RenderThread {
         }
     }
 
-    pub fn render(&mut self) {
-        self.job_tx.send(RenderThreadMessage::Render).unwrap();
+    pub fn render(&mut self, prepared_frame: PreparedFrame) {
+        self.job_tx.send(RenderThreadMessage::Render(prepared_frame)).unwrap();
     }
 
     fn stop(&mut self) {
@@ -234,7 +234,10 @@ impl RenderThread {
     fn render_thread(job_rx: Receiver<RenderThreadMessage>) -> std::result::Result<(), Box<dyn std::error::Error>> {
         loop {
             match job_rx.recv()? {
-                RenderThreadMessage::Render => log::info!("kick off render"),
+                RenderThreadMessage::Render(prepared_frame) => {
+                    log::info!("kick off render");
+                    prepared_frame.render_async();
+                },
                 RenderThreadMessage::Finish => {
                     log::info!("finishing render thread");
                     break Ok(())
@@ -594,8 +597,6 @@ impl GameRenderer {
             self.inner.lock().unwrap().previous_frame_result = Some(Err(e));
         }
 
-        self.inner.lock().unwrap().render_thread.render();
-
         Ok(())
     }
 
@@ -804,7 +805,6 @@ impl GameRenderer {
         let t1 = std::time::Instant::now();
         log::info!("prepare render took {} ms", (t1 - t0).as_secs_f32() * 1000.0);
 
-        std::mem::drop(guard);
         let game_renderer = self.clone();
 
         let prepared_frame = PreparedFrame {
@@ -822,7 +822,7 @@ impl GameRenderer {
             frame_in_flight,
         };
 
-        prepared_frame.render_async();
+        guard.render_thread.render(prepared_frame);
 
         Ok(())
     }
@@ -868,6 +868,7 @@ impl PreparedFrame {
                 self.frame_in_flight.present(command_buffers.as_slice());
             },
             Err(err) => {
+                log::error!("Render thread failed with error {:?}", err);
                 // Pass error on to the next swapchain image acquire call
                 self.frame_in_flight.cancel_present(Err(err));
             }
@@ -982,13 +983,13 @@ impl PreparedFrame {
         //
         // imgui
         //
-        {
-            log::trace!("imgui_event_listener update");
-            let mut commands =
-                guard.imgui_event_listener
-                    .render(&device_context, present_index, window_scale_factor)?;
-            command_buffers.append(&mut commands);
-        }
+        // {
+        //     log::trace!("imgui_event_listener update");
+        //     let mut commands =
+        //         guard.imgui_event_listener
+        //             .render(&device_context, present_index, window_scale_factor)?;
+        //     command_buffers.append(&mut commands);
+        // }
 
         Ok(command_buffers)
     }
