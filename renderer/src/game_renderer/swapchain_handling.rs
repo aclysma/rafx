@@ -1,4 +1,6 @@
-use renderer_shell_vulkan::{VkContext, VkSurface, Window, VkSurfaceSwapchainLifetimeListener, VkDeviceContext, VkSwapchain};
+use renderer_shell_vulkan::{
+    VkContext, VkSurface, Window, VkSurfaceSwapchainLifetimeListener, VkDeviceContext, VkSwapchain,
+};
 use crate::game_renderer::GameRenderer;
 use legion::prelude::Resources;
 use ash::prelude::VkResult;
@@ -11,7 +13,7 @@ pub struct SwapchainLifetimeListener<'a> {
     pub resources: &'a Resources,
     pub resource_manager: &'a mut ResourceManager,
     pub render_registry: &'a RenderRegistry,
-    pub game_renderer: &'a GameRenderer
+    pub game_renderer: &'a GameRenderer,
 }
 
 impl<'a> SwapchainLifetimeListener<'a> {
@@ -26,21 +28,21 @@ impl<'a> SwapchainLifetimeListener<'a> {
         let mut lifetime_listener = SwapchainLifetimeListener {
             resources: &resources,
             resource_manager: &mut *resource_manager,
-            render_registry: & *render_registry,
-            game_renderer: &mut *game_renderer
+            render_registry: &*render_registry,
+            game_renderer: &mut *game_renderer,
         };
 
         VkSurface::new(
             &*resources.get::<VkContext>().unwrap(),
             window,
-            Some(&mut lifetime_listener)
+            Some(&mut lifetime_listener),
         )
     }
 
     pub fn rebuild_swapchain(
         resources: &Resources,
         window: &dyn Window,
-        game_renderer: &GameRenderer
+        game_renderer: &GameRenderer,
     ) -> VkResult<()> {
         let mut surface = resources.get_mut::<VkSurface>().unwrap();
         let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
@@ -65,8 +67,8 @@ impl<'a> SwapchainLifetimeListener<'a> {
         let mut lifetime_listener = SwapchainLifetimeListener {
             resources: &resources,
             resource_manager: &mut *resource_manager,
-            render_registry: & *render_registry,
-            game_renderer: &mut game_renderer
+            render_registry: &*render_registry,
+            game_renderer: &mut game_renderer,
         };
 
         surface.tear_down(Some(&mut lifetime_listener));
@@ -84,7 +86,8 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         let mut resource_manager = &mut self.resource_manager;
 
         log::debug!("game renderer swapchain_created called");
-        game_renderer.imgui_event_listener
+        game_renderer
+            .imgui_event_listener
             .swapchain_created(device_context, swapchain)?;
 
         let swapchain_surface_info = SwapchainSurfaceInfo {
@@ -102,7 +105,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             swapchain,
             game_renderer,
             resource_manager,
-            swapchain_surface_info
+            swapchain_surface_info,
         )?;
 
         game_renderer.swapchain_resources = Some(swapchain_resources);
@@ -135,7 +138,8 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
 
         self.resource_manager
             .remove_swapchain(&swapchain_resources.swapchain_surface_info);
-        game_renderer.imgui_event_listener
+        game_renderer
+            .imgui_event_listener
             .swapchain_destroyed(device_context, swapchain);
     }
 }

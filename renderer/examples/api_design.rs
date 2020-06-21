@@ -6,7 +6,9 @@ use renderer::RenderRegistryBuilder;
 use renderer::RenderViewSet;
 use legion::prelude::*;
 use glam::Vec3;
-use renderer_assets::{DemoExtractContext, DemoPrepareContext, PositionComponent, DemoComponent, DemoWriteContext};
+use renderer_assets::{
+    DemoExtractContext, DemoPrepareContext, PositionComponent, DemoComponent, DemoWriteContext,
+};
 use renderer_assets::phases::draw_transparent::DrawTransparentRenderPhase;
 use renderer_assets::features::demo::{create_demo_extract_job, DemoRenderFeature};
 
@@ -191,7 +193,6 @@ fn main() {
         // The frame packet builder will merge visibility results and hold extracted data from simulation. During
         // the extract window, render nodes cannot be added/removed
 
-
         // User calls functions to start jobs that calculate dynamic visibility for FPS view
         let main_view_dynamic_visibility_result =
             dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
@@ -254,7 +255,11 @@ fn main() {
             // Other features can be added here
 
             let extract_context = DemoExtractContext::new(&world, &resources);
-            extract_job_set.extract(&extract_context, &frame_packet, &[&main_view, &minimap_view])
+            extract_job_set.extract(
+                &extract_context,
+                &frame_packet,
+                &[&main_view, &minimap_view],
+            )
         };
 
         //
@@ -300,4 +305,3 @@ fn main() {
         dynamic_visibility_node_set.unregister_dynamic_aabb(demo_component.visibility_handle);
     }
 }
-

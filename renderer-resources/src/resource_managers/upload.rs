@@ -261,11 +261,15 @@ impl Drop for InProgressUpload {
     fn drop(&mut self) {
         if let Some(mut inner) = self.take_inner() {
             for image in &mut inner.image_uploads {
-                unsafe { ManuallyDrop::drop(&mut image.image); }
+                unsafe {
+                    ManuallyDrop::drop(&mut image.image);
+                }
             }
 
             for buffer in &mut inner.buffer_uploads {
-                unsafe { ManuallyDrop::drop(&mut buffer.buffer); }
+                unsafe {
+                    ManuallyDrop::drop(&mut buffer.buffer);
+                }
             }
         }
     }
@@ -321,7 +325,10 @@ impl UploadQueue {
         let mut decoded_textures = vec![];
 
         for pending_upload in self.pending_image_rx.try_iter() {
-            log::trace!("start image upload size: {}", pending_upload.texture.data.len());
+            log::trace!(
+                "start image upload size: {}",
+                pending_upload.texture.data.len()
+            );
             ops.push((pending_upload.load_op, pending_upload.upload_op));
             decoded_textures.push(pending_upload.texture);
 
@@ -495,7 +502,7 @@ impl UploadManager {
     ) -> VkResult<()> {
         let mips = renderer_assets::image_utils::default_mip_settings_for_image(
             request.asset.width,
-            request.asset.height
+            request.asset.height,
         );
 
         let color_space = request.asset.color_space.into();
@@ -530,7 +537,7 @@ impl UploadManager {
             .send(PendingBufferUpload {
                 load_op: request.load_op,
                 upload_op: UploadOp::new(request.load_handle, self.buffer_upload_result_tx.clone()),
-                data: request.asset.data
+                data: request.asset.data,
             })
             .map_err(|err| {
                 log::error!("Could not enqueue buffer upload");

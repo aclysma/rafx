@@ -174,7 +174,7 @@ pub fn create_graphics_pipelines(
     shader_modules_meta: &[dsc::ShaderModuleMeta],
     shader_modules: &[vk::ShaderModule],
     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    subpass_count: u32
+    subpass_count: u32,
 ) -> VkResult<Vec<vk::Pipeline>> {
     //let fixed_function_state = &graphics_pipeline.fixed_function_state;
 
@@ -221,7 +221,9 @@ pub fn create_graphics_pipelines(
 
     let rasterization_state = fixed_function_state.rasterization_state.as_builder();
 
-    let multisample_state = fixed_function_state.multisample_state.as_builder(swapchain_surface_info);
+    let multisample_state = fixed_function_state
+        .multisample_state
+        .as_builder(swapchain_surface_info);
     let color_blend_attachments: Vec<_> = fixed_function_state
         .color_blend_state
         .attachments
@@ -262,22 +264,24 @@ pub fn create_graphics_pipelines(
         );
     }
 
-    let pipeline_infos : Vec<_> = (0..subpass_count).map(|subpass_index| {
-        vk::GraphicsPipelineCreateInfo::builder()
-            .input_assembly_state(&input_assembly_state)
-            .vertex_input_state(&vertex_input_state)
-            .viewport_state(&viewport_state)
-            .rasterization_state(&rasterization_state)
-            .multisample_state(&multisample_state)
-            .color_blend_state(&color_blend_state)
-            .dynamic_state(&dynamic_state)
-            .depth_stencil_state(&depth_stencil_state)
-            .layout(pipeline_layout)
-            .render_pass(renderpass)
-            .stages(&stages)
-            .subpass(subpass_index)
-            .build()
-    }).collect();
+    let pipeline_infos: Vec<_> = (0..subpass_count)
+        .map(|subpass_index| {
+            vk::GraphicsPipelineCreateInfo::builder()
+                .input_assembly_state(&input_assembly_state)
+                .vertex_input_state(&vertex_input_state)
+                .viewport_state(&viewport_state)
+                .rasterization_state(&rasterization_state)
+                .multisample_state(&multisample_state)
+                .color_blend_state(&color_blend_state)
+                .dynamic_state(&dynamic_state)
+                .depth_stencil_state(&depth_stencil_state)
+                .layout(pipeline_layout)
+                .render_pass(renderpass)
+                .stages(&stages)
+                .subpass(subpass_index)
+                .build()
+        })
+        .collect();
 
     unsafe {
         match device.create_graphics_pipelines(vk::PipelineCache::null(), &pipeline_infos, None) {

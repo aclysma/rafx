@@ -11,7 +11,10 @@ use fnv::FnvHashMap;
 use atelier_assets::loader::handle::Handle;
 use gltf::{Accessor, Gltf};
 use gltf::mesh::util::indices::CastingIter;
-use crate::assets::gltf::{GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex, GltfMaterialData, GltfMaterialDataShaderParam};
+use crate::assets::gltf::{
+    GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex, GltfMaterialData,
+    GltfMaterialDataShaderParam,
+};
 use crate::assets::image::{ImageAsset, ColorSpace};
 use crate::assets::buffer::BufferAsset;
 use crate::push_buffer::PushBuffer;
@@ -25,23 +28,24 @@ use serde::export::Formatter;
 
 #[derive(Debug)]
 struct GltfImportError {
-    error_message: String
+    error_message: String,
 }
 
 impl GltfImportError {
     pub fn new(error_message: &str) -> Self {
         GltfImportError {
-            error_message: error_message.to_string()
+            error_message: error_message.to_string(),
         }
     }
 }
 
-impl std::error::Error for GltfImportError {
-
-}
+impl std::error::Error for GltfImportError {}
 
 impl std::fmt::Display for GltfImportError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
         write!(f, "{}", self.error_message)
     }
 }
@@ -158,12 +162,14 @@ impl Importer for GltfImporter {
         // Accumulate everything we will import in this list
         let mut imported_assets = Vec::new();
 
-        let image_color_space_assignments = build_image_color_space_assignments_from_materials(&doc);
+        let image_color_space_assignments =
+            build_image_color_space_assignments_from_materials(&doc);
 
         //
         // Images
         //
-        let images_to_import = extract_images_to_import(&doc, &buffers, &images, &image_color_space_assignments);
+        let images_to_import =
+            extract_images_to_import(&doc, &buffers, &images, &image_color_space_assignments);
         let mut image_index_to_handle = vec![];
         for image_to_import in images_to_import {
             // Find the UUID associated with this image or create a new one
@@ -173,7 +179,9 @@ impl Importer for GltfImporter {
                 .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
 
             let image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(image_uuid)).unwrap();
+                let load_handle = loader_info_provider
+                    .get_load_handle(&AssetRef::Uuid(image_uuid))
+                    .unwrap();
                 Handle::<ImageAsset>::new(ref_op_sender.clone(), load_handle)
             });
 
@@ -211,10 +219,13 @@ impl Importer for GltfImporter {
                 .entry(material_to_import.id.clone())
                 .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
 
-            let material_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(material_uuid)).unwrap();
-                Handle::<GltfMaterialAsset>::new(ref_op_sender.clone(), load_handle)
-            });
+            let material_handle =
+                SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+                    let load_handle = loader_info_provider
+                        .get_load_handle(&AssetRef::Uuid(material_uuid))
+                        .unwrap();
+                    Handle::<GltfMaterialAsset>::new(ref_op_sender.clone(), load_handle)
+                });
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
             material_index_to_handle.push(material_handle);
@@ -249,21 +260,25 @@ impl Importer for GltfImporter {
 
         let material_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
             let material_uuid_str = "267e0388-2611-441c-9c78-2d39d1bd3cf1";
-            let material_uuid = AssetUuid(*uuid::Uuid::from_str(material_uuid_str).unwrap().as_bytes());
+            let material_uuid =
+                AssetUuid(*uuid::Uuid::from_str(material_uuid_str).unwrap().as_bytes());
 
-            let material_load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(material_uuid)).unwrap();
+            let material_load_handle = loader_info_provider
+                .get_load_handle(&AssetRef::Uuid(material_uuid))
+                .unwrap();
             Handle::<MaterialAsset>::new(ref_op_sender.clone(), material_load_handle)
         });
 
         let null_image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
             let material_uuid_str = "be831a21-f4f6-45d4-b9eb-e1bb6fc19d22";
-            let material_uuid = AssetUuid(*uuid::Uuid::from_str(material_uuid_str).unwrap().as_bytes());
+            let material_uuid =
+                AssetUuid(*uuid::Uuid::from_str(material_uuid_str).unwrap().as_bytes());
 
-            let material_load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(material_uuid)).unwrap();
+            let material_load_handle = loader_info_provider
+                .get_load_handle(&AssetRef::Uuid(material_uuid))
+                .unwrap();
             Handle::<ImageAsset>::new(ref_op_sender.clone(), material_load_handle)
         });
-
-
 
         //
         // Material instance
@@ -275,10 +290,13 @@ impl Importer for GltfImporter {
                 .entry(material_to_import.id.clone())
                 .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
 
-            let material_instance_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(material_instance_uuid)).unwrap();
-                Handle::<MaterialInstanceAsset>::new(ref_op_sender.clone(), load_handle)
-            });
+            let material_instance_handle =
+                SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+                    let load_handle = loader_info_provider
+                        .get_load_handle(&AssetRef::Uuid(material_instance_uuid))
+                        .unwrap();
+                    Handle::<MaterialInstanceAsset>::new(ref_op_sender.clone(), load_handle)
+                });
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
             material_instance_index_to_handle.push(material_instance_handle);
@@ -290,12 +308,15 @@ impl Importer for GltfImporter {
 
             let mut slot_assignments = vec![];
 
-            let material_data_shader_param : GltfMaterialDataShaderParam = material_to_import.asset.material_data.clone().into();
+            let material_data_shader_param: GltfMaterialDataShaderParam =
+                material_to_import.asset.material_data.clone().into();
             slot_assignments.push(MaterialInstanceSlotAssignment {
                 slot_name: "per_material_data".to_string(),
                 image: None,
                 sampler: None,
-                buffer_data: Some(renderer_shell_vulkan::util::any_as_bytes(&material_data_shader_param).into())
+                buffer_data: Some(
+                    renderer_shell_vulkan::util::any_as_bytes(&material_data_shader_param).into(),
+                ),
             });
 
             fn push_image_slot_assignment(
@@ -308,7 +329,7 @@ impl Importer for GltfImporter {
                     slot_name: slot_name.to_string(),
                     image: Some(image.as_ref().map_or(default_image, |x| x).clone()),
                     sampler: None,
-                    buffer_data: None
+                    buffer_data: None,
                 });
             }
 
@@ -316,39 +337,42 @@ impl Importer for GltfImporter {
                 "base_color_texture",
                 &mut slot_assignments,
                 &material_to_import.asset.base_color_texture,
-                &null_image_handle
+                &null_image_handle,
             );
             push_image_slot_assignment(
                 "metallic_roughness_texture",
                 &mut slot_assignments,
                 &material_to_import.asset.metallic_roughness_texture,
-                &null_image_handle
+                &null_image_handle,
             );
             push_image_slot_assignment(
                 "normal_texture",
                 &mut slot_assignments,
                 &material_to_import.asset.normal_texture,
-                &null_image_handle
+                &null_image_handle,
             );
             push_image_slot_assignment(
                 "occlusion_texture",
                 &mut slot_assignments,
                 &material_to_import.asset.occlusion_texture,
-                &null_image_handle
+                &null_image_handle,
             );
             push_image_slot_assignment(
                 "emissive_texture",
                 &mut slot_assignments,
                 &material_to_import.asset.emissive_texture,
-                &null_image_handle
+                &null_image_handle,
             );
 
             let material_instance_asset = MaterialInstanceAsset {
                 material: material_handle.clone(),
-                slot_assignments
+                slot_assignments,
             };
 
-            log::debug!("Importing material instance uuid {:?}", material_instance_uuid);
+            log::debug!(
+                "Importing material instance uuid {:?}",
+                material_instance_uuid
+            );
 
             // Create the asset
             imported_assets.push(ImportedAsset {
@@ -361,23 +385,20 @@ impl Importer for GltfImporter {
             });
         }
 
-
-
         // let mut vertices = PushBuffer::new(16384);
         // let mut indices = PushBuffer::new(16384);
 
         //
         // Meshes
         //
-        let (meshes_to_import, buffers_to_import) =
-            extract_meshes_to_import(
-                state,
-                &doc,
-                &buffers,
-                //&images,
-                &material_index_to_handle,
-                &material_instance_index_to_handle
-            )?;
+        let (meshes_to_import, buffers_to_import) = extract_meshes_to_import(
+            state,
+            &doc,
+            &buffers,
+            //&images,
+            &material_index_to_handle,
+            &material_instance_index_to_handle,
+        )?;
 
         let mut buffer_index_to_handle = vec![];
         for buffer_to_import in buffers_to_import {
@@ -388,7 +409,9 @@ impl Importer for GltfImporter {
                 .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
 
             let buffer_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(buffer_uuid)).unwrap();
+                let load_handle = loader_info_provider
+                    .get_load_handle(&AssetRef::Uuid(buffer_uuid))
+                    .unwrap();
                 Handle::<GltfMaterialAsset>::new(ref_op_sender.clone(), load_handle)
             });
 
@@ -537,14 +560,20 @@ fn extract_images_to_import(
             }
         };
 
-        let color_space = *image_color_space_assignments.get(&image.index()).unwrap_or(&ColorSpace::Linear);
-        log::info!("Choosing color space {:?} for image index {}", color_space, image.index());
+        let color_space = *image_color_space_assignments
+            .get(&image.index())
+            .unwrap_or(&ColorSpace::Linear);
+        log::info!(
+            "Choosing color space {:?} for image index {}",
+            color_space,
+            image.index()
+        );
 
         let asset = ImageAsset {
             data: converted_image.to_vec(),
             width: image_data.width,
             height: image_data.height,
-            color_space
+            color_space,
         };
         let id = image
             .name()
@@ -570,9 +599,8 @@ fn extract_images_to_import(
     images_to_import
 }
 
-
 fn build_image_color_space_assignments_from_materials(
-    doc: &gltf::Document,
+    doc: &gltf::Document
 ) -> FnvHashMap<usize, ColorSpace> {
     let mut image_color_space_assignments = FnvHashMap::default();
 
@@ -580,29 +608,33 @@ fn build_image_color_space_assignments_from_materials(
         let pbr_metallic_roughness = &material.pbr_metallic_roughness();
 
         if let Some(texture) = pbr_metallic_roughness.base_color_texture() {
-            image_color_space_assignments.insert(texture.texture().source().index(), ColorSpace::Srgb);
+            image_color_space_assignments
+                .insert(texture.texture().source().index(), ColorSpace::Srgb);
         }
 
         if let Some(texture) = pbr_metallic_roughness.metallic_roughness_texture() {
-            image_color_space_assignments.insert(texture.texture().source().index(), ColorSpace::Linear);
+            image_color_space_assignments
+                .insert(texture.texture().source().index(), ColorSpace::Linear);
         }
 
         if let Some(texture) = material.normal_texture() {
-            image_color_space_assignments.insert(texture.texture().source().index(), ColorSpace::Linear);
+            image_color_space_assignments
+                .insert(texture.texture().source().index(), ColorSpace::Linear);
         }
 
         if let Some(texture) = material.occlusion_texture() {
-            image_color_space_assignments.insert(texture.texture().source().index(), ColorSpace::Srgb);
+            image_color_space_assignments
+                .insert(texture.texture().source().index(), ColorSpace::Srgb);
         }
 
         if let Some(texture) = material.emissive_texture() {
-            image_color_space_assignments.insert(texture.texture().source().index(), ColorSpace::Srgb);
+            image_color_space_assignments
+                .insert(texture.texture().source().index(), ColorSpace::Srgb);
         }
     }
 
     image_color_space_assignments
 }
-
 
 fn extract_materials_to_import(
     doc: &gltf::Document,
@@ -613,27 +645,27 @@ fn extract_materials_to_import(
     let mut materials_to_import = Vec::with_capacity(doc.materials().len());
 
     for material in doc.materials() {
-/*
-        let mut material_data = GltfMaterialData {
-            base_color_factor: [f32; 4], // default: 1,1,1,1
-            emissive_factor: [f32; 3],
-            metallic_factor: f32, //default: 1,
-            roughness_factor: f32, // default: 1,
-            normal_texture_scale: f32, // default: 1
-            occlusion_texture_strength: f32, // default 1
-            alpha_cutoff: f32, // default 0.5
-        }
+        /*
+                let mut material_data = GltfMaterialData {
+                    base_color_factor: [f32; 4], // default: 1,1,1,1
+                    emissive_factor: [f32; 3],
+                    metallic_factor: f32, //default: 1,
+                    roughness_factor: f32, // default: 1,
+                    normal_texture_scale: f32, // default: 1
+                    occlusion_texture_strength: f32, // default 1
+                    alpha_cutoff: f32, // default 0.5
+                }
 
-        let material_asset = GltfMaterialAsset {
-            material_data,
-            base_color_factor: base_color,
-            base_color_texture: base_color_texture.clone(),
-            metallic_roughness_texture: None,
-            normal_texture: None,
-            occlusion_texture: None,
-            emissive_texture: None,
-        };
-*/
+                let material_asset = GltfMaterialAsset {
+                    material_data,
+                    base_color_factor: base_color,
+                    base_color_texture: base_color_texture.clone(),
+                    metallic_roughness_texture: None,
+                    normal_texture: None,
+                    occlusion_texture: None,
+                    emissive_texture: None,
+                };
+        */
         let mut material_asset = GltfMaterialAsset::default();
 
         let pbr_metallic_roughness = &material.pbr_metallic_roughness();
@@ -641,8 +673,10 @@ fn extract_materials_to_import(
         material_asset.material_data.emissive_factor = material.emissive_factor();
         material_asset.material_data.metallic_factor = pbr_metallic_roughness.metallic_factor();
         material_asset.material_data.roughness_factor = pbr_metallic_roughness.roughness_factor();
-        material_asset.material_data.normal_texture_scale = material.normal_texture().map_or(1.0, |x| x.scale());
-        material_asset.material_data.occlusion_texture_strength = material.occlusion_texture().map_or(1.0, |x| x.strength());
+        material_asset.material_data.normal_texture_scale =
+            material.normal_texture().map_or(1.0, |x| x.scale());
+        material_asset.material_data.occlusion_texture_strength =
+            material.occlusion_texture().map_or(1.0, |x| x.strength());
         material_asset.material_data.alpha_cutoff = material.alpha_cutoff();
 
         material_asset.base_color_texture = pbr_metallic_roughness
@@ -661,13 +695,15 @@ fn extract_materials_to_import(
             .emissive_texture()
             .map(|texture| image_index_to_handle[texture.texture().source().index()].clone());
 
-        material_asset.material_data.has_base_color_texture = material_asset.base_color_texture.is_some();
-        material_asset.material_data.has_metallic_roughness_texture = material_asset.metallic_roughness_texture.is_some();
+        material_asset.material_data.has_base_color_texture =
+            material_asset.base_color_texture.is_some();
+        material_asset.material_data.has_metallic_roughness_texture =
+            material_asset.metallic_roughness_texture.is_some();
         material_asset.material_data.has_normal_texture = material_asset.normal_texture.is_some();
-        material_asset.material_data.has_occlusion_texture = material_asset.occlusion_texture.is_some();
-        material_asset.material_data.has_emissive_texture = material_asset.emissive_texture.is_some();
-
-
+        material_asset.material_data.has_occlusion_texture =
+            material_asset.occlusion_texture.is_some();
+        material_asset.material_data.has_emissive_texture =
+            material_asset.emissive_texture.is_some();
 
         // pub base_color_texture: Option<Handle<ImageAsset>>,
         // // metalness in B, roughness in G
@@ -676,13 +712,15 @@ fn extract_materials_to_import(
         // pub occlusion_texture: Option<Handle<ImageAsset>>,
         // pub emissive_texture: Option<Handle<ImageAsset>>,
 
-
         let id = material
             .name()
             .map(|s| GltfObjectId::Name(s.to_string()))
             .unwrap_or(GltfObjectId::Index(material.index().unwrap()));
 
-        let material_to_import = MaterialToImport { id, asset: material_asset };
+        let material_to_import = MaterialToImport {
+            id,
+            asset: material_asset,
+        };
 
         // Verify that we iterate images in order so that our resulting assets are in order
         assert!(material.index().unwrap() == materials_to_import.len());
@@ -744,8 +782,13 @@ fn extract_meshes_to_import(
                 let tex_coords = reader.read_tex_coords(0);
                 let indices = reader.read_indices();
 
-                if let (Some(indices), Some(positions), Some(normals), Some(tangents), Some(tex_coords)) =
-                    (indices, positions, normals, tangents, tex_coords)
+                if let (
+                    Some(indices),
+                    Some(positions),
+                    Some(normals),
+                    Some(tangents),
+                    Some(tex_coords),
+                ) = (indices, positions, normals, tangents, tex_coords)
                 {
                     let part_indices = convert_to_u16_indices(indices);
 
@@ -760,13 +803,15 @@ fn extract_meshes_to_import(
                         let indices_offset = all_indices.len();
 
                         for i in 0..positions.len() {
-                            all_vertices.push(&[MeshVertex {
-                                position: positions[i],
-                                normal: normals[i],
-                                tangent: tangents[i],
-                                tex_coord: tex_coords[i],
-                            }],
-                            1);
+                            all_vertices.push(
+                                &[MeshVertex {
+                                    position: positions[i],
+                                    normal: normals[i],
+                                    tangent: tangents[i],
+                                    tex_coord: tex_coords[i],
+                                }],
+                                1,
+                            );
                         }
 
                         all_indices.push(&part_indices, 1);
@@ -774,13 +819,17 @@ fn extract_meshes_to_import(
                         let vertex_size = all_vertices.len() - vertex_offset;
                         let indices_size = all_indices.len() - indices_offset;
 
-                        let (material, material_instance) = if let Some(material_index) = primitive.material().index() {
+                        let (material, material_instance) = if let Some(material_index) =
+                            primitive.material().index()
+                        {
                             (
                                 material_index_to_handle[material_index].clone(),
-                                material_instance_index_to_handle[material_index].clone()
+                                material_instance_index_to_handle[material_index].clone(),
                             )
                         } else {
-                            return Err(atelier_assets::importer::Error::Boxed(Box::new(GltfImportError::new("A mesh primitive did not have a material"))));
+                            return Err(atelier_assets::importer::Error::Boxed(Box::new(
+                                GltfImportError::new("A mesh primitive did not have a material"),
+                            )));
                         };
 
                         Some(MeshPart {
@@ -789,7 +838,7 @@ fn extract_meshes_to_import(
                             vertex_buffer_offset_in_bytes: vertex_offset as u32,
                             vertex_buffer_size_in_bytes: vertex_size as u32,
                             index_buffer_offset_in_bytes: indices_offset as u32,
-                            index_buffer_size_in_bytes: indices_size as u32
+                            index_buffer_size_in_bytes: indices_size as u32,
                         })
                     } else {
                         log::error!("indices must fit in u16");
@@ -812,13 +861,13 @@ fn extract_meshes_to_import(
         // Vertex Buffer
         //
         let vertex_buffer_asset = BufferAsset {
-            data: all_vertices.into_data()
+            data: all_vertices.into_data(),
         };
 
         let vertex_buffer_id = GltfObjectId::Index(buffers_to_import.len());
         let vertex_buffer_to_import = BufferToImport {
             asset: vertex_buffer_asset,
-            id: vertex_buffer_id.clone()
+            id: vertex_buffer_id.clone(),
         };
 
         let vertex_buffer_uuid = *state
@@ -828,23 +877,25 @@ fn extract_meshes_to_import(
 
         buffers_to_import.push(vertex_buffer_to_import);
 
-        let vertex_buffer_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-            let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(vertex_buffer_uuid)).unwrap();
-            Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
-        });
-
+        let vertex_buffer_handle =
+            SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+                let load_handle = loader_info_provider
+                    .get_load_handle(&AssetRef::Uuid(vertex_buffer_uuid))
+                    .unwrap();
+                Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
+            });
 
         //
         // Index Buffer
         //
         let index_buffer_asset = BufferAsset {
-            data: all_indices.into_data()
+            data: all_indices.into_data(),
         };
 
         let index_buffer_id = GltfObjectId::Index(buffers_to_import.len());
         let index_buffer_to_import = BufferToImport {
             asset: index_buffer_asset,
-            id: index_buffer_id.clone()
+            id: index_buffer_id.clone(),
         };
 
         let index_buffer_uuid = *state
@@ -854,12 +905,13 @@ fn extract_meshes_to_import(
 
         buffers_to_import.push(index_buffer_to_import);
 
-        let index_buffer_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-            let load_handle = loader_info_provider.get_load_handle(&AssetRef::Uuid(index_buffer_uuid)).unwrap();
-            Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
-        });
-
-
+        let index_buffer_handle =
+            SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+                let load_handle = loader_info_provider
+                    .get_load_handle(&AssetRef::Uuid(index_buffer_uuid))
+                    .unwrap();
+                Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
+            });
 
         let asset = MeshAsset {
             mesh_parts,
@@ -872,10 +924,7 @@ fn extract_meshes_to_import(
             .map(|s| GltfObjectId::Name(s.to_string()))
             .unwrap_or(GltfObjectId::Index(mesh.index()));
 
-        let mesh_to_import = MeshToImport {
-            id: mesh_id,
-            asset
-        };
+        let mesh_to_import = MeshToImport { id: mesh_id, asset };
 
         // Verify that we iterate meshes in order so that our resulting assets are in order
         assert!(mesh.index() == meshes_to_import.len());

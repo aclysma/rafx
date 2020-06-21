@@ -8,7 +8,9 @@ use super::ManagedDescriptorSetPool;
 use super::{FrameInFlightIndex, DescriptorSetArc, MAX_FRAMES_IN_FLIGHT};
 use super::DescriptorSetWriteSet;
 use ash::prelude::VkResult;
-use crate::resource_managers::{DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc};
+use crate::resource_managers::{
+    DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc,
+};
 use crate::resource_managers::asset_lookup::{
     LoadedMaterialPass, LoadedAssetLookupSet, LoadedMaterialInstance, LoadedMaterial,
 };
@@ -87,17 +89,11 @@ impl DescriptorSetAllocator {
         let hash = descriptor_set_layout.get_hash().into();
         let device_context = self.device_context.clone();
         let pool = self.pools.entry(hash).or_insert_with(|| {
-            ManagedDescriptorSetPool::new(
-                &device_context,
-                descriptor_set_layout.clone(),
-            )
+            ManagedDescriptorSetPool::new(&device_context, descriptor_set_layout.clone())
         });
 
         // Allocate a descriptor set
-        pool.insert(
-            &self.device_context,
-            write_set,
-        )
+        pool.insert(&self.device_context, write_set)
     }
 
     //TODO: Is creating and immediately modifying causing multiple writes?
@@ -106,14 +102,12 @@ impl DescriptorSetAllocator {
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         write_set: DescriptorSetWriteSet,
     ) -> VkResult<DynDescriptorSet> {
-        let descriptor_set = self.create_descriptor_set(descriptor_set_layout, write_set.clone())?;
+        let descriptor_set =
+            self.create_descriptor_set(descriptor_set_layout, write_set.clone())?;
 
         // Create the DynDescriptorSet
-        let dyn_descriptor_set = DynDescriptorSet::new(
-            descriptor_set_layout,
-            descriptor_set,
-            write_set,
-        );
+        let dyn_descriptor_set =
+            DynDescriptorSet::new(descriptor_set_layout, descriptor_set, write_set);
 
         Ok(dyn_descriptor_set)
     }
@@ -122,11 +116,10 @@ impl DescriptorSetAllocator {
         &mut self,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
     ) -> VkResult<DynDescriptorSet> {
-        let write_set = super::create_uninitialized_write_set_for_layout(&descriptor_set_layout.get_raw().descriptor_set_layout_def);
-        self.do_create_dyn_descriptor_set(
-            descriptor_set_layout,
-            write_set,
-        )
+        let write_set = super::create_uninitialized_write_set_for_layout(
+            &descriptor_set_layout.get_raw().descriptor_set_layout_def,
+        );
+        self.do_create_dyn_descriptor_set(descriptor_set_layout, write_set)
     }
 
     pub fn create_dyn_pass_material_instance_uninitialized(
@@ -141,8 +134,7 @@ impl DescriptorSetAllocator {
             .pipeline_layout_def
             .descriptor_set_layouts;
         for (layout_def, layout) in layout_defs.iter().zip(&pass.descriptor_set_layouts) {
-            let dyn_descriptor_set =
-                self.create_dyn_descriptor_set_uninitialized(&layout)?;
+            let dyn_descriptor_set = self.create_dyn_descriptor_set_uninitialized(&layout)?;
             dyn_descriptor_sets.push(dyn_descriptor_set);
         }
 
@@ -160,10 +152,7 @@ impl DescriptorSetAllocator {
 
         for (layout_index, write_set) in write_sets.into_iter().enumerate() {
             let layout = &pass.descriptor_set_layouts[layout_index];
-            let dyn_descriptor_set = self.do_create_dyn_descriptor_set(
-                layout,
-                write_set
-            )?;
+            let dyn_descriptor_set = self.do_create_dyn_descriptor_set(layout, write_set)?;
             dyn_descriptor_sets.push(dyn_descriptor_set);
         }
 
@@ -193,11 +182,13 @@ impl DescriptorSetAllocator {
         material_instance: &LoadedMaterialInstance,
     ) -> VkResult<DynMaterialInstance> {
         let mut passes = Vec::with_capacity(material.passes.len());
-        for (pass, write_sets) in material.passes.iter().zip(material_instance.descriptor_set_writes.clone()) {
-            let dyn_pass_material_instance = self.create_dyn_pass_material_instance_from_asset(
-                pass,
-                write_sets
-            )?;
+        for (pass, write_sets) in material
+            .passes
+            .iter()
+            .zip(material_instance.descriptor_set_writes.clone())
+        {
+            let dyn_pass_material_instance =
+                self.create_dyn_pass_material_instance_from_asset(pass, write_sets)?;
             passes.push(dyn_pass_material_instance);
         }
 

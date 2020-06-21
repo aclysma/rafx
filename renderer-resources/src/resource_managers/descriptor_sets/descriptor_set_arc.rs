@@ -62,9 +62,7 @@ impl DescriptorSetArc {
         }
     }
 
-    pub fn get(
-        &self,
-    ) -> vk::DescriptorSet {
+    pub fn get(&self) -> vk::DescriptorSet {
         self.inner.descriptor_set
     }
 }

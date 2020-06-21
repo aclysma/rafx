@@ -37,7 +37,6 @@ pub struct VkBloomCombineRenderPass {
     // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
-
 }
 
 impl VkBloomCombineRenderPass {
@@ -45,7 +44,7 @@ impl VkBloomCombineRenderPass {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         pipeline_info: PipelineSwapchainInfo,
-        bloom_resources: &VkBloomRenderPassResources
+        bloom_resources: &VkBloomRenderPassResources,
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -116,10 +115,7 @@ impl VkBloomCombineRenderPass {
                     .height(swapchain_info.extents.height)
                     .layers(1);
 
-                unsafe {
-                    logical_device
-                        .create_framebuffer(&frame_buffer_create_info, None)
-                }
+                unsafe { logical_device.create_framebuffer(&frame_buffer_create_info, None) }
             })
             .collect()
     }
@@ -145,17 +141,15 @@ impl VkBloomCombineRenderPass {
         command_buffer: vk::CommandBuffer,
         pipeline: vk::Pipeline,
         pipeline_layout: vk::PipelineLayout,
-        descriptor_set: vk::DescriptorSet
+        descriptor_set: vk::DescriptorSet,
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
-        let clear_values = [
-            vk::ClearValue {
-                color: vk::ClearColorValue {
-                    float32: [0.0, 0.0, 0.0, 1.0],
-                },
+        let clear_values = [vk::ClearValue {
+            color: vk::ClearColorValue {
+                float32: [0.0, 0.0, 0.0, 1.0],
             },
-        ];
+        }];
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(renderpass)
@@ -189,16 +183,10 @@ impl VkBloomCombineRenderPass {
                 pipeline_layout,
                 0,
                 &[descriptor_set],
-                &[]
+                &[],
             );
 
-            logical_device.cmd_draw(
-                command_buffer,
-                3,
-                1,
-                0,
-                0,
-            );
+            logical_device.cmd_draw(command_buffer, 3, 1, 0, 0);
 
             logical_device.cmd_end_render_pass(command_buffer);
             logical_device.end_command_buffer(command_buffer)
@@ -218,7 +206,7 @@ impl VkBloomCombineRenderPass {
             self.command_buffers[present_index],
             self.pipeline_info.pipeline.get_raw().pipelines[0],
             self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
-            descriptor_set
+            descriptor_set,
         )
     }
 }
@@ -239,4 +227,3 @@ impl Drop for VkBloomCombineRenderPass {
         log::trace!("destroyed VkSpriteRenderPass");
     }
 }
-

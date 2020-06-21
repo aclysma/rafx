@@ -1,5 +1,3 @@
-
-
 mod render_nodes;
 pub use render_nodes::GenericRenderNodeHandle;
 pub use render_nodes::RenderNodeSet;

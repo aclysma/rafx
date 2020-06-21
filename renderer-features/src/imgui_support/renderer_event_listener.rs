@@ -52,13 +52,9 @@ impl ImguiRenderEventListener {
         present_index: usize,
         draw_data: Option<&ImGuiDrawData>,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
-
         let renderpass = self.imgui_renderpass.as_mut().unwrap();
 
-        renderpass.update(
-            draw_data,
-            present_index as usize,
-        )?;
+        renderpass.update(draw_data, present_index as usize)?;
 
         Ok(vec![renderpass.command_buffers[present_index].clone()])
     }

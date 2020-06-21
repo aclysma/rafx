@@ -31,13 +31,13 @@ use crate::assets::pipeline::MaterialInstanceAsset;
 #[repr(C)]
 pub struct GltfMaterialData {
     // Using f32 arrays for serde support
-    pub base_color_factor: [f32; 4], // default: 1,1,1,1
-    pub emissive_factor: [f32; 3], // default: 0,0,0
-    pub metallic_factor: f32, //default: 1,
-    pub roughness_factor: f32, // default: 1,
-    pub normal_texture_scale: f32, // default: 1
+    pub base_color_factor: [f32; 4],     // default: 1,1,1,1
+    pub emissive_factor: [f32; 3],       // default: 0,0,0
+    pub metallic_factor: f32,            //default: 1,
+    pub roughness_factor: f32,           // default: 1,
+    pub normal_texture_scale: f32,       // default: 1
     pub occlusion_texture_strength: f32, // default 1
-    pub alpha_cutoff: f32, // default 0.5
+    pub alpha_cutoff: f32,               // default 0.5
 
     pub has_base_color_texture: bool,
     pub has_metallic_roughness_texture: bool,
@@ -76,7 +76,11 @@ impl Into<GltfMaterialDataShaderParam> for GltfMaterialData {
             occlusion_texture_strength: self.occlusion_texture_strength,
             alpha_cutoff: self.alpha_cutoff,
             has_base_color_texture: if self.has_base_color_texture { 1 } else { 0 },
-            has_metallic_roughness_texture: if self.has_metallic_roughness_texture { 1 } else { 0 },
+            has_metallic_roughness_texture: if self.has_metallic_roughness_texture {
+                1
+            } else {
+                0
+            },
             has_normal_texture: if self.has_normal_texture { 1 } else { 0 },
             has_occlusion_texture: if self.has_occlusion_texture { 1 } else { 0 },
             has_emissive_texture: if self.has_emissive_texture { 1 } else { 0 },
@@ -89,13 +93,13 @@ impl Into<GltfMaterialDataShaderParam> for GltfMaterialData {
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct GltfMaterialDataShaderParam {
-    pub base_color_factor: glam::Vec4, // default: 1,1,1,1
-    pub emissive_factor: glam::Vec3, // default: 0,0,0
-    pub metallic_factor: f32, //default: 1,
-    pub roughness_factor: f32, // default: 1,
-    pub normal_texture_scale: f32, // default: 1
+    pub base_color_factor: glam::Vec4,   // default: 1,1,1,1
+    pub emissive_factor: glam::Vec3,     // default: 0,0,0
+    pub metallic_factor: f32,            //default: 1,
+    pub roughness_factor: f32,           // default: 1,
+    pub normal_texture_scale: f32,       // default: 1
     pub occlusion_texture_strength: f32, // default 1
-    pub alpha_cutoff: f32, // default 0.5
+    pub alpha_cutoff: f32,               // default 0.5
 
     pub has_base_color_texture: u32,
     pub has_metallic_roughness_texture: u32,
@@ -122,7 +126,6 @@ pub struct GltfMaterialAsset {
     pub normal_texture: Option<Handle<ImageAsset>>,
     pub occlusion_texture: Option<Handle<ImageAsset>>,
     pub emissive_texture: Option<Handle<ImageAsset>>,
-
     // We would need to change the pipeline for these
     // double_sided: bool, // defult false
     // alpha_mode: String, // OPAQUE, MASK, BLEND
@@ -156,5 +159,5 @@ pub struct MeshPart {
 pub struct MeshAsset {
     pub mesh_parts: Vec<MeshPart>,
     pub vertex_buffer: Handle<BufferAsset>, //Vec<MeshVertex>,
-    pub index_buffer: Handle<BufferAsset>, //Vec<u16>,
+    pub index_buffer: Handle<BufferAsset>,  //Vec<u16>,
 }

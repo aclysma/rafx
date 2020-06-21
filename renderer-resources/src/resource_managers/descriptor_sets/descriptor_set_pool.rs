@@ -65,7 +65,11 @@ impl ManagedDescriptorSetPool {
         // in the allocator callback
         //
         let mut descriptor_counts = vec![0; dsc::DescriptorType::count()];
-        for desc in &descriptor_set_layout.get_raw().descriptor_set_layout_def.descriptor_set_layout_bindings {
+        for desc in &descriptor_set_layout
+            .get_raw()
+            .descriptor_set_layout_def
+            .descriptor_set_layout_bindings
+        {
             let ty: vk::DescriptorType = desc.descriptor_type.into();
             descriptor_counts[ty.as_raw() as usize] += MAX_DESCRIPTORS_PER_POOL;
         }
@@ -96,7 +100,11 @@ impl ManagedDescriptorSetPool {
         );
 
         let mut buffer_infos = Vec::new();
-        for binding in &descriptor_set_layout.get_raw().descriptor_set_layout_def.descriptor_set_layout_bindings {
+        for binding in &descriptor_set_layout
+            .get_raw()
+            .descriptor_set_layout_def
+            .descriptor_set_layout_bindings
+        {
             if let Some(per_descriptor_size) = binding.internal_buffer_per_descriptor_size {
                 // 256 is the max allowed by the vulkan spec but we can improve this by using the
                 // actual hardware value given by device limits
@@ -175,7 +183,10 @@ impl ManagedDescriptorSetPool {
         for dropped in self.drop_rx.try_iter() {
             self.pending_drops.push_back(PendingDescriptorSetDrop {
                 slab_key: dropped,
-                live_until_frame: super::add_to_frame_in_flight_index(frame_in_flight_index, MAX_FRAMES_IN_FLIGHT as u32)
+                live_until_frame: super::add_to_frame_in_flight_index(
+                    frame_in_flight_index,
+                    MAX_FRAMES_IN_FLIGHT as u32,
+                ),
             });
         }
 
@@ -202,8 +213,7 @@ impl ManagedDescriptorSetPool {
         }
 
         // Drain any drops that have expired
-        self.pending_drops
-            .drain(0..pending_drops_to_drain);
+        self.pending_drops.drain(0..pending_drops_to_drain);
 
         // Commit pending writes/removes, rotate to the descriptor set for the next frame
         for chunk in &mut self.chunks {

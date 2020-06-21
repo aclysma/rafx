@@ -45,9 +45,11 @@ pub enum ImGuiDrawCmd {
 impl From<imgui::DrawCmd> for ImGuiDrawCmd {
     fn from(draw_cmd: DrawCmd) -> Self {
         match draw_cmd {
-            imgui::DrawCmd::Elements { count, cmd_params} => ImGuiDrawCmd::Elements { count, cmd_params },
+            imgui::DrawCmd::Elements { count, cmd_params } => {
+                ImGuiDrawCmd::Elements { count, cmd_params }
+            }
             imgui::DrawCmd::ResetRenderState => ImGuiDrawCmd::ResetRenderState,
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 }
@@ -76,23 +78,25 @@ pub struct ImGuiDrawData {
     pub total_vtx_count: i32,
     pub display_pos: [f32; 2],
     pub display_size: [f32; 2],
-    pub framebuffer_scale: [f32; 2]
+    pub framebuffer_scale: [f32; 2],
 }
 
 impl ImGuiDrawData {
     pub fn new(draw_data: &imgui::DrawData) -> Self {
+        let draw_lists: Vec<_> = draw_data
+            .draw_lists()
+            .map(|draw_list| {
+                let vertex_buffer: Vec<_> = draw_list.vtx_buffer().iter().map(|x| *x).collect();
+                let index_buffer: Vec<_> = draw_list.idx_buffer().iter().map(|x| *x).collect();
+                let command_buffer: Vec<_> = draw_list.commands().map(|x| x.into()).collect();
 
-        let draw_lists : Vec<_> = draw_data.draw_lists().map(|draw_list| {
-            let vertex_buffer : Vec<_> = draw_list.vtx_buffer().iter().map(|x| *x).collect();
-            let index_buffer : Vec<_> = draw_list.idx_buffer().iter().map(|x| *x).collect();
-            let command_buffer : Vec<_> = draw_list.commands().map(|x| x.into()).collect();
-
-            ImGuiDrawList {
-                vertex_buffer,
-                index_buffer,
-                command_buffer
-            }
-        }).collect();
+                ImGuiDrawList {
+                    vertex_buffer,
+                    index_buffer,
+                    command_buffer,
+                }
+            })
+            .collect();
 
         ImGuiDrawData {
             draw_lists,

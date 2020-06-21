@@ -1,5 +1,7 @@
 use crate::features::sprite::{SpriteRenderFeature, SpriteDrawCall};
-use renderer_nodes::{RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView};
+use renderer_nodes::{
+    RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
+};
 use crate::RenderJobWriteContext;
 use renderer_shell_vulkan::{VkBuffer, VkBufferRaw};
 use std::mem::ManuallyDrop;
@@ -88,7 +90,6 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
                 0,
             );
 
-
             // for draw_call in &self.draw_calls {
             //     // Bind per-draw-call data (i.e. texture)
             //     logical_device.cmd_bind_descriptor_sets(
@@ -117,7 +118,6 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
         _write_context: &mut RenderJobWriteContext,
         view: &RenderView,
     ) {
-
     }
 
     fn feature_debug_name(&self) -> &'static str {

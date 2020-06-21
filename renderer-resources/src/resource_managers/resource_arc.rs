@@ -14,16 +14,16 @@ pub(super) struct ResourceId(pub(super) u64);
 //
 #[derive(Clone)]
 pub(super) struct ResourceWithHash<ResourceT>
-    where
-        ResourceT: Clone,
+where
+    ResourceT: Clone,
 {
     pub(super) resource: ResourceT,
     pub(super) resource_hash: ResourceId,
 }
 
 impl<ResourceT> std::fmt::Debug for ResourceWithHash<ResourceT>
-    where
-        ResourceT: std::fmt::Debug + Clone,
+where
+    ResourceT: std::fmt::Debug + Clone,
 {
     fn fmt(
         &self,
@@ -37,16 +37,16 @@ impl<ResourceT> std::fmt::Debug for ResourceWithHash<ResourceT>
 }
 
 struct ResourceArcInner<ResourceT>
-    where
-        ResourceT: Clone,
+where
+    ResourceT: Clone,
 {
     resource: ResourceWithHash<ResourceT>,
     drop_tx: Sender<ResourceWithHash<ResourceT>>,
 }
 
 impl<ResourceT> Drop for ResourceArcInner<ResourceT>
-    where
-        ResourceT: Clone,
+where
+    ResourceT: Clone,
 {
     fn drop(&mut self) {
         self.drop_tx.send(self.resource.clone());
@@ -54,8 +54,8 @@ impl<ResourceT> Drop for ResourceArcInner<ResourceT>
 }
 
 impl<ResourceT> std::fmt::Debug for ResourceArcInner<ResourceT>
-    where
-        ResourceT: std::fmt::Debug + Clone,
+where
+    ResourceT: std::fmt::Debug + Clone,
 {
     fn fmt(
         &self,
@@ -69,15 +69,15 @@ impl<ResourceT> std::fmt::Debug for ResourceArcInner<ResourceT>
 
 #[derive(Clone)]
 pub struct WeakResourceArc<ResourceT>
-    where
-        ResourceT: Clone,
+where
+    ResourceT: Clone,
 {
     inner: Weak<ResourceArcInner<ResourceT>>,
 }
 
 impl<ResourceT> WeakResourceArc<ResourceT>
-    where
-        ResourceT: Clone,
+where
+    ResourceT: Clone,
 {
     pub fn upgrade(&self) -> Option<ResourceArc<ResourceT>> {
         if let Some(upgrade) = self.inner.upgrade() {
@@ -89,8 +89,8 @@ impl<ResourceT> WeakResourceArc<ResourceT>
 }
 
 impl<ResourceT> std::fmt::Debug for WeakResourceArc<ResourceT>
-    where
-        ResourceT: std::fmt::Debug + Clone,
+where
+    ResourceT: std::fmt::Debug + Clone,
 {
     fn fmt(
         &self,
@@ -104,15 +104,15 @@ impl<ResourceT> std::fmt::Debug for WeakResourceArc<ResourceT>
 
 #[derive(Clone)]
 pub struct ResourceArc<ResourceT>
-    where
-        ResourceT: Clone,
+where
+    ResourceT: Clone,
 {
     inner: Arc<ResourceArcInner<ResourceT>>,
 }
 
 impl<ResourceT> ResourceArc<ResourceT>
-    where
-        ResourceT: Clone,
+where
+    ResourceT: Clone,
 {
     pub(super) fn new(
         resource: ResourceT,
@@ -134,7 +134,9 @@ impl<ResourceT> ResourceArc<ResourceT>
         self.inner.resource.borrow().resource.clone()
     }
 
-    pub(super) fn get_hash(&self) -> ResourceId { self.inner.resource.resource_hash }
+    pub(super) fn get_hash(&self) -> ResourceId {
+        self.inner.resource.resource_hash
+    }
 
     pub fn downgrade(&self) -> WeakResourceArc<ResourceT> {
         let inner = Arc::downgrade(&self.inner);
@@ -143,8 +145,8 @@ impl<ResourceT> ResourceArc<ResourceT>
 }
 
 impl<ResourceT> std::fmt::Debug for ResourceArc<ResourceT>
-    where
-        ResourceT: std::fmt::Debug + Clone,
+where
+    ResourceT: std::fmt::Debug + Clone,
 {
     fn fmt(
         &self,

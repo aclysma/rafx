@@ -12,7 +12,7 @@ use serde::export::Formatter;
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum ColorSpace {
     Srgb,
-    Linear
+    Linear,
 }
 
 impl Into<crate::image_utils::ColorSpace> for ColorSpace {

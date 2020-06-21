@@ -22,7 +22,9 @@ impl DescriptorSetWriteElementImageValue {
     pub fn get_raw(&self) -> vk::ImageView {
         match self {
             DescriptorSetWriteElementImageValue::Raw(view) => *view,
-            DescriptorSetWriteElementImageValue::Resource(resource) => resource.get_raw().image_view
+            DescriptorSetWriteElementImageValue::Resource(resource) => {
+                resource.get_raw().image_view
+            }
         }
     }
 }
@@ -47,13 +49,13 @@ pub struct DescriptorSetWriteElementBufferDataBufferRef {
 #[derive(Debug, Clone)]
 pub enum DescriptorSetWriteElementBufferData {
     BufferRef(DescriptorSetWriteElementBufferDataBufferRef),
-    Data(Vec<u8>)
+    Data(Vec<u8>),
 }
 
 // The information needed to write buffer metadata for a descriptor
 #[derive(Debug, Clone, Default)]
 pub struct DescriptorSetWriteElementBuffer {
-    pub buffer: Option<DescriptorSetWriteElementBufferData>
+    pub buffer: Option<DescriptorSetWriteElementBufferData>,
 }
 
 // All the data required to overwrite a descriptor. The image/buffer infos will be populated depending
@@ -92,7 +94,10 @@ pub struct DescriptorSetWriteSet {
 }
 
 impl DescriptorSetWriteSet {
-    pub fn copy_from(&mut self, other: &DescriptorSetWriteSet) {
+    pub fn copy_from(
+        &mut self,
+        other: &DescriptorSetWriteSet,
+    ) {
         for (k, v) in other.elements.iter() {
             self.elements.insert(k.clone(), v.clone());
         }
@@ -168,7 +173,10 @@ pub fn apply_material_instance_slot_assignment(
                 if what_to_bind.bind_images {
                     if let Some(image) = &slot_assignment.image {
                         let loaded_image = assets.images.get_latest(image.load_handle()).unwrap();
-                        write_image.image_view = Some(DescriptorSetWriteElementImageValue::Resource(loaded_image.image_view.clone()));
+                        write_image.image_view =
+                            Some(DescriptorSetWriteElementImageValue::Resource(
+                                loaded_image.image_view.clone(),
+                            ));
                     }
                 }
 
@@ -183,12 +191,12 @@ pub fn apply_material_instance_slot_assignment(
             }
 
             if what_to_bind.bind_buffers {
-                let mut write_buffer = DescriptorSetWriteElementBuffer {
-                    buffer: None
-                };
+                let mut write_buffer = DescriptorSetWriteElementBuffer { buffer: None };
 
                 if let Some(buffer_data) = &slot_assignment.buffer_data {
-                    write_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(buffer_data.clone()));
+                    write_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(
+                        buffer_data.clone(),
+                    ));
                 }
 
                 write.buffer_info = vec![write_buffer];

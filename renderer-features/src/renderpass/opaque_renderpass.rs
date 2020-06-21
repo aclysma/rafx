@@ -22,7 +22,9 @@ use ash::vk::{ShaderStageFlags};
 
 use renderer_base::time::TimeState;
 
-use renderer_resources::resource_managers::{PipelineSwapchainInfo, MeshInfo, DynDescriptorSet, ResourceManager};
+use renderer_resources::resource_managers::{
+    PipelineSwapchainInfo, MeshInfo, DynDescriptorSet, ResourceManager,
+};
 use renderer_assets::assets::gltf::{MeshVertex, MeshAsset};
 use renderer_assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
@@ -87,7 +89,7 @@ impl VkOpaqueRenderPass {
             command_pool,
             command_buffers,
             renderpass: pipeline_info.renderpass.get_raw(),
-            drop_sink: VkCombinedDropSink::new(MAX_FRAMES_IN_FLIGHT as u32)
+            drop_sink: VkCombinedDropSink::new(MAX_FRAMES_IN_FLIGHT as u32),
         })
     }
 
@@ -128,10 +130,7 @@ impl VkOpaqueRenderPass {
                     .height(swapchain_info.extents.height)
                     .layers(1);
 
-                unsafe {
-                    logical_device
-                        .create_framebuffer(&frame_buffer_create_info, None)
-                }
+                unsafe { logical_device.create_framebuffer(&frame_buffer_create_info, None) }
             })
             .collect()
     }
@@ -170,9 +169,9 @@ impl VkOpaqueRenderPass {
             vk::ClearValue {
                 depth_stencil: vk::ClearDepthStencilValue {
                     depth: 1.0,
-                    stencil: 0
-                }
-            }
+                    stencil: 0,
+                },
+            },
         ];
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
@@ -222,7 +221,7 @@ impl VkOpaqueRenderPass {
             &self.command_buffers[present_index],
             prepared_render_data,
             view,
-            write_context_factory
+            write_context_factory,
         )
     }
 }

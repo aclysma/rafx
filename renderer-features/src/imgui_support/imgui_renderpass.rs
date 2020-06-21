@@ -325,18 +325,16 @@ impl VkImGuiRenderPass {
             .rasterization_samples(vk::SampleCountFlags::TYPE_1);
 
         // Applies to the current framebuffer
-        let color_blend_attachment_states = [
-            vk::PipelineColorBlendAttachmentState::builder()
-                .color_write_mask(vk::ColorComponentFlags::all())
-                .blend_enable(true)
-                .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
-                .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
-                .color_blend_op(vk::BlendOp::ADD)
-                .src_alpha_blend_factor(vk::BlendFactor::ONE)
-                .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
-                .alpha_blend_op(vk::BlendOp::ADD)
-                .build(),
-        ];
+        let color_blend_attachment_states = [vk::PipelineColorBlendAttachmentState::builder()
+            .color_write_mask(vk::ColorComponentFlags::all())
+            .blend_enable(true)
+            .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
+            .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+            .color_blend_op(vk::BlendOp::ADD)
+            .src_alpha_blend_factor(vk::BlendFactor::ONE)
+            .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .build()];
 
         // Applies globally
         let color_blend_state_info = vk::PipelineColorBlendStateCreateInfo::builder()
@@ -363,45 +361,37 @@ impl VkImGuiRenderPass {
         swapchain_info: &SwapchainInfo,
         mut f: F,
     ) -> VkResult<()> {
-        let renderpass_attachments = [
-            vk::AttachmentDescription::builder()
-                .format(swapchain_info.surface_format.format)
-                .samples(vk::SampleCountFlags::TYPE_1)
-                .load_op(vk::AttachmentLoadOp::LOAD)
-                .store_op(vk::AttachmentStoreOp::STORE)
-                .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-                .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-                .initial_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-                .build(),
-        ];
+        let renderpass_attachments = [vk::AttachmentDescription::builder()
+            .format(swapchain_info.surface_format.format)
+            .samples(vk::SampleCountFlags::TYPE_1)
+            .load_op(vk::AttachmentLoadOp::LOAD)
+            .store_op(vk::AttachmentStoreOp::STORE)
+            .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+            .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+            .initial_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+            .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+            .build()];
 
-        let color_attachment_refs = [
-            vk::AttachmentReference {
-                attachment: 0,
-                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-            }
-        ];
+        let color_attachment_refs = [vk::AttachmentReference {
+            attachment: 0,
+            layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+        }];
 
-        let subpasses = [
-            vk::SubpassDescription::builder()
-                .color_attachments(&color_attachment_refs)
-                .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-                .build()
-        ];
+        let subpasses = [vk::SubpassDescription::builder()
+            .color_attachments(&color_attachment_refs)
+            .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+            .build()];
 
-        let dependencies = [
-            vk::SubpassDependency::builder()
-                .src_subpass(vk::SUBPASS_EXTERNAL)
-                .dst_subpass(0)
-                .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-                .src_access_mask(vk::AccessFlags::default())
-                .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-                .dst_access_mask(
-                    vk::AccessFlags::COLOR_ATTACHMENT_READ | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-                )
-                .build()
-        ];
+        let dependencies = [vk::SubpassDependency::builder()
+            .src_subpass(vk::SUBPASS_EXTERNAL)
+            .dst_subpass(0)
+            .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+            .src_access_mask(vk::AccessFlags::default())
+            .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+            .dst_access_mask(
+                vk::AccessFlags::COLOR_ATTACHMENT_READ | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+            )
+            .build()];
 
         let renderpass_create_info = vk::RenderPassCreateInfo::builder()
             .attachments(&renderpass_attachments)
@@ -768,7 +758,8 @@ impl VkImGuiRenderPass {
                         vertex_buffer_size,
                     )?;
 
-                    staging_vertex_buffer.write_to_host_visible_buffer(draw_list.vertex_buffer())?;
+                    staging_vertex_buffer
+                        .write_to_host_visible_buffer(draw_list.vertex_buffer())?;
 
                     let vertex_buffer = VkBuffer::new(
                         device_context,
@@ -994,7 +985,7 @@ impl VkImGuiRenderPass {
     ) -> VkResult<()> {
         let framebuffer_scale = match imgui_draw_data {
             Some(data) => data.framebuffer_scale,
-            None => [1.0, 1.0]
+            None => [1.0, 1.0],
         };
 
         let proj = Self::orthographic_rh_gl(

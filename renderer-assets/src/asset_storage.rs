@@ -384,10 +384,7 @@ impl<A: for<'a> serde::Deserialize<'a> + 'static + TypeUuid + Send> TypedStorage
 
             // Trigger the free callback on the load handler, if one exists
             if let Some(load_handler) = &mut self.load_handler {
-                load_handler.free(
-                    load_handle,
-                    asset_state.version,
-                );
+                load_handler.free(load_handle, asset_state.version);
             }
         }
     }

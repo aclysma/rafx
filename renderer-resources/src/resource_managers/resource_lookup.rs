@@ -428,8 +428,10 @@ impl ResourceLookupSet {
         } else {
             log::trace!("Creating sampler\n{:#?}", sampler);
 
-            let resource =
-                renderer_assets::vk_description::create_sampler(self.device_context.device(), sampler)?;
+            let resource = renderer_assets::vk_description::create_sampler(
+                self.device_context.device(),
+                sampler,
+            )?;
 
             log::trace!("Created sampler {:?}", resource);
             let sampler = self.samplers.insert(hash, sampler, resource);
@@ -442,8 +444,9 @@ impl ResourceLookupSet {
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
     ) -> VkResult<ResourceArc<DescriptorSetLayoutResource>> {
         let hash = ResourceHash::from_key(descriptor_set_layout_def);
-        if let Some(descriptor_set_layout) =
-            self.descriptor_set_layouts.get(hash, descriptor_set_layout_def)
+        if let Some(descriptor_set_layout) = self
+            .descriptor_set_layouts
+            .get(hash, descriptor_set_layout_def)
         {
             Ok(descriptor_set_layout)
         } else {
@@ -458,8 +461,11 @@ impl ResourceLookupSet {
 
             // But we also need to put raw vk objects into a format compatible with
             // create_descriptor_set_layout
-            let mut immutable_sampler_vk_objs =
-                Vec::with_capacity(descriptor_set_layout_def.descriptor_set_layout_bindings.len());
+            let mut immutable_sampler_vk_objs = Vec::with_capacity(
+                descriptor_set_layout_def
+                    .descriptor_set_layout_bindings
+                    .len(),
+            );
 
             // Get or create samplers and add them to the two above structures
             for x in &descriptor_set_layout_def.descriptor_set_layout_bindings {
@@ -606,7 +612,7 @@ impl ResourceLookupSet {
                 &pipeline_create_data.shader_module_metas,
                 &pipeline_create_data.shader_module_vk_objs,
                 swapchain_surface_info,
-                pipeline_create_data.renderpass.subpasses.len() as u32
+                pipeline_create_data.renderpass.subpasses.len() as u32,
             )?;
             log::trace!("Created pipelines {:?}", resources);
 

@@ -5,7 +5,9 @@ use renderer_assets::asset_storage::{ResourceLoadHandler};
 use std::marker::PhantomData;
 use crossbeam_channel::{Sender, Receiver};
 use renderer_assets::assets::shader::ShaderAsset;
-use renderer_assets::assets::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
+use renderer_assets::assets::pipeline::{
+    PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset,
+};
 use renderer_assets::assets::image::ImageAsset;
 use atelier_assets::loader::LoadHandle;
 use renderer_assets::assets::gltf::MeshAsset;

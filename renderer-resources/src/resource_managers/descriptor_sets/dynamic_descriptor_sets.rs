@@ -2,11 +2,15 @@ use super::DescriptorSetArc;
 use super::DescriptorSetWriteSet;
 use super::DescriptorSetWriteBuffer;
 use super::DescriptorSetElementKey;
-use crate::resource_managers::resource_lookup::{ImageViewResource, ResourceHash, DescriptorSetLayoutResource};
+use crate::resource_managers::resource_lookup::{
+    ImageViewResource, ResourceHash, DescriptorSetLayoutResource,
+};
 use crate::resource_managers::asset_lookup::SlotNameLookup;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
-use crate::resource_managers::descriptor_sets::descriptor_write_set::{DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue};
+use crate::resource_managers::descriptor_sets::descriptor_write_set::{
+    DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue,
+};
 use ash::vk;
 use crate::resource_managers::{ResourceArc, ResourceManager};
 use std::fmt::Formatter;
@@ -62,7 +66,10 @@ impl DynDescriptorSet {
     }
 
     //TODO: Make a commit-like API so that it's not so easy to forget to call flush
-    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
+    pub fn flush(
+        &mut self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+    ) -> VkResult<()> {
         if !self.pending_write_set.elements.is_empty() {
             let mut pending_write_set = Default::default();
             std::mem::swap(&mut pending_write_set, &mut self.pending_write_set);
@@ -70,12 +77,14 @@ impl DynDescriptorSet {
             self.write_set.copy_from(&pending_write_set);
 
             // create it
-            let new_descriptor_set = descriptor_set_allocator.create_descriptor_set(
-                &self.descriptor_set_layout,
-                pending_write_set
-            )?;
+            let new_descriptor_set = descriptor_set_allocator
+                .create_descriptor_set(&self.descriptor_set_layout, pending_write_set)?;
 
-            log::trace!("DynDescriptorSet::flush {:?} -> {:?}", self.descriptor_set, new_descriptor_set);
+            log::trace!(
+                "DynDescriptorSet::flush {:?} -> {:?}",
+                self.descriptor_set,
+                new_descriptor_set
+            );
             self.descriptor_set = new_descriptor_set;
         }
 
@@ -87,7 +96,11 @@ impl DynDescriptorSet {
         binding_index: u32,
         image_view: ResourceArc<ImageViewResource>,
     ) {
-        self.set_image_array_element(binding_index, 0, DescriptorSetWriteElementImageValue::Resource(image_view))
+        self.set_image_array_element(
+            binding_index,
+            0,
+            DescriptorSetWriteElementImageValue::Resource(image_view),
+        )
     }
 
     pub fn set_image_raw(
@@ -95,7 +108,11 @@ impl DynDescriptorSet {
         binding_index: u32,
         image_view: vk::ImageView,
     ) {
-        self.set_image_array_element(binding_index, 0, DescriptorSetWriteElementImageValue::Raw(image_view))
+        self.set_image_array_element(
+            binding_index,
+            0,
+            DescriptorSetWriteElementImageValue::Raw(image_view),
+        )
     }
 
     pub fn set_image_array_element(
@@ -198,7 +215,10 @@ impl DynPassMaterialInstance {
         &self.descriptor_sets[layout_index as usize]
     }
 
-    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
+    pub fn flush(
+        &mut self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+    ) -> VkResult<()> {
         for set in &mut self.descriptor_sets {
             set.flush(descriptor_set_allocator)?
         }
@@ -257,7 +277,10 @@ impl DynMaterialInstance {
         &self.passes[pass_index as usize]
     }
 
-    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
+    pub fn flush(
+        &mut self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+    ) -> VkResult<()> {
         for pass in &mut self.passes {
             pass.flush(descriptor_set_allocator)?
         }

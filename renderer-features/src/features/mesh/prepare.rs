@@ -1,6 +1,12 @@
 use crate::phases::draw_transparent::DrawTransparentRenderPhase;
-use renderer_nodes::{RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex, FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature};
-use crate::features::mesh::{MeshRenderFeature, ExtractedFrameNodeMeshData, MeshDrawCall, ExtractedViewNodeMeshData, PreparedViewNodeMeshData};
+use renderer_nodes::{
+    RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
+    FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
+};
+use crate::features::mesh::{
+    MeshRenderFeature, ExtractedFrameNodeMeshData, MeshDrawCall, ExtractedViewNodeMeshData,
+    PreparedViewNodeMeshData,
+};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use glam::Vec3;
 use super::MeshCommandWriter;
@@ -35,7 +41,7 @@ impl MeshPrepareJobImpl {
             descriptor_sets_per_view,
             extracted_frame_node_mesh_data,
             extracted_view_node_mesh_data,
-            prepared_view_node_mesh_data
+            prepared_view_node_mesh_data,
         }
     }
 }
@@ -48,7 +54,6 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for M
         _views: &[&RenderView],
         _submit_nodes: &mut FeatureSubmitNodes,
     ) {
-
     }
 
     fn prepare_frame_node(
@@ -58,7 +63,6 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for M
         frame_node_index: u32,
         _submit_nodes: &mut FeatureSubmitNodes,
     ) {
-
     }
 
     fn prepare_view_node(
@@ -70,19 +74,27 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for M
         submit_nodes: &mut ViewSubmitNodes,
     ) {
         let frame_node_index = view_node.frame_node_index();
-        let extracted_frame_data =
-            &self.extracted_frame_node_mesh_data[frame_node_index as usize];
+        let extracted_frame_data = &self.extracted_frame_node_mesh_data[frame_node_index as usize];
 
         if let Some(extracted_frame_data) = extracted_frame_data {
-            if let Some(extracted_view_data) = &self.extracted_view_node_mesh_data[view.view_index() as usize][view_node_index as usize] {
+            if let Some(extracted_view_data) = &self.extracted_view_node_mesh_data
+                [view.view_index() as usize][view_node_index as usize]
+            {
                 let submit_node_id = self.prepared_view_node_mesh_data.len() as u32;
-                self.prepared_view_node_mesh_data.push(PreparedViewNodeMeshData {
-                    per_view_descriptor: self.descriptor_sets_per_view[view.view_index() as usize].clone(),
-                    frame_node_index,
-                    per_instance_descriptor: extracted_view_data.per_instance_descriptor.clone(),
-                });
+                self.prepared_view_node_mesh_data
+                    .push(PreparedViewNodeMeshData {
+                        per_view_descriptor: self.descriptor_sets_per_view
+                            [view.view_index() as usize]
+                            .clone(),
+                        frame_node_index,
+                        per_instance_descriptor: extracted_view_data
+                            .per_instance_descriptor
+                            .clone(),
+                    });
 
-                let distance_from_camera = Vec3::length(extracted_frame_data.world_transform.w_axis().truncate() - view.eye_position());
+                let distance_from_camera = Vec3::length(
+                    extracted_frame_data.world_transform.w_axis().truncate() - view.eye_position(),
+                );
                 submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(
                     submit_node_id,
                     0,
@@ -98,7 +110,6 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for M
         _view: &RenderView,
         _submit_nodes: &mut ViewSubmitNodes,
     ) {
-
     }
 
     fn prepare_frame_finalize(

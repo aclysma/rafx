@@ -3,15 +3,15 @@ use renderer_shell_vulkan::VkDeviceContext;
 use crate::resource_managers::ResourceManager;
 use renderer_assets::asset_resource::AssetResource;
 use renderer_assets::assets::shader::ShaderAsset;
-use renderer_assets::assets::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
+use renderer_assets::assets::pipeline::{
+    PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset,
+};
 use renderer_assets::assets::image::ImageAsset;
 use renderer_assets::assets::buffer::BufferAsset;
 use renderer_assets::assets::gltf::{MeshAsset, GltfMaterialAsset};
 use ash::prelude::VkResult;
 
-pub fn init_renderer_assets(
-    resources: &mut Resources,
-) {
+pub fn init_renderer_assets(resources: &mut Resources) {
     //
     // Create the resource manager
     //
@@ -56,16 +56,13 @@ pub fn init_renderer_assets(
     asset_resource.add_storage::<GltfMaterialAsset>();
 }
 
-pub fn update_renderer_assets(
-    resources: &Resources
-) -> VkResult<()> {
-    resources.get_mut::<ResourceManager>().unwrap().update_resources()
+pub fn update_renderer_assets(resources: &Resources) -> VkResult<()> {
+    resources
+        .get_mut::<ResourceManager>()
+        .unwrap()
+        .update_resources()
 }
 
-pub fn destroy_renderer_assets(
-    resources: &mut Resources,
-) {
+pub fn destroy_renderer_assets(resources: &mut Resources) {
     resources.remove::<ResourceManager>();
 }
-
-

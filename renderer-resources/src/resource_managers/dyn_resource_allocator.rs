@@ -51,15 +51,15 @@ where
 
 #[derive(Clone)]
 pub struct DynResourceAllocator<ResourceT>
-    where
-        ResourceT: VkResource + Clone
+where
+    ResourceT: VkResource + Clone,
 {
-    inner: Arc<DynResourceAllocatorInner<ResourceT>>
+    inner: Arc<DynResourceAllocatorInner<ResourceT>>,
 }
 
 impl<ResourceT> DynResourceAllocator<ResourceT>
-    where
-        ResourceT: VkResource + Clone + std::fmt::Debug,
+where
+    ResourceT: VkResource + Clone + std::fmt::Debug,
 {
     fn new(
         drop_tx: Sender<ResourceWithHash<ResourceT>>,
@@ -71,11 +71,11 @@ impl<ResourceT> DynResourceAllocator<ResourceT>
         let inner = DynResourceAllocatorInner {
             drop_tx,
             next_index: AtomicU64::new(next_index),
-            active_count
+            active_count,
         };
 
         DynResourceAllocator {
-            inner: Arc::new(inner)
+            inner: Arc::new(inner),
         }
     }
 
@@ -86,7 +86,8 @@ impl<ResourceT> DynResourceAllocator<ResourceT>
         // This index is not strictly necessary. However, we do want to be compatible with ResourceArc,
         // and in other usecases a working index is necessary. Since we have the index anyways, we
         // might as well produce some sort of index if only to make logging easier to follow
-        let resource_index = DynResourceIndex(self.inner.next_index.fetch_add(1, Ordering::Relaxed));
+        let resource_index =
+            DynResourceIndex(self.inner.next_index.fetch_add(1, Ordering::Relaxed));
         self.inner.active_count.fetch_add(1, Ordering::Relaxed);
 
         log::trace!(
@@ -126,8 +127,8 @@ impl DynResourceAllocatorSet {
 }
 
 pub struct DynResourceAllocatorManager<ResourceT>
-    where
-        ResourceT: VkResource + Clone,
+where
+    ResourceT: VkResource + Clone,
 {
     drop_sink: VkResourceDropSink<ResourceT>,
     drop_tx: Sender<ResourceWithHash<ResourceT>>,
@@ -150,7 +151,7 @@ where
             drop_tx,
             drop_rx,
             next_allocator_index: AtomicU32::new(0),
-            active_count: Arc::new(AtomicU32::new(0))
+            active_count: Arc::new(AtomicU32::new(0)),
         }
     }
 
@@ -159,7 +160,7 @@ where
         let allocator = DynResourceAllocator::new(
             self.drop_tx.clone(),
             allocator_index,
-            self.active_count.clone()
+            self.active_count.clone(),
         );
         allocator
     }
@@ -239,7 +240,7 @@ impl DynResourceAllocatorManagerSet {
     pub fn create_allocator_set(&self) -> DynResourceAllocatorSet {
         DynResourceAllocatorSet {
             images: self.images.create_allocator(),
-            buffers: self.buffers.create_allocator()
+            buffers: self.buffers.create_allocator(),
         }
     }
 

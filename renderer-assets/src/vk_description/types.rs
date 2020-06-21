@@ -1420,7 +1420,7 @@ impl From<vk::Format> for Format {
             vk::Format::ASTC_12X10_SRGB_BLOCK => Format::ASTC_12X10_SRGB_BLOCK,
             vk::Format::ASTC_12X12_UNORM_BLOCK => Format::ASTC_12X12_UNORM_BLOCK,
             vk::Format::ASTC_12X12_SRGB_BLOCK => Format::ASTC_12X12_SRGB_BLOCK,
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 }
@@ -1452,7 +1452,10 @@ impl AttachmentDescription {
         vk::AttachmentDescription::builder()
             .flags(self.flags.into())
             .format(self.format.as_vk_format(swapchain_surface_info))
-            .samples(self.samples.as_vk_sample_count_flags(swapchain_surface_info))
+            .samples(
+                self.samples
+                    .as_vk_sample_count_flags(swapchain_surface_info),
+            )
             .load_op(self.load_op.into())
             .store_op(self.store_op.into())
             .stencil_load_op(self.stencil_load_op.into())
@@ -1970,7 +1973,10 @@ impl PipelineMultisampleState {
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> vk::PipelineMultisampleStateCreateInfoBuilder {
         let mut builder = vk::PipelineMultisampleStateCreateInfo::builder()
-            .rasterization_samples(self.rasterization_samples.as_vk_sample_count_flags(swapchain_surface_info))
+            .rasterization_samples(
+                self.rasterization_samples
+                    .as_vk_sample_count_flags(swapchain_surface_info),
+            )
             .sample_shading_enable(self.sample_shading_enable)
             .min_sample_shading(self.min_sample_shading.to_f32())
             .alpha_to_coverage_enable(self.alpha_to_coverage_enable)
@@ -2265,7 +2271,6 @@ impl Default for StencilOp {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct StencilOpState {
     pub fail_op: StencilOp,
@@ -2276,7 +2281,6 @@ pub struct StencilOpState {
     pub write_mask: u32,
     pub reference: u32,
 }
-
 
 impl StencilOpState {
     pub fn as_builder(&self) -> vk::StencilOpStateBuilder {
@@ -2309,7 +2313,6 @@ pub struct PipelineDepthStencilState {
     pub front: StencilOpState,
     pub back: StencilOpState,
 }
-
 
 impl PipelineDepthStencilState {
     pub fn as_builder(&self) -> vk::PipelineDepthStencilStateCreateInfoBuilder {

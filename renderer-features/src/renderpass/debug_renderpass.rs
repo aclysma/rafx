@@ -22,7 +22,6 @@ use ash::vk::ShaderStageFlags;
 use renderer_base::time::TimeState;
 use renderer_resources::resource_managers::PipelineSwapchainInfo;
 
-
 pub struct LineList3D {
     pub points: Vec<glam::Vec3>,
     pub color: glam::Vec4,
@@ -134,7 +133,7 @@ impl DebugDraw3DResource {
         center: glam::Vec3,
         radius: f32,
         color: glam::Vec4,
-        segments: u32
+        segments: u32,
     ) {
         let world_tranform = glam::Mat4::from_translation(center);
 
@@ -145,14 +144,7 @@ impl DebugDraw3DResource {
             let x_dir = glam::Vec3::new(fraction.cos(), fraction.sin(), 0.0);
             let y_dir = glam::Vec3::unit_z();
 
-            self.add_circle_xy(
-                center,
-                x_dir,
-                y_dir,
-                radius,
-                color,
-                segments
-            );
+            self.add_circle_xy(center, x_dir, y_dir, radius, color, segments);
         }
 
         // Draw the center horizontal ring
@@ -162,7 +154,7 @@ impl DebugDraw3DResource {
             glam::Vec3::unit_y(),
             radius,
             color,
-            segments
+            segments,
         );
 
         // Draw the off-center horizontal rings
@@ -179,7 +171,7 @@ impl DebugDraw3DResource {
                 glam::Vec3::unit_y(),
                 r,
                 color,
-                segments
+                segments,
             );
 
             self.add_circle_xy(
@@ -188,14 +180,14 @@ impl DebugDraw3DResource {
                 glam::Vec3::unit_y(),
                 r,
                 color,
-                segments
+                segments,
             );
         }
     }
 
     pub fn add_cone(
         &mut self,
-        vertex: glam::Vec3, // (position of the pointy bit)
+        vertex: glam::Vec3,      // (position of the pointy bit)
         base_center: glam::Vec3, // (position of the center of the base of the cone)
         radius: f32,
         color: glam::Vec4,
@@ -208,11 +200,18 @@ impl DebugDraw3DResource {
             let fraction = (index as f32 / segments as f32);
 
             let center = base_center + base_to_vertex * fraction;
-            self.add_circle_xy(center, x_dir, y_dir, radius * (1.0 - fraction), color, segments);
+            self.add_circle_xy(
+                center,
+                x_dir,
+                y_dir,
+                radius * (1.0 - fraction),
+                color,
+                segments,
+            );
         }
 
-        for index in 0..segments/2 {
-            let fraction = (index as f32 / (segments/2) as f32) * std::f32::consts::PI;
+        for index in 0..segments / 2 {
+            let fraction = (index as f32 / (segments / 2) as f32) * std::f32::consts::PI;
             let offset = ((x_dir * fraction.cos()) + (y_dir * fraction.sin())) * radius;
 
             let p0 = base_center + offset;
@@ -232,7 +231,6 @@ impl DebugDraw3DResource {
         self.line_lists.clear();
     }
 }
-
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
@@ -268,7 +266,7 @@ pub struct VkDebugRenderPass {
     pub vertex_buffers: Vec<Vec<ManuallyDrop<VkBuffer>>>,
 
     pub color_target_image: vk::Image,
-    pub color_resolved_image: vk::Image
+    pub color_resolved_image: vk::Image,
 }
 
 impl VkDebugRenderPass {
@@ -324,7 +322,7 @@ impl VkDebugRenderPass {
             command_buffers,
             vertex_buffers,
             color_target_image,
-            color_resolved_image
+            color_resolved_image,
         })
     }
 
@@ -358,8 +356,7 @@ impl VkDebugRenderPass {
         swapchain_image_views
             .iter()
             .map(|&swapchain_image_view| {
-                let framebuffer_attachments =
-                    vec![color_target_image_view, depth_image_view];
+                let framebuffer_attachments = vec![color_target_image_view, depth_image_view];
 
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
@@ -368,10 +365,7 @@ impl VkDebugRenderPass {
                     .height(swapchain_info.extents.height)
                     .layers(1);
 
-                unsafe {
-                    logical_device
-                        .create_framebuffer(&frame_buffer_create_info, None)
-                }
+                unsafe { logical_device.create_framebuffer(&frame_buffer_create_info, None) }
             })
             .collect()
     }
@@ -414,8 +408,8 @@ impl VkDebugRenderPass {
             vk::ClearValue {
                 depth_stencil: vk::ClearDepthStencilValue {
                     depth: 1.0,
-                    stencil: 0
-                }
+                    stencil: 0,
+                },
             },
         ];
 
@@ -451,7 +445,7 @@ impl VkDebugRenderPass {
             for vertex_pos in &line_list.points {
                 vertex_list.push(DebugVertex {
                     pos: (*vertex_pos).into(),
-                    color: line_list.color.into()
+                    color: line_list.color.into(),
                 });
             }
 
@@ -545,7 +539,7 @@ impl VkDebugRenderPass {
                     *command_buffer,
                     color_target_image,
                     color_resolved_image,
-                    swapchain_info.extents
+                    swapchain_info.extents,
                 );
             }
 
@@ -558,7 +552,7 @@ impl VkDebugRenderPass {
         command_buffer: vk::CommandBuffer,
         color_target_image: vk::Image,
         color_resolved_image: vk::Image,
-        image_extents: vk::Extent2D
+        image_extents: vk::Extent2D,
     ) {
         // Convert output of renderpass from SHADER_READ_ONLY_OPTIMAL to TRANSFER_SRC_OPTIMAL
         Self::add_image_barrier(
@@ -566,7 +560,7 @@ impl VkDebugRenderPass {
             command_buffer,
             color_target_image,
             vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-            vk::ImageLayout::TRANSFER_SRC_OPTIMAL
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
         );
 
         // Convert output of resolve from UNDEFINED to TRANSFER_DST_OPTIMAL
@@ -575,7 +569,7 @@ impl VkDebugRenderPass {
             command_buffer,
             color_resolved_image,
             vk::ImageLayout::UNDEFINED,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
         );
 
         // Specify that we are resolving the entire image
@@ -603,7 +597,7 @@ impl VkDebugRenderPass {
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
             color_resolved_image,
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            &[*image_resolve]
+            &[*image_resolve],
         );
 
         // Next usage of the renderpass output image will read it as undefined, so we don't need
@@ -615,7 +609,7 @@ impl VkDebugRenderPass {
             command_buffer,
             color_resolved_image,
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         );
     }
 
@@ -668,7 +662,7 @@ impl VkDebugRenderPass {
             &descriptor_set_per_pass,
             line_lists,
             self.color_target_image,
-            self.color_resolved_image
+            self.color_resolved_image,
         )
     }
 }

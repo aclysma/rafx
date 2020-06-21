@@ -1,4 +1,3 @@
-
 pub mod renderpass;
 pub mod imgui_support;
 pub mod features;
@@ -26,7 +25,6 @@ use crate::features::mesh::{MeshRenderNodeHandle};
 use renderer_assets::assets::image::ImageAsset;
 use renderer_assets::assets::gltf::MeshAsset;
 use renderer_resources::resource_managers::{ResourceManager, DynResourceAllocatorSet};
-
 
 #[derive(Copy, Clone)]
 pub struct PositionComponent {
@@ -88,22 +86,20 @@ impl RenderJobExtractContext {
             RenderJobExtractContext {
                 world: force_to_static_lifetime(world),
                 resources: force_to_static_lifetime(resources),
-                resource_manager: force_to_static_lifetime(resource_manager)
+                resource_manager: force_to_static_lifetime(resource_manager),
             }
         }
     }
 }
 
 pub struct RenderJobPrepareContext {
-    pub dyn_resource_lookups: DynResourceAllocatorSet
+    pub dyn_resource_lookups: DynResourceAllocatorSet,
 }
 
 impl RenderJobPrepareContext {
-    pub fn new(
-        resource_allocators: DynResourceAllocatorSet,
-    ) -> Self {
+    pub fn new(resource_allocators: DynResourceAllocatorSet) -> Self {
         RenderJobPrepareContext {
-            dyn_resource_lookups: resource_allocators
+            dyn_resource_lookups: resource_allocators,
         }
     }
 }
@@ -111,7 +107,7 @@ impl RenderJobPrepareContext {
 // Used to produce RenderJobWriteContexts per each job
 pub struct RenderJobWriteContextFactory {
     pub device_context: VkDeviceContext,
-    pub dyn_resource_lookups: DynResourceAllocatorSet
+    pub dyn_resource_lookups: DynResourceAllocatorSet,
 }
 
 impl RenderJobWriteContextFactory {
@@ -121,18 +117,18 @@ impl RenderJobWriteContextFactory {
     ) -> Self {
         RenderJobWriteContextFactory {
             device_context,
-            dyn_resource_lookups: resource_allocators
+            dyn_resource_lookups: resource_allocators,
         }
     }
 
     pub fn create_context(
         &self,
-        command_buffer: vk::CommandBuffer
+        command_buffer: vk::CommandBuffer,
     ) -> RenderJobWriteContext {
         RenderJobWriteContext {
             device_context: self.device_context.clone(),
             dyn_resource_lookups: self.dyn_resource_lookups.clone(),
-            command_buffer
+            command_buffer,
         }
     }
 }
@@ -152,11 +148,10 @@ impl RenderJobWriteContext {
         RenderJobWriteContext {
             device_context,
             dyn_resource_lookups: resource_allocators,
-            command_buffer
+            command_buffer,
         }
     }
 }
-
 
 unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
     std::mem::transmute(value)
@@ -164,7 +159,6 @@ unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
 unsafe fn force_to_static_lifetime_mut<T>(value: &mut T) -> &'static mut T {
     std::mem::transmute(value)
 }
-
 
 //
 // Just for demonstration of minimal API

@@ -1,7 +1,12 @@
-use renderer_nodes::{RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle, RenderNodeSet, RenderNodeCount};
+use renderer_nodes::{
+    RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
+    RenderNodeSet, RenderNodeCount,
+};
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use crate::{RenderJobExtractContext, RenderJobWriteContext, DemoPrepareContext, RenderJobPrepareContext};
+use crate::{
+    RenderJobExtractContext, RenderJobWriteContext, DemoPrepareContext, RenderJobPrepareContext,
+};
 use legion::prelude::Entity;
 use renderer_base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
@@ -17,7 +22,9 @@ mod write;
 use write::SpriteCommandWriter;
 use renderer_shell_vulkan::VkDeviceContext;
 use ash::vk;
-use renderer_resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef};
+use renderer_resources::resource_managers::{
+    PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef,
+};
 use renderer_assets::assets::pipeline::MaterialAsset;
 
 /// Per-pass "global" data

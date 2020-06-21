@@ -53,7 +53,7 @@ impl RenderFrameJob {
             Ok(command_buffers) => {
                 // ignore the error, we will receive it when we try to acquire the next image
                 self.frame_in_flight.present(command_buffers.as_slice());
-            },
+            }
             Err(err) => {
                 log::error!("Render thread failed with error {:?}", err);
                 // Pass error on to the next swapchain image acquire call
@@ -62,7 +62,10 @@ impl RenderFrameJob {
         }
 
         let t2 = std::time::Instant::now();
-        log::info!("[async] present took {} ms", (t2 - t1).as_secs_f32() * 1000.0);
+        log::info!(
+            "[async] present took {} ms",
+            (t2 - t1).as_secs_f32() * 1000.0
+        );
     }
 
     fn do_render_async(
@@ -78,7 +81,7 @@ impl RenderFrameJob {
         debug_draw_3d_line_lists: Vec<LineList3D>,
         window_scale_factor: f64,
         imgui_draw_data: Option<ImGuiDrawData>,
-        present_index: usize
+        present_index: usize,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let t0 = std::time::Instant::now();
         //let mut guard = self.inner.lock().unwrap();
@@ -97,14 +100,17 @@ impl RenderFrameJob {
             &render_registry,
         );
         let t1 = std::time::Instant::now();
-        log::info!("[async] render prepare took {} ms", (t1 - t0).as_secs_f32() * 1000.0);
+        log::info!(
+            "[async] render prepare took {} ms",
+            (t1 - t0).as_secs_f32() * 1000.0
+        );
 
         //
         // Write Jobs - called from within renderpasses for now
         //
         let mut write_context_factory = RenderJobWriteContextFactory::new(
             device_context.clone(),
-            prepare_context.dyn_resource_lookups
+            prepare_context.dyn_resource_lookups,
         );
 
         //
@@ -116,14 +122,18 @@ impl RenderFrameJob {
             present_index,
             &*prepared_render_data,
             &main_view,
-            &write_context_factory
+            &write_context_factory,
         )?;
-        command_buffers.push(swapchain_resources.opaque_renderpass.command_buffers[present_index].clone());
+        command_buffers
+            .push(swapchain_resources.opaque_renderpass.command_buffers[present_index].clone());
 
         //
         // Debug Renderpass
         //
-        let descriptor_set_per_pass = swapchain_resources.debug_material_per_frame_data.descriptor_set().get();
+        let descriptor_set_per_pass = swapchain_resources
+            .debug_material_per_frame_data
+            .descriptor_set()
+            .get();
         log::trace!("debug_renderpass update");
 
         swapchain_resources.debug_renderpass.update(
@@ -131,19 +141,24 @@ impl RenderFrameJob {
             descriptor_set_per_pass,
             debug_draw_3d_line_lists,
         )?;
-        command_buffers.push(swapchain_resources.debug_renderpass.command_buffers[present_index].clone());
+        command_buffers
+            .push(swapchain_resources.debug_renderpass.command_buffers[present_index].clone());
 
         //
         // bloom extract
         //
-        let descriptor_set_per_pass = swapchain_resources.bloom_extract_material_dyn_set.descriptor_set().get();
+        let descriptor_set_per_pass = swapchain_resources
+            .bloom_extract_material_dyn_set
+            .descriptor_set()
+            .get();
         log::trace!("bloom_extract_renderpass update");
 
-        swapchain_resources.bloom_extract_renderpass.update(
-            present_index,
-            descriptor_set_per_pass
-        )?;
-        command_buffers.push(swapchain_resources.bloom_extract_renderpass.command_buffers[present_index].clone());
+        swapchain_resources
+            .bloom_extract_renderpass
+            .update(present_index, descriptor_set_per_pass)?;
+        command_buffers.push(
+            swapchain_resources.bloom_extract_renderpass.command_buffers[present_index].clone(),
+        );
 
         //
         // bloom blur
@@ -163,28 +178,35 @@ impl RenderFrameJob {
         //
         // bloom combine
         //
-        let descriptor_set_per_pass = swapchain_resources.bloom_combine_material_dyn_set.descriptor_set().get();
+        let descriptor_set_per_pass = swapchain_resources
+            .bloom_combine_material_dyn_set
+            .descriptor_set()
+            .get();
         log::trace!("bloom_combine_renderpass update");
 
-        swapchain_resources.bloom_combine_renderpass.update(
-            present_index,
-            descriptor_set_per_pass
-        )?;
-        command_buffers.push(swapchain_resources.bloom_combine_renderpass.command_buffers[present_index].clone());
+        swapchain_resources
+            .bloom_combine_renderpass
+            .update(present_index, descriptor_set_per_pass)?;
+        command_buffers.push(
+            swapchain_resources.bloom_combine_renderpass.command_buffers[present_index].clone(),
+        );
 
         //
         // imgui
         //
         {
             log::trace!("imgui_event_listener update");
-            let mut commands =
-                guard.imgui_event_listener
-                    .render(present_index, imgui_draw_data.as_ref())?;
+            let mut commands = guard
+                .imgui_event_listener
+                .render(present_index, imgui_draw_data.as_ref())?;
             command_buffers.append(&mut commands);
         }
 
         let t2 = std::time::Instant::now();
-        log::info!("[async] render write took {} ms", (t2 - t1).as_secs_f32() * 1000.0);
+        log::info!(
+            "[async] render write took {} ms",
+            (t2 - t1).as_secs_f32() * 1000.0
+        );
 
         Ok(command_buffers)
     }

@@ -7,7 +7,10 @@ use ash::prelude::*;
 use ash::vk;
 use renderer_assets::assets::image::ImageAsset;
 use renderer_assets::assets::shader::ShaderAsset;
-use renderer_assets::assets::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, MaterialInstanceSlotAssignment, RenderpassAsset};
+use renderer_assets::assets::pipeline::{
+    PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass,
+    MaterialInstanceSlotAssignment, RenderpassAsset,
+};
 use renderer_assets::vk_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
@@ -72,14 +75,14 @@ use upload::BufferUploadOpResult;
 use upload::PendingImageUpload;
 use upload::PendingBufferUpload;
 use upload::UploadManager;
-use crate::resource_managers::resource_lookup::{
-    PipelineLayoutResource, PipelineResource,
-};
+use crate::resource_managers::resource_lookup::{PipelineLayoutResource, PipelineResource};
 
 pub use resource_lookup::ImageViewResource;
 use renderer_assets::assets::gltf::MeshAsset;
 use renderer_assets::assets::buffer::BufferAsset;
-use crate::resource_managers::asset_lookup::{LoadedBuffer, LoadedMesh, LoadedRenderpass, LoadedMeshPart};
+use crate::resource_managers::asset_lookup::{
+    LoadedBuffer, LoadedMesh, LoadedRenderpass, LoadedMeshPart,
+};
 use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 use crate::resource_managers::descriptor_sets::{DescriptorSetAllocatorManager};
 
@@ -110,14 +113,14 @@ pub struct DescriptorSetInfo {
 
 pub struct MeshPartInfo {
     //pub draw_info: LoadedMeshPart,
-    pub material_instance: Vec<Vec<DescriptorSetArc>>
+    pub material_instance: Vec<Vec<DescriptorSetArc>>,
 }
 
 pub struct MeshInfo {
     pub vertex_buffer: ResourceArc<VkBufferRaw>,
     pub index_buffer: ResourceArc<VkBufferRaw>,
     pub mesh_asset: MeshAsset,
-    pub mesh_parts: Vec<MeshPartInfo>
+    pub mesh_parts: Vec<MeshPartInfo>,
 }
 
 // Information about a descriptor set for a particular frame. Descriptor sets may be updated
@@ -218,15 +221,12 @@ impl ResourceManager {
         &self,
         handle: &Handle<ImageAsset>,
     ) -> Option<ImageInfo> {
-        self
-            .loaded_assets
+        self.loaded_assets
             .images
             .get_committed(handle.load_handle())
-            .map(|loaded_image| {
-                ImageInfo {
-                    image: loaded_image.image.clone(),
-                    image_view: loaded_image.image_view.clone(),
-                }
+            .map(|loaded_image| ImageInfo {
+                image: loaded_image.image.clone(),
+                image_view: loaded_image.image_view.clone(),
             })
     }
 
@@ -285,22 +285,27 @@ impl ResourceManager {
 
     pub fn get_mesh_info(
         &self,
-        handle: &Handle<MeshAsset>
+        handle: &Handle<MeshAsset>,
     ) -> Option<MeshInfo> {
-        self.loaded_assets.meshes.get_committed(handle.load_handle()).map(|loaded_mesh| {
-            let mesh_parts : Vec<_> = loaded_mesh.mesh_parts.iter().map(|x| {
-                MeshPartInfo {
-                    material_instance: x.material_instance.clone()
-                }
-            }).collect();
+        self.loaded_assets
+            .meshes
+            .get_committed(handle.load_handle())
+            .map(|loaded_mesh| {
+                let mesh_parts: Vec<_> = loaded_mesh
+                    .mesh_parts
+                    .iter()
+                    .map(|x| MeshPartInfo {
+                        material_instance: x.material_instance.clone(),
+                    })
+                    .collect();
 
-            MeshInfo {
-                vertex_buffer: loaded_mesh.vertex_buffer.clone(),
-                index_buffer: loaded_mesh.index_buffer.clone(),
-                mesh_asset: loaded_mesh.asset.clone(),
-                mesh_parts
-            }
-        })
+                MeshInfo {
+                    vertex_buffer: loaded_mesh.vertex_buffer.clone(),
+                    index_buffer: loaded_mesh.index_buffer.clone(),
+                    mesh_asset: loaded_mesh.asset.clone(),
+                    mesh_parts,
+                }
+            })
     }
 
     pub fn get_material_instance_info(
@@ -315,7 +320,7 @@ impl ResourceManager {
             .unwrap();
 
         MaterialInstanceInfo {
-            descriptor_sets: resource.material_descriptor_sets.clone()
+            descriptor_sets: resource.material_descriptor_sets.clone(),
         }
     }
 
@@ -502,14 +507,8 @@ impl ResourceManager {
             );
         }
 
-        Self::handle_commit_requests(
-            &mut self.load_queues.meshes,
-            &mut self.loaded_assets.meshes,
-        );
-        Self::handle_free_requests(
-            &mut self.load_queues.meshes,
-            &mut self.loaded_assets.meshes,
-        );
+        Self::handle_commit_requests(&mut self.load_queues.meshes, &mut self.loaded_assets.meshes);
+        Self::handle_free_requests(&mut self.load_queues.meshes, &mut self.loaded_assets.meshes);
     }
 
     fn process_image_load_requests(&mut self) {
@@ -559,7 +558,11 @@ impl ResourceManager {
             match result {
                 BufferUploadOpResult::UploadComplete(load_op, buffer) => {
                     let loaded_asset = self.finish_load_buffer(load_op.load_handle(), buffer);
-                    Self::handle_load_result(load_op, loaded_asset, &mut self.loaded_assets.buffers);
+                    Self::handle_load_result(
+                        load_op,
+                        loaded_asset,
+                        &mut self.loaded_assets.buffers,
+                    );
                 }
                 BufferUploadOpResult::UploadError(load_handle) => {
                     // Don't need to do anything - the uploaded should have triggered an error on the load_op
@@ -570,8 +573,14 @@ impl ResourceManager {
             }
         }
 
-        Self::handle_commit_requests(&mut self.load_queues.buffers, &mut self.loaded_assets.buffers);
-        Self::handle_free_requests(&mut self.load_queues.buffers, &mut self.loaded_assets.buffers);
+        Self::handle_commit_requests(
+            &mut self.load_queues.buffers,
+            &mut self.loaded_assets.buffers,
+        );
+        Self::handle_free_requests(
+            &mut self.load_queues.buffers,
+            &mut self.loaded_assets.buffers,
+        );
     }
 
     fn handle_load_result<LoadedAssetT>(
@@ -595,7 +604,11 @@ impl ResourceManager {
         asset_lookup: &mut AssetLookup<LoadedAssetT>,
     ) {
         for request in load_queues.take_commit_requests() {
-            log::info!("commit asset {:?} {}", request.load_handle, core::any::type_name::<AssetT>());
+            log::info!(
+                "commit asset {:?} {}",
+                request.load_handle,
+                core::any::type_name::<AssetT>()
+            );
             asset_lookup.commit(request.load_handle);
         }
     }
@@ -655,10 +668,7 @@ impl ResourceManager {
     ) -> VkResult<LoadedBuffer> {
         let (buffer_key, buffer) = self.resources.insert_buffer(ManuallyDrop::new(buffer));
 
-        Ok(LoadedBuffer {
-            buffer_key,
-            buffer,
-        })
+        Ok(LoadedBuffer { buffer_key, buffer })
     }
 
     fn load_shader_module(
@@ -710,10 +720,18 @@ impl ResourceManager {
                 .unwrap();
             let renderpass_asset = loaded_renderpass_asset.renderpass_asset.clone();
 
-            let shader_hashes : Vec<_> = pass.shaders.iter().map(|shader| {
-                let shader_module = self.loaded_assets.shader_modules.get_latest(shader.shader_module.load_handle()).unwrap();
-                shader_module.shader_module.get_hash().into()
-            }).collect();
+            let shader_hashes: Vec<_> = pass
+                .shaders
+                .iter()
+                .map(|shader| {
+                    let shader_module = self
+                        .loaded_assets
+                        .shader_modules
+                        .get_latest(shader.shader_module.load_handle())
+                        .unwrap();
+                    shader_module.shader_module.get_hash().into()
+                })
+                .collect();
 
             let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
             let pipeline_create_data = PipelineCreateData::new(
@@ -721,7 +739,7 @@ impl ResourceManager {
                 pipeline_asset,
                 renderpass_asset,
                 pass,
-                shader_hashes
+                shader_hashes,
             )?;
 
             // Will contain the vulkan resources being created per swapchain
@@ -786,9 +804,13 @@ impl ResourceManager {
             .get_latest(material_instance_asset.material.load_handle())
             .unwrap();
 
-        let mut material_instance_descriptor_set_writes = Vec::with_capacity(material_asset.passes.len());
+        let mut material_instance_descriptor_set_writes =
+            Vec::with_capacity(material_asset.passes.len());
 
-        log::trace!("load_material_instance slot assignments\n{:#?}", material_instance_asset.slot_assignments);
+        log::trace!(
+            "load_material_instance slot assignments\n{:#?}",
+            material_instance_asset.slot_assignments
+        );
 
         // This will be references to descriptor sets. Indexed by pass, and then by set within the pass.
         let mut material_descriptor_sets = Vec::with_capacity(material_asset.passes.len());
@@ -801,7 +823,10 @@ impl ResourceManager {
                     &mut self.resources,
                 )?;
 
-            log::trace!("load_material_instance descriptor set write\n{:#?}", pass_descriptor_set_writes);
+            log::trace!(
+                "load_material_instance descriptor set write\n{:#?}",
+                pass_descriptor_set_writes
+            );
 
             // Save the
             material_instance_descriptor_set_writes.push(pass_descriptor_set_writes.clone());
@@ -840,16 +865,27 @@ impl ResourceManager {
         &mut self,
         mesh_asset: &MeshAsset,
     ) -> VkResult<LoadedMesh> {
-
-        let vertex_buffer = self.loaded_assets.buffers.get_latest(mesh_asset.vertex_buffer.load_handle()).unwrap().buffer.clone();
-        let index_buffer = self.loaded_assets.buffers.get_latest(mesh_asset.index_buffer.load_handle()).unwrap().buffer.clone();
+        let vertex_buffer = self
+            .loaded_assets
+            .buffers
+            .get_latest(mesh_asset.vertex_buffer.load_handle())
+            .unwrap()
+            .buffer
+            .clone();
+        let index_buffer = self
+            .loaded_assets
+            .buffers
+            .get_latest(mesh_asset.index_buffer.load_handle())
+            .unwrap()
+            .buffer
+            .clone();
 
         let mut mesh_parts = Vec::with_capacity(mesh_asset.mesh_parts.len());
 
         for part in &mesh_asset.mesh_parts {
             let material_instance_info = self.get_material_instance_info(&part.material_instance);
             mesh_parts.push(LoadedMeshPart {
-                material_instance: material_instance_info.descriptor_sets.clone()
+                material_instance: material_instance_info.descriptor_sets.clone(),
             })
         }
 
@@ -857,7 +893,7 @@ impl ResourceManager {
             vertex_buffer,
             index_buffer,
             asset: mesh_asset.clone(),
-            mesh_parts
+            mesh_parts,
         })
     }
 
@@ -866,8 +902,7 @@ impl ResourceManager {
         descriptor_set_allocator: &mut DescriptorSetAllocator,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
     ) -> VkResult<DynDescriptorSet> {
-        descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(descriptor_set_layout)
+        descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(descriptor_set_layout)
     }
 
     pub fn create_dyn_pass_material_instance_uninitialized(
@@ -882,11 +917,10 @@ impl ResourceManager {
             .get_latest(material.load_handle())
             .unwrap();
 
-        descriptor_set_allocator
-            .create_dyn_pass_material_instance_uninitialized(
-                &material_asset.passes[pass_index as usize],
-                &self.loaded_assets,
-            )
+        descriptor_set_allocator.create_dyn_pass_material_instance_uninitialized(
+            &material_asset.passes[pass_index as usize],
+            &self.loaded_assets,
+        )
     }
 
     pub fn create_dyn_pass_material_instance_from_asset(
@@ -907,11 +941,10 @@ impl ResourceManager {
             .get_latest(material_instance_asset.material.load_handle())
             .unwrap();
 
-        descriptor_set_allocator
-            .create_dyn_pass_material_instance_from_asset(
-                &material_asset.passes[pass_index as usize],
-                material_instance_asset.descriptor_set_writes[pass_index as usize].clone(),
-            )
+        descriptor_set_allocator.create_dyn_pass_material_instance_from_asset(
+            &material_asset.passes[pass_index as usize],
+            material_instance_asset.descriptor_set_writes[pass_index as usize].clone(),
+        )
     }
 
     pub fn create_dyn_material_instance_uninitialized(
@@ -947,10 +980,7 @@ impl ResourceManager {
             .unwrap();
 
         descriptor_set_allocator
-            .create_dyn_material_instance_from_asset(
-                material_asset,
-                material_instance_asset,
-            )
+            .create_dyn_material_instance_from_asset(material_asset, material_instance_asset)
     }
 }
 

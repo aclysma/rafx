@@ -2,8 +2,8 @@ use ash::vk;
 use ash::version::DeviceV1_0;
 use super::{
     DescriptorLayoutBufferSet, DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL,
-    MAX_FRAMES_IN_FLIGHT_PLUS_1, ManagedDescriptorSet, DescriptorSetWriteSet,
-    FrameInFlightIndex, MAX_FRAMES_IN_FLIGHT, DescriptorSetWriteBuffer, DescriptorSetElementKey,
+    MAX_FRAMES_IN_FLIGHT_PLUS_1, ManagedDescriptorSet, DescriptorSetWriteSet, FrameInFlightIndex,
+    MAX_FRAMES_IN_FLIGHT, DescriptorSetWriteBuffer, DescriptorSetElementKey,
 };
 use std::collections::VecDeque;
 use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkResourceDropSink, VkBuffer};
@@ -197,10 +197,15 @@ impl ManagedDescriptorSetPoolChunk {
             //log::trace!("{:#?}", element);
 
             let descriptor_set_index = slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
-            let descriptor_set =
-                self.descriptor_sets[descriptor_set_index as usize];
+            let descriptor_set = self.descriptor_sets[descriptor_set_index as usize];
 
-            log::trace!("Process descriptor set pending_write for {:?} {:?}. layout {:?} set {:?}", slab_key, element_key, self.descriptor_set_layout, descriptor_set);
+            log::trace!(
+                "Process descriptor set pending_write for {:?} {:?}. layout {:?} set {:?}",
+                slab_key,
+                element_key,
+                self.descriptor_set_layout,
+                descriptor_set
+            );
 
             let mut builder = vk::WriteDescriptorSet::builder()
                 .dst_set(descriptor_set)
@@ -230,8 +235,7 @@ impl ManagedDescriptorSetPoolChunk {
                     image_info_builder =
                         image_info_builder.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
                     if let Some(image_view) = &image_info.image_view {
-                        image_info_builder =
-                            image_info_builder.image_view(image_view.get_raw());
+                        image_info_builder = image_info_builder.image_view(image_view.get_raw());
                     }
 
                     // Skip adding samplers if the binding is populated with an immutable sampler
@@ -259,11 +263,12 @@ impl ManagedDescriptorSetPoolChunk {
                                 //     .buffer(buffer.buffer.get_raw())
                                 //     .range(buffer.size)
                                 //     .offset(buffer.offset);
-                            },
+                            }
                             DescriptorSetWriteElementBufferData::Data(data) => {
                                 //TODO: Rebind the buffer if we are no longer bound to the internal buffer, or at
                                 // least fail
-                                let mut buffer = self.buffers.buffer_sets.get_mut(&element_key).unwrap();
+                                let mut buffer =
+                                    self.buffers.buffer_sets.get_mut(&element_key).unwrap();
                                 //assert!(data.len() as u32 <= buffer.buffer_info.per_descriptor_size);
                                 if data.len() as u32 > buffer.buffer_info.per_descriptor_size {
                                     panic!(
@@ -283,13 +288,21 @@ impl ManagedDescriptorSetPoolChunk {
                                     );
                                 }
 
-                                let descriptor_set_index = slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
-                                let offset = buffer.buffer_info.per_descriptor_stride * descriptor_set_index;
+                                let descriptor_set_index =
+                                    slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
+                                let offset =
+                                    buffer.buffer_info.per_descriptor_stride * descriptor_set_index;
 
                                 let buffer = &mut buffer.buffer;
 
-                                log::trace!("Writing {} bytes to internal buffer to set {} at offset {}", data.len(), descriptor_set_index, offset);
-                                buffer.write_to_host_visible_buffer_with_offset(&data, offset as u64);
+                                log::trace!(
+                                    "Writing {} bytes to internal buffer to set {} at offset {}",
+                                    data.len(),
+                                    descriptor_set_index,
+                                    offset
+                                );
+                                buffer
+                                    .write_to_host_visible_buffer_with_offset(&data, offset as u64);
                             }
                         }
                     }

@@ -1,7 +1,12 @@
-use renderer_nodes::{RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle, RenderNodeSet, RenderNodeCount, FrameNodeIndex};
+use renderer_nodes::{
+    RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
+    RenderNodeSet, RenderNodeCount, FrameNodeIndex,
+};
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use crate::{RenderJobExtractContext, RenderJobWriteContext, DemoPrepareContext, RenderJobPrepareContext};
+use crate::{
+    RenderJobExtractContext, RenderJobWriteContext, DemoPrepareContext, RenderJobPrepareContext,
+};
 use legion::prelude::Entity;
 use renderer_base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
@@ -17,11 +22,13 @@ mod write;
 use write::MeshCommandWriter;
 use renderer_shell_vulkan::{VkDeviceContext, VkBufferRaw};
 use ash::vk;
-use renderer_resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef, MeshInfo, ResourceManager, ResourceArc};
+use renderer_resources::resource_managers::{
+    PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef, MeshInfo,
+    ResourceManager, ResourceArc,
+};
 use renderer_assets::assets::pipeline::MaterialAsset;
 use renderer_assets::assets::gltf::MeshAsset;
 use ash::prelude::VkResult;
-
 
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
@@ -29,9 +36,9 @@ use ash::prelude::VkResult;
 pub struct PointLight {
     pub position_ws: glam::Vec3, // +0
     pub position_vs: glam::Vec3, // +16
-    pub color: glam::Vec4, // +32
-    pub range: f32, // +48
-    pub intensity: f32, // +52
+    pub color: glam::Vec4,       // +32
+    pub range: f32,              // +48
+    pub intensity: f32,          // +52
 } // 4*16 = 64 bytes
 
 // Represents the data uploaded to the GPU to represent a single directional light
@@ -40,22 +47,22 @@ pub struct PointLight {
 pub struct DirectionalLight {
     pub direction_ws: glam::Vec3, // +0
     pub direction_vs: glam::Vec3, // +16
-    pub color: glam::Vec4, // +32
-    pub intensity: f32, // +48
+    pub color: glam::Vec4,        // +32
+    pub intensity: f32,           // +48
 } // 4*16 = 64 bytes
 
 // Represents the data uploaded to the GPU to represent a single spot light
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct SpotLight {
-    pub position_ws: glam::Vec3, // +0
-    pub direction_ws: glam::Vec3, // +16
-    pub position_vs: glam::Vec3, // +32
-    pub direction_vs: glam::Vec3, // +48
-    pub color: glam::Vec4, // +64
+    pub position_ws: glam::Vec3,   // +0
+    pub direction_ws: glam::Vec3,  // +16
+    pub position_vs: glam::Vec3,   // +32
+    pub direction_vs: glam::Vec3,  // +48
+    pub color: glam::Vec4,         // +64
     pub spotlight_half_angle: f32, //+80
-    pub range: f32, // +84
-    pub intensity: f32, // +88
+    pub range: f32,                // +84
+    pub intensity: f32,            // +88
 } // 6*16 = 96 bytes
 
 // Represents the data uploaded to the GPU to provide all data necessary to render meshes
@@ -63,19 +70,19 @@ pub struct SpotLight {
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct MeshPerViewShaderParam {
-    pub ambient_light: glam::Vec4, // +0
-    pub point_light_count: u32, // +16
-    pub directional_light_count: u32, // 20
-    pub spot_light_count: u32, // +24
-    pub point_lights: [PointLight; 16], // +32 (64*16 = 1024),
+    pub ambient_light: glam::Vec4,                  // +0
+    pub point_light_count: u32,                     // +16
+    pub directional_light_count: u32,               // 20
+    pub spot_light_count: u32,                      // +24
+    pub point_lights: [PointLight; 16],             // +32 (64*16 = 1024),
     pub directional_lights: [DirectionalLight; 16], // +1056 (64*16 = 1024),
-    pub spot_lights: [SpotLight; 16], // +2080 (96*16 = 1536)
+    pub spot_lights: [SpotLight; 16],               // +2080 (96*16 = 1536)
 } // 3616 bytes
 
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct MeshPerObjectShaderParam {
-    pub model_view: glam::Mat4, // +0
+    pub model_view: glam::Mat4,      // +0
     pub model_view_proj: glam::Mat4, // +64
 } // 128 bytes
 

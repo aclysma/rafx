@@ -1,6 +1,12 @@
 use crate::phases::draw_transparent::DrawTransparentRenderPhase;
-use renderer_nodes::{RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex, FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature};
-use crate::features::sprite::{SpriteRenderFeature, ExtractedSpriteData, QUAD_VERTEX_LIST, QUAD_INDEX_LIST, SpriteDrawCall, SpriteVertex};
+use renderer_nodes::{
+    RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
+    FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
+};
+use crate::features::sprite::{
+    SpriteRenderFeature, ExtractedSpriteData, QUAD_VERTEX_LIST, QUAD_INDEX_LIST, SpriteDrawCall,
+    SpriteVertex,
+};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use glam::Vec3;
 use super::SpriteCommandWriter;
@@ -41,7 +47,9 @@ impl SpritePrepareJobImpl {
     }
 }
 
-impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepareJobImpl {
+impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
+    for SpritePrepareJobImpl
+{
     fn prepare_begin(
         &mut self,
         prepare_context: &RenderJobPrepareContext,
@@ -62,10 +70,10 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
                 let matrix = glam::Mat4::from_translation(sprite.position)
                     * glam::Mat4::from_rotation_z(sprite.rotation * DEG_TO_RAD)
                     * glam::Mat4::from_scale(glam::Vec3::new(
-                    sprite.texture_size.x() * sprite.scale,
-                    sprite.texture_size.y() * sprite.scale,
-                    1.0,
-                ));
+                        sprite.texture_size.x() * sprite.scale,
+                        sprite.texture_size.y() * sprite.scale,
+                        1.0,
+                    ));
 
                 let vertex_buffer_first_element = self.vertex_list.len() as u16;
 
@@ -103,7 +111,6 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
         frame_node_index: u32,
         _submit_nodes: &mut FeatureSubmitNodes,
     ) {
-
     }
 
     fn prepare_view_node(
@@ -123,7 +130,8 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
             if extracted_data.alpha >= 1.0 {
                 submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(frame_node_index, 0, 0.0);
             } else {
-                let distance_from_camera = Vec3::length(extracted_data.position - view.eye_position());
+                let distance_from_camera =
+                    Vec3::length(extracted_data.position - view.eye_position());
                 submit_nodes.add_submit_node::<DrawTransparentRenderPhase>(
                     frame_node_index,
                     0,
@@ -139,7 +147,6 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
         _view: &RenderView,
         _submit_nodes: &mut ViewSubmitNodes,
     ) {
-
     }
 
     fn prepare_frame_finalize(
@@ -163,27 +170,38 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for S
                     vk::BufferUsageFlags::VERTEX_BUFFER,
                     vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
                     vertex_buffer_size,
-                ).unwrap();
+                )
+                .unwrap();
 
-                vertex_buffer.write_to_host_visible_buffer(self.vertex_list.as_slice()).unwrap();
+                vertex_buffer
+                    .write_to_host_visible_buffer(self.vertex_list.as_slice())
+                    .unwrap();
 
-                let vertex_buffer = prepare_context.dyn_resource_lookups.insert_buffer(vertex_buffer);
+                let vertex_buffer = prepare_context
+                    .dyn_resource_lookups
+                    .insert_buffer(vertex_buffer);
                 vertex_buffer
             };
 
             let index_buffer = {
-                let index_buffer_size = self.index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
+                let index_buffer_size =
+                    self.index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
                 let mut index_buffer = VkBuffer::new(
                     &self.device_context,
                     vk_mem::MemoryUsage::CpuToGpu,
                     vk::BufferUsageFlags::INDEX_BUFFER,
                     vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
                     index_buffer_size,
-                ).unwrap();
+                )
+                .unwrap();
 
-                index_buffer.write_to_host_visible_buffer(self.index_list.as_slice()).unwrap();
+                index_buffer
+                    .write_to_host_visible_buffer(self.index_list.as_slice())
+                    .unwrap();
 
-                let index_buffer = prepare_context.dyn_resource_lookups.insert_buffer(index_buffer);
+                let index_buffer = prepare_context
+                    .dyn_resource_lookups
+                    .insert_buffer(index_buffer);
                 index_buffer
             };
 

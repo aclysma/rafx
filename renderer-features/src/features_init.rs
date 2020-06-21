@@ -6,9 +6,7 @@ use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use crate::phases::draw_transparent::DrawTransparentRenderPhase;
 use crate::renderpass::debug_renderpass::DebugDraw3DResource;
 
-pub fn init_renderer_features(
-    resources: &mut Resources,
-) {
+pub fn init_renderer_features(resources: &mut Resources) {
     //
     // Register features/phases
     //
@@ -22,11 +20,7 @@ pub fn init_renderer_features(
     resources.insert(DebugDraw3DResource::new());
 }
 
-pub fn destroy_renderer_features(
-    resources: &mut Resources,
-) {
+pub fn destroy_renderer_features(resources: &mut Resources) {
     resources.remove::<RenderRegistry>();
     resources.remove::<DebugDraw3DResource>();
 }
-
-

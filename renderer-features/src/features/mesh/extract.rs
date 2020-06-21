@@ -1,10 +1,21 @@
-use crate::features::mesh::{ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode, MeshDrawCall, MeshPerObjectShaderParam, ExtractedViewNodeMeshData, MeshPerViewShaderParam};
-use crate::{RenderJobExtractContext, PositionComponent, MeshComponent, RenderJobWriteContext, RenderJobPrepareContext, PointLightComponent, SpotLightComponent, DirectionalLightComponent};
-use renderer_nodes::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
+use crate::features::mesh::{
+    ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode, MeshDrawCall,
+    MeshPerObjectShaderParam, ExtractedViewNodeMeshData, MeshPerViewShaderParam,
+};
+use crate::{
+    RenderJobExtractContext, PositionComponent, MeshComponent, RenderJobWriteContext,
+    RenderJobPrepareContext, PointLightComponent, SpotLightComponent, DirectionalLightComponent,
+};
+use renderer_nodes::{
+    DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
+    RenderFeatureIndex, RenderFeature, PerFrameNode,
+};
 use renderer_base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
 use renderer_shell_vulkan::VkDeviceContext;
-use renderer_resources::resource_managers::{PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef};
+use renderer_resources::resource_managers::{
+    PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef,
+};
 use ash::vk;
 use renderer_assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
@@ -42,7 +53,9 @@ impl MeshExtractJobImpl {
     }
 }
 
-impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext> for MeshExtractJobImpl {
+impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
+    for MeshExtractJobImpl
+{
     fn extract_begin(
         &mut self,
         extract_context: &mut RenderJobExtractContext,
@@ -69,7 +82,10 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         let render_node_index = frame_node.render_node_index();
         let render_node_handle = RawSlabKey::<MeshRenderNode>::new(render_node_index);
 
-        let mesh_nodes = extract_context.resources.get::<MeshRenderNodeSet>().unwrap();
+        let mesh_nodes = extract_context
+            .resources
+            .get::<MeshRenderNodeSet>()
+            .unwrap();
         let mesh_render_node = mesh_nodes.meshes.get(render_node_handle).unwrap();
 
         let position_component = extract_context
@@ -81,33 +97,43 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .get_component::<MeshComponent>(mesh_render_node.entity)
             .unwrap();
 
-        let mesh_info = extract_context.resource_manager.get_mesh_info(&mesh_component.mesh);
+        let mesh_info = extract_context
+            .resource_manager
+            .get_mesh_info(&mesh_component.mesh);
         if mesh_info.is_none() {
             self.extracted_frame_node_mesh_data.push(None);
             return;
         }
         let mesh_info = mesh_info.unwrap();
 
-        let draw_calls : Vec<_> = mesh_info.mesh_asset.mesh_parts.iter().map(|mesh_part| {
-            let material_instance_info = extract_context.resource_manager.get_material_instance_info(&mesh_part.material_instance);
-            let per_material_descriptor = material_instance_info.descriptor_sets[0][1].clone();
-            MeshDrawCall {
-                vertex_buffer_offset_in_bytes: mesh_part.vertex_buffer_offset_in_bytes,
-                vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
-                index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
-                index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
-                per_material_descriptor,
-            }
-        }).collect();
+        let draw_calls: Vec<_> = mesh_info
+            .mesh_asset
+            .mesh_parts
+            .iter()
+            .map(|mesh_part| {
+                let material_instance_info = extract_context
+                    .resource_manager
+                    .get_material_instance_info(&mesh_part.material_instance);
+                let per_material_descriptor = material_instance_info.descriptor_sets[0][1].clone();
+                MeshDrawCall {
+                    vertex_buffer_offset_in_bytes: mesh_part.vertex_buffer_offset_in_bytes,
+                    vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
+                    index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
+                    index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
+                    per_material_descriptor,
+                }
+            })
+            .collect();
 
         let world_transform = glam::Mat4::from_translation(position_component.position);
 
-        self.extracted_frame_node_mesh_data.push(Some(ExtractedFrameNodeMeshData {
-            world_transform,
-            vertex_buffer: mesh_info.vertex_buffer.clone(),
-            index_buffer: mesh_info.index_buffer.clone(),
-            draw_calls,
-        }));
+        self.extracted_frame_node_mesh_data
+            .push(Some(ExtractedFrameNodeMeshData {
+                world_transform,
+                vertex_buffer: mesh_info.vertex_buffer.clone(),
+                index_buffer: mesh_info.index_buffer.clone(),
+                draw_calls,
+            }));
     }
 
     fn extract_view_node(
@@ -117,7 +143,8 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         view_node: PerViewNode,
         view_node_index: u32,
     ) {
-        let frame_node_data = &self.extracted_frame_node_mesh_data[view_node.frame_node_index() as usize];
+        let frame_node_data =
+            &self.extracted_frame_node_mesh_data[view_node.frame_node_index() as usize];
         if frame_node_data.is_none() {
             self.extracted_view_node_mesh_data[view.view_index() as usize].push(None);
             return;
@@ -129,17 +156,25 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
         let per_object_param = MeshPerObjectShaderParam {
             model_view,
-            model_view_proj
+            model_view_proj,
         };
 
-        let layout = extract_context.resource_manager.get_descriptor_set_info(&self.mesh_material, 0, 2);
-        let mut descriptor_set = self.descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout).unwrap();
+        let layout =
+            extract_context
+                .resource_manager
+                .get_descriptor_set_info(&self.mesh_material, 0, 2);
+        let mut descriptor_set = self
+            .descriptor_set_allocator
+            .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
+            .unwrap();
         descriptor_set.set_buffer_data(0, &per_object_param);
         descriptor_set.flush(&mut self.descriptor_set_allocator);
 
-        self.extracted_view_node_mesh_data[view.view_index() as usize].push(Some(ExtractedViewNodeMeshData {
-            per_instance_descriptor: descriptor_set.descriptor_set().clone(),
-        }))
+        self.extracted_view_node_mesh_data[view.view_index() as usize].push(Some(
+            ExtractedViewNodeMeshData {
+                per_instance_descriptor: descriptor_set.descriptor_set().clone(),
+            },
+        ))
     }
 
     fn extract_view_finalize(
@@ -220,12 +255,19 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
         //TODO: We should probably set these up per view (so we can pick the best lights based on
         // the view)
-        let layout = extract_context.resource_manager.get_descriptor_set_info(&self.mesh_material, 0, 0);
-        let mut descriptor_set = self.descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout).unwrap();
+        let layout =
+            extract_context
+                .resource_manager
+                .get_descriptor_set_info(&self.mesh_material, 0, 0);
+        let mut descriptor_set = self
+            .descriptor_set_allocator
+            .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
+            .unwrap();
         descriptor_set.set_buffer_data(0, &per_view_data);
         descriptor_set.flush(&mut self.descriptor_set_allocator);
 
-        self.descriptor_sets_per_view.push(descriptor_set.descriptor_set().clone());
+        self.descriptor_sets_per_view
+            .push(descriptor_set.descriptor_set().clone());
     }
 
     fn extract_frame_finalize(
@@ -237,7 +279,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             self.pipeline_info,
             self.descriptor_sets_per_view,
             self.extracted_frame_node_mesh_data,
-            self.extracted_view_node_mesh_data
+            self.extracted_view_node_mesh_data,
         );
 
         Box::new(DefaultPrepareJob::new(prepare_impl))

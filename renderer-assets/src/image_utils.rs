@@ -26,12 +26,12 @@ use std::sync::{Mutex, Arc};
 #[derive(Copy, Clone, Debug)]
 pub enum ColorSpace {
     Srgb,
-    Linear
+    Linear,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct DecodedTextureMipInfo {
-    pub mip_level_count: u32
+    pub mip_level_count: u32,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -43,7 +43,7 @@ pub enum DecodedTextureMips {
     Runtime(DecodedTextureMipInfo),
 
     // Mips, if any, are already computed and included in the loaded data
-    Precomputed(DecodedTextureMipInfo)
+    Precomputed(DecodedTextureMipInfo),
 }
 
 impl DecodedTextureMips {
@@ -66,12 +66,13 @@ pub struct DecodedTexture {
 }
 
 // Provides default settings for an image that's loaded without metadata specifying mip settings
-pub fn default_mip_settings_for_image(width: u32, height: u32) -> DecodedTextureMips {
+pub fn default_mip_settings_for_image(
+    width: u32,
+    height: u32,
+) -> DecodedTextureMips {
     let max_dimension = std::cmp::max(width, height);
     let mip_level_count = (max_dimension as f32).log2().floor() as u32 + 1;
-    let decoded_texture_mip_info = DecodedTextureMipInfo {
-        mip_level_count
-    };
+    let decoded_texture_mip_info = DecodedTextureMipInfo { mip_level_count };
 
     DecodedTextureMips::Runtime(decoded_texture_mip_info)
 
@@ -249,7 +250,7 @@ pub fn enqueue_load_images(
         let (mip_level_count, generate_mips) = match decoded_texture.mips {
             DecodedTextureMips::None => (1, false),
             DecodedTextureMips::Precomputed(info) => unimplemented!(), //(info.mip_level_count, false),
-            DecodedTextureMips::Runtime(info) => (info.mip_level_count, true)
+            DecodedTextureMips::Runtime(info) => (info.mip_level_count, true),
         };
 
         // Arbitrary, not sure if there is any requirement
@@ -316,7 +317,7 @@ pub fn enqueue_load_images(
                 transfer_queue_family_index,
                 dst_queue_family_index,
                 &image,
-                mip_level_count
+                mip_level_count,
             );
         } else {
             cmd_image_memory_barrier(
@@ -350,7 +351,7 @@ fn generate_mips_for_image(
     transfer_queue_family_index: u32,
     dst_queue_family_index: u32,
     image: &ManuallyDrop<VkImage>,
-    mip_level_count: u32
+    mip_level_count: u32,
 ) {
     let first_mip_range = vk::ImageSubresourceRange::builder()
         .aspect_mask(vk::ImageAspectFlags::COLOR)
@@ -370,7 +371,7 @@ fn generate_mips_for_image(
         vk::PipelineStageFlags::TRANSFER,
         transfer_queue_family_index,
         dst_queue_family_index,
-        &first_mip_range
+        &first_mip_range,
     );
 
     transition_for_mipmap(
@@ -385,7 +386,7 @@ fn generate_mips_for_image(
         vk::PipelineStageFlags::TRANSFER,
         transfer_queue_family_index,
         dst_queue_family_index,
-        &first_mip_range
+        &first_mip_range,
     );
 
     do_generate_mips_for_image(
@@ -393,7 +394,7 @@ fn generate_mips_for_image(
         upload.dst_command_buffer(),
         dst_queue_family_index,
         &image,
-        mip_level_count
+        mip_level_count,
     );
 
     let all_mips_range = vk::ImageSubresourceRange::builder()
@@ -415,7 +416,7 @@ fn generate_mips_for_image(
         vk::PipelineStageFlags::FRAGMENT_SHADER,
         dst_queue_family_index,
         dst_queue_family_index,
-        &all_mips_range
+        &all_mips_range,
     );
 }
 
@@ -447,7 +448,7 @@ fn do_generate_mips_for_image(
                 .x((image.extent.width as i32 >> src_level as i32).max(1))
                 .y((image.extent.height as i32 >> src_level as i32).max(1))
                 .z(1)
-                .build()
+                .build(),
         ];
 
         let dst_subresource = vk::ImageSubresourceLayers::builder()
@@ -461,7 +462,7 @@ fn do_generate_mips_for_image(
                 .x((image.extent.width as i32 >> dst_level as i32).max(1))
                 .y((image.extent.height as i32 >> dst_level as i32).max(1))
                 .z(1)
-                .build()
+                .build(),
         ];
 
         log::trace!("src {:?}", src_offsets[1]);
@@ -472,7 +473,6 @@ fn do_generate_mips_for_image(
             .base_mip_level(dst_level)
             .level_count(1)
             .layer_count(1);
-
 
         log::trace!("  transition to write");
         transition_for_mipmap(
@@ -487,7 +487,7 @@ fn do_generate_mips_for_image(
             vk::PipelineStageFlags::TRANSFER,
             queue_family_index,
             queue_family_index,
-            &mip_subrange
+            &mip_subrange,
         );
 
         let image_blit = vk::ImageBlit::builder()
@@ -505,7 +505,7 @@ fn do_generate_mips_for_image(
                 image.image(),
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                 &[*image_blit],
-                vk::Filter::LINEAR
+                vk::Filter::LINEAR,
             );
         }
 
@@ -522,7 +522,7 @@ fn do_generate_mips_for_image(
             vk::PipelineStageFlags::TRANSFER,
             queue_family_index,
             queue_family_index,
-            &mip_subrange
+            &mip_subrange,
         );
     }
 }

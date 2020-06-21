@@ -1,6 +1,11 @@
 use crate::features::demo::{ExtractedDemoData, DemoRenderNodeSet, DemoRenderFeature, DemoRenderNode};
-use crate::{DemoExtractContext, DemoWriteContext, PositionComponent, DemoComponent, DemoPrepareContext};
-use renderer_nodes::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
+use crate::{
+    DemoExtractContext, DemoWriteContext, PositionComponent, DemoComponent, DemoPrepareContext,
+};
+use renderer_nodes::{
+    DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
+    RenderFeatureIndex, RenderFeature, PerFrameNode,
+};
 use renderer_base::slab::RawSlabKey;
 use crate::features::demo::prepare::DemoPrepareJobImpl;
 
@@ -10,7 +15,9 @@ pub struct DemoExtractJobImpl {
     per_view_data: Vec<Vec<ExtractedDemoData>>,
 }
 
-impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteContext> for DemoExtractJobImpl {
+impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteContext>
+    for DemoExtractJobImpl
+{
     fn extract_begin(
         &mut self,
         _extract_context: &mut DemoExtractContext,
@@ -44,7 +51,10 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
         let render_node_index = frame_node.render_node_index();
         let render_node_handle = RawSlabKey::<DemoRenderNode>::new(render_node_index);
 
-        let demo_nodes = extract_context.resources.get::<DemoRenderNodeSet>().unwrap();
+        let demo_nodes = extract_context
+            .resources
+            .get::<DemoRenderNodeSet>()
+            .unwrap();
         let demo_render_node = demo_nodes.demos.get(render_node_handle).unwrap();
         let position_component = extract_context
             .world

@@ -23,7 +23,7 @@ fn wait_for_asset_to_load<T>(
     asset_handle: &atelier_assets::loader::handle::Handle<T>,
     asset_resource: &mut AssetResource,
     resource_manager: &mut ResourceManager,
-    asset_name: &str
+    asset_name: &str,
 ) {
     loop {
         asset_resource.update();
@@ -33,7 +33,11 @@ fn wait_for_asset_to_load<T>(
                 unreachable!();
             }
             LoadStatus::Loading => {
-                log::info!("blocked waiting for asset to load {} {:?}", asset_name, asset_handle);
+                log::info!(
+                    "blocked waiting for asset to load {} {:?}",
+                    asset_name,
+                    asset_handle
+                );
                 std::thread::sleep(std::time::Duration::from_millis(10));
                 // keep waiting
             }
@@ -51,7 +55,6 @@ fn wait_for_asset_to_load<T>(
     }
 }
 
-
 pub struct GameRendererStaticResources {
     pub sprite_material: Handle<MaterialAsset>,
     pub debug_material: Handle<MaterialAsset>,
@@ -64,7 +67,7 @@ pub struct GameRendererStaticResources {
 impl GameRendererStaticResources {
     pub fn new(
         asset_resource: &mut AssetResource,
-        resource_manager: &mut ResourceManager
+        resource_manager: &mut ResourceManager,
     ) -> VkResult<Self> {
         //
         // Sprite resources
@@ -118,42 +121,42 @@ impl GameRendererStaticResources {
             &sprite_material,
             asset_resource,
             resource_manager,
-            "sprite_material"
+            "sprite_material",
         );
 
         wait_for_asset_to_load(
             &debug_material,
             asset_resource,
             resource_manager,
-            "debub material"
+            "debub material",
         );
 
         wait_for_asset_to_load(
             &bloom_extract_material,
             asset_resource,
             resource_manager,
-            "bloom extract material"
+            "bloom extract material",
         );
 
         wait_for_asset_to_load(
             &bloom_blur_material,
             asset_resource,
             resource_manager,
-            "bloom blur material"
+            "bloom blur material",
         );
 
         wait_for_asset_to_load(
             &bloom_combine_material,
             asset_resource,
             resource_manager,
-            "bloom combine material"
+            "bloom combine material",
         );
 
         wait_for_asset_to_load(
             &mesh_material,
             asset_resource,
             resource_manager,
-            "mesh material"
+            "mesh material",
         );
 
         Ok(GameRendererStaticResources {

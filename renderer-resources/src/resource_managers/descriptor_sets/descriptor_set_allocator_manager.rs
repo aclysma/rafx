@@ -25,11 +25,11 @@ pub struct DescriptorSetAllocatorRef {
 impl DescriptorSetAllocatorRef {
     fn new(
         allocator: DescriptorSetAllocatorRefInner,
-        drop_tx: Sender<DescriptorSetAllocatorRefInner>
+        drop_tx: Sender<DescriptorSetAllocatorRefInner>,
     ) -> Self {
         DescriptorSetAllocatorRef {
             allocator: Some(allocator),
-            drop_tx
+            drop_tx,
         }
     }
 }
@@ -75,7 +75,7 @@ impl DescriptorSetAllocatorManagerInner {
             allocators: Default::default(),
             drop_tx,
             drop_rx,
-            frame_index: AtomicU64::new(0)
+            frame_index: AtomicU64::new(0),
         }
     }
 
@@ -108,34 +108,28 @@ impl DescriptorSetAllocatorManagerInner {
         let frame_index = self.frame_index.load(Ordering::Relaxed);
         let allocator = {
             let mut allocators = self.allocators.lock().unwrap();
-            Self::drain_drop_rx(
-                &self.drop_rx,
-                &mut *allocators,
-                frame_index
-            );
+            Self::drain_drop_rx(&self.drop_rx, &mut *allocators, frame_index);
 
-            allocators.pop_front().map(|allocator| {
-                DescriptorSetAllocatorRefInner {
+            allocators
+                .pop_front()
+                .map(|allocator| DescriptorSetAllocatorRefInner {
                     allocator,
-                    checkout_frame: frame_index
-                }
-            })
+                    checkout_frame: frame_index,
+                })
         };
 
         let allocator = allocator.unwrap_or_else(|| {
-            let allocator = Box::new(DescriptorSetAllocator::new(
-                &self.device_context
-            ));
+            let allocator = Box::new(DescriptorSetAllocator::new(&self.device_context));
 
             DescriptorSetAllocatorRefInner {
                 allocator,
-                checkout_frame: frame_index
+                checkout_frame: frame_index,
             }
         });
 
         DescriptorSetAllocatorRef {
             allocator: Some(allocator),
-            drop_tx: self.drop_tx.clone()
+            drop_tx: self.drop_tx.clone(),
         }
     }
 
@@ -143,11 +137,7 @@ impl DescriptorSetAllocatorManagerInner {
         let frame_index = self.frame_index.fetch_add(1, Ordering::Relaxed);
         let mut allocators = self.allocators.lock().unwrap();
 
-        Self::drain_drop_rx(
-            &self.drop_rx,
-            &mut *allocators,
-            frame_index
-        );
+        Self::drain_drop_rx(&self.drop_rx, &mut *allocators, frame_index);
 
         for allocator in allocators.iter_mut() {
             allocator.on_frame_complete();
@@ -158,11 +148,7 @@ impl DescriptorSetAllocatorManagerInner {
         let frame_index = self.frame_index.load(Ordering::Relaxed);
         let mut allocators = self.allocators.lock().unwrap();
 
-        Self::drain_drop_rx(
-            &self.drop_rx,
-            &mut *allocators,
-            frame_index
-        );
+        Self::drain_drop_rx(&self.drop_rx, &mut *allocators, frame_index);
 
         for mut allocator in allocators.drain(..).into_iter() {
             allocator.destroy();
@@ -171,7 +157,7 @@ impl DescriptorSetAllocatorManagerInner {
 }
 
 pub struct DescriptorSetAllocatorProvider {
-    inner: Arc<DescriptorSetAllocatorManagerInner>
+    inner: Arc<DescriptorSetAllocatorManagerInner>,
 }
 
 impl DescriptorSetAllocatorProvider {
@@ -181,19 +167,21 @@ impl DescriptorSetAllocatorProvider {
 }
 
 pub struct DescriptorSetAllocatorManager {
-    inner: Arc<DescriptorSetAllocatorManagerInner>
+    inner: Arc<DescriptorSetAllocatorManagerInner>,
 }
 
 impl DescriptorSetAllocatorManager {
     pub fn new(device_context: &VkDeviceContext) -> Self {
         DescriptorSetAllocatorManager {
-            inner: Arc::new(DescriptorSetAllocatorManagerInner::new(device_context.clone()))
+            inner: Arc::new(DescriptorSetAllocatorManagerInner::new(
+                device_context.clone(),
+            )),
         }
     }
 
     pub fn create_allocator_provider(&self) -> DescriptorSetAllocatorProvider {
         DescriptorSetAllocatorProvider {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 

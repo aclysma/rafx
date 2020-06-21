@@ -75,8 +75,8 @@ struct RenderpassImporterState(Option<AssetUuid>);
 struct RenderpassImporter;
 impl Importer for RenderpassImporter {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         2
     }
