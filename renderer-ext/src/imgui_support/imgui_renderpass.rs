@@ -16,10 +16,11 @@ use renderer_shell_vulkan::util;
 
 use renderer_shell_vulkan::VkImage;
 
-use super::VkImGuiRenderPassFontAtlas;
+use super::ImGuiFontAtlas;
 use crate::image_utils::{DecodedTexture, ColorSpace};
 use crate::image_utils::DecodedTextureMips;
 use crate::image_utils::DecodedTextureMipInfo;
+use crate::imgui_support::{ImGuiDrawData, ImGuiDrawCmd};
 
 #[derive(Clone, Debug, Copy)]
 struct UniformBufferObject {
@@ -81,7 +82,7 @@ impl VkImGuiRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        font_atlas: &VkImGuiRenderPassFontAtlas,
+        font_atlas: &ImGuiFontAtlas,
     ) -> VkResult<Self> {
         let mut pipeline_resources = None;
 
@@ -715,7 +716,7 @@ impl VkImGuiRenderPass {
     }
 
     fn record_command_buffer(
-        imgui_draw_data: Option<&imgui::DrawData>,
+        imgui_draw_data: Option<&ImGuiDrawData>,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
@@ -756,7 +757,7 @@ impl VkImGuiRenderPass {
         if let Some(draw_data) = imgui_draw_data {
             for draw_list in draw_data.draw_lists() {
                 let (vertex_buffer, staging_vertex_buffer) = {
-                    let vertex_buffer_size = draw_list.vtx_buffer().len() as u64
+                    let vertex_buffer_size = draw_list.vertex_buffer().len() as u64
                         * std::mem::size_of::<imgui::DrawVert>() as u64;
                     let mut staging_vertex_buffer = VkBuffer::new(
                         device_context,
@@ -767,7 +768,7 @@ impl VkImGuiRenderPass {
                         vertex_buffer_size,
                     )?;
 
-                    staging_vertex_buffer.write_to_host_visible_buffer(draw_list.vtx_buffer())?;
+                    staging_vertex_buffer.write_to_host_visible_buffer(draw_list.vertex_buffer())?;
 
                     let vertex_buffer = VkBuffer::new(
                         device_context,
@@ -782,7 +783,7 @@ impl VkImGuiRenderPass {
 
                 //TODO: Duplicated code here
                 let (index_buffer, staging_index_buffer) = {
-                    let index_buffer_size = draw_list.idx_buffer().len() as u64
+                    let index_buffer_size = draw_list.index_buffer().len() as u64
                         * std::mem::size_of::<imgui::DrawIdx>() as u64;
                     let mut staging_index_buffer = VkBuffer::new(
                         device_context,
@@ -793,7 +794,7 @@ impl VkImGuiRenderPass {
                         index_buffer_size,
                     )?;
 
-                    staging_index_buffer.write_to_host_visible_buffer(draw_list.idx_buffer())?;
+                    staging_index_buffer.write_to_host_visible_buffer(draw_list.index_buffer())?;
 
                     let index_buffer = VkBuffer::new(
                         device_context,
@@ -899,7 +900,7 @@ impl VkImGuiRenderPass {
                     let mut element_begin_index: u32 = 0;
                     for cmd in draw_list.commands() {
                         match cmd {
-                            imgui::DrawCmd::Elements {
+                            ImGuiDrawCmd::Elements {
                                 count,
                                 cmd_params:
                                     imgui::DrawCmdParams {
@@ -908,7 +909,7 @@ impl VkImGuiRenderPass {
                                         ..
                                     },
                             } => {
-                                let element_end_index = element_begin_index + count as u32;
+                                let element_end_index = element_begin_index + *count as u32;
 
                                 let scissors = vk::Rect2D {
                                     offset: vk::Offset2D {
@@ -989,13 +990,18 @@ impl VkImGuiRenderPass {
         &mut self,
         swapchain_image_index: usize,
         extents: vk::Extent2D,
-        hidpi_factor: f64,
+        imgui_draw_data: Option<&ImGuiDrawData>,
     ) -> VkResult<()> {
+        let framebuffer_scale = match imgui_draw_data {
+            Some(data) => data.framebuffer_scale,
+            None => [1.0, 1.0]
+        };
+
         let proj = Self::orthographic_rh_gl(
             0.0,
-            (extents.width as f64 / hidpi_factor) as f32,
+            (extents.width as f32 / framebuffer_scale[0]),
             0.0,
-            (extents.height as f64 / hidpi_factor) as f32,
+            (extents.height as f32 / framebuffer_scale[1]),
             -100.0,
             100.0,
         );
@@ -1007,11 +1013,10 @@ impl VkImGuiRenderPass {
 
     pub fn update(
         &mut self,
-        imgui_draw_data: Option<&imgui::DrawData>,
+        imgui_draw_data: Option<&ImGuiDrawData>,
         present_index: usize,
-        hidpi_factor: f64,
     ) -> VkResult<()> {
-        self.update_uniform_buffer(present_index, self.swapchain_info.extents, hidpi_factor)?;
+        self.update_uniform_buffer(present_index, self.swapchain_info.extents, imgui_draw_data)?;
 
         Self::record_command_buffer(
             imgui_draw_data,

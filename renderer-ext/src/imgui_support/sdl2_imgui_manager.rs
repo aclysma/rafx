@@ -9,7 +9,7 @@ use super::ImguiManager;
 use imgui_sdl2::ImguiSdl2;
 use sdl2::video::Window;
 use sdl2::mouse::MouseState;
-use crate::imgui_support::VkImGuiRenderPassFontAtlas;
+use crate::imgui_support::{ImGuiFontAtlas, ImGuiDrawData};
 
 struct Sdl2ImguiManagerInner {
     imgui_sdl2: ImguiSdl2,
@@ -62,15 +62,25 @@ impl Sdl2ImguiManager {
         }
     }
 
-    pub fn build_font_atlas(&self) -> VkImGuiRenderPassFontAtlas {
+    pub fn build_font_atlas(&self) -> ImGuiFontAtlas {
         let mut font_atlas = None;
         self.with_context(|context| {
             let mut fonts = context.fonts();
             let font_atlas_texture = fonts.build_rgba32_texture();
-            font_atlas = Some(VkImGuiRenderPassFontAtlas::new(&font_atlas_texture))
+            font_atlas = Some(ImGuiFontAtlas::new(&font_atlas_texture))
         });
 
         font_atlas.unwrap()
+    }
+
+    // This is a full copy from ffi memory
+    pub fn copy_font_atlas(&self) -> Option<ImGuiFontAtlas> {
+        self.imgui_manager.copy_font_atlas_texture()
+    }
+
+    // This is a reference to ffi memory
+    pub unsafe fn sys_font_atlas(&self) -> Option<&imgui::FontAtlasTexture> {
+        self.imgui_manager.sys_font_atlas_texture()
     }
 
     // Call when a winit event is received
@@ -158,8 +168,14 @@ impl Sdl2ImguiManager {
     }
 
     // Returns draw data (render must be called first to end the frame)
-    pub fn draw_data(&self) -> Option<&imgui::DrawData> {
-        self.imgui_manager.draw_data()
+    // This is a ref to ffi memory
+    pub unsafe fn sys_draw_data(&self) -> Option<&imgui::DrawData> {
+        self.imgui_manager.sys_draw_data()
+    }
+
+    // This is a full copy from ffi memory
+    pub fn copy_draw_data(&self) -> Option<ImGuiDrawData> {
+        self.imgui_manager.copy_draw_data()
     }
 
     pub fn want_capture_keyboard(&self) -> bool {

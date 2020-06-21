@@ -1,4 +1,4 @@
-use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener, Sdl2ImguiManager};
+use renderer_ext::imgui_support::{ImGuiFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener, Sdl2ImguiManager, ImguiManager};
 use renderer_shell_vulkan::{VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage, VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext, VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer, FrameInFlight};
 use ash::prelude::VkResult;
 use renderer_ext::renderpass::{VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
@@ -384,6 +384,8 @@ impl GameRenderer {
 
         let game_renderer = game_renderer.clone();
 
+        let imgui_draw_data = resources.get::<Sdl2ImguiManager>().unwrap().copy_draw_data();
+
         let prepared_frame = RenderFrameJob {
             game_renderer,
             prepare_job_set,
@@ -396,6 +398,7 @@ impl GameRenderer {
             debug_pipeline_info,
             debug_draw_3d_line_lists,
             window_scale_factor: window.scale_factor(),
+            imgui_draw_data,
             frame_in_flight,
         };
 

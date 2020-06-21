@@ -3,7 +3,7 @@ use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use ash::prelude::VkResult;
-use renderer_ext::imgui_support::{VkImGuiRenderPassFontAtlas, Sdl2ImguiManager};
+use renderer_ext::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
 use renderer_ext::{PositionComponent, SpriteComponent, MeshComponent, PointLightComponent, SpotLightComponent, DirectionalLightComponent};
@@ -192,7 +192,7 @@ fn main() {
 
 fn logging_init() {
     let mut log_level = log::LevelFilter::Info;
-    #[cfg(debug_assertions)]
+    //#[cfg(debug_assertions)]
     {
         log_level = log::LevelFilter::Debug;
     }
@@ -291,7 +291,7 @@ fn rendering_init(
 
     //#[cfg(debug_assertions)]
     {
-        //context = context.use_vulkan_debug_layer(true);
+        context = context.use_vulkan_debug_layer(true);
     }
 
     let vk_context = context.build(&window_wrapper).unwrap();
@@ -314,7 +314,6 @@ fn rendering_destroy(
     // Destroy these first
     {
         SwapchainLifetimeListener::tear_down(resources);
-
         resources.remove::<VkSurface>();
         resources.remove::<GameRenderer>();
         resources.remove::<VkDeviceContext>();

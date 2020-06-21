@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 use imgui::sys as imgui_sys;
+use crate::imgui_support::{ImGuiFontAtlas, ImGuiDrawData};
 
 // Inner state for ImguiManager, which will be protected by a Mutex. Mutex protection required since
 // this object is Send but not Sync
@@ -163,12 +164,26 @@ impl ImguiManager {
         }
     }
 
+    pub fn copy_font_atlas_texture(&self) -> Option<ImGuiFontAtlas> {
+        let inner = self.inner.lock().unwrap();
+
+        if inner.font_atlas_texture.is_null() {
+            None
+        } else {
+            unsafe { Some(ImGuiFontAtlas::new(&*inner.font_atlas_texture)) }
+        }
+    }
+
     // Get reference to the underlying font atlas. The ref will be valid as long as this object
     // is not destroyed
-    pub fn font_atlas_texture(&self) -> &imgui::FontAtlasTexture {
+    pub unsafe fn sys_font_atlas_texture(&self) -> Option<&imgui::FontAtlasTexture> {
         let inner = self.inner.lock().unwrap();
-        assert!(!inner.font_atlas_texture.is_null());
-        unsafe { &*inner.font_atlas_texture }
+
+        if inner.font_atlas_texture.is_null() {
+            None
+        } else {
+            unsafe { Some(&*inner.font_atlas_texture) }
+        }
     }
 
     // Returns true if a frame has been started (and not ended)
@@ -177,8 +192,26 @@ impl ImguiManager {
         inner.ui.is_some()
     }
 
+    pub fn copy_draw_data(&self) -> Option<ImGuiDrawData> {
+        let inner = self.inner.lock().unwrap();
+
+        if inner.ui.is_some() {
+            log::warn!("get_draw_data() was called but a frame is in progress");
+            return None;
+        }
+
+        let draw_data = unsafe { imgui_sys::igGetDrawData() };
+        if draw_data.is_null() {
+            log::warn!("no draw data available");
+            return None;
+        }
+
+        let draw_data = unsafe { &*(draw_data as *mut imgui::DrawData) };
+        Some(ImGuiDrawData::new(draw_data))
+    }
+
     // Returns draw data (render must be called first to end the frame)
-    pub fn draw_data(&self) -> Option<&imgui::DrawData> {
+    pub unsafe fn sys_draw_data(&self) -> Option<&imgui::DrawData> {
         let inner = self.inner.lock().unwrap();
 
         if inner.ui.is_some() {

@@ -7,6 +7,7 @@ use renderer_ext::renderpass::debug_renderpass::LineList3D;
 use std::sync::MutexGuard;
 use ash::prelude::VkResult;
 use ash::vk;
+use renderer_ext::imgui_support::ImGuiDrawData;
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
@@ -20,6 +21,7 @@ pub struct RenderFrameJob {
     pub debug_pipeline_info: PipelineSwapchainInfo,
     pub debug_draw_3d_line_lists: Vec<LineList3D>,
     pub window_scale_factor: f64,
+    pub imgui_draw_data: Option<ImGuiDrawData>,
     pub frame_in_flight: FrameInFlight,
 }
 
@@ -40,6 +42,7 @@ impl RenderFrameJob {
             self.debug_pipeline_info,
             self.debug_draw_3d_line_lists,
             self.window_scale_factor,
+            self.imgui_draw_data,
             self.frame_in_flight.present_index() as usize,
         );
 
@@ -74,6 +77,7 @@ impl RenderFrameJob {
         debug_pipeline_info: PipelineSwapchainInfo,
         debug_draw_3d_line_lists: Vec<LineList3D>,
         window_scale_factor: f64,
+        imgui_draw_data: Option<ImGuiDrawData>,
         present_index: usize
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let t0 = std::time::Instant::now();
@@ -171,13 +175,13 @@ impl RenderFrameJob {
         //
         // imgui
         //
-        // {
-        //     log::trace!("imgui_event_listener update");
-        //     let mut commands =
-        //         guard.imgui_event_listener
-        //             .render(&device_context, present_index, window_scale_factor)?;
-        //     command_buffers.append(&mut commands);
-        // }
+        {
+            log::trace!("imgui_event_listener update");
+            let mut commands =
+                guard.imgui_event_listener
+                    .render(present_index, imgui_draw_data.as_ref())?;
+            command_buffers.append(&mut commands);
+        }
 
         let t2 = std::time::Instant::now();
         log::info!("[async] render write took {} ms", (t2 - t1).as_secs_f32() * 1000.0);

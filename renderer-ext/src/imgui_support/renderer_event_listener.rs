@@ -2,19 +2,20 @@ use renderer_shell_vulkan::{VkSwapchain, VkDeviceContext};
 use renderer_shell_vulkan::VkDevice;
 use renderer_shell_vulkan::Window;
 use ash::vk;
-use super::{VkImGuiRenderPass, VkImGuiRenderPassFontAtlas};
+use super::{VkImGuiRenderPass, ImGuiFontAtlas};
 use ash::prelude::VkResult;
+use crate::imgui_support::ImGuiDrawData;
 
 pub struct ImguiRenderEventListener {
     // The renderpass, none if it's not created
     imgui_renderpass: Option<VkImGuiRenderPass>,
 
     // A copy of the font atlas, used so we can recreate the renderpass as needed
-    font_atlas: VkImGuiRenderPassFontAtlas,
+    font_atlas: ImGuiFontAtlas,
 }
 
 impl ImguiRenderEventListener {
-    pub fn new(font_atlas: VkImGuiRenderPassFontAtlas) -> Self {
+    pub fn new(font_atlas: ImGuiFontAtlas) -> Self {
         ImguiRenderEventListener {
             imgui_renderpass: None,
             font_atlas,
@@ -46,27 +47,17 @@ impl renderer_shell_vulkan::VkSurfaceSwapchainLifetimeListener for ImguiRenderEv
 }
 
 impl ImguiRenderEventListener {
-
     pub fn render(
         &mut self,
-        device_context: &VkDeviceContext,
         present_index: usize,
-        window_scale_factor: f64,
+        draw_data: Option<&ImGuiDrawData>,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
-        let draw_data = unsafe { imgui::sys::igGetDrawData() };
-        if draw_data.is_null() {
-            log::warn!("no draw data available");
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
-        }
-
-        let draw_data = unsafe { &*(draw_data as *mut imgui::DrawData) };
 
         let renderpass = self.imgui_renderpass.as_mut().unwrap();
 
         renderpass.update(
-            Some(&draw_data),
+            draw_data,
             present_index as usize,
-            window_scale_factor,
         )?;
 
         Ok(vec![renderpass.command_buffers[present_index].clone()])

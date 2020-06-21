@@ -224,12 +224,17 @@ impl VkSurface {
         &mut self,
         event_listener: Option<&mut dyn VkSurfaceSwapchainLifetimeListener>,
     ) {
+        self.wait_until_frame_not_in_flight();
         unsafe {
             self.device_context.device().device_wait_idle().unwrap();
         }
 
         if let Some(event_listener) = event_listener {
             event_listener.swapchain_destroyed(&self.device_context, &self.swapchain);
+        }
+
+        unsafe {
+            ManuallyDrop::drop(&mut self.swapchain);
         }
 
         // self will drop
@@ -352,10 +357,6 @@ impl Drop for VkSurface {
 
         // This checks that the device is idle and issues swapchain_destroyed to the event listener
         assert!(self.torn_down);
-
-        unsafe {
-            ManuallyDrop::drop(&mut self.swapchain);
-        }
 
         trace!("destroyed VkSurface");
     }
