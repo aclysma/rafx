@@ -19,6 +19,7 @@ renderer-base = { path = "../renderer-base" }
 renderer-assets = { path = "../renderer-assets" }
 renderer-features = { path = "../renderer-features" }
 renderer-resources = { path = "../renderer-resources" }
+renderer-visibility = { path = "../renderer-visibility" }
 
 log="0.4"
 env_logger = "0.6"

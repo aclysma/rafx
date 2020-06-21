@@ -6,9 +6,6 @@ pub use static_visibility_node_set::StaticVisibilityNodeSet;
 
 mod dynamic_visibility_node_set;
 pub use dynamic_visibility_node_set::DynamicVisibilityNodeSet;
-use crate::GenericRenderNodeHandle;
+use renderer_base::GenericRenderNodeHandle;
 
-#[derive(Default)]
-pub struct VisibilityResult {
-    pub handles: Vec<GenericRenderNodeHandle>,
-}
+pub use renderer_base::VisibilityResult;

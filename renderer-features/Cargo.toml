@@ -21,6 +21,7 @@ vk-mem = "0.2"
 renderer-base = { path = "../renderer-base" }
 renderer-assets = { path = "../renderer-assets" }
 renderer-resources = { path = "../renderer-resources" }
+renderer-visibility = { path = "../renderer-visibility" }
 
 renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 

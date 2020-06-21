@@ -1,7 +1,5 @@
 pub mod slab;
 
-pub mod visibility;
-
 pub mod time;
 
 mod render_nodes;
@@ -47,3 +45,8 @@ pub use registry::RenderFeature;
 pub use registry::RenderPhase;
 pub use registry::RenderFeatureIndex;
 pub use registry::RenderPhaseIndex;
+
+#[derive(Default)]
+pub struct VisibilityResult {
+    pub handles: Vec<GenericRenderNodeHandle>,
+}

@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 use crate::{RenderView, GenericRenderNodeHandle, RenderRegistry, RenderFeatureIndex};
-use crate::visibility::{VisibilityResult};
+use crate::VisibilityResult;
 use crate::render_nodes::{AllRenderNodes, RenderNodeIndex};
 use crate::registry::RenderFeatureCount;
 

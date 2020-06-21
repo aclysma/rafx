@@ -10,7 +10,7 @@ pub use features_init::destroy_renderer_features;
 
 use legion::prelude::*;
 use glam::Vec3;
-use renderer_base::visibility::DynamicAabbVisibilityNodeHandle;
+use renderer_visibility::DynamicAabbVisibilityNodeHandle;
 
 //
 // Everything below this point is only being used by the api_design example for prototyping purposes

@@ -27,7 +27,7 @@ use renderer_assets::pipeline_description::GraphicsPipeline;
 use std::io::Write;
 use std::collections::hash_map::DefaultHasher;
 use renderer_features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
-use renderer_base::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
+use renderer_visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
 use renderer_base::time::TimeState;
 use glam::f32::Vec3;
 use renderer_resources::resource_managers::ResourceManager;
