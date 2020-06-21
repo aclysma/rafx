@@ -24,7 +24,7 @@ use renderer_features::renderpass::VkBloomBlurRenderPass;
 use renderer_features::renderpass::VkBloomCombineRenderPass;
 use renderer_features::features::sprite::{SpriteRenderNodeSet, SpriteRenderFeature, create_sprite_extract_job};
 use renderer_visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
-use renderer_base::{RenderRegistryBuilder, RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet, AllRenderNodes, FramePacketBuilder, ExtractJobSet, PrepareJobSet, FramePacket, RenderView};
+use renderer_nodes::{RenderRegistryBuilder, RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet, AllRenderNodes, FramePacketBuilder, ExtractJobSet, PrepareJobSet, FramePacket, RenderView};
 use renderer_features::phases::draw_opaque::DrawOpaqueRenderPhase;
 use renderer_features::phases::draw_transparent::DrawTransparentRenderPhase;
 use legion::prelude::*;

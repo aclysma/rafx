@@ -19,6 +19,7 @@ crossbeam-channel = "0.4.2"
 vk-mem = "0.2"
 
 renderer-base = { path = "../renderer-base" }
+renderer-nodes = { path = "../renderer-nodes" }
 renderer-assets = { path = "../renderer-assets" }
 renderer-resources = { path = "../renderer-resources" }
 renderer-visibility = { path = "../renderer-visibility" }

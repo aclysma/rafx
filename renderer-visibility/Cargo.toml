@@ -12,3 +12,4 @@ glam = "0.8.6"
 fnv = "1.0"
 
 renderer-base = { path = "../renderer-base" }
+renderer-nodes = { path = "../renderer-nodes" }

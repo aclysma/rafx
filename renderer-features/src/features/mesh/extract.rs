@@ -1,6 +1,6 @@
 use crate::features::mesh::{ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode, MeshDrawCall, MeshPerObjectShaderParam, ExtractedViewNodeMeshData, MeshPerViewShaderParam};
 use crate::{RenderJobExtractContext, PositionComponent, MeshComponent, RenderJobWriteContext, RenderJobPrepareContext, PointLightComponent, SpotLightComponent, DirectionalLightComponent};
-use renderer_base::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
+use renderer_nodes::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
 use renderer_base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
 use renderer_shell_vulkan::VkDeviceContext;

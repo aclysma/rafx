@@ -16,6 +16,7 @@ renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 renderer-shell-vulkan-sdl2 = { path = "../renderer-shell-vulkan-sdl2"}
 
 renderer-base = { path = "../renderer-base" }
+renderer-nodes = { path = "../renderer-nodes" }
 renderer-assets = { path = "../renderer-assets" }
 renderer-features = { path = "../renderer-features" }
 renderer-resources = { path = "../renderer-resources" }

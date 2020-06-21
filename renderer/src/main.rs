@@ -31,7 +31,7 @@ use renderer_visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet, Dyn
 use renderer_base::time::TimeState;
 use glam::f32::Vec3;
 use renderer_resources::resource_managers::ResourceManager;
-use renderer_base::RenderRegistry;
+use renderer_nodes::RenderRegistry;
 use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
 use renderer_assets::assets::gltf::MeshAsset;

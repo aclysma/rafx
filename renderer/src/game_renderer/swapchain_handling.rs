@@ -3,7 +3,7 @@ use crate::game_renderer::GameRenderer;
 use legion::prelude::Resources;
 use ash::prelude::VkResult;
 use renderer_resources::resource_managers::ResourceManager;
-use renderer_base::RenderRegistry;
+use renderer_nodes::RenderRegistry;
 use crate::game_renderer::swapchain_resources::SwapchainResources;
 use renderer_assets::vk_description::SwapchainSurfaceInfo;
 

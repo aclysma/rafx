@@ -1,5 +1,5 @@
 use legion::prelude::*;
-use renderer_base::{RenderRegistryBuilder, RenderRegistry};
+use renderer_nodes::{RenderRegistryBuilder, RenderRegistry};
 use crate::features::sprite::SpriteRenderFeature;
 use crate::features::mesh::MeshRenderFeature;
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;

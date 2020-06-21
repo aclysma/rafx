@@ -1,6 +1,6 @@
 use crate::features::demo::{ExtractedDemoData, DemoRenderNodeSet, DemoRenderFeature, DemoRenderNode};
 use crate::{DemoExtractContext, DemoWriteContext, PositionComponent, DemoComponent, DemoPrepareContext};
-use renderer_base::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
+use renderer_nodes::{DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob, RenderFeatureIndex, RenderFeature, PerFrameNode};
 use renderer_base::slab::RawSlabKey;
 use crate::features::demo::prepare::DemoPrepareJobImpl;
 

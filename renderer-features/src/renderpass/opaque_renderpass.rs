@@ -26,7 +26,7 @@ use renderer_resources::resource_managers::{PipelineSwapchainInfo, MeshInfo, Dyn
 use renderer_assets::assets::gltf::{MeshVertex, MeshAsset};
 use renderer_assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
-use renderer_base::{PreparedRenderData, RenderView};
+use renderer_nodes::{PreparedRenderData, RenderView};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use crate::{RenderJobWriteContext, RenderJobWriteContextFactory};
 use renderer_shell_vulkan::cleanup::VkCombinedDropSink;

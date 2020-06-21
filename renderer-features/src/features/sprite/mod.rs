@@ -1,4 +1,4 @@
-use renderer_base::{RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle, RenderNodeSet, RenderNodeCount};
+use renderer_nodes::{RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle, RenderNodeSet, RenderNodeCount};
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
 use crate::{RenderJobExtractContext, RenderJobWriteContext, DemoPrepareContext, RenderJobPrepareContext};

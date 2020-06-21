@@ -1,5 +1,6 @@
 use renderer_base::slab::RawSlab;
-use renderer_base::RenderView;
+use renderer_nodes::RenderView;
+use renderer_nodes::VisibilityResult;
 use crate::*;
 
 #[derive(Default)]

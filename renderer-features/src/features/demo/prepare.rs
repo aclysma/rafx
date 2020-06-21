@@ -1,5 +1,5 @@
 use crate::phases::draw_transparent::DrawTransparentRenderPhase;
-use renderer_base::{RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex, FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature};
+use renderer_nodes::{RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex, FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature};
 use crate::{DemoWriteContext, DemoPrepareContext, RenderJobPrepareContext};
 use crate::features::demo::{DemoRenderFeature, ExtractedDemoData};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;

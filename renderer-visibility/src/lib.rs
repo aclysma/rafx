@@ -6,6 +6,5 @@ pub use static_visibility_node_set::StaticVisibilityNodeSet;
 
 mod dynamic_visibility_node_set;
 pub use dynamic_visibility_node_set::DynamicVisibilityNodeSet;
-use renderer_base::GenericRenderNodeHandle;
 
-pub use renderer_base::VisibilityResult;
+pub use renderer_nodes::VisibilityResult;

@@ -1,5 +1,5 @@
 [package]
-name = "renderer-base"
+name = "renderer-nodes"
 version = "0.1.0"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
@@ -10,3 +10,6 @@ edition = "2018"
 log="0.4"
 glam = "0.8.6"
 fnv = "1.0"
+atomicbox = "0.3"
+
+renderer-base = { path = "../renderer-base" }

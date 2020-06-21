@@ -1,5 +1,5 @@
 use crate::phases::draw_transparent::DrawTransparentRenderPhase;
-use renderer_base::{RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex, FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature};
+use renderer_nodes::{RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex, FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature};
 use crate::features::sprite::{SpriteRenderFeature, ExtractedSpriteData, QUAD_VERTEX_LIST, QUAD_INDEX_LIST, SpriteDrawCall, SpriteVertex};
 use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use glam::Vec3;
