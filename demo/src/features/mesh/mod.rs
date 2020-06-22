@@ -1,12 +1,12 @@
-use renderer_nodes::{
+use renderer::nodes::{
     RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
     RenderNodeSet, RenderNodeCount, FrameNodeIndex,
 };
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use renderer_features::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
+use renderer::features::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use legion::prelude::Entity;
-use renderer_base::slab::{RawSlabKey, RawSlab};
+use renderer::base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;
 
@@ -18,13 +18,13 @@ use prepare::MeshPrepareJobImpl;
 
 mod write;
 use write::MeshCommandWriter;
-use renderer_shell_vulkan::{VkDeviceContext, VkBufferRaw};
+use renderer::vulkan::{VkDeviceContext, VkBufferRaw};
 use ash::vk;
-use renderer_resources::resource_managers::{
+use renderer::resources::resource_managers::{
     PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef,
     ResourceManager, ResourceArc,
 };
-use renderer_assets::assets::pipeline::MaterialAsset;
+use renderer::assets::assets::pipeline::MaterialAsset;
 use ash::prelude::VkResult;
 
 // Represents the data uploaded to the GPU to represent a single point light

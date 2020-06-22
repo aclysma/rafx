@@ -2,26 +2,26 @@ use crate::features::mesh::{
     ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode, MeshDrawCall,
     MeshPerObjectShaderParam, ExtractedViewNodeMeshData, MeshPerViewShaderParam,
 };
-use renderer_features::{
+use renderer::features::{
     RenderJobExtractContext, PositionComponent, RenderJobWriteContext, RenderJobPrepareContext,
     PointLightComponent, SpotLightComponent, DirectionalLightComponent,
 };
-use renderer_nodes::{
+use renderer::nodes::{
     DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
     RenderFeatureIndex, RenderFeature, PerFrameNode,
 };
-use renderer_base::slab::RawSlabKey;
+use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
-use renderer_shell_vulkan::VkDeviceContext;
-use renderer_resources::resource_managers::{
+use renderer::vulkan::VkDeviceContext;
+use renderer::resources::resource_managers::{
     PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef,
 };
 use ash::vk;
-use renderer_assets::assets::pipeline::MaterialAsset;
+use renderer::assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
-use renderer_assets::assets::image::ImageAsset;
+use renderer::assets::assets::image::ImageAsset;
 use ash::prelude::VkResult;
-use renderer_resources::resource_managers::DescriptorSetArc;
+use renderer::resources::resource_managers::DescriptorSetArc;
 use legion::prelude::*;
 use crate::components::MeshComponent;
 use crate::resource_manager::GameResourceManager;

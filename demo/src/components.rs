@@ -1,5 +1,5 @@
 use crate::features::mesh::MeshRenderNodeHandle;
-use renderer_visibility::DynamicAabbVisibilityNodeHandle;
+use renderer::visibility::DynamicAabbVisibilityNodeHandle;
 use atelier_assets::loader::handle::Handle;
 use crate::assets::gltf::MeshAsset;
 

@@ -1,12 +1,7 @@
-pub use renderer_base::*;
-pub use renderer_assets::*;
-pub use renderer_nodes::*;
-pub use renderer_resources::*;
-pub use renderer_features::*;
+pub use renderer_base as base;
+pub use renderer_assets as assets;
+pub use renderer_nodes as nodes;
+pub use renderer_resources as resources;
+pub use renderer_features as features;
 pub use renderer_visibility as visibility;
-
-pub mod features;
-pub mod assets;
-pub mod components;
-pub mod asset_lookup;
-pub mod resource_manager;
+pub use renderer_shell_vulkan as vulkan;

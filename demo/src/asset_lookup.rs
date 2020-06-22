@@ -1,5 +1,5 @@
-use renderer_resources::resource_managers::{DescriptorSetArc, ResourceArc, AssetLookup};
-use renderer_shell_vulkan::VkBufferRaw;
+use renderer::resources::resource_managers::{DescriptorSetArc, ResourceArc, AssetLookup};
+use renderer::vulkan::VkBufferRaw;
 use crate::assets::gltf::MeshAsset;
 
 pub struct LoadedMeshPart {

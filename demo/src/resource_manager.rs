@@ -1,7 +1,7 @@
-use renderer_resources::resource_managers::{
+use renderer::resources::resource_managers::{
     DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoadHandler, ResourceManager,
 };
-use renderer_shell_vulkan::{VkBufferRaw, VkDeviceContext};
+use renderer::vulkan::{VkBufferRaw, VkDeviceContext};
 use crate::asset_lookup::{
     GameLoadedAssetMetrics, GameLoadedAssetLookupSet, LoadedMesh, LoadedMeshPart,
 };

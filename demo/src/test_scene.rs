@@ -1,19 +1,19 @@
 use legion::prelude::{Resources, World};
-use renderer_assets::asset_resource::AssetResource;
+use renderer::assets::asset_resource::AssetResource;
 use glam::f32::Vec3;
-use renderer_features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
-use renderer_visibility::{DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
-use renderer_features::{
+use renderer::features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
+use renderer::visibility::{DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
+use renderer::features::{
     PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
     DirectionalLightComponent,
 };
-use renderer::assets::gltf::MeshAsset;
-use renderer_assets::assets::image::ImageAsset;
-use renderer::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
+use crate::assets::gltf::MeshAsset;
+use renderer::assets::assets::image::ImageAsset;
+use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
-use renderer::components::MeshComponent;
+use crate::components::MeshComponent;
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,

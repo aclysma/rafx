@@ -1,8 +1,8 @@
 use renderer::visibility::*;
-use renderer::phases::draw_opaque::*;
-use renderer::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
-use renderer::RenderRegistryBuilder;
-use renderer::RenderViewSet;
+use renderer::features::phases::draw_opaque::*;
+use renderer::nodes::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
+use renderer::nodes::RenderRegistryBuilder;
+use renderer::nodes::RenderViewSet;
 use legion::prelude::*;
 use glam::Vec3;
 use renderer_features::phases::draw_transparent::DrawTransparentRenderPhase;

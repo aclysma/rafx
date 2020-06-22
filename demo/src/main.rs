@@ -1,4 +1,4 @@
-use renderer_shell_vulkan::{
+use renderer::vulkan::{
     LogicalSize, Window, VkDevice, VkSwapchain, VkSurface, VkDeviceContext, VkTransferUpload,
     VkTransferUploadState, VkImage, VkContextBuilder, MsaaLevel, VkCreateContextError, VkContext,
 };
@@ -6,10 +6,10 @@ use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use ash::prelude::VkResult;
-use renderer_features::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
+use renderer::features::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
-use renderer_features::{
+use renderer::features::{
     PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
     DirectionalLightComponent,
 };
@@ -20,37 +20,42 @@ use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
 
-use renderer_assets::asset_resource::AssetResource;
-use renderer_assets::image_utils::{DecodedTexture, enqueue_load_images};
+use renderer::assets::asset_resource::AssetResource;
+use renderer::assets::image_utils::{DecodedTexture, enqueue_load_images};
 use imgui::{Key, Image};
-use renderer_assets::asset_storage::{ResourceLoadHandler};
+use renderer::assets::asset_storage::{ResourceLoadHandler};
 use std::mem::ManuallyDrop;
 use std::time::Duration;
 use atelier_loader::AssetLoadOp;
 use std::error::Error;
-use renderer_assets::assets::image::ImageAsset;
-use renderer_assets::vk_description::GraphicsPipeline;
+use renderer::assets::assets::image::ImageAsset;
+use renderer::assets::vk_description::GraphicsPipeline;
 use std::io::Write;
 use std::collections::hash_map::DefaultHasher;
-use renderer_features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
-use renderer_visibility::{
+use renderer::features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
+use renderer::visibility::{
     StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode,
 };
-use renderer_base::time::TimeState;
+use renderer::base::time::TimeState;
 use glam::f32::Vec3;
-use renderer_resources::resource_managers::ResourceManager;
-use renderer_nodes::RenderRegistry;
+use renderer::resources::resource_managers::ResourceManager;
+use renderer::nodes::RenderRegistry;
 use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
-use renderer::assets::gltf::MeshAsset;
-use renderer::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
-use renderer_features::renderpass::debug_renderpass::DebugDraw3DResource;
-use renderer::resource_manager::GameResourceManager;
+use crate::assets::gltf::MeshAsset;
+use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
+use renderer::features::renderpass::debug_renderpass::DebugDraw3DResource;
+use crate::resource_manager::GameResourceManager;
 
+mod assets;
+mod features;
 mod game_renderer;
 mod daemon;
 mod init;
 mod test_scene;
+mod resource_manager;
+mod components;
+mod asset_lookup;
 
 fn main() {
     init::logging_init();
@@ -83,7 +88,7 @@ fn main() {
     test_scene::populate_test_mesh_entities(&mut resources, &mut world);
     test_scene::populate_test_lights(&mut resources, &mut world);
 
-    let mut print_time_event = renderer_base::time::PeriodicEvent::default();
+    let mut print_time_event = renderer::base::time::PeriodicEvent::default();
 
     'running: loop {
         let t0 = std::time::Instant::now();
@@ -132,7 +137,7 @@ fn main() {
             // let device = resources.get::<VkDeviceContext>().unwrap();
             // let mut game_renderer = resources.get_mut::<Game>().unwrap();
             // game_renderer.update_resources(&*device);
-            renderer_resources::update_renderer_assets(&resources);
+            renderer::resources::update_renderer_assets(&resources);
 
             let resource_manager = resources.get::<ResourceManager>().unwrap();
             let mut game_resource_manager = resources.get_mut::<GameResourceManager>().unwrap();

@@ -15,12 +15,12 @@ use crate::assets::gltf::{
     GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex, GltfMaterialData,
     GltfMaterialDataShaderParam,
 };
-use renderer_assets::assets::image::{ImageAsset, ColorSpace};
-use renderer_assets::assets::buffer::BufferAsset;
-use crate::push_buffer::PushBuffer;
+use renderer::assets::assets::image::{ImageAsset, ColorSpace};
+use renderer::assets::assets::buffer::BufferAsset;
+use renderer::assets::push_buffer::PushBuffer;
 use atelier_assets::loader::handle::SerdeContext;
 use atelier_assets::loader::handle::AssetHandle;
-use renderer_assets::assets::pipeline::{
+use renderer::assets::assets::pipeline::{
     MaterialInstanceAsset, MaterialAsset, MaterialInstanceSlotAssignment,
 };
 use std::str::FromStr;
@@ -317,7 +317,7 @@ impl Importer for GltfImporter {
                 image: None,
                 sampler: None,
                 buffer_data: Some(
-                    renderer_shell_vulkan::util::any_as_bytes(&material_data_shader_param).into(),
+                    renderer::vulkan::util::any_as_bytes(&material_data_shader_param).into(),
                 ),
             });
 

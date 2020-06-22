@@ -1,55 +1,55 @@
-use renderer_features::imgui_support::{
+use renderer::features::imgui_support::{
     ImGuiFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener, Sdl2ImguiManager, ImguiManager,
 };
-use renderer_shell_vulkan::{
+use renderer::vulkan::{
     VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage,
     VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext,
     VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer, FrameInFlight,
 };
 use ash::prelude::VkResult;
-use renderer_features::renderpass::{VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
+use renderer::features::renderpass::{VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
 use std::mem::{ManuallyDrop, swap};
-use renderer_assets::image_utils::{decode_texture, enqueue_load_images};
+use renderer::assets::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
-use renderer_base::time::{ScopeTimer, TimeState};
+use renderer::base::time::{ScopeTimer, TimeState};
 use crossbeam_channel::{Sender, Receiver};
 use std::ops::Deref;
-use renderer_assets::vk_description::SwapchainSurfaceInfo;
-use renderer_assets::assets::pipeline::{MaterialAsset, PipelineAsset, MaterialInstanceAsset};
+use renderer::assets::vk_description::SwapchainSurfaceInfo;
+use renderer::assets::assets::pipeline::{MaterialAsset, PipelineAsset, MaterialInstanceAsset};
 use atelier_assets::loader::handle::Handle;
-use renderer_assets::asset_resource::AssetResource;
-use renderer_assets::assets::shader::ShaderAsset;
-use renderer_assets::assets::image::ImageAsset;
+use renderer::assets::asset_resource::AssetResource;
+use renderer::assets::assets::shader::ShaderAsset;
+use renderer::assets::assets::image::ImageAsset;
 use atelier_assets::core::asset_uuid;
-use renderer_resources::resource_managers::{
+use renderer::resources::resource_managers::{
     ResourceManager, DynDescriptorSet, DynMaterialInstance, ResourceArc, ImageViewResource,
     DynResourceAllocatorSet, PipelineSwapchainInfo,
 };
-use renderer::assets::gltf::{
+use crate::assets::gltf::{
     MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam,
 };
-use renderer_assets::assets::buffer::BufferAsset;
-use renderer_features::renderpass::debug_renderpass::{DebugDraw3DResource, LineList3D};
-use renderer_features::renderpass::VkBloomExtractRenderPass;
-use renderer_features::renderpass::VkBloomBlurRenderPass;
-use renderer_features::renderpass::VkBloomCombineRenderPass;
-use renderer_features::features::sprite::{
+use renderer::assets::assets::buffer::BufferAsset;
+use renderer::features::renderpass::debug_renderpass::{DebugDraw3DResource, LineList3D};
+use renderer::features::renderpass::VkBloomExtractRenderPass;
+use renderer::features::renderpass::VkBloomBlurRenderPass;
+use renderer::features::renderpass::VkBloomCombineRenderPass;
+use renderer::features::features::sprite::{
     SpriteRenderNodeSet, SpriteRenderFeature, create_sprite_extract_job,
 };
-use renderer_visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
-use renderer_nodes::{
+use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
+use renderer::nodes::{
     RenderRegistryBuilder, RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet,
     AllRenderNodes, FramePacketBuilder, ExtractJobSet, PrepareJobSet, FramePacket, RenderView,
 };
-use renderer_features::phases::draw_opaque::DrawOpaqueRenderPhase;
-use renderer_features::phases::draw_transparent::DrawTransparentRenderPhase;
+use renderer::features::phases::draw_opaque::DrawOpaqueRenderPhase;
+use renderer::features::phases::draw_transparent::DrawTransparentRenderPhase;
 use legion::prelude::*;
-use renderer_features::{
+use renderer::features::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContextFactory,
 };
-use renderer_features::RenderJobWriteContext;
-use renderer_shell_vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
-use renderer::features::mesh::{MeshPerViewShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
+use renderer::features::RenderJobWriteContext;
+use renderer::vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
+use crate::features::mesh::{MeshPerViewShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{Thread, JoinHandle};
 use crossbeam_channel::internal::SelectHandle;

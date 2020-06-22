@@ -1,13 +1,13 @@
 use crate::game_renderer::{GameRenderer, GameRendererInner};
-use renderer_nodes::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
-use renderer_features::{RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory};
-use renderer_resources::resource_managers::{DynResourceAllocatorSet, PipelineSwapchainInfo};
-use renderer_shell_vulkan::{VkDeviceContext, FrameInFlight};
-use renderer_features::renderpass::debug_renderpass::LineList3D;
+use renderer::nodes::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
+use renderer::features::{RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory};
+use renderer::resources::resource_managers::{DynResourceAllocatorSet, PipelineSwapchainInfo};
+use renderer::vulkan::{VkDeviceContext, FrameInFlight};
+use renderer::features::renderpass::debug_renderpass::LineList3D;
 use std::sync::MutexGuard;
 use ash::prelude::VkResult;
 use ash::vk;
-use renderer_features::imgui_support::ImGuiDrawData;
+use renderer::features::imgui_support::ImGuiDrawData;
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,

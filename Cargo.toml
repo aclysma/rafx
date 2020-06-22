@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "renderer",
+    "demo"
 ]
 
 exclude = [

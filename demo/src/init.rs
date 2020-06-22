@@ -1,17 +1,17 @@
-use renderer_assets::asset_resource::AssetResource;
+use renderer::assets::asset_resource::AssetResource;
 use legion::prelude::Resources;
-use renderer_shell_vulkan::{
+use renderer::vulkan::{
     LogicalSize, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, VkContext,
 };
-use renderer_features::features::sprite::SpriteRenderNodeSet;
-use renderer::features::mesh::{MeshRenderNodeSet, MeshRenderFeature};
-use renderer_visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
+use renderer::features::features::sprite::SpriteRenderNodeSet;
+use crate::features::mesh::{MeshRenderNodeSet, MeshRenderFeature};
+use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use crate::game_renderer::{SwapchainLifetimeListener, GameRenderer};
-use renderer_features::renderpass::debug_renderpass::DebugDraw3DResource;
-use renderer_nodes::RenderRegistry;
-use renderer::assets::gltf::{MeshAsset, GltfMaterialAsset};
-use renderer::resource_manager::GameResourceManager;
+use renderer::features::renderpass::debug_renderpass::DebugDraw3DResource;
+use renderer::nodes::RenderRegistry;
+use crate::assets::gltf::{MeshAsset, GltfMaterialAsset};
+use crate::resource_manager::GameResourceManager;
 
 pub fn logging_init() {
     let mut log_level = log::LevelFilter::Info;
@@ -91,7 +91,7 @@ pub fn imgui_init(
 ) {
     // Load imgui, we do it a little early because it wants to have the actual SDL2 window and
     // doesn't work with the thin window wrapper
-    let imgui_manager = renderer_features::imgui_support::init_imgui_manager(sdl2_window);
+    let imgui_manager = renderer::features::imgui_support::init_imgui_manager(sdl2_window);
     resources.insert(imgui_manager);
 }
 
@@ -123,7 +123,7 @@ pub fn rendering_init(
     resources.insert(vk_context);
     resources.insert(device_context);
 
-    renderer_resources::init_renderer_assets(resources);
+    renderer::resources::init_renderer_assets(resources);
 
     {
         //
@@ -146,13 +146,13 @@ pub fn rendering_init(
         asset_resource.add_storage::<GltfMaterialAsset>();
     }
 
-    let mut render_registry_builder = renderer_features::create_default_registry_builder();
+    let mut render_registry_builder = renderer::features::create_default_registry_builder();
     let render_registry = render_registry_builder
         .register_feature::<MeshRenderFeature>()
         .build();
     resources.insert(render_registry);
 
-    renderer_features::init_renderer_features(resources);
+    renderer::features::init_renderer_features(resources);
 
     let mut game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
     resources.insert(game_renderer);
@@ -174,12 +174,12 @@ pub fn rendering_destroy(resources: &mut Resources) {
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
 
-        renderer_features::destroy_renderer_features(resources);
+        renderer::features::destroy_renderer_features(resources);
 
         resources.remove::<GameResourceManager>();
 
         resources.remove::<RenderRegistry>();
-        renderer_resources::destroy_renderer_assets(resources);
+        renderer::resources::destroy_renderer_assets(resources);
     }
 
     // Drop this one last
