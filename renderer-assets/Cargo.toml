@@ -22,7 +22,7 @@ crossbeam-channel = "0.4.2"
 
 vk-mem = "0.2"
 
-legion = "0.2.4"
+legion = { version = "0.2.4", default-features = false, features = ["serialize"] }
 atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
 
 log="0.4"

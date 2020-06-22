@@ -24,7 +24,7 @@ renderer-assets = { path = "../renderer-assets" }
 
 renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 
-legion = "0.2.4"
+legion = { version = "0.2.4", default-features = false, features = ["serialize"] }
 atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
 
 log="0.4"

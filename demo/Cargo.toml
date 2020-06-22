@@ -28,7 +28,7 @@ renderer-shell-vulkan-sdl2 = { path = "../renderer-shell-vulkan-sdl2" }
 
 #renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 
-legion = "0.2.4"
+legion = { version = "0.2.4", default-features = false, features = ["serialize"] }
 atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
 
 env_logger = "0.6"
