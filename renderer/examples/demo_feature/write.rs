@@ -1,8 +1,8 @@
-use crate::features::demo::DemoRenderFeature;
 use renderer_nodes::{
     RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
 };
 use crate::DemoWriteContext;
+use crate::demo_feature::DemoRenderFeature;
 
 pub struct DemoCommandWriter {}
 

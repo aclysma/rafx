@@ -1,13 +1,13 @@
-use crate::phases::draw_transparent::DrawTransparentRenderPhase;
+use renderer_features::phases::draw_transparent::DrawTransparentRenderPhase;
 use renderer_nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
 };
-use crate::{DemoWriteContext, DemoPrepareContext, RenderJobPrepareContext};
-use crate::features::demo::{DemoRenderFeature, ExtractedDemoData};
-use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use glam::Vec3;
-use crate::features::demo::write::DemoCommandWriter;
+use crate::demo_feature::{DemoRenderFeature, ExtractedDemoData};
+use crate::{DemoWriteContext, DemoPrepareContext};
+use crate::demo_feature::write::DemoCommandWriter;
+use renderer_features::phases::draw_opaque::DrawOpaqueRenderPhase;
 
 pub struct DemoPrepareJobImpl {
     pub(super) per_frame_data: Vec<ExtractedDemoData>,

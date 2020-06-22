@@ -4,10 +4,6 @@ use renderer_nodes::{
 };
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use crate::{
-    RenderJobExtractContext, DemoWriteContext, RenderJobPrepareContext, DemoPrepareContext,
-    DemoExtractContext,
-};
 use legion::prelude::Entity;
 use renderer_base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
@@ -20,6 +16,7 @@ use prepare::DemoPrepareJobImpl;
 
 mod write;
 use write::DemoCommandWriter;
+use crate::{DemoExtractContext, DemoPrepareContext, DemoWriteContext};
 
 pub fn create_demo_extract_job(
 ) -> Box<dyn ExtractJob<DemoExtractContext, DemoPrepareContext, DemoWriteContext>> {

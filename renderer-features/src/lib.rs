@@ -16,7 +16,6 @@ use renderer_visibility::DynamicAabbVisibilityNodeHandle;
 // Everything below this point is only being used by the api_design example for prototyping purposes
 //
 use features::sprite::SpriteRenderNodeHandle;
-use crate::features::demo::DemoRenderNodeHandle;
 use renderer_shell_vulkan::{VkResourceDropSink, VkBuffer, VkDeviceContext};
 use renderer_shell_vulkan::cleanup::VkResourceDropSinkChannel;
 use std::mem::ManuallyDrop;
@@ -150,36 +149,4 @@ unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
 }
 unsafe fn force_to_static_lifetime_mut<T>(value: &mut T) -> &'static mut T {
     std::mem::transmute(value)
-}
-
-//
-// Just for demonstration of minimal API
-//
-pub struct DemoExtractContext {
-    world: &'static World,
-    resources: &'static Resources,
-}
-
-impl DemoExtractContext {
-    pub fn new<'a>(
-        world: &'a World,
-        resources: &'a Resources,
-    ) -> Self {
-        unsafe {
-            DemoExtractContext {
-                world: force_to_static_lifetime(world),
-                resources: force_to_static_lifetime(resources),
-            }
-        }
-    }
-}
-
-pub struct DemoPrepareContext;
-pub struct DemoWriteContext;
-
-#[derive(Clone)]
-pub struct DemoComponent {
-    pub render_node_handle: DemoRenderNodeHandle,
-    pub visibility_handle: DynamicAabbVisibilityNodeHandle,
-    pub alpha: f32,
 }

@@ -172,14 +172,18 @@ impl GameResourceManager {
             .buffer
             .clone();
 
-        let mesh_parts : Vec<_> = mesh_asset.mesh_parts.iter().map(|mesh_part| {
-            let material_instance_info =
-                resource_manager.get_material_instance_info(&mesh_part.material_instance);
+        let mesh_parts: Vec<_> = mesh_asset
+            .mesh_parts
+            .iter()
+            .map(|mesh_part| {
+                let material_instance_info =
+                    resource_manager.get_material_instance_info(&mesh_part.material_instance);
 
-            LoadedMeshPart {
-                material_instance: material_instance_info.descriptor_sets.clone(),
-            }
-        }).collect();
+                LoadedMeshPart {
+                    material_instance: material_instance_info.descriptor_sets.clone(),
+                }
+            })
+            .collect();
 
         Ok(LoadedMesh {
             vertex_buffer,

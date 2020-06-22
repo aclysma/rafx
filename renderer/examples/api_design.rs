@@ -1,16 +1,50 @@
 use renderer::visibility::*;
-use renderer::features::demo::*;
 use renderer::phases::draw_opaque::*;
 use renderer::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
 use renderer::RenderRegistryBuilder;
 use renderer::RenderViewSet;
 use legion::prelude::*;
 use glam::Vec3;
-use renderer_assets::{
-    DemoExtractContext, DemoPrepareContext, PositionComponent, DemoComponent, DemoWriteContext,
-};
-use renderer_assets::phases::draw_transparent::DrawTransparentRenderPhase;
-use renderer_assets::features::demo::{create_demo_extract_job, DemoRenderFeature};
+use renderer_features::phases::draw_transparent::DrawTransparentRenderPhase;
+mod demo_feature;
+use demo_feature::*;
+use renderer_features::PositionComponent;
+
+//
+// Just for demonstration of minimal API
+//
+pub struct DemoExtractContext {
+    world: &'static World,
+    resources: &'static Resources,
+}
+
+impl DemoExtractContext {
+    pub fn new<'a>(
+        world: &'a World,
+        resources: &'a Resources,
+    ) -> Self {
+        unsafe {
+            DemoExtractContext {
+                world: force_to_static_lifetime(world),
+                resources: force_to_static_lifetime(resources),
+            }
+        }
+    }
+}
+
+unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
+    std::mem::transmute(value)
+}
+
+pub struct DemoPrepareContext;
+pub struct DemoWriteContext;
+
+#[derive(Clone)]
+pub struct DemoComponent {
+    pub render_node_handle: DemoRenderNodeHandle,
+    pub visibility_handle: DynamicAabbVisibilityNodeHandle,
+    pub alpha: f32,
+}
 
 fn main() {
     // Setup logging
@@ -146,6 +180,7 @@ fn main() {
         let main_view = render_view_set.create_view(
             eye_position,
             view_proj,
+            glam::Mat4::identity(),
             main_camera_render_phase_mask,
             "main".to_string(),
         );
@@ -174,6 +209,7 @@ fn main() {
         let minimap_view = render_view_set.create_view(
             eye_position,
             view_proj,
+            glam::Mat4::identity(),
             minimap_render_phase_mask,
             "minimap".to_string(),
         );
@@ -254,9 +290,9 @@ fn main() {
             extract_job_set.add_job(create_demo_extract_job());
             // Other features can be added here
 
-            let extract_context = DemoExtractContext::new(&world, &resources);
+            let mut extract_context = DemoExtractContext::new(&world, &resources);
             extract_job_set.extract(
-                &extract_context,
+                &mut extract_context,
                 &frame_packet,
                 &[&main_view, &minimap_view],
             )
