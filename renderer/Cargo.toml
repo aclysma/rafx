@@ -36,8 +36,7 @@ type-uuid = "0.1"
 image2 = { version = "0.11", features = [ "ser" ] }
 inventory = "0.1"
 
-#legion = "0.2.1"
-legion = { git = "https://github.com/TomGillen/legion.git" }
+legion = "0.2.4"
 atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
 
 structopt = "0.3"

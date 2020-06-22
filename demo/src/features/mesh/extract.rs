@@ -190,7 +190,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         let mut per_view_data = MeshPerViewShaderParam::default();
 
         let query = <(Read<DirectionalLightComponent>)>::query();
-        for light in query.iter(&extract_context.world) {
+        for light in query.iter(extract_context.world) {
             let light_count = per_view_data.directional_light_count as usize;
             if light_count > per_view_data.directional_lights.len() {
                 break;
@@ -214,7 +214,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         }
 
         let query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
-        for (position, light) in query.iter(&extract_context.world) {
+        for (position, light) in query.iter(extract_context.world) {
             let light_count = per_view_data.point_light_count as usize;
             if light_count > per_view_data.point_lights.len() {
                 break;
@@ -231,7 +231,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         }
 
         let query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
-        for (position, light) in query.iter(&extract_context.world) {
+        for (position, light) in query.iter(extract_context.world) {
             let light_count = per_view_data.spot_light_count as usize;
             if light_count > per_view_data.spot_lights.len() {
                 break;

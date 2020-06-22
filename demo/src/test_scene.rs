@@ -1,4 +1,4 @@
-use legion::prelude::{Resources, World};
+use legion::prelude::{Resources, World, EntityStore};
 use renderer::assets::asset_resource::AssetResource;
 use glam::f32::Vec3;
 use renderer::features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};

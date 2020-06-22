@@ -26,7 +26,7 @@ renderer-visibility = { path = "../renderer-visibility" }
 
 renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 
-legion = { git = "https://github.com/TomGillen/legion.git" }
+legion = "0.2.4"
 atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
 
 log="0.4"

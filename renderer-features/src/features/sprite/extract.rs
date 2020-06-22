@@ -21,6 +21,7 @@ use atelier_assets::loader::handle::Handle;
 use renderer_assets::assets::image::ImageAsset;
 use ash::prelude::VkResult;
 use renderer_resources::resource_managers::DescriptorSetArc;
+use legion::prelude::EntityStore;
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
 // single function
