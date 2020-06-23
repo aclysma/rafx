@@ -23,7 +23,7 @@ use renderer::base::time::TimeState;
 use renderer::resources::resource_managers::PipelineSwapchainInfo;
 
 /// Draws sprites
-pub struct VkDebugRenderPass {
+pub struct VkMsaaRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
@@ -37,7 +37,7 @@ pub struct VkDebugRenderPass {
     pub color_resolved_image: vk::Image,
 }
 
-impl VkDebugRenderPass {
+impl VkMsaaRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
@@ -60,7 +60,7 @@ impl VkDebugRenderPass {
         let color_target_image = swapchain.color_attachment.target_image();
         let color_resolved_image = swapchain.color_attachment.resolved_image();
 
-        Ok(VkDebugRenderPass {
+        Ok(VkMsaaRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             pipeline_info,
@@ -243,7 +243,7 @@ impl VkDebugRenderPass {
     }
 }
 
-impl Drop for VkDebugRenderPass {
+impl Drop for VkMsaaRenderPass {
     fn drop(&mut self) {
         log::trace!("destroying VkSpriteRenderPass");
         unsafe {

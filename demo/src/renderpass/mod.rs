@@ -1,5 +1,5 @@
-pub mod debug_renderpass;
-pub use debug_renderpass::VkDebugRenderPass;
+pub mod msaa_renderpass;
+pub use msaa_renderpass::VkMsaaRenderPass;
 
 pub mod bloom_extract_renderpass;
 pub use bloom_extract_renderpass::VkBloomExtractRenderPass;

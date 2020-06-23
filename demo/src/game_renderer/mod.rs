@@ -7,7 +7,7 @@ use renderer::vulkan::{
     VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer, FrameInFlight,
 };
 use ash::prelude::VkResult;
-use crate::renderpass::{VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
+use crate::renderpass::{VkMsaaRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
 use std::mem::{ManuallyDrop, swap};
 use renderer::assets::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;

@@ -134,15 +134,15 @@ impl RenderFrameJob {
             .debug_material_per_frame_data
             .descriptor_set()
             .get();
-        log::trace!("debug_renderpass update");
+        log::trace!("msaa_renderpass update");
 
-        swapchain_resources.debug_renderpass.update(
+        swapchain_resources.msaa_renderpass.update(
             present_index,
             descriptor_set_per_pass,
             //debug_draw_3d_line_lists,
         )?;
         command_buffers
-            .push(swapchain_resources.debug_renderpass.command_buffers[present_index].clone());
+            .push(swapchain_resources.msaa_renderpass.command_buffers[present_index].clone());
 
         //
         // bloom extract

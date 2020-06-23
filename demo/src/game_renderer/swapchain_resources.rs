@@ -1,5 +1,5 @@
 use crate::renderpass::{
-    VkOpaqueRenderPass, VkDebugRenderPass, VkBloomRenderPassResources, VkBloomExtractRenderPass,
+    VkOpaqueRenderPass, VkMsaaRenderPass, VkBloomRenderPassResources, VkBloomExtractRenderPass,
     VkBloomBlurRenderPass, VkBloomCombineRenderPass,
 };
 use renderer::vulkan::{VkDeviceContext, VkSwapchain};
@@ -15,7 +15,7 @@ pub struct SwapchainResources {
     pub bloom_combine_material_dyn_set: DynDescriptorSet,
 
     pub opaque_renderpass: VkOpaqueRenderPass,
-    pub debug_renderpass: VkDebugRenderPass,
+    pub msaa_renderpass: VkMsaaRenderPass,
     pub bloom_extract_renderpass: VkBloomExtractRenderPass,
     pub bloom_blur_renderpass: VkBloomBlurRenderPass,
     pub bloom_combine_renderpass: VkBloomCombineRenderPass,
@@ -50,8 +50,8 @@ impl SwapchainResources {
             0,
         );
 
-        let debug_renderpass =
-            VkDebugRenderPass::new(device_context, swapchain, debug_pipeline_info)?;
+        let msaa_renderpass =
+            VkMsaaRenderPass::new(device_context, swapchain, debug_pipeline_info)?;
 
         log::trace!("Create VkBloomExtractRenderPass");
 
@@ -149,7 +149,7 @@ impl SwapchainResources {
             bloom_extract_material_dyn_set,
             bloom_combine_material_dyn_set,
             opaque_renderpass,
-            debug_renderpass,
+            msaa_renderpass,
             bloom_extract_renderpass,
             bloom_blur_renderpass,
             bloom_combine_renderpass,
