@@ -3,7 +3,7 @@ use renderer::nodes::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory};
 use renderer::resources::resource_managers::{DynResourceAllocatorSet, PipelineSwapchainInfo};
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
-use crate::renderpass::debug_renderpass::LineList3D;
+use crate::features::debug3d::LineList3D;
 use std::sync::MutexGuard;
 use ash::prelude::VkResult;
 use ash::vk;
@@ -19,7 +19,7 @@ pub struct RenderFrameJob {
     pub device_context: VkDeviceContext,
     pub opaque_pipeline_info: PipelineSwapchainInfo,
     pub debug_pipeline_info: PipelineSwapchainInfo,
-    pub debug_draw_3d_line_lists: Vec<LineList3D>,
+    //pub debug_draw_3d_line_lists: Vec<LineList3D>,
     pub window_scale_factor: f64,
     pub imgui_draw_data: Option<ImGuiDrawData>,
     pub frame_in_flight: FrameInFlight,
@@ -40,7 +40,7 @@ impl RenderFrameJob {
             self.device_context,
             self.opaque_pipeline_info,
             self.debug_pipeline_info,
-            self.debug_draw_3d_line_lists,
+            //self.debug_draw_3d_line_lists,
             self.window_scale_factor,
             self.imgui_draw_data,
             self.frame_in_flight.present_index() as usize,
@@ -78,7 +78,7 @@ impl RenderFrameJob {
         device_context: VkDeviceContext,
         opaque_pipeline_info: PipelineSwapchainInfo,
         debug_pipeline_info: PipelineSwapchainInfo,
-        debug_draw_3d_line_lists: Vec<LineList3D>,
+        //debug_draw_3d_line_lists: Vec<LineList3D>,
         window_scale_factor: f64,
         imgui_draw_data: Option<ImGuiDrawData>,
         present_index: usize,
@@ -139,7 +139,7 @@ impl RenderFrameJob {
         swapchain_resources.debug_renderpass.update(
             present_index,
             descriptor_set_per_pass,
-            debug_draw_3d_line_lists,
+            //debug_draw_3d_line_lists,
         )?;
         command_buffers
             .push(swapchain_resources.debug_renderpass.command_buffers[present_index].clone());

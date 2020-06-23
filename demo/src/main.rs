@@ -44,7 +44,7 @@ use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
 use crate::assets::gltf::MeshAsset;
 use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
-use crate::renderpass::debug_renderpass::DebugDraw3DResource;
+use crate::features::debug3d::DebugDraw3DResource;
 use crate::resource_manager::GameResourceManager;
 
 mod assets;

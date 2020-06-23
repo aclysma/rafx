@@ -19,8 +19,8 @@ use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSe
 pub struct SpritePrepareJobImpl {
     device_context: VkDeviceContext,
     pipeline_info: PipelineSwapchainInfo,
-    descriptor_set_per_pass: DescriptorSetArc,
-    extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
+    descriptor_set_per_view: Vec<DescriptorSetArc>,
+    extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
 
     draw_calls: Vec<SpriteDrawCall>,
     vertex_list: Vec<SpriteVertex>,
@@ -31,15 +31,15 @@ impl SpritePrepareJobImpl {
     pub(super) fn new(
         device_context: VkDeviceContext,
         pipeline_info: PipelineSwapchainInfo,
-        descriptor_set_per_pass: DescriptorSetArc,
+        descriptor_set_per_view: Vec<DescriptorSetArc>,
         extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
     ) -> Self {
         let sprite_count = extracted_sprite_data.len();
         SpritePrepareJobImpl {
             device_context,
-            extracted_sprite_data,
+            extracted_frame_node_sprite_data: extracted_sprite_data,
             pipeline_info,
-            descriptor_set_per_pass,
+            descriptor_set_per_view,
             draw_calls: Vec::with_capacity(sprite_count),
             vertex_list: Vec::with_capacity(sprite_count * QUAD_VERTEX_LIST.len()),
             index_list: Vec::with_capacity(sprite_count * QUAD_INDEX_LIST.len()),
@@ -57,7 +57,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
         _views: &[&RenderView],
         _submit_nodes: &mut FeatureSubmitNodes,
     ) {
-        for sprite in &self.extracted_sprite_data {
+        for sprite in &self.extracted_frame_node_sprite_data {
             if let Some(sprite) = sprite {
                 let draw_call = SpriteDrawCall {
                     index_buffer_first_element: 0,
@@ -126,7 +126,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
         let frame_node_index = view_node.frame_node_index();
 
         // This can read per-frame and per-view data
-        if let Some(extracted_data) = &self.extracted_sprite_data[frame_node_index as usize] {
+        if let Some(extracted_data) = &self.extracted_frame_node_sprite_data[frame_node_index as usize] {
             if extracted_data.alpha >= 1.0 {
                 submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(frame_node_index, 0, 0.0);
             } else {
@@ -214,7 +214,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
             vertex_buffers,
             index_buffers,
             pipeline_info: self.pipeline_info,
-            descriptor_set_per_pass: self.descriptor_set_per_pass,
+            descriptor_set_per_view: self.descriptor_set_per_view,
         })
     }
 

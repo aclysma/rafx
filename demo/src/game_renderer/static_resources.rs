@@ -57,7 +57,7 @@ fn wait_for_asset_to_load<T>(
 
 pub struct GameRendererStaticResources {
     pub sprite_material: Handle<MaterialAsset>,
-    pub debug_material: Handle<MaterialAsset>,
+    pub debug3d_material: Handle<MaterialAsset>,
     pub mesh_material: Handle<MaterialAsset>,
     pub bloom_extract_material: Handle<MaterialAsset>,
     pub bloom_blur_material: Handle<MaterialAsset>,
@@ -161,7 +161,7 @@ impl GameRendererStaticResources {
 
         Ok(GameRendererStaticResources {
             sprite_material,
-            debug_material,
+            debug3d_material: debug_material,
             mesh_material,
             bloom_extract_material,
             bloom_blur_material,

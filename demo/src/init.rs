@@ -8,7 +8,7 @@ use crate::features::mesh::{MeshRenderNodeSet, MeshRenderFeature};
 use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use crate::game_renderer::{SwapchainLifetimeListener, GameRenderer};
-use crate::renderpass::debug_renderpass::DebugDraw3DResource;
+use crate::features::debug3d::{DebugDraw3DResource, Debug3dRenderFeature};
 use renderer::nodes::RenderRegistry;
 use crate::assets::gltf::{MeshAsset, GltfMaterialAsset};
 use crate::resource_manager::GameResourceManager;
@@ -156,6 +156,7 @@ pub fn rendering_init(
     let render_registry = renderer::nodes::RenderRegistryBuilder::default()
         .register_feature::<SpriteRenderFeature>()
         .register_feature::<MeshRenderFeature>()
+        .register_feature::<Debug3dRenderFeature>()
         .register_render_phase::<DrawOpaqueRenderPhase>()
         .register_render_phase::<DrawTransparentRenderPhase>()
         .build();

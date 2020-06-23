@@ -29,7 +29,7 @@ use crate::assets::gltf::{
     MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam,
 };
 use renderer::assets::assets::buffer::BufferAsset;
-use crate::renderpass::debug_renderpass::{DebugDraw3DResource, LineList3D};
+use crate::features::debug3d::{DebugDraw3DResource, LineList3D, create_debug3d_extract_job};
 use crate::renderpass::VkBloomExtractRenderPass;
 use crate::renderpass::VkBloomBlurRenderPass;
 use crate::renderpass::VkBloomCombineRenderPass;
@@ -122,7 +122,7 @@ impl GameRenderer {
 
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
         let debug_per_frame_layout =
-            resource_manager.get_descriptor_set_info(&game_renderer_resources.debug_material, 0, 0);
+            resource_manager.get_descriptor_set_info(&game_renderer_resources.debug3d_material, 0, 0);
         let debug_material_per_frame_data = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(
                 &debug_per_frame_layout.descriptor_set_layout,
@@ -251,10 +251,10 @@ impl GameRenderer {
             resources.get::<DynamicVisibilityNodeSet>().unwrap();
         let dynamic_visibility_node_set = &*dynamic_visibility_node_set_fetch;
 
-        let mut debug_draw_3d_line_lists = resources
-            .get_mut::<DebugDraw3DResource>()
-            .unwrap()
-            .take_line_lists();
+        // let mut debug_draw_3d_line_lists = resources
+        //     .get_mut::<DebugDraw3DResource>()
+        //     .unwrap()
+        //     .take_line_lists();
 
         let render_registry = resources.get::<RenderRegistry>().unwrap().clone();
         let device_context = resources.get::<VkDeviceContext>().unwrap().clone();
@@ -379,6 +379,12 @@ impl GameRenderer {
                 0,
             );
 
+            let debug3d_pipeline_info = resource_manager.get_pipeline_info(
+                &guard.static_resources.debug3d_material,
+                &swapchain_surface_info,
+                0,
+            );
+
             let mut extract_job_set = ExtractJobSet::new();
 
             // Sprites
@@ -396,6 +402,15 @@ impl GameRenderer {
                 mesh_pipeline_info,
                 &guard.static_resources.mesh_material,
             ));
+
+            // Debug 3D
+            extract_job_set.add_job(create_debug3d_extract_job(
+                device_context.clone(),
+                resource_manager.create_descriptor_set_allocator(),
+                debug3d_pipeline_info,
+                &guard.static_resources.debug3d_material,
+            ));
+
             extract_job_set
         };
 
@@ -411,7 +426,7 @@ impl GameRenderer {
         );
 
         let debug_pipeline_info = resource_manager.get_pipeline_info(
-            &guard.static_resources.debug_material,
+            &guard.static_resources.debug3d_material,
             &swapchain_surface_info,
             0,
         );
@@ -441,7 +456,7 @@ impl GameRenderer {
             device_context: device_context.clone(),
             opaque_pipeline_info,
             debug_pipeline_info,
-            debug_draw_3d_line_lists,
+            //debug_draw_3d_line_lists,
             window_scale_factor: window.scale_factor(),
             imgui_draw_data,
             frame_in_flight,

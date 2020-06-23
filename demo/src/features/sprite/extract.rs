@@ -54,7 +54,7 @@ pub struct SpriteExtractJobImpl {
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     sprite_material: Handle<MaterialAsset>,
-    extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
+    extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
     per_view_descriptors: Vec<DescriptorSetArc>,
 }
 
@@ -71,7 +71,7 @@ impl SpriteExtractJobImpl {
             pipeline_info,
             sprite_material: sprite_material.clone(),
             //descriptor_set_per_pass,
-            extracted_sprite_data: Default::default(),
+            extracted_frame_node_sprite_data: Default::default(),
             per_view_descriptors: Default::default(),
         }
     }
@@ -86,7 +86,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
-        self.extracted_sprite_data
+        self.extracted_frame_node_sprite_data
             .reserve(frame_packet.frame_node_count(self.feature_index()) as usize);
 
         // for view in views {
@@ -161,7 +161,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .resource_manager
             .get_image_info(&sprite_component.image);
         if image_info.is_none() {
-            self.extracted_sprite_data.push(None);
+            self.extracted_frame_node_sprite_data.push(None);
             return;
         }
         let image_info = image_info.unwrap();
@@ -181,7 +181,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .unwrap();
         let texture_descriptor_set = sprite_texture_descriptor.descriptor_set().clone();
 
-        self.extracted_sprite_data.push(Some(ExtractedSpriteData {
+        self.extracted_frame_node_sprite_data.push(Some(ExtractedSpriteData {
             position: position_component.position,
             texture_size: glam::Vec2::new(50.0, 50.0),
             scale: 1.0,
@@ -214,8 +214,8 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         let prepare_impl = SpritePrepareJobImpl::new(
             self.device_context,
             self.pipeline_info,
-            self.per_view_descriptors[0].clone(),
-            self.extracted_sprite_data,
+            self.per_view_descriptors.clone(),
+            self.extracted_frame_node_sprite_data,
         );
 
         Box::new(DefaultPrepareJob::new(prepare_impl))

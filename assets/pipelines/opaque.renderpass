@@ -10,7 +10,10 @@
                 stencil_load_op: DontCare,
                 stencil_store_op: DontCare,
                 initial_layout: Undefined,
-                final_layout: ColorAttachmentOptimal,
+
+                // This pipeline passes results to the compositor. The compositor will be reading our color attachment
+                // via a sampler
+                final_layout: ShaderReadOnlyOptimal,
             ),
             (
                 flags: None,

@@ -14,7 +14,7 @@ pub struct SpriteCommandWriter {
     pub index_buffers: Vec<ResourceArc<VkBufferRaw>>,
     pub draw_calls: Vec<SpriteDrawCall>,
     pub pipeline_info: PipelineSwapchainInfo,
-    pub descriptor_set_per_pass: DescriptorSetArc,
+    pub descriptor_set_per_view: Vec<DescriptorSetArc>,
 }
 
 impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
@@ -39,7 +39,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
                 vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
                 0,
-                &[self.descriptor_set_per_pass.get()],
+                &[self.descriptor_set_per_view[view.view_index() as usize].get()],
                 &[],
             );
 
