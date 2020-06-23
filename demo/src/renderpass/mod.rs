@@ -1,6 +1,5 @@
 pub mod debug_renderpass;
 pub use debug_renderpass::VkDebugRenderPass;
-pub use debug_renderpass::DebugVertex;
 
 pub mod bloom_extract_renderpass;
 pub use bloom_extract_renderpass::VkBloomExtractRenderPass;

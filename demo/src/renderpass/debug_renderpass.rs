@@ -21,23 +21,6 @@ use ash::vk::ShaderStageFlags;
 
 use renderer::base::time::TimeState;
 use renderer::resources::resource_managers::PipelineSwapchainInfo;
-use crate::features::debug3d::LineList3D;
-
-/// Per-pass "global" data
-#[derive(Clone, Debug, Copy)]
-struct DebugUniformBufferObject {
-    // View and projection matrices
-    view_proj: [[f32; 4]; 4],
-}
-
-/// Vertex format for vertices sent to the GPU
-#[derive(Clone, Debug, Copy)]
-#[repr(C)]
-pub struct DebugVertex {
-    pub pos: [f32; 3],
-    //pub tex_coord: [f32; 2],
-    pub color: [f32; 4],
-}
 
 /// Draws sprites
 pub struct VkDebugRenderPass {

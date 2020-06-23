@@ -12,7 +12,6 @@ use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
 use std::mem::ManuallyDrop;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
-use crate::renderpass::DebugVertex;
 
 pub struct Debug3dPrepareJobImpl {
     device_context: VkDeviceContext,
@@ -20,11 +19,6 @@ pub struct Debug3dPrepareJobImpl {
     dyn_resource_allocator: renderer::resources::DynResourceAllocatorSet,
     descriptor_set_per_view: Vec<DescriptorSetArc>,
     extracted_debug3d_data: ExtractedDebug3dData,
-
-    // draw_calls: Vec<Debug3dDrawCall>,
-    // vertex_list: Vec<Debug3dVertex>,
-    // index_list: Vec<u16>,
-    //line_lists: Vec<LineList3D>
 }
 
 impl Debug3dPrepareJobImpl {
@@ -41,10 +35,6 @@ impl Debug3dPrepareJobImpl {
             dyn_resource_allocator,
             descriptor_set_per_view,
             extracted_debug3d_data,
-            // draw_calls: Vec::with_capacity(debug3d_count),
-            // vertex_list: Vec::with_capacity(debug3d_count * QUAD_VERTEX_LIST.len()),
-            // index_list: Vec::with_capacity(debug3d_count * QUAD_INDEX_LIST.len()),
-            //line_lists: extracted_debug3d_data.line_lists
         }
     }
 }
@@ -67,7 +57,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>
         let line_lists = &self.extracted_debug3d_data.line_lists;
         let mut draw_calls = Vec::with_capacity(line_lists.len());
 
-        let mut vertex_list: Vec<DebugVertex> = vec![];
+        let mut vertex_list: Vec<Debug3dVertex> = vec![];
         for line_list in line_lists {
             let draw_call = Debug3dDrawCall {
                 first_element: 0,
@@ -77,7 +67,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>
             let vertex_buffer_first_element = vertex_list.len() as u32;
 
             for vertex_pos in &line_list.points {
-                vertex_list.push(DebugVertex {
+                vertex_list.push(Debug3dVertex {
                     pos: (*vertex_pos).into(),
                     color: line_list.color.into(),
                 });
@@ -94,7 +84,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>
         // We would probably want to support multiple buffers at some point
         let vertex_buffer = if !draw_calls.is_empty() {
             let vertex_buffer_size =
-                vertex_list.len() as u64 * std::mem::size_of::<DebugVertex>() as u64;
+                vertex_list.len() as u64 * std::mem::size_of::<Debug3dVertex>() as u64;
             let mut vertex_buffer = VkBuffer::new(
                 &self.device_context,
                 vk_mem::MemoryUsage::CpuToGpu,
