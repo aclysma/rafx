@@ -3,7 +3,7 @@ use legion::prelude::Resources;
 use renderer::vulkan::{
     LogicalSize, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, VkContext,
 };
-use renderer::features::features::sprite::SpriteRenderNodeSet;
+use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderFeature};
 use crate::features::mesh::{MeshRenderNodeSet, MeshRenderFeature};
 use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
@@ -12,6 +12,7 @@ use renderer::features::renderpass::debug_renderpass::DebugDraw3DResource;
 use renderer::nodes::RenderRegistry;
 use crate::assets::gltf::{MeshAsset, GltfMaterialAsset};
 use crate::resource_manager::GameResourceManager;
+use renderer::resources::ResourceManager;
 
 pub fn logging_init() {
     let mut log_level = log::LevelFilter::Info;
@@ -120,10 +121,15 @@ pub fn rendering_init(
 
     let vk_context = context.build(&window_wrapper).unwrap();
     let device_context = vk_context.device_context().clone();
+    let resource_manager = {
+        let mut asset_resourceh = resources.get_mut::<AssetResource>().unwrap();
+        renderer::resources::create_resource_manager(&device_context, &mut *asset_resourceh)
+    };
     resources.insert(vk_context);
     resources.insert(device_context);
+    resources.insert(resource_manager);
 
-    renderer::resources::init_renderer_assets(resources);
+
 
     {
         //
@@ -148,6 +154,7 @@ pub fn rendering_init(
 
     let mut render_registry_builder = renderer::features::create_default_registry_builder();
     let render_registry = render_registry_builder
+        .register_feature::<SpriteRenderFeature>()
         .register_feature::<MeshRenderFeature>()
         .build();
     resources.insert(render_registry);
@@ -179,7 +186,7 @@ pub fn rendering_destroy(resources: &mut Resources) {
         resources.remove::<GameResourceManager>();
 
         resources.remove::<RenderRegistry>();
-        renderer::resources::destroy_renderer_assets(resources);
+        resources.remove::<ResourceManager>();
     }
 
     // Drop this one last

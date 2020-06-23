@@ -1,26 +1,27 @@
 use crate::features::sprite::{
     ExtractedSpriteData, SpriteRenderNodeSet, SpriteRenderFeature, SpriteRenderNode,
 };
-use crate::{
-    RenderJobExtractContext, PositionComponent, SpriteComponent, RenderJobWriteContext,
+use crate::components::{PositionComponent, SpriteComponent};
+use renderer::features::{
+    RenderJobExtractContext, RenderJobWriteContext,
     RenderJobPrepareContext,
 };
-use renderer_nodes::{
+use renderer::nodes::{
     DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
     RenderFeatureIndex, RenderFeature, PerFrameNode,
 };
-use renderer_base::slab::RawSlabKey;
+use renderer::base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJobImpl;
-use renderer_shell_vulkan::VkDeviceContext;
-use renderer_resources::resource_managers::{
+use renderer::vulkan::VkDeviceContext;
+use renderer::resources::resource_managers::{
     PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef,
 };
 use ash::vk;
-use renderer_assets::assets::pipeline::MaterialAsset;
+use renderer::assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
-use renderer_assets::assets::image::ImageAsset;
+use renderer::assets::assets::image::ImageAsset;
 use ash::prelude::VkResult;
-use renderer_resources::resource_managers::DescriptorSetArc;
+use renderer::resources::resource_managers::DescriptorSetArc;
 use legion::prelude::EntityStore;
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a

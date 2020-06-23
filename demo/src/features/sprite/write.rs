@@ -1,11 +1,11 @@
 use crate::features::sprite::{SpriteRenderFeature, SpriteDrawCall};
-use renderer_nodes::{
+use renderer::nodes::{
     RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
 };
-use crate::RenderJobWriteContext;
-use renderer_shell_vulkan::{VkBuffer, VkBufferRaw};
+use renderer::features::RenderJobWriteContext;
+use renderer::vulkan::{VkBuffer, VkBufferRaw};
 use std::mem::ManuallyDrop;
-use renderer_resources::resource_managers::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::resources::resource_managers::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
 use ash::vk;
 use ash::version::DeviceV1_0;
 

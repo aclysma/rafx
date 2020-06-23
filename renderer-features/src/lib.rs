@@ -15,7 +15,6 @@ use renderer_visibility::DynamicAabbVisibilityNodeHandle;
 //
 // Everything below this point is only being used by the api_design example for prototyping purposes
 //
-use features::sprite::SpriteRenderNodeHandle;
 use renderer_shell_vulkan::{VkResourceDropSink, VkBuffer, VkDeviceContext};
 use renderer_shell_vulkan::cleanup::VkResourceDropSinkChannel;
 use std::mem::ManuallyDrop;
@@ -23,43 +22,6 @@ use ash::vk;
 use atelier_assets::loader::handle::Handle;
 use renderer_assets::assets::image::ImageAsset;
 use renderer_resources::resource_managers::{ResourceManager, DynResourceAllocatorSet};
-
-#[derive(Copy, Clone)]
-pub struct PositionComponent {
-    pub position: Vec3,
-}
-
-#[derive(Clone)]
-pub struct PointLightComponent {
-    pub color: glam::Vec4,
-    pub range: f32,
-    pub intensity: f32,
-}
-
-#[derive(Clone)]
-pub struct DirectionalLightComponent {
-    pub direction: glam::Vec3,
-    pub color: glam::Vec4,
-    pub intensity: f32,
-}
-
-#[derive(Clone)]
-pub struct SpotLightComponent {
-    pub direction: glam::Vec3,
-    pub color: glam::Vec4,
-    pub spotlight_half_angle: f32,
-    pub range: f32,
-    pub intensity: f32,
-}
-
-#[derive(Clone)]
-pub struct SpriteComponent {
-    pub sprite_handle: SpriteRenderNodeHandle,
-    pub visibility_handle: DynamicAabbVisibilityNodeHandle,
-    pub alpha: f32,
-    pub image: Handle<ImageAsset>,
-    //pub texture_material: ResourceArc<>
-}
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,

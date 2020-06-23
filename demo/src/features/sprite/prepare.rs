@@ -1,5 +1,5 @@
-use crate::phases::draw_transparent::DrawTransparentRenderPhase;
-use renderer_nodes::{
+use renderer::features::phases::draw_transparent::DrawTransparentRenderPhase;
+use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
 };
@@ -7,14 +7,14 @@ use crate::features::sprite::{
     SpriteRenderFeature, ExtractedSpriteData, QUAD_VERTEX_LIST, QUAD_INDEX_LIST, SpriteDrawCall,
     SpriteVertex,
 };
-use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use renderer::features::phases::draw_opaque::DrawOpaqueRenderPhase;
 use glam::Vec3;
 use super::SpriteCommandWriter;
-use crate::{RenderJobWriteContext, RenderJobPrepareContext};
-use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
+use renderer::features::{RenderJobWriteContext, RenderJobPrepareContext};
+use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
 use std::mem::ManuallyDrop;
-use renderer_resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct SpritePrepareJobImpl {
     device_context: VkDeviceContext,

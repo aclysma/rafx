@@ -1,4 +1,4 @@
-mod assets;
+pub mod assets;
 pub use assets::*;
 
 mod importer;

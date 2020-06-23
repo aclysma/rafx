@@ -1,9 +1,9 @@
 use legion::prelude::{Resources, World, EntityStore};
 use renderer::assets::asset_resource::AssetResource;
 use glam::f32::Vec3;
-use renderer::features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
+use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
 use renderer::visibility::{DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
-use renderer::features::{
+use crate::components::{
     PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
     DirectionalLightComponent,
 };

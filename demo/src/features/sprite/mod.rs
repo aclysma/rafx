@@ -1,12 +1,12 @@
-use renderer_nodes::{
+use renderer::nodes::{
     RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
     RenderNodeSet, RenderNodeCount,
 };
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use crate::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
+use renderer::features::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use legion::prelude::Entity;
-use renderer_base::slab::{RawSlabKey, RawSlab};
+use renderer::base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;
 
@@ -18,12 +18,12 @@ use prepare::SpritePrepareJobImpl;
 
 mod write;
 use write::SpriteCommandWriter;
-use renderer_shell_vulkan::VkDeviceContext;
+use renderer::vulkan::VkDeviceContext;
 use ash::vk;
-use renderer_resources::resource_managers::{
+use renderer::resources::resource_managers::{
     PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef,
 };
-use renderer_assets::assets::pipeline::MaterialAsset;
+use renderer::assets::assets::pipeline::MaterialAsset;
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]

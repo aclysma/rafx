@@ -33,7 +33,7 @@ use renderer::features::renderpass::debug_renderpass::{DebugDraw3DResource, Line
 use renderer::features::renderpass::VkBloomExtractRenderPass;
 use renderer::features::renderpass::VkBloomBlurRenderPass;
 use renderer::features::renderpass::VkBloomCombineRenderPass;
-use renderer::features::features::sprite::{
+use crate::features::sprite::{
     SpriteRenderNodeSet, SpriteRenderFeature, create_sprite_extract_job,
 };
 use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};

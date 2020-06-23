@@ -52,6 +52,7 @@ impl<'a> AllRenderNodes<'a> {
         &mut self,
         render_nodes: &'a dyn RenderNodeSet,
     ) {
+        // A panic here means a feature was not registered
         self.nodes[render_nodes.feature_index() as usize] = Some(render_nodes);
     }
 

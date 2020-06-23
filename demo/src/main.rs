@@ -9,7 +9,7 @@ use ash::prelude::VkResult;
 use renderer::features::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
-use renderer::features::{
+use crate::components::{
     PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
     DirectionalLightComponent,
 };
@@ -32,7 +32,7 @@ use renderer::assets::assets::image::ImageAsset;
 use renderer::assets::vk_description::GraphicsPipeline;
 use std::io::Write;
 use std::collections::hash_map::DefaultHasher;
-use renderer::features::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
+use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
 use renderer::visibility::{
     StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode,
 };
@@ -134,14 +134,10 @@ fn main() {
         // Update graphics resources
         //
         {
-            // let device = resources.get::<VkDeviceContext>().unwrap();
-            // let mut game_renderer = resources.get_mut::<Game>().unwrap();
-            // game_renderer.update_resources(&*device);
-            renderer::resources::update_renderer_assets(&resources);
-
-            let resource_manager = resources.get::<ResourceManager>().unwrap();
+            let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
             let mut game_resource_manager = resources.get_mut::<GameResourceManager>().unwrap();
 
+            resource_manager.update_resources();
             game_resource_manager.update_resources(&*resource_manager);
         }
 
