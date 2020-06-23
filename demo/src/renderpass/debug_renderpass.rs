@@ -46,8 +46,6 @@ pub struct VkDebugRenderPass {
 
     pipeline_info: PipelineSwapchainInfo,
 
-    pub frame_buffers: Vec<vk::Framebuffer>,
-
     // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
@@ -70,19 +68,6 @@ impl VkDebugRenderPass {
             &device_context.queue_family_indices(),
         )?;
 
-        //
-        // Renderpass Resources
-        //
-        let frame_buffers = Self::create_framebuffers(
-            &device_context.device(),
-            swapchain.color_attachment.target_image_view(),
-            swapchain.color_attachment.resolved_image_view(),
-            &swapchain.swapchain_image_views,
-            swapchain.depth_attachment.target_image_view(),
-            &swapchain.swapchain_info,
-            &pipeline_info.renderpass.get_raw(),
-        )?;
-
         let command_buffers = Self::create_command_buffers(
             &device_context.device(),
             &swapchain.swapchain_info,
@@ -96,7 +81,6 @@ impl VkDebugRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             pipeline_info,
-            frame_buffers,
             command_pool,
             command_buffers,
             color_target_image,
@@ -122,32 +106,6 @@ impl VkDebugRenderPass {
         unsafe { logical_device.create_command_pool(&pool_create_info, None) }
     }
 
-    fn create_framebuffers(
-        logical_device: &ash::Device,
-        color_target_image_view: vk::ImageView,
-        color_resolved_image_view: vk::ImageView,
-        swapchain_image_views: &[vk::ImageView],
-        depth_image_view: vk::ImageView,
-        swapchain_info: &SwapchainInfo,
-        renderpass: &vk::RenderPass,
-    ) -> VkResult<Vec<vk::Framebuffer>> {
-        swapchain_image_views
-            .iter()
-            .map(|&swapchain_image_view| {
-                let framebuffer_attachments = vec![color_target_image_view, depth_image_view];
-
-                let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
-                    .render_pass(*renderpass)
-                    .attachments(&framebuffer_attachments)
-                    .width(swapchain_info.extents.width)
-                    .height(swapchain_info.extents.height)
-                    .layers(1);
-
-                unsafe { logical_device.create_framebuffer(&frame_buffer_create_info, None) }
-            })
-            .collect()
-    }
-
     fn create_command_buffers(
         logical_device: &ash::Device,
         swapchain_info: &SwapchainInfo,
@@ -164,56 +122,16 @@ impl VkDebugRenderPass {
     fn update_command_buffer(
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
-        renderpass: &vk::RenderPass,
-        framebuffer: vk::Framebuffer,
-        pipeline: &vk::Pipeline,
-        pipeline_layout: &vk::PipelineLayout,
         command_buffer: &vk::CommandBuffer,
-        descriptor_set_per_view: &vk::DescriptorSet,
-        //line_lists: Vec<LineList3D>,
         color_target_image: vk::Image,
         color_resolved_image: vk::Image,
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
-        let clear_values = [
-            vk::ClearValue {
-                color: vk::ClearColorValue {
-                    float32: [0.0, 0.0, 0.0, 1.0],
-                },
-            },
-            vk::ClearValue {
-                depth_stencil: vk::ClearDepthStencilValue {
-                    depth: 1.0,
-                    stencil: 0,
-                },
-            },
-        ];
-
-        let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-            .render_pass(*renderpass)
-            .framebuffer(framebuffer)
-            .render_area(vk::Rect2D {
-                offset: vk::Offset2D { x: 0, y: 0 },
-                extent: swapchain_info.extents.clone(),
-            })
-            .clear_values(&clear_values);
-
         // Implicitly resets the command buffer
         unsafe {
             let logical_device = device_context.device();
             logical_device.begin_command_buffer(*command_buffer, &command_buffer_begin_info)?;
-
-            // logical_device.cmd_begin_render_pass(
-            //     *command_buffer,
-            //     &render_pass_begin_info,
-            //     vk::SubpassContents::INLINE,
-            // );
-            //
-            // // // Used to be debug draw here
-            // // //TODO: Combine this with opaque renderpass or make this a special MSAA pass
-            // //
-            // logical_device.cmd_end_render_pass(*command_buffer);
 
             if swapchain_info.msaa_level != MsaaLevel::Sample1 {
                 Self::resolve_image(
@@ -330,18 +248,12 @@ impl VkDebugRenderPass {
         &mut self,
         present_index: usize,
         descriptor_set_per_view: vk::DescriptorSet,
-        //line_lists: Vec<LineList3D>,
     ) -> VkResult<()> {
+        //TODO: Can probably record these once and maybe even just have one
         Self::update_command_buffer(
             &self.device_context,
             &self.swapchain_info,
-            &self.pipeline_info.renderpass.get_raw(),
-            self.frame_buffers[present_index],
-            &self.pipeline_info.pipeline.get_raw().pipelines[0],
-            &self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
             &self.command_buffers[present_index],
-            &descriptor_set_per_view,
-            //line_lists,
             self.color_target_image,
             self.color_resolved_image,
         )
@@ -351,25 +263,10 @@ impl VkDebugRenderPass {
 impl Drop for VkDebugRenderPass {
     fn drop(&mut self) {
         log::trace!("destroying VkSpriteRenderPass");
-
-        fn drop_all_buffer_lists(buffer_list: &mut Vec<Vec<ManuallyDrop<VkBuffer>>>) {
-            for buffers in buffer_list {
-                for mut b in &mut *buffers {
-                    unsafe {
-                        ManuallyDrop::drop(&mut b);
-                    }
-                }
-            }
-        }
-
         unsafe {
             let device = self.device_context.device();
 
             device.destroy_command_pool(self.command_pool, None);
-
-            for frame_buffer in &self.frame_buffers {
-                device.destroy_framebuffer(*frame_buffer, None);
-            }
         }
 
         log::trace!("destroyed VkSpriteRenderPass");
