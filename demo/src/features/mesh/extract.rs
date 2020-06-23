@@ -3,7 +3,7 @@ use crate::features::mesh::{
     MeshPerObjectShaderParam, ExtractedViewNodeMeshData, MeshPerViewShaderParam,
 };
 use crate::components::{PointLightComponent, SpotLightComponent, DirectionalLightComponent, PositionComponent};
-use renderer::features::{
+use crate::render_contexts::{
     RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext,
 
 };

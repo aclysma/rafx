@@ -6,24 +6,24 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkDeviceContext, MsaaLevel, RenderpassAttachmentImage};
-use renderer_shell_vulkan::VkSwapchain;
-use renderer_shell_vulkan::offset_of;
-use renderer_shell_vulkan::SwapchainInfo;
-use renderer_shell_vulkan::VkQueueFamilyIndices;
-use renderer_shell_vulkan::VkBuffer;
-use renderer_shell_vulkan::util;
+use renderer::vulkan::{VkDevice, VkDeviceContext, MsaaLevel, RenderpassAttachmentImage};
+use renderer::vulkan::VkSwapchain;
+use renderer::vulkan::offset_of;
+use renderer::vulkan::SwapchainInfo;
+use renderer::vulkan::VkQueueFamilyIndices;
+use renderer::vulkan::VkBuffer;
+use renderer::vulkan::util;
 
-use renderer_shell_vulkan::VkImage;
+use renderer::vulkan::VkImage;
 use image::error::ImageError::Decoding;
 use image::{GenericImageView, ImageFormat};
 use ash::vk::ShaderStageFlags;
 
 use atelier_assets::loader::handle::Handle;
 
-use renderer_base::time::TimeState;
-use renderer_resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
-use renderer_assets::assets::pipeline::MaterialAsset;
+use renderer::base::time::TimeState;
+use renderer::resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
+use renderer::assets::assets::pipeline::MaterialAsset;
 
 pub struct VkBloomRenderPassResources {
     pub device_context: VkDeviceContext,

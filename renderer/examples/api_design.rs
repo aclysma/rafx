@@ -1,5 +1,5 @@
 use renderer::visibility::*;
-use renderer::features::phases::draw_opaque::*;
+use crate::phases::draw_opaque::*;
 use renderer::nodes::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
 use renderer::nodes::RenderRegistryBuilder;
 use renderer::nodes::RenderViewSet;

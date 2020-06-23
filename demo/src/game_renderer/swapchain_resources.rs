@@ -1,4 +1,4 @@
-use renderer::features::renderpass::{
+use crate::renderpass::{
     VkOpaqueRenderPass, VkDebugRenderPass, VkBloomRenderPassResources, VkBloomExtractRenderPass,
     VkBloomBlurRenderPass, VkBloomCombineRenderPass,
 };

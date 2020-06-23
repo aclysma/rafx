@@ -2,7 +2,7 @@ use crate::features::sprite::{
     ExtractedSpriteData, SpriteRenderNodeSet, SpriteRenderFeature, SpriteRenderNode,
 };
 use crate::components::{PositionComponent, SpriteComponent};
-use renderer::features::{
+use crate::render_contexts::{
     RenderJobExtractContext, RenderJobWriteContext,
     RenderJobPrepareContext,
 };

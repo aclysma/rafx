@@ -8,11 +8,13 @@ use crate::features::mesh::{MeshRenderNodeSet, MeshRenderFeature};
 use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use crate::game_renderer::{SwapchainLifetimeListener, GameRenderer};
-use renderer::features::renderpass::debug_renderpass::DebugDraw3DResource;
+use crate::renderpass::debug_renderpass::DebugDraw3DResource;
 use renderer::nodes::RenderRegistry;
 use crate::assets::gltf::{MeshAsset, GltfMaterialAsset};
 use crate::resource_manager::GameResourceManager;
 use renderer::resources::ResourceManager;
+use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use crate::phases::draw_transparent::DrawTransparentRenderPhase;
 
 pub fn logging_init() {
     let mut log_level = log::LevelFilter::Info;
@@ -92,7 +94,7 @@ pub fn imgui_init(
 ) {
     // Load imgui, we do it a little early because it wants to have the actual SDL2 window and
     // doesn't work with the thin window wrapper
-    let imgui_manager = renderer::features::imgui_support::init_imgui_manager(sdl2_window);
+    let imgui_manager = crate::imgui_support::init_imgui_manager(sdl2_window);
     resources.insert(imgui_manager);
 }
 
@@ -107,6 +109,7 @@ pub fn rendering_init(
     resources.insert(MeshRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
+    resources.insert(DebugDraw3DResource::new());
 
     let mut context = VkContextBuilder::new()
         .use_vulkan_debug_layer(false)
@@ -129,8 +132,6 @@ pub fn rendering_init(
     resources.insert(device_context);
     resources.insert(resource_manager);
 
-
-
     {
         //
         // Create the game resource manager
@@ -152,14 +153,13 @@ pub fn rendering_init(
         asset_resource.add_storage::<GltfMaterialAsset>();
     }
 
-    let mut render_registry_builder = renderer::features::create_default_registry_builder();
-    let render_registry = render_registry_builder
+    let render_registry = renderer::nodes::RenderRegistryBuilder::default()
         .register_feature::<SpriteRenderFeature>()
         .register_feature::<MeshRenderFeature>()
+        .register_render_phase::<DrawOpaqueRenderPhase>()
+        .register_render_phase::<DrawTransparentRenderPhase>()
         .build();
     resources.insert(render_registry);
-
-    renderer::features::init_renderer_features(resources);
 
     let mut game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
     resources.insert(game_renderer);
@@ -180,11 +180,8 @@ pub fn rendering_destroy(resources: &mut Resources) {
         resources.remove::<MeshRenderNodeSet>();
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
-
-        renderer::features::destroy_renderer_features(resources);
-
+        resources.remove::<DebugDraw3DResource>();
         resources.remove::<GameResourceManager>();
-
         resources.remove::<RenderRegistry>();
         resources.remove::<ResourceManager>();
     }

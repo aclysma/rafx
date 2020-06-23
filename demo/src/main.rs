@@ -6,7 +6,7 @@ use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use ash::prelude::VkResult;
-use renderer::features::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
+use crate::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
 use imgui::sys::ImGuiStorage_GetBoolRef;
 use sdl2::mouse::MouseState;
 use crate::components::{
@@ -44,7 +44,7 @@ use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
 use crate::assets::gltf::MeshAsset;
 use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
-use renderer::features::renderpass::debug_renderpass::DebugDraw3DResource;
+use crate::renderpass::debug_renderpass::DebugDraw3DResource;
 use crate::resource_manager::GameResourceManager;
 
 mod assets;
@@ -56,6 +56,10 @@ mod test_scene;
 mod resource_manager;
 mod components;
 mod asset_lookup;
+mod renderpass;
+mod imgui_support;
+mod phases;
+mod render_contexts;
 
 fn main() {
     init::logging_init();

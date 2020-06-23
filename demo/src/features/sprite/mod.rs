@@ -4,7 +4,7 @@ use renderer::nodes::{
 };
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use renderer::features::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
+use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use legion::prelude::Entity;
 use renderer::base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;

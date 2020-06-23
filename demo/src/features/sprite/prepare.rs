@@ -1,4 +1,4 @@
-use renderer::features::phases::draw_transparent::DrawTransparentRenderPhase;
+use crate::phases::draw_transparent::DrawTransparentRenderPhase;
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
@@ -7,10 +7,10 @@ use crate::features::sprite::{
     SpriteRenderFeature, ExtractedSpriteData, QUAD_VERTEX_LIST, QUAD_INDEX_LIST, SpriteDrawCall,
     SpriteVertex,
 };
-use renderer::features::phases::draw_opaque::DrawOpaqueRenderPhase;
+use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
 use glam::Vec3;
 use super::SpriteCommandWriter;
-use renderer::features::{RenderJobWriteContext, RenderJobPrepareContext};
+use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
 use std::mem::ManuallyDrop;

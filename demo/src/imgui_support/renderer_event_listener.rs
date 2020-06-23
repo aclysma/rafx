@@ -1,6 +1,6 @@
-use renderer_shell_vulkan::{VkSwapchain, VkDeviceContext};
-use renderer_shell_vulkan::VkDevice;
-use renderer_shell_vulkan::Window;
+use renderer::vulkan::{VkSwapchain, VkDeviceContext};
+use renderer::vulkan::VkDevice;
+use renderer::vulkan::Window;
 use ash::vk;
 use super::{VkImGuiRenderPass, ImGuiFontAtlas};
 use ash::prelude::VkResult;
@@ -23,7 +23,7 @@ impl ImguiRenderEventListener {
     }
 }
 
-impl renderer_shell_vulkan::VkSurfaceSwapchainLifetimeListener for ImguiRenderEventListener {
+impl renderer::vulkan::VkSurfaceSwapchainLifetimeListener for ImguiRenderEventListener {
     fn swapchain_created(
         &mut self,
         device_context: &VkDeviceContext,

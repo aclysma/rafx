@@ -5,7 +5,7 @@ use crate::features::mesh::{
 use renderer::nodes::{
     RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
 };
-use renderer::features::RenderJobWriteContext;
+use crate::render_contexts::RenderJobWriteContext;
 use renderer::vulkan::{VkBuffer, VkBufferRaw};
 use std::mem::ManuallyDrop;
 use renderer::resources::resource_managers::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};

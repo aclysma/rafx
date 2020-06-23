@@ -6,20 +6,20 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkDevice, VkDeviceContext};
-use renderer_shell_vulkan::VkSwapchain;
-use renderer_shell_vulkan::offset_of;
-use renderer_shell_vulkan::SwapchainInfo;
-use renderer_shell_vulkan::VkQueueFamilyIndices;
-use renderer_shell_vulkan::VkBuffer;
-use renderer_shell_vulkan::util;
+use renderer::vulkan::{VkDevice, VkDeviceContext};
+use renderer::vulkan::VkSwapchain;
+use renderer::vulkan::offset_of;
+use renderer::vulkan::SwapchainInfo;
+use renderer::vulkan::VkQueueFamilyIndices;
+use renderer::vulkan::VkBuffer;
+use renderer::vulkan::util;
 
-use renderer_shell_vulkan::VkImage;
+use renderer::vulkan::VkImage;
 
 use super::ImGuiFontAtlas;
-use renderer_assets::image_utils::{DecodedTexture, ColorSpace};
-use renderer_assets::image_utils::DecodedTextureMips;
-use renderer_assets::image_utils::DecodedTextureMipInfo;
+use renderer::assets::image_utils::{DecodedTexture, ColorSpace};
+use renderer::assets::image_utils::DecodedTextureMips;
+use renderer::assets::image_utils::DecodedTextureMipInfo;
 use crate::imgui_support::{ImGuiDrawData, ImGuiDrawCmd};
 
 #[derive(Clone, Debug, Copy)]
@@ -156,7 +156,7 @@ impl VkImGuiRenderPass {
         };
 
         //let images = crate::image_utils::load_images(device, device.queues.graphics_queue, &[decoded_texture])?;
-        let images = renderer_assets::image_utils::load_images(
+        let images = renderer::assets::image_utils::load_images(
             &device_context,
             device_context
                 .queue_family_indices()
@@ -494,7 +494,7 @@ impl VkImGuiRenderPass {
     ) -> VkResult<vk::ShaderModule> {
         let mut spv_file = std::io::Cursor::new(data);
         //TODO: Pass this error up
-        let code = renderer_shell_vulkan::util::read_spv(&mut spv_file)
+        let code = renderer::vulkan::util::read_spv(&mut spv_file)
             .expect("Failed to read vertex shader spv file");
         let shader_info = vk::ShaderModuleCreateInfo::builder().code(&code);
 

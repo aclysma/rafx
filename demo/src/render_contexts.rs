@@ -1,27 +1,7 @@
-pub mod renderpass;
-pub mod imgui_support;
-pub mod features;
-pub mod phases;
-
-mod features_init;
-pub use features_init::create_default_registry_builder;
-pub use features_init::init_renderer_features;
-pub use features_init::destroy_renderer_features;
-
-use legion::prelude::*;
-use glam::Vec3;
-use renderer_visibility::DynamicAabbVisibilityNodeHandle;
-
-//
-// Everything below this point is only being used by the api_design example for prototyping purposes
-//
-use renderer_shell_vulkan::{VkResourceDropSink, VkBuffer, VkDeviceContext};
-use renderer_shell_vulkan::cleanup::VkResourceDropSinkChannel;
-use std::mem::ManuallyDrop;
 use ash::vk;
-use atelier_assets::loader::handle::Handle;
-use renderer_assets::assets::image::ImageAsset;
-use renderer_resources::resource_managers::{ResourceManager, DynResourceAllocatorSet};
+use legion::prelude::*;
+use renderer::resources::{ResourceManager, DynResourceAllocatorSet};
+use renderer::vulkan::VkDeviceContext;
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,

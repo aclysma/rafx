@@ -1,6 +1,6 @@
-use renderer_nodes::{RenderPhaseIndex, SubmitNode};
+use renderer::nodes::{RenderPhaseIndex, SubmitNode};
 use std::sync::atomic::Ordering;
-use renderer_nodes::RenderPhase;
+use renderer::nodes::RenderPhase;
 use std::sync::atomic::AtomicI32;
 use std::convert::TryInto;
 

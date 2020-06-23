@@ -1,4 +1,4 @@
-use renderer::features::imgui_support::{
+use crate::imgui_support::{
     ImGuiFontAtlas, VkImGuiRenderPass, ImguiRenderEventListener, Sdl2ImguiManager, ImguiManager,
 };
 use renderer::vulkan::{
@@ -7,7 +7,7 @@ use renderer::vulkan::{
     VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer, FrameInFlight,
 };
 use ash::prelude::VkResult;
-use renderer::features::renderpass::{VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
+use crate::renderpass::{VkDebugRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
 use std::mem::{ManuallyDrop, swap};
 use renderer::assets::image_utils::{decode_texture, enqueue_load_images};
 use ash::vk;
@@ -29,10 +29,10 @@ use crate::assets::gltf::{
     MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam,
 };
 use renderer::assets::assets::buffer::BufferAsset;
-use renderer::features::renderpass::debug_renderpass::{DebugDraw3DResource, LineList3D};
-use renderer::features::renderpass::VkBloomExtractRenderPass;
-use renderer::features::renderpass::VkBloomBlurRenderPass;
-use renderer::features::renderpass::VkBloomCombineRenderPass;
+use crate::renderpass::debug_renderpass::{DebugDraw3DResource, LineList3D};
+use crate::renderpass::VkBloomExtractRenderPass;
+use crate::renderpass::VkBloomBlurRenderPass;
+use crate::renderpass::VkBloomCombineRenderPass;
 use crate::features::sprite::{
     SpriteRenderNodeSet, SpriteRenderFeature, create_sprite_extract_job,
 };
@@ -41,13 +41,13 @@ use renderer::nodes::{
     RenderRegistryBuilder, RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet,
     AllRenderNodes, FramePacketBuilder, ExtractJobSet, PrepareJobSet, FramePacket, RenderView,
 };
-use renderer::features::phases::draw_opaque::DrawOpaqueRenderPhase;
-use renderer::features::phases::draw_transparent::DrawTransparentRenderPhase;
+use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use crate::phases::draw_transparent::DrawTransparentRenderPhase;
 use legion::prelude::*;
-use renderer::features::{
+use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContextFactory,
 };
-use renderer::features::RenderJobWriteContext;
+use crate::render_contexts::RenderJobWriteContext;
 use renderer::vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
 use crate::features::mesh::{MeshPerViewShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
