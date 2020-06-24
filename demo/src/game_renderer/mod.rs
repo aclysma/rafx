@@ -107,50 +107,7 @@ impl GameRenderer {
         let vk_context = resources.get_mut::<VkContext>().unwrap();
         let device_context = vk_context.device_context();
 
-        //TODO: Simplify this setup code for the imgui font atlas
-        let imgui_font_atlas = resources
-            .get::<Sdl2ImguiManager>()
-            .unwrap()
-            .build_font_atlas();
-
-        let imgui_font_atlas = renderer::assets::image_utils::DecodedTexture {
-            width: imgui_font_atlas.width,
-            height: imgui_font_atlas.height,
-            data: imgui_font_atlas.data,
-            color_space: renderer::assets::image_utils::ColorSpace::Linear,
-            mips: renderer::assets::image_utils::default_mip_settings_for_image(
-                imgui_font_atlas.width,
-                imgui_font_atlas.height
-            )
-        };
-
-        let mut imgui_font_atlas_image = renderer::assets::image_utils::load_images(
-            &device_context,
-            device_context
-                .queue_family_indices()
-                .transfer_queue_family_index,
-            &device_context.queues().transfer_queue,
-            device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
-            &device_context.queues().graphics_queue,
-            &[imgui_font_atlas],
-        )?;
-
-        let dyn_resource_allocator = resource_manager.create_dyn_resource_allocator_set();
-        let imgui_font_atlas_image = dyn_resource_allocator.insert_image(
-            unsafe { ManuallyDrop::take(&mut imgui_font_atlas_image[0]) }
-        );
-
-        let imgui_font_atlas_image_view = Self::create_texture_image_view(
-            device_context.device(),
-            &imgui_font_atlas_image.get_raw().image
-        );
-
-        let imgui_font_atlas_image_view = dyn_resource_allocator.insert_image_view(
-            imgui_font_atlas_image,
-            imgui_font_atlas_image_view
-        );
+        let imgui_font_atlas_image_view = GameRenderer::create_font_atlas_image_view(&device_context, &mut resource_manager, resources)?;
 
         let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
             .add_render_phase::<OpaqueRenderPhase>()
@@ -189,11 +146,46 @@ impl GameRenderer {
         })
     }
 
+    fn create_font_atlas_image_view(
+        device_context: &VkDeviceContext,
+        resource_manager: &mut ResourceManager,
+        resources: &Resources,
+    ) -> VkResult<ResourceArc<ImageViewResource>> {
+        //TODO: Simplify this setup code for the imgui font atlas
+        let imgui_font_atlas = resources
+            .get::<Sdl2ImguiManager>()
+            .unwrap()
+            .build_font_atlas();
 
-    pub fn create_texture_image_view(
-        logical_device: &ash::Device,
-        image: &vk::Image,
-    ) -> vk::ImageView {
+        let imgui_font_atlas = renderer::assets::image_utils::DecodedTexture {
+            width: imgui_font_atlas.width,
+            height: imgui_font_atlas.height,
+            data: imgui_font_atlas.data,
+            color_space: renderer::assets::image_utils::ColorSpace::Linear,
+            mips: renderer::assets::image_utils::default_mip_settings_for_image(
+                imgui_font_atlas.width,
+                imgui_font_atlas.height
+            )
+        };
+
+        let mut imgui_font_atlas_image = renderer::assets::image_utils::load_images(
+            &device_context,
+            device_context
+                .queue_family_indices()
+                .transfer_queue_family_index,
+            &device_context.queues().transfer_queue,
+            device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            &device_context.queues().graphics_queue,
+            &[imgui_font_atlas],
+        )?;
+
+        let dyn_resource_allocator = resource_manager.create_dyn_resource_allocator_set();
+        let imgui_font_atlas_image = dyn_resource_allocator.insert_image(
+            unsafe { ManuallyDrop::take(&mut imgui_font_atlas_image[0]) }
+        );
+
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(vk::ImageAspectFlags::COLOR)
             .base_mip_level(0)
@@ -202,16 +194,23 @@ impl GameRenderer {
             .layer_count(1);
 
         let image_view_info = vk::ImageViewCreateInfo::builder()
-            .image(*image)
+            .image(imgui_font_atlas_image.get_raw().image)
             .view_type(vk::ImageViewType::TYPE_2D)
             .format(vk::Format::R8G8B8A8_UNORM)
             .subresource_range(*subresource_range);
 
-        unsafe {
-            logical_device
-                .create_image_view(&image_view_info, None)
-                .unwrap()
-        }
+        let imgui_font_atlas_image_view = unsafe {
+            device_context
+                .device()
+                .create_image_view(&image_view_info, None)?
+        };
+
+        let imgui_font_atlas_image_view = dyn_resource_allocator.insert_image_view(
+            imgui_font_atlas_image,
+            imgui_font_atlas_image_view
+        );
+
+        Ok(imgui_font_atlas_image_view)
     }
 }
 
