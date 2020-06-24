@@ -19,6 +19,7 @@ use super::ResourceId;
 use crate::resource_managers::ResourceArc;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use crate::resource_managers::resource_arc::{WeakResourceArc, ResourceWithHash};
+use crate::ImageViewResource;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DynResourceIndex(u64);
@@ -103,6 +104,7 @@ where
 #[derive(Clone)]
 pub struct DynResourceAllocatorSet {
     pub images: DynResourceAllocator<VkImageRaw>,
+    pub image_views: DynResourceAllocator<ImageViewResource>,
     pub buffers: DynResourceAllocator<VkBufferRaw>,
 }
 
@@ -112,8 +114,20 @@ impl DynResourceAllocatorSet {
         image: VkImage,
     ) -> ResourceArc<VkImageRaw> {
         let raw_image = image.take_raw().unwrap();
-        let image = self.images.insert(raw_image);
-        image
+        self.images.insert(raw_image)
+    }
+
+    pub fn insert_image_view(
+        &self,
+        image: ResourceArc<VkImageRaw>,
+        image_view: vk::ImageView,
+    ) -> ResourceArc<ImageViewResource> {
+        let image_view_resource = ImageViewResource {
+            image,
+            image_view
+        };
+
+        self.image_views.insert(image_view_resource)
     }
 
     pub fn insert_buffer(
@@ -121,8 +135,7 @@ impl DynResourceAllocatorSet {
         buffer: VkBuffer,
     ) -> ResourceArc<VkBufferRaw> {
         let raw_buffer = buffer.take_raw().unwrap();
-        let buffer = self.buffers.insert(raw_buffer);
-        buffer
+        self.buffers.insert(raw_buffer)
     }
 }
 
@@ -210,6 +223,7 @@ where
 #[derive(Debug)]
 pub struct ResourceMetrics {
     pub image_count: usize,
+    pub image_view_count: usize,
     pub buffer_count: usize,
 }
 
@@ -222,6 +236,7 @@ pub struct ResourceMetrics {
 pub struct DynResourceAllocatorManagerSet {
     pub device_context: VkDeviceContext,
     pub images: DynResourceAllocatorManager<VkImageRaw>,
+    pub image_views: DynResourceAllocatorManager<ImageViewResource>,
     pub buffers: DynResourceAllocatorManager<VkBufferRaw>,
 }
 
@@ -233,6 +248,7 @@ impl DynResourceAllocatorManagerSet {
         DynResourceAllocatorManagerSet {
             device_context: device_context.clone(),
             images: DynResourceAllocatorManager::new(max_frames_in_flight),
+            image_views: DynResourceAllocatorManager::new(max_frames_in_flight),
             buffers: DynResourceAllocatorManager::new(max_frames_in_flight),
         }
     }
@@ -240,6 +256,7 @@ impl DynResourceAllocatorManagerSet {
     pub fn create_allocator_set(&self) -> DynResourceAllocatorSet {
         DynResourceAllocatorSet {
             images: self.images.create_allocator(),
+            image_views: self.image_views.create_allocator(),
             buffers: self.buffers.create_allocator(),
         }
     }
@@ -247,11 +264,13 @@ impl DynResourceAllocatorManagerSet {
     pub fn on_frame_complete(&mut self) {
         self.buffers.on_frame_complete(&self.device_context);
         self.images.on_frame_complete(&self.device_context);
+        self.image_views.on_frame_complete(&self.device_context);
     }
 
     pub fn destroy(&mut self) {
         //WARNING: These need to be in order of dependencies to avoid frame-delays on destroying
         // resources.
+        self.image_views.destroy(&self.device_context);
         self.images.destroy(&self.device_context);
         self.buffers.destroy(&self.device_context);
     }
@@ -259,6 +278,7 @@ impl DynResourceAllocatorManagerSet {
     pub fn metrics(&self) -> ResourceMetrics {
         ResourceMetrics {
             image_count: self.images.len(),
+            image_view_count: self.image_views.len(),
             buffer_count: self.buffers.len(),
         }
     }

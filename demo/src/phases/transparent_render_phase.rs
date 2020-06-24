@@ -4,17 +4,17 @@ use renderer::nodes::RenderPhase;
 use std::sync::atomic::AtomicI32;
 use std::convert::TryInto;
 
-static DRAW_TRANSPARENT_RENDER_PHASE_INDEX: AtomicI32 = AtomicI32::new(-1);
+static TRANSPARENT_RENDER_PHASE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
-pub struct DrawTransparentRenderPhase;
+pub struct TransparentRenderPhase;
 
-impl RenderPhase for DrawTransparentRenderPhase {
+impl RenderPhase for TransparentRenderPhase {
     fn set_render_phase_index(index: RenderPhaseIndex) {
-        DRAW_TRANSPARENT_RENDER_PHASE_INDEX.store(index.try_into().unwrap(), Ordering::Release);
+        TRANSPARENT_RENDER_PHASE_INDEX.store(index.try_into().unwrap(), Ordering::Release);
     }
 
     fn render_phase_index() -> RenderPhaseIndex {
-        DRAW_TRANSPARENT_RENDER_PHASE_INDEX.load(Ordering::Acquire) as RenderPhaseIndex
+        TRANSPARENT_RENDER_PHASE_INDEX.load(Ordering::Acquire) as RenderPhaseIndex
     }
 
     fn sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
@@ -30,6 +30,6 @@ impl RenderPhase for DrawTransparentRenderPhase {
     }
 
     fn render_phase_debug_name() -> &'static str {
-        "DrawTransparentRenderPhase"
+        "TransparentRenderPhase"
     }
 }

@@ -1,9 +1,6 @@
 use ash::vk;
 use ash::prelude::VkResult;
 
-mod imgui_renderpass;
-pub use imgui_renderpass::VkImGuiRenderPass;
-
 mod sdl2_imgui_manager;
 pub use sdl2_imgui_manager::Sdl2ImguiManager;
 pub use sdl2_imgui_manager::init_imgui_manager;
@@ -11,16 +8,13 @@ pub use sdl2_imgui_manager::init_imgui_manager;
 mod imgui_manager;
 pub use imgui_manager::ImguiManager;
 
-mod renderer_event_listener;
-pub use renderer_event_listener::ImguiRenderEventListener;
-
 pub use imgui;
 use imgui::{DrawCmdParams, DrawCmd};
 
 pub struct ImGuiFontAtlas {
-    width: u32,
-    height: u32,
-    data: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
+    pub data: Vec<u8>,
 }
 
 impl ImGuiFontAtlas {

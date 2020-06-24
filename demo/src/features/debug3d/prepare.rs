@@ -1,10 +1,10 @@
-use crate::phases::draw_transparent::DrawTransparentRenderPhase;
+use crate::phases::TransparentRenderPhase;
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature, PrepareJob
 };
 use crate::features::debug3d::{Debug3dRenderFeature, ExtractedDebug3dData, Debug3dDrawCall, Debug3dVertex, LineList3D};
-use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
 use super::write::Debug3dCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
@@ -107,7 +107,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>
         let mut submit_nodes = FeatureSubmitNodes::default();
         for view in views {
             let mut view_submit_nodes = ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
-            view_submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(0, 0, 0.0);
+            view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(0, 0, 0.0);
             submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
         }
 

@@ -86,10 +86,6 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         let mut resource_manager = &mut self.resource_manager;
 
         log::debug!("game renderer swapchain_created called");
-        game_renderer
-            .imgui_event_listener
-            .swapchain_created(device_context, swapchain)?;
-
         let swapchain_surface_info = SwapchainSurfaceInfo {
             extents: swapchain.swapchain_info.extents,
             msaa_level: swapchain.swapchain_info.msaa_level,
@@ -138,8 +134,5 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
 
         self.resource_manager
             .remove_swapchain(&swapchain_resources.swapchain_surface_info);
-        game_renderer
-            .imgui_event_listener
-            .swapchain_destroyed(device_context, swapchain);
     }
 }

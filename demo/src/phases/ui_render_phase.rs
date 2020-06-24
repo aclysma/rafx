@@ -4,17 +4,17 @@ use renderer::nodes::RenderPhase;
 use std::sync::atomic::AtomicI32;
 use std::convert::TryInto;
 
-static DRAW_OPAQUE_RENDER_PHASE_INDEX: AtomicI32 = AtomicI32::new(-1);
+static UI_RENDER_PHASE_INDEX: AtomicI32 = AtomicI32::new(-1);
 
-pub struct DrawOpaqueRenderPhase;
+pub struct UiRenderPhase;
 
-impl RenderPhase for DrawOpaqueRenderPhase {
+impl RenderPhase for UiRenderPhase {
     fn set_render_phase_index(index: RenderPhaseIndex) {
-        DRAW_OPAQUE_RENDER_PHASE_INDEX.store(index.try_into().unwrap(), Ordering::Release);
+        UI_RENDER_PHASE_INDEX.store(index.try_into().unwrap(), Ordering::Release);
     }
 
     fn render_phase_index() -> RenderPhaseIndex {
-        DRAW_OPAQUE_RENDER_PHASE_INDEX.load(Ordering::Acquire) as RenderPhaseIndex
+        UI_RENDER_PHASE_INDEX.load(Ordering::Acquire) as RenderPhaseIndex
     }
 
     fn sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
@@ -26,6 +26,6 @@ impl RenderPhase for DrawOpaqueRenderPhase {
     }
 
     fn render_phase_debug_name() -> &'static str {
-        "DrawOpaqueRenderPhase"
+        "UiRenderPhase"
     }
 }

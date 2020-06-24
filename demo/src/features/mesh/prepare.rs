@@ -1,4 +1,4 @@
-use crate::phases::draw_transparent::DrawTransparentRenderPhase;
+use crate::phases::TransparentRenderPhase;
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
@@ -7,7 +7,7 @@ use crate::features::mesh::{
     MeshRenderFeature, ExtractedFrameNodeMeshData, MeshDrawCall, ExtractedViewNodeMeshData,
     PreparedViewNodeMeshData,
 };
-use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
 use super::MeshCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
@@ -94,7 +94,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for M
                 let distance_from_camera = Vec3::length(
                     extracted_frame_data.world_transform.w_axis().truncate() - view.eye_position(),
                 );
-                submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(
+                submit_nodes.add_submit_node::<OpaqueRenderPhase>(
                     submit_node_id,
                     0,
                     distance_from_camera,

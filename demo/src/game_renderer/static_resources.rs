@@ -62,6 +62,7 @@ pub struct GameRendererStaticResources {
     pub bloom_extract_material: Handle<MaterialAsset>,
     pub bloom_blur_material: Handle<MaterialAsset>,
     pub bloom_combine_material: Handle<MaterialAsset>,
+    pub imgui_material: Handle<MaterialAsset>,
 }
 
 impl GameRendererStaticResources {
@@ -117,6 +118,14 @@ impl GameRendererStaticResources {
             asset_resource,
         );
 
+        //
+        // ImGui resources
+        //
+        let imgui_material = begin_load_asset::<MaterialAsset>(
+            asset_uuid!("b1cd2431-5cf8-4e9c-b7f0-569ba74e0981"),
+            asset_resource,
+        );
+
         wait_for_asset_to_load(
             &sprite_material,
             asset_resource,
@@ -159,6 +168,13 @@ impl GameRendererStaticResources {
             "mesh material",
         );
 
+        wait_for_asset_to_load(
+            &imgui_material,
+            asset_resource,
+            resource_manager,
+            "imgui material",
+        );
+
         Ok(GameRendererStaticResources {
             sprite_material,
             debug3d_material: debug_material,
@@ -166,6 +182,7 @@ impl GameRendererStaticResources {
             bloom_extract_material,
             bloom_blur_material,
             bloom_combine_material,
+            imgui_material,
         })
     }
 }

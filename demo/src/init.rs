@@ -13,8 +13,9 @@ use renderer::nodes::RenderRegistry;
 use crate::assets::gltf::{MeshAsset, GltfMaterialAsset};
 use crate::resource_manager::GameResourceManager;
 use renderer::resources::ResourceManager;
-use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
-use crate::phases::draw_transparent::DrawTransparentRenderPhase;
+use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
+use crate::phases::TransparentRenderPhase;
+use crate::features::imgui::ImGuiRenderFeature;
 
 pub fn logging_init() {
     let mut log_level = log::LevelFilter::Info;
@@ -157,8 +158,10 @@ pub fn rendering_init(
         .register_feature::<SpriteRenderFeature>()
         .register_feature::<MeshRenderFeature>()
         .register_feature::<Debug3dRenderFeature>()
-        .register_render_phase::<DrawOpaqueRenderPhase>()
-        .register_render_phase::<DrawTransparentRenderPhase>()
+        .register_feature::<ImGuiRenderFeature>()
+        .register_render_phase::<OpaqueRenderPhase>()
+        .register_render_phase::<TransparentRenderPhase>()
+        .register_render_phase::<UiRenderPhase>()
         .build();
     resources.insert(render_registry);
 

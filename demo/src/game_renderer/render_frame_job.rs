@@ -18,10 +18,7 @@ pub struct RenderFrameJob {
     pub render_registry: RenderRegistry,
     pub device_context: VkDeviceContext,
     pub opaque_pipeline_info: PipelineSwapchainInfo,
-    pub debug_pipeline_info: PipelineSwapchainInfo,
-    //pub debug_draw_3d_line_lists: Vec<LineList3D>,
-    pub window_scale_factor: f64,
-    pub imgui_draw_data: Option<ImGuiDrawData>,
+    pub imgui_pipeline_info: PipelineSwapchainInfo,
     pub frame_in_flight: FrameInFlight,
 }
 
@@ -39,10 +36,7 @@ impl RenderFrameJob {
             self.render_registry,
             self.device_context,
             self.opaque_pipeline_info,
-            self.debug_pipeline_info,
-            //self.debug_draw_3d_line_lists,
-            self.window_scale_factor,
-            self.imgui_draw_data,
+            self.imgui_pipeline_info,
             self.frame_in_flight.present_index() as usize,
         );
 
@@ -77,10 +71,7 @@ impl RenderFrameJob {
         render_registry: RenderRegistry,
         device_context: VkDeviceContext,
         opaque_pipeline_info: PipelineSwapchainInfo,
-        debug_pipeline_info: PipelineSwapchainInfo,
-        //debug_draw_3d_line_lists: Vec<LineList3D>,
-        window_scale_factor: f64,
-        imgui_draw_data: Option<ImGuiDrawData>,
+        imgui_pipeline_info: PipelineSwapchainInfo,
         present_index: usize,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let t0 = std::time::Instant::now();
@@ -194,13 +185,17 @@ impl RenderFrameJob {
         //
         // imgui
         //
-        {
-            log::trace!("imgui_event_listener update");
-            let mut commands = guard
-                .imgui_event_listener
-                .render(present_index, imgui_draw_data.as_ref())?;
-            command_buffers.append(&mut commands);
-        }
+        swapchain_resources
+            .ui_renderpass
+            .update(
+                &imgui_pipeline_info,
+                present_index,
+                &*prepared_render_data,
+                &main_view,
+                &write_context_factory
+            )?;
+        command_buffers
+            .push(swapchain_resources.ui_renderpass.command_buffers[present_index].clone());
 
         let t2 = std::time::Instant::now();
         log::info!(

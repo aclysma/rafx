@@ -18,3 +18,6 @@ glslc bloom_blur.frag -o bloom_blur.frag.spv
 
 glslc bloom_combine.vert -o bloom_combine.vert.spv
 glslc bloom_combine.frag -o bloom_combine.frag.spv
+
+glslc imgui.vert -o imgui.vert.spv
+glslc imgui.frag -o imgui.frag.spv

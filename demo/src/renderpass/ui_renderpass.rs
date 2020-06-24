@@ -29,9 +29,10 @@ use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::OpaqueRenderPhase;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobWriteContextFactory};
 use renderer::vulkan::cleanup::VkCombinedDropSink;
+use crate::phases::UiRenderPhase;
 
 /// Draws sprites
-pub struct VkOpaqueRenderPass {
+pub struct VkUiRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
@@ -47,7 +48,7 @@ pub struct VkOpaqueRenderPass {
     renderpass: vk::RenderPass,
 }
 
-impl VkOpaqueRenderPass {
+impl VkUiRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
@@ -79,7 +80,7 @@ impl VkOpaqueRenderPass {
             &command_pool,
         )?;
 
-        Ok(VkOpaqueRenderPass {
+        Ok(VkUiRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
             frame_buffers,
@@ -119,7 +120,7 @@ impl VkOpaqueRenderPass {
         swapchain_image_views
             .iter()
             .map(|&swapchain_image_view| {
-                let framebuffer_attachments = [color_image_view, depth_image_view];
+                let framebuffer_attachments = [swapchain_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)
@@ -157,28 +158,13 @@ impl VkOpaqueRenderPass {
     ) -> VkResult<()> {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
-        let clear_values = [
-            vk::ClearValue {
-                color: vk::ClearColorValue {
-                    float32: [0.0, 0.0, 0.0, 1.0],
-                },
-            },
-            vk::ClearValue {
-                depth_stencil: vk::ClearDepthStencilValue {
-                    depth: 1.0,
-                    stencil: 0,
-                },
-            },
-        ];
-
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(*renderpass)
             .framebuffer(framebuffer)
             .render_area(vk::Rect2D {
                 offset: vk::Offset2D { x: 0, y: 0 },
                 extent: swapchain_info.extents.clone(),
-            })
-            .clear_values(&clear_values);
+            });
 
         // Implicitly resets the command buffer
         unsafe {
@@ -194,7 +180,7 @@ impl VkOpaqueRenderPass {
             let mut write_context = write_context_factory.create_context(*command_buffer);
 
             prepared_render_data
-                .write_view_phase::<OpaqueRenderPhase>(&view, &mut write_context);
+                .write_view_phase::<UiRenderPhase>(&view, &mut write_context);
 
             logical_device.cmd_end_render_pass(*command_buffer);
             logical_device.end_command_buffer(*command_buffer)
@@ -223,7 +209,7 @@ impl VkOpaqueRenderPass {
     }
 }
 
-impl Drop for VkOpaqueRenderPass {
+impl Drop for VkUiRenderPass {
     fn drop(&mut self) {
         log::trace!("destroying VkOpaqueRenderPass");
 

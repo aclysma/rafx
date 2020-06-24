@@ -103,6 +103,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
         //TODO: Multi-view support for sprites. Not clear on if we want to do a screen-space view specifically
         // for sprites
+        //TODO: Extents is hard-coded
         let extents_width = 900;
         let extents_height = 600;
         let aspect_ration = extents_width as f32 / extents_height as f32;

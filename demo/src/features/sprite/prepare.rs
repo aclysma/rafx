@@ -1,4 +1,4 @@
-use crate::phases::draw_transparent::DrawTransparentRenderPhase;
+use crate::phases::TransparentRenderPhase;
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
@@ -7,7 +7,7 @@ use crate::features::sprite::{
     SpriteRenderFeature, ExtractedSpriteData, QUAD_VERTEX_LIST, QUAD_INDEX_LIST, SpriteDrawCall,
     SpriteVertex,
 };
-use crate::phases::draw_opaque::DrawOpaqueRenderPhase;
+use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
 use super::SpriteCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
@@ -128,11 +128,11 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
         // This can read per-frame and per-view data
         if let Some(extracted_data) = &self.extracted_frame_node_sprite_data[frame_node_index as usize] {
             if extracted_data.alpha >= 1.0 {
-                submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(frame_node_index, 0, 0.0);
+                submit_nodes.add_submit_node::<OpaqueRenderPhase>(frame_node_index, 0, 0.0);
             } else {
                 let distance_from_camera =
                     Vec3::length(extracted_data.position - view.eye_position());
-                submit_nodes.add_submit_node::<DrawTransparentRenderPhase>(
+                submit_nodes.add_submit_node::<TransparentRenderPhase>(
                     frame_node_index,
                     0,
                     distance_from_camera,

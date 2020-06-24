@@ -13,3 +13,6 @@ pub use bloom_combine_renderpass::VkBloomCombineRenderPass;
 
 pub mod opaque_renderpass;
 pub use opaque_renderpass::VkOpaqueRenderPass;
+
+pub mod ui_renderpass;
+pub use ui_renderpass::VkUiRenderPass;

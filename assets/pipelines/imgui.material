@@ -1,0 +1,109 @@
+(
+    passes: [
+        (
+            phase: "Opaque",
+            pipeline: "imgui.pipeline",
+            renderpass: "ui.renderpass",
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/imgui.vert.spv",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/imgui.frag.spv",
+                    entry_name: "main"
+                ),
+            ],
+            shader_interface: (
+                descriptor_set_layouts: [
+                    (
+                        descriptor_set_layout_bindings: [
+                            (
+                                binding: 0,
+                                descriptor_type: UniformBuffer,
+                                descriptor_count: 1,
+                                stage_flags: Vertex,
+                                slot_name: "view_proj",
+
+                                internal_buffer_per_descriptor_size: Some(64)
+                            ),
+                            (
+                                binding: 1,
+                                descriptor_type: Sampler,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "sampler",
+
+                                immutable_samplers: Some([
+                                    (
+                                        mag_filter: Linear,
+                                        min_filter: Linear,
+                                        address_mode_u: Repeat,
+                                        address_mode_v: Repeat,
+                                        address_mode_w: Repeat,
+                                        anisotropy_enable: false,
+                                        max_anisotropy: 1.0, // Could be a setting later
+                                        border_color: IntOpaqueBlack,
+                                        unnormalized_coordinates: false,
+                                        compare_enable: false,
+                                        compare_op: Always,
+                                        mipmap_mode: Linear,
+                                        mip_lod_bias: 0,
+                                        min_lod: 0,
+                                        max_lod: 0
+                                    )
+                                ])                                
+                            ),
+                        ],
+                    ),
+                    (
+                        descriptor_set_layout_bindings: [
+                            (
+                                binding: 0,
+                                descriptor_type: SampledImage,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "texture"
+                            ),
+                        ],
+                    ),
+                ],
+                push_constant_ranges: [],
+                vertex_input_state: (
+                    binding_descriptions: [
+                        (
+                            binding: 0,
+                            stride: 20,
+                            input_rate: Vertex,
+                        ),
+                    ],
+                    attribute_descriptions: [
+                        (
+                            location: 0,
+                            binding: 0,
+                            format: R32G32_SFLOAT,
+                            offset: 0,
+                            //slot_name: "POSITION"
+                        ),
+                        (
+                            location: 1,
+                            binding: 0,
+                            format: R32G32_SFLOAT,
+                            offset: 8,
+                            //slot_name: "TEXCOORD_0"
+                        ),
+                        (
+                            location: 2,
+                            binding: 0,
+                            format: R8G8B8A8_UNORM,
+                            offset: 16,
+                            //slot_name: "COLOR_0"
+                        ),
+                    ],
+                ),
+            ),
+        ),
+    ]
+)
