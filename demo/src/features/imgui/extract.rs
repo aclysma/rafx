@@ -1,15 +1,13 @@
 use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
-    DefaultExtractJobImpl, FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature,
-    ExtractJob,
+    FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature, ExtractJob,
 };
 use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use renderer::assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::assets::image::ImageAsset;
 use crate::imgui_support::Sdl2ImguiManager;
 use ash::vk::Extent2D;
 use renderer::resources::{ImageViewResource, ResourceArc};
@@ -74,8 +72,8 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
     fn extract(
         mut self: Box<Self>,
         extract_context: &RenderJobExtractContext,
-        frame_packet: &FramePacket,
-        views: &[&RenderView],
+        _frame_packet: &FramePacket,
+        _views: &[&RenderView],
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
         let imgui_draw_data = extract_context
             .resources

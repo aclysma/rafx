@@ -83,7 +83,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
     ) -> VkResult<()> {
         let mut guard = self.game_renderer.inner.lock().unwrap();
         let mut game_renderer = &mut *guard;
-        let mut resource_manager = &mut self.resource_manager;
+        let resource_manager = &mut self.resource_manager;
 
         log::debug!("game renderer swapchain_created called");
         let swapchain_surface_info = SwapchainSurfaceInfo {
@@ -94,7 +94,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             depth_format: swapchain.depth_format,
         };
 
-        resource_manager.add_swapchain(&swapchain_surface_info);
+        resource_manager.add_swapchain(&swapchain_surface_info)?;
 
         let swapchain_resources = SwapchainResources::new(
             device_context,
@@ -113,21 +113,13 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
 
     fn swapchain_destroyed(
         &mut self,
-        device_context: &VkDeviceContext,
-        swapchain: &VkSwapchain,
+        _device_context: &VkDeviceContext,
+        _swapchain: &VkSwapchain,
     ) {
         let mut guard = self.game_renderer.inner.lock().unwrap();
-        let mut game_renderer = &mut *guard;
+        let game_renderer = &mut *guard;
 
         log::debug!("game renderer swapchain destroyed");
-
-        let swapchain_surface_info = SwapchainSurfaceInfo {
-            extents: swapchain.swapchain_info.extents,
-            msaa_level: swapchain.swapchain_info.msaa_level,
-            surface_format: swapchain.swapchain_info.surface_format,
-            color_format: swapchain.color_format,
-            depth_format: swapchain.depth_format,
-        };
 
         // This will clear game_renderer.swapchain_resources and drop SwapchainResources at end of fn
         let swapchain_resources = game_renderer.swapchain_resources.take().unwrap();

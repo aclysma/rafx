@@ -76,7 +76,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         &mut self,
         extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
-        views: &[&RenderView],
+        _views: &[&RenderView],
     ) {
         self.extracted_frame_node_sprite_data
             .reserve(frame_packet.frame_node_count(self.feature_index()) as usize);
@@ -120,7 +120,9 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .unwrap();
 
         descriptor_set.set_buffer_data(0, &view_proj);
-        descriptor_set.flush(&mut self.descriptor_set_allocator);
+        descriptor_set
+            .flush(&mut self.descriptor_set_allocator)
+            .unwrap();
 
         self.per_view_descriptors
             .push(descriptor_set.descriptor_set().clone());
@@ -130,7 +132,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         &mut self,
         extract_context: &RenderJobExtractContext,
         frame_node: PerFrameNode,
-        frame_node_index: u32,
+        _frame_node_index: u32,
     ) {
         let render_node_index = frame_node.render_node_index();
         let render_node_handle = RawSlabKey::<SpriteRenderNode>::new(render_node_index);
@@ -188,16 +190,16 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
     fn extract_view_node(
         &mut self,
         _extract_context: &RenderJobExtractContext,
-        view: &RenderView,
-        view_node: PerViewNode,
-        view_node_index: u32,
+        _view: &RenderView,
+        _view_node: PerViewNode,
+        _view_node_index: u32,
     ) {
     }
 
     fn extract_view_finalize(
         &mut self,
-        extract_context: &RenderJobExtractContext,
-        view: &RenderView,
+        _extract_context: &RenderJobExtractContext,
+        _view: &RenderView,
     ) {
     }
 

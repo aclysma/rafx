@@ -1,33 +1,17 @@
-use std::mem;
 use ash::vk;
 use ash::prelude::VkResult;
-use std::ffi::CString;
-use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer::vulkan::{VkDevice, VkDeviceContext, MsaaLevel};
+use renderer::vulkan::{VkDeviceContext, MsaaLevel};
 use renderer::vulkan::VkSwapchain;
-use renderer::vulkan::offset_of;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
-use renderer::vulkan::VkBuffer;
-use renderer::vulkan::util;
-
-use renderer::vulkan::VkImage;
-use image::error::ImageError::Decoding;
-use image::{GenericImageView, ImageFormat};
-use ash::vk::ShaderStageFlags;
-
-use renderer::base::time::TimeState;
-use renderer::resources::resource_managers::PipelineSwapchainInfo;
 
 /// Draws sprites
 pub struct VkMsaaRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
-
-    pipeline_info: PipelineSwapchainInfo,
 
     // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
@@ -41,7 +25,6 @@ impl VkMsaaRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        pipeline_info: PipelineSwapchainInfo,
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -63,7 +46,6 @@ impl VkMsaaRenderPass {
         Ok(VkMsaaRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
-            pipeline_info,
             command_pool,
             command_buffers,
             color_target_image,
@@ -230,7 +212,7 @@ impl VkMsaaRenderPass {
     pub fn update(
         &mut self,
         present_index: usize,
-        descriptor_set_per_view: vk::DescriptorSet,
+        _descriptor_set_per_view: vk::DescriptorSet,
     ) -> VkResult<()> {
         //TODO: Can probably record these once and maybe even just have one
         Self::update_command_buffer(

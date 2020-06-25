@@ -1,7 +1,7 @@
 use renderer::resources::resource_managers::{
     DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoadHandler, ResourceManager,
 };
-use renderer::vulkan::{VkBufferRaw, VkDeviceContext};
+use renderer::vulkan::VkBufferRaw;
 use crate::asset_lookup::{
     GameLoadedAssetMetrics, GameLoadedAssetLookupSet, LoadedMesh, LoadedMeshPart,
 };
@@ -12,7 +12,6 @@ use atelier_assets::loader::AssetLoadOp;
 use crate::assets::gltf::MeshAsset;
 
 pub struct MeshPartInfo {
-    //pub draw_info: LoadedMeshPart,
     pub material_instance: Vec<Vec<DescriptorSetArc>>,
 }
 
@@ -34,16 +33,13 @@ pub struct GameLoadQueueSet {
 }
 
 pub struct GameResourceManager {
-    device_context: VkDeviceContext,
-
     loaded_assets: GameLoadedAssetLookupSet,
     load_queues: GameLoadQueueSet,
 }
 
 impl GameResourceManager {
-    pub fn new(device_context: &VkDeviceContext) -> Self {
+    pub fn new() -> Self {
         GameResourceManager {
-            device_context: device_context.clone(),
             loaded_assets: Default::default(),
             load_queues: Default::default(),
         }
@@ -196,15 +192,13 @@ impl GameResourceManager {
 
 impl Drop for GameResourceManager {
     fn drop(&mut self) {
-        unsafe {
-            log::info!("Cleaning up game resource manager");
-            log::trace!("Game Resource Manager Metrics:\n{:#?}", self.metrics());
+        log::info!("Cleaning up game resource manager");
+        log::trace!("Game Resource Manager Metrics:\n{:#?}", self.metrics());
 
-            // Wipe out any loaded assets. This will potentially drop ref counts on resources
-            self.loaded_assets.destroy();
+        // Wipe out any loaded assets. This will potentially drop ref counts on resources
+        self.loaded_assets.destroy();
 
-            log::info!("Dropping game resource manager");
-            log::trace!("Resource Game Manager Metrics:\n{:#?}", self.metrics());
-        }
+        log::info!("Dropping game resource manager");
+        log::trace!("Resource Game Manager Metrics:\n{:#?}", self.metrics());
     }
 }

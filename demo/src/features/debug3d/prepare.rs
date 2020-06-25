@@ -1,6 +1,6 @@
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
-    FramePacket, DefaultPrepareJobImpl, RenderFeature, PrepareJob,
+    FramePacket, RenderFeature, PrepareJob,
 };
 use crate::features::debug3d::{
     Debug3dRenderFeature, ExtractedDebug3dData, Debug3dDrawCall, Debug3dVertex,
@@ -41,8 +41,8 @@ impl Debug3dPrepareJobImpl {
 impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepareJobImpl {
     fn prepare(
         self: Box<Self>,
-        prepare_context: &RenderJobPrepareContext,
-        frame_packet: &FramePacket,
+        _prepare_context: &RenderJobPrepareContext,
+        _frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> (
         Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
@@ -56,11 +56,6 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
 
         let mut vertex_list: Vec<Debug3dVertex> = vec![];
         for line_list in line_lists {
-            let draw_call = Debug3dDrawCall {
-                first_element: 0,
-                count: 4,
-            };
-
             let vertex_buffer_first_element = vertex_list.len() as u32;
 
             for vertex_pos in &line_list.points {

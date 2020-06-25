@@ -1,30 +1,14 @@
-use std::mem;
 use ash::vk;
 use ash::prelude::VkResult;
-use std::ffi::CString;
-use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer::vulkan::{VkDevice, VkDeviceContext, MAX_FRAMES_IN_FLIGHT};
+use renderer::vulkan::{VkDeviceContext, MAX_FRAMES_IN_FLIGHT};
 use renderer::vulkan::VkSwapchain;
-use renderer::vulkan::offset_of;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
-use renderer::vulkan::VkBuffer;
-use renderer::vulkan::util;
 
-use renderer::vulkan::VkImage;
-use image::error::ImageError::Decoding;
-use std::process::exit;
-use image::{GenericImageView, ImageFormat};
-use ash::vk::{ShaderStageFlags};
-
-use renderer::base::time::TimeState;
-
-use renderer::resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
-use renderer::assets::assets::pipeline::MaterialAsset;
-use atelier_assets::loader::handle::Handle;
+use renderer::resources::resource_managers::PipelineSwapchainInfo;
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::OpaqueRenderPhase;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobWriteContextFactory};
@@ -118,7 +102,7 @@ impl VkOpaqueRenderPass {
     ) -> VkResult<Vec<vk::Framebuffer>> {
         swapchain_image_views
             .iter()
-            .map(|&swapchain_image_view| {
+            .map(|&_swapchain_image_view| {
                 let framebuffer_attachments = [color_image_view, depth_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)

@@ -3,8 +3,7 @@ use crate::features::debug3d::{
 };
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
-    DefaultExtractJobImpl, FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature,
-    ExtractJob,
+    FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature, ExtractJob,
 };
 use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
@@ -41,7 +40,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
     fn extract(
         mut self: Box<Self>,
         extract_context: &RenderJobExtractContext,
-        frame_packet: &FramePacket,
+        _frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
         let dyn_resource_allocator = extract_context
@@ -64,7 +63,9 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
                     .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
                     .unwrap();
                 descriptor_set.set_buffer_data(0, &debug3d_view);
-                descriptor_set.flush(&mut self.descriptor_set_allocator);
+                descriptor_set
+                    .flush(&mut self.descriptor_set_allocator)
+                    .unwrap();
                 descriptor_set.descriptor_set().clone()
             })
             .collect();

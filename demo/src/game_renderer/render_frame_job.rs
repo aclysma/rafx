@@ -5,11 +5,9 @@ use crate::render_contexts::{
 };
 use renderer::resources::resource_managers::{DynResourceAllocatorSet, PipelineSwapchainInfo};
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
-use crate::features::debug3d::LineList3D;
 use std::sync::MutexGuard;
 use ash::prelude::VkResult;
 use ash::vk;
-use crate::imgui_support::ImGuiDrawData;
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
@@ -26,8 +24,8 @@ pub struct RenderFrameJob {
 
 impl RenderFrameJob {
     pub fn render_async(self) {
-        let t0 = std::time::Instant::now();
-        let mut guard = self.game_renderer.inner.lock().unwrap();
+        // let t0 = std::time::Instant::now();
+        let guard = self.game_renderer.inner.lock().unwrap();
 
         let result = Self::do_render_async(
             guard,
@@ -48,7 +46,7 @@ impl RenderFrameJob {
         match result {
             Ok(command_buffers) => {
                 // ignore the error, we will receive it when we try to acquire the next image
-                self.frame_in_flight.present(command_buffers.as_slice());
+                let _ = self.frame_in_flight.present(command_buffers.as_slice());
             }
             Err(err) => {
                 log::error!("Render thread failed with error {:?}", err);
@@ -101,7 +99,7 @@ impl RenderFrameJob {
         //
         // Write Jobs - called from within renderpasses for now
         //
-        let mut write_context_factory = RenderJobWriteContextFactory::new(
+        let write_context_factory = RenderJobWriteContextFactory::new(
             device_context.clone(),
             prepare_context.dyn_resource_lookups,
         );

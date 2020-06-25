@@ -18,6 +18,7 @@ use crate::phases::TransparentRenderPhase;
 use crate::features::imgui::ImGuiRenderFeature;
 
 pub fn logging_init() {
+    #[allow(unused_assignments)]
     let mut log_level = log::LevelFilter::Info;
     //#[cfg(debug_assertions)]
     {
@@ -137,8 +138,7 @@ pub fn rendering_init(
         //
         // Create the game resource manager
         //
-        let device_context = resources.get_mut::<VkDeviceContext>().unwrap().clone();
-        let mut resource_manager = GameResourceManager::new(&device_context);
+        let resource_manager = GameResourceManager::new();
         resources.insert(resource_manager);
 
         let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
@@ -165,7 +165,7 @@ pub fn rendering_init(
         .build();
     resources.insert(render_registry);
 
-    let mut game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
+    let game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
     resources.insert(game_renderer);
 
     let window_surface =

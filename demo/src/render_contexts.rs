@@ -58,11 +58,11 @@ impl RenderJobWriteContextFactory {
         &self,
         command_buffer: vk::CommandBuffer,
     ) -> RenderJobWriteContext {
-        RenderJobWriteContext {
-            device_context: self.device_context.clone(),
-            dyn_resource_lookups: self.dyn_resource_lookups.clone(),
+        RenderJobWriteContext::new(
+            self.device_context.clone(),
+            self.dyn_resource_lookups.clone(),
             command_buffer,
-        }
+        )
     }
 }
 
@@ -87,8 +87,5 @@ impl RenderJobWriteContext {
 }
 
 unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
-    std::mem::transmute(value)
-}
-unsafe fn force_to_static_lifetime_mut<T>(value: &mut T) -> &'static mut T {
     std::mem::transmute(value)
 }

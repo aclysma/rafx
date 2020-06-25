@@ -22,7 +22,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
     ) {
         if self.imgui_draw_data.is_some() {
             let logical_device = write_context.device_context.device();
@@ -53,7 +53,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
     fn render_element(
         &self,
         write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
         index: SubmitNodeId,
     ) {
         // The prepare phase emits a single node which will draw everything. In the future it might
@@ -145,7 +145,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
     fn revert_setup(
         &self,
         _write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
     ) {
     }
 

@@ -51,19 +51,13 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
 {
     fn prepare_begin(
         &mut self,
-        prepare_context: &RenderJobPrepareContext,
-        frame_packet: &FramePacket,
+        _prepare_context: &RenderJobPrepareContext,
+        _frame_packet: &FramePacket,
         _views: &[&RenderView],
         _submit_nodes: &mut FeatureSubmitNodes,
     ) {
         for sprite in &self.extracted_frame_node_sprite_data {
             if let Some(sprite) = sprite {
-                let draw_call = SpriteDrawCall {
-                    index_buffer_first_element: 0,
-                    index_buffer_count: 4,
-                    texture_descriptor_set: sprite.texture_descriptor_set.clone(),
-                };
-
                 const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
 
                 let matrix = glam::Mat4::from_translation(sprite.position)
@@ -105,19 +99,19 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
 
     fn prepare_frame_node(
         &mut self,
-        prepare_context: &RenderJobPrepareContext,
+        _prepare_context: &RenderJobPrepareContext,
         _frame_node: PerFrameNode,
-        frame_node_index: u32,
+        _frame_node_index: u32,
         _submit_nodes: &mut FeatureSubmitNodes,
     ) {
     }
 
     fn prepare_view_node(
         &mut self,
-        prepare_context: &RenderJobPrepareContext,
+        _prepare_context: &RenderJobPrepareContext,
         view: &RenderView,
         view_node: PerViewNode,
-        view_node_index: u32,
+        _view_node_index: u32,
         submit_nodes: &mut ViewSubmitNodes,
     ) {
         // Use the frame node index as the submit ID since we don't have any view-specific data
@@ -144,7 +138,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
 
     fn prepare_view_finalize(
         &mut self,
-        prepare_context: &RenderJobPrepareContext,
+        _prepare_context: &RenderJobPrepareContext,
         _view: &RenderView,
         _submit_nodes: &mut ViewSubmitNodes,
     ) {

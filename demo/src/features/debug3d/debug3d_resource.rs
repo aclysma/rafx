@@ -23,7 +23,7 @@ impl DebugDraw3DResource {
 
     pub fn add_line_strip(
         &mut self,
-        mut points: Vec<glam::Vec3>,
+        points: Vec<glam::Vec3>,
         color: glam::Vec4,
     ) {
         // Nothing will draw if we don't have at least 2 points
@@ -111,8 +111,6 @@ impl DebugDraw3DResource {
         color: glam::Vec4,
         segments: u32,
     ) {
-        let world_tranform = glam::Mat4::from_translation(center);
-
         // Draw the vertical rings
         for index in 0..segments {
             // Rotate around whole sphere (2pi)

@@ -6,30 +6,19 @@ use ash::vk;
 use renderer::base::time::TimeState;
 use renderer::assets::asset_resource::AssetResource;
 use renderer::resources::resource_managers::{ResourceManager, ResourceArc, ImageViewResource};
-use crate::assets::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam};
-use renderer::assets::assets::buffer::BufferAsset;
-use crate::features::debug3d::{DebugDraw3DResource, LineList3D, create_debug3d_extract_job};
-use crate::renderpass::VkBloomExtractRenderPass;
-use crate::renderpass::VkBloomBlurRenderPass;
-use crate::renderpass::VkBloomCombineRenderPass;
-use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderFeature, create_sprite_extract_job};
+use crate::features::debug3d::create_debug3d_extract_job;
+use crate::features::sprite::{SpriteRenderNodeSet, create_sprite_extract_job};
 use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
 use renderer::nodes::{
-    RenderRegistryBuilder, RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet,
-    AllRenderNodes, FramePacketBuilder, ExtractJobSet, PrepareJobSet, FramePacket, RenderView,
+    RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet, AllRenderNodes,
+    FramePacketBuilder, ExtractJobSet,
 };
 use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
 use legion::prelude::*;
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContextFactory,
-};
-use crate::render_contexts::RenderJobWriteContext;
-use renderer::vulkan::cleanup::{VkCombinedDropSink, VkResourceDropSinkChannel};
-use crate::features::mesh::{MeshPerViewShaderParam, create_mesh_extract_job, MeshRenderNodeSet};
-use std::sync::{Arc, Mutex, MutexGuard};
-use std::thread::{Thread, JoinHandle};
-use crossbeam_channel::internal::SelectHandle;
+use crate::render_contexts::{RenderJobExtractContext};
+use crate::features::mesh::{create_mesh_extract_job, MeshRenderNodeSet};
+use std::sync::{Arc, Mutex};
 
 mod static_resources;
 use static_resources::GameRendererStaticResources;
@@ -69,7 +58,7 @@ pub struct GameRenderer {
 
 impl GameRenderer {
     pub fn new(
-        window: &dyn Window,
+        _window: &dyn Window,
         resources: &Resources,
     ) -> VkResult<Self> {
         let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
@@ -77,9 +66,6 @@ impl GameRenderer {
 
         let mut resource_manager_fetch = resources.get_mut::<ResourceManager>().unwrap();
         let mut resource_manager = &mut *resource_manager_fetch;
-
-        let mut render_registry_fetch = resources.get::<RenderRegistry>().unwrap();
-        let render_registry = &*render_registry_fetch;
 
         let vk_context = resources.get_mut::<VkContext>().unwrap();
         let device_context = vk_context.device_context();
@@ -100,20 +86,9 @@ impl GameRenderer {
         let game_renderer_resources =
             GameRendererStaticResources::new(asset_resource, resource_manager)?;
 
-        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
-        let debug_per_frame_layout = resource_manager.get_descriptor_set_info(
-            &game_renderer_resources.debug3d_material,
-            0,
-            0,
-        );
-        let debug_material_per_frame_data = descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(
-                &debug_per_frame_layout.descriptor_set_layout,
-            )?;
-
         let render_thread = RenderThread::start();
 
-        let mut renderer = GameRendererInner {
+        let renderer = GameRendererInner {
             imgui_font_atlas_image_view,
             static_resources: game_renderer_resources,
             swapchain_resources: None,
@@ -209,7 +184,7 @@ impl GameRenderer {
         resources
             .get_mut::<VkSurface>()
             .unwrap()
-            .wait_until_frame_not_in_flight();
+            .wait_until_frame_not_in_flight()?;
         let t1 = std::time::Instant::now();
         log::info!(
             "[main] wait for previous frame present {} ms",
@@ -219,7 +194,7 @@ impl GameRenderer {
         // Here, we error check from the previous frame. This includes checking for errors that happened
         // during setup (i.e. before we finished building the frame job). So
         {
-            let mut result = self.inner.lock().unwrap().previous_frame_result.take();
+            let result = self.inner.lock().unwrap().previous_frame_result.take();
             if let Some(result) = result {
                 if let Err(e) = result {
                     match e {
@@ -277,7 +252,7 @@ impl GameRenderer {
         game_renderer: &GameRenderer,
         world: &World,
         resources: &Resources,
-        window: &Window,
+        _window: &dyn Window,
         frame_in_flight: FrameInFlight,
     ) -> VkResult<()> {
         let t0 = std::time::Instant::now();
@@ -285,8 +260,6 @@ impl GameRenderer {
         //
         // Fetch resources
         //
-        let asset_resource_fetch = resources.get::<AssetResource>().unwrap();
-        let asset_resource = &*asset_resource_fetch;
 
         let time_state_fetch = resources.get::<TimeState>().unwrap();
         let time_state = &*time_state_fetch;
@@ -310,7 +283,7 @@ impl GameRenderer {
         let resource_manager = &mut *resource_manager_fetch;
 
         // Call this here - represents that the previous frame was completed
-        resource_manager.on_frame_complete();
+        resource_manager.on_frame_complete()?;
 
         let mut guard = game_renderer.inner.lock().unwrap();
         let main_camera_render_phase_mask = guard.main_camera_render_phase_mask.clone();
@@ -401,13 +374,13 @@ impl GameRenderer {
             .set_buffer_data(0, &view_proj);
         swapchain_resources
             .debug_material_per_frame_data
-            .flush(&mut descriptor_set_allocator);
-        descriptor_set_allocator.flush_changes();
+            .flush(&mut descriptor_set_allocator)?;
+        descriptor_set_allocator.flush_changes()?;
 
         //
         // Update Resources and flush descriptor set changes
         //
-        resource_manager.on_begin_frame();
+        resource_manager.on_begin_frame()?;
 
         //
         // Extract Jobs
@@ -450,7 +423,6 @@ impl GameRenderer {
 
             // Meshes
             extract_job_set.add_job(create_mesh_extract_job(
-                device_context.clone(),
                 resource_manager.create_descriptor_set_allocator(),
                 mesh_pipeline_info,
                 &guard.static_resources.mesh_material,
@@ -484,12 +456,6 @@ impl GameRenderer {
 
         let opaque_pipeline_info = resource_manager.get_pipeline_info(
             &guard.static_resources.sprite_material,
-            &swapchain_surface_info,
-            0,
-        );
-
-        let debug_pipeline_info = resource_manager.get_pipeline_info(
-            &guard.static_resources.debug3d_material,
             &swapchain_surface_info,
             0,
         );

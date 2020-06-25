@@ -1,7 +1,5 @@
 use sdl2;
 
-use imgui::sys as imgui_sys;
-
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -36,20 +34,7 @@ impl Sdl2ImguiManager {
         mut imgui_context: imgui::Context,
         window: &Window,
     ) -> Self {
-        // Ensure font atlas is built and cache a pointer to it
-        let font_atlas_texture = {
-            let mut fonts = imgui_context.fonts();
-            let font_atlas_texture = Box::new(fonts.build_rgba32_texture());
-            log::info!("Building ImGui font atlas");
-
-            // Remove the lifetime of the texture. (We're assuming we have ownership over it
-            // now since imgui_context is being passed to us)
-            let font_atlas_texture: *mut imgui::FontAtlasTexture =
-                Box::into_raw(font_atlas_texture);
-            let font_atlas_texture: *mut imgui::FontAtlasTexture<'static> =
-                unsafe { std::mem::transmute(font_atlas_texture) };
-            font_atlas_texture
-        };
+        imgui_context.fonts().build_rgba32_texture();
 
         let imgui_sdl2 = ImguiSdl2::new(&mut imgui_context, window);
         let imgui_manager = ImguiManager::new(imgui_context);
@@ -100,7 +85,7 @@ impl Sdl2ImguiManager {
         &self,
         event: &sdl2::event::Event,
     ) -> bool {
-        let mut inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap();
         inner.imgui_sdl2.ignore_event(event)
     }
 
@@ -136,7 +121,6 @@ impl Sdl2ImguiManager {
     }
 
     // Allows access to the context without caller needing to be aware of locking
-    #[allow(dead_code)]
     pub fn with_context<F>(
         &self,
         f: F,
@@ -220,7 +204,6 @@ fn init_imgui(window: &Window) -> imgui::Context {
     let (win_w, win_h) = window.size();
     let (draw_w, draw_h) = window.drawable_size();
 
-    let display_size = [win_w as f32, win_h as f32];
     let display_framebuffer_scale = (
         (draw_w as f32) / (win_w as f32),
         (draw_h as f32) / (win_h as f32),
@@ -289,6 +272,6 @@ fn init_imgui(window: &Window) -> imgui::Context {
 }
 
 pub fn init_imgui_manager(window: &Window) -> Sdl2ImguiManager {
-    let mut imgui_context = init_imgui(&window);
+    let imgui_context = init_imgui(&window);
     Sdl2ImguiManager::new(imgui_context, window)
 }

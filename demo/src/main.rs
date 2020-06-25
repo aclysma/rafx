@@ -1,3 +1,6 @@
+// There's a decent amount of code that's just for example and isn't called
+#![allow(dead_code)]
+
 use renderer::vulkan::VkDeviceContext;
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
@@ -7,13 +10,11 @@ use sdl2::mouse::MouseState;
 use crate::components::{
     PositionComponent, PointLightComponent, SpotLightComponent, DirectionalLightComponent,
 };
-use atelier_assets::loader as atelier_loader;
 use legion::prelude::*;
 
 use renderer::assets::asset_resource::AssetResource;
 use renderer::base::time::TimeState;
 use renderer::resources::resource_managers::ResourceManager;
-use sdl2::event::EventType::RenderDeviceReset;
 use crate::game_renderer::GameRenderer;
 use crate::features::debug3d::DebugDraw3DResource;
 use crate::resource_manager::GameResourceManager;
@@ -93,7 +94,6 @@ fn main() {
         //
         {
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
-            let window = Sdl2Window::new(&sdl2_systems.window);
             imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
         }
 
@@ -112,8 +112,10 @@ fn main() {
             let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
             let mut game_resource_manager = resources.get_mut::<GameResourceManager>().unwrap();
 
-            resource_manager.update_resources();
-            game_resource_manager.update_resources(&*resource_manager);
+            resource_manager.update_resources().unwrap();
+            game_resource_manager
+                .update_resources(&*resource_manager)
+                .unwrap();
         }
 
         //
@@ -162,8 +164,10 @@ fn main() {
         //
         {
             let window = Sdl2Window::new(&sdl2_systems.window);
-            let mut game_renderer = resources.get::<GameRenderer>().unwrap();
-            game_renderer.begin_render(&resources, &world, &window);
+            let game_renderer = resources.get::<GameRenderer>().unwrap();
+            game_renderer
+                .begin_render(&resources, &world, &window)
+                .unwrap();
         }
 
         //let t2 = std::time::Instant::now();
@@ -179,7 +183,7 @@ fn add_light_debug_draw(
 ) {
     let mut debug_draw = resources.get_mut::<DebugDraw3DResource>().unwrap();
 
-    let query = <(Read<DirectionalLightComponent>)>::query();
+    let query = <Read<DirectionalLightComponent>>::query();
     for light in query.iter(world) {
         let light_from = glam::Vec3::new(0.0, 0.0, 0.0);
         let light_to = light.direction;
@@ -228,7 +232,7 @@ fn process_input(
                 //
                 Event::KeyDown {
                     keycode: Some(keycode),
-                    keymod: modifiers,
+                    keymod: _modifiers,
                     ..
                 } => {
                     //log::trace!("Key Down {:?} {:?}", keycode, modifiers);

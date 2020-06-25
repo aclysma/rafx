@@ -1,33 +1,19 @@
-use std::mem;
 use ash::vk;
 use ash::prelude::VkResult;
-use std::ffi::CString;
-use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer::vulkan::{VkDevice, VkDeviceContext, MsaaLevel, RenderpassAttachmentImage};
+use renderer::vulkan::VkDeviceContext;
 use renderer::vulkan::VkSwapchain;
-use renderer::vulkan::offset_of;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
-use renderer::vulkan::VkBuffer;
-use renderer::vulkan::util;
 
-use renderer::vulkan::VkImage;
-use image::error::ImageError::Decoding;
-use image::{GenericImageView, ImageFormat};
-use ash::vk::ShaderStageFlags;
-
-use renderer::base::time::TimeState;
-use renderer::resources::resource_managers::{PipelineSwapchainInfo, ResourceManager};
-use crate::renderpass::{VkBloomExtractRenderPass, VkBloomRenderPassResources};
+use renderer::resources::resource_managers::PipelineSwapchainInfo;
+use crate::renderpass::VkBloomRenderPassResources;
 
 pub struct VkBloomBlurRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
-
-    pipeline_info: PipelineSwapchainInfo,
 
     pub frame_buffers: Vec<vk::Framebuffer>,
 
@@ -42,8 +28,6 @@ impl VkBloomBlurRenderPass {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         pipeline_info: PipelineSwapchainInfo,
-        //bloom_extract_renderpass: VkBloomExtractRenderPass,
-        resource_manager: &ResourceManager,
         bloom_resources: &VkBloomRenderPassResources,
     ) -> VkResult<Self> {
         //
@@ -103,7 +87,6 @@ impl VkBloomBlurRenderPass {
         Ok(VkBloomBlurRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain.swapchain_info.clone(),
-            pipeline_info,
             frame_buffers,
             command_pool,
             command_buffers,

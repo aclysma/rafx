@@ -18,7 +18,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
     ) {
         // println!("render");
         let logical_device = write_context.device_context.device();
@@ -35,7 +35,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
     fn render_element(
         &self,
         write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
         index: SubmitNodeId,
     ) {
         let logical_device = write_context.device_context.device();
@@ -107,7 +107,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
     fn revert_setup(
         &self,
         _write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
     ) {
     }
 

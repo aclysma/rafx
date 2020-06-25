@@ -82,7 +82,7 @@ impl ImguiManager {
     // Start a new frame
     pub fn begin_frame(&self) {
         let mut inner_mutex_guard = self.inner.lock().unwrap();
-        let mut inner = &mut *inner_mutex_guard;
+        let inner = &mut *inner_mutex_guard;
 
         // Drop the old Ui if it exists
         if inner.ui.is_some() {
@@ -132,7 +132,6 @@ impl ImguiManager {
     }
 
     // Allows access to the context without caller needing to be aware of locking
-    #[allow(dead_code)]
     pub fn with_context<F>(
         &self,
         f: F,
@@ -176,6 +175,7 @@ impl ImguiManager {
 
     // Get reference to the underlying font atlas. The ref will be valid as long as this object
     // is not destroyed
+    #[allow(unused_unsafe)]
     pub unsafe fn sys_font_atlas_texture(&self) -> Option<&imgui::FontAtlasTexture> {
         let inner = self.inner.lock().unwrap();
 
@@ -211,6 +211,7 @@ impl ImguiManager {
     }
 
     // Returns draw data (render must be called first to end the frame)
+    #[allow(unused_unsafe)]
     pub unsafe fn sys_draw_data(&self) -> Option<&imgui::DrawData> {
         let inner = self.inner.lock().unwrap();
 

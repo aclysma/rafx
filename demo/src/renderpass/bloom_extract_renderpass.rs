@@ -1,27 +1,18 @@
-use std::mem;
 use ash::vk;
 use ash::prelude::VkResult;
-use std::ffi::CString;
 use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer::vulkan::{VkDevice, VkDeviceContext, MsaaLevel, RenderpassAttachmentImage};
+use renderer::vulkan::{VkDeviceContext, MsaaLevel, RenderpassAttachmentImage};
 use renderer::vulkan::VkSwapchain;
-use renderer::vulkan::offset_of;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
-use renderer::vulkan::VkBuffer;
-use renderer::vulkan::util;
 
 use renderer::vulkan::VkImage;
-use image::error::ImageError::Decoding;
-use image::{GenericImageView, ImageFormat};
-use ash::vk::ShaderStageFlags;
 
 use atelier_assets::loader::handle::Handle;
 
-use renderer::base::time::TimeState;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
 use renderer::assets::assets::pipeline::MaterialAsset;
 
@@ -81,13 +72,13 @@ impl VkBloomRenderPassResources {
             .create_dyn_descriptor_set_uninitialized(&bloom_blur_layout.descriptor_set_layout)?;
         bloom_blur_material_dyn_set0.set_image_raw(0, bloom_image_view0);
         bloom_blur_material_dyn_set0.set_buffer_data(2, &(0 as u32));
-        bloom_blur_material_dyn_set0.flush(&mut descriptor_set_allocator);
+        bloom_blur_material_dyn_set0.flush(&mut descriptor_set_allocator)?;
 
         let mut bloom_blur_material_dyn_set1 = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(&bloom_blur_layout.descriptor_set_layout)?;
         bloom_blur_material_dyn_set1.set_image_raw(0, bloom_image_view1);
         bloom_blur_material_dyn_set1.set_buffer_data(2, &(1 as u32));
-        bloom_blur_material_dyn_set1.flush(&mut descriptor_set_allocator);
+        bloom_blur_material_dyn_set1.flush(&mut descriptor_set_allocator)?;
 
         Ok(VkBloomRenderPassResources {
             device_context: device_context.clone(),
@@ -211,7 +202,7 @@ impl VkBloomExtractRenderPass {
     ) -> VkResult<Vec<vk::Framebuffer>> {
         swapchain_image_views
             .iter()
-            .map(|&swapchain_image_view| {
+            .map(|&_swapchain_image_view| {
                 let framebuffer_attachments = [color_image_view, bloom_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)

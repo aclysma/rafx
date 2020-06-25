@@ -61,7 +61,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
     fn render_element(
         &self,
         write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
         index: SubmitNodeId,
     ) {
         // //println!("render");
@@ -115,7 +115,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
     fn revert_setup(
         &self,
         _write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
     ) {
     }
 

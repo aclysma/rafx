@@ -1,7 +1,6 @@
 use renderer::assets::asset_resource::AssetResource;
 use renderer::resources::resource_managers::ResourceManager;
 use renderer::assets::assets::pipeline::MaterialAsset;
-use ash::vk;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core::AssetUuid;
@@ -24,10 +23,10 @@ fn wait_for_asset_to_load<T>(
     asset_resource: &mut AssetResource,
     resource_manager: &mut ResourceManager,
     asset_name: &str,
-) {
+) -> VkResult<()> {
     loop {
         asset_resource.update();
-        resource_manager.update_resources();
+        resource_manager.update_resources()?;
         match asset_handle.load_status(asset_resource.loader()) {
             LoadStatus::NotRequested => {
                 unreachable!();
@@ -42,7 +41,7 @@ fn wait_for_asset_to_load<T>(
                 // keep waiting
             }
             LoadStatus::Loaded => {
-                break;
+                break Ok(());
             }
             LoadStatus::Unloading => unreachable!(),
             LoadStatus::DoesNotExist => {
@@ -131,49 +130,49 @@ impl GameRendererStaticResources {
             asset_resource,
             resource_manager,
             "sprite_material",
-        );
+        )?;
 
         wait_for_asset_to_load(
             &debug_material,
             asset_resource,
             resource_manager,
             "debub material",
-        );
+        )?;
 
         wait_for_asset_to_load(
             &bloom_extract_material,
             asset_resource,
             resource_manager,
             "bloom extract material",
-        );
+        )?;
 
         wait_for_asset_to_load(
             &bloom_blur_material,
             asset_resource,
             resource_manager,
             "bloom blur material",
-        );
+        )?;
 
         wait_for_asset_to_load(
             &bloom_combine_material,
             asset_resource,
             resource_manager,
             "bloom combine material",
-        );
+        )?;
 
         wait_for_asset_to_load(
             &mesh_material,
             asset_resource,
             resource_manager,
             "mesh material",
-        );
+        )?;
 
         wait_for_asset_to_load(
             &imgui_material,
             asset_resource,
             resource_manager,
             "imgui material",
-        );
+        )?;
 
         Ok(GameRendererStaticResources {
             sprite_material,

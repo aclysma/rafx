@@ -1,6 +1,3 @@
-use ash::vk;
-use ash::prelude::VkResult;
-
 mod sdl2_imgui_manager;
 pub use sdl2_imgui_manager::Sdl2ImguiManager;
 pub use sdl2_imgui_manager::init_imgui_manager;

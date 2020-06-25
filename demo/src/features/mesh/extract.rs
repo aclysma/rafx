@@ -12,7 +12,6 @@ use renderer::nodes::{
 };
 use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
-use renderer::vulkan::VkDeviceContext;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use renderer::assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
@@ -22,7 +21,6 @@ use crate::components::MeshComponent;
 use crate::resource_manager::GameResourceManager;
 
 pub struct MeshExtractJobImpl {
-    device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     mesh_material: Handle<MaterialAsset>,
@@ -33,13 +31,11 @@ pub struct MeshExtractJobImpl {
 
 impl MeshExtractJobImpl {
     pub fn new(
-        device_context: VkDeviceContext,
         descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
         mesh_material: &Handle<MaterialAsset>,
     ) -> Self {
         MeshExtractJobImpl {
-            device_context,
             descriptor_set_allocator,
             pipeline_info,
             mesh_material: mesh_material.clone(),
@@ -55,7 +51,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 {
     fn extract_begin(
         &mut self,
-        extract_context: &RenderJobExtractContext,
+        _extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
@@ -74,7 +70,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         &mut self,
         extract_context: &RenderJobExtractContext,
         frame_node: PerFrameNode,
-        frame_node_index: u32,
+        _frame_node_index: u32,
     ) {
         let render_node_index = frame_node.render_node_index();
         let render_node_handle = RawSlabKey::<MeshRenderNode>::new(render_node_index);
@@ -141,7 +137,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         extract_context: &RenderJobExtractContext,
         view: &RenderView,
         view_node: PerViewNode,
-        view_node_index: u32,
+        _view_node_index: u32,
     ) {
         let frame_node_data =
             &self.extracted_frame_node_mesh_data[view_node.frame_node_index() as usize];
@@ -168,7 +164,9 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
             .unwrap();
         descriptor_set.set_buffer_data(0, &per_object_param);
-        descriptor_set.flush(&mut self.descriptor_set_allocator);
+        descriptor_set
+            .flush(&mut self.descriptor_set_allocator)
+            .unwrap();
 
         self.extracted_view_node_mesh_data[view.view_index() as usize].push(Some(
             ExtractedViewNodeMeshData {
@@ -264,7 +262,9 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
             .unwrap();
         descriptor_set.set_buffer_data(0, &per_view_data);
-        descriptor_set.flush(&mut self.descriptor_set_allocator);
+        descriptor_set
+            .flush(&mut self.descriptor_set_allocator)
+            .unwrap();
 
         self.descriptor_sets_per_view
             .push(descriptor_set.descriptor_set().clone());
@@ -275,7 +275,6 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         _extract_context: &RenderJobExtractContext,
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
         let prepare_impl = MeshPrepareJobImpl::new(
-            self.device_context,
             self.pipeline_info,
             self.descriptor_sets_per_view,
             self.extracted_frame_node_mesh_data,

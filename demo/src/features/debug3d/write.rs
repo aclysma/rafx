@@ -54,7 +54,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
     fn render_element(
         &self,
         write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
         index: SubmitNodeId,
     ) {
         // The prepare phase emits a single node which will draw everything. In the future it might
@@ -81,7 +81,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
     fn revert_setup(
         &self,
         _write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
     ) {
     }
 

@@ -46,14 +46,7 @@ impl SwapchainResources {
             VkOpaqueRenderPass::new(device_context, swapchain, opaque_pipeline_info)?;
 
         log::trace!("Create VkDebugRenderPass");
-        let debug_pipeline_info = resource_manager.get_pipeline_info(
-            &game_renderer.static_resources.debug3d_material,
-            &swapchain_surface_info,
-            0,
-        );
-
-        let msaa_renderpass =
-            VkMsaaRenderPass::new(device_context, swapchain, debug_pipeline_info)?;
+        let msaa_renderpass = VkMsaaRenderPass::new(device_context, swapchain)?;
 
         log::trace!("Create VkBloomExtractRenderPass");
 
@@ -88,7 +81,7 @@ impl SwapchainResources {
             .create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout)?;
         bloom_extract_material_dyn_set
             .set_image_raw(0, swapchain.color_attachment.resolved_image_view());
-        bloom_extract_material_dyn_set.flush(&mut descriptor_set_allocator);
+        bloom_extract_material_dyn_set.flush(&mut descriptor_set_allocator)?;
 
         log::trace!("Create VkBloomBlurRenderPass");
 
@@ -102,7 +95,6 @@ impl SwapchainResources {
             device_context,
             swapchain,
             bloom_blur_pipeline_info,
-            resource_manager,
             &bloom_resources,
         )?;
 
@@ -120,12 +112,8 @@ impl SwapchainResources {
             0,
         );
 
-        let bloom_combine_renderpass = VkBloomCombineRenderPass::new(
-            device_context,
-            swapchain,
-            bloom_combine_pipeline_info,
-            &bloom_resources,
-        )?;
+        let bloom_combine_renderpass =
+            VkBloomCombineRenderPass::new(device_context, swapchain, bloom_combine_pipeline_info)?;
 
         let imgui_pipeline_info = resource_manager.get_pipeline_info(
             &game_renderer.static_resources.imgui_material,
@@ -139,7 +127,7 @@ impl SwapchainResources {
             .create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout)?;
         bloom_combine_material_dyn_set.set_image_raw(0, bloom_resources.color_image_view);
         bloom_combine_material_dyn_set.set_image_raw(1, bloom_resources.bloom_image_views[0]);
-        bloom_combine_material_dyn_set.flush(&mut descriptor_set_allocator);
+        bloom_combine_material_dyn_set.flush(&mut descriptor_set_allocator)?;
 
         let debug_per_frame_layout = resource_manager.get_descriptor_set_info(
             &game_renderer.static_resources.debug3d_material,

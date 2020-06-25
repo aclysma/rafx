@@ -10,11 +10,9 @@ use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
 use super::MeshCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::vulkan::VkDeviceContext;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct MeshPrepareJobImpl {
-    device_context: VkDeviceContext,
     pipeline_info: PipelineSwapchainInfo,
     descriptor_sets_per_view: Vec<DescriptorSetArc>,
     extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
@@ -24,7 +22,6 @@ pub struct MeshPrepareJobImpl {
 
 impl MeshPrepareJobImpl {
     pub(super) fn new(
-        device_context: VkDeviceContext,
         pipeline_info: PipelineSwapchainInfo,
         descriptor_sets_per_view: Vec<DescriptorSetArc>,
         extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
@@ -32,7 +29,6 @@ impl MeshPrepareJobImpl {
     ) -> Self {
         let prepared_view_node_mesh_data = Vec::with_capacity(extracted_view_node_mesh_data.len());
         MeshPrepareJobImpl {
-            device_context,
             pipeline_info,
             descriptor_sets_per_view,
             extracted_frame_node_mesh_data,
@@ -45,8 +41,8 @@ impl MeshPrepareJobImpl {
 impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJobImpl {
     fn prepare_begin(
         &mut self,
-        prepare_context: &RenderJobPrepareContext,
-        frame_packet: &FramePacket,
+        _prepare_context: &RenderJobPrepareContext,
+        _frame_packet: &FramePacket,
         _views: &[&RenderView],
         _submit_nodes: &mut FeatureSubmitNodes,
     ) {
@@ -54,16 +50,16 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for M
 
     fn prepare_frame_node(
         &mut self,
-        prepare_context: &RenderJobPrepareContext,
+        _prepare_context: &RenderJobPrepareContext,
         _frame_node: PerFrameNode,
-        frame_node_index: u32,
+        _frame_node_index: u32,
         _submit_nodes: &mut FeatureSubmitNodes,
     ) {
     }
 
     fn prepare_view_node(
         &mut self,
-        prepare_context: &RenderJobPrepareContext,
+        _prepare_context: &RenderJobPrepareContext,
         view: &RenderView,
         view_node: PerViewNode,
         view_node_index: u32,
@@ -102,7 +98,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for M
 
     fn prepare_view_finalize(
         &mut self,
-        prepare_context: &RenderJobPrepareContext,
+        _prepare_context: &RenderJobPrepareContext,
         _view: &RenderView,
         _submit_nodes: &mut ViewSubmitNodes,
     ) {
@@ -110,7 +106,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext> for M
 
     fn prepare_frame_finalize(
         self,
-        prepare_context: &RenderJobPrepareContext,
+        _prepare_context: &RenderJobPrepareContext,
         _submit_nodes: &mut FeatureSubmitNodes,
     ) -> Box<dyn FeatureCommandWriter<RenderJobWriteContext>> {
         Box::new(MeshCommandWriter {

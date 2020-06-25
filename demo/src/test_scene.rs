@@ -29,7 +29,7 @@ pub fn populate_test_sprite_entities(
     world: &mut World,
 ) {
     let sprite_image = {
-        let mut asset_resource = resources.get::<AssetResource>().unwrap();
+        let asset_resource = resources.get::<AssetResource>().unwrap();
         begin_load_asset::<ImageAsset>(
             asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
             &asset_resource,
@@ -93,7 +93,7 @@ pub fn populate_test_mesh_entities(
     world: &mut World,
 ) {
     let mesh = {
-        let mut asset_resource = resources.get::<AssetResource>().unwrap();
+        let asset_resource = resources.get::<AssetResource>().unwrap();
         begin_load_asset::<MeshAsset>(
             asset_uuid!("ffc9b240-0a17-4ff4-bb7d-72d13cc6e261"),
             &asset_resource,
@@ -204,7 +204,7 @@ pub fn populate_test_lights(
 }
 
 fn add_directional_light(
-    resources: &mut Resources,
+    _resources: &mut Resources,
     world: &mut World,
     light_component: DirectionalLightComponent,
 ) {
@@ -212,7 +212,7 @@ fn add_directional_light(
 }
 
 fn add_spot_light(
-    resources: &mut Resources,
+    _resources: &mut Resources,
     world: &mut World,
     position: glam::Vec3,
     light_component: SpotLightComponent,
@@ -223,7 +223,7 @@ fn add_spot_light(
 }
 
 fn add_point_light(
-    resources: &mut Resources,
+    _resources: &mut Resources,
     world: &mut World,
     position: glam::Vec3,
     light_component: PointLightComponent,

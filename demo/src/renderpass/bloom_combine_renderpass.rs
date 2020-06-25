@@ -1,30 +1,14 @@
-use std::mem;
 use ash::vk;
 use ash::prelude::VkResult;
-use std::ffi::CString;
-use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer::vulkan::{VkDevice, VkDeviceContext, MsaaLevel, RenderpassAttachmentImage};
+use renderer::vulkan::VkDeviceContext;
 use renderer::vulkan::VkSwapchain;
-use renderer::vulkan::offset_of;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
-use renderer::vulkan::VkBuffer;
-use renderer::vulkan::util;
 
-use renderer::vulkan::VkImage;
-use image::error::ImageError::Decoding;
-use image::{GenericImageView, ImageFormat};
-use ash::vk::ShaderStageFlags;
-
-use atelier_assets::loader::handle::Handle;
-
-use renderer::base::time::TimeState;
-use renderer::resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
-use renderer::assets::assets::pipeline::MaterialAsset;
-use crate::renderpass::VkBloomRenderPassResources;
+use renderer::resources::resource_managers::PipelineSwapchainInfo;
 
 pub struct VkBloomCombineRenderPass {
     pub device_context: VkDeviceContext,
@@ -44,7 +28,6 @@ impl VkBloomCombineRenderPass {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         pipeline_info: PipelineSwapchainInfo,
-        bloom_resources: &VkBloomRenderPassResources,
     ) -> VkResult<Self> {
         //
         // Command Buffers

@@ -16,7 +16,7 @@ impl RenderThread {
     pub fn start() -> Self {
         let (job_tx, job_rx) = crossbeam_channel::bounded(1);
         let join_handle = std::thread::spawn(|| match Self::render_thread(job_rx) {
-            Ok(result) => log::info!("Render thread ended without error"),
+            Ok(_) => log::info!("Render thread ended without error"),
             Err(err) => log::info!("Render thread ended with error: {:?}", err),
         });
 

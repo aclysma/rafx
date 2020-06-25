@@ -1,7 +1,7 @@
 use crate::phases::UiRenderPhase;
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
-    FramePacket, DefaultPrepareJobImpl, RenderFeature, PrepareJob,
+    FramePacket, RenderFeature, PrepareJob,
 };
 use crate::features::imgui::{ImGuiRenderFeature, ExtractedImGuiData};
 use super::write::ImGuiCommandWriter;
@@ -42,8 +42,8 @@ impl ImGuiPrepareJobImpl {
 impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepareJobImpl {
     fn prepare(
         self: Box<Self>,
-        prepare_context: &RenderJobPrepareContext,
-        frame_packet: &FramePacket,
+        _prepare_context: &RenderJobPrepareContext,
+        _frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> (
         Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
