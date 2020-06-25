@@ -179,8 +179,7 @@ impl VkUiRenderPass {
 
             let mut write_context = write_context_factory.create_context(*command_buffer);
 
-            prepared_render_data
-                .write_view_phase::<UiRenderPhase>(&view, &mut write_context);
+            prepared_render_data.write_view_phase::<UiRenderPhase>(&view, &mut write_context);
 
             logical_device.cmd_end_render_pass(*command_buffer);
             logical_device.end_command_buffer(*command_buffer)

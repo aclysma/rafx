@@ -34,7 +34,7 @@ pub fn create_imgui_extract_job(
         pipeline_info,
         extents,
         imgui_material,
-        font_atlas
+        font_atlas,
     ))
 }
 
@@ -75,7 +75,7 @@ impl RenderFeature for ImGuiRenderFeature {
 }
 
 pub(self) struct ExtractedImGuiData {
-    imgui_draw_data: Option<ImGuiDrawData>
+    imgui_draw_data: Option<ImGuiDrawData>,
 }
 
 #[derive(Debug)]

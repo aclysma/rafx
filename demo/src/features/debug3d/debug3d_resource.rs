@@ -1,4 +1,3 @@
-
 pub struct LineList3D {
     pub points: Vec<glam::Vec3>,
     pub color: glam::Vec4,

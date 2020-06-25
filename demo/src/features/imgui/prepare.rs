@@ -1,7 +1,7 @@
 use crate::phases::{TransparentRenderPhase, UiRenderPhase};
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
-    FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature, PrepareJob
+    FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature, PrepareJob,
 };
 use crate::features::imgui::{ImGuiRenderFeature, ExtractedImGuiData, ImGuiDrawCall, ImGuiVertex};
 use crate::phases::OpaqueRenderPhase;
@@ -42,9 +42,7 @@ impl ImGuiPrepareJobImpl {
     }
 }
 
-impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>
-    for ImGuiPrepareJobImpl
-{
+impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepareJobImpl {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
@@ -54,7 +52,13 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>
         Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
         FeatureSubmitNodes,
     ) {
-        let draw_list_count = self.extracted_imgui_data.imgui_draw_data.as_ref().unwrap().draw_lists().len();
+        let draw_list_count = self
+            .extracted_imgui_data
+            .imgui_draw_data
+            .as_ref()
+            .unwrap()
+            .draw_lists()
+            .len();
         let mut vertex_buffers = Vec::with_capacity(draw_list_count);
         let mut index_buffers = Vec::with_capacity(draw_list_count);
         if let Some(draw_data) = &self.extracted_imgui_data.imgui_draw_data {
@@ -65,12 +69,13 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>
                     &self.device_context,
                     vk_mem::MemoryUsage::CpuOnly,
                     vk::BufferUsageFlags::VERTEX_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE
-                        | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
                     vertex_buffer_size,
-                ).unwrap();
+                )
+                .unwrap();
                 vertex_buffer
-                    .write_to_host_visible_buffer(draw_list.vertex_buffer()).unwrap();
+                    .write_to_host_visible_buffer(draw_list.vertex_buffer())
+                    .unwrap();
                 let vertex_buffer = self.dyn_resource_allocator.insert_buffer(vertex_buffer);
 
                 let index_buffer_size = draw_list.index_buffer().len() as u64
@@ -79,12 +84,14 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>
                     &self.device_context,
                     vk_mem::MemoryUsage::CpuOnly,
                     vk::BufferUsageFlags::INDEX_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE
-                        | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
                     index_buffer_size,
-                ).unwrap();
+                )
+                .unwrap();
 
-                index_buffer.write_to_host_visible_buffer(draw_list.index_buffer()).unwrap();
+                index_buffer
+                    .write_to_host_visible_buffer(draw_list.index_buffer())
+                    .unwrap();
                 let index_buffer = self.dyn_resource_allocator.insert_buffer(index_buffer);
 
                 vertex_buffers.push(vertex_buffer);
@@ -97,7 +104,8 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>
         //
         let mut submit_nodes = FeatureSubmitNodes::default();
         for view in views {
-            let mut view_submit_nodes = ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
+            let mut view_submit_nodes =
+                ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
             view_submit_nodes.add_submit_node::<UiRenderPhase>(0, 0, 0.0);
             submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
         }

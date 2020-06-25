@@ -122,10 +122,7 @@ impl DynResourceAllocatorSet {
         image: ResourceArc<VkImageRaw>,
         image_view: vk::ImageView,
     ) -> ResourceArc<ImageViewResource> {
-        let image_view_resource = ImageViewResource {
-            image,
-            image_view
-        };
+        let image_view_resource = ImageViewResource { image, image_view };
 
         self.image_views.insert(image_view_resource)
     }

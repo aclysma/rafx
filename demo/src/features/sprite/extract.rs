@@ -2,10 +2,7 @@ use crate::features::sprite::{
     ExtractedSpriteData, SpriteRenderNodeSet, SpriteRenderFeature, SpriteRenderNode,
 };
 use crate::components::{PositionComponent, SpriteComponent};
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobWriteContext,
-    RenderJobPrepareContext,
-};
+use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
     DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
     RenderFeatureIndex, RenderFeature, PerFrameNode,
@@ -182,14 +179,15 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .unwrap();
         let texture_descriptor_set = sprite_texture_descriptor.descriptor_set().clone();
 
-        self.extracted_frame_node_sprite_data.push(Some(ExtractedSpriteData {
-            position: position_component.position,
-            texture_size: glam::Vec2::new(50.0, 50.0),
-            scale: 1.0,
-            rotation: 0.0,
-            alpha: sprite_component.alpha,
-            texture_descriptor_set,
-        }));
+        self.extracted_frame_node_sprite_data
+            .push(Some(ExtractedSpriteData {
+                position: position_component.position,
+                texture_size: glam::Vec2::new(50.0, 50.0),
+                scale: 1.0,
+                rotation: 0.0,
+                alpha: sprite_component.alpha,
+                texture_descriptor_set,
+            }));
     }
 
     fn extract_view_node(

@@ -12,7 +12,7 @@ use ash::prelude::VkResult;
 
 pub fn create_resource_manager(
     device_context: &VkDeviceContext,
-    asset_resource: &mut AssetResource
+    asset_resource: &mut AssetResource,
 ) -> ResourceManager {
     let mut resource_manager = ResourceManager::new(&device_context);
 
@@ -40,4 +40,3 @@ pub fn create_resource_manager(
 
     resource_manager
 }
-

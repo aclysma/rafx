@@ -1,4 +1,7 @@
-use crate::renderpass::{VkOpaqueRenderPass, VkMsaaRenderPass, VkBloomRenderPassResources, VkBloomExtractRenderPass, VkBloomBlurRenderPass, VkBloomCombineRenderPass, VkUiRenderPass};
+use crate::renderpass::{
+    VkOpaqueRenderPass, VkMsaaRenderPass, VkBloomRenderPassResources, VkBloomExtractRenderPass,
+    VkBloomBlurRenderPass, VkBloomCombineRenderPass, VkUiRenderPass,
+};
 use renderer::vulkan::{VkDeviceContext, VkSwapchain};
 use crate::game_renderer::GameRendererInner;
 use renderer::resources::resource_managers::{ResourceManager, DynDescriptorSet};
@@ -127,14 +130,10 @@ impl SwapchainResources {
         let imgui_pipeline_info = resource_manager.get_pipeline_info(
             &game_renderer.static_resources.imgui_material,
             &swapchain_surface_info,
-            0
+            0,
         );
 
-        let ui_renderpass = VkUiRenderPass::new(
-            device_context,
-            swapchain,
-            imgui_pipeline_info,
-        )?;
+        let ui_renderpass = VkUiRenderPass::new(device_context, swapchain, imgui_pipeline_info)?;
 
         let mut bloom_combine_material_dyn_set = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout)?;

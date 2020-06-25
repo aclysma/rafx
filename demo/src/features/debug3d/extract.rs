@@ -1,11 +1,10 @@
-use crate::features::debug3d::{ExtractedDebug3dData, Debug3dRenderFeature, DebugDraw3DResource, Debug3dUniformBufferObject};
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobWriteContext,
-    RenderJobPrepareContext,
+use crate::features::debug3d::{
+    ExtractedDebug3dData, Debug3dRenderFeature, DebugDraw3DResource, Debug3dUniformBufferObject,
 };
+use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
     DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
-    RenderFeatureIndex, RenderFeature, PerFrameNode, ExtractJob
+    RenderFeatureIndex, RenderFeature, PerFrameNode, ExtractJob,
 };
 use renderer::base::slab::RawSlabKey;
 use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
@@ -53,36 +52,43 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
-        let dyn_resource_allocator = extract_context.resource_manager.create_dyn_resource_allocator_set();
+        let dyn_resource_allocator = extract_context
+            .resource_manager
+            .create_dyn_resource_allocator_set();
         let layout =
             extract_context
                 .resource_manager
                 .get_descriptor_set_info(&self.debug3d_material, 0, 0);
 
-        let per_view_descriptor_sets : Vec<_> = views.iter().map(|view| {
-            let debug3d_view = Debug3dUniformBufferObject {
-                view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d()
-            };
+        let per_view_descriptor_sets: Vec<_> = views
+            .iter()
+            .map(|view| {
+                let debug3d_view = Debug3dUniformBufferObject {
+                    view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
+                };
 
-            let mut descriptor_set = self
-                .descriptor_set_allocator
-                .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
-                .unwrap();
-            descriptor_set.set_buffer_data(0, &debug3d_view);
-            descriptor_set.flush(&mut self.descriptor_set_allocator);
-            descriptor_set.descriptor_set().clone()
-        }).collect();
+                let mut descriptor_set = self
+                    .descriptor_set_allocator
+                    .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
+                    .unwrap();
+                descriptor_set.set_buffer_data(0, &debug3d_view);
+                descriptor_set.flush(&mut self.descriptor_set_allocator);
+                descriptor_set.descriptor_set().clone()
+            })
+            .collect();
 
-        let line_lists = extract_context.resources.get_mut::<DebugDraw3DResource>().unwrap().take_line_lists();
+        let line_lists = extract_context
+            .resources
+            .get_mut::<DebugDraw3DResource>()
+            .unwrap()
+            .take_line_lists();
 
         Box::new(Debug3dPrepareJobImpl::new(
             self.device_context,
             self.pipeline_info,
             dyn_resource_allocator,
             per_view_descriptor_sets,
-            ExtractedDebug3dData {
-                line_lists
-            }
+            ExtractedDebug3dData { line_lists },
         ))
     }
 

@@ -41,7 +41,10 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
                     vk::PipelineBindPoint::GRAPHICS,
                     self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
                     0,
-                    &[self.per_pass_descriptor_set.get(), self.per_image_descriptor_sets[0].get()],
+                    &[
+                        self.per_pass_descriptor_set.get(),
+                        self.per_image_descriptor_sets[0].get(),
+                    ],
                     &[],
                 );
             }
@@ -85,11 +88,11 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
                                 ImGuiDrawCmd::Elements {
                                     count,
                                     cmd_params:
-                                    imgui::DrawCmdParams {
-                                        clip_rect,
-                                        //texture_id,
-                                        ..
-                                    },
+                                        imgui::DrawCmdParams {
+                                            clip_rect,
+                                            //texture_id,
+                                            ..
+                                        },
                                 } => {
                                     let element_end_index = element_begin_index + *count as u32;
 

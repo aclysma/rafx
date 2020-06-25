@@ -126,7 +126,9 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
         let frame_node_index = view_node.frame_node_index();
 
         // This can read per-frame and per-view data
-        if let Some(extracted_data) = &self.extracted_frame_node_sprite_data[frame_node_index as usize] {
+        if let Some(extracted_data) =
+            &self.extracted_frame_node_sprite_data[frame_node_index as usize]
+        {
             if extracted_data.alpha >= 1.0 {
                 submit_nodes.add_submit_node::<OpaqueRenderPhase>(frame_node_index, 0, 0.0);
             } else {

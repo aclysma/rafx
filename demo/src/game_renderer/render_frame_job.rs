@@ -1,6 +1,8 @@
 use crate::game_renderer::{GameRenderer, GameRendererInner};
 use renderer::nodes::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
-use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory};
+use crate::render_contexts::{
+    RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory,
+};
 use renderer::resources::resource_managers::{DynResourceAllocatorSet, PipelineSwapchainInfo};
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
 use crate::features::debug3d::LineList3D;
@@ -185,15 +187,13 @@ impl RenderFrameJob {
         //
         // imgui
         //
-        swapchain_resources
-            .ui_renderpass
-            .update(
-                &imgui_pipeline_info,
-                present_index,
-                &*prepared_render_data,
-                &main_view,
-                &write_context_factory
-            )?;
+        swapchain_resources.ui_renderpass.update(
+            &imgui_pipeline_info,
+            present_index,
+            &*prepared_render_data,
+            &main_view,
+            &write_context_factory,
+        )?;
         command_buffers
             .push(swapchain_resources.ui_renderpass.command_buffers[present_index].clone());
 

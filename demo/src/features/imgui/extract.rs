@@ -1,11 +1,8 @@
 use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobWriteContext,
-    RenderJobPrepareContext,
-};
+use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
     DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
-    RenderFeatureIndex, RenderFeature, PerFrameNode, ExtractJob
+    RenderFeatureIndex, RenderFeature, PerFrameNode, ExtractJob,
 };
 use renderer::base::slab::RawSlabKey;
 use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
@@ -87,7 +84,11 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
-        let imgui_draw_data = extract_context.resources.get::<Sdl2ImguiManager>().unwrap().copy_draw_data();
+        let imgui_draw_data = extract_context
+            .resources
+            .get::<Sdl2ImguiManager>()
+            .unwrap()
+            .copy_draw_data();
 
         let framebuffer_scale = match &imgui_draw_data {
             Some(data) => data.framebuffer_scale,
@@ -105,7 +106,9 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
 
         let ubo = ImGuiUniformBufferObject { view_proj };
 
-        let dyn_resource_allocator = extract_context.resource_manager.create_dyn_resource_allocator_set();
+        let dyn_resource_allocator = extract_context
+            .resource_manager
+            .create_dyn_resource_allocator_set();
         let per_pass_layout =
             extract_context
                 .resource_manager
@@ -116,7 +119,9 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .create_dyn_descriptor_set_uninitialized(&per_pass_layout.descriptor_set_layout)
             .unwrap();
         per_pass_descriptor_set.set_buffer_data(0, &ubo);
-        per_pass_descriptor_set.flush(&mut self.descriptor_set_allocator).unwrap();
+        per_pass_descriptor_set
+            .flush(&mut self.descriptor_set_allocator)
+            .unwrap();
 
         let per_image_layout =
             extract_context
@@ -127,7 +132,9 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .create_dyn_descriptor_set_uninitialized(&per_image_layout.descriptor_set_layout)
             .unwrap();
         per_image_descriptor_set.set_image(0, self.font_atlas);
-        per_image_descriptor_set.flush(&mut self.descriptor_set_allocator).unwrap();
+        per_image_descriptor_set
+            .flush(&mut self.descriptor_set_allocator)
+            .unwrap();
 
         let per_pass_descriptor_set = per_pass_descriptor_set.descriptor_set().clone();
         let per_image_descriptor_sets = vec![per_image_descriptor_set.descriptor_set().clone()];
@@ -138,9 +145,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             dyn_resource_allocator,
             per_pass_descriptor_set,
             per_image_descriptor_sets,
-            ExtractedImGuiData {
-                imgui_draw_data
-            }
+            ExtractedImGuiData { imgui_draw_data },
         ))
     }
 

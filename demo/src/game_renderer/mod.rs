@@ -1,6 +1,4 @@
-use crate::imgui_support::{
-    ImGuiFontAtlas, Sdl2ImguiManager, ImguiManager,
-};
+use crate::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager, ImguiManager};
 use renderer::vulkan::{
     VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage,
     VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext,
@@ -25,17 +23,13 @@ use renderer::resources::resource_managers::{
     ResourceManager, DynDescriptorSet, DynMaterialInstance, ResourceArc, ImageViewResource,
     DynResourceAllocatorSet, PipelineSwapchainInfo,
 };
-use crate::assets::gltf::{
-    MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam,
-};
+use crate::assets::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam};
 use renderer::assets::assets::buffer::BufferAsset;
 use crate::features::debug3d::{DebugDraw3DResource, LineList3D, create_debug3d_extract_job};
 use crate::renderpass::VkBloomExtractRenderPass;
 use crate::renderpass::VkBloomBlurRenderPass;
 use crate::renderpass::VkBloomCombineRenderPass;
-use crate::features::sprite::{
-    SpriteRenderNodeSet, SpriteRenderFeature, create_sprite_extract_job,
-};
+use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderFeature, create_sprite_extract_job};
 use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
 use renderer::nodes::{
     RenderRegistryBuilder, RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet,
@@ -107,7 +101,11 @@ impl GameRenderer {
         let vk_context = resources.get_mut::<VkContext>().unwrap();
         let device_context = vk_context.device_context();
 
-        let imgui_font_atlas_image_view = GameRenderer::create_font_atlas_image_view(&device_context, &mut resource_manager, resources)?;
+        let imgui_font_atlas_image_view = GameRenderer::create_font_atlas_image_view(
+            &device_context,
+            &mut resource_manager,
+            resources,
+        )?;
 
         let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
             .add_render_phase::<OpaqueRenderPhase>()
@@ -120,8 +118,11 @@ impl GameRenderer {
             GameRendererStaticResources::new(asset_resource, resource_manager)?;
 
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
-        let debug_per_frame_layout =
-            resource_manager.get_descriptor_set_info(&game_renderer_resources.debug3d_material, 0, 0);
+        let debug_per_frame_layout = resource_manager.get_descriptor_set_info(
+            &game_renderer_resources.debug3d_material,
+            0,
+            0,
+        );
         let debug_material_per_frame_data = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(
                 &debug_per_frame_layout.descriptor_set_layout,
@@ -164,8 +165,8 @@ impl GameRenderer {
             color_space: renderer::assets::image_utils::ColorSpace::Linear,
             mips: renderer::assets::image_utils::default_mip_settings_for_image(
                 imgui_font_atlas.width,
-                imgui_font_atlas.height
-            )
+                imgui_font_atlas.height,
+            ),
         };
 
         let mut imgui_font_atlas_image = renderer::assets::image_utils::load_images(
@@ -182,9 +183,8 @@ impl GameRenderer {
         )?;
 
         let dyn_resource_allocator = resource_manager.create_dyn_resource_allocator_set();
-        let imgui_font_atlas_image = dyn_resource_allocator.insert_image(
-            unsafe { ManuallyDrop::take(&mut imgui_font_atlas_image[0]) }
-        );
+        let imgui_font_atlas_image = dyn_resource_allocator
+            .insert_image(unsafe { ManuallyDrop::take(&mut imgui_font_atlas_image[0]) });
 
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(vk::ImageAspectFlags::COLOR)
@@ -205,10 +205,8 @@ impl GameRenderer {
                 .create_image_view(&image_view_info, None)?
         };
 
-        let imgui_font_atlas_image_view = dyn_resource_allocator.insert_image_view(
-            imgui_font_atlas_image,
-            imgui_font_atlas_image_view
-        );
+        let imgui_font_atlas_image_view = dyn_resource_allocator
+            .insert_image_view(imgui_font_atlas_image, imgui_font_atlas_image_view);
 
         Ok(imgui_font_atlas_image_view)
     }
@@ -457,7 +455,6 @@ impl GameRenderer {
                 0,
             );
 
-
             let mut extract_job_set = ExtractJobSet::new();
 
             // Sprites
@@ -491,7 +488,7 @@ impl GameRenderer {
                 swapchain_surface_info.extents,
                 &guard.static_resources.imgui_material,
                 //guard.imgui_font_atlas.clone(),
-                guard.imgui_font_atlas_image_view.clone()
+                guard.imgui_font_atlas_image_view.clone(),
             ));
 
             extract_job_set

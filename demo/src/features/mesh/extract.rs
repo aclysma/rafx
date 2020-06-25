@@ -2,11 +2,10 @@ use crate::features::mesh::{
     ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode, MeshDrawCall,
     MeshPerObjectShaderParam, ExtractedViewNodeMeshData, MeshPerViewShaderParam,
 };
-use crate::components::{PointLightComponent, SpotLightComponent, DirectionalLightComponent, PositionComponent};
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext,
-
+use crate::components::{
+    PointLightComponent, SpotLightComponent, DirectionalLightComponent, PositionComponent,
 };
+use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
     DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
     RenderFeatureIndex, RenderFeature, PerFrameNode,

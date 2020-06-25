@@ -71,7 +71,7 @@ impl RenderFeature for Debug3dRenderFeature {
 }
 
 pub(self) struct ExtractedDebug3dData {
-    line_lists: Vec<LineList3D>
+    line_lists: Vec<LineList3D>,
 }
 
 #[derive(Debug)]
