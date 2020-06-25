@@ -1,5 +1,3 @@
-use std::ffi::CString;
-
 use ash::version::{DeviceV1_0};
 use ash::prelude::VkResult;
 
@@ -7,15 +5,11 @@ use std::mem::ManuallyDrop;
 use ash::vk;
 use std::sync::atomic::{AtomicUsize, Ordering, AtomicBool};
 
-use super::VkInstance;
-use super::VkCreateInstanceError;
-use super::VkCreateDeviceError;
-use super::VkDevice;
 use super::VkSwapchain;
 
 use super::MAX_FRAMES_IN_FLIGHT;
 use super::PresentMode;
-use super::PhysicalDeviceType;
+
 use super::PhysicalSize;
 use super::Window;
 use crate::{VkContext, VkDeviceContext, MsaaLevel};
@@ -68,10 +62,8 @@ impl FrameInFlight {
         //TODO: AFAIK there is no way to simply trigger the semaphore and skip calling do_present
         // with no command buffers. The downside of doing this is that we end up with both the
         // end user's result and a result from do_present and have no sensible way of merging them
-        match self.do_present(&vec![]) {
-            Ok(_) => self.result_tx.send(result),
-            Err(e) => self.result_tx.send(result),
-        };
+        let _ = self.do_present(&vec![]);
+        self.result_tx.send(result).unwrap();
     }
 
     // submit the given command buffers and preset the swapchain image for this frame
@@ -80,7 +72,7 @@ impl FrameInFlight {
         command_buffers: &[vk::CommandBuffer],
     ) -> VkResult<()> {
         let result = self.do_present(command_buffers);
-        self.result_tx.send(result);
+        self.result_tx.send(result).unwrap();
         result
     }
 
@@ -222,7 +214,7 @@ impl VkSurface {
         &mut self,
         event_listener: Option<&mut dyn VkSurfaceSwapchainLifetimeListener>,
     ) {
-        self.wait_until_frame_not_in_flight();
+        self.wait_until_frame_not_in_flight().unwrap();
         unsafe {
             self.device_context.device().device_wait_idle().unwrap();
         }
@@ -306,7 +298,7 @@ impl VkSurface {
     pub fn rebuild_swapchain(
         &mut self,
         window: &dyn Window,
-        event_listener: &mut Option<&mut VkSurfaceSwapchainLifetimeListener>,
+        event_listener: &mut Option<&mut dyn VkSurfaceSwapchainLifetimeListener>,
     ) -> VkResult<()> {
         // If a frame_in_flight from a previous acquire_next_swapchain_image() call is still
         // outstanding, wait for it to finish. It is referencing resources that we are about to

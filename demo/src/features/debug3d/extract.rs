@@ -3,22 +3,14 @@ use crate::features::debug3d::{
 };
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
-    DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
-    RenderFeatureIndex, RenderFeature, PerFrameNode, ExtractJob,
+    DefaultExtractJobImpl, FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature,
+    ExtractJob,
 };
-use renderer::base::slab::RawSlabKey;
 use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::resources::resource_managers::{
-    PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef,
-};
-use ash::vk;
+use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use renderer::assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::assets::image::ImageAsset;
-use ash::prelude::VkResult;
-use renderer::resources::resource_managers::DescriptorSetArc;
-use legion::prelude::EntityStore;
 
 pub struct Debug3dExtractJobImpl {
     device_context: VkDeviceContext,

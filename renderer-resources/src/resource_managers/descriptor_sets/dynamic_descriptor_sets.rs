@@ -1,18 +1,14 @@
 use super::DescriptorSetArc;
 use super::DescriptorSetWriteSet;
-use super::DescriptorSetWriteBuffer;
 use super::DescriptorSetElementKey;
-use crate::resource_managers::resource_lookup::{
-    ImageViewResource, ResourceHash, DescriptorSetLayoutResource,
-};
+use crate::resource_managers::resource_lookup::{ImageViewResource, DescriptorSetLayoutResource};
 use crate::resource_managers::asset_lookup::SlotNameLookup;
-use crossbeam_channel::Sender;
 use std::sync::Arc;
 use crate::resource_managers::descriptor_sets::descriptor_write_set::{
     DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue,
 };
 use ash::vk;
-use crate::resource_managers::{ResourceArc, ResourceManager};
+use crate::resource_managers::ResourceArc;
 use std::fmt::Formatter;
 use ash::prelude::VkResult;
 use crate::resource_managers::descriptor_sets::DescriptorSetAllocator;

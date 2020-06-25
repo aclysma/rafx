@@ -1,12 +1,5 @@
-use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{
-    Error, ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter,
-};
-use image2::{color, ImageBuf, Image};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
-use std::io::Read;
-use std::convert::TryInto;
 use serde::export::Formatter;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]

@@ -173,7 +173,7 @@ impl DebugDraw3DResource {
         let base_to_vertex_normal = base_to_vertex.normalize();
         let (x_dir, y_dir) = Self::normal_to_xy(base_to_vertex_normal);
         for index in 0..segments {
-            let fraction = (index as f32 / segments as f32);
+            let fraction = index as f32 / segments as f32;
 
             let center = base_center + base_to_vertex * fraction;
             self.add_circle_xy(

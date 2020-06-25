@@ -183,14 +183,14 @@ pub fn create_graphics_pipelines(
         .as_builder()
         .build();
 
-    let mut vertex_input_attribute_descriptions: Vec<_> = fixed_function_state
+    let vertex_input_attribute_descriptions: Vec<_> = fixed_function_state
         .vertex_input_state
         .attribute_descriptions
         .iter()
-        .map(|attribute| attribute.as_builder(swapchain_surface_info).build())
+        .map(|attribute| attribute.clone().into())
         .collect();
 
-    let mut vertex_input_binding_descriptions: Vec<_> = fixed_function_state
+    let vertex_input_binding_descriptions: Vec<_> = fixed_function_state
         .vertex_input_state
         .binding_descriptions
         .iter()

@@ -1,28 +1,11 @@
-use crate::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager, ImguiManager};
-use renderer::vulkan::{
-    VkDevice, VkSwapchain, VkSurface, Window, VkTransferUpload, VkTransferUploadState, VkImage,
-    VkDeviceContext, VkContextBuilder, VkCreateContextError, VkContext,
-    VkSurfaceSwapchainLifetimeListener, MsaaLevel, MAX_FRAMES_IN_FLIGHT, VkBuffer, FrameInFlight,
-};
+use crate::imgui_support::Sdl2ImguiManager;
+use renderer::vulkan::{VkSurface, Window, VkDeviceContext, VkContext, FrameInFlight};
 use ash::prelude::VkResult;
-use crate::renderpass::{VkMsaaRenderPass, VkBloomRenderPassResources, VkOpaqueRenderPass};
-use std::mem::{ManuallyDrop, swap};
-use renderer::assets::image_utils::{decode_texture, enqueue_load_images};
+use std::mem::ManuallyDrop;
 use ash::vk;
-use renderer::base::time::{ScopeTimer, TimeState};
-use crossbeam_channel::{Sender, Receiver};
-use std::ops::Deref;
-use renderer::assets::vk_description::SwapchainSurfaceInfo;
-use renderer::assets::assets::pipeline::{MaterialAsset, PipelineAsset, MaterialInstanceAsset};
-use atelier_assets::loader::handle::Handle;
+use renderer::base::time::TimeState;
 use renderer::assets::asset_resource::AssetResource;
-use renderer::assets::assets::shader::ShaderAsset;
-use renderer::assets::assets::image::ImageAsset;
-use atelier_assets::core::asset_uuid;
-use renderer::resources::resource_managers::{
-    ResourceManager, DynDescriptorSet, DynMaterialInstance, ResourceArc, ImageViewResource,
-    DynResourceAllocatorSet, PipelineSwapchainInfo,
-};
+use renderer::resources::resource_managers::{ResourceManager, ResourceArc, ImageViewResource};
 use crate::assets::gltf::{MeshAsset, GltfMaterialAsset, GltfMaterialData, GltfMaterialDataShaderParam};
 use renderer::assets::assets::buffer::BufferAsset;
 use crate::features::debug3d::{DebugDraw3DResource, LineList3D, create_debug3d_extract_job};

@@ -2,8 +2,7 @@ use ash::vk;
 use ash::version::DeviceV1_0;
 use super::{
     DescriptorLayoutBufferSet, DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL,
-    MAX_FRAMES_IN_FLIGHT_PLUS_1, ManagedDescriptorSet, DescriptorSetWriteSet, FrameInFlightIndex,
-    MAX_FRAMES_IN_FLIGHT, DescriptorSetWriteBuffer, DescriptorSetElementKey,
+    ManagedDescriptorSet, DescriptorSetWriteSet, DescriptorSetElementKey,
 };
 use std::collections::VecDeque;
 use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkResourceDropSink, VkBuffer};
@@ -130,7 +129,7 @@ impl ManagedDescriptorSetPoolChunk {
         buffer_drop_sink: &mut VkResourceDropSink<ManuallyDrop<VkBuffer>>,
     ) {
         pool_allocator.retire_pool(self.pool);
-        for (key, buffer_set) in self.buffers.buffer_sets.drain() {
+        for (_, buffer_set) in self.buffers.buffer_sets.drain() {
             buffer_drop_sink.retire(buffer_set.buffer);
         }
     }
@@ -138,7 +137,7 @@ impl ManagedDescriptorSetPoolChunk {
     pub(super) fn schedule_write_set(
         &mut self,
         slab_key: RawSlabKey<ManagedDescriptorSet>,
-        mut write_set: DescriptorSetWriteSet,
+        write_set: DescriptorSetWriteSet,
     ) -> vk::DescriptorSet {
         log::trace!(
             "Schedule a write for descriptor set {:?} on layout {:?}",
@@ -257,7 +256,7 @@ impl ManagedDescriptorSetPoolChunk {
                     if let Some(buffer_info) = &buffer_info.buffer {
                         //let mut buffer_info_builder = vk::DescriptorBufferInfo::builder();
                         match buffer_info {
-                            DescriptorSetWriteElementBufferData::BufferRef(buffer) => {
+                            DescriptorSetWriteElementBufferData::BufferRef(_buffer) => {
                                 unimplemented!();
                                 // buffer_info_builder = buffer_info_builder
                                 //     .buffer(buffer.buffer.get_raw())
@@ -267,7 +266,7 @@ impl ManagedDescriptorSetPoolChunk {
                             DescriptorSetWriteElementBufferData::Data(data) => {
                                 //TODO: Rebind the buffer if we are no longer bound to the internal buffer, or at
                                 // least fail
-                                let mut buffer =
+                                let buffer =
                                     self.buffers.buffer_sets.get_mut(&element_key).unwrap();
                                 //assert!(data.len() as u32 <= buffer.buffer_info.per_descriptor_size);
                                 if data.len() as u32 > buffer.buffer_info.per_descriptor_size {
@@ -302,7 +301,8 @@ impl ManagedDescriptorSetPoolChunk {
                                     offset
                                 );
                                 buffer
-                                    .write_to_host_visible_buffer_with_offset(&data, offset as u64);
+                                    .write_to_host_visible_buffer_with_offset(&data, offset as u64)
+                                    .unwrap();
                             }
                         }
                     }

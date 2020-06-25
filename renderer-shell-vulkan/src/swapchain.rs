@@ -4,9 +4,6 @@ use ash::extensions::khr;
 
 use ash::version::{DeviceV1_0, InstanceV1_0};
 
-use super::VkInstance;
-use super::VkDevice;
-use super::VkQueueFamilyIndices;
 use crate::{PresentMode, VkDeviceContext, VkImage, MsaaLevel};
 use super::Window;
 use std::mem::ManuallyDrop;

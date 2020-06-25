@@ -1,25 +1,16 @@
 use crossbeam_channel::{Sender, Receiver};
-use std::fmt::Formatter;
 use std::hash::Hash;
-use std::sync::{Weak, Arc, Mutex};
+use std::sync::Arc;
 use renderer_shell_vulkan::{
     VkResource, VkResourceDropSink, VkDeviceContext, VkImageRaw, VkImage, VkBufferRaw, VkBuffer,
 };
-use fnv::FnvHashMap;
-use std::marker::PhantomData;
 use ash::vk;
-use ash::prelude::VkResult;
-use renderer_assets::vk_description::SwapchainSurfaceInfo;
-use super::PipelineCreateData;
-use std::mem::ManuallyDrop;
-use std::borrow::Borrow;
-use renderer_assets::vk_description as dsc;
-use atelier_assets::loader::LoadHandle;
 use super::ResourceId;
 use crate::resource_managers::ResourceArc;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
-use crate::resource_managers::resource_arc::{WeakResourceArc, ResourceWithHash};
+use crate::resource_managers::resource_arc::ResourceWithHash;
 use crate::ImageViewResource;
+use ash::prelude::VkResult;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DynResourceIndex(u64);
@@ -190,15 +181,15 @@ where
     fn on_frame_complete(
         &mut self,
         device_context: &VkDeviceContext,
-    ) {
+    ) -> VkResult<()> {
         self.handle_dropped_resources();
-        self.drop_sink.on_frame_complete(device_context);
+        self.drop_sink.on_frame_complete(device_context)
     }
 
     fn destroy(
         &mut self,
         device_context: &VkDeviceContext,
-    ) {
+    ) -> VkResult<()> {
         self.handle_dropped_resources();
 
         if self.len() > 0 {
@@ -209,7 +200,7 @@ where
             );
         }
 
-        self.drop_sink.destroy(device_context);
+        self.drop_sink.destroy(device_context)
     }
 
     fn len(&self) -> usize {
@@ -258,18 +249,20 @@ impl DynResourceAllocatorManagerSet {
         }
     }
 
-    pub fn on_frame_complete(&mut self) {
-        self.buffers.on_frame_complete(&self.device_context);
-        self.images.on_frame_complete(&self.device_context);
-        self.image_views.on_frame_complete(&self.device_context);
+    pub fn on_frame_complete(&mut self) -> VkResult<()> {
+        self.buffers.on_frame_complete(&self.device_context)?;
+        self.images.on_frame_complete(&self.device_context)?;
+        self.image_views.on_frame_complete(&self.device_context)?;
+        Ok(())
     }
 
-    pub fn destroy(&mut self) {
+    pub fn destroy(&mut self) -> VkResult<()> {
         //WARNING: These need to be in order of dependencies to avoid frame-delays on destroying
         // resources.
-        self.image_views.destroy(&self.device_context);
-        self.images.destroy(&self.device_context);
-        self.buffers.destroy(&self.device_context);
+        self.image_views.destroy(&self.device_context)?;
+        self.images.destroy(&self.device_context)?;
+        self.buffers.destroy(&self.device_context)?;
+        Ok(())
     }
 
     pub fn metrics(&self) -> ResourceMetrics {

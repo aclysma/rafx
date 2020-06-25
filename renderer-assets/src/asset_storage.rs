@@ -6,10 +6,8 @@ use atelier_assets::loader::{
 use mopa::{mopafy, Any};
 use std::{sync::Mutex, collections::HashMap, error::Error, sync::Arc};
 
-use atelier_assets::importer as atelier_importer;
 use atelier_assets::loader as atelier_loader;
 use atelier_assets::core::AssetUuid;
-use std::marker::PhantomData;
 
 // Used to catch asset changes and upload them to the GPU (or some other system)
 pub trait ResourceLoadHandler<T>: 'static + Send
@@ -169,17 +167,6 @@ impl<A: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send> TypedAssetSt
         &self,
         handle: &T,
     ) -> Option<&A> {
-        {
-            let x = self
-                .storage
-                .lock()
-                .unwrap()
-                .get(&AssetTypeId(A::UUID))
-                .expect("unknown asset type")
-                .as_ref()
-                .type_name();
-        }
-
         // This transmute can probably be unsound, but I don't have the energy to fix it right now
         unsafe {
             std::mem::transmute(

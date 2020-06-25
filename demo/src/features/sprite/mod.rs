@@ -3,7 +3,6 @@ use renderer::nodes::{
     RenderNodeSet, RenderNodeCount,
 };
 use std::sync::atomic::{Ordering, AtomicI32};
-use glam::f32::Vec3;
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use legion::prelude::Entity;
 use renderer::base::slab::{RawSlabKey, RawSlab};
@@ -14,14 +13,12 @@ mod extract;
 use extract::SpriteExtractJobImpl;
 
 mod prepare;
-use prepare::SpritePrepareJobImpl;
 
 mod write;
 use write::SpriteCommandWriter;
 use renderer::vulkan::VkDeviceContext;
-use ash::vk;
 use renderer::resources::resource_managers::{
-    PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef,
+    PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef,
 };
 use renderer::assets::assets::pipeline::MaterialAsset;
 

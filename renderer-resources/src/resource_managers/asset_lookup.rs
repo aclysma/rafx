@@ -156,7 +156,6 @@ impl<LoadedAssetT> AssetLookup<LoadedAssetT> {
                 // It's an error to reach here because of uncommitted and committed are none, there
                 // shouldn't be an entry in loaded_assets
                 unreachable!();
-                None
             }
         } else {
             None

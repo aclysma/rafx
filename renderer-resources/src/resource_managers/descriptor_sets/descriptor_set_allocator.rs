@@ -1,20 +1,16 @@
-use ash::vk;
-use crate::resource_managers::resource_lookup::{
-    ResourceHash, DescriptorSetLayoutResource, ResourceLookupSet,
-};
+use crate::resource_managers::resource_lookup::{ResourceHash, DescriptorSetLayoutResource};
 use renderer_shell_vulkan::VkDeviceContext;
 use fnv::FnvHashMap;
 use super::ManagedDescriptorSetPool;
-use super::{FrameInFlightIndex, DescriptorSetArc, MAX_FRAMES_IN_FLIGHT};
+use super::{FrameInFlightIndex, DescriptorSetArc};
 use super::DescriptorSetWriteSet;
 use ash::prelude::VkResult;
 use crate::resource_managers::{
     DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc,
 };
 use crate::resource_managers::asset_lookup::{
-    LoadedMaterialPass, LoadedAssetLookupSet, LoadedMaterialInstance, LoadedMaterial,
+    LoadedMaterialPass, LoadedMaterialInstance, LoadedMaterial,
 };
-use renderer_assets::vk_description as dsc;
 
 #[derive(Debug)]
 pub struct DescriptorSetPoolMetrics {
@@ -59,11 +55,13 @@ impl DescriptorSetAllocator {
         }
     }
 
-    pub fn flush_changes(&mut self) {
+    pub fn flush_changes(&mut self) -> VkResult<()> {
         // Now process drops and flush writes to GPU
         for pool in self.pools.values_mut() {
-            pool.flush_changes(&self.device_context, self.frame_in_flight_index);
+            pool.flush_changes(&self.device_context, self.frame_in_flight_index)?;
         }
+
+        Ok(())
     }
 
     pub fn on_frame_complete(&mut self) {
@@ -72,12 +70,13 @@ impl DescriptorSetAllocator {
             super::add_to_frame_in_flight_index(self.frame_in_flight_index, 1);
     }
 
-    pub fn destroy(&mut self) {
-        for (hash, pool) in &mut self.pools {
-            pool.destroy(&self.device_context);
+    pub fn destroy(&mut self) -> VkResult<()> {
+        for pool in self.pools.values_mut() {
+            pool.destroy(&self.device_context)?;
         }
 
         self.pools.clear();
+        Ok(())
     }
 
     pub fn create_descriptor_set(
@@ -125,16 +124,11 @@ impl DescriptorSetAllocator {
     pub fn create_dyn_pass_material_instance_uninitialized(
         &mut self,
         pass: &LoadedMaterialPass,
-        loaded_assets: &LoadedAssetLookupSet,
     ) -> VkResult<DynPassMaterialInstance> {
         let mut dyn_descriptor_sets = Vec::with_capacity(pass.descriptor_set_layouts.len());
 
-        let layout_defs = &pass
-            .pipeline_create_data
-            .pipeline_layout_def
-            .descriptor_set_layouts;
-        for (layout_def, layout) in layout_defs.iter().zip(&pass.descriptor_set_layouts) {
-            let dyn_descriptor_set = self.create_dyn_descriptor_set_uninitialized(&layout)?;
+        for layout in &pass.descriptor_set_layouts {
+            let dyn_descriptor_set = self.create_dyn_descriptor_set_uninitialized(layout)?;
             dyn_descriptor_sets.push(dyn_descriptor_set);
         }
 
@@ -164,12 +158,11 @@ impl DescriptorSetAllocator {
     pub fn create_dyn_material_instance_uninitialized(
         &mut self,
         material: &LoadedMaterial,
-        loaded_assets: &LoadedAssetLookupSet,
     ) -> VkResult<DynMaterialInstance> {
         let mut passes = Vec::with_capacity(material.passes.len());
         for pass in &material.passes {
             let dyn_pass_material_instance =
-                self.create_dyn_pass_material_instance_uninitialized(pass, loaded_assets)?;
+                self.create_dyn_pass_material_instance_uninitialized(pass)?;
             passes.push(dyn_pass_material_instance);
         }
 

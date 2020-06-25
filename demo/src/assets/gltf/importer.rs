@@ -1,6 +1,6 @@
 use atelier_assets::core::{AssetUuid, AssetRef};
 use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue, SourceFileImporter};
-use image2::{color, ImageBuf, Image};
+use image2::Image;
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::Read;
@@ -9,11 +9,8 @@ use gltf::image::Data as GltfImageData;
 use gltf::buffer::Data as GltfBufferData;
 use fnv::FnvHashMap;
 use atelier_assets::loader::handle::Handle;
-use gltf::{Accessor, Gltf};
-use gltf::mesh::util::indices::CastingIter;
 use crate::assets::gltf::{
-    GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex, GltfMaterialData,
-    GltfMaterialDataShaderParam,
+    GltfMaterialAsset, MeshAsset, MeshPart, MeshVertex, GltfMaterialDataShaderParam,
 };
 use renderer::assets::assets::image::{ImageAsset, ColorSpace};
 use renderer::assets::assets::buffer::BufferAsset;
@@ -120,7 +117,7 @@ impl Importer for GltfImporter {
     /// Reads the given bytes and produces assets.
     fn import(
         &self,
-        source: &mut Read,
+        source: &mut dyn Read,
         options: Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
@@ -742,7 +739,6 @@ fn extract_materials_to_import(
 fn convert_to_u16_indices(
     read_indices: gltf::mesh::util::ReadIndices
 ) -> Result<Vec<u16>, std::num::TryFromIntError> {
-    use std::convert::TryFrom;
     let indices_u32: Vec<u32> = read_indices.into_u32().collect();
     let mut indices_u16: Vec<u16> = Vec::with_capacity(indices_u32.len());
     for index in indices_u32 {

@@ -5,7 +5,7 @@ use ash::version::DeviceV1_0;
 use std::task::{Context, Poll, Waker};
 use std::pin::Pin;
 use std::future::Future;
-use std::time::{Instant, Duration};
+use std::time::{Duration};
 use std::sync::{
     atomic::{Ordering, AtomicUsize},
     Arc, Weak,
@@ -97,7 +97,7 @@ impl VkFenceContext {
                     Ok(()) => {
                         // something is signalled
                         for i in (0..self.pending_fences.len()).rev() {
-                            if unsafe { device.get_fence_status(self.pending_fences[i]) }? {
+                            if device.get_fence_status(self.pending_fences[i])? {
                                 // the vulkan fence is immediately reset, but the user signal must be reset manually
                                 device.reset_fences(&self.pending_fences[i..=i])?;
                                 self.pending_fences.swap_remove(i);
@@ -172,5 +172,5 @@ impl Future for VkFenceHandle {
 }
 
 async fn test_await(fence: &mut VkFenceHandle) {
-    let result = fence.await;
+    let _result = fence.await;
 }

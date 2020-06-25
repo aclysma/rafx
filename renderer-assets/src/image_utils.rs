@@ -1,26 +1,14 @@
-use std::mem;
 use ash::vk;
 use ash::prelude::VkResult;
-use std::ffi::CString;
 use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{
-    VkDevice, VkUpload, VkUploadState, VkTransferUpload, VkTransferUploadState, VkDeviceContext,
-};
-use renderer_shell_vulkan::VkSwapchain;
-use renderer_shell_vulkan::offset_of;
-use renderer_shell_vulkan::SwapchainInfo;
-use renderer_shell_vulkan::VkQueueFamilyIndices;
+use renderer_shell_vulkan::{VkTransferUpload, VkTransferUploadState, VkDeviceContext};
 use renderer_shell_vulkan::VkBuffer;
-use renderer_shell_vulkan::util;
 
 use renderer_shell_vulkan::VkImage;
-use image::error::ImageError::Decoding;
-use std::process::exit;
 use image::{GenericImageView, ImageFormat};
-use ash::vk::ShaderStageFlags;
 use std::sync::{Mutex, Arc};
 
 #[derive(Copy, Clone, Debug)]
@@ -47,7 +35,7 @@ pub enum DecodedTextureMips {
 }
 
 impl DecodedTextureMips {
-    fn mip_level_count(&self) -> u32 {
+    pub fn mip_level_count(&self) -> u32 {
         match self {
             DecodedTextureMips::None => 1,
             DecodedTextureMips::Runtime(info) => info.mip_level_count,
@@ -249,7 +237,7 @@ pub fn enqueue_load_images(
 
         let (mip_level_count, generate_mips) = match decoded_texture.mips {
             DecodedTextureMips::None => (1, false),
-            DecodedTextureMips::Precomputed(info) => unimplemented!(), //(info.mip_level_count, false),
+            DecodedTextureMips::Precomputed(_info) => unimplemented!(), //(info.mip_level_count, false),
             DecodedTextureMips::Runtime(info) => (info.mip_level_count, true),
         };
 

@@ -3,8 +3,7 @@ use renderer::nodes::{
     RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
-use renderer::vulkan::{VkBuffer, VkBufferRaw};
-use std::mem::ManuallyDrop;
+use renderer::vulkan::VkBufferRaw;
 use renderer::resources::resource_managers::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
 use ash::vk;
 use ash::version::DeviceV1_0;

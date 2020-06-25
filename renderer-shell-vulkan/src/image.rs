@@ -1,11 +1,6 @@
 use ash::vk;
 use ash::prelude::VkResult;
 
-use ash::version::DeviceV1_0;
-
-use crate::{util, VkDevice};
-use std::sync::Arc;
-use std::mem::ManuallyDrop;
 use crate::device::VkDeviceContext;
 use core::fmt;
 
@@ -111,13 +106,11 @@ impl Drop for VkImage {
     fn drop(&mut self) {
         log::trace!("destroying VkImage");
 
-        unsafe {
-            if let Some(raw) = &self.raw {
-                self.device_context
-                    .allocator()
-                    .destroy_image(raw.image, &raw.allocation)
-                    .unwrap();
-            }
+        if let Some(raw) = &self.raw {
+            self.device_context
+                .allocator()
+                .destroy_image(raw.image, &raw.allocation)
+                .unwrap();
         }
 
         log::trace!("destroyed VkImage");

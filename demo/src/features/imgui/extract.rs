@@ -1,22 +1,15 @@
 use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
-    DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
-    RenderFeatureIndex, RenderFeature, PerFrameNode, ExtractJob,
+    DefaultExtractJobImpl, FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature,
+    ExtractJob,
 };
-use renderer::base::slab::RawSlabKey;
 use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::resources::resource_managers::{
-    PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef,
-};
-use ash::vk;
+use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use renderer::assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::assets::image::ImageAsset;
-use ash::prelude::VkResult;
-use renderer::resources::resource_managers::DescriptorSetArc;
-use legion::prelude::EntityStore;
 use crate::imgui_support::Sdl2ImguiManager;
 use ash::vk::Extent2D;
 use renderer::resources::{ImageViewResource, ResourceArc};
@@ -97,9 +90,9 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
 
         let view_proj = orthographic_rh_gl(
             0.0,
-            (self.extents.width as f32 / framebuffer_scale[0]),
+            self.extents.width as f32 / framebuffer_scale[0],
             0.0,
-            (self.extents.height as f32 / framebuffer_scale[1]),
+            self.extents.height as f32 / framebuffer_scale[1],
             -100.0,
             100.0,
         );

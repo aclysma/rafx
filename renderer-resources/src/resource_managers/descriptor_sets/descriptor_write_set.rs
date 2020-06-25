@@ -6,7 +6,6 @@ use crate::resource_managers::asset_lookup::{LoadedMaterialPass, LoadedAssetLook
 use renderer_assets::assets::pipeline::MaterialInstanceSlotAssignment;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::AssetHandle;
-use crate::resource_managers::descriptor_sets::DescriptorSetWriteBuffer;
 use crate::resource_managers::ResourceArc;
 
 //
@@ -152,7 +151,7 @@ pub fn apply_material_instance_slot_assignment(
 ) -> VkResult<()> {
     if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
         for location in slot_locations {
-            let mut layout_descriptor_set_writes =
+            let layout_descriptor_set_writes =
                 &mut material_pass_write_set[location.layout_index as usize];
             let write = layout_descriptor_set_writes
                 .elements
@@ -213,7 +212,7 @@ pub fn create_uninitialized_write_sets_for_material_pass(
     // The metadata for the descriptor sets within this pass, one for each set within the pass
     let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts;
 
-    let mut pass_descriptor_set_writes: Vec<_> = descriptor_set_layouts
+    let pass_descriptor_set_writes: Vec<_> = descriptor_set_layouts
         .iter()
         .map(|layout| create_uninitialized_write_set_for_layout(&layout.into()))
         .collect();

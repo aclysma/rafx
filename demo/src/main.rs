@@ -1,49 +1,20 @@
-use renderer::vulkan::{
-    LogicalSize, Window, VkDevice, VkSwapchain, VkSurface, VkDeviceContext, VkTransferUpload,
-    VkTransferUploadState, VkImage, VkContextBuilder, MsaaLevel, VkCreateContextError, VkContext,
-};
+use renderer::vulkan::VkDeviceContext;
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use ash::prelude::VkResult;
-use crate::imgui_support::{ImGuiFontAtlas, Sdl2ImguiManager};
-use imgui::sys::ImGuiStorage_GetBoolRef;
+use crate::imgui_support::Sdl2ImguiManager;
 use sdl2::mouse::MouseState;
 use crate::components::{
-    PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
-    DirectionalLightComponent,
+    PositionComponent, PointLightComponent, SpotLightComponent, DirectionalLightComponent,
 };
 use atelier_assets::loader as atelier_loader;
 use legion::prelude::*;
 
-use atelier_assets::core::asset_uuid;
-use atelier_assets::core as atelier_core;
-use atelier_assets::core::AssetUuid;
-
 use renderer::assets::asset_resource::AssetResource;
-use renderer::assets::image_utils::{DecodedTexture, enqueue_load_images};
-use imgui::{Key, Image};
-use renderer::assets::asset_storage::{ResourceLoadHandler};
-use std::mem::ManuallyDrop;
-use std::time::Duration;
-use atelier_loader::AssetLoadOp;
-use std::error::Error;
-use renderer::assets::assets::image::ImageAsset;
-use renderer::assets::vk_description::GraphicsPipeline;
-use std::io::Write;
-use std::collections::hash_map::DefaultHasher;
-use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
-use renderer::visibility::{
-    StaticVisibilityNodeSet, DynamicVisibilityNodeSet, DynamicAabbVisibilityNode,
-};
 use renderer::base::time::TimeState;
-use glam::f32::Vec3;
 use renderer::resources::resource_managers::ResourceManager;
-use renderer::nodes::RenderRegistry;
 use sdl2::event::EventType::RenderDeviceReset;
-use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
-use crate::assets::gltf::MeshAsset;
-use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
+use crate::game_renderer::GameRenderer;
 use crate::features::debug3d::DebugDraw3DResource;
 use crate::resource_manager::GameResourceManager;
 

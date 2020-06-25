@@ -3,7 +3,6 @@ use renderer::nodes::{
     RenderNodeSet, RenderNodeCount, FrameNodeIndex,
 };
 use std::sync::atomic::{Ordering, AtomicI32};
-use glam::f32::Vec3;
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use legion::prelude::Entity;
 use renderer::base::slab::{RawSlabKey, RawSlab};
@@ -14,18 +13,14 @@ mod extract;
 use extract::MeshExtractJobImpl;
 
 mod prepare;
-use prepare::MeshPrepareJobImpl;
 
 mod write;
 use write::MeshCommandWriter;
 use renderer::vulkan::{VkDeviceContext, VkBufferRaw};
-use ash::vk;
 use renderer::resources::resource_managers::{
-    PipelineSwapchainInfo, DynDescriptorSet, DescriptorSetArc, DescriptorSetAllocatorRef,
-    ResourceManager, ResourceArc,
+    PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc,
 };
 use renderer::assets::assets::pipeline::MaterialAsset;
-use ash::prelude::VkResult;
 
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]

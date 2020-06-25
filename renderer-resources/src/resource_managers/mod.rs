@@ -1,30 +1,22 @@
-// use crate::upload::{
-//     UploadQueue, ImageUploadOpResult, BufferUploadOpResult, PendingImageUpload, UploadOp,
-// };
-use crossbeam_channel::{Sender, Receiver};
-use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer, VkBufferRaw};
+use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer};
 use ash::prelude::*;
 use ash::vk;
 use renderer_assets::assets::image::ImageAsset;
 use renderer_assets::assets::shader::ShaderAsset;
 use renderer_assets::assets::pipeline::{
-    PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass,
-    MaterialInstanceSlotAssignment, RenderpassAsset,
+    PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, RenderpassAsset,
 };
 use renderer_assets::vk_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
-use fnv::FnvHashMap;
 use renderer_assets::vk_description as dsc;
 use atelier_assets::loader::AssetLoadOp;
-use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::handle::AssetHandle;
 use std::sync::Arc;
 
 mod resource_arc;
 use resource_arc::ResourceId;
 pub use resource_arc::ResourceArc;
-use resource_arc::WeakResourceArc;
 
 mod resource_lookup;
 use resource_lookup::ResourceHash;
@@ -37,7 +29,6 @@ pub use dyn_resource_allocator::DynResourceAllocatorSet;
 mod load_queue;
 pub use load_queue::LoadQueues;
 pub use load_queue::GenericLoadHandler;
-use load_queue::LoadRequest;
 use load_queue::LoadQueueSet;
 
 mod swapchain_management;
@@ -61,7 +52,6 @@ use descriptor_sets::DescriptorSetAllocator;
 pub use descriptor_sets::DescriptorSetAllocatorRef;
 pub use descriptor_sets::DescriptorSetAllocatorProvider;
 pub use descriptor_sets::DescriptorSetArc;
-use descriptor_sets::DescriptorSetPoolMetrics;
 use descriptor_sets::DescriptorSetAllocatorMetrics;
 pub use descriptor_sets::DynDescriptorSet;
 pub use descriptor_sets::DynPassMaterialInstance;
@@ -69,11 +59,8 @@ pub use descriptor_sets::DynMaterialInstance;
 use descriptor_sets::DescriptorSetWriteSet;
 
 mod upload;
-use upload::UploadQueue;
 use upload::ImageUploadOpResult;
 use upload::BufferUploadOpResult;
-use upload::PendingImageUpload;
-use upload::PendingBufferUpload;
 use upload::UploadManager;
 use crate::resource_managers::resource_lookup::{PipelineLayoutResource, PipelineResource};
 
@@ -123,8 +110,6 @@ pub struct ResourceManagerMetrics {
 }
 
 pub struct ResourceManager {
-    device_context: VkDeviceContext,
-
     dyn_resources: DynResourceAllocatorManagerSet,
     resources: ResourceLookupSet,
     loaded_assets: LoadedAssetLookupSet,
@@ -138,7 +123,6 @@ pub struct ResourceManager {
 impl ResourceManager {
     pub fn new(device_context: &VkDeviceContext) -> Self {
         ResourceManager {
-            device_context: device_context.clone(),
             dyn_resources: DynResourceAllocatorManagerSet::new(
                 device_context,
                 renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
@@ -312,8 +296,8 @@ impl ResourceManager {
         self.process_renderpass_load_requests();
         self.process_material_load_requests();
         self.process_material_instance_load_requests();
-        self.process_image_load_requests();
-        self.process_buffer_load_requests();
+        self.process_image_load_requests()?;
+        self.process_buffer_load_requests()?;
 
         self.upload_manager.update()?;
 
@@ -324,13 +308,12 @@ impl ResourceManager {
 
     // Call just before rendering
     pub fn on_begin_frame(&mut self) -> VkResult<()> {
-        self.resource_descriptor_sets.flush_changes();
-        Ok(())
+        self.resource_descriptor_sets.flush_changes()
     }
 
     pub fn on_frame_complete(&mut self) -> VkResult<()> {
-        self.resources.on_frame_complete();
-        self.dyn_resources.on_frame_complete();
+        self.resources.on_frame_complete()?;
+        self.dyn_resources.on_frame_complete()?;
         self.resource_descriptor_sets.on_frame_complete();
         self.descriptor_set_allocator.on_frame_complete();
         Ok(())
@@ -455,11 +438,11 @@ impl ResourceManager {
         );
     }
 
-    fn process_image_load_requests(&mut self) {
+    fn process_image_load_requests(&mut self) -> VkResult<()> {
         for request in self.load_queues.images.take_load_requests() {
             //TODO: Route the request directly to the upload queue
             log::trace!("Uploading image {:?}", request.load_handle);
-            self.upload_manager.upload_image(request);
+            self.upload_manager.upload_image(request)?;
         }
 
         let results: Vec<_> = self
@@ -470,13 +453,13 @@ impl ResourceManager {
         for result in results {
             match result {
                 ImageUploadOpResult::UploadComplete(load_op, image) => {
-                    let loaded_asset = self.finish_load_image(load_op.load_handle(), image);
+                    let loaded_asset = self.finish_load_image(image);
                     Self::handle_load_result(load_op, loaded_asset, &mut self.loaded_assets.images);
                 }
-                ImageUploadOpResult::UploadError(load_handle) => {
+                ImageUploadOpResult::UploadError(_load_handle) => {
                     // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 }
-                ImageUploadOpResult::UploadDrop(load_handle) => {
+                ImageUploadOpResult::UploadDrop(_load_handle) => {
                     // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 }
             }
@@ -484,13 +467,14 @@ impl ResourceManager {
 
         Self::handle_commit_requests(&mut self.load_queues.images, &mut self.loaded_assets.images);
         Self::handle_free_requests(&mut self.load_queues.images, &mut self.loaded_assets.images);
+        Ok(())
     }
 
-    fn process_buffer_load_requests(&mut self) {
+    fn process_buffer_load_requests(&mut self) -> VkResult<()> {
         for request in self.load_queues.buffers.take_load_requests() {
             //TODO: Route the request directly to the upload queue
             log::trace!("Uploading buffer {:?}", request.load_handle);
-            self.upload_manager.upload_buffer(request);
+            self.upload_manager.upload_buffer(request)?;
         }
 
         let results: Vec<_> = self
@@ -501,17 +485,17 @@ impl ResourceManager {
         for result in results {
             match result {
                 BufferUploadOpResult::UploadComplete(load_op, buffer) => {
-                    let loaded_asset = self.finish_load_buffer(load_op.load_handle(), buffer);
+                    let loaded_asset = self.finish_load_buffer(buffer);
                     Self::handle_load_result(
                         load_op,
                         loaded_asset,
                         &mut self.loaded_assets.buffers,
                     );
                 }
-                BufferUploadOpResult::UploadError(load_handle) => {
+                BufferUploadOpResult::UploadError(_load_handle) => {
                     // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 }
-                BufferUploadOpResult::UploadDrop(load_handle) => {
+                BufferUploadOpResult::UploadDrop(_load_handle) => {
                     // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 }
             }
@@ -525,6 +509,8 @@ impl ResourceManager {
             &mut self.load_queues.buffers,
             &mut self.loaded_assets.buffers,
         );
+
+        Ok(())
     }
 
     fn handle_load_result<LoadedAssetT>(
@@ -568,7 +554,6 @@ impl ResourceManager {
 
     fn finish_load_image(
         &mut self,
-        image_load_handle: LoadHandle,
         image: VkImage,
     ) -> VkResult<LoadedImage> {
         let format = image.format.into();
@@ -607,7 +592,6 @@ impl ResourceManager {
 
     fn finish_load_buffer(
         &mut self,
-        buffer_load_handle: LoadHandle,
         buffer: VkBuffer,
     ) -> VkResult<LoadedBuffer> {
         let (buffer_key, buffer) = self.resources.insert_buffer(ManuallyDrop::new(buffer));
@@ -827,7 +811,6 @@ impl ResourceManager {
 
         descriptor_set_allocator.create_dyn_pass_material_instance_uninitialized(
             &material_asset.passes[pass_index as usize],
-            &self.loaded_assets,
         )
     }
 
@@ -866,8 +849,7 @@ impl ResourceManager {
             .get_latest(material.load_handle())
             .unwrap();
 
-        descriptor_set_allocator
-            .create_dyn_material_instance_uninitialized(material_asset, &self.loaded_assets)
+        descriptor_set_allocator.create_dyn_material_instance_uninitialized(material_asset)
     }
 
     pub fn create_dyn_material_instance_from_asset(
@@ -894,25 +876,23 @@ impl ResourceManager {
 
 impl Drop for ResourceManager {
     fn drop(&mut self) {
-        unsafe {
-            log::info!("Cleaning up resource manager");
-            log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
+        log::info!("Cleaning up resource manager");
+        log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
 
-            // Wipe out any loaded assets. This will potentially drop ref counts on resources
-            self.loaded_assets.destroy();
+        // Wipe out any loaded assets. This will potentially drop ref counts on resources
+        self.loaded_assets.destroy();
 
-            // Drop all descriptors. These bind to raw resources, so we need to drop them before
-            // dropping resources
-            self.resource_descriptor_sets.destroy();
-            self.descriptor_set_allocator.destroy();
+        // Drop all descriptors. These bind to raw resources, so we need to drop them before
+        // dropping resources
+        self.resource_descriptor_sets.destroy().unwrap();
+        self.descriptor_set_allocator.destroy().unwrap();
 
-            // Now drop all resources with a zero ref count and warn for any resources that remain
-            self.resources.destroy();
-            self.dyn_resources.destroy();
+        // Now drop all resources with a zero ref count and warn for any resources that remain
+        self.resources.destroy().unwrap();
+        self.dyn_resources.destroy().unwrap();
 
-            log::info!("Dropping resource manager");
-            log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
-        }
+        log::info!("Dropping resource manager");
+        log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
     }
 }
 

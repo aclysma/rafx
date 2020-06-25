@@ -1,15 +1,10 @@
 use ash::vk;
 use ash::prelude::VkResult;
 
-use std::future::Future;
-use std::pin::Pin;
 use ash::version::DeviceV1_0;
-use crate::{VkDevice, VkQueueFamilyIndices, VkBuffer, VkDeviceContext};
+use crate::{VkBuffer, VkDeviceContext};
 use std::mem::ManuallyDrop;
-use std::os::raw::c_void;
-use ash::vk::MappedMemoryRange;
-use std::ops::Deref;
-use log::Level::Trace;
+
 use std::sync::{Arc, Mutex};
 
 // Based on UploadHeap in cauldron
@@ -32,7 +27,6 @@ pub enum VkUploadState {
 pub struct VkUpload {
     device_context: VkDeviceContext,
 
-    queue_family_index: u32,
     command_pool: vk::CommandPool,
     command_buffer: vk::CommandBuffer,
 
@@ -87,9 +81,8 @@ impl VkUpload {
 
         let fence = Self::create_fence(device_context.device())?;
 
-        let mut upload = VkUpload {
+        let upload = VkUpload {
             device_context: device_context.clone(),
-            queue_family_index,
             command_pool,
             command_buffer,
             buffer,
@@ -250,12 +243,13 @@ impl Drop for VkUpload {
         log::trace!("destroying VkUpload");
 
         // If the transfer is in flight, wait for it to complete
-        self.wait_for_idle();
+        self.wait_for_idle().unwrap();
 
         unsafe {
             self.device_context
                 .allocator()
-                .unmap_memory(&self.buffer.allocation());
+                .unmap_memory(&self.buffer.allocation())
+                .unwrap();
             ManuallyDrop::drop(&mut self.buffer);
             self.device_context
                 .device()
@@ -294,7 +288,6 @@ pub struct VkTransferUpload {
     device_context: VkDeviceContext,
     upload: VkUpload,
 
-    dst_queue_family_index: u32,
     dst_command_pool: vk::CommandPool,
     dst_command_buffer: vk::CommandBuffer,
 
@@ -326,7 +319,6 @@ impl VkTransferUpload {
         Ok(VkTransferUpload {
             device_context: device_context.clone(),
             upload,
-            dst_queue_family_index,
             dst_command_pool,
             dst_command_buffer,
             dst_fence,
@@ -476,8 +468,8 @@ impl Drop for VkTransferUpload {
         log::trace!("destroying VkUpload");
 
         // If the transfer is in flight, wait for it to complete
-        self.upload.wait_for_idle();
-        self.wait_for_idle();
+        self.upload.wait_for_idle().unwrap();
+        self.wait_for_idle().unwrap();
 
         unsafe {
             self.device_context

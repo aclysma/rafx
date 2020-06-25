@@ -1,18 +1,15 @@
-use crate::phases::TransparentRenderPhase;
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
-    FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature, PrepareJob,
+    FramePacket, DefaultPrepareJobImpl, RenderFeature, PrepareJob,
 };
 use crate::features::debug3d::{
-    Debug3dRenderFeature, ExtractedDebug3dData, Debug3dDrawCall, Debug3dVertex, LineList3D,
+    Debug3dRenderFeature, ExtractedDebug3dData, Debug3dDrawCall, Debug3dVertex,
 };
 use crate::phases::OpaqueRenderPhase;
-use glam::Vec3;
 use super::write::Debug3dCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
-use std::mem::ManuallyDrop;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct Debug3dPrepareJobImpl {

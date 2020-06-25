@@ -1,12 +1,9 @@
 use ash::vk;
 use std::mem;
 use super::Align;
-use std::mem::ManuallyDrop;
+
 use ash::prelude::VkResult;
 
-use ash::version::DeviceV1_0;
-use crate::{VkDevice, VkUpload};
-use std::sync::Arc;
 use crate::device::VkDeviceContext;
 
 #[derive(Copy, Clone, Debug)]
@@ -120,7 +117,7 @@ impl VkBuffer {
     ) -> VkResult<()> {
         let allocation = self.allocation();
 
-        let dst_bytes_available = self.size() - offset;
+        let _dst_bytes_available = self.size() - offset;
 
         let dst = if self.always_mapped {
             self.allocation_info.get_mapped_data()
@@ -184,13 +181,11 @@ impl Drop for VkBuffer {
     fn drop(&mut self) {
         trace!("destroying VkBuffer");
 
-        unsafe {
-            if let Some(raw) = &self.raw {
-                self.device_context
-                    .allocator()
-                    .destroy_buffer(raw.buffer, &raw.allocation)
-                    .unwrap();
-            }
+        if let Some(raw) = &self.raw {
+            self.device_context
+                .allocator()
+                .destroy_buffer(raw.buffer, &raw.allocation)
+                .unwrap();
         }
 
         trace!("destroyed VkBuffer");

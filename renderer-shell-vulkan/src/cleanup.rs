@@ -3,10 +3,10 @@ use std::num::Wrapping;
 use std::collections::VecDeque;
 use ash::version::DeviceV1_0;
 use std::mem::ManuallyDrop;
-use ash::{Device, vk};
+use ash::{vk};
 use crate::{VkImage, VkBuffer, VkDeviceContext, VkBufferRaw};
 use crate::image::VkImageRaw;
-use std::sync::Arc;
+
 use crossbeam_channel::{Sender, Receiver};
 
 /// Implement to customize how VkResourceDropSink drops resources
@@ -93,10 +93,8 @@ impl<T: VkResource> VkResourceDropSink<T> {
             .resources_in_flight
             .drain(0..resources_to_drop)
             .collect();
-        for mut resource_to_drop in resources_to_drop {
-            unsafe {
-                T::destroy(device_context, resource_to_drop.resource)?;
-            }
+        for resource_to_drop in resources_to_drop {
+            T::destroy(device_context, resource_to_drop.resource)?;
         }
 
         Ok(())
@@ -113,9 +111,7 @@ impl<T: VkResource> VkResourceDropSink<T> {
         }
 
         for resource in self.resources_in_flight.drain(..) {
-            unsafe {
-                T::destroy(device_context, resource.resource)?;
-            }
+            T::destroy(device_context, resource.resource)?;
         }
 
         Ok(())
@@ -175,7 +171,7 @@ impl<T: VkResource> Clone for VkResourceDropSinkChannel<T> {
 //
 impl<T> VkResource for ManuallyDrop<T> {
     fn destroy(
-        device_context: &VkDeviceContext,
+        _device_context: &VkDeviceContext,
         mut resource: Self,
     ) -> VkResult<()> {
         unsafe {
@@ -188,34 +184,30 @@ impl<T> VkResource for ManuallyDrop<T> {
 impl VkResource for VkBufferRaw {
     fn destroy(
         device_context: &VkDeviceContext,
-        mut resource: Self,
+        resource: Self,
     ) -> VkResult<()> {
-        unsafe {
-            device_context
-                .allocator()
-                .destroy_buffer(resource.buffer, &resource.allocation)
-                .map_err(|err| {
-                    log::error!("{:?}", err);
-                    vk::Result::ERROR_UNKNOWN
-                })
-        }
+        device_context
+            .allocator()
+            .destroy_buffer(resource.buffer, &resource.allocation)
+            .map_err(|err| {
+                log::error!("{:?}", err);
+                vk::Result::ERROR_UNKNOWN
+            })
     }
 }
 
 impl VkResource for VkImageRaw {
     fn destroy(
         device_context: &VkDeviceContext,
-        mut resource: Self,
+        resource: Self,
     ) -> VkResult<()> {
-        unsafe {
-            device_context
-                .allocator()
-                .destroy_image(resource.image, &resource.allocation)
-                .map_err(|err| {
-                    log::error!("{:?}", err);
-                    vk::Result::ERROR_UNKNOWN
-                })
-        }
+        device_context
+            .allocator()
+            .destroy_image(resource.image, &resource.allocation)
+            .map_err(|err| {
+                log::error!("{:?}", err);
+                vk::Result::ERROR_UNKNOWN
+            })
     }
 }
 

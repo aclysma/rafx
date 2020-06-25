@@ -1,31 +1,5 @@
-use ash::vk;
-use renderer_base::slab::{RawSlabKey, RawSlab};
-use crossbeam_channel::{Sender, Receiver};
-use std::fmt::Formatter;
-use std::sync::Arc;
-use std::collections::VecDeque;
-use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkBuffer, VkResourceDropSink};
-use ash::prelude::VkResult;
-use fnv::{FnvHashMap, FnvHashSet};
-use super::ResourceHash;
+use fnv::FnvHashMap;
 use renderer_assets::vk_description as dsc;
-use ash::version::DeviceV1_0;
-use crate::resource_managers::ResourceManager;
-use renderer_assets::assets::pipeline::{
-    DescriptorSetLayoutWithSlotName, MaterialInstanceSlotAssignment, MaterialInstanceAsset,
-};
-//use crate::upload::InProgressUploadPollResult::Pending;
-use crate::resource_managers::asset_lookup::{
-    SlotNameLookup, LoadedAssetLookupSet, LoadedMaterialPass, LoadedMaterialInstance,
-    LoadedMaterial,
-};
-use atelier_assets::loader::handle::AssetHandle;
-use crate::resource_managers::resource_lookup::{
-    DescriptorSetLayoutResource, ImageViewResource, ResourceLookupSet,
-};
-use renderer_assets::vk_description::{DescriptorType, DescriptorSetLayoutBinding};
-use std::mem::ManuallyDrop;
-use arrayvec::ArrayVec;
 
 mod descriptor_set_arc;
 pub use descriptor_set_arc::DescriptorSetArc;
@@ -94,12 +68,12 @@ fn add_to_frame_in_flight_index(
     (index + value) % MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32
 }
 
-fn subtract_from_frame_in_flight_index(
-    index: FrameInFlightIndex,
-    value: u32,
-) -> FrameInFlightIndex {
-    (value + MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32 - index) % MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32
-}
+// fn subtract_from_frame_in_flight_index(
+//     index: FrameInFlightIndex,
+//     value: u32,
+// ) -> FrameInFlightIndex {
+//     (value + MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32 - index) % MAX_FRAMES_IN_FLIGHT_PLUS_1 as u32
+// }
 
 #[derive(Default, Debug)]
 pub struct WhatToBind {

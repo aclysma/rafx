@@ -13,15 +13,9 @@ use crate::{PhysicalDeviceType /*, VkSubmitQueue*/};
 use std::mem::ManuallyDrop;
 
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::AtomicBool;
+
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
-use std::collections::HashMap;
-
-pub struct VkQueue {
-    pub queue_family_index: u32,
-    pub queue: vk::Queue,
-}
 
 /// Has the indexes for all the queue families we will need. It's possible a single family
 /// is used for both graphics and presentation, in which case the index will be the same
@@ -355,7 +349,7 @@ impl VkDevice {
 
         let allocator = vk_mem::Allocator::new(&allocator_create_info)?;
 
-        let memory_properties = unsafe {
+        let _memory_properties = unsafe {
             instance
                 .instance
                 .get_physical_device_memory_properties(physical_device)
@@ -380,11 +374,6 @@ impl VkDevice {
             physical_device_info,
             queues,
         })
-    }
-
-    fn multisample_level(limits: &vk::PhysicalDeviceLimits) {
-        let supported_sample_counts =
-            limits.framebuffer_color_sample_counts & limits.framebuffer_depth_sample_counts;
     }
 
     fn choose_physical_device(

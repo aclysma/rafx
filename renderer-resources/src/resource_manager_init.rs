@@ -8,13 +8,12 @@ use renderer_assets::assets::pipeline::{
 };
 use renderer_assets::assets::image::ImageAsset;
 use renderer_assets::assets::buffer::BufferAsset;
-use ash::prelude::VkResult;
 
 pub fn create_resource_manager(
     device_context: &VkDeviceContext,
     asset_resource: &mut AssetResource,
 ) -> ResourceManager {
-    let mut resource_manager = ResourceManager::new(&device_context);
+    let resource_manager = ResourceManager::new(&device_context);
 
     asset_resource.add_storage_with_load_handler::<ShaderAsset, _>(Box::new(
         resource_manager.create_shader_load_handler(),

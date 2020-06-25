@@ -4,8 +4,7 @@ use ash::{vk, Device};
 use std::collections::VecDeque;
 use std::num::Wrapping;
 
-pub type VkPoolResourceAllocatorAllocFn<T: VkPoolResourceImpl> =
-    dyn Fn(&ash::Device) -> VkResult<T> + Send + Sync;
+pub type VkPoolResourceAllocatorAllocFn<T> = dyn Fn(&ash::Device) -> VkResult<T> + Send + Sync;
 
 /// Implement to customize how VkPoolAllocator resets and destroys pools
 pub trait VkPoolResourceImpl {
@@ -127,10 +126,7 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
         // Reset them and add them to the list of pools ready to be allocated
         let pools_to_reset: Vec<_> = self.in_flight_pools.drain(0..pools_to_drain).collect();
         for mut pool_to_reset in pools_to_reset {
-            unsafe {
-                T::reset(device, &mut pool_to_reset.pool)?;
-            }
-
+            T::reset(device, &mut pool_to_reset.pool)?;
             self.reset_pools.push(pool_to_reset.pool);
         }
 

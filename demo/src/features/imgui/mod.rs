@@ -1,7 +1,6 @@
 use crate::render_contexts::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext};
 use atelier_assets::loader::handle::Handle;
 use std::sync::atomic::{AtomicI32, Ordering};
-use renderer::nodes::DefaultExtractJob;
 use crate::features::imgui::extract::ImGuiExtractJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::resources::DescriptorSetAllocatorRef;
@@ -10,7 +9,6 @@ use renderer::assets::MaterialAsset;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;
-use renderer::resources::DescriptorSetArc;
 use std::convert::TryInto;
 use crate::imgui_support::ImGuiDrawData;
 use ash::vk::Extent2D;

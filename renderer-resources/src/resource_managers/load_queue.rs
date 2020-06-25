@@ -122,8 +122,8 @@ where
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
-        asset_uuid: &AssetUuid,
-        version: u32,
+        _asset_uuid: &AssetUuid,
+        _version: u32,
         asset: &AssetT,
         load_op: AssetLoadOp,
     ) {
@@ -138,15 +138,15 @@ where
             asset: asset.clone(),
         };
 
-        self.load_queues.load_request_tx.send(request);
+        self.load_queues.load_request_tx.send(request).unwrap();
     }
 
     fn commit_asset_version(
         &mut self,
         load_handle: LoadHandle,
-        asset_uuid: &AssetUuid,
-        version: u32,
-        asset: &AssetT,
+        _asset_uuid: &AssetUuid,
+        _version: u32,
+        _asset: &AssetT,
     ) {
         log::trace!(
             "ResourceLoadHandler commit_asset_version {} {:?}",
@@ -158,13 +158,13 @@ where
             phantom_data: Default::default(),
         };
 
-        self.load_queues.commit_request_tx.send(request);
+        self.load_queues.commit_request_tx.send(request).unwrap();
     }
 
     fn free(
         &mut self,
         load_handle: LoadHandle,
-        version: u32,
+        _version: u32,
     ) {
         log::trace!(
             "ResourceLoadHandler free {} {:?}",
@@ -176,7 +176,7 @@ where
             phantom_data: Default::default(),
         };
 
-        self.load_queues.free_request_tx.send(request);
+        self.load_queues.free_request_tx.send(request).unwrap();
     }
 }
 

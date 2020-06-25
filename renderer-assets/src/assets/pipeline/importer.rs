@@ -1,13 +1,8 @@
 use atelier_assets::core::AssetUuid;
-use atelier_assets::core::AssetRef;
-use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter};
-use image2::{color, ImageBuf, Image};
+use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, SourceFileImporter};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
-use std::io::{Read, Cursor};
-use std::convert::TryInto;
-//use crate::pipeline::sprite::SpriteAsset;
-use atelier_assets::importer::Error as ImportError;
+use std::io::{Read};
 use crate::assets::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
@@ -36,8 +31,8 @@ impl Importer for PipelineImporter {
     /// Reads the given bytes and produces assets.
     fn import(
         &self,
-        source: &mut Read,
-        options: Self::Options,
+        source: &mut dyn Read,
+        _options: Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let id = state
@@ -92,8 +87,8 @@ impl Importer for RenderpassImporter {
     /// Reads the given bytes and produces assets.
     fn import(
         &self,
-        source: &mut Read,
-        options: Self::Options,
+        source: &mut dyn Read,
+        _options: Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let id = state
@@ -148,8 +143,8 @@ impl Importer for MaterialImporter {
     /// Reads the given bytes and produces assets.
     fn import(
         &self,
-        source: &mut Read,
-        options: Self::Options,
+        source: &mut dyn Read,
+        _options: Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let id = state
@@ -204,8 +199,8 @@ impl Importer for MaterialInstanceImporter {
     /// Reads the given bytes and produces assets.
     fn import(
         &self,
-        source: &mut Read,
-        options: Self::Options,
+        source: &mut dyn Read,
+        _options: Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let id = state

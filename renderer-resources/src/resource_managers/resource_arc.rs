@@ -49,7 +49,7 @@ where
     ResourceT: Clone,
 {
     fn drop(&mut self) {
-        self.drop_tx.send(self.resource.clone());
+        self.drop_tx.send(self.resource.clone()).unwrap();
     }
 }
 

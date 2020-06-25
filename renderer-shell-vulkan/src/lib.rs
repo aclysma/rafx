@@ -71,8 +71,9 @@ mod coordinates;
 pub use coordinates::Size;
 pub use coordinates::LogicalSize;
 pub use coordinates::PhysicalSize;
+use ash::vk::SampleCountFlags;
 
-mod fence;
+//mod fence;
 
 /// 1x, 2x, 4x, etc. antialiasing
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -182,9 +183,3 @@ impl PhysicalDeviceType {
         }
     }
 }
-
-use std::sync::Arc;
-use std::mem::ManuallyDrop;
-use ash::vk::SampleCountFlags;
-
-type Allocator = Arc<ManuallyDrop<vk_mem::Allocator>>;

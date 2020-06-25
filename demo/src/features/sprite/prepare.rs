@@ -13,7 +13,6 @@ use super::SpriteCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
-use std::mem::ManuallyDrop;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct SpritePrepareJobImpl {
@@ -90,7 +89,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
 
                 let index_buffer_first_element = self.index_list.len() as u16;
                 for index in &QUAD_INDEX_LIST {
-                    self.index_list.push((*index + vertex_buffer_first_element));
+                    self.index_list.push(*index + vertex_buffer_first_element);
                 }
 
                 let draw_call = SpriteDrawCall {

@@ -13,14 +13,9 @@ use renderer::nodes::{
 use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::resources::resource_managers::{
-    PipelineSwapchainInfo, ResourceManager, DescriptorSetAllocatorRef,
-};
-use ash::vk;
+use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use renderer::assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::assets::image::ImageAsset;
-use ash::prelude::VkResult;
 use renderer::resources::resource_managers::DescriptorSetArc;
 use legion::prelude::*;
 use crate::components::MeshComponent;
@@ -189,7 +184,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
     ) {
         let mut per_view_data = MeshPerViewShaderParam::default();
 
-        let query = <(Read<DirectionalLightComponent>)>::query();
+        let query = <Read<DirectionalLightComponent>>::query();
         for light in query.iter(extract_context.world) {
             let light_count = per_view_data.directional_light_count as usize;
             if light_count > per_view_data.directional_lights.len() {

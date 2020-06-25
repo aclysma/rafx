@@ -37,7 +37,7 @@ impl PushBufferSizeCalculator {
     ) {
         self.required_size = ((self.required_size + required_alignment - 1) / required_alignment)
             * required_alignment;
-        self.required_size += (data.len() * std::mem::size_of::<T>());
+        self.required_size += data.len() * std::mem::size_of::<T>();
     }
 
     pub fn required_size(&self) -> usize {

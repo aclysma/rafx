@@ -1,19 +1,11 @@
-use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{
-    Error, ImportedAsset, Importer, ImporterValue, Result, SourceFileImporter,
-};
-use image2::{color, ImageBuf, Image};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
-use std::io::Read;
-use std::convert::TryInto;
 
 use crate::vk_description as dsc;
 use atelier_assets::loader::handle::Handle;
 use crate::assets::shader::ShaderAsset;
 use crate::assets::image::ImageAsset;
-use std::hash::{Hash, Hasher};
-use crate::vk_description::{DescriptorSetLayoutBinding, DescriptorSetLayout};
+use std::hash::Hash;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "366d277d-6cb5-430a-a8fa-007d8ae69886"]

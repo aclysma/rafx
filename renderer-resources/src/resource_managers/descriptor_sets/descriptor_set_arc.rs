@@ -4,7 +4,6 @@ use renderer_base::slab::RawSlabKey;
 use crossbeam_channel::Sender;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use crate::resource_managers::ResourceManager;
 
 //
 // Reference counting mechanism to keep descriptor sets allocated
@@ -24,7 +23,7 @@ pub(super) struct DescriptorSetArcInner {
 
 impl Drop for DescriptorSetArcInner {
     fn drop(&mut self) {
-        self.drop_tx.send(self.slab_key);
+        self.drop_tx.send(self.slab_key).unwrap();
     }
 }
 

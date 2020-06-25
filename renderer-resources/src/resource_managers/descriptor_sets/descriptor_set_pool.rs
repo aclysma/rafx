@@ -2,9 +2,8 @@ use renderer_assets::vk_description as dsc;
 use renderer_base::slab::{RawSlab, RawSlabKey};
 use super::ManagedDescriptorSet;
 use super::{
-    DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT_PLUS_1,
-    MAX_FRAMES_IN_FLIGHT, DescriptorSetElementKey, FrameInFlightIndex, DescriptorSetArc,
-    DescriptorSetWriteSet,
+    DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT,
+    DescriptorSetElementKey, FrameInFlightIndex, DescriptorSetArc, DescriptorSetWriteSet,
 };
 use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource};
 use renderer_shell_vulkan::{VkDescriptorPoolAllocator, VkResourceDropSink, VkBuffer, VkDeviceContext};
@@ -16,7 +15,6 @@ use ash::prelude::VkResult;
 use super::ManagedDescriptorSetPoolChunk;
 use crate::resource_managers::ResourceArc;
 use std::collections::VecDeque;
-use crate::resource_managers::upload::InProgressUploadPollResult::Pending;
 
 struct PendingDescriptorSetDrop {
     slab_key: RawSlabKey<ManagedDescriptorSet>,
@@ -178,7 +176,7 @@ impl ManagedDescriptorSetPool {
         &mut self,
         device_context: &VkDeviceContext,
         frame_in_flight_index: FrameInFlightIndex,
-    ) {
+    ) -> VkResult<()> {
         // Route messages that indicate a dropped descriptor set to the chunk that owns it
         for dropped in self.drop_rx.try_iter() {
             self.pending_drops.push_back(PendingDescriptorSetDrop {
@@ -221,13 +219,13 @@ impl ManagedDescriptorSetPool {
         }
 
         self.descriptor_pool_allocator
-            .update(device_context.device());
+            .update(device_context.device())
     }
 
     pub fn destroy(
         &mut self,
         device_context: &VkDeviceContext,
-    ) {
+    ) -> VkResult<()> {
         for chunk in &mut self.chunks {
             chunk.destroy(
                 &mut self.descriptor_pool_allocator,
@@ -236,8 +234,9 @@ impl ManagedDescriptorSetPool {
         }
 
         self.descriptor_pool_allocator
-            .destroy(device_context.device());
-        self.buffer_drop_sink.destroy(&device_context);
+            .destroy(device_context.device())?;
+        self.buffer_drop_sink.destroy(&device_context)?;
         self.chunks.clear();
+        Ok(())
     }
 }

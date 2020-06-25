@@ -1,16 +1,13 @@
-use crate::phases::{TransparentRenderPhase, UiRenderPhase};
+use crate::phases::UiRenderPhase;
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
-    FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature, PrepareJob,
+    FramePacket, DefaultPrepareJobImpl, RenderFeature, PrepareJob,
 };
-use crate::features::imgui::{ImGuiRenderFeature, ExtractedImGuiData, ImGuiDrawCall, ImGuiVertex};
-use crate::phases::OpaqueRenderPhase;
-use glam::Vec3;
+use crate::features::imgui::{ImGuiRenderFeature, ExtractedImGuiData};
 use super::write::ImGuiCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
-use std::mem::ManuallyDrop;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct ImGuiPrepareJobImpl {

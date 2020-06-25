@@ -5,6 +5,7 @@ use renderer_shell_vulkan::VkDeviceContext;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::collections::VecDeque;
 use std::ops::{Deref, DerefMut};
+use ash::prelude::VkResult;
 
 // This holds the allocator and the frame on which it was "borrowed" from the allocator manager
 struct DescriptorSetAllocatorRefInner {
@@ -51,8 +52,8 @@ impl DerefMut for DescriptorSetAllocatorRef {
 impl Drop for DescriptorSetAllocatorRef {
     fn drop(&mut self) {
         let mut allocator = self.allocator.take().unwrap();
-        allocator.allocator.flush_changes();
-        self.drop_tx.send(allocator);
+        allocator.allocator.flush_changes().unwrap();
+        self.drop_tx.send(allocator).unwrap();
     }
 }
 
@@ -127,10 +128,7 @@ impl DescriptorSetAllocatorManagerInner {
             }
         });
 
-        DescriptorSetAllocatorRef {
-            allocator: Some(allocator),
-            drop_tx: self.drop_tx.clone(),
-        }
+        DescriptorSetAllocatorRef::new(allocator, self.drop_tx.clone())
     }
 
     pub fn on_frame_complete(&self) {
@@ -144,15 +142,17 @@ impl DescriptorSetAllocatorManagerInner {
         }
     }
 
-    fn destroy(&self) {
+    fn destroy(&self) -> VkResult<()> {
         let frame_index = self.frame_index.load(Ordering::Relaxed);
         let mut allocators = self.allocators.lock().unwrap();
 
         Self::drain_drop_rx(&self.drop_rx, &mut *allocators, frame_index);
 
         for mut allocator in allocators.drain(..).into_iter() {
-            allocator.destroy();
+            allocator.destroy()?;
         }
+
+        Ok(())
     }
 }
 
@@ -193,7 +193,7 @@ impl DescriptorSetAllocatorManager {
         self.inner.on_frame_complete();
     }
 
-    pub fn destroy(&mut self) {
-        self.inner.destroy();
+    pub fn destroy(&mut self) -> VkResult<()> {
+        self.inner.destroy()
     }
 }

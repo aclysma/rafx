@@ -1,13 +1,6 @@
 use ash::vk;
-use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 
-use ash::prelude::VkResult;
-use ash::version::DeviceV1_0;
-use fnv::FnvHashMap;
-use std::collections::hash_map::Entry::Occupied;
-
-use std::ffi::CString;
 use serde::{Serialize, Deserialize};
 use renderer_shell_vulkan::MsaaLevel;
 
@@ -1702,18 +1695,28 @@ pub struct VertexInputAttributeDescription {
     pub offset: u32,
 }
 
-impl VertexInputAttributeDescription {
-    pub fn as_builder(
-        &self,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
-    ) -> vk::VertexInputAttributeDescriptionBuilder {
+impl Into<vk::VertexInputAttributeDescription> for VertexInputAttributeDescription {
+    fn into(self) -> vk::VertexInputAttributeDescription {
         vk::VertexInputAttributeDescription::builder()
             .location(self.location)
             .binding(self.binding)
             .format(self.format.into())
             .offset(self.offset)
+            .build()
     }
 }
+
+// impl VertexInputAttributeDescription {
+//     pub fn as_builder(
+//         &self,
+//     ) -> vk::VertexInputAttributeDescriptionBuilder {
+//         vk::VertexInputAttributeDescription::builder()
+//             .location(self.location)
+//             .binding(self.binding)
+//             .format(self.format.into())
+//             .offset(self.offset)
+//     }
+// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineVertexInputState {

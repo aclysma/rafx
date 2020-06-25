@@ -1,7 +1,4 @@
-use std::io;
 use ash::vk;
-use ash::prelude::VkResult;
-use ash::version::DeviceV1_0;
 
 /// Loads a shader into a buffer
 pub use ash::util::read_spv;

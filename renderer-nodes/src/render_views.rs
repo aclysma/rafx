@@ -29,7 +29,7 @@ pub struct RenderPhaseMask(RenderPhaseMaskInnerType);
 impl RenderPhaseMask {
     pub fn is_included<RenderPhaseT: RenderPhase>(&self) -> bool {
         // If this asserts, a render phase was not registered
-        assert!(RenderPhaseT::render_phase_index() >= 0);
+        assert!(RenderPhaseT::render_phase_index() < MAX_RENDER_PHASE_COUNT);
         (self.0 & 1 << RenderPhaseT::render_phase_index()) != 0
     }
 }

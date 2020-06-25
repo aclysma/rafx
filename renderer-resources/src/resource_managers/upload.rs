@@ -1,17 +1,11 @@
 use renderer_shell_vulkan::{
-    VkTransferUploadState, VkDevice, VkDeviceContext, VkTransferUpload, VkImage, VkBuffer,
+    VkTransferUploadState, VkDeviceContext, VkTransferUpload, VkImage, VkBuffer,
 };
 use crossbeam_channel::{Sender, Receiver};
 use ash::prelude::VkResult;
-use std::time::Duration;
 use renderer_assets::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffers};
 use std::mem::ManuallyDrop;
-use renderer_assets::asset_storage::{ResourceLoadHandler};
-use std::error::Error;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
-use fnv::FnvHashMap;
-use std::sync::Arc;
-use image::load;
 use ash::vk;
 use crate::resource_managers::load_queue::LoadRequest;
 use renderer_assets::assets::image::ImageAsset;
@@ -73,31 +67,31 @@ impl<T> Drop for UploadOp<T> {
     }
 }
 
-pub struct UploadOpAwaiter<T> {
-    receiver: Receiver<UploadOpResult<T>>,
-}
-
-impl<T> UploadOpAwaiter<T> {
-    pub fn receiver(&self) -> &Receiver<UploadOpResult<T>> {
-        &self.receiver
-    }
-}
-
-pub fn create_upload_op<T>(load_handle: LoadHandle) -> (UploadOp<T>, UploadOpAwaiter<T>) {
-    let (tx, rx) = crossbeam_channel::unbounded();
-    let op = UploadOp::new(load_handle, tx);
-    let awaiter = UploadOpAwaiter { receiver: rx };
-
-    (op, awaiter)
-}
+// pub struct UploadOpAwaiter<T> {
+//     receiver: Receiver<UploadOpResult<T>>,
+// }
+//
+// impl<T> UploadOpAwaiter<T> {
+//     pub fn receiver(&self) -> &Receiver<UploadOpResult<T>> {
+//         &self.receiver
+//     }
+// }
+//
+// pub fn create_upload_op<T>(load_handle: LoadHandle) -> (UploadOp<T>, UploadOpAwaiter<T>) {
+//     let (tx, rx) = crossbeam_channel::unbounded();
+//     let op = UploadOp::new(load_handle, tx);
+//     let awaiter = UploadOpAwaiter { receiver: rx };
+//
+//     (op, awaiter)
+// }
 
 pub type ImageUploadOpResult = UploadOpResult<VkImage>;
 pub type ImageUploadOp = UploadOp<VkImage>;
-pub type ImageUploadOpAwaiter = UploadOpAwaiter<VkImage>;
+//pub type ImageUploadOpAwaiter = UploadOpAwaiter<VkImage>;
 
 pub type BufferUploadOpResult = UploadOpResult<VkBuffer>;
 pub type BufferUploadOp = UploadOp<VkBuffer>;
-pub type BufferUploadOpAwaiter = UploadOpAwaiter<VkBuffer>;
+//pub type BufferUploadOpAwaiter = UploadOpAwaiter<VkBuffer>;
 
 //
 // Represents a single request inserted into the upload queue that hasn't started yet
@@ -188,7 +182,8 @@ impl InProgressUpload {
                             //log::trace!("VkTransferUploadState::Writable");
                             inner
                                 .upload
-                                .submit_transfer(&device_context.queues().transfer_queue);
+                                .submit_transfer(&device_context.queues().transfer_queue)
+                                .unwrap();
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToTransferQueue => {
@@ -200,7 +195,8 @@ impl InProgressUpload {
                             //log::trace!("VkTransferUploadState::PendingSubmitDstQueue");
                             inner
                                 .upload
-                                .submit_dst(&device_context.queues().graphics_queue);
+                                .submit_dst(&device_context.queues().graphics_queue)
+                                .unwrap();
                             self.inner = Some(inner);
                         }
                         VkTransferUploadState::SentToDstQueue => {
@@ -522,7 +518,7 @@ impl UploadManager {
                 upload_op: UploadOp::new(request.load_handle, self.image_upload_result_tx.clone()),
                 texture: decoded_texture,
             })
-            .map_err(|err| {
+            .map_err(|_err| {
                 log::error!("Could not enqueue image upload");
                 vk::Result::ERROR_UNKNOWN
             })
@@ -539,7 +535,7 @@ impl UploadManager {
                 upload_op: UploadOp::new(request.load_handle, self.buffer_upload_result_tx.clone()),
                 data: request.asset.data,
             })
-            .map_err(|err| {
+            .map_err(|_err| {
                 log::error!("Could not enqueue buffer upload");
                 vk::Result::ERROR_UNKNOWN
             })

@@ -1,8 +1,5 @@
 use std::ffi::CString;
 
-use ash::version::DeviceV1_0;
-use ash::prelude::VkResult;
-
 use std::mem::ManuallyDrop;
 use ash::vk;
 
@@ -10,12 +7,10 @@ use super::VkInstance;
 use super::VkCreateInstanceError;
 use super::VkCreateDeviceError;
 use super::VkDevice;
-use super::VkSwapchain;
 
-use super::MAX_FRAMES_IN_FLIGHT;
 use super::PresentMode;
 use super::PhysicalDeviceType;
-use super::PhysicalSize;
+
 use super::Window;
 use crate::{VkDeviceContext, MsaaLevel};
 //use crate::submit::PendingCommandBuffer;
