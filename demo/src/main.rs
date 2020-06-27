@@ -12,7 +12,7 @@ use crate::components::{
 };
 use legion::prelude::*;
 
-use renderer::assets::asset_resource::AssetResource;
+use crate::asset_resource::AssetResource;
 use crate::time::TimeState;
 use renderer::resources::resource_managers::ResourceManager;
 use crate::game_renderer::GameRenderer;
@@ -33,6 +33,8 @@ mod imgui_support;
 mod phases;
 mod render_contexts;
 mod time;
+mod asset_resource;
+mod asset_storage;
 
 fn main() {
     init::logging_init();

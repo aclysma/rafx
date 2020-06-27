@@ -109,6 +109,16 @@ pub struct ResourceManagerMetrics {
     pub resource_descriptor_sets_metrics: DescriptorSetAllocatorMetrics,
 }
 
+pub struct ResourceManagerLoadHandlers {
+    pub shader_load_handler: Box<GenericLoadHandler<ShaderAsset>>,
+    pub pipeline_load_handler: Box<GenericLoadHandler<PipelineAsset>>,
+    pub renderpass_load_handler: Box<GenericLoadHandler<RenderpassAsset>>,
+    pub material_load_handler: Box<GenericLoadHandler<MaterialAsset>>,
+    pub material_instance_load_handler: Box<GenericLoadHandler<MaterialInstanceAsset>>,
+    pub image_load_handler: Box<GenericLoadHandler<ImageAsset>>,
+    pub buffer_load_handler: Box<GenericLoadHandler<BufferAsset>>,
+}
+
 pub struct ResourceManager {
     dyn_resources: DynResourceAllocatorManagerSet,
     resources: ResourceLookupSet,
@@ -172,6 +182,18 @@ impl ResourceManager {
 
     pub fn create_buffer_load_handler(&self) -> GenericLoadHandler<BufferAsset> {
         self.load_queues.buffers.create_load_handler()
+    }
+
+    pub fn create_load_handlers(&self) -> ResourceManagerLoadHandlers {
+        ResourceManagerLoadHandlers {
+            shader_load_handler: Box::new(self.create_shader_load_handler()),
+            pipeline_load_handler: Box::new(self.create_pipeline_load_handler()),
+            renderpass_load_handler: Box::new(self.create_renderpass_load_handler()),
+            material_load_handler: Box::new(self.create_material_load_handler()),
+            material_instance_load_handler: Box::new(self.create_material_instance_load_handler()),
+            image_load_handler: Box::new(self.create_image_load_handler()),
+            buffer_load_handler: Box::new(self.create_buffer_load_handler()),
+        }
     }
 
     pub fn create_dyn_resource_allocator_set(&self) -> DynResourceAllocatorSet {

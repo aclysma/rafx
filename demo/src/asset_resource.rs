@@ -5,7 +5,8 @@ use std::sync::Arc;
 use type_uuid::TypeUuid;
 
 use atelier_assets::loader as atelier_loader;
-use crate::asset_storage::{GenericAssetStorage, ResourceLoadHandler};
+use crate::asset_storage::GenericAssetStorage;
+use renderer::resources::ResourceLoadHandler;
 
 // A legion-friendly container for assets storages
 pub struct AssetResource {

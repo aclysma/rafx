@@ -1,7 +1,7 @@
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::core::AssetUuid;
 use type_uuid::TypeUuid;
-use renderer_assets::asset_storage::{ResourceLoadHandler};
+use crate::ResourceLoadHandler;
 use std::marker::PhantomData;
 use crossbeam_channel::{Sender, Receiver};
 use renderer_assets::assets::shader::ShaderAsset;

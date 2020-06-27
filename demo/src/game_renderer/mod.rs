@@ -4,7 +4,7 @@ use ash::prelude::VkResult;
 use std::mem::ManuallyDrop;
 use ash::vk;
 use crate::time::TimeState;
-use renderer::assets::asset_resource::AssetResource;
+use crate::asset_resource::AssetResource;
 use renderer::resources::resource_managers::{ResourceManager, ResourceArc, ImageViewResource};
 use crate::features::debug3d::create_debug3d_extract_job;
 use crate::features::sprite::{SpriteRenderNodeSet, create_sprite_extract_job};

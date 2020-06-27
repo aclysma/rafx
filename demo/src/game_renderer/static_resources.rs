@@ -1,4 +1,4 @@
-use renderer::assets::asset_resource::AssetResource;
+use crate::asset_resource::AssetResource;
 use renderer::resources::resource_managers::ResourceManager;
 use renderer::assets::assets::pipeline::MaterialAsset;
 use atelier_assets::loader::handle::Handle;

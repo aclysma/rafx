@@ -1,4 +1,4 @@
-use renderer::assets::asset_resource::AssetResource;
+use crate::asset_resource::AssetResource;
 use legion::prelude::Resources;
 use renderer::vulkan::{
     LogicalSize, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, VkContext,
@@ -126,10 +126,35 @@ pub fn rendering_init(
 
     let vk_context = context.build(&window_wrapper).unwrap();
     let device_context = vk_context.device_context().clone();
-    let resource_manager = {
+    let resource_manager = renderer::resources::ResourceManager::new(&device_context);
+
+    {
+        let load_handlers = resource_manager.create_load_handlers();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-        renderer::resources::create_resource_manager(&device_context, &mut *asset_resource)
-    };
+
+        asset_resource.add_storage_with_load_handler::<renderer::assets::ShaderAsset, _>(
+            load_handlers.shader_load_handler,
+        );
+        asset_resource.add_storage_with_load_handler::<renderer::assets::PipelineAsset, _>(
+            load_handlers.pipeline_load_handler,
+        );
+        asset_resource.add_storage_with_load_handler::<renderer::assets::RenderpassAsset, _>(
+            load_handlers.renderpass_load_handler,
+        );
+        asset_resource.add_storage_with_load_handler::<renderer::assets::MaterialAsset, _>(
+            load_handlers.material_load_handler,
+        );
+        asset_resource.add_storage_with_load_handler::<renderer::assets::MaterialInstanceAsset, _>(
+            load_handlers.material_instance_load_handler,
+        );
+        asset_resource.add_storage_with_load_handler::<renderer::assets::ImageAsset, _>(
+            load_handlers.image_load_handler,
+        );
+        asset_resource.add_storage_with_load_handler::<renderer::assets::BufferAsset, _>(
+            load_handlers.buffer_load_handler,
+        );
+    }
+
     resources.insert(vk_context);
     resources.insert(device_context);
     resources.insert(resource_manager);

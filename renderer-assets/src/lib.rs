@@ -1,5 +1,3 @@
-pub mod asset_resource;
-pub mod asset_storage;
 pub mod assets;
 pub mod image_utils;
 pub mod push_buffer;
