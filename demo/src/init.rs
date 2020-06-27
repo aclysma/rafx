@@ -127,8 +127,8 @@ pub fn rendering_init(
     let vk_context = context.build(&window_wrapper).unwrap();
     let device_context = vk_context.device_context().clone();
     let resource_manager = {
-        let mut asset_resourceh = resources.get_mut::<AssetResource>().unwrap();
-        renderer::resources::create_resource_manager(&device_context, &mut *asset_resourceh)
+        let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
+        renderer::resources::create_resource_manager(&device_context, &mut *asset_resource)
     };
     resources.insert(vk_context);
     resources.insert(device_context);

@@ -13,7 +13,7 @@ use crate::components::{
 use legion::prelude::*;
 
 use renderer::assets::asset_resource::AssetResource;
-use renderer::base::time::TimeState;
+use crate::time::TimeState;
 use renderer::resources::resource_managers::ResourceManager;
 use crate::game_renderer::GameRenderer;
 use crate::features::debug3d::DebugDraw3DResource;
@@ -32,6 +32,7 @@ mod renderpass;
 mod imgui_support;
 mod phases;
 mod render_contexts;
+mod time;
 
 fn main() {
     init::logging_init();
@@ -64,7 +65,7 @@ fn main() {
     test_scene::populate_test_mesh_entities(&mut resources, &mut world);
     test_scene::populate_test_lights(&mut resources, &mut world);
 
-    let mut print_time_event = renderer::base::time::PeriodicEvent::default();
+    let mut print_time_event = crate::time::PeriodicEvent::default();
 
     'running: loop {
         let t0 = std::time::Instant::now();
