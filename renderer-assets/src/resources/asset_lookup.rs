@@ -1,6 +1,9 @@
 use fnv::FnvHashMap;
 use atelier_assets::loader::LoadHandle;
-use crate::{ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset, BufferAsset};
+use crate::{
+    ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
+    BufferAsset,
+};
 
 //
 // Represents a single asset which may simultaneously have committed and uncommitted loaded state

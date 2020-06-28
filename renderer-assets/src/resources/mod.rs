@@ -1,4 +1,3 @@
-
 mod resource_arc;
 use resource_arc::ResourceId;
 pub use resource_arc::ResourceArc;

@@ -1,6 +1,9 @@
 use crate::vk_description as dsc;
 use super::ResourceHash;
-use crate::{ResourceArc, DescriptorSetLayoutResource, PipelineLayoutResource, ResourceManager, PipelineAssetData, RenderpassAssetData, MaterialPassData};
+use crate::{
+    ResourceArc, DescriptorSetLayoutResource, PipelineLayoutResource, ResourceManager,
+    PipelineAssetData, RenderpassAssetData, MaterialPassData,
+};
 use ash::vk;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::AssetHandle;

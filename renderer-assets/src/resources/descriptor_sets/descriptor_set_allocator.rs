@@ -5,9 +5,7 @@ use super::ManagedDescriptorSetPool;
 use super::{FrameInFlightIndex, DescriptorSetArc};
 use super::DescriptorSetWriteSet;
 use ash::prelude::VkResult;
-use crate::resources::{
-    DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc,
-};
+use crate::resources::{DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc};
 use crate::assets::{MaterialPass, MaterialInstanceAsset, MaterialAsset};
 
 #[derive(Debug)]

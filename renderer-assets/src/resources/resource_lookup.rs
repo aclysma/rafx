@@ -586,8 +586,10 @@ impl ResourceLookupSet {
             swapchain_surface_info: swapchain_surface_info.clone(),
         };
 
-        let renderpass = self
-            .get_or_create_renderpass(pipeline_create_data.renderpass_def(), swapchain_surface_info)?;
+        let renderpass = self.get_or_create_renderpass(
+            pipeline_create_data.renderpass_def(),
+            swapchain_surface_info,
+        )?;
 
         let hash = ResourceHash::from_key(&pipeline_key);
         if let Some(pipeline) = self.graphics_pipelines.get(hash, &pipeline_key) {

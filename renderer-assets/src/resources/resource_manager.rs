@@ -3,17 +3,25 @@ use ash::prelude::*;
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData,
-    RenderpassAssetData,
+    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
 };
 use crate::vk_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
-use crate::{vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource, DescriptorSetArc, DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData, AssetLookupSet, DynResourceAllocatorSet, LoadQueues, AssetLookup, MaterialPassSwapchainResources, SlotNameLookup, SlotLocation, PipelineCreateData, DynPassMaterialInstance, DynDescriptorSet, DescriptorSetAllocatorRef, DynMaterialInstance, DescriptorSetAllocatorProvider};
-use crate::assets::{ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset, BufferAsset, MaterialPass};
+use crate::{
+    vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, PipelineLayoutResource,
+    PipelineResource, ImageViewResource, DescriptorSetArc, DescriptorSetAllocatorMetrics,
+    GenericLoader, BufferAssetData, AssetLookupSet, DynResourceAllocatorSet, LoadQueues,
+    AssetLookup, MaterialPassSwapchainResources, SlotNameLookup, SlotLocation, PipelineCreateData,
+    DynPassMaterialInstance, DynDescriptorSet, DescriptorSetAllocatorRef, DynMaterialInstance,
+    DescriptorSetAllocatorProvider,
+};
+use crate::assets::{
+    ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
+    BufferAsset, MaterialPass,
+};
 use super::dyn_resource_allocator;
 use super::resource_lookup;
-
 
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::loader::handle::AssetHandle;
@@ -922,4 +930,3 @@ impl Drop for ResourceManager {
         log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
     }
 }
-

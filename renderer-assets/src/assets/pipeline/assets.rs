@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::{vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc, PipelineCreateData};
+use crate::{
+    vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc,
+    PipelineCreateData,
+};
 use atelier_assets::loader::handle::Handle;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
@@ -163,7 +166,6 @@ pub struct MaterialAsset {
     pub passes: Arc<Vec<MaterialPass>>,
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialInstanceSlotAssignment {
     pub slot_name: String,
@@ -208,11 +210,11 @@ impl MaterialInstanceAsset {
             material,
             material_descriptor_sets,
             slot_assignments,
-            descriptor_set_writes
+            descriptor_set_writes,
         };
 
         MaterialInstanceAsset {
-            inner: Arc::new(inner)
+            inner: Arc::new(inner),
         }
     }
 }
