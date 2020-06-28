@@ -27,7 +27,7 @@ mod init;
 mod test_scene;
 mod resource_manager;
 mod components;
-mod asset_lookup;
+mod game_asset_lookup;
 mod renderpass;
 mod imgui_support;
 mod phases;
@@ -35,6 +35,7 @@ mod render_contexts;
 mod time;
 mod asset_resource;
 mod asset_storage;
+mod asset_loader;
 
 fn main() {
     init::logging_init();

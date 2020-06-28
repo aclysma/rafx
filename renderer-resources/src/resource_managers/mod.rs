@@ -112,13 +112,13 @@ pub struct ResourceManagerMetrics {
 }
 
 pub struct ResourceManagerLoaders {
-    pub shader_loader: Box<GenericLoader<ShaderAssetData, ShaderAsset>>,
-    pub pipeline_loader: Box<GenericLoader<PipelineAssetData, PipelineAsset>>,
-    pub renderpass_loader: Box<GenericLoader<RenderpassAssetData, RenderpassAsset>>,
-    pub material_loader: Box<GenericLoader<MaterialAssetData, MaterialAsset>>,
-    pub material_instance_loader: Box<GenericLoader<MaterialInstanceAssetData, MaterialInstanceAsset>>,
-    pub image_loader: Box<GenericLoader<ImageAssetData, ImageAsset>>,
-    pub buffer_loader: Box<GenericLoader<BufferAssetData, BufferAsset>>,
+    pub shader_loader: GenericLoader<ShaderAssetData, ShaderAsset>,
+    pub pipeline_loader: GenericLoader<PipelineAssetData, PipelineAsset>,
+    pub renderpass_loader: GenericLoader<RenderpassAssetData, RenderpassAsset>,
+    pub material_loader: GenericLoader<MaterialAssetData, MaterialAsset>,
+    pub material_instance_loader: GenericLoader<MaterialInstanceAssetData, MaterialInstanceAsset>,
+    pub image_loader: GenericLoader<ImageAssetData, ImageAsset>,
+    pub buffer_loader: GenericLoader<BufferAssetData, BufferAsset>,
 }
 
 pub struct ResourceManager {
@@ -188,13 +188,13 @@ impl ResourceManager {
 
     pub fn create_loaders(&self) -> ResourceManagerLoaders {
         ResourceManagerLoaders {
-            shader_loader: Box::new(self.create_shader_loader()),
-            pipeline_loader: Box::new(self.create_pipeline_loader()),
-            renderpass_loader: Box::new(self.create_renderpass_loader()),
-            material_loader: Box::new(self.create_material_loader()),
-            material_instance_loader: Box::new(self.create_material_instance_loader()),
-            image_loader: Box::new(self.create_image_loader()),
-            buffer_loader: Box::new(self.create_buffer_loader()),
+            shader_loader: self.create_shader_loader(),
+            pipeline_loader: self.create_pipeline_loader(),
+            renderpass_loader: self.create_renderpass_loader(),
+            material_loader: self.create_material_loader(),
+            material_instance_loader: self.create_material_instance_loader(),
+            image_loader: self.create_image_loader(),
+            buffer_loader: self.create_buffer_loader(),
         }
     }
 

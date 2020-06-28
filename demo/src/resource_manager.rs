@@ -2,7 +2,7 @@ use renderer::resources::resource_managers::{
     DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoader, ResourceManager,
 };
 use renderer::vulkan::VkBufferRaw;
-use crate::asset_lookup::{GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner};
+use crate::game_asset_lookup::{GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner};
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::handle::AssetHandle;
 use ash::prelude::VkResult;
