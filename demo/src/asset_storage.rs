@@ -7,8 +7,9 @@ use mopa::{mopafy, Any};
 use std::{sync::Mutex, collections::HashMap, error::Error, sync::Arc};
 
 use atelier_assets::core::AssetUuid;
-use renderer::resources::ResourceLoadHandler;
 use crossbeam_channel::Receiver;
+use atelier_assets::loader::handle::SerdeContext;
+use std::marker::PhantomData;
 
 // Used to dynamic dispatch into a storage, supports checked downcasting
 pub trait DynAssetStorage: Any + Send {
@@ -35,7 +36,6 @@ pub trait DynAssetStorage: Any + Send {
 
 mopafy!(DynAssetStorage);
 
-// Contains a storage per asset type
 #[derive(Default)]
 pub struct AssetStorageSetInner {
     storage: HashMap<AssetTypeId, Box<dyn DynAssetStorage>>,
@@ -73,19 +73,19 @@ impl AssetStorageSet {
         );
     }
 
-    pub fn add_storage_with_load_handler<AssetDataT, LoadedT, LoaderT>(
+    pub fn add_storage_with_loader<AssetDataT, AssetT, LoaderT>(
         &self,
         loader: Box<LoaderT>,
     ) where
         AssetDataT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static,
-        LoadedT: TypeUuid + 'static + Send,
-        LoaderT: DynAssetLoader<LoadedT> + 'static,
+        AssetT: TypeUuid + 'static + Send,
+        LoaderT: DynAssetLoader<AssetT> + 'static,
     {
         let mut inner = self.inner.lock().unwrap();
-        inner.asset_data_type_id_mapping.insert(AssetTypeId(AssetDataT::UUID), AssetTypeId(LoadedT::UUID));
+        inner.asset_data_type_id_mapping.insert(AssetTypeId(AssetDataT::UUID), AssetTypeId(AssetT::UUID));
         inner.storage.insert(
-            AssetTypeId(LoadedT::UUID),
-            Box::new(Storage::<LoadedT>::new(
+            AssetTypeId(AssetT::UUID),
+            Box::new(Storage::<AssetT>::new(
                 self.refop_sender.clone(),
                 loader,
             )),
@@ -221,18 +221,20 @@ impl<A: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send> TypedAssetSt
     }
 }
 
-pub enum UpdateAssetResult<LoadedT>
+// Loaders can return immediately by value, or later by returning a channel
+pub enum UpdateAssetResult<AssetT>
     where
-        LoadedT: Send
+        AssetT: Send
 {
-    Result(LoadedT),
-    AsyncResult(Receiver<LoadedT>)
+    Result(AssetT),
+    AsyncResult(Receiver<AssetT>)
 }
 
-// Used to dynamic dispatch into a storage, supports checked downcasting
-pub trait DynAssetLoader<LoadedT> : Send
+// Implements loading logic (i.e. turning bytes into an asset. The asset may contain runtime-only
+// data and may be created asynchronously
+pub trait DynAssetLoader<AssetT> : Send
 where
-    LoadedT: TypeUuid + 'static + Send
+    AssetT: TypeUuid + 'static + Send
 {
     fn update_asset(
         &mut self,
@@ -242,7 +244,7 @@ where
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         version: u32,
-    ) -> Result<UpdateAssetResult<LoadedT>, Box<dyn Error>>;
+    ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error>>;
 
     fn commit_asset_version(
         &mut self,
@@ -256,13 +258,7 @@ where
     );
 }
 
-struct ResourceLoader<AssetDataT, LoadedT> {
-    load_handler: Box<dyn ResourceLoadHandler<AssetDataT, LoadedT>>
-}
-
-use atelier_assets::loader::handle::SerdeContext;
-use std::marker::PhantomData;
-
+// A simple loader that just deserializes data
 struct DefaultAssetLoader<AssetDataT>
     where
         AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
@@ -336,29 +332,29 @@ struct AssetState<A> {
 }
 
 // A strongly typed storage for a single asset type
-pub struct Storage<LoadedT: TypeUuid + Send> {
+pub struct Storage<AssetT: TypeUuid + Send> {
     refop_sender: Arc<Sender<RefOp>>,
-    assets: HashMap<LoadHandle, AssetState<LoadedT>>,
-    uncommitted: HashMap<LoadHandle, UncommittedAssetState<LoadedT>>,
-    load_handler: Box<dyn DynAssetLoader<LoadedT>>,
+    assets: HashMap<LoadHandle, AssetState<AssetT>>,
+    uncommitted: HashMap<LoadHandle, UncommittedAssetState<AssetT>>,
+    loader: Box<dyn DynAssetLoader<AssetT>>,
 }
 
-impl<LoadedT: TypeUuid + Send> Storage<LoadedT> {
+impl<AssetT: TypeUuid + Send> Storage<AssetT> {
     fn new(
         sender: Arc<Sender<RefOp>>,
-        loader: Box<dyn DynAssetLoader<LoadedT>>,
+        loader: Box<dyn DynAssetLoader<AssetT>>,
     ) -> Self {
         Self {
             refop_sender: sender,
             assets: HashMap::new(),
             uncommitted: HashMap::new(),
-            load_handler: loader,
+            loader: loader,
         }
     }
     fn get<T: AssetHandle>(
         &self,
         handle: &T,
-    ) -> Option<&LoadedT> {
+    ) -> Option<&AssetT> {
         self.assets.get(&handle.load_handle()).map(|a| &a.asset)
     }
     fn get_version<T: AssetHandle>(
@@ -370,14 +366,14 @@ impl<LoadedT: TypeUuid + Send> Storage<LoadedT> {
     fn get_asset_with_version<T: AssetHandle>(
         &self,
         handle: &T,
-    ) -> Option<(&LoadedT, u32)> {
+    ) -> Option<(&AssetT, u32)> {
         self.assets
             .get(&handle.load_handle())
             .map(|a| (&a.asset, a.version))
     }
 }
 
-impl<LoadedT: TypeUuid + 'static + Send> DynAssetStorage for Storage<LoadedT> {
+impl<AssetT: TypeUuid + 'static + Send> DynAssetStorage for Storage<AssetT> {
     fn update_asset(
         &mut self,
         loader_info: &dyn LoaderInfoProvider,
@@ -388,13 +384,13 @@ impl<LoadedT: TypeUuid + 'static + Send> DynAssetStorage for Storage<LoadedT> {
     ) -> Result<(), Box<dyn Error>> {
         log::trace!(
             "update_asset {} {:?} {:?} {}",
-            core::any::type_name::<LoadedT>(),
+            core::any::type_name::<AssetT>(),
             load_handle,
             loader_info.get_asset_id(load_handle).unwrap(),
             version
         );
 
-        let result = self.load_handler.update_asset(&self.refop_sender, loader_info, data, load_handle, load_op, version)?;
+        let result = self.loader.update_asset(&self.refop_sender, loader_info, data, load_handle, load_op, version)?;
         let asset_uuid = loader_info.get_asset_id(load_handle).unwrap();
 
         // Add to list of uncommitted assets
@@ -423,7 +419,7 @@ impl<LoadedT: TypeUuid + 'static + Send> DynAssetStorage for Storage<LoadedT> {
 
         log::trace!(
             "commit_asset_version {} {:?} {:?} {}",
-            core::any::type_name::<LoadedT>(),
+            core::any::type_name::<AssetT>(),
             load_handle,
             uncommitted_asset_state.asset_uuid,
             version
@@ -438,7 +434,7 @@ impl<LoadedT: TypeUuid + 'static + Send> DynAssetStorage for Storage<LoadedT> {
         };
 
         // If a load handler exists, trigger the commit_asset_version callback
-        self.load_handler.commit_asset_version(
+        self.loader.commit_asset_version(
             load_handle,
             version,
         );
@@ -463,13 +459,13 @@ impl<LoadedT: TypeUuid + 'static + Send> DynAssetStorage for Storage<LoadedT> {
         if let Some(asset_state) = asset_state {
             log::trace!(
                 "free {} {:?} {:?}",
-                core::any::type_name::<LoadedT>(),
+                core::any::type_name::<AssetT>(),
                 load_handle,
                 asset_state.asset_uuid
             );
 
             // Trigger the free callback on the load handler, if one exists
-            self.load_handler.free(load_handle);
+            self.loader.free(load_handle);
         }
     }
 

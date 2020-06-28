@@ -95,7 +95,7 @@ pub fn sdl2_init() -> Sdl2Systems {
     }
 }
 
-use renderer::resources::ResourceLoadHandler;
+use renderer::resources::ResourceLoader;
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::LoaderInfoProvider;
@@ -104,14 +104,14 @@ use atelier_assets::loader::handle::RefOp;
 use type_uuid::TypeUuid;
 use std::sync::Arc;
 
-struct ResourceLoader<AssetDataT, LoadedT> {
-    load_handler: Box<dyn ResourceLoadHandler<AssetDataT, LoadedT>>
+struct ResourceAssetLoader<AssetDataT, AssetT> {
+    loader: Box<dyn ResourceLoader<AssetDataT, AssetT>>
 }
 
-impl<AssetDataT, LoadedT> DynAssetLoader<LoadedT> for ResourceLoader<AssetDataT, LoadedT>
+impl<AssetDataT, AssetT> DynAssetLoader<AssetT> for ResourceAssetLoader<AssetDataT, AssetT>
 where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static,
-    LoadedT: TypeUuid + 'static + Send
+    AssetT: TypeUuid + 'static + Send
 {
     fn update_asset(
         &mut self,
@@ -121,7 +121,7 @@ where
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         _version: u32
-    ) -> Result<UpdateAssetResult<LoadedT>, Box<dyn Error>> {
+    ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error>> {
 
         let asset = SerdeContext::with_sync(
             loader_info,
@@ -129,7 +129,7 @@ where
             || bincode::deserialize::<AssetDataT>(data),
         )?;
 
-        let result = self.load_handler.update_asset(load_handle, load_op, asset);
+        let result = self.loader.update_asset(load_handle, load_op, asset);
         Ok(UpdateAssetResult::AsyncResult(result.result_rx))
     }
 
@@ -138,14 +138,14 @@ where
         handle: LoadHandle,
         _version: u32
     ) {
-        self.load_handler.commit_asset_version(handle);
+        self.loader.commit_asset_version(handle);
     }
 
     fn free(
         &mut self,
         handle: LoadHandle
     ) {
-        self.load_handler.free(handle);
+        self.loader.free(handle);
     }
 }
 
@@ -191,29 +191,29 @@ pub fn rendering_init(
     let resource_manager = renderer::resources::ResourceManager::new(&device_context);
 
     {
-        let load_handlers = resource_manager.create_load_handlers();
+        let loaders = resource_manager.create_loaders();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
 
-        asset_resource.add_storage_with_load_handler::<renderer::assets::ShaderAssetData, renderer::resources::ShaderAsset, _>(
-            Box::new(ResourceLoader { load_handler: load_handlers.shader_load_handler }),
+        asset_resource.add_storage_with_loader::<renderer::assets::ShaderAssetData, renderer::resources::ShaderAsset, _>(
+            Box::new(ResourceAssetLoader { loader: loaders.shader_loader }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::PipelineAssetData, renderer::resources::PipelineAsset, _>(
-            Box::new(ResourceLoader { load_handler: load_handlers.pipeline_load_handler }),
+        asset_resource.add_storage_with_loader::<renderer::assets::PipelineAssetData, renderer::resources::PipelineAsset, _>(
+            Box::new(ResourceAssetLoader { loader: loaders.pipeline_loader }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::RenderpassAssetData, renderer::resources::RenderpassAsset, _>(
-            Box::new(ResourceLoader { load_handler: load_handlers.renderpass_load_handler }),
+        asset_resource.add_storage_with_loader::<renderer::assets::RenderpassAssetData, renderer::resources::RenderpassAsset, _>(
+            Box::new(ResourceAssetLoader { loader: loaders.renderpass_loader }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::MaterialAssetData, renderer::resources::MaterialAsset, _>(
-            Box::new(ResourceLoader { load_handler: load_handlers.material_load_handler }),
+        asset_resource.add_storage_with_loader::<renderer::assets::MaterialAssetData, renderer::resources::MaterialAsset, _>(
+            Box::new(ResourceAssetLoader { loader: loaders.material_loader }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::MaterialInstanceAssetData, renderer::resources::MaterialInstanceAsset, _>(
-            Box::new(ResourceLoader { load_handler: load_handlers.material_instance_load_handler }),
+        asset_resource.add_storage_with_loader::<renderer::assets::MaterialInstanceAssetData, renderer::resources::MaterialInstanceAsset, _>(
+            Box::new(ResourceAssetLoader { loader: loaders.material_instance_loader }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::ImageAssetData, renderer::resources::ImageAsset, _>(
-            Box::new(ResourceLoader { load_handler: load_handlers.image_load_handler }),
+        asset_resource.add_storage_with_loader::<renderer::assets::ImageAssetData, renderer::resources::ImageAsset, _>(
+            Box::new(ResourceAssetLoader { loader: loaders.image_loader }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::BufferAssetData, renderer::resources::BufferAsset, _>(
-            Box::new(ResourceLoader { load_handler: load_handlers.buffer_load_handler }),
+        asset_resource.add_storage_with_loader::<renderer::assets::BufferAssetData, renderer::resources::BufferAsset, _>(
+            Box::new(ResourceAssetLoader { loader: loaders.buffer_loader }),
         );
     }
 
@@ -234,8 +234,8 @@ pub fn rendering_init(
         let mut resource_manager_fetch = resources.get_mut::<GameResourceManager>().unwrap();
         let resource_manager = &mut *resource_manager_fetch;
 
-        asset_resource.add_storage_with_load_handler::<MeshAssetData, MeshAsset, _>(Box::new(
-            ResourceLoader { load_handler: Box::new(resource_manager.create_mesh_load_handler()) }
+        asset_resource.add_storage_with_loader::<MeshAssetData, MeshAsset, _>(Box::new(
+            ResourceAssetLoader { loader: Box::new(resource_manager.create_mesh_loader()) }
         ));
 
         asset_resource.add_storage::<GltfMaterialAsset>();

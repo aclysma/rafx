@@ -28,7 +28,7 @@ pub use dyn_resource_allocator::DynResourceAllocatorSet;
 
 mod load_queue;
 pub use load_queue::LoadQueues;
-pub use load_queue::GenericLoadHandler;
+pub use load_queue::GenericLoader;
 use load_queue::LoadQueueSet;
 
 mod swapchain_management;
@@ -111,14 +111,14 @@ pub struct ResourceManagerMetrics {
     pub resource_descriptor_sets_metrics: DescriptorSetAllocatorMetrics,
 }
 
-pub struct ResourceManagerLoadHandlers {
-    pub shader_load_handler: Box<GenericLoadHandler<ShaderAssetData, ShaderAsset>>,
-    pub pipeline_load_handler: Box<GenericLoadHandler<PipelineAssetData, PipelineAsset>>,
-    pub renderpass_load_handler: Box<GenericLoadHandler<RenderpassAssetData, RenderpassAsset>>,
-    pub material_load_handler: Box<GenericLoadHandler<MaterialAssetData, MaterialAsset>>,
-    pub material_instance_load_handler: Box<GenericLoadHandler<MaterialInstanceAssetData, MaterialInstanceAsset>>,
-    pub image_load_handler: Box<GenericLoadHandler<ImageAssetData, ImageAsset>>,
-    pub buffer_load_handler: Box<GenericLoadHandler<BufferAssetData, BufferAsset>>,
+pub struct ResourceManagerLoaders {
+    pub shader_loader: Box<GenericLoader<ShaderAssetData, ShaderAsset>>,
+    pub pipeline_loader: Box<GenericLoader<PipelineAssetData, PipelineAsset>>,
+    pub renderpass_loader: Box<GenericLoader<RenderpassAssetData, RenderpassAsset>>,
+    pub material_loader: Box<GenericLoader<MaterialAssetData, MaterialAsset>>,
+    pub material_instance_loader: Box<GenericLoader<MaterialInstanceAssetData, MaterialInstanceAsset>>,
+    pub image_loader: Box<GenericLoader<ImageAssetData, ImageAsset>>,
+    pub buffer_loader: Box<GenericLoader<BufferAssetData, BufferAsset>>,
 }
 
 pub struct ResourceManager {
@@ -156,45 +156,45 @@ impl ResourceManager {
         &self.loaded_assets
     }
 
-    pub fn create_shader_load_handler(&self) -> GenericLoadHandler<ShaderAssetData, ShaderAsset> {
-        self.load_queues.shader_modules.create_load_handler()
+    pub fn create_shader_loader(&self) -> GenericLoader<ShaderAssetData, ShaderAsset> {
+        self.load_queues.shader_modules.create_loader()
     }
 
-    pub fn create_pipeline_load_handler(&self) -> GenericLoadHandler<PipelineAssetData, PipelineAsset> {
-        self.load_queues.graphics_pipelines.create_load_handler()
+    pub fn create_pipeline_loader(&self) -> GenericLoader<PipelineAssetData, PipelineAsset> {
+        self.load_queues.graphics_pipelines.create_loader()
     }
 
-    pub fn create_renderpass_load_handler(&self) -> GenericLoadHandler<RenderpassAssetData, RenderpassAsset> {
-        self.load_queues.renderpasses.create_load_handler()
+    pub fn create_renderpass_loader(&self) -> GenericLoader<RenderpassAssetData, RenderpassAsset> {
+        self.load_queues.renderpasses.create_loader()
     }
 
-    pub fn create_material_load_handler(&self) -> GenericLoadHandler<MaterialAssetData, MaterialAsset> {
-        self.load_queues.materials.create_load_handler()
+    pub fn create_material_loader(&self) -> GenericLoader<MaterialAssetData, MaterialAsset> {
+        self.load_queues.materials.create_loader()
     }
 
-    pub fn create_material_instance_load_handler(
+    pub fn create_material_instance_loader(
         &self
-    ) -> GenericLoadHandler<MaterialInstanceAssetData, MaterialInstanceAsset> {
-        self.load_queues.material_instances.create_load_handler()
+    ) -> GenericLoader<MaterialInstanceAssetData, MaterialInstanceAsset> {
+        self.load_queues.material_instances.create_loader()
     }
 
-    pub fn create_image_load_handler(&self) -> GenericLoadHandler<ImageAssetData, ImageAsset> {
-        self.load_queues.images.create_load_handler()
+    pub fn create_image_loader(&self) -> GenericLoader<ImageAssetData, ImageAsset> {
+        self.load_queues.images.create_loader()
     }
 
-    pub fn create_buffer_load_handler(&self) -> GenericLoadHandler<BufferAssetData, BufferAsset> {
-        self.load_queues.buffers.create_load_handler()
+    pub fn create_buffer_loader(&self) -> GenericLoader<BufferAssetData, BufferAsset> {
+        self.load_queues.buffers.create_loader()
     }
 
-    pub fn create_load_handlers(&self) -> ResourceManagerLoadHandlers {
-        ResourceManagerLoadHandlers {
-            shader_load_handler: Box::new(self.create_shader_load_handler()),
-            pipeline_load_handler: Box::new(self.create_pipeline_load_handler()),
-            renderpass_load_handler: Box::new(self.create_renderpass_load_handler()),
-            material_load_handler: Box::new(self.create_material_load_handler()),
-            material_instance_load_handler: Box::new(self.create_material_instance_load_handler()),
-            image_load_handler: Box::new(self.create_image_load_handler()),
-            buffer_load_handler: Box::new(self.create_buffer_load_handler()),
+    pub fn create_loaders(&self) -> ResourceManagerLoaders {
+        ResourceManagerLoaders {
+            shader_loader: Box::new(self.create_shader_loader()),
+            pipeline_loader: Box::new(self.create_pipeline_loader()),
+            renderpass_loader: Box::new(self.create_renderpass_loader()),
+            material_loader: Box::new(self.create_material_loader()),
+            material_instance_loader: Box::new(self.create_material_instance_loader()),
+            image_loader: Box::new(self.create_image_loader()),
+            buffer_loader: Box::new(self.create_buffer_loader()),
         }
     }
 
@@ -553,11 +553,11 @@ impl ResourceManager {
         Ok(())
     }
 
-    fn handle_load_result<LoadedT: Clone>(
+    fn handle_load_result<AssetT: Clone>(
         load_op: AssetLoadOp,
-        loaded_asset: VkResult<LoadedT>,
-        asset_lookup: &mut AssetLookup<LoadedT>,
-        result_tx: Sender<LoadedT>
+        loaded_asset: VkResult<AssetT>,
+        asset_lookup: &mut AssetLookup<AssetT>,
+        result_tx: Sender<AssetT>
     ) {
         match loaded_asset {
             Ok(loaded_asset) => {
@@ -571,9 +571,9 @@ impl ResourceManager {
         }
     }
 
-    fn handle_commit_requests<AssetDataT, LoadedT>(
-        load_queues: &mut LoadQueues<AssetDataT, LoadedT>,
-        asset_lookup: &mut AssetLookup<LoadedT>,
+    fn handle_commit_requests<AssetDataT, AssetT>(
+        load_queues: &mut LoadQueues<AssetDataT, AssetT>,
+        asset_lookup: &mut AssetLookup<AssetT>,
     ) {
         for request in load_queues.take_commit_requests() {
             log::info!(
@@ -585,9 +585,9 @@ impl ResourceManager {
         }
     }
 
-    fn handle_free_requests<AssetDataT, LoadedT>(
-        load_queues: &mut LoadQueues<AssetDataT, LoadedT>,
-        asset_lookup: &mut AssetLookup<LoadedT>,
+    fn handle_free_requests<AssetDataT, AssetT>(
+        load_queues: &mut LoadQueues<AssetDataT, AssetT>,
+        asset_lookup: &mut AssetLookup<AssetT>,
     ) {
         for request in load_queues.take_commit_requests() {
             asset_lookup.commit(request.load_handle);

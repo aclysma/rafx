@@ -21,17 +21,17 @@ impl<T> ResourceLoadResult<T>
 }
 
 // Used to catch asset changes and upload them to the GPU (or some other system)
-pub trait ResourceLoadHandler<AssetDataT, LoadedT>: 'static + Send
+pub trait ResourceLoader<AssetDataT, AssetT>: 'static + Send
 where
     AssetDataT: for<'a> serde::Deserialize<'a>,
-    LoadedT: 'static + Send,
+    AssetT: 'static + Send,
 {
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         asset: AssetDataT,
-    ) -> ResourceLoadResult<LoadedT>;
+    ) -> ResourceLoadResult<AssetT>;
 
     fn commit_asset_version(
         &mut self,

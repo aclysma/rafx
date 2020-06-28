@@ -40,16 +40,16 @@ impl AssetResource {
         self.storage.add_storage::<AssetDataT>();
     }
 
-    pub fn add_storage_with_load_handler<AssetDataT, LoadedT, LoaderT>(
+    pub fn add_storage_with_loader<AssetDataT, AssetT, LoaderT>(
         &mut self,
         loader: Box<LoaderT>,
     ) where
         AssetDataT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static,
-        LoadedT: TypeUuid + 'static + Send,
-        LoaderT: DynAssetLoader<LoadedT> + 'static,
+        AssetT: TypeUuid + 'static + Send,
+        LoaderT: DynAssetLoader<AssetT> + 'static,
     {
         self.storage
-            .add_storage_with_load_handler::<AssetDataT, LoadedT, LoaderT>(loader);
+            .add_storage_with_loader::<AssetDataT, AssetT, LoaderT>(loader);
     }
 
     pub fn update(&mut self) {

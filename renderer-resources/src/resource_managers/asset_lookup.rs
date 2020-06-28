@@ -118,12 +118,12 @@ pub struct BufferAsset {
 //
 // Represents a single asset which may simultaneously have committed and uncommitted loaded state
 //
-pub struct LoadedAssetState<LoadedT> {
-    pub committed: Option<LoadedT>,
-    pub uncommitted: Option<LoadedT>,
+pub struct LoadedAssetState<AssetT> {
+    pub committed: Option<AssetT>,
+    pub uncommitted: Option<AssetT>,
 }
 
-impl<LoadedT> Default for LoadedAssetState<LoadedT> {
+impl<AssetT> Default for LoadedAssetState<AssetT> {
     fn default() -> Self {
         LoadedAssetState {
             committed: None,
@@ -132,16 +132,16 @@ impl<LoadedT> Default for LoadedAssetState<LoadedT> {
     }
 }
 
-pub struct AssetLookup<LoadedT> {
+pub struct AssetLookup<AssetT> {
     //TODO: Slab these for faster lookup?
-    pub loaded_assets: FnvHashMap<LoadHandle, LoadedAssetState<LoadedT>>,
+    pub loaded_assets: FnvHashMap<LoadHandle, LoadedAssetState<AssetT>>,
 }
 
-impl<LoadedT> AssetLookup<LoadedT> {
+impl<AssetT> AssetLookup<AssetT> {
     pub fn set_uncommitted(
         &mut self,
         load_handle: LoadHandle,
-        loaded_asset: LoadedT,
+        loaded_asset: AssetT,
     ) {
         self.loaded_assets
             .entry(load_handle)
@@ -168,7 +168,7 @@ impl<LoadedT> AssetLookup<LoadedT> {
     pub fn get_latest(
         &self,
         load_handle: LoadHandle,
-    ) -> Option<&LoadedT> {
+    ) -> Option<&AssetT> {
         if let Some(loaded_assets) = self.loaded_assets.get(&load_handle) {
             if let Some(uncommitted) = &loaded_assets.uncommitted {
                 Some(uncommitted)
@@ -187,7 +187,7 @@ impl<LoadedT> AssetLookup<LoadedT> {
     pub fn get_committed(
         &self,
         load_handle: LoadHandle,
-    ) -> Option<&LoadedT> {
+    ) -> Option<&AssetT> {
         if let Some(loaded_assets) = self.loaded_assets.get(&load_handle) {
             if let Some(committed) = &loaded_assets.committed {
                 Some(committed)
@@ -208,7 +208,7 @@ impl<LoadedT> AssetLookup<LoadedT> {
     }
 }
 
-impl<LoadedT> Default for AssetLookup<LoadedT> {
+impl<AssetT> Default for AssetLookup<AssetT> {
     fn default() -> Self {
         AssetLookup {
             loaded_assets: Default::default(),

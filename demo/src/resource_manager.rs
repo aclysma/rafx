@@ -1,5 +1,5 @@
 use renderer::resources::resource_managers::{
-    DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoadHandler, ResourceManager,
+    DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoader, ResourceManager,
 };
 use renderer::vulkan::VkBufferRaw;
 use crate::asset_lookup::{GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner};
@@ -45,8 +45,8 @@ impl GameResourceManager {
         }
     }
 
-    pub fn create_mesh_load_handler(&self) -> GenericLoadHandler<MeshAssetData, MeshAsset> {
-        self.load_queues.meshes.create_load_handler()
+    pub fn create_mesh_loader(&self) -> GenericLoader<MeshAssetData, MeshAsset> {
+        self.load_queues.meshes.create_loader()
     }
 
     pub fn get_mesh_info(
@@ -111,11 +111,11 @@ impl GameResourceManager {
         Self::handle_free_requests(&mut self.load_queues.meshes, &mut self.loaded_assets.meshes);
     }
 
-    fn handle_load_result<LoadedT: Clone>(
+    fn handle_load_result<AssetT: Clone>(
         load_op: AssetLoadOp,
-        loaded_asset: VkResult<LoadedT>,
-        asset_lookup: &mut AssetLookup<LoadedT>,
-        result_tx: Sender<LoadedT>
+        loaded_asset: VkResult<AssetT>,
+        asset_lookup: &mut AssetLookup<AssetT>,
+        result_tx: Sender<AssetT>
     ) {
         match loaded_asset {
             Ok(loaded_asset) => {
@@ -129,9 +129,9 @@ impl GameResourceManager {
         }
     }
 
-    fn handle_commit_requests<AssetDataT, LoadedT>(
-        load_queues: &mut LoadQueues<AssetDataT, LoadedT>,
-        asset_lookup: &mut AssetLookup<LoadedT>,
+    fn handle_commit_requests<AssetDataT, AssetT>(
+        load_queues: &mut LoadQueues<AssetDataT, AssetT>,
+        asset_lookup: &mut AssetLookup<AssetT>,
     ) {
         for request in load_queues.take_commit_requests() {
             log::info!(
@@ -143,9 +143,9 @@ impl GameResourceManager {
         }
     }
 
-    fn handle_free_requests<AssetDataT, LoadedT>(
-        load_queues: &mut LoadQueues<AssetDataT, LoadedT>,
-        asset_lookup: &mut AssetLookup<LoadedT>,
+    fn handle_free_requests<AssetDataT, AssetT>(
+        load_queues: &mut LoadQueues<AssetDataT, AssetT>,
+        asset_lookup: &mut AssetLookup<AssetT>,
     ) {
         for request in load_queues.take_commit_requests() {
             asset_lookup.commit(request.load_handle);
