@@ -10,28 +10,32 @@ use ash::vk;
 use crate::resource_managers::load_queue::LoadRequest;
 use renderer_assets::assets::image::ImageAsset;
 use renderer_assets::assets::buffer::BufferAsset;
+use crate::resource_managers::asset_lookup::{LoadedImage, LoadedBuffer};
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result
 //
-pub enum UploadOpResult<T> {
+pub enum UploadOpResult<T, AssetT> {
     UploadError(LoadHandle),
-    UploadComplete(AssetLoadOp, T),
+    UploadComplete(AssetLoadOp, Sender<AssetT>, T),
     UploadDrop(LoadHandle),
 }
 
-pub struct UploadOp<T> {
+pub struct UploadOp<T, AssetT> {
     load_handle: LoadHandle,
-    sender: Option<Sender<UploadOpResult<T>>>,
+    asset_sender: Option<Sender<AssetT>>, // This sends back to the asset storage, we just pass it along
+    sender: Option<Sender<UploadOpResult<T, AssetT>>>, // This sends back to the resource manager to finalize the load
 }
 
-impl<T> UploadOp<T> {
+impl<T, AssetT> UploadOp<T, AssetT> {
     pub fn new(
         load_handle: LoadHandle,
-        sender: Sender<UploadOpResult<T>>,
+        asset_sender: Sender<AssetT>,
+        sender: Sender<UploadOpResult<T, AssetT>>,
     ) -> Self {
         Self {
             load_handle,
+            asset_sender: Some(asset_sender),
             sender: Some(sender),
         }
     }
@@ -45,7 +49,7 @@ impl<T> UploadOp<T> {
             .sender
             .as_ref()
             .unwrap()
-            .send(UploadOpResult::UploadComplete(load_op, image));
+            .send(UploadOpResult::UploadComplete(load_op, self.asset_sender.take().unwrap(), image));
         self.sender = None;
     }
 
@@ -59,7 +63,7 @@ impl<T> UploadOp<T> {
     }
 }
 
-impl<T> Drop for UploadOp<T> {
+impl<T, AssetT> Drop for UploadOp<T, AssetT> {
     fn drop(&mut self) {
         if let Some(ref sender) = self.sender {
             let _ = sender.send(UploadOpResult::UploadDrop(self.load_handle));
@@ -67,31 +71,11 @@ impl<T> Drop for UploadOp<T> {
     }
 }
 
-// pub struct UploadOpAwaiter<T> {
-//     receiver: Receiver<UploadOpResult<T>>,
-// }
-//
-// impl<T> UploadOpAwaiter<T> {
-//     pub fn receiver(&self) -> &Receiver<UploadOpResult<T>> {
-//         &self.receiver
-//     }
-// }
-//
-// pub fn create_upload_op<T>(load_handle: LoadHandle) -> (UploadOp<T>, UploadOpAwaiter<T>) {
-//     let (tx, rx) = crossbeam_channel::unbounded();
-//     let op = UploadOp::new(load_handle, tx);
-//     let awaiter = UploadOpAwaiter { receiver: rx };
-//
-//     (op, awaiter)
-// }
+pub type ImageUploadOpResult = UploadOpResult<VkImage, LoadedImage>;
+pub type ImageUploadOp = UploadOp<VkImage, LoadedImage>;
 
-pub type ImageUploadOpResult = UploadOpResult<VkImage>;
-pub type ImageUploadOp = UploadOp<VkImage>;
-//pub type ImageUploadOpAwaiter = UploadOpAwaiter<VkImage>;
-
-pub type BufferUploadOpResult = UploadOpResult<VkBuffer>;
-pub type BufferUploadOp = UploadOp<VkBuffer>;
-//pub type BufferUploadOpAwaiter = UploadOpAwaiter<VkBuffer>;
+pub type BufferUploadOpResult = UploadOpResult<VkBuffer, LoadedBuffer>;
+pub type BufferUploadOp = UploadOp<VkBuffer, LoadedBuffer>;
 
 //
 // Represents a single request inserted into the upload queue that hasn't started yet
@@ -494,7 +478,7 @@ impl UploadManager {
 
     pub fn upload_image(
         &self,
-        request: LoadRequest<ImageAsset>,
+        request: LoadRequest<ImageAsset, LoadedImage>,
     ) -> VkResult<()> {
         let mips = renderer_assets::image_utils::default_mip_settings_for_image(
             request.asset.width,
@@ -515,7 +499,7 @@ impl UploadManager {
             .pending_image_tx()
             .send(PendingImageUpload {
                 load_op: request.load_op,
-                upload_op: UploadOp::new(request.load_handle, self.image_upload_result_tx.clone()),
+                upload_op: UploadOp::new(request.load_handle, request.result_tx, self.image_upload_result_tx.clone()),
                 texture: decoded_texture,
             })
             .map_err(|_err| {
@@ -526,13 +510,13 @@ impl UploadManager {
 
     pub fn upload_buffer(
         &self,
-        request: LoadRequest<BufferAsset>,
+        request: LoadRequest<BufferAsset, LoadedBuffer>,
     ) -> VkResult<()> {
         self.upload_queue
             .pending_buffer_tx()
             .send(PendingBufferUpload {
                 load_op: request.load_op,
-                upload_op: UploadOp::new(request.load_handle, self.buffer_upload_result_tx.clone()),
+                upload_op: UploadOp::new(request.load_handle, request.result_tx, self.buffer_upload_result_tx.clone()),
                 data: request.asset.data,
             })
             .map_err(|_err| {

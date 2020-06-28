@@ -16,6 +16,10 @@ use renderer::resources::ResourceManager;
 use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
 use crate::features::imgui::ImGuiRenderFeature;
+use crate::asset_lookup::LoadedMesh;
+use crate::asset_storage::{DynAssetLoader, UpdateAssetResult};
+use std::error::Error;
+use crossbeam_channel::Sender;
 
 pub fn logging_init() {
     #[allow(unused_assignments)]
@@ -89,6 +93,62 @@ pub fn sdl2_init() -> Sdl2Systems {
     }
 }
 
+use renderer::resources::ResourceLoadHandler;
+use atelier_assets::loader::AssetLoadOp;
+use atelier_assets::loader::LoadHandle;
+use atelier_assets::loader::LoaderInfoProvider;
+use atelier_assets::loader::handle::SerdeContext;
+use atelier_assets::loader::handle::RefOp;
+use type_uuid::TypeUuid;
+use std::sync::Arc;
+
+struct ResourceLoader<AssetT, LoadedT> {
+    load_handler: Box<dyn ResourceLoadHandler<AssetT, LoadedT>>
+}
+
+impl<AssetT, LoadedT> DynAssetLoader<LoadedT> for ResourceLoader<AssetT, LoadedT>
+where
+    AssetT: for<'a> serde::Deserialize<'a> + 'static,
+    LoadedT: TypeUuid + 'static + Send
+{
+    fn update_asset(
+        &mut self,
+        refop_sender: &Arc<Sender<RefOp>>,
+        loader_info: &dyn LoaderInfoProvider,
+        data: &[u8],
+        load_handle: LoadHandle,
+        load_op: AssetLoadOp,
+        _version: u32
+    ) -> Result<UpdateAssetResult<LoadedT>, Box<dyn Error>> {
+
+        let asset = SerdeContext::with_sync(
+            loader_info,
+            refop_sender.clone(),
+            || bincode::deserialize::<AssetT>(data),
+        )?;
+
+        let result = self.load_handler.update_asset(load_handle, load_op, asset);
+        Ok(UpdateAssetResult::AsyncResult(result.result_rx))
+    }
+
+    fn commit_asset_version(
+        &mut self,
+        handle: LoadHandle,
+        _version: u32
+    ) {
+        self.load_handler.commit_asset_version(handle);
+    }
+
+    fn free(
+        &mut self,
+        handle: LoadHandle
+    ) {
+        self.load_handler.free(handle);
+    }
+}
+
+
+
 // Should occur *before* the renderer starts
 pub fn imgui_init(
     resources: &mut Resources,
@@ -132,26 +192,26 @@ pub fn rendering_init(
         let load_handlers = resource_manager.create_load_handlers();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
 
-        asset_resource.add_storage_with_load_handler::<renderer::assets::ShaderAsset, _>(
-            load_handlers.shader_load_handler,
+        asset_resource.add_storage_with_load_handler::<renderer::assets::ShaderAsset, renderer::resources::LoadedShaderModule, _>(
+            Box::new(ResourceLoader { load_handler: load_handlers.shader_load_handler }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::PipelineAsset, _>(
-            load_handlers.pipeline_load_handler,
+        asset_resource.add_storage_with_load_handler::<renderer::assets::PipelineAsset, renderer::resources::LoadedGraphicsPipeline, _>(
+            Box::new(ResourceLoader { load_handler: load_handlers.pipeline_load_handler }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::RenderpassAsset, _>(
-            load_handlers.renderpass_load_handler,
+        asset_resource.add_storage_with_load_handler::<renderer::assets::RenderpassAsset, renderer::resources::LoadedRenderpass, _>(
+            Box::new(ResourceLoader { load_handler: load_handlers.renderpass_load_handler }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::MaterialAsset, _>(
-            load_handlers.material_load_handler,
+        asset_resource.add_storage_with_load_handler::<renderer::assets::MaterialAsset, renderer::resources::LoadedMaterial, _>(
+            Box::new(ResourceLoader { load_handler: load_handlers.material_load_handler }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::MaterialInstanceAsset, _>(
-            load_handlers.material_instance_load_handler,
+        asset_resource.add_storage_with_load_handler::<renderer::assets::MaterialInstanceAsset, renderer::resources::LoadedMaterialInstance, _>(
+            Box::new(ResourceLoader { load_handler: load_handlers.material_instance_load_handler }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::ImageAsset, _>(
-            load_handlers.image_load_handler,
+        asset_resource.add_storage_with_load_handler::<renderer::assets::ImageAsset, renderer::resources::LoadedImage, _>(
+            Box::new(ResourceLoader { load_handler: load_handlers.image_load_handler }),
         );
-        asset_resource.add_storage_with_load_handler::<renderer::assets::BufferAsset, _>(
-            load_handlers.buffer_load_handler,
+        asset_resource.add_storage_with_load_handler::<renderer::assets::BufferAsset, renderer::resources::LoadedBuffer, _>(
+            Box::new(ResourceLoader { load_handler: load_handlers.buffer_load_handler }),
         );
     }
 
@@ -172,8 +232,8 @@ pub fn rendering_init(
         let mut resource_manager_fetch = resources.get_mut::<GameResourceManager>().unwrap();
         let resource_manager = &mut *resource_manager_fetch;
 
-        asset_resource.add_storage_with_load_handler::<MeshAsset, _>(Box::new(
-            resource_manager.create_mesh_load_handler(),
+        asset_resource.add_storage_with_load_handler::<MeshAsset, LoadedMesh, _>(Box::new(
+            ResourceLoader { load_handler: Box::new(resource_manager.create_mesh_load_handler()) }
         ));
 
         asset_resource.add_storage::<GltfMaterialAsset>();
@@ -212,6 +272,10 @@ pub fn rendering_destroy(resources: &mut Resources) {
         resources.remove::<DebugDraw3DResource>();
         resources.remove::<GameResourceManager>();
         resources.remove::<RenderRegistry>();
+
+        // Remove the asset resource because we have asset storages that reference resources
+        resources.remove::<AssetResource>();
+
         resources.remove::<ResourceManager>();
     }
 

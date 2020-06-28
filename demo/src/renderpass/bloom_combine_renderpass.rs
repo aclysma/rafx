@@ -44,7 +44,7 @@ impl VkBloomCombineRenderPass {
             &device_context.device(),
             &swapchain.swapchain_image_views,
             &swapchain.swapchain_info,
-            &pipeline_info.renderpass.get_raw(),
+            &pipeline_info.pipeline.get_raw().renderpass.get_raw(),
         )?;
 
         let command_buffers = Self::create_command_buffers(
@@ -184,7 +184,7 @@ impl VkBloomCombineRenderPass {
         Self::update_command_buffer(
             &self.device_context,
             &self.swapchain_info,
-            self.pipeline_info.renderpass.get_raw(),
+            self.pipeline_info.pipeline.get_raw().renderpass.get_raw(),
             self.frame_buffers[present_index],
             self.command_buffers[present_index],
             self.pipeline_info.pipeline.get_raw().pipelines[0],

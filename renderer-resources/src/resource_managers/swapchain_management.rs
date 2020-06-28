@@ -1,6 +1,6 @@
 use fnv::FnvHashMap;
 use renderer_assets::vk_description as dsc;
-use crate::resource_managers::asset_lookup::{LoadedAssetLookupSet, LoadedMaterial};
+use crate::resource_managers::asset_lookup::{LoadedAssetLookupSet, LoadedMaterial, PerSwapchainData};
 use crate::resource_managers::resource_lookup::ResourceLookupSet;
 use renderer_assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::*;
@@ -25,14 +25,16 @@ impl ActiveSwapchainSurfaceInfoSet {
         swapchain_surface_info: &SwapchainSurfaceInfo,
         loaded_material: &mut LoadedMaterial,
     ) -> VkResult<()> {
-        for pass in &mut loaded_material.passes {
+        for pass in &*loaded_material.passes {
             let pipeline = resources.get_or_create_graphics_pipeline(
                 &pass.pipeline_create_data,
                 swapchain_surface_info,
             )?;
 
-            pass.render_passes.push(pipeline.get_raw().renderpass);
-            pass.pipelines.push(pipeline);
+            let mut per_swapchain_data = pass.per_swapchain_data.lock().unwrap();
+            per_swapchain_data.push(PerSwapchainData {
+                pipeline
+            });
         }
 
         Ok(())
@@ -115,16 +117,16 @@ impl ActiveSwapchainSurfaceInfoSet {
         if let Some(remove_index) = remove_index {
             for (_, loaded_asset) in &mut loaded_assets.materials.loaded_assets {
                 if let Some(committed) = &mut loaded_asset.committed {
-                    for pass in &mut committed.passes {
-                        pass.render_passes.swap_remove(remove_index);
-                        pass.pipelines.swap_remove(remove_index);
+                    for pass in &*committed.passes {
+                        let mut per_swapchain_data = pass.per_swapchain_data.lock().unwrap();
+                        per_swapchain_data.swap_remove(remove_index);
                     }
                 }
 
                 if let Some(uncommitted) = &mut loaded_asset.uncommitted {
-                    for pass in &mut uncommitted.passes {
-                        pass.render_passes.swap_remove(remove_index);
-                        pass.pipelines.swap_remove(remove_index);
+                    for pass in &*uncommitted.passes {
+                        let mut per_swapchain_data = pass.per_swapchain_data.lock().unwrap();
+                        per_swapchain_data.swap_remove(remove_index);
                     }
                 }
             }

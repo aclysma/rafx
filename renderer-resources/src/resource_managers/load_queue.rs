@@ -1,5 +1,4 @@
 use atelier_assets::loader::AssetLoadOp;
-use atelier_assets::core::AssetUuid;
 use type_uuid::TypeUuid;
 use crate::ResourceLoadHandler;
 use std::marker::PhantomData;
@@ -11,14 +10,17 @@ use renderer_assets::assets::pipeline::{
 use renderer_assets::assets::image::ImageAsset;
 use atelier_assets::loader::LoadHandle;
 use renderer_assets::assets::buffer::BufferAsset;
+use crate::resource_load_handler::ResourceLoadResult;
+use crate::resource_managers::asset_lookup::{LoadedShaderModule, LoadedGraphicsPipeline, LoadedRenderpass, LoadedMaterial, LoadedMaterialInstance, LoadedImage, LoadedBuffer};
 
 //
 // Message handling for asset load/commit/free events
 //
-pub struct LoadRequest<T> {
+pub struct LoadRequest<AssetT, LoadedT> {
     pub load_handle: LoadHandle,
     pub load_op: AssetLoadOp,
-    pub asset: T,
+    pub result_tx: Sender<LoadedT>,
+    pub asset: AssetT,
 }
 
 pub struct CommitRequest<T> {
@@ -31,13 +33,13 @@ pub struct FreeRequest<T> {
     phantom_data: PhantomData<T>,
 }
 
-pub struct LoadQueuesTx<T> {
-    load_request_tx: Sender<LoadRequest<T>>,
-    commit_request_tx: Sender<CommitRequest<T>>,
-    free_request_tx: Sender<FreeRequest<T>>,
+pub struct LoadQueuesTx<AssetT, LoadedT> {
+    load_request_tx: Sender<LoadRequest<AssetT, LoadedT>>,
+    commit_request_tx: Sender<CommitRequest<AssetT>>,
+    free_request_tx: Sender<FreeRequest<AssetT>>,
 }
 
-impl<T> Clone for LoadQueuesTx<T> {
+impl<AssetT, LoadedT> Clone for LoadQueuesTx<AssetT, LoadedT> {
     fn clone(&self) -> Self {
         LoadQueuesTx {
             load_request_tx: self.load_request_tx.clone(),
@@ -47,43 +49,44 @@ impl<T> Clone for LoadQueuesTx<T> {
     }
 }
 
-pub struct LoadQueuesRx<T> {
-    load_request_rx: Receiver<LoadRequest<T>>,
-    commit_request_rx: Receiver<CommitRequest<T>>,
-    free_request_rx: Receiver<FreeRequest<T>>,
+pub struct LoadQueuesRx<AssetT, LoadedT> {
+    load_request_rx: Receiver<LoadRequest<AssetT, LoadedT>>,
+    commit_request_rx: Receiver<CommitRequest<AssetT>>,
+    free_request_rx: Receiver<FreeRequest<AssetT>>,
 }
 
-pub struct LoadQueues<T> {
-    tx: LoadQueuesTx<T>,
-    rx: LoadQueuesRx<T>,
+pub struct LoadQueues<AssetT, LoadedT> {
+    tx: LoadQueuesTx<AssetT, LoadedT>,
+    rx: LoadQueuesRx<AssetT, LoadedT>,
 }
 
-impl<T> LoadQueues<T> {
-    pub fn take_load_requests(&mut self) -> Vec<LoadRequest<T>> {
+impl<AssetT, LoadedT> LoadQueues<AssetT, LoadedT> {
+    pub fn take_load_requests(&mut self) -> Vec<LoadRequest<AssetT, LoadedT>> {
         self.rx.load_request_rx.try_iter().collect()
     }
 
-    pub fn take_commit_requests(&mut self) -> Vec<CommitRequest<T>> {
+    pub fn take_commit_requests(&mut self) -> Vec<CommitRequest<AssetT>> {
         self.rx.commit_request_rx.try_iter().collect()
     }
 
-    pub fn take_free_requests(&mut self) -> Vec<FreeRequest<T>> {
+    pub fn take_free_requests(&mut self) -> Vec<FreeRequest<AssetT>> {
         self.rx.free_request_rx.try_iter().collect()
     }
 }
 
-impl<T> LoadQueues<T>
+impl<AssetT, LoadedT> LoadQueues<AssetT, LoadedT>
 where
-    T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
+    AssetT: for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
+    LoadedT: TypeUuid + 'static + Send
 {
-    pub fn create_load_handler(&self) -> GenericLoadHandler<T> {
+    pub fn create_load_handler(&self) -> GenericLoadHandler<AssetT, LoadedT> {
         GenericLoadHandler {
             load_queues: self.tx.clone(),
         }
     }
 }
 
-impl<T> Default for LoadQueues<T> {
+impl<AssetT, LoadedT> Default for LoadQueues<AssetT, LoadedT> {
     fn default() -> Self {
         let (load_request_tx, load_request_rx) = crossbeam_channel::unbounded();
         let (commit_request_tx, commit_request_rx) = crossbeam_channel::unbounded();
@@ -108,45 +111,47 @@ impl<T> Default for LoadQueues<T> {
 //
 // A generic load handler that allows routing load/commit/free events
 //
-pub struct GenericLoadHandler<AssetT>
+pub struct GenericLoadHandler<AssetT, LoadedT>
 where
-    AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
+    AssetT: for<'a> serde::Deserialize<'a> + 'static + Send,
+    LoadedT: TypeUuid + 'static + Send
 {
-    load_queues: LoadQueuesTx<AssetT>,
+    load_queues: LoadQueuesTx<AssetT, LoadedT>,
 }
 
-impl<AssetT> ResourceLoadHandler<AssetT> for GenericLoadHandler<AssetT>
+impl<AssetT, LoadedT> ResourceLoadHandler<AssetT, LoadedT> for GenericLoadHandler<AssetT, LoadedT>
 where
-    AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
+    AssetT: for<'a> serde::Deserialize<'a> + 'static + Send,
+    LoadedT: TypeUuid + 'static + Send,
 {
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
-        _asset_uuid: &AssetUuid,
-        _version: u32,
-        asset: &AssetT,
         load_op: AssetLoadOp,
-    ) {
+        asset: AssetT,
+    ) -> ResourceLoadResult<LoadedT> {
         log::trace!(
             "ResourceLoadHandler update_asset {} {:?}",
             core::any::type_name::<AssetT>(),
             load_handle
         );
+
+        let (result_tx, result_rx) = crossbeam_channel::bounded(1);
+
         let request = LoadRequest {
             load_handle,
             load_op,
-            asset: asset.clone(),
+            result_tx,
+            asset,
         };
 
         self.load_queues.load_request_tx.send(request).unwrap();
+        ResourceLoadResult::new(result_rx)
     }
 
     fn commit_asset_version(
         &mut self,
         load_handle: LoadHandle,
-        _asset_uuid: &AssetUuid,
-        _version: u32,
-        _asset: &AssetT,
     ) {
         log::trace!(
             "ResourceLoadHandler commit_asset_version {} {:?}",
@@ -164,7 +169,6 @@ where
     fn free(
         &mut self,
         load_handle: LoadHandle,
-        _version: u32,
     ) {
         log::trace!(
             "ResourceLoadHandler free {} {:?}",
@@ -182,11 +186,11 @@ where
 
 #[derive(Default)]
 pub struct LoadQueueSet {
-    pub shader_modules: LoadQueues<ShaderAsset>,
-    pub graphics_pipelines: LoadQueues<PipelineAsset>,
-    pub renderpasses: LoadQueues<RenderpassAsset>,
-    pub materials: LoadQueues<MaterialAsset>,
-    pub material_instances: LoadQueues<MaterialInstanceAsset>,
-    pub images: LoadQueues<ImageAsset>,
-    pub buffers: LoadQueues<BufferAsset>,
+    pub shader_modules: LoadQueues<ShaderAsset, LoadedShaderModule>,
+    pub graphics_pipelines: LoadQueues<PipelineAsset, LoadedGraphicsPipeline>,
+    pub renderpasses: LoadQueues<RenderpassAsset, LoadedRenderpass>,
+    pub materials: LoadQueues<MaterialAsset, LoadedMaterial>,
+    pub material_instances: LoadQueues<MaterialInstanceAsset, LoadedMaterialInstance>,
+    pub images: LoadQueues<ImageAsset, LoadedImage>,
+    pub buffers: LoadQueues<BufferAsset, LoadedBuffer>,
 }

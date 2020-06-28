@@ -9,13 +9,14 @@ use renderer_shell_vulkan::{VkImageRaw, VkBufferRaw};
 use super::DescriptorSetArc;
 use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::handle::Handle;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use crate::resource_managers::resource_lookup::{
     DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource,
     ImageKey, BufferKey,
 };
 use crate::resource_managers::ResourceArc;
 use super::DescriptorSetWriteSet;
+use type_uuid::*;
 
 //
 // The "loaded" state of assets. Assets may have dependencies. Arcs to those dependencies ensure
@@ -23,20 +24,26 @@ use super::DescriptorSetWriteSet;
 // is functionally identical. So for example if you have two windows with identical swapchain
 // surfaces, they could share the same renderpass/pipeline resources
 //
+#[derive(TypeUuid, Clone)]
+#[uuid = "b6958faa-5769-4048-a507-f91a07f49af4"]
 pub struct LoadedShaderModule {
     pub shader_module: ResourceArc<vk::ShaderModule>,
 }
 
 // The actual GPU resources are held in Material because the pipeline does not specify everything
 // needed to create the pipeline
+#[derive(TypeUuid, Clone)]
+#[uuid = "7a6a7ba8-a3ca-41eb-94f4-5d3723cd8b44"]
 pub struct LoadedGraphicsPipeline {
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    pub pipeline_asset: PipelineAsset,
+    pub pipeline_asset: Arc<PipelineAsset>,
 }
 
+#[derive(TypeUuid, Clone)]
+#[uuid = "bfefdc09-1ba6-422a-9514-b59b5b913128"]
 pub struct LoadedRenderpass {
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    pub renderpass_asset: RenderpassAsset,
+    pub renderpass_asset: Arc<RenderpassAsset>,
 }
 
 pub struct SlotLocation {
@@ -47,14 +54,19 @@ pub struct SlotLocation {
 
 pub type SlotNameLookup = FnvHashMap<String, Vec<SlotLocation>>;
 
+pub struct PerSwapchainData {
+    pub pipeline: ResourceArc<PipelineResource>,
+}
+
+#[derive(TypeUuid)]
+#[uuid = "ec6b716d-64cb-452b-b973-1a6dcef58d2a"]
 pub struct LoadedMaterialPass {
     pub shader_modules: Vec<ResourceArc<vk::ShaderModule>>,
     pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
     pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
 
     // Potentially one of these per swapchain surface
-    pub render_passes: Vec<ResourceArc<vk::RenderPass>>,
-    pub pipelines: Vec<ResourceArc<PipelineResource>>,
+    pub per_swapchain_data: Mutex<Vec<PerSwapchainData>>,
 
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
     pub pipeline_create_data: PipelineCreateData,
@@ -67,27 +79,37 @@ pub struct LoadedMaterialPass {
     pub pass_slot_name_lookup: Arc<SlotNameLookup>,
 }
 
+#[derive(TypeUuid, Clone)]
+#[uuid = "165673cd-d81d-4708-b9a4-d7e1a2a67976"]
 pub struct LoadedMaterial {
-    pub passes: Vec<LoadedMaterialPass>,
+    pub passes: Arc<Vec<LoadedMaterialPass>>,
 }
 
-pub struct LoadedMaterialInstance {
+pub struct LoadedMaterialInstanceInner {
     pub material: Handle<MaterialAsset>,
-    pub material_descriptor_sets: Vec<Vec<DescriptorSetArc>>,
+
+    // Arc these individually because some downstream systems care only about the descriptor sets
+    pub material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
     pub slot_assignments: Vec<MaterialInstanceSlotAssignment>,
     pub descriptor_set_writes: Vec<Vec<DescriptorSetWriteSet>>,
 }
 
+#[derive(TypeUuid, Clone)]
+#[uuid = "c60f6a3d-3e8d-4eea-8576-0971cd71b60f"]
+pub struct LoadedMaterialInstance {
+    pub inner: Arc<LoadedMaterialInstanceInner>
+}
+
+#[derive(TypeUuid, Clone)]
+#[uuid = "7a67b850-17f9-4877-8a6e-293a1589bbd8"]
 pub struct LoadedImage {
-    //image_load_handle: LoadHandle,
-    //image_view_meta: dsc::ImageViewMeta,
     pub image_key: ImageKey,
     pub image: ResourceArc<VkImageRaw>,
     pub image_view: ResourceArc<ImageViewResource>,
-    // One per swapchain
-    //image_views: Vec<ResourceArc<ImageViewResource>>
 }
 
+#[derive(TypeUuid, Clone)]
+#[uuid = "fc3b1eb8-c986-449e-a165-6a8f4582e6c5"]
 pub struct LoadedBuffer {
     pub buffer_key: BufferKey,
     pub buffer: ResourceArc<VkBufferRaw>,
@@ -96,12 +118,12 @@ pub struct LoadedBuffer {
 //
 // Represents a single asset which may simultaneously have committed and uncommitted loaded state
 //
-pub struct LoadedAssetState<LoadedAssetT> {
-    pub committed: Option<LoadedAssetT>,
-    pub uncommitted: Option<LoadedAssetT>,
+pub struct LoadedAssetState<LoadedT> {
+    pub committed: Option<LoadedT>,
+    pub uncommitted: Option<LoadedT>,
 }
 
-impl<LoadedAssetT> Default for LoadedAssetState<LoadedAssetT> {
+impl<LoadedT> Default for LoadedAssetState<LoadedT> {
     fn default() -> Self {
         LoadedAssetState {
             committed: None,
@@ -110,16 +132,16 @@ impl<LoadedAssetT> Default for LoadedAssetState<LoadedAssetT> {
     }
 }
 
-pub struct AssetLookup<LoadedAssetT> {
+pub struct AssetLookup<LoadedT> {
     //TODO: Slab these for faster lookup?
-    pub loaded_assets: FnvHashMap<LoadHandle, LoadedAssetState<LoadedAssetT>>,
+    pub loaded_assets: FnvHashMap<LoadHandle, LoadedAssetState<LoadedT>>,
 }
 
-impl<LoadedAssetT> AssetLookup<LoadedAssetT> {
+impl<LoadedT> AssetLookup<LoadedT> {
     pub fn set_uncommitted(
         &mut self,
         load_handle: LoadHandle,
-        loaded_asset: LoadedAssetT,
+        loaded_asset: LoadedT,
     ) {
         self.loaded_assets
             .entry(load_handle)
@@ -146,7 +168,7 @@ impl<LoadedAssetT> AssetLookup<LoadedAssetT> {
     pub fn get_latest(
         &self,
         load_handle: LoadHandle,
-    ) -> Option<&LoadedAssetT> {
+    ) -> Option<&LoadedT> {
         if let Some(loaded_assets) = self.loaded_assets.get(&load_handle) {
             if let Some(uncommitted) = &loaded_assets.uncommitted {
                 Some(uncommitted)
@@ -165,7 +187,7 @@ impl<LoadedAssetT> AssetLookup<LoadedAssetT> {
     pub fn get_committed(
         &self,
         load_handle: LoadHandle,
-    ) -> Option<&LoadedAssetT> {
+    ) -> Option<&LoadedT> {
         if let Some(loaded_assets) = self.loaded_assets.get(&load_handle) {
             if let Some(committed) = &loaded_assets.committed {
                 Some(committed)
@@ -186,7 +208,7 @@ impl<LoadedAssetT> AssetLookup<LoadedAssetT> {
     }
 }
 
-impl<LoadedAssetT> Default for AssetLookup<LoadedAssetT> {
+impl<LoadedT> Default for AssetLookup<LoadedT> {
     fn default() -> Self {
         AssetLookup {
             loaded_assets: Default::default(),

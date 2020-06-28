@@ -160,7 +160,7 @@ impl DescriptorSetAllocator {
         material: &LoadedMaterial,
     ) -> VkResult<DynMaterialInstance> {
         let mut passes = Vec::with_capacity(material.passes.len());
-        for pass in &material.passes {
+        for pass in &*material.passes {
             let dyn_pass_material_instance =
                 self.create_dyn_pass_material_instance_uninitialized(pass)?;
             passes.push(dyn_pass_material_instance);
@@ -178,7 +178,7 @@ impl DescriptorSetAllocator {
         for (pass, write_sets) in material
             .passes
             .iter()
-            .zip(material_instance.descriptor_set_writes.clone())
+            .zip(material_instance.inner.descriptor_set_writes.clone())
         {
             let dyn_pass_material_instance =
                 self.create_dyn_pass_material_instance_from_asset(pass, write_sets)?;

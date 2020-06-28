@@ -5,13 +5,12 @@ use std::sync::Arc;
 use type_uuid::TypeUuid;
 
 use atelier_assets::loader as atelier_loader;
-use crate::asset_storage::GenericAssetStorage;
-use renderer::resources::ResourceLoadHandler;
+use crate::asset_storage::{AssetStorageSet, DynAssetLoader};
 
 // A legion-friendly container for assets storages
 pub struct AssetResource {
     loader: RpcLoader,
-    storage: GenericAssetStorage,
+    storage: AssetStorageSet,
     tx: Arc<atelier_loader::crossbeam_channel::Sender<RefOp>>,
     rx: atelier_loader::crossbeam_channel::Receiver<RefOp>,
 }
@@ -20,7 +19,7 @@ impl Default for AssetResource {
     fn default() -> Self {
         let (tx, rx) = atelier_loader::crossbeam_channel::unbounded();
         let tx = Arc::new(tx);
-        let storage = GenericAssetStorage::new(tx.clone());
+        let storage = AssetStorageSet::new(tx.clone());
 
         let loader = RpcLoader::default();
 
@@ -34,22 +33,23 @@ impl Default for AssetResource {
 }
 
 impl AssetResource {
-    pub fn add_storage<T>(&mut self)
+    pub fn add_storage<AssetT>(&mut self)
     where
-        T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
+        AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
     {
-        self.storage.add_storage::<T>();
+        self.storage.add_storage::<AssetT>();
     }
 
-    pub fn add_storage_with_load_handler<T, U>(
+    pub fn add_storage_with_load_handler<AssetT, LoadedT, LoaderT>(
         &mut self,
-        load_handler: Box<U>,
+        loader: Box<LoaderT>,
     ) where
-        T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
-        U: ResourceLoadHandler<T>,
+        AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static,
+        LoadedT: TypeUuid + 'static + Send,
+        LoaderT: DynAssetLoader<LoadedT> + 'static,
     {
         self.storage
-            .add_storage_with_load_handler::<T, U>(load_handler);
+            .add_storage_with_load_handler::<AssetT, LoadedT, LoaderT>(loader);
     }
 
     pub fn update(&mut self) {
@@ -63,7 +63,7 @@ impl AssetResource {
         &self.loader
     }
 
-    pub fn storage(&self) -> &GenericAssetStorage {
+    pub fn storage(&self) -> &AssetStorageSet {
         &self.storage
     }
 
