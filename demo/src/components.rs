@@ -1,7 +1,6 @@
 use crate::features::mesh::MeshRenderNodeHandle;
 use renderer::visibility::DynamicAabbVisibilityNodeHandle;
 use atelier_assets::loader::handle::Handle;
-use crate::assets::gltf::MeshAssetData;
 use glam::f32::Vec3;
 use crate::features::sprite::SpriteRenderNodeHandle;
 use renderer::assets::ImageAsset;

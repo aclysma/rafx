@@ -32,9 +32,7 @@ impl ActiveSwapchainSurfaceInfoSet {
             )?;
 
             let mut per_swapchain_data = pass.per_swapchain_data.lock().unwrap();
-            per_swapchain_data.push(PerSwapchainData {
-                pipeline
-            });
+            per_swapchain_data.push(PerSwapchainData { pipeline });
         }
 
         Ok(())

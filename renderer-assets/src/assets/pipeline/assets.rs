@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::{vk_description as dsc, RenderpassAsset, ImageAsset, MaterialAsset, ShaderAsset, PipelineAsset};
+use crate::{
+    vk_description as dsc, RenderpassAsset, ImageAsset, MaterialAsset, ShaderAsset, PipelineAsset,
+};
 use atelier_assets::loader::handle::Handle;
-use crate::assets::shader::ShaderAssetData;
-use crate::assets::image::ImageAssetData;
 use std::hash::Hash;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]

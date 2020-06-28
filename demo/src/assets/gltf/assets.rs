@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
-use renderer::assets::assets::buffer::BufferAssetData;
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::assets::image::ImageAssetData;
-use renderer::assets::assets::pipeline::MaterialInstanceAssetData;
 use renderer::assets::ImageAsset;
 use renderer::assets::MaterialInstanceAsset;
 use renderer::assets::BufferAsset;

@@ -7,8 +7,6 @@ use crate::components::{
     PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
     DirectionalLightComponent,
 };
-use crate::assets::gltf::MeshAssetData;
-use renderer::assets::assets::image::ImageAssetData;
 use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;

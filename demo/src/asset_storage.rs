@@ -61,15 +61,15 @@ impl AssetStorageSet {
         T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
     {
         let mut inner = self.inner.lock().unwrap();
-        inner.asset_data_type_id_mapping.insert(AssetTypeId(T::UUID), AssetTypeId(T::UUID));
+        inner
+            .asset_data_type_id_mapping
+            .insert(AssetTypeId(T::UUID), AssetTypeId(T::UUID));
         inner.storage.insert(
             AssetTypeId(T::UUID),
-            Box::new(
-                Storage::<T>::new(
-                    self.refop_sender.clone(),
-                    Box::new(DefaultAssetLoader::default())
-                )
-            ),
+            Box::new(Storage::<T>::new(
+                self.refop_sender.clone(),
+                Box::new(DefaultAssetLoader::default()),
+            )),
         );
     }
 
@@ -82,13 +82,12 @@ impl AssetStorageSet {
         LoaderT: DynAssetLoader<AssetT> + 'static,
     {
         let mut inner = self.inner.lock().unwrap();
-        inner.asset_data_type_id_mapping.insert(AssetTypeId(AssetDataT::UUID), AssetTypeId(AssetT::UUID));
+        inner
+            .asset_data_type_id_mapping
+            .insert(AssetTypeId(AssetDataT::UUID), AssetTypeId(AssetT::UUID));
         inner.storage.insert(
             AssetTypeId(AssetT::UUID),
-            Box::new(Storage::<AssetT>::new(
-                self.refop_sender.clone(),
-                loader,
-            )),
+            Box::new(Storage::<AssetT>::new(self.refop_sender.clone(), loader)),
         );
     }
 }
@@ -105,15 +104,15 @@ impl AssetStorage for AssetStorageSet {
         load_op: AssetLoadOp,
         version: u32,
     ) -> Result<(), Box<dyn Error>> {
-        let mut inner = self.inner
-            .lock()
-            .unwrap();
+        let mut inner = self.inner.lock().unwrap();
 
-        let asset_type_id = *inner.asset_data_type_id_mapping
+        let asset_type_id = *inner
+            .asset_data_type_id_mapping
             .get(asset_data_type_id)
             .expect("unknown asset data type");
 
-        inner.storage
+        inner
+            .storage
             .get_mut(&asset_type_id)
             .expect("unknown asset type")
             .update_asset(loader_info, data, load_handle, load_op, version)
@@ -125,15 +124,15 @@ impl AssetStorage for AssetStorageSet {
         load_handle: LoadHandle,
         version: u32,
     ) {
-        let mut inner = self.inner
-            .lock()
-            .unwrap();
+        let mut inner = self.inner.lock().unwrap();
 
-        let asset_type_id = *inner.asset_data_type_id_mapping
+        let asset_type_id = *inner
+            .asset_data_type_id_mapping
             .get(asset_data_type_id)
             .expect("unknown asset data type");
 
-        inner.storage
+        inner
+            .storage
             .get_mut(&asset_type_id)
             .expect("unknown asset type")
             .commit_asset_version(load_handle, version)
@@ -144,15 +143,15 @@ impl AssetStorage for AssetStorageSet {
         asset_data_type_id: &AssetTypeId,
         load_handle: LoadHandle,
     ) {
-        let mut inner = self.inner
-            .lock()
-            .unwrap();
+        let mut inner = self.inner.lock().unwrap();
 
-        let asset_type_id = *inner.asset_data_type_id_mapping
+        let asset_type_id = *inner
+            .asset_data_type_id_mapping
             .get(asset_data_type_id)
             .expect("unknown asset data type");
 
-        inner.storage
+        inner
+            .storage
             .get_mut(&asset_type_id)
             .expect("unknown asset type")
             .free(load_handle)
@@ -223,18 +222,18 @@ impl<A: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send> TypedAssetSt
 
 // Loaders can return immediately by value, or later by returning a channel
 pub enum UpdateAssetResult<AssetT>
-    where
-        AssetT: Send
+where
+    AssetT: Send,
 {
     Result(AssetT),
-    AsyncResult(Receiver<AssetT>)
+    AsyncResult(Receiver<AssetT>),
 }
 
 // Implements loading logic (i.e. turning bytes into an asset. The asset may contain runtime-only
 // data and may be created asynchronously
-pub trait DynAssetLoader<AssetT> : Send
+pub trait DynAssetLoader<AssetT>: Send
 where
-    AssetT: TypeUuid + 'static + Send
+    AssetT: TypeUuid + 'static + Send,
 {
     fn update_asset(
         &mut self,
@@ -260,26 +259,26 @@ where
 
 // A simple loader that just deserializes data
 struct DefaultAssetLoader<AssetDataT>
-    where
-        AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
+where
+    AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
 {
-    phantom_data: PhantomData<AssetDataT>
+    phantom_data: PhantomData<AssetDataT>,
 }
 
 impl<AssetDataT> Default for DefaultAssetLoader<AssetDataT>
-    where
-        AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
+where
+    AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
 {
     fn default() -> Self {
         DefaultAssetLoader {
-            phantom_data: Default::default()
+            phantom_data: Default::default(),
         }
     }
 }
 
 impl<AssetDataT> DynAssetLoader<AssetDataT> for DefaultAssetLoader<AssetDataT>
-    where
-        AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
+where
+    AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
 {
     fn update_asset(
         &mut self,
@@ -288,14 +287,11 @@ impl<AssetDataT> DynAssetLoader<AssetDataT> for DefaultAssetLoader<AssetDataT>
         data: &[u8],
         _load_handle: LoadHandle,
         load_op: AssetLoadOp,
-        _version: u32
+        _version: u32,
     ) -> Result<UpdateAssetResult<AssetDataT>, Box<dyn Error>> {
-
-        let asset = SerdeContext::with_sync(
-            loader_info,
-            refop_sender.clone(),
-            || bincode::deserialize::<AssetDataT>(data),
-        )?;
+        let asset = SerdeContext::with_sync(loader_info, refop_sender.clone(), || {
+            bincode::deserialize::<AssetDataT>(data)
+        })?;
 
         load_op.complete();
         Ok(UpdateAssetResult::Result(asset))
@@ -304,26 +300,22 @@ impl<AssetDataT> DynAssetLoader<AssetDataT> for DefaultAssetLoader<AssetDataT>
     fn commit_asset_version(
         &mut self,
         _handle: LoadHandle,
-        _version: u32
+        _version: u32,
     ) {
-
     }
 
     fn free(
         &mut self,
-        _handle: LoadHandle
+        _handle: LoadHandle,
     ) {
-
     }
 }
 
-
-struct UncommittedAssetState<A : Send> {
+struct UncommittedAssetState<A: Send> {
     version: u32,
     asset_uuid: AssetUuid,
     result: UpdateAssetResult<A>,
 }
-
 
 struct AssetState<A> {
     version: u32,
@@ -390,7 +382,14 @@ impl<AssetT: TypeUuid + 'static + Send> DynAssetStorage for Storage<AssetT> {
             version
         );
 
-        let result = self.loader.update_asset(&self.refop_sender, loader_info, data, load_handle, load_op, version)?;
+        let result = self.loader.update_asset(
+            &self.refop_sender,
+            loader_info,
+            data,
+            load_handle,
+            load_op,
+            version,
+        )?;
         let asset_uuid = loader_info.get_asset_id(load_handle).unwrap();
 
         // Add to list of uncommitted assets
@@ -429,20 +428,18 @@ impl<AssetT: TypeUuid + 'static + Send> DynAssetStorage for Storage<AssetT> {
         let version = uncommitted_asset_state.version;
         let asset = match uncommitted_asset_state.result {
             UpdateAssetResult::Result(asset) => asset,
-            UpdateAssetResult::AsyncResult(rx) => rx.recv_timeout(std::time::Duration::from_secs(0))
+            UpdateAssetResult::AsyncResult(rx) => rx
+                .recv_timeout(std::time::Duration::from_secs(0))
                 .expect("LoadOp committed but result not sent via channel"),
         };
 
         // If a load handler exists, trigger the commit_asset_version callback
-        self.loader.commit_asset_version(
-            load_handle,
-            version,
-        );
+        self.loader.commit_asset_version(load_handle, version);
 
         let asset_state = AssetState {
             asset,
             asset_uuid,
-            version
+            version,
         };
 
         // Commit the result

@@ -13,7 +13,6 @@ use renderer::nodes::{
 use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
 use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
-use renderer::assets::assets::pipeline::MaterialAssetData;
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::resource_managers::DescriptorSetArc;
 use legion::prelude::*;

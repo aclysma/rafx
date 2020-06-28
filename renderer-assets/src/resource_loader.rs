@@ -3,20 +3,18 @@ use atelier_assets::loader::{AssetLoadOp, LoadHandle};
 use crossbeam_channel::Receiver;
 
 pub struct ResourceLoadResult<T>
-    where
-        T: 'static + Send,
+where
+    T: 'static + Send,
 {
-    pub result_rx: Receiver<T>
+    pub result_rx: Receiver<T>,
 }
 
 impl<T> ResourceLoadResult<T>
-    where
-        T: 'static + Send,
+where
+    T: 'static + Send,
 {
     pub fn new(result_rx: Receiver<T>) -> Self {
-        ResourceLoadResult {
-            result_rx
-        }
+        ResourceLoadResult { result_rx }
     }
 }
 

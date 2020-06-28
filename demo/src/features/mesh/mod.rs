@@ -20,7 +20,6 @@ use renderer::vulkan::VkBufferRaw;
 use renderer::assets::resource_managers::{
     PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc,
 };
-use renderer::assets::assets::pipeline::MaterialAssetData;
 use renderer::assets::MaterialAsset;
 
 // Represents the data uploaded to the GPU to represent a single point light

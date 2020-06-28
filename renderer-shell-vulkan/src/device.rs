@@ -71,7 +71,7 @@ pub struct VkDeviceContext {
 impl Clone for VkDeviceContext {
     fn clone(&self) -> Self {
         #[cfg(debug_assertions)]
-        let create_index ={
+        let create_index = {
             let create_index = self
                 .inner
                 .as_ref()

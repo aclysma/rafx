@@ -49,7 +49,11 @@ impl<ResourceT, AssetT> UploadOp<ResourceT, AssetT> {
             .sender
             .as_ref()
             .unwrap()
-            .send(UploadOpResult::UploadComplete(load_op, self.asset_sender.take().unwrap(), image));
+            .send(UploadOpResult::UploadComplete(
+                load_op,
+                self.asset_sender.take().unwrap(),
+                image,
+            ));
         self.sender = None;
     }
 
@@ -499,7 +503,11 @@ impl UploadManager {
             .pending_image_tx()
             .send(PendingImageUpload {
                 load_op: request.load_op,
-                upload_op: UploadOp::new(request.load_handle, request.result_tx, self.image_upload_result_tx.clone()),
+                upload_op: UploadOp::new(
+                    request.load_handle,
+                    request.result_tx,
+                    self.image_upload_result_tx.clone(),
+                ),
                 texture: decoded_texture,
             })
             .map_err(|_err| {
@@ -516,7 +524,11 @@ impl UploadManager {
             .pending_buffer_tx()
             .send(PendingBufferUpload {
                 load_op: request.load_op,
-                upload_op: UploadOp::new(request.load_handle, request.result_tx, self.buffer_upload_result_tx.clone()),
+                upload_op: UploadOp::new(
+                    request.load_handle,
+                    request.result_tx,
+                    self.buffer_upload_result_tx.clone(),
+                ),
                 data: request.asset.data,
             })
             .map_err(|_err| {

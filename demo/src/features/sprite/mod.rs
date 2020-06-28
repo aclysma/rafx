@@ -21,7 +21,6 @@ use renderer::vulkan::VkDeviceContext;
 use renderer::assets::resource_managers::{
     PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef,
 };
-use renderer::assets::assets::pipeline::MaterialAssetData;
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]

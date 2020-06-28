@@ -5,7 +5,6 @@ use crate::features::debug3d::extract::Debug3dExtractJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::assets::DescriptorSetAllocatorRef;
 use renderer::assets::PipelineSwapchainInfo;
-use renderer::assets::MaterialAssetData;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;

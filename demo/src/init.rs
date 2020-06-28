@@ -17,8 +17,14 @@ use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::game_asset_lookup::MeshAsset;
-use renderer::assets::{ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset, BufferAsset};
-use renderer::assets::{ShaderAssetData, PipelineAssetData, RenderpassAssetData, MaterialAssetData, MaterialInstanceAssetData, ImageAssetData, BufferAssetData};
+use renderer::assets::{
+    ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
+    BufferAsset,
+};
+use renderer::assets::{
+    ShaderAssetData, PipelineAssetData, RenderpassAssetData, MaterialAssetData,
+    MaterialInstanceAssetData, ImageAssetData, BufferAssetData,
+};
 use crate::asset_loader::ResourceAssetLoader;
 
 pub fn logging_init() {
@@ -138,27 +144,28 @@ pub fn rendering_init(
         let loaders = resource_manager.create_loaders();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
 
-        asset_resource.add_storage_with_loader::<ShaderAssetData, ShaderAsset, _>(
-            Box::new(ResourceAssetLoader(loaders.shader_loader)),
-        );
-        asset_resource.add_storage_with_loader::<PipelineAssetData, PipelineAsset, _>(
-            Box::new(ResourceAssetLoader(loaders.pipeline_loader)),
-        );
+        asset_resource.add_storage_with_loader::<ShaderAssetData, ShaderAsset, _>(Box::new(
+            ResourceAssetLoader(loaders.shader_loader),
+        ));
+        asset_resource.add_storage_with_loader::<PipelineAssetData, PipelineAsset, _>(Box::new(
+            ResourceAssetLoader(loaders.pipeline_loader),
+        ));
         asset_resource.add_storage_with_loader::<RenderpassAssetData, RenderpassAsset, _>(
             Box::new(ResourceAssetLoader(loaders.renderpass_loader)),
         );
-        asset_resource.add_storage_with_loader::<MaterialAssetData, MaterialAsset, _>(
-            Box::new(ResourceAssetLoader(loaders.material_loader)),
-        );
-        asset_resource.add_storage_with_loader::<MaterialInstanceAssetData, MaterialInstanceAsset, _>(
-            Box::new(ResourceAssetLoader(loaders.material_instance_loader)),
-        );
-        asset_resource.add_storage_with_loader::<ImageAssetData, ImageAsset, _>(
-            Box::new(ResourceAssetLoader(loaders.image_loader)),
-        );
-        asset_resource.add_storage_with_loader::<BufferAssetData, BufferAsset, _>(
-            Box::new(ResourceAssetLoader(loaders.buffer_loader)),
-        );
+        asset_resource.add_storage_with_loader::<MaterialAssetData, MaterialAsset, _>(Box::new(
+            ResourceAssetLoader(loaders.material_loader),
+        ));
+        asset_resource
+            .add_storage_with_loader::<MaterialInstanceAssetData, MaterialInstanceAsset, _>(
+                Box::new(ResourceAssetLoader(loaders.material_instance_loader)),
+            );
+        asset_resource.add_storage_with_loader::<ImageAssetData, ImageAsset, _>(Box::new(
+            ResourceAssetLoader(loaders.image_loader),
+        ));
+        asset_resource.add_storage_with_loader::<BufferAssetData, BufferAsset, _>(Box::new(
+            ResourceAssetLoader(loaders.buffer_loader),
+        ));
     }
 
     resources.insert(vk_context);
@@ -178,9 +185,9 @@ pub fn rendering_init(
         let mut resource_manager_fetch = resources.get_mut::<GameResourceManager>().unwrap();
         let resource_manager = &mut *resource_manager_fetch;
 
-        asset_resource.add_storage_with_loader::<MeshAssetData, MeshAsset, _>(
-            Box::new(ResourceAssetLoader(resource_manager.create_mesh_loader()))
-        );
+        asset_resource.add_storage_with_loader::<MeshAssetData, MeshAsset, _>(Box::new(
+            ResourceAssetLoader(resource_manager.create_mesh_loader()),
+        ));
 
         asset_resource.add_storage::<GltfMaterialAsset>();
     }

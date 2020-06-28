@@ -8,9 +8,7 @@ use ash::prelude::VkResult;
 use crate::resource_managers::{
     DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc,
 };
-use crate::resource_managers::asset_lookup::{
-    LoadedMaterialPass, MaterialInstanceAsset, MaterialAsset,
-};
+use crate::resource_managers::asset_lookup::{LoadedMaterialPass, MaterialInstanceAsset, MaterialAsset};
 
 #[derive(Debug)]
 pub struct DescriptorSetPoolMetrics {

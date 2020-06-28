@@ -11,7 +11,10 @@ use crate::assets::image::ImageAssetData;
 use atelier_assets::loader::LoadHandle;
 use crate::assets::buffer::BufferAssetData;
 use crate::resource_loader::ResourceLoadResult;
-use crate::resource_managers::asset_lookup::{ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset, BufferAsset};
+use crate::resource_managers::asset_lookup::{
+    ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
+    BufferAsset,
+};
 
 //
 // Message handling for asset load/commit/free events
@@ -77,7 +80,7 @@ impl<AssetDataT, AssetT> LoadQueues<AssetDataT, AssetT> {
 impl<AssetDataT, AssetT> LoadQueues<AssetDataT, AssetT>
 where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
-    AssetT: TypeUuid + 'static + Send
+    AssetT: TypeUuid + 'static + Send,
 {
     pub fn create_loader(&self) -> GenericLoader<AssetDataT, AssetT> {
         GenericLoader {
@@ -114,7 +117,7 @@ impl<AssetDataT, AssetT> Default for LoadQueues<AssetDataT, AssetT> {
 pub struct GenericLoader<AssetDataT, AssetT>
 where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static + Send,
-    AssetT: TypeUuid + 'static + Send
+    AssetT: TypeUuid + 'static + Send,
 {
     load_queues: LoadQueuesTx<AssetDataT, AssetT>,
 }

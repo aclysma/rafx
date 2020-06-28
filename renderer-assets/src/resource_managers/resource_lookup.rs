@@ -407,10 +407,7 @@ impl ResourceLookupSet {
                 "Creating shader module\n[bytes: {}]",
                 shader_module.code.len()
             );
-            let resource = dsc::create_shader_module(
-                self.device_context.device(),
-                shader_module,
-            )?;
+            let resource = dsc::create_shader_module(self.device_context.device(), shader_module)?;
             log::trace!("Created shader module {:?}", resource);
             let shader_module = self.shader_modules.insert(hash, shader_module, resource);
             Ok(shader_module)
@@ -427,10 +424,7 @@ impl ResourceLookupSet {
         } else {
             log::trace!("Creating sampler\n{:#?}", sampler);
 
-            let resource = dsc::create_sampler(
-                self.device_context.device(),
-                sampler,
-            )?;
+            let resource = dsc::create_sampler(self.device_context.device(), sampler)?;
 
             log::trace!("Created sampler {:?}", resource);
             let sampler = self.samplers.insert(hash, sampler, resource);

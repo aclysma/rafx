@@ -2,7 +2,9 @@ use renderer::assets::resource_managers::{
     DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoader, ResourceManager,
 };
 use renderer::vulkan::VkBufferRaw;
-use crate::game_asset_lookup::{GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner};
+use crate::game_asset_lookup::{
+    GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner,
+};
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::handle::AssetHandle;
 use ash::prelude::VkResult;
@@ -103,7 +105,7 @@ impl GameResourceManager {
                 request.load_op,
                 loaded_asset,
                 &mut self.loaded_assets.meshes,
-                request.result_tx
+                request.result_tx,
             );
         }
 
@@ -115,7 +117,7 @@ impl GameResourceManager {
         load_op: AssetLoadOp,
         loaded_asset: VkResult<AssetT>,
         asset_lookup: &mut AssetLookup<AssetT>,
-        result_tx: Sender<AssetT>
+        result_tx: Sender<AssetT>,
     ) {
         match loaded_asset {
             Ok(loaded_asset) => {
@@ -193,7 +195,7 @@ impl GameResourceManager {
         };
 
         Ok(MeshAsset {
-            inner: Arc::new(inner)
+            inner: Arc::new(inner),
         })
     }
 }

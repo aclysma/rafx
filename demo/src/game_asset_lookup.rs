@@ -19,7 +19,7 @@ pub struct MeshAssetInner {
 #[derive(TypeUuid, Clone)]
 #[uuid = "689a0bf0-e320-41c0-b4e8-bdb2055a7a57"]
 pub struct MeshAsset {
-    pub inner: Arc<MeshAssetInner>
+    pub inner: Arc<MeshAssetInner>,
 }
 
 #[derive(Debug)]

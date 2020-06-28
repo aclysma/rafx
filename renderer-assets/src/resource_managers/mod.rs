@@ -4,7 +4,8 @@ use ash::vk;
 use crate::assets::image::ImageAssetData;
 use crate::assets::shader::ShaderAssetData;
 use crate::assets::pipeline::{
-    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, MaterialPass, RenderpassAssetData,
+    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, MaterialPass,
+    RenderpassAssetData,
 };
 use crate::vk_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
@@ -269,7 +270,10 @@ impl ResourceManager {
             .index;
 
         let pipeline = {
-            let per_swapchain_data = resource.passes[pass_index].per_swapchain_data.lock().unwrap();
+            let per_swapchain_data = resource.passes[pass_index]
+                .per_swapchain_data
+                .lock()
+                .unwrap();
             per_swapchain_data[swapchain_index].pipeline.clone()
         };
 
@@ -369,7 +373,7 @@ impl ResourceManager {
                 request.load_op,
                 loaded_asset,
                 &mut self.loaded_assets.shader_modules,
-                request.result_tx
+                request.result_tx,
             );
         }
 
@@ -391,7 +395,7 @@ impl ResourceManager {
                 request.load_op,
                 loaded_asset,
                 &mut self.loaded_assets.graphics_pipelines,
-                request.result_tx
+                request.result_tx,
             );
         }
 
@@ -413,7 +417,7 @@ impl ResourceManager {
                 request.load_op,
                 loaded_asset,
                 &mut self.loaded_assets.renderpasses,
-                request.result_tx
+                request.result_tx,
             );
         }
 
@@ -435,7 +439,7 @@ impl ResourceManager {
                 request.load_op,
                 loaded_asset,
                 &mut self.loaded_assets.materials,
-                request.result_tx
+                request.result_tx,
             );
         }
 
@@ -457,7 +461,7 @@ impl ResourceManager {
                 request.load_op,
                 loaded_asset,
                 &mut self.loaded_assets.material_instances,
-                request.result_tx
+                request.result_tx,
             );
         }
 
@@ -488,7 +492,12 @@ impl ResourceManager {
                 ImageUploadOpResult::UploadComplete(load_op, result_tx, image) => {
                     log::trace!("Uploading image {:?} complete", load_op.load_handle());
                     let loaded_asset = self.finish_load_image(image);
-                    Self::handle_load_result(load_op, loaded_asset, &mut self.loaded_assets.images, result_tx);
+                    Self::handle_load_result(
+                        load_op,
+                        loaded_asset,
+                        &mut self.loaded_assets.images,
+                        result_tx,
+                    );
                 }
                 ImageUploadOpResult::UploadError(load_handle) => {
                     log::trace!("Uploading image {:?} failed", load_handle);
@@ -527,7 +536,7 @@ impl ResourceManager {
                         load_op,
                         loaded_asset,
                         &mut self.loaded_assets.buffers,
-                        result_tx
+                        result_tx,
                     );
                 }
                 BufferUploadOpResult::UploadError(load_handle) => {
@@ -557,7 +566,7 @@ impl ResourceManager {
         load_op: AssetLoadOp,
         loaded_asset: VkResult<AssetT>,
         asset_lookup: &mut AssetLookup<AssetT>,
-        result_tx: Sender<AssetT>
+        result_tx: Sender<AssetT>,
     ) {
         match loaded_asset {
             Ok(loaded_asset) => {
@@ -722,9 +731,7 @@ impl ResourceManager {
                     &swapchain_surface_info,
                 )?;
 
-                per_swapchain_data.push(PerSwapchainData {
-                    pipeline,
-                });
+                per_swapchain_data.push(PerSwapchainData { pipeline });
             }
 
             // Create a lookup of the slot names
@@ -760,7 +767,9 @@ impl ResourceManager {
             })
         }
 
-        Ok(MaterialAsset { passes: Arc::new(passes) })
+        Ok(MaterialAsset {
+            passes: Arc::new(passes),
+        })
     }
 
     fn load_material_instance(
@@ -833,7 +842,7 @@ impl ResourceManager {
             descriptor_set_writes: material_instance_descriptor_set_writes,
         };
         Ok(MaterialInstanceAsset {
-            inner: Arc::new(inner)
+            inner: Arc::new(inner),
         })
     }
 

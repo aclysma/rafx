@@ -1,6 +1,5 @@
 use crate::asset_resource::AssetResource;
 use renderer::assets::resource_managers::ResourceManager;
-use renderer::assets::assets::pipeline::MaterialAssetData;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core::AssetUuid;

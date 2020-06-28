@@ -1,6 +1,6 @@
 use ash::vk;
 use crate::assets::pipeline::{
-    PipelineAssetData, MaterialPassShaderInterface, MaterialAssetData, MaterialInstanceSlotAssignment,
+    PipelineAssetData, MaterialPassShaderInterface, MaterialInstanceSlotAssignment,
     RenderpassAssetData,
 };
 use super::PipelineCreateData;
@@ -97,7 +97,7 @@ pub struct MaterialInstanceAssetInner {
 #[derive(TypeUuid, Clone)]
 #[uuid = "c60f6a3d-3e8d-4eea-8576-0971cd71b60f"]
 pub struct MaterialInstanceAsset {
-    pub inner: Arc<MaterialInstanceAssetInner>
+    pub inner: Arc<MaterialInstanceAssetInner>,
 }
 
 #[derive(TypeUuid, Clone)]

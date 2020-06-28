@@ -26,5 +26,5 @@ opt-level = 2
 gltf = { path = "gltf" }
 
 # Required for https://github.com/amethyst/atelier-assets/pull/53
-[patch."https://github.com/amethyst/atelier-assets"]
-atelier-assets = { path = "atelier-assets" }
+#[patch."https://github.com/amethyst/atelier-assets"]
+#atelier-assets = { path = "atelier-assets" }
