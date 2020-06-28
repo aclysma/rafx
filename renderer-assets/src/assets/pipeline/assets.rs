@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::vk_description as dsc;
+use crate::{vk_description as dsc, RenderpassAsset, ImageAsset, MaterialAsset, ShaderAsset, PipelineAsset};
 use atelier_assets::loader::handle::Handle;
 use crate::assets::shader::ShaderAssetData;
 use crate::assets::image::ImageAssetData;
@@ -25,10 +25,10 @@ pub struct PipelineAssetData {
     pub depth_stencil_state: dsc::PipelineDepthStencilState,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PipelineShaderStage {
     pub stage: dsc::ShaderStageFlags,
-    pub shader_module: Handle<ShaderAssetData>,
+    pub shader_module: Handle<ShaderAsset>,
     pub entry_name: String,
 }
 
@@ -90,16 +90,16 @@ pub struct MaterialPassShaderInterface {
     pub vertex_input_state: dsc::PipelineVertexInputState,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialPass {
     pub phase: String,
-    pub pipeline: Handle<PipelineAssetData>,
-    pub renderpass: Handle<RenderpassAssetData>,
+    pub pipeline: Handle<PipelineAsset>,
+    pub renderpass: Handle<RenderpassAsset>,
     pub shaders: Vec<PipelineShaderStage>,
     pub shader_interface: MaterialPassShaderInterface,
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
+#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "ad94bca2-1f02-4e5f-9117-1a7b03456a11"]
 pub struct MaterialAssetData {
     pub passes: Vec<MaterialPass>,
@@ -108,7 +108,7 @@ pub struct MaterialAssetData {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialInstanceSlotAssignment {
     pub slot_name: String,
-    pub image: Option<Handle<ImageAssetData>>,
+    pub image: Option<Handle<ImageAsset>>,
     pub sampler: Option<dsc::Sampler>,
 
     // Would be nice to use this, but I don't think it works with Option
@@ -119,6 +119,6 @@ pub struct MaterialInstanceSlotAssignment {
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b"]
 pub struct MaterialInstanceAssetData {
-    pub material: Handle<MaterialAssetData>,
+    pub material: Handle<MaterialAsset>,
     pub slot_assignments: Vec<MaterialInstanceSlotAssignment>,
 }

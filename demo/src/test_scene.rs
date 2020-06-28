@@ -14,6 +14,8 @@ use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
 use atelier_assets::core::AssetUuid;
 use crate::components::MeshComponent;
+use renderer::assets::ImageAsset;
+use crate::game_asset_lookup::MeshAsset;
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -30,7 +32,7 @@ pub fn populate_test_sprite_entities(
 ) {
     let sprite_image = {
         let asset_resource = resources.get::<AssetResource>().unwrap();
-        begin_load_asset::<ImageAssetData>(
+        begin_load_asset::<ImageAsset>(
             asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
             &asset_resource,
         )
@@ -94,7 +96,7 @@ pub fn populate_test_mesh_entities(
 ) {
     let mesh = {
         let asset_resource = resources.get::<AssetResource>().unwrap();
-        begin_load_asset::<MeshAssetData>(
+        begin_load_asset::<MeshAsset>(
             asset_uuid!("ffc9b240-0a17-4ff4-bb7d-72d13cc6e261"),
             &asset_resource,
         )

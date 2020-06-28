@@ -11,7 +11,7 @@ use arrayvec::ArrayVec;
 use std::mem::ManuallyDrop;
 use renderer_base::slab::RawSlabKey;
 use fnv::FnvHashMap;
-use renderer_assets::vk_description as dsc;
+use crate::vk_description as dsc;
 use super::DescriptorSetWriteElementBufferData;
 
 // A write to the descriptors within a single descriptor set that has been scheduled (i.e. will occur

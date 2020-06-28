@@ -1,6 +1,6 @@
 use ash::vk;
 use ash::prelude::*;
-use renderer_assets::vk_description as dsc;
+use crate::vk_description as dsc;
 use crate::resource_managers::descriptor_sets::{DescriptorSetElementKey, MAX_DESCRIPTORS_PER_POOL};
 use std::mem::ManuallyDrop;
 use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};

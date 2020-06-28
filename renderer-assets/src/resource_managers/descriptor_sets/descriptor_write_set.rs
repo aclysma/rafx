@@ -1,9 +1,9 @@
 use ash::vk;
-use renderer_assets::vk_description as dsc;
+use crate::vk_description as dsc;
 use crate::resource_managers::resource_lookup::{ImageViewResource, ResourceLookupSet};
 use fnv::FnvHashMap;
 use crate::resource_managers::asset_lookup::{LoadedMaterialPass, LoadedAssetLookupSet, SlotNameLookup};
-use renderer_assets::assets::pipeline::MaterialInstanceSlotAssignment;
+use crate::assets::pipeline::MaterialInstanceSlotAssignment;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::AssetHandle;
 use crate::resource_managers::ResourceArc;

@@ -1,4 +1,4 @@
-use renderer_assets::vk_description as dsc;
+use crate::vk_description as dsc;
 use renderer_base::slab::{RawSlab, RawSlabKey};
 use super::ManagedDescriptorSet;
 use super::{

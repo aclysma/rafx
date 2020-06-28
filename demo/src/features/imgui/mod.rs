@@ -3,8 +3,8 @@ use atelier_assets::loader::handle::Handle;
 use std::sync::atomic::{AtomicI32, Ordering};
 use crate::features::imgui::extract::ImGuiExtractJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::resources::DescriptorSetAllocatorRef;
-use renderer::resources::PipelineSwapchainInfo;
+use renderer::assets::DescriptorSetAllocatorRef;
+use renderer::assets::PipelineSwapchainInfo;
 use renderer::assets::MaterialAssetData;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
@@ -12,7 +12,8 @@ use renderer::nodes::RenderFeatureIndex;
 use std::convert::TryInto;
 use crate::imgui_support::ImGuiDrawData;
 use ash::vk::Extent2D;
-use renderer::resources::{ImageViewResource, ResourceArc};
+use renderer::assets::{ImageViewResource, ResourceArc};
+use renderer::assets::MaterialAsset;
 
 mod extract;
 mod prepare;
@@ -23,7 +24,7 @@ pub fn create_imgui_extract_job(
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     extents: Extent2D,
-    imgui_material: &Handle<MaterialAssetData>,
+    imgui_material: &Handle<MaterialAsset>,
     font_atlas: ResourceArc<ImageViewResource>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(ImGuiExtractJobImpl::new(

@@ -1,6 +1,6 @@
 use ash::vk;
 use legion::prelude::*;
-use renderer::resources::{ResourceManager, DynResourceAllocatorSet};
+use renderer::assets::{ResourceManager, DynResourceAllocatorSet};
 use renderer::vulkan::VkDeviceContext;
 
 pub struct RenderJobExtractContext {

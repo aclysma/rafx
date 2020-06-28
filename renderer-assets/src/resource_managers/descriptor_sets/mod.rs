@@ -1,5 +1,5 @@
 use fnv::FnvHashMap;
-use renderer_assets::vk_description as dsc;
+use crate::vk_description as dsc;
 
 mod descriptor_set_arc;
 pub use descriptor_set_arc::DescriptorSetArc;

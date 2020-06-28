@@ -7,10 +7,10 @@ use fnv::FnvHashMap;
 use std::marker::PhantomData;
 use ash::vk;
 use ash::prelude::VkResult;
-use renderer_assets::vk_description::SwapchainSurfaceInfo;
+use crate::vk_description::SwapchainSurfaceInfo;
 use super::PipelineCreateData;
 use std::mem::ManuallyDrop;
-use renderer_assets::vk_description as dsc;
+use crate::vk_description as dsc;
 use crate::resource_managers::ResourceArc;
 use crate::resource_managers::resource_arc::{WeakResourceArc, ResourceWithHash, ResourceId};
 
@@ -407,7 +407,7 @@ impl ResourceLookupSet {
                 "Creating shader module\n[bytes: {}]",
                 shader_module.code.len()
             );
-            let resource = renderer_assets::vk_description::create_shader_module(
+            let resource = dsc::create_shader_module(
                 self.device_context.device(),
                 shader_module,
             )?;
@@ -427,7 +427,7 @@ impl ResourceLookupSet {
         } else {
             log::trace!("Creating sampler\n{:#?}", sampler);
 
-            let resource = renderer_assets::vk_description::create_sampler(
+            let resource = dsc::create_sampler(
                 self.device_context.device(),
                 sampler,
             )?;
@@ -482,7 +482,7 @@ impl ResourceLookupSet {
             }
 
             // Create the descriptor set layout
-            let resource = renderer_assets::vk_description::create_descriptor_set_layout(
+            let resource = dsc::create_descriptor_set_layout(
                 self.device_context.device(),
                 descriptor_set_layout_def,
                 &immutable_sampler_vk_objs,
@@ -530,7 +530,7 @@ impl ResourceLookupSet {
             }
 
             log::trace!("Creating pipeline layout\n{:#?}", pipeline_layout_def);
-            let resource = renderer_assets::vk_description::create_pipeline_layout(
+            let resource = dsc::create_pipeline_layout(
                 self.device_context.device(),
                 pipeline_layout_def,
                 &descriptor_set_layouts,
@@ -566,7 +566,7 @@ impl ResourceLookupSet {
             Ok(renderpass)
         } else {
             log::trace!("Creating renderpass\n{:#?}", renderpass_key);
-            let resource = renderer_assets::vk_description::create_renderpass(
+            let resource = dsc::create_renderpass(
                 self.device_context.device(),
                 renderpass,
                 &swapchain_surface_info,
@@ -600,7 +600,7 @@ impl ResourceLookupSet {
             Ok(pipeline)
         } else {
             log::trace!("Creating pipeline\n{:#?}", pipeline_key);
-            let resources = renderer_assets::vk_description::create_graphics_pipelines(
+            let resources = dsc::create_graphics_pipelines(
                 &self.device_context.device(),
                 &pipeline_create_data.fixed_function_state,
                 pipeline_create_data
@@ -685,7 +685,7 @@ impl ResourceLookupSet {
             let image = self.images.get(image_key_hash, &image_key).unwrap();
 
             log::trace!("Creating image view\n{:#?}", image_view_key);
-            let resource = renderer_assets::vk_description::create_image_view(
+            let resource = dsc::create_image_view(
                 &self.device_context.device(),
                 image.get_raw().image,
                 image_view_meta,

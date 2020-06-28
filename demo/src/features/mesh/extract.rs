@@ -12,18 +12,19 @@ use renderer::nodes::{
 };
 use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
-use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
+use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use renderer::assets::assets::pipeline::MaterialAssetData;
 use atelier_assets::loader::handle::Handle;
-use renderer::resources::resource_managers::DescriptorSetArc;
+use renderer::assets::resource_managers::DescriptorSetArc;
 use legion::prelude::*;
 use crate::components::MeshComponent;
 use crate::resource_manager::GameResourceManager;
+use renderer::assets::MaterialAsset;
 
 pub struct MeshExtractJobImpl {
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    mesh_material: Handle<MaterialAssetData>,
+    mesh_material: Handle<MaterialAsset>,
     descriptor_sets_per_view: Vec<DescriptorSetArc>,
     extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
     extracted_view_node_mesh_data: Vec<Vec<Option<ExtractedViewNodeMeshData>>>,
@@ -33,7 +34,7 @@ impl MeshExtractJobImpl {
     pub fn new(
         descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
-        mesh_material: &Handle<MaterialAssetData>,
+        mesh_material: &Handle<MaterialAsset>,
     ) -> Self {
         MeshExtractJobImpl {
             descriptor_set_allocator,

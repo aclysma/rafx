@@ -8,7 +8,7 @@ use renderer::vulkan::VkSwapchain;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
 
-use renderer::resources::resource_managers::PipelineSwapchainInfo;
+use renderer::assets::resource_managers::PipelineSwapchainInfo;
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::render_contexts::{RenderJobWriteContext, RenderJobWriteContextFactory};
 use renderer::vulkan::cleanup::VkCombinedDropSink;

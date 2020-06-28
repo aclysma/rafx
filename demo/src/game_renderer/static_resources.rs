@@ -1,5 +1,5 @@
 use crate::asset_resource::AssetResource;
-use renderer::resources::resource_managers::ResourceManager;
+use renderer::assets::resource_managers::ResourceManager;
 use renderer::assets::assets::pipeline::MaterialAssetData;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::core::asset_uuid;
@@ -8,6 +8,7 @@ use atelier_assets::loader::LoadStatus;
 use atelier_assets::core as atelier_core;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::AssetHandle;
+use renderer::assets::MaterialAsset;
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -55,13 +56,13 @@ fn wait_for_asset_to_load<T>(
 }
 
 pub struct GameRendererStaticResources {
-    pub sprite_material: Handle<MaterialAssetData>,
-    pub debug3d_material: Handle<MaterialAssetData>,
-    pub mesh_material: Handle<MaterialAssetData>,
-    pub bloom_extract_material: Handle<MaterialAssetData>,
-    pub bloom_blur_material: Handle<MaterialAssetData>,
-    pub bloom_combine_material: Handle<MaterialAssetData>,
-    pub imgui_material: Handle<MaterialAssetData>,
+    pub sprite_material: Handle<MaterialAsset>,
+    pub debug3d_material: Handle<MaterialAsset>,
+    pub mesh_material: Handle<MaterialAsset>,
+    pub bloom_extract_material: Handle<MaterialAsset>,
+    pub bloom_blur_material: Handle<MaterialAsset>,
+    pub bloom_combine_material: Handle<MaterialAsset>,
+    pub imgui_material: Handle<MaterialAsset>,
 }
 
 impl GameRendererStaticResources {
@@ -72,7 +73,7 @@ impl GameRendererStaticResources {
         //
         // Sprite resources
         //
-        let sprite_material = begin_load_asset::<MaterialAssetData>(
+        let sprite_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
             asset_resource,
         );
@@ -80,7 +81,7 @@ impl GameRendererStaticResources {
         //
         // Debug resources
         //
-        let debug_material = begin_load_asset::<MaterialAssetData>(
+        let debug_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("11d3b144-f564-42c9-b31f-82c8a938bf85"),
             asset_resource,
         );
@@ -88,7 +89,7 @@ impl GameRendererStaticResources {
         //
         // Bloom extract resources
         //
-        let bloom_extract_material = begin_load_asset::<MaterialAssetData>(
+        let bloom_extract_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("822c8e08-2720-4002-81da-fd9c4d61abdd"),
             asset_resource,
         );
@@ -96,7 +97,7 @@ impl GameRendererStaticResources {
         //
         // Bloom blur resources
         //
-        let bloom_blur_material = begin_load_asset::<MaterialAssetData>(
+        let bloom_blur_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("22aae4c1-fd0f-414a-9de1-7f68bdf1bfb1"),
             asset_resource,
         );
@@ -104,7 +105,7 @@ impl GameRendererStaticResources {
         //
         // Bloom combine resources
         //
-        let bloom_combine_material = begin_load_asset::<MaterialAssetData>(
+        let bloom_combine_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("256e6a2d-669b-426b-900d-3bcc4249a063"),
             asset_resource,
         );
@@ -112,7 +113,7 @@ impl GameRendererStaticResources {
         //
         // Mesh resources
         //
-        let mesh_material = begin_load_asset::<MaterialAssetData>(
+        let mesh_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
             asset_resource,
         );
@@ -120,7 +121,7 @@ impl GameRendererStaticResources {
         //
         // ImGui resources
         //
-        let imgui_material = begin_load_asset::<MaterialAssetData>(
+        let imgui_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("b1cd2431-5cf8-4e9c-b7f0-569ba74e0981"),
             asset_resource,
         );

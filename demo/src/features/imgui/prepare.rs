@@ -8,12 +8,12 @@ use super::write::ImGuiCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
-use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct ImGuiPrepareJobImpl {
     device_context: VkDeviceContext,
     pipeline_info: PipelineSwapchainInfo,
-    dyn_resource_allocator: renderer::resources::DynResourceAllocatorSet,
+    dyn_resource_allocator: renderer::assets::DynResourceAllocatorSet,
     per_pass_descriptor_set: DescriptorSetArc,
     per_image_descriptor_sets: Vec<DescriptorSetArc>,
     extracted_imgui_data: ExtractedImGuiData,
@@ -23,7 +23,7 @@ impl ImGuiPrepareJobImpl {
     pub(super) fn new(
         device_context: VkDeviceContext,
         pipeline_info: PipelineSwapchainInfo,
-        dyn_resource_allocator: renderer::resources::DynResourceAllocatorSet,
+        dyn_resource_allocator: renderer::assets::DynResourceAllocatorSet,
         per_pass_descriptor_set: DescriptorSetArc,
         per_image_descriptor_sets: Vec<DescriptorSetArc>,
         extracted_imgui_data: ExtractedImGuiData,

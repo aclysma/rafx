@@ -1,4 +1,4 @@
-use renderer::resources::resource_managers::{
+use renderer::assets::resource_managers::{
     DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoader, ResourceManager,
 };
 use renderer::vulkan::VkBufferRaw;
@@ -51,7 +51,7 @@ impl GameResourceManager {
 
     pub fn get_mesh_info(
         &self,
-        handle: &Handle<MeshAssetData>,
+        handle: &Handle<MeshAsset>,
     ) -> Option<MeshInfo> {
         self.loaded_assets
             .meshes

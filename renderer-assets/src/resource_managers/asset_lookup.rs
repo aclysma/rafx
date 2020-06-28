@@ -1,5 +1,5 @@
 use ash::vk;
-use renderer_assets::assets::pipeline::{
+use crate::assets::pipeline::{
     PipelineAssetData, MaterialPassShaderInterface, MaterialAssetData, MaterialInstanceSlotAssignment,
     RenderpassAssetData,
 };
@@ -86,7 +86,7 @@ pub struct MaterialAsset {
 }
 
 pub struct MaterialInstanceAssetInner {
-    pub material: Handle<MaterialAssetData>,
+    pub material: Handle<MaterialAsset>,
 
     // Arc these individually because some downstream systems care only about the descriptor sets
     pub material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,

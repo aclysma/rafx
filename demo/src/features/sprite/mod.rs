@@ -8,6 +8,7 @@ use legion::prelude::Entity;
 use renderer::base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;
+use renderer::assets::MaterialAsset;
 
 mod extract;
 use extract::SpriteExtractJobImpl;
@@ -17,7 +18,7 @@ mod prepare;
 mod write;
 use write::SpriteCommandWriter;
 use renderer::vulkan::VkDeviceContext;
-use renderer::resources::resource_managers::{
+use renderer::assets::resource_managers::{
     PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef,
 };
 use renderer::assets::assets::pipeline::MaterialAssetData;
@@ -72,7 +73,7 @@ pub fn create_sprite_extract_job(
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    sprite_material: &Handle<MaterialAssetData>,
+    sprite_material: &Handle<MaterialAsset>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(
         device_context,

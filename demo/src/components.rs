@@ -4,13 +4,14 @@ use atelier_assets::loader::handle::Handle;
 use crate::assets::gltf::MeshAssetData;
 use glam::f32::Vec3;
 use crate::features::sprite::SpriteRenderNodeHandle;
-use renderer::assets::assets::image::ImageAssetData;
+use renderer::assets::ImageAsset;
+use crate::game_asset_lookup::MeshAsset;
 
 #[derive(Clone)]
 pub struct MeshComponent {
     pub mesh_handle: MeshRenderNodeHandle,
     pub visibility_handle: DynamicAabbVisibilityNodeHandle,
-    pub mesh: Handle<MeshAssetData>,
+    pub mesh: Handle<MeshAsset>,
 }
 
 #[derive(Copy, Clone)]
@@ -46,6 +47,6 @@ pub struct SpriteComponent {
     pub sprite_handle: SpriteRenderNodeHandle,
     pub visibility_handle: DynamicAabbVisibilityNodeHandle,
     pub alpha: f32,
-    pub image: Handle<ImageAssetData>,
+    pub image: Handle<ImageAsset>,
     //pub texture_material: ResourceArc<>
 }

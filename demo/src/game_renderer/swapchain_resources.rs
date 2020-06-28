@@ -4,7 +4,7 @@ use crate::renderpass::{
 };
 use renderer::vulkan::{VkDeviceContext, VkSwapchain};
 use crate::game_renderer::GameRendererInner;
-use renderer::resources::resource_managers::{ResourceManager, DynDescriptorSet};
+use renderer::assets::resource_managers::{ResourceManager, DynDescriptorSet};
 use renderer::assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
 

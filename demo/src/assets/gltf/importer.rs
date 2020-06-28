@@ -22,6 +22,10 @@ use std::str::FromStr;
 // use atelier_assets::importer::Result as ImporterResult;
 // use atelier_assets::importer::Error as ImporterError;
 use serde::export::Formatter;
+use renderer::assets::ImageAsset;
+use renderer::assets::MaterialInstanceAsset;
+use renderer::assets::BufferAsset;
+use renderer::assets::MaterialAsset;
 
 #[derive(Debug)]
 struct GltfImportError {
@@ -179,7 +183,7 @@ impl Importer for GltfImporter {
                 let load_handle = loader_info_provider
                     .get_load_handle(&AssetRef::Uuid(image_uuid))
                     .unwrap();
-                Handle::<ImageAssetData>::new(ref_op_sender.clone(), load_handle)
+                Handle::<ImageAsset>::new(ref_op_sender.clone(), load_handle)
             });
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
@@ -263,7 +267,7 @@ impl Importer for GltfImporter {
             let material_load_handle = loader_info_provider
                 .get_load_handle(&AssetRef::Uuid(material_uuid))
                 .unwrap();
-            Handle::<MaterialAssetData>::new(ref_op_sender.clone(), material_load_handle)
+            Handle::<MaterialAsset>::new(ref_op_sender.clone(), material_load_handle)
         });
 
         let null_image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
@@ -274,7 +278,7 @@ impl Importer for GltfImporter {
             let material_load_handle = loader_info_provider
                 .get_load_handle(&AssetRef::Uuid(material_uuid))
                 .unwrap();
-            Handle::<ImageAssetData>::new(ref_op_sender.clone(), material_load_handle)
+            Handle::<ImageAsset>::new(ref_op_sender.clone(), material_load_handle)
         });
 
         //
@@ -292,7 +296,7 @@ impl Importer for GltfImporter {
                     let load_handle = loader_info_provider
                         .get_load_handle(&AssetRef::Uuid(material_instance_uuid))
                         .unwrap();
-                    Handle::<MaterialInstanceAssetData>::new(ref_op_sender.clone(), load_handle)
+                    Handle::<MaterialInstanceAsset>::new(ref_op_sender.clone(), load_handle)
                 });
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
@@ -319,8 +323,8 @@ impl Importer for GltfImporter {
             fn push_image_slot_assignment(
                 slot_name: &str,
                 slot_assignments: &mut Vec<MaterialInstanceSlotAssignment>,
-                image: &Option<Handle<ImageAssetData>>,
-                default_image: &Handle<ImageAssetData>,
+                image: &Option<Handle<ImageAsset>>,
+                default_image: &Handle<ImageAsset>,
             ) {
                 slot_assignments.push(MaterialInstanceSlotAssignment {
                     slot_name: slot_name.to_string(),
@@ -637,7 +641,7 @@ fn extract_materials_to_import(
     doc: &gltf::Document,
     _buffers: &Vec<GltfBufferData>,
     _images: &Vec<GltfImageData>,
-    image_index_to_handle: &[Handle<ImageAssetData>],
+    image_index_to_handle: &[Handle<ImageAsset>],
 ) -> Vec<MaterialToImport> {
     let mut materials_to_import = Vec::with_capacity(doc.materials().len());
 
@@ -752,7 +756,7 @@ fn extract_meshes_to_import(
     buffers: &Vec<GltfBufferData>,
     //images: &Vec<GltfImageData>,
     material_index_to_handle: &[Handle<GltfMaterialAsset>],
-    material_instance_index_to_handle: &[Handle<MaterialInstanceAssetData>],
+    material_instance_index_to_handle: &[Handle<MaterialInstanceAsset>],
 ) -> atelier_assets::importer::Result<(Vec<MeshToImport>, Vec<BufferToImport>)> {
     let mut meshes_to_import = Vec::with_capacity(doc.meshes().len());
     let mut buffers_to_import = Vec::with_capacity(doc.meshes().len() * 2);
@@ -878,7 +882,7 @@ fn extract_meshes_to_import(
                 let load_handle = loader_info_provider
                     .get_load_handle(&AssetRef::Uuid(vertex_buffer_uuid))
                     .unwrap();
-                Handle::<BufferAssetData>::new(ref_op_sender.clone(), load_handle)
+                Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
             });
 
         //
@@ -906,7 +910,7 @@ fn extract_meshes_to_import(
                 let load_handle = loader_info_provider
                     .get_load_handle(&AssetRef::Uuid(index_buffer_uuid))
                     .unwrap();
-                Handle::<BufferAssetData>::new(ref_op_sender.clone(), load_handle)
+                Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
             });
 
         let asset = MeshAssetData {

@@ -12,12 +12,12 @@ use crate::features::debug3d::{DebugDraw3DResource, Debug3dRenderFeature};
 use renderer::nodes::RenderRegistry;
 use crate::assets::gltf::{MeshAssetData, GltfMaterialAsset};
 use crate::resource_manager::GameResourceManager;
-use renderer::resources::ResourceManager;
+use renderer::assets::ResourceManager;
 use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::game_asset_lookup::MeshAsset;
-use renderer::resources::{ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset, BufferAsset};
+use renderer::assets::{ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset, BufferAsset};
 use renderer::assets::{ShaderAssetData, PipelineAssetData, RenderpassAssetData, MaterialAssetData, MaterialInstanceAssetData, ImageAssetData, BufferAssetData};
 use crate::asset_loader::ResourceAssetLoader;
 
@@ -132,7 +132,7 @@ pub fn rendering_init(
 
     let vk_context = context.build(&window_wrapper).unwrap();
     let device_context = vk_context.device_context().clone();
-    let resource_manager = renderer::resources::ResourceManager::new(&device_context);
+    let resource_manager = renderer::assets::ResourceManager::new(&device_context);
 
     {
         let loaders = resource_manager.create_loaders();

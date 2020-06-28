@@ -3,7 +3,7 @@ use renderer::nodes::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
 use crate::render_contexts::{
     RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory,
 };
-use renderer::resources::resource_managers::{DynResourceAllocatorSet, PipelineSwapchainInfo};
+use renderer::assets::resource_managers::{DynResourceAllocatorSet, PipelineSwapchainInfo};
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
 use std::sync::MutexGuard;
 use ash::prelude::VkResult;

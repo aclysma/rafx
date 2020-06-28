@@ -14,7 +14,7 @@ use legion::prelude::*;
 
 use crate::asset_resource::AssetResource;
 use crate::time::TimeState;
-use renderer::resources::resource_managers::ResourceManager;
+use renderer::assets::resource_managers::ResourceManager;
 use crate::game_renderer::GameRenderer;
 use crate::features::debug3d::DebugDraw3DResource;
 use crate::resource_manager::GameResourceManager;

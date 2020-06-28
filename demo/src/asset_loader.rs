@@ -1,5 +1,5 @@
-use renderer::resources::ResourceLoader;
-use renderer::resources::GenericLoader;
+use renderer::assets::ResourceLoader;
+use renderer::assets::GenericLoader;
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::LoaderInfoProvider;

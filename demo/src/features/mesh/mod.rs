@@ -17,10 +17,11 @@ mod prepare;
 mod write;
 use write::MeshCommandWriter;
 use renderer::vulkan::VkBufferRaw;
-use renderer::resources::resource_managers::{
+use renderer::assets::resource_managers::{
     PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc,
 };
 use renderer::assets::assets::pipeline::MaterialAssetData;
+use renderer::assets::MaterialAsset;
 
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
@@ -81,7 +82,7 @@ pub struct MeshPerObjectShaderParam {
 pub fn create_mesh_extract_job(
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    mesh_material: &Handle<MaterialAssetData>,
+    mesh_material: &Handle<MaterialAsset>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(MeshExtractJobImpl::new(
         descriptor_set_allocator,

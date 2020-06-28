@@ -10,11 +10,12 @@ use renderer::nodes::{
 use renderer::base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
+use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use renderer::assets::assets::pipeline::MaterialAssetData;
 use atelier_assets::loader::handle::Handle;
-use renderer::resources::resource_managers::DescriptorSetArc;
+use renderer::assets::resource_managers::DescriptorSetArc;
 use legion::prelude::EntityStore;
+use renderer::assets::MaterialAsset;
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
 // single function
@@ -45,7 +46,7 @@ pub struct SpriteExtractJobImpl {
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    sprite_material: Handle<MaterialAssetData>,
+    sprite_material: Handle<MaterialAsset>,
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
     per_view_descriptors: Vec<DescriptorSetArc>,
 }
@@ -55,7 +56,7 @@ impl SpriteExtractJobImpl {
         device_context: VkDeviceContext,
         descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
-        sprite_material: &Handle<MaterialAssetData>,
+        sprite_material: &Handle<MaterialAsset>,
     ) -> Self {
         SpriteExtractJobImpl {
             device_context,

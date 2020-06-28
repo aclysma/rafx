@@ -3,13 +3,14 @@ use atelier_assets::loader::handle::Handle;
 use std::sync::atomic::{AtomicI32, Ordering};
 use crate::features::debug3d::extract::Debug3dExtractJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::resources::DescriptorSetAllocatorRef;
-use renderer::resources::PipelineSwapchainInfo;
+use renderer::assets::DescriptorSetAllocatorRef;
+use renderer::assets::PipelineSwapchainInfo;
 use renderer::assets::MaterialAssetData;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;
 use std::convert::TryInto;
+use renderer::assets::MaterialAsset;
 
 mod extract;
 mod prepare;
@@ -22,7 +23,7 @@ pub fn create_debug3d_extract_job(
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    debug3d_material: &Handle<MaterialAssetData>,
+    debug3d_material: &Handle<MaterialAsset>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(Debug3dExtractJobImpl::new(
         device_context,

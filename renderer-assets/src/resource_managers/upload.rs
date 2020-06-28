@@ -3,13 +3,13 @@ use renderer_shell_vulkan::{
 };
 use crossbeam_channel::{Sender, Receiver};
 use ash::prelude::VkResult;
-use renderer_assets::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffers};
+use crate::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffers};
 use std::mem::ManuallyDrop;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
 use ash::vk;
 use crate::resource_managers::load_queue::LoadRequest;
-use renderer_assets::assets::image::ImageAssetData;
-use renderer_assets::assets::buffer::BufferAssetData;
+use crate::assets::image::ImageAssetData;
+use crate::assets::buffer::BufferAssetData;
 use crate::resource_managers::asset_lookup::{ImageAsset, BufferAsset};
 
 //
@@ -480,7 +480,7 @@ impl UploadManager {
         &self,
         request: LoadRequest<ImageAssetData, ImageAsset>,
     ) -> VkResult<()> {
-        let mips = renderer_assets::image_utils::default_mip_settings_for_image(
+        let mips = crate::image_utils::default_mip_settings_for_image(
             request.asset.width,
             request.asset.height,
         );

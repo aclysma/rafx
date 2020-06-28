@@ -1,15 +1,15 @@
 use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer};
 use ash::prelude::*;
 use ash::vk;
-use renderer_assets::assets::image::ImageAssetData;
-use renderer_assets::assets::shader::ShaderAssetData;
-use renderer_assets::assets::pipeline::{
+use crate::assets::image::ImageAssetData;
+use crate::assets::shader::ShaderAssetData;
+use crate::assets::pipeline::{
     PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, MaterialPass, RenderpassAssetData,
 };
-use renderer_assets::vk_description::SwapchainSurfaceInfo;
+use crate::vk_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
-use renderer_assets::vk_description as dsc;
+use crate::vk_description as dsc;
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::loader::handle::AssetHandle;
 use std::sync::{Arc, Mutex};
@@ -67,7 +67,7 @@ use upload::UploadManager;
 use crate::resource_managers::resource_lookup::{PipelineLayoutResource, PipelineResource};
 
 pub use resource_lookup::ImageViewResource;
-use renderer_assets::assets::buffer::BufferAssetData;
+use crate::assets::buffer::BufferAssetData;
 use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 use crate::resource_managers::descriptor_sets::{DescriptorSetAllocatorManager};
 use crossbeam_channel::Sender;
@@ -212,7 +212,7 @@ impl ResourceManager {
 
     pub fn get_image_info(
         &self,
-        handle: &Handle<ImageAssetData>,
+        handle: &Handle<ImageAsset>,
     ) -> Option<ImageInfo> {
         self.loaded_assets
             .images
@@ -225,7 +225,7 @@ impl ResourceManager {
 
     pub fn get_descriptor_set_info(
         &self,
-        handle: &Handle<MaterialAssetData>,
+        handle: &Handle<MaterialAsset>,
         pass_index: usize,
         layout_index: usize,
     ) -> DescriptorSetInfo {
@@ -251,7 +251,7 @@ impl ResourceManager {
 
     pub fn get_pipeline_info(
         &self,
-        handle: &Handle<MaterialAssetData>,
+        handle: &Handle<MaterialAsset>,
         swapchain: &SwapchainSurfaceInfo,
         pass_index: usize,
     ) -> PipelineSwapchainInfo {
@@ -282,7 +282,7 @@ impl ResourceManager {
 
     pub fn get_material_instance_info(
         &self,
-        handle: &Handle<MaterialInstanceAssetData>,
+        handle: &Handle<MaterialInstanceAsset>,
     ) -> MaterialInstanceInfo {
         // Get the material instance
         let resource = self
@@ -848,7 +848,7 @@ impl ResourceManager {
     pub fn create_dyn_pass_material_instance_uninitialized(
         &self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material: Handle<MaterialAssetData>,
+        material: Handle<MaterialAsset>,
         pass_index: u32,
     ) -> VkResult<DynPassMaterialInstance> {
         let material_asset = self
@@ -865,7 +865,7 @@ impl ResourceManager {
     pub fn create_dyn_pass_material_instance_from_asset(
         &mut self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material_instance: Handle<MaterialInstanceAssetData>,
+        material_instance: Handle<MaterialInstanceAsset>,
         pass_index: u32,
     ) -> VkResult<DynPassMaterialInstance> {
         let material_instance_asset = self
@@ -889,7 +889,7 @@ impl ResourceManager {
     pub fn create_dyn_material_instance_uninitialized(
         &self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material: Handle<MaterialAssetData>,
+        material: Handle<MaterialAsset>,
     ) -> VkResult<DynMaterialInstance> {
         let material_asset = self
             .loaded_assets
@@ -903,7 +903,7 @@ impl ResourceManager {
     pub fn create_dyn_material_instance_from_asset(
         &self, // mut required because the asset may describe a sampler that needs to be created
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material_instance: Handle<MaterialInstanceAssetData>,
+        material_instance: Handle<MaterialInstanceAsset>,
     ) -> VkResult<DynMaterialInstance> {
         let material_instance_asset = self
             .loaded_assets

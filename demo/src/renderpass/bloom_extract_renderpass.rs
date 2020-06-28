@@ -13,12 +13,12 @@ use renderer::vulkan::VkImage;
 
 use atelier_assets::loader::handle::Handle;
 
-use renderer::resources::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
-use renderer::assets::assets::pipeline::MaterialAssetData;
+use renderer::assets::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
+use renderer::assets::MaterialAsset;
 
 pub struct VkBloomRenderPassResources {
     pub device_context: VkDeviceContext,
-    pub bloom_blur_material: Handle<MaterialAssetData>,
+    pub bloom_blur_material: Handle<MaterialAsset>,
     pub bloom_images: [ManuallyDrop<VkImage>; 2],
     pub bloom_image_views: [vk::ImageView; 2],
     pub bloom_image_descriptor_sets: [DynDescriptorSet; 2],
@@ -31,7 +31,7 @@ impl VkBloomRenderPassResources {
         device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         resource_manager: &mut ResourceManager,
-        bloom_blur_material: Handle<MaterialAssetData>,
+        bloom_blur_material: Handle<MaterialAsset>,
     ) -> VkResult<Self> {
         let (bloom_image0, bloom_image_view0) = RenderpassAttachmentImage::create_image_and_view(
             device_context,

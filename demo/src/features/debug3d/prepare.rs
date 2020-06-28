@@ -10,12 +10,12 @@ use super::write::Debug3dCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
-use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct Debug3dPrepareJobImpl {
     device_context: VkDeviceContext,
     pipeline_info: PipelineSwapchainInfo,
-    dyn_resource_allocator: renderer::resources::DynResourceAllocatorSet,
+    dyn_resource_allocator: renderer::assets::DynResourceAllocatorSet,
     descriptor_set_per_view: Vec<DescriptorSetArc>,
     extracted_debug3d_data: ExtractedDebug3dData,
 }
@@ -24,7 +24,7 @@ impl Debug3dPrepareJobImpl {
     pub(super) fn new(
         device_context: VkDeviceContext,
         pipeline_info: PipelineSwapchainInfo,
-        dyn_resource_allocator: renderer::resources::DynResourceAllocatorSet,
+        dyn_resource_allocator: renderer::assets::DynResourceAllocatorSet,
         descriptor_set_per_view: Vec<DescriptorSetArc>,
         extracted_debug3d_data: ExtractedDebug3dData,
     ) -> Self {

@@ -8,7 +8,7 @@ use renderer::vulkan::VkSwapchain;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
 
-use renderer::resources::resource_managers::PipelineSwapchainInfo;
+use renderer::assets::resource_managers::PipelineSwapchainInfo;
 
 pub struct VkBloomCombineRenderPass {
     pub device_context: VkDeviceContext,
