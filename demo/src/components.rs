@@ -1,16 +1,16 @@
 use crate::features::mesh::MeshRenderNodeHandle;
 use renderer::visibility::DynamicAabbVisibilityNodeHandle;
 use atelier_assets::loader::handle::Handle;
-use crate::assets::gltf::MeshAsset;
+use crate::assets::gltf::MeshAssetData;
 use glam::f32::Vec3;
 use crate::features::sprite::SpriteRenderNodeHandle;
-use renderer::assets::assets::image::ImageAsset;
+use renderer::assets::assets::image::ImageAssetData;
 
 #[derive(Clone)]
 pub struct MeshComponent {
     pub mesh_handle: MeshRenderNodeHandle,
     pub visibility_handle: DynamicAabbVisibilityNodeHandle,
-    pub mesh: Handle<MeshAsset>,
+    pub mesh: Handle<MeshAssetData>,
 }
 
 #[derive(Copy, Clone)]
@@ -46,6 +46,6 @@ pub struct SpriteComponent {
     pub sprite_handle: SpriteRenderNodeHandle,
     pub visibility_handle: DynamicAabbVisibilityNodeHandle,
     pub alpha: f32,
-    pub image: Handle<ImageAsset>,
+    pub image: Handle<ImageAssetData>,
     //pub texture_material: ResourceArc<>
 }

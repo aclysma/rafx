@@ -73,22 +73,16 @@ impl AssetStorageSet {
         );
     }
 
-    //TODO: This could be redesigned to integrate better with the contents of asset_storage.rs
-    // - Currently, we make a Storage<T> with T being the raw asset, and proxy events to the load handler
-    // - The load handler goes through load queues and puts the instantiated asset in the resource
-    //   manager's asset_lookup
-    // - This means the asset storage has a fairly useless asset, and the actually useful struct
-    //   (i.e. LoadedMesh vs. MeshAsset) has to be retrieved through a totally different path
-    pub fn add_storage_with_load_handler<AssetT, LoadedT, LoaderT>(
+    pub fn add_storage_with_load_handler<AssetDataT, LoadedT, LoaderT>(
         &self,
         loader: Box<LoaderT>,
     ) where
-        AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static,
+        AssetDataT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static,
         LoadedT: TypeUuid + 'static + Send,
         LoaderT: DynAssetLoader<LoadedT> + 'static,
     {
         let mut inner = self.inner.lock().unwrap();
-        inner.asset_data_type_id_mapping.insert(AssetTypeId(AssetT::UUID), AssetTypeId(LoadedT::UUID));
+        inner.asset_data_type_id_mapping.insert(AssetTypeId(AssetDataT::UUID), AssetTypeId(LoadedT::UUID));
         inner.storage.insert(
             AssetTypeId(LoadedT::UUID),
             Box::new(Storage::<LoadedT>::new(
@@ -262,23 +256,23 @@ where
     );
 }
 
-struct ResourceLoader<AssetT, LoadedT> {
-    load_handler: Box<dyn ResourceLoadHandler<AssetT, LoadedT>>
+struct ResourceLoader<AssetDataT, LoadedT> {
+    load_handler: Box<dyn ResourceLoadHandler<AssetDataT, LoadedT>>
 }
 
 use atelier_assets::loader::handle::SerdeContext;
 use std::marker::PhantomData;
 
-struct DefaultAssetLoader<AssetT>
+struct DefaultAssetLoader<AssetDataT>
     where
-        AssetT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
+        AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
 {
-    phantom_data: PhantomData<AssetT>
+    phantom_data: PhantomData<AssetDataT>
 }
 
-impl<AssetT> Default for DefaultAssetLoader<AssetT>
+impl<AssetDataT> Default for DefaultAssetLoader<AssetDataT>
     where
-        AssetT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
+        AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
 {
     fn default() -> Self {
         DefaultAssetLoader {
@@ -287,9 +281,9 @@ impl<AssetT> Default for DefaultAssetLoader<AssetT>
     }
 }
 
-impl<AssetT> DynAssetLoader<AssetT> for DefaultAssetLoader<AssetT>
+impl<AssetDataT> DynAssetLoader<AssetDataT> for DefaultAssetLoader<AssetDataT>
     where
-        AssetT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
+        AssetDataT: TypeUuid + Send + for<'a> serde::Deserialize<'a> + 'static,
 {
     fn update_asset(
         &mut self,
@@ -299,12 +293,12 @@ impl<AssetT> DynAssetLoader<AssetT> for DefaultAssetLoader<AssetT>
         _load_handle: LoadHandle,
         load_op: AssetLoadOp,
         _version: u32
-    ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error>> {
+    ) -> Result<UpdateAssetResult<AssetDataT>, Box<dyn Error>> {
 
         let asset = SerdeContext::with_sync(
             loader_info,
             refop_sender.clone(),
-            || bincode::deserialize::<AssetT>(data),
+            || bincode::deserialize::<AssetDataT>(data),
         )?;
 
         load_op.complete();

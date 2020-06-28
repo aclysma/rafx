@@ -3,7 +3,7 @@ use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, SourceFil
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::{Read};
-use crate::assets::pipeline::{PipelineAsset, MaterialAsset, MaterialInstanceAsset, RenderpassAsset};
+use crate::assets::pipeline::{PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData};
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "25c8b7df-e3a4-4436-b41c-ce32eed76e18"]
@@ -40,7 +40,7 @@ impl Importer for PipelineImporter {
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         *state = PipelineImporterState(Some(id));
 
-        let pipeline_asset = ron::de::from_reader::<_, PipelineAsset>(source)?;
+        let pipeline_asset = ron::de::from_reader::<_, PipelineAssetData>(source)?;
         log::trace!("IMPORTED PIPELINE:\n{:#?}", pipeline_asset);
 
         Ok(ImporterValue {
@@ -96,7 +96,7 @@ impl Importer for RenderpassImporter {
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         *state = RenderpassImporterState(Some(id));
 
-        let renderpass_asset = ron::de::from_reader::<_, RenderpassAsset>(source)?;
+        let renderpass_asset = ron::de::from_reader::<_, RenderpassAssetData>(source)?;
         log::trace!("IMPORTED RENDERPASS:\n{:#?}", renderpass_asset);
 
         Ok(ImporterValue {
@@ -152,7 +152,7 @@ impl Importer for MaterialImporter {
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         *state = MaterialImporterState(Some(id));
 
-        let material_asset = ron::de::from_reader::<_, MaterialAsset>(source)?;
+        let material_asset = ron::de::from_reader::<_, MaterialAssetData>(source)?;
         log::trace!("IMPORTED MATERIAL:\n{:#?}", material_asset);
 
         Ok(ImporterValue {
@@ -208,7 +208,7 @@ impl Importer for MaterialInstanceImporter {
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         *state = MaterialInstanceImporterState(Some(id));
 
-        let material_asset = ron::de::from_reader::<_, MaterialInstanceAsset>(source)?;
+        let material_asset = ron::de::from_reader::<_, MaterialInstanceAssetData>(source)?;
         log::trace!("IMPORTED MATERIALINSTANCE:\n{:#?}", material_asset);
 
         Ok(ImporterValue {

@@ -1,6 +1,6 @@
 use fnv::FnvHashMap;
 use renderer_assets::vk_description as dsc;
-use crate::resource_managers::asset_lookup::{LoadedAssetLookupSet, LoadedMaterial, PerSwapchainData};
+use crate::resource_managers::asset_lookup::{LoadedAssetLookupSet, MaterialAsset, PerSwapchainData};
 use crate::resource_managers::resource_lookup::ResourceLookupSet;
 use renderer_assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::*;
@@ -23,7 +23,7 @@ impl ActiveSwapchainSurfaceInfoSet {
         //&mut self,
         resources: &mut ResourceLookupSet,
         swapchain_surface_info: &SwapchainSurfaceInfo,
-        loaded_material: &mut LoadedMaterial,
+        loaded_material: &mut MaterialAsset,
     ) -> VkResult<()> {
         for pass in &*loaded_material.passes {
             let pipeline = resources.get_or_create_graphics_pipeline(

@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
-use renderer::assets::assets::buffer::BufferAsset;
+use renderer::assets::assets::buffer::BufferAssetData;
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::assets::image::ImageAsset;
-use renderer::assets::assets::pipeline::MaterialInstanceAsset;
+use renderer::assets::assets::image::ImageAssetData;
+use renderer::assets::assets::pipeline::MaterialInstanceAssetData;
 
 //TODO: These are extensions that might be interesting to try supporting. In particular, lights,
 // LOD, and clearcoat
@@ -113,12 +113,12 @@ pub struct GltfMaterialAsset {
     //pub name: Option<String>,
     pub material_data: GltfMaterialData,
 
-    pub base_color_texture: Option<Handle<ImageAsset>>,
+    pub base_color_texture: Option<Handle<ImageAssetData>>,
     // metalness in B, roughness in G
-    pub metallic_roughness_texture: Option<Handle<ImageAsset>>,
-    pub normal_texture: Option<Handle<ImageAsset>>,
-    pub occlusion_texture: Option<Handle<ImageAsset>>,
-    pub emissive_texture: Option<Handle<ImageAsset>>,
+    pub metallic_roughness_texture: Option<Handle<ImageAssetData>>,
+    pub normal_texture: Option<Handle<ImageAssetData>>,
+    pub occlusion_texture: Option<Handle<ImageAssetData>>,
+    pub emissive_texture: Option<Handle<ImageAssetData>>,
     // We would need to change the pipeline for these
     // double_sided: bool, // defult false
     // alpha_mode: String, // OPAQUE, MASK, BLEND
@@ -144,13 +144,13 @@ pub struct MeshPart {
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
     pub material: Handle<GltfMaterialAsset>,
-    pub material_instance: Handle<MaterialInstanceAsset>,
+    pub material_instance: Handle<MaterialInstanceAssetData>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "cf232526-3757-4d94-98d1-c2f7e27c979f"]
-pub struct MeshAsset {
+pub struct MeshAssetData {
     pub mesh_parts: Vec<MeshPart>,
-    pub vertex_buffer: Handle<BufferAsset>, //Vec<MeshVertex>,
-    pub index_buffer: Handle<BufferAsset>,  //Vec<u16>,
+    pub vertex_buffer: Handle<BufferAssetData>, //Vec<MeshVertex>,
+    pub index_buffer: Handle<BufferAssetData>,  //Vec<u16>,
 }

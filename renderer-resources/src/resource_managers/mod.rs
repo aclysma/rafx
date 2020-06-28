@@ -1,10 +1,10 @@
 use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer};
 use ash::prelude::*;
 use ash::vk;
-use renderer_assets::assets::image::ImageAsset;
-use renderer_assets::assets::shader::ShaderAsset;
+use renderer_assets::assets::image::ImageAssetData;
+use renderer_assets::assets::shader::ShaderAssetData;
 use renderer_assets::assets::pipeline::{
-    PipelineAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, RenderpassAsset,
+    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, MaterialPass, RenderpassAssetData,
 };
 use renderer_assets::vk_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
@@ -35,15 +35,15 @@ mod swapchain_management;
 use swapchain_management::ActiveSwapchainSurfaceInfoSet;
 
 mod asset_lookup;
-pub use asset_lookup::LoadedImage;
-pub use asset_lookup::LoadedBuffer;
-pub use asset_lookup::LoadedShaderModule;
-pub use asset_lookup::LoadedMaterialInstance;
-pub use asset_lookup::LoadedMaterial;
+pub use asset_lookup::ImageAsset;
+pub use asset_lookup::BufferAsset;
+pub use asset_lookup::ShaderAsset;
+pub use asset_lookup::MaterialInstanceAsset;
+pub use asset_lookup::MaterialAsset;
 pub use asset_lookup::LoadedMaterialPass;
-pub use asset_lookup::LoadedGraphicsPipeline;
+pub use asset_lookup::PipelineAsset;
 pub use asset_lookup::LoadedAssetLookupSet;
-pub use asset_lookup::LoadedRenderpass;
+pub use asset_lookup::RenderpassAsset;
 pub use asset_lookup::AssetLookup;
 use asset_lookup::SlotLocation;
 use asset_lookup::LoadedAssetMetrics;
@@ -67,11 +67,11 @@ use upload::UploadManager;
 use crate::resource_managers::resource_lookup::{PipelineLayoutResource, PipelineResource};
 
 pub use resource_lookup::ImageViewResource;
-use renderer_assets::assets::buffer::BufferAsset;
+use renderer_assets::assets::buffer::BufferAssetData;
 use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 use crate::resource_managers::descriptor_sets::{DescriptorSetAllocatorManager};
 use crossbeam_channel::Sender;
-use crate::resource_managers::asset_lookup::{LoadedMaterialInstanceInner, PerSwapchainData};
+use crate::resource_managers::asset_lookup::{MaterialInstanceAssetInner, PerSwapchainData};
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -112,13 +112,13 @@ pub struct ResourceManagerMetrics {
 }
 
 pub struct ResourceManagerLoadHandlers {
-    pub shader_load_handler: Box<GenericLoadHandler<ShaderAsset, LoadedShaderModule>>,
-    pub pipeline_load_handler: Box<GenericLoadHandler<PipelineAsset, LoadedGraphicsPipeline>>,
-    pub renderpass_load_handler: Box<GenericLoadHandler<RenderpassAsset, LoadedRenderpass>>,
-    pub material_load_handler: Box<GenericLoadHandler<MaterialAsset, LoadedMaterial>>,
-    pub material_instance_load_handler: Box<GenericLoadHandler<MaterialInstanceAsset, LoadedMaterialInstance>>,
-    pub image_load_handler: Box<GenericLoadHandler<ImageAsset, LoadedImage>>,
-    pub buffer_load_handler: Box<GenericLoadHandler<BufferAsset, LoadedBuffer>>,
+    pub shader_load_handler: Box<GenericLoadHandler<ShaderAssetData, ShaderAsset>>,
+    pub pipeline_load_handler: Box<GenericLoadHandler<PipelineAssetData, PipelineAsset>>,
+    pub renderpass_load_handler: Box<GenericLoadHandler<RenderpassAssetData, RenderpassAsset>>,
+    pub material_load_handler: Box<GenericLoadHandler<MaterialAssetData, MaterialAsset>>,
+    pub material_instance_load_handler: Box<GenericLoadHandler<MaterialInstanceAssetData, MaterialInstanceAsset>>,
+    pub image_load_handler: Box<GenericLoadHandler<ImageAssetData, ImageAsset>>,
+    pub buffer_load_handler: Box<GenericLoadHandler<BufferAssetData, BufferAsset>>,
 }
 
 pub struct ResourceManager {
@@ -156,33 +156,33 @@ impl ResourceManager {
         &self.loaded_assets
     }
 
-    pub fn create_shader_load_handler(&self) -> GenericLoadHandler<ShaderAsset, LoadedShaderModule> {
+    pub fn create_shader_load_handler(&self) -> GenericLoadHandler<ShaderAssetData, ShaderAsset> {
         self.load_queues.shader_modules.create_load_handler()
     }
 
-    pub fn create_pipeline_load_handler(&self) -> GenericLoadHandler<PipelineAsset, LoadedGraphicsPipeline> {
+    pub fn create_pipeline_load_handler(&self) -> GenericLoadHandler<PipelineAssetData, PipelineAsset> {
         self.load_queues.graphics_pipelines.create_load_handler()
     }
 
-    pub fn create_renderpass_load_handler(&self) -> GenericLoadHandler<RenderpassAsset, LoadedRenderpass> {
+    pub fn create_renderpass_load_handler(&self) -> GenericLoadHandler<RenderpassAssetData, RenderpassAsset> {
         self.load_queues.renderpasses.create_load_handler()
     }
 
-    pub fn create_material_load_handler(&self) -> GenericLoadHandler<MaterialAsset, LoadedMaterial> {
+    pub fn create_material_load_handler(&self) -> GenericLoadHandler<MaterialAssetData, MaterialAsset> {
         self.load_queues.materials.create_load_handler()
     }
 
     pub fn create_material_instance_load_handler(
         &self
-    ) -> GenericLoadHandler<MaterialInstanceAsset, LoadedMaterialInstance> {
+    ) -> GenericLoadHandler<MaterialInstanceAssetData, MaterialInstanceAsset> {
         self.load_queues.material_instances.create_load_handler()
     }
 
-    pub fn create_image_load_handler(&self) -> GenericLoadHandler<ImageAsset, LoadedImage> {
+    pub fn create_image_load_handler(&self) -> GenericLoadHandler<ImageAssetData, ImageAsset> {
         self.load_queues.images.create_load_handler()
     }
 
-    pub fn create_buffer_load_handler(&self) -> GenericLoadHandler<BufferAsset, LoadedBuffer> {
+    pub fn create_buffer_load_handler(&self) -> GenericLoadHandler<BufferAssetData, BufferAsset> {
         self.load_queues.buffers.create_load_handler()
     }
 
@@ -212,7 +212,7 @@ impl ResourceManager {
 
     pub fn get_image_info(
         &self,
-        handle: &Handle<ImageAsset>,
+        handle: &Handle<ImageAssetData>,
     ) -> Option<ImageInfo> {
         self.loaded_assets
             .images
@@ -225,7 +225,7 @@ impl ResourceManager {
 
     pub fn get_descriptor_set_info(
         &self,
-        handle: &Handle<MaterialAsset>,
+        handle: &Handle<MaterialAssetData>,
         pass_index: usize,
         layout_index: usize,
     ) -> DescriptorSetInfo {
@@ -251,7 +251,7 @@ impl ResourceManager {
 
     pub fn get_pipeline_info(
         &self,
-        handle: &Handle<MaterialAsset>,
+        handle: &Handle<MaterialAssetData>,
         swapchain: &SwapchainSurfaceInfo,
         pass_index: usize,
     ) -> PipelineSwapchainInfo {
@@ -282,7 +282,7 @@ impl ResourceManager {
 
     pub fn get_material_instance_info(
         &self,
-        handle: &Handle<MaterialInstanceAsset>,
+        handle: &Handle<MaterialInstanceAssetData>,
     ) -> MaterialInstanceInfo {
         // Get the material instance
         let resource = self
@@ -571,22 +571,22 @@ impl ResourceManager {
         }
     }
 
-    fn handle_commit_requests<AssetT, LoadedT>(
-        load_queues: &mut LoadQueues<AssetT, LoadedT>,
+    fn handle_commit_requests<AssetDataT, LoadedT>(
+        load_queues: &mut LoadQueues<AssetDataT, LoadedT>,
         asset_lookup: &mut AssetLookup<LoadedT>,
     ) {
         for request in load_queues.take_commit_requests() {
             log::info!(
                 "commit asset {:?} {}",
                 request.load_handle,
-                core::any::type_name::<AssetT>()
+                core::any::type_name::<AssetDataT>()
             );
             asset_lookup.commit(request.load_handle);
         }
     }
 
-    fn handle_free_requests<AssetT, LoadedT>(
-        load_queues: &mut LoadQueues<AssetT, LoadedT>,
+    fn handle_free_requests<AssetDataT, LoadedT>(
+        load_queues: &mut LoadQueues<AssetDataT, LoadedT>,
         asset_lookup: &mut AssetLookup<LoadedT>,
     ) {
         for request in load_queues.take_commit_requests() {
@@ -597,7 +597,7 @@ impl ResourceManager {
     fn finish_load_image(
         &mut self,
         image: VkImage,
-    ) -> VkResult<LoadedImage> {
+    ) -> VkResult<ImageAsset> {
         let format = image.format.into();
         let mip_level_count = image.mip_level_count;
 
@@ -625,7 +625,7 @@ impl ResourceManager {
             .resources
             .get_or_create_image_view(image_key, &image_view_meta)?;
 
-        Ok(LoadedImage {
+        Ok(ImageAsset {
             image_key,
             image: image_arc,
             image_view,
@@ -635,44 +635,44 @@ impl ResourceManager {
     fn finish_load_buffer(
         &mut self,
         buffer: VkBuffer,
-    ) -> VkResult<LoadedBuffer> {
+    ) -> VkResult<BufferAsset> {
         let (buffer_key, buffer) = self.resources.insert_buffer(ManuallyDrop::new(buffer));
 
-        Ok(LoadedBuffer { buffer_key, buffer })
+        Ok(BufferAsset { buffer_key, buffer })
     }
 
     fn load_shader_module(
         &mut self,
-        shader_module: &ShaderAsset,
-    ) -> VkResult<LoadedShaderModule> {
+        shader_module: &ShaderAssetData,
+    ) -> VkResult<ShaderAsset> {
         let shader_module = self
             .resources
             .get_or_create_shader_module(&shader_module.shader)?;
-        Ok(LoadedShaderModule { shader_module })
+        Ok(ShaderAsset { shader_module })
     }
 
     fn load_graphics_pipeline(
         &mut self,
-        pipeline_asset: PipelineAsset,
-    ) -> VkResult<LoadedGraphicsPipeline> {
-        Ok(LoadedGraphicsPipeline {
+        pipeline_asset: PipelineAssetData,
+    ) -> VkResult<PipelineAsset> {
+        Ok(PipelineAsset {
             pipeline_asset: Arc::new(pipeline_asset),
         })
     }
 
     fn load_renderpass(
         &mut self,
-        renderpass_asset: RenderpassAsset,
-    ) -> VkResult<LoadedRenderpass> {
-        Ok(LoadedRenderpass {
-            renderpass_asset: Arc::new(renderpass_asset),
+        renderpass_asset: RenderpassAssetData,
+    ) -> VkResult<RenderpassAsset> {
+        Ok(RenderpassAsset {
+            data: Arc::new(renderpass_asset),
         })
     }
 
     fn load_material(
         &mut self,
-        material_asset: &MaterialAsset,
-    ) -> VkResult<LoadedMaterial> {
+        material_asset: &MaterialAssetData,
+    ) -> VkResult<MaterialAsset> {
         let mut passes = Vec::with_capacity(material_asset.passes.len());
 
         for pass in &material_asset.passes {
@@ -688,7 +688,7 @@ impl ResourceManager {
                 .renderpasses
                 .get_latest(pass.renderpass.load_handle())
                 .unwrap();
-            let renderpass_asset = loaded_renderpass_asset.renderpass_asset.clone();
+            let renderpass_asset = loaded_renderpass_asset.data.clone();
 
             let shader_hashes: Vec<_> = pass
                 .shaders
@@ -760,13 +760,13 @@ impl ResourceManager {
             })
         }
 
-        Ok(LoadedMaterial { passes: Arc::new(passes) })
+        Ok(MaterialAsset { passes: Arc::new(passes) })
     }
 
     fn load_material_instance(
         &mut self,
-        material_instance_asset: &MaterialInstanceAsset,
-    ) -> VkResult<LoadedMaterialInstance> {
+        material_instance_asset: &MaterialInstanceAssetData,
+    ) -> VkResult<MaterialInstanceAsset> {
         // Find the material we will bind over, we need the metadata from it
         let material_asset = self
             .loaded_assets
@@ -826,13 +826,13 @@ impl ResourceManager {
         // Put these in an arc because
         let material_descriptor_sets = Arc::new(material_descriptor_sets);
 
-        let inner = LoadedMaterialInstanceInner {
+        let inner = MaterialInstanceAssetInner {
             material: material_instance_asset.material.clone(),
             material_descriptor_sets,
             slot_assignments: material_instance_asset.slot_assignments.clone(),
             descriptor_set_writes: material_instance_descriptor_set_writes,
         };
-        Ok(LoadedMaterialInstance {
+        Ok(MaterialInstanceAsset {
             inner: Arc::new(inner)
         })
     }
@@ -848,7 +848,7 @@ impl ResourceManager {
     pub fn create_dyn_pass_material_instance_uninitialized(
         &self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material: Handle<MaterialAsset>,
+        material: Handle<MaterialAssetData>,
         pass_index: u32,
     ) -> VkResult<DynPassMaterialInstance> {
         let material_asset = self
@@ -865,7 +865,7 @@ impl ResourceManager {
     pub fn create_dyn_pass_material_instance_from_asset(
         &mut self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material_instance: Handle<MaterialInstanceAsset>,
+        material_instance: Handle<MaterialInstanceAssetData>,
         pass_index: u32,
     ) -> VkResult<DynPassMaterialInstance> {
         let material_instance_asset = self
@@ -889,7 +889,7 @@ impl ResourceManager {
     pub fn create_dyn_material_instance_uninitialized(
         &self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material: Handle<MaterialAsset>,
+        material: Handle<MaterialAssetData>,
     ) -> VkResult<DynMaterialInstance> {
         let material_asset = self
             .loaded_assets
@@ -903,7 +903,7 @@ impl ResourceManager {
     pub fn create_dyn_material_instance_from_asset(
         &self, // mut required because the asset may describe a sampler that needs to be created
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material_instance: Handle<MaterialInstanceAsset>,
+        material_instance: Handle<MaterialInstanceAssetData>,
     ) -> VkResult<DynMaterialInstance> {
         let material_instance_asset = self
             .loaded_assets
@@ -970,8 +970,8 @@ pub struct PipelineCreateData {
 impl PipelineCreateData {
     pub fn new(
         resource_manager: &mut ResourceManager,
-        pipeline_asset: &PipelineAsset,
-        renderpass_asset: &RenderpassAsset,
+        pipeline_asset: &PipelineAssetData,
+        renderpass_asset: &RenderpassAssetData,
         material_pass: &MaterialPass,
         shader_module_hashes: Vec<ResourceHash>,
     ) -> VkResult<Self> {

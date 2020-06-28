@@ -19,7 +19,7 @@ impl Into<crate::image_utils::ColorSpace> for ColorSpace {
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "e6166902-8716-401b-9d2e-8b01701c5626"]
-pub struct ImageAsset {
+pub struct ImageAssetData {
     pub width: u32,
     pub height: u32,
     pub color_space: ColorSpace,
@@ -28,7 +28,7 @@ pub struct ImageAsset {
     pub data: Vec<u8>,
 }
 
-impl std::fmt::Debug for ImageAsset {
+impl std::fmt::Debug for ImageAssetData {
     fn fmt(
         &self,
         f: &mut Formatter<'_>,

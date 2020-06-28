@@ -1,7 +1,7 @@
 use ash::vk;
 use renderer_assets::assets::pipeline::{
-    PipelineAsset, MaterialPassShaderInterface, MaterialAsset, MaterialInstanceSlotAssignment,
-    RenderpassAsset,
+    PipelineAssetData, MaterialPassShaderInterface, MaterialAssetData, MaterialInstanceSlotAssignment,
+    RenderpassAssetData,
 };
 use super::PipelineCreateData;
 use fnv::FnvHashMap;
@@ -26,7 +26,7 @@ use type_uuid::*;
 //
 #[derive(TypeUuid, Clone)]
 #[uuid = "b6958faa-5769-4048-a507-f91a07f49af4"]
-pub struct LoadedShaderModule {
+pub struct ShaderAsset {
     pub shader_module: ResourceArc<vk::ShaderModule>,
 }
 
@@ -34,16 +34,16 @@ pub struct LoadedShaderModule {
 // needed to create the pipeline
 #[derive(TypeUuid, Clone)]
 #[uuid = "7a6a7ba8-a3ca-41eb-94f4-5d3723cd8b44"]
-pub struct LoadedGraphicsPipeline {
+pub struct PipelineAsset {
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    pub pipeline_asset: Arc<PipelineAsset>,
+    pub pipeline_asset: Arc<PipelineAssetData>,
 }
 
 #[derive(TypeUuid, Clone)]
 #[uuid = "bfefdc09-1ba6-422a-9514-b59b5b913128"]
-pub struct LoadedRenderpass {
+pub struct RenderpassAsset {
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    pub renderpass_asset: Arc<RenderpassAsset>,
+    pub data: Arc<RenderpassAssetData>,
 }
 
 pub struct SlotLocation {
@@ -58,8 +58,8 @@ pub struct PerSwapchainData {
     pub pipeline: ResourceArc<PipelineResource>,
 }
 
-#[derive(TypeUuid)]
-#[uuid = "ec6b716d-64cb-452b-b973-1a6dcef58d2a"]
+//#[derive(TypeUuid)]
+//#[uuid = "ec6b716d-64cb-452b-b973-1a6dcef58d2a"]
 pub struct LoadedMaterialPass {
     pub shader_modules: Vec<ResourceArc<vk::ShaderModule>>,
     pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
@@ -81,12 +81,12 @@ pub struct LoadedMaterialPass {
 
 #[derive(TypeUuid, Clone)]
 #[uuid = "165673cd-d81d-4708-b9a4-d7e1a2a67976"]
-pub struct LoadedMaterial {
+pub struct MaterialAsset {
     pub passes: Arc<Vec<LoadedMaterialPass>>,
 }
 
-pub struct LoadedMaterialInstanceInner {
-    pub material: Handle<MaterialAsset>,
+pub struct MaterialInstanceAssetInner {
+    pub material: Handle<MaterialAssetData>,
 
     // Arc these individually because some downstream systems care only about the descriptor sets
     pub material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
@@ -96,13 +96,13 @@ pub struct LoadedMaterialInstanceInner {
 
 #[derive(TypeUuid, Clone)]
 #[uuid = "c60f6a3d-3e8d-4eea-8576-0971cd71b60f"]
-pub struct LoadedMaterialInstance {
-    pub inner: Arc<LoadedMaterialInstanceInner>
+pub struct MaterialInstanceAsset {
+    pub inner: Arc<MaterialInstanceAssetInner>
 }
 
 #[derive(TypeUuid, Clone)]
 #[uuid = "7a67b850-17f9-4877-8a6e-293a1589bbd8"]
-pub struct LoadedImage {
+pub struct ImageAsset {
     pub image_key: ImageKey,
     pub image: ResourceArc<VkImageRaw>,
     pub image_view: ResourceArc<ImageViewResource>,
@@ -110,7 +110,7 @@ pub struct LoadedImage {
 
 #[derive(TypeUuid, Clone)]
 #[uuid = "fc3b1eb8-c986-449e-a165-6a8f4582e6c5"]
-pub struct LoadedBuffer {
+pub struct BufferAsset {
     pub buffer_key: BufferKey,
     pub buffer: ResourceArc<VkBufferRaw>,
 }
@@ -232,13 +232,13 @@ pub struct LoadedAssetMetrics {
 //
 #[derive(Default)]
 pub struct LoadedAssetLookupSet {
-    pub shader_modules: AssetLookup<LoadedShaderModule>,
-    pub graphics_pipelines: AssetLookup<LoadedGraphicsPipeline>,
-    pub renderpasses: AssetLookup<LoadedRenderpass>,
-    pub materials: AssetLookup<LoadedMaterial>,
-    pub material_instances: AssetLookup<LoadedMaterialInstance>,
-    pub images: AssetLookup<LoadedImage>,
-    pub buffers: AssetLookup<LoadedBuffer>,
+    pub shader_modules: AssetLookup<ShaderAsset>,
+    pub graphics_pipelines: AssetLookup<PipelineAsset>,
+    pub renderpasses: AssetLookup<RenderpassAsset>,
+    pub materials: AssetLookup<MaterialAsset>,
+    pub material_instances: AssetLookup<MaterialInstanceAsset>,
+    pub images: AssetLookup<ImageAsset>,
+    pub buffers: AssetLookup<BufferAsset>,
 }
 
 impl LoadedAssetLookupSet {

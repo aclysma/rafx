@@ -3,7 +3,7 @@ use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, SourceFil
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::{Read, Cursor};
-use crate::assets::shader::ShaderAsset;
+use crate::assets::shader::ShaderAssetData;
 use crate::vk_description as dsc;
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
@@ -46,7 +46,7 @@ impl Importer for ShaderImporter {
         source.read_to_end(&mut bytes)?;
 
         let code = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
-        let shader_asset = ShaderAsset {
+        let shader_asset = ShaderAssetData {
             shader: dsc::ShaderModule { code },
         };
 

@@ -1,25 +1,25 @@
 use renderer::resources::resource_managers::{DescriptorSetArc, ResourceArc, AssetLookup};
 use renderer::vulkan::VkBufferRaw;
-use crate::assets::gltf::MeshAsset;
+use crate::assets::gltf::MeshAssetData;
 use type_uuid::*;
 use std::sync::Arc;
 
-pub struct LoadedMeshPart {
+pub struct MeshAssetPart {
     //pub material: ResourceArc<LoadedMaterial>,
     pub material_instance: Arc<Vec<Vec<DescriptorSetArc>>>,
 }
 
-pub struct LoadedMeshInner {
-    pub mesh_parts: Vec<LoadedMeshPart>,
+pub struct MeshAssetInner {
+    pub mesh_parts: Vec<MeshAssetPart>,
     pub vertex_buffer: ResourceArc<VkBufferRaw>,
     pub index_buffer: ResourceArc<VkBufferRaw>,
-    pub asset: MeshAsset,
+    pub asset: MeshAssetData,
 }
 
 #[derive(TypeUuid, Clone)]
 #[uuid = "689a0bf0-e320-41c0-b4e8-bdb2055a7a57"]
-pub struct LoadedMesh {
-    pub inner: Arc<LoadedMeshInner>
+pub struct MeshAsset {
+    pub inner: Arc<MeshAssetInner>
 }
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ pub struct GameLoadedAssetMetrics {
 //
 #[derive(Default)]
 pub struct GameLoadedAssetLookupSet {
-    pub meshes: AssetLookup<LoadedMesh>,
+    pub meshes: AssetLookup<MeshAsset>,
 }
 
 impl GameLoadedAssetLookupSet {

@@ -5,7 +5,7 @@ use crate::features::imgui::extract::ImGuiExtractJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::resources::DescriptorSetAllocatorRef;
 use renderer::resources::PipelineSwapchainInfo;
-use renderer::assets::MaterialAsset;
+use renderer::assets::MaterialAssetData;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;
@@ -23,7 +23,7 @@ pub fn create_imgui_extract_job(
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     extents: Extent2D,
-    imgui_material: &Handle<MaterialAsset>,
+    imgui_material: &Handle<MaterialAssetData>,
     font_atlas: ResourceArc<ImageViewResource>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(ImGuiExtractJobImpl::new(

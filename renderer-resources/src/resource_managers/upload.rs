@@ -8,30 +8,30 @@ use std::mem::ManuallyDrop;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
 use ash::vk;
 use crate::resource_managers::load_queue::LoadRequest;
-use renderer_assets::assets::image::ImageAsset;
-use renderer_assets::assets::buffer::BufferAsset;
-use crate::resource_managers::asset_lookup::{LoadedImage, LoadedBuffer};
+use renderer_assets::assets::image::ImageAssetData;
+use renderer_assets::assets::buffer::BufferAssetData;
+use crate::resource_managers::asset_lookup::{ImageAsset, BufferAsset};
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result
 //
-pub enum UploadOpResult<T, AssetT> {
+pub enum UploadOpResult<ResourceT, AssetT> {
     UploadError(LoadHandle),
-    UploadComplete(AssetLoadOp, Sender<AssetT>, T),
+    UploadComplete(AssetLoadOp, Sender<AssetT>, ResourceT),
     UploadDrop(LoadHandle),
 }
 
-pub struct UploadOp<T, AssetT> {
+pub struct UploadOp<ResourceT, AssetT> {
     load_handle: LoadHandle,
     asset_sender: Option<Sender<AssetT>>, // This sends back to the asset storage, we just pass it along
-    sender: Option<Sender<UploadOpResult<T, AssetT>>>, // This sends back to the resource manager to finalize the load
+    sender: Option<Sender<UploadOpResult<ResourceT, AssetT>>>, // This sends back to the resource manager to finalize the load
 }
 
-impl<T, AssetT> UploadOp<T, AssetT> {
+impl<ResourceT, AssetT> UploadOp<ResourceT, AssetT> {
     pub fn new(
         load_handle: LoadHandle,
         asset_sender: Sender<AssetT>,
-        sender: Sender<UploadOpResult<T, AssetT>>,
+        sender: Sender<UploadOpResult<ResourceT, AssetT>>,
     ) -> Self {
         Self {
             load_handle,
@@ -42,7 +42,7 @@ impl<T, AssetT> UploadOp<T, AssetT> {
 
     pub fn complete(
         mut self,
-        image: T,
+        image: ResourceT,
         load_op: AssetLoadOp,
     ) {
         let _ = self
@@ -63,7 +63,7 @@ impl<T, AssetT> UploadOp<T, AssetT> {
     }
 }
 
-impl<T, AssetT> Drop for UploadOp<T, AssetT> {
+impl<ResourceT, AssetT> Drop for UploadOp<ResourceT, AssetT> {
     fn drop(&mut self) {
         if let Some(ref sender) = self.sender {
             let _ = sender.send(UploadOpResult::UploadDrop(self.load_handle));
@@ -71,11 +71,11 @@ impl<T, AssetT> Drop for UploadOp<T, AssetT> {
     }
 }
 
-pub type ImageUploadOpResult = UploadOpResult<VkImage, LoadedImage>;
-pub type ImageUploadOp = UploadOp<VkImage, LoadedImage>;
+pub type ImageUploadOpResult = UploadOpResult<VkImage, ImageAsset>;
+pub type ImageUploadOp = UploadOp<VkImage, ImageAsset>;
 
-pub type BufferUploadOpResult = UploadOpResult<VkBuffer, LoadedBuffer>;
-pub type BufferUploadOp = UploadOp<VkBuffer, LoadedBuffer>;
+pub type BufferUploadOpResult = UploadOpResult<VkBuffer, BufferAsset>;
+pub type BufferUploadOp = UploadOp<VkBuffer, BufferAsset>;
 
 //
 // Represents a single request inserted into the upload queue that hasn't started yet
@@ -478,7 +478,7 @@ impl UploadManager {
 
     pub fn upload_image(
         &self,
-        request: LoadRequest<ImageAsset, LoadedImage>,
+        request: LoadRequest<ImageAssetData, ImageAsset>,
     ) -> VkResult<()> {
         let mips = renderer_assets::image_utils::default_mip_settings_for_image(
             request.asset.width,
@@ -510,7 +510,7 @@ impl UploadManager {
 
     pub fn upload_buffer(
         &self,
-        request: LoadRequest<BufferAsset, LoadedBuffer>,
+        request: LoadRequest<BufferAssetData, BufferAsset>,
     ) -> VkResult<()> {
         self.upload_queue
             .pending_buffer_tx()

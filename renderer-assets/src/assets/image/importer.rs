@@ -4,7 +4,7 @@ use image2::{Image};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::Read;
-use crate::assets::image::{ImageAsset, ColorSpace};
+use crate::assets::image::{ImageAssetData, ColorSpace};
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "23f90369-6916-4548-81d0-a76e0b162df2"]
@@ -46,7 +46,7 @@ impl Importer for ImageImporter {
         let decoded_image = image2::io::decode::<_, _, image2::Rgba>(&bytes)
             .map_err(|e| Error::Boxed(Box::new(e)))?;
 
-        let image_asset = ImageAsset {
+        let image_asset = ImageAssetData {
             width: decoded_image.width() as u32,
             height: decoded_image.height() as u32,
             color_space: ColorSpace::Srgb,

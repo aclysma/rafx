@@ -9,7 +9,7 @@ use crate::resource_managers::{
     DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc,
 };
 use crate::resource_managers::asset_lookup::{
-    LoadedMaterialPass, LoadedMaterialInstance, LoadedMaterial,
+    LoadedMaterialPass, MaterialInstanceAsset, MaterialAsset,
 };
 
 #[derive(Debug)]
@@ -157,7 +157,7 @@ impl DescriptorSetAllocator {
 
     pub fn create_dyn_material_instance_uninitialized(
         &mut self,
-        material: &LoadedMaterial,
+        material: &MaterialAsset,
     ) -> VkResult<DynMaterialInstance> {
         let mut passes = Vec::with_capacity(material.passes.len());
         for pass in &*material.passes {
@@ -171,8 +171,8 @@ impl DescriptorSetAllocator {
 
     pub fn create_dyn_material_instance_from_asset(
         &mut self,
-        material: &LoadedMaterial,
-        material_instance: &LoadedMaterialInstance,
+        material: &MaterialAsset,
+        material_instance: &MaterialInstanceAsset,
     ) -> VkResult<DynMaterialInstance> {
         let mut passes = Vec::with_capacity(material.passes.len());
         for (pass, write_sets) in material

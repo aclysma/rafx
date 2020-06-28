@@ -20,7 +20,7 @@ use renderer::vulkan::VkDeviceContext;
 use renderer::resources::resource_managers::{
     PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef,
 };
-use renderer::assets::assets::pipeline::MaterialAsset;
+use renderer::assets::assets::pipeline::MaterialAssetData;
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
@@ -72,7 +72,7 @@ pub fn create_sprite_extract_job(
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    sprite_material: &Handle<MaterialAsset>,
+    sprite_material: &Handle<MaterialAssetData>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(
         device_context,

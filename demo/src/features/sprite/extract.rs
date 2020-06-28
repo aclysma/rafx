@@ -11,7 +11,7 @@ use renderer::base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
-use renderer::assets::assets::pipeline::MaterialAsset;
+use renderer::assets::assets::pipeline::MaterialAssetData;
 use atelier_assets::loader::handle::Handle;
 use renderer::resources::resource_managers::DescriptorSetArc;
 use legion::prelude::EntityStore;
@@ -45,7 +45,7 @@ pub struct SpriteExtractJobImpl {
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    sprite_material: Handle<MaterialAsset>,
+    sprite_material: Handle<MaterialAssetData>,
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
     per_view_descriptors: Vec<DescriptorSetArc>,
 }
@@ -55,7 +55,7 @@ impl SpriteExtractJobImpl {
         device_context: VkDeviceContext,
         descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
-        sprite_material: &Handle<MaterialAsset>,
+        sprite_material: &Handle<MaterialAssetData>,
     ) -> Self {
         SpriteExtractJobImpl {
             device_context,

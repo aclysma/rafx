@@ -20,7 +20,7 @@ use renderer::vulkan::VkBufferRaw;
 use renderer::resources::resource_managers::{
     PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc,
 };
-use renderer::assets::assets::pipeline::MaterialAsset;
+use renderer::assets::assets::pipeline::MaterialAssetData;
 
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
@@ -81,7 +81,7 @@ pub struct MeshPerObjectShaderParam {
 pub fn create_mesh_extract_job(
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    mesh_material: &Handle<MaterialAsset>,
+    mesh_material: &Handle<MaterialAssetData>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(MeshExtractJobImpl::new(
         descriptor_set_allocator,

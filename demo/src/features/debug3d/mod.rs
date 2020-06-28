@@ -5,7 +5,7 @@ use crate::features::debug3d::extract::Debug3dExtractJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::resources::DescriptorSetAllocatorRef;
 use renderer::resources::PipelineSwapchainInfo;
-use renderer::assets::MaterialAsset;
+use renderer::assets::MaterialAssetData;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;
@@ -22,7 +22,7 @@ pub fn create_debug3d_extract_job(
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    debug3d_material: &Handle<MaterialAsset>,
+    debug3d_material: &Handle<MaterialAssetData>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(Debug3dExtractJobImpl::new(
         device_context,

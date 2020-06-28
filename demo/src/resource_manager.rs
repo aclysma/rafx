@@ -2,12 +2,12 @@ use renderer::resources::resource_managers::{
     DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoadHandler, ResourceManager,
 };
 use renderer::vulkan::VkBufferRaw;
-use crate::asset_lookup::{GameLoadedAssetMetrics, GameLoadedAssetLookupSet, LoadedMesh, LoadedMeshPart, LoadedMeshInner};
+use crate::asset_lookup::{GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner};
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::handle::AssetHandle;
 use ash::prelude::VkResult;
 use atelier_assets::loader::AssetLoadOp;
-use crate::assets::gltf::MeshAsset;
+use crate::assets::gltf::MeshAssetData;
 use std::sync::Arc;
 use crossbeam_channel::Sender;
 
@@ -18,7 +18,7 @@ pub struct MeshPartInfo {
 pub struct MeshInfo {
     pub vertex_buffer: ResourceArc<VkBufferRaw>,
     pub index_buffer: ResourceArc<VkBufferRaw>,
-    pub mesh_asset: MeshAsset,
+    pub mesh_asset: MeshAssetData,
     pub mesh_parts: Vec<MeshPartInfo>,
 }
 
@@ -29,7 +29,7 @@ pub struct GameResourceManagerMetrics {
 
 #[derive(Default)]
 pub struct GameLoadQueueSet {
-    pub meshes: LoadQueues<MeshAsset, LoadedMesh>,
+    pub meshes: LoadQueues<MeshAssetData, MeshAsset>,
 }
 
 pub struct GameResourceManager {
@@ -45,13 +45,13 @@ impl GameResourceManager {
         }
     }
 
-    pub fn create_mesh_load_handler(&self) -> GenericLoadHandler<MeshAsset, LoadedMesh> {
+    pub fn create_mesh_load_handler(&self) -> GenericLoadHandler<MeshAssetData, MeshAsset> {
         self.load_queues.meshes.create_load_handler()
     }
 
     pub fn get_mesh_info(
         &self,
-        handle: &Handle<MeshAsset>,
+        handle: &Handle<MeshAssetData>,
     ) -> Option<MeshInfo> {
         self.loaded_assets
             .meshes
@@ -129,22 +129,22 @@ impl GameResourceManager {
         }
     }
 
-    fn handle_commit_requests<AssetT, LoadedT>(
-        load_queues: &mut LoadQueues<AssetT, LoadedT>,
+    fn handle_commit_requests<AssetDataT, LoadedT>(
+        load_queues: &mut LoadQueues<AssetDataT, LoadedT>,
         asset_lookup: &mut AssetLookup<LoadedT>,
     ) {
         for request in load_queues.take_commit_requests() {
             log::info!(
                 "commit asset {:?} {}",
                 request.load_handle,
-                core::any::type_name::<AssetT>()
+                core::any::type_name::<AssetDataT>()
             );
             asset_lookup.commit(request.load_handle);
         }
     }
 
-    fn handle_free_requests<AssetT, LoadedT>(
-        load_queues: &mut LoadQueues<AssetT, LoadedT>,
+    fn handle_free_requests<AssetDataT, LoadedT>(
+        load_queues: &mut LoadQueues<AssetDataT, LoadedT>,
         asset_lookup: &mut AssetLookup<LoadedT>,
     ) {
         for request in load_queues.take_commit_requests() {
@@ -155,8 +155,8 @@ impl GameResourceManager {
     fn load_mesh(
         &mut self,
         resource_manager: &ResourceManager,
-        mesh_asset: &MeshAsset,
-    ) -> VkResult<LoadedMesh> {
+        mesh_asset: &MeshAssetData,
+    ) -> VkResult<MeshAsset> {
         let vertex_buffer = resource_manager
             .loaded_assets()
             .buffers
@@ -179,20 +179,20 @@ impl GameResourceManager {
                 let material_instance_info =
                     resource_manager.get_material_instance_info(&mesh_part.material_instance);
 
-                LoadedMeshPart {
+                MeshAssetPart {
                     material_instance: material_instance_info.descriptor_sets,
                 }
             })
             .collect();
 
-        let inner = LoadedMeshInner {
+        let inner = MeshAssetInner {
             vertex_buffer,
             index_buffer,
             asset: mesh_asset.clone(),
             mesh_parts,
         };
 
-        Ok(LoadedMesh {
+        Ok(MeshAsset {
             inner: Arc::new(inner)
         })
     }

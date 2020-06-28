@@ -8,14 +8,14 @@ use renderer::nodes::{
 use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
-use renderer::assets::assets::pipeline::MaterialAsset;
+use renderer::assets::assets::pipeline::MaterialAssetData;
 use atelier_assets::loader::handle::Handle;
 
 pub struct Debug3dExtractJobImpl {
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
-    debug3d_material: Handle<MaterialAsset>,
+    debug3d_material: Handle<MaterialAssetData>,
 }
 
 impl Debug3dExtractJobImpl {
@@ -23,7 +23,7 @@ impl Debug3dExtractJobImpl {
         device_context: VkDeviceContext,
         descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
-        debug3d_material: &Handle<MaterialAsset>,
+        debug3d_material: &Handle<MaterialAssetData>,
     ) -> Self {
         Debug3dExtractJobImpl {
             device_context,

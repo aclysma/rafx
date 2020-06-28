@@ -7,8 +7,8 @@ use crate::components::{
     PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
     DirectionalLightComponent,
 };
-use crate::assets::gltf::MeshAsset;
-use renderer::assets::assets::image::ImageAsset;
+use crate::assets::gltf::MeshAssetData;
+use renderer::assets::assets::image::ImageAssetData;
 use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
@@ -30,7 +30,7 @@ pub fn populate_test_sprite_entities(
 ) {
     let sprite_image = {
         let asset_resource = resources.get::<AssetResource>().unwrap();
-        begin_load_asset::<ImageAsset>(
+        begin_load_asset::<ImageAssetData>(
             asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
             &asset_resource,
         )
@@ -94,7 +94,7 @@ pub fn populate_test_mesh_entities(
 ) {
     let mesh = {
         let asset_resource = resources.get::<AssetResource>().unwrap();
-        begin_load_asset::<MeshAsset>(
+        begin_load_asset::<MeshAssetData>(
             asset_uuid!("ffc9b240-0a17-4ff4-bb7d-72d13cc6e261"),
             &asset_resource,
         )

@@ -33,23 +33,23 @@ impl Default for AssetResource {
 }
 
 impl AssetResource {
-    pub fn add_storage<AssetT>(&mut self)
+    pub fn add_storage<AssetDataT>(&mut self)
     where
-        AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
+        AssetDataT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
     {
-        self.storage.add_storage::<AssetT>();
+        self.storage.add_storage::<AssetDataT>();
     }
 
-    pub fn add_storage_with_load_handler<AssetT, LoadedT, LoaderT>(
+    pub fn add_storage_with_load_handler<AssetDataT, LoadedT, LoaderT>(
         &mut self,
         loader: Box<LoaderT>,
     ) where
-        AssetT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static,
+        AssetDataT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static,
         LoadedT: TypeUuid + 'static + Send,
         LoaderT: DynAssetLoader<LoadedT> + 'static,
     {
         self.storage
-            .add_storage_with_load_handler::<AssetT, LoadedT, LoaderT>(loader);
+            .add_storage_with_load_handler::<AssetDataT, LoadedT, LoaderT>(loader);
     }
 
     pub fn update(&mut self) {

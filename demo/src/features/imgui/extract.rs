@@ -6,7 +6,7 @@ use renderer::nodes::{
 use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::resources::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
-use renderer::assets::assets::pipeline::MaterialAsset;
+use renderer::assets::assets::pipeline::MaterialAssetData;
 use atelier_assets::loader::handle::Handle;
 use crate::imgui_support::Sdl2ImguiManager;
 use ash::vk::Extent2D;
@@ -42,7 +42,7 @@ pub struct ImGuiExtractJobImpl {
     descriptor_set_allocator: DescriptorSetAllocatorRef,
     pipeline_info: PipelineSwapchainInfo,
     extents: Extent2D,
-    imgui_material: Handle<MaterialAsset>,
+    imgui_material: Handle<MaterialAssetData>,
     font_atlas: ResourceArc<ImageViewResource>,
 }
 
@@ -52,7 +52,7 @@ impl ImGuiExtractJobImpl {
         descriptor_set_allocator: DescriptorSetAllocatorRef,
         pipeline_info: PipelineSwapchainInfo,
         extents: Extent2D,
-        imgui_material: &Handle<MaterialAsset>,
+        imgui_material: &Handle<MaterialAssetData>,
         font_atlas: ResourceArc<ImageViewResource>,
     ) -> Self {
         ImGuiExtractJobImpl {
