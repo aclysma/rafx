@@ -11,14 +11,12 @@ use atelier_assets::loader::handle::Handle;
 use crate::assets::gltf::{
     GltfMaterialAsset, MeshAssetData, MeshPart, MeshVertex, GltfMaterialDataShaderParam,
 };
-use renderer::assets::assets::image::{ImageAssetData, ColorSpace};
-use renderer::assets::assets::buffer::BufferAssetData;
+use renderer::assets::assets::{ImageAssetData, ColorSpace};
+use renderer::assets::assets::BufferAssetData;
 use renderer::assets::push_buffer::PushBuffer;
 use atelier_assets::loader::handle::SerdeContext;
-use renderer::assets::assets::pipeline::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
+use renderer::assets::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
 use std::str::FromStr;
-// use atelier_assets::importer::Result as ImporterResult;
-// use atelier_assets::importer::Error as ImporterError;
 use serde::export::Formatter;
 use renderer::assets::ImageAsset;
 use renderer::assets::MaterialInstanceAsset;

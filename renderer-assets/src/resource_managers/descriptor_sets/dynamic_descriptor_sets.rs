@@ -2,7 +2,7 @@ use super::DescriptorSetArc;
 use super::DescriptorSetWriteSet;
 use super::DescriptorSetElementKey;
 use crate::resource_managers::resource_lookup::{ImageViewResource, DescriptorSetLayoutResource};
-use crate::resource_managers::asset_lookup::SlotNameLookup;
+use crate::assets::SlotNameLookup;
 use std::sync::Arc;
 use crate::resource_managers::descriptor_sets::descriptor_write_set::{
     DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue,

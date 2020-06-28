@@ -8,7 +8,7 @@ use ash::prelude::VkResult;
 use crate::resource_managers::{
     DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc,
 };
-use crate::resource_managers::asset_lookup::{LoadedMaterialPass, MaterialInstanceAsset, MaterialAsset};
+use crate::assets::{MaterialPass, MaterialInstanceAsset, MaterialAsset};
 
 #[derive(Debug)]
 pub struct DescriptorSetPoolMetrics {
@@ -121,7 +121,7 @@ impl DescriptorSetAllocator {
 
     pub fn create_dyn_pass_material_instance_uninitialized(
         &mut self,
-        pass: &LoadedMaterialPass,
+        pass: &MaterialPass,
     ) -> VkResult<DynPassMaterialInstance> {
         let mut dyn_descriptor_sets = Vec::with_capacity(pass.descriptor_set_layouts.len());
 
@@ -137,7 +137,7 @@ impl DescriptorSetAllocator {
 
     pub fn create_dyn_pass_material_instance_from_asset(
         &mut self,
-        pass: &LoadedMaterialPass,
+        pass: &MaterialPass,
         write_sets: Vec<DescriptorSetWriteSet>,
     ) -> VkResult<DynPassMaterialInstance> {
         let mut dyn_descriptor_sets = Vec::with_capacity(write_sets.len());

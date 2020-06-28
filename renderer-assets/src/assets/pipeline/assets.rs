@@ -1,16 +1,28 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::{
-    vk_description as dsc, RenderpassAsset, ImageAsset, MaterialAsset, ShaderAsset, PipelineAsset,
-};
+use crate::{vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc, PipelineCreateData};
 use atelier_assets::loader::handle::Handle;
 use std::hash::Hash;
+use std::sync::{Arc, Mutex};
+use crate::resource_managers::DescriptorSetWriteSet;
+pub use crate::resource_managers::PipelineResource;
+pub use crate::resource_managers::DescriptorSetLayoutResource;
+pub use crate::resource_managers::PipelineLayoutResource;
+use fnv::FnvHashMap;
+use ash::vk;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "366d277d-6cb5-430a-a8fa-007d8ae69886"]
 pub struct RenderpassAssetData {
     pub renderpass: dsc::RenderPass,
+}
+
+#[derive(TypeUuid, Clone)]
+#[uuid = "bfefdc09-1ba6-422a-9514-b59b5b913128"]
+pub struct RenderpassAsset {
+    // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
+    pub data: Arc<RenderpassAssetData>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
@@ -23,6 +35,15 @@ pub struct PipelineAssetData {
     pub color_blend_state: dsc::PipelineColorBlendState,
     pub dynamic_state: dsc::PipelineDynamicState,
     pub depth_stencil_state: dsc::PipelineDepthStencilState,
+}
+
+// The actual GPU resources are held in Material because the pipeline does not specify everything
+// needed to create the pipeline
+#[derive(TypeUuid, Clone)]
+#[uuid = "7a6a7ba8-a3ca-41eb-94f4-5d3723cd8b44"]
+pub struct PipelineAsset {
+    // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
+    pub pipeline_asset: Arc<PipelineAssetData>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -91,7 +112,7 @@ pub struct MaterialPassShaderInterface {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct MaterialPass {
+pub struct MaterialPassData {
     pub phase: String,
     pub pipeline: Handle<PipelineAsset>,
     pub renderpass: Handle<RenderpassAsset>,
@@ -102,8 +123,46 @@ pub struct MaterialPass {
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "ad94bca2-1f02-4e5f-9117-1a7b03456a11"]
 pub struct MaterialAssetData {
-    pub passes: Vec<MaterialPass>,
+    pub passes: Vec<MaterialPassData>,
 }
+
+pub struct SlotLocation {
+    pub layout_index: u32,
+    pub binding_index: u32,
+    //pub array_index: u32,
+}
+
+pub type SlotNameLookup = FnvHashMap<String, Vec<SlotLocation>>;
+
+pub struct MaterialPassSwapchainResources {
+    pub pipeline: ResourceArc<PipelineResource>,
+}
+
+pub struct MaterialPass {
+    pub shader_modules: Vec<ResourceArc<vk::ShaderModule>>,
+    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
+    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
+
+    // Potentially one of these per swapchain surface
+    pub per_swapchain_data: Mutex<Vec<MaterialPassSwapchainResources>>,
+
+    // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
+    pub pipeline_create_data: PipelineCreateData,
+
+    //descriptor_set_factory: DescriptorSetFactory,
+    pub shader_interface: MaterialPassShaderInterface,
+
+    //TODO: Use hash instead of string. Probably want to have a "hashed string" type that keeps the
+    // string around only in debug mode. Maybe this could be generalized to a HashOfThing<T>.
+    pub pass_slot_name_lookup: Arc<SlotNameLookup>,
+}
+
+#[derive(TypeUuid, Clone)]
+#[uuid = "165673cd-d81d-4708-b9a4-d7e1a2a67976"]
+pub struct MaterialAsset {
+    pub passes: Arc<Vec<MaterialPass>>,
+}
+
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialInstanceSlotAssignment {
@@ -121,4 +180,39 @@ pub struct MaterialInstanceSlotAssignment {
 pub struct MaterialInstanceAssetData {
     pub material: Handle<MaterialAsset>,
     pub slot_assignments: Vec<MaterialInstanceSlotAssignment>,
+}
+
+pub struct MaterialInstanceAssetInner {
+    pub material: Handle<MaterialAsset>,
+
+    // Arc these individually because some downstream systems care only about the descriptor sets
+    pub material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
+    pub slot_assignments: Vec<MaterialInstanceSlotAssignment>,
+    pub descriptor_set_writes: Vec<Vec<DescriptorSetWriteSet>>,
+}
+
+#[derive(TypeUuid, Clone)]
+#[uuid = "c60f6a3d-3e8d-4eea-8576-0971cd71b60f"]
+pub struct MaterialInstanceAsset {
+    pub inner: Arc<MaterialInstanceAssetInner>,
+}
+
+impl MaterialInstanceAsset {
+    pub fn new(
+        material: Handle<MaterialAsset>,
+        material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
+        slot_assignments: Vec<MaterialInstanceSlotAssignment>,
+        descriptor_set_writes: Vec<Vec<DescriptorSetWriteSet>>,
+    ) -> Self {
+        let inner = MaterialInstanceAssetInner {
+            material,
+            material_descriptor_sets,
+            slot_assignments,
+            descriptor_set_writes
+        };
+
+        MaterialInstanceAsset {
+            inner: Arc::new(inner)
+        }
+    }
 }

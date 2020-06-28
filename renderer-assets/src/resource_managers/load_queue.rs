@@ -3,15 +3,15 @@ use type_uuid::TypeUuid;
 use crate::ResourceLoader;
 use std::marker::PhantomData;
 use crossbeam_channel::{Sender, Receiver};
-use crate::assets::shader::ShaderAssetData;
-use crate::assets::pipeline::{
+use crate::assets::ShaderAssetData;
+use crate::assets::{
     PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
 };
-use crate::assets::image::ImageAssetData;
+use crate::assets::ImageAssetData;
 use atelier_assets::loader::LoadHandle;
-use crate::assets::buffer::BufferAssetData;
+use crate::assets::BufferAssetData;
 use crate::resource_loader::ResourceLoadResult;
-use crate::resource_managers::asset_lookup::{
+use crate::assets::{
     ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
     BufferAsset,
 };

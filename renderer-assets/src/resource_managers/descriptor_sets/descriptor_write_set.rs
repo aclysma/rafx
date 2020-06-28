@@ -2,8 +2,9 @@ use ash::vk;
 use crate::vk_description as dsc;
 use crate::resource_managers::resource_lookup::{ImageViewResource, ResourceLookupSet};
 use fnv::FnvHashMap;
-use crate::resource_managers::asset_lookup::{LoadedMaterialPass, LoadedAssetLookupSet, SlotNameLookup};
-use crate::assets::pipeline::MaterialInstanceSlotAssignment;
+use crate::resource_managers::asset_lookup::LoadedAssetLookupSet;
+use crate::assets::{MaterialPass, SlotNameLookup};
+use crate::assets::MaterialInstanceSlotAssignment;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::AssetHandle;
 use crate::resource_managers::ResourceArc;
@@ -207,7 +208,7 @@ pub fn apply_material_instance_slot_assignment(
 }
 
 pub fn create_uninitialized_write_sets_for_material_pass(
-    pass: &LoadedMaterialPass
+    pass: &MaterialPass
 ) -> Vec<DescriptorSetWriteSet> {
     // The metadata for the descriptor sets within this pass, one for each set within the pass
     let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts;
@@ -221,7 +222,7 @@ pub fn create_uninitialized_write_sets_for_material_pass(
 }
 
 pub fn create_write_sets_for_material_instance_pass(
-    pass: &LoadedMaterialPass,
+    pass: &MaterialPass,
     slots: &Vec<MaterialInstanceSlotAssignment>,
     assets: &LoadedAssetLookupSet,
     resources: &mut ResourceLookupSet,

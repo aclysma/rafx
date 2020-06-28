@@ -1,6 +1,7 @@
 use fnv::FnvHashMap;
 use crate::vk_description as dsc;
-use crate::resource_managers::asset_lookup::{LoadedAssetLookupSet, MaterialAsset, PerSwapchainData};
+use crate::resource_managers::asset_lookup::{LoadedAssetLookupSet};
+use crate::assets::{MaterialAsset, MaterialPassSwapchainResources};
 use crate::resource_managers::resource_lookup::ResourceLookupSet;
 use crate::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::*;
@@ -32,7 +33,7 @@ impl ActiveSwapchainSurfaceInfoSet {
             )?;
 
             let mut per_swapchain_data = pass.per_swapchain_data.lock().unwrap();
-            per_swapchain_data.push(PerSwapchainData { pipeline });
+            per_swapchain_data.push(MaterialPassSwapchainResources { pipeline });
         }
 
         Ok(())

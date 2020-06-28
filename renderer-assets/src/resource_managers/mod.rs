@@ -1,16 +1,18 @@
 use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer};
 use ash::prelude::*;
 use ash::vk;
-use crate::assets::image::ImageAssetData;
-use crate::assets::shader::ShaderAssetData;
-use crate::assets::pipeline::{
-    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, MaterialPass,
+use crate::assets::ImageAssetData;
+use crate::assets::ShaderAssetData;
+use crate::assets::{
+    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, MaterialPassData,
     RenderpassAssetData,
 };
 use crate::vk_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
 use crate::vk_description as dsc;
+use crate::assets::{ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset, BufferAsset, MaterialPass};
+
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::loader::handle::AssetHandle;
 use std::sync::{Arc, Mutex};
@@ -22,7 +24,9 @@ pub use resource_arc::ResourceArc;
 mod resource_lookup;
 use resource_lookup::ResourceHash;
 use resource_lookup::ResourceLookupSet;
-use resource_lookup::DescriptorSetLayoutResource;
+pub use resource_lookup::DescriptorSetLayoutResource;
+pub use resource_lookup::ImageKey;
+pub use resource_lookup::BufferKey;
 
 mod dyn_resource_allocator;
 pub use dyn_resource_allocator::DynResourceAllocatorSet;
@@ -36,43 +40,36 @@ mod swapchain_management;
 use swapchain_management::ActiveSwapchainSurfaceInfoSet;
 
 mod asset_lookup;
-pub use asset_lookup::ImageAsset;
-pub use asset_lookup::BufferAsset;
-pub use asset_lookup::ShaderAsset;
-pub use asset_lookup::MaterialInstanceAsset;
-pub use asset_lookup::MaterialAsset;
-pub use asset_lookup::LoadedMaterialPass;
-pub use asset_lookup::PipelineAsset;
 pub use asset_lookup::LoadedAssetLookupSet;
-pub use asset_lookup::RenderpassAsset;
 pub use asset_lookup::AssetLookup;
-use asset_lookup::SlotLocation;
+use crate::assets::SlotLocation;
 use asset_lookup::LoadedAssetMetrics;
-use asset_lookup::SlotNameLookup;
+use crate::assets::SlotNameLookup;
 
 mod descriptor_sets;
 use descriptor_sets::DescriptorSetAllocator;
 pub use descriptor_sets::DescriptorSetAllocatorRef;
 pub use descriptor_sets::DescriptorSetAllocatorProvider;
 pub use descriptor_sets::DescriptorSetArc;
-use descriptor_sets::DescriptorSetAllocatorMetrics;
+pub use descriptor_sets::DescriptorSetAllocatorMetrics;
 pub use descriptor_sets::DynDescriptorSet;
 pub use descriptor_sets::DynPassMaterialInstance;
 pub use descriptor_sets::DynMaterialInstance;
-use descriptor_sets::DescriptorSetWriteSet;
+pub use descriptor_sets::DescriptorSetWriteSet;
 
 mod upload;
 use upload::ImageUploadOpResult;
 use upload::BufferUploadOpResult;
 use upload::UploadManager;
-use crate::resource_managers::resource_lookup::{PipelineLayoutResource, PipelineResource};
+pub use crate::resource_managers::resource_lookup::PipelineLayoutResource;
+pub use crate::resource_managers::resource_lookup::PipelineResource;
 
 pub use resource_lookup::ImageViewResource;
-use crate::assets::buffer::BufferAssetData;
+use crate::assets::BufferAssetData;
 use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 use crate::resource_managers::descriptor_sets::{DescriptorSetAllocatorManager};
 use crossbeam_channel::Sender;
-use crate::resource_managers::asset_lookup::{MaterialInstanceAssetInner, PerSwapchainData};
+use crate::assets::MaterialPassSwapchainResources;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -731,7 +728,7 @@ impl ResourceManager {
                     &swapchain_surface_info,
                 )?;
 
-                per_swapchain_data.push(PerSwapchainData { pipeline });
+                per_swapchain_data.push(MaterialPassSwapchainResources { pipeline });
             }
 
             // Create a lookup of the slot names
@@ -756,7 +753,7 @@ impl ResourceManager {
                 }
             }
 
-            passes.push(LoadedMaterialPass {
+            passes.push(MaterialPass {
                 descriptor_set_layouts: pipeline_create_data.descriptor_set_layout_arcs.clone(),
                 pipeline_layout: pipeline_create_data.pipeline_layout.clone(),
                 shader_modules: pipeline_create_data.shader_module_arcs.clone(),
@@ -834,16 +831,12 @@ impl ResourceManager {
 
         // Put these in an arc because
         let material_descriptor_sets = Arc::new(material_descriptor_sets);
-
-        let inner = MaterialInstanceAssetInner {
-            material: material_instance_asset.material.clone(),
+        Ok(MaterialInstanceAsset::new(
+            material_instance_asset.material.clone(),
             material_descriptor_sets,
-            slot_assignments: material_instance_asset.slot_assignments.clone(),
-            descriptor_set_writes: material_instance_descriptor_set_writes,
-        };
-        Ok(MaterialInstanceAsset {
-            inner: Arc::new(inner),
-        })
+            material_instance_asset.slot_assignments.clone(),
+            material_instance_descriptor_set_writes,
+        ))
     }
 
     pub fn create_dyn_descriptor_set_uninitialized(
@@ -981,7 +974,7 @@ impl PipelineCreateData {
         resource_manager: &mut ResourceManager,
         pipeline_asset: &PipelineAssetData,
         renderpass_asset: &RenderpassAssetData,
-        material_pass: &MaterialPass,
+        material_pass: &MaterialPassData,
         shader_module_hashes: Vec<ResourceHash>,
     ) -> VkResult<Self> {
         //

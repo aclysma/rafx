@@ -3,10 +3,7 @@ pub mod image_utils;
 pub mod push_buffer;
 pub mod vk_description;
 
-pub use assets::image::assets::*;
-pub use assets::buffer::assets::*;
-pub use assets::pipeline::assets::*;
-pub use assets::shader::assets::*;
+pub use assets::*;
 
 //TODO: Collapse resource_managers into the root of this crate
 pub mod resource_managers;
