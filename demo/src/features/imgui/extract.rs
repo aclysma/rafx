@@ -5,7 +5,7 @@ use renderer::nodes::{
 };
 use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
+use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use atelier_assets::loader::handle::Handle;
 use crate::imgui_support::Sdl2ImguiManager;
 use ash::vk::Extent2D;

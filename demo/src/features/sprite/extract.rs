@@ -10,9 +10,9 @@ use renderer::nodes::{
 use renderer::base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
+use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::resource_managers::DescriptorSetArc;
+use renderer::assets::resources::DescriptorSetArc;
 use legion::prelude::EntityStore;
 use renderer::assets::MaterialAsset;
 

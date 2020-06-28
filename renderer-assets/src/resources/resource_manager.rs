@@ -1,75 +1,32 @@
 use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer};
 use ash::prelude::*;
-use ash::vk;
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, MaterialPassData,
+    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData,
     RenderpassAssetData,
 };
 use crate::vk_description::SwapchainSurfaceInfo;
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
-use crate::vk_description as dsc;
+use crate::{vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, PipelineLayoutResource, PipelineResource, ImageViewResource, DescriptorSetArc, DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData, AssetLookupSet, DynResourceAllocatorSet, LoadQueues, AssetLookup, MaterialPassSwapchainResources, SlotNameLookup, SlotLocation, PipelineCreateData, DynPassMaterialInstance, DynDescriptorSet, DescriptorSetAllocatorRef, DynMaterialInstance, DescriptorSetAllocatorProvider};
 use crate::assets::{ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset, BufferAsset, MaterialPass};
+use super::dyn_resource_allocator;
+use super::resource_lookup;
+
 
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::loader::handle::AssetHandle;
 use std::sync::{Arc, Mutex};
-
-mod resource_arc;
-use resource_arc::ResourceId;
-pub use resource_arc::ResourceArc;
-
-mod resource_lookup;
-use resource_lookup::ResourceHash;
-use resource_lookup::ResourceLookupSet;
-pub use resource_lookup::DescriptorSetLayoutResource;
-pub use resource_lookup::ImageKey;
-pub use resource_lookup::BufferKey;
-
-mod dyn_resource_allocator;
-pub use dyn_resource_allocator::DynResourceAllocatorSet;
-
-mod load_queue;
-pub use load_queue::LoadQueues;
-pub use load_queue::GenericLoader;
-use load_queue::LoadQueueSet;
-
-mod swapchain_management;
-use swapchain_management::ActiveSwapchainSurfaceInfoSet;
-
-mod asset_lookup;
-pub use asset_lookup::LoadedAssetLookupSet;
-pub use asset_lookup::AssetLookup;
-use crate::assets::SlotLocation;
-use asset_lookup::LoadedAssetMetrics;
-use crate::assets::SlotNameLookup;
-
-mod descriptor_sets;
-use descriptor_sets::DescriptorSetAllocator;
-pub use descriptor_sets::DescriptorSetAllocatorRef;
-pub use descriptor_sets::DescriptorSetAllocatorProvider;
-pub use descriptor_sets::DescriptorSetArc;
-pub use descriptor_sets::DescriptorSetAllocatorMetrics;
-pub use descriptor_sets::DynDescriptorSet;
-pub use descriptor_sets::DynPassMaterialInstance;
-pub use descriptor_sets::DynMaterialInstance;
-pub use descriptor_sets::DescriptorSetWriteSet;
-
-mod upload;
-use upload::ImageUploadOpResult;
-use upload::BufferUploadOpResult;
-use upload::UploadManager;
-pub use crate::resource_managers::resource_lookup::PipelineLayoutResource;
-pub use crate::resource_managers::resource_lookup::PipelineResource;
-
-pub use resource_lookup::ImageViewResource;
-use crate::assets::BufferAssetData;
-use crate::resource_managers::dyn_resource_allocator::DynResourceAllocatorManagerSet;
-use crate::resource_managers::descriptor_sets::{DescriptorSetAllocatorManager};
+use crate::resources::asset_lookup::LoadedAssetMetrics;
+use crate::resources::dyn_resource_allocator::DynResourceAllocatorManagerSet;
+use crate::resources::descriptor_sets;
+use crate::resources::resource_lookup::ResourceLookupSet;
+use crate::resources::load_queue::LoadQueueSet;
+use crate::resources::swapchain_management::ActiveSwapchainSurfaceInfoSet;
+use crate::resources::descriptor_sets::{DescriptorSetAllocator, DescriptorSetAllocatorManager};
+use crate::resources::upload::{UploadManager, ImageUploadOpResult, BufferUploadOpResult};
 use crossbeam_channel::Sender;
-use crate::assets::MaterialPassSwapchainResources;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -122,7 +79,7 @@ pub struct ResourceManagerLoaders {
 pub struct ResourceManager {
     dyn_resources: DynResourceAllocatorManagerSet,
     resources: ResourceLookupSet,
-    loaded_assets: LoadedAssetLookupSet,
+    loaded_assets: AssetLookupSet,
     load_queues: LoadQueueSet,
     swapchain_surfaces: ActiveSwapchainSurfaceInfoSet,
     resource_descriptor_sets: DescriptorSetAllocator,
@@ -131,6 +88,26 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
+    #[allow(dead_code)]
+    pub(super) fn resources(&self) -> &ResourceLookupSet {
+        &self.resources
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn resources_mut(&mut self) -> &mut ResourceLookupSet {
+        &mut self.resources
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn assets(&self) -> &AssetLookupSet {
+        &self.loaded_assets
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn assets_mut(&mut self) -> &mut AssetLookupSet {
+        &mut self.loaded_assets
+    }
+
     pub fn new(device_context: &VkDeviceContext) -> Self {
         ResourceManager {
             dyn_resources: DynResourceAllocatorManagerSet::new(
@@ -150,7 +127,7 @@ impl ResourceManager {
         }
     }
 
-    pub fn loaded_assets(&self) -> &LoadedAssetLookupSet {
+    pub fn loaded_assets(&self) -> &AssetLookupSet {
         &self.loaded_assets
     }
 
@@ -235,7 +212,7 @@ impl ResourceManager {
 
         let descriptor_set_layout_def = resource.passes[pass_index]
             .pipeline_create_data
-            .pipeline_layout_def
+            .pipeline_layout_def()
             .descriptor_set_layouts[layout_index]
             .clone();
         let descriptor_set_layout =
@@ -754,9 +731,9 @@ impl ResourceManager {
             }
 
             passes.push(MaterialPass {
-                descriptor_set_layouts: pipeline_create_data.descriptor_set_layout_arcs.clone(),
-                pipeline_layout: pipeline_create_data.pipeline_layout.clone(),
-                shader_modules: pipeline_create_data.shader_module_arcs.clone(),
+                descriptor_set_layouts: pipeline_create_data.descriptor_set_layout_arcs().clone(),
+                pipeline_layout: pipeline_create_data.pipeline_layout().clone(),
+                shader_modules: pipeline_create_data.shader_module_arcs().clone(),
                 per_swapchain_data: Mutex::new(per_swapchain_data),
                 pipeline_create_data,
                 shader_interface: pass.shader_interface.clone(),
@@ -817,7 +794,7 @@ impl ResourceManager {
             for (layout_index, layout_writes) in pass_descriptor_set_writes.into_iter().enumerate()
             {
                 let descriptor_set = self.resource_descriptor_sets.create_descriptor_set(
-                    &pass.pipeline_create_data.descriptor_set_layout_arcs[layout_index],
+                    &pass.pipeline_create_data.descriptor_set_layout_arcs()[layout_index],
                     layout_writes,
                 )?;
 
@@ -946,113 +923,3 @@ impl Drop for ResourceManager {
     }
 }
 
-// We have to create pipelines when pipeline assets load and when swapchains are added/removed.
-// Gathering all the info to hash and create a pipeline is a bit involved so we share the code
-// here
-#[derive(Clone)]
-pub struct PipelineCreateData {
-    // We store the shader module hash rather than the shader module itself because it's a large
-    // binary blob. We don't use it to create or even look up the shader, just so that the hash of
-    // the pipeline we create doesn't conflict with the same pipeline using reloaded (different) shaders
-    shader_module_metas: Vec<dsc::ShaderModuleMeta>,
-    shader_module_hashes: Vec<ResourceHash>,
-    shader_module_arcs: Vec<ResourceArc<vk::ShaderModule>>,
-    shader_module_vk_objs: Vec<vk::ShaderModule>,
-
-    descriptor_set_layout_arcs: Vec<ResourceArc<DescriptorSetLayoutResource>>,
-
-    fixed_function_state: dsc::FixedFunctionState,
-
-    pipeline_layout_def: dsc::PipelineLayout,
-    pipeline_layout: ResourceArc<PipelineLayoutResource>,
-
-    renderpass: dsc::RenderPass,
-}
-
-impl PipelineCreateData {
-    pub fn new(
-        resource_manager: &mut ResourceManager,
-        pipeline_asset: &PipelineAssetData,
-        renderpass_asset: &RenderpassAssetData,
-        material_pass: &MaterialPassData,
-        shader_module_hashes: Vec<ResourceHash>,
-    ) -> VkResult<Self> {
-        //
-        // Shader module metadata (required to create the pipeline key)
-        //
-        let mut shader_module_metas = Vec::with_capacity(material_pass.shaders.len());
-        for stage in &material_pass.shaders {
-            let shader_module_meta = dsc::ShaderModuleMeta {
-                stage: stage.stage,
-                entry_name: stage.entry_name.clone(),
-            };
-            shader_module_metas.push(shader_module_meta);
-        }
-
-        //
-        // Actual shader module resources (to create the pipeline)
-        //
-        let mut shader_module_arcs = Vec::with_capacity(material_pass.shaders.len());
-        let mut shader_module_vk_objs = Vec::with_capacity(material_pass.shaders.len());
-        for stage in &material_pass.shaders {
-            let shader_module = resource_manager
-                .loaded_assets
-                .shader_modules
-                .get_latest(stage.shader_module.load_handle())
-                .unwrap();
-            shader_module_arcs.push(shader_module.shader_module.clone());
-            shader_module_vk_objs.push(shader_module.shader_module.get_raw());
-        }
-
-        //
-        // Descriptor set layout
-        //
-        let mut descriptor_set_layout_arcs =
-            Vec::with_capacity(material_pass.shader_interface.descriptor_set_layouts.len());
-        let mut descriptor_set_layout_defs =
-            Vec::with_capacity(material_pass.shader_interface.descriptor_set_layouts.len());
-        for descriptor_set_layout_def in &material_pass.shader_interface.descriptor_set_layouts {
-            let descriptor_set_layout_def = descriptor_set_layout_def.into();
-            let descriptor_set_layout = resource_manager
-                .resources
-                .get_or_create_descriptor_set_layout(&descriptor_set_layout_def)?;
-            descriptor_set_layout_arcs.push(descriptor_set_layout);
-            descriptor_set_layout_defs.push(descriptor_set_layout_def);
-        }
-
-        //
-        // Pipeline layout
-        //
-        let pipeline_layout_def = dsc::PipelineLayout {
-            descriptor_set_layouts: descriptor_set_layout_defs,
-            push_constant_ranges: material_pass.shader_interface.push_constant_ranges.clone(),
-        };
-
-        let pipeline_layout = resource_manager
-            .resources
-            .get_or_create_pipeline_layout(&pipeline_layout_def)?;
-
-        let fixed_function_state = dsc::FixedFunctionState {
-            vertex_input_state: material_pass.shader_interface.vertex_input_state.clone(),
-            input_assembly_state: pipeline_asset.input_assembly_state.clone(),
-            viewport_state: pipeline_asset.viewport_state.clone(),
-            rasterization_state: pipeline_asset.rasterization_state.clone(),
-            multisample_state: pipeline_asset.multisample_state.clone(),
-            color_blend_state: pipeline_asset.color_blend_state.clone(),
-            dynamic_state: pipeline_asset.dynamic_state.clone(),
-            depth_stencil_state: pipeline_asset.depth_stencil_state.clone(),
-        };
-
-        Ok(PipelineCreateData {
-            shader_module_metas,
-            shader_module_hashes,
-            shader_module_arcs,
-            shader_module_vk_objs,
-            descriptor_set_layout_arcs,
-            fixed_function_state,
-            pipeline_layout_def,
-            pipeline_layout,
-            renderpass: renderpass_asset.renderpass.clone(),
-        })
-    }
-}

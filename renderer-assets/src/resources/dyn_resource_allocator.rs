@@ -6,9 +6,9 @@ use renderer_shell_vulkan::{
 };
 use ash::vk;
 use super::ResourceId;
-use crate::resource_managers::ResourceArc;
+use crate::resources::ResourceArc;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
-use crate::resource_managers::resource_arc::ResourceWithHash;
+use crate::resources::resource_arc::ResourceWithHash;
 use crate::ImageViewResource;
 use ash::prelude::VkResult;
 

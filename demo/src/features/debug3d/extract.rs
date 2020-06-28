@@ -7,7 +7,7 @@ use renderer::nodes::{
 };
 use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
+use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::MaterialAsset;
 

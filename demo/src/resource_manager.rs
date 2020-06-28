@@ -1,4 +1,4 @@
-use renderer::assets::resource_managers::{
+use renderer::assets::resources::{
     DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoader, ResourceManager,
 };
 use renderer::vulkan::VkBufferRaw;

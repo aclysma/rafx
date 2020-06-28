@@ -1,8 +1,8 @@
 use fnv::FnvHashMap;
 use crate::vk_description as dsc;
-use crate::resource_managers::asset_lookup::{LoadedAssetLookupSet};
+use crate::resources::asset_lookup::{AssetLookupSet};
 use crate::assets::{MaterialAsset, MaterialPassSwapchainResources};
-use crate::resource_managers::resource_lookup::ResourceLookupSet;
+use crate::resources::resource_lookup::ResourceLookupSet;
 use crate::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::*;
 
@@ -42,7 +42,7 @@ impl ActiveSwapchainSurfaceInfoSet {
     pub fn add(
         &mut self,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-        loaded_assets: &mut LoadedAssetLookupSet,
+        loaded_assets: &mut AssetLookupSet,
         resources: &mut ResourceLookupSet,
     ) -> VkResult<()> {
         let added_swapchain = match self.ref_counts.get_mut(swapchain_surface_info) {
@@ -87,7 +87,7 @@ impl ActiveSwapchainSurfaceInfoSet {
     pub fn remove(
         &mut self,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-        loaded_assets: &mut LoadedAssetLookupSet,
+        loaded_assets: &mut AssetLookupSet,
     ) {
         let remove_index = match self.ref_counts.get_mut(swapchain_surface_info) {
             Some(state) => {

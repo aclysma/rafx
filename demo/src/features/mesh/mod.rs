@@ -17,7 +17,7 @@ mod prepare;
 mod write;
 use write::MeshCommandWriter;
 use renderer::vulkan::VkBufferRaw;
-use renderer::assets::resource_managers::{
+use renderer::assets::resources::{
     PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc,
 };
 use renderer::assets::MaterialAsset;

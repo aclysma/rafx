@@ -4,7 +4,7 @@ use renderer::nodes::{
 };
 use crate::render_contexts::RenderJobWriteContext;
 use renderer::vulkan::VkBufferRaw;
-use renderer::assets::resource_managers::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resources::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
 use ash::vk;
 use ash::version::DeviceV1_0;
 

@@ -11,8 +11,8 @@ use crate::vk_description::SwapchainSurfaceInfo;
 use super::PipelineCreateData;
 use std::mem::ManuallyDrop;
 use crate::vk_description as dsc;
-use crate::resource_managers::ResourceArc;
-use crate::resource_managers::resource_arc::{WeakResourceArc, ResourceWithHash, ResourceId};
+use crate::resources::ResourceArc;
+use crate::resources::resource_arc::{WeakResourceArc, ResourceWithHash, ResourceId};
 
 // #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 // pub(super) struct ResourceId(pub(super) u64);
@@ -578,16 +578,16 @@ impl ResourceLookupSet {
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<ResourceArc<PipelineResource>> {
         let pipeline_key = GraphicsPipelineKey {
-            shader_module_hashes: pipeline_create_data.shader_module_hashes.clone(),
-            shader_module_metas: pipeline_create_data.shader_module_metas.clone(),
-            pipeline_layout: pipeline_create_data.pipeline_layout_def.clone(),
-            fixed_function_state: pipeline_create_data.fixed_function_state.clone(),
-            renderpass: pipeline_create_data.renderpass.clone(),
+            shader_module_hashes: pipeline_create_data.shader_module_hashes().clone(),
+            shader_module_metas: pipeline_create_data.shader_module_metas().clone(),
+            pipeline_layout: pipeline_create_data.pipeline_layout_def().clone(),
+            fixed_function_state: pipeline_create_data.fixed_function_state().clone(),
+            renderpass: pipeline_create_data.renderpass_def().clone(),
             swapchain_surface_info: swapchain_surface_info.clone(),
         };
 
         let renderpass = self
-            .get_or_create_renderpass(&pipeline_create_data.renderpass, swapchain_surface_info)?;
+            .get_or_create_renderpass(pipeline_create_data.renderpass_def(), swapchain_surface_info)?;
 
         let hash = ResourceHash::from_key(&pipeline_key);
         if let Some(pipeline) = self.graphics_pipelines.get(hash, &pipeline_key) {
@@ -596,22 +596,22 @@ impl ResourceLookupSet {
             log::trace!("Creating pipeline\n{:#?}", pipeline_key);
             let resources = dsc::create_graphics_pipelines(
                 &self.device_context.device(),
-                &pipeline_create_data.fixed_function_state,
+                pipeline_create_data.fixed_function_state(),
                 pipeline_create_data
-                    .pipeline_layout
+                    .pipeline_layout()
                     .get_raw()
                     .pipeline_layout,
                 renderpass.get_raw(),
-                &pipeline_create_data.shader_module_metas,
-                &pipeline_create_data.shader_module_vk_objs,
+                pipeline_create_data.shader_module_metas(),
+                pipeline_create_data.shader_module_vk_objs(),
                 swapchain_surface_info,
-                pipeline_create_data.renderpass.subpasses.len() as u32,
+                pipeline_create_data.renderpass_def().subpasses.len() as u32,
             )?;
             log::trace!("Created pipelines {:?}", resources);
 
             let resource = PipelineResource {
                 pipelines: resources,
-                pipeline_layout: pipeline_create_data.pipeline_layout.clone(),
+                pipeline_layout: pipeline_create_data.pipeline_layout().clone(),
                 renderpass: renderpass.clone(),
             };
 

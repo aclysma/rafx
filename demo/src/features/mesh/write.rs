@@ -3,7 +3,7 @@ use renderer::nodes::{
     RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
-use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetArc};
 use ash::vk;
 use ash::version::DeviceV1_0;
 

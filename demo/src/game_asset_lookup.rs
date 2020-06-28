@@ -1,4 +1,4 @@
-use renderer::assets::resource_managers::{DescriptorSetArc, ResourceArc, AssetLookup};
+use renderer::assets::resources::{DescriptorSetArc, ResourceArc, AssetLookup};
 use renderer::vulkan::VkBufferRaw;
 use crate::assets::gltf::MeshAssetData;
 use type_uuid::*;

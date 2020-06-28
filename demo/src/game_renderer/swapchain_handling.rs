@@ -4,7 +4,7 @@ use renderer::vulkan::{
 use crate::game_renderer::GameRenderer;
 use legion::prelude::Resources;
 use ash::prelude::VkResult;
-use renderer::assets::resource_managers::ResourceManager;
+use renderer::assets::resources::ResourceManager;
 use renderer::nodes::RenderRegistry;
 use crate::game_renderer::swapchain_resources::SwapchainResources;
 use renderer::assets::vk_description::SwapchainSurfaceInfo;

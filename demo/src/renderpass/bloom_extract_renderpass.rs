@@ -13,7 +13,7 @@ use renderer::vulkan::VkImage;
 
 use atelier_assets::loader::handle::Handle;
 
-use renderer::assets::resource_managers::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
+use renderer::assets::resources::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
 use renderer::assets::MaterialAsset;
 
 pub struct VkBloomRenderPassResources {

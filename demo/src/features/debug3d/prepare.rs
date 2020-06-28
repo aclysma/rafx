@@ -10,7 +10,7 @@ use super::write::Debug3dCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
-use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct Debug3dPrepareJobImpl {
     device_context: VkDeviceContext,

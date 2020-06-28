@@ -8,7 +8,7 @@ use super::write::ImGuiCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
-use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct ImGuiPrepareJobImpl {
     device_context: VkDeviceContext,

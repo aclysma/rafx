@@ -5,7 +5,7 @@ use std::mem::ManuallyDrop;
 use ash::vk;
 use crate::time::TimeState;
 use crate::asset_resource::AssetResource;
-use renderer::assets::resource_managers::{ResourceManager, ResourceArc, ImageViewResource};
+use renderer::assets::resources::{ResourceManager, ResourceArc, ImageViewResource};
 use crate::features::debug3d::create_debug3d_extract_job;
 use crate::features::sprite::{SpriteRenderNodeSet, create_sprite_extract_job};
 use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};

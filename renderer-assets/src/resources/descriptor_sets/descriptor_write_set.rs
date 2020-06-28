@@ -1,13 +1,13 @@
 use ash::vk;
 use crate::vk_description as dsc;
-use crate::resource_managers::resource_lookup::{ImageViewResource, ResourceLookupSet};
+use crate::resources::resource_lookup::{ImageViewResource, ResourceLookupSet};
 use fnv::FnvHashMap;
-use crate::resource_managers::asset_lookup::LoadedAssetLookupSet;
+use crate::resources::asset_lookup::AssetLookupSet;
 use crate::assets::{MaterialPass, SlotNameLookup};
 use crate::assets::MaterialInstanceSlotAssignment;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::AssetHandle;
-use crate::resource_managers::ResourceArc;
+use crate::resources::ResourceArc;
 
 //
 // These represent descriptor updates that can be applied to a descriptor set in a pool
@@ -146,7 +146,7 @@ pub fn create_uninitialized_write_set_for_layout(
 pub fn apply_material_instance_slot_assignment(
     slot_assignment: &MaterialInstanceSlotAssignment,
     pass_slot_name_lookup: &SlotNameLookup,
-    assets: &LoadedAssetLookupSet,
+    assets: &AssetLookupSet,
     resources: &mut ResourceLookupSet,
     material_pass_write_set: &mut Vec<DescriptorSetWriteSet>,
 ) -> VkResult<()> {
@@ -224,7 +224,7 @@ pub fn create_uninitialized_write_sets_for_material_pass(
 pub fn create_write_sets_for_material_instance_pass(
     pass: &MaterialPass,
     slots: &Vec<MaterialInstanceSlotAssignment>,
-    assets: &LoadedAssetLookupSet,
+    assets: &AssetLookupSet,
     resources: &mut ResourceLookupSet,
 ) -> VkResult<Vec<DescriptorSetWriteSet>> {
     let mut pass_descriptor_set_writes = create_uninitialized_write_sets_for_material_pass(pass);

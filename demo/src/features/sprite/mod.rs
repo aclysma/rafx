@@ -18,7 +18,7 @@ mod prepare;
 mod write;
 use write::SpriteCommandWriter;
 use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resource_managers::{
+use renderer::assets::resources::{
     PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef,
 };
 

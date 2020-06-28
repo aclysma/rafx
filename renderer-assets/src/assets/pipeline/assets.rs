@@ -5,10 +5,10 @@ use crate::{vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, Re
 use atelier_assets::loader::handle::Handle;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
-use crate::resource_managers::DescriptorSetWriteSet;
-pub use crate::resource_managers::PipelineResource;
-pub use crate::resource_managers::DescriptorSetLayoutResource;
-pub use crate::resource_managers::PipelineLayoutResource;
+use crate::resources::DescriptorSetWriteSet;
+pub use crate::resources::PipelineResource;
+pub use crate::resources::DescriptorSetLayoutResource;
+pub use crate::resources::PipelineLayoutResource;
 use fnv::FnvHashMap;
 use ash::vk;
 

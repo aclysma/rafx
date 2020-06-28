@@ -5,7 +5,7 @@ use super::{
     DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT,
     DescriptorSetElementKey, FrameInFlightIndex, DescriptorSetArc, DescriptorSetWriteSet,
 };
-use crate::resource_managers::resource_lookup::{DescriptorSetLayoutResource};
+use crate::resources::resource_lookup::{DescriptorSetLayoutResource};
 use renderer_shell_vulkan::{VkDescriptorPoolAllocator, VkResourceDropSink, VkBuffer, VkDeviceContext};
 use crossbeam_channel::{Receiver, Sender};
 use std::mem::ManuallyDrop;
@@ -13,7 +13,7 @@ use ash::vk;
 use ash::version::DeviceV1_0;
 use ash::prelude::VkResult;
 use super::ManagedDescriptorSetPoolChunk;
-use crate::resource_managers::ResourceArc;
+use crate::resources::ResourceArc;
 use std::collections::VecDeque;
 
 struct PendingDescriptorSetDrop {

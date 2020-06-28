@@ -1,11 +1,11 @@
-use crate::resource_managers::resource_lookup::{ResourceHash, DescriptorSetLayoutResource};
+use crate::resources::resource_lookup::{ResourceHash, DescriptorSetLayoutResource};
 use renderer_shell_vulkan::VkDeviceContext;
 use fnv::FnvHashMap;
 use super::ManagedDescriptorSetPool;
 use super::{FrameInFlightIndex, DescriptorSetArc};
 use super::DescriptorSetWriteSet;
 use ash::prelude::VkResult;
-use crate::resource_managers::{
+use crate::resources::{
     DynDescriptorSet, DynPassMaterialInstance, DynMaterialInstance, ResourceArc,
 };
 use crate::assets::{MaterialPass, MaterialInstanceAsset, MaterialAsset};

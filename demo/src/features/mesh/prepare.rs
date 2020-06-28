@@ -10,7 +10,7 @@ use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
 use super::MeshCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetArc};
 
 pub struct MeshPrepareJobImpl {
     pipeline_info: PipelineSwapchainInfo,

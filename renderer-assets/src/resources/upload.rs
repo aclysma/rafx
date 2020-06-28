@@ -7,7 +7,7 @@ use crate::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffe
 use std::mem::ManuallyDrop;
 use atelier_assets::loader::{LoadHandle, AssetLoadOp};
 use ash::vk;
-use crate::resource_managers::load_queue::LoadRequest;
+use crate::resources::load_queue::LoadRequest;
 use crate::assets::ImageAssetData;
 use crate::assets::BufferAssetData;
 use crate::assets::{ImageAsset, BufferAsset};

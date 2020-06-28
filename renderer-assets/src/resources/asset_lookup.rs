@@ -118,7 +118,7 @@ pub struct LoadedAssetMetrics {
 // Lookups by asset for loaded asset state
 //
 #[derive(Default)]
-pub struct LoadedAssetLookupSet {
+pub struct AssetLookupSet {
     pub shader_modules: AssetLookup<ShaderAsset>,
     pub graphics_pipelines: AssetLookup<PipelineAsset>,
     pub renderpasses: AssetLookup<RenderpassAsset>,
@@ -128,7 +128,7 @@ pub struct LoadedAssetLookupSet {
     pub buffers: AssetLookup<BufferAsset>,
 }
 
-impl LoadedAssetLookupSet {
+impl AssetLookupSet {
     pub fn metrics(&self) -> LoadedAssetMetrics {
         LoadedAssetMetrics {
             shader_module_count: self.shader_modules.len(),

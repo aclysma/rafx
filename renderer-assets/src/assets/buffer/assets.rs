@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use crate::ResourceArc;
 use renderer_shell_vulkan::VkBufferRaw;
-use crate::resource_managers::BufferKey;
+use crate::resources::BufferKey;
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "2d6653ce-5f77-40a2-b050-f2d148699d78"]

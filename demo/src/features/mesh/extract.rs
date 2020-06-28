@@ -12,9 +12,9 @@ use renderer::nodes::{
 };
 use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
-use renderer::assets::resource_managers::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
+use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::resource_managers::DescriptorSetArc;
+use renderer::assets::resources::DescriptorSetArc;
 use legion::prelude::*;
 use crate::components::MeshComponent;
 use crate::resource_manager::GameResourceManager;
