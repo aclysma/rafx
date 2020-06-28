@@ -186,7 +186,7 @@ impl GameRenderer {
             .unwrap()
             .wait_until_frame_not_in_flight()?;
         let t1 = std::time::Instant::now();
-        log::info!(
+        log::trace!(
             "[main] wait for previous frame present {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
         );
@@ -237,7 +237,7 @@ impl GameRenderer {
             let t0 = std::time::Instant::now();
             let result = surface.acquire_next_swapchain_image(window);
             let t1 = std::time::Instant::now();
-            log::info!(
+            log::trace!(
                 "[main] wait for swapchain image took {} ms",
                 (t1 - t0).as_secs_f32() * 1000.0
             );
@@ -469,7 +469,7 @@ impl GameRenderer {
         let dyn_resource_allocator_set = resource_manager.create_dyn_resource_allocator_set();
 
         let t1 = std::time::Instant::now();
-        log::info!(
+        log::trace!(
             "[main] render extract took {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
         );

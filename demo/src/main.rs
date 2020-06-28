@@ -157,7 +157,7 @@ fn main() {
         }
 
         let t1 = std::time::Instant::now();
-        log::info!(
+        log::trace!(
             "[main] simulation took {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
         );

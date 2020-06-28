@@ -70,21 +70,25 @@ pub struct VkDeviceContext {
 
 impl Clone for VkDeviceContext {
     fn clone(&self) -> Self {
-        let create_backtrace = backtrace::Backtrace::new_unresolved();
-        let create_index = self
-            .inner
-            .as_ref()
-            .unwrap()
-            .next_create_index
-            .fetch_add(1, Ordering::Relaxed);
-        self.inner
-            .as_ref()
-            .unwrap()
-            .all_contexts
-            .lock()
-            .unwrap()
-            .insert(create_index, create_backtrace);
-        trace!("Cloned VkDeviceContext create_index {}", create_index);
+        #[cfg(debug_assertions)]
+        let create_index ={
+            let create_index = self
+                .inner
+                .as_ref()
+                .unwrap()
+                .next_create_index
+                .fetch_add(1, Ordering::Relaxed);
+            // let create_backtrace = backtrace::Backtrace::new_unresolved();
+            // self.inner
+            //     .as_ref()
+            //     .unwrap()
+            //     .all_contexts
+            //     .lock()
+            //     .unwrap()
+            //     .insert(create_index, create_backtrace);
+            trace!("Cloned VkDeviceContext create_index {}", create_index);
+            create_index
+        };
         VkDeviceContext {
             inner: self.inner.clone(),
             #[cfg(debug_assertions)]
@@ -180,9 +184,12 @@ impl VkDeviceContext {
         queues: VkQueues,
     ) -> Self {
         #[cfg(debug_assertions)]
-        let create_backtrace = backtrace::Backtrace::new_unresolved();
-        let mut all_contexts: fnv::FnvHashMap<u64, backtrace::Backtrace> = Default::default();
-        all_contexts.insert(0, create_backtrace);
+        let all_contexts = {
+            let create_backtrace = backtrace::Backtrace::new_unresolved();
+            let mut all_contexts: fnv::FnvHashMap<u64, backtrace::Backtrace> = Default::default();
+            all_contexts.insert(0, create_backtrace);
+            all_contexts
+        };
 
         VkDeviceContext {
             inner: Some(Arc::new(ManuallyDrop::new(VkDeviceContextInner {
@@ -221,11 +228,14 @@ impl VkDeviceContext {
             }
             Err(arc) => {
                 error!("Could not free the allocator, {} other references exist. Have all allocations been dropped?", strong_count - 1);
-                let mut all_contexts = arc.all_contexts.lock().unwrap();
-                all_contexts.remove(&self.create_index);
-                for (k, v) in all_contexts.iter_mut() {
-                    v.resolve();
-                    println!("context allocation: {}\n{:?}", k, v);
+                #[cfg(debug_assertions)]
+                {
+                    let mut all_contexts = arc.all_contexts.lock().unwrap();
+                    all_contexts.remove(&self.create_index);
+                    for (k, v) in all_contexts.iter_mut() {
+                        v.resolve();
+                        println!("context allocation: {}\n{:?}", k, v);
+                    }
                 }
             }
         }

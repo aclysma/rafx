@@ -36,7 +36,9 @@ pub fn logging_init() {
             "renderer_resources::resource_managers::descriptor_sets",
             log::LevelFilter::Info,
         )
-        .filter_module("renderer_base", log::LevelFilter::Info)
+        .filter_module("renderer_shell_vulkan::device", log::LevelFilter::Debug)
+        .filter_module("renderer_nodes", log::LevelFilter::Info)
+        .filter_module("renderer_visibility", log::LevelFilter::Info)
         .filter_level(log_level)
         // .format(|buf, record| { //TODO: Get a frame count in here
         //     writeln!(buf,

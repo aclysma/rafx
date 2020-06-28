@@ -486,13 +486,16 @@ impl ResourceManager {
         for result in results {
             match result {
                 ImageUploadOpResult::UploadComplete(load_op, result_tx, image) => {
+                    log::trace!("Uploading image {:?} complete", load_op.load_handle());
                     let loaded_asset = self.finish_load_image(image);
                     Self::handle_load_result(load_op, loaded_asset, &mut self.loaded_assets.images, result_tx);
                 }
-                ImageUploadOpResult::UploadError(_load_handle) => {
+                ImageUploadOpResult::UploadError(load_handle) => {
+                    log::trace!("Uploading image {:?} failed", load_handle);
                     // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 }
-                ImageUploadOpResult::UploadDrop(_load_handle) => {
+                ImageUploadOpResult::UploadDrop(load_handle) => {
+                    log::trace!("Uploading image {:?} cancelled", load_handle);
                     // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 }
             }
@@ -518,6 +521,7 @@ impl ResourceManager {
         for result in results {
             match result {
                 BufferUploadOpResult::UploadComplete(load_op, result_tx, buffer) => {
+                    log::trace!("Uploading buffer {:?} complete", load_op.load_handle());
                     let loaded_asset = self.finish_load_buffer(buffer);
                     Self::handle_load_result(
                         load_op,
@@ -526,10 +530,12 @@ impl ResourceManager {
                         result_tx
                     );
                 }
-                BufferUploadOpResult::UploadError(_load_handle) => {
+                BufferUploadOpResult::UploadError(load_handle) => {
+                    log::trace!("Uploading buffer {:?} failed", load_handle);
                     // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 }
-                BufferUploadOpResult::UploadDrop(_load_handle) => {
+                BufferUploadOpResult::UploadDrop(load_handle) => {
+                    log::trace!("Uploading buffer {:?} cancelled", load_handle);
                     // Don't need to do anything - the uploaded should have triggered an error on the load_op
                 }
             }

@@ -9,10 +9,8 @@ exclude = [
     "gltf"
 ]
 
-#[profile.dev.overrides.bincode]
-#opt-level = 2
-
-#[profile.dev.overrides.image]
+# Example of overriding a single crate. Doesn't affect dependencies though so it's of limited value
+#[profile.dev.package.image]
 #opt-level = 2
 
 # Set the default for dependencies.
@@ -23,8 +21,10 @@ opt-level = 2
 [profile.dev.build-override]
 opt-level = 2
 
-#[patch.crates-io]
-#gltf = { path = "gltf" }
+# Required for https://github.com/gltf-rs/gltf/pull/288
+[patch.crates-io]
+gltf = { path = "gltf" }
 
-#[patch."https://github.com/amethyst/atelier-assets"]
-#atelier-assets = { path = "atelier-assets" }
+# Required for https://github.com/amethyst/atelier-assets/pull/53
+[patch."https://github.com/amethyst/atelier-assets"]
+atelier-assets = { path = "atelier-assets" }

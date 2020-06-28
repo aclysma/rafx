@@ -154,7 +154,7 @@ impl Importer for GltfImporter {
             return Err(Error::Boxed(Box::new(err)));
         }
 
-        let (doc, buffers, images) = gltf::import_slice(&bytes).unwrap();
+        let (doc, buffers, images) = result.unwrap();
 
         // Accumulate everything we will import in this list
         let mut imported_assets = Vec::new();
