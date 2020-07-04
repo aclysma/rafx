@@ -11,6 +11,7 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
         &self,
         _write_context: &mut DemoWriteContext,
         view: &RenderView,
+        _render_phase_index: RenderPhaseIndex,
     ) {
         log::debug!(
             "apply_setup {} view: {}",
@@ -23,6 +24,7 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
         &self,
         _write_context: &mut DemoWriteContext,
         view: &RenderView,
+        _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) {
         log::info!(
@@ -37,6 +39,7 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
         &self,
         _write_context: &mut DemoWriteContext,
         view: &RenderView,
+        _render_phase_index: RenderPhaseIndex,
     ) {
         log::debug!(
             "revert_setup {} view: {}",

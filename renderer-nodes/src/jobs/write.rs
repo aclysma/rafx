@@ -1,6 +1,6 @@
 use crate::{
     RenderFeatureIndex, RenderPhase, RenderView, MergedFrameSubmitNodes, RenderRegistry,
-    SubmitNodeId,
+    SubmitNodeId, RenderPhaseIndex
 };
 
 pub trait FeatureCommandWriter<WriteContextT> {
@@ -8,17 +8,20 @@ pub trait FeatureCommandWriter<WriteContextT> {
         &self,
         write_context: &mut WriteContextT,
         view: &RenderView,
+        render_phase_index: RenderPhaseIndex
     );
     fn render_element(
         &self,
         write_context: &mut WriteContextT,
         view: &RenderView,
+        render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     );
     fn revert_setup(
         &self,
         write_context: &mut WriteContextT,
         view: &RenderView,
+        render_phase_index: RenderPhaseIndex
     );
 
     fn feature_debug_name(&self) -> &'static str;
@@ -60,6 +63,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
         write_context: &mut WriteContextT,
     ) {
         let submit_nodes = self.submit_nodes.submit_nodes::<PhaseT>(view);
+        let render_phase_index = PhaseT::render_phase_index();
 
         let mut previous_node_feature_index: i32 = -1;
         for submit_node in submit_nodes {
@@ -70,7 +74,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                     self.feature_writers[previous_node_feature_index as usize]
                         .as_ref()
                         .unwrap()
-                        .revert_setup(write_context, view);
+                        .revert_setup(write_context, view, render_phase_index);
                 }
 
                 // call apply setup
@@ -78,7 +82,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                 self.feature_writers[submit_node.feature_index() as usize]
                     .as_ref()
                     .unwrap()
-                    .apply_setup(write_context, view);
+                    .apply_setup(write_context, view, render_phase_index);
             }
 
             log::trace!(
@@ -89,7 +93,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
             self.feature_writers[submit_node.feature_index() as usize]
                 .as_ref()
                 .unwrap()
-                .render_element(write_context, view, submit_node.submit_node_id());
+                .render_element(write_context, view, render_phase_index, submit_node.submit_node_id());
             previous_node_feature_index = submit_node.feature_index() as i32;
         }
 

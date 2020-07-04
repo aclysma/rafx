@@ -20,6 +20,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
         &self,
         write_context: &mut RenderJobWriteContext,
         view: &RenderView,
+        _render_phase_index: RenderPhaseIndex,
     ) {
         if let Some(vertex_buffer) = self.vertex_buffer.as_ref() {
             let logical_device = write_context.device_context.device();
@@ -55,6 +56,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
         &self,
         write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
+        _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) {
         // The prepare phase emits a single node which will draw everything. In the future it might
@@ -82,6 +84,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
         &self,
         _write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
+        _render_phase_index: RenderPhaseIndex,
     ) {
     }
 
