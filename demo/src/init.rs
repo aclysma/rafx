@@ -30,7 +30,7 @@ use crate::asset_loader::ResourceAssetLoader;
 pub fn logging_init() {
     #[allow(unused_assignments)]
     let mut log_level = log::LevelFilter::Info;
-    //#[cfg(debug_assertions)]
+    #[cfg(debug_assertions)]
     {
         log_level = log::LevelFilter::Debug;
     }

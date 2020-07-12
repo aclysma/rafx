@@ -32,12 +32,13 @@ anything real yet!
 ```
 git clone https://github.com/aclysma/renderer_prototype.git
 cd renderer_prototype
-cd demo
 cargo update -p tokio --precise 0.2.13
-cargo run
+cargo run --release
 ```
 
 ([Tokio >= 0.2.14 hangs](https://github.com/tokio-rs/tokio/issues/2390))
+
+Running in release reduces logging and disables vulkan validation.
 
 ## Features
 
