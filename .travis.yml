@@ -1,0 +1,58 @@
+language: rust
+before_script:
+  - if [ $SKIP_FORMAT_CHECK = 0 ]; then rustup component add rustfmt; fi
+  - if [ $SKIP_CLIPPY = 0 ]; then rustup component add clippy; fi
+script:
+  - cargo build --verbose --all
+  - if [ $SKIP_FORMAT_CHECK = 0 ]; then cargo fmt --all -- --check; fi
+  - if [ $SKIP_CLIPPY = 0 ]; then cargo clippy -- -D warnings; fi
+matrix:
+  include:
+    - name: "Windows MSVC 1.40.0"
+      rust: 1.40.0-msvc
+      os: windows
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "OSX 1.40.0"
+      rust: 1.40.0
+      os: osx
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "Linux 1.40.0"
+      rust: 1.40.0
+      os: linux
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "Windows MSVC Stable"
+      rust: stable-msvc
+      os: windows
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "OSX Stable"
+      rust: stable
+      os: osx
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "Linux Stable"
+      rust: stable
+      os: linux
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "Windows MSVC Beta"
+      rust: beta-msvc
+      os: windows
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "OSX Beta"
+      rust: beta
+      os: osx
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "Linux Beta"
+      rust: beta
+      os: linux
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "Windows MSVC Nightly"
+      rust: nightly-msvc
+      os: windows
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "OSX Nightly"
+      rust: nightly
+      os: osx
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1
+    - name: "Linux Nightly"
+      rust: nightly
+      os: linux
+      env: SKIP_FORMAT_CHECK=1 SKIP_CLIPPY=1

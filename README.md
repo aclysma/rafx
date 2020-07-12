@@ -38,7 +38,11 @@ cargo run --release
 
 ([Tokio >= 0.2.14 hangs](https://github.com/tokio-rs/tokio/issues/2390))
 
-Running in release reduces logging and disables vulkan validation.
+Running in release reduces logging and disables vulkan validation. The first time it will load more slowly because it
+has to import the assets, including a GLTF mesh with large textures.
+
+The demo uses SDL2 and in debug mode, vulkan validation. If you have trouble running the demo, please check that
+dependencies for both SDL2 and vulkan are available.
 
 ## Features
 
@@ -74,6 +78,10 @@ abstraction layer like gfx-hal.
 ## Roadmap
 
 I am writing a higher-level crate to dogfood this and make it easier to use.
+
+The demo shows a basic rendering pipeline with a GLTF importer, PBR, bloom, imgui, some debug drawing, and texture 
+drawing. It also demonstrates how to pipeline rendering with simulation. It's not particularly pretty, but it does show
+a fairly complete usage of the renderer.
 
 ## License
 
