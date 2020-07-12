@@ -18,7 +18,7 @@ The job/phase rendering design is inspired by the 2015 GDC talk "[Destiny's Mult
 ## Diagrams
 
  * [Diagram of key crate dependencies](https://github.com/aclysma/renderer_prototype/blob/master/docs/crate_dependencies.png)
- * [Pipelining](https://github.com/aclysma/renderer_prototype/blob/master/docs/render_process.png)
+ * [Pipelining](https://github.com/aclysma/renderer_prototype/blob/master/docs/pipelining.png)
  * [Diagram of rendering process](https://github.com/aclysma/renderer_prototype/blob/master/docs/render_process.png)
 
 
@@ -39,7 +39,8 @@ cargo run --release
 ([Tokio >= 0.2.14 hangs](https://github.com/tokio-rs/tokio/issues/2390))
 
 Running in release reduces logging and disables vulkan validation. The first time it will load more slowly because it
-has to import the assets, including a GLTF mesh with large textures.
+has to import the assets, including a GLTF mesh with large textures. Using profile overrides to optimize upstream crates
+is HIGHLY RECOMMENDED. Asset processing is extremely slow in debug mode. (i.e. 30s instead of 2s)
 
 The demo uses SDL2 and in debug mode, vulkan validation. If you have trouble running the demo, please check that
 dependencies for both SDL2 and vulkan are available.
