@@ -12,7 +12,9 @@ imgui = "0.3"
 imgui-sdl2 = "0.9.0"
 sdl2 = { version = "0.33", features = ["bundled", "static-link"] }
 image = "0.23"
-gltf = "0.15"
+# for https://github.com/gltf-rs/gltf/pull/288
+#gltf = "0.15"
+gltf = { git = "https://github.com/gltf-rs/gltf.git", rev = "e49aef5ee7b40c2c8f8a50efaed36b97bbb52bd4" }
 
 crossbeam-channel = "0.4.2"
 
