@@ -42,4 +42,5 @@ crossbeam-channel = "0.4.2"
 [dev-dependencies]
 
 [features]
+default = []
 static-vulkan = ["renderer-shell-vulkan/static-vulkan"]

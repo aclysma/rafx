@@ -16,4 +16,5 @@ log="0.4"
 crossbeam-channel = "0.4"
 
 [features]
+default = []
 static-vulkan = []
