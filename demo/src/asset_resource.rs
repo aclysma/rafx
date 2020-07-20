@@ -15,13 +15,11 @@ pub struct AssetResource {
     rx: atelier_loader::crossbeam_channel::Receiver<RefOp>,
 }
 
-impl Default for AssetResource {
-    fn default() -> Self {
+impl AssetResource {
+    fn new(loader: RpcLoader) -> Self {
         let (tx, rx) = atelier_loader::crossbeam_channel::unbounded();
         let tx = Arc::new(tx);
         let storage = AssetStorageSet::new(tx.clone());
-
-        let loader = RpcLoader::default();
 
         AssetResource {
             loader,
