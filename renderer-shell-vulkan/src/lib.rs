@@ -75,6 +75,7 @@ use ash::vk::SampleCountFlags;
 
 mod entry;
 pub use entry::VkEntry;
+#[cfg(feature = "static-vulkan")]
 pub use entry::MoltenEntry;
 
 //mod fence;
@@ -85,6 +86,7 @@ pub enum VulkanLinkMethod {
     Dynamic,
 
     /// Mainly for platforms like iOS
+    #[cfg(feature = "static-vulkan")]
     Static
 }
 

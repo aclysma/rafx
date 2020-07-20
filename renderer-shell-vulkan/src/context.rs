@@ -164,6 +164,7 @@ impl VkContextBuilder {
     /// Link vulkan statically. This requires the end-user to ensure a vulkan API is linked
     /// statically with the final executable. One example usecase for this is using MoltenVK with
     /// iOS
+    #[cfg(feature = "static-vulkan")]
     pub fn static_link(self) -> Self {
         self.link_method(VulkanLinkMethod::Static)
     }
@@ -276,6 +277,7 @@ impl VkContext {
         info!("Link method for vulkan: {:?}", link_method);
         let entry = match link_method {
             VulkanLinkMethod::Dynamic => VkEntry::new_dynamic(),
+            #[cfg(feature = "static-vulkan")]
             VulkanLinkMethod::Static => VkEntry::new_static()
         }?;
 

@@ -40,3 +40,6 @@ structopt = "0.3"
 crossbeam-channel = "0.4.2"
 
 [dev-dependencies]
+
+[features]
+static-vulkan = ["renderer-shell-vulkan/static-vulkan"]

@@ -5,10 +5,12 @@ use self::ash::prelude::VkResult;
 // Represents a dynamic or static-linked entry to the vulkan API
 pub enum VkEntry {
     Dynamic(ash::Entry),
+    #[cfg(feature = "static-vulkan")]
     Static(MoltenEntry)
 }
 
 impl VkEntry {
+    #[cfg(feature = "static-vulkan")]
     pub fn new_static() -> Result<Self, ash::LoadingError> {
         let entry = crate::entry::MoltenEntry::load()?;
         Ok(VkEntry::Static(entry))
@@ -22,6 +24,7 @@ impl VkEntry {
     pub fn try_enumerate_instance_version(&self) -> VkResult<Option<u32>> {
         match &self {
             VkEntry::Dynamic(entry) => entry.try_enumerate_instance_version(),
+            #[cfg(feature = "static-vulkan")]
             VkEntry::Static(entry) => entry.try_enumerate_instance_version(),
         }
     }
@@ -37,23 +40,27 @@ impl EntryV1_0 for VkEntry {
     ) -> Result<Self::Instance, InstanceError> {
         match &self {
             VkEntry::Dynamic(entry) => entry.create_instance(create_info, allocation_callbacks),
+            #[cfg(feature = "static-vulkan")]
             VkEntry::Static(entry) => entry.create_instance(create_info, allocation_callbacks),
         }
     }
     fn fp_v1_0(&self) -> &vk::EntryFnV1_0 {
         match &self {
             VkEntry::Dynamic(entry) => entry.fp_v1_0(),
+            #[cfg(feature = "static-vulkan")]
             VkEntry::Static(entry) => entry.fp_v1_0(),
         }
     }
     fn static_fn(&self) -> &vk::StaticFn {
         match &self {
             VkEntry::Dynamic(entry) => entry.static_fn(),
+            #[cfg(feature = "static-vulkan")]
             VkEntry::Static(entry) => entry.static_fn(),
         }
     }
 }
 
+#[cfg(feature = "static-vulkan")]
 extern "system" {
     fn vkGetInstanceProcAddr(
         instance: vk::Instance,
@@ -61,6 +68,7 @@ extern "system" {
     ) -> vk::PFN_vkVoidFunction;
 }
 
+#[cfg(feature = "static-vulkan")]
 extern "system" fn get_instance_proc_addr(
     instance: vk::Instance,
     p_name: *const std::os::raw::c_char,
@@ -72,11 +80,13 @@ extern "system" fn get_instance_proc_addr(
 //get iOS builds going was to embed this directly.
 
 /// The entry point for the statically linked molten library
+#[cfg(feature = "static-vulkan")]
 pub struct MoltenEntry {
     static_fn: vk::StaticFn,
     entry_fn_1_0: vk::EntryFnV1_0,
 }
 
+#[cfg(feature = "static-vulkan")]
 impl MoltenEntry {
     /// Fetches the function pointer to `get_instance_proc_addr` which is statically linked. This
     /// function can not fail.
@@ -121,6 +131,7 @@ impl MoltenEntry {
     }
 }
 
+#[cfg(feature = "static-vulkan")]
 impl EntryV1_0 for MoltenEntry {
     type Instance = Instance;
     #[doc = "<https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/vkCreateInstance.html>"]

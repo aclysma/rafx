@@ -333,6 +333,7 @@ impl VkDevice {
 
         let surface_loader = match &instance.entry {
             VkEntry::Dynamic(entry) => khr::Surface::new(entry, &instance.instance),
+            #[cfg(feature = "static-vulkan")]
             VkEntry::Static(entry) => khr::Surface::new(entry, &instance.instance),
         };
 
