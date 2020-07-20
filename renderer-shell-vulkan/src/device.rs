@@ -1,5 +1,6 @@
 use ash::vk;
 use ash::prelude::VkResult;
+use super::VkEntry;
 use super::VkInstance;
 
 use ash::version::DeviceV1_0;
@@ -330,7 +331,10 @@ impl VkDevice {
             .create_vulkan_surface(&instance.entry, &instance.instance)
             .expect("Could not create vulkan surface");
 
-        let surface_loader = khr::Surface::new(&instance.entry, &instance.instance);
+        let surface_loader = match &instance.entry {
+            VkEntry::Dynamic(entry) => khr::Surface::new(entry, &instance.instance),
+            VkEntry::Static(entry) => khr::Surface::new(entry, &instance.instance),
+        };
 
         // Pick a physical device
         let (physical_device, physical_device_info) = Self::choose_physical_device(

@@ -5,6 +5,7 @@ use ash::vk::Handle;
 use renderer_shell_vulkan::PhysicalSize;
 use renderer_shell_vulkan::LogicalSize;
 use renderer_shell_vulkan::Window;
+use renderer_shell_vulkan::VkEntry;
 
 pub struct Sdl2Window<'a> {
     window: &'a sdl2::video::Window,
@@ -35,7 +36,7 @@ impl<'a> Window for Sdl2Window<'a> {
 
     fn create_vulkan_surface(
         &self,
-        _entry: &ash::Entry,
+        _entry: &VkEntry,
         instance: &ash::Instance,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
         let surface_pointer = self

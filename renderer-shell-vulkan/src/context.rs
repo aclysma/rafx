@@ -11,8 +11,9 @@ use super::VkDevice;
 use super::PresentMode;
 use super::PhysicalDeviceType;
 
+use super::VkEntry;
 use super::Window;
-use crate::{VkDeviceContext, MsaaLevel};
+use crate::{VkDeviceContext, MsaaLevel, VulkanLinkMethod};
 //use crate::submit::PendingCommandBuffer;
 
 /// A builder to create the renderer. It's easier to use AppBuilder and implement an AppHandler, but
@@ -24,6 +25,7 @@ pub struct VkContextBuilder {
     present_mode_priority: Vec<PresentMode>,
     physical_device_type_priority: Vec<PhysicalDeviceType>,
     msaa_level_priority: Vec<MsaaLevel>,
+    link_method: VulkanLinkMethod,
 }
 
 impl VkContextBuilder {
@@ -38,6 +40,7 @@ impl VkContextBuilder {
                 PhysicalDeviceType::IntegratedGpu,
             ],
             msaa_level_priority: vec![MsaaLevel::Sample1],
+            link_method: VulkanLinkMethod::default()
         }
     }
 
@@ -152,6 +155,24 @@ impl VkContextBuilder {
         self.present_mode_priority(vec![PresentMode::Mailbox, PresentMode::Fifo])
     }
 
+    /// Set the expected linking method for vulkan. Dynamic is the recommended default
+    pub fn link_method(mut self, link_method: VulkanLinkMethod) -> Self {
+        self.link_method = link_method;
+        self
+    }
+
+    /// Link vulkan statically. This requires the end-user to ensure a vulkan API is linked
+    /// statically with the final executable. One example usecase for this is using MoltenVK with
+    /// iOS
+    pub fn static_link(self) -> Self {
+        self.link_method(VulkanLinkMethod::Static)
+    }
+
+    /// Link vulkan dynamically (default and recommended)
+    pub fn dynamic_link(self) -> Self {
+        self.link_method(VulkanLinkMethod::Dynamic)
+    }
+
     /// Builds the renderer. The window that's passed in will be used for creating the swapchain
     pub fn build(
         self,
@@ -164,6 +185,7 @@ impl VkContextBuilder {
             self.physical_device_type_priority.clone(),
             self.present_mode_priority.clone(),
             self.msaa_level_priority.clone(),
+            self.link_method
         )
     }
 }
@@ -171,6 +193,7 @@ impl VkContextBuilder {
 /// Represents an error from creating the renderer
 #[derive(Debug)]
 pub enum VkCreateContextError {
+    LoadingError(ash::LoadingError),
     CreateInstanceError(VkCreateInstanceError),
     CreateDeviceError(VkCreateDeviceError),
     VkError(vk::Result),
@@ -179,6 +202,7 @@ pub enum VkCreateContextError {
 impl std::error::Error for VkCreateContextError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match *self {
+            VkCreateContextError::LoadingError(ref e) => Some(e),
             VkCreateContextError::CreateInstanceError(ref e) => Some(e),
             VkCreateContextError::CreateDeviceError(ref e) => Some(e),
             VkCreateContextError::VkError(ref e) => Some(e),
@@ -192,10 +216,17 @@ impl core::fmt::Display for VkCreateContextError {
         fmt: &mut core::fmt::Formatter,
     ) -> core::fmt::Result {
         match *self {
+            VkCreateContextError::LoadingError(ref e) => e.fmt(fmt),
             VkCreateContextError::CreateInstanceError(ref e) => e.fmt(fmt),
             VkCreateContextError::CreateDeviceError(ref e) => e.fmt(fmt),
             VkCreateContextError::VkError(ref e) => e.fmt(fmt),
         }
+    }
+}
+
+impl From<ash::LoadingError> for VkCreateContextError {
+    fn from(result: ash::LoadingError) -> Self {
+        VkCreateContextError::LoadingError(result)
     }
 }
 
@@ -239,8 +270,17 @@ impl VkContext {
         physical_device_type_priority: Vec<PhysicalDeviceType>,
         present_mode_priority: Vec<PresentMode>,
         msaa_level_priority: Vec<MsaaLevel>,
+        link_method: VulkanLinkMethod
     ) -> Result<VkContext, VkCreateContextError> {
+        // This loads the dll/so if needed
+        info!("Link method for vulkan: {:?}", link_method);
+        let entry = match link_method {
+            VulkanLinkMethod::Dynamic => VkEntry::new_dynamic(),
+            VulkanLinkMethod::Static => VkEntry::new_static()
+        }?;
+
         let instance = ManuallyDrop::new(VkInstance::new(
+            entry,
             window,
             app_name,
             validation_layer_debug_report_flags,

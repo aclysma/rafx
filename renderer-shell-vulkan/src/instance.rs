@@ -4,6 +4,7 @@ pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 use ash::prelude::VkResult;
 
+use super::VkEntry;
 use super::Window;
 use super::debug_reporter;
 use super::VkDebugReporter;
@@ -11,14 +12,13 @@ use ash::extensions::ext::DebugReport;
 
 /// Create one of these at startup. It never gets lost/destroyed.
 pub struct VkInstance {
-    pub entry: ash::Entry,
+    pub entry: VkEntry,
     pub instance: ash::Instance,
     pub debug_reporter: Option<VkDebugReporter>,
 }
 
 #[derive(Debug)]
 pub enum VkCreateInstanceError {
-    LoadingError(ash::LoadingError),
     InstanceError(ash::InstanceError),
     VkError(vk::Result),
 }
@@ -26,7 +26,6 @@ pub enum VkCreateInstanceError {
 impl std::error::Error for VkCreateInstanceError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match *self {
-            VkCreateInstanceError::LoadingError(ref e) => Some(e),
             VkCreateInstanceError::InstanceError(ref e) => Some(e),
             VkCreateInstanceError::VkError(ref e) => Some(e),
         }
@@ -39,16 +38,9 @@ impl core::fmt::Display for VkCreateInstanceError {
         fmt: &mut core::fmt::Formatter,
     ) -> core::fmt::Result {
         match *self {
-            VkCreateInstanceError::LoadingError(ref e) => e.fmt(fmt),
             VkCreateInstanceError::InstanceError(ref e) => e.fmt(fmt),
             VkCreateInstanceError::VkError(ref e) => e.fmt(fmt),
         }
-    }
-}
-
-impl From<ash::LoadingError> for VkCreateInstanceError {
-    fn from(result: ash::LoadingError) -> Self {
-        VkCreateInstanceError::LoadingError(result)
     }
 }
 
@@ -67,14 +59,11 @@ impl From<vk::Result> for VkCreateInstanceError {
 impl VkInstance {
     /// Creates a vulkan instance.
     pub fn new(
+        entry: VkEntry,
         window: &dyn Window,
         app_name: &CString,
         validation_layer_debug_report_flags: vk::DebugReportFlagsEXT,
     ) -> Result<VkInstance, VkCreateInstanceError> {
-        // This loads the dll/so if needed
-        info!("Finding vulkan entry point");
-        let entry = ash::Entry::new()?;
-
         // Determine the supported version of vulkan that's available
         let vulkan_version = match entry.try_enumerate_instance_version()? {
             // Vulkan 1.1+
@@ -162,9 +151,9 @@ impl VkInstance {
     }
 
     /// This is used to setup a debug callback for logging validation errors
-    fn setup_vulkan_debug_callback(
-        entry: &ash::Entry,
-        instance: &ash::Instance,
+    fn setup_vulkan_debug_callback<E: EntryV1_0, I: InstanceV1_0>(
+        entry: &E,
+        instance: &I,
         debug_report_flags: vk::DebugReportFlagsEXT,
     ) -> VkResult<VkDebugReporter> {
         info!("Seting up vulkan debug callback");

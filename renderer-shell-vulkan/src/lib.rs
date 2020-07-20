@@ -73,7 +73,26 @@ pub use coordinates::LogicalSize;
 pub use coordinates::PhysicalSize;
 use ash::vk::SampleCountFlags;
 
+mod entry;
+pub use entry::VkEntry;
+pub use entry::MoltenEntry;
+
 //mod fence;
+
+#[derive(Copy, Clone, Debug)]
+pub enum VulkanLinkMethod {
+    /// Link vulkan dynamically (recommended and default)
+    Dynamic,
+
+    /// Mainly for platforms like iOS
+    Static
+}
+
+impl Default for VulkanLinkMethod {
+    fn default() -> Self {
+        VulkanLinkMethod::Dynamic
+    }
+}
 
 /// 1x, 2x, 4x, etc. antialiasing
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
