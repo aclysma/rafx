@@ -87,7 +87,7 @@ impl ManagedDescriptorSetPool {
         // frames for them to finish any submits that reference them
         let descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
             MAX_FRAMES_IN_FLIGHT as u32,
-            u32::MAX, // No upper bound on pool count
+            std::u32::MAX, // No upper bound on pool count
             move |device| {
                 let pool_builder = vk::DescriptorPoolCreateInfo::builder()
                     .max_sets(MAX_DESCRIPTORS_PER_POOL)
