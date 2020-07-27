@@ -16,7 +16,7 @@ pub struct AssetResource {
 }
 
 impl AssetResource {
-    fn new(loader: RpcLoader) -> Self {
+    pub fn new(loader: RpcLoader) -> Self {
         let (tx, rx) = atelier_loader::crossbeam_channel::unbounded();
         let tx = Arc::new(tx);
         let storage = AssetStorageSet::new(tx.clone());

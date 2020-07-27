@@ -17,6 +17,7 @@ use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::game_asset_lookup::MeshAsset;
+use atelier_assets::loader::rpc_loader::RpcLoader;
 use renderer::assets::{
     ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
     BufferAsset,
@@ -57,8 +58,9 @@ pub fn logging_init() {
         .init();
 }
 
-pub fn atelier_init(resources: &mut Resources) {
-    resources.insert(AssetResource::default());
+pub fn atelier_init(resources: &mut Resources, connect_string: String) {
+    let loader = RpcLoader::new(connect_string).unwrap();
+    resources.insert(AssetResource::new(loader));
 }
 
 pub struct Sdl2Systems {

@@ -6,14 +6,24 @@ This means streaming, LODs, visibility systems, and multi-threaded draw call sub
 Additionally it means thinking through how an asset pipeline would work for a team with dedicated artists and supporting
 workflow-friendly features like hot reloading assets, possibly on remote devices.
 
-Programmer ease-of-use is not prioritized. For the time being, you'll need to have a pretty good understanding of
-vulkan to use this crate. Integrating it into a larger engine is not a small task, so I plan to provide a higher-level
-engine crate in the future. This also allows me to keep anything opinionated (like choosing a deferred or forward
-rendering pipeline, or coordinate systems) out of this crate.
+This is not an easy-to-use crate. I plan to provide a higher-level engine crate in the future. Extending and using
+this crate directly requires a good understanding of vulkan.
+
+Supported Platforms:
+ * Windows
+ * macOS (via MoltenVK)
+ * iOS (via MoltenVK)
+ * Linux
+
+Android might work but I don't have hardware to test with.
 
 The job/phase rendering design is inspired by the 2015 GDC talk "[Destiny's Multithreaded Rendering Architecture](http://advances.realtimerendering.com/destiny/gdc_2015/Tatarchuk_GDC_2015__Destiny_Renderer_web.pdf)". 
 
 [![Build Status](https://travis-ci.org/aclysma/renderer_prototype.svg?branch=master)](https://travis-ci.org/aclysma/renderer_prototype)
+
+[![Video of Renderer in Use](docs/ios-screenshot.png)](https://www.youtube.com/watch?v=Ks_HQbejHE4 "Video of Renderer in Use")
+
+[^ Video of this renderer running on iOS hardware](https://www.youtube.com/watch?v=Ks_HQbejHE4) 
 
 ## Diagrams
 
@@ -26,6 +36,18 @@ The job/phase rendering design is inspired by the 2015 GDC talk "[Destiny's Mult
 
 This project should still be considered a prototype, shared for informational purposes only. Please don't use it in
 anything real yet!
+
+The demo includes:
+ * Render thread decoupled from main thread [(diagram)](https://github.com/aclysma/renderer_prototype/blob/master/docs/pipelining.png)
+ * Async loading of assets (supports remote hardware)
+ * Hot-reloading assets (needs more work, some asset types do not work reliably)
+ * Game state stored in ECS (legion)
+ * Extensible data-driven render pipeline
+ * PBR Meshes
+ * Sprites
+ * Debug Draw
+ * imgui
+ * HDR Pipeline with Bloom
 
 ## Running the Demo
 

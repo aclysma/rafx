@@ -49,7 +49,8 @@ fn main() {
     let mut resources = Resources::default();
     resources.insert(TimeState::new());
 
-    init::atelier_init(&mut resources);
+    // Connect to the daemon we just launched
+    init::atelier_init(&mut resources, "127.0.0.1:9999".to_string());
 
     let sdl2_systems = init::sdl2_init();
     init::imgui_init(&mut resources, &sdl2_systems.window);

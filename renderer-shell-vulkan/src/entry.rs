@@ -1,5 +1,5 @@
 extern crate ash;
-use ash::{version::EntryV1_0, vk, Instance, InstanceError, RawPtr};
+use ash::{version::EntryV1_0, vk, Instance, InstanceError};
 use self::ash::prelude::VkResult;
 
 // Represents a dynamic or static-linked entry to the vulkan API
