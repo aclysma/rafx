@@ -1,5 +1,5 @@
 use ash::vk;
-use legion::prelude::*;
+use legion::*;
 use renderer::assets::{ResourceManager, DynResourceAllocatorSet};
 use renderer::vulkan::VkDeviceContext;
 

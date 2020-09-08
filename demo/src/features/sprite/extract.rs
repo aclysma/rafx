@@ -13,7 +13,7 @@ use renderer::vulkan::VkDeviceContext;
 use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::resources::DescriptorSetArc;
-use legion::prelude::EntityStore;
+use legion::EntityStore;
 use renderer::assets::MaterialAsset;
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
@@ -143,13 +143,15 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .unwrap();
         let sprite_render_node = sprite_nodes.sprites.get(render_node_handle).unwrap();
 
-        let position_component = extract_context
+        let entity = extract_context
             .world
-            .get_component::<PositionComponent>(sprite_render_node.entity)
+            .entry_ref(sprite_render_node.entity)
             .unwrap();
-        let sprite_component = extract_context
-            .world
-            .get_component::<SpriteComponent>(sprite_render_node.entity)
+        let position_component = entity
+            .get_component::<PositionComponent>()
+            .unwrap();
+        let sprite_component = entity
+            .get_component::<SpriteComponent>()
             .unwrap();
 
         let image_info = extract_context

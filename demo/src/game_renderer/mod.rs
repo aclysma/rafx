@@ -15,7 +15,7 @@ use renderer::nodes::{
 };
 use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
-use legion::prelude::*;
+use legion::*;
 use crate::render_contexts::{RenderJobExtractContext};
 use crate::features::mesh::{create_mesh_extract_job, MeshRenderNodeSet};
 use std::sync::{Arc, Mutex};

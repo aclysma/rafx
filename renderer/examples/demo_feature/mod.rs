@@ -4,7 +4,7 @@ use renderer_nodes::{
 };
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use legion::prelude::Entity;
+use legion::Entity;
 use renderer_base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
 

@@ -1,5 +1,5 @@
 use crate::asset_resource::AssetResource;
-use legion::prelude::Resources;
+use legion::Resources;
 use renderer::vulkan::{
     LogicalSize, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, VkContext,
 };

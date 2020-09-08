@@ -3,7 +3,7 @@ use crate::phases::draw_opaque::*;
 use renderer::nodes::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
 use renderer::nodes::RenderRegistryBuilder;
 use renderer::nodes::RenderViewSet;
-use legion::prelude::*;
+use legion::*;
 use glam::Vec3;
 use renderer_features::phases::draw_transparent::DrawTransparentRenderPhase;
 mod demo_feature;

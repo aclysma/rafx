@@ -4,7 +4,7 @@ use renderer::nodes::{
 };
 use std::sync::atomic::{Ordering, AtomicI32};
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
-use legion::prelude::Entity;
+use legion::Entity;
 use renderer::base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;

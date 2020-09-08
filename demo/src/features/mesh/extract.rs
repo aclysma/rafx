@@ -15,7 +15,7 @@ use crate::features::mesh::prepare::MeshPrepareJobImpl;
 use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::resources::DescriptorSetArc;
-use legion::prelude::*;
+use legion::*;
 use crate::components::MeshComponent;
 use crate::resource_manager::GameResourceManager;
 use renderer::assets::MaterialAsset;
@@ -81,13 +81,16 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .unwrap();
         let mesh_render_node = mesh_nodes.meshes.get(render_node_handle).unwrap();
 
-        let position_component = extract_context
+        let entity = extract_context
             .world
-            .get_component::<PositionComponent>(mesh_render_node.entity)
+            .entry_ref(mesh_render_node.entity)
             .unwrap();
-        let mesh_component = extract_context
-            .world
-            .get_component::<MeshComponent>(mesh_render_node.entity)
+
+        let position_component = entity
+            .get_component::<PositionComponent>()
+            .unwrap();
+        let mesh_component = entity
+            .get_component::<MeshComponent>()
             .unwrap();
 
         let game_resource_manager = extract_context
@@ -182,7 +185,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
     ) {
         let mut per_view_data = MeshPerViewShaderParam::default();
 
-        let query = <Read<DirectionalLightComponent>>::query();
+        let mut query = <Read<DirectionalLightComponent>>::query();
         for light in query.iter(extract_context.world) {
             let light_count = per_view_data.directional_light_count as usize;
             if light_count > per_view_data.directional_lights.len() {
@@ -206,7 +209,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             per_view_data.directional_light_count += 1;
         }
 
-        let query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
+        let mut query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
         for (position, light) in query.iter(extract_context.world) {
             let light_count = per_view_data.point_light_count as usize;
             if light_count > per_view_data.point_lights.len() {
@@ -223,7 +226,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             per_view_data.point_light_count += 1;
         }
 
-        let query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
+        let mut query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
         for (position, light) in query.iter(extract_context.world) {
             let light_count = per_view_data.spot_light_count as usize;
             if light_count > per_view_data.spot_lights.len() {

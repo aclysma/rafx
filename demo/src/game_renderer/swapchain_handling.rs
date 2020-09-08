@@ -2,7 +2,7 @@ use renderer::vulkan::{
     VkContext, VkSurface, Window, VkSurfaceSwapchainLifetimeListener, VkDeviceContext, VkSwapchain,
 };
 use crate::game_renderer::GameRenderer;
-use legion::prelude::Resources;
+use legion::Resources;
 use ash::prelude::VkResult;
 use renderer::assets::resources::ResourceManager;
 use renderer::nodes::RenderRegistry;

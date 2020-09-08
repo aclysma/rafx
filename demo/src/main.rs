@@ -10,7 +10,7 @@ use sdl2::mouse::MouseState;
 use crate::components::{
     PositionComponent, PointLightComponent, SpotLightComponent, DirectionalLightComponent,
 };
-use legion::prelude::*;
+use legion::*;
 
 use crate::asset_resource::AssetResource;
 use crate::time::TimeState;
@@ -62,8 +62,7 @@ fn main() {
         .event_pump()
         .expect("Could not create sdl event pump");
 
-    let universe = Universe::new();
-    let mut world = universe.create_world();
+    let mut world = World::default();
 
     test_scene::populate_test_sprite_entities(&mut resources, &mut world);
     test_scene::populate_test_mesh_entities(&mut resources, &mut world);
@@ -188,7 +187,7 @@ fn add_light_debug_draw(
 ) {
     let mut debug_draw = resources.get_mut::<DebugDraw3DResource>().unwrap();
 
-    let query = <Read<DirectionalLightComponent>>::query();
+    let mut query = <Read<DirectionalLightComponent>>::query();
     for light in query.iter(world) {
         let light_from = glam::Vec3::new(0.0, 0.0, 0.0);
         let light_to = light.direction;
@@ -196,12 +195,12 @@ fn add_light_debug_draw(
         debug_draw.add_line(light_from, light_to, light.color);
     }
 
-    let query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
+    let mut query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
     for (position, light) in query.iter(world) {
         debug_draw.add_sphere(position.position, 0.25, light.color, 12);
     }
 
-    let query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
+    let mut query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
     for (position, light) in query.iter(world) {
         let light_from = position.position;
         let light_to = position.position + light.direction;
