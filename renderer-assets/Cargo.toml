@@ -22,7 +22,7 @@ crossbeam-channel = "0.4.2"
 
 vk-mem = "0.2"
 
-atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
+atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "minimum-0.3", features = ["serde_importers"] }
 
 log="0.4"
 glam = "0.8.6"

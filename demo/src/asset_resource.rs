@@ -1,7 +1,5 @@
 use atelier_assets::loader::{handle::RefOp, rpc_loader::RpcLoader, Loader};
 
-use std::sync::Arc;
-
 use type_uuid::TypeUuid;
 
 use atelier_assets::loader as atelier_loader;
@@ -11,14 +9,13 @@ use crate::asset_storage::{AssetStorageSet, DynAssetLoader};
 pub struct AssetResource {
     loader: RpcLoader,
     storage: AssetStorageSet,
-    tx: Arc<atelier_loader::crossbeam_channel::Sender<RefOp>>,
+    tx: atelier_loader::crossbeam_channel::Sender<RefOp>,
     rx: atelier_loader::crossbeam_channel::Receiver<RefOp>,
 }
 
 impl AssetResource {
     pub fn new(loader: RpcLoader) -> Self {
         let (tx, rx) = atelier_loader::crossbeam_channel::unbounded();
-        let tx = Arc::new(tx);
         let storage = AssetStorageSet::new(tx.clone());
 
         AssetResource {
@@ -65,7 +62,7 @@ impl AssetResource {
         &self.storage
     }
 
-    pub fn tx(&self) -> &Arc<atelier_loader::crossbeam_channel::Sender<RefOp>> {
+    pub fn tx(&self) -> &atelier_loader::crossbeam_channel::Sender<RefOp> {
         &self.tx
     }
 }

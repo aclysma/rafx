@@ -34,7 +34,7 @@ type-uuid = "0.1"
 image2 = { version = "0.11", features = [ "ser" ] }
 inventory = "0.1"
 
-atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
+atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "minimum-0.3" }
 
 structopt = "0.3"
 crossbeam-channel = "0.4.2"

@@ -1,5 +1,5 @@
 use atelier_assets::core::{AssetUuid, AssetRef};
-use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue, SourceFileImporter};
+use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::Read;
@@ -82,7 +82,7 @@ struct BufferToImport {
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "807c83b3-c24c-4123-9580-5f9c426260b4"]
-struct GltfImporterState {
+pub struct GltfImporterState {
     //asset_uuid: Option<AssetUuid>,
 
     // Asset UUIDs for imported image by name
@@ -95,7 +95,7 @@ struct GltfImporterState {
 
 #[derive(TypeUuid)]
 #[uuid = "fc9ae812-110d-4daf-9223-e87b40966c6b"]
-struct GltfImporter;
+pub struct GltfImporter;
 impl Importer for GltfImporter {
     fn version_static() -> u32
     where
@@ -936,15 +936,3 @@ fn extract_meshes_to_import(
 
     Ok((meshes_to_import, buffers_to_import))
 }
-
-// make a macro to reduce duplication here :)
-inventory::submit!(SourceFileImporter {
-    extension: "gltf",
-    instantiator: || Box::new(GltfImporter {}),
-});
-
-// make a macro to reduce duplication here :)
-inventory::submit!(SourceFileImporter {
-    extension: "glb",
-    instantiator: || Box::new(GltfImporter {}),
-});

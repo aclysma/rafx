@@ -1,5 +1,5 @@
 use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue, SourceFileImporter};
+use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue};
 use image2::{Image};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
@@ -8,11 +8,11 @@ use crate::assets::image::{ImageAssetData, ColorSpace};
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "23f90369-6916-4548-81d0-a76e0b162df2"]
-struct ImageImporterState(Option<AssetUuid>);
+pub struct ImageImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251"]
-struct ImageImporter;
+pub struct ImageImporter;
 impl Importer for ImageImporter {
     fn version_static() -> u32
     where
@@ -65,24 +65,3 @@ impl Importer for ImageImporter {
         })
     }
 }
-// make a macro to reduce duplication here :)
-inventory::submit!(SourceFileImporter {
-    extension: "png",
-    instantiator: || Box::new(ImageImporter {}),
-});
-inventory::submit!(SourceFileImporter {
-    extension: "jpg",
-    instantiator: || Box::new(ImageImporter {}),
-});
-inventory::submit!(SourceFileImporter {
-    extension: "jpeg",
-    instantiator: || Box::new(ImageImporter {}),
-});
-inventory::submit!(SourceFileImporter {
-    extension: "tga",
-    instantiator: || Box::new(ImageImporter {}),
-});
-inventory::submit!(SourceFileImporter {
-    extension: "bmp",
-    instantiator: || Box::new(ImageImporter {}),
-});

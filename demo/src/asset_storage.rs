@@ -4,7 +4,7 @@ use atelier_assets::loader::{
     AssetLoadOp, AssetStorage, AssetTypeId, LoadHandle, LoaderInfoProvider, TypeUuid,
 };
 use mopa::{mopafy, Any};
-use std::{sync::Mutex, collections::HashMap, error::Error, sync::Arc};
+use std::{sync::Mutex, collections::HashMap, error::Error};
 
 use atelier_assets::core::AssetUuid;
 use crossbeam_channel::Receiver;
@@ -45,11 +45,11 @@ pub struct AssetStorageSetInner {
 // Contains a storage per asset type
 pub struct AssetStorageSet {
     inner: Mutex<AssetStorageSetInner>,
-    refop_sender: Arc<Sender<RefOp>>,
+    refop_sender: Sender<RefOp>,
 }
 
 impl AssetStorageSet {
-    pub fn new(refop_sender: Arc<Sender<RefOp>>) -> Self {
+    pub fn new(refop_sender: Sender<RefOp>) -> Self {
         Self {
             inner: Mutex::new(Default::default()),
             refop_sender,
@@ -237,7 +237,7 @@ where
 {
     fn update_asset(
         &mut self,
-        refop_sender: &Arc<Sender<RefOp>>,
+        refop_sender: &Sender<RefOp>,
         loader_info: &dyn LoaderInfoProvider,
         data: &[u8],
         load_handle: LoadHandle,
@@ -282,16 +282,19 @@ where
 {
     fn update_asset(
         &mut self,
-        refop_sender: &Arc<Sender<RefOp>>,
+        refop_sender: &Sender<RefOp>,
         loader_info: &dyn LoaderInfoProvider,
         data: &[u8],
         _load_handle: LoadHandle,
         load_op: AssetLoadOp,
         _version: u32,
     ) -> Result<UpdateAssetResult<AssetDataT>, Box<dyn Error>> {
-        let asset = SerdeContext::with_sync(loader_info, refop_sender.clone(), || {
-            bincode::deserialize::<AssetDataT>(data)
-        })?;
+        // To enable automatic serde of Handle, we need to set up a SerdeContext with a RefOp sender
+        let asset = futures_lite::future::block_on(SerdeContext::with(
+            loader_info,
+            refop_sender.clone(),
+            async { bincode::deserialize::<AssetDataT>(data) },
+        ))?;
 
         load_op.complete();
         Ok(UpdateAssetResult::Result(asset))
@@ -325,7 +328,7 @@ struct AssetState<A> {
 
 // A strongly typed storage for a single asset type
 pub struct Storage<AssetT: TypeUuid + Send> {
-    refop_sender: Arc<Sender<RefOp>>,
+    refop_sender: Sender<RefOp>,
     assets: HashMap<LoadHandle, AssetState<AssetT>>,
     uncommitted: HashMap<LoadHandle, UncommittedAssetState<AssetT>>,
     loader: Box<dyn DynAssetLoader<AssetT>>,
@@ -333,7 +336,7 @@ pub struct Storage<AssetT: TypeUuid + Send> {
 
 impl<AssetT: TypeUuid + Send> Storage<AssetT> {
     fn new(
-        sender: Arc<Sender<RefOp>>,
+        sender: Sender<RefOp>,
         loader: Box<dyn DynAssetLoader<AssetT>>,
     ) -> Self {
         Self {

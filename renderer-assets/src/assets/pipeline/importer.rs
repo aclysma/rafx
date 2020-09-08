@@ -1,5 +1,5 @@
 use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, SourceFileImporter};
+use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::{Read};
@@ -9,11 +9,11 @@ use crate::assets::pipeline::{
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "25c8b7df-e3a4-4436-b41c-ce32eed76e18"]
-struct PipelineImporterState(Option<AssetUuid>);
+pub struct PipelineImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "3906ac10-8782-446d-aee4-e94611c6d61e"]
-struct PipelineImporter;
+pub struct PipelineImporter;
 impl Importer for PipelineImporter {
     fn version_static() -> u32
     where
@@ -58,18 +58,13 @@ impl Importer for PipelineImporter {
     }
 }
 
-inventory::submit!(SourceFileImporter {
-    extension: "pipeline",
-    instantiator: || Box::new(PipelineImporter {}),
-});
-
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "d09c8061-3458-4f97-9265-6396344c271c"]
-struct RenderpassImporterState(Option<AssetUuid>);
+pub struct RenderpassImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "a188149d-bb0c-4c7d-8a43-0267a528bec6"]
-struct RenderpassImporter;
+pub struct RenderpassImporter;
 impl Importer for RenderpassImporter {
     fn version_static() -> u32
     where
@@ -114,18 +109,13 @@ impl Importer for RenderpassImporter {
     }
 }
 
-inventory::submit!(SourceFileImporter {
-    extension: "renderpass",
-    instantiator: || Box::new(RenderpassImporter {}),
-});
-
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "5cfac411-55a1-49dc-b07e-1ac486f9fe98"]
-struct MaterialImporterState(Option<AssetUuid>);
+pub struct MaterialImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "eb9a20b7-3957-46fd-b832-2e7e99852bb0"]
-struct MaterialImporter;
+pub struct MaterialImporter;
 impl Importer for MaterialImporter {
     fn version_static() -> u32
     where
@@ -170,18 +160,13 @@ impl Importer for MaterialImporter {
     }
 }
 
-inventory::submit!(SourceFileImporter {
-    extension: "material",
-    instantiator: || Box::new(MaterialImporter {}),
-});
-
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "d40e33f3-ba7d-4218-8266-a18d7c65b06e"]
-struct MaterialInstanceImporterState(Option<AssetUuid>);
+pub struct MaterialInstanceImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "4ce02143-a5c4-4433-b843-07cdccf013b0"]
-struct MaterialInstanceImporter;
+pub struct MaterialInstanceImporter;
 impl Importer for MaterialInstanceImporter {
     fn version_static() -> u32
     where
@@ -226,7 +211,3 @@ impl Importer for MaterialInstanceImporter {
     }
 }
 
-inventory::submit!(SourceFileImporter {
-    extension: "materialinstance",
-    instantiator: || Box::new(MaterialInstanceImporter {}),
-});

@@ -1,5 +1,5 @@
 use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, SourceFileImporter};
+use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use std::io::{Read, Cursor};
@@ -8,11 +8,11 @@ use crate::vk_description as dsc;
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "867bc278-67b5-469c-aeea-1c05da722918"]
-struct ShaderImporterState(Option<AssetUuid>);
+pub struct ShaderImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "90fdad4b-cec1-4f59-b679-97895711b6e1"]
-struct ShaderImporter;
+pub struct ShaderImporter;
 impl Importer for ShaderImporter {
     fn version_static() -> u32
     where
@@ -63,7 +63,3 @@ impl Importer for ShaderImporter {
     }
 }
 
-inventory::submit!(SourceFileImporter {
-    extension: "spv",
-    instantiator: || Box::new(ShaderImporter {}),
-});

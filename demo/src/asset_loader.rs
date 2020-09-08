@@ -6,7 +6,6 @@ use atelier_assets::loader::LoaderInfoProvider;
 use atelier_assets::loader::handle::SerdeContext;
 use atelier_assets::loader::handle::RefOp;
 use type_uuid::TypeUuid;
-use std::sync::Arc;
 use crate::asset_storage::{DynAssetLoader, UpdateAssetResult};
 use crossbeam_channel::Sender;
 use std::error::Error;
@@ -23,16 +22,19 @@ where
 {
     fn update_asset(
         &mut self,
-        refop_sender: &Arc<Sender<RefOp>>,
+        refop_sender: &Sender<RefOp>,
         loader_info: &dyn LoaderInfoProvider,
         data: &[u8],
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         _version: u32,
     ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error>> {
-        let asset = SerdeContext::with_sync(loader_info, refop_sender.clone(), || {
-            bincode::deserialize::<AssetDataT>(data)
-        })?;
+        // To enable automatic serde of Handle, we need to set up a SerdeContext with a RefOp sender
+        let asset = futures_lite::future::block_on(SerdeContext::with(
+            loader_info,
+            refop_sender.clone(),
+            async { bincode::deserialize::<AssetDataT>(data) },
+        ))?;
 
         let result = self.0.update_asset(load_handle, load_op, asset);
         Ok(UpdateAssetResult::AsyncResult(result.result_rx))

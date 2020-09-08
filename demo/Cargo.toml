@@ -22,15 +22,10 @@ vk-mem = "0.2"
 
 renderer = { path = "../renderer" }
 renderer-shell-vulkan-sdl2 = { path = "../renderer-shell-vulkan-sdl2" }
-#renderer-base = { path = "../renderer-base" }
-#renderer-nodes = { path = "../renderer-nodes" }
-#renderer-assets = { path = "../renderer-assets" }
-#renderer-visibility = { path = "../renderer-visibility" }
-
-#renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 
 legion = { version = "0.2.4", default-features = false, features = ["serialize"] }
-atelier-assets = { git = "https://github.com/amethyst/atelier-assets" }
+atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "minimum-0.3", features = ["serde_importers", "asset_uuid_macro"] }
+futures-lite = "1.3.0"
 
 env_logger = "0.6"
 
