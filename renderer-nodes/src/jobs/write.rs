@@ -1,6 +1,6 @@
 use crate::{
     RenderFeatureIndex, RenderPhase, RenderView, MergedFrameSubmitNodes, RenderRegistry,
-    SubmitNodeId, RenderPhaseIndex
+    SubmitNodeId, RenderPhaseIndex,
 };
 
 pub trait FeatureCommandWriter<WriteContextT> {
@@ -8,7 +8,7 @@ pub trait FeatureCommandWriter<WriteContextT> {
         &self,
         write_context: &mut WriteContextT,
         view: &RenderView,
-        render_phase_index: RenderPhaseIndex
+        render_phase_index: RenderPhaseIndex,
     );
     fn render_element(
         &self,
@@ -21,7 +21,7 @@ pub trait FeatureCommandWriter<WriteContextT> {
         &self,
         write_context: &mut WriteContextT,
         view: &RenderView,
-        render_phase_index: RenderPhaseIndex
+        render_phase_index: RenderPhaseIndex,
     );
 
     fn feature_debug_name(&self) -> &'static str;
@@ -93,7 +93,12 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
             self.feature_writers[submit_node.feature_index() as usize]
                 .as_ref()
                 .unwrap()
-                .render_element(write_context, view, render_phase_index, submit_node.submit_node_id());
+                .render_element(
+                    write_context,
+                    view,
+                    render_phase_index,
+                    submit_node.submit_node_id(),
+                );
             previous_node_feature_index = submit_node.feature_index() as i32;
         }
 

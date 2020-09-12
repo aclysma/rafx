@@ -6,7 +6,7 @@ use self::ash::prelude::VkResult;
 pub enum VkEntry {
     Dynamic(ash::Entry),
     #[cfg(feature = "static-vulkan")]
-    Static(MoltenEntry)
+    Static(MoltenEntry),
 }
 
 impl VkEntry {

@@ -74,9 +74,8 @@ pub fn populate_test_sprite_entities(
                 image: sprite_image.clone(),
             };
 
-            let entity = world.extend(
-                (0..1).map(|_| (position_component, sprite_component.clone())),
-            )[0];
+            let entity =
+                world.extend((0..1).map(|_| (position_component, sprite_component.clone())))[0];
 
             SpriteRenderNode {
                 entity, // sprite asset
@@ -130,9 +129,8 @@ pub fn populate_test_mesh_entities(
                 mesh: mesh.clone(),
             };
 
-            let entity = world.extend(
-                (0..1).map(|_| (position_component, mesh_component.clone())),
-            )[0];
+            let entity =
+                world.extend((0..1).map(|_| (position_component, mesh_component.clone())))[0];
 
             //world.get_component::<PositionComponent>(entity).unwrap();
 

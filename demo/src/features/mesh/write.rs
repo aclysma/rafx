@@ -1,6 +1,7 @@
 use crate::features::mesh::{MeshRenderFeature, ExtractedFrameNodeMeshData, PreparedViewNodeMeshData};
 use renderer::nodes::{
-    RenderFeatureIndex, RenderPhaseIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
+    RenderFeatureIndex, RenderPhaseIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter,
+    RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
 use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetArc};

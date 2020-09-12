@@ -86,12 +86,8 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .entry_ref(mesh_render_node.entity)
             .unwrap();
 
-        let position_component = entity
-            .get_component::<PositionComponent>()
-            .unwrap();
-        let mesh_component = entity
-            .get_component::<MeshComponent>()
-            .unwrap();
+        let position_component = entity.get_component::<PositionComponent>().unwrap();
+        let mesh_component = entity.get_component::<MeshComponent>().unwrap();
 
         let game_resource_manager = extract_context
             .resources

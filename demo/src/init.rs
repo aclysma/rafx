@@ -58,7 +58,10 @@ pub fn logging_init() {
         .init();
 }
 
-pub fn atelier_init(resources: &mut Resources, connect_string: String) {
+pub fn atelier_init(
+    resources: &mut Resources,
+    connect_string: String,
+) {
     let loader = RpcLoader::new(connect_string).unwrap();
     resources.insert(AssetResource::new(loader));
 }

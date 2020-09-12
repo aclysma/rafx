@@ -62,7 +62,10 @@ pub fn run() {
         .with_importer("pipeline", renderer::assets::PipelineImporter)
         .with_importer("renderpass", renderer::assets::RenderpassImporter)
         .with_importer("material", renderer::assets::MaterialImporter)
-        .with_importer("materialinstance", renderer::assets::MaterialInstanceImporter)
+        .with_importer(
+            "materialinstance",
+            renderer::assets::MaterialInstanceImporter,
+        )
         .with_importer("spv", renderer::assets::ShaderImporter)
         .with_importer("png", renderer::assets::ImageImporter)
         .with_importer("jpg", renderer::assets::ImageImporter)
@@ -71,7 +74,6 @@ pub fn run() {
         .with_importer("bmp", renderer::assets::ImageImporter)
         .with_importer("gltf", crate::assets::gltf::GltfImporter)
         .with_importer("glb", crate::assets::gltf::GltfImporter)
-
         .with_db_path(opt.db_dir)
         .with_address(opt.address)
         .with_asset_dirs(opt.asset_dirs)

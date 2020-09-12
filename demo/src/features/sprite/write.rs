@@ -1,6 +1,7 @@
 use crate::features::sprite::{SpriteRenderFeature, SpriteDrawCall};
 use renderer::nodes::{
-    RenderFeatureIndex, RenderPhaseIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
+    RenderFeatureIndex, RenderPhaseIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter,
+    RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
 use renderer::vulkan::VkBufferRaw;

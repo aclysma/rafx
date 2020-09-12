@@ -147,12 +147,8 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .world
             .entry_ref(sprite_render_node.entity)
             .unwrap();
-        let position_component = entity
-            .get_component::<PositionComponent>()
-            .unwrap();
-        let sprite_component = entity
-            .get_component::<SpriteComponent>()
-            .unwrap();
+        let position_component = entity.get_component::<PositionComponent>().unwrap();
+        let sprite_component = entity.get_component::<SpriteComponent>().unwrap();
 
         let image_info = extract_context
             .resource_manager

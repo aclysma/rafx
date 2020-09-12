@@ -87,7 +87,7 @@ pub enum VulkanLinkMethod {
 
     /// Mainly for platforms like iOS
     #[cfg(feature = "static-vulkan")]
-    Static
+    Static,
 }
 
 impl Default for VulkanLinkMethod {

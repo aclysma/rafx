@@ -40,7 +40,7 @@ impl VkContextBuilder {
                 PhysicalDeviceType::IntegratedGpu,
             ],
             msaa_level_priority: vec![MsaaLevel::Sample1],
-            link_method: VulkanLinkMethod::default()
+            link_method: VulkanLinkMethod::default(),
         }
     }
 
@@ -156,7 +156,10 @@ impl VkContextBuilder {
     }
 
     /// Set the expected linking method for vulkan. Dynamic is the recommended default
-    pub fn link_method(mut self, link_method: VulkanLinkMethod) -> Self {
+    pub fn link_method(
+        mut self,
+        link_method: VulkanLinkMethod,
+    ) -> Self {
         self.link_method = link_method;
         self
     }
@@ -186,7 +189,7 @@ impl VkContextBuilder {
             self.physical_device_type_priority.clone(),
             self.present_mode_priority.clone(),
             self.msaa_level_priority.clone(),
-            self.link_method
+            self.link_method,
         )
     }
 }
@@ -271,14 +274,14 @@ impl VkContext {
         physical_device_type_priority: Vec<PhysicalDeviceType>,
         present_mode_priority: Vec<PresentMode>,
         msaa_level_priority: Vec<MsaaLevel>,
-        link_method: VulkanLinkMethod
+        link_method: VulkanLinkMethod,
     ) -> Result<VkContext, VkCreateContextError> {
         // This loads the dll/so if needed
         info!("Link method for vulkan: {:?}", link_method);
         let entry = match link_method {
             VulkanLinkMethod::Dynamic => VkEntry::new_dynamic(),
             #[cfg(feature = "static-vulkan")]
-            VulkanLinkMethod::Static => VkEntry::new_static()
+            VulkanLinkMethod::Static => VkEntry::new_static(),
         }?;
 
         let instance = ManuallyDrop::new(VkInstance::new(
