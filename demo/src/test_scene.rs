@@ -1,4 +1,4 @@
-use legion::{Resources, World, EntityStore};
+use legion::{Resources, World};
 use crate::asset_resource::AssetResource;
 use glam::f32::Vec3;
 use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};

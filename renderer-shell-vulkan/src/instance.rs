@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 
 pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
@@ -100,34 +100,52 @@ impl VkInstance {
             .engine_version(0)
             .api_version(api_version);
 
-        // Determine what layers to use
-        let validation_layer_name = CString::new("VK_LAYER_LUNARG_standard_validation").unwrap();
-
         let mut layer_names = vec![];
+        let mut extension_names = window.extension_names();
         if !validation_layer_debug_report_flags.is_empty() {
-            //TODO: Validate that the layer exists
-            //if layers.iter().find(|x| CStr::from_bytes_with_nul(&x.layer_name) == &validation_layer_name) {
-            layer_names.push(validation_layer_name);
-            //}
+            // Find the best validation layer that's available
+            let best_validation_layer = VkInstance::find_best_validation_layer(&layers);
+            if best_validation_layer.is_none() {
+                log::error!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
+                return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
+            }
+
+            let debug_extension = DebugReport::name();
+            let has_debug_extension = extensions.iter().any(|extension| unsafe {
+                debug_extension == CStr::from_ptr(extension.extension_name.as_ptr())
+            });
+
+            if !has_debug_extension {
+                log::error!("Could not find the debug extension. Check that the vulkan SDK has been installed or disable validation.");
+                return Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT.into());
+            }
+
+            if let Some(best_validation_layer) = best_validation_layer {
+                if has_debug_extension {
+                    layer_names.push(best_validation_layer.as_ptr());
+                    extension_names.push(DebugReport::name().as_ptr());
+                }
+            }
         }
 
-        let layers_names_raw: Vec<*const i8> = layer_names
-            .iter()
-            .map(|raw_name| raw_name.as_ptr())
-            .collect();
-
-        // Determine what extensions to use
-        let mut extension_names_raw = window.extension_names();
-
-        if !validation_layer_debug_report_flags.is_empty() {
-            extension_names_raw.push(DebugReport::name().as_ptr())
+        if log_enabled!(log::Level::Debug) {
+            let layer_names_as_cstr: Vec<_> = layer_names
+                .iter()
+                .map(|ptr| unsafe { CStr::from_ptr(*ptr) })
+                .collect();
+            log::debug!("Using layers: {:?}", layer_names_as_cstr);
+            let extension_names_as_cstr: Vec<_> = extension_names
+                .iter()
+                .map(|ptr| unsafe { CStr::from_ptr(*ptr) })
+                .collect();
+            log::debug!("Using extensions: {:?}", extension_names_as_cstr);
         }
 
         // Create the instance
         let create_info = vk::InstanceCreateInfo::builder()
             .application_info(&appinfo)
-            .enabled_layer_names(&layers_names_raw)
-            .enabled_extension_names(&extension_names_raw);
+            .enabled_layer_names(&layer_names)
+            .enabled_extension_names(&extension_names);
 
         info!("Creating vulkan instance");
         let instance: ash::Instance = unsafe { entry.create_instance(&create_info, None)? };
@@ -148,6 +166,38 @@ impl VkInstance {
             instance,
             debug_reporter,
         })
+    }
+
+    fn find_best_validation_layer(layers: &[ash::vk::LayerProperties]) -> Option<&'static CStr> {
+        fn khronos_validation_layer_name() -> &'static CStr {
+            CStr::from_bytes_with_nul(b"VK_LAYER_KHRONOS_validation\0")
+                .expect("Wrong extension string")
+        }
+
+        fn lunarg_validation_layer_name() -> &'static CStr {
+            CStr::from_bytes_with_nul(b"VK_LAYER_LUNARG_standard_validation\0")
+                .expect("Wrong extension string")
+        }
+
+        let khronos_validation_layer_name = khronos_validation_layer_name();
+        let lunarg_validation_layer_name = lunarg_validation_layer_name();
+
+        // Find the best validation layer that's available
+        let mut best_available_layer = None;
+        for layer in layers {
+            let layer_name = unsafe { CStr::from_ptr(layer.layer_name.as_ptr()) };
+
+            if layer_name == khronos_validation_layer_name {
+                best_available_layer = Some(khronos_validation_layer_name);
+                break;
+            }
+
+            if layer_name == lunarg_validation_layer_name {
+                best_available_layer = Some(lunarg_validation_layer_name);
+            }
+        }
+
+        best_available_layer
     }
 
     /// This is used to setup a debug callback for logging validation errors
