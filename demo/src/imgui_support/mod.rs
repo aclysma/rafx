@@ -77,8 +77,8 @@ impl ImGuiDrawData {
         let draw_lists: Vec<_> = draw_data
             .draw_lists()
             .map(|draw_list| {
-                let vertex_buffer: Vec<_> = draw_list.vtx_buffer().iter().map(|x| *x).collect();
-                let index_buffer: Vec<_> = draw_list.idx_buffer().iter().map(|x| *x).collect();
+                let vertex_buffer: Vec<_> = draw_list.vtx_buffer().iter().copied().collect();
+                let index_buffer: Vec<_> = draw_list.idx_buffer().iter().copied().collect();
                 let command_buffer: Vec<_> = draw_list.commands().map(|x| x.into()).collect();
 
                 ImGuiDrawList {
@@ -93,9 +93,9 @@ impl ImGuiDrawData {
             draw_lists,
             total_idx_count: draw_data.total_idx_count,
             total_vtx_count: draw_data.total_vtx_count,
-            display_pos: draw_data.display_pos.clone(),
-            display_size: draw_data.display_size.clone(),
-            framebuffer_scale: draw_data.framebuffer_scale.clone(),
+            display_pos: draw_data.display_pos,
+            display_size: draw_data.display_size,
+            framebuffer_scale: draw_data.framebuffer_scale,
         }
     }
 

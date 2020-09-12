@@ -8,7 +8,7 @@ pub fn round_size_up_to_alignment_u32(
     required_alignment: u32,
 ) -> u32 {
     assert!(required_alignment > 0);
-    return ((size + required_alignment - 1) / required_alignment) * required_alignment;
+    ((size + required_alignment - 1) / required_alignment) * required_alignment
 }
 
 pub fn round_size_up_to_alignment(
@@ -16,7 +16,7 @@ pub fn round_size_up_to_alignment(
     required_alignment: vk::DeviceSize,
 ) -> vk::DeviceSize {
     assert!(required_alignment > 0);
-    return ((size + required_alignment - 1) / required_alignment) * required_alignment;
+    ((size + required_alignment - 1) / required_alignment) * required_alignment
 }
 
 pub fn any_as_bytes<T: Copy>(data: &T) -> &[u8] {

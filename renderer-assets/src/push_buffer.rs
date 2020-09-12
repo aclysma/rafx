@@ -45,6 +45,12 @@ impl PushBufferSizeCalculator {
     }
 }
 
+impl Default for PushBufferSizeCalculator {
+    fn default() -> Self {
+        PushBufferSizeCalculator::new()
+    }
+}
+
 pub struct PushBuffer {
     data: Vec<u8>,
 }
@@ -87,6 +93,10 @@ impl PushBuffer {
             unsafe { std::slice::from_raw_parts(ptr, std::mem::size_of::<T>() * data.len()) };
 
         self.push_bytes(slice, required_alignment)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 
     pub fn len(&self) -> usize {

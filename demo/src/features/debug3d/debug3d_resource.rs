@@ -40,7 +40,7 @@ impl DebugDraw3DResource {
     ) {
         // Nothing will draw if we don't have at least 2 points
         if points.len() > 1 {
-            points.push(points[0].clone());
+            points.push(points[0]);
             self.add_line_strip(points, color);
         }
     }

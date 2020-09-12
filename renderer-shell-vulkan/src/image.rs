@@ -33,6 +33,7 @@ impl fmt::Debug for VkImage {
 }
 
 impl VkImage {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         device_context: &VkDeviceContext,
         memory_usage: vk_mem::MemoryUsage,

@@ -4,18 +4,16 @@ use renderer_nodes::{
 };
 use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use legion::Entity;
 use renderer_base::slab::{RawSlabKey, RawSlab};
 use std::convert::TryInto;
+use legion::*;
 
 mod extract;
 use extract::DemoExtractJobImpl;
 
 mod prepare;
-use prepare::DemoPrepareJobImpl;
-
 mod write;
-use write::DemoCommandWriter;
+
 use crate::{DemoExtractContext, DemoPrepareContext, DemoWriteContext};
 
 pub fn create_demo_extract_job(
@@ -48,12 +46,7 @@ pub struct DemoRenderNodeSet {
 }
 
 impl DemoRenderNodeSet {
-    pub fn new() -> Self {
-        DemoRenderNodeSet {
-            demos: Default::default(),
-        }
-    }
-
+    #[allow(dead_code)]
     pub fn register_demo_component(
         &mut self,
         node: DemoRenderNode,

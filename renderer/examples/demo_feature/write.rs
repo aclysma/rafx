@@ -1,6 +1,4 @@
-use renderer_nodes::{
-    RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
-};
+use renderer_nodes::{RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView, RenderPhaseIndex};
 use crate::DemoWriteContext;
 use crate::demo_feature::DemoRenderFeature;
 

@@ -6,7 +6,8 @@ use renderer_nodes::{
 };
 use renderer_base::slab::RawSlabKey;
 use crate::demo_feature::prepare::DemoPrepareJobImpl;
-use renderer_features::PositionComponent;
+use crate::PositionComponent;
+use legion::*;
 
 #[derive(Default)]
 pub struct DemoExtractJobImpl {
@@ -55,13 +56,17 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
             .get::<DemoRenderNodeSet>()
             .unwrap();
         let demo_render_node = demo_nodes.demos.get(render_node_handle).unwrap();
-        let position_component = extract_context
+
+        let entity = extract_context
             .world
-            .get_component::<PositionComponent>(demo_render_node.entity)
+            .entry_ref(demo_render_node.entity)
             .unwrap();
-        let demo_component = extract_context
-            .world
-            .get_component::<DemoComponent>(demo_render_node.entity)
+
+        let position_component = entity
+            .get_component::<PositionComponent>()
+            .unwrap();
+        let demo_component = entity
+            .get_component::<DemoComponent>()
             .unwrap();
 
         self.per_frame_data.push(ExtractedDemoData {

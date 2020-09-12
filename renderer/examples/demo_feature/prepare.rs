@@ -1,4 +1,4 @@
-use renderer_features::phases::draw_transparent::DrawTransparentRenderPhase;
+use crate::demo_phases::*;
 use renderer_nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
@@ -7,7 +7,6 @@ use glam::Vec3;
 use crate::demo_feature::{DemoRenderFeature, ExtractedDemoData};
 use crate::{DemoWriteContext, DemoPrepareContext};
 use crate::demo_feature::write::DemoCommandWriter;
-use renderer_features::phases::draw_opaque::DrawOpaqueRenderPhase;
 
 pub struct DemoPrepareJobImpl {
     pub(super) per_frame_data: Vec<ExtractedDemoData>,
@@ -60,10 +59,10 @@ impl DefaultPrepareJobImpl<DemoPrepareContext, DemoWriteContext> for DemoPrepare
             &self.per_view_data[view.view_index() as usize][view_node_index as usize];
 
         if extracted_data.alpha >= 1.0 {
-            submit_nodes.add_submit_node::<DrawOpaqueRenderPhase>(view_node_index, 0, 0.0);
+            submit_nodes.add_submit_node::<DemoOpaqueRenderPhase>(view_node_index, 0, 0.0);
         } else {
             let distance_from_camera = Vec3::length(extracted_data.position - view.eye_position());
-            submit_nodes.add_submit_node::<DrawTransparentRenderPhase>(
+            submit_nodes.add_submit_node::<DemoTransparentRenderPhase>(
                 view_node_index,
                 0,
                 distance_from_camera,

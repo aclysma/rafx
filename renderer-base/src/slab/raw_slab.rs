@@ -237,9 +237,9 @@ mod tests {
         let value = TestStruct::new(123);
         let key = pool.allocate(value);
 
-        assert_eq!(1, pool.count());
-        pool.free(&key);
-        assert_eq!(0, pool.count());
+        assert_eq!(1, pool.allocated_count());
+        pool.free(key);
+        assert_eq!(0, pool.allocated_count());
     }
 
     #[test]
@@ -249,10 +249,10 @@ mod tests {
         let value = TestStruct::new(123);
         let key = pool.allocate(value);
 
-        assert_eq!(1, pool.count());
-        pool.free(&key);
-        assert_eq!(0, pool.count());
-        pool.free(&key);
+        assert_eq!(1, pool.allocated_count());
+        pool.free(key);
+        assert_eq!(0, pool.allocated_count());
+        pool.free(key);
     }
 
     // Check that allocation/deallocation in order works
@@ -267,13 +267,13 @@ mod tests {
             keys.push(key);
         }
 
-        assert_eq!(1000, pool.count());
+        assert_eq!(1000, pool.allocated_count());
 
-        for k in &keys {
+        for k in keys {
             pool.free(k);
         }
 
-        assert_eq!(0, pool.count());
+        assert_eq!(0, pool.allocated_count());
     }
 
     #[test]
@@ -287,13 +287,13 @@ mod tests {
             keys.push(key);
         }
 
-        assert_eq!(1000, pool.count());
+        assert_eq!(1000, pool.allocated_count());
 
         for i in (0..keys.len()).rev() {
-            pool.free(&keys[i]);
+            pool.free(keys[i]);
         }
 
-        assert_eq!(0, pool.count());
+        assert_eq!(0, pool.allocated_count());
     }
 
     #[test]
@@ -307,8 +307,8 @@ mod tests {
             keys.push(key);
         }
 
-        assert_eq!(10, pool.count());
-        assert_eq!(5, pool.get(&keys[5]).unwrap().value);
+        assert_eq!(10, pool.allocated_count());
+        assert_eq!(5, pool.get(keys[5]).unwrap().value);
     }
 
     #[test]
@@ -316,14 +316,14 @@ mod tests {
         let mut pool = RawSlab::<TestStruct>::new();
         let value = TestStruct::new(123);
         let key = pool.allocate(value);
-        assert_eq!(1, pool.count());
+        assert_eq!(1, pool.allocated_count());
 
-        assert!(pool.get(&key).is_some());
+        assert!(pool.get(key).is_some());
 
-        pool.free(&key);
-        assert_eq!(0, pool.count());
+        pool.free(key);
+        assert_eq!(0, pool.allocated_count());
 
-        assert!(pool.get(&key).is_none());
+        assert!(pool.get(key).is_none());
     }
 
     #[test]
@@ -337,8 +337,8 @@ mod tests {
             keys.push(key);
         }
 
-        assert_eq!(10, pool.count());
-        assert_eq!(5, pool.get_mut(&keys[5]).unwrap().value);
+        assert_eq!(10, pool.allocated_count());
+        assert_eq!(5, pool.get_mut(keys[5]).unwrap().value);
     }
 
     #[test]
@@ -346,13 +346,13 @@ mod tests {
         let mut pool = RawSlab::<TestStruct>::new();
         let value = TestStruct::new(123);
         let key = pool.allocate(value);
-        assert_eq!(1, pool.count());
+        assert_eq!(1, pool.allocated_count());
 
-        assert!(pool.get_mut(&key).is_some());
+        assert!(pool.get_mut(key).is_some());
 
-        pool.free(&key);
-        assert_eq!(0, pool.count());
+        pool.free(key);
+        assert_eq!(0, pool.allocated_count());
 
-        assert!(pool.get_mut(&key).is_none());
+        assert!(pool.get_mut(key).is_none());
     }
 }

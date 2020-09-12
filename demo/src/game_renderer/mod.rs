@@ -286,7 +286,7 @@ impl GameRenderer {
         resource_manager.on_frame_complete()?;
 
         let mut guard = game_renderer.inner.lock().unwrap();
-        let main_camera_render_phase_mask = guard.main_camera_render_phase_mask.clone();
+        let main_camera_render_phase_mask = guard.main_camera_render_phase_mask;
         let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
 
@@ -353,7 +353,7 @@ impl GameRenderer {
 
         let sprite_render_nodes = resources.get::<SpriteRenderNodeSet>().unwrap();
         let mesh_render_nodes = resources.get::<MeshRenderNodeSet>().unwrap();
-        let mut all_render_nodes = AllRenderNodes::new();
+        let mut all_render_nodes = AllRenderNodes::default();
         all_render_nodes.add_render_nodes(&*sprite_render_nodes);
         all_render_nodes.add_render_nodes(&*mesh_render_nodes);
 
@@ -449,10 +449,10 @@ impl GameRenderer {
             extract_job_set
         };
 
-        let mut extract_context =
+        let extract_context =
             RenderJobExtractContext::new(&world, &resources, resource_manager);
         let prepare_job_set =
-            extract_job_set.extract(&mut extract_context, &frame_packet, &[&main_view]);
+            extract_job_set.extract(&extract_context, &frame_packet, &[&main_view]);
 
         let opaque_pipeline_info = resource_manager.get_pipeline_info(
             &guard.static_resources.sprite_material,
@@ -482,8 +482,8 @@ impl GameRenderer {
             dyn_resource_allocator_set,
             frame_packet,
             main_view,
-            render_registry: render_registry.clone(),
-            device_context: device_context.clone(),
+            render_registry,
+            device_context,
             opaque_pipeline_info,
             imgui_pipeline_info,
             frame_in_flight,

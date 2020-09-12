@@ -84,7 +84,7 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
     ) -> VkResult<T> {
         self.reset_pools
             .pop()
-            .map(|pool| Ok(pool))
+            .map(Ok)
             .unwrap_or_else(|| {
                 self.created_pool_count += 1;
                 assert!(self.created_pool_count <= self.max_pool_count);

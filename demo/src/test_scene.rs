@@ -91,7 +91,7 @@ pub fn populate_test_mesh_entities(
     let mesh = {
         let asset_resource = resources.get::<AssetResource>().unwrap();
         begin_load_asset::<MeshAsset>(
-            asset_uuid!("ffc9b240-0a17-4ff4-bb7d-72d13cc6e261"),
+            asset_uuid!("bdcb02a2-e17e-403e-a96a-84ce8c9c7407"),
             &asset_resource,
         )
     };

@@ -15,7 +15,7 @@ pub fn create_shader_module(
 pub fn create_descriptor_set_layout(
     device: &ash::Device,
     descriptor_set_layout: &dsc::DescriptorSetLayout,
-    immutable_samplers: &Vec<Option<Vec<vk::Sampler>>>,
+    immutable_samplers: &[Option<Vec<vk::Sampler>>],
 ) -> VkResult<vk::DescriptorSetLayout> {
     let mut builders =
         Vec::with_capacity(descriptor_set_layout.descriptor_set_layout_bindings.len());
@@ -133,7 +133,7 @@ pub fn create_renderpass(
         // Only specify resolve attachments if we have more than zero of them
         {
             let subpass_resolve_attachments = resolve_attachments.last().unwrap();
-            if subpass_resolve_attachments.len() > 0 {
+            if !subpass_resolve_attachments.is_empty() {
                 subpass_description_builder =
                     subpass_description_builder.resolve_attachments(subpass_resolve_attachments);
             }
@@ -165,6 +165,7 @@ pub fn create_renderpass(
     unsafe { device.create_render_pass(&*create_info, None) }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn create_graphics_pipelines(
     device: &ash::Device,
     //graphics_pipeline: &dsc::GraphicsPipeline,
@@ -316,14 +317,14 @@ pub fn create_sampler(
             .address_mode_v(sampler.address_mode_v.into())
             .address_mode_w(sampler.address_mode_w.into())
             .mip_lod_bias(sampler.mip_lod_bias.to_f32())
-            .anisotropy_enable(sampler.anisotropy_enable.into())
+            .anisotropy_enable(sampler.anisotropy_enable)
             .max_anisotropy(sampler.max_anisotropy.to_f32())
-            .compare_enable(sampler.compare_enable.into())
+            .compare_enable(sampler.compare_enable)
             .compare_op(sampler.compare_op.into())
             .min_lod(sampler.min_lod.to_f32())
             .max_lod(sampler.max_lod.to_f32())
             .border_color(sampler.border_color.into())
-            .unnormalized_coordinates(sampler.unnormalized_coordinates.into());
+            .unnormalized_coordinates(sampler.unnormalized_coordinates);
 
         device.create_sampler(&*create_info, None)
     }

@@ -343,7 +343,7 @@ impl<AssetT: TypeUuid + Send> Storage<AssetT> {
             refop_sender: sender,
             assets: HashMap::new(),
             uncommitted: HashMap::new(),
-            loader: loader,
+            loader,
         }
     }
     fn get<T: AssetHandle>(

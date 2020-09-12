@@ -116,6 +116,7 @@ impl VkBloomCombineRenderPass {
         unsafe { logical_device.allocate_command_buffers(&command_buffer_allocate_info) }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn update_command_buffer(
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
@@ -139,7 +140,7 @@ impl VkBloomCombineRenderPass {
             .framebuffer(framebuffer)
             .render_area(vk::Rect2D {
                 offset: vk::Offset2D { x: 0, y: 0 },
-                extent: swapchain_info.extents.clone(),
+                extent: swapchain_info.extents,
             })
             .clear_values(&clear_values);
 

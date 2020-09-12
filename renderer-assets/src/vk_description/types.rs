@@ -10,7 +10,7 @@ use renderer_shell_vulkan::MsaaLevel;
 // not doing any sort of fp-arithmetic and not expecting NaN. We should be deterministically
 // parsing a string and creating a float from it. Representing as an f64 since this ensures
 // all 32-bit whole numbers can be represented exactly. (anything <= 2^53)
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct Decimal(pub f64);
 
@@ -28,6 +28,12 @@ impl Decimal {
     }
 }
 
+impl PartialEq for Decimal {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
 impl Eq for Decimal {}
 
 impl std::hash::Hash for Decimal {
@@ -35,7 +41,7 @@ impl std::hash::Hash for Decimal {
         &self,
         state: &mut H,
     ) {
-        let bits: u64 = unsafe { std::mem::transmute(self.0) };
+        let bits: u64 = self.0.to_bits();
         bits.hash(state);
     }
 }
@@ -153,10 +159,10 @@ impl Into<vk::ImageSubresourceRange> for ImageSubresourceRange {
     fn into(self) -> vk::ImageSubresourceRange {
         vk::ImageSubresourceRange::builder()
             .aspect_mask(self.aspect_mask.into())
-            .base_mip_level(self.base_mip_level.into())
-            .level_count(self.level_count.into())
-            .base_array_layer(self.base_array_layer.into())
-            .layer_count(self.layer_count.into())
+            .base_mip_level(self.base_mip_level)
+            .level_count(self.level_count)
+            .base_array_layer(self.base_array_layer)
+            .layer_count(self.layer_count)
             .build()
     }
 }

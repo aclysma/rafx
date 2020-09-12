@@ -62,7 +62,7 @@ impl FrameInFlight {
         //TODO: AFAIK there is no way to simply trigger the semaphore and skip calling do_present
         // with no command buffers. The downside of doing this is that we end up with both the
         // end user's result and a result from do_present and have no sensible way of merging them
-        let _ = self.do_present(&vec![]);
+        let _ = self.do_present(&[]);
         self.result_tx.send(result).unwrap();
     }
 

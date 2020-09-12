@@ -579,13 +579,13 @@ impl VkSwapchain {
                 instance.get_physical_device_format_properties(physical_device, *candidate)
             };
 
-            if image_tiling == vk::ImageTiling::LINEAR
-                && (props.linear_tiling_features & features) == features
-            {
-                return Some(*candidate);
-            } else if image_tiling == vk::ImageTiling::OPTIMAL
-                && (props.optimal_tiling_features & features) == features
-            {
+            let is_supported = match image_tiling {
+                vk::ImageTiling::LINEAR => (props.linear_tiling_features & features) == features,
+                vk::ImageTiling::OPTIMAL => (props.optimal_tiling_features & features) == features,
+                _ => unimplemented!()
+            };
+
+            if is_supported {
                 return Some(*candidate);
             }
         }

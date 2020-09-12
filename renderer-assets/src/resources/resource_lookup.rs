@@ -172,7 +172,7 @@ where
     ) -> VkResult<()> {
         self.handle_dropped_resources();
 
-        if self.resources.len() > 0 {
+        if !self.resources.is_empty() {
             log::warn!(
                 "{} resource count {} > 0, resources will leak",
                 core::any::type_name::<ResourceT>(),
@@ -614,7 +614,7 @@ impl ResourceLookupSet {
             let resource = PipelineResource {
                 pipelines: resources,
                 pipeline_layout: pipeline_create_data.pipeline_layout().clone(),
-                renderpass: renderpass.clone(),
+                renderpass,
             };
 
             let pipeline = self
@@ -690,7 +690,7 @@ impl ResourceLookupSet {
 
             let resource = ImageViewResource {
                 image_view: resource,
-                image: image.clone(),
+                image,
             };
 
             let image_view = self.image_views.insert(hash, &image_view_key, resource);

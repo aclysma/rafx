@@ -58,7 +58,7 @@ where
         allocator_index: u32,
         active_count: Arc<AtomicU32>,
     ) -> Self {
-        let next_index = (allocator_index as u64) << 32 + 1;
+        let next_index = ((allocator_index as u64) << 32) + 1;
 
         let inner = DynResourceAllocatorInner {
             drop_tx,
@@ -158,12 +158,11 @@ where
 
     fn create_allocator(&self) -> DynResourceAllocator<ResourceT> {
         let allocator_index = self.next_allocator_index.fetch_add(1, Ordering::Relaxed);
-        let allocator = DynResourceAllocator::new(
+        DynResourceAllocator::new(
             self.drop_tx.clone(),
             allocator_index,
             self.active_count.clone(),
-        );
-        allocator
+        )
     }
 
     fn handle_dropped_resources(&mut self) {

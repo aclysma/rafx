@@ -41,13 +41,6 @@ pub struct AllRenderNodes<'a> {
 }
 
 impl<'a> AllRenderNodes<'a> {
-    pub fn new() -> Self {
-        let feature_count = RenderRegistry::registered_feature_count();
-        let nodes = vec![None; feature_count as usize];
-
-        AllRenderNodes { nodes }
-    }
-
     pub fn add_render_nodes(
         &mut self,
         render_nodes: &'a dyn RenderNodeSet,
@@ -61,5 +54,14 @@ impl<'a> AllRenderNodes<'a> {
             .iter()
             .map(|node_set| node_set.map_or(0, |node_set| node_set.max_render_node_count()))
             .collect()
+    }
+}
+
+impl<'a> Default for AllRenderNodes<'a> {
+    fn default() -> Self {
+        let feature_count = RenderRegistry::registered_feature_count();
+        let nodes = vec![None; feature_count as usize];
+
+        AllRenderNodes { nodes }
     }
 }

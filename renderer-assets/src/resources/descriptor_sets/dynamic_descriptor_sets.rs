@@ -224,7 +224,7 @@ impl DynPassMaterialInstance {
 
     pub fn set_image(
         &mut self,
-        slot_name: &String,
+        slot_name: &str,
         image_view: ResourceArc<ImageViewResource>,
     ) {
         if let Some(slot_locations) = self.slot_name_lookup.get(slot_name) {
@@ -241,7 +241,7 @@ impl DynPassMaterialInstance {
 
     pub fn set_buffer_data<T: Copy>(
         &mut self,
-        slot_name: &String,
+        slot_name: &str,
         data: &T,
     ) {
         if let Some(slot_locations) = self.slot_name_lookup.get(slot_name) {
@@ -286,7 +286,7 @@ impl DynMaterialInstance {
 
     pub fn set_image(
         &mut self,
-        slot_name: &String,
+        slot_name: &str,
         image_view: &ResourceArc<ImageViewResource>,
     ) {
         for pass in &mut self.passes {
@@ -296,7 +296,7 @@ impl DynMaterialInstance {
 
     pub fn set_buffer_data<T: Copy>(
         &mut self,
-        slot_name: &String,
+        slot_name: &str,
         data: &T,
     ) {
         for pass in &mut self.passes {

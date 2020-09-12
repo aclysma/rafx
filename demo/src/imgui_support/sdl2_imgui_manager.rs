@@ -1,5 +1,3 @@
-use sdl2;
-
 use std::sync::Arc;
 use std::sync::Mutex;
 

@@ -174,6 +174,7 @@ impl VkDeviceContext {
             .queues
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn new(
         instance: ash::Instance,
         device: ash::Device,

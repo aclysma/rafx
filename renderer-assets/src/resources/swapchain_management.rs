@@ -51,7 +51,7 @@ impl ActiveSwapchainSurfaceInfoSet {
                 false
             }
             None => {
-                &self.ref_counts.insert(
+                self.ref_counts.insert(
                     swapchain_surface_info.clone(),
                     ActiveSwapchainSurfaceInfoState {
                         ref_count: 1,
@@ -66,7 +66,7 @@ impl ActiveSwapchainSurfaceInfoSet {
         };
 
         if added_swapchain {
-            for (_load_handle, loaded_asset) in &mut loaded_assets.materials.loaded_assets {
+            for loaded_asset in &mut loaded_assets.materials.loaded_assets.values_mut() {
                 if let Some(committed) = &mut loaded_asset.committed {
                     Self::add_material_for_swapchain(resources, swapchain_surface_info, committed)?;
                 }
@@ -114,7 +114,7 @@ impl ActiveSwapchainSurfaceInfoSet {
         // delay destroying until we also get an additional add/remove. If the next add call is
         // the same, we can avoid the remove entirely
         if let Some(remove_index) = remove_index {
-            for (_, loaded_asset) in &mut loaded_assets.materials.loaded_assets {
+            for loaded_asset in &mut loaded_assets.materials.loaded_assets.values_mut() {
                 if let Some(committed) = &mut loaded_asset.committed {
                     for pass in &*committed.passes {
                         let mut per_swapchain_data = pass.per_swapchain_data.lock().unwrap();

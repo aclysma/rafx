@@ -93,6 +93,8 @@ impl<AssetT> AssetLookup<AssetT> {
         self.loaded_assets.len()
     }
 
+    pub fn is_empty(&self) -> bool { self.loaded_assets.is_empty() }
+
     pub fn destroy(&mut self) {
         self.loaded_assets.clear();
     }

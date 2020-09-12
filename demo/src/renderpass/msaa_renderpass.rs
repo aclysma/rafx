@@ -84,6 +84,7 @@ impl VkMsaaRenderPass {
         unsafe { logical_device.allocate_command_buffers(&command_buffer_allocate_info) }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn update_command_buffer(
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,

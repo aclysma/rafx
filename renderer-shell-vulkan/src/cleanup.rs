@@ -7,7 +7,7 @@ use ash::{vk};
 use crate::{VkImage, VkBuffer, VkDeviceContext, VkBufferRaw};
 use crate::image::VkImageRaw;
 
-use crossbeam_channel::{Sender, Receiver};
+//use crossbeam_channel::{Sender, Receiver};
 
 /// Implement to customize how VkResourceDropSink drops resources
 pub trait VkResource {
@@ -128,18 +128,13 @@ impl<T: VkResource> Drop for VkResourceDropSink<T> {
 //
 // A simple helper to put a thread-friendly shell around VkResourceDropSink
 //
+/*
 pub struct VkResourceDropSinkChannel<T: VkResource> {
     tx: Sender<T>,
     rx: Receiver<T>,
 }
 
 impl<T: VkResource> VkResourceDropSinkChannel<T> {
-    pub fn new() -> Self {
-        let (tx, rx) = crossbeam_channel::unbounded();
-
-        VkResourceDropSinkChannel { tx, rx }
-    }
-
     pub fn retire(
         &mut self,
         resource: T,
@@ -157,6 +152,13 @@ impl<T: VkResource> VkResourceDropSinkChannel<T> {
     }
 }
 
+impl<T: VkResource> VkResourceDropSinkChannel<T> {
+    fn default() -> Self {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        VkResourceDropSinkChannel { tx, rx }
+    }
+}
+
 impl<T: VkResource> Clone for VkResourceDropSinkChannel<T> {
     fn clone(&self) -> Self {
         VkResourceDropSinkChannel {
@@ -165,6 +167,7 @@ impl<T: VkResource> Clone for VkResourceDropSinkChannel<T> {
         }
     }
 }
+*/
 
 //
 // Blanket implementation for anything that is ManuallyDrop

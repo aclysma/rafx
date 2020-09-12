@@ -1,14 +1,20 @@
 use renderer::visibility::*;
-use crate::phases::draw_opaque::*;
+use crate::demo_phases::*;
 use renderer::nodes::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
 use renderer::nodes::RenderRegistryBuilder;
 use renderer::nodes::RenderViewSet;
-use legion::*;
 use glam::Vec3;
-use renderer_features::phases::draw_transparent::DrawTransparentRenderPhase;
+use legion::*;
+
+#[derive(Copy, Clone)]
+pub struct PositionComponent {
+    pub position: Vec3,
+}
+
 mod demo_feature;
 use demo_feature::*;
-use renderer_features::PositionComponent;
+
+mod demo_phases;
 
 //
 // Just for demonstration of minimal API
@@ -57,18 +63,18 @@ fn main() {
     //
     let render_registry = RenderRegistryBuilder::default()
         .register_feature::<DemoRenderFeature>()
-        .register_render_phase::<DrawOpaqueRenderPhase>()
-        .register_render_phase::<DrawTransparentRenderPhase>()
+        .register_render_phase::<DemoOpaqueRenderPhase>()
+        .register_render_phase::<DemoTransparentRenderPhase>()
         .build();
 
     let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
-        .add_render_phase::<DrawOpaqueRenderPhase>()
-        .add_render_phase::<DrawTransparentRenderPhase>()
+        .add_render_phase::<DemoOpaqueRenderPhase>()
+        .add_render_phase::<DemoTransparentRenderPhase>()
         .build();
 
     let minimap_render_phase_mask = RenderPhaseMaskBuilder::default()
-        .add_render_phase::<DrawOpaqueRenderPhase>()
-        .add_render_phase::<DrawTransparentRenderPhase>()
+        .add_render_phase::<DemoOpaqueRenderPhase>()
+        .add_render_phase::<DemoTransparentRenderPhase>()
         .build();
 
     // In theory we could pre-cook static visibility in chunks and stream them in
@@ -79,9 +85,8 @@ fn main() {
     //
     // Init an example world state
     //
-    let universe = Universe::new();
-    let mut world = universe.create_world();
-    let mut resources = legion::systems::resource::Resources::default();
+    let mut world = World::default();
+    let mut resources = Resources::default();
 
     resources.insert(demo_render_nodes);
 
@@ -122,13 +127,12 @@ fn main() {
                     alpha,
                 };
 
-                let entity = world.insert(
-                    (),
+                let entity = world.extend(
                     (0..1).map(|_| (position_component, demo_component.clone())),
                 )[0];
 
                 println!("create entity {:?}", entity);
-                world.get_component::<PositionComponent>(entity).unwrap();
+                world.entry(entity).unwrap().get_component::<PositionComponent>().unwrap();
 
                 DemoRenderNode {
                     entity, // demo component
@@ -249,7 +253,7 @@ fn main() {
         );
 
         let demo_render_nodes = resources.get::<DemoRenderNodeSet>().unwrap();
-        let mut all_render_nodes = AllRenderNodes::new();
+        let mut all_render_nodes = AllRenderNodes::default();
         all_render_nodes.add_render_nodes(&*demo_render_nodes);
 
         let frame_packet_builder = FramePacketBuilder::new(&all_render_nodes);
@@ -322,20 +326,20 @@ fn main() {
         // command buffer.
         let mut write_context = DemoWriteContext {};
         prepared_render_data
-            .write_view_phase::<DrawOpaqueRenderPhase>(&main_view, &mut write_context);
+            .write_view_phase::<DemoOpaqueRenderPhase>(&main_view, &mut write_context);
         prepared_render_data
-            .write_view_phase::<DrawTransparentRenderPhase>(&main_view, &mut write_context);
+            .write_view_phase::<DemoTransparentRenderPhase>(&main_view, &mut write_context);
         prepared_render_data
-            .write_view_phase::<DrawOpaqueRenderPhase>(&minimap_view, &mut write_context);
+            .write_view_phase::<DemoOpaqueRenderPhase>(&minimap_view, &mut write_context);
         prepared_render_data
-            .write_view_phase::<DrawTransparentRenderPhase>(&minimap_view, &mut write_context);
+            .write_view_phase::<DemoTransparentRenderPhase>(&minimap_view, &mut write_context);
     }
 
     //
     // Unregister render nodes/visibility objects
     //
     let mut demo_render_nodes = resources.get_mut::<DemoRenderNodeSet>().unwrap();
-    let query = <Read<DemoComponent>>::query();
+    let mut query = <Read<DemoComponent>>::query();
     for demo_component in query.iter(&mut world) {
         demo_render_nodes.unregister_demo_component(demo_component.render_node_handle);
         dynamic_visibility_node_set.unregister_dynamic_aabb(demo_component.visibility_handle);

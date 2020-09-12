@@ -515,6 +515,7 @@ fn do_generate_mips_for_image(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn transition_for_mipmap(
     logical_device: &ash::Device,
     command_buffer: vk::CommandBuffer,

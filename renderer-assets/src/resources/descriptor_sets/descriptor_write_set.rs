@@ -99,7 +99,7 @@ impl DescriptorSetWriteSet {
         other: &DescriptorSetWriteSet,
     ) {
         for (k, v) in other.elements.iter() {
-            self.elements.insert(k.clone(), v.clone());
+            self.elements.insert(*k, v.clone());
         }
     }
 }
@@ -116,7 +116,7 @@ pub fn create_uninitialized_write_set_for_layout(
 
         let mut element_write = DescriptorSetElementWrite {
             has_immutable_sampler: binding.immutable_samplers.is_some(),
-            descriptor_type: binding.descriptor_type.into(),
+            descriptor_type: binding.descriptor_type,
             image_info: Default::default(),
             buffer_info: Default::default(),
         };
@@ -223,7 +223,7 @@ pub fn create_uninitialized_write_sets_for_material_pass(
 
 pub fn create_write_sets_for_material_instance_pass(
     pass: &MaterialPass,
-    slots: &Vec<MaterialInstanceSlotAssignment>,
+    slots: &[MaterialInstanceSlotAssignment],
     assets: &AssetLookupSet,
     resources: &mut ResourceLookupSet,
 ) -> VkResult<Vec<DescriptorSetWriteSet>> {

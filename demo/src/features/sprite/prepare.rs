@@ -153,7 +153,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
         let mut vertex_buffers = Vec::with_capacity(1);
         let mut index_buffers = Vec::with_capacity(1);
 
-        if self.draw_calls.len() > 0 {
+        if !self.draw_calls.is_empty() {
             //TODO: It's likely unnecessary to put all the data into a Vec and then copy it into the buffer. We could
             // write to the buffer to begin with
             let vertex_buffer = {
@@ -172,10 +172,9 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
                     .write_to_host_visible_buffer(self.vertex_list.as_slice())
                     .unwrap();
 
-                let vertex_buffer = prepare_context
+                prepare_context
                     .dyn_resource_lookups
-                    .insert_buffer(vertex_buffer);
-                vertex_buffer
+                    .insert_buffer(vertex_buffer)
             };
 
             let index_buffer = {
@@ -194,10 +193,9 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
                     .write_to_host_visible_buffer(self.index_list.as_slice())
                     .unwrap();
 
-                let index_buffer = prepare_context
+                prepare_context
                     .dyn_resource_lookups
-                    .insert_buffer(index_buffer);
-                index_buffer
+                    .insert_buffer(index_buffer)
             };
 
             vertex_buffers.push(vertex_buffer);
