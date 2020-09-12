@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        toolchain: [stable, nightly]
+        os: [windows-2019, ubuntu-20.04, macos-10.15]
+        exclude:
+          - os: macos-10.15
+            toolchain: nightly
+          - os: windows-2019
+            toolchain: nightly
+    runs-on: ${{ matrix.os }}
+    needs: clean
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            target
+          key: ${{ runner.os }}-cargo-check-test-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        run: cargo check
+        env:
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
+
+      - name: Run tests
+        run: cargo test --workspace
+        if: ${{ runner.os == 'Linux' }}
+        env:
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
+
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+
+      - name: Check the format
+        run: cargo fmt --all -- --check
+
+#    TODO: Enable this
+#      - name: Run clippy
+#        run: >
+#          cargo clippy
+#          --all-targets
+#          --all-features
+#          --
+#          -D warnings
