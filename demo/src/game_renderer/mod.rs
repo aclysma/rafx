@@ -449,8 +449,7 @@ impl GameRenderer {
             extract_job_set
         };
 
-        let extract_context =
-            RenderJobExtractContext::new(&world, &resources, resource_manager);
+        let extract_context = RenderJobExtractContext::new(&world, &resources, resource_manager);
         let prepare_job_set =
             extract_job_set.extract(&extract_context, &frame_packet, &[&main_view]);
 

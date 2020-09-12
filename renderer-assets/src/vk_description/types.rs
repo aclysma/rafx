@@ -29,7 +29,10 @@ impl Decimal {
 }
 
 impl PartialEq for Decimal {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
         self.0 == other.0
     }
 }

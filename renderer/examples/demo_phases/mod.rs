@@ -1,4 +1,3 @@
-
 mod opaque;
 pub use opaque::DemoOpaqueRenderPhase;
 

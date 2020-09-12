@@ -127,12 +127,15 @@ fn main() {
                     alpha,
                 };
 
-                let entity = world.extend(
-                    (0..1).map(|_| (position_component, demo_component.clone())),
-                )[0];
+                let entity =
+                    world.extend((0..1).map(|_| (position_component, demo_component.clone())))[0];
 
                 println!("create entity {:?}", entity);
-                world.entry(entity).unwrap().get_component::<PositionComponent>().unwrap();
+                world
+                    .entry(entity)
+                    .unwrap()
+                    .get_component::<PositionComponent>()
+                    .unwrap();
 
                 DemoRenderNode {
                     entity, // demo component

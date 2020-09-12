@@ -62,12 +62,8 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
             .entry_ref(demo_render_node.entity)
             .unwrap();
 
-        let position_component = entity
-            .get_component::<PositionComponent>()
-            .unwrap();
-        let demo_component = entity
-            .get_component::<DemoComponent>()
-            .unwrap();
+        let position_component = entity.get_component::<PositionComponent>().unwrap();
+        let demo_component = entity.get_component::<DemoComponent>().unwrap();
 
         self.per_frame_data.push(ExtractedDemoData {
             position: position_component.position,

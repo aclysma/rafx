@@ -97,11 +97,31 @@ pub struct GltfImporterStateStable {
 impl From<GltfImporterStateUnstable> for GltfImporterStateStable {
     fn from(other: GltfImporterStateUnstable) -> Self {
         let mut stable = GltfImporterStateStable::default();
-        stable.buffer_asset_uuids = other.buffer_asset_uuids.into_iter().sorted_by_key(|(id, uuid)| id.clone()).collect();
-        stable.image_asset_uuids = other.image_asset_uuids.into_iter().sorted_by_key(|(id, uuid)| id.clone()).collect();
-        stable.material_asset_uuids = other.material_asset_uuids.into_iter().sorted_by_key(|(id, uuid)| id.clone()).collect();
-        stable.material_instance_asset_uuids = other.material_instance_asset_uuids.into_iter().sorted_by_key(|(id, uuid)| id.clone()).collect();
-        stable.mesh_asset_uuids = other.mesh_asset_uuids.into_iter().sorted_by_key(|(id, uuid)| id.clone()).collect();
+        stable.buffer_asset_uuids = other
+            .buffer_asset_uuids
+            .into_iter()
+            .sorted_by_key(|(id, _uuid)| id.clone())
+            .collect();
+        stable.image_asset_uuids = other
+            .image_asset_uuids
+            .into_iter()
+            .sorted_by_key(|(id, _uuid)| id.clone())
+            .collect();
+        stable.material_asset_uuids = other
+            .material_asset_uuids
+            .into_iter()
+            .sorted_by_key(|(id, _uuid)| id.clone())
+            .collect();
+        stable.material_instance_asset_uuids = other
+            .material_instance_asset_uuids
+            .into_iter()
+            .sorted_by_key(|(id, _uuid)| id.clone())
+            .collect();
+        stable.mesh_asset_uuids = other
+            .mesh_asset_uuids
+            .into_iter()
+            .sorted_by_key(|(id, _uuid)| id.clone())
+            .collect();
         stable
     }
 }
@@ -124,7 +144,8 @@ impl From<GltfImporterStateStable> for GltfImporterStateUnstable {
         unstable.buffer_asset_uuids = other.buffer_asset_uuids.into_iter().collect();
         unstable.image_asset_uuids = other.image_asset_uuids.into_iter().collect();
         unstable.material_asset_uuids = other.material_asset_uuids.into_iter().collect();
-        unstable.material_instance_asset_uuids = other.material_instance_asset_uuids.into_iter().collect();
+        unstable.material_instance_asset_uuids =
+            other.material_instance_asset_uuids.into_iter().collect();
         unstable.mesh_asset_uuids = other.mesh_asset_uuids.into_iter().collect();
         unstable
     }
@@ -156,7 +177,7 @@ impl Importer for GltfImporter {
         _options: Self::Options,
         stable_state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
-        let mut unstable_state : GltfImporterStateUnstable = stable_state.clone().into();
+        let mut unstable_state: GltfImporterStateUnstable = stable_state.clone().into();
 
         //
         // Load the GLTF file

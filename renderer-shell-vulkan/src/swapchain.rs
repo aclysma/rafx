@@ -582,7 +582,7 @@ impl VkSwapchain {
             let is_supported = match image_tiling {
                 vk::ImageTiling::LINEAR => (props.linear_tiling_features & features) == features,
                 vk::ImageTiling::OPTIMAL => (props.optimal_tiling_features & features) == features,
-                _ => unimplemented!()
+                _ => unimplemented!(),
             };
 
             if is_supported {

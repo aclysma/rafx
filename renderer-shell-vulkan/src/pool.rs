@@ -82,14 +82,11 @@ impl<T: VkPoolResourceImpl> VkPoolAllocator<T> {
         &mut self,
         device: &ash::Device,
     ) -> VkResult<T> {
-        self.reset_pools
-            .pop()
-            .map(Ok)
-            .unwrap_or_else(|| {
-                self.created_pool_count += 1;
-                assert!(self.created_pool_count <= self.max_pool_count);
-                (self.allocate_fn)(device)
-            })
+        self.reset_pools.pop().map(Ok).unwrap_or_else(|| {
+            self.created_pool_count += 1;
+            assert!(self.created_pool_count <= self.max_pool_count);
+            (self.allocate_fn)(device)
+        })
     }
 
     /// Schedule the pool to reset after we complete N frames
