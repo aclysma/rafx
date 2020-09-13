@@ -20,7 +20,6 @@ renderer-nodes = { path = "../renderer-nodes" }
 renderer-assets = { path = "../renderer-assets" }
 renderer-visibility = { path = "../renderer-visibility" }
 
-gltf = "0.15"
 fnv = "1.0"
 
 log="0.4"
