@@ -2,7 +2,6 @@ use renderer::nodes::{
     RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
     RenderNodeSet, RenderNodeCount, FrameNodeIndex,
 };
-use std::sync::atomic::{Ordering, AtomicI32};
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use legion::Entity;
 use renderer::base::slab::{RawSlabKey, RawSlab};
@@ -150,26 +149,7 @@ impl RenderNodeSet for MeshRenderNodeSet {
     }
 }
 
-//
-// This is boilerplate that could be macro'd
-//
-static MESH_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
-
-pub struct MeshRenderFeature;
-
-impl RenderFeature for MeshRenderFeature {
-    fn set_feature_index(index: RenderFeatureIndex) {
-        MESH_FEATURE_INDEX.store(index.try_into().unwrap(), Ordering::Release);
-    }
-
-    fn feature_index() -> RenderFeatureIndex {
-        MESH_FEATURE_INDEX.load(Ordering::Acquire) as RenderFeatureIndex
-    }
-
-    fn feature_debug_name() -> &'static str {
-        "MeshRenderFeature"
-    }
-}
+renderer::declare_render_feature!(MeshRenderFeature, MESH_FEATURE_INDEX);
 
 #[derive(Debug)]
 pub struct ExtractedFrameNodeMeshData {

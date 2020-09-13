@@ -82,26 +82,7 @@ impl RenderNodeSet for DemoRenderNodeSet {
     }
 }
 
-//
-// This is boilerplate that could be macro'd
-//
-static SPRITE_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
-
-pub struct DemoRenderFeature;
-
-impl RenderFeature for DemoRenderFeature {
-    fn set_feature_index(index: RenderFeatureIndex) {
-        SPRITE_FEATURE_INDEX.store(index.try_into().unwrap(), Ordering::Release);
-    }
-
-    fn feature_index() -> RenderFeatureIndex {
-        SPRITE_FEATURE_INDEX.load(Ordering::Acquire) as RenderFeatureIndex
-    }
-
-    fn feature_debug_name() -> &'static str {
-        "DemoRenderFeature"
-    }
-}
+renderer::render_feature!(DemoRenderFeature, DEMO_FEATURE_INDEX);
 
 #[derive(Debug, Clone)]
 pub(self) struct ExtractedDemoData {

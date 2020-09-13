@@ -42,6 +42,8 @@ pub use registry::RenderPhase;
 pub use registry::RenderFeatureIndex;
 pub use registry::RenderPhaseIndex;
 
+mod feature_macro;
+
 #[derive(Default)]
 pub struct VisibilityResult {
     pub handles: Vec<GenericRenderNodeHandle>,

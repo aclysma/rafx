@@ -2,7 +2,6 @@ use renderer::nodes::{
     RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
     RenderNodeSet, RenderNodeCount,
 };
-use std::sync::atomic::{Ordering, AtomicI32};
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use legion::Entity;
 use renderer::base::slab::{RawSlabKey, RawSlab};
@@ -140,26 +139,7 @@ impl RenderNodeSet for SpriteRenderNodeSet {
     }
 }
 
-//
-// This is boilerplate that could be macro'd
-//
-static SPRITE_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
-
-pub struct SpriteRenderFeature;
-
-impl RenderFeature for SpriteRenderFeature {
-    fn set_feature_index(index: RenderFeatureIndex) {
-        SPRITE_FEATURE_INDEX.store(index.try_into().unwrap(), Ordering::Release);
-    }
-
-    fn feature_index() -> RenderFeatureIndex {
-        SPRITE_FEATURE_INDEX.load(Ordering::Acquire) as RenderFeatureIndex
-    }
-
-    fn feature_debug_name() -> &'static str {
-        "SpriteRenderFeature"
-    }
-}
+renderer::declare_render_feature!(SpriteRenderFeature, SPRITE_FEATURE_INDEX);
 
 #[derive(Debug)]
 pub(self) struct ExtractedSpriteData {

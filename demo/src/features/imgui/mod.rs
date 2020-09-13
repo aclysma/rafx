@@ -1,6 +1,5 @@
 use crate::render_contexts::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext};
 use atelier_assets::loader::handle::Handle;
-use std::sync::atomic::{AtomicI32, Ordering};
 use crate::features::imgui::extract::ImGuiExtractJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::assets::DescriptorSetAllocatorRef;
@@ -51,26 +50,7 @@ pub struct ImGuiVertex {
     pub color: [f32; 4],
 }
 
-//
-// This is boilerplate that could be macro'd
-//
-static DEBUG_3D_FEATURE_INDEX: AtomicI32 = AtomicI32::new(-1);
-
-pub struct ImGuiRenderFeature;
-
-impl RenderFeature for ImGuiRenderFeature {
-    fn set_feature_index(index: RenderFeatureIndex) {
-        DEBUG_3D_FEATURE_INDEX.store(index.try_into().unwrap(), Ordering::Release);
-    }
-
-    fn feature_index() -> RenderFeatureIndex {
-        DEBUG_3D_FEATURE_INDEX.load(Ordering::Acquire) as RenderFeatureIndex
-    }
-
-    fn feature_debug_name() -> &'static str {
-        "ImGuiRenderFeature"
-    }
-}
+renderer::declare_render_feature!(ImGuiRenderFeature, DEBUG_3D_FEATURE_INDEX);
 
 pub(self) struct ExtractedImGuiData {
     imgui_draw_data: Option<ImGuiDrawData>,
