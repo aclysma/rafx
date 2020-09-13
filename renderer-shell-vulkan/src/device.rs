@@ -15,8 +15,8 @@ use std::mem::ManuallyDrop;
 
 use std::sync::{Arc, Mutex};
 
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering;
+#[cfg(debug_assertions)]
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Has the indexes for all the queue families we will need. It's possible a single family
 /// is used for both graphics and presentation, in which case the index will be the same
@@ -228,11 +228,11 @@ impl VkDeviceContext {
                 inner.device.destroy_device(None);
                 ManuallyDrop::drop(&mut inner);
             }
-            Err(arc) => {
+            Err(_arc) => {
                 error!("Could not free the allocator, {} other references exist. Have all allocations been dropped?", strong_count - 1);
                 #[cfg(debug_assertions)]
                 {
-                    let mut all_contexts = arc.all_contexts.lock().unwrap();
+                    let mut all_contexts = _arc.all_contexts.lock().unwrap();
                     all_contexts.remove(&self.create_index);
                     for (k, v) in all_contexts.iter_mut() {
                         v.resolve();

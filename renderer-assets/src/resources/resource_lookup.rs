@@ -89,7 +89,7 @@ where
     fn get(
         &self,
         hash: ResourceHash,
-        key: &KeyT,
+        _key: &KeyT,
     ) -> Option<ResourceArc<ResourceT>> {
         if let Some(resource) = self.resources.get(&hash) {
             let upgrade = resource.upgrade();
@@ -97,7 +97,7 @@ where
             #[cfg(debug_assertions)]
             {
                 if upgrade.is_some() {
-                    debug_assert!(self.keys.get(&hash).unwrap() == key);
+                    debug_assert!(self.keys.get(&hash).unwrap() == _key);
                 }
             }
 
@@ -110,7 +110,7 @@ where
     fn insert(
         &mut self,
         hash: ResourceHash,
-        key: &KeyT,
+        _key: &KeyT,
         resource: ResourceT,
     ) -> ResourceArc<ResourceT> {
         // Process any pending drops. If we don't do this, it's possible that the pending drop could
@@ -130,7 +130,7 @@ where
 
         #[cfg(debug_assertions)]
         {
-            self.keys.insert(hash, key.clone());
+            self.keys.insert(hash, _key.clone());
             assert!(old.is_none());
         }
 
