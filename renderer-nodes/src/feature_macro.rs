@@ -28,7 +28,7 @@ macro_rules! declare_render_feature {
             }
 
             fn feature_debug_name() -> &'static str {
-                stringify!($struct_name: ty)
+                stringify!($struct_name)
             }
         }
     };

@@ -264,12 +264,13 @@ impl GameRenderer {
         let time_state_fetch = resources.get::<TimeState>().unwrap();
         let time_state = &*time_state_fetch;
 
-        let static_visibility_node_set_fetch = resources.get::<StaticVisibilityNodeSet>().unwrap();
-        let static_visibility_node_set = &*static_visibility_node_set_fetch;
+        let mut static_visibility_node_set_fetch =
+            resources.get_mut::<StaticVisibilityNodeSet>().unwrap();
+        let static_visibility_node_set = &mut *static_visibility_node_set_fetch;
 
-        let dynamic_visibility_node_set_fetch =
-            resources.get::<DynamicVisibilityNodeSet>().unwrap();
-        let dynamic_visibility_node_set = &*dynamic_visibility_node_set_fetch;
+        let mut dynamic_visibility_node_set_fetch =
+            resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
+        let dynamic_visibility_node_set = &mut *dynamic_visibility_node_set_fetch;
 
         // let mut debug_draw_3d_line_lists = resources
         //     .get_mut::<DebugDraw3DResource>()
@@ -351,13 +352,17 @@ impl GameRenderer {
             main_view_dynamic_visibility_result.handles.len()
         );
 
-        let sprite_render_nodes = resources.get::<SpriteRenderNodeSet>().unwrap();
-        let mesh_render_nodes = resources.get::<MeshRenderNodeSet>().unwrap();
-        let mut all_render_nodes = AllRenderNodes::default();
-        all_render_nodes.add_render_nodes(&*sprite_render_nodes);
-        all_render_nodes.add_render_nodes(&*mesh_render_nodes);
+        let frame_packet_builder = {
+            let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
+            sprite_render_nodes.update();
+            let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
+            mesh_render_nodes.update();
+            let mut all_render_nodes = AllRenderNodes::default();
+            all_render_nodes.add_render_nodes(&*sprite_render_nodes);
+            all_render_nodes.add_render_nodes(&*mesh_render_nodes);
 
-        let frame_packet_builder = FramePacketBuilder::new(&all_render_nodes);
+            FramePacketBuilder::new(&all_render_nodes)
+        };
 
         // After these jobs end, user calls functions to start jobs that extract data
         frame_packet_builder.add_view(

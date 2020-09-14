@@ -83,6 +83,8 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                     .as_ref()
                     .unwrap()
                     .apply_setup(write_context, view, render_phase_index);
+
+                previous_node_feature_index = submit_node.feature_index() as i32;
             }
 
             log::trace!(
@@ -90,6 +92,8 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                 submit_node.feature_index(),
                 submit_node.submit_node_id(),
             );
+
+            //TODO: This could be a single call providing a range
             self.feature_writers[submit_node.feature_index() as usize]
                 .as_ref()
                 .unwrap()
@@ -99,12 +103,15 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                     render_phase_index,
                     submit_node.submit_node_id(),
                 );
-            previous_node_feature_index = submit_node.feature_index() as i32;
         }
 
         if previous_node_feature_index != -1 {
             // call revert setup
             log::trace!("revert setup for feature: {}", previous_node_feature_index);
+            self.feature_writers[previous_node_feature_index as usize]
+                .as_ref()
+                .unwrap()
+                .revert_setup(write_context, view, render_phase_index);
         }
     }
 }

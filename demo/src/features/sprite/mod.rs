@@ -3,11 +3,11 @@ use renderer::nodes::{
     RenderNodeSet, RenderNodeCount,
 };
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
-use legion::Entity;
-use renderer::base::slab::{RawSlabKey, RawSlab};
+use renderer::base::slab::{DropSlabKey, DropSlab};
 use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::MaterialAsset;
+use renderer::assets::ImageAsset;
 
 mod extract;
 use extract::SpriteExtractJobImpl;
@@ -83,14 +83,16 @@ pub fn create_sprite_extract_job(
 // This is boiler-platish
 //
 pub struct SpriteRenderNode {
-    pub entity: Entity, // texture
+    pub position: glam::Vec3,
+    pub alpha: f32,
+    pub image: Handle<ImageAsset>,
 }
 
-#[derive(Copy, Clone)]
-pub struct SpriteRenderNodeHandle(pub RawSlabKey<SpriteRenderNode>);
+#[derive(Clone)]
+pub struct SpriteRenderNodeHandle(pub DropSlabKey<SpriteRenderNode>);
 
-impl Into<GenericRenderNodeHandle> for SpriteRenderNodeHandle {
-    fn into(self) -> GenericRenderNodeHandle {
+impl SpriteRenderNodeHandle {
+    pub fn as_raw_generic_handle(&self) -> GenericRenderNodeHandle {
         GenericRenderNodeHandle::new(
             <SpriteRenderFeature as RenderFeature>::feature_index(),
             self.0.index(),
@@ -98,9 +100,15 @@ impl Into<GenericRenderNodeHandle> for SpriteRenderNodeHandle {
     }
 }
 
+impl Into<GenericRenderNodeHandle> for SpriteRenderNodeHandle {
+    fn into(self) -> GenericRenderNodeHandle {
+        self.as_raw_generic_handle()
+    }
+}
+
 #[derive(Default)]
 pub struct SpriteRenderNodeSet {
-    sprites: RawSlab<SpriteRenderNode>,
+    sprites: DropSlab<SpriteRenderNode>,
 }
 
 impl SpriteRenderNodeSet {
@@ -111,21 +119,15 @@ impl SpriteRenderNodeSet {
         SpriteRenderNodeHandle(self.sprites.allocate(node))
     }
 
-    pub fn register_sprite_with_handle<F: FnMut(SpriteRenderNodeHandle) -> SpriteRenderNode>(
+    pub fn get_mut(
         &mut self,
-        mut f: F,
-    ) -> SpriteRenderNodeHandle {
-        SpriteRenderNodeHandle(
-            self.sprites
-                .allocate_with_key(|handle| (f)(SpriteRenderNodeHandle(handle))),
-        )
+        handle: &SpriteRenderNodeHandle,
+    ) -> Option<&mut SpriteRenderNode> {
+        self.sprites.get_mut(&handle.0)
     }
 
-    pub fn unregister_sprite(
-        &mut self,
-        handle: SpriteRenderNodeHandle,
-    ) {
-        self.sprites.free(handle.0);
+    pub fn update(&mut self) {
+        self.sprites.process_drops();
     }
 }
 

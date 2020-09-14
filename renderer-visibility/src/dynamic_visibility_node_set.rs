@@ -1,11 +1,11 @@
-use renderer_base::slab::RawSlab;
+use renderer_base::slab::DropSlab;
 use renderer_nodes::RenderView;
 use renderer_nodes::VisibilityResult;
 use crate::*;
 
 #[derive(Default)]
 pub struct DynamicVisibilityNodeSet {
-    dynamic_aabb: RawSlab<DynamicAabbVisibilityNode>,
+    dynamic_aabb: DropSlab<DynamicAabbVisibilityNode>,
 }
 
 impl DynamicVisibilityNodeSet {
@@ -17,22 +17,16 @@ impl DynamicVisibilityNodeSet {
         DynamicAabbVisibilityNodeHandle(self.dynamic_aabb.allocate(node))
     }
 
-    pub fn unregister_dynamic_aabb(
-        &mut self,
-        handle: DynamicAabbVisibilityNodeHandle,
-    ) {
-        //TODO: Remove from spatial structure?
-        self.dynamic_aabb.free(handle.0);
-    }
-
     pub fn calculate_dynamic_visibility(
-        &self,
+        &mut self,
         view: &RenderView,
     ) -> VisibilityResult {
+        self.dynamic_aabb.process_drops();
+
         log::trace!("Calculate dynamic visibility for {}", view.debug_name());
         let mut result = VisibilityResult::default();
 
-        for (_, aabb) in self.dynamic_aabb.iter() {
+        for aabb in self.dynamic_aabb.iter_values() {
             log::trace!("push dynamic visibility object {:?}", aabb.handle);
             result.handles.push(aabb.handle);
         }

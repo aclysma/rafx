@@ -27,6 +27,10 @@ mod raw_slab;
 pub use raw_slab::RawSlab;
 pub use raw_slab::RawSlabKey;
 
+mod drop_slab;
+pub use drop_slab::DropSlab;
+pub use drop_slab::DropSlabKey;
+
 // GenSlab not currently in use anywhere
 
 //mod generation;

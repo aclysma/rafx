@@ -47,8 +47,8 @@ pub struct DemoWriteContext;
 
 #[derive(Clone)]
 pub struct DemoComponent {
-    pub render_node_handle: DemoRenderNodeHandle,
-    pub visibility_handle: DynamicAabbVisibilityNodeHandle,
+    pub render_node: DemoRenderNodeHandle,
+    pub visibility_node: DynamicAabbVisibilityNodeHandle,
     pub alpha: f32,
 }
 
@@ -67,6 +67,10 @@ fn main() {
         .register_render_phase::<DemoTransparentRenderPhase>()
         .build();
 
+    //
+    // Set up render phase masks for each view. This is used to enable/disable phases for particular
+    // view. For example this would be used to pick a different pipeline for rendering shadow maps
+    //
     let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
         .add_render_phase::<DemoOpaqueRenderPhase>()
         .add_render_phase::<DemoTransparentRenderPhase>()
@@ -78,7 +82,7 @@ fn main() {
         .build();
 
     // In theory we could pre-cook static visibility in chunks and stream them in
-    let static_visibility_node_set = StaticVisibilityNodeSet::default();
+    let mut static_visibility_node_set = StaticVisibilityNodeSet::default();
     let mut dynamic_visibility_node_set = DynamicVisibilityNodeSet::default();
     let demo_render_nodes = DemoRenderNodeSet::default();
 
@@ -109,38 +113,31 @@ fn main() {
             //   This resolves a circular dependency where the component needs the render node handle and the
             //   render node needs the entity.
             // - ALTERNATIVE: Could create an empty entity, create the components, and then add all of them
-            demo_render_nodes.register_demo_component_with_handle(|render_node_handle| {
-                let aabb_info = DynamicAabbVisibilityNode {
-                    handle: render_node_handle.into(),
-                    // aabb bounds
-                };
-
-                // User calls functions to register visibility objects
-                // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-                let visibility_handle =
-                    dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
-
-                let position_component = PositionComponent { position };
-                let demo_component = DemoComponent {
-                    render_node_handle,
-                    visibility_handle,
-                    alpha,
-                };
-
-                let entity =
-                    world.extend((0..1).map(|_| (position_component, demo_component.clone())))[0];
-
-                println!("create entity {:?}", entity);
-                world
-                    .entry(entity)
-                    .unwrap()
-                    .get_component::<PositionComponent>()
-                    .unwrap();
-
-                DemoRenderNode {
-                    entity, // demo component
-                }
+            let render_node = demo_render_nodes.register_demo_component(DemoRenderNode {
+                // Whatever is necessary to render here
+                position,
+                alpha,
             });
+
+            // User calls functions to register visibility objects
+            // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
+            let visibility_node =
+                dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
+                    handle: render_node.as_raw_generic_handle(),
+                    // aabb bounds
+                });
+
+            let position_component = PositionComponent { position };
+            let demo_component = DemoComponent {
+                render_node,
+                visibility_node,
+                alpha,
+            };
+
+            let entity =
+                world.extend((0..1).map(|_| (position_component, demo_component.clone())))[0];
+
+            println!("create entity {:?}", entity);
         }
     }
 
@@ -208,7 +205,6 @@ fn main() {
         //
         // Simulation would go here
         //
-        //TODO: Moving an object would require updating visibility nodes (likely a remove and re-insert)
 
         //
         // Figure out other views (example: minimap, shadow maps, etc.)
@@ -222,19 +218,8 @@ fn main() {
         );
 
         //
-        // Finish visibility calculations and populate the frame packet. Views can potentially be run in their own jobs
-        // in the future. The visibility calculations and allocation of frame packet nodes can all run in parallel.
-        // There is a single sync point after this to give features a callback that extraction is about to begin.
-        // (All frame nodes must be allocated before this point). After that, extraction for all features and views
-        // can run in parallel.
+        // Finish visibility calculations for all views. Views can be processed in their own jobs.
         //
-        // I'm not sure why a pre-extract callback that can access all frame nodes is useful but it was called out
-        // in the bungie talk so implementing it for now. Removing this would allow extraction to move forward for
-        // views that finish visibility without waiting on visibility for other views
-        //
-
-        // The frame packet builder will merge visibility results and hold extracted data from simulation. During
-        // the extract window, render nodes cannot be added/removed
 
         // User calls functions to start jobs that calculate dynamic visibility for FPS view
         let main_view_dynamic_visibility_result =
@@ -255,11 +240,25 @@ fn main() {
             main_view_dynamic_visibility_result.handles.len()
         );
 
-        let demo_render_nodes = resources.get::<DemoRenderNodeSet>().unwrap();
-        let mut all_render_nodes = AllRenderNodes::default();
-        all_render_nodes.add_render_nodes(&*demo_render_nodes);
+        //
+        // Populate the frame packet. Views can potentially be run in their own jobs in the future.
+        // There is a single sync point after this to give features a callback that extraction is about to begin.
+        // (All frame nodes must be allocated before this point). After that, extraction for all features and views
+        // can run in parallel.
+        //
+        // The frame packet builder will merge visibility results and hold extracted data from simulation. Once
+        // the frame packet is built, render nodes can't be added/removed until extraction is complete
+        //
 
-        let frame_packet_builder = FramePacketBuilder::new(&all_render_nodes);
+        // After this point, are not allowed to add/remove render nodes until extraction is complete
+        let frame_packet_builder = {
+            let mut demo_render_nodes = resources.get_mut::<DemoRenderNodeSet>().unwrap();
+            demo_render_nodes.update();
+            let mut all_render_nodes = AllRenderNodes::default();
+            all_render_nodes.add_render_nodes(&*demo_render_nodes);
+
+            FramePacketBuilder::new(&all_render_nodes)
+        };
 
         // After these jobs end, user calls functions to start jobs that extract data
         frame_packet_builder.add_view(
@@ -328,23 +327,23 @@ fn main() {
         // output of this is left up to the end user and would likely be something like a GPU
         // command buffer.
         let mut write_context = DemoWriteContext {};
+
+        println!("write view phase DemoOpaqueRenderPhase for main_view");
         prepared_render_data
             .write_view_phase::<DemoOpaqueRenderPhase>(&main_view, &mut write_context);
+
+        println!("write view phase DemoTransparentRenderPhase for main_view");
         prepared_render_data
             .write_view_phase::<DemoTransparentRenderPhase>(&main_view, &mut write_context);
+
+        println!("write view phase DemoOpaqueRenderPhase for minimap_view");
         prepared_render_data
             .write_view_phase::<DemoOpaqueRenderPhase>(&minimap_view, &mut write_context);
+
+        println!("write view phase DemoTransparentRenderPhase for minimap_view");
         prepared_render_data
             .write_view_phase::<DemoTransparentRenderPhase>(&minimap_view, &mut write_context);
     }
 
-    //
-    // Unregister render nodes/visibility objects
-    //
-    let mut demo_render_nodes = resources.get_mut::<DemoRenderNodeSet>().unwrap();
-    let mut query = <Read<DemoComponent>>::query();
-    for demo_component in query.iter(&mut world) {
-        demo_render_nodes.unregister_demo_component(demo_component.render_node_handle);
-        dynamic_visibility_node_set.unregister_dynamic_aabb(demo_component.visibility_handle);
-    }
+    // Unregistration of render nodes/visibility objects is automatic when they drop out of scope
 }

@@ -51,7 +51,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 {
     fn extract_begin(
         &mut self,
-        _extract_context: &RenderJobExtractContext,
+        extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
@@ -63,6 +63,21 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             self.extracted_view_node_mesh_data.push(Vec::with_capacity(
                 frame_packet.view_node_count(view, self.feature_index()) as usize,
             ));
+        }
+
+        // Update the mesh render nodes. This could be done earlier as part of a system
+        let mut mesh_render_nodes = extract_context
+            .resources
+            .get_mut::<MeshRenderNodeSet>()
+            .unwrap();
+        let mut query = <(Read<PositionComponent>, Read<MeshComponent>)>::query();
+
+        for (position_component, mesh_component) in query.iter(extract_context.world) {
+            let render_node = mesh_render_nodes
+                .get_mut(&mesh_component.render_node)
+                .unwrap();
+            render_node.mesh = mesh_component.mesh.clone();
+            render_node.transform = glam::Mat4::from_translation(position_component.position);
         }
     }
 
@@ -79,22 +94,16 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .resources
             .get::<MeshRenderNodeSet>()
             .unwrap();
-        let mesh_render_node = mesh_nodes.meshes.get(render_node_handle).unwrap();
-
-        let entity = extract_context
-            .world
-            .entry_ref(mesh_render_node.entity)
-            .unwrap();
-
-        let position_component = entity.get_component::<PositionComponent>().unwrap();
-        let mesh_component = entity.get_component::<MeshComponent>().unwrap();
-
+        let mesh_render_node = mesh_nodes.meshes.get_raw(render_node_handle).unwrap();
         let game_resource_manager = extract_context
             .resources
             .get::<GameResourceManager>()
             .unwrap();
 
-        let mesh_info = game_resource_manager.get_mesh_info(&mesh_component.mesh);
+        let mesh_info = mesh_render_node
+            .mesh
+            .as_ref()
+            .and_then(|mesh_asset_handle| game_resource_manager.get_mesh_info(&mesh_asset_handle));
         if mesh_info.is_none() {
             self.extracted_frame_node_mesh_data.push(None);
             return;
@@ -120,7 +129,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             })
             .collect();
 
-        let world_transform = glam::Mat4::from_translation(position_component.position);
+        let world_transform = mesh_render_node.transform;
 
         self.extracted_frame_node_mesh_data
             .push(Some(ExtractedFrameNodeMeshData {

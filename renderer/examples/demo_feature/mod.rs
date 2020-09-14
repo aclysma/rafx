@@ -2,11 +2,9 @@ use renderer_nodes::{
     RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
     RenderNodeSet, RenderNodeCount,
 };
-use std::sync::atomic::{Ordering, AtomicI32};
 use glam::f32::Vec3;
-use renderer_base::slab::{RawSlabKey, RawSlab};
+use renderer_base::slab::{DropSlabKey, DropSlab};
 use std::convert::TryInto;
-use legion::*;
 
 mod extract;
 use extract::DemoExtractJobImpl;
@@ -25,14 +23,15 @@ pub fn create_demo_extract_job(
 // This is boiler-platish
 //
 pub struct DemoRenderNode {
-    pub entity: Entity, // texture
+    pub position: glam::Vec3,
+    pub alpha: f32,
 }
 
-#[derive(Copy, Clone)]
-pub struct DemoRenderNodeHandle(pub RawSlabKey<DemoRenderNode>);
+#[derive(Clone)]
+pub struct DemoRenderNodeHandle(pub DropSlabKey<DemoRenderNode>);
 
-impl Into<GenericRenderNodeHandle> for DemoRenderNodeHandle {
-    fn into(self) -> GenericRenderNodeHandle {
+impl DemoRenderNodeHandle {
+    pub fn as_raw_generic_handle(&self) -> GenericRenderNodeHandle {
         GenericRenderNodeHandle::new(
             <DemoRenderFeature as RenderFeature>::feature_index(),
             self.0.index(),
@@ -40,9 +39,15 @@ impl Into<GenericRenderNodeHandle> for DemoRenderNodeHandle {
     }
 }
 
+impl Into<GenericRenderNodeHandle> for DemoRenderNodeHandle {
+    fn into(self) -> GenericRenderNodeHandle {
+        self.as_raw_generic_handle()
+    }
+}
+
 #[derive(Default)]
 pub struct DemoRenderNodeSet {
-    demos: RawSlab<DemoRenderNode>,
+    demos: DropSlab<DemoRenderNode>,
 }
 
 impl DemoRenderNodeSet {
@@ -54,21 +59,15 @@ impl DemoRenderNodeSet {
         DemoRenderNodeHandle(self.demos.allocate(node))
     }
 
-    pub fn register_demo_component_with_handle<F: FnMut(DemoRenderNodeHandle) -> DemoRenderNode>(
+    pub fn get_mut(
         &mut self,
-        mut f: F,
-    ) -> DemoRenderNodeHandle {
-        DemoRenderNodeHandle(
-            self.demos
-                .allocate_with_key(|handle| (f)(DemoRenderNodeHandle(handle))),
-        )
+        handle: &DemoRenderNodeHandle,
+    ) -> Option<&mut DemoRenderNode> {
+        self.demos.get_mut(&handle.0)
     }
 
-    pub fn unregister_demo_component(
-        &mut self,
-        handle: DemoRenderNodeHandle,
-    ) {
-        self.demos.free(handle.0);
+    pub fn update(&mut self) {
+        self.demos.process_drops();
     }
 }
 
@@ -82,7 +81,7 @@ impl RenderNodeSet for DemoRenderNodeSet {
     }
 }
 
-renderer::render_feature!(DemoRenderFeature, DEMO_FEATURE_INDEX);
+renderer_nodes::declare_render_feature!(DemoRenderFeature, DEMO_FEATURE_INDEX);
 
 #[derive(Debug, Clone)]
 pub(self) struct ExtractedDemoData {

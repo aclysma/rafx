@@ -1,4 +1,4 @@
-use crate::demo_feature::{ExtractedDemoData, DemoRenderNodeSet, DemoRenderFeature, DemoRenderNode};
+use crate::demo_feature::{DemoRenderFeature, ExtractedDemoData, DemoRenderNodeSet, DemoRenderNode};
 use crate::{DemoExtractContext, DemoWriteContext, DemoComponent, DemoPrepareContext};
 use renderer_nodes::{
     DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
@@ -20,7 +20,7 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
 {
     fn extract_begin(
         &mut self,
-        _extract_context: &DemoExtractContext,
+        extract_context: &DemoExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) {
@@ -33,6 +33,23 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
             self.per_view_data.push(Vec::with_capacity(
                 frame_packet.view_node_count(view, self.feature_index()) as usize,
             ));
+        }
+
+        // Update the mesh render nodes. This could be done earlier as part of a system.
+        let mut demo_render_nodes = extract_context
+            .resources
+            .get_mut::<DemoRenderNodeSet>()
+            .unwrap();
+        let mut query = <(Read<PositionComponent>, Read<DemoComponent>)>::query();
+
+        for (position_component, demo_component) in query.iter(extract_context.world) {
+            let render_node = demo_render_nodes
+                .get_mut(&demo_component.render_node)
+                .unwrap();
+
+            // Set values here
+            render_node.position = position_component.position;
+            render_node.alpha = demo_component.alpha
         }
     }
 
@@ -49,25 +66,17 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
         );
 
         let render_node_index = frame_node.render_node_index();
-        let render_node_handle = RawSlabKey::<DemoRenderNode>::new(render_node_index);
+        let render_node = RawSlabKey::<DemoRenderNode>::new(render_node_index);
 
         let demo_nodes = extract_context
             .resources
             .get::<DemoRenderNodeSet>()
             .unwrap();
-        let demo_render_node = demo_nodes.demos.get(render_node_handle).unwrap();
-
-        let entity = extract_context
-            .world
-            .entry_ref(demo_render_node.entity)
-            .unwrap();
-
-        let position_component = entity.get_component::<PositionComponent>().unwrap();
-        let demo_component = entity.get_component::<DemoComponent>().unwrap();
+        let demo_render_node = demo_nodes.demos.get_raw(render_node).unwrap();
 
         self.per_frame_data.push(ExtractedDemoData {
-            position: position_component.position,
-            alpha: demo_component.alpha,
+            position: demo_render_node.position,
+            alpha: demo_render_node.alpha,
         });
     }
 

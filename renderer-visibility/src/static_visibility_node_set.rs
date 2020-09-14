@@ -1,11 +1,11 @@
-use renderer_base::slab::RawSlab;
+use renderer_base::slab::DropSlab;
 use renderer_nodes::RenderView;
 use renderer_nodes::VisibilityResult;
 use crate::*;
 
 #[derive(Default)]
 pub struct StaticVisibilityNodeSet {
-    static_aabb: RawSlab<StaticAabbVisibilityNode>,
+    static_aabb: DropSlab<StaticAabbVisibilityNode>,
 }
 
 impl StaticVisibilityNodeSet {
@@ -17,22 +17,16 @@ impl StaticVisibilityNodeSet {
         StaticAabbVisibilityNodeHandle(self.static_aabb.allocate(node))
     }
 
-    pub fn unregister_static_aabb(
-        &mut self,
-        handle: StaticAabbVisibilityNodeHandle,
-    ) {
-        //TODO: Remove from spatial structure?
-        self.static_aabb.free(handle.0);
-    }
-
     pub fn calculate_static_visibility(
-        &self,
+        &mut self,
         view: &RenderView,
     ) -> VisibilityResult {
+        self.static_aabb.process_drops();
+
         log::trace!("Calculate static visibility for {}", view.debug_name());
         let mut result = VisibilityResult::default();
 
-        for (_, aabb) in self.static_aabb.iter() {
+        for aabb in self.static_aabb.iter_values() {
             log::trace!("push static visibility object {:?}", aabb.handle);
             result.handles.push(aabb.handle);
         }

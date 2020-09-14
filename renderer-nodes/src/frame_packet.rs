@@ -142,9 +142,14 @@ impl ViewPacketBuilder {
 //TODO: Maybe the frame_node_assignments needs to be a heap of bitfields, sorted by render node,
 // a bit per view to indicate it's present in the view
 struct FramePacketBuilderInner {
+    // O(1) lookup for if the render node is already inserted into the per frame node list
     // index by feature index, then render object index
     frame_node_assignments: Vec<Vec<i32>>,
+
+    // A builder per view
     view_packet_builders: Vec<Option<ViewPacketBuilder>>,
+
+    // All frame nodes, grouped by feature index
     frame_nodes: Vec<Vec<PerFrameNode>>,
 }
 

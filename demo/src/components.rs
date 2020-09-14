@@ -8,9 +8,9 @@ use crate::game_asset_lookup::MeshAsset;
 
 #[derive(Clone)]
 pub struct MeshComponent {
-    pub mesh_handle: MeshRenderNodeHandle,
-    pub visibility_handle: DynamicAabbVisibilityNodeHandle,
-    pub mesh: Handle<MeshAsset>,
+    pub render_node: MeshRenderNodeHandle,
+    pub visibility_node: DynamicAabbVisibilityNodeHandle,
+    pub mesh: Option<Handle<MeshAsset>>,
 }
 
 #[derive(Copy, Clone)]
@@ -43,8 +43,8 @@ pub struct SpotLightComponent {
 
 #[derive(Clone)]
 pub struct SpriteComponent {
-    pub sprite_handle: SpriteRenderNodeHandle,
-    pub visibility_handle: DynamicAabbVisibilityNodeHandle,
+    pub render_node: SpriteRenderNodeHandle,
+    pub visibility_node: DynamicAabbVisibilityNodeHandle,
     pub alpha: f32,
     pub image: Handle<ImageAsset>,
     //pub texture_material: ResourceArc<>
