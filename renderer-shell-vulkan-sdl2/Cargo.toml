@@ -8,7 +8,9 @@ edition = "2018"
 
 [dependencies]
 ash = ">=0.30"
-sdl2 = { version = ">=0.33" }
+ash-window = "0.5.0"
+sdl2 = { version = ">=0.33", features = ["raw-window-handle"] }
+raw-window-handle = "0.3"
 
 renderer-shell-vulkan = { version = "0.1", path = "../renderer-shell-vulkan" }
 

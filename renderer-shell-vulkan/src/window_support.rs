@@ -6,6 +6,8 @@ use ash::vk;
 use super::PhysicalSize;
 use super::LogicalSize;
 use super::VkEntry;
+use std::ffi::CStr;
+use ash::prelude::VkResult;
 
 /// This is a thin abstraction layer that lets us be compatible with both SDL2 and winit.
 pub trait Window {
@@ -14,10 +16,10 @@ pub trait Window {
     fn scale_factor(&self) -> f64;
 
     //TODO: Break these out into a separate WindowSystem trait?
-    fn create_vulkan_surface(
+    unsafe fn create_vulkan_surface(
         &self,
         entry: &VkEntry,
         instance: &ash::Instance,
     ) -> Result<vk::SurfaceKHR, vk::Result>;
-    fn extension_names(&self) -> Vec<*const i8>;
+    fn extension_names(&self) -> VkResult<Vec<&'static CStr>>;
 }

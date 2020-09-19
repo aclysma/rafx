@@ -1,11 +1,12 @@
 pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
-use ash::vk::Handle;
 
 use renderer_shell_vulkan::PhysicalSize;
 use renderer_shell_vulkan::LogicalSize;
 use renderer_shell_vulkan::Window;
 use renderer_shell_vulkan::VkEntry;
+use std::ffi::CStr;
+use ash::prelude::VkResult;
 
 pub struct Sdl2Window<'a> {
     window: &'a sdl2::video::Window,
@@ -34,24 +35,15 @@ impl<'a> Window for Sdl2Window<'a> {
         physical_size.0 as f64 / logical_size.0 as f64
     }
 
-    fn create_vulkan_surface(
+    unsafe fn create_vulkan_surface(
         &self,
-        _entry: &VkEntry,
+        entry: &VkEntry,
         instance: &ash::Instance,
-    ) -> Result<vk::SurfaceKHR, vk::Result> {
-        let surface_pointer = self
-            .window
-            .vulkan_create_surface(instance.handle().as_raw() as usize)
-            .map_err(|_e| vk::Result::ERROR_INITIALIZATION_FAILED)?;
-        Ok(vk::SurfaceKHR::from_raw(surface_pointer as u64))
+    ) -> VkResult<vk::SurfaceKHR> {
+        ash_window::create_surface(entry, instance, self.window, None)
     }
 
-    fn extension_names(&self) -> Vec<*const i8> {
-        self.window
-            .vulkan_instance_extensions()
-            .expect("Could not get vulkan instance extensions")
-            .into_iter()
-            .map(|extension| extension.as_ptr() as *const i8)
-            .collect()
+    fn extension_names(&self) -> VkResult<Vec<&'static CStr>> {
+        ash_window::enumerate_required_extensions(self.window)
     }
 }

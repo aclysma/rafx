@@ -328,9 +328,7 @@ impl VkDevice {
         physical_device_type_priority: &[PhysicalDeviceType],
     ) -> Result<Self, VkCreateDeviceError> {
         // Get the surface, needed to select the best queue family
-        let surface = window
-            .create_vulkan_surface(&instance.entry, &instance.instance)
-            .expect("Could not create vulkan surface");
+        let surface = unsafe { window.create_vulkan_surface(&instance.entry, &instance.instance)? };
 
         let surface_loader = match &instance.entry {
             VkEntry::Dynamic(entry) => khr::Surface::new(entry, &instance.instance),
