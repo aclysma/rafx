@@ -42,7 +42,8 @@ pub use registry::RenderPhase;
 pub use registry::RenderFeatureIndex;
 pub use registry::RenderPhaseIndex;
 
-mod feature_macro;
+mod macro_render_feature;
+mod macro_render_phase;
 
 #[derive(Default)]
 pub struct VisibilityResult {
