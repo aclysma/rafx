@@ -535,7 +535,7 @@ pub enum SampleCountFlags {
 }
 
 impl SampleCountFlags {
-    fn as_vk_sample_count_flags(
+    pub fn as_vk_sample_count_flags(
         &self,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> vk::SampleCountFlags {
@@ -548,6 +548,19 @@ impl SampleCountFlags {
             SampleCountFlags::SampleCount16 => vk::SampleCountFlags::TYPE_16,
             SampleCountFlags::SampleCount32 => vk::SampleCountFlags::TYPE_32,
             SampleCountFlags::SampleCount64 => vk::SampleCountFlags::TYPE_64,
+        }
+    }
+
+    pub fn from_vk_sample_count_flags(sample_count: vk::SampleCountFlags) -> Option<Self> {
+        match sample_count {
+            vk::SampleCountFlags::TYPE_1 => Some(SampleCountFlags::SampleCount1),
+            vk::SampleCountFlags::TYPE_2 => Some(SampleCountFlags::SampleCount2),
+            vk::SampleCountFlags::TYPE_4 => Some(SampleCountFlags::SampleCount4),
+            vk::SampleCountFlags::TYPE_8 => Some(SampleCountFlags::SampleCount8),
+            vk::SampleCountFlags::TYPE_16 => Some(SampleCountFlags::SampleCount16),
+            vk::SampleCountFlags::TYPE_32 => Some(SampleCountFlags::SampleCount32),
+            vk::SampleCountFlags::TYPE_64 => Some(SampleCountFlags::SampleCount64),
+            _ => None,
         }
     }
 }
@@ -1575,6 +1588,14 @@ impl Into<vk::SubpassDependency> for SubpassDependency {
     fn into(self) -> vk::SubpassDependency {
         self.as_builder().build()
     }
+}
+
+pub struct FrameBufferMeta {
+    renderpass: RenderPass,
+    width: u32,
+    height: u32,
+    layers: u32,
+    // Image view keys
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]

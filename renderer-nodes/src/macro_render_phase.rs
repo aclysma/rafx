@@ -29,6 +29,7 @@ macro_rules! declare_render_phase {
 
         impl RenderPhase for $struct_name {
             fn set_render_phase_index(index: RenderPhaseIndex) {
+                use std::convert::TryInto;
                 $atomic_constant_name.store(
                     index.try_into().unwrap(),
                     std::sync::atomic::Ordering::Release,
@@ -36,8 +37,7 @@ macro_rules! declare_render_phase {
             }
 
             fn render_phase_index() -> RenderPhaseIndex {
-                $atomic_constant_name.load(std::sync::atomic::Ordering::Acquire)
-                    as RenderPhaseIndex
+                $atomic_constant_name.load(std::sync::atomic::Ordering::Acquire) as RenderPhaseIndex
             }
 
             fn sort_submit_nodes(submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {

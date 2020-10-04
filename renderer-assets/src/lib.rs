@@ -11,3 +11,5 @@ pub use resources::*;
 
 mod resource_loader;
 pub use resource_loader::ResourceLoader;
+
+mod graph;

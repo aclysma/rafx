@@ -2,7 +2,11 @@ use renderer::nodes::{RenderPhaseIndex, SubmitNode};
 use renderer::nodes::RenderPhase;
 use std::convert::TryInto;
 
-renderer::declare_render_phase!(UiRenderPhase, UI_RENDER_PHASE_INDEX, ui_render_phase_sort_submit_nodes);
+renderer::declare_render_phase!(
+    UiRenderPhase,
+    UI_RENDER_PHASE_INDEX,
+    ui_render_phase_sort_submit_nodes
+);
 
 fn ui_render_phase_sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
     // Sort by feature

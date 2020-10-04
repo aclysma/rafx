@@ -572,6 +572,15 @@ impl ResourceLookupSet {
         }
     }
 
+    // Maybe we have a dedicated allocator for framebuffers and images that end up bound to framebuffers
+    // These images shouldn't be throw-away because then we have to remake framebuffers constantly
+    // So they either need to be inserted here or pooled in some way
+    // pub fn get_or_create_framebuffer(
+    //     &mut self,
+    //     framebuffer: &dsc::FrameBufferMeta,
+    //     images:
+    // )
+
     pub fn get_or_create_graphics_pipeline(
         &mut self,
         pipeline_create_data: &PipelineCreateData,
@@ -697,4 +706,10 @@ impl ResourceLookupSet {
             Ok(image_view)
         }
     }
+
+    // pub fn get_or_create_frame_buffer(
+    //     &mut self,
+    //     frame_buffer_meta: dsc::FrameBufferMeta,
+    //     images: dsc::ImageViewMeta,
+    // )
 }
