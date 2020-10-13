@@ -1,5 +1,6 @@
 use ash::vk;
 use super::*;
+use crate::vk_description as dsc;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct RenderGraphImageVersionId {
@@ -14,6 +15,12 @@ pub struct RenderGraphImageUsageId(pub(super) usize);
 pub struct RenderGraphImageUsage {
     pub(super) usage_type: RenderGraphImageUsageType,
     pub(super) version: RenderGraphImageVersionId,
+
+    pub(super) preferred_layout: dsc::ImageLayout,
+
+    //pub(super) access_flags: vk::AccessFlags,
+    //pub(super) stage_flags: vk::PipelineStageFlags,
+    //pub(super) image_aspect_flags: vk::ImageAspectFlags,
 }
 
 pub type RenderGraphResourceName = &'static str;
@@ -178,26 +185,35 @@ pub struct RenderGraphImageResourceVersionInfo {
     pub(super) creator_node: RenderGraphNodeId,
 
     pub(super) create_usage: RenderGraphImageUsageId,
-    pub(super) read_usages: Vec<RenderGraphImageUsageId>
+    pub(super) read_usages: Vec<RenderGraphImageUsageId>,
 }
 
 impl RenderGraphImageResourceVersionInfo {
-    pub(super) fn new(creator: RenderGraphNodeId, create_usage: RenderGraphImageUsageId) -> Self {
+    pub(super) fn new(
+        creator: RenderGraphNodeId,
+        create_usage: RenderGraphImageUsageId,
+    ) -> Self {
         RenderGraphImageResourceVersionInfo {
             creator_node: creator,
             //usages: Default::default(),
             create_usage,
-            read_usages: Default::default()
+            read_usages: Default::default(),
         }
     }
 
-    pub(super) fn remove_read_usage(&mut self, usage: RenderGraphImageUsageId) {
+    pub(super) fn remove_read_usage(
+        &mut self,
+        usage: RenderGraphImageUsageId,
+    ) {
         if let Some(position) = self.read_usages.iter().position(|x| *x == usage) {
             self.read_usages.swap_remove(position);
         }
     }
 
-    pub(super) fn add_read_usage(&mut self, usage: RenderGraphImageUsageId) {
+    pub(super) fn add_read_usage(
+        &mut self,
+        usage: RenderGraphImageUsageId,
+    ) {
         self.read_usages.push(usage);
     }
 }
@@ -287,20 +303,32 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
         &mut self,
         dst_image: (), /*ResourceArc<ImageViewResource>*/
         state: RenderGraphImageSpecification,
+        layout: dsc::ImageLayout,
+        access_flags: vk::AccessFlags,
+        stage_flags: vk::PipelineStageFlags,
+        image_aspect_flags: vk::ImageAspectFlags,
     ) -> &mut Self {
         let version_id = self.graph.image_version_id(self.image_id);
-        let usage_id = self
-            .graph
-            .add_usage(version_id, RenderGraphImageUsageType::Output);
+        let usage_id =
+            self.graph
+                .add_image_usage(
+                    version_id,
+                    RenderGraphImageUsageType::Output,
+                    layout,
+                    access_flags,
+                    stage_flags,
+                    image_aspect_flags
+                );
 
         let mut image_version = self.graph.image_version_info_mut(self.image_id);
-        image_version
-            .read_usages
-            .push(usage_id);
+        image_version.read_usages.push(usage_id);
 
         let output_image = RenderGraphOutputImage {
             usage: usage_id,
-            specification: state
+            specification: state,
+            final_layout: layout,
+            final_access_flags: access_flags,
+            final_stage_flags: stage_flags,
         };
 
         self.graph.output_images.push(output_image);

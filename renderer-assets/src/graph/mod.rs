@@ -1,4 +1,5 @@
 use ash::vk;
+use crate::vk_description as dsc;
 
 mod graph;
 use graph::*;
@@ -97,11 +98,14 @@ fn test_graph3() {
         .set_output_image(
             swapchain_image,
             RenderGraphImageSpecification {
-                //layout: vk::ImageLayout::PRESENT_SRC_KHR,
                 samples: vk::SampleCountFlags::TYPE_1,
                 format: swapchain_format,
                 queue,
             },
+            dsc::ImageLayout::PresentSrcKhr,
+            vk::AccessFlags::empty(),
+            vk::PipelineStageFlags::empty(),
+            vk::ImageAspectFlags::COLOR
         );
 
     //println!("{:#?}", graph);

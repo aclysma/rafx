@@ -97,7 +97,7 @@ impl std::fmt::Debug for RenderGraphPassDepthAttachmentInfo {
 
 pub struct RenderGraphPassResolveAttachmentInfo {
     pub attachment_type: RenderGraphPassAttachmentType,
-    pub write_image: Option<RenderGraphImageUsageId>,
+    pub write_image: RenderGraphImageUsageId,
 }
 
 impl std::fmt::Debug for RenderGraphPassResolveAttachmentInfo {

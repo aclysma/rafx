@@ -695,6 +695,33 @@ impl Into<vk::ImageLayout> for ImageLayout {
     }
 }
 
+impl From<vk::ImageLayout> for ImageLayout {
+    fn from(layout: vk::ImageLayout) -> Self {
+        match layout {
+            vk::ImageLayout::UNDEFINED => ImageLayout::Undefined,
+            vk::ImageLayout::GENERAL => ImageLayout::General,
+            vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL => ImageLayout::ColorAttachmentOptimal,
+            vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL => ImageLayout::DepthStencilAttachmentOptimal,
+            vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL => ImageLayout::DepthStencilReadOnlyOptimal,
+            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL => ImageLayout::ShaderReadOnlyOptimal,
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL => ImageLayout::TransferSrcOptimal,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL => ImageLayout::TransferDstOptimal,
+            vk::ImageLayout::PREINITIALIZED => ImageLayout::Preinitialized,
+            vk::ImageLayout::PRESENT_SRC_KHR => ImageLayout::PresentSrcKhr,
+            vk::ImageLayout::SHARED_PRESENT_KHR => ImageLayout::SharedPresentKhr,
+            vk::ImageLayout::SHADING_RATE_OPTIMAL_NV => ImageLayout::ShadingRateOptimal,
+            vk::ImageLayout::FRAGMENT_DENSITY_MAP_OPTIMAL_EXT => ImageLayout::FragmentDensityMapOptimalExt,
+            vk::ImageLayout::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL => ImageLayout::DepthReadOnlyStencilAttachmentOptimal,
+            vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL => ImageLayout::DepthAttachmentStencilReadOnlyOptimal,
+            vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL => ImageLayout::DepthAttachmentOptimal,
+            vk::ImageLayout::DEPTH_READ_ONLY_OPTIMAL => ImageLayout::DepthReadOnlyOptimal,
+            vk::ImageLayout::STENCIL_ATTACHMENT_OPTIMAL => ImageLayout::StencilAttachmentOptimal,
+            vk::ImageLayout::STENCIL_READ_ONLY_OPTIMAL => ImageLayout::StencilReadOnlyOptimal,
+            _ => unimplemented!()
+        }
+    }
+}
+
 impl Default for ImageLayout {
     fn default() -> Self {
         ImageLayout::Undefined
@@ -703,7 +730,6 @@ impl Default for ImageLayout {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PipelineStageFlags {
-    Empty,
     TopOfPipe,
     DrawIndirect,
     VertexInput,
@@ -723,10 +749,42 @@ pub enum PipelineStageFlags {
     AllCommands,
 }
 
+
+impl PipelineStageFlags {
+    pub fn from_pipeline_stage_mask(flag_mask: vk::PipelineStageFlags) -> Vec<PipelineStageFlags> {
+        let mut flags = Vec::default();
+        if flag_mask.intersects(vk::PipelineStageFlags::TOP_OF_PIPE) { flags.push(PipelineStageFlags::TopOfPipe); }
+        if flag_mask.intersects(vk::PipelineStageFlags::DRAW_INDIRECT) { flags.push(PipelineStageFlags::DrawIndirect); }
+        if flag_mask.intersects(vk::PipelineStageFlags::VERTEX_INPUT) { flags.push(PipelineStageFlags::VertexInput); }
+        if flag_mask.intersects(vk::PipelineStageFlags::VERTEX_SHADER) { flags.push(PipelineStageFlags::VertexShader); }
+        if flag_mask.intersects(vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER) { flags.push(PipelineStageFlags::TesselationControlShader); }
+        if flag_mask.intersects(vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER) { flags.push(PipelineStageFlags::TesselationEvaluationShader); }
+        if flag_mask.intersects(vk::PipelineStageFlags::GEOMETRY_SHADER) { flags.push(PipelineStageFlags::GeometryShader); }
+        if flag_mask.intersects(vk::PipelineStageFlags::FRAGMENT_SHADER) { flags.push(PipelineStageFlags::FragmentShader); }
+        if flag_mask.intersects(vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS) { flags.push(PipelineStageFlags::EarlyFragmentTests); }
+        if flag_mask.intersects(vk::PipelineStageFlags::LATE_FRAGMENT_TESTS) { flags.push(PipelineStageFlags::LateFragmentTests); }
+        if flag_mask.intersects(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT) { flags.push(PipelineStageFlags::ColorAttachmentOutput); }
+        if flag_mask.intersects(vk::PipelineStageFlags::COMPUTE_SHADER) { flags.push(PipelineStageFlags::ComputeShader); }
+        if flag_mask.intersects(vk::PipelineStageFlags::TRANSFER) { flags.push(PipelineStageFlags::Transfer); }
+        if flag_mask.intersects(vk::PipelineStageFlags::BOTTOM_OF_PIPE) { flags.push(PipelineStageFlags::BottomOfPipe); }
+        if flag_mask.intersects(vk::PipelineStageFlags::HOST) { flags.push(PipelineStageFlags::Host); }
+        if flag_mask.intersects(vk::PipelineStageFlags::ALL_GRAPHICS) { flags.push(PipelineStageFlags::AllGraphics); }
+        if flag_mask.intersects(vk::PipelineStageFlags::ALL_COMMANDS) { flags.push(PipelineStageFlags::AllCommands); }
+        flags
+    }
+
+    fn to_pipeline_stage_mask(flags: &[PipelineStageFlags]) -> vk::PipelineStageFlags {
+        let mut flag_mask = vk::PipelineStageFlags::empty();
+        for flag in flags {
+            flag_mask |= (*flag).into();
+        }
+        flag_mask
+    }
+}
+
 impl Into<vk::PipelineStageFlags> for PipelineStageFlags {
     fn into(self) -> vk::PipelineStageFlags {
         match self {
-            PipelineStageFlags::Empty => vk::PipelineStageFlags::empty(),
             PipelineStageFlags::TopOfPipe => vk::PipelineStageFlags::TOP_OF_PIPE,
             PipelineStageFlags::DrawIndirect => vk::PipelineStageFlags::DRAW_INDIRECT,
             PipelineStageFlags::VertexInput => vk::PipelineStageFlags::VERTEX_INPUT,
@@ -754,12 +812,6 @@ impl Into<vk::PipelineStageFlags> for PipelineStageFlags {
     }
 }
 
-impl Default for PipelineStageFlags {
-    fn default() -> Self {
-        PipelineStageFlags::Empty
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AccessFlags {
     Empty,
@@ -780,6 +832,38 @@ pub enum AccessFlags {
     HostWrite,
     MemoryRead,
     MemoryWrite,
+}
+
+impl AccessFlags {
+    pub fn from_access_flag_mask(flag_mask: vk::AccessFlags) -> Vec<AccessFlags> {
+        let mut flags = Vec::default();
+        if flag_mask.intersects(vk::AccessFlags::INDIRECT_COMMAND_READ) { flags.push(AccessFlags::IndirectCommandRead); }
+        if flag_mask.intersects(vk::AccessFlags::INDEX_READ) { flags.push(AccessFlags::IndexRead); }
+        if flag_mask.intersects(vk::AccessFlags::VERTEX_ATTRIBUTE_READ) { flags.push(AccessFlags::VertexAttributeRead); }
+        if flag_mask.intersects(vk::AccessFlags::UNIFORM_READ) { flags.push(AccessFlags::UniformRead); }
+        if flag_mask.intersects(vk::AccessFlags::INPUT_ATTACHMENT_READ) { flags.push(AccessFlags::InputAttachmentRead); }
+        if flag_mask.intersects(vk::AccessFlags::SHADER_READ) { flags.push(AccessFlags::ShaderRead); }
+        if flag_mask.intersects(vk::AccessFlags::SHADER_WRITE) { flags.push(AccessFlags::ShaderWrite); }
+        if flag_mask.intersects(vk::AccessFlags::COLOR_ATTACHMENT_READ) { flags.push(AccessFlags::ColorAttachmentRead); }
+        if flag_mask.intersects(vk::AccessFlags::COLOR_ATTACHMENT_WRITE) { flags.push(AccessFlags::ColorAttachmentWrite); }
+        if flag_mask.intersects(vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ) { flags.push(AccessFlags::DepthStencilAttachmentRead); }
+        if flag_mask.intersects(vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE) { flags.push(AccessFlags::DepthStencilAttachmentWrite); }
+        if flag_mask.intersects(vk::AccessFlags::TRANSFER_READ) { flags.push(AccessFlags::TransferRead); }
+        if flag_mask.intersects(vk::AccessFlags::TRANSFER_WRITE) { flags.push(AccessFlags::TransferWrite); }
+        if flag_mask.intersects(vk::AccessFlags::HOST_READ) { flags.push(AccessFlags::HostRead); }
+        if flag_mask.intersects(vk::AccessFlags::HOST_WRITE) { flags.push(AccessFlags::HostWrite); }
+        if flag_mask.intersects(vk::AccessFlags::MEMORY_READ) { flags.push(AccessFlags::MemoryRead); }
+        if flag_mask.intersects(vk::AccessFlags::MEMORY_WRITE) { flags.push(AccessFlags::MemoryWrite); }
+        flags
+    }
+
+    fn to_access_flag_mask(flags: &[AccessFlags]) -> vk::AccessFlags {
+        let mut flag_mask = vk::AccessFlags::empty();
+        for flag in flags {
+            flag_mask |= (*flag).into();
+        }
+        flag_mask
+    }
 }
 
 impl Into<vk::AccessFlags> for AccessFlags {
@@ -1551,12 +1635,14 @@ impl Default for SubpassDependencyIndex {
     }
 }
 
+//TODO: Change the Vec<T> for pipeline stages and accesses to be masks. This will require a custom
+// bitfield type and serializer that supports printing them in a list of enum values
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct SubpassDependency {
     pub src_subpass: SubpassDependencyIndex,
     pub dst_subpass: SubpassDependencyIndex,
-    pub src_stage_mask: PipelineStageFlags,
-    pub dst_stage_mask: PipelineStageFlags,
+    pub src_stage_mask: Vec<PipelineStageFlags>,
+    pub dst_stage_mask: Vec<PipelineStageFlags>,
     pub src_access_mask: Vec<AccessFlags>,
     pub dst_access_mask: Vec<AccessFlags>,
     pub dependency_flags: DependencyFlags,
@@ -1564,22 +1650,22 @@ pub struct SubpassDependency {
 
 impl SubpassDependency {
     pub fn as_builder(&self) -> vk::SubpassDependencyBuilder {
-        fn access_flag_list_to_mask(access_flags: &[AccessFlags]) -> vk::AccessFlags {
-            let mut access_flags_mask = vk::AccessFlags::empty();
-            for access_flag in access_flags {
-                let vk_access_flag: vk::AccessFlags = (*access_flag).into();
-                access_flags_mask |= vk_access_flag;
-            }
-            access_flags_mask
-        }
+        // fn access_flag_list_to_mask(access_flags: &[AccessFlags]) -> vk::AccessFlags {
+        //     let mut access_flags_mask = vk::AccessFlags::empty();
+        //     for access_flag in access_flags {
+        //         let vk_access_flag: vk::AccessFlags = (*access_flag).into();
+        //         access_flags_mask |= vk_access_flag;
+        //     }
+        //     access_flags_mask
+        // }
 
         vk::SubpassDependency::builder()
             .src_subpass(self.src_subpass.into())
             .dst_subpass(self.dst_subpass.into())
-            .src_stage_mask(self.src_stage_mask.into())
-            .dst_stage_mask(self.dst_stage_mask.into())
-            .src_access_mask(access_flag_list_to_mask(self.src_access_mask.as_slice()))
-            .dst_access_mask(access_flag_list_to_mask(self.dst_access_mask.as_slice()))
+            .src_stage_mask(PipelineStageFlags::to_pipeline_stage_mask(self.src_stage_mask.as_slice()))
+            .dst_stage_mask(PipelineStageFlags::to_pipeline_stage_mask(self.dst_stage_mask.as_slice()))
+            .src_access_mask(AccessFlags::to_access_flag_mask(self.src_access_mask.as_slice()))
+            .dst_access_mask(AccessFlags::to_access_flag_mask(self.dst_access_mask.as_slice()))
             .dependency_flags(self.dependency_flags.into())
     }
 }
