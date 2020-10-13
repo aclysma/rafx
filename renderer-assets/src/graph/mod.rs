@@ -105,7 +105,7 @@ fn test_graph3() {
             dsc::ImageLayout::PresentSrcKhr,
             vk::AccessFlags::empty(),
             vk::PipelineStageFlags::empty(),
-            vk::ImageAspectFlags::COLOR
+            vk::ImageAspectFlags::COLOR,
         );
 
     //println!("{:#?}", graph);

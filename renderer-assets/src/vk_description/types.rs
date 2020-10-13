@@ -701,8 +701,12 @@ impl From<vk::ImageLayout> for ImageLayout {
             vk::ImageLayout::UNDEFINED => ImageLayout::Undefined,
             vk::ImageLayout::GENERAL => ImageLayout::General,
             vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL => ImageLayout::ColorAttachmentOptimal,
-            vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL => ImageLayout::DepthStencilAttachmentOptimal,
-            vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL => ImageLayout::DepthStencilReadOnlyOptimal,
+            vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL => {
+                ImageLayout::DepthStencilAttachmentOptimal
+            }
+            vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL => {
+                ImageLayout::DepthStencilReadOnlyOptimal
+            }
             vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL => ImageLayout::ShaderReadOnlyOptimal,
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL => ImageLayout::TransferSrcOptimal,
             vk::ImageLayout::TRANSFER_DST_OPTIMAL => ImageLayout::TransferDstOptimal,
@@ -710,14 +714,20 @@ impl From<vk::ImageLayout> for ImageLayout {
             vk::ImageLayout::PRESENT_SRC_KHR => ImageLayout::PresentSrcKhr,
             vk::ImageLayout::SHARED_PRESENT_KHR => ImageLayout::SharedPresentKhr,
             vk::ImageLayout::SHADING_RATE_OPTIMAL_NV => ImageLayout::ShadingRateOptimal,
-            vk::ImageLayout::FRAGMENT_DENSITY_MAP_OPTIMAL_EXT => ImageLayout::FragmentDensityMapOptimalExt,
-            vk::ImageLayout::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL => ImageLayout::DepthReadOnlyStencilAttachmentOptimal,
-            vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL => ImageLayout::DepthAttachmentStencilReadOnlyOptimal,
+            vk::ImageLayout::FRAGMENT_DENSITY_MAP_OPTIMAL_EXT => {
+                ImageLayout::FragmentDensityMapOptimalExt
+            }
+            vk::ImageLayout::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL => {
+                ImageLayout::DepthReadOnlyStencilAttachmentOptimal
+            }
+            vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL => {
+                ImageLayout::DepthAttachmentStencilReadOnlyOptimal
+            }
             vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL => ImageLayout::DepthAttachmentOptimal,
             vk::ImageLayout::DEPTH_READ_ONLY_OPTIMAL => ImageLayout::DepthReadOnlyOptimal,
             vk::ImageLayout::STENCIL_ATTACHMENT_OPTIMAL => ImageLayout::StencilAttachmentOptimal,
             vk::ImageLayout::STENCIL_READ_ONLY_OPTIMAL => ImageLayout::StencilReadOnlyOptimal,
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 }
@@ -749,27 +759,60 @@ pub enum PipelineStageFlags {
     AllCommands,
 }
 
-
 impl PipelineStageFlags {
     pub fn from_pipeline_stage_mask(flag_mask: vk::PipelineStageFlags) -> Vec<PipelineStageFlags> {
         let mut flags = Vec::default();
-        if flag_mask.intersects(vk::PipelineStageFlags::TOP_OF_PIPE) { flags.push(PipelineStageFlags::TopOfPipe); }
-        if flag_mask.intersects(vk::PipelineStageFlags::DRAW_INDIRECT) { flags.push(PipelineStageFlags::DrawIndirect); }
-        if flag_mask.intersects(vk::PipelineStageFlags::VERTEX_INPUT) { flags.push(PipelineStageFlags::VertexInput); }
-        if flag_mask.intersects(vk::PipelineStageFlags::VERTEX_SHADER) { flags.push(PipelineStageFlags::VertexShader); }
-        if flag_mask.intersects(vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER) { flags.push(PipelineStageFlags::TesselationControlShader); }
-        if flag_mask.intersects(vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER) { flags.push(PipelineStageFlags::TesselationEvaluationShader); }
-        if flag_mask.intersects(vk::PipelineStageFlags::GEOMETRY_SHADER) { flags.push(PipelineStageFlags::GeometryShader); }
-        if flag_mask.intersects(vk::PipelineStageFlags::FRAGMENT_SHADER) { flags.push(PipelineStageFlags::FragmentShader); }
-        if flag_mask.intersects(vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS) { flags.push(PipelineStageFlags::EarlyFragmentTests); }
-        if flag_mask.intersects(vk::PipelineStageFlags::LATE_FRAGMENT_TESTS) { flags.push(PipelineStageFlags::LateFragmentTests); }
-        if flag_mask.intersects(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT) { flags.push(PipelineStageFlags::ColorAttachmentOutput); }
-        if flag_mask.intersects(vk::PipelineStageFlags::COMPUTE_SHADER) { flags.push(PipelineStageFlags::ComputeShader); }
-        if flag_mask.intersects(vk::PipelineStageFlags::TRANSFER) { flags.push(PipelineStageFlags::Transfer); }
-        if flag_mask.intersects(vk::PipelineStageFlags::BOTTOM_OF_PIPE) { flags.push(PipelineStageFlags::BottomOfPipe); }
-        if flag_mask.intersects(vk::PipelineStageFlags::HOST) { flags.push(PipelineStageFlags::Host); }
-        if flag_mask.intersects(vk::PipelineStageFlags::ALL_GRAPHICS) { flags.push(PipelineStageFlags::AllGraphics); }
-        if flag_mask.intersects(vk::PipelineStageFlags::ALL_COMMANDS) { flags.push(PipelineStageFlags::AllCommands); }
+        if flag_mask.intersects(vk::PipelineStageFlags::TOP_OF_PIPE) {
+            flags.push(PipelineStageFlags::TopOfPipe);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::DRAW_INDIRECT) {
+            flags.push(PipelineStageFlags::DrawIndirect);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::VERTEX_INPUT) {
+            flags.push(PipelineStageFlags::VertexInput);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::VERTEX_SHADER) {
+            flags.push(PipelineStageFlags::VertexShader);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER) {
+            flags.push(PipelineStageFlags::TesselationControlShader);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER) {
+            flags.push(PipelineStageFlags::TesselationEvaluationShader);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::GEOMETRY_SHADER) {
+            flags.push(PipelineStageFlags::GeometryShader);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::FRAGMENT_SHADER) {
+            flags.push(PipelineStageFlags::FragmentShader);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS) {
+            flags.push(PipelineStageFlags::EarlyFragmentTests);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::LATE_FRAGMENT_TESTS) {
+            flags.push(PipelineStageFlags::LateFragmentTests);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT) {
+            flags.push(PipelineStageFlags::ColorAttachmentOutput);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::COMPUTE_SHADER) {
+            flags.push(PipelineStageFlags::ComputeShader);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::TRANSFER) {
+            flags.push(PipelineStageFlags::Transfer);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::BOTTOM_OF_PIPE) {
+            flags.push(PipelineStageFlags::BottomOfPipe);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::HOST) {
+            flags.push(PipelineStageFlags::Host);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::ALL_GRAPHICS) {
+            flags.push(PipelineStageFlags::AllGraphics);
+        }
+        if flag_mask.intersects(vk::PipelineStageFlags::ALL_COMMANDS) {
+            flags.push(PipelineStageFlags::AllCommands);
+        }
         flags
     }
 
@@ -837,23 +880,57 @@ pub enum AccessFlags {
 impl AccessFlags {
     pub fn from_access_flag_mask(flag_mask: vk::AccessFlags) -> Vec<AccessFlags> {
         let mut flags = Vec::default();
-        if flag_mask.intersects(vk::AccessFlags::INDIRECT_COMMAND_READ) { flags.push(AccessFlags::IndirectCommandRead); }
-        if flag_mask.intersects(vk::AccessFlags::INDEX_READ) { flags.push(AccessFlags::IndexRead); }
-        if flag_mask.intersects(vk::AccessFlags::VERTEX_ATTRIBUTE_READ) { flags.push(AccessFlags::VertexAttributeRead); }
-        if flag_mask.intersects(vk::AccessFlags::UNIFORM_READ) { flags.push(AccessFlags::UniformRead); }
-        if flag_mask.intersects(vk::AccessFlags::INPUT_ATTACHMENT_READ) { flags.push(AccessFlags::InputAttachmentRead); }
-        if flag_mask.intersects(vk::AccessFlags::SHADER_READ) { flags.push(AccessFlags::ShaderRead); }
-        if flag_mask.intersects(vk::AccessFlags::SHADER_WRITE) { flags.push(AccessFlags::ShaderWrite); }
-        if flag_mask.intersects(vk::AccessFlags::COLOR_ATTACHMENT_READ) { flags.push(AccessFlags::ColorAttachmentRead); }
-        if flag_mask.intersects(vk::AccessFlags::COLOR_ATTACHMENT_WRITE) { flags.push(AccessFlags::ColorAttachmentWrite); }
-        if flag_mask.intersects(vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ) { flags.push(AccessFlags::DepthStencilAttachmentRead); }
-        if flag_mask.intersects(vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE) { flags.push(AccessFlags::DepthStencilAttachmentWrite); }
-        if flag_mask.intersects(vk::AccessFlags::TRANSFER_READ) { flags.push(AccessFlags::TransferRead); }
-        if flag_mask.intersects(vk::AccessFlags::TRANSFER_WRITE) { flags.push(AccessFlags::TransferWrite); }
-        if flag_mask.intersects(vk::AccessFlags::HOST_READ) { flags.push(AccessFlags::HostRead); }
-        if flag_mask.intersects(vk::AccessFlags::HOST_WRITE) { flags.push(AccessFlags::HostWrite); }
-        if flag_mask.intersects(vk::AccessFlags::MEMORY_READ) { flags.push(AccessFlags::MemoryRead); }
-        if flag_mask.intersects(vk::AccessFlags::MEMORY_WRITE) { flags.push(AccessFlags::MemoryWrite); }
+        if flag_mask.intersects(vk::AccessFlags::INDIRECT_COMMAND_READ) {
+            flags.push(AccessFlags::IndirectCommandRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::INDEX_READ) {
+            flags.push(AccessFlags::IndexRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::VERTEX_ATTRIBUTE_READ) {
+            flags.push(AccessFlags::VertexAttributeRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::UNIFORM_READ) {
+            flags.push(AccessFlags::UniformRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::INPUT_ATTACHMENT_READ) {
+            flags.push(AccessFlags::InputAttachmentRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::SHADER_READ) {
+            flags.push(AccessFlags::ShaderRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::SHADER_WRITE) {
+            flags.push(AccessFlags::ShaderWrite);
+        }
+        if flag_mask.intersects(vk::AccessFlags::COLOR_ATTACHMENT_READ) {
+            flags.push(AccessFlags::ColorAttachmentRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::COLOR_ATTACHMENT_WRITE) {
+            flags.push(AccessFlags::ColorAttachmentWrite);
+        }
+        if flag_mask.intersects(vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ) {
+            flags.push(AccessFlags::DepthStencilAttachmentRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE) {
+            flags.push(AccessFlags::DepthStencilAttachmentWrite);
+        }
+        if flag_mask.intersects(vk::AccessFlags::TRANSFER_READ) {
+            flags.push(AccessFlags::TransferRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::TRANSFER_WRITE) {
+            flags.push(AccessFlags::TransferWrite);
+        }
+        if flag_mask.intersects(vk::AccessFlags::HOST_READ) {
+            flags.push(AccessFlags::HostRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::HOST_WRITE) {
+            flags.push(AccessFlags::HostWrite);
+        }
+        if flag_mask.intersects(vk::AccessFlags::MEMORY_READ) {
+            flags.push(AccessFlags::MemoryRead);
+        }
+        if flag_mask.intersects(vk::AccessFlags::MEMORY_WRITE) {
+            flags.push(AccessFlags::MemoryWrite);
+        }
         flags
     }
 
@@ -1662,10 +1739,18 @@ impl SubpassDependency {
         vk::SubpassDependency::builder()
             .src_subpass(self.src_subpass.into())
             .dst_subpass(self.dst_subpass.into())
-            .src_stage_mask(PipelineStageFlags::to_pipeline_stage_mask(self.src_stage_mask.as_slice()))
-            .dst_stage_mask(PipelineStageFlags::to_pipeline_stage_mask(self.dst_stage_mask.as_slice()))
-            .src_access_mask(AccessFlags::to_access_flag_mask(self.src_access_mask.as_slice()))
-            .dst_access_mask(AccessFlags::to_access_flag_mask(self.dst_access_mask.as_slice()))
+            .src_stage_mask(PipelineStageFlags::to_pipeline_stage_mask(
+                self.src_stage_mask.as_slice(),
+            ))
+            .dst_stage_mask(PipelineStageFlags::to_pipeline_stage_mask(
+                self.dst_stage_mask.as_slice(),
+            ))
+            .src_access_mask(AccessFlags::to_access_flag_mask(
+                self.src_access_mask.as_slice(),
+            ))
+            .dst_access_mask(AccessFlags::to_access_flag_mask(
+                self.dst_access_mask.as_slice(),
+            ))
             .dependency_flags(self.dependency_flags.into())
     }
 }

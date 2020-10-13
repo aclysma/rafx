@@ -49,14 +49,14 @@ pub struct RenderGraphOutputImage {
 #[derive(Debug)]
 pub struct RenderGraphImageBarrier {
     access_flags: vk::AccessFlags,
-    stage_flags: vk::PipelineStageFlags
+    stage_flags: vk::PipelineStageFlags,
 }
 
 impl Default for RenderGraphImageBarrier {
     fn default() -> Self {
         RenderGraphImageBarrier {
             access_flags: vk::AccessFlags::empty(),
-            stage_flags: vk::PipelineStageFlags::empty()
+            stage_flags: vk::PipelineStageFlags::empty(),
         }
     }
 }
@@ -75,7 +75,7 @@ impl RenderGraphPassImageBarriers {
         RenderGraphPassImageBarriers {
             flush: Default::default(),
             invalidate: Default::default(),
-            layout
+            layout,
         }
     }
 }
@@ -84,7 +84,7 @@ impl RenderGraphPassImageBarriers {
 /// merged to be subpasses within a single pass.
 #[derive(Debug)]
 pub struct RenderGraphNodeImageBarriers {
-    barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers>
+    barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers>,
 }
 
 /// Metadata for a subpass
@@ -100,7 +100,7 @@ pub struct RenderGraphSubpass {
 /// Clear value for either a color attachment or depth/stencil attachment
 pub enum AttachmentClearValue {
     Color(vk::ClearColorValue),
-    DepthStencil(vk::ClearDepthStencilValue)
+    DepthStencil(vk::ClearDepthStencilValue),
 }
 
 impl std::fmt::Debug for AttachmentClearValue {
@@ -110,15 +110,13 @@ impl std::fmt::Debug for AttachmentClearValue {
     ) -> std::fmt::Result {
         match self {
             AttachmentClearValue::Color(value) => {
-                f.debug_struct("AttachmentClearValue(Color)")
-                    .finish()
-            },
-            AttachmentClearValue::DepthStencil(value) => {
-                f.debug_struct("AttachmentClearValue(DepthStencil)")
-                    .field("depth", &value.depth)
-                    .field("stencil", &value.stencil)
-                    .finish()
+                f.debug_struct("AttachmentClearValue(Color)").finish()
             }
+            AttachmentClearValue::DepthStencil(value) => f
+                .debug_struct("AttachmentClearValue(DepthStencil)")
+                .field("depth", &value.depth)
+                .field("stencil", &value.stencil)
+                .finish(),
         }
     }
 }
@@ -135,7 +133,7 @@ pub struct RenderGraphPassAttachment {
     format: vk::Format,
     samples: vk::SampleCountFlags,
     initial_layout: dsc::ImageLayout,
-    final_layout: dsc::ImageLayout
+    final_layout: dsc::ImageLayout,
 }
 
 /// Metadata required to create a renderpass
@@ -253,7 +251,7 @@ impl RenderGraph {
             preferred_layout,
             access_flags,
             stage_flags,
-            image_aspect_flags
+            image_aspect_flags,
         );
 
         let mut resource = RenderGraphImageResource::new();
@@ -295,7 +293,7 @@ impl RenderGraph {
             preferred_layout,
             access_flags,
             stage_flags,
-            image_aspect_flags
+            image_aspect_flags,
         );
 
         self.image_resources[version_id.index].versions[version_id.version]
@@ -334,7 +332,7 @@ impl RenderGraph {
             preferred_layout,
             read_access_flags,
             read_stage_flags,
-            read_image_aspect_flags
+            read_image_aspect_flags,
         );
 
         self.image_resources[read_version_id.index].versions[read_version_id.version]
@@ -353,7 +351,7 @@ impl RenderGraph {
             preferred_layout,
             write_access_flags,
             write_stage_flags,
-            write_image_aspect_flags
+            write_image_aspect_flags,
         );
 
         let mut version_info =
@@ -433,7 +431,7 @@ impl RenderGraph {
             dsc::ImageLayout::ColorAttachmentOptimal,
             vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
             vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            vk::ImageAspectFlags::COLOR
+            vk::ImageAspectFlags::COLOR,
         );
 
         self.set_color_attachment(
@@ -467,7 +465,7 @@ impl RenderGraph {
             dsc::ImageLayout::DepthStencilAttachmentOptimal,
             vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
             vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            vk::ImageAspectFlags::DEPTH
+            vk::ImageAspectFlags::DEPTH,
         );
 
         self.set_depth_attachment(
@@ -498,7 +496,7 @@ impl RenderGraph {
             dsc::ImageLayout::ColorAttachmentOptimal,
             vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
             vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            vk::ImageAspectFlags::COLOR
+            vk::ImageAspectFlags::COLOR,
         );
 
         self.set_resolve_attachment(
@@ -531,7 +529,7 @@ impl RenderGraph {
             dsc::ImageLayout::ColorAttachmentOptimal,
             vk::AccessFlags::COLOR_ATTACHMENT_READ,
             vk::PipelineStageFlags::FRAGMENT_SHADER,
-            vk::ImageAspectFlags::COLOR
+            vk::ImageAspectFlags::COLOR,
         );
 
         self.set_color_attachment(
@@ -563,8 +561,9 @@ impl RenderGraph {
             constraint,
             dsc::ImageLayout::DepthStencilAttachmentOptimal,
             vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
-            vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            vk::ImageAspectFlags::DEPTH
+            vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
+                | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
+            vk::ImageAspectFlags::DEPTH,
         );
 
         self.set_depth_attachment(
@@ -599,7 +598,7 @@ impl RenderGraph {
             vk::ImageAspectFlags::COLOR,
             vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
             vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            vk::ImageAspectFlags::COLOR
+            vk::ImageAspectFlags::COLOR,
         );
 
         self.set_color_attachment(
@@ -632,11 +631,14 @@ impl RenderGraph {
             attachment_type,
             constraint,
             dsc::ImageLayout::DepthStencilAttachmentOptimal,
-            vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-            vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
+            vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
+                | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+            vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
+                | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
             vk::ImageAspectFlags::DEPTH,
             vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-            vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
+            vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
+                | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
             vk::ImageAspectFlags::DEPTH,
         );
 
@@ -1536,7 +1538,12 @@ impl RenderGraph {
         for node_id in node_execution_order {
             let mut add_to_current = true;
             for subpass_node in &subpass_nodes {
-                if !self.can_merge_nodes(*subpass_node, *node_id, image_constraints, physical_images) {
+                if !self.can_merge_nodes(
+                    *subpass_node,
+                    *node_id,
+                    image_constraints,
+                    physical_images,
+                ) {
                     add_to_current = false;
                     break;
                 }
@@ -1559,7 +1566,10 @@ impl RenderGraph {
         let mut passes = Vec::default();
         for pass_node_set in pass_node_sets {
             println!("  nodes in pass: {:?}", pass_node_set);
-            fn find_or_insert_attachment(attachments: &mut Vec<RenderGraphPassAttachment>, image: PhysicalImageId) -> (usize, bool) {
+            fn find_or_insert_attachment(
+                attachments: &mut Vec<RenderGraphPassAttachment>,
+                image: PhysicalImageId,
+            ) -> (usize, bool) {
                 if let Some(position) = attachments.iter().position(|x| x.image == image) {
                     (position, false)
                 } else {
@@ -1573,7 +1583,7 @@ impl RenderGraph {
                         format: vk::Format::UNDEFINED,
                         samples: vk::SampleCountFlags::TYPE_1,
                         initial_layout: dsc::ImageLayout::Undefined,
-                        final_layout: dsc::ImageLayout::Undefined
+                        final_layout: dsc::ImageLayout::Undefined,
                     });
                     (attachments.len() - 1, true)
                 }
@@ -1590,21 +1600,32 @@ impl RenderGraph {
                     node: node_id,
                     color_attachments: Default::default(),
                     resolve_attachments: Default::default(),
-                    depth_attachment: Default::default()
+                    depth_attachment: Default::default(),
                 };
 
                 let subpass_node = self.node(node_id);
 
-                for (color_attachment_index, color_attachment) in subpass_node.color_attachments.iter().enumerate() {
+                for (color_attachment_index, color_attachment) in
+                    subpass_node.color_attachments.iter().enumerate()
+                {
                     if let Some(color_attachment) = color_attachment {
-                        let read_or_write_usage = color_attachment.read_image.or(color_attachment.write_image).unwrap();
-                        let physical_image = physical_images.map_image_to_physical.get(&read_or_write_usage).unwrap();
+                        let read_or_write_usage = color_attachment
+                            .read_image
+                            .or(color_attachment.write_image)
+                            .unwrap();
+                        let physical_image = physical_images
+                            .map_image_to_physical
+                            .get(&read_or_write_usage)
+                            .unwrap();
                         let version_id = self.image_version_id(read_or_write_usage);
-                        let specification = image_constraints.images.get(&read_or_write_usage).unwrap();
+                        let specification =
+                            image_constraints.images.get(&read_or_write_usage).unwrap();
                         println!("      physical attachment (color): {:?}", physical_image);
 
-                        let (pass_attachment_index, is_first_usage) = find_or_insert_attachment(&mut pass.attachments, *physical_image);
-                        subpass.color_attachments[color_attachment_index] = Some(pass_attachment_index);
+                        let (pass_attachment_index, is_first_usage) =
+                            find_or_insert_attachment(&mut pass.attachments, *physical_image);
+                        subpass.color_attachments[color_attachment_index] =
+                            Some(pass_attachment_index);
 
                         let mut attachment = &mut pass.attachments[pass_attachment_index];
                         if is_first_usage {
@@ -1613,7 +1634,9 @@ impl RenderGraph {
                                 attachment.load_op = vk::AttachmentLoadOp::LOAD;
                             } else if color_attachment.clear_color_value.is_some() {
                                 attachment.load_op = vk::AttachmentLoadOp::CLEAR;
-                                attachment.clear_color = Some(AttachmentClearValue::Color(color_attachment.clear_color_value.unwrap()))
+                                attachment.clear_color = Some(AttachmentClearValue::Color(
+                                    color_attachment.clear_color_value.unwrap(),
+                                ))
                             };
 
                             attachment.format = specification.format;
@@ -1635,16 +1658,23 @@ impl RenderGraph {
                     }
                 }
 
-                for (resolve_attachment_index, resolve_attachment) in subpass_node.resolve_attachments.iter().enumerate() {
+                for (resolve_attachment_index, resolve_attachment) in
+                    subpass_node.resolve_attachments.iter().enumerate()
+                {
                     if let Some(resolve_attachment) = resolve_attachment {
                         let write_image = resolve_attachment.write_image;
-                        let physical_image = physical_images.map_image_to_physical.get(&write_image).unwrap();
+                        let physical_image = physical_images
+                            .map_image_to_physical
+                            .get(&write_image)
+                            .unwrap();
                         let version_id = self.image_version_id(write_image);
                         let specification = image_constraints.images.get(&write_image).unwrap();
                         println!("      physical attachment (resolve): {:?}", physical_image);
 
-                        let (pass_attachment_index, is_first_usage) = find_or_insert_attachment(&mut pass.attachments, *physical_image);
-                        subpass.resolve_attachments[resolve_attachment_index] = Some(pass_attachment_index);
+                        let (pass_attachment_index, is_first_usage) =
+                            find_or_insert_attachment(&mut pass.attachments, *physical_image);
+                        subpass.resolve_attachments[resolve_attachment_index] =
+                            Some(pass_attachment_index);
 
                         assert!(is_first_usage); // Not sure if this assert is valid
                         let mut attachment = &mut pass.attachments[pass_attachment_index];
@@ -1652,11 +1682,12 @@ impl RenderGraph {
                         attachment.samples = specification.samples;
 
                         //TODO: Should we skip resolving if there is no reader?
-                        let store_op = if !self.image_version_info(write_image).read_usages.is_empty() {
-                            vk::AttachmentStoreOp::STORE
-                        } else {
-                            vk::AttachmentStoreOp::DONT_CARE
-                        };
+                        let store_op =
+                            if !self.image_version_info(write_image).read_usages.is_empty() {
+                                vk::AttachmentStoreOp::STORE
+                            } else {
+                                vk::AttachmentStoreOp::DONT_CARE
+                            };
 
                         attachment.store_op = store_op;
                         attachment.stencil_store_op = vk::AttachmentStoreOp::DONT_CARE;
@@ -1664,13 +1695,20 @@ impl RenderGraph {
                 }
 
                 if let Some(depth_attachment) = &subpass_node.depth_attachment {
-                    let read_or_write_usage = depth_attachment.read_image.or(depth_attachment.write_image).unwrap();
-                    let physical_image = physical_images.map_image_to_physical.get(&read_or_write_usage).unwrap();
+                    let read_or_write_usage = depth_attachment
+                        .read_image
+                        .or(depth_attachment.write_image)
+                        .unwrap();
+                    let physical_image = physical_images
+                        .map_image_to_physical
+                        .get(&read_or_write_usage)
+                        .unwrap();
                     let version_id = self.image_version_id(read_or_write_usage);
                     let specification = image_constraints.images.get(&read_or_write_usage).unwrap();
                     println!("      physical attachment (depth): {:?}", physical_image);
 
-                    let (pass_attachment_index, is_first_usage) = find_or_insert_attachment(&mut pass.attachments, *physical_image);
+                    let (pass_attachment_index, is_first_usage) =
+                        find_or_insert_attachment(&mut pass.attachments, *physical_image);
                     subpass.depth_attachment = Some(pass_attachment_index);
 
                     let mut attachment = &mut pass.attachments[pass_attachment_index];
@@ -1683,7 +1721,9 @@ impl RenderGraph {
                         } else if depth_attachment.clear_depth_stencil_value.is_some() {
                             attachment.load_op = vk::AttachmentLoadOp::CLEAR;
                             attachment.stencil_load_op = vk::AttachmentLoadOp::CLEAR;
-                            attachment.clear_color = Some(AttachmentClearValue::DepthStencil(depth_attachment.clear_depth_stencil_value.unwrap()))
+                            attachment.clear_color = Some(AttachmentClearValue::DepthStencil(
+                                depth_attachment.clear_depth_stencil_value.unwrap(),
+                            ))
                         };
 
                         attachment.format = specification.format;
@@ -1728,40 +1768,59 @@ impl RenderGraph {
             let node = self.node(*node_id);
             //let mut invalidate_barriers: FnvHashMap<PhysicalImageId, RenderGraphImageBarrier> = Default::default();
             //let mut flush_barriers: FnvHashMap<PhysicalImageId, RenderGraphImageBarrier> = Default::default();
-            let mut node_barriers : FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers> = Default::default();
+            let mut node_barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers> =
+                Default::default();
 
-            for (color_attachment_index, color_attachment) in node.color_attachments.iter().enumerate() {
+            for (color_attachment_index, color_attachment) in
+                node.color_attachments.iter().enumerate()
+            {
                 if let Some(color_attachment) = color_attachment {
-                    let read_or_write_usage = color_attachment.read_image.or(color_attachment.write_image).unwrap();
-                    let physical_image = physical_images.map_image_to_physical.get(&read_or_write_usage).unwrap();
+                    let read_or_write_usage = color_attachment
+                        .read_image
+                        .or(color_attachment.write_image)
+                        .unwrap();
+                    let physical_image = physical_images
+                        .map_image_to_physical
+                        .get(&read_or_write_usage)
+                        .unwrap();
                     let version_id = self.image_version_id(read_or_write_usage);
 
-                    let mut barrier = node_barriers.entry(*physical_image)
-                        .or_insert_with(|| RenderGraphPassImageBarriers::new(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL));
+                    let mut barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
+                        RenderGraphPassImageBarriers::new(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                    });
 
                     if let Some(read_image) = color_attachment.read_image {
-                        barrier.invalidate.access_flags |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE | vk::AccessFlags::COLOR_ATTACHMENT_READ;
-                        barrier.invalidate.stage_flags |= vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
+                        barrier.invalidate.access_flags |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE
+                            | vk::AccessFlags::COLOR_ATTACHMENT_READ;
+                        barrier.invalidate.stage_flags |=
+                            vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
                         //barrier.invalidate.layout = vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
                         //invalidate_barrier.layout = determine_image_layouts_result.image_layouts[&version_id].read_layout.into();
                     }
 
                     if let Some(write_image) = color_attachment.write_image {
                         barrier.flush.access_flags |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE;
-                        barrier.flush.stage_flags |= vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
+                        barrier.flush.stage_flags |=
+                            vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
                         //barrier.flush.layout = vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
                         //flush_barrier.layout = determine_image_layouts_result.image_layouts[&version_id].write_layout.into();
                     }
                 }
             }
 
-            for (resolve_attachment_index, resolve_attachment) in node.resolve_attachments.iter().enumerate() {
+            for (resolve_attachment_index, resolve_attachment) in
+                node.resolve_attachments.iter().enumerate()
+            {
                 if let Some(resolve_attachment) = resolve_attachment {
-                    let physical_image = physical_images.map_image_to_physical.get(&resolve_attachment.write_image).unwrap();
+                    let physical_image = physical_images
+                        .map_image_to_physical
+                        .get(&resolve_attachment.write_image)
+                        .unwrap();
                     let version_id = self.image_version_id(resolve_attachment.write_image);
 
-                    let mut barrier = node_barriers.entry(*physical_image)
-                        .or_insert_with(|| RenderGraphPassImageBarriers::new(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL));
+                    let mut barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
+                        RenderGraphPassImageBarriers::new(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                    });
 
                     barrier.flush.access_flags |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE;
                     barrier.flush.stage_flags |= vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
@@ -1771,19 +1830,30 @@ impl RenderGraph {
             }
 
             if let Some(depth_attachment) = &node.depth_attachment {
-                let read_or_write_usage = depth_attachment.read_image.or(depth_attachment.write_image).unwrap();
-                let physical_image = physical_images.map_image_to_physical.get(&read_or_write_usage).unwrap();
+                let read_or_write_usage = depth_attachment
+                    .read_image
+                    .or(depth_attachment.write_image)
+                    .unwrap();
+                let physical_image = physical_images
+                    .map_image_to_physical
+                    .get(&read_or_write_usage)
+                    .unwrap();
                 let version_id = self.image_version_id(read_or_write_usage);
 
-                let mut barrier = node_barriers.entry(*physical_image)
-                    .or_insert_with(|| RenderGraphPassImageBarriers::new(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
+                let mut barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
+                    RenderGraphPassImageBarriers::new(
+                        vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                    )
+                });
 
                 if depth_attachment.read_image.is_some() && depth_attachment.write_image.is_some() {
-
                     //barrier.invalidate.layout = vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                     //barrier.invalidate.layout = determine_image_layouts_result.image_layouts[&version_id].read_layout.into();
-                    barrier.invalidate.access_flags |= vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE;
-                    barrier.invalidate.stage_flags |= vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS;
+                    barrier.invalidate.access_flags |=
+                        vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
+                            | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE;
+                    barrier.invalidate.stage_flags |= vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
+                        | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS;
 
                     //barrier.flush.layout = vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                     //barrier.flush.layout = determine_image_layouts_result.image_layouts[&version_id].write_layout.into();
@@ -1792,8 +1862,10 @@ impl RenderGraph {
                 } else if depth_attachment.read_image.is_some() {
                     //barrier.invalidate.layout = vk::ImageLayout::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
                     //barrier.invalidate.layout = determine_image_layouts_result.image_layouts[&version_id].read_layout.into();
-                    barrier.invalidate.access_flags |= vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ;
-                    barrier.invalidate.stage_flags |= vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS;
+                    barrier.invalidate.access_flags |=
+                        vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ;
+                    barrier.invalidate.stage_flags |= vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
+                        | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS;
                 } else {
                     assert!(depth_attachment.write_image.is_some());
                     //barrier.flush.layout = vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1808,7 +1880,7 @@ impl RenderGraph {
             //     flushes: flush_barriers
             // });
             barriers.push(RenderGraphNodeImageBarriers {
-                barriers: node_barriers
+                barriers: node_barriers,
             })
         }
 
@@ -1825,11 +1897,12 @@ impl RenderGraph {
         image_constraints: &DetermineImageConstraintsResult,
         physical_images: &AssignPhysicalImagesResult,
         node_barriers: &[RenderGraphNodeImageBarriers],
-        passes: &mut [RenderGraphPass]
+        passes: &mut [RenderGraphPass],
     ) -> Vec<Vec<dsc::SubpassDependency>> {
         println!("-- build_pass_barriers --");
-        const MAX_PIPELINE_FLAG_BITS : usize = 15;
-        let ALL_GRAPHICS : vk::PipelineStageFlags = vk::PipelineStageFlags::from_raw(0b111_1111_1110);
+        const MAX_PIPELINE_FLAG_BITS: usize = 15;
+        let ALL_GRAPHICS: vk::PipelineStageFlags =
+            vk::PipelineStageFlags::from_raw(0b111_1111_1110);
 
         struct ImageState {
             layout: vk::ImageLayout,
@@ -1845,22 +1918,25 @@ impl RenderGraph {
                     layout: vk::ImageLayout::UNDEFINED,
                     pending_flush_access_flags: Default::default(),
                     pending_flush_pipeline_stage_flags: Default::default(),
-                    invalidated: Default::default()
+                    invalidated: Default::default(),
                 }
             }
         }
 
         // to support subpass, probably need image states for each previous subpass
 
-        let mut image_states : Vec<ImageState> = Vec::with_capacity(physical_images.physical_image_versions.len());
-        image_states.resize_with(physical_images.physical_image_versions.len(), || Default::default());
+        let mut image_states: Vec<ImageState> =
+            Vec::with_capacity(physical_images.physical_image_versions.len());
+        image_states.resize_with(physical_images.physical_image_versions.len(), || {
+            Default::default()
+        });
 
         let mut pass_dependencies = Vec::default();
 
         for (pass_index, pass) in passes.iter_mut().enumerate() {
             println!("pass {}", pass_index);
             let mut subpass_dependencies = Vec::default();
-            let mut attachment_initial_layout : Vec<Option<dsc::ImageLayout>> = Default::default();
+            let mut attachment_initial_layout: Vec<Option<dsc::ImageLayout>> = Default::default();
             attachment_initial_layout.resize_with(pass.attachments.len(), || None);
 
             //TODO: This does not support multipass
@@ -1883,19 +1959,26 @@ impl RenderGraph {
 
                     // Include the previous writer's stage/access flags, if there were any
                     invalidate_src_access_flags |= image_state.pending_flush_access_flags;
-                    invalidate_src_pipeline_stage_flags |= image_state.pending_flush_pipeline_stage_flags;
+                    invalidate_src_pipeline_stage_flags |=
+                        image_state.pending_flush_pipeline_stage_flags;
 
                     // layout changes are write operations and can cause hazards. We need to
                     // block on any stages before that are reading or writing
                     let layout_change = image_state.layout != image_barrier.layout;
                     if layout_change {
-                        println!("      layout change! {:?} -> {:?}", image_state.layout, image_barrier.layout);
+                        println!(
+                            "      layout change! {:?} -> {:?}",
+                            image_state.layout, image_barrier.layout
+                        );
                         for i in 0..MAX_PIPELINE_FLAG_BITS {
                             if image_state.invalidated[i] != vk::AccessFlags::empty() {
                                 // Add an execution barrier if we are transitioning the layout
                                 // of something that is already being read from
                                 let pipeline_stage = vk::PipelineStageFlags::from_raw(1 << i);
-                                println!("        add src execution barrier on stage {:?}", pipeline_stage);
+                                println!(
+                                    "        add src execution barrier on stage {:?}",
+                                    pipeline_stage
+                                );
                                 invalidate_src_pipeline_stage_flags |= pipeline_stage;
                                 //invalidate_dst_pipeline_stage_flags |= image_barrier.invalidate.stage_flags;
                                 //invalidate_dst_pipeline_stage_flags |= image_barrier.flush.stage_flags;
@@ -1905,12 +1988,16 @@ impl RenderGraph {
                         }
 
                         // And clear invalidation flag to require the image to be loaded
-                        println!("        cleared all invalidated bits for image {:?}", physical_image_id);
+                        println!(
+                            "        cleared all invalidated bits for image {:?}",
+                            physical_image_id
+                        );
                     }
 
                     // Requirements for this image
                     let mut image_invalidate_access_flags = image_barrier.invalidate.access_flags;
-                    let mut image_invalidate_pipeline_stage_flags = image_barrier.invalidate.stage_flags;
+                    let mut image_invalidate_pipeline_stage_flags =
+                        image_barrier.invalidate.stage_flags;
 
                     //TODO: Should I OR in the flush access/stages? Right now the invalidate barrier is including write
                     // access flags in the invalidate **but only for modifies**
@@ -1920,12 +2007,15 @@ impl RenderGraph {
                     // Check if we have already done invalidates for this image previously, allowing
                     // us to skip some now
                     for i in 0..MAX_PIPELINE_FLAG_BITS {
-                        let pipeline_stage = vk::PipelineStageFlags::from_raw(1<<i);
+                        let pipeline_stage = vk::PipelineStageFlags::from_raw(1 << i);
                         if pipeline_stage.intersects(image_invalidate_pipeline_stage_flags) {
                             // If the resource has been invalidate in this stage, we don't need to include this stage
                             // in the invalidation barrier
                             if image_state.invalidated[i].contains(image_invalidate_access_flags) {
-                                println!("      skipping invalidation for {:?} {:?}", pipeline_stage, image_invalidate_access_flags);
+                                println!(
+                                    "      skipping invalidation for {:?} {:?}",
+                                    pipeline_stage, image_invalidate_access_flags
+                                );
                                 image_invalidate_pipeline_stage_flags &= !pipeline_stage;
                             }
                         }
@@ -1939,7 +2029,10 @@ impl RenderGraph {
                     }
 
                     println!("      Access Flags: {:?}", image_invalidate_access_flags);
-                    println!("      Pipeline Stage Flags: {:?}", image_invalidate_pipeline_stage_flags);
+                    println!(
+                        "      Pipeline Stage Flags: {:?}",
+                        image_invalidate_pipeline_stage_flags
+                    );
 
                     // OR the requirements in
                     invalidate_dst_access_flags |= image_invalidate_access_flags;
@@ -1948,12 +2041,15 @@ impl RenderGraph {
                     // Set the initial layout for the attachment, but only if it's the first time we've seen it
                     //TODO: This is bad and does not properly handle an image being used in multiple ways requiring
                     // multiple layouts
-                    for (attachment_index, attachment) in &mut pass.attachments.iter_mut().enumerate() {
+                    for (attachment_index, attachment) in
+                        &mut pass.attachments.iter_mut().enumerate()
+                    {
                         //println!("      attachment {:?}", attachment.image);
                         if attachment.image == *physical_image_id {
                             if attachment_initial_layout[attachment_index].is_none() {
                                 //println!("        initial layout {:?}", image_barrier.layout);
-                                attachment_initial_layout[attachment_index] = Some(image_state.layout.into());
+                                attachment_initial_layout[attachment_index] =
+                                    Some(image_state.layout.into());
                                 attachment.initial_layout = image_state.layout.into();
                             }
 
@@ -2002,7 +2098,8 @@ impl RenderGraph {
                     // Mark pending flushes as handled
                     //TODO: Check that ! is inverting bits
                     image_state.pending_flush_access_flags &= !invalidate_src_access_flags;
-                    image_state.pending_flush_pipeline_stage_flags &= !invalidate_src_pipeline_stage_flags;
+                    image_state.pending_flush_pipeline_stage_flags &=
+                        !invalidate_src_pipeline_stage_flags;
 
                     // Mark resources that we are invalidating as having been invalidated for
                     // the appropriate pipeline stages
@@ -2018,12 +2115,20 @@ impl RenderGraph {
                 // Build a subpass dependency (EXTERNAL -> 0)
                 let invalidate_subpass_dependency = dsc::SubpassDependency {
                     dependency_flags: dsc::DependencyFlags::Empty,
-                    src_access_mask: dsc::AccessFlags::from_access_flag_mask(invalidate_src_access_flags),
-                    src_stage_mask: dsc::PipelineStageFlags::from_pipeline_stage_mask(invalidate_src_pipeline_stage_flags),
-                    dst_access_mask: dsc::AccessFlags::from_access_flag_mask(invalidate_dst_access_flags),
-                    dst_stage_mask: dsc::PipelineStageFlags::from_pipeline_stage_mask(invalidate_dst_pipeline_stage_flags),
+                    src_access_mask: dsc::AccessFlags::from_access_flag_mask(
+                        invalidate_src_access_flags,
+                    ),
+                    src_stage_mask: dsc::PipelineStageFlags::from_pipeline_stage_mask(
+                        invalidate_src_pipeline_stage_flags,
+                    ),
+                    dst_access_mask: dsc::AccessFlags::from_access_flag_mask(
+                        invalidate_dst_access_flags,
+                    ),
+                    dst_stage_mask: dsc::PipelineStageFlags::from_pipeline_stage_mask(
+                        invalidate_dst_pipeline_stage_flags,
+                    ),
                     src_subpass: dsc::SubpassDependencyIndex::External,
-                    dst_subpass: dsc::SubpassDependencyIndex::Index(0)
+                    dst_subpass: dsc::SubpassDependencyIndex::Index(0),
                 };
                 subpass_dependencies.push(invalidate_subpass_dependency);
 
@@ -2031,7 +2136,8 @@ impl RenderGraph {
                     let image_state = &mut image_states[physical_image_id.0];
 
                     // Queue up flushes to happen later
-                    image_state.pending_flush_pipeline_stage_flags |= image_barrier.flush.stage_flags;
+                    image_state.pending_flush_pipeline_stage_flags |=
+                        image_barrier.flush.stage_flags;
                     image_state.pending_flush_access_flags |= image_barrier.flush.access_flags;
 
                     // If we write something, mark it as no longer invalidated
@@ -2055,14 +2161,14 @@ impl RenderGraph {
                     // }
                 }
 
-
-
                 //TODO: This hack clears final layout for attachments with DONT_CARE store_op. This is happening
                 // for inserted resolves because the color attachment still has a write usage (and must have it
                 // to put the attachment on the renderpass) but this is also creating a flush for the image which
                 // means it gets placed into a layout
                 for (attachment_index, attachment) in &mut pass.attachments.iter_mut().enumerate() {
-                    if attachment.store_op == vk::AttachmentStoreOp::DONT_CARE && attachment.stencil_store_op == vk::AttachmentStoreOp::DONT_CARE {
+                    if attachment.store_op == vk::AttachmentStoreOp::DONT_CARE
+                        && attachment.stencil_store_op == vk::AttachmentStoreOp::DONT_CARE
+                    {
                         attachment.final_layout = dsc::ImageLayout::Undefined;
                     }
                 }
@@ -2074,9 +2180,12 @@ impl RenderGraph {
                         //output_image.
                         //self.image_usages[output_image.usage]
 
-                        let output_physical_image = physical_images.map_image_to_physical[&output_image.usage];
+                        let output_physical_image =
+                            physical_images.map_image_to_physical[&output_image.usage];
 
-                        for (attachment_index, attachment) in &mut pass.attachments.iter_mut().enumerate() {
+                        for (attachment_index, attachment) in
+                            &mut pass.attachments.iter_mut().enumerate()
+                        {
                             if attachment.image == output_physical_image {
                                 attachment.final_layout = output_image.final_layout;
                             }
@@ -2085,7 +2194,6 @@ impl RenderGraph {
                         //TODO: Need a 0 -> EXTERNAL dependency here
                     }
                 }
-
 
                 //TODO: Need to do a dependency? Maybe by adding a flush?
             }
@@ -2152,12 +2260,18 @@ impl RenderGraph {
         //let determine_image_layouts_result = self.determine_image_layouts(&node_execution_order, &image_constraint_results, &assign_physical_images_result);
 
         // Print the physical images
-        self.print_physical_image_usage(&assign_physical_images_result/*, &determine_image_layouts_result*/);
+        self.print_physical_image_usage(
+            &assign_physical_images_result, /*, &determine_image_layouts_result*/
+        );
 
         //
         // Combine nodes into passes where possible
         //
-        let mut passes = self.build_physical_passes(&node_execution_order, &image_constraint_results, &assign_physical_images_result/*, &determine_image_layouts_result*/);
+        let mut passes = self.build_physical_passes(
+            &node_execution_order,
+            &image_constraint_results,
+            &assign_physical_images_result, /*, &determine_image_layouts_result*/
+        );
         println!("Merged Renderpasses:");
         for (index, pass) in passes.iter().enumerate() {
             println!("  pass {}", index);
@@ -2171,7 +2285,11 @@ impl RenderGraph {
             }
         }
 
-        let node_barriers = self.build_node_barriers(&node_execution_order, &image_constraint_results, &assign_physical_images_result/*, &determine_image_layouts_result*/);
+        let node_barriers = self.build_node_barriers(
+            &node_execution_order,
+            &image_constraint_results,
+            &assign_physical_images_result, /*, &determine_image_layouts_result*/
+        );
         println!("Barriers:");
         for (index, pass) in node_barriers.iter().enumerate() {
             println!("  pass {}", index);
@@ -2194,7 +2312,7 @@ impl RenderGraph {
             &image_constraint_results,
             &assign_physical_images_result,
             &node_barriers,
-            &mut passes
+            &mut passes,
         );
 
         println!("Merged Renderpasses:");
@@ -2214,19 +2332,22 @@ impl RenderGraph {
             }
         }
 
-
         //TODO: Cull images that only exist within the lifetime of a single pass? (just passed among
         // subpasses)
-
     }
 
-    fn print_physical_image_usage(&mut self, assign_physical_images_result: &AssignPhysicalImagesResult/*, determine_image_layouts_result: &DetermineImageLayoutsResult*/) {
+    fn print_physical_image_usage(
+        &mut self,
+        assign_physical_images_result: &AssignPhysicalImagesResult, /*, determine_image_layouts_result: &DetermineImageLayoutsResult*/
+    ) {
         println!("Physical image usage:");
-        for (physical_image_id, versions) in &assign_physical_images_result.physical_image_versions {
+        for (physical_image_id, versions) in &assign_physical_images_result.physical_image_versions
+        {
             println!("  image: {:?}", physical_image_id);
             for version_id in versions {
                 println!("  version_id {:?}", version_id);
-                let version = &mut self.image_resources[version_id.index].versions[version_id.version];
+                let version =
+                    &mut self.image_resources[version_id.index].versions[version_id.version];
                 println!("  create: {:?}", version.create_usage);
                 //println!("  create: {:?} {:?}", version.create_usage, self.image_usages[version.create_usage.0].preferred_layout);
                 //println!("    create: {:?} {:?}", version.create_usage, determine_image_layouts_result.image_layouts[version_id].write_layout);

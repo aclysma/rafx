@@ -17,7 +17,6 @@ pub struct RenderGraphImageUsage {
     pub(super) version: RenderGraphImageVersionId,
 
     pub(super) preferred_layout: dsc::ImageLayout,
-
     //pub(super) access_flags: vk::AccessFlags,
     //pub(super) stage_flags: vk::PipelineStageFlags,
     //pub(super) image_aspect_flags: vk::ImageAspectFlags,
@@ -294,16 +293,14 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
         image_aspect_flags: vk::ImageAspectFlags,
     ) -> &mut Self {
         let version_id = self.graph.image_version_id(self.image_id);
-        let usage_id =
-            self.graph
-                .add_image_usage(
-                    version_id,
-                    RenderGraphImageUsageType::Output,
-                    layout,
-                    access_flags,
-                    stage_flags,
-                    image_aspect_flags
-                );
+        let usage_id = self.graph.add_image_usage(
+            version_id,
+            RenderGraphImageUsageType::Output,
+            layout,
+            access_flags,
+            stage_flags,
+            image_aspect_flags,
+        );
 
         let mut image_version = self.graph.image_version_info_mut(self.image_id);
         image_version.read_usages.push(usage_id);
