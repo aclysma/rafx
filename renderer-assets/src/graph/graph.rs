@@ -4,6 +4,7 @@ use crate::vk_description as dsc;
 use crate::vk_description::AttachmentReference;
 use std::collections::HashMap;
 
+/// The specification for the image by image usage
 pub struct DetermineImageConstraintsResult {
     images: FnvHashMap<RenderGraphImageUsageId, RenderGraphImageSpecification>,
 }
@@ -17,54 +18,23 @@ impl DetermineImageConstraintsResult {
     }
 }
 
-pub struct RenderGraphImageVersionLayout {
-    write_layout: dsc::ImageLayout,
-    write_pass_end_layout: dsc::ImageLayout,
-    read_layout: dsc::ImageLayout,
-}
-
-pub struct DetermineImageLayoutsResult {
-    //image_layouts : FnvHashMap<RenderGraphImageUsageId, dsc::ImageLayout>
-    image_layouts : FnvHashMap<RenderGraphImageVersionId, RenderGraphImageVersionLayout>
-}
-
+/// Assignment of usages to actual images. This allows a single image to be passed through a
+/// sequence of reads and writes
 #[derive(Debug)]
 pub struct AssignPhysicalImagesResult {
     map_image_to_physical: FnvHashMap<RenderGraphImageUsageId, PhysicalImageId>,
     physical_image_usages: FnvHashMap<PhysicalImageId, Vec<RenderGraphImageUsageId>>,
     physical_image_versions: FnvHashMap<PhysicalImageId, Vec<RenderGraphImageVersionId>>,
 }
-/*
-struct PhysicalImageState {
-    layout: dsc::ImageLayout,
-    // access_flags: vk::AccessFlags,
-    // stage_flags: vk::PipelineStageFlags,
-    // image_aspect_flags: vk::ImageAspectFlags,
-}
 
-impl Default for PhysicalImageState {
-    fn default() -> Self {
-        PhysicalImageState {
-            layout: dsc::ImageLayout::Undefined,
-            //access_flags: vk::AccessFlags::empty(),
-
-        }
-    }
-}
-*/
-// struct PassSyncFlags {
-//     read_access_flags: vk::AccessFlags,
-//     read_stage_flags: vk::PipelineStageFlags,
-//     write_access_flags: vk::AccessFlags,
-//     write_stage_flags: vk::PipelineStageFlags,
-// }
-
+/// An image that is being provided to the render graph that can be read from
 #[derive(Debug)]
 pub struct RenderGraphInputImage {
     pub usage: RenderGraphImageUsageId,
     pub specification: RenderGraphImageSpecification,
 }
 
+/// An image that is being provided to the render graph that can be written to
 #[derive(Debug)]
 pub struct RenderGraphOutputImage {
     pub usage: RenderGraphImageUsageId,
@@ -75,9 +45,9 @@ pub struct RenderGraphOutputImage {
     pub(super) final_stage_flags: vk::PipelineStageFlags,
 }
 
+/// Represents the invalidate or flush of a RenderGraphPassImageBarriers
 #[derive(Debug)]
 pub struct RenderGraphImageBarrier {
-    //layout: vk::ImageLayout,
     access_flags: vk::AccessFlags,
     stage_flags: vk::PipelineStageFlags
 }
@@ -85,13 +55,14 @@ pub struct RenderGraphImageBarrier {
 impl Default for RenderGraphImageBarrier {
     fn default() -> Self {
         RenderGraphImageBarrier {
-            //layout: vk::ImageLayout::UNDEFINED,
             access_flags: vk::AccessFlags::empty(),
             stage_flags: vk::PipelineStageFlags::empty()
         }
     }
 }
 
+/// Information provided per image used in a pass to properly synchronize access to it from
+/// different passes
 #[derive(Debug)]
 pub struct RenderGraphPassImageBarriers {
     invalidate: RenderGraphImageBarrier,
@@ -109,13 +80,14 @@ impl RenderGraphPassImageBarriers {
     }
 }
 
+/// All the barriers required for a single node (i.e. subpass). Nodes represent passes that may be
+/// merged to be subpasses within a single pass.
 #[derive(Debug)]
 pub struct RenderGraphNodeImageBarriers {
-    //invalidates: FnvHashMap<PhysicalImageId, RenderGraphImageBarrier>,
-    //flushes: FnvHashMap<PhysicalImageId, RenderGraphImageBarrier>,
     barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers>
 }
 
+/// Metadata for a subpass
 #[derive(Debug)]
 pub struct RenderGraphSubpass {
     node: RenderGraphNodeId,
@@ -125,6 +97,7 @@ pub struct RenderGraphSubpass {
     depth_attachment: Option<usize>,
 }
 
+/// Clear value for either a color attachment or depth/stencil attachment
 pub enum AttachmentClearValue {
     Color(vk::ClearColorValue),
     DepthStencil(vk::ClearDepthStencilValue)
@@ -150,6 +123,7 @@ impl std::fmt::Debug for AttachmentClearValue {
     }
 }
 
+/// Attachment for a render pass
 #[derive(Debug)]
 pub struct RenderGraphPassAttachment {
     image: PhysicalImageId,
@@ -164,6 +138,7 @@ pub struct RenderGraphPassAttachment {
     final_layout: dsc::ImageLayout
 }
 
+/// Metadata required to create a renderpass
 #[derive(Debug)]
 pub struct RenderGraphPass {
     attachments: Vec<RenderGraphPassAttachment>,
@@ -171,36 +146,67 @@ pub struct RenderGraphPass {
     // clear colors?
 }
 
-// struct ResourceState
-// {
-//     VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-//     VkImageLayout final_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-//     VkAccessFlags invalidated_types = 0;
-//     VkAccessFlags flushed_types = 0;
-//
-//     VkPipelineStageFlags invalidated_stages = 0;
-//     VkPipelineStageFlags flushed_stages = 0;
-// };
+/// An ID for an image (possibly aliased)
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+struct PhysicalImageId(usize);
 
-//
-// A collection of nodes and resources. Nodes represent an event or process that will occur at
-// a certain time. Resources represent images and buffers that may be read/written by nodes.
-//
+/// An image (possibly aliased)
+struct PhysicalImageInfo {
+    specification: RenderGraphImageSpecification,
+}
+
+#[derive(Default)]
+struct PhysicalImageAllocator {
+    unused_images: FnvHashMap<RenderGraphImageSpecification, Vec<PhysicalImageId>>,
+    allocated_images: Vec<PhysicalImageInfo>,
+}
+
+impl PhysicalImageAllocator {
+    fn allocate(
+        &mut self,
+        specification: &RenderGraphImageSpecification,
+    ) -> PhysicalImageId {
+        if let Some(image) = self
+            .unused_images
+            .entry(specification.clone())
+            .or_default()
+            .pop()
+        {
+            image
+        } else {
+            let id = PhysicalImageId(self.allocated_images.len());
+            self.allocated_images.push(PhysicalImageInfo {
+                specification: specification.clone(),
+            });
+            id
+        }
+    }
+}
+
+/// A collection of nodes and resources. Nodes represent an event or process that will occur at
+/// a certain time. (For now, they just represent subpasses that may be merged with each other.)
+/// Resources represent images and buffers that may be read/written by nodes.
 #[derive(Default, Debug)]
 pub struct RenderGraph {
-    // Nodes that have been registered in the graph
+    /// Nodes that have been registered in the graph
     nodes: Vec<RenderGraphNode>,
 
-    // Image resources that have been registered in the graph. These resources are "virtual" until
-    // the graph is scheduled. In other words, we don't necessarily allocate an image for every
-    // resource as some resources can share the same image internally if their lifetime don't
-    // overlap. Additionally, a resource can be bound to input and output images. If this is the
-    // case, we will try to use those images rather than creating new ones.
+    /// Image resources that have been registered in the graph. These resources are "virtual" until
+    /// the graph is scheduled. In other words, we don't necessarily allocate an image for every
+    /// resource as some resources can share the same image internally if their lifetime don't
+    /// overlap. Additionally, a resource can be bound to input and output images. If this is the
+    /// case, we will try to use those images rather than creating new ones.
     image_resources: Vec<RenderGraphImageResource>,
 
+    /// All read/write accesses to images. Image writes create new "versions" of the image. So all
+    /// image versions have one writer and 0 or more readers. This indirectly defines the order of
+    /// execution for the graph.
     image_usages: Vec<RenderGraphImageUsage>,
 
+    /// Images that are passed into the graph that can be read from
     pub(super) input_images: Vec<RenderGraphInputImage>,
+
+    /// Images that are passed into the graph to be written to.
     pub(super) output_images: Vec<RenderGraphOutputImage>,
 }
 
@@ -450,6 +456,7 @@ impl RenderGraph {
         clear_depth_stencil_value: Option<vk::ClearDepthStencilValue>,
         constraint: RenderGraphImageConstraint,
     ) -> RenderGraphImageUsageId {
+        //TODO: Distinguish between depth, stencil, and depth/stencil (i.e. both)
         let attachment_type = RenderGraphAttachmentType::Depth;
 
         // Add the read to the graph
@@ -545,6 +552,7 @@ impl RenderGraph {
         image: RenderGraphImageUsageId,
         constraint: RenderGraphImageConstraint,
     ) {
+        //TODO: Distinguish between depth, stencil, and depth/stencil (i.e. both)
         let attachment_type = RenderGraphAttachmentType::Depth;
 
         // Add the read to the graph
@@ -614,6 +622,7 @@ impl RenderGraph {
         image: RenderGraphImageUsageId,
         constraint: RenderGraphImageConstraint,
     ) -> RenderGraphImageUsageId {
+        //TODO: Distinguish between depth, stencil, and depth/stencil (i.e. both)
         let attachment_type = RenderGraphAttachmentType::Depth;
 
         // Add the read to the graph
@@ -733,8 +742,8 @@ impl RenderGraph {
         self.image_usages[usage_id.0].version
     }
 
+    // Recursively called to topologically sort the nodes to determine execution order
     // https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
-    // We
     fn visit_node(
         &self,
         node_id: RenderGraphNodeId,
@@ -770,7 +779,7 @@ impl RenderGraph {
         //println!("  Begin visit {:?}", node_id);
         let node = self.node(node_id);
 
-        //TODO: Does the order of visiting here matter? If we consider merging subpasses, trying to
+        // The order of visiting nodes here matters. If we consider merging subpasses, trying to
         // visit a node we want to merge with last will show that there are no indirect dependencies
         // between the merge candidate and the node we are visiting now. However, if there are
         // indirect dependencies, visiting a different node might mark the merge candidate as
@@ -782,14 +791,12 @@ impl RenderGraph {
         // other requirements we have will need to be fulfilled before that node starts
         //
         // Other priorities might be to front-load anything compute-light/GPU-heavy. We can do this
-        // by some sort of flagging/priority system to influence this logic. An end-user could
-        // also use arbitrary dependencies the do nothing but influence the ordering here.
+        // by some sort of flagging/priority system to influence this logic. We could also expose
+        // a way for end-users to add arbitrary dependencies for the sole purpose of influencing the
+        // ordering here.
         //
         // As a first pass implementation, just ensure any merge dependencies are visited last so
         // that we will be more likely to be able to merge passes
-
-        //TODO: Could we recurse to generate a bitset that is returned indicating all dependencies
-        // and then O(n^2) try to dequeue them all in priority order?
 
         //
         // Delay visiting these nodes so that we get the best chance possible of mergeable passes
@@ -883,7 +890,7 @@ impl RenderGraph {
         let mut visited = vec![false; self.nodes.len()];
         let mut ordered_list = Vec::default();
 
-        // Iterate all the images we need to output. This will visit all the nodes we to execute,
+        // Iterate all the images we need to output. This will visit all the nodes we need to execute,
         // potentially leaving out nodes we can cull.
         for output_image_id in &self.output_images {
             // Find the node that creates the output image
@@ -906,20 +913,7 @@ impl RenderGraph {
         ordered_list
     }
 
-    fn merge_passes(
-        &mut self,
-        node_execution_order: &[RenderGraphNodeId],
-    ) {
-        for i in 0..node_execution_order.len() - 1 {
-            let prev = RenderGraphNodeId(i);
-            let next = RenderGraphNodeId(i + 1);
-
-            if self.can_passes_merge(prev, next) {
-                // merge - mainly push next's ID onto previous's merge list
-            }
-        }
-    }
-
+    //TODO: Redundant with can_merge_nodes
     fn can_passes_merge(
         &self,
         prev: RenderGraphNodeId,
@@ -937,46 +931,6 @@ impl RenderGraph {
 
         false
     }
-
-    /*
-    fn determine_images_in_use(
-        &self,
-        node_execution_order: &[RenderGraphNodeId],
-    ) -> FnvHashSet<RenderGraphImageResourceId> {
-        let mut image_versions_in_use = FnvHashSet::default();
-        //let mut images_in_use = vec![false; self.image_resources.len()];
-        for node in node_execution_order {
-            let node = self.node(*node);
-            for create in &node.image_creates {
-                image_versions_in_use.insert(create.image);
-                //images_in_use[create.image.index] = true;
-            }
-
-            for read in &node.image_reads {
-                image_versions_in_use.insert(read.image);
-                //images_in_use[read.image.index] = true;
-            }
-
-            for modify in &node.image_modifies {
-                image_versions_in_use.insert(modify.input);
-                //images_in_use[modify.input.index] = true;
-
-                image_versions_in_use.insert(modify.output);
-                //images_in_use[modify.output.index] = true;
-            }
-        }
-
-        //TODO: Should I add output images too?
-        //TODO: This is per usage
-
-        // println!("Images in use:");
-        // for (image_index, _) in images_in_use.iter().enumerate() {
-        //     println!("  Image {:?}", self.image_resources[image_index]);
-        // }
-
-        image_versions_in_use
-    }
-    */
 
     fn get_create_usage(
         &self,
@@ -1150,12 +1104,14 @@ impl RenderGraph {
             let output_constraint = output_image.specification.clone().into();
             if !output_image_version_state.partial_merge(&output_constraint) {
                 // This would need to be resolved by inserting some sort of fixup
+                /*
                 println!("      *** Found required OUTPUT fixup");
                 println!(
                     "          {:?}",
                     output_image_version_state //.combined_constraints
                 );
                 println!("          {:?}", output_image.specification);
+                */
                 //println!("Image cannot be placed into a form that satisfies all constraints:\n{:#?}\n{:#?}", output_image_version_state.constraint, output_specification);
             }
 
@@ -1176,16 +1132,6 @@ impl RenderGraph {
             println!("    node {:?} {:?}", node_id, node.name());
 
             // Don't need to worry about creates, we back propagate to them when reading/modifying
-            // // Propagate backwards into creates (in case they weren't fully specified)
-            // for image_create in &node.image_creates {
-            //     let image = self.image_version_info(image_create.image);
-            //     println!("  Create image {:?} {:?}", image_create.image, self.image_resource(image_create.image).name);
-            //     let mut version_state = &mut image_version_states[image_create.image.index][image_create.image.version];
-            //     if !version_state.constraint.partial_merge(&image_create.constraint) {
-            //         // Note this to handle later?
-            //         panic!("Image cannot be placed into a form that satisfies all constraints:\n{:#?}\n{:#?}", version_state.constraint, image_create.constraint);
-            //     }
-            // }
 
             //
             // Propagate backwards from reads
@@ -1205,12 +1151,14 @@ impl RenderGraph {
                     .partial_merge(&image_read.constraint)
                 {
                     // This would need to be resolved by inserting some sort of fixup
+                    /*
                     println!("        *** Found required READ fixup");
                     println!(
                         "            {:?}",
                         version_state /*.combined_constraints*/
                     );
                     println!("            {:?}", image_read.constraint);
+                    */
                     //println!("Image cannot be placed into a form that satisfies all constraints:\n{:#?}\n{:#?}", version_state.constraint, image_read.constraint);
                 }
 
@@ -1261,12 +1209,14 @@ impl RenderGraph {
                     .or_default();
                 if !input_state.partial_merge(&output_image_constraint) {
                     // This would need to be resolved by inserting some sort of fixup
+                    /*
                     println!("        *** Found required MODIFY fixup");
                     println!(
                         "            {:?}",
                         input_state /*.combined_constraints*/
                     );
                     println!("            {:?}", image_modify.constraint);
+                    */
                     //println!("Image cannot be placed into a form that satisfies all constraints:\n{:#?}\n{:#?}", input_state.constraint, image_modify.constraint);
                 }
 
@@ -1547,6 +1497,7 @@ impl RenderGraph {
         }
     }
 
+    //TODO: Redundant with can_passes_merge
     fn can_merge_nodes(
         &self,
         before_node_id: RenderGraphNodeId,
@@ -1571,71 +1522,6 @@ impl RenderGraph {
         // For now don't merge anything
         false
     }
-
-    // fn determine_image_layouts(
-    //     &self,
-    //     node_execution_order: &[RenderGraphNodeId],
-    //     image_constraints: &DetermineImageConstraintsResult,
-    //     physical_images: &AssignPhysicalImagesResult,
-    // ) -> DetermineImageLayoutsResult {
-    //     let mut image_layouts : FnvHashMap<RenderGraphImageVersionId, RenderGraphImageVersionLayout> = Default::default();
-    //
-    //     for (physical_image, versions) in &physical_images.physical_image_versions {
-    //         for version in versions {
-    //             let mut version_layout = RenderGraphImageVersionLayout {
-    //                 write_layout: dsc::ImageLayout::Undefined,
-    //                 write_pass_end_layout: dsc::ImageLayout::Undefined,
-    //                 read_layout: dsc::ImageLayout::Undefined
-    //             };
-    //
-    //             let version_info = &self.image_resources[version.index].versions[version.version];
-    //             let write_usage_info = &self.image_usages[version_info.create_usage.0];
-    //             version_layout.write_layout = write_usage_info.preferred_layout;
-    //             println!("Layout Assignment Image: {:?} Version: {:?} Write: {:?}", physical_image, version, version_layout.write_layout);
-    //
-    //             // If we only have one reader, defer the layout transition to occur before the read
-    //             if version_info.read_usages.len() <= 1 {
-    //                 if let Some(read_usage) = version_info.read_usages.first() {
-    //                     let preferred_read_layout = self.image_usages[read_usage.0].preferred_layout;
-    //                     version_layout.read_layout = preferred_read_layout;
-    //
-    //                     if self.image_usages[read_usage.0].usage_type == RenderGraphImageUsageType::Output {
-    //                         version_layout.write_pass_end_layout = version_layout.read_layout;
-    //                         println!("Layout Assignment Image: {:?} Version: {:?} Read: {:?}", physical_image, version, version_layout.read_layout);
-    //                     } else {
-    //                         version_layout.write_pass_end_layout = version_layout.write_layout;
-    //                         println!("Layout Assignment Image: {:?} Version: {:?} Read: {:?}", physical_image, version, version_layout.write_layout);
-    //                     }
-    //                 } else {}
-    //             } else {
-    //                 //TODO: Make this flags based (so we can better support READ_ONLY vs. writable
-    //                 //TODO: Transitioning to GENERAL if there are multiple conflicting readers may
-    //                 // avoid some barriers if all the readers can start at the same time, but we could
-    //                 // instead consider only finding intersections of compatible layouts if it's by
-    //                 // the same node. This would be potentially less parallel but there's a good chance
-    //                 // cases like this wouldn't always be able to run in parallel for other reasons
-    //                 let mut all_reads_preferred_layout = None;
-    //                 for read_usage in &version_info.read_usages {
-    //                     let read_preferred_layout = self.image_usages[read_usage.0].preferred_layout;
-    //                     if all_reads_preferred_layout.is_none() {
-    //                         all_reads_preferred_layout = Some(read_preferred_layout);
-    //                     } else if all_reads_preferred_layout.unwrap() != read_preferred_layout {
-    //                         all_reads_preferred_layout = Some(dsc::ImageLayout::General);
-    //                     }
-    //                 }
-    //
-    //                 version_layout.read_layout = all_reads_preferred_layout.unwrap();
-    //                 version_layout.write_pass_end_layout = version_layout.read_layout;
-    //                 println!("Layout Assignment Image: {:?} Version: {:?} Read: {:?}", physical_image, version, version_layout.read_layout);
-    //             }
-    //             image_layouts.insert(*version, version_layout);
-    //         }
-    //     }
-    //
-    //     DetermineImageLayoutsResult {
-    //         image_layouts
-    //     }
-    // }
 
     fn build_physical_passes(
         &self,
@@ -1668,10 +1554,6 @@ impl RenderGraph {
         if !subpass_nodes.is_empty() {
             pass_node_sets.push(subpass_nodes);
         }
-
-        //TODO: Populate this based on input images
-        //let mut image_layouts : Vec<dsc::ImageLayout> = Vec::with_capacity(physical_images.physical_image_versions.len());
-        //image_layouts.resize_with(physical_images.physical_image_versions.len(), || dsc::ImageLayout::Undefined);
 
         println!("gather pass info");
         let mut passes = Vec::default();
@@ -1736,13 +1618,6 @@ impl RenderGraph {
 
                             attachment.format = specification.format;
                             attachment.samples = specification.samples;
-                            //attachment.initial_layout = image_layouts[physical_image.0];
-
-                            // attachment.initial_layout = if let Some(read_image) = color_attachment.read_image {
-                            //     determine_image_layouts_result.image_layouts[&read_image]
-                            // } else {
-                            //     dsc::ImageLayout::Undefined
-                            // };
                         };
 
                         let store_op = if let Some(write_image) = color_attachment.write_image {
@@ -1757,14 +1632,6 @@ impl RenderGraph {
 
                         attachment.store_op = store_op;
                         attachment.stencil_store_op = vk::AttachmentStoreOp::DONT_CARE;
-                        //attachment.final_layout = determine_image_layouts_result.image_layouts[&version_id].write_pass_end_layout;
-                        //image_layouts[physical_image.0] = attachment.final_layout;
-
-                        // attachment.final_layout = if let Some(write_image) = color_attachment.write_image {
-                        //     determine_image_layouts_result.image_layouts[&write_image]
-                        // } else {
-                        //     dsc::ImageLayout::Undefined
-                        // };
                     }
                 }
 
@@ -1783,10 +1650,6 @@ impl RenderGraph {
                         let mut attachment = &mut pass.attachments[pass_attachment_index];
                         attachment.format = specification.format;
                         attachment.samples = specification.samples;
-                        //attachment.initial_layout = image_layouts[physical_image.0];
-
-                        //attachment.initial_layout = dsc::ImageLayout::Undefined;
-                        //attachment.final_layout = determine_image_layouts_result.image_layouts[&write_image];
 
                         //TODO: Should we skip resolving if there is no reader?
                         let store_op = if !self.image_version_info(write_image).read_usages.is_empty() {
@@ -1797,8 +1660,6 @@ impl RenderGraph {
 
                         attachment.store_op = store_op;
                         attachment.stencil_store_op = vk::AttachmentStoreOp::DONT_CARE;
-                        //attachment.final_layout = determine_image_layouts_result.image_layouts[&version_id].write_pass_end_layout;
-                        //image_layouts[physical_image.0] = attachment.final_layout;
                     }
                 }
 
@@ -1827,13 +1688,6 @@ impl RenderGraph {
 
                         attachment.format = specification.format;
                         attachment.samples = specification.samples;
-                        //attachment.initial_layout = image_layouts[physical_image.0];
-
-                        // attachment.initial_layout = if let Some(read_image) = depth_attachment.read_image {
-                        //     determine_image_layouts_result.image_layouts[&read_image]
-                        // } else {
-                        //     dsc::ImageLayout::Undefined
-                        // };
                     };
 
                     let store_op = if let Some(write_image) = depth_attachment.write_image {
@@ -1848,14 +1702,6 @@ impl RenderGraph {
 
                     attachment.store_op = store_op;
                     attachment.stencil_store_op = store_op;
-                    //attachment.final_layout = determine_image_layouts_result.image_layouts[&version_id].write_pass_end_layout;
-                    //image_layouts[physical_image.0] = attachment.final_layout;
-
-                    // attachment.final_layout = if let Some(write_image) = depth_attachment.write_image {
-                    //     determine_image_layouts_result.image_layouts[&write_image]
-                    // } else {
-                    //     dsc::ImageLayout::Undefined
-                    // };
                 }
 
                 //TODO: Input attachments
@@ -2100,7 +1946,8 @@ impl RenderGraph {
                     invalidate_dst_pipeline_stage_flags |= image_invalidate_pipeline_stage_flags;
 
                     // Set the initial layout for the attachment, but only if it's the first time we've seen it
-                    //TODO: This is bad and does not properly handle an image being used in multiple ways
+                    //TODO: This is bad and does not properly handle an image being used in multiple ways requiring
+                    // multiple layouts
                     for (attachment_index, attachment) in &mut pass.attachments.iter_mut().enumerate() {
                         //println!("      attachment {:?}", attachment.image);
                         if attachment.image == *physical_image_id {
@@ -2371,101 +2218,6 @@ impl RenderGraph {
         //TODO: Cull images that only exist within the lifetime of a single pass? (just passed among
         // subpasses)
 
-
-
-
-
-
-        // struct PhysicalImageUsageInfo {
-        //     // aspect and other bits?
-        //     layout: vk::ImageLayout,
-        //     //bit: vk::ImageAspectFlags,
-        // }
-
-        // let read_requirements = self.determine_physical_image_states(
-        //     &node_execution_order,
-        //     &image_constraint_results,
-        //     &assign_physical_images_result,
-        // );
-
-        // At some point need to walk through nodes to place barriers and see about aliasing/pooling images
-
-        //
-        // Execute the graph
-        //
-        // println!("-------------- EXECUTE --------------");
-        // self.create_renderpasses(
-        //     &node_execution_order,
-        //     &image_constraint_results,
-        //     &assign_physical_images_result,
-        // );
-
-
-
-
-
-        /*
-                for (node_index, node) in self.nodes.iter().enumerate() {
-                    println!("Record node {:?} {:?}", node.id(), node.name());
-                    // if let Some(action) = node_actions[node_index].take() {
-                    //     action.record(self, &image_constraint_results);
-                    // }
-
-                    // Any output may need to be adjusted
-                    for create in &node.image_creates {
-                        println!("Process create {:?}", create);
-                        let reader_count = self.image_version_info(create.image).read_usages.len();
-                        println!("  read count: {}", reader_count);
-                    }
-
-                    // Any output may need to be adjusted
-                    for modify in &node.image_modifies {
-                        println!("Process modify {:?}", modify);
-                        let reader_count = self.image_version_info(modify.output).read_usages.len();
-                        println!("  read count: {}", reader_count);
-                    }
-                }
-        */
-        // * Traverse graphs and figure out all read/write requirements
-        // * See if writers are able to change output to match their readers
-        // * See if writers are able to merge with readers (must be single writer to single reader)
-        //   - Don't bother with it right now
-        // * Try to merge image usage?
-        // *
-        // * Allocate/reuse frame buffers?
-
-        //
-        // Find the lifetimes and sequence of events for all image resources
-        //
-
-        //
-        // Merge passes? Make sure that if we merge A, B, C, that A ends up with all the reads/writes
-        // from B and C. Or.. we can reorder to ensure mergable passes are next to each other
-        //
-
-        //
-        // Optimize ordering to delay nodes that have dependencies that are nearby in the ordering.
-        //
-
-        //
-        // Calculate physical images.
-        //
-        //TODO: If we are binding images to input/output names, we could have the same image bound
-        // for both input and output. They need to have the same physical index. The other way
-        // is we can use CLEAR/LOAD/STORE ops to know read/write and we bind via attachment name
-
-        //
-        // Merge render passes if not already done
-        //
-
-        //
-        // Get rid of images that are only used between subpasses
-        //
-
-        //
-        // Trace backwards to determine what states images should be in?
-        //
-        // Insert barriers? Modify passes? Alias images?
     }
 
     fn print_physical_image_usage(&mut self, assign_physical_images_result: &AssignPhysicalImagesResult/*, determine_image_layouts_result: &DetermineImageLayoutsResult*/) {
@@ -2539,445 +2291,6 @@ impl RenderGraph {
                     }
                 }
             }
-        }
-    }
-
-
-    // fn collect_read_requirements(
-    //     &self,
-    //     node_execution_order: &[RenderGraphNodeId],
-    //     image_constraints: &DetermineImageConstraintsResult,
-    //     physical_images: &AssignPhysicalImagesResult,
-    // ) {
-    // }
-
-    /*
-        fn pick_write_layout(
-            &self,
-            physical_image_state: &mut PhysicalImageState,
-            write_usage_id: Option<RenderGraphImageUsageId>,
-        ) -> dsc::ImageLayout {
-            if write_usage_id.is_none() {
-                return dsc::ImageLayout::Undefined;
-            }
-
-            let version_info = self.image_version_info(write_usage_id.unwrap());
-
-            let mut output_layout = None;
-            //println!("pick_write_layout");
-            for read_usage in &version_info.read_usages {
-                let preferred_layout = self.image_usages[read_usage.0].preferred_layout;
-                //println!("  reader {:?}", preferred_layout);
-                if output_layout.is_none() {
-                    output_layout = Some(preferred_layout);
-                } else if *output_layout.as_ref().unwrap() != preferred_layout {
-                    output_layout = Some(dsc::ImageLayout::General);
-                }
-            }
-
-            let output_layout = output_layout
-                .or_else(|| Some(dsc::ImageLayout::Undefined))
-                .unwrap();
-            physical_image_state.layout = output_layout;
-            //println!("  output {:?}", output_layout);
-            output_layout
-        }
-        //TODO: Do this per image?
-        fn gather_renderpass_sync_flags(&self, node_id: RenderGraphNodeId) -> PassSyncFlags {
-            let node = self.node(node_id);
-
-            let mut read_access_flags = vk::AccessFlags::empty();
-            let mut read_stage_flags = vk::PipelineStageFlags::empty();
-            let mut write_access_flags = vk::AccessFlags::empty();
-            let mut write_stage_flags = vk::PipelineStageFlags::empty();
-
-            for attachment_info in &node.color_attachments {
-                if let Some(attachment_info) = attachment_info {
-                    if let Some(read_image) = attachment_info.read_image {
-                        read_access_flags |= self.image_usages[read_image.0].access_flags;
-                        read_stage_flags |= self.image_usages[read_image.0].stage_flags;
-                    }
-
-                    if let Some(write_image) = attachment_info.write_image {
-                        write_access_flags |= self.image_usages[write_image.0].access_flags;
-                        write_stage_flags |= self.image_usages[write_image.0].stage_flags;
-                    }
-                }
-            }
-
-            for attachment_info in &node.resolve_attachments {
-                if let Some(attachment_info) = attachment_info {
-                    if let Some(write_image) = attachment_info.write_image {
-                        write_access_flags |= self.image_usages[write_image.0].access_flags;
-                        write_stage_flags |= self.image_usages[write_image.0].stage_flags;
-                    }
-                }
-            }
-
-            if let Some(attachment_info) = &node.depth_attachment {
-                if let Some(read_image) = attachment_info.read_image {
-                    read_access_flags |= self.image_usages[read_image.0].access_flags;
-                    read_stage_flags |= self.image_usages[read_image.0].stage_flags;
-                }
-
-                if let Some(write_image) = attachment_info.write_image {
-                    write_access_flags |= self.image_usages[write_image.0].access_flags;
-                    write_stage_flags |= self.image_usages[write_image.0].stage_flags;
-                }
-            }
-
-            PassSyncFlags {
-                read_access_flags,
-                read_stage_flags,
-                write_access_flags,
-                write_stage_flags
-            }
-        }
-
-        fn create_renderpasses(
-            &self,
-            node_execution_order: &[RenderGraphNodeId],
-            image_constraints: &DetermineImageConstraintsResult,
-            physical_images: &AssignPhysicalImagesResult,
-        ) {
-            let mut physical_image_states: FnvHashMap<PhysicalImageId, PhysicalImageState> =
-                Default::default();
-
-            #[derive(Default)]
-            struct PhysicalImageSyncState {
-                pending_write_access_flags: vk::AccessFlags,
-                pending_write_pipeline_stage_flags: vk::PipelineStageFlags,
-                readable_access_flags_per_stage: Vec<vk::AccessFlags>
-            }
-
-            let mut physical_image_sync_states: FnvHashMap<PhysicalImageId, PhysicalImageSyncState> =
-                Default::default();
-
-            #[derive(Debug)]
-            struct ImageRead {
-                image: RenderGraphImageUsageId,
-                pipeline_stage_flags: vk::PipelineStageFlags,
-                access_flags: vk::AccessFlags,
-            }
-
-            #[derive(Debug)]
-            struct ImageWrite {
-                image: RenderGraphImageUsageId,
-                pipeline_stage_flags: vk::PipelineStageFlags,
-                access_flags: vk::AccessFlags,
-            }
-
-            let physical_image_state : FnvHashMap<PhysicalImageId, PhysicalImageSyncState> = FnvHashMap::default();
-
-            for node_id in node_execution_order {
-                let mut attachments = Vec::default();
-                let mut subpass = dsc::SubpassDescription::default();
-                let mut dependencies = dsc::SubpassDependency::default();
-
-                let node_sync_flags = self.gather_renderpass_sync_flags(*node_id);
-
-                let node = self.node(*node_id);
-                println!("record {:?}", node);
-
-                let mut read_images = Vec::default();
-                let mut write_images = Vec::default();
-
-                for (index, attachment_info) in node.color_attachments.iter().enumerate() {
-                    if attachment_info.is_none() {
-                        subpass.color_attachments.push(dsc::AttachmentReference {
-                            attachment: dsc::AttachmentIndex::Unused,
-                            layout: dsc::ImageLayout::Undefined,
-                        });
-
-                        continue;
-                    }
-
-                    let attachment_info = attachment_info.as_ref().unwrap();
-
-                    // Modifies have two images, but the spec will be the same for both of them. The
-                    // algorithm that determines spec must ensure this because while we have distinct
-                    // read/write IDs for the single modify, in the end it must be on a single physical
-                    // image.
-                    let read_or_write_image = attachment_info
-                        .read_image
-                        .or(attachment_info.write_image)
-                        .unwrap();
-                    let specification = image_constraints.specification(read_or_write_image);
-
-                    let physical_image = physical_images
-                        .map_image_to_physical
-                        .get(&read_or_write_image)
-                        .unwrap();
-                    let physical_image_state =
-                        physical_image_states.entry(*physical_image).or_default();
-
-                    let from_layout = physical_image_state.layout;
-                    let to_layout =
-                        self.pick_write_layout(physical_image_state, attachment_info.write_image);
-
-                    let attachment = RenderGraph::create_attachment_description(
-                        specification,
-                        attachment_info.attachment_type,
-                        attachment_info.clear_color_value.is_some(),
-                        from_layout,
-                        to_layout,
-                    );
-
-                    //println!("  Color Attachment {}: {:?}", index, attachment);
-                    subpass.color_attachments.push(dsc::AttachmentReference {
-                        attachment: dsc::AttachmentIndex::Index(attachments.len() as u32),
-                        layout: dsc::ImageLayout::ColorAttachmentOptimal,
-                    });
-
-                    attachments.push(attachment);
-
-                    if let Some(read_image) = attachment_info.read_image {
-                        let access_flags = if attachment_info.write_image.is_some() {
-                            vk::AccessFlags::COLOR_ATTACHMENT_READ | vk::AccessFlags::COLOR_ATTACHMENT_WRITE
-                        } else {
-                            vk::AccessFlags::COLOR_ATTACHMENT_READ
-                        };
-
-                        read_images.push(ImageRead {
-                            image: read_image,
-                            pipeline_stage_flags: vk::PipelineStageFlags::FRAGMENT_SHADER,
-                            access_flags
-                        });
-                    }
-
-                    if let Some(write_image) = attachment_info.write_image {
-                        write_images.push(ImageWrite {
-                            image: write_image,
-                            pipeline_stage_flags: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                            access_flags: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-                        });
-                    }
-                }
-
-                for (index, attachment_info) in node.resolve_attachments.iter().enumerate() {
-                    if attachment_info.is_none() {
-                        subpass.resolve_attachments.push(dsc::AttachmentReference {
-                            attachment: dsc::AttachmentIndex::Unused,
-                            layout: dsc::ImageLayout::Undefined,
-                        });
-
-                        continue;
-                    }
-
-                    let attachment_info = attachment_info.as_ref().unwrap();
-
-                    // Modifies have two images, but the spec will be the same for both of them. The
-                    // algorithm that determines spec must ensure this because while we have distinct
-                    // read/write IDs for the single modify, in the end it must be on a single physical
-                    // image.
-                    let image = attachment_info.write_image.unwrap();
-                    let specification = image_constraints.specification(image);
-                    let physical_image = physical_images.map_image_to_physical.get(&image).unwrap();
-                    let physical_image_state =
-                        physical_image_states.entry(*physical_image).or_default();
-
-                    let from_layout = physical_image_state.layout;
-                    let to_layout = self.pick_write_layout(physical_image_state, Some(image));
-
-                    let attachment = RenderGraph::create_attachment_description(
-                        specification,
-                        attachment_info.attachment_type,
-                        false,
-                        from_layout,
-                        to_layout,
-                    );
-
-                    //println!("  Resolve Attachment {}: {:?}", index, attachment);
-                    subpass.resolve_attachments.push(dsc::AttachmentReference {
-                        attachment: dsc::AttachmentIndex::Index(attachments.len() as u32),
-                        layout: dsc::ImageLayout::ColorAttachmentOptimal,
-                    });
-
-                    attachments.push(attachment);
-
-                    if let Some(write_image) = attachment_info.write_image {
-                        write_images.push(ImageWrite {
-                            image: write_image,
-                            pipeline_stage_flags: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                            access_flags: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-                        });
-                    }
-                }
-
-                if let Some(attachment_info) = &node.depth_attachment {
-                    // Modifies have two images, but the spec will be the same for both of them. The
-                    // algorithm that determines spec must ensure this because while we have distinct
-                    // read/write IDs for the single modify, in the end it must be on a single physical
-                    // image.
-                    let read_or_write_image = attachment_info
-                        .read_image
-                        .or(attachment_info.write_image)
-                        .unwrap();
-                    let specification = image_constraints.specification(read_or_write_image);
-                    let physical_image = physical_images
-                        .map_image_to_physical
-                        .get(&read_or_write_image)
-                        .unwrap();
-                    let physical_image_state =
-                        physical_image_states.entry(*physical_image).or_default();
-
-                    let from_layout = physical_image_state.layout;
-                    let to_layout =
-                        self.pick_write_layout(physical_image_state, attachment_info.write_image);
-
-                    let attachment = RenderGraph::create_attachment_description(
-                        specification,
-                        attachment_info.attachment_type,
-                        attachment_info.clear_depth_stencil_value.is_some(),
-                        from_layout,
-                        to_layout,
-                    );
-
-                    //println!("  Depth Attachment: {:?}", attachment);
-                    subpass.depth_stencil_attachment = Some(AttachmentReference {
-                        attachment: dsc::AttachmentIndex::Index(attachments.len() as u32),
-                        layout: dsc::ImageLayout::DepthAttachmentOptimal, //TODO: There are read/write variants of this
-                    });
-                    attachments.push(attachment);
-
-                    if let Some(read_image) = attachment_info.read_image {
-                        let access_flags = if attachment_info.write_image.is_some() {
-                            vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE
-                        } else {
-                            vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
-                        };
-
-                        read_images.push(ImageRead {
-                            image: read_image,
-                            pipeline_stage_flags: vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-                            access_flags
-                        });
-                    }
-
-                    if let Some(write_image) = attachment_info.write_image {
-                        write_images.push(ImageWrite {
-                            image: write_image,
-                            pipeline_stage_flags: vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-                            access_flags: vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-                        });
-                    }
-
-                    //println!("  attachments\n{:#?}", attachments);
-                    //println!("  subpass\n{:#?}", subpass);
-                }
-
-                println!("  read images: {:?}", read_images);
-                println!("  write images: {:?}", write_images);
-                println!("  reads: {:?}", read_images);
-                println!("  writes: {:?}", write_images);
-
-
-
-
-                for write_image in write_images {
-                    let physical_image = *physical_images.map_image_to_physical.get(&write_image.image).unwrap();
-                    let sync_state = physical_image_sync_states.get_mut(&physical_image).unwrap();
-                    sync_state.pending_write_access_flags |= write_image.access_flags;
-                    sync_state.pending_write_pipeline_stage_flags |= write_image.pipeline_stage_flags;
-                }
-            }
-        }
-
-        fn create_attachment_description(
-            //attachment_info: &RenderGraphPassColorAttachmentInfo,
-            specification: &RenderGraphImageSpecification,
-            attachment_type: RenderGraphPassAttachmentType,
-            has_clear_color: bool,
-            from_layout: dsc::ImageLayout,
-            to_layout: dsc::ImageLayout,
-        ) -> dsc::AttachmentDescription {
-            let flags = dsc::AttachmentDescriptionFlags::None;
-            // TODO: Look up if aliasing
-            let format = specification.format;
-            let samples = specification.samples;
-            let load_op = match attachment_type {
-                RenderGraphPassAttachmentType::Create => {
-                    if has_clear_color {
-                        dsc::AttachmentLoadOp::Clear
-                    } else {
-                        dsc::AttachmentLoadOp::DontCare
-                    }
-                }
-                RenderGraphPassAttachmentType::Read => dsc::AttachmentLoadOp::Load,
-                RenderGraphPassAttachmentType::Modify => dsc::AttachmentLoadOp::Load,
-            };
-
-            let store_op = match attachment_type {
-                RenderGraphPassAttachmentType::Read => dsc::AttachmentStoreOp::DontCare,
-                RenderGraphPassAttachmentType::Create | RenderGraphPassAttachmentType::Modify => {
-                    if to_layout != dsc::ImageLayout::Undefined {
-                        dsc::AttachmentStoreOp::Store
-                    } else {
-                        dsc::AttachmentStoreOp::DontCare
-                    }
-                }
-            };
-
-            let stencil_load_op = dsc::AttachmentLoadOp::DontCare;
-            let stencil_store_op = dsc::AttachmentStoreOp::DontCare;
-            //TODO: Can we set DONT_CARE on an output if the downstream readers are culled?
-            let attachment = dsc::AttachmentDescription {
-                flags: dsc::AttachmentDescriptionFlags::None,
-                format: dsc::AttachmentFormat::Format(format.into()),
-                samples: dsc::SampleCountFlags::from_vk_sample_count_flags(samples).unwrap(),
-                load_op,
-                store_op,
-                stencil_load_op,
-                stencil_store_op,
-                initial_layout: from_layout,
-                final_layout: to_layout,
-                // pub flags: AttachmentDescriptionFlags,
-                // pub format: AttachmentFormat,
-                // pub samples: SampleCountFlags,
-                // pub load_op: AttachmentLoadOp,
-                // pub store_op: AttachmentStoreOp,
-                // pub stencil_load_op: AttachmentLoadOp,
-                // pub stencil_store_op: AttachmentStoreOp,
-                // pub initial_layout: ImageLayout,
-                // pub final_layout: ImageLayout,
-            };
-            attachment
-        }
-        */
-
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-struct PhysicalImageId(usize);
-
-struct PhysicalImageInfo {
-    specification: RenderGraphImageSpecification,
-}
-
-#[derive(Default)]
-struct PhysicalImageAllocator {
-    unused_images: FnvHashMap<RenderGraphImageSpecification, Vec<PhysicalImageId>>,
-    allocated_images: Vec<PhysicalImageInfo>,
-}
-
-impl PhysicalImageAllocator {
-    fn allocate(
-        &mut self,
-        specification: &RenderGraphImageSpecification,
-    ) -> PhysicalImageId {
-        if let Some(image) = self
-            .unused_images
-            .entry(specification.clone())
-            .or_default()
-            .pop()
-        {
-            image
-        } else {
-            let id = PhysicalImageId(self.allocated_images.len());
-            self.allocated_images.push(PhysicalImageInfo {
-                specification: specification.clone(),
-            });
-            id
         }
     }
 }

@@ -26,22 +26,20 @@ pub struct RenderGraphImageUsage {
 pub type RenderGraphResourceName = &'static str;
 
 //
-// The state of an image
+// The immutable aspects of an image
 //
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RenderGraphImageSpecification {
-    //pub layout: vk::ImageLayout,
     pub samples: vk::SampleCountFlags,
     pub format: vk::Format,
     pub queue: u32,
 }
 
 //
-// Constraints on an image. Constraints are set per-field
+// Constraints on an image. Constraints are set per-field and start out None (i.e. unconstrained)
 //
 #[derive(Default, Clone, Debug)]
 pub struct RenderGraphImageConstraint {
-    //pub layout: Option<vk::ImageLayout>,
     pub samples: Option<vk::SampleCountFlags>,
     pub format: Option<vk::Format>,
     pub queue: Option<u32>, // format? size?
@@ -50,7 +48,6 @@ pub struct RenderGraphImageConstraint {
 impl From<RenderGraphImageSpecification> for RenderGraphImageConstraint {
     fn from(specification: RenderGraphImageSpecification) -> Self {
         RenderGraphImageConstraint {
-            //layout: Some(specification.layout),
             samples: Some(specification.samples),
             format: Some(specification.format),
             queue: Some(specification.queue),
@@ -77,9 +74,6 @@ impl RenderGraphImageConstraint {
         &self,
         other: &RenderGraphImageConstraint,
     ) -> bool {
-        // if self.layout.is_some() && other.layout.is_some() && self.layout != other.layout {
-        //     return false;
-        // }
         if self.samples.is_some() && other.samples.is_some() && self.samples != other.samples {
             return false;
         }
@@ -101,9 +95,6 @@ impl RenderGraphImageConstraint {
             return false;
         }
 
-        // if self.layout.is_none() {
-        //     self.layout = other.layout;
-        // }
         if self.samples.is_none() && other.samples.is_some() {
             self.samples = other.samples;
         }
@@ -122,11 +113,6 @@ impl RenderGraphImageConstraint {
         other: &RenderGraphImageConstraint,
     ) -> bool {
         let mut complete_merge = true;
-        // if self.layout.is_some() && other.layout.is_some() && self.layout != other.layout {
-        //     complete_merge = false;
-        // } else {
-        //     self.layout = other.layout;
-        // }
 
         if self.samples.is_some() && other.samples.is_some() && self.samples != other.samples {
             complete_merge = false;
@@ -195,7 +181,6 @@ impl RenderGraphImageResourceVersionInfo {
     ) -> Self {
         RenderGraphImageResourceVersionInfo {
             creator_node: creator,
-            //usages: Default::default(),
             create_usage,
             read_usages: Default::default(),
         }
