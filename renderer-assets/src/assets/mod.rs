@@ -20,6 +20,7 @@ pub use pipeline::MaterialAssetData;
 pub use pipeline::MaterialPass;
 pub use pipeline::MaterialPassSwapchainResources;
 pub use pipeline::MaterialPassData;
+pub use pipeline::MaterialPassDataRenderpassRef;
 pub use pipeline::SlotLocation;
 pub use pipeline::SlotNameLookup;
 pub use pipeline::MaterialInstanceSlotAssignment;

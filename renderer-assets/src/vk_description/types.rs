@@ -588,6 +588,17 @@ impl Into<vk::AttachmentLoadOp> for AttachmentLoadOp {
     }
 }
 
+impl From<vk::AttachmentLoadOp> for AttachmentLoadOp {
+    fn from(other: vk::AttachmentLoadOp) -> AttachmentLoadOp {
+        match other {
+            vk::AttachmentLoadOp::LOAD => AttachmentLoadOp::Load,
+            vk::AttachmentLoadOp::CLEAR => AttachmentLoadOp::Clear,
+            vk::AttachmentLoadOp::DONT_CARE => AttachmentLoadOp::DontCare,
+            _ => unimplemented!()
+        }
+    }
+}
+
 impl Default for AttachmentLoadOp {
     fn default() -> Self {
         AttachmentLoadOp::Load
@@ -608,6 +619,17 @@ impl Into<vk::AttachmentStoreOp> for AttachmentStoreOp {
         }
     }
 }
+
+impl From<vk::AttachmentStoreOp> for AttachmentStoreOp {
+    fn from(other: vk::AttachmentStoreOp) -> AttachmentStoreOp {
+        match other {
+            vk::AttachmentStoreOp::STORE => AttachmentStoreOp::Store,
+            vk::AttachmentStoreOp::DONT_CARE => AttachmentStoreOp::DontCare,
+            _ => unimplemented!()
+        }
+    }
+}
+
 
 impl Default for AttachmentStoreOp {
     fn default() -> Self {

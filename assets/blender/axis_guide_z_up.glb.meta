@@ -1,40 +1,40 @@
 (
     version: 1,
-    import_hash: Some(17333201790136671985),
-    importer_version: 23,
+    import_hash: Some(16516563977208503885),
+    importer_version: 24,
     importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
     importer_options: (),
     importer_state: (
-        buffer_asset_uuids: {
-            Index(0): "9ba1504a-6d21-40cb-8673-5325d0fc77f5",
-            Index(1): "ee2ef02d-e8b0-43d9-8ec3-baf529fb9adc",
-        },
-        image_asset_uuids: {},
-        material_asset_uuids: {
-            Name("XAxisMaterial"): "7545833d-bd86-4874-a0e9-f92138a80812",
-            Name("YAxisMaterial"): "a9b12618-e99c-4066-8247-26a83fa104f4",
-            Name("ZAxisMaterial"): "71b1273e-46a5-4611-a124-6545cee63e6b",
-        },
-        material_instance_asset_uuids: {
-            Name("XAxisMaterial"): "6c3143ad-851d-4ef1-b33e-5a7285b87c08",
-            Name("YAxisMaterial"): "1da74299-89e4-46a6-ad87-3cff3f433dff",
-            Name("ZAxisMaterial"): "42b6ab08-55d6-4b27-a17e-4d3295c99f89",
-        },
-        mesh_asset_uuids: {
-            Name("axis"): "21ba465c-57f7-47de-9dd5-6b22060eaec3",
-        },
+        buffer_asset_uuids: [
+            (Index(0), "e0da1393-aa7f-418a-90a7-3ebed015743d"),
+            (Index(1), "36934128-1171-432a-9ddc-f926e5b4529e"),
+        ],
+        image_asset_uuids: [],
+        material_asset_uuids: [
+            (Name("XAxisMaterial"), "7caf23b3-b7a8-48e7-9ac7-8d71f344ac54"),
+            (Name("YAxisMaterial"), "e5b4fdb1-6e61-4495-8df6-11a8d99653a4"),
+            (Name("ZAxisMaterial"), "ac4d4e0e-f209-4dfe-b3b7-50a9d7ee5550"),
+        ],
+        material_instance_asset_uuids: [
+            (Name("XAxisMaterial"), "6601222d-9a01-4e84-9479-20aabca21548"),
+            (Name("YAxisMaterial"), "2c6f6ebb-7672-4a95-903e-80cb031b3bd0"),
+            (Name("ZAxisMaterial"), "b829fcc1-419a-4a03-b14f-5316716344c4"),
+        ],
+        mesh_asset_uuids: [
+            (Name("axis"), "3311766d-4fda-4017-bc0b-92fecaf1a652"),
+        ],
     ),
     assets: [
         (
-            id: "a9b12618-e99c-4066-8247-26a83fa104f4",
+            id: "e5b4fdb1-6e61-4495-8df6-11a8d99653a4",
             search_tags: [
                 ("material_name", Some("YAxisMaterial")),
                 ("file_name", Some("axis_guide_z_up.glb")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 8010672248958914969,
-                id: "a9b12618-e99c-4066-8247-26a83fa104f4",
+                hash: 17995462137993180734,
+                id: "e5b4fdb1-6e61-4495-8df6-11a8d99653a4",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -44,15 +44,15 @@
             )),
         ),
         (
-            id: "7545833d-bd86-4874-a0e9-f92138a80812",
+            id: "7caf23b3-b7a8-48e7-9ac7-8d71f344ac54",
             search_tags: [
                 ("material_name", Some("XAxisMaterial")),
                 ("file_name", Some("axis_guide_z_up.glb")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 13987114730966447923,
-                id: "7545833d-bd86-4874-a0e9-f92138a80812",
+                hash: 6943116884593044979,
+                id: "7caf23b3-b7a8-48e7-9ac7-8d71f344ac54",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -62,15 +62,15 @@
             )),
         ),
         (
-            id: "71b1273e-46a5-4611-a124-6545cee63e6b",
+            id: "ac4d4e0e-f209-4dfe-b3b7-50a9d7ee5550",
             search_tags: [
                 ("material_name", Some("ZAxisMaterial")),
                 ("file_name", Some("axis_guide_z_up.glb")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 2066931326281839953,
-                id: "71b1273e-46a5-4611-a124-6545cee63e6b",
+                hash: 1810966058574175755,
+                id: "ac4d4e0e-f209-4dfe-b3b7-50a9d7ee5550",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -80,15 +80,15 @@
             )),
         ),
         (
-            id: "1da74299-89e4-46a6-ad87-3cff3f433dff",
+            id: "2c6f6ebb-7672-4a95-903e-80cb031b3bd0",
             search_tags: [
                 ("material_name", Some("YAxisMaterial")),
                 ("file_name", Some("axis_guide_z_up.glb")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 8220893217581146256,
-                id: "1da74299-89e4-46a6-ad87-3cff3f433dff",
+                hash: 13049751361972259579,
+                id: "2c6f6ebb-7672-4a95-903e-80cb031b3bd0",
                 build_deps: [
                     Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
                     Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
@@ -104,15 +104,15 @@
             )),
         ),
         (
-            id: "6c3143ad-851d-4ef1-b33e-5a7285b87c08",
+            id: "6601222d-9a01-4e84-9479-20aabca21548",
             search_tags: [
                 ("material_name", Some("XAxisMaterial")),
                 ("file_name", Some("axis_guide_z_up.glb")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 2768871318511981926,
-                id: "6c3143ad-851d-4ef1-b33e-5a7285b87c08",
+                hash: 10361018355519852062,
+                id: "6601222d-9a01-4e84-9479-20aabca21548",
                 build_deps: [
                     Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
                     Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
@@ -128,15 +128,15 @@
             )),
         ),
         (
-            id: "42b6ab08-55d6-4b27-a17e-4d3295c99f89",
+            id: "b829fcc1-419a-4a03-b14f-5316716344c4",
             search_tags: [
                 ("material_name", Some("ZAxisMaterial")),
                 ("file_name", Some("axis_guide_z_up.glb")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 9884663839490339648,
-                id: "42b6ab08-55d6-4b27-a17e-4d3295c99f89",
+                hash: 12013841376367090174,
+                id: "b829fcc1-419a-4a03-b14f-5316716344c4",
                 build_deps: [
                     Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
                     Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
@@ -152,14 +152,14 @@
             )),
         ),
         (
-            id: "9ba1504a-6d21-40cb-8673-5325d0fc77f5",
+            id: "e0da1393-aa7f-418a-90a7-3ebed015743d",
             search_tags: [
                 ("file_name", Some("axis_guide_z_up.glb")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 4012559046281820437,
-                id: "9ba1504a-6d21-40cb-8673-5325d0fc77f5",
+                hash: 17050773326538523876,
+                id: "e0da1393-aa7f-418a-90a7-3ebed015743d",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -169,14 +169,14 @@
             )),
         ),
         (
-            id: "ee2ef02d-e8b0-43d9-8ec3-baf529fb9adc",
+            id: "36934128-1171-432a-9ddc-f926e5b4529e",
             search_tags: [
                 ("file_name", Some("axis_guide_z_up.glb")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 11841374828646233204,
-                id: "ee2ef02d-e8b0-43d9-8ec3-baf529fb9adc",
+                hash: 14895288815462862812,
+                id: "36934128-1171-432a-9ddc-f926e5b4529e",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
@@ -186,34 +186,34 @@
             )),
         ),
         (
-            id: "21ba465c-57f7-47de-9dd5-6b22060eaec3",
+            id: "3311766d-4fda-4017-bc0b-92fecaf1a652",
             search_tags: [
                 ("mesh_name", Some("axis")),
                 ("file_name", Some("axis_guide_z_up.glb")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 12031758234511465227,
-                id: "21ba465c-57f7-47de-9dd5-6b22060eaec3",
+                hash: 15704547777761002890,
+                id: "3311766d-4fda-4017-bc0b-92fecaf1a652",
                 build_deps: [
-                    Uuid("1da74299-89e4-46a6-ad87-3cff3f433dff"),
-                    Uuid("71b1273e-46a5-4611-a124-6545cee63e6b"),
-                    Uuid("6c3143ad-851d-4ef1-b33e-5a7285b87c08"),
-                    Uuid("42b6ab08-55d6-4b27-a17e-4d3295c99f89"),
-                    Uuid("9ba1504a-6d21-40cb-8673-5325d0fc77f5"),
-                    Uuid("7545833d-bd86-4874-a0e9-f92138a80812"),
-                    Uuid("ee2ef02d-e8b0-43d9-8ec3-baf529fb9adc"),
-                    Uuid("a9b12618-e99c-4066-8247-26a83fa104f4"),
+                    Uuid("7caf23b3-b7a8-48e7-9ac7-8d71f344ac54"),
+                    Uuid("36934128-1171-432a-9ddc-f926e5b4529e"),
+                    Uuid("e0da1393-aa7f-418a-90a7-3ebed015743d"),
+                    Uuid("e5b4fdb1-6e61-4495-8df6-11a8d99653a4"),
+                    Uuid("6601222d-9a01-4e84-9479-20aabca21548"),
+                    Uuid("2c6f6ebb-7672-4a95-903e-80cb031b3bd0"),
+                    Uuid("b829fcc1-419a-4a03-b14f-5316716344c4"),
+                    Uuid("ac4d4e0e-f209-4dfe-b3b7-50a9d7ee5550"),
                 ],
                 load_deps: [
-                    Uuid("ee2ef02d-e8b0-43d9-8ec3-baf529fb9adc"),
-                    Uuid("9ba1504a-6d21-40cb-8673-5325d0fc77f5"),
-                    Uuid("a9b12618-e99c-4066-8247-26a83fa104f4"),
-                    Uuid("71b1273e-46a5-4611-a124-6545cee63e6b"),
-                    Uuid("7545833d-bd86-4874-a0e9-f92138a80812"),
-                    Uuid("6c3143ad-851d-4ef1-b33e-5a7285b87c08"),
-                    Uuid("42b6ab08-55d6-4b27-a17e-4d3295c99f89"),
-                    Uuid("1da74299-89e4-46a6-ad87-3cff3f433dff"),
+                    Uuid("2c6f6ebb-7672-4a95-903e-80cb031b3bd0"),
+                    Uuid("e5b4fdb1-6e61-4495-8df6-11a8d99653a4"),
+                    Uuid("36934128-1171-432a-9ddc-f926e5b4529e"),
+                    Uuid("e0da1393-aa7f-418a-90a7-3ebed015743d"),
+                    Uuid("7caf23b3-b7a8-48e7-9ac7-8d71f344ac54"),
+                    Uuid("b829fcc1-419a-4a03-b14f-5316716344c4"),
+                    Uuid("6601222d-9a01-4e84-9479-20aabca21548"),
+                    Uuid("ac4d4e0e-f209-4dfe-b3b7-50a9d7ee5550"),
                 ],
                 compression: None,
                 compressed_size: Some(248),

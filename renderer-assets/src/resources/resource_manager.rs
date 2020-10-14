@@ -35,6 +35,7 @@ use crate::resources::swapchain_management::ActiveSwapchainSurfaceInfoSet;
 use crate::resources::descriptor_sets::{DescriptorSetAllocator, DescriptorSetAllocatorManager};
 use crate::resources::upload::{UploadManager, ImageUploadOpResult, BufferUploadOpResult};
 use crossbeam_channel::Sender;
+use crate::assets::MaterialPassDataRenderpassRef;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -674,10 +675,15 @@ impl ResourceManager {
                 .unwrap();
             let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
 
+            let renderpass_handle = match &pass.renderpass {
+                MaterialPassDataRenderpassRef::Asset(asset) => asset,
+                MaterialPassDataRenderpassRef::LookupByPhaseName => unimplemented!()
+            };
+
             let loaded_renderpass_asset = self
                 .loaded_assets
                 .renderpasses
-                .get_latest(pass.renderpass.load_handle())
+                .get_latest(renderpass_handle.load_handle())
                 .unwrap();
             let renderpass_asset = loaded_renderpass_asset.data.clone();
 

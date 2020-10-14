@@ -115,10 +115,16 @@ pub struct MaterialPassShaderInterface {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum MaterialPassDataRenderpassRef {
+    Asset(Handle<RenderpassAsset>),
+    LookupByPhaseName
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialPassData {
     pub phase: String,
     pub pipeline: Handle<PipelineAsset>,
-    pub renderpass: Handle<RenderpassAsset>,
+    pub renderpass: MaterialPassDataRenderpassRef,
     pub shaders: Vec<PipelineShaderStage>,
     pub shader_interface: MaterialPassShaderInterface,
 }

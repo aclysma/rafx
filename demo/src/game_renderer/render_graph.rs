@@ -1,28 +1,9 @@
+
 use ash::vk;
-use crate::vk_description as dsc;
+use renderer::assets::vk_description as dsc;
+use renderer::assets::graph::*;
 
-mod graph;
-use graph::*;
-pub use graph::RenderGraph;
-
-mod graph_image;
-use graph_image::*;
-pub use graph_image::RenderGraphImageUsageId;
-pub use graph_image::RenderGraphImageConstraint;
-pub use graph_image::RenderGraphImageSpecification;
-
-mod graph_node;
-use graph_node::*;
-
-#[test]
-fn test_graph3() {
-    // - Should there be some way to "pull forward" future constraints to some point?
-    // - Maybe we just rely on programmer setting the constraint where they want it since they
-    //   can check what the swapchain image or whatever would be anyways. Likely a requirement
-    //   since they'd need to set up the shaders properly for it.
-    // - Don't need to merge renderpasses yet
-    // - Could make renderpass merging manual/opt-in and assert if it can't merge
-    // - Or just do it automatically
+pub fn setup_graph() {
 
     let color_format = vk::Format::R8G8B8A8_SRGB;
     let depth_format = vk::Format::D32_SFLOAT;

@@ -3,7 +3,7 @@
         (
             phase: "Opaque",
             pipeline: "imgui.pipeline",
-            renderpass: "ui.renderpass",
+            renderpass: Asset("ui.renderpass"),
             shaders: [
                 (
                     stage: Vertex,
