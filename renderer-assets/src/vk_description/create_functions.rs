@@ -165,6 +165,22 @@ pub fn create_renderpass(
     unsafe { device.create_render_pass(&*create_info, None) }
 }
 
+pub fn create_framebuffer(
+    device: &ash::Device,
+    renderpass: vk::RenderPass,
+    attachments: &[vk::ImageView],
+    framebuffer_meta: &dsc::FramebufferMeta,
+) -> VkResult<vk::Framebuffer> {
+    let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
+        .render_pass(renderpass)
+        .attachments(attachments)
+        .width(framebuffer_meta.width)
+        .height(framebuffer_meta.height)
+        .layers(framebuffer_meta.layers);
+
+    unsafe { device.create_framebuffer(&frame_buffer_create_info, None) }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn create_graphics_pipelines(
     device: &ash::Device,

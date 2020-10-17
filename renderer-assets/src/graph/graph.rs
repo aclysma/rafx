@@ -4,6 +4,8 @@ use crate::vk_description as dsc;
 use crate::vk_description::{AttachmentReference, AttachmentDescription, SwapchainSurfaceInfo};
 use std::collections::HashMap;
 use ash::vk::ClearValue;
+use crate::resources::{ResourceArc, ImageViewResource};
+use crate::graph::prepared_graph::PreparedRenderGraphOutputImage;
 
 /// The specification for the image by image usage
 pub struct DetermineImageConstraintsResult {
@@ -59,6 +61,7 @@ pub struct RenderGraphOutputImage {
     pub output_image_id: RenderGraphOutputImageId,
     pub usage: RenderGraphImageUsageId,
     pub specification: RenderGraphImageSpecification,
+    pub dst_image: ResourceArc<ImageViewResource>,
 
     pub(super) final_layout: dsc::ImageLayout,
     pub(super) final_access_flags: vk::AccessFlags,
@@ -2822,7 +2825,7 @@ impl RenderGraph {
             swapchain_info,
         );
 
-        let mut output_images: FnvHashMap<PhysicalImageId, RenderGraphOutputImageId> =
+        let mut output_images: FnvHashMap<PhysicalImageId, PreparedRenderGraphOutputImage> =
             Default::default();
         for output_image in &self.output_images {
             let output_image_physical_id =
@@ -2832,7 +2835,13 @@ impl RenderGraph {
             //     "Output: {:?} {:?}",
             //     output_image_physical_id, output_image.output_image_id
             // );
-            output_images.insert(output_image_physical_id, output_image.output_image_id);
+            output_images.insert(
+                output_image_physical_id,
+                PreparedRenderGraphOutputImage {
+                    output_id: output_image.output_image_id,
+                    dst_image: output_image.dst_image.clone(),
+                },
+            );
         }
 
         let mut intermediate_images: FnvHashMap<PhysicalImageId, RenderGraphImageSpecification> =
@@ -2869,8 +2878,8 @@ impl RenderGraph {
         }
 
         println!("-- IMAGES --");
-        for (physical_id, output_id) in &output_images {
-            println!("Output Image: {:?} {:?}", physical_id, output_id);
+        for (physical_id, output_image) in &output_images {
+            println!("Output Image: {:?} {:?}", physical_id, output_image);
         }
         for (physical_id, intermediate_image_spec) in &intermediate_images {
             println!(

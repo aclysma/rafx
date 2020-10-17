@@ -1,6 +1,7 @@
 use ash::vk;
 use super::*;
 use crate::vk_description as dsc;
+use crate::resources::{ResourceArc, ImageViewResource};
 
 #[derive(Debug, Copy, Clone)]
 pub struct RenderGraphOutputImageId(pub usize);
@@ -300,7 +301,7 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
     // the bound resource would have been left in.
     pub fn set_output_image(
         &mut self,
-        dst_image: (), /*ResourceArc<ImageViewResource>*/
+        dst_image: ResourceArc<ImageViewResource>,
         state: RenderGraphImageSpecification,
         layout: dsc::ImageLayout,
         access_flags: vk::AccessFlags,
@@ -325,6 +326,7 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
             output_image_id,
             usage: usage_id,
             specification: state,
+            dst_image,
             final_layout: layout,
             final_access_flags: access_flags,
             final_stage_flags: stage_flags,

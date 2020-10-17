@@ -59,6 +59,8 @@ where
     ResourceT: VkResource + Clone,
 {
     resources: FnvHashMap<ResourceHash, WeakResourceArc<ResourceT>>,
+    //TODO: Add support for "cancelling" dropping stuff. This would likely be a ring of hashmaps.
+    // that gets cycled.
     drop_sink: VkResourceDropSink<ResourceT>,
     drop_tx: Sender<ResourceWithHash<ResourceT>>,
     drop_rx: Receiver<ResourceWithHash<ResourceT>>,
@@ -196,6 +198,13 @@ pub struct RenderPassKey {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FrameBufferKey {
+    renderpass: dsc::RenderPass,
+    image_view_keys: Vec<ImageViewKey>,
+    framebuffer_meta: dsc::FramebufferMeta,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GraphicsPipelineKey {
     pipeline_layout: dsc::PipelineLayout,
     renderpass: dsc::RenderPass,
@@ -227,6 +236,7 @@ pub struct ResourceMetrics {
     pub descriptor_set_layout_count: usize,
     pub pipeline_layout_count: usize,
     pub renderpass_count: usize,
+    pub framebuffer_count: usize,
     pub pipeline_count: usize,
     pub image_count: usize,
     pub image_view_count: usize,
@@ -270,7 +280,7 @@ impl VkResource for PipelineLayoutResource {
 pub struct PipelineResource {
     pub pipelines: Vec<vk::Pipeline>,
     pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
-    pub renderpass: ResourceArc<vk::RenderPass>,
+    pub renderpass: ResourceArc<RenderPassResource>,
 }
 
 impl VkResource for PipelineResource {
@@ -287,9 +297,43 @@ impl VkResource for PipelineResource {
 }
 
 #[derive(Debug, Clone)]
+pub struct RenderPassResource {
+    pub renderpass: vk::RenderPass,
+    pub renderpass_key: RenderPassKey,
+}
+
+impl VkResource for RenderPassResource {
+    fn destroy(
+        device_context: &VkDeviceContext,
+        resource: Self,
+    ) -> VkResult<()> {
+        VkResource::destroy(device_context, resource.renderpass)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FramebufferResource {
+    pub framebuffer: vk::Framebuffer,
+    pub framebuffer_key: FrameBufferKey,
+    pub renderpass: ResourceArc<RenderPassResource>,
+    pub attachments: Vec<ResourceArc<ImageViewResource>>,
+}
+
+impl VkResource for FramebufferResource {
+    fn destroy(
+        device_context: &VkDeviceContext,
+        resource: Self,
+    ) -> VkResult<()> {
+        VkResource::destroy(device_context, resource.framebuffer)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ImageViewResource {
     pub image_view: vk::ImageView,
     pub image: ResourceArc<VkImageRaw>,
+    // The key is not available for resources created outside of ResourceLookup
+    pub image_view_key: Option<ImageViewKey>,
 }
 
 impl VkResource for ImageViewResource {
@@ -315,7 +359,8 @@ pub struct ResourceLookupSet {
     shader_modules: ResourceLookup<dsc::ShaderModule, vk::ShaderModule>,
     descriptor_set_layouts: ResourceLookup<dsc::DescriptorSetLayout, DescriptorSetLayoutResource>,
     pipeline_layouts: ResourceLookup<dsc::PipelineLayout, PipelineLayoutResource>,
-    render_passes: ResourceLookup<RenderPassKey, vk::RenderPass>,
+    render_passes: ResourceLookup<RenderPassKey, RenderPassResource>,
+    framebuffers: ResourceLookup<FrameBufferKey, FramebufferResource>,
     graphics_pipelines: ResourceLookup<GraphicsPipelineKey, PipelineResource>,
     images: ResourceLookup<ImageKey, VkImageRaw>,
     image_views: ResourceLookup<ImageViewKey, ImageViewResource>,
@@ -338,6 +383,7 @@ impl ResourceLookupSet {
             descriptor_set_layouts: ResourceLookup::new(max_frames_in_flight),
             pipeline_layouts: ResourceLookup::new(max_frames_in_flight),
             render_passes: ResourceLookup::new(max_frames_in_flight),
+            framebuffers: ResourceLookup::new(max_frames_in_flight),
             graphics_pipelines: ResourceLookup::new(max_frames_in_flight),
             images: ResourceLookup::new(max_frames_in_flight),
             image_views: ResourceLookup::new(max_frames_in_flight),
@@ -349,6 +395,8 @@ impl ResourceLookupSet {
     }
 
     pub fn on_frame_complete(&mut self) -> VkResult<()> {
+        self.images.on_frame_complete(&self.device_context)?;
+        self.image_views.on_frame_complete(&self.device_context)?;
         self.buffers.on_frame_complete(&self.device_context)?;
         self.shader_modules
             .on_frame_complete(&self.device_context)?;
@@ -358,25 +406,25 @@ impl ResourceLookupSet {
         self.pipeline_layouts
             .on_frame_complete(&self.device_context)?;
         self.render_passes.on_frame_complete(&self.device_context)?;
+        self.framebuffers.on_frame_complete(&self.device_context)?;
         self.graphics_pipelines
             .on_frame_complete(&self.device_context)?;
-        self.images.on_frame_complete(&self.device_context)?;
-        self.image_views.on_frame_complete(&self.device_context)?;
         Ok(())
     }
 
     pub fn destroy(&mut self) -> VkResult<()> {
         //WARNING: These need to be in order of dependencies to avoid frame-delays on destroying
         // resources.
-        self.image_views.destroy(&self.device_context)?;
-        self.images.destroy(&self.device_context)?;
         self.graphics_pipelines.destroy(&self.device_context)?;
+        self.framebuffers.destroy(&self.device_context)?;
         self.render_passes.destroy(&self.device_context)?;
         self.pipeline_layouts.destroy(&self.device_context)?;
         self.descriptor_set_layouts.destroy(&self.device_context)?;
         self.samplers.destroy(&self.device_context)?;
         self.shader_modules.destroy(&self.device_context)?;
         self.buffers.destroy(&self.device_context)?;
+        self.image_views.destroy(&self.device_context)?;
+        self.images.destroy(&self.device_context)?;
         Ok(())
     }
 
@@ -386,6 +434,7 @@ impl ResourceLookupSet {
             descriptor_set_layout_count: self.descriptor_set_layouts.len(),
             pipeline_layout_count: self.pipeline_layouts.len(),
             renderpass_count: self.render_passes.len(),
+            framebuffer_count: self.framebuffers.len(),
             pipeline_count: self.graphics_pipelines.len(),
             image_count: self.images.len(),
             image_view_count: self.image_views.len(),
@@ -548,7 +597,7 @@ impl ResourceLookupSet {
         &mut self,
         renderpass: &dsc::RenderPass,
         swapchain_surface_info: &SwapchainSurfaceInfo,
-    ) -> VkResult<ResourceArc<vk::RenderPass>> {
+    ) -> VkResult<ResourceArc<RenderPassResource>> {
         let renderpass_key = RenderPassKey {
             dsc: renderpass.clone(),
             swapchain_surface_info: swapchain_surface_info.clone(),
@@ -564,10 +613,68 @@ impl ResourceLookupSet {
                 renderpass,
                 &swapchain_surface_info,
             )?;
+
+            let resource = RenderPassResource {
+                renderpass: resource,
+                renderpass_key: renderpass_key.clone(),
+            };
+
             log::trace!("Created renderpass {:?}", resource);
 
             let renderpass = self.render_passes.insert(hash, &renderpass_key, resource);
             Ok(renderpass)
+        }
+    }
+
+    pub fn get_or_create_framebuffer(
+        &mut self,
+        renderpass: ResourceArc<RenderPassResource>,
+        attachments: &[ResourceArc<ImageViewResource>],
+        framebuffer_meta: &dsc::FramebufferMeta,
+    ) -> VkResult<ResourceArc<FramebufferResource>> {
+        let framebuffer_key = FrameBufferKey {
+            renderpass: renderpass.get_raw().renderpass_key.dsc,
+            image_view_keys: attachments
+                .iter()
+                .map(|resource| {
+                    resource
+                        .get_raw()
+                        .image_view_key
+                        .expect("Only keyed image views allowed in get_or_create_framebuffer")
+                })
+                .collect(),
+            framebuffer_meta: framebuffer_meta.clone(),
+        };
+
+        let hash = ResourceHash::from_key(&framebuffer_key);
+        if let Some(framebuffer) = self.framebuffers.get(hash, &framebuffer_key) {
+            Ok(framebuffer)
+        } else {
+            log::trace!("Creating framebuffer\n{:#?}", framebuffer_key);
+
+            let attachment_image_views: Vec<_> = attachments
+                .iter()
+                .map(|resource| resource.get_raw().image_view)
+                .collect();
+
+            let resource = dsc::create_framebuffer(
+                self.device_context.device(),
+                renderpass.get_raw().renderpass,
+                &attachment_image_views,
+                framebuffer_meta,
+            )?;
+
+            let resource = FramebufferResource {
+                framebuffer: resource,
+                framebuffer_key: framebuffer_key.clone(),
+                renderpass,
+                attachments: attachments.into(),
+            };
+
+            log::trace!("Created framebuffer {:?}", resource);
+
+            let framebuffer = self.framebuffers.insert(hash, &framebuffer_key, resource);
+            Ok(framebuffer)
         }
     }
 
@@ -611,7 +718,7 @@ impl ResourceLookupSet {
                     .pipeline_layout()
                     .get_raw()
                     .pipeline_layout,
-                renderpass.get_raw(),
+                renderpass.get_raw().renderpass,
                 pipeline_create_data.shader_module_metas(),
                 pipeline_create_data.shader_module_vk_objs(),
                 swapchain_surface_info,
@@ -639,16 +746,26 @@ impl ResourceLookupSet {
         &mut self,
         image: ManuallyDrop<VkImage>,
     ) -> (ImageKey, ResourceArc<VkImageRaw>) {
+        let raw_image = ManuallyDrop::into_inner(image).take_raw().unwrap();
+        self.insert_raw_image(raw_image)
+    }
+
+    // This is useful for inserting swapchain images
+    pub fn insert_raw_image(
+        &mut self,
+        raw_image: VkImageRaw,
+    ) -> (ImageKey, ResourceArc<VkImageRaw>) {
         let image_key = ImageKey {
             id: self.next_image_id,
         };
         self.next_image_id += 1;
 
         let hash = ResourceHash::from_key(&image_key);
-        let raw_image = ManuallyDrop::into_inner(image).take_raw().unwrap();
         let image = self.images.insert(hash, &image_key, raw_image);
         (image_key, image)
     }
+
+    //TODO: Support direct removal of raw images with verification that no references remain
 
     // A key difference between this insert_buffer and the insert_buffer in a DynResourceAllocator
     // is that these can be retrieved. However, a mutable reference is required. This one is
@@ -698,6 +815,7 @@ impl ResourceLookupSet {
 
             let resource = ImageViewResource {
                 image_view: resource,
+                image_view_key: Some(image_view_key.clone()),
                 image,
             };
 

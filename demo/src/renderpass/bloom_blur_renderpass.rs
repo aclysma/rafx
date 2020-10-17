@@ -46,7 +46,12 @@ impl VkBloomBlurRenderPass {
             //&swapchain.swapchain_image_views,
             &bloom_resources.bloom_image_views,
             &swapchain.swapchain_info,
-            &pipeline_info.pipeline.get_raw().renderpass.get_raw(),
+            &pipeline_info
+                .pipeline
+                .get_raw()
+                .renderpass
+                .get_raw()
+                .renderpass,
         )?;
 
         let command_buffers = Self::create_command_buffers(
@@ -65,7 +70,12 @@ impl VkBloomBlurRenderPass {
         Self::update_command_buffer(
             &device_context,
             &swapchain.swapchain_info,
-            pipeline_info.pipeline.get_raw().renderpass.get_raw(),
+            pipeline_info
+                .pipeline
+                .get_raw()
+                .renderpass
+                .get_raw()
+                .renderpass,
             frame_buffers[1],
             command_buffers[0],
             pipeline_info.pipeline.get_raw().pipelines[0],
@@ -76,7 +86,12 @@ impl VkBloomBlurRenderPass {
         Self::update_command_buffer(
             &device_context,
             &swapchain.swapchain_info,
-            pipeline_info.pipeline.get_raw().renderpass.get_raw(),
+            pipeline_info
+                .pipeline
+                .get_raw()
+                .renderpass
+                .get_raw()
+                .renderpass,
             frame_buffers[0],
             command_buffers[1],
             pipeline_info.pipeline.get_raw().pipelines[0],

@@ -7,7 +7,7 @@ use core::fmt;
 #[derive(Copy, Clone, Debug)]
 pub struct VkImageRaw {
     pub image: vk::Image,
-    pub allocation: vk_mem::Allocation,
+    pub allocation: Option<vk_mem::Allocation>,
 }
 
 pub struct VkImage {
@@ -73,7 +73,10 @@ impl VkImage {
             .create_image(&image_create_info, &allocation_create_info)
             .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
 
-        let raw = VkImageRaw { image, allocation };
+        let raw = VkImageRaw {
+            image,
+            allocation: Some(allocation),
+        };
 
         Ok(VkImage {
             device_context: device_context.clone(),
@@ -93,7 +96,8 @@ impl VkImage {
 
     pub fn allocation(&self) -> vk_mem::Allocation {
         // Raw is only none if take_raw has not been called, and take_raw consumes the VkImage
-        self.raw.unwrap().allocation
+        // Allocation will not be raw for VkImage
+        self.raw.unwrap().allocation.unwrap()
     }
 
     pub fn take_raw(mut self) -> Option<VkImageRaw> {
@@ -110,7 +114,7 @@ impl Drop for VkImage {
         if let Some(raw) = &self.raw {
             self.device_context
                 .allocator()
-                .destroy_image(raw.image, &raw.allocation)
+                .destroy_image(raw.image, &raw.allocation.unwrap())
                 .unwrap();
         }
 

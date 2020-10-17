@@ -1842,14 +1842,6 @@ impl Into<vk::SubpassDependency> for SubpassDependency {
     }
 }
 
-pub struct FrameBufferMeta {
-    renderpass: RenderPass,
-    width: u32,
-    height: u32,
-    layers: u32,
-    // Image view keys
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct RenderPass {
     pub attachments: Vec<AttachmentDescription>,
@@ -2659,4 +2651,13 @@ pub struct GraphicsPipeline {
     pub renderpass: RenderPass,
     pub fixed_function_state: FixedFunctionState,
     pub pipeline_shader_stages: PipelineShaderStages,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct FramebufferMeta {
+    // Renderpass
+    // Attachments (image view keys)
+    pub width: u32,
+    pub height: u32,
+    pub layers: u32,
 }

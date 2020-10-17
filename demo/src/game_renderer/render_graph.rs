@@ -4,11 +4,13 @@ use renderer::assets::graph::*;
 use renderer::assets::resources::ResourceLookupSet;
 use crate::VkDeviceContext;
 use ash::prelude::VkResult;
+use renderer::assets::resources::{ResourceArc, ImageViewResource};
 
 pub fn setup_graph(
     swapchain_info: &dsc::SwapchainSurfaceInfo,
     device_context: &VkDeviceContext,
     resources: &mut ResourceLookupSet,
+    swapchain_image: ResourceArc<ImageViewResource>,
 ) -> VkResult<()> {
     let color_format = swapchain_info.color_format;
     let depth_format = swapchain_info.depth_format;
@@ -18,7 +20,6 @@ pub fn setup_graph(
     let queue = 0;
 
     let mut graph = RenderGraph::default();
-    let swapchain_image = ();
 
     let opaque_pass = {
         struct Opaque {

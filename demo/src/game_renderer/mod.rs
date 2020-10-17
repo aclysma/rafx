@@ -43,8 +43,16 @@ use crate::features::imgui::create_imgui_extract_job;
 pub struct GameRendererInner {
     imgui_font_atlas_image_view: ResourceArc<ImageViewResource>,
 
+    // Everything that is loaded all the time
     static_resources: GameRendererStaticResources,
+
+    // Everything that requires being created after the swapchain inits
     swapchain_resources: Option<SwapchainResources>,
+
+    // The images presented by the swapchain
+    //TODO: We don't properly support multiple swapchains right now. This would ideally be a map
+    // of window/surface to info for the swapchain
+    swapchain_images: Vec<ResourceArc<ImageViewResource>>,
 
     main_camera_render_phase_mask: RenderPhaseMask,
 
@@ -94,6 +102,7 @@ impl GameRenderer {
             imgui_font_atlas_image_view,
             static_resources: game_renderer_resources,
             swapchain_resources: None,
+            swapchain_images: Default::default(),
 
             main_camera_render_phase_mask,
 
@@ -290,6 +299,8 @@ impl GameRenderer {
 
         let mut guard = game_renderer.inner.lock().unwrap();
         let main_camera_render_phase_mask = guard.main_camera_render_phase_mask;
+        let swapchain_image =
+            guard.swapchain_images[frame_in_flight.present_index() as usize].clone();
         let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
 
@@ -487,6 +498,7 @@ impl GameRenderer {
             &swapchain_surface_info,
             &device_context,
             resource_manager.resources_mut(),
+            swapchain_image,
         );
         let t3 = std::time::Instant::now();
 

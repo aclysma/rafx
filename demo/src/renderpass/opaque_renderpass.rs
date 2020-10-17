@@ -54,7 +54,12 @@ impl VkOpaqueRenderPass {
             &swapchain.swapchain_image_views,
             swapchain.depth_attachment.target_image_view(),
             &swapchain.swapchain_info,
-            &pipeline_info.pipeline.get_raw().renderpass.get_raw(),
+            &pipeline_info
+                .pipeline
+                .get_raw()
+                .renderpass
+                .get_raw()
+                .renderpass,
         )?;
 
         let command_buffers = Self::create_command_buffers(
@@ -69,7 +74,12 @@ impl VkOpaqueRenderPass {
             frame_buffers,
             command_pool,
             command_buffers,
-            renderpass: pipeline_info.pipeline.get_raw().renderpass.get_raw(),
+            renderpass: pipeline_info
+                .pipeline
+                .get_raw()
+                .renderpass
+                .get_raw()
+                .renderpass,
             drop_sink: VkCombinedDropSink::new(MAX_FRAMES_IN_FLIGHT as u32),
         })
     }
@@ -193,11 +203,24 @@ impl VkOpaqueRenderPass {
         view: &RenderView,
         write_context_factory: &RenderJobWriteContextFactory,
     ) -> VkResult<()> {
-        assert!(self.renderpass == pipeline_info.pipeline.get_raw().renderpass.get_raw());
+        assert!(
+            self.renderpass
+                == pipeline_info
+                    .pipeline
+                    .get_raw()
+                    .renderpass
+                    .get_raw()
+                    .renderpass
+        );
         Self::update_command_buffer(
             &self.device_context,
             &self.swapchain_info,
-            &pipeline_info.pipeline.get_raw().renderpass.get_raw(),
+            &pipeline_info
+                .pipeline
+                .get_raw()
+                .renderpass
+                .get_raw()
+                .renderpass,
             self.frame_buffers[present_index],
             &self.command_buffers[present_index],
             prepared_render_data,

@@ -204,13 +204,19 @@ impl VkResource for VkImageRaw {
         device_context: &VkDeviceContext,
         resource: Self,
     ) -> VkResult<()> {
-        device_context
-            .allocator()
-            .destroy_image(resource.image, &resource.allocation)
-            .map_err(|err| {
-                log::error!("{:?}", err);
-                vk::Result::ERROR_UNKNOWN
-            })
+        if let Some(allocation) = &resource.allocation {
+            device_context
+                .allocator()
+                .destroy_image(resource.image, allocation)
+                .map_err(|err| {
+                    log::error!("{:?}", err);
+                    vk::Result::ERROR_UNKNOWN
+                })
+        } else {
+            // This path where we don't deallocate is appropriate for swapchain images or other
+            // images that are owned externally from renderer systems
+            Ok(())
+        }
     }
 }
 
@@ -275,6 +281,21 @@ impl VkResource for vk::RenderPass {
 }
 
 //
+// Implementation for framebuffers
+//
+impl VkResource for vk::Framebuffer {
+    fn destroy(
+        device_context: &VkDeviceContext,
+        resource: Self,
+    ) -> VkResult<()> {
+        unsafe {
+            device_context.device().destroy_framebuffer(resource, None);
+            Ok(())
+        }
+    }
+}
+
+//
 // Implementation for pipeline layouts
 //
 impl VkResource for vk::PipelineLayout {
@@ -332,6 +353,7 @@ pub struct VkCombinedDropSink {
     image_views: VkResourceDropSink<vk::ImageView>,
     pipelines: VkResourceDropSink<vk::Pipeline>,
     render_passes: VkResourceDropSink<vk::RenderPass>,
+    framebuffers: VkResourceDropSink<vk::Framebuffer>,
     pipeline_layouts: VkResourceDropSink<vk::PipelineLayout>,
     descriptor_sets: VkResourceDropSink<vk::DescriptorSetLayout>,
     shader_modules: VkResourceDropSink<vk::ShaderModule>,
@@ -345,6 +367,7 @@ impl VkCombinedDropSink {
             image_views: VkResourceDropSink::new(max_in_flight_frames),
             pipelines: VkResourceDropSink::new(max_in_flight_frames),
             render_passes: VkResourceDropSink::new(max_in_flight_frames),
+            framebuffers: VkResourceDropSink::new(max_in_flight_frames),
             pipeline_layouts: VkResourceDropSink::new(max_in_flight_frames),
             descriptor_sets: VkResourceDropSink::new(max_in_flight_frames),
             shader_modules: VkResourceDropSink::new(max_in_flight_frames),
@@ -386,6 +409,13 @@ impl VkCombinedDropSink {
         self.render_passes.retire(resource);
     }
 
+    pub fn retire_framebuffer(
+        &mut self,
+        resource: vk::Framebuffer,
+    ) {
+        self.framebuffers.retire(resource);
+    }
+
     pub fn retire_pipeline_layout(
         &mut self,
         resource: vk::PipelineLayout,
@@ -416,6 +446,7 @@ impl VkCombinedDropSink {
         self.buffers.on_frame_complete(device_context)?;
         self.pipelines.on_frame_complete(device_context)?;
         self.render_passes.on_frame_complete(device_context)?;
+        self.framebuffers.on_frame_complete(device_context)?;
         self.pipeline_layouts.on_frame_complete(device_context)?;
         self.descriptor_sets.on_frame_complete(device_context)?;
         self.shader_modules.on_frame_complete(device_context)?;
@@ -431,6 +462,7 @@ impl VkCombinedDropSink {
         self.buffers.destroy(device_context)?;
         self.pipelines.destroy(device_context)?;
         self.render_passes.destroy(device_context)?;
+        self.framebuffers.destroy(device_context)?;
         self.pipeline_layouts.destroy(device_context)?;
         self.descriptor_sets.destroy(device_context)?;
         self.shader_modules.destroy(device_context)?;

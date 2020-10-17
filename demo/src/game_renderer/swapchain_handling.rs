@@ -1,5 +1,6 @@
 use renderer::vulkan::{
     VkContext, VkSurface, Window, VkSurfaceSwapchainLifetimeListener, VkDeviceContext, VkSwapchain,
+    VkImageRaw,
 };
 use crate::game_renderer::GameRenderer;
 use legion::Resources;
@@ -7,7 +8,7 @@ use ash::prelude::VkResult;
 use renderer::assets::resources::ResourceManager;
 use renderer::nodes::RenderRegistry;
 use crate::game_renderer::swapchain_resources::SwapchainResources;
-use renderer::assets::vk_description::SwapchainSurfaceInfo;
+use renderer::assets::vk_description as dsc;
 
 pub struct SwapchainLifetimeListener<'a> {
     pub resources: &'a Resources,
@@ -83,10 +84,13 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
     ) -> VkResult<()> {
         let mut guard = self.game_renderer.inner.lock().unwrap();
         let mut game_renderer = &mut *guard;
-        let resource_manager = &mut self.resource_manager;
+        let mut resource_manager = &mut self.resource_manager;
 
+        //
+        // Metadata about the swapchain
+        //
         log::debug!("game renderer swapchain_created called");
-        let swapchain_surface_info = SwapchainSurfaceInfo {
+        let swapchain_surface_info = dsc::SwapchainSurfaceInfo {
             extents: swapchain.swapchain_info.extents,
             msaa_level: swapchain.swapchain_info.msaa_level,
             surface_format: swapchain.swapchain_info.surface_format,
@@ -94,8 +98,47 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             depth_format: swapchain.depth_format,
         };
 
+        //
+        // Create resources for the swapchain images. This allows renderer systems to use them
+        // interchangably with non-swapchain images
+        //
+        let image_view_meta = dsc::ImageViewMeta {
+            view_type: dsc::ImageViewType::Type2D,
+            subresource_range: dsc::ImageSubresourceRange {
+                aspect_mask: dsc::ImageAspectFlag::Color.into(),
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            components: dsc::ComponentMapping::default(),
+            format: swapchain.swapchain_info.surface_format.format.into(),
+        };
+
+        assert!(game_renderer.swapchain_images.is_empty());
+        for &image in &swapchain.swapchain_images {
+            let raw = VkImageRaw {
+                allocation: None,
+                image,
+            };
+
+            let (image_key, resource) = resource_manager.resources_mut().insert_raw_image(raw);
+            let image_view = resource_manager
+                .resources_mut()
+                .get_or_create_image_view(image_key, &image_view_meta)?;
+
+            game_renderer.swapchain_images.push(image_view);
+        }
+
+        //
+        // Notify the resource manage of the new swapchain. This can kick recompiling pipelines
+        //
         resource_manager.add_swapchain(&swapchain_surface_info)?;
 
+        //
+        // Construct resources that are tied to the swapchain or swapchain metadata.
+        // (i.e. renderpasses, descriptor sets that refer to swapchain images)
+        //
         let swapchain_resources = SwapchainResources::new(
             device_context,
             swapchain,
@@ -123,6 +166,10 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
 
         // This will clear game_renderer.swapchain_resources and drop SwapchainResources at end of fn
         let swapchain_resources = game_renderer.swapchain_resources.take().unwrap();
+
+        //TODO: Explicitly remove the images instead of just dropping them. This prevents anything
+        // from accidentally using them after they've been freed
+        game_renderer.swapchain_images.clear();
 
         self.resource_manager
             .remove_swapchain(&swapchain_resources.swapchain_surface_info);

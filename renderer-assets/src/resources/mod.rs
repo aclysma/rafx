@@ -8,6 +8,8 @@ pub use resource_lookup::ResourceHash;
 pub use resource_lookup::DescriptorSetLayoutResource;
 pub use resource_lookup::ImageKey;
 pub use resource_lookup::BufferKey;
+pub use resource_lookup::RenderPassResource;
+pub use resource_lookup::FramebufferResource;
 
 mod dyn_resource_allocator;
 pub use dyn_resource_allocator::DynResourceAllocatorSet;
