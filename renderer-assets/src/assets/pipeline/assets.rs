@@ -117,7 +117,7 @@ pub struct MaterialPassShaderInterface {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum MaterialPassDataRenderpassRef {
     Asset(Handle<RenderpassAsset>),
-    LookupByPhaseName
+    LookupByPhaseName,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

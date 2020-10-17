@@ -1,14 +1,20 @@
-
 use ash::vk;
 use renderer::assets::vk_description as dsc;
 use renderer::assets::graph::*;
+use renderer::assets::resources::ResourceLookupSet;
+use crate::VkDeviceContext;
+use ash::prelude::VkResult;
 
-pub fn setup_graph() {
-
-    let color_format = vk::Format::R8G8B8A8_SRGB;
-    let depth_format = vk::Format::D32_SFLOAT;
-    let swapchain_format = vk::Format::R8G8B8A8_SRGB;
-    let samples = vk::SampleCountFlags::TYPE_4;
+pub fn setup_graph(
+    swapchain_info: &dsc::SwapchainSurfaceInfo,
+    device_context: &VkDeviceContext,
+    resources: &mut ResourceLookupSet,
+) -> VkResult<()> {
+    let color_format = swapchain_info.color_format;
+    let depth_format = swapchain_info.depth_format;
+    let swapchain_format = swapchain_info.surface_format.format;
+    //let samples = swapchain_info.msaa_level.into();
+    let samples = vk::SampleCountFlags::TYPE_1;
     let queue = 0;
 
     let mut graph = RenderGraph::default();
@@ -78,7 +84,7 @@ pub fn setup_graph() {
         Transparent { color }
     };
 
-    graph
+    let swapchain_output_image_id = graph
         .configure_image(transparent_pass.color)
         .set_output_image(
             swapchain_image,
@@ -86,6 +92,8 @@ pub fn setup_graph() {
                 samples: vk::SampleCountFlags::TYPE_1,
                 format: swapchain_format,
                 queue,
+                aspect_flags: vk::ImageAspectFlags::COLOR,
+                usage_flags: vk::ImageUsageFlags::empty(),
             },
             dsc::ImageLayout::PresentSrcKhr,
             vk::AccessFlags::empty(),
@@ -94,5 +102,13 @@ pub fn setup_graph() {
         );
 
     //println!("{:#?}", graph);
-    graph.prepare();
+    let prepared_render_graph = graph.prepare(swapchain_info);
+
+    // for (physical_image_id, spec) in prepared_render_graph.intermediate_images {
+    //     VkImage
+    // }
+
+    let mut framebuffer_allocator = FramebufferAllocator::new(device_context.clone());
+    framebuffer_allocator.allocate_resources(&prepared_render_graph, resources, swapchain_info)?;
+    Ok(())
 }

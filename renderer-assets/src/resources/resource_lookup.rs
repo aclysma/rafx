@@ -311,21 +311,20 @@ impl VkResource for ImageViewResource {
 // be kept in a slab. We *do* need a way to access and quickly remove elements though, and whatever
 // key we use is sent through a Sender/Receiver pair to be dropped later.
 pub struct ResourceLookupSet {
-    pub device_context: VkDeviceContext,
-    pub shader_modules: ResourceLookup<dsc::ShaderModule, vk::ShaderModule>,
-    pub descriptor_set_layouts:
-        ResourceLookup<dsc::DescriptorSetLayout, DescriptorSetLayoutResource>,
-    pub pipeline_layouts: ResourceLookup<dsc::PipelineLayout, PipelineLayoutResource>,
-    pub render_passes: ResourceLookup<RenderPassKey, vk::RenderPass>,
-    pub graphics_pipelines: ResourceLookup<GraphicsPipelineKey, PipelineResource>,
-    pub images: ResourceLookup<ImageKey, VkImageRaw>,
-    pub image_views: ResourceLookup<ImageViewKey, ImageViewResource>,
-    pub samplers: ResourceLookup<dsc::Sampler, vk::Sampler>,
-    pub buffers: ResourceLookup<BufferKey, VkBufferRaw>,
+    device_context: VkDeviceContext,
+    shader_modules: ResourceLookup<dsc::ShaderModule, vk::ShaderModule>,
+    descriptor_set_layouts: ResourceLookup<dsc::DescriptorSetLayout, DescriptorSetLayoutResource>,
+    pipeline_layouts: ResourceLookup<dsc::PipelineLayout, PipelineLayoutResource>,
+    render_passes: ResourceLookup<RenderPassKey, vk::RenderPass>,
+    graphics_pipelines: ResourceLookup<GraphicsPipelineKey, PipelineResource>,
+    images: ResourceLookup<ImageKey, VkImageRaw>,
+    image_views: ResourceLookup<ImageViewKey, ImageViewResource>,
+    samplers: ResourceLookup<dsc::Sampler, vk::Sampler>,
+    buffers: ResourceLookup<BufferKey, VkBufferRaw>,
 
     // Used to generate keys for images/buffers
-    pub next_image_id: u64,
-    pub next_buffer_id: u64,
+    next_image_id: u64,
+    next_buffer_id: u64,
 }
 
 impl ResourceLookupSet {

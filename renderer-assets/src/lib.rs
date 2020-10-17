@@ -13,3 +13,5 @@ mod resource_loader;
 pub use resource_loader::ResourceLoader;
 
 pub mod graph;
+
+pub use vk_description::option_set::{OptionSet, serialize, deserialize};

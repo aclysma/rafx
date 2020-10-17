@@ -12,7 +12,7 @@ pub type RenderGraphNodeName = &'static str;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RenderGraphAttachmentType {
     Color(usize),
-    Depth,
+    DepthStencil,
     Resolve(usize),
 }
 
@@ -80,6 +80,8 @@ pub struct RenderGraphPassDepthAttachmentInfo {
     pub clear_depth_stencil_value: Option<vk::ClearDepthStencilValue>,
     pub read_image: Option<RenderGraphImageUsageId>,
     pub write_image: Option<RenderGraphImageUsageId>,
+    pub has_depth: bool,
+    pub has_stencil: bool,
 }
 
 impl std::fmt::Debug for RenderGraphPassDepthAttachmentInfo {

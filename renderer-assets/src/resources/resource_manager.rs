@@ -5,7 +5,7 @@ use crate::assets::ShaderAssetData;
 use crate::assets::{
     PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
 };
-use crate::vk_description::SwapchainSurfaceInfo;
+use crate::vk_description::{SwapchainSurfaceInfo, ImageAspectFlags};
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
 use crate::{
@@ -97,13 +97,11 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
-    #[allow(dead_code)]
-    pub(super) fn resources(&self) -> &ResourceLookupSet {
+    pub fn resources(&self) -> &ResourceLookupSet {
         &self.resources
     }
 
-    #[allow(dead_code)]
-    pub(super) fn resources_mut(&mut self) -> &mut ResourceLookupSet {
+    pub fn resources_mut(&mut self) -> &mut ResourceLookupSet {
         &mut self.resources
     }
 
@@ -599,7 +597,7 @@ impl ResourceManager {
             view_type: dsc::ImageViewType::Type2D,
             format,
             subresource_range: dsc::ImageSubresourceRange {
-                aspect_mask: dsc::ImageAspectFlags::Color,
+                aspect_mask: dsc::ImageAspectFlag::Color.into(),
                 base_mip_level: 0,
                 level_count: mip_level_count,
                 base_array_layer: 0,
@@ -677,7 +675,7 @@ impl ResourceManager {
 
             let renderpass_handle = match &pass.renderpass {
                 MaterialPassDataRenderpassRef::Asset(asset) => asset,
-                MaterialPassDataRenderpassRef::LookupByPhaseName => unimplemented!()
+                MaterialPassDataRenderpassRef::LookupByPhaseName => unimplemented!(),
             };
 
             let loaded_renderpass_asset = self

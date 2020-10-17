@@ -12,6 +12,9 @@ sdl2 = { version = ">=0.33" }
 imgui = "0.4"
 imgui-sdl2 = "0.11.0"
 image = "0.23"
+enumflags2 = { version = "0.6", features = ["serde"] }
+#option_set = "0.1"
+bitflags = "1.2"
 
 renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 

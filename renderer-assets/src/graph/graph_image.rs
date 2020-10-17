@@ -2,6 +2,9 @@ use ash::vk;
 use super::*;
 use crate::vk_description as dsc;
 
+#[derive(Debug, Copy, Clone)]
+pub struct RenderGraphOutputImageId(pub usize);
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct RenderGraphImageVersionId {
     pub(super) index: usize,
@@ -32,6 +35,8 @@ pub struct RenderGraphImageSpecification {
     pub samples: vk::SampleCountFlags,
     pub format: vk::Format,
     pub queue: u32,
+    pub aspect_flags: vk::ImageAspectFlags,
+    pub usage_flags: vk::ImageUsageFlags,
 }
 
 //
@@ -42,6 +47,8 @@ pub struct RenderGraphImageConstraint {
     pub samples: Option<vk::SampleCountFlags>,
     pub format: Option<vk::Format>,
     pub queue: Option<u32>, // format? size?
+    pub aspect_flags: vk::ImageAspectFlags,
+    pub usage_flags: vk::ImageUsageFlags,
 }
 
 impl From<RenderGraphImageSpecification> for RenderGraphImageConstraint {
@@ -50,6 +57,8 @@ impl From<RenderGraphImageSpecification> for RenderGraphImageConstraint {
             samples: Some(specification.samples),
             format: Some(specification.format),
             queue: Some(specification.queue),
+            aspect_flags: specification.aspect_flags,
+            usage_flags: specification.usage_flags,
         }
     }
 }
@@ -63,6 +72,8 @@ impl RenderGraphImageConstraint {
                 samples: self.samples.unwrap(),
                 format: self.format.unwrap(),
                 queue: self.queue.unwrap(),
+                aspect_flags: self.aspect_flags,
+                usage_flags: self.usage_flags,
             })
         }
     }
@@ -103,6 +114,8 @@ impl RenderGraphImageConstraint {
         if self.queue.is_none() && other.queue.is_some() {
             self.queue = other.queue;
         }
+        self.aspect_flags |= other.aspect_flags;
+        self.usage_flags |= other.usage_flags;
 
         true
     }
@@ -130,6 +143,9 @@ impl RenderGraphImageConstraint {
         } else if other.queue.is_some() {
             self.queue = other.queue;
         }
+
+        self.aspect_flags |= other.aspect_flags;
+        self.usage_flags |= other.usage_flags;
 
         complete_merge
     }
@@ -240,9 +256,8 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
     pub fn set_name(
         self,
         name: RenderGraphResourceName,
-    ) -> Self {
+    ) {
         self.graph.image_resource_mut(self.image_id).name = Some(name);
-        self
     }
 
     /*
@@ -291,7 +306,7 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
         access_flags: vk::AccessFlags,
         stage_flags: vk::PipelineStageFlags,
         image_aspect_flags: vk::ImageAspectFlags,
-    ) -> &mut Self {
+    ) -> RenderGraphOutputImageId {
         let version_id = self.graph.image_version_id(self.image_id);
         let usage_id = self.graph.add_image_usage(
             version_id,
@@ -305,7 +320,9 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
         let mut image_version = self.graph.image_version_info_mut(self.image_id);
         image_version.read_usages.push(usage_id);
 
+        let output_image_id = RenderGraphOutputImageId(self.graph.output_images.len());
         let output_image = RenderGraphOutputImage {
+            output_image_id,
             usage: usage_id,
             specification: state,
             final_layout: layout,
@@ -314,6 +331,6 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
         };
 
         self.graph.output_images.push(output_image);
-        self
+        output_image_id
     }
 }

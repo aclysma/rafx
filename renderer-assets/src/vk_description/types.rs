@@ -4,6 +4,9 @@ use std::hash::Hasher;
 use serde::{Serialize, Deserialize};
 use renderer_shell_vulkan::MsaaLevel;
 
+use enumflags2::BitFlags;
+use bitflags::bitflags;
+
 //TODO: Rename all this from description to definition
 
 // This is an f32 that supports Hash and Eq. Generally this is dangerous, but here we're
@@ -124,32 +127,68 @@ impl Into<vk::ComponentMapping> for ComponentMapping {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ImageAspectFlags {
-    Color,
-    Depth,
-    Stenci,
-    Metadata,
+#[derive(BitFlags, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u32)]
+pub enum ImageAspectFlag {
+    Color = 1,
+    Depth = 2,
+    Stencil = 4,
+    Metadata = 8,
 }
 
-impl Into<vk::ImageAspectFlags> for ImageAspectFlags {
-    fn into(self) -> vk::ImageAspectFlags {
-        match self {
-            ImageAspectFlags::Color => vk::ImageAspectFlags::COLOR,
-            ImageAspectFlags::Depth => vk::ImageAspectFlags::DEPTH,
-            ImageAspectFlags::Stenci => vk::ImageAspectFlags::STENCIL,
-            ImageAspectFlags::Metadata => vk::ImageAspectFlags::METADATA,
-        }
-    }
-}
+pub type ImageAspectFlags = BitFlags<ImageAspectFlag>;
 
-impl Default for ImageAspectFlags {
+// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+// #[serde(transparent)]
+// pub struct ImageAspectFlags(pub BitFlags<ImageAspectFlag>);
+
+// impl Into<vk::ImageAspectFlags> for ImageAspectFlags {
+//     fn into(self) -> vk::ImageAspectFlags {
+//         // match self {
+//         //     ImageAspectFlags::Color => vk::ImageAspectFlags::COLOR,
+//         //     ImageAspectFlags::Depth => vk::ImageAspectFlags::DEPTH,
+//         //     ImageAspectFlags::Stencil => vk::ImageAspectFlags::STENCIL,
+//         //     ImageAspectFlags::Metadata => vk::ImageAspectFlags::METADATA,
+//         // }
+//         self.
+//     }
+// }
+
+// impl ImageAspectFlag {
+//     fn from_vk_image_aspect_flags(flags: vk::ImageAspectFlags) -> BitFlags<ImageAspectFlag> {
+//         <BitFlags<ImageAspectFlag>>::from_bits(flags.as_raw()).unwrap()
+//     }
+//
+//     fn to_vk_image_aspect_flags(flags: BitFlags<ImageAspectFlag>) -> vk::ImageAspectFlags {
+//         vk::ImageAspectFlags::from_raw(flags.bits())
+//     }
+// }
+
+// impl Into<vk::ImageAspectFlags> for ImageAspectFlags {
+//     fn into(self) -> vk::ImageAspectFlags {
+//         vk::ImageAspectFlags::from_raw(self.0.bits())
+//     }
+// }
+//
+// impl From<vk::ImageAspectFlags> for ImageAspectFlags {
+//     fn from(flags: vk::ImageAspectFlags) -> ImageAspectFlags {
+//         ImageAspectFlags(<BitFlags<ImageAspectFlag>>::from_bits(flags.as_raw()).unwrap())
+//     }
+// }
+//
+// impl From<ImageAspectFlag> for ImageAspectFlags {
+//     fn from(flag: ImageAspectFlag) -> ImageAspectFlags {
+//         ImageAspectFlags(flag.into())
+//     }
+// }
+
+impl Default for ImageAspectFlag {
     fn default() -> Self {
-        ImageAspectFlags::Color
+        ImageAspectFlag::Color
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ImageSubresourceRange {
     pub aspect_mask: ImageAspectFlags,
     pub base_mip_level: u32,
@@ -161,7 +200,7 @@ pub struct ImageSubresourceRange {
 impl Into<vk::ImageSubresourceRange> for ImageSubresourceRange {
     fn into(self) -> vk::ImageSubresourceRange {
         vk::ImageSubresourceRange::builder()
-            .aspect_mask(self.aspect_mask.into())
+            .aspect_mask(vk::ImageAspectFlags::from_raw(self.aspect_mask.bits()))
             .base_mip_level(self.base_mip_level)
             .level_count(self.level_count)
             .base_array_layer(self.base_array_layer)
@@ -338,7 +377,7 @@ impl ImageViewMeta {
             .view_type(self.view_type.into())
             .format(self.format.into())
             .components(self.components.clone().into())
-            .subresource_range(self.subresource_range.into())
+            .subresource_range(self.subresource_range.clone().into())
     }
 }
 
@@ -594,7 +633,7 @@ impl From<vk::AttachmentLoadOp> for AttachmentLoadOp {
             vk::AttachmentLoadOp::LOAD => AttachmentLoadOp::Load,
             vk::AttachmentLoadOp::CLEAR => AttachmentLoadOp::Clear,
             vk::AttachmentLoadOp::DONT_CARE => AttachmentLoadOp::DontCare,
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 }
@@ -625,11 +664,10 @@ impl From<vk::AttachmentStoreOp> for AttachmentStoreOp {
         match other {
             vk::AttachmentStoreOp::STORE => AttachmentStoreOp::Store,
             vk::AttachmentStoreOp::DONT_CARE => AttachmentStoreOp::DontCare,
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 }
-
 
 impl Default for AttachmentStoreOp {
     fn default() -> Self {
@@ -760,27 +798,52 @@ impl Default for ImageLayout {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PipelineStageFlags {
-    TopOfPipe,
-    DrawIndirect,
-    VertexInput,
-    VertexShader,
-    TesselationControlShader,
-    TesselationEvaluationShader,
-    GeometryShader,
-    FragmentShader,
-    EarlyFragmentTests,
-    LateFragmentTests,
-    ColorAttachmentOutput,
-    ComputeShader,
-    Transfer,
-    BottomOfPipe,
-    Host,
-    AllGraphics,
-    AllCommands,
+crate::option_set! {
+    pub struct PipelineStageFlags : u32 {
+        const TopOfPipe = 0b1;
+        const DrawIndirect = 0b10;
+        const VertexInput = 0b100;
+        const VertexShader = 0b1000;
+        const TesselationControlShader = 0b1_0000;
+        const TesselationEvaluationShader = 0b10_0000;
+        const GeometryShader = 0b100_0000;
+        const FragmentShader = 0b1000_0000;
+        const EarlyFragmentTests = 0b1_0000_0000;
+        const LateFragmentTests = 0b10_0000_0000;
+        const ColorAttachmentOutput = 0b100_0000_0000;
+        const ComputeShader = 0b1000_0000_0000;
+        const Transfer = 0b1_0000_0000_0000;
+        const BottomOfPipe = 0b10_0000_0000_0000;
+        const Host = 0b100_0000_0000_0000;
+        const AllGraphics = 0b1000_0000_0000_0000;
+        const AllCommands = 0b1_0000_0000_0000_0000;
+    }
 }
 
+// #[derive(BitFlags, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+// #[repr(u32)]
+// pub enum PipelineStageFlag {
+//     TopOfPipe = 0b1,
+//     DrawIndirect = 0b10,
+//     VertexInput = 0b100,
+//     VertexShader = 0b1000,
+//     TesselationControlShader = 0b1_0000,
+//     TesselationEvaluationShader = 0b10_0000,
+//     GeometryShader = 0b100_0000,
+//     FragmentShader = 0b1000_0000,
+//     EarlyFragmentTests = 0b1_0000_0000,
+//     LateFragmentTests = 0b10_0000_0000,
+//     ColorAttachmentOutput = 0b100_0000_0000,
+//     ComputeShader = 0b1000_0000_0000,
+//     Transfer = 0b1_0000_0000_0000,
+//     BottomOfPipe = 0b10_0000_0000_0000,
+//     Host = 0b100_0000_0000_0000,
+//     AllGraphics = 0b1000_0000_0000_0000,
+//     AllCommands = 0b1_0000_0000_0000_0000,
+// }
+//
+// pub type PipelineStageFlags = BitFlags<PipelineStageFlag>;
+/*
 impl PipelineStageFlags {
     pub fn from_pipeline_stage_mask(flag_mask: vk::PipelineStageFlags) -> Vec<PipelineStageFlags> {
         let mut flags = Vec::default();
@@ -876,7 +939,7 @@ impl Into<vk::PipelineStageFlags> for PipelineStageFlags {
         }
     }
 }
-
+*/
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AccessFlags {
     Empty,
@@ -1740,8 +1803,8 @@ impl Default for SubpassDependencyIndex {
 pub struct SubpassDependency {
     pub src_subpass: SubpassDependencyIndex,
     pub dst_subpass: SubpassDependencyIndex,
-    pub src_stage_mask: Vec<PipelineStageFlags>,
-    pub dst_stage_mask: Vec<PipelineStageFlags>,
+    pub src_stage_mask: PipelineStageFlags,
+    pub dst_stage_mask: PipelineStageFlags,
     pub src_access_mask: Vec<AccessFlags>,
     pub dst_access_mask: Vec<AccessFlags>,
     pub dependency_flags: DependencyFlags,
@@ -1761,12 +1824,8 @@ impl SubpassDependency {
         vk::SubpassDependency::builder()
             .src_subpass(self.src_subpass.into())
             .dst_subpass(self.dst_subpass.into())
-            .src_stage_mask(PipelineStageFlags::to_pipeline_stage_mask(
-                self.src_stage_mask.as_slice(),
-            ))
-            .dst_stage_mask(PipelineStageFlags::to_pipeline_stage_mask(
-                self.dst_stage_mask.as_slice(),
-            ))
+            .src_stage_mask(vk::PipelineStageFlags::from_raw(self.src_stage_mask.bits()))
+            .dst_stage_mask(vk::PipelineStageFlags::from_raw(self.dst_stage_mask.bits()))
             .src_access_mask(AccessFlags::to_access_flag_mask(
                 self.src_access_mask.as_slice(),
             ))

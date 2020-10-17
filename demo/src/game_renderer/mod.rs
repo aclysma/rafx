@@ -483,13 +483,14 @@ impl GameRenderer {
         let game_renderer = game_renderer.clone();
 
         let t2 = std::time::Instant::now();
-        render_graph::setup_graph();
+        render_graph::setup_graph(
+            &swapchain_surface_info,
+            &device_context,
+            resource_manager.resources_mut(),
+        );
         let t3 = std::time::Instant::now();
 
-        log::info!(
-            "[main] graph took {} ms",
-            (t3 - t2).as_secs_f32() * 1000.0
-        );
+        log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
 
         let prepared_frame = RenderFrameJob {
             game_renderer,

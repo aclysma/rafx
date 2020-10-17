@@ -33,10 +33,10 @@
                 src_subpass: External,
                 dst_subpass: Index(0),
                 src_stage_mask: [
-                    ColorAttachmentOutput
+                    "ColorAttachmentOutput"
                 ],
                 dst_stage_mask: [
-                    ColorAttachmentOutput
+                    "ColorAttachmentOutput"
                 ],
                 src_access_mask: [],
                 dst_access_mask: [

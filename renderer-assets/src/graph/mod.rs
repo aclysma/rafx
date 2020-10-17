@@ -14,6 +14,12 @@ pub use graph_image::RenderGraphImageSpecification;
 mod graph_node;
 use graph_node::*;
 
+mod prepared_graph;
+pub use prepared_graph::PreparedRenderGraph;
+pub use prepared_graph::FramebufferAllocator;
+use crate::vk_description::SwapchainSurfaceInfo;
+use renderer_shell_vulkan::MsaaLevel;
+
 #[test]
 fn test_graph3() {
     // - Should there be some way to "pull forward" future constraints to some point?
@@ -27,7 +33,8 @@ fn test_graph3() {
     let color_format = vk::Format::R8G8B8A8_SRGB;
     let depth_format = vk::Format::D32_SFLOAT;
     let swapchain_format = vk::Format::R8G8B8A8_SRGB;
-    let samples = vk::SampleCountFlags::TYPE_4;
+    let msaa_level = MsaaLevel::Sample4;
+    let samples = msaa_level.into();
     let queue = 0;
 
     let mut graph = RenderGraph::default();
@@ -97,7 +104,7 @@ fn test_graph3() {
         Transparent { color }
     };
 
-    graph
+    let swapchain_output_image_id = graph
         .configure_image(transparent_pass.color)
         .set_output_image(
             swapchain_image,
@@ -113,5 +120,18 @@ fn test_graph3() {
         );
 
     //println!("{:#?}", graph);
-    graph.prepare();
+    let swapchain_surface_info = SwapchainSurfaceInfo {
+        color_format,
+        depth_format,
+        msaa_level: msaa_level,
+        extents: vk::Extent2D {
+            width: 900,
+            height: 600,
+        },
+        surface_format: vk::SurfaceFormatKHR {
+            format: swapchain_format,
+            color_space: vk::ColorSpaceKHR::SRGB_NONLINEAR,
+        },
+    };
+    graph.prepare(&swapchain_surface_info);
 }

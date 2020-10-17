@@ -3,6 +3,7 @@ use resource_arc::ResourceId;
 pub use resource_arc::ResourceArc;
 
 mod resource_lookup;
+pub use resource_lookup::ResourceLookupSet;
 pub use resource_lookup::ResourceHash;
 pub use resource_lookup::DescriptorSetLayoutResource;
 pub use resource_lookup::ImageKey;
