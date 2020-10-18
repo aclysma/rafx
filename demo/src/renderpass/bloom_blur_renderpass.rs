@@ -9,13 +9,17 @@ use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
 
 use crate::renderpass::VkBloomRenderPassResources;
-use renderer::assets::resources::{PipelineSwapchainInfo, ResourceArc, ImageViewResource};
+use renderer::assets::vk_description as dsc;
+use renderer::assets::resources::{
+    PipelineSwapchainInfo, ResourceArc, ImageViewResource, ResourceLookupSet, RenderPassResource,
+    FramebufferResource,
+};
 
 pub struct VkBloomBlurRenderPass {
     pub device_context: VkDeviceContext,
     pub swapchain_info: SwapchainInfo,
 
-    pub frame_buffers: Vec<vk::Framebuffer>,
+    pub frame_buffers: Vec<ResourceArc<FramebufferResource>>,
 
     // Command pool and list of command buffers. We ping-pong the blur filter, so there are two
     // command buffers, two framebuffers, two images, to descriptor sets, etc.
@@ -25,6 +29,7 @@ pub struct VkBloomBlurRenderPass {
 
 impl VkBloomBlurRenderPass {
     pub fn new(
+        resources: &mut ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         swapchain_images: &[ResourceArc<ImageViewResource>],
@@ -43,16 +48,10 @@ impl VkBloomBlurRenderPass {
         // Renderpass Resources
         //
         let frame_buffers = Self::create_framebuffers(
-            &device_context.device(),
-            //&swapchain.swapchain_image_views,
+            resources,
             &bloom_resources.bloom_images,
             swapchain_info,
-            &pipeline_info
-                .pipeline
-                .get_raw()
-                .renderpass
-                .get_raw()
-                .renderpass,
+            &pipeline_info.pipeline.get_raw().renderpass,
         )?;
 
         let command_buffers =
@@ -74,7 +73,7 @@ impl VkBloomBlurRenderPass {
                 .renderpass
                 .get_raw()
                 .renderpass,
-            frame_buffers[1],
+            frame_buffers[1].get_raw().framebuffer,
             command_buffers[0],
             pipeline_info.pipeline.get_raw().pipelines[0],
             pipeline_info.pipeline_layout.get_raw().pipeline_layout,
@@ -90,7 +89,7 @@ impl VkBloomBlurRenderPass {
                 .renderpass
                 .get_raw()
                 .renderpass,
-            frame_buffers[0],
+            frame_buffers[0].get_raw().framebuffer,
             command_buffers[1],
             pipeline_info.pipeline.get_raw().pipelines[0],
             pipeline_info.pipeline_layout.get_raw().pipeline_layout,
@@ -123,23 +122,26 @@ impl VkBloomBlurRenderPass {
     }
 
     fn create_framebuffers(
-        logical_device: &ash::Device,
+        resources: &mut ResourceLookupSet,
         bloom_image_views: &[ResourceArc<ImageViewResource>],
         swapchain_info: &SwapchainInfo,
-        renderpass: &vk::RenderPass,
-    ) -> VkResult<Vec<vk::Framebuffer>> {
+        renderpass: &ResourceArc<RenderPassResource>,
+    ) -> VkResult<Vec<ResourceArc<FramebufferResource>>> {
         bloom_image_views
             .iter()
             .map(|bloom_image_view| {
-                let framebuffer_attachments = [bloom_image_view.get_raw().image_view];
-                let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
-                    .render_pass(*renderpass)
-                    .attachments(&framebuffer_attachments)
-                    .width(swapchain_info.extents.width)
-                    .height(swapchain_info.extents.height)
-                    .layers(1);
+                let framebuffer_meta = dsc::FramebufferMeta {
+                    width: swapchain_info.extents.width,
+                    height: swapchain_info.extents.height,
+                    layers: 1,
+                };
 
-                unsafe { logical_device.create_framebuffer(&frame_buffer_create_info, None) }
+                let attachments = [bloom_image_view.clone()];
+                resources.get_or_create_framebuffer(
+                    renderpass.clone(),
+                    &attachments,
+                    &framebuffer_meta,
+                )
             })
             .collect()
     }
@@ -227,10 +229,6 @@ impl Drop for VkBloomBlurRenderPass {
         unsafe {
             let device = self.device_context.device();
             device.destroy_command_pool(self.command_pool, None);
-
-            for frame_buffer in &self.frame_buffers {
-                device.destroy_framebuffer(*frame_buffer, None);
-            }
         }
 
         log::trace!("destroyed VkSpriteRenderPass");

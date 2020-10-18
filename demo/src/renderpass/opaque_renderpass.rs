@@ -9,8 +9,10 @@ use renderer::vulkan::VkQueueFamilyIndices;
 use renderer::vulkan::SwapchainInfo;
 
 use renderer::assets::resources::{
-    PipelineSwapchainInfo, RenderPassResource, ResourceArc, ImageViewResource,
+    PipelineSwapchainInfo, RenderPassResource, ResourceArc, ImageViewResource, FramebufferResource,
+    ResourceLookupSet,
 };
+use renderer::assets::vk_description as dsc;
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::OpaqueRenderPhase;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobWriteContextFactory};
@@ -23,7 +25,7 @@ pub struct VkOpaqueRenderPass {
     pub swapchain_info: SwapchainInfo,
 
     // Static resources for the renderpass, including a frame buffer per present index
-    pub frame_buffers: Vec<vk::Framebuffer>,
+    pub frame_buffers: Vec<ResourceArc<FramebufferResource>>,
 
     // Command pool and list of command buffers, one per present index
     pub command_pool: vk::CommandPool,
@@ -36,6 +38,7 @@ pub struct VkOpaqueRenderPass {
 
 impl VkOpaqueRenderPass {
     pub fn new(
+        resources: &mut ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         swapchain_images: &[ResourceArc<ImageViewResource>],
@@ -55,7 +58,7 @@ impl VkOpaqueRenderPass {
         // Renderpass Resources
         //
         let frame_buffers = Self::create_framebuffers(
-            &device_context.device(),
+            resources,
             color_attachment.target_resource(),
             &swapchain_images,
             depth_attachment.target_resource(),
@@ -101,28 +104,28 @@ impl VkOpaqueRenderPass {
     }
 
     fn create_framebuffers(
-        logical_device: &ash::Device,
+        resources: &mut ResourceLookupSet,
         color_image_view: &ResourceArc<ImageViewResource>,
         swapchain_image_views: &[ResourceArc<ImageViewResource>],
         depth_image_view: &ResourceArc<ImageViewResource>,
         swapchain_info: &SwapchainInfo,
         renderpass: &ResourceArc<RenderPassResource>,
-    ) -> VkResult<Vec<vk::Framebuffer>> {
+    ) -> VkResult<Vec<ResourceArc<FramebufferResource>>> {
         swapchain_image_views
             .iter()
             .map(|_swapchain_image_view| {
-                let framebuffer_attachments = [
-                    color_image_view.get_raw().image_view,
-                    depth_image_view.get_raw().image_view,
-                ];
-                let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
-                    .render_pass(renderpass.get_raw().renderpass)
-                    .attachments(&framebuffer_attachments)
-                    .width(swapchain_info.extents.width)
-                    .height(swapchain_info.extents.height)
-                    .layers(1);
+                let framebuffer_meta = dsc::FramebufferMeta {
+                    width: swapchain_info.extents.width,
+                    height: swapchain_info.extents.height,
+                    layers: 1,
+                };
 
-                unsafe { logical_device.create_framebuffer(&frame_buffer_create_info, None) }
+                let attachments = [color_image_view.clone(), depth_image_view.clone()];
+                resources.get_or_create_framebuffer(
+                    renderpass.clone(),
+                    &attachments,
+                    &framebuffer_meta,
+                )
             })
             .collect()
     }
@@ -222,7 +225,7 @@ impl VkOpaqueRenderPass {
                 .renderpass
                 .get_raw()
                 .renderpass,
-            self.frame_buffers[present_index],
+            self.frame_buffers[present_index].get_raw().framebuffer,
             &self.command_buffers[present_index],
             prepared_render_data,
             view,
@@ -239,10 +242,6 @@ impl Drop for VkOpaqueRenderPass {
             let device = self.device_context.device();
 
             device.destroy_command_pool(self.command_pool, None);
-
-            for frame_buffer in &self.frame_buffers {
-                device.destroy_framebuffer(*frame_buffer, None);
-            }
         }
 
         log::trace!("destroyed VkOpaqueRenderPass");

@@ -4,7 +4,9 @@ use crate::renderpass::{
 };
 use renderer::vulkan::{VkDeviceContext, VkSwapchain};
 use crate::game_renderer::{GameRendererInner, RenderpassAttachmentImage};
-use renderer::assets::resources::{ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource};
+use renderer::assets::resources::{
+    ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource, ResourceLookupSet,
+};
 use renderer::assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
 use ash::vk;
@@ -119,6 +121,7 @@ impl SwapchainResources {
         );
 
         let opaque_renderpass = VkOpaqueRenderPass::new(
+            resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
             &swapchain_images,
@@ -157,6 +160,7 @@ impl SwapchainResources {
         );
 
         let bloom_extract_renderpass = VkBloomExtractRenderPass::new(
+            resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
             &swapchain_images,
@@ -179,6 +183,7 @@ impl SwapchainResources {
         );
 
         let bloom_blur_renderpass = VkBloomBlurRenderPass::new(
+            resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
             &swapchain_images,
@@ -201,6 +206,7 @@ impl SwapchainResources {
         );
 
         let bloom_combine_renderpass = VkBloomCombineRenderPass::new(
+            resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
             &swapchain_images,
@@ -214,6 +220,7 @@ impl SwapchainResources {
         );
 
         let ui_renderpass = VkUiRenderPass::new(
+            resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
             &swapchain_images,
