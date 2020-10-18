@@ -209,6 +209,18 @@ impl Into<vk::ImageSubresourceRange> for ImageSubresourceRange {
     }
 }
 
+impl ImageSubresourceRange {
+    pub fn default_no_mips_or_layers(aspect_mask: ImageAspectFlags) -> Self {
+        ImageSubresourceRange {
+            aspect_mask,
+            base_mip_level: 0,
+            level_count: 1,
+            base_array_layer: 0,
+            layer_count: 1,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CompareOp {
     Never,
@@ -378,6 +390,18 @@ impl ImageViewMeta {
             .format(self.format.into())
             .components(self.components.clone().into())
             .subresource_range(self.subresource_range.clone().into())
+    }
+
+    pub fn default_2d_no_mips_or_layers(
+        format: Format,
+        image_aspect_flags: ImageAspectFlags,
+    ) -> Self {
+        ImageViewMeta {
+            view_type: ImageViewType::Type2D,
+            format,
+            components: Default::default(),
+            subresource_range: ImageSubresourceRange::default_no_mips_or_layers(image_aspect_flags),
+        }
     }
 }
 

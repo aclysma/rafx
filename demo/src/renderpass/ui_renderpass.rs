@@ -8,7 +8,7 @@ use renderer::vulkan::VkSwapchain;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
 
-use renderer::assets::resources::PipelineSwapchainInfo;
+use renderer::assets::resources::{PipelineSwapchainInfo, ResourceArc, ImageViewResource};
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::render_contexts::{RenderJobWriteContext, RenderJobWriteContextFactory};
 use renderer::vulkan::cleanup::VkCombinedDropSink;
@@ -34,7 +34,8 @@ pub struct VkUiRenderPass {
 impl VkUiRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
-        swapchain: &VkSwapchain,
+        swapchain_info: &SwapchainInfo,
+        swapchain_images: &[ResourceArc<ImageViewResource>],
         pipeline_info: PipelineSwapchainInfo,
     ) -> VkResult<Self> {
         //
@@ -50,8 +51,8 @@ impl VkUiRenderPass {
         //
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
-            &swapchain.swapchain_image_views,
-            &swapchain.swapchain_info,
+            swapchain_images,
+            swapchain_info,
             &pipeline_info
                 .pipeline
                 .get_raw()
@@ -60,15 +61,12 @@ impl VkUiRenderPass {
                 .renderpass,
         )?;
 
-        let command_buffers = Self::create_command_buffers(
-            &device_context.device(),
-            &swapchain.swapchain_info,
-            &command_pool,
-        )?;
+        let command_buffers =
+            Self::create_command_buffers(&device_context.device(), swapchain_info, &command_pool)?;
 
         Ok(VkUiRenderPass {
             device_context: device_context.clone(),
-            swapchain_info: swapchain.swapchain_info.clone(),
+            swapchain_info: swapchain_info.clone(),
             frame_buffers,
             command_pool,
             command_buffers,
@@ -102,14 +100,14 @@ impl VkUiRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
-        swapchain_image_views: &[vk::ImageView],
+        swapchain_image_views: &[ResourceArc<ImageViewResource>],
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
     ) -> VkResult<Vec<vk::Framebuffer>> {
         swapchain_image_views
             .iter()
-            .map(|&swapchain_image_view| {
-                let framebuffer_attachments = [swapchain_image_view];
+            .map(|swapchain_image_view| {
+                let framebuffer_attachments = [swapchain_image_view.get_raw().image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)
                     .attachments(&framebuffer_attachments)

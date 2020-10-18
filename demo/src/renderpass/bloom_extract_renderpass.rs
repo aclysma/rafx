@@ -4,7 +4,7 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer::vulkan::{VkDeviceContext, MsaaLevel, RenderpassAttachmentImage};
+use renderer::vulkan::{VkDeviceContext, MsaaLevel};
 use renderer::vulkan::VkSwapchain;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
@@ -13,17 +13,18 @@ use renderer::vulkan::VkImage;
 
 use atelier_assets::loader::handle::Handle;
 
-use renderer::assets::resources::{PipelineSwapchainInfo, DynDescriptorSet, ResourceManager};
+use renderer::assets::resources::{
+    PipelineSwapchainInfo, DynDescriptorSet, ResourceManager, ResourceArc, ImageViewResource,
+};
 use renderer::assets::MaterialAsset;
+use crate::game_renderer::RenderpassAttachmentImage;
 
 pub struct VkBloomRenderPassResources {
     pub device_context: VkDeviceContext,
     pub bloom_blur_material: Handle<MaterialAsset>,
-    pub bloom_images: [ManuallyDrop<VkImage>; 2],
-    pub bloom_image_views: [vk::ImageView; 2],
+    pub bloom_images: [ResourceArc<ImageViewResource>; 2],
     pub bloom_image_descriptor_sets: [DynDescriptorSet; 2],
-    pub color_image: ManuallyDrop<VkImage>,
-    pub color_image_view: vk::ImageView,
+    pub color_image: ResourceArc<ImageViewResource>,
 }
 
 impl VkBloomRenderPassResources {
@@ -33,7 +34,8 @@ impl VkBloomRenderPassResources {
         resource_manager: &mut ResourceManager,
         bloom_blur_material: Handle<MaterialAsset>,
     ) -> VkResult<Self> {
-        let (bloom_image0, bloom_image_view0) = RenderpassAttachmentImage::create_image_and_view(
+        let bloom_image0 = RenderpassAttachmentImage::create_resource(
+            resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
             swapchain.color_format,
@@ -42,7 +44,8 @@ impl VkBloomRenderPassResources {
             MsaaLevel::Sample1,
         )?;
 
-        let (bloom_image1, bloom_image_view1) = RenderpassAttachmentImage::create_image_and_view(
+        let bloom_image1 = RenderpassAttachmentImage::create_resource(
+            resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
             swapchain.color_format,
@@ -51,7 +54,8 @@ impl VkBloomRenderPassResources {
             MsaaLevel::Sample1,
         )?;
 
-        let (color_image, color_image_view) = RenderpassAttachmentImage::create_image_and_view(
+        let color_image = RenderpassAttachmentImage::create_resource(
+            resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
             swapchain.color_format,
@@ -70,13 +74,13 @@ impl VkBloomRenderPassResources {
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
         let mut bloom_blur_material_dyn_set0 = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(&bloom_blur_layout.descriptor_set_layout)?;
-        bloom_blur_material_dyn_set0.set_image_raw(0, bloom_image_view0);
+        bloom_blur_material_dyn_set0.set_image_raw(0, bloom_image0.get_raw().image_view);
         bloom_blur_material_dyn_set0.set_buffer_data(2, &(0 as u32));
         bloom_blur_material_dyn_set0.flush(&mut descriptor_set_allocator)?;
 
         let mut bloom_blur_material_dyn_set1 = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(&bloom_blur_layout.descriptor_set_layout)?;
-        bloom_blur_material_dyn_set1.set_image_raw(0, bloom_image_view1);
+        bloom_blur_material_dyn_set1.set_image_raw(0, bloom_image1.get_raw().image_view);
         bloom_blur_material_dyn_set1.set_buffer_data(2, &(1 as u32));
         bloom_blur_material_dyn_set1.flush(&mut descriptor_set_allocator)?;
 
@@ -84,37 +88,12 @@ impl VkBloomRenderPassResources {
             device_context: device_context.clone(),
             bloom_blur_material,
             bloom_images: [bloom_image0, bloom_image1],
-            bloom_image_views: [bloom_image_view0, bloom_image_view1],
             bloom_image_descriptor_sets: [
                 bloom_blur_material_dyn_set0,
                 bloom_blur_material_dyn_set1,
             ],
             color_image,
-            color_image_view,
         })
-    }
-}
-
-impl Drop for VkBloomRenderPassResources {
-    fn drop(&mut self) {
-        log::trace!("destroying VkBloomRenderPassResources");
-
-        unsafe {
-            self.device_context
-                .device()
-                .destroy_image_view(self.bloom_image_views[0], None);
-            self.device_context
-                .device()
-                .destroy_image_view(self.bloom_image_views[1], None);
-            self.device_context
-                .device()
-                .destroy_image_view(self.color_image_view, None);
-            ManuallyDrop::drop(&mut self.bloom_images[0]);
-            ManuallyDrop::drop(&mut self.bloom_images[1]);
-            ManuallyDrop::drop(&mut self.color_image);
-        }
-
-        log::trace!("destroyed VkBloomRenderPassResources");
     }
 }
 
@@ -134,7 +113,8 @@ pub struct VkBloomExtractRenderPass {
 impl VkBloomExtractRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
-        swapchain: &VkSwapchain,
+        swapchain_info: &SwapchainInfo,
+        swapchain_images: &[ResourceArc<ImageViewResource>],
         pipeline_info: PipelineSwapchainInfo,
         bloom_resources: &VkBloomRenderPassResources,
     ) -> VkResult<Self> {
@@ -151,10 +131,10 @@ impl VkBloomExtractRenderPass {
         //
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
-            bloom_resources.bloom_image_views[0],
-            bloom_resources.color_image_view,
-            &swapchain.swapchain_image_views,
-            &swapchain.swapchain_info,
+            bloom_resources.bloom_images[0].get_raw().image_view,
+            bloom_resources.color_image.get_raw().image_view,
+            swapchain_images,
+            swapchain_info,
             &pipeline_info
                 .pipeline
                 .get_raw()
@@ -163,15 +143,12 @@ impl VkBloomExtractRenderPass {
                 .renderpass,
         )?;
 
-        let command_buffers = Self::create_command_buffers(
-            &device_context.device(),
-            &swapchain.swapchain_info,
-            &command_pool,
-        )?;
+        let command_buffers =
+            Self::create_command_buffers(&device_context.device(), swapchain_info, &command_pool)?;
 
         Ok(VkBloomExtractRenderPass {
             device_context: device_context.clone(),
-            swapchain_info: swapchain.swapchain_info.clone(),
+            swapchain_info: swapchain_info.clone(),
             pipeline_info,
             frame_buffers,
             command_pool,
@@ -201,13 +178,13 @@ impl VkBloomExtractRenderPass {
         logical_device: &ash::Device,
         bloom_image_view: vk::ImageView,
         color_image_view: vk::ImageView,
-        swapchain_image_views: &[vk::ImageView],
+        swapchain_image_views: &[ResourceArc<ImageViewResource>],
         swapchain_info: &SwapchainInfo,
         renderpass: &vk::RenderPass,
     ) -> VkResult<Vec<vk::Framebuffer>> {
         swapchain_image_views
             .iter()
-            .map(|&_swapchain_image_view| {
+            .map(|_swapchain_image_view| {
                 let framebuffer_attachments = [color_image_view, bloom_image_view];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(*renderpass)

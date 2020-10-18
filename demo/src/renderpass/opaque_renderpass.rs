@@ -5,14 +5,17 @@ use ash::version::DeviceV1_0;
 
 use renderer::vulkan::{VkDeviceContext, MAX_FRAMES_IN_FLIGHT};
 use renderer::vulkan::VkSwapchain;
-use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
+use renderer::vulkan::SwapchainInfo;
 
-use renderer::assets::resources::PipelineSwapchainInfo;
+use renderer::assets::resources::{
+    PipelineSwapchainInfo, RenderPassResource, ResourceArc, ImageViewResource,
+};
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::OpaqueRenderPhase;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobWriteContextFactory};
 use renderer::vulkan::cleanup::VkCombinedDropSink;
+use crate::game_renderer::RenderpassAttachmentImage;
 
 /// Draws sprites
 pub struct VkOpaqueRenderPass {
@@ -34,7 +37,10 @@ pub struct VkOpaqueRenderPass {
 impl VkOpaqueRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
-        swapchain: &VkSwapchain,
+        swapchain_info: &SwapchainInfo,
+        swapchain_images: &[ResourceArc<ImageViewResource>],
+        color_attachment: &RenderpassAttachmentImage,
+        depth_attachment: &RenderpassAttachmentImage,
         pipeline_info: PipelineSwapchainInfo,
     ) -> VkResult<Self> {
         //
@@ -50,27 +56,19 @@ impl VkOpaqueRenderPass {
         //
         let frame_buffers = Self::create_framebuffers(
             &device_context.device(),
-            swapchain.color_attachment.target_image_view(),
-            &swapchain.swapchain_image_views,
-            swapchain.depth_attachment.target_image_view(),
-            &swapchain.swapchain_info,
-            &pipeline_info
-                .pipeline
-                .get_raw()
-                .renderpass
-                .get_raw()
-                .renderpass,
+            color_attachment.target_resource(),
+            &swapchain_images,
+            depth_attachment.target_resource(),
+            swapchain_info,
+            &pipeline_info.pipeline.get_raw().renderpass,
         )?;
 
-        let command_buffers = Self::create_command_buffers(
-            &device_context.device(),
-            &swapchain.swapchain_info,
-            &command_pool,
-        )?;
+        let command_buffers =
+            Self::create_command_buffers(&device_context.device(), swapchain_info, &command_pool)?;
 
         Ok(VkOpaqueRenderPass {
             device_context: device_context.clone(),
-            swapchain_info: swapchain.swapchain_info.clone(),
+            swapchain_info: swapchain_info.clone(),
             frame_buffers,
             command_pool,
             command_buffers,
@@ -104,18 +102,21 @@ impl VkOpaqueRenderPass {
 
     fn create_framebuffers(
         logical_device: &ash::Device,
-        color_image_view: vk::ImageView,
-        swapchain_image_views: &[vk::ImageView],
-        depth_image_view: vk::ImageView,
+        color_image_view: &ResourceArc<ImageViewResource>,
+        swapchain_image_views: &[ResourceArc<ImageViewResource>],
+        depth_image_view: &ResourceArc<ImageViewResource>,
         swapchain_info: &SwapchainInfo,
-        renderpass: &vk::RenderPass,
+        renderpass: &ResourceArc<RenderPassResource>,
     ) -> VkResult<Vec<vk::Framebuffer>> {
         swapchain_image_views
             .iter()
-            .map(|&_swapchain_image_view| {
-                let framebuffer_attachments = [color_image_view, depth_image_view];
+            .map(|_swapchain_image_view| {
+                let framebuffer_attachments = [
+                    color_image_view.get_raw().image_view,
+                    depth_image_view.get_raw().image_view,
+                ];
                 let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
-                    .render_pass(*renderpass)
+                    .render_pass(renderpass.get_raw().renderpass)
                     .attachments(&framebuffer_attachments)
                     .width(swapchain_info.extents.width)
                     .height(swapchain_info.extents.height)

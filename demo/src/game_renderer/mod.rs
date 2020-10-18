@@ -29,6 +29,9 @@ use render_thread::RenderThread;
 mod swapchain_resources;
 use swapchain_resources::SwapchainResources;
 
+mod swapchain_attachment;
+pub(crate) use swapchain_attachment::RenderpassAttachmentImage;
+
 mod render_frame_job;
 use render_frame_job::RenderFrameJob;
 
@@ -48,11 +51,6 @@ pub struct GameRendererInner {
 
     // Everything that requires being created after the swapchain inits
     swapchain_resources: Option<SwapchainResources>,
-
-    // The images presented by the swapchain
-    //TODO: We don't properly support multiple swapchains right now. This would ideally be a map
-    // of window/surface to info for the swapchain
-    swapchain_images: Vec<ResourceArc<ImageViewResource>>,
 
     main_camera_render_phase_mask: RenderPhaseMask,
 
@@ -102,7 +100,6 @@ impl GameRenderer {
             imgui_font_atlas_image_view,
             static_resources: game_renderer_resources,
             swapchain_resources: None,
-            swapchain_images: Default::default(),
 
             main_camera_render_phase_mask,
 
@@ -299,9 +296,9 @@ impl GameRenderer {
 
         let mut guard = game_renderer.inner.lock().unwrap();
         let main_camera_render_phase_mask = guard.main_camera_render_phase_mask;
-        let swapchain_image =
-            guard.swapchain_images[frame_in_flight.present_index() as usize].clone();
         let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
+        let swapchain_image =
+            swapchain_resources.swapchain_images[frame_in_flight.present_index() as usize].clone();
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
 
         //
@@ -493,16 +490,16 @@ impl GameRenderer {
 
         let game_renderer = game_renderer.clone();
 
-        let t2 = std::time::Instant::now();
-        render_graph::setup_graph(
-            &swapchain_surface_info,
-            &device_context,
-            resource_manager.resources_mut(),
-            swapchain_image,
-        );
-        let t3 = std::time::Instant::now();
-
-        log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
+        // let t2 = std::time::Instant::now();
+        // render_graph::setup_graph(
+        //     &swapchain_surface_info,
+        //     &device_context,
+        //     resource_manager.resources_mut(),
+        //     swapchain_image,
+        // );
+        // let t3 = std::time::Instant::now();
+        //
+        // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
 
         let prepared_frame = RenderFrameJob {
             game_renderer,

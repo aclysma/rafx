@@ -35,7 +35,6 @@ pub use device::VkCreateDeviceError;
 
 mod swapchain;
 pub use swapchain::VkSwapchain;
-pub use swapchain::RenderpassAttachmentImage;
 pub use swapchain::SwapchainInfo;
 pub use swapchain::MAX_FRAMES_IN_FLIGHT;
 

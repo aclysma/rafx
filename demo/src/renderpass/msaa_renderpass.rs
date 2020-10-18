@@ -7,6 +7,8 @@ use renderer::vulkan::{VkDeviceContext, MsaaLevel};
 use renderer::vulkan::VkSwapchain;
 use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
+use crate::game_renderer::RenderpassAttachmentImage;
+use renderer::assets::resources::{ResourceArc, ImageViewResource};
 
 /// Draws sprites
 pub struct VkMsaaRenderPass {
@@ -24,7 +26,9 @@ pub struct VkMsaaRenderPass {
 impl VkMsaaRenderPass {
     pub fn new(
         device_context: &VkDeviceContext,
-        swapchain: &VkSwapchain,
+        swapchain_info: &SwapchainInfo,
+        swapchain_images: &[ResourceArc<ImageViewResource>],
+        color_attachment: &RenderpassAttachmentImage,
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -34,18 +38,15 @@ impl VkMsaaRenderPass {
             &device_context.queue_family_indices(),
         )?;
 
-        let command_buffers = Self::create_command_buffers(
-            &device_context.device(),
-            &swapchain.swapchain_info,
-            &command_pool,
-        )?;
+        let command_buffers =
+            Self::create_command_buffers(&device_context.device(), swapchain_info, &command_pool)?;
 
-        let color_target_image = swapchain.color_attachment.target_image();
-        let color_resolved_image = swapchain.color_attachment.resolved_image();
+        let color_target_image = color_attachment.target_image();
+        let color_resolved_image = color_attachment.resolved_image();
 
         Ok(VkMsaaRenderPass {
             device_context: device_context.clone(),
-            swapchain_info: swapchain.swapchain_info.clone(),
+            swapchain_info: swapchain_info.clone(),
             command_pool,
             command_buffers,
             color_target_image,
