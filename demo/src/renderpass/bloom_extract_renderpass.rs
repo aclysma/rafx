@@ -103,7 +103,7 @@ pub struct VkBloomExtractRenderPass {
     device_context: VkDeviceContext,
     swapchain_info: SwapchainInfo,
     pipeline_info: PipelineSwapchainInfo,
-    frame_buffers: Vec<ResourceArc<FramebufferResource>>,
+    frame_buffer: ResourceArc<FramebufferResource>,
 }
 
 impl VkBloomExtractRenderPass {
@@ -111,15 +111,13 @@ impl VkBloomExtractRenderPass {
         resources: &mut ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
-        swapchain_images: &[ResourceArc<ImageViewResource>],
         pipeline_info: PipelineSwapchainInfo,
         bloom_resources: &VkBloomRenderPassResources,
     ) -> VkResult<Self> {
-        let frame_buffers = Self::create_framebuffers(
+        let frame_buffer = Self::create_framebuffers(
             resources,
             &bloom_resources.bloom_images[0],
             &bloom_resources.color_image,
-            swapchain_images,
             swapchain_info,
             &pipeline_info.pipeline.get_raw().renderpass,
         )?;
@@ -128,7 +126,7 @@ impl VkBloomExtractRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain_info.clone(),
             pipeline_info,
-            frame_buffers,
+            frame_buffer,
         })
     }
 
@@ -136,32 +134,21 @@ impl VkBloomExtractRenderPass {
         resources: &mut ResourceLookupSet,
         bloom_image_view: &ResourceArc<ImageViewResource>,
         color_image_view: &ResourceArc<ImageViewResource>,
-        swapchain_image_views: &[ResourceArc<ImageViewResource>],
         swapchain_info: &SwapchainInfo,
         renderpass: &ResourceArc<RenderPassResource>,
-    ) -> VkResult<Vec<ResourceArc<FramebufferResource>>> {
-        swapchain_image_views
-            .iter()
-            .map(|_swapchain_image_view| {
-                let framebuffer_meta = dsc::FramebufferMeta {
-                    width: swapchain_info.extents.width,
-                    height: swapchain_info.extents.height,
-                    layers: 1,
-                };
+    ) -> VkResult<ResourceArc<FramebufferResource>> {
+        let framebuffer_meta = dsc::FramebufferMeta {
+            width: swapchain_info.extents.width,
+            height: swapchain_info.extents.height,
+            layers: 1,
+        };
 
-                let attachments = [color_image_view.clone(), bloom_image_view.clone()];
-                resources.get_or_create_framebuffer(
-                    renderpass.clone(),
-                    &attachments,
-                    &framebuffer_meta,
-                )
-            })
-            .collect()
+        let attachments = [color_image_view.clone(), bloom_image_view.clone()];
+        resources.get_or_create_framebuffer(renderpass.clone(), &attachments, &framebuffer_meta)
     }
 
     pub fn update(
         &mut self,
-        present_index: usize,
         descriptor_set: vk::DescriptorSet,
         command_writer: &mut DynCommandWriter,
     ) -> VkResult<vk::CommandBuffer> {
@@ -187,7 +174,7 @@ impl VkBloomExtractRenderPass {
                     .get_raw()
                     .renderpass,
             )
-            .framebuffer(self.frame_buffers[present_index].get_raw().framebuffer)
+            .framebuffer(self.frame_buffer.get_raw().framebuffer)
             .render_area(vk::Rect2D {
                 offset: vk::Offset2D { x: 0, y: 0 },
                 extent: self.swapchain_info.extents,

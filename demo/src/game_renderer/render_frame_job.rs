@@ -120,7 +120,6 @@ impl RenderFrameJob {
         //
         log::trace!("opaque_renderpass update");
         let command_buffer = swapchain_resources.opaque_renderpass.update(
-            present_index,
             &*prepared_render_data,
             &main_view,
             &write_context_factory,
@@ -151,11 +150,9 @@ impl RenderFrameJob {
             .get();
         log::trace!("bloom_extract_renderpass update");
 
-        let command_buffer = swapchain_resources.bloom_extract_renderpass.update(
-            present_index,
-            descriptor_set_per_pass,
-            &mut command_writer,
-        )?;
+        let command_buffer = swapchain_resources
+            .bloom_extract_renderpass
+            .update(descriptor_set_per_pass, &mut command_writer)?;
         command_buffers.push(command_buffer);
 
         //

@@ -22,7 +22,7 @@ use crate::game_renderer::RenderpassAttachmentImage;
 pub struct VkOpaqueRenderPass {
     device_context: VkDeviceContext,
     swapchain_info: SwapchainInfo,
-    frame_buffers: Vec<ResourceArc<FramebufferResource>>,
+    frame_buffer: ResourceArc<FramebufferResource>,
     renderpass: ResourceArc<RenderPassResource>,
 }
 
@@ -31,15 +31,13 @@ impl VkOpaqueRenderPass {
         resources: &mut ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
-        swapchain_images: &[ResourceArc<ImageViewResource>],
         color_attachment: &RenderpassAttachmentImage,
         depth_attachment: &RenderpassAttachmentImage,
         pipeline_info: PipelineSwapchainInfo,
     ) -> VkResult<Self> {
-        let frame_buffers = Self::create_framebuffers(
+        let frame_buffer = Self::create_framebuffers(
             resources,
             color_attachment.target_resource(),
-            &swapchain_images,
             depth_attachment.target_resource(),
             swapchain_info,
             &pipeline_info.pipeline.get_raw().renderpass,
@@ -48,7 +46,7 @@ impl VkOpaqueRenderPass {
         Ok(VkOpaqueRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain_info.clone(),
-            frame_buffers,
+            frame_buffer,
             renderpass: pipeline_info.pipeline.get_raw().renderpass.clone(),
         })
     }
@@ -56,33 +54,22 @@ impl VkOpaqueRenderPass {
     fn create_framebuffers(
         resources: &mut ResourceLookupSet,
         color_image_view: &ResourceArc<ImageViewResource>,
-        swapchain_image_views: &[ResourceArc<ImageViewResource>],
         depth_image_view: &ResourceArc<ImageViewResource>,
         swapchain_info: &SwapchainInfo,
         renderpass: &ResourceArc<RenderPassResource>,
-    ) -> VkResult<Vec<ResourceArc<FramebufferResource>>> {
-        swapchain_image_views
-            .iter()
-            .map(|_swapchain_image_view| {
-                let framebuffer_meta = dsc::FramebufferMeta {
-                    width: swapchain_info.extents.width,
-                    height: swapchain_info.extents.height,
-                    layers: 1,
-                };
+    ) -> VkResult<ResourceArc<FramebufferResource>> {
+        let framebuffer_meta = dsc::FramebufferMeta {
+            width: swapchain_info.extents.width,
+            height: swapchain_info.extents.height,
+            layers: 1,
+        };
 
-                let attachments = [color_image_view.clone(), depth_image_view.clone()];
-                resources.get_or_create_framebuffer(
-                    renderpass.clone(),
-                    &attachments,
-                    &framebuffer_meta,
-                )
-            })
-            .collect()
+        let attachments = [color_image_view.clone(), depth_image_view.clone()];
+        resources.get_or_create_framebuffer(renderpass.clone(), &attachments, &framebuffer_meta)
     }
 
     pub fn update(
         &mut self,
-        present_index: usize,
         prepared_render_data: &PreparedRenderData<RenderJobWriteContext>,
         view: &RenderView,
         write_context_factory: &RenderJobWriteContextFactory,
@@ -104,7 +91,7 @@ impl VkOpaqueRenderPass {
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(self.renderpass.get_raw().renderpass)
-            .framebuffer(self.frame_buffers[present_index].get_raw().framebuffer)
+            .framebuffer(self.frame_buffer.get_raw().framebuffer)
             .render_area(vk::Rect2D {
                 offset: vk::Offset2D { x: 0, y: 0 },
                 extent: self.swapchain_info.extents,

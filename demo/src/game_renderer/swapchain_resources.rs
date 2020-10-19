@@ -135,7 +135,6 @@ impl SwapchainResources {
             resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
-            &swapchain_images,
             &color_attachment,
             &depth_attachment,
             opaque_pipeline_info,
@@ -170,7 +169,6 @@ impl SwapchainResources {
             resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
-            &swapchain_images,
             bloom_extract_pipeline_info,
             &bloom_resources,
         )?;
