@@ -481,6 +481,7 @@ impl GameRenderer {
         );
 
         let dyn_resource_allocator_set = resource_manager.create_dyn_resource_allocator_set();
+        let dyn_command_writer_allocator = resource_manager.create_dyn_command_writer_allocator();
 
         let t1 = std::time::Instant::now();
         log::trace!(
@@ -505,6 +506,7 @@ impl GameRenderer {
             game_renderer,
             prepare_job_set,
             dyn_resource_allocator_set,
+            dyn_command_writer_allocator,
             frame_packet,
             main_view,
             render_registry,

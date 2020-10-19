@@ -47,6 +47,10 @@ pub fn logging_init() {
         .filter_module("renderer_nodes", log::LevelFilter::Info)
         .filter_module("renderer_visibility", log::LevelFilter::Info)
         .filter_module("renderer_assets::graph", log::LevelFilter::Trace)
+        .filter_module(
+            "renderer_assets::resources::command_buffers",
+            log::LevelFilter::Trace,
+        )
         .filter_level(log_level)
         // .format(|buf, record| { //TODO: Get a frame count in here
         //     writeln!(buf,

@@ -36,6 +36,7 @@ use crate::resources::descriptor_sets::{DescriptorSetAllocator, DescriptorSetAll
 use crate::resources::upload::{UploadManager, ImageUploadOpResult, BufferUploadOpResult};
 use crossbeam_channel::Sender;
 use crate::assets::MaterialPassDataRenderpassRef;
+use crate::resources::command_buffers::DynCommandWriterAllocator;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -87,6 +88,7 @@ pub struct ResourceManagerLoaders {
 
 pub struct ResourceManager {
     dyn_resources: DynResourceAllocatorManagerSet,
+    dyn_commands: DynCommandWriterAllocator,
     resources: ResourceLookupSet,
     loaded_assets: AssetLookupSet,
     load_queues: LoadQueueSet,
@@ -117,6 +119,10 @@ impl ResourceManager {
 
     pub fn new(device_context: &VkDeviceContext) -> Self {
         ResourceManager {
+            dyn_commands: DynCommandWriterAllocator::new(
+                device_context,
+                renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+            ),
             dyn_resources: DynResourceAllocatorManagerSet::new(
                 device_context,
                 renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
@@ -178,6 +184,10 @@ impl ResourceManager {
             image_loader: self.create_image_loader(),
             buffer_loader: self.create_buffer_loader(),
         }
+    }
+
+    pub fn create_dyn_command_writer_allocator(&self) -> DynCommandWriterAllocator {
+        self.dyn_commands.clone()
     }
 
     pub fn create_dyn_resource_allocator_set(&self) -> DynResourceAllocatorSet {
@@ -326,6 +336,7 @@ impl ResourceManager {
 
     pub fn on_frame_complete(&mut self) -> VkResult<()> {
         self.resources.on_frame_complete()?;
+        self.dyn_commands.on_frame_complete()?;
         self.dyn_resources.on_frame_complete()?;
         self.resource_descriptor_sets.on_frame_complete();
         self.descriptor_set_allocator.on_frame_complete();

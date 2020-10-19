@@ -157,3 +157,15 @@ where
             .finish()
     }
 }
+
+impl<ResourceT> PartialEq for ResourceArc<ResourceT>
+where
+    ResourceT: std::fmt::Debug + Clone,
+{
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.inner.resource.resource_hash == other.inner.resource.resource_hash
+    }
+}

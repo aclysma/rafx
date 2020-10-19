@@ -6,6 +6,7 @@ use renderer::vulkan::{VkDeviceContext, VkSwapchain};
 use crate::game_renderer::{GameRendererInner, RenderpassAttachmentImage};
 use renderer::assets::resources::{
     ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource, ResourceLookupSet,
+    CommandPool,
 };
 use renderer::assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
@@ -21,6 +22,8 @@ pub struct SwapchainResources {
 
     pub color_attachment: RenderpassAttachmentImage,
     pub depth_attachment: RenderpassAttachmentImage,
+
+    pub static_command_pool: CommandPool,
 
     pub debug_material_per_frame_data: DynDescriptorSet,
     pub bloom_resources: VkBloomRenderPassResources,
@@ -112,6 +115,14 @@ impl SwapchainResources {
             swapchain_surface_info.msaa_level,
         )?;
 
+        let mut static_command_pool = CommandPool::new(
+            &device_context,
+            device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            vk::CommandPoolCreateFlags::empty(),
+        )?;
+
         log::debug!("Create VkOpaqueRenderPass");
         //TODO: We probably want to move to just using a pipeline here and not a specific material
         let opaque_pipeline_info = resource_manager.get_pipeline_info(
@@ -131,12 +142,8 @@ impl SwapchainResources {
         )?;
 
         log::debug!("Create VkDebugRenderPass");
-        let msaa_renderpass = VkMsaaRenderPass::new(
-            device_context,
-            &swapchain.swapchain_info,
-            &swapchain_images,
-            &color_attachment,
-        )?;
+        let msaa_renderpass =
+            VkMsaaRenderPass::new(device_context, &swapchain.swapchain_info, &color_attachment)?;
 
         log::debug!("Create VkBloomExtractRenderPass");
 
@@ -186,9 +193,9 @@ impl SwapchainResources {
             resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
-            &swapchain_images,
             bloom_blur_pipeline_info,
             &bloom_resources,
+            &mut static_command_pool,
         )?;
 
         log::debug!("Create VkBloomCombineRenderPass");
@@ -251,6 +258,7 @@ impl SwapchainResources {
             swapchain_images,
             color_attachment,
             depth_attachment,
+            static_command_pool,
             debug_material_per_frame_data,
             bloom_resources,
             bloom_extract_material_dyn_set,

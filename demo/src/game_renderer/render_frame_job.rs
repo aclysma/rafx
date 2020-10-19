@@ -3,7 +3,9 @@ use renderer::nodes::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
 use crate::render_contexts::{
     RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory,
 };
-use renderer::assets::resources::{DynResourceAllocatorSet, PipelineSwapchainInfo};
+use renderer::assets::resources::{
+    DynResourceAllocatorSet, PipelineSwapchainInfo, DynCommandWriterAllocator,
+};
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
 use std::sync::MutexGuard;
 use ash::prelude::VkResult;
@@ -13,6 +15,7 @@ pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
     pub prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
     pub dyn_resource_allocator_set: DynResourceAllocatorSet,
+    pub dyn_command_writer_allocator: DynCommandWriterAllocator,
     pub frame_packet: FramePacket,
     pub main_view: RenderView,
     pub render_registry: RenderRegistry,
@@ -31,6 +34,7 @@ impl RenderFrameJob {
             guard,
             self.prepare_job_set,
             self.dyn_resource_allocator_set,
+            self.dyn_command_writer_allocator,
             self.frame_packet,
             self.main_view,
             self.render_registry,
@@ -67,6 +71,7 @@ impl RenderFrameJob {
         mut guard: MutexGuard<GameRendererInner>,
         prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
         dyn_resource_allocator_set: DynResourceAllocatorSet,
+        dyn_command_writer_allocator: DynCommandWriterAllocator,
         frame_packet: FramePacket,
         main_view: RenderView,
         render_registry: RenderRegistry,
@@ -79,6 +84,13 @@ impl RenderFrameJob {
         //let mut guard = self.inner.lock().unwrap();
         let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
 
+        let mut command_writer = dyn_command_writer_allocator.allocate_writer(
+            device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            vk::CommandPoolCreateFlags::TRANSIENT,
+            0,
+        )?;
         let mut command_buffers = vec![];
 
         //
@@ -107,14 +119,14 @@ impl RenderFrameJob {
         // Opaque renderpass
         //
         log::trace!("opaque_renderpass update");
-        swapchain_resources.opaque_renderpass.update(
-            &opaque_pipeline_info,
+        let command_buffer = swapchain_resources.opaque_renderpass.update(
             present_index,
             &*prepared_render_data,
             &main_view,
             &write_context_factory,
+            &mut command_writer,
         )?;
-        command_buffers.push(swapchain_resources.opaque_renderpass.command_buffers[present_index]);
+        command_buffers.push(command_buffer);
 
         //
         // Debug Renderpass
@@ -125,12 +137,10 @@ impl RenderFrameJob {
             .get();
         log::trace!("msaa_renderpass update");
 
-        swapchain_resources.msaa_renderpass.update(
-            present_index,
-            descriptor_set_per_pass,
-            //debug_draw_3d_line_lists,
-        )?;
-        command_buffers.push(swapchain_resources.msaa_renderpass.command_buffers[present_index]);
+        let command_buffer = swapchain_resources
+            .msaa_renderpass
+            .update(&mut command_writer)?;
+        command_buffers.push(command_buffer);
 
         //
         // bloom extract
@@ -141,11 +151,12 @@ impl RenderFrameJob {
             .get();
         log::trace!("bloom_extract_renderpass update");
 
-        swapchain_resources
-            .bloom_extract_renderpass
-            .update(present_index, descriptor_set_per_pass)?;
-        command_buffers
-            .push(swapchain_resources.bloom_extract_renderpass.command_buffers[present_index]);
+        let command_buffer = swapchain_resources.bloom_extract_renderpass.update(
+            present_index,
+            descriptor_set_per_pass,
+            &mut command_writer,
+        )?;
+        command_buffers.push(command_buffer);
 
         //
         // bloom blur
@@ -171,23 +182,24 @@ impl RenderFrameJob {
             .get();
         log::trace!("bloom_combine_renderpass update");
 
-        swapchain_resources
-            .bloom_combine_renderpass
-            .update(present_index, descriptor_set_per_pass)?;
-        command_buffers
-            .push(swapchain_resources.bloom_combine_renderpass.command_buffers[present_index]);
+        let command_buffer = swapchain_resources.bloom_combine_renderpass.update(
+            present_index,
+            descriptor_set_per_pass,
+            &mut command_writer,
+        )?;
+        command_buffers.push(command_buffer);
 
         //
         // imgui
         //
-        swapchain_resources.ui_renderpass.update(
-            &imgui_pipeline_info,
+        let command_buffer = swapchain_resources.ui_renderpass.update(
             present_index,
             &*prepared_render_data,
             &main_view,
             &write_context_factory,
+            &mut command_writer,
         )?;
-        command_buffers.push(swapchain_resources.ui_renderpass.command_buffers[present_index]);
+        command_buffers.push(command_buffer);
 
         let t2 = std::time::Instant::now();
         log::trace!(

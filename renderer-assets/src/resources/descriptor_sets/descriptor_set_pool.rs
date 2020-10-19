@@ -21,6 +21,8 @@ struct PendingDescriptorSetDrop {
     live_until_frame: u32,
 }
 
+//TODO: This does not implement any form of defragmentation or trimming - it grows up to the high
+// watermark of concurrent number of allocated descriptor sets and remains that size
 pub(super) struct ManagedDescriptorSetPool {
     // Keeps track of descriptor sets that are in use
     pub(super) slab: RawSlab<ManagedDescriptorSet>,

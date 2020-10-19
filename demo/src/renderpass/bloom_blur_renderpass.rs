@@ -12,18 +12,17 @@ use crate::renderpass::VkBloomRenderPassResources;
 use renderer::assets::vk_description as dsc;
 use renderer::assets::resources::{
     PipelineSwapchainInfo, ResourceArc, ImageViewResource, ResourceLookupSet, RenderPassResource,
-    FramebufferResource,
+    FramebufferResource, CommandPool,
 };
 
 pub struct VkBloomBlurRenderPass {
-    pub device_context: VkDeviceContext,
-    pub swapchain_info: SwapchainInfo,
+    device_context: VkDeviceContext,
+    swapchain_info: SwapchainInfo,
 
-    pub frame_buffers: Vec<ResourceArc<FramebufferResource>>,
+    frame_buffers: Vec<ResourceArc<FramebufferResource>>,
 
     // Command pool and list of command buffers. We ping-pong the blur filter, so there are two
-    // command buffers, two framebuffers, two images, to descriptor sets, etc.
-    pub command_pool: vk::CommandPool,
+    // command buffers, two framebuffers, two images, two descriptor sets, etc.
     pub command_buffers: Vec<vk::CommandBuffer>,
 }
 
@@ -32,18 +31,10 @@ impl VkBloomBlurRenderPass {
         resources: &mut ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
-        swapchain_images: &[ResourceArc<ImageViewResource>],
         pipeline_info: PipelineSwapchainInfo,
         bloom_resources: &VkBloomRenderPassResources,
+        static_command_pool: &mut CommandPool,
     ) -> VkResult<Self> {
-        //
-        // Command Buffers
-        //
-        let command_pool = Self::create_command_pool(
-            &device_context.device(),
-            &device_context.queue_family_indices(),
-        )?;
-
         //
         // Renderpass Resources
         //
@@ -54,9 +45,6 @@ impl VkBloomBlurRenderPass {
             &pipeline_info.pipeline.get_raw().renderpass,
         )?;
 
-        let command_buffers =
-            Self::create_command_buffers(&device_context.device(), swapchain_info, &command_pool)?;
-
         let descriptor_set_per_pass0 = bloom_resources.bloom_image_descriptor_sets[0]
             .descriptor_set()
             .get();
@@ -64,7 +52,10 @@ impl VkBloomBlurRenderPass {
             .descriptor_set()
             .get();
 
-        Self::update_command_buffer(
+        let command_buffers =
+            static_command_pool.create_command_buffers(vk::CommandBufferLevel::PRIMARY, 2)?;
+
+        Self::record_command_buffer(
             &device_context,
             swapchain_info,
             pipeline_info
@@ -80,7 +71,7 @@ impl VkBloomBlurRenderPass {
             descriptor_set_per_pass0,
         )?;
 
-        Self::update_command_buffer(
+        Self::record_command_buffer(
             &device_context,
             swapchain_info,
             pipeline_info
@@ -100,25 +91,8 @@ impl VkBloomBlurRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain_info.clone(),
             frame_buffers,
-            command_pool,
             command_buffers,
-            // bloom_image,
-            // bloom_image_view
         })
-    }
-
-    fn create_command_pool(
-        logical_device: &ash::Device,
-        queue_family_indices: &VkQueueFamilyIndices,
-    ) -> VkResult<vk::CommandPool> {
-        log::trace!(
-            "Creating command pool with queue family index {}",
-            queue_family_indices.graphics_queue_family_index
-        );
-        let pool_create_info = vk::CommandPoolCreateInfo::builder()
-            .queue_family_index(queue_family_indices.graphics_queue_family_index);
-
-        unsafe { logical_device.create_command_pool(&pool_create_info, None) }
     }
 
     fn create_framebuffers(
@@ -146,21 +120,8 @@ impl VkBloomBlurRenderPass {
             .collect()
     }
 
-    fn create_command_buffers(
-        logical_device: &ash::Device,
-        swapchain_info: &SwapchainInfo,
-        command_pool: &vk::CommandPool,
-    ) -> VkResult<Vec<vk::CommandBuffer>> {
-        let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
-            .command_buffer_count(swapchain_info.image_count as u32)
-            .command_pool(*command_pool)
-            .level(vk::CommandBufferLevel::PRIMARY);
-
-        unsafe { logical_device.allocate_command_buffers(&command_buffer_allocate_info) }
-    }
-
     #[allow(clippy::too_many_arguments)]
-    fn update_command_buffer(
+    fn record_command_buffer(
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         renderpass: vk::RenderPass,
@@ -219,18 +180,5 @@ impl VkBloomBlurRenderPass {
             logical_device.cmd_end_render_pass(command_buffer);
             logical_device.end_command_buffer(command_buffer)
         }
-    }
-}
-
-impl Drop for VkBloomBlurRenderPass {
-    fn drop(&mut self) {
-        log::trace!("destroying VkSpriteRenderPass");
-
-        unsafe {
-            let device = self.device_context.device();
-            device.destroy_command_pool(self.command_pool, None);
-        }
-
-        log::trace!("destroyed VkSpriteRenderPass");
     }
 }
