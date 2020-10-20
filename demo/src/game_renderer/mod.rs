@@ -300,6 +300,7 @@ impl GameRenderer {
         let swapchain_image =
             swapchain_resources.swapchain_images[frame_in_flight.present_index() as usize].clone();
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
+        let swapchain_info = swapchain_resources.swapchain_info.clone();
 
         //
         // View Management
@@ -491,20 +492,22 @@ impl GameRenderer {
 
         let game_renderer = game_renderer.clone();
 
-        // let t2 = std::time::Instant::now();
-        // render_graph::setup_graph(
-        //     &swapchain_surface_info,
-        //     &device_context,
-        //     resource_manager.resources_mut(),
-        //     swapchain_image,
-        // );
-        // let t3 = std::time::Instant::now();
-        //
-        // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
+        let t2 = std::time::Instant::now();
+        let render_graph = render_graph::build_render_graph(
+            &swapchain_surface_info,
+            &device_context,
+            resource_manager,
+            &swapchain_info,
+            swapchain_image,
+        )?;
+        let t3 = std::time::Instant::now();
+
+        log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
 
         let prepared_frame = RenderFrameJob {
             game_renderer,
             prepare_job_set,
+            render_graph,
             dyn_resource_allocator_set,
             dyn_command_writer_allocator,
             frame_packet,

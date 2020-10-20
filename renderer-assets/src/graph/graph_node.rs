@@ -1,5 +1,8 @@
 use super::*;
 use std::fmt::Formatter;
+use ash::prelude::VkResult;
+use renderer_nodes::{PreparedRenderData, RenderView};
+use crate::DynCommandWriter;
 
 //
 // Nodes
@@ -117,11 +120,9 @@ impl std::fmt::Debug for RenderGraphPassResolveAttachmentInfo {
 //
 // Graph nodes represent a "schedulable" event, generally a renderpass. It reads/writes resources.
 //
-#[derive(Debug)]
 pub struct RenderGraphNode {
     id: RenderGraphNodeId,
     name: Option<RenderGraphNodeName>,
-    //pub(super) action: Option<Box<dyn RenderGraphNodeAction>>,
 
     // This stores creates/reads/modifies for all images.. more detailed information about them
     // may be included in other lists (like color_attachments)
@@ -133,6 +134,24 @@ pub struct RenderGraphNode {
     pub(super) color_attachments: Vec<Option<RenderGraphPassColorAttachmentInfo>>,
     pub(super) depth_attachment: Option<RenderGraphPassDepthAttachmentInfo>,
     pub(super) resolve_attachments: Vec<Option<RenderGraphPassResolveAttachmentInfo>>,
+}
+
+impl std::fmt::Debug for RenderGraphNode {
+    fn fmt(
+        &self,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("RenderGraphNode")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("image_creates", &self.image_creates)
+            .field("image_reads", &self.image_reads)
+            .field("image_modifies", &self.image_modifies)
+            .field("color_attachments", &self.color_attachments)
+            .field("depth_attachment", &self.depth_attachment)
+            .field("resolve_attachments", &self.resolve_attachments)
+            .finish()
+    }
 }
 
 impl RenderGraphNode {

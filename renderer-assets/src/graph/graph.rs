@@ -5,7 +5,7 @@ use crate::vk_description::{AttachmentReference, AttachmentDescription, Swapchai
 use std::collections::HashMap;
 use ash::vk::ClearValue;
 use crate::resources::{ResourceArc, ImageViewResource};
-use crate::graph::prepared_graph::PreparedRenderGraphOutputImage;
+use crate::graph::prepared_graph::RenderGraphPlanOutputImage;
 
 /// The specification for the image by image usage
 pub struct DetermineImageConstraintsResult {
@@ -219,6 +219,7 @@ impl PhysicalImageIdAllocator {
 }
 
 pub struct RenderGraphOutputPass {
+    pub(super) subpass_nodes: Vec<RenderGraphNodeId>,
     pub(super) description: dsc::RenderPass,
     pub(super) attachment_images: Vec<PhysicalImageId>,
     pub(super) clear_values: Vec<vk::ClearValue>,
@@ -1658,9 +1659,9 @@ impl RenderGraph {
 
                 for usage_resource_id in &written_image_version_info.read_usages {
                     // We can't share images if they aren't the same format
-                    let specifications_match = image_constraint_results
-                        .specification(written_image)
-                        == image_constraint_results.specification(*usage_resource_id);
+                    let written_spec = image_constraint_results.specification(written_image);
+                    let usage_spec = image_constraint_results.specification(*usage_resource_id);
+                    let specifications_match = *written_spec == *usage_spec;
 
                     // We can't share images unless it's a read or it's an exclusive write
                     let is_read_or_exclusive_write = (read_count > 0
@@ -1699,12 +1700,18 @@ impl RenderGraph {
                         let specification = image_constraint_results.specification(written_image);
                         let physical_image = physical_image_id_allocator.allocate();
                         log::info!(
-                            "    Allocate image {:?} for {:?} ({:?} -> {:?})",
+                            "    Allocate image {:?} for {:?} ({:?} -> {:?})  (specifications_match match: {} is_read_or_exclusive_write: {})",
                             physical_image,
                             usage_resource_id,
                             write_type,
-                            read_type
+                            read_type,
+                            specifications_match,
+                            is_read_or_exclusive_write
                         );
+                        if !specifications_match {
+                            log::trace!("      written: {:?}", written_spec);
+                            log::trace!("      usage  : {:?}", usage_spec);
+                        }
                         let overwritten_image =
                             map_image_to_physical.insert(*usage_resource_id, physical_image);
                         // physical_image_usages
@@ -2440,6 +2447,7 @@ impl RenderGraph {
 
                 // TODO: Figure out how to handle output images
                 // TODO: This only works if no one else reads it?
+                println!("Check for output images");
                 for (output_image_index, output_image) in self.output_images.iter().enumerate() {
                     if self.image_version_info(output_image.usage).creator_node == subpass.node {
                         //output_image.
@@ -2447,11 +2455,13 @@ impl RenderGraph {
 
                         let output_physical_image =
                             physical_images.map_image_to_physical[&output_image.usage];
+                        println!("Output image {} usage {:?} created by node {:?} physical image {:?}", output_image_index, output_image.usage, subpass.node, output_physical_image);
 
                         for (attachment_index, attachment) in
                             &mut pass.attachments.iter_mut().enumerate()
                         {
                             if attachment.image == output_physical_image {
+                                println!("  attachment {}", attachment_index);
                                 attachment.final_layout = output_image.final_layout;
                             }
                         }
@@ -2479,6 +2489,7 @@ impl RenderGraph {
         let mut renderpasses = Vec::with_capacity(passes.len());
         for (index, pass) in passes.iter().enumerate() {
             let mut renderpass_desc = dsc::RenderPass::default();
+            let mut subpass_nodes = Vec::with_capacity(pass.subpasses.len());
 
             renderpass_desc.attachments.reserve(pass.attachments.len());
             for attachment in &pass.attachments {
@@ -2558,7 +2569,8 @@ impl RenderGraph {
                     });
                 }
 
-                renderpass_desc.subpasses.push(subpass_description)
+                renderpass_desc.subpasses.push(subpass_description);
+                subpass_nodes.push(subpass.node);
             }
 
             let dependencies = &subpass_dependencies[index];
@@ -2591,6 +2603,7 @@ impl RenderGraph {
                 .collect();
 
             let output_pass = RenderGraphOutputPass {
+                subpass_nodes,
                 description: renderpass_desc,
                 extents: swapchain_info.extents,
                 attachment_images,
@@ -2683,10 +2696,10 @@ impl RenderGraph {
         }
     }
 
-    pub fn prepare(
-        &mut self,
+    pub fn into_plan(
+        mut self,
         swapchain_info: &SwapchainSurfaceInfo,
-    ) -> PreparedRenderGraph {
+    ) -> RenderGraphPlan {
         //
         // Walk backwards through the DAG, starting from the output images, through all the upstream
         // dependencies of those images. We are doing a depth first search. Nodes that make no
@@ -2825,7 +2838,7 @@ impl RenderGraph {
             swapchain_info,
         );
 
-        let mut output_images: FnvHashMap<PhysicalImageId, PreparedRenderGraphOutputImage> =
+        let mut output_images: FnvHashMap<PhysicalImageId, RenderGraphPlanOutputImage> =
             Default::default();
         for output_image in &self.output_images {
             let output_image_physical_id =
@@ -2837,7 +2850,7 @@ impl RenderGraph {
             // );
             output_images.insert(
                 output_image_physical_id,
-                PreparedRenderGraphOutputImage {
+                RenderGraphPlanOutputImage {
                     output_id: output_image.output_image_id,
                     dst_image: output_image.dst_image.clone(),
                 },
@@ -2888,7 +2901,7 @@ impl RenderGraph {
             );
         }
 
-        PreparedRenderGraph {
+        RenderGraphPlan {
             renderpasses,
             output_images,
             intermediate_images,

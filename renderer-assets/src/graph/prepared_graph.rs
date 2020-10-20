@@ -5,55 +5,88 @@ use fnv::FnvHashMap;
 use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw};
 use ash::vk;
 use crate::resources::ResourceLookupSet;
-use crate::{ResourceArc, ImageKey, ImageViewResource};
+use crate::{ResourceArc, ImageKey, ImageViewResource, DynCommandWriter, DynCommandWriterAllocator};
 use ash::prelude::VkResult;
 use std::mem::ManuallyDrop;
 use crate::vk_description as dsc;
-use crate::vk_description::ImageAspectFlags;
+use crate::vk_description::{ImageAspectFlags, SwapchainSurfaceInfo};
 use crate::resources::RenderPassResource;
 use crate::resources::FramebufferResource;
+use crate::graph::graph_node::RenderGraphNodeId;
+use ash::version::DeviceV1_0;
+use crate::graph::RenderGraph;
 
 #[derive(Debug)]
-pub struct PreparedRenderGraphOutputImage {
+pub struct RenderGraphPlanOutputImage {
     pub output_id: RenderGraphOutputImageId,
     pub dst_image: ResourceArc<ImageViewResource>,
 }
 
+/// The final output of a render graph, which will be consumed by PreparedRenderGraph. This just
+/// includes the computed metadata and does not allocate resources.
 #[derive(Debug)]
-pub struct PreparedRenderGraph {
+pub struct RenderGraphPlan {
     pub renderpasses: Vec<RenderGraphOutputPass>,
-    pub output_images: FnvHashMap<PhysicalImageId, PreparedRenderGraphOutputImage>,
+    pub output_images: FnvHashMap<PhysicalImageId, RenderGraphPlanOutputImage>,
     pub intermediate_images: FnvHashMap<PhysicalImageId, RenderGraphImageSpecification>,
 }
 
-pub struct FramebufferAllocator {
+/// Encapsulates a render graph plan and all resources required to execute it
+pub struct PreparedRenderGraph {
     device_context: VkDeviceContext,
-    //images: FnvHashMap<vk::Image, FramebufferImage>,
-    //available_image_pool: FnvHashMap<RenderGraphImageSpecification, Vec<VkImage>>,
-    //allocated_images: FnvHashMap<PhysicalImageId, VkImage>,
+    image_resources: FnvHashMap<PhysicalImageId, ResourceArc<ImageViewResource>>,
+    pass_resources: Vec<ResourceArc<RenderPassResource>>,
+    framebuffer_resources: Vec<ResourceArc<FramebufferResource>>,
+    graph_plan: RenderGraphPlan,
+    swapchain_surface_info: SwapchainSurfaceInfo
 }
 
-impl FramebufferAllocator {
-    pub fn new(device_context: VkDeviceContext) -> Self {
-        FramebufferAllocator {
-            device_context,
-            //images: Default::default(),
-            //available_image_pool: Default::default(),
-            //allocated_images: Default::default()
-        }
+impl PreparedRenderGraph {
+    pub fn new(
+        device_context: &VkDeviceContext,
+        resources: &mut ResourceLookupSet,
+        graph: RenderGraph,
+        swapchain_surface_info: &SwapchainSurfaceInfo
+    ) -> VkResult<Self> {
+        let graph_plan = graph.into_plan(swapchain_surface_info);
+
+        let image_resources = Self::allocate_images(device_context, &graph_plan, resources, swapchain_surface_info)?;
+        let pass_resources = Self::allocate_passes(&graph_plan, resources, swapchain_surface_info)?;
+
+        let framebuffer_resources = Self::allocate_framebuffers(
+            &graph_plan,
+            resources,
+            swapchain_surface_info,
+            &image_resources,
+            &pass_resources,
+        )?;
+
+        Ok(PreparedRenderGraph {
+            device_context: device_context.clone(),
+            image_resources,
+            pass_resources,
+            framebuffer_resources,
+            graph_plan,
+            swapchain_surface_info: swapchain_surface_info.clone()
+        })
     }
 
     fn allocate_images(
-        &mut self,
-        graph: &PreparedRenderGraph,
+        device_context: &VkDeviceContext,
+        graph: &RenderGraphPlan,
         resources: &mut ResourceLookupSet,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     ) -> VkResult<FnvHashMap<PhysicalImageId, ResourceArc<ImageViewResource>>> {
         let mut image_resources: FnvHashMap<PhysicalImageId, ResourceArc<ImageViewResource>> =
             Default::default();
+
+        for (id, image) in &graph.output_images {
+            image_resources.insert(*id, image.dst_image.clone());
+        }
+
         for (id, specification) in &graph.intermediate_images {
             let image = VkImage::new(
-                &self.device_context,
+                device_context,
                 vk_mem::MemoryUsage::GpuOnly,
                 specification.usage_flags,
                 vk::Extent3D {
@@ -93,8 +126,7 @@ impl FramebufferAllocator {
     }
 
     fn allocate_passes(
-        &mut self,
-        graph: &PreparedRenderGraph,
+        graph: &RenderGraphPlan,
         resources: &mut ResourceLookupSet,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     ) -> VkResult<Vec<ResourceArc<RenderPassResource>>> {
@@ -114,11 +146,10 @@ impl FramebufferAllocator {
     }
 
     fn allocate_framebuffers(
-        &mut self,
-        graph: &PreparedRenderGraph,
+        graph: &RenderGraphPlan,
         resources: &mut ResourceLookupSet,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-        image_resources: FnvHashMap<PhysicalImageId, ResourceArc<ImageViewResource>>,
+        image_resources: &FnvHashMap<PhysicalImageId, ResourceArc<ImageViewResource>>,
         pass_resources: &Vec<ResourceArc<RenderPassResource>>,
     ) -> VkResult<Vec<ResourceArc<FramebufferResource>>> {
         let mut framebuffers = Vec::with_capacity(graph.renderpasses.len());
@@ -146,34 +177,55 @@ impl FramebufferAllocator {
         Ok(framebuffers)
     }
 
-    pub fn allocate_resources(
+    pub fn execute_graph(
         &mut self,
-        graph: &PreparedRenderGraph,
-        resources: &mut ResourceLookupSet,
-        swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    ) -> VkResult<()> {
-        let image_resources = self.allocate_images(graph, resources, swapchain_surface_info)?;
-        let pass_resources = self.allocate_passes(graph, resources, swapchain_surface_info)?;
+        command_writer_allocator: &DynCommandWriterAllocator,
+        node_visitor: &RenderGraphNodeVisitor
+    ) -> VkResult<Vec<vk::CommandBuffer>> {
 
-        let framebuffers = self.allocate_framebuffers(
-            graph,
-            resources,
-            swapchain_surface_info,
-            image_resources,
-            &pass_resources,
+        //
+        // Start a command writer. For now just do a single primary writer, later we can multithread this.
+        //
+        let mut command_writer = command_writer_allocator.allocate_writer(
+            self.device_context.queue_family_indices().graphics_queue_family_index,
+            vk::CommandPoolCreateFlags::TRANSIENT,
+            0
         )?;
 
-        for (pass_index, pass) in graph.renderpasses.iter().enumerate() {
+        let command_buffer = command_writer.begin_command_buffer(
+            vk::CommandBufferLevel::PRIMARY,
+            vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+            None
+        )?;
+
+        let device = self.device_context.device();
+
+        //
+        // Iterate through all passes
+        //
+        for (pass_index, pass) in self.graph_plan.renderpasses.iter().enumerate() {
             let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
 
             let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-                .render_pass(pass_resources[pass_index].get_raw().renderpass)
-                .framebuffer(framebuffers[pass_index].get_raw().framebuffer)
+                .render_pass(self.pass_resources[pass_index].get_raw().renderpass)
+                .framebuffer(self.framebuffer_resources[pass_index].get_raw().framebuffer)
                 .render_area(vk::Rect2D {
                     offset: vk::Offset2D { x: 0, y: 0 },
-                    extent: swapchain_surface_info.extents,
+                    extent: self.swapchain_surface_info.extents,
                 })
                 .clear_values(&pass.clear_values);
+
+            assert_eq!(pass.subpass_nodes.len(), 1);
+            let node_id = pass.subpass_nodes[0];
+
+            unsafe {
+                device.cmd_begin_render_pass(command_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE);
+
+                // callback here!
+                node_visitor.visit_renderpass(node_id, command_buffer);
+
+                device.cmd_end_render_pass(command_buffer);
+            }
         }
 
         // for framebuffer in framebuffers {
@@ -184,6 +236,92 @@ impl FramebufferAllocator {
         //     }
         // }
 
-        Ok(())
+        command_writer.end_command_buffer();
+
+        Ok(vec![command_buffer])
     }
 }
+
+pub trait RenderGraphNodeVisitor {
+    fn visit_renderpass(&self, node_id: RenderGraphNodeId, command_buffer: vk::CommandBuffer) -> VkResult<()>;
+}
+
+type RenderGraphNodeVisitorCallback<T> = dyn Fn(vk::CommandBuffer, &T) -> VkResult<()> + Send;
+
+/// Created by RenderGraphNodeCallbacks::create_visitor(). Implements RenderGraphNodeVisitor and
+/// forwards the call, adding the context as a parameter.
+struct RenderGraphNodeVisitorImpl<'b, U> {
+    context: &'b U,
+    node_callbacks: &'b FnvHashMap<RenderGraphNodeId, Box<RenderGraphNodeVisitorCallback<U>>>
+}
+
+impl<'b, U> RenderGraphNodeVisitor for RenderGraphNodeVisitorImpl<'b, U> {
+    fn visit_renderpass(&self, node_id: RenderGraphNodeId, command_buffer: vk::CommandBuffer) -> VkResult<()> {
+        (self.node_callbacks[&node_id])(command_buffer, self.context)
+    }
+}
+
+/// All the callbacks associated with rendergraph nodes. We keep them separate from the nodes so
+/// that we can avoid propagating generic parameters throughout the rest of the rendergraph code
+pub struct RenderGraphNodeCallbacks<T> {
+    node_callbacks: FnvHashMap<RenderGraphNodeId, Box<RenderGraphNodeVisitorCallback<T>>>
+}
+
+impl<T> RenderGraphNodeCallbacks<T> {
+    /// Adds a callback that receives the renderpass associated with the node
+    pub fn add_renderpass_callback<F>(&mut self, node_id: RenderGraphNodeId, f: F)
+        where F : Fn(vk::CommandBuffer, &T) -> VkResult<()> + 'static + Send
+    {
+        self.node_callbacks.insert(node_id, Box::new(f));
+    }
+
+    /// Pass to PreparedRenderGraph::execute_graph, this will cause the graph to be executed,
+    /// triggering any registered callbacks
+    pub fn create_visitor<'a>(&'a self, context: &'a T) -> Box<dyn RenderGraphNodeVisitor + 'a> {
+        Box::new(RenderGraphNodeVisitorImpl::<'a, T> {
+            context,
+            node_callbacks: &self.node_callbacks
+        })
+    }
+}
+
+impl<T> Default for RenderGraphNodeCallbacks<T> {
+    fn default() -> Self {
+        RenderGraphNodeCallbacks {
+            node_callbacks: Default::default()
+        }
+    }
+}
+
+/// A wrapper around a prepared render graph and callbacks that will be hit when executing the graph
+pub struct RenderGraphExecutor<T> {
+    prepared_graph: PreparedRenderGraph,
+    callbacks: RenderGraphNodeCallbacks<T>
+}
+
+impl<T> RenderGraphExecutor<T> {
+    /// Create the executor. This allows the prepared graph, resources required to execute it, and
+    /// callbacks that will be triggered while executing it to be passed around and executed later.
+    pub fn new(
+        device_context: &VkDeviceContext,
+        graph: RenderGraph,
+        resources: &mut ResourceLookupSet,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+        callbacks: RenderGraphNodeCallbacks<T>
+    ) -> VkResult<Self> {
+        Ok(RenderGraphExecutor {
+            prepared_graph: PreparedRenderGraph::new(device_context, resources, graph, swapchain_surface_info)?,
+            callbacks
+        })
+    }
+
+    /// Executes the graph, passing through the given context parameter
+    pub fn execute_graph(mut self, command_writer_allocator: &DynCommandWriterAllocator, context: &T) -> VkResult<Vec<vk::CommandBuffer>> {
+        let visitor = self.callbacks.create_visitor(context);
+        self.prepared_graph.execute_graph(command_writer_allocator, &*visitor)
+    }
+}
+
+
+
+

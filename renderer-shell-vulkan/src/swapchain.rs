@@ -24,6 +24,7 @@ pub struct SwapchainInfo {
     pub msaa_level: MsaaLevel,
     pub color_format: vk::Format,
     pub depth_format: vk::Format,
+    pub image_usage_flags: vk::ImageUsageFlags
 }
 
 /// Handles setting up the swapchain resources required to present
@@ -78,12 +79,15 @@ impl VkSwapchain {
         let depth_format = Self::choose_depth_format(device_context);
         log::debug!("Depth format: {:?}", depth_format);
 
+
+        let swapchain_image_usage_flags = vk::ImageUsageFlags::COLOR_ATTACHMENT;
         let create_swapchain_result = Self::create_swapchain(
             device_context,
             &surface_capabilities,
             surface_format,
             extents,
             present_mode,
+            swapchain_image_usage_flags,
             old_swapchain,
         )?;
 
@@ -100,6 +104,7 @@ impl VkSwapchain {
             msaa_level,
             depth_format,
             color_format,
+            image_usage_flags: swapchain_image_usage_flags,
             image_count: swapchain_images.len(),
         };
 
@@ -251,6 +256,7 @@ impl VkSwapchain {
         surface_format: vk::SurfaceFormatKHR,
         extents: vk::Extent2D,
         present_mode: vk::PresentModeKHR,
+        swapchain_image_usage_flags: vk::ImageUsageFlags,
         old_swapchain: Option<vk::SwapchainKHR>,
     ) -> VkResult<CreateSwapchainResult> {
         // "simply sticking to this minimum means that we may sometimes have to wait on the driver
@@ -273,7 +279,7 @@ impl VkSwapchain {
             .image_color_space(surface_format.color_space)
             .image_extent(extents)
             .image_array_layers(1)
-            .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
+            .image_usage(swapchain_image_usage_flags)
             .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
             .pre_transform(surface_capabilities.current_transform)
             .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)

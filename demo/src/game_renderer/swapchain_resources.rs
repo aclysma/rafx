@@ -2,7 +2,7 @@ use crate::renderpass::{
     VkOpaqueRenderPass, VkMsaaRenderPass, VkBloomRenderPassResources, VkBloomExtractRenderPass,
     VkBloomBlurRenderPass, VkBloomCombineRenderPass, VkUiRenderPass,
 };
-use renderer::vulkan::{VkDeviceContext, VkSwapchain};
+use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
 use crate::game_renderer::{GameRendererInner, RenderpassAttachmentImage};
 use renderer::assets::resources::{
     ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource, ResourceLookupSet,
@@ -37,6 +37,7 @@ pub struct SwapchainResources {
     pub bloom_combine_renderpass: VkBloomCombineRenderPass,
     pub ui_renderpass: VkUiRenderPass,
 
+    pub swapchain_info: SwapchainInfo,
     pub swapchain_surface_info: SwapchainSurfaceInfo,
 }
 
@@ -46,6 +47,7 @@ impl SwapchainResources {
         swapchain: &VkSwapchain,
         game_renderer: &mut GameRendererInner,
         resource_manager: &mut ResourceManager,
+        swapchain_info: SwapchainInfo,
         swapchain_surface_info: SwapchainSurfaceInfo,
     ) -> VkResult<SwapchainResources> {
         log::debug!("creating swapchain resources");
@@ -267,6 +269,7 @@ impl SwapchainResources {
             bloom_blur_renderpass,
             bloom_combine_renderpass,
             ui_renderpass,
+            swapchain_info,
             swapchain_surface_info,
         })
     }

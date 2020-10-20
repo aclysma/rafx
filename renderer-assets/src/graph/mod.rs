@@ -15,13 +15,16 @@ mod graph_node;
 use graph_node::*;
 
 mod prepared_graph;
+pub use prepared_graph::RenderGraphPlan;
+pub use prepared_graph::RenderGraphNodeCallbacks;
 pub use prepared_graph::PreparedRenderGraph;
-pub use prepared_graph::FramebufferAllocator;
+pub use prepared_graph::RenderGraphExecutor;
+
 use crate::vk_description::SwapchainSurfaceInfo;
 use renderer_shell_vulkan::MsaaLevel;
 
 #[test]
-fn test_graph3() {
+fn graph_smoketest() {
     // - Should there be some way to "pull forward" future constraints to some point?
     // - Maybe we just rely on programmer setting the constraint where they want it since they
     //   can check what the swapchain image or whatever would be anyways. Likely a requirement
@@ -133,5 +136,5 @@ fn test_graph3() {
             color_space: vk::ColorSpaceKHR::SRGB_NONLINEAR,
         },
     };
-    graph.prepare(&swapchain_surface_info);
+    graph.into_plan(&swapchain_surface_info);
 }

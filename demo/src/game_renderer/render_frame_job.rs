@@ -3,6 +3,7 @@ use renderer::nodes::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
 use crate::render_contexts::{
     RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory,
 };
+use renderer::assets::graph::RenderGraphExecutor;
 use renderer::assets::resources::{
     DynResourceAllocatorSet, PipelineSwapchainInfo, DynCommandWriterAllocator,
 };
@@ -10,10 +11,12 @@ use renderer::vulkan::{VkDeviceContext, FrameInFlight};
 use std::sync::MutexGuard;
 use ash::prelude::VkResult;
 use ash::vk;
+use crate::game_renderer::render_graph::RenderGraphExecuteContext;
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
     pub prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
+    pub render_graph: RenderGraphExecutor<RenderGraphExecuteContext>,
     pub dyn_resource_allocator_set: DynResourceAllocatorSet,
     pub dyn_command_writer_allocator: DynCommandWriterAllocator,
     pub frame_packet: FramePacket,
@@ -33,6 +36,7 @@ impl RenderFrameJob {
         let result = Self::do_render_async(
             guard,
             self.prepare_job_set,
+            self.render_graph,
             self.dyn_resource_allocator_set,
             self.dyn_command_writer_allocator,
             self.frame_packet,
@@ -70,6 +74,7 @@ impl RenderFrameJob {
     fn do_render_async(
         mut guard: MutexGuard<GameRendererInner>,
         prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
+        render_graph: RenderGraphExecutor<RenderGraphExecuteContext>,
         dyn_resource_allocator_set: DynResourceAllocatorSet,
         dyn_command_writer_allocator: DynCommandWriterAllocator,
         frame_packet: FramePacket,
@@ -91,7 +96,7 @@ impl RenderFrameJob {
             vk::CommandPoolCreateFlags::TRANSIENT,
             0,
         )?;
-        let mut command_buffers = vec![];
+        //let mut command_buffers = vec![];
 
         //
         // Prepare Jobs - everything beyond this point could be done in parallel with the main thread
@@ -115,6 +120,25 @@ impl RenderFrameJob {
         let write_context_factory =
             RenderJobWriteContextFactory::new(device_context, prepare_context.dyn_resource_lookups);
 
+
+
+
+
+        let mut graph_context = RenderGraphExecuteContext {
+            prepared_render_data,
+            view: main_view,
+            write_context_factory,
+            command_writer
+        };
+
+        let mut command_buffers = render_graph.execute_graph(&dyn_command_writer_allocator, &mut graph_context)?;
+
+        let prepared_render_data = graph_context.prepared_render_data;
+        let main_view = graph_context.view;
+        let write_context_factory = graph_context.write_context_factory;
+        let mut command_writer = graph_context.command_writer;
+
+/*
         //
         // Opaque renderpass
         //
@@ -203,7 +227,7 @@ impl RenderFrameJob {
             "[async] render write took {} ms",
             (t2 - t1).as_secs_f32() * 1000.0
         );
-
+*/
         Ok(command_buffers)
     }
 }

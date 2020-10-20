@@ -112,6 +112,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             swapchain,
             game_renderer,
             resource_manager,
+            swapchain.swapchain_info.clone(),
             swapchain_surface_info,
         )?;
 
