@@ -120,114 +120,111 @@ impl RenderFrameJob {
         let write_context_factory =
             RenderJobWriteContextFactory::new(device_context, prepare_context.dyn_resource_lookups);
 
-
-
-
-
         let mut graph_context = RenderGraphExecuteContext {
             prepared_render_data,
             view: main_view,
             write_context_factory,
-            command_writer
+            command_writer,
         };
 
-        let mut command_buffers = render_graph.execute_graph(&dyn_command_writer_allocator, &mut graph_context)?;
+        let mut command_buffers =
+            render_graph.execute_graph(&dyn_command_writer_allocator, &mut graph_context)?;
 
         let prepared_render_data = graph_context.prepared_render_data;
         let main_view = graph_context.view;
         let write_context_factory = graph_context.write_context_factory;
         let mut command_writer = graph_context.command_writer;
 
-/*
-        //
-        // Opaque renderpass
-        //
-        log::trace!("opaque_renderpass update");
-        let command_buffer = swapchain_resources.opaque_renderpass.update(
-            &*prepared_render_data,
-            &main_view,
-            &write_context_factory,
-            &mut command_writer,
-        )?;
-        command_buffers.push(command_buffer);
+        /*
+                //
+                // Opaque renderpass
+                //
+                log::trace!("opaque_renderpass update");
+                let command_buffer = swapchain_resources.opaque_renderpass.update(
+                    &*prepared_render_data,
+                    &main_view,
+                    &write_context_factory,
+                    &mut command_writer,
+                )?;
+                command_buffers.push(command_buffer);
 
-        //
-        // Debug Renderpass
-        //
-        let descriptor_set_per_pass = swapchain_resources
-            .debug_material_per_frame_data
-            .descriptor_set()
-            .get();
-        log::trace!("msaa_renderpass update");
+                //
+                // Debug Renderpass
+                //
+                let descriptor_set_per_pass = swapchain_resources
+                    .debug_material_per_frame_data
+                    .descriptor_set()
+                    .get();
+                log::trace!("msaa_renderpass update");
 
-        let command_buffer = swapchain_resources
-            .msaa_renderpass
-            .update(&mut command_writer)?;
-        command_buffers.push(command_buffer);
+                let command_buffer = swapchain_resources
+                    .msaa_renderpass
+                    .update(&mut command_writer)?;
+                command_buffers.push(command_buffer);
 
-        //
-        // bloom extract
-        //
-        let descriptor_set_per_pass = swapchain_resources
-            .bloom_extract_material_dyn_set
-            .descriptor_set()
-            .get();
-        log::trace!("bloom_extract_renderpass update");
+                //
+                // bloom extract
+                //
+                let descriptor_set_per_pass = swapchain_resources
+                    .bloom_extract_material_dyn_set
+                    .descriptor_set()
+                    .get();
+                log::trace!("bloom_extract_renderpass update");
 
-        let command_buffer = swapchain_resources
-            .bloom_extract_renderpass
-            .update(descriptor_set_per_pass, &mut command_writer)?;
-        command_buffers.push(command_buffer);
+                let command_buffer = swapchain_resources
+                    .bloom_extract_renderpass
+                    .update(descriptor_set_per_pass, &mut command_writer)?;
+                command_buffers.push(command_buffer);
 
-        //
-        // bloom blur
-        //
-        log::trace!("bloom_blur_renderpass update");
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
+                //
+                // bloom blur
+                //
+                log::trace!("bloom_blur_renderpass update");
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
+                command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
 
-        //
-        // bloom combine
-        //
-        let descriptor_set_per_pass = swapchain_resources
-            .bloom_combine_material_dyn_set
-            .descriptor_set()
-            .get();
-        log::trace!("bloom_combine_renderpass update");
+                //
+                // bloom combine
+                //
+                let descriptor_set_per_pass = swapchain_resources
+                    .bloom_combine_material_dyn_set
+                    .descriptor_set()
+                    .get();
+                log::trace!("bloom_combine_renderpass update");
 
-        let command_buffer = swapchain_resources.bloom_combine_renderpass.update(
-            present_index,
-            descriptor_set_per_pass,
-            &mut command_writer,
-        )?;
-        command_buffers.push(command_buffer);
+                let command_buffer = swapchain_resources.bloom_combine_renderpass.update(
+                    present_index,
+                    descriptor_set_per_pass,
+                    &mut command_writer,
+                )?;
+                command_buffers.push(command_buffer);
 
-        //
-        // imgui
-        //
-        let command_buffer = swapchain_resources.ui_renderpass.update(
-            present_index,
-            &*prepared_render_data,
-            &main_view,
-            &write_context_factory,
-            &mut command_writer,
-        )?;
-        command_buffers.push(command_buffer);
+                //
+                // imgui
+                //
+                let command_buffer = swapchain_resources.ui_renderpass.update(
+                    present_index,
+                    &*prepared_render_data,
+                    &main_view,
+                    &write_context_factory,
+                    &mut command_writer,
+                )?;
+                command_buffers.push(command_buffer);
 
-        let t2 = std::time::Instant::now();
-        log::trace!(
-            "[async] render write took {} ms",
-            (t2 - t1).as_secs_f32() * 1000.0
-        );
-*/
+                let t2 = std::time::Instant::now();
+                log::trace!(
+                    "[async] render write took {} ms",
+                    (t2 - t1).as_secs_f32() * 1000.0
+                );
+        */
         Ok(command_buffers)
     }
 }

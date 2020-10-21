@@ -79,18 +79,6 @@ mod x {
 }
 */
 
-
-
-
-
-
-
-
-
-
-
-
-
 // Any data you want available within rendergraph execution callbacks should go here. This can
 // include data that is not known until later after the extract/prepare phases have completed.
 pub struct RenderGraphExecuteContext {
@@ -159,7 +147,9 @@ pub fn build_render_graph(
 
         graph_callbacks.add_renderpass_callback(node.id(), |command_buffer, context| {
             let mut write_context = context.write_context_factory.create_context(command_buffer);
-            context.prepared_render_data.write_view_phase::<OpaqueRenderPhase>(&context.view, &mut write_context);
+            context
+                .prepared_render_data
+                .write_view_phase::<OpaqueRenderPhase>(&context.view, &mut write_context);
             Ok(())
         });
 
@@ -168,59 +158,56 @@ pub fn build_render_graph(
 
         Opaque { color, depth }
     };
-/*
-    let transparent_pass = {
-        struct Transparent {
-            color: RenderGraphImageUsageId,
-        }
+    /*
+        let transparent_pass = {
+            struct Transparent {
+                color: RenderGraphImageUsageId,
+            }
 
-        let mut node = graph.add_node();
-        node.set_name("Transparent");
+            let mut node = graph.add_node();
+            node.set_name("Transparent");
 
-        let color = node.modify_color_attachment(
-            opaque_pass.color,
-            0,
-            RenderGraphImageConstraint {
-                ..Default::default()
-            },
-        );
+            let color = node.modify_color_attachment(
+                opaque_pass.color,
+                0,
+                RenderGraphImageConstraint {
+                    ..Default::default()
+                },
+            );
 
-        node.read_depth_attachment(opaque_pass.depth, Default::default());
-
-
-        graph_callbacks.add_renderpass_callback(node.id(), |command_buffer, context| {
-            let mut write_context = context.write_context_factory.create_context(command_buffer);
-            context.prepared_render_data.write_view_phase::<OpaqueRenderPhase>(&context.view, &mut write_context);
-            Ok(())
-        });
+            node.read_depth_attachment(opaque_pass.depth, Default::default());
 
 
-        // node.set_pass_callback(|prepared_render_data, view, write_context_factory, command_writer| {
-        //     let mut write_context = write_context_factory.create_context(command_buffer);
-        //     prepared_render_data.write_view_phase::<TransparentRenderPhase>(&view, &mut write_context);
-        //     Ok(())
-        // });
+            graph_callbacks.add_renderpass_callback(node.id(), |command_buffer, context| {
+                let mut write_context = context.write_context_factory.create_context(command_buffer);
+                context.prepared_render_data.write_view_phase::<OpaqueRenderPhase>(&context.view, &mut write_context);
+                Ok(())
+            });
 
-        Transparent { color }
-    };
-*/
-    let swapchain_output_image_id = graph
-        .configure_image(opaque_pass.color)
-        .set_output_image(
-            swapchain_image,
-            RenderGraphImageSpecification {
-                samples: vk::SampleCountFlags::TYPE_1,
-                format: swapchain_format,
-                queue,
-                aspect_flags: vk::ImageAspectFlags::COLOR,
-                usage_flags: swapchain_info.image_usage_flags,
-            },
-            dsc::ImageLayout::PresentSrcKhr,
-            vk::AccessFlags::empty(),
-            vk::PipelineStageFlags::empty(),
-            vk::ImageAspectFlags::COLOR,
-        );
 
+            // node.set_pass_callback(|prepared_render_data, view, write_context_factory, command_writer| {
+            //     let mut write_context = write_context_factory.create_context(command_buffer);
+            //     prepared_render_data.write_view_phase::<TransparentRenderPhase>(&view, &mut write_context);
+            //     Ok(())
+            // });
+
+            Transparent { color }
+        };
+    */
+    let swapchain_output_image_id = graph.configure_image(opaque_pass.color).set_output_image(
+        swapchain_image,
+        RenderGraphImageSpecification {
+            samples: vk::SampleCountFlags::TYPE_1,
+            format: swapchain_format,
+            queue,
+            aspect_flags: vk::ImageAspectFlags::COLOR,
+            usage_flags: swapchain_info.image_usage_flags,
+        },
+        dsc::ImageLayout::PresentSrcKhr,
+        vk::AccessFlags::empty(),
+        vk::PipelineStageFlags::empty(),
+        vk::ImageAspectFlags::COLOR,
+    );
 
     //
     // Create the executor, it needs to have access to the resource manager to add framebuffers
@@ -229,9 +216,9 @@ pub fn build_render_graph(
     let mut executor = RenderGraphExecutor::new(
         &device_context,
         graph,
-        resource_manager.resources_mut(),
+        resource_manager,
         swapchain_surface_info,
-        graph_callbacks
+        graph_callbacks,
     )?;
 
     // //
@@ -244,7 +231,6 @@ pub fn build_render_graph(
     //     &resource_manager.create_dyn_command_writer_allocator(),
     //     &write_context
     // )?;
-
 
     Ok(executor)
 }

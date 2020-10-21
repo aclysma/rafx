@@ -24,7 +24,7 @@ pub struct SwapchainInfo {
     pub msaa_level: MsaaLevel,
     pub color_format: vk::Format,
     pub depth_format: vk::Format,
-    pub image_usage_flags: vk::ImageUsageFlags
+    pub image_usage_flags: vk::ImageUsageFlags,
 }
 
 /// Handles setting up the swapchain resources required to present
@@ -78,7 +78,6 @@ impl VkSwapchain {
 
         let depth_format = Self::choose_depth_format(device_context);
         log::debug!("Depth format: {:?}", depth_format);
-
 
         let swapchain_image_usage_flags = vk::ImageUsageFlags::COLOR_ATTACHMENT;
         let create_swapchain_result = Self::create_swapchain(

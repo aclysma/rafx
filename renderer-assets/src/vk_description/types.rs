@@ -2651,10 +2651,32 @@ pub struct ShaderModuleMeta {
 
 // These structs are candidates for removal because in practice you probably wouldn't want to
 // embed a shader module's full data into a struct and pass it around
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct ShaderModuleCodeHash(u64);
+impl ShaderModuleCodeHash {
+    pub fn hash_shader_code(code: &Vec<u32>) -> Self {
+        use std::hash::Hash;
+        use std::hash::Hasher;
+        use std::collections::hash_map::DefaultHasher;
+        let mut hasher = DefaultHasher::new();
+        code.hash(&mut hasher);
+        let code_hash = hasher.finish();
+        ShaderModuleCodeHash(code_hash)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ShaderModule {
+    // Precalculate a hash so we can avoid hashing this blob of bytes at runtime
+    pub code_hash: ShaderModuleCodeHash,
     pub code: Vec<u32>,
+}
+
+impl ShaderModule {
+    pub fn new(code: Vec<u32>) -> Self {
+        let code_hash = ShaderModuleCodeHash::hash_shader_code(&code);
+        ShaderModule { code_hash, code }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]

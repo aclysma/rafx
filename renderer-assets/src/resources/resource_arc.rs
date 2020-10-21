@@ -2,6 +2,7 @@ use std::fmt::Formatter;
 use crossbeam_channel::Sender;
 use std::sync::{Weak, Arc};
 use std::borrow::Borrow;
+use std::hash::Hash;
 
 //TODO: Maybe this should be an enum of ResourceHash and ResourceIndex
 
@@ -167,5 +168,19 @@ where
         other: &Self,
     ) -> bool {
         self.inner.resource.resource_hash == other.inner.resource.resource_hash
+    }
+}
+
+impl<ResourceT> Eq for ResourceArc<ResourceT> where ResourceT: std::fmt::Debug + Clone {}
+
+impl<ResourceT> Hash for ResourceArc<ResourceT>
+where
+    ResourceT: std::fmt::Debug + Clone,
+{
+    fn hash<H: std::hash::Hasher>(
+        &self,
+        state: &mut H,
+    ) {
+        self.inner.resource.resource_hash.hash(state);
     }
 }

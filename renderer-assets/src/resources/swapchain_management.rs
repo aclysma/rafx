@@ -27,13 +27,17 @@ impl ActiveSwapchainSurfaceInfoSet {
         loaded_material: &mut MaterialAsset,
     ) -> VkResult<()> {
         for pass in &*loaded_material.passes {
-            let pipeline = resources.get_or_create_graphics_pipeline(
-                &pass.pipeline_create_data,
-                swapchain_surface_info,
-            )?;
-
-            let mut per_swapchain_data = pass.per_swapchain_data.lock().unwrap();
-            per_swapchain_data.push(MaterialPassSwapchainResources { pipeline });
+            unimplemented!();
+            // let renderpass = resources.get_or_create_renderpass(pass.material_pass)
+            //
+            //
+            // let pipeline = resources.get_or_create_graphics_pipeline(
+            //     &pass.material_pass,
+            //     swapchain_surface_info,
+            // )?;
+            //
+            // let mut per_swapchain_data = pass.per_swapchain_data.lock().unwrap();
+            // per_swapchain_data.push(MaterialPassSwapchainResources { pipeline });
         }
 
         Ok(())

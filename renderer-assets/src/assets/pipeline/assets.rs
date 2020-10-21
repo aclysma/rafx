@@ -1,17 +1,15 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::{
-    vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc,
-    PipelineCreateData,
-};
+use crate::{vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc};
 use atelier_assets::loader::handle::Handle;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
-use crate::resources::DescriptorSetWriteSet;
-pub use crate::resources::PipelineResource;
+use crate::resources::{DescriptorSetWriteSet, MaterialPassResource};
+pub use crate::resources::GraphicsPipelineResource;
 pub use crate::resources::DescriptorSetLayoutResource;
 pub use crate::resources::PipelineLayoutResource;
+use crate::resources::ShaderModuleResource;
 use fnv::FnvHashMap;
 use ash::vk;
 
@@ -144,19 +142,19 @@ pub struct SlotLocation {
 pub type SlotNameLookup = FnvHashMap<String, Vec<SlotLocation>>;
 
 pub struct MaterialPassSwapchainResources {
-    pub pipeline: ResourceArc<PipelineResource>,
+    pub pipeline: ResourceArc<GraphicsPipelineResource>,
 }
 
 pub struct MaterialPass {
-    pub shader_modules: Vec<ResourceArc<vk::ShaderModule>>,
+    pub shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
     pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
     pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
 
     // Potentially one of these per swapchain surface
     pub per_swapchain_data: Mutex<Vec<MaterialPassSwapchainResources>>,
 
-    // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    pub pipeline_create_data: PipelineCreateData,
+    // Info required to recreate the pipeline for new swapchains
+    pub material_pass_resource: ResourceArc<MaterialPassResource>,
 
     //descriptor_set_factory: DescriptorSetFactory,
     pub shader_interface: MaterialPassShaderInterface,

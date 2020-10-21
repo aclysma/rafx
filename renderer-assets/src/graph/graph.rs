@@ -2455,7 +2455,13 @@ impl RenderGraph {
 
                         let output_physical_image =
                             physical_images.map_image_to_physical[&output_image.usage];
-                        println!("Output image {} usage {:?} created by node {:?} physical image {:?}", output_image_index, output_image.usage, subpass.node, output_physical_image);
+                        println!(
+                            "Output image {} usage {:?} created by node {:?} physical image {:?}",
+                            output_image_index,
+                            output_image.usage,
+                            subpass.node,
+                            output_physical_image
+                        );
 
                         for (attachment_index, attachment) in
                             &mut pass.attachments.iter_mut().enumerate()
@@ -2902,7 +2908,7 @@ impl RenderGraph {
         }
 
         RenderGraphPlan {
-            renderpasses,
+            passes: renderpasses,
             output_images,
             intermediate_images,
         }

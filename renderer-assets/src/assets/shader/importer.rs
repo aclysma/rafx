@@ -46,8 +46,10 @@ impl Importer for ShaderImporter {
         source.read_to_end(&mut bytes)?;
 
         let code = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
+        let code_hash = dsc::ShaderModuleCodeHash::hash_shader_code(&code);
+
         let shader_asset = ShaderAssetData {
-            shader: dsc::ShaderModule { code },
+            shader: dsc::ShaderModule { code, code_hash },
         };
 
         Ok(ImporterValue {

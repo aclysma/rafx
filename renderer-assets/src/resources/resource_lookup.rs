@@ -8,11 +8,11 @@ use std::marker::PhantomData;
 use ash::vk;
 use ash::prelude::VkResult;
 use crate::vk_description::SwapchainSurfaceInfo;
-use super::PipelineCreateData;
 use std::mem::ManuallyDrop;
 use crate::vk_description as dsc;
 use crate::resources::ResourceArc;
 use crate::resources::resource_arc::{WeakResourceArc, ResourceWithHash, ResourceId};
+use std::sync::Arc;
 
 // #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 // pub(super) struct ResourceId(pub(super) u64);
@@ -22,6 +22,9 @@ use crate::resources::resource_arc::{WeakResourceArc, ResourceWithHash, Resource
 //         ResourceId(resource_hash.0)
 //     }
 // }
+
+//TODO: Separate the renderpass description from the asset format. Make the description specify
+// everything.
 
 // Hash of a GPU resource
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -191,10 +194,24 @@ where
 // and some are a combination of the definitions and runtime state. (For example, combining a
 // renderpass with the swapchain surface it would be applied to)
 //
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ShaderModuleKey {
+    code_hash: dsc::ShaderModuleCodeHash,
+}
+
+//TODO: The hashing here should probably be on the description after it is populated with
+// fields from swapchain surface info.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RenderPassKey {
     dsc: dsc::RenderPass,
     swapchain_surface_info: dsc::SwapchainSurfaceInfo,
+}
+
+impl RenderPassKey {
+    pub fn renderpass_def(&self) -> &dsc::RenderPass {
+        &self.dsc
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -205,13 +222,17 @@ pub struct FrameBufferKey {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GraphicsPipelineKey {
+pub struct MaterialPassKey {
     pipeline_layout: dsc::PipelineLayout,
-    renderpass: dsc::RenderPass,
     fixed_function_state: dsc::FixedFunctionState,
     shader_module_metas: Vec<dsc::ShaderModuleMeta>,
-    shader_module_hashes: Vec<ResourceHash>,
-    swapchain_surface_info: dsc::SwapchainSurfaceInfo,
+    shader_module_keys: Vec<ShaderModuleKey>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GraphicsPipelineKey {
+    material_pass_key: MaterialPassKey,
+    renderpass_key: RenderPassKey,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -242,6 +263,22 @@ pub struct ResourceMetrics {
     pub image_view_count: usize,
     pub sampler_count: usize,
     pub buffer_count: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct ShaderModuleResource {
+    pub shader_module_key: ShaderModuleKey,
+    pub shader_module_def: Arc<dsc::ShaderModule>,
+    pub shader_module: vk::ShaderModule,
+}
+
+impl VkResource for ShaderModuleResource {
+    fn destroy(
+        device_context: &VkDeviceContext,
+        resource: Self,
+    ) -> VkResult<()> {
+        VkResource::destroy(device_context, resource.shader_module)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -277,13 +314,35 @@ impl VkResource for PipelineLayoutResource {
 }
 
 #[derive(Debug, Clone)]
-pub struct PipelineResource {
+pub struct MaterialPassResource {
+    pub material_pass_key: MaterialPassKey,
+    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
+    pub shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
+    // This is just cached, shader_modules handles cleaning these up
+    pub shader_module_vk_objs: Vec<vk::ShaderModule>,
+}
+
+impl VkResource for MaterialPassResource {
+    fn destroy(
+        device_context: &VkDeviceContext,
+        resource: Self,
+    ) -> VkResult<()> {
+        // for pipeline in resource.pipelines {
+        //     VkResource::destroy(device_context, pipeline)?;
+        // }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GraphicsPipelineResource {
     pub pipelines: Vec<vk::Pipeline>,
     pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
     pub renderpass: ResourceArc<RenderPassResource>,
 }
 
-impl VkResource for PipelineResource {
+impl VkResource for GraphicsPipelineResource {
     fn destroy(
         device_context: &VkDeviceContext,
         resource: Self,
@@ -356,12 +415,22 @@ impl VkResource for ImageViewResource {
 // key we use is sent through a Sender/Receiver pair to be dropped later.
 pub struct ResourceLookupSet {
     device_context: VkDeviceContext,
-    shader_modules: ResourceLookup<dsc::ShaderModule, vk::ShaderModule>,
+
+    shader_modules: ResourceLookup<ShaderModuleKey, ShaderModuleResource>,
     descriptor_set_layouts: ResourceLookup<dsc::DescriptorSetLayout, DescriptorSetLayoutResource>,
     pipeline_layouts: ResourceLookup<dsc::PipelineLayout, PipelineLayoutResource>,
     render_passes: ResourceLookup<RenderPassKey, RenderPassResource>,
     framebuffers: ResourceLookup<FrameBufferKey, FramebufferResource>,
-    graphics_pipelines: ResourceLookup<GraphicsPipelineKey, PipelineResource>,
+
+    // add a material pass/graphics pipeline base resource?
+    // add a way to refer to a renderpass without having a swapchain info?
+    //
+    // * Need to be able to load a material that determines renderpass at runtime via phase name
+    // * Material might load before the rendergraph runs
+    // * However, we do want to compile pipelines ahead of them being considered loaded, if the
+    //   rendergraph has been run
+    material_passes: ResourceLookup<MaterialPassKey, MaterialPassResource>,
+    graphics_pipelines: ResourceLookup<GraphicsPipelineKey, GraphicsPipelineResource>,
     images: ResourceLookup<ImageKey, VkImageRaw>,
     image_views: ResourceLookup<ImageViewKey, ImageViewResource>,
     samplers: ResourceLookup<dsc::Sampler, vk::Sampler>,
@@ -384,6 +453,7 @@ impl ResourceLookupSet {
             pipeline_layouts: ResourceLookup::new(max_frames_in_flight),
             render_passes: ResourceLookup::new(max_frames_in_flight),
             framebuffers: ResourceLookup::new(max_frames_in_flight),
+            material_passes: ResourceLookup::new(max_frames_in_flight),
             graphics_pipelines: ResourceLookup::new(max_frames_in_flight),
             images: ResourceLookup::new(max_frames_in_flight),
             image_views: ResourceLookup::new(max_frames_in_flight),
@@ -445,19 +515,32 @@ impl ResourceLookupSet {
 
     pub fn get_or_create_shader_module(
         &mut self,
-        shader_module: &dsc::ShaderModule,
-    ) -> VkResult<ResourceArc<vk::ShaderModule>> {
-        let hash = ResourceHash::from_key(shader_module);
-        if let Some(shader_module) = self.shader_modules.get(hash, shader_module) {
+        shader_module_def: &Arc<dsc::ShaderModule>,
+    ) -> VkResult<ResourceArc<ShaderModuleResource>> {
+        let shader_module_key = ShaderModuleKey {
+            code_hash: shader_module_def.code_hash,
+        };
+
+        let hash = ResourceHash::from_key(&shader_module_key);
+        if let Some(shader_module) = self.shader_modules.get(hash, &shader_module_key) {
             Ok(shader_module)
         } else {
             log::trace!(
-                "Creating shader module\n[bytes: {}]",
-                shader_module.code.len()
+                "Creating shader module\n[hash: {:?} bytes: {}]",
+                shader_module_key.code_hash,
+                shader_module_def.code.len()
             );
-            let resource = dsc::create_shader_module(self.device_context.device(), shader_module)?;
+            let shader_module =
+                dsc::create_shader_module(self.device_context.device(), &*shader_module_def)?;
+            let resource = ShaderModuleResource {
+                shader_module,
+                shader_module_def: shader_module_def.clone(),
+                shader_module_key: shader_module_key.clone(),
+            };
             log::trace!("Created shader module {:?}", resource);
-            let shader_module = self.shader_modules.insert(hash, shader_module, resource);
+            let shader_module = self
+                .shader_modules
+                .insert(hash, &shader_module_key, resource);
             Ok(shader_module)
         }
     }
@@ -687,49 +770,87 @@ impl ResourceLookupSet {
     //     images:
     // )
 
-    pub fn get_or_create_graphics_pipeline(
+    pub fn get_or_create_material_pass(
         &mut self,
-        pipeline_create_data: &PipelineCreateData,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
-    ) -> VkResult<ResourceArc<PipelineResource>> {
-        let pipeline_key = GraphicsPipelineKey {
-            shader_module_hashes: pipeline_create_data.shader_module_hashes().clone(),
-            shader_module_metas: pipeline_create_data.shader_module_metas().clone(),
-            pipeline_layout: pipeline_create_data.pipeline_layout_def().clone(),
-            fixed_function_state: pipeline_create_data.fixed_function_state().clone(),
-            renderpass: pipeline_create_data.renderpass_def().clone(),
-            swapchain_surface_info: swapchain_surface_info.clone(),
+        shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
+        shader_module_metas: Vec<dsc::ShaderModuleMeta>,
+        pipeline_layout: ResourceArc<PipelineLayoutResource>,
+        fixed_function_state: dsc::FixedFunctionState,
+    ) -> VkResult<ResourceArc<MaterialPassResource>> {
+        let shader_module_keys = shader_modules
+            .iter()
+            .map(|x| x.get_raw().shader_module_key)
+            .collect();
+        let material_pass_key = MaterialPassKey {
+            shader_module_metas,
+            shader_module_keys,
+            pipeline_layout: pipeline_layout.get_raw().pipeline_layout_def.clone(),
+            fixed_function_state,
         };
 
-        let renderpass = self.get_or_create_renderpass(
-            pipeline_create_data.renderpass_def(),
-            swapchain_surface_info,
-        )?;
+        let hash = ResourceHash::from_key(&material_pass_key);
+        if let Some(material_pass) = self.material_passes.get(hash, &material_pass_key) {
+            Ok(material_pass)
+        } else {
+            log::trace!("Creating material pass\n{:#?}", material_pass_key);
+
+            let shader_module_vk_objs = shader_modules
+                .iter()
+                .map(|x| x.get_raw().shader_module)
+                .collect();
+
+            let resource = MaterialPassResource {
+                material_pass_key: material_pass_key.clone(),
+                pipeline_layout,
+                shader_modules,
+                shader_module_vk_objs,
+            };
+
+            let material_pass = self
+                .material_passes
+                .insert(hash, &material_pass_key, resource);
+            Ok(material_pass)
+        }
+    }
+
+    pub fn get_or_create_graphics_pipeline(
+        &mut self,
+        material_pass: &ResourceArc<MaterialPassResource>,
+        renderpass: &ResourceArc<RenderPassResource>,
+    ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
+        let pipeline_key = GraphicsPipelineKey {
+            material_pass_key: material_pass.get_raw().material_pass_key.clone(),
+            renderpass_key: renderpass.get_raw().renderpass_key.clone(),
+        };
 
         let hash = ResourceHash::from_key(&pipeline_key);
         if let Some(pipeline) = self.graphics_pipelines.get(hash, &pipeline_key) {
             Ok(pipeline)
         } else {
             log::trace!("Creating pipeline\n{:#?}", pipeline_key);
-            let resources = dsc::create_graphics_pipelines(
+            let pipelines = dsc::create_graphics_pipelines(
                 &self.device_context.device(),
-                pipeline_create_data.fixed_function_state(),
-                pipeline_create_data
-                    .pipeline_layout()
+                &material_pass
+                    .get_raw()
+                    .material_pass_key
+                    .fixed_function_state,
+                material_pass
+                    .get_raw()
+                    .pipeline_layout
                     .get_raw()
                     .pipeline_layout,
                 renderpass.get_raw().renderpass,
-                pipeline_create_data.shader_module_metas(),
-                pipeline_create_data.shader_module_vk_objs(),
-                swapchain_surface_info,
-                pipeline_create_data.renderpass_def().subpasses.len() as u32,
+                &pipeline_key.material_pass_key.shader_module_metas,
+                &material_pass.get_raw().shader_module_vk_objs,
+                &pipeline_key.renderpass_key.swapchain_surface_info,
+                pipeline_key.renderpass_key.dsc.subpasses.len() as u32,
             )?;
-            log::trace!("Created pipelines {:?}", resources);
+            log::trace!("Created pipelines {:?}", pipelines);
 
-            let resource = PipelineResource {
-                pipelines: resources,
-                pipeline_layout: pipeline_create_data.pipeline_layout().clone(),
-                renderpass,
+            let resource = GraphicsPipelineResource {
+                pipelines,
+                pipeline_layout: material_pass.get_raw().pipeline_layout.clone(),
+                renderpass: renderpass.clone(),
             };
 
             let pipeline = self

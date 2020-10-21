@@ -3,7 +3,7 @@
         (
             phase: "Opaque",
             pipeline: "mesh.pipeline",
-            renderpass: Asset("opaque.renderpass"),
+            renderpass: LookupByPhaseName,
             shaders: [
                 (
                     stage: Vertex,

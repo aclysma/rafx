@@ -10,6 +10,8 @@ pub use resource_lookup::ImageKey;
 pub use resource_lookup::BufferKey;
 pub use resource_lookup::RenderPassResource;
 pub use resource_lookup::FramebufferResource;
+pub use resource_lookup::MaterialPassResource;
+pub use resource_lookup::ShaderModuleResource;
 
 mod dyn_resource_allocator;
 pub use dyn_resource_allocator::DynResourceAllocatorSet;
@@ -36,12 +38,12 @@ pub use descriptor_sets::DescriptorSetWriteSet;
 
 mod upload;
 pub use crate::resources::resource_lookup::PipelineLayoutResource;
-pub use crate::resources::resource_lookup::PipelineResource;
+pub use crate::resources::resource_lookup::GraphicsPipelineResource;
 
 pub use resource_lookup::ImageViewResource;
 
-mod pipeline_create_data;
-pub use pipeline_create_data::PipelineCreateData;
+// mod pipeline_create_data;
+// pub use pipeline_create_data::PipelineCreateData;
 
 mod resource_manager;
 pub use resource_manager::*;
@@ -50,3 +52,8 @@ mod command_buffers;
 pub use command_buffers::CommandPool;
 pub use command_buffers::DynCommandWriterAllocator;
 pub use command_buffers::DynCommandWriter;
+
+mod pipeline_manager;
+
+mod resource_cache;
+pub use resource_cache::ResourceCacheSet;
