@@ -9,15 +9,15 @@ use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
 
 use renderer::assets::resources::{
-    PipelineSwapchainInfo, ResourceArc, ImageViewResource, FramebufferResource, ResourceLookupSet,
-    RenderPassResource, DynCommandWriter,
+    ResourceArc, ImageViewResource, FramebufferResource, ResourceLookupSet, RenderPassResource,
+    DynCommandWriter, GraphicsPipelineResource,
 };
 use renderer::assets::vk_description as dsc;
 
 pub struct VkBloomCombineRenderPass {
     device_context: VkDeviceContext,
     swapchain_info: SwapchainInfo,
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     frame_buffers: Vec<ResourceArc<FramebufferResource>>,
 }
 
@@ -27,13 +27,13 @@ impl VkBloomCombineRenderPass {
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         swapchain_images: &[ResourceArc<ImageViewResource>],
-        pipeline_info: PipelineSwapchainInfo,
+        pipeline_info: ResourceArc<GraphicsPipelineResource>,
     ) -> VkResult<Self> {
         let frame_buffers = Self::create_framebuffers(
             resources,
             swapchain_images,
             swapchain_info,
-            &pipeline_info.pipeline.get_raw().renderpass,
+            &pipeline_info.get_raw().renderpass,
         )?;
 
         Ok(VkBloomCombineRenderPass {
@@ -82,14 +82,7 @@ impl VkBloomCombineRenderPass {
         }];
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-            .render_pass(
-                self.pipeline_info
-                    .pipeline
-                    .get_raw()
-                    .renderpass
-                    .get_raw()
-                    .renderpass,
-            )
+            .render_pass(self.pipeline_info.get_raw().renderpass.get_raw().renderpass)
             .framebuffer(self.frame_buffers[present_index].get_raw().framebuffer)
             .render_area(vk::Rect2D {
                 offset: vk::Offset2D { x: 0, y: 0 },
@@ -113,13 +106,17 @@ impl VkBloomCombineRenderPass {
             logical_device.cmd_bind_pipeline(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_info.pipeline.get_raw().pipelines[0],
+                self.pipeline_info.get_raw().pipelines[0],
             );
 
             logical_device.cmd_bind_descriptor_sets(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
+                self.pipeline_info
+                    .get_raw()
+                    .pipeline_layout
+                    .get_raw()
+                    .pipeline_layout,
                 0,
                 &[descriptor_set],
                 &[],

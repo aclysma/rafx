@@ -31,12 +31,14 @@ type SortCallback = fn(Vec<SubmitNode>) -> Vec<SubmitNode>;
 
 pub struct RegisteredPhase {
     sort_submit_nodes_callback: SortCallback,
+    name: String,
 }
 
 impl RegisteredPhase {
-    fn new<T: RenderPhase>() -> Self {
+    fn new<T: RenderPhase>(name: String) -> Self {
         RegisteredPhase {
             sort_submit_nodes_callback: T::sort_submit_nodes,
+            name,
         }
     }
 }
@@ -47,6 +49,7 @@ static RENDER_REGISTRY_PHASE_COUNT: AtomicU32 = AtomicU32::new(0);
 #[derive(Default)]
 pub struct RenderRegistryBuilder {
     registered_phases: FnvHashMap<RenderPhaseIndex, RegisteredPhase>,
+    phase_name_to_index: FnvHashMap<String, RenderPhaseIndex>,
 }
 
 impl RenderRegistryBuilder {
@@ -59,28 +62,45 @@ impl RenderRegistryBuilder {
         self
     }
 
-    pub fn register_render_phase<T>(mut self) -> Self
+    pub fn register_render_phase<T>(
+        mut self,
+        name: &str,
+    ) -> Self
     where
         T: RenderPhase,
     {
         let render_phase_index = RENDER_REGISTRY_PHASE_COUNT.fetch_add(1, Ordering::AcqRel);
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
         T::set_render_phase_index(render_phase_index);
-        self.registered_phases
-            .insert(T::render_phase_index(), RegisteredPhase::new::<T>());
+        self.registered_phases.insert(
+            T::render_phase_index(),
+            RegisteredPhase::new::<T>(name.to_string()),
+        );
+        self.phase_name_to_index
+            .insert(name.to_string(), render_phase_index);
         self
     }
 
     pub fn build(self) -> RenderRegistry {
+        let inner = RenderRegistryInner {
+            registered_phases: self.registered_phases,
+            phase_name_to_index: self.phase_name_to_index,
+        };
+
         RenderRegistry {
-            registered_phases: Arc::new(self.registered_phases),
+            inner: Arc::new(inner),
         }
     }
 }
 
+struct RenderRegistryInner {
+    registered_phases: FnvHashMap<RenderPhaseIndex, RegisteredPhase>,
+    phase_name_to_index: FnvHashMap<String, RenderPhaseIndex>,
+}
+
 #[derive(Clone)]
 pub struct RenderRegistry {
-    registered_phases: Arc<FnvHashMap<RenderPhaseIndex, RegisteredPhase>>,
+    inner: Arc<RenderRegistryInner>,
 }
 
 impl RenderRegistry {
@@ -92,11 +112,18 @@ impl RenderRegistry {
         RENDER_REGISTRY_PHASE_COUNT.load(Ordering::Acquire)
     }
 
+    pub fn render_phase_index_from_name(
+        &self,
+        name: &str,
+    ) -> Option<RenderPhaseIndex> {
+        self.inner.phase_name_to_index.get(name).map(|x| *x)
+    }
+
     pub fn sort_submit_nodes(
         &self,
         render_phase_index: RenderPhaseIndex,
         submit_nodes: Vec<SubmitNode>,
     ) -> Vec<SubmitNode> {
-        (self.registered_phases[&render_phase_index].sort_submit_nodes_callback)(submit_nodes)
+        (self.inner.registered_phases[&render_phase_index].sort_submit_nodes_callback)(submit_nodes)
     }
 }

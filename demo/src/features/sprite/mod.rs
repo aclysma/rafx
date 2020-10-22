@@ -17,7 +17,9 @@ mod prepare;
 mod write;
 use write::SpriteCommandWriter;
 use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef};
+use renderer::assets::resources::{
+    DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource,
+};
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
@@ -68,7 +70,7 @@ const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 pub fn create_sprite_extract_job(
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     sprite_material: &Handle<MaterialAsset>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(

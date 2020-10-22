@@ -74,6 +74,7 @@ where
     ResourceT: Clone,
 {
     inner: Weak<ResourceArcInner<ResourceT>>,
+    resource_hash: ResourceId,
 }
 
 impl<ResourceT> WeakResourceArc<ResourceT>
@@ -100,6 +101,32 @@ where
         f.debug_struct("WeakResourceArc")
             .field("inner", &self.inner)
             .finish()
+    }
+}
+
+impl<ResourceT> PartialEq for WeakResourceArc<ResourceT>
+where
+    ResourceT: std::fmt::Debug + Clone,
+{
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.resource_hash == other.resource_hash
+    }
+}
+
+impl<ResourceT> Eq for WeakResourceArc<ResourceT> where ResourceT: std::fmt::Debug + Clone {}
+
+impl<ResourceT> Hash for WeakResourceArc<ResourceT>
+where
+    ResourceT: std::fmt::Debug + Clone,
+{
+    fn hash<H: std::hash::Hasher>(
+        &self,
+        state: &mut H,
+    ) {
+        self.resource_hash.hash(state);
     }
 }
 
@@ -141,7 +168,11 @@ where
 
     pub fn downgrade(&self) -> WeakResourceArc<ResourceT> {
         let inner = Arc::downgrade(&self.inner);
-        WeakResourceArc { inner }
+        let resource_hash = self.inner.resource.resource_hash;
+        WeakResourceArc {
+            inner,
+            resource_hash,
+        }
     }
 }
 

@@ -13,6 +13,7 @@ use crate::vk_description as dsc;
 use crate::resources::ResourceArc;
 use crate::resources::resource_arc::{WeakResourceArc, ResourceWithHash, ResourceId};
 use std::sync::Arc;
+use renderer_nodes::RenderPhaseIndex;
 
 // #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 // pub(super) struct ResourceId(pub(super) u64);
@@ -195,6 +196,8 @@ where
 // renderpass with the swapchain surface it would be applied to)
 //
 
+//TODO: Should I Arc the dsc objects in these keys?
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ShaderModuleKey {
     code_hash: dsc::ShaderModuleCodeHash,
@@ -339,7 +342,13 @@ impl VkResource for MaterialPassResource {
 pub struct GraphicsPipelineResource {
     pub pipelines: Vec<vk::Pipeline>,
     pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
+
+    // Renderpasses must be re-registered regularly to the GraphicsPipelineCache. Otherwise, we
+    // would have a cyclical reference between cached pipelines and their renderpasses.
     pub renderpass: ResourceArc<RenderPassResource>,
+    // This does not have a ResourceArc<MaterialPassResource>. If we end up adding it here,
+    // this will potentially cause GraphicsPipelineCache's strong ref to cached pipelines to keep
+    // material pass resources alive.
 }
 
 impl VkResource for GraphicsPipelineResource {

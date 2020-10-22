@@ -5,7 +5,7 @@ use renderer::nodes::{
 };
 use crate::render_contexts::RenderJobWriteContext;
 use renderer::vulkan::VkBufferRaw;
-use renderer::assets::resources::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resources::{ResourceArc, DescriptorSetArc, GraphicsPipelineResource};
 use ash::vk;
 use ash::version::DeviceV1_0;
 use crate::imgui_support::{ImGuiDrawData, ImGuiDrawCmd};
@@ -14,7 +14,7 @@ pub struct ImGuiCommandWriter {
     pub(super) vertex_buffers: Vec<ResourceArc<VkBufferRaw>>,
     pub(super) index_buffers: Vec<ResourceArc<VkBufferRaw>>,
     pub(super) imgui_draw_data: Option<ImGuiDrawData>,
-    pub(super) pipeline_info: PipelineSwapchainInfo,
+    pub(super) pipeline_info: ResourceArc<GraphicsPipelineResource>,
     pub(super) per_pass_descriptor_set: DescriptorSetArc,
     pub(super) per_image_descriptor_sets: Vec<DescriptorSetArc>,
 }
@@ -33,14 +33,18 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
                 logical_device.cmd_bind_pipeline(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    self.pipeline_info.pipeline.get_raw().pipelines[0],
+                    self.pipeline_info.get_raw().pipelines[0],
                 );
 
                 // Bind per-pass data (UBO with view/proj matrix, sampler)
                 logical_device.cmd_bind_descriptor_sets(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
+                    self.pipeline_info
+                        .get_raw()
+                        .pipeline_layout
+                        .get_raw()
+                        .pipeline_layout,
                     0,
                     &[
                         self.per_pass_descriptor_set.get(),

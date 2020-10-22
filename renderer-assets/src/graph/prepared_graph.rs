@@ -1,7 +1,7 @@
 use super::{
     PhysicalImageId, RenderGraphOutputImageId, RenderGraphImageSpecification, RenderGraphOutputPass,
 };
-use fnv::FnvHashMap;
+use fnv::{FnvHashMap, FnvHashSet};
 use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw};
 use ash::vk;
 use crate::resources::ResourceLookupSet;
@@ -18,6 +18,8 @@ use crate::resources::FramebufferResource;
 use crate::graph::graph_node::RenderGraphNodeId;
 use ash::version::DeviceV1_0;
 use crate::graph::RenderGraph;
+use renderer_nodes::{RenderPhase, RenderPhaseIndex};
+use crate::graph::graph::RenderGraphNodeImageBarriers;
 
 //TODO: A caching system that keeps resources alive across a few frames so that we can reuse
 // images, framebuffers, and renderpasses
@@ -35,6 +37,7 @@ pub struct RenderGraphPlan {
     pub passes: Vec<RenderGraphOutputPass>,
     pub output_images: FnvHashMap<PhysicalImageId, RenderGraphPlanOutputImage>,
     pub intermediate_images: FnvHashMap<PhysicalImageId, RenderGraphImageSpecification>,
+    pub node_to_renderpass_index: FnvHashMap<RenderGraphNodeId, usize>,
 }
 
 /// Encapsulates a render graph plan and all resources required to execute it
@@ -290,11 +293,12 @@ impl<'b, U> RenderGraphNodeVisitor for RenderGraphNodeVisitorImpl<'b, U> {
 /// that we can avoid propagating generic parameters throughout the rest of the rendergraph code
 pub struct RenderGraphNodeCallbacks<T> {
     node_callbacks: FnvHashMap<RenderGraphNodeId, Box<RenderGraphNodeVisitorCallback<T>>>,
+    render_phase_dependencies: FnvHashMap<RenderGraphNodeId, FnvHashSet<RenderPhaseIndex>>,
 }
 
 impl<T> RenderGraphNodeCallbacks<T> {
     /// Adds a callback that receives the renderpass associated with the node
-    pub fn add_renderpass_callback<F>(
+    pub fn set_renderpass_callback<F>(
         &mut self,
         node_id: RenderGraphNodeId,
         f: F,
@@ -302,6 +306,16 @@ impl<T> RenderGraphNodeCallbacks<T> {
         F: Fn(vk::CommandBuffer, &T) -> VkResult<()> + 'static + Send,
     {
         self.node_callbacks.insert(node_id, Box::new(f));
+    }
+
+    pub fn add_renderphase_dependency<U: RenderPhase>(
+        &mut self,
+        node_id: RenderGraphNodeId,
+    ) {
+        self.render_phase_dependencies
+            .entry(node_id)
+            .or_default()
+            .insert(U::render_phase_index());
     }
 
     /// Pass to PreparedRenderGraph::execute_graph, this will cause the graph to be executed,
@@ -321,6 +335,7 @@ impl<T> Default for RenderGraphNodeCallbacks<T> {
     fn default() -> Self {
         RenderGraphNodeCallbacks {
             node_callbacks: Default::default(),
+            render_phase_dependencies: Default::default(),
         }
     }
 }
@@ -356,14 +371,30 @@ impl<T> RenderGraphExecutor<T> {
         //
         for renderpass in &prepared_graph.render_pass_resources {
             resource_manager
-                .caches_mut()
+                .resource_caches_mut()
                 .cache_render_pass(renderpass.clone());
         }
 
         for framebuffer in &prepared_graph.framebuffer_resources {
             resource_manager
-                .caches_mut()
+                .resource_caches_mut()
                 .cache_framebuffer(framebuffer.clone());
+        }
+
+        //
+        // Pre-warm caches for pipelines that we may need
+        //
+
+        for (node_id, render_phase_indices) in &callbacks.render_phase_dependencies {
+            let renderpass_index = prepared_graph.graph_plan.node_to_renderpass_index[node_id];
+            for &render_phase_index in render_phase_indices {
+                resource_manager
+                    .graphics_pipeline_cache_mut()
+                    .per_frame_register_renderpass_to_phase_index(
+                        &prepared_graph.render_pass_resources[renderpass_index],
+                        render_phase_index,
+                    )
+            }
         }
 
         //

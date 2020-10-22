@@ -9,8 +9,8 @@ use renderer::vulkan::SwapchainInfo;
 use renderer::vulkan::VkQueueFamilyIndices;
 
 use renderer::assets::resources::{
-    PipelineSwapchainInfo, ResourceArc, ImageViewResource, ResourceLookupSet, RenderPassResource,
-    FramebufferResource, DynCommandWriter,
+    ResourceArc, ImageViewResource, ResourceLookupSet, RenderPassResource, FramebufferResource,
+    DynCommandWriter,
 };
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::render_contexts::{RenderJobWriteContext, RenderJobWriteContextFactory};
@@ -22,7 +22,7 @@ pub struct VkUiRenderPass {
     device_context: VkDeviceContext,
     swapchain_info: SwapchainInfo,
     frame_buffers: Vec<ResourceArc<FramebufferResource>>,
-    renderpass: ResourceArc<RenderPassResource>,
+    pub renderpass: ResourceArc<RenderPassResource>,
 }
 
 impl VkUiRenderPass {
@@ -31,20 +31,16 @@ impl VkUiRenderPass {
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         swapchain_images: &[ResourceArc<ImageViewResource>],
-        pipeline_info: PipelineSwapchainInfo,
+        renderpass: ResourceArc<RenderPassResource>,
     ) -> VkResult<Self> {
-        let frame_buffers = Self::create_framebuffers(
-            resources,
-            swapchain_images,
-            swapchain_info,
-            &pipeline_info.pipeline.get_raw().renderpass,
-        )?;
+        let frame_buffers =
+            Self::create_framebuffers(resources, swapchain_images, swapchain_info, &renderpass)?;
 
         Ok(VkUiRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain_info.clone(),
             frame_buffers,
-            renderpass: pipeline_info.pipeline.get_raw().renderpass.clone(),
+            renderpass,
         })
     }
 

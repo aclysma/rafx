@@ -5,14 +5,14 @@ use renderer::nodes::{
 };
 use crate::render_contexts::RenderJobWriteContext;
 use renderer::vulkan::VkBufferRaw;
-use renderer::assets::resources::{ResourceArc, PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resources::{ResourceArc, DescriptorSetArc, GraphicsPipelineResource};
 use ash::vk;
 use ash::version::DeviceV1_0;
 
 pub struct Debug3dCommandWriter {
     pub(super) vertex_buffer: Option<ResourceArc<VkBufferRaw>>,
     pub(super) draw_calls: Vec<Debug3dDrawCall>,
-    pub(super) pipeline_info: PipelineSwapchainInfo,
+    pub(super) pipeline_info: ResourceArc<GraphicsPipelineResource>,
     pub(super) descriptor_set_per_view: Vec<DescriptorSetArc>,
 }
 
@@ -30,14 +30,18 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
                 logical_device.cmd_bind_pipeline(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    self.pipeline_info.pipeline.get_raw().pipelines[0],
+                    self.pipeline_info.get_raw().pipelines[0],
                 );
 
                 // Bind per-pass data (UBO with view/proj matrix, sampler)
                 logical_device.cmd_bind_descriptor_sets(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
+                    self.pipeline_info
+                        .get_raw()
+                        .pipeline_layout
+                        .get_raw()
+                        .pipeline_layout,
                     0,
                     &[self.descriptor_set_per_view[view.view_index() as usize].get()],
                     &[],

@@ -5,11 +5,11 @@ use renderer::nodes::{
 };
 use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
+use renderer::assets::resources::{DescriptorSetAllocatorRef};
 use atelier_assets::loader::handle::Handle;
 use crate::imgui_support::Sdl2ImguiManager;
 use ash::vk::Extent2D;
-use renderer::assets::{ImageViewResource, ResourceArc};
+use renderer::assets::{ImageViewResource, ResourceArc, GraphicsPipelineResource};
 use renderer::assets::MaterialAsset;
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
@@ -40,7 +40,7 @@ pub fn orthographic_rh_gl(
 pub struct ImGuiExtractJobImpl {
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     extents: Extent2D,
     imgui_material: Handle<MaterialAsset>,
     font_atlas: ResourceArc<ImageViewResource>,
@@ -50,7 +50,7 @@ impl ImGuiExtractJobImpl {
     pub fn new(
         device_context: VkDeviceContext,
         descriptor_set_allocator: DescriptorSetAllocatorRef,
-        pipeline_info: PipelineSwapchainInfo,
+        pipeline_info: ResourceArc<GraphicsPipelineResource>,
         extents: Extent2D,
         imgui_material: &Handle<MaterialAsset>,
         font_atlas: ResourceArc<ImageViewResource>,

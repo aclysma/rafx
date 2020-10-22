@@ -41,6 +41,7 @@ pub use registry::RenderFeature;
 pub use registry::RenderPhase;
 pub use registry::RenderFeatureIndex;
 pub use registry::RenderPhaseIndex;
+pub use registry::MAX_RENDER_PHASE_COUNT;
 
 mod macro_render_feature;
 mod macro_render_phase;

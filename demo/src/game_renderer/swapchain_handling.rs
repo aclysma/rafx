@@ -101,7 +101,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         //
         // Notify the resource manage of the new swapchain. This can kick recompiling pipelines
         //
-        resource_manager.add_swapchain(&swapchain_surface_info)?;
+        //resource_manager.add_swapchain(&swapchain_surface_info)?;
 
         //
         // Construct resources that are tied to the swapchain or swapchain metadata.
@@ -140,7 +140,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         // from accidentally using them after they've been freed
         //swapchain_resources.swapchain_images.clear();
 
-        self.resource_manager
-            .remove_swapchain(&swapchain_resources.swapchain_surface_info);
+        // self.resource_manager
+        //     .remove_swapchain(&swapchain_resources.swapchain_surface_info);
     }
 }

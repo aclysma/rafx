@@ -3,14 +3,13 @@ use atelier_assets::loader::handle::Handle;
 use crate::features::imgui::extract::ImGuiExtractJobImpl;
 use renderer::vulkan::VkDeviceContext;
 use renderer::assets::DescriptorSetAllocatorRef;
-use renderer::assets::PipelineSwapchainInfo;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;
 use std::convert::TryInto;
 use crate::imgui_support::ImGuiDrawData;
 use ash::vk::Extent2D;
-use renderer::assets::{ImageViewResource, ResourceArc};
+use renderer::assets::{ImageViewResource, ResourceArc, GraphicsPipelineResource};
 use renderer::assets::MaterialAsset;
 
 mod extract;
@@ -20,7 +19,7 @@ mod write;
 pub fn create_imgui_extract_job(
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     extents: Extent2D,
     imgui_material: &Handle<MaterialAsset>,
     font_atlas: ResourceArc<ImageViewResource>,

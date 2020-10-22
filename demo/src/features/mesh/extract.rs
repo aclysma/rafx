@@ -12,7 +12,7 @@ use renderer::nodes::{
 };
 use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJobImpl;
-use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
+use renderer::assets::resources::{DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource};
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::resources::DescriptorSetArc;
 use legion::*;
@@ -22,7 +22,7 @@ use renderer::assets::MaterialAsset;
 
 pub struct MeshExtractJobImpl {
     descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     mesh_material: Handle<MaterialAsset>,
     descriptor_sets_per_view: Vec<DescriptorSetArc>,
     extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
@@ -32,7 +32,7 @@ pub struct MeshExtractJobImpl {
 impl MeshExtractJobImpl {
     pub fn new(
         descriptor_set_allocator: DescriptorSetAllocatorRef,
-        pipeline_info: PipelineSwapchainInfo,
+        pipeline_info: ResourceArc<GraphicsPipelineResource>,
         mesh_material: &Handle<MaterialAsset>,
     ) -> Self {
         MeshExtractJobImpl {

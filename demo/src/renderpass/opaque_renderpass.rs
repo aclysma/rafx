@@ -9,8 +9,8 @@ use renderer::vulkan::VkQueueFamilyIndices;
 use renderer::vulkan::SwapchainInfo;
 
 use renderer::assets::resources::{
-    PipelineSwapchainInfo, RenderPassResource, ResourceArc, ImageViewResource, FramebufferResource,
-    ResourceLookupSet, DynCommandWriter,
+    RenderPassResource, ResourceArc, ImageViewResource, FramebufferResource, ResourceLookupSet,
+    DynCommandWriter,
 };
 use renderer::assets::vk_description as dsc;
 use renderer::nodes::{PreparedRenderData, RenderView};
@@ -23,7 +23,7 @@ pub struct VkOpaqueRenderPass {
     device_context: VkDeviceContext,
     swapchain_info: SwapchainInfo,
     frame_buffer: ResourceArc<FramebufferResource>,
-    renderpass: ResourceArc<RenderPassResource>,
+    pub renderpass: ResourceArc<RenderPassResource>,
 }
 
 impl VkOpaqueRenderPass {
@@ -33,21 +33,21 @@ impl VkOpaqueRenderPass {
         swapchain_info: &SwapchainInfo,
         color_attachment: &RenderpassAttachmentImage,
         depth_attachment: &RenderpassAttachmentImage,
-        pipeline_info: PipelineSwapchainInfo,
+        renderpass: ResourceArc<RenderPassResource>,
     ) -> VkResult<Self> {
         let frame_buffer = Self::create_framebuffers(
             resources,
             color_attachment.target_resource(),
             depth_attachment.target_resource(),
             swapchain_info,
-            &pipeline_info.pipeline.get_raw().renderpass,
+            &renderpass,
         )?;
 
         Ok(VkOpaqueRenderPass {
             device_context: device_context.clone(),
             swapchain_info: swapchain_info.clone(),
             frame_buffer,
-            renderpass: pipeline_info.pipeline.get_raw().renderpass.clone(),
+            renderpass: renderpass.clone(),
         })
     }
 

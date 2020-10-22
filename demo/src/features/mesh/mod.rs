@@ -17,7 +17,7 @@ mod write;
 use write::MeshCommandWriter;
 use renderer::vulkan::VkBufferRaw;
 use renderer::assets::resources::{
-    PipelineSwapchainInfo, DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc,
+    DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource,
 };
 use renderer::assets::MaterialAsset;
 
@@ -79,7 +79,7 @@ pub struct MeshPerObjectShaderParam {
 
 pub fn create_mesh_extract_job(
     descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     mesh_material: &Handle<MaterialAsset>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(DefaultExtractJob::new(MeshExtractJobImpl::new(

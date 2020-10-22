@@ -145,7 +145,8 @@ pub fn build_render_graph(
         //     Ok(())
         // });
 
-        graph_callbacks.add_renderpass_callback(node.id(), |command_buffer, context| {
+        graph_callbacks.add_renderphase_dependency::<OpaqueRenderPhase>(node.id());
+        graph_callbacks.set_renderpass_callback(node.id(), |command_buffer, context| {
             let mut write_context = context.write_context_factory.create_context(command_buffer);
             context
                 .prepared_render_data

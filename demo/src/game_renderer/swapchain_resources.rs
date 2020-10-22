@@ -6,13 +6,16 @@ use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
 use crate::game_renderer::{GameRendererInner, RenderpassAttachmentImage};
 use renderer::assets::resources::{
     ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource, ResourceLookupSet,
-    CommandPool,
+    CommandPool, RenderPassResource,
 };
+use renderer::assets::RenderpassAsset;
 use renderer::assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
 use ash::vk;
 use renderer::assets::vk_description as dsc;
 use renderer::vulkan::VkImageRaw;
+use crate::asset_resource::AssetResource;
+use atelier_assets::loader::handle::Handle;
 
 pub struct SwapchainResources {
     // The images presented by the swapchain
@@ -127,11 +130,17 @@ impl SwapchainResources {
 
         log::debug!("Create VkOpaqueRenderPass");
         //TODO: We probably want to move to just using a pipeline here and not a specific material
-        let opaque_pipeline_info = resource_manager.get_pipeline_info(
-            &game_renderer.static_resources.sprite_material,
+
+        //game_renderer.static_resources.opaque_renderpass.asset(asset_resource)
+
+        //
+        // Opaque Renderpass
+        //
+        let opaque_renderpass_resource = SwapchainResources::create_renderpass_resource(
+            resource_manager,
             &swapchain_surface_info,
-            0,
-        );
+            &game_renderer.static_resources.opaque_renderpass,
+        )?;
 
         let opaque_renderpass = VkOpaqueRenderPass::new(
             resource_manager.resources_mut(),
@@ -139,15 +148,21 @@ impl SwapchainResources {
             &swapchain.swapchain_info,
             &color_attachment,
             &depth_attachment,
-            opaque_pipeline_info,
+            opaque_renderpass_resource,
         )?;
 
+        //
+        // MSAA Renderpass
+        //
         log::debug!("Create VkDebugRenderPass");
         let msaa_renderpass =
             VkMsaaRenderPass::new(device_context, &swapchain.swapchain_info, &color_attachment)?;
 
         log::debug!("Create VkBloomExtractRenderPass");
 
+        //
+        // Bloom Shared Resources
+        //
         let bloom_resources = VkBloomRenderPassResources::new(
             device_context,
             swapchain,
@@ -155,17 +170,28 @@ impl SwapchainResources {
             game_renderer.static_resources.bloom_blur_material.clone(),
         )?;
 
+        //
+        // Bloom Extract Renderpass
+        //
         let bloom_extract_layout = resource_manager.get_descriptor_set_info(
             &game_renderer.static_resources.bloom_extract_material,
             0,
             0,
         );
 
-        let bloom_extract_pipeline_info = resource_manager.get_pipeline_info(
-            &game_renderer.static_resources.bloom_extract_material,
+        let bloom_extract_renderpass_resource = SwapchainResources::create_renderpass_resource(
+            resource_manager,
             &swapchain_surface_info,
-            0,
-        );
+            &game_renderer.static_resources.bloom_extract_renderpass,
+        )?;
+
+        let bloom_extract_pipeline_info = resource_manager
+            .get_or_create_graphics_pipeline(
+                &game_renderer.static_resources.bloom_blur_material,
+                &bloom_extract_renderpass_resource,
+                0,
+            )
+            .unwrap();
 
         let bloom_extract_renderpass = VkBloomExtractRenderPass::new(
             resource_manager.resources_mut(),
@@ -181,13 +207,24 @@ impl SwapchainResources {
         bloom_extract_material_dyn_set.set_image_raw(0, color_attachment.resolved_image_view());
         bloom_extract_material_dyn_set.flush(&mut descriptor_set_allocator)?;
 
+        //
+        // Bloom Blur Renderpass
+        //
         log::debug!("Create VkBloomBlurRenderPass");
 
-        let bloom_blur_pipeline_info = resource_manager.get_pipeline_info(
-            &game_renderer.static_resources.bloom_blur_material,
+        let bloom_blur_renderpass_resource = SwapchainResources::create_renderpass_resource(
+            resource_manager,
             &swapchain_surface_info,
-            0,
-        );
+            &game_renderer.static_resources.bloom_blur_renderpass,
+        )?;
+
+        let bloom_blur_pipeline_info = resource_manager
+            .get_or_create_graphics_pipeline(
+                &game_renderer.static_resources.bloom_blur_material,
+                &bloom_blur_renderpass_resource,
+                0,
+            )
+            .unwrap();
 
         let bloom_blur_renderpass = VkBloomBlurRenderPass::new(
             resource_manager.resources_mut(),
@@ -198,6 +235,9 @@ impl SwapchainResources {
             &mut static_command_pool,
         )?;
 
+        //
+        // Bloom Combine Renderpass
+        //
         log::debug!("Create VkBloomCombineRenderPass");
 
         let bloom_combine_layout = resource_manager.get_descriptor_set_info(
@@ -206,11 +246,19 @@ impl SwapchainResources {
             0,
         );
 
-        let bloom_combine_pipeline_info = resource_manager.get_pipeline_info(
-            &game_renderer.static_resources.bloom_combine_material,
+        let bloom_combine_renderpass_resource = SwapchainResources::create_renderpass_resource(
+            resource_manager,
             &swapchain_surface_info,
-            0,
-        );
+            &game_renderer.static_resources.bloom_combine_renderpass,
+        )?;
+
+        let bloom_combine_pipeline_info = resource_manager
+            .get_or_create_graphics_pipeline(
+                &game_renderer.static_resources.bloom_combine_material,
+                &bloom_combine_renderpass_resource,
+                0,
+            )
+            .unwrap();
 
         let bloom_combine_renderpass = VkBloomCombineRenderPass::new(
             resource_manager.resources_mut(),
@@ -220,18 +268,27 @@ impl SwapchainResources {
             bloom_combine_pipeline_info,
         )?;
 
-        let imgui_pipeline_info = resource_manager.get_pipeline_info(
-            &game_renderer.static_resources.imgui_material,
+        //
+        // Imgui Renderpass
+        //
+        // let imgui_pipeline_info = resource_manager.get_pipeline_info(
+        //     &game_renderer.static_resources.imgui_material,
+        //     &swapchain_surface_info,
+        //     0,
+        // );
+
+        let ui_renderpass_resource = SwapchainResources::create_renderpass_resource(
+            resource_manager,
             &swapchain_surface_info,
-            0,
-        );
+            &game_renderer.static_resources.ui_renderpass,
+        )?;
 
         let ui_renderpass = VkUiRenderPass::new(
             resource_manager.resources_mut(),
             device_context,
             &swapchain.swapchain_info,
             &swapchain_images,
-            imgui_pipeline_info,
+            ui_renderpass_resource,
         )?;
 
         let mut bloom_combine_material_dyn_set = descriptor_set_allocator
@@ -272,5 +329,24 @@ impl SwapchainResources {
             swapchain_info,
             swapchain_surface_info,
         })
+    }
+
+    fn create_renderpass_resource(
+        resource_manager: &mut ResourceManager,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+        asset_handle: &Handle<RenderpassAsset>,
+    ) -> VkResult<ResourceArc<RenderPassResource>> {
+        use atelier_assets::loader::handle::AssetHandle;
+        let renderpass_asset_data = resource_manager
+            .loaded_assets()
+            .renderpasses
+            .get_committed(asset_handle.load_handle())
+            .unwrap()
+            .data
+            .clone();
+
+        resource_manager
+            .resources_mut()
+            .get_or_create_renderpass(&renderpass_asset_data.renderpass, swapchain_surface_info)
     }
 }

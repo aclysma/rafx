@@ -146,9 +146,20 @@ pub fn rendering_init(
         context = context.use_vulkan_debug_layer(true);
     }
 
+    let render_registry = renderer::nodes::RenderRegistryBuilder::default()
+        .register_feature::<SpriteRenderFeature>()
+        .register_feature::<MeshRenderFeature>()
+        .register_feature::<Debug3dRenderFeature>()
+        .register_feature::<ImGuiRenderFeature>()
+        .register_render_phase::<OpaqueRenderPhase>("Opaque")
+        .register_render_phase::<TransparentRenderPhase>("Transparent")
+        .register_render_phase::<UiRenderPhase>("Ui")
+        .build();
+
     let vk_context = context.build(&window_wrapper).unwrap();
     let device_context = vk_context.device_context().clone();
-    let resource_manager = renderer::assets::ResourceManager::new(&device_context);
+    let mut resource_manager =
+        renderer::assets::ResourceManager::new(&device_context, &render_registry);
 
     {
         let loaders = resource_manager.create_loaders();
@@ -181,6 +192,7 @@ pub fn rendering_init(
     resources.insert(vk_context);
     resources.insert(device_context);
     resources.insert(resource_manager);
+    resources.insert(render_registry);
 
     {
         //
@@ -201,17 +213,6 @@ pub fn rendering_init(
 
         asset_resource.add_storage::<GltfMaterialAsset>();
     }
-
-    let render_registry = renderer::nodes::RenderRegistryBuilder::default()
-        .register_feature::<SpriteRenderFeature>()
-        .register_feature::<MeshRenderFeature>()
-        .register_feature::<Debug3dRenderFeature>()
-        .register_feature::<ImGuiRenderFeature>()
-        .register_render_phase::<OpaqueRenderPhase>()
-        .register_render_phase::<TransparentRenderPhase>()
-        .register_render_phase::<UiRenderPhase>()
-        .build();
-    resources.insert(render_registry);
 
     let game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
     resources.insert(game_renderer);

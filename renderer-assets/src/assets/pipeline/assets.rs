@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::{vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc};
+use crate::{
+    vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc,
+    RenderPassResource,
+};
 use atelier_assets::loader::handle::Handle;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
@@ -24,6 +27,8 @@ pub struct RenderpassAssetData {
 pub struct RenderpassAsset {
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
     pub data: Arc<RenderpassAssetData>,
+    // Renderpass assets can produce multiple renderpass resources depending on number of active
+    // swapchains.
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
@@ -151,7 +156,7 @@ pub struct MaterialPass {
     pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
 
     // Potentially one of these per swapchain surface
-    pub per_swapchain_data: Mutex<Vec<MaterialPassSwapchainResources>>,
+    //pub per_swapchain_data: Mutex<Vec<MaterialPassSwapchainResources>>,
 
     // Info required to recreate the pipeline for new swapchains
     pub material_pass_resource: ResourceArc<MaterialPassResource>,
@@ -167,7 +172,11 @@ pub struct MaterialPass {
 #[derive(TypeUuid, Clone)]
 #[uuid = "165673cd-d81d-4708-b9a4-d7e1a2a67976"]
 pub struct MaterialAsset {
+    //TODO: Consider making this named
+    //TODO: Get cached graphics pipelines working
+    //TODO: Could consider decoupling render cache from phases
     pub passes: Arc<Vec<MaterialPass>>,
+    //pub pass_lookup: FnvHashMap<String, usize>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

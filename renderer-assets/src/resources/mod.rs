@@ -53,7 +53,8 @@ pub use command_buffers::CommandPool;
 pub use command_buffers::DynCommandWriterAllocator;
 pub use command_buffers::DynCommandWriter;
 
-mod pipeline_manager;
+mod pipeline_cache;
+pub use pipeline_cache::GraphicsPipelineCache;
 
 mod resource_cache;
 pub use resource_cache::ResourceCacheSet;

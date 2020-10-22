@@ -14,8 +14,8 @@ use renderer::vulkan::VkImage;
 use atelier_assets::loader::handle::Handle;
 
 use renderer::assets::resources::{
-    PipelineSwapchainInfo, DynDescriptorSet, ResourceManager, ResourceArc, ImageViewResource,
-    ResourceLookupSet, RenderPassResource, FramebufferResource, DynCommandWriter,
+    DynDescriptorSet, ResourceManager, ResourceArc, ImageViewResource, ResourceLookupSet,
+    RenderPassResource, FramebufferResource, DynCommandWriter, GraphicsPipelineResource,
 };
 use renderer::assets::MaterialAsset;
 use crate::game_renderer::RenderpassAttachmentImage;
@@ -102,7 +102,7 @@ impl VkBloomRenderPassResources {
 pub struct VkBloomExtractRenderPass {
     device_context: VkDeviceContext,
     swapchain_info: SwapchainInfo,
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     frame_buffer: ResourceArc<FramebufferResource>,
 }
 
@@ -111,7 +111,7 @@ impl VkBloomExtractRenderPass {
         resources: &mut ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
-        pipeline_info: PipelineSwapchainInfo,
+        pipeline_info: ResourceArc<GraphicsPipelineResource>,
         bloom_resources: &VkBloomRenderPassResources,
     ) -> VkResult<Self> {
         let frame_buffer = Self::create_framebuffers(
@@ -119,7 +119,7 @@ impl VkBloomExtractRenderPass {
             &bloom_resources.bloom_images[0],
             &bloom_resources.color_image,
             swapchain_info,
-            &pipeline_info.pipeline.get_raw().renderpass,
+            &pipeline_info.get_raw().renderpass,
         )?;
 
         Ok(VkBloomExtractRenderPass {
@@ -166,14 +166,7 @@ impl VkBloomExtractRenderPass {
         ];
 
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-            .render_pass(
-                self.pipeline_info
-                    .pipeline
-                    .get_raw()
-                    .renderpass
-                    .get_raw()
-                    .renderpass,
-            )
+            .render_pass(self.pipeline_info.get_raw().renderpass.get_raw().renderpass)
             .framebuffer(self.frame_buffer.get_raw().framebuffer)
             .render_area(vk::Rect2D {
                 offset: vk::Offset2D { x: 0, y: 0 },
@@ -199,13 +192,17 @@ impl VkBloomExtractRenderPass {
             logical_device.cmd_bind_pipeline(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_info.pipeline.get_raw().pipelines[0],
+                self.pipeline_info.get_raw().pipelines[0],
             );
 
             logical_device.cmd_bind_descriptor_sets(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_info.pipeline_layout.get_raw().pipeline_layout,
+                self.pipeline_info
+                    .get_raw()
+                    .pipeline_layout
+                    .get_raw()
+                    .pipeline_layout,
                 0,
                 &[descriptor_set],
                 &[],

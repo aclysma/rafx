@@ -4,9 +4,7 @@ use crate::render_contexts::{
     RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory,
 };
 use renderer::assets::graph::RenderGraphExecutor;
-use renderer::assets::resources::{
-    DynResourceAllocatorSet, PipelineSwapchainInfo, DynCommandWriterAllocator,
-};
+use renderer::assets::resources::{DynResourceAllocatorSet, DynCommandWriterAllocator};
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
 use std::sync::MutexGuard;
 use ash::prelude::VkResult;
@@ -23,8 +21,6 @@ pub struct RenderFrameJob {
     pub main_view: RenderView,
     pub render_registry: RenderRegistry,
     pub device_context: VkDeviceContext,
-    pub opaque_pipeline_info: PipelineSwapchainInfo,
-    pub imgui_pipeline_info: PipelineSwapchainInfo,
     pub frame_in_flight: FrameInFlight,
 }
 
@@ -43,8 +39,8 @@ impl RenderFrameJob {
             self.main_view,
             self.render_registry,
             self.device_context,
-            self.opaque_pipeline_info,
-            self.imgui_pipeline_info,
+            // self.opaque_pipeline_info,
+            // self.imgui_pipeline_info,
             self.frame_in_flight.present_index() as usize,
         );
 
@@ -81,8 +77,6 @@ impl RenderFrameJob {
         main_view: RenderView,
         render_registry: RenderRegistry,
         device_context: VkDeviceContext,
-        opaque_pipeline_info: PipelineSwapchainInfo,
-        imgui_pipeline_info: PipelineSwapchainInfo,
         present_index: usize,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let t0 = std::time::Instant::now();

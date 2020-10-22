@@ -2907,10 +2907,18 @@ impl RenderGraph {
             );
         }
 
+        let mut node_to_renderpass_index = FnvHashMap::default();
+        for (renderpass_index, renderpass) in renderpasses.iter().enumerate() {
+            for &node in &renderpass.subpass_nodes {
+                node_to_renderpass_index.insert(node, renderpass_index);
+            }
+        }
+
         RenderGraphPlan {
             passes: renderpasses,
             output_images,
             intermediate_images,
+            node_to_renderpass_index,
         }
     }
 }

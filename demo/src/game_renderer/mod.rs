@@ -401,31 +401,41 @@ impl GameRenderer {
         //
         // Extract Jobs
         //
+        let opaque_renderpass = swapchain_resources.opaque_renderpass.renderpass.clone();
+
         let frame_packet = frame_packet_builder.build();
         let extract_job_set = {
-            let sprite_pipeline_info = resource_manager.get_pipeline_info(
-                &guard.static_resources.sprite_material,
-                &swapchain_surface_info,
-                0,
-            );
+            let sprite_pipeline_info = resource_manager
+                .get_cached_graphics_pipeline(
+                    &guard.static_resources.sprite_material,
+                    &opaque_renderpass,
+                    0,
+                )
+                .unwrap();
 
-            let mesh_pipeline_info = resource_manager.get_pipeline_info(
-                &guard.static_resources.mesh_material,
-                &swapchain_surface_info,
-                0,
-            );
+            let mesh_pipeline_info = resource_manager
+                .get_cached_graphics_pipeline(
+                    &guard.static_resources.mesh_material,
+                    &opaque_renderpass,
+                    0,
+                )
+                .unwrap();
 
-            let debug3d_pipeline_info = resource_manager.get_pipeline_info(
-                &guard.static_resources.debug3d_material,
-                &swapchain_surface_info,
-                0,
-            );
+            let debug3d_pipeline_info = resource_manager
+                .get_cached_graphics_pipeline(
+                    &guard.static_resources.debug3d_material,
+                    &opaque_renderpass,
+                    0,
+                )
+                .unwrap();
 
-            let imgui_pipeline_info = resource_manager.get_pipeline_info(
-                &guard.static_resources.imgui_material,
-                &swapchain_surface_info,
-                0,
-            );
+            let imgui_pipeline_info = resource_manager
+                .get_cached_graphics_pipeline(
+                    &guard.static_resources.imgui_material,
+                    &opaque_renderpass,
+                    0,
+                )
+                .unwrap();
 
             let mut extract_job_set = ExtractJobSet::new();
 
@@ -469,15 +479,27 @@ impl GameRenderer {
         let prepare_job_set =
             extract_job_set.extract(&extract_context, &frame_packet, &[&main_view]);
 
-        let opaque_pipeline_info = resource_manager.get_pipeline_info(
+        let opaque_pipeline_info = resource_manager.get_cached_graphics_pipeline(
             &guard.static_resources.sprite_material,
-            &swapchain_surface_info,
+            &guard
+                .swapchain_resources
+                .as_ref()
+                .unwrap()
+                .opaque_renderpass
+                .renderpass
+                .clone(),
             0,
         );
 
-        let imgui_pipeline_info = resource_manager.get_pipeline_info(
+        let imgui_pipeline_info = resource_manager.get_cached_graphics_pipeline(
             &guard.static_resources.imgui_material,
-            &swapchain_surface_info,
+            &guard
+                .swapchain_resources
+                .as_ref()
+                .unwrap()
+                .ui_renderpass
+                .renderpass
+                .clone(),
             0,
         );
 
@@ -514,8 +536,8 @@ impl GameRenderer {
             main_view,
             render_registry,
             device_context,
-            opaque_pipeline_info,
-            imgui_pipeline_info,
+            // opaque_pipeline_info,
+            // imgui_pipeline_info,
             frame_in_flight,
         };
 

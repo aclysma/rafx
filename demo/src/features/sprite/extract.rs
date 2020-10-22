@@ -10,7 +10,7 @@ use renderer::nodes::{
 use renderer::base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJobImpl;
 use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetAllocatorRef};
+use renderer::assets::resources::{DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource};
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::resources::DescriptorSetArc;
 use renderer::assets::MaterialAsset;
@@ -44,7 +44,7 @@ pub fn orthographic_rh_gl(
 pub struct SpriteExtractJobImpl {
     device_context: VkDeviceContext,
     descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     sprite_material: Handle<MaterialAsset>,
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
     per_view_descriptors: Vec<DescriptorSetArc>,
@@ -54,7 +54,7 @@ impl SpriteExtractJobImpl {
     pub fn new(
         device_context: VkDeviceContext,
         descriptor_set_allocator: DescriptorSetAllocatorRef,
-        pipeline_info: PipelineSwapchainInfo,
+        pipeline_info: ResourceArc<GraphicsPipelineResource>,
         sprite_material: &Handle<MaterialAsset>,
     ) -> Self {
         SpriteExtractJobImpl {

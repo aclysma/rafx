@@ -13,11 +13,11 @@ use super::SpriteCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::vulkan::{VkBuffer, VkDeviceContext};
 use ash::vk;
-use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resources::{DescriptorSetArc, ResourceArc, GraphicsPipelineResource};
 
 pub struct SpritePrepareJobImpl {
     device_context: VkDeviceContext,
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     descriptor_set_per_view: Vec<DescriptorSetArc>,
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
 
@@ -29,7 +29,7 @@ pub struct SpritePrepareJobImpl {
 impl SpritePrepareJobImpl {
     pub(super) fn new(
         device_context: VkDeviceContext,
-        pipeline_info: PipelineSwapchainInfo,
+        pipeline_info: ResourceArc<GraphicsPipelineResource>,
         descriptor_set_per_view: Vec<DescriptorSetArc>,
         extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
     ) -> Self {

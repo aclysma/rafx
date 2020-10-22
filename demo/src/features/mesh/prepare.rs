@@ -10,10 +10,10 @@ use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
 use super::MeshCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::assets::resources::{PipelineSwapchainInfo, DescriptorSetArc};
+use renderer::assets::resources::{DescriptorSetArc, ResourceArc, GraphicsPipelineResource};
 
 pub struct MeshPrepareJobImpl {
-    pipeline_info: PipelineSwapchainInfo,
+    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     descriptor_sets_per_view: Vec<DescriptorSetArc>,
     extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
     extracted_view_node_mesh_data: Vec<Vec<Option<ExtractedViewNodeMeshData>>>,
@@ -22,7 +22,7 @@ pub struct MeshPrepareJobImpl {
 
 impl MeshPrepareJobImpl {
     pub(super) fn new(
-        pipeline_info: PipelineSwapchainInfo,
+        pipeline_info: ResourceArc<GraphicsPipelineResource>,
         descriptor_sets_per_view: Vec<DescriptorSetArc>,
         extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
         extracted_view_node_mesh_data: Vec<Vec<Option<ExtractedViewNodeMeshData>>>,

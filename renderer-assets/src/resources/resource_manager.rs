@@ -14,7 +14,7 @@ use crate::{
     GenericLoader, BufferAssetData, AssetLookupSet, DynResourceAllocatorSet, LoadQueues,
     AssetLookup, MaterialPassSwapchainResources, SlotNameLookup, SlotLocation,
     DynPassMaterialInstance, DynDescriptorSet, DescriptorSetAllocatorRef, DynMaterialInstance,
-    DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource,
+    DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource, GraphicsPipelineCache,
 };
 use crate::assets::{
     ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
@@ -31,24 +31,18 @@ use crate::resources::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 use crate::resources::descriptor_sets;
 use crate::resources::resource_lookup::ResourceLookupSet;
 use crate::resources::load_queue::LoadQueueSet;
-use crate::resources::swapchain_management::ActiveSwapchainSurfaceInfoSet;
+//use crate::resources::swapchain_management::ActiveSwapchainSurfaceInfoSet;
 use crate::resources::descriptor_sets::{DescriptorSetAllocator, DescriptorSetAllocatorManager};
 use crate::resources::upload::{UploadManager, ImageUploadOpResult, BufferUploadOpResult};
 use crossbeam_channel::Sender;
 use crate::assets::MaterialPassDataRenderpassRef;
 use crate::resources::command_buffers::DynCommandWriterAllocator;
+use ash::vk;
+use renderer_nodes::RenderRegistry;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
 //TODO: Support data inheritance for descriptors
-
-// Information about a pipeline for a particular swapchain, resources may or may not be shared
-// across swapchains depending on if they are the same size/format
-pub struct PipelineSwapchainInfo {
-    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
-    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
-    pub pipeline: ResourceArc<GraphicsPipelineResource>,
-}
 
 // Information about a single loaded image
 pub struct ImageInfo {
@@ -93,10 +87,11 @@ pub struct ResourceManager {
     resource_caches: ResourceCacheSet,
     loaded_assets: AssetLookupSet,
     load_queues: LoadQueueSet,
-    swapchain_surfaces: ActiveSwapchainSurfaceInfoSet,
+    //swapchain_surfaces: ActiveSwapchainSurfaceInfoSet,
     resource_descriptor_sets: DescriptorSetAllocator,
     descriptor_set_allocator: DescriptorSetAllocatorManager,
     upload_manager: UploadManager,
+    graphics_pipeline_cache: GraphicsPipelineCache,
 }
 
 impl ResourceManager {
@@ -108,8 +103,12 @@ impl ResourceManager {
         &mut self.resources
     }
 
-    pub fn caches_mut(&mut self) -> &mut ResourceCacheSet {
+    pub fn resource_caches_mut(&mut self) -> &mut ResourceCacheSet {
         &mut self.resource_caches
+    }
+
+    pub fn graphics_pipeline_cache_mut(&mut self) -> &mut GraphicsPipelineCache {
+        &mut self.graphics_pipeline_cache
     }
 
     #[allow(dead_code)]
@@ -122,7 +121,10 @@ impl ResourceManager {
         &mut self.loaded_assets
     }
 
-    pub fn new(device_context: &VkDeviceContext) -> Self {
+    pub fn new(
+        device_context: &VkDeviceContext,
+        render_registry: &RenderRegistry,
+    ) -> Self {
         ResourceManager {
             dyn_commands: DynCommandWriterAllocator::new(
                 device_context,
@@ -139,10 +141,11 @@ impl ResourceManager {
             resource_caches: Default::default(),
             loaded_assets: Default::default(),
             load_queues: Default::default(),
-            swapchain_surfaces: Default::default(),
+            //swapchain_surfaces: Default::default(),
             resource_descriptor_sets: DescriptorSetAllocator::new(device_context),
             descriptor_set_allocator: DescriptorSetAllocatorManager::new(device_context),
             upload_manager: UploadManager::new(device_context),
+            graphics_pipeline_cache: GraphicsPipelineCache::new(render_registry),
         }
     }
 
@@ -250,39 +253,41 @@ impl ResourceManager {
         }
     }
 
-    pub fn get_pipeline_info(
+    pub fn get_cached_graphics_pipeline(
         &self,
-        handle: &Handle<MaterialAsset>,
-        swapchain: &SwapchainSurfaceInfo,
+        material_handle: &Handle<MaterialAsset>,
+        renderpass: &ResourceArc<RenderPassResource>,
         pass_index: usize,
-        renderpass: ResourceArc<RenderPassResource>,
-    ) -> PipelineSwapchainInfo {
-        let resource = self
+    ) -> Option<ResourceArc<GraphicsPipelineResource>> {
+        let material = self
             .loaded_assets
             .materials
-            .get_committed(handle.load_handle())
+            .get_committed(material_handle.load_handle())
             .unwrap();
 
-        let swapchain_index = self
-            .swapchain_surfaces
-            .ref_counts
-            .get(swapchain)
-            .unwrap()
-            .index;
+        self.graphics_pipeline_cache.find_graphics_pipeline(
+            &material.passes[pass_index].material_pass_resource,
+            &renderpass,
+        )
+    }
 
-        let pipeline = {
-            let per_swapchain_data = resource.passes[pass_index]
-                .per_swapchain_data
-                .lock()
-                .unwrap();
-            per_swapchain_data[swapchain_index].pipeline.clone()
-        };
+    pub fn get_or_create_graphics_pipeline(
+        &mut self,
+        material_handle: &Handle<MaterialAsset>,
+        renderpass: &ResourceArc<RenderPassResource>,
+        pass_index: usize,
+    ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
+        let material = self
+            .loaded_assets
+            .materials
+            .get_committed(material_handle.load_handle())
+            .unwrap();
 
-        PipelineSwapchainInfo {
-            descriptor_set_layouts: resource.passes[pass_index].descriptor_set_layouts.clone(),
-            pipeline_layout: resource.passes[pass_index].pipeline_layout.clone(),
-            pipeline,
-        }
+        //TODO: Cache it?
+        self.resources.get_or_create_graphics_pipeline(
+            &material.passes[pass_index].material_pass_resource,
+            renderpass,
+        )
     }
 
     pub fn get_material_instance_info(
@@ -301,26 +306,26 @@ impl ResourceManager {
         }
     }
 
-    pub fn add_swapchain(
-        &mut self,
-        swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    ) -> VkResult<()> {
-        log::info!("add_swapchain {:?}", swapchain_surface_info);
-        self.swapchain_surfaces.add(
-            &swapchain_surface_info,
-            &mut self.loaded_assets,
-            &mut self.resources,
-        )
-    }
-
-    pub fn remove_swapchain(
-        &mut self,
-        swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    ) {
-        log::info!("remove_swapchain {:?}", swapchain_surface_info);
-        self.swapchain_surfaces
-            .remove(swapchain_surface_info, &mut self.loaded_assets);
-    }
+    // pub fn add_swapchain(
+    //     &mut self,
+    //     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
+    // ) -> VkResult<()> {
+    //     log::info!("add_swapchain {:?}", swapchain_surface_info);
+    //     self.swapchain_surfaces.add(
+    //         &swapchain_surface_info,
+    //         &mut self.loaded_assets,
+    //         &mut self.resources,
+    //     )
+    // }
+    //
+    // pub fn remove_swapchain(
+    //     &mut self,
+    //     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
+    // ) {
+    //     log::info!("remove_swapchain {:?}", swapchain_surface_info);
+    //     self.swapchain_surfaces
+    //         .remove(swapchain_surface_info, &mut self.loaded_assets);
+    // }
 
     // Call whenever you want to handle assets loading/unloading
     pub fn update_resources(&mut self) -> VkResult<()> {
@@ -756,13 +761,13 @@ impl ResourceManager {
                 .resources_mut()
                 .get_or_create_pipeline_layout(&pipeline_layout_def)?;
 
+            // //
+            // // Swapchain-specific resources (renderpasses and pipelines)
+            // //
+            // let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
             //
-            // Swapchain-specific resources (renderpasses and pipelines)
-            //
-            let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
-
-            // Will contain the vulkan resources being created per swapchain
-            let mut per_swapchain_data = Vec::with_capacity(swapchain_surface_infos.len());
+            // // Will contain the vulkan resources being created per swapchain
+            // let mut per_swapchain_data = Vec::with_capacity(swapchain_surface_infos.len());
 
             let material_pass = self.resources.get_or_create_material_pass(
                 shader_modules.clone(),
@@ -771,33 +776,49 @@ impl ResourceManager {
                 fixed_function_state,
             )?;
 
-            // Create the pipeline objects
-            for swapchain_surface_info in swapchain_surface_infos {
-                let renderpass = match &pass.renderpass {
-                    MaterialPassDataRenderpassRef::Asset(asset) => {
-                        let renderpass_asset = self
-                            .loaded_assets
-                            .renderpasses
-                            .get_latest(asset.load_handle())
-                            .unwrap();
-
-                        self.resources.get_or_create_renderpass(
-                            &renderpass_asset.data.renderpass,
-                            &swapchain_surface_info,
-                        )?
-                    }
-                    MaterialPassDataRenderpassRef::LookupByPhaseName => {
-                        // See if we have a cached renderpass from previous graph run on this swapchain
-                        unimplemented!();
-                    }
-                };
-
-                let pipeline = self
-                    .resources
-                    .get_or_create_graphics_pipeline(&material_pass, &renderpass)?;
-
-                per_swapchain_data.push(MaterialPassSwapchainResources { pipeline });
+            let renderphase_index = self
+                .graphics_pipeline_cache
+                .get_renderphase_by_name(&pass.phase);
+            match renderphase_index {
+                Some(renderphase_index) => self
+                    .graphics_pipeline_cache
+                    .register_material_to_phase_index(&material_pass, renderphase_index),
+                None => {
+                    log::error!(
+                        "Renderphase {} not registered with graphics pipeline cache.",
+                        pass.phase
+                    );
+                    return Err(vk::Result::ERROR_UNKNOWN);
+                }
             }
+
+            // // Create the pipeline objects
+            // for swapchain_surface_info in swapchain_surface_infos {
+            //     let renderpass = match &pass.renderpass {
+            //         MaterialPassDataRenderpassRef::Asset(asset) => {
+            //             let renderpass_asset = self
+            //                 .loaded_assets
+            //                 .renderpasses
+            //                 .get_latest(asset.load_handle())
+            //                 .unwrap();
+            //
+            //             self.resources.get_or_create_renderpass(
+            //                 &renderpass_asset.data.renderpass,
+            //                 &swapchain_surface_info,
+            //             )?
+            //         }
+            //         MaterialPassDataRenderpassRef::LookupByPhaseName => {
+            //             // See if we have a cached renderpass from previous graph run on this swapchain
+            //             unimplemented!();
+            //         }
+            //     };
+            //
+            //     let pipeline = self
+            //         .resources
+            //         .get_or_create_graphics_pipeline(&material_pass, &renderpass)?;
+            //
+            //     per_swapchain_data.push(MaterialPassSwapchainResources { pipeline });
+            // }
 
             // Create a lookup of the slot names
             let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
@@ -835,7 +856,7 @@ impl ResourceManager {
                 descriptor_set_layouts,
                 pipeline_layout,
                 shader_modules,
-                per_swapchain_data: Mutex::new(per_swapchain_data),
+                //per_swapchain_data: Mutex::new(per_swapchain_data),
                 material_pass_resource: material_pass.clone(),
                 shader_interface: pass.shader_interface.clone(),
                 pass_slot_name_lookup: Arc::new(pass_slot_name_lookup),
