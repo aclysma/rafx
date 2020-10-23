@@ -24,7 +24,7 @@ pub struct VkBloomBlurRenderPass {
     // Command pool and list of command buffers. We ping-pong the blur filter, so there are two
     // command buffers, two framebuffers, two images, two descriptor sets, etc.
     pub command_buffers: Vec<vk::CommandBuffer>,
-    pub pipeline: ResourceArc<GraphicsPipelineResource>
+    pub pipeline: ResourceArc<GraphicsPipelineResource>,
 }
 
 impl VkBloomBlurRenderPass {
@@ -63,11 +63,7 @@ impl VkBloomBlurRenderPass {
             frame_buffers[1].get_raw().framebuffer,
             command_buffers[0],
             pipeline.get_raw().pipelines[0],
-            pipeline
-                .get_raw()
-                .pipeline_layout
-                .get_raw()
-                .pipeline_layout,
+            pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
             descriptor_set_per_pass0,
         )?;
 
@@ -78,11 +74,7 @@ impl VkBloomBlurRenderPass {
             frame_buffers[0].get_raw().framebuffer,
             command_buffers[1],
             pipeline.get_raw().pipelines[0],
-            pipeline
-                .get_raw()
-                .pipeline_layout
-                .get_raw()
-                .pipeline_layout,
+            pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
             descriptor_set_per_pass1,
         )?;
 
@@ -91,7 +83,7 @@ impl VkBloomBlurRenderPass {
             swapchain_info: swapchain_info.clone(),
             frame_buffers,
             command_buffers,
-            pipeline
+            pipeline,
         })
     }
 

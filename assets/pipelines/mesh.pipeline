@@ -30,7 +30,7 @@
         line_width: 1,
     ),
     multisample_state: (
-        rasterization_samples: MatchSwapchain,
+        rasterization_samples: MatchSubpass,
         sample_shading_enable: false,
         min_sample_shading: 0,
         sample_mask: None,

@@ -2,6 +2,7 @@ use ash::vk;
 use ash::prelude::*;
 use ash::version::DeviceV1_0;
 use super::types as dsc;
+use crate::vk_description::{SubpassInfo, AttachmentIndex};
 
 pub fn create_shader_module(
     device: &ash::Device,
@@ -188,10 +189,10 @@ pub fn create_graphics_pipelines(
     fixed_function_state: &dsc::FixedFunctionState,
     pipeline_layout: vk::PipelineLayout,
     renderpass: vk::RenderPass,
+    renderpass_dsc: &dsc::RenderPass,
     shader_modules_meta: &[dsc::ShaderModuleMeta],
     shader_modules: &[vk::ShaderModule],
     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    subpass_count: u32,
 ) -> VkResult<Vec<vk::Pipeline>> {
     //let fixed_function_state = &graphics_pipeline.fixed_function_state;
 
@@ -238,9 +239,6 @@ pub fn create_graphics_pipelines(
 
     let rasterization_state = fixed_function_state.rasterization_state.as_builder();
 
-    let multisample_state = fixed_function_state
-        .multisample_state
-        .as_builder(swapchain_surface_info);
     let color_blend_attachments: Vec<_> = fixed_function_state
         .color_blend_state
         .attachments
@@ -281,21 +279,53 @@ pub fn create_graphics_pipelines(
         );
     }
 
-    let pipeline_infos: Vec<_> = (0..subpass_count)
+    let mut multisample_states = Vec::with_capacity(renderpass_dsc.subpasses.len());
+    for subpass in &renderpass_dsc.subpasses {
+        let mut subpass_info = SubpassInfo {
+            surface_info: swapchain_surface_info.clone(),
+            subpass_sample_count_flags: vk::SampleCountFlags::empty(),
+        };
+        for attachment_reference in &subpass.color_attachments {
+            if let AttachmentIndex::Index(index) = attachment_reference.attachment {
+                let attachment = &renderpass_dsc.attachments[index as usize];
+                subpass_info.subpass_sample_count_flags |= attachment
+                    .samples
+                    .as_vk_sample_count_flags(&swapchain_surface_info);
+            }
+        }
+
+        if let Some(attachment_reference) = &subpass.depth_stencil_attachment {
+            if let AttachmentIndex::Index(index) = attachment_reference.attachment {
+                let attachment = &renderpass_dsc.attachments[index as usize];
+                subpass_info.subpass_sample_count_flags |= attachment
+                    .samples
+                    .as_vk_sample_count_flags(&swapchain_surface_info);
+            }
+        }
+
+        multisample_states.push(
+            fixed_function_state
+                .multisample_state
+                .as_builder(&subpass_info)
+                .build(),
+        );
+    }
+
+    let pipeline_infos: Vec<_> = (0..renderpass_dsc.subpasses.len())
         .map(|subpass_index| {
             vk::GraphicsPipelineCreateInfo::builder()
                 .input_assembly_state(&input_assembly_state)
                 .vertex_input_state(&vertex_input_state)
                 .viewport_state(&viewport_state)
                 .rasterization_state(&rasterization_state)
-                .multisample_state(&multisample_state)
+                .multisample_state(&multisample_states[subpass_index])
                 .color_blend_state(&color_blend_state)
                 .dynamic_state(&dynamic_state)
                 .depth_stencil_state(&depth_stencil_state)
                 .layout(pipeline_layout)
                 .render_pass(renderpass)
                 .stages(&stages)
-                .subpass(subpass_index)
+                .subpass(subpass_index as u32)
                 .build()
         })
         .collect();

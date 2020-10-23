@@ -138,7 +138,6 @@ impl GraphicsPipelineCache {
         material: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
     ) -> Option<ResourceArc<GraphicsPipelineResource>> {
-        println!("{:?}", self.renderpass_assignments);
         let key = CachedGraphicsPipelineKey {
             material_pass: material.get_hash(),
             renderpass: renderpass.get_hash(),
@@ -158,22 +157,30 @@ impl GraphicsPipelineCache {
     ) -> VkResult<()> {
         //TODO: Avoid iterating everything all the time
         for render_phase_index in 0..MAX_RENDER_PHASE_COUNT {
-            for (renderpass_hash, renderpass) in &self.renderpass_assignments[render_phase_index as usize] {
-                for (material_pass_hash, material_pass) in &self.material_pass_assignments[render_phase_index as usize] {
+            for (renderpass_hash, renderpass) in
+                &self.renderpass_assignments[render_phase_index as usize]
+            {
+                for (material_pass_hash, material_pass) in
+                    &self.material_pass_assignments[render_phase_index as usize]
+                {
                     let key = CachedGraphicsPipelineKey {
                         renderpass: *renderpass_hash,
-                        material_pass: *material_pass_hash
+                        material_pass: *material_pass_hash,
                     };
 
                     if !self.cached_pipelines.contains_key(&key) {
                         if let Some(renderpass) = renderpass.renderpass.upgrade() {
                             if let Some(material_pass) = material_pass.upgrade() {
-                                let pipeline = resources.get_or_create_graphics_pipeline(&material_pass, &renderpass)?;
-                                self.cached_pipelines.insert(key, CachedGraphicsPipeline {
-                                    graphics_pipeline: pipeline,
-                                    renderpass_resource: renderpass.downgrade(),
-                                    material_pass_resource: material_pass.downgrade()
-                                });
+                                let pipeline = resources
+                                    .get_or_create_graphics_pipeline(&material_pass, &renderpass)?;
+                                self.cached_pipelines.insert(
+                                    key,
+                                    CachedGraphicsPipeline {
+                                        graphics_pipeline: pipeline,
+                                        renderpass_resource: renderpass.downgrade(),
+                                        material_pass_resource: material_pass.downgrade(),
+                                    },
+                                );
                             }
                         }
                     }
@@ -201,7 +208,7 @@ impl GraphicsPipelineCache {
             let material_pass_still_exists = v.material_pass_resource.upgrade().is_some();
 
             if !renderpass_still_exists || !material_pass_still_exists {
-                println!("Dropping pipeline, renderpass_still_exists: {}, material_pass_still_exists: {}", renderpass_still_exists, material_pass_still_exists);
+                log::trace!("Dropping pipeline, renderpass_still_exists: {}, material_pass_still_exists: {}", renderpass_still_exists, material_pass_still_exists);
             }
 
             renderpass_still_exists && material_pass_still_exists

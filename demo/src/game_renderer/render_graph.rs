@@ -4,7 +4,9 @@ use renderer::assets::graph::*;
 use renderer::assets::resources::ResourceManager;
 use crate::VkDeviceContext;
 use ash::prelude::VkResult;
-use renderer::assets::resources::{ResourceArc, ImageViewResource, DynCommandWriter, RenderPassResource};
+use renderer::assets::resources::{
+    ResourceArc, ImageViewResource, DynCommandWriter, RenderPassResource,
+};
 use crate::render_contexts::{RenderJobWriteContextFactory, RenderJobWriteContext};
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::OpaqueRenderPhase;
@@ -165,7 +167,11 @@ pub fn build_render_graph(
         graph.configure_image(color).set_name("color");
         graph.configure_image(depth).set_name("depth");
 
-        Opaque { node_id, color, depth }
+        Opaque {
+            node_id,
+            color,
+            depth,
+        }
     };
     /*
         let transparent_pass = {

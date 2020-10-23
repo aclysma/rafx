@@ -487,7 +487,8 @@ impl ResourceLookupSet {
             .on_frame_complete(&self.device_context)?;
         self.render_passes.on_frame_complete(&self.device_context)?;
         self.framebuffers.on_frame_complete(&self.device_context)?;
-        self.material_passes.on_frame_complete(&self.device_context)?;
+        self.material_passes
+            .on_frame_complete(&self.device_context)?;
         self.graphics_pipelines
             .on_frame_complete(&self.device_context)?;
         Ok(())
@@ -841,7 +842,6 @@ impl ResourceLookupSet {
             Ok(pipeline)
         } else {
             log::trace!("Creating pipeline\n{:#?}", pipeline_key);
-            println!("swapchain surface info {:?}", pipeline_key.renderpass_key.swapchain_surface_info);
             let pipelines = dsc::create_graphics_pipelines(
                 &self.device_context.device(),
                 &material_pass
@@ -854,10 +854,10 @@ impl ResourceLookupSet {
                     .get_raw()
                     .pipeline_layout,
                 renderpass.get_raw().renderpass,
+                &renderpass.get_raw().renderpass_key.dsc,
                 &pipeline_key.material_pass_key.shader_module_metas,
                 &material_pass.get_raw().shader_module_vk_objs,
                 &pipeline_key.renderpass_key.swapchain_surface_info,
-                pipeline_key.renderpass_key.dsc.subpasses.len() as u32,
             )?;
             log::trace!("Created pipelines {:?}", pipelines);
 

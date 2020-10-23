@@ -2447,7 +2447,7 @@ impl RenderGraph {
 
                 // TODO: Figure out how to handle output images
                 // TODO: This only works if no one else reads it?
-                println!("Check for output images");
+                log::trace!("Check for output images");
                 for (output_image_index, output_image) in self.output_images.iter().enumerate() {
                     if self.image_version_info(output_image.usage).creator_node == subpass.node {
                         //output_image.
@@ -2455,7 +2455,7 @@ impl RenderGraph {
 
                         let output_physical_image =
                             physical_images.map_image_to_physical[&output_image.usage];
-                        println!(
+                        log::trace!(
                             "Output image {} usage {:?} created by node {:?} physical image {:?}",
                             output_image_index,
                             output_image.usage,
@@ -2467,7 +2467,7 @@ impl RenderGraph {
                             &mut pass.attachments.iter_mut().enumerate()
                         {
                             if attachment.image == output_physical_image {
-                                println!("  attachment {}", attachment_index);
+                                log::trace!("  attachment {}", attachment_index);
                                 attachment.final_layout = output_image.final_layout;
                             }
                         }
@@ -2892,18 +2892,19 @@ impl RenderGraph {
         // }
 
         for (renderpass_index, renderpass) in renderpasses.iter().enumerate() {
-            println!("-- RENDERPASS {} --", renderpass_index);
-            println!("{:#?}", renderpass);
+            log::trace!("-- RENDERPASS {} --", renderpass_index);
+            log::trace!("{:#?}", renderpass);
         }
 
-        println!("-- IMAGES --");
+        log::trace!("-- IMAGES --");
         for (physical_id, output_image) in &output_images {
-            println!("Output Image: {:?} {:?}", physical_id, output_image);
+            log::trace!("Output Image: {:?} {:?}", physical_id, output_image);
         }
         for (physical_id, intermediate_image_spec) in &intermediate_images {
-            println!(
+            log::trace!(
                 "Output Image: {:?} {:?}",
-                physical_id, intermediate_image_spec
+                physical_id,
+                intermediate_image_spec
             );
         }
 

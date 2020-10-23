@@ -117,7 +117,7 @@ impl PreparedRenderGraph {
             )?;
             let (image_key, image) = resources.insert_image(ManuallyDrop::new(image));
 
-            println!("SPEC {:#?}", specification);
+            //println!("SPEC {:#?}", specification);
             let subresource_range = dsc::ImageSubresourceRange {
                 aspect_mask: ImageAspectFlags::from_bits(specification.aspect_flags.as_raw())
                     .unwrap(),
@@ -147,7 +147,7 @@ impl PreparedRenderGraph {
     ) -> VkResult<Vec<ResourceArc<RenderPassResource>>> {
         let mut render_pass_resources = Vec::with_capacity(graph.passes.len());
         for pass in &graph.passes {
-            println!("Allocate {:#?}", pass);
+            // println!("Allocate {:#?}", pass);
             // for dependency in &renderpass.description.dependencies {
             //     let builder = dependency.as_builder();
             //     let built = builder.build();
@@ -407,7 +407,10 @@ impl<T> RenderGraphExecutor<T> {
         })
     }
 
-    pub fn renderpass_resource(&self, node_id: RenderGraphNodeId) -> &ResourceArc<RenderPassResource> {
+    pub fn renderpass_resource(
+        &self,
+        node_id: RenderGraphNodeId,
+    ) -> &ResourceArc<RenderPassResource> {
         let renderpass_index = self.prepared_graph.graph_plan.node_to_renderpass_index[&node_id];
         &self.prepared_graph.render_pass_resources[renderpass_index]
     }

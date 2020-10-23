@@ -585,6 +585,12 @@ pub struct SwapchainSurfaceInfo {
     pub depth_format: vk::Format,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub struct SubpassInfo {
+    pub surface_info: SwapchainSurfaceInfo,
+    pub subpass_sample_count_flags: vk::SampleCountFlags,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SampleCountFlags {
     MatchSwapchain,
@@ -631,6 +637,57 @@ impl SampleCountFlags {
 impl Default for SampleCountFlags {
     fn default() -> Self {
         SampleCountFlags::SampleCount1
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PipelineSampleCountFlags {
+    MatchSwapchain,
+    MatchSubpass,
+    SampleCount1,
+    SampleCount2,
+    SampleCount4,
+    SampleCount8,
+    SampleCount16,
+    SampleCount32,
+    SampleCount64,
+}
+
+impl PipelineSampleCountFlags {
+    pub fn as_vk_sample_count_flags(
+        &self,
+        subpass_info: &SubpassInfo,
+    ) -> vk::SampleCountFlags {
+        match self {
+            PipelineSampleCountFlags::MatchSwapchain => subpass_info.surface_info.msaa_level.into(),
+            PipelineSampleCountFlags::MatchSubpass => subpass_info.subpass_sample_count_flags,
+            PipelineSampleCountFlags::SampleCount1 => vk::SampleCountFlags::TYPE_1,
+            PipelineSampleCountFlags::SampleCount2 => vk::SampleCountFlags::TYPE_2,
+            PipelineSampleCountFlags::SampleCount4 => vk::SampleCountFlags::TYPE_4,
+            PipelineSampleCountFlags::SampleCount8 => vk::SampleCountFlags::TYPE_8,
+            PipelineSampleCountFlags::SampleCount16 => vk::SampleCountFlags::TYPE_16,
+            PipelineSampleCountFlags::SampleCount32 => vk::SampleCountFlags::TYPE_32,
+            PipelineSampleCountFlags::SampleCount64 => vk::SampleCountFlags::TYPE_64,
+        }
+    }
+
+    pub fn from_vk_sample_count_flags(sample_count: vk::SampleCountFlags) -> Option<Self> {
+        match sample_count {
+            vk::SampleCountFlags::TYPE_1 => Some(PipelineSampleCountFlags::SampleCount1),
+            vk::SampleCountFlags::TYPE_2 => Some(PipelineSampleCountFlags::SampleCount2),
+            vk::SampleCountFlags::TYPE_4 => Some(PipelineSampleCountFlags::SampleCount4),
+            vk::SampleCountFlags::TYPE_8 => Some(PipelineSampleCountFlags::SampleCount8),
+            vk::SampleCountFlags::TYPE_16 => Some(PipelineSampleCountFlags::SampleCount16),
+            vk::SampleCountFlags::TYPE_32 => Some(PipelineSampleCountFlags::SampleCount32),
+            vk::SampleCountFlags::TYPE_64 => Some(PipelineSampleCountFlags::SampleCount64),
+            _ => None,
+        }
+    }
+}
+
+impl Default for PipelineSampleCountFlags {
+    fn default() -> Self {
+        PipelineSampleCountFlags::MatchSubpass
     }
 }
 
@@ -2260,7 +2317,7 @@ impl Into<vk::PipelineRasterizationStateCreateInfo> for PipelineRasterizationSta
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct PipelineMultisampleState {
-    pub rasterization_samples: SampleCountFlags,
+    pub rasterization_samples: PipelineSampleCountFlags,
     pub sample_shading_enable: bool,
     pub min_sample_shading: Decimal,
     pub sample_mask: Option<Vec<u32>>,
@@ -2271,12 +2328,12 @@ pub struct PipelineMultisampleState {
 impl PipelineMultisampleState {
     pub fn as_builder(
         &self,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
+        subpass_info: &SubpassInfo,
     ) -> vk::PipelineMultisampleStateCreateInfoBuilder {
         let mut builder = vk::PipelineMultisampleStateCreateInfo::builder()
             .rasterization_samples(
                 self.rasterization_samples
-                    .as_vk_sample_count_flags(swapchain_surface_info),
+                    .as_vk_sample_count_flags(subpass_info),
             )
             .sample_shading_enable(self.sample_shading_enable)
             .min_sample_shading(self.min_sample_shading.to_f32())

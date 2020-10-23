@@ -113,7 +113,8 @@ impl ResourceManager {
     }
 
     pub fn cache_all_graphics_pipelines(&mut self) -> VkResult<()> {
-        self.graphics_pipeline_cache.cache_all_pipelines(&mut self.resources)
+        self.graphics_pipeline_cache
+            .cache_all_pipelines(&mut self.resources)
     }
 
     #[allow(dead_code)]

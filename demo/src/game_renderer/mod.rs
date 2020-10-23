@@ -302,13 +302,11 @@ impl GameRenderer {
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
         let swapchain_info = swapchain_resources.swapchain_info.clone();
 
-
         // let pipeline_cache = resource_manager.graphics_pipeline_cache_mut();
         // pipeline_cache.register_renderpass_to_phase_per_frame::<OpaqueRenderPhase>(&swapchain_resources.opaque_renderpass.renderpass);
         // pipeline_cache.register_renderpass_to_phase_per_frame::<UiRenderPhase>(&swapchain_resources.ui_renderpass.renderpass);
         // pipeline_cache.cache_all_pipelines(resource_manager.resources_mut());
         // resource_manager.cache_all_graphics_pipelines()?;
-
 
         let t2 = std::time::Instant::now();
         let render_graph = render_graph::build_render_graph(
@@ -320,8 +318,6 @@ impl GameRenderer {
         )?;
         let t3 = std::time::Instant::now();
         log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
-
-
 
         //
         // View Management
@@ -413,8 +409,6 @@ impl GameRenderer {
             .debug_material_per_frame_data
             .flush(&mut descriptor_set_allocator)?;
         descriptor_set_allocator.flush_changes()?;
-
-
 
         //
         // Update Resources and flush descriptor set changes
