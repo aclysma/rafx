@@ -46,7 +46,7 @@ pub fn logging_init() {
         .filter_module("renderer_shell_vulkan::device", log::LevelFilter::Debug)
         .filter_module("renderer_nodes", log::LevelFilter::Info)
         .filter_module("renderer_visibility", log::LevelFilter::Info)
-        .filter_module("renderer_assets::graph", log::LevelFilter::Trace)
+        .filter_module("renderer_assets::graph", log::LevelFilter::Info)
         // .filter_module(
         //     "renderer_assets::resources::command_buffers",
         //     log::LevelFilter::Trace,
@@ -137,8 +137,8 @@ pub fn rendering_init(
 
     let mut context = VkContextBuilder::new()
         .use_vulkan_debug_layer(false)
-        .msaa_level_priority(vec![MsaaLevel::Sample4])
-        //.msaa_level_priority(vec![MsaaLevel::Sample1])
+        //.msaa_level_priority(vec![MsaaLevel::Sample4])
+        .msaa_level_priority(vec![MsaaLevel::Sample1])
         .prefer_mailbox_present_mode();
 
     #[cfg(debug_assertions)]

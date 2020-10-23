@@ -1,9 +1,8 @@
 (
     passes: [
         (
-            phase: "Opaque",
+            phase: Some("Ui"),
             pipeline: "imgui.pipeline",
-            renderpass: Asset("ui.renderpass"),
             shaders: [
                 (
                     stage: Vertex,

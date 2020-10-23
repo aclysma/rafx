@@ -390,12 +390,13 @@ impl<T> RenderGraphExecutor<T> {
             for &render_phase_index in render_phase_indices {
                 resource_manager
                     .graphics_pipeline_cache_mut()
-                    .per_frame_register_renderpass_to_phase_index(
+                    .register_renderpass_to_phase_index_per_frame(
                         &prepared_graph.render_pass_resources[renderpass_index],
                         render_phase_index,
                     )
             }
         }
+        resource_manager.cache_all_graphics_pipelines()?;
 
         //
         // Return the executor which can be triggered later
@@ -404,6 +405,11 @@ impl<T> RenderGraphExecutor<T> {
             prepared_graph,
             callbacks,
         })
+    }
+
+    pub fn renderpass_resource(&self, node_id: RenderGraphNodeId) -> &ResourceArc<RenderPassResource> {
+        let renderpass_index = self.prepared_graph.graph_plan.node_to_renderpass_index[&node_id];
+        &self.prepared_graph.render_pass_resources[renderpass_index]
     }
 
     /// Executes the graph, passing through the given context parameter

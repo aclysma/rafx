@@ -4,7 +4,7 @@ use renderer::assets::graph::*;
 use renderer::assets::resources::ResourceManager;
 use crate::VkDeviceContext;
 use ash::prelude::VkResult;
-use renderer::assets::resources::{ResourceArc, ImageViewResource, DynCommandWriter};
+use renderer::assets::resources::{ResourceArc, ImageViewResource, DynCommandWriter, RenderPassResource};
 use crate::render_contexts::{RenderJobWriteContextFactory, RenderJobWriteContext};
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::OpaqueRenderPhase;
@@ -79,6 +79,12 @@ mod x {
 }
 */
 
+pub struct BuildRenderGraphResult {
+    pub opaque_renderpass: ResourceArc<RenderPassResource>,
+    //pub ui_renderpass: ResourceArc<RenderPassResource>,
+    pub executor: RenderGraphExecutor<RenderGraphExecuteContext>,
+}
+
 // Any data you want available within rendergraph execution callbacks should go here. This can
 // include data that is not known until later after the extract/prepare phases have completed.
 pub struct RenderGraphExecuteContext {
@@ -94,7 +100,7 @@ pub fn build_render_graph(
     resource_manager: &mut ResourceManager,
     swapchain_info: &SwapchainInfo,
     swapchain_image: ResourceArc<ImageViewResource>,
-) -> VkResult<RenderGraphExecutor<RenderGraphExecuteContext>> {
+) -> VkResult<BuildRenderGraphResult> {
     //let color_format = swapchain_surface_info.color_format;
     let color_format = swapchain_surface_info.surface_format.format;
     let depth_format = swapchain_surface_info.depth_format;
@@ -108,11 +114,13 @@ pub fn build_render_graph(
 
     let opaque_pass = {
         struct Opaque {
+            node_id: RenderGraphNodeId,
             color: RenderGraphImageUsageId,
             depth: RenderGraphImageUsageId,
         }
 
         let mut node = graph.add_node();
+        let node_id = node.id();
         node.set_name("Opaque");
         let color = node.create_color_attachment(
             0,
@@ -157,7 +165,7 @@ pub fn build_render_graph(
         graph.configure_image(color).set_name("color");
         graph.configure_image(depth).set_name("depth");
 
-        Opaque { color, depth }
+        Opaque { node_id, color, depth }
     };
     /*
         let transparent_pass = {
@@ -233,5 +241,9 @@ pub fn build_render_graph(
     //     &write_context
     // )?;
 
-    Ok(executor)
+    let opaque_renderpass = executor.renderpass_resource(opaque_pass.node_id).clone();
+    Ok(BuildRenderGraphResult {
+        executor,
+        opaque_renderpass,
+    })
 }

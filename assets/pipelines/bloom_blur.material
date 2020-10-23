@@ -1,9 +1,8 @@
 (
     passes: [
         (
-            phase: "Opaque",
+            phase: None,
             pipeline: "bloom_blur.pipeline",
-            renderpass: Asset("bloom_blur.renderpass"),
             shaders: [
                 (
                     stage: Vertex,

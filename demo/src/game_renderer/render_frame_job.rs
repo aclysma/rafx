@@ -90,7 +90,6 @@ impl RenderFrameJob {
             vk::CommandPoolCreateFlags::TRANSIENT,
             0,
         )?;
-        //let mut command_buffers = vec![];
 
         //
         // Prepare Jobs - everything beyond this point could be done in parallel with the main thread
@@ -129,7 +128,8 @@ impl RenderFrameJob {
         let write_context_factory = graph_context.write_context_factory;
         let mut command_writer = graph_context.command_writer;
 
-        /*
+/*
+                let mut command_buffers = vec![];
                 //
                 // Opaque renderpass
                 //
@@ -218,7 +218,7 @@ impl RenderFrameJob {
                     "[async] render write took {} ms",
                     (t2 - t1).as_secs_f32() * 1000.0
                 );
-        */
+*/
         Ok(command_buffers)
     }
 }

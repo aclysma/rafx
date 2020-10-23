@@ -39,6 +39,7 @@ use crate::assets::MaterialPassDataRenderpassRef;
 use crate::resources::command_buffers::DynCommandWriterAllocator;
 use ash::vk;
 use renderer_nodes::RenderRegistry;
+use fnv::FnvHashMap;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -109,6 +110,10 @@ impl ResourceManager {
 
     pub fn graphics_pipeline_cache_mut(&mut self) -> &mut GraphicsPipelineCache {
         &mut self.graphics_pipeline_cache
+    }
+
+    pub fn cache_all_graphics_pipelines(&mut self) -> VkResult<()> {
+        self.graphics_pipeline_cache.cache_all_pipelines(&mut self.resources)
     }
 
     #[allow(dead_code)]
@@ -351,6 +356,7 @@ impl ResourceManager {
 
     pub fn on_frame_complete(&mut self) -> VkResult<()> {
         self.resource_caches.on_frame_complete();
+        self.graphics_pipeline_cache.on_frame_complete();
         self.resources.on_frame_complete()?;
         self.dyn_commands.on_frame_complete()?;
         self.dyn_resources.on_frame_complete()?;
@@ -691,6 +697,7 @@ impl ResourceManager {
     ) -> VkResult<MaterialAsset> {
         let mut passes = Vec::with_capacity(material_asset.passes.len());
 
+        let mut pass_phase_name_to_index = FnvHashMap::default();
         for pass in &material_asset.passes {
             //
             // Pipeline asset (represents fixed function state)
@@ -761,14 +768,6 @@ impl ResourceManager {
                 .resources_mut()
                 .get_or_create_pipeline_layout(&pipeline_layout_def)?;
 
-            // //
-            // // Swapchain-specific resources (renderpasses and pipelines)
-            // //
-            // let swapchain_surface_infos = self.swapchain_surfaces.unique_swapchain_infos().clone();
-            //
-            // // Will contain the vulkan resources being created per swapchain
-            // let mut per_swapchain_data = Vec::with_capacity(swapchain_surface_infos.len());
-
             let material_pass = self.resources.get_or_create_material_pass(
                 shader_modules.clone(),
                 shader_module_metas,
@@ -776,49 +775,28 @@ impl ResourceManager {
                 fixed_function_state,
             )?;
 
-            let renderphase_index = self
-                .graphics_pipeline_cache
-                .get_renderphase_by_name(&pass.phase);
-            match renderphase_index {
-                Some(renderphase_index) => self
+            //
+            // If a phase name is specified, register the pass with the pipeline cache. The pipeline
+            // cache is responsible for ensuring pipelines are created for renderpasses that execute
+            // within the pipeline's phase
+            //
+            if let Some(phase_name) = &pass.phase {
+                let renderphase_index = self
                     .graphics_pipeline_cache
-                    .register_material_to_phase_index(&material_pass, renderphase_index),
-                None => {
-                    log::error!(
-                        "Renderphase {} not registered with graphics pipeline cache.",
-                        pass.phase
-                    );
-                    return Err(vk::Result::ERROR_UNKNOWN);
+                    .get_renderphase_by_name(phase_name);
+                match renderphase_index {
+                    Some(renderphase_index) => self
+                        .graphics_pipeline_cache
+                        .register_material_to_phase_index(&material_pass, renderphase_index),
+                    None => {
+                        log::error!(
+                            "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
+                            phase_name
+                        );
+                        return Err(vk::Result::ERROR_UNKNOWN);
+                    }
                 }
             }
-
-            // // Create the pipeline objects
-            // for swapchain_surface_info in swapchain_surface_infos {
-            //     let renderpass = match &pass.renderpass {
-            //         MaterialPassDataRenderpassRef::Asset(asset) => {
-            //             let renderpass_asset = self
-            //                 .loaded_assets
-            //                 .renderpasses
-            //                 .get_latest(asset.load_handle())
-            //                 .unwrap();
-            //
-            //             self.resources.get_or_create_renderpass(
-            //                 &renderpass_asset.data.renderpass,
-            //                 &swapchain_surface_info,
-            //             )?
-            //         }
-            //         MaterialPassDataRenderpassRef::LookupByPhaseName => {
-            //             // See if we have a cached renderpass from previous graph run on this swapchain
-            //             unimplemented!();
-            //         }
-            //     };
-            //
-            //     let pipeline = self
-            //         .resources
-            //         .get_or_create_graphics_pipeline(&material_pass, &renderpass)?;
-            //
-            //     per_swapchain_data.push(MaterialPassSwapchainResources { pipeline });
-            // }
 
             // Create a lookup of the slot names
             let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
@@ -842,16 +820,7 @@ impl ResourceManager {
                 }
             }
 
-            // let mut descriptor_set_layouts =
-            //     Vec::with_capacity(pass.shader_interface.descriptor_set_layouts.len());
-            // for descriptor_set_layout_def in &pass.shader_interface.descriptor_set_layouts {
-            //     let descriptor_set_layout_def = descriptor_set_layout_def.into();
-            //     let descriptor_set_layout = self
-            //         .resources
-            //         .get_or_create_descriptor_set_layout(&descriptor_set_layout_def)?;
-            //     descriptor_set_layouts.push(descriptor_set_layout);
-            // }
-
+            let pass_index = passes.len();
             passes.push(MaterialPass {
                 descriptor_set_layouts,
                 pipeline_layout,
@@ -860,11 +829,16 @@ impl ResourceManager {
                 material_pass_resource: material_pass.clone(),
                 shader_interface: pass.shader_interface.clone(),
                 pass_slot_name_lookup: Arc::new(pass_slot_name_lookup),
-            })
+            });
+            if let Some(phase_name) = &pass.phase {
+                let old = pass_phase_name_to_index.insert(phase_name.clone(), pass_index);
+                assert!(old.is_none());
+            }
         }
 
         Ok(MaterialAsset {
             passes: Arc::new(passes),
+            pass_phase_name_to_index,
         })
     }
 
@@ -1035,6 +1009,7 @@ impl Drop for ResourceManager {
 
         // Wipe caches to ensure we don't keep anything alive
         self.resource_caches.clear();
+        self.graphics_pipeline_cache.clear_pipelines();
 
         // Wipe out any loaded assets. This will potentially drop ref counts on resources
         self.loaded_assets.destroy();

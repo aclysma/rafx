@@ -10,6 +10,7 @@ use crate::resources::resource_arc::{WeakResourceArc, ResourceId};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::hash::Hash;
 use crate::resources::resource_lookup::GraphicsPipelineKey;
+use ash::prelude::VkResult;
 
 #[derive(PartialEq, Eq, Hash)]
 struct CachedGraphicsPipelineKey {
@@ -24,6 +25,7 @@ struct CachedGraphicsPipeline {
     graphics_pipeline: ResourceArc<GraphicsPipelineResource>,
 }
 
+#[derive(Debug)]
 struct RegisteredRenderpass {
     keep_until_frame: u64,
     renderpass: WeakResourceArc<RenderPassResource>,
@@ -44,7 +46,7 @@ pub struct GraphicsPipelineCache {
 
 impl GraphicsPipelineCache {
     pub fn new(render_registry: &RenderRegistry) -> Self {
-        const DEFAULT_FRAMES_TO_PERSIST: u64 = 3;
+        const DEFAULT_FRAMES_TO_PERSIST: u64 = 1;
 
         let mut renderpass_assignments = Vec::with_capacity(MAX_RENDER_PHASE_COUNT as usize);
         renderpass_assignments.resize_with(MAX_RENDER_PHASE_COUNT as usize, || Default::default());
@@ -68,13 +70,6 @@ impl GraphicsPipelineCache {
         self.drop_unused_pipelines();
     }
 
-    // Call to assign a string name to a renderphase. This is permanent and multiple names can alias
-    // to the same renderphase
-    // fn add_phase_name<T: RenderPhase>(&mut self, name: String) {
-    //     let old = self.phase_name_to_index.insert(name, T::render_phase_index());
-    //     assert!(old.is_none());
-    // }
-
     pub fn get_renderphase_by_name(
         &self,
         name: &str,
@@ -84,14 +79,14 @@ impl GraphicsPipelineCache {
 
     // Register a renderpass as being part of a particular phase. This will a pipeline is created
     // for all appropriate renderpass/material pass pairs.
-    pub fn per_frame_register_renderpass_to_phase<T: RenderPhase>(
+    pub fn register_renderpass_to_phase_per_frame<T: RenderPhase>(
         &mut self,
         renderpass: &ResourceArc<RenderPassResource>,
     ) {
-        self.per_frame_register_renderpass_to_phase_index(renderpass, T::render_phase_index())
+        self.register_renderpass_to_phase_index_per_frame(renderpass, T::render_phase_index())
     }
 
-    pub fn per_frame_register_renderpass_to_phase_index(
+    pub fn register_renderpass_to_phase_index_per_frame(
         &mut self,
         renderpass: &ResourceArc<RenderPassResource>,
         render_phase_index: RenderPhaseIndex,
@@ -138,12 +133,12 @@ impl GraphicsPipelineCache {
         //TODO: Do we need to mark this as a dirty material that may need rebuilding?
     }
 
-    //TODO: OR do it by material/swapchain info?
     pub fn find_graphics_pipeline(
         &self,
         material: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
     ) -> Option<ResourceArc<GraphicsPipelineResource>> {
+        println!("{:?}", self.renderpass_assignments);
         let key = CachedGraphicsPipelineKey {
             material_pass: material.get_hash(),
             renderpass: renderpass.get_hash(),
@@ -155,6 +150,38 @@ impl GraphicsPipelineCache {
             debug_assert!(x.renderpass_resource.upgrade().is_some());
             x.graphics_pipeline.clone()
         })
+    }
+
+    pub fn cache_all_pipelines(
+        &mut self,
+        resources: &mut ResourceLookupSet,
+    ) -> VkResult<()> {
+        //TODO: Avoid iterating everything all the time
+        for render_phase_index in 0..MAX_RENDER_PHASE_COUNT {
+            for (renderpass_hash, renderpass) in &self.renderpass_assignments[render_phase_index as usize] {
+                for (material_pass_hash, material_pass) in &self.material_pass_assignments[render_phase_index as usize] {
+                    let key = CachedGraphicsPipelineKey {
+                        renderpass: *renderpass_hash,
+                        material_pass: *material_pass_hash
+                    };
+
+                    if !self.cached_pipelines.contains_key(&key) {
+                        if let Some(renderpass) = renderpass.renderpass.upgrade() {
+                            if let Some(material_pass) = material_pass.upgrade() {
+                                let pipeline = resources.get_or_create_graphics_pipeline(&material_pass, &renderpass)?;
+                                self.cached_pipelines.insert(key, CachedGraphicsPipeline {
+                                    graphics_pipeline: pipeline,
+                                    renderpass_resource: renderpass.downgrade(),
+                                    material_pass_resource: material_pass.downgrade()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn drop_unused_pipelines(&mut self) {
@@ -170,8 +197,18 @@ impl GraphicsPipelineCache {
         }
 
         self.cached_pipelines.retain(|k, v| {
-            v.renderpass_resource.upgrade().is_some()
-                && v.material_pass_resource.upgrade().is_some()
+            let renderpass_still_exists = v.renderpass_resource.upgrade().is_some();
+            let material_pass_still_exists = v.material_pass_resource.upgrade().is_some();
+
+            if !renderpass_still_exists || !material_pass_still_exists {
+                println!("Dropping pipeline, renderpass_still_exists: {}, material_pass_still_exists: {}", renderpass_still_exists, material_pass_still_exists);
+            }
+
+            renderpass_still_exists && material_pass_still_exists
         })
+    }
+
+    pub fn clear_pipelines(&mut self) {
+        self.cached_pipelines.clear();
     }
 }

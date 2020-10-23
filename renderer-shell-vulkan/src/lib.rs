@@ -115,7 +115,8 @@ impl Default for MsaaLevel {
 
 impl Into<vk::SampleCountFlags> for MsaaLevel {
     fn into(self) -> SampleCountFlags {
-        match self {
+        println!("--- INTO {:?}", self);
+        let result = match self {
             MsaaLevel::Sample1 => vk::SampleCountFlags::TYPE_1,
             MsaaLevel::Sample2 => vk::SampleCountFlags::TYPE_2,
             MsaaLevel::Sample4 => vk::SampleCountFlags::TYPE_4,
@@ -123,7 +124,9 @@ impl Into<vk::SampleCountFlags> for MsaaLevel {
             MsaaLevel::Sample16 => vk::SampleCountFlags::TYPE_16,
             MsaaLevel::Sample32 => vk::SampleCountFlags::TYPE_32,
             MsaaLevel::Sample64 => vk::SampleCountFlags::TYPE_64,
-        }
+        };
+        println!("{:?}", result);
+        result
     }
 }
 

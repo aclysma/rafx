@@ -24,6 +24,7 @@ pub struct VkBloomBlurRenderPass {
     // Command pool and list of command buffers. We ping-pong the blur filter, so there are two
     // command buffers, two framebuffers, two images, two descriptor sets, etc.
     pub command_buffers: Vec<vk::CommandBuffer>,
+    pub pipeline: ResourceArc<GraphicsPipelineResource>
 }
 
 impl VkBloomBlurRenderPass {
@@ -31,7 +32,7 @@ impl VkBloomBlurRenderPass {
         resources: &mut ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
-        pipeline_info: ResourceArc<GraphicsPipelineResource>,
+        pipeline: ResourceArc<GraphicsPipelineResource>,
         bloom_resources: &VkBloomRenderPassResources,
         static_command_pool: &mut CommandPool,
     ) -> VkResult<Self> {
@@ -42,7 +43,7 @@ impl VkBloomBlurRenderPass {
             resources,
             &bloom_resources.bloom_images,
             swapchain_info,
-            &pipeline_info.get_raw().renderpass,
+            &pipeline.get_raw().renderpass,
         )?;
 
         let descriptor_set_per_pass0 = bloom_resources.bloom_image_descriptor_sets[0]
@@ -58,11 +59,11 @@ impl VkBloomBlurRenderPass {
         Self::record_command_buffer(
             &device_context,
             swapchain_info,
-            pipeline_info.get_raw().renderpass.get_raw().renderpass,
+            pipeline.get_raw().renderpass.get_raw().renderpass,
             frame_buffers[1].get_raw().framebuffer,
             command_buffers[0],
-            pipeline_info.get_raw().pipelines[0],
-            pipeline_info
+            pipeline.get_raw().pipelines[0],
+            pipeline
                 .get_raw()
                 .pipeline_layout
                 .get_raw()
@@ -73,11 +74,11 @@ impl VkBloomBlurRenderPass {
         Self::record_command_buffer(
             &device_context,
             swapchain_info,
-            pipeline_info.get_raw().renderpass.get_raw().renderpass,
+            pipeline.get_raw().renderpass.get_raw().renderpass,
             frame_buffers[0].get_raw().framebuffer,
             command_buffers[1],
-            pipeline_info.get_raw().pipelines[0],
-            pipeline_info
+            pipeline.get_raw().pipelines[0],
+            pipeline
                 .get_raw()
                 .pipeline_layout
                 .get_raw()
@@ -90,6 +91,7 @@ impl VkBloomBlurRenderPass {
             swapchain_info: swapchain_info.clone(),
             frame_buffers,
             command_buffers,
+            pipeline
         })
     }
 

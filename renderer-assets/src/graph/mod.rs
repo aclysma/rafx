@@ -13,6 +13,7 @@ pub use graph_image::RenderGraphImageSpecification;
 
 mod graph_node;
 use graph_node::*;
+pub use graph_node::RenderGraphNodeId;
 
 mod prepared_graph;
 pub use prepared_graph::RenderGraphPlan;

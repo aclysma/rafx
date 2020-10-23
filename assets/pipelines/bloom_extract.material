@@ -1,9 +1,8 @@
 (
     passes: [
         (
-            phase: "Opaque",
+            phase: None,
             pipeline: "bloom_extract.pipeline",
-            renderpass: Asset("bloom_extract.renderpass"),
             shaders: [
                 (
                     stage: Vertex,

@@ -187,7 +187,7 @@ impl SwapchainResources {
 
         let bloom_extract_pipeline_info = resource_manager
             .get_or_create_graphics_pipeline(
-                &game_renderer.static_resources.bloom_blur_material,
+                &game_renderer.static_resources.bloom_extract_material,
                 &bloom_extract_renderpass_resource,
                 0,
             )

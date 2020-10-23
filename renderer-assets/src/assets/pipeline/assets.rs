@@ -125,9 +125,9 @@ pub enum MaterialPassDataRenderpassRef {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialPassData {
-    pub phase: String,
+    pub phase: Option<String>,
     pub pipeline: Handle<PipelineAsset>,
-    pub renderpass: MaterialPassDataRenderpassRef,
+    //pub renderpass: MaterialPassDataRenderpassRef,
     pub shaders: Vec<PipelineShaderStage>,
     pub shader_interface: MaterialPassShaderInterface,
 }
@@ -176,7 +176,7 @@ pub struct MaterialAsset {
     //TODO: Get cached graphics pipelines working
     //TODO: Could consider decoupling render cache from phases
     pub passes: Arc<Vec<MaterialPass>>,
-    //pub pass_lookup: FnvHashMap<String, usize>
+    pub pass_phase_name_to_index: FnvHashMap<String, usize>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

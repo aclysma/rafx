@@ -1,9 +1,8 @@
 (
     passes: [
         (
-            phase: "Opaque",
+            phase: None,
             pipeline: "bloom_combine.pipeline",
-            renderpass: Asset("bloom_combine.renderpass"),
             shaders: [
                 (
                     stage: Vertex,

@@ -261,7 +261,8 @@ pub struct ResourceMetrics {
     pub pipeline_layout_count: usize,
     pub renderpass_count: usize,
     pub framebuffer_count: usize,
-    pub pipeline_count: usize,
+    pub material_passes: usize,
+    pub graphics_pipeline_count: usize,
     pub image_count: usize,
     pub image_view_count: usize,
     pub sampler_count: usize,
@@ -486,6 +487,7 @@ impl ResourceLookupSet {
             .on_frame_complete(&self.device_context)?;
         self.render_passes.on_frame_complete(&self.device_context)?;
         self.framebuffers.on_frame_complete(&self.device_context)?;
+        self.material_passes.on_frame_complete(&self.device_context)?;
         self.graphics_pipelines
             .on_frame_complete(&self.device_context)?;
         Ok(())
@@ -495,6 +497,7 @@ impl ResourceLookupSet {
         //WARNING: These need to be in order of dependencies to avoid frame-delays on destroying
         // resources.
         self.graphics_pipelines.destroy(&self.device_context)?;
+        self.material_passes.destroy(&self.device_context)?;
         self.framebuffers.destroy(&self.device_context)?;
         self.render_passes.destroy(&self.device_context)?;
         self.pipeline_layouts.destroy(&self.device_context)?;
@@ -514,7 +517,8 @@ impl ResourceLookupSet {
             pipeline_layout_count: self.pipeline_layouts.len(),
             renderpass_count: self.render_passes.len(),
             framebuffer_count: self.framebuffers.len(),
-            pipeline_count: self.graphics_pipelines.len(),
+            material_passes: self.material_passes.len(),
+            graphics_pipeline_count: self.graphics_pipelines.len(),
             image_count: self.images.len(),
             image_view_count: self.image_views.len(),
             sampler_count: self.samplers.len(),
@@ -837,6 +841,7 @@ impl ResourceLookupSet {
             Ok(pipeline)
         } else {
             log::trace!("Creating pipeline\n{:#?}", pipeline_key);
+            println!("swapchain surface info {:?}", pipeline_key.renderpass_key.swapchain_surface_info);
             let pipelines = dsc::create_graphics_pipelines(
                 &self.device_context.device(),
                 &material_pass

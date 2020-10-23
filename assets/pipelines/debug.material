@@ -1,9 +1,8 @@
 (
     passes: [
         (
-            phase: "Opaque",
+            phase: Some("Opaque"),
             pipeline: "debug.pipeline",
-            renderpass: Asset("opaque.renderpass"),
             shaders: [
                 (
                     stage: Vertex,
