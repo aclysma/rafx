@@ -1,6 +1,5 @@
 use renderer::nodes::{RenderPhaseIndex, SubmitNode};
 use renderer::nodes::RenderPhase;
-use std::convert::TryInto;
 
 renderer::declare_render_phase!(
     TransparentRenderPhase,

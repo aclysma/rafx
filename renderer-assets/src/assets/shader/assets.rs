@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use crate::{vk_description as dsc, ResourceArc};
-use ash::vk;
 use crate::resources::ShaderModuleResource;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]

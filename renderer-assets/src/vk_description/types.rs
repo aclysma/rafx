@@ -2713,7 +2713,6 @@ pub struct ShaderModuleCodeHash(u64);
 impl ShaderModuleCodeHash {
     pub fn hash_shader_code(code: &Vec<u32>) -> Self {
         use std::hash::Hash;
-        use std::hash::Hasher;
         use std::collections::hash_map::DefaultHasher;
         let mut hasher = DefaultHasher::new();
         code.hash(&mut hasher);

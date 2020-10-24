@@ -1,12 +1,8 @@
 use ash::vk;
 use ash::prelude::VkResult;
-use ash::extensions::khr;
 
-use ash::version::{DeviceV1_0, InstanceV1_0};
-
-use renderer::vulkan::{PresentMode, VkDeviceContext, VkImage, MsaaLevel, SwapchainInfo};
+use renderer::vulkan::{VkDeviceContext, VkImage, MsaaLevel, SwapchainInfo};
 use renderer::assets::resources::{ResourceArc, ImageViewResource, ResourceLookupSet};
-use super::Window;
 use std::mem::ManuallyDrop;
 use renderer::assets::vk_description as dsc;
 

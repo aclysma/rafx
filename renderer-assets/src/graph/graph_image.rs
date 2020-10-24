@@ -16,7 +16,14 @@ pub struct RenderGraphImageVersionId {
 pub struct RenderGraphImageUsageId(pub(super) usize);
 
 #[derive(Debug)]
+pub enum RenderGraphImageUser {
+    Node(RenderGraphNodeId),
+    Output(RenderGraphOutputImageId),
+}
+
+#[derive(Debug)]
 pub struct RenderGraphImageUsage {
+    pub(super) user: RenderGraphImageUser,
     pub(super) usage_type: RenderGraphImageUsageType,
     pub(super) version: RenderGraphImageVersionId,
 
@@ -162,7 +169,7 @@ impl RenderGraphImageConstraint {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RenderGraphImageUsageType {
     Create,
-    Input,
+    //Input,
     Read,
     ModifyRead,
     ModifyWrite,
@@ -176,7 +183,7 @@ impl RenderGraphImageUsageType {
             RenderGraphImageUsageType::Output => true,
             RenderGraphImageUsageType::ModifyRead => false,
             RenderGraphImageUsageType::Create => false,
-            RenderGraphImageUsageType::Input => false,
+            //RenderGraphImageUsageType::Input => false,
             RenderGraphImageUsageType::ModifyWrite => false,
         }
     }
@@ -308,8 +315,11 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
         stage_flags: vk::PipelineStageFlags,
         image_aspect_flags: vk::ImageAspectFlags,
     ) -> RenderGraphOutputImageId {
+        let output_image_id = RenderGraphOutputImageId(self.graph.output_images.len());
+
         let version_id = self.graph.image_version_id(self.image_id);
         let usage_id = self.graph.add_image_usage(
+            RenderGraphImageUser::Output(output_image_id),
             version_id,
             RenderGraphImageUsageType::Output,
             layout,
@@ -318,10 +328,9 @@ impl<'a> RenderGraphImageResourceConfigureContext<'a> {
             image_aspect_flags,
         );
 
-        let mut image_version = self.graph.image_version_info_mut(self.image_id);
+        let image_version = self.graph.image_version_info_mut(self.image_id);
         image_version.read_usages.push(usage_id);
 
-        let output_image_id = RenderGraphOutputImageId(self.graph.output_images.len());
         let output_image = RenderGraphOutputImage {
             output_image_id,
             usage: usage_id,

@@ -6,12 +6,10 @@
 
 use std::ops::{BitAnd, BitOrAssign, Deref};
 use std::fmt::{self, Formatter};
-use std::borrow::Cow;
 use std::marker::PhantomData;
 use serde::{Serializer, Deserializer};
-use serde::ser::{SerializeSeq, SerializeTuple};
+use serde::ser::SerializeSeq;
 use serde::de::{Visitor, SeqAccess, Deserialize};
-use bincode::Options;
 
 /// Defines an option set type.
 #[macro_export]
@@ -99,13 +97,13 @@ where
 {
     let mut seq = if !serializer.is_human_readable() {
         let mut count = 0;
-        for (&variant, &name) in T::VARIANTS.iter().zip(T::NAMES) {
+        for &variant in T::VARIANTS {
             if *options & variant == variant {
                 count += 1;
             }
         }
         let mut s = serializer.serialize_seq(Some(count + 1))?;
-        s.serialize_element(&(count as u64));
+        s.serialize_element(&(count as u64))?;
         s
     } else {
         serializer.serialize_seq(None)?

@@ -412,77 +412,79 @@ impl GameRenderer {
         //
         // Extract Jobs
         //
-        let opaque_renderpass = render_graph.opaque_renderpass.clone();
-        let ui_renderpass = render_graph.ui_renderpass.clone();
-
         let frame_packet = frame_packet_builder.build();
         let extract_job_set = {
-            let sprite_pipeline_info = resource_manager
-                .get_cached_graphics_pipeline(
-                    &guard.static_resources.sprite_material,
-                    &opaque_renderpass,
-                    0,
-                )
-                .unwrap();
-
-            let mesh_pipeline_info = resource_manager
-                .get_cached_graphics_pipeline(
-                    &guard.static_resources.mesh_material,
-                    &opaque_renderpass,
-                    0,
-                )
-                .unwrap();
-
-            let debug3d_pipeline_info = resource_manager
-                .get_cached_graphics_pipeline(
-                    &guard.static_resources.debug3d_material,
-                    &opaque_renderpass,
-                    0,
-                )
-                .unwrap();
-
-            let imgui_pipeline_info = resource_manager
-                .get_cached_graphics_pipeline(
-                    &guard.static_resources.imgui_material,
-                    &ui_renderpass,
-                    0,
-                )
-                .unwrap();
-
             let mut extract_job_set = ExtractJobSet::new();
 
-            // Sprites
-            extract_job_set.add_job(create_sprite_extract_job(
-                device_context.clone(),
-                resource_manager.create_descriptor_set_allocator(),
-                sprite_pipeline_info,
-                &guard.static_resources.sprite_material,
-            ));
+            let opaque_renderpass = render_graph.opaque_renderpass.clone();
+            if let Some(opaque_renderpass) = opaque_renderpass {
+                let sprite_pipeline_info = resource_manager
+                    .get_cached_graphics_pipeline(
+                        &guard.static_resources.sprite_material,
+                        &opaque_renderpass,
+                        0,
+                    )
+                    .unwrap();
 
-            // Meshes
-            extract_job_set.add_job(create_mesh_extract_job(
-                resource_manager.create_descriptor_set_allocator(),
-                mesh_pipeline_info,
-                &guard.static_resources.mesh_material,
-            ));
+                let mesh_pipeline_info = resource_manager
+                    .get_cached_graphics_pipeline(
+                        &guard.static_resources.mesh_material,
+                        &opaque_renderpass,
+                        0,
+                    )
+                    .unwrap();
 
-            // Debug 3D
-            extract_job_set.add_job(create_debug3d_extract_job(
-                device_context.clone(),
-                resource_manager.create_descriptor_set_allocator(),
-                debug3d_pipeline_info,
-                &guard.static_resources.debug3d_material,
-            ));
+                let debug3d_pipeline_info = resource_manager
+                    .get_cached_graphics_pipeline(
+                        &guard.static_resources.debug3d_material,
+                        &opaque_renderpass,
+                        0,
+                    )
+                    .unwrap();
 
-            extract_job_set.add_job(create_imgui_extract_job(
-                device_context.clone(),
-                resource_manager.create_descriptor_set_allocator(),
-                imgui_pipeline_info,
-                swapchain_surface_info.extents,
-                &guard.static_resources.imgui_material,
-                //guard.imgui_font_atlas.clone(),
-                guard.imgui_font_atlas_image_view.clone(),
-            ));
+                // Sprites
+                extract_job_set.add_job(create_sprite_extract_job(
+                    device_context.clone(),
+                    resource_manager.create_descriptor_set_allocator(),
+                    sprite_pipeline_info,
+                    &guard.static_resources.sprite_material,
+                ));
+
+                // Meshes
+                extract_job_set.add_job(create_mesh_extract_job(
+                    resource_manager.create_descriptor_set_allocator(),
+                    mesh_pipeline_info,
+                    &guard.static_resources.mesh_material,
+                ));
+
+                // Debug 3D
+                extract_job_set.add_job(create_debug3d_extract_job(
+                    device_context.clone(),
+                    resource_manager.create_descriptor_set_allocator(),
+                    debug3d_pipeline_info,
+                    &guard.static_resources.debug3d_material,
+                ));
+            }
+
+            let ui_renderpass = render_graph.ui_renderpass.clone();
+            if let Some(ui_renderpass) = ui_renderpass {
+                let imgui_pipeline_info = resource_manager
+                    .get_cached_graphics_pipeline(
+                        &guard.static_resources.imgui_material,
+                        &ui_renderpass,
+                        0,
+                    )
+                    .unwrap();
+
+                extract_job_set.add_job(create_imgui_extract_job(
+                    device_context.clone(),
+                    resource_manager.create_descriptor_set_allocator(),
+                    imgui_pipeline_info,
+                    swapchain_surface_info.extents,
+                    &guard.static_resources.imgui_material,
+                    guard.imgui_font_atlas_image_view.clone(),
+                ));
+            }
 
             extract_job_set
         };

@@ -4,9 +4,7 @@ use ash::prelude::VkResult;
 use ash::version::DeviceV1_0;
 
 use renderer::vulkan::VkDeviceContext;
-use renderer::vulkan::VkSwapchain;
 use renderer::vulkan::SwapchainInfo;
-use renderer::vulkan::VkQueueFamilyIndices;
 
 use renderer::assets::resources::{
     ResourceArc, ImageViewResource, FramebufferResource, ResourceLookupSet, RenderPassResource,

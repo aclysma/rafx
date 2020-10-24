@@ -4,9 +4,7 @@ use ash::prelude::VkResult;
 use ash::version::DeviceV1_0;
 
 use renderer::vulkan::VkDeviceContext;
-use renderer::vulkan::VkSwapchain;
 use renderer::vulkan::SwapchainInfo;
-use renderer::vulkan::VkQueueFamilyIndices;
 
 use crate::renderpass::VkBloomRenderPassResources;
 use renderer::assets::vk_description as dsc;

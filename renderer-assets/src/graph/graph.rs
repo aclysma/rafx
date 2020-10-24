@@ -1,8 +1,7 @@
 use super::*;
 use fnv::{FnvHashSet, FnvHashMap};
 use crate::vk_description as dsc;
-use crate::vk_description::{AttachmentReference, AttachmentDescription, SwapchainSurfaceInfo};
-use std::collections::HashMap;
+use crate::vk_description::SwapchainSurfaceInfo;
 use ash::vk::ClearValue;
 use crate::resources::{ResourceArc, ImageViewResource};
 use crate::graph::prepared_graph::RenderGraphPlanOutputImage;
@@ -16,8 +15,8 @@ impl DetermineImageConstraintsResult {
     pub fn specification(
         &self,
         image: RenderGraphImageUsageId,
-    ) -> &RenderGraphImageSpecification {
-        self.images.get(&image).unwrap()
+    ) -> Option<&RenderGraphImageSpecification> {
+        self.images.get(&image)
     }
 }
 
@@ -136,7 +135,7 @@ impl std::fmt::Debug for AttachmentClearValue {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         match self {
-            AttachmentClearValue::Color(value) => {
+            AttachmentClearValue::Color(_) => {
                 f.debug_struct("AttachmentClearValue(Color)").finish()
             }
             AttachmentClearValue::DepthStencil(value) => f
@@ -269,15 +268,17 @@ pub struct RenderGraph {
 impl RenderGraph {
     pub(super) fn add_image_usage(
         &mut self,
+        user: RenderGraphImageUser,
         version: RenderGraphImageVersionId,
         usage_type: RenderGraphImageUsageType,
         preferred_layout: dsc::ImageLayout,
-        access_flags: vk::AccessFlags,
-        stage_flags: vk::PipelineStageFlags,
-        image_aspect_flags: vk::ImageAspectFlags,
+        _access_flags: vk::AccessFlags,
+        _stage_flags: vk::PipelineStageFlags,
+        _image_aspect_flags: vk::ImageAspectFlags,
     ) -> RenderGraphImageUsageId {
         let usage_id = RenderGraphImageUsageId(self.image_usages.len());
         self.image_usages.push(RenderGraphImageUsage {
+            user,
             usage_type,
             version,
             preferred_layout,
@@ -304,6 +305,7 @@ impl RenderGraph {
             version: 0,
         };
         let usage_id = self.add_image_usage(
+            RenderGraphImageUser::Node(create_node),
             version_id,
             RenderGraphImageUsageType::Create,
             preferred_layout,
@@ -314,7 +316,7 @@ impl RenderGraph {
 
         let mut resource = RenderGraphImageResource::new();
 
-        let mut version_info = RenderGraphImageResourceVersionInfo::new(create_node, usage_id);
+        let version_info = RenderGraphImageResourceVersionInfo::new(create_node, usage_id);
         resource.versions.push(version_info);
 
         // Add it to the graph
@@ -346,6 +348,7 @@ impl RenderGraph {
         let version_id = self.image_usages[image.0].version;
 
         let usage_id = self.add_image_usage(
+            RenderGraphImageUser::Node(read_node),
             version_id,
             RenderGraphImageUsageType::Read,
             preferred_layout,
@@ -385,6 +388,7 @@ impl RenderGraph {
         let read_version_id = self.image_usages[image.0].version;
 
         let read_usage_id = self.add_image_usage(
+            RenderGraphImageUser::Node(modify_node),
             read_version_id,
             RenderGraphImageUsageType::ModifyRead,
             preferred_layout,
@@ -404,6 +408,7 @@ impl RenderGraph {
             version,
         };
         let write_usage_id = self.add_image_usage(
+            RenderGraphImageUser::Node(modify_node),
             write_version_id,
             RenderGraphImageUsageType::ModifyWrite,
             preferred_layout,
@@ -412,8 +417,7 @@ impl RenderGraph {
             write_image_aspect_flags,
         );
 
-        let mut version_info =
-            RenderGraphImageResourceVersionInfo::new(modify_node, write_usage_id);
+        let version_info = RenderGraphImageResourceVersionInfo::new(modify_node, write_usage_id);
         self.image_resources[read_version_id.index]
             .versions
             .push(version_info);
@@ -437,7 +441,7 @@ impl RenderGraph {
         color_attachment: RenderGraphPassColorAttachmentInfo,
     ) {
         //TODO: Check constraint does not conflict with the matching resolve attachment, if there is one
-        let mut node_color_attachments = &mut self.nodes[node.0].color_attachments;
+        let node_color_attachments = &mut self.nodes[node.0].color_attachments;
         if node_color_attachments.len() <= color_attachment_index {
             node_color_attachments.resize_with(color_attachment_index + 1, || None);
         }
@@ -451,7 +455,7 @@ impl RenderGraph {
         node: RenderGraphNodeId,
         depth_attachment: RenderGraphPassDepthAttachmentInfo,
     ) {
-        let mut node_depth_attachment = &mut self.nodes[node.0].depth_attachment;
+        let node_depth_attachment = &mut self.nodes[node.0].depth_attachment;
         assert!(node_depth_attachment.is_none());
         *node_depth_attachment = Some(depth_attachment);
     }
@@ -463,7 +467,7 @@ impl RenderGraph {
         resolve_attachment: RenderGraphPassResolveAttachmentInfo,
     ) {
         //TODO: Check constraint is non-MSAA and is not conflicting with the matching color attachment, if there is one
-        let mut node_resolve_attachments = &mut self.nodes[node.0].resolve_attachments;
+        let node_resolve_attachments = &mut self.nodes[node.0].resolve_attachments;
         if node_resolve_attachments.len() <= resolve_attachment_index {
             node_resolve_attachments.resize_with(resolve_attachment_index + 1, || None);
         }
@@ -1110,8 +1114,8 @@ impl RenderGraph {
     //TODO: Redundant with can_merge_nodes
     fn can_passes_merge(
         &self,
-        prev: RenderGraphNodeId,
-        next: RenderGraphNodeId,
+        _prev: RenderGraphNodeId,
+        _next: RenderGraphNodeId,
     ) -> bool {
         // Reasons to reject merging:
         // - Queues match and are not compute based
@@ -1181,14 +1185,13 @@ impl RenderGraph {
             // Propagate constraints into images this node creates.
             //
             for image_create in &node.image_creates {
-                let image = self.image_version_info(image_create.image);
                 // An image cannot be created within the graph and imported externally at the same
                 // time. (The code here assumes no input and will not produce correct results if there
                 // is an input image)
                 //TODO: Input images are broken, we don't properly represent an image being created
                 // OR receiving an input. We probably need to make creator in
                 // RenderGraphImageResourceVersionInfo Option or an enum with input/create options
-                //assert!(image.input_image.is_none());
+                //assert!(self.image_version_info(image_create.image).input_image.is_none());
 
                 log::info!(
                     "      Create image {:?} {:?}",
@@ -1196,7 +1199,7 @@ impl RenderGraph {
                     self.image_resource(image_create.image).name
                 );
 
-                let mut version_state = image_version_states
+                let version_state = image_version_states
                     .entry(self.get_create_usage(image_create.image))
                     .or_default();
 
@@ -1228,7 +1231,7 @@ impl RenderGraph {
                     self.image_resource(image_modify.output).name
                 );
 
-                let image = self.image_version_info(image_modify.input);
+                //let image = self.image_version_info(image_modify.input);
                 //log::info!("  Modify image {:?} {:?}", image_modify.input, self.image_resource(image_modify.input).name);
                 let input_state = image_version_states
                     .entry(self.get_create_usage(image_modify.input))
@@ -1254,7 +1257,7 @@ impl RenderGraph {
 
                 //TODO: Should we set the usage constraint here? For now will wait until backward propagation
 
-                let mut output_state = image_version_states
+                let output_state = image_version_states
                     .entry(self.get_create_usage(image_modify.output))
                     .or_default();
 
@@ -1293,7 +1296,7 @@ impl RenderGraph {
                 output_image,
                 self.image_resource(output_image.usage).name
             );
-            let mut output_image_version_state = image_version_states
+            let output_image_version_state = image_version_states
                 .entry(self.get_create_usage(output_image.usage))
                 .or_default();
             let output_constraint = output_image.specification.clone().into();
@@ -1399,7 +1402,7 @@ impl RenderGraph {
                     .entry(self.get_create_usage(image_modify.output))
                     .or_default()
                     .clone();
-                let mut input_state = image_version_states
+                let input_state = image_version_states
                     .entry(self.get_create_usage(image_modify.input))
                     .or_default();
                 if !input_state.partial_merge(&output_image_constraint) {
@@ -1449,9 +1452,10 @@ impl RenderGraph {
                     log::info!("    color attachment {}", color_attachment_index);
                     // If this color attachment outputs an image
                     if let Some(write_image) = color_attachment.write_image {
-                        let write_version = self.image_usages[write_image.0].version;
+                        //let write_version = self.image_usages[write_image.0].version;
                         // Skip if it's not an MSAA image
-                        let write_spec = image_constraint_results.specification(write_image);
+                        let write_spec =
+                            image_constraint_results.specification(write_image).unwrap();
                         if write_spec.samples == vk::SampleCountFlags::TYPE_1 {
                             log::info!("      already non-MSAA");
                             continue;
@@ -1475,7 +1479,8 @@ impl RenderGraph {
                                 usage_index,
                                 self.image_usages[read_usage.0].usage_type
                             );
-                            let read_spec = image_constraint_results.specification(*read_usage);
+                            let read_spec =
+                                image_constraint_results.specification(*read_usage).unwrap();
                             if *read_spec == *write_spec {
                                 continue;
                             } else if *read_spec == resolve_spec {
@@ -1659,8 +1664,17 @@ impl RenderGraph {
 
                 for usage_resource_id in &written_image_version_info.read_usages {
                     // We can't share images if they aren't the same format
-                    let written_spec = image_constraint_results.specification(written_image);
-                    let usage_spec = image_constraint_results.specification(*usage_resource_id);
+                    let written_spec = image_constraint_results
+                        .specification(written_image)
+                        .unwrap();
+                    let usage_spec =
+                        match image_constraint_results.specification(*usage_resource_id) {
+                            Some(usage_spec) => usage_spec,
+                            // If the reader of this image was culled, we may not have determined a spec.
+                            // If so, skip this usage
+                            None => continue,
+                        };
+
                     let specifications_match = *written_spec == *usage_spec;
 
                     // We can't share images unless it's a read or it's an exclusive write
@@ -1697,7 +1711,7 @@ impl RenderGraph {
                         assert!(overwritten_image.is_none());
                     } else {
                         // allocate new image
-                        let specification = image_constraint_results.specification(written_image);
+                        //let specification = image_constraint_results.specification(written_image);
                         let physical_image = physical_image_id_allocator.allocate();
                         log::info!(
                             "    Allocate image {:?} for {:?} ({:?} -> {:?})  (specifications_match match: {} is_read_or_exclusive_write: {})",
@@ -1750,11 +1764,11 @@ impl RenderGraph {
         &self,
         before_node_id: RenderGraphNodeId,
         after_node_id: RenderGraphNodeId,
-        image_constraints: &DetermineImageConstraintsResult,
-        physical_images: &AssignPhysicalImagesResult,
+        _image_constraints: &DetermineImageConstraintsResult,
+        _physical_images: &AssignPhysicalImagesResult,
     ) -> bool {
-        let before_node = self.node(before_node_id);
-        let after_node = self.node(after_node_id);
+        let _before_node = self.node(before_node_id);
+        let _after_node = self.node(after_node_id);
 
         //TODO: Reject if not on the same queue, and not both graphics nodes
 
@@ -1863,7 +1877,7 @@ impl RenderGraph {
                             .map_image_to_physical
                             .get(&read_or_write_usage)
                             .unwrap();
-                        let version_id = self.image_version_id(read_or_write_usage);
+                        //let version_id = self.image_version_id(read_or_write_usage);
                         let specification =
                             image_constraints.images.get(&read_or_write_usage).unwrap();
                         log::info!("      physical attachment (color): {:?}", physical_image);
@@ -1913,7 +1927,7 @@ impl RenderGraph {
                             .map_image_to_physical
                             .get(&write_image)
                             .unwrap();
-                        let version_id = self.image_version_id(write_image);
+                        //let version_id = self.image_version_id(write_image);
                         let specification = image_constraints.images.get(&write_image).unwrap();
                         log::info!("      physical attachment (resolve): {:?}", physical_image);
 
@@ -1949,7 +1963,7 @@ impl RenderGraph {
                         .map_image_to_physical
                         .get(&read_or_write_usage)
                         .unwrap();
-                    let version_id = self.image_version_id(read_or_write_usage);
+                    //let version_id = self.image_version_id(read_or_write_usage);
                     let specification = image_constraints.images.get(&read_or_write_usage).unwrap();
                     log::info!("      physical attachment (depth): {:?}", physical_image);
 
@@ -2019,11 +2033,11 @@ impl RenderGraph {
     fn build_node_barriers(
         &self,
         node_execution_order: &[RenderGraphNodeId],
-        image_constraints: &DetermineImageConstraintsResult,
+        _image_constraints: &DetermineImageConstraintsResult,
         physical_images: &AssignPhysicalImagesResult,
         //determine_image_layouts_result: &DetermineImageLayoutsResult,
-    ) -> Vec<RenderGraphNodeImageBarriers> {
-        let mut barriers = Vec::default();
+    ) -> FnvHashMap<RenderGraphNodeId, RenderGraphNodeImageBarriers> {
+        let mut barriers = FnvHashMap::<RenderGraphNodeId, RenderGraphNodeImageBarriers>::default();
 
         for node_id in node_execution_order {
             let node = self.node(*node_id);
@@ -2032,9 +2046,7 @@ impl RenderGraph {
             let mut node_barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers> =
                 Default::default();
 
-            for (color_attachment_index, color_attachment) in
-                node.color_attachments.iter().enumerate()
-            {
+            for color_attachment in &node.color_attachments {
                 if let Some(color_attachment) = color_attachment {
                     let read_or_write_usage = color_attachment
                         .read_image
@@ -2044,13 +2056,13 @@ impl RenderGraph {
                         .map_image_to_physical
                         .get(&read_or_write_usage)
                         .unwrap();
-                    let version_id = self.image_version_id(read_or_write_usage);
+                    //let version_id = self.image_version_id(read_or_write_usage);
 
-                    let mut barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
+                    let barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
                         RenderGraphPassImageBarriers::new(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
                     });
 
-                    if let Some(read_image) = color_attachment.read_image {
+                    if color_attachment.read_image.is_some() {
                         barrier.invalidate.access_flags |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE
                             | vk::AccessFlags::COLOR_ATTACHMENT_READ;
                         barrier.invalidate.stage_flags |=
@@ -2059,7 +2071,7 @@ impl RenderGraph {
                         //invalidate_barrier.layout = determine_image_layouts_result.image_layouts[&version_id].read_layout.into();
                     }
 
-                    if let Some(write_image) = color_attachment.write_image {
+                    if color_attachment.write_image.is_some() {
                         barrier.flush.access_flags |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE;
                         barrier.flush.stage_flags |=
                             vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
@@ -2069,17 +2081,15 @@ impl RenderGraph {
                 }
             }
 
-            for (resolve_attachment_index, resolve_attachment) in
-                node.resolve_attachments.iter().enumerate()
-            {
+            for resolve_attachment in &node.resolve_attachments {
                 if let Some(resolve_attachment) = resolve_attachment {
                     let physical_image = physical_images
                         .map_image_to_physical
                         .get(&resolve_attachment.write_image)
                         .unwrap();
-                    let version_id = self.image_version_id(resolve_attachment.write_image);
+                    //let version_id = self.image_version_id(resolve_attachment.write_image);
 
-                    let mut barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
+                    let barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
                         RenderGraphPassImageBarriers::new(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
                     });
 
@@ -2099,9 +2109,9 @@ impl RenderGraph {
                     .map_image_to_physical
                     .get(&read_or_write_usage)
                     .unwrap();
-                let version_id = self.image_version_id(read_or_write_usage);
+                //let version_id = self.image_version_id(read_or_write_usage);
 
-                let mut barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
+                let barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
                     RenderGraphPassImageBarriers::new(
                         vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     )
@@ -2140,9 +2150,12 @@ impl RenderGraph {
             //     invalidates: invalidate_barriers,
             //     flushes: flush_barriers
             // });
-            barriers.push(RenderGraphNodeImageBarriers {
-                barriers: node_barriers,
-            })
+            barriers.insert(
+                *node_id,
+                RenderGraphNodeImageBarriers {
+                    barriers: node_barriers,
+                },
+            );
         }
 
         barriers
@@ -2154,16 +2167,17 @@ impl RenderGraph {
     //   we actually need to insert
     fn build_pass_barriers(
         &self,
-        node_execution_order: &[RenderGraphNodeId],
-        image_constraints: &DetermineImageConstraintsResult,
+        _node_execution_order: &[RenderGraphNodeId],
+        _image_constraints: &DetermineImageConstraintsResult,
         physical_images: &AssignPhysicalImagesResult,
-        node_barriers: &[RenderGraphNodeImageBarriers],
+        node_barriers: &FnvHashMap<RenderGraphNodeId, RenderGraphNodeImageBarriers>,
         passes: &mut [RenderGraphPass],
     ) -> Vec<Vec<dsc::SubpassDependency>> {
         log::info!("-- build_pass_barriers --");
         const MAX_PIPELINE_FLAG_BITS: usize = 15;
-        let ALL_GRAPHICS: vk::PipelineStageFlags =
-            vk::PipelineStageFlags::from_raw(0b111_1111_1110);
+        // #[allow(non_snake_case)]
+        // let ALL_GRAPHICS: vk::PipelineStageFlags =
+        //     vk::PipelineStageFlags::from_raw(0b111_1111_1110);
 
         struct ImageState {
             layout: vk::ImageLayout,
@@ -2204,8 +2218,8 @@ impl RenderGraph {
             assert_eq!(pass.subpasses.len(), 1);
             for (subpass_index, subpass) in pass.subpasses.iter_mut().enumerate() {
                 log::info!("  subpass {}", subpass_index);
-                let node = self.node(subpass.node);
-                let node_barriers = &node_barriers[subpass.node.0];
+                //let node = self.node(subpass.node);
+                let node_barriers = &node_barriers[&subpass.node];
 
                 // Accumulate the invalidates here
                 let mut invalidate_src_access_flags = vk::AccessFlags::empty();
@@ -2486,10 +2500,10 @@ impl RenderGraph {
     }
 
     fn create_renderpass_descriptions(
-        mut passes: Vec<RenderGraphPass>,
-        node_barriers: Vec<RenderGraphNodeImageBarriers>,
+        passes: Vec<RenderGraphPass>,
+        node_barriers: FnvHashMap<RenderGraphNodeId, RenderGraphNodeImageBarriers>,
         subpass_dependencies: &Vec<Vec<dsc::SubpassDependency>>,
-        physical_images: &AssignPhysicalImagesResult,
+        _physical_images: &AssignPhysicalImagesResult,
         swapchain_info: &SwapchainSurfaceInfo,
     ) -> Vec<RenderGraphOutputPass> {
         let mut renderpasses = Vec::with_capacity(passes.len());
@@ -2539,7 +2553,7 @@ impl RenderGraph {
                             color_index,
                             dsc::AttachmentReference {
                                 attachment: dsc::AttachmentIndex::Index(*attachment_index as u32),
-                                layout: node_barriers[subpass.node.0].barriers[&physical_image]
+                                layout: node_barriers[&subpass.node].barriers[&physical_image]
                                     .layout
                                     .into(),
                             },
@@ -2557,7 +2571,7 @@ impl RenderGraph {
                             resolve_index,
                             dsc::AttachmentReference {
                                 attachment: dsc::AttachmentIndex::Index(*attachment_index as u32),
-                                layout: node_barriers[subpass.node.0].barriers[&physical_image]
+                                layout: node_barriers[&subpass.node].barriers[&physical_image]
                                     .layout
                                     .into(),
                             },
@@ -2569,7 +2583,7 @@ impl RenderGraph {
                     let physical_image = pass.attachments[attachment_index].image;
                     subpass_description.depth_stencil_attachment = Some(dsc::AttachmentReference {
                         attachment: dsc::AttachmentIndex::Index(attachment_index as u32),
-                        layout: node_barriers[subpass.node.0].barriers[&physical_image]
+                        layout: node_barriers[&subpass.node].barriers[&physical_image]
                             .layout
                             .into(),
                     });
@@ -2632,14 +2646,14 @@ impl RenderGraph {
         {
             log::info!("  image: {:?}", physical_image_id);
             for version_id in &physical_image_info.versions {
-                log::info!("  version_id {:?}", version_id);
+                log::info!("    version_id {:?}", version_id);
                 let version =
                     &mut self.image_resources[version_id.index].versions[version_id.version];
-                log::info!("  create: {:?}", version.create_usage);
+                log::info!("    create: {:?}", version.create_usage);
                 //log::info!("  create: {:?} {:?}", version.create_usage, self.image_usages[version.create_usage.0].preferred_layout);
                 //log::info!("    create: {:?} {:?}", version.create_usage, determine_image_layouts_result.image_layouts[version_id].write_layout);
                 for read in &version.read_usages {
-                    log::info!("    read: {:?}", read);
+                    log::info!("      read: {:?}", read);
                     //log::info!("    read: {:?} {:?}", read, self.image_usages[read.0].preferred_layout);
                     //log::info!("      read: {:?} {:?}", read, determine_image_layouts_result.image_layouts[version_id].read_layout);
                 }
@@ -2729,6 +2743,38 @@ impl RenderGraph {
         //
         let mut image_constraint_results = self.determine_image_constraints(&node_execution_order);
 
+        for (image_index, image_resource) in self.image_resources.iter().enumerate() {
+            log::info!("  Image {:?} {:?}", image_index, image_resource.name);
+            for (_, version) in image_resource.versions.iter().enumerate() {
+                if node_execution_order.contains(&version.creator_node)
+                    && image_constraint_results
+                        .images
+                        .get(&version.create_usage)
+                        .is_none()
+                {
+                    let usage_info = &self.image_usages[version.create_usage.0];
+                    panic!(
+                        "Could not determine specification for image {:?} use by {:?} for {:?}",
+                        version.create_usage, usage_info.user, usage_info.usage_type
+                    );
+                }
+
+                for (_, usage) in version.read_usages.iter().enumerate() {
+                    let usage_info = &self.image_usages[usage.0];
+                    let is_scheduled = match &usage_info.user {
+                        RenderGraphImageUser::Node(node_id) => {
+                            node_execution_order.contains(node_id)
+                        }
+                        RenderGraphImageUser::Output(_) => true,
+                    };
+
+                    if is_scheduled && image_constraint_results.images.get(usage).is_none() {
+                        panic!("Could not determine specification for image {:?} used by {:?} for {:?}", usage, usage_info.user, usage_info.usage_type);
+                    }
+                }
+            }
+        }
+
         // Print out the constraints assigned to images
         self.print_image_constraints(&mut image_constraint_results);
 
@@ -2792,14 +2838,14 @@ impl RenderGraph {
             &assign_physical_images_result, /*, &determine_image_layouts_result*/
         );
         log::info!("Barriers:");
-        for (index, pass) in node_barriers.iter().enumerate() {
-            log::info!("  pass {}", index);
+        for (node_id, barriers) in node_barriers.iter() {
+            log::info!("  pass {:?}", node_id);
             log::info!("    invalidates");
-            for (physical_id, barriers) in &pass.barriers {
+            for (physical_id, barriers) in &barriers.barriers {
                 log::info!("      {:?}: {:?}", physical_id, barriers.invalidate);
             }
             log::info!("    flushes");
-            for (physical_id, barriers) in &pass.barriers {
+            for (physical_id, barriers) in &barriers.barriers {
                 log::info!("      {:?}: {:?}", physical_id, barriers.flush);
             }
         }
@@ -2920,6 +2966,7 @@ impl RenderGraph {
             output_images,
             intermediate_images,
             node_to_renderpass_index,
+            image_usage_to_physical: assign_physical_images_result.map_image_to_physical,
         }
     }
 }

@@ -1,8 +1,5 @@
 use super::*;
 use std::fmt::Formatter;
-use ash::prelude::VkResult;
-use renderer_nodes::{PreparedRenderData, RenderView};
-use crate::DynCommandWriter;
 
 //
 // Nodes
@@ -48,15 +45,15 @@ pub enum RenderGraphPassAttachmentType {
     Modify,
 }
 
-impl RenderGraphPassAttachmentType {
-    pub fn is_write(&self) -> bool {
-        match self {
-            RenderGraphPassAttachmentType::Create => true,
-            RenderGraphPassAttachmentType::Modify => true,
-            RenderGraphPassAttachmentType::Read => false,
-        }
-    }
-}
+// impl RenderGraphPassAttachmentType {
+//     pub fn is_write(&self) -> bool {
+//         match self {
+//             RenderGraphPassAttachmentType::Create => true,
+//             RenderGraphPassAttachmentType::Modify => true,
+//             RenderGraphPassAttachmentType::Read => false,
+//         }
+//     }
+// }
 
 pub struct RenderGraphPassColorAttachmentInfo {
     pub attachment_type: RenderGraphPassAttachmentType,

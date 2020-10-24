@@ -1,18 +1,16 @@
-use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw, VkBuffer};
+use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkBuffer};
 use ash::prelude::*;
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
     PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
 };
-use crate::vk_description::{SwapchainSurfaceInfo, ImageAspectFlags};
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
 use crate::{
-    vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, PipelineLayoutResource,
-    GraphicsPipelineResource, ImageViewResource, DescriptorSetArc, DescriptorSetAllocatorMetrics,
-    GenericLoader, BufferAssetData, AssetLookupSet, DynResourceAllocatorSet, LoadQueues,
-    AssetLookup, MaterialPassSwapchainResources, SlotNameLookup, SlotLocation,
+    vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, GraphicsPipelineResource,
+    DescriptorSetArc, DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData,
+    AssetLookupSet, DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation,
     DynPassMaterialInstance, DynDescriptorSet, DescriptorSetAllocatorRef, DynMaterialInstance,
     DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource, GraphicsPipelineCache,
 };
@@ -25,7 +23,7 @@ use super::resource_lookup;
 
 use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::loader::handle::AssetHandle;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use crate::resources::asset_lookup::LoadedAssetMetrics;
 use crate::resources::dyn_resource_allocator::DynResourceAllocatorManagerSet;
 use crate::resources::descriptor_sets;
@@ -35,7 +33,6 @@ use crate::resources::load_queue::LoadQueueSet;
 use crate::resources::descriptor_sets::{DescriptorSetAllocator, DescriptorSetAllocatorManager};
 use crate::resources::upload::{UploadManager, ImageUploadOpResult, BufferUploadOpResult};
 use crossbeam_channel::Sender;
-use crate::assets::MaterialPassDataRenderpassRef;
 use crate::resources::command_buffers::DynCommandWriterAllocator;
 use ash::vk;
 use renderer_nodes::RenderRegistry;

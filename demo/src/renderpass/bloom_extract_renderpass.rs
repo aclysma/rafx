@@ -1,15 +1,11 @@
 use ash::vk;
 use ash::prelude::VkResult;
-use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
 use renderer::vulkan::{VkDeviceContext, MsaaLevel};
 use renderer::vulkan::VkSwapchain;
 use renderer::vulkan::SwapchainInfo;
-use renderer::vulkan::VkQueueFamilyIndices;
-
-use renderer::vulkan::VkImage;
 
 use atelier_assets::loader::handle::Handle;
 

@@ -4,9 +4,8 @@ use ash::extensions::khr;
 
 use ash::version::{DeviceV1_0, InstanceV1_0};
 
-use crate::{PresentMode, VkDeviceContext, VkImage, MsaaLevel};
+use crate::{PresentMode, VkDeviceContext, MsaaLevel};
 use super::Window;
-use std::mem::ManuallyDrop;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 

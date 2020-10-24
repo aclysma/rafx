@@ -31,14 +31,12 @@ type SortCallback = fn(Vec<SubmitNode>) -> Vec<SubmitNode>;
 
 pub struct RegisteredPhase {
     sort_submit_nodes_callback: SortCallback,
-    name: String,
 }
 
 impl RegisteredPhase {
-    fn new<T: RenderPhase>(name: String) -> Self {
+    fn new<T: RenderPhase>() -> Self {
         RegisteredPhase {
             sort_submit_nodes_callback: T::sort_submit_nodes,
-            name,
         }
     }
 }
@@ -72,10 +70,8 @@ impl RenderRegistryBuilder {
         let render_phase_index = RENDER_REGISTRY_PHASE_COUNT.fetch_add(1, Ordering::AcqRel);
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
         T::set_render_phase_index(render_phase_index);
-        self.registered_phases.insert(
-            T::render_phase_index(),
-            RegisteredPhase::new::<T>(name.to_string()),
-        );
+        self.registered_phases
+            .insert(T::render_phase_index(), RegisteredPhase::new::<T>());
         self.phase_name_to_index
             .insert(name.to_string(), render_phase_index);
         self

@@ -1,4 +1,4 @@
-use crate::game_renderer::{GameRenderer, GameRendererInner};
+use crate::game_renderer::GameRenderer;
 use renderer::nodes::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
 use crate::render_contexts::{
     RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory,
@@ -6,7 +6,6 @@ use crate::render_contexts::{
 use renderer::assets::graph::RenderGraphExecutor;
 use renderer::assets::resources::{DynResourceAllocatorSet, DynCommandWriterAllocator};
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
-use std::sync::MutexGuard;
 use ash::prelude::VkResult;
 use ash::vk;
 use crate::game_renderer::render_graph::RenderGraphExecuteContext;
@@ -27,10 +26,10 @@ pub struct RenderFrameJob {
 impl RenderFrameJob {
     pub fn render_async(self) {
         // let t0 = std::time::Instant::now();
-        let guard = self.game_renderer.inner.lock().unwrap();
+        //let guard = self.game_renderer.inner.lock().unwrap();
 
         let result = Self::do_render_async(
-            guard,
+            //guard,
             self.prepare_job_set,
             self.render_graph,
             self.dyn_resource_allocator_set,
@@ -39,7 +38,7 @@ impl RenderFrameJob {
             self.main_view,
             self.render_registry,
             self.device_context,
-            self.frame_in_flight.present_index() as usize,
+            //self.frame_in_flight.present_index() as usize,
         );
 
         let t1 = std::time::Instant::now();
@@ -66,7 +65,7 @@ impl RenderFrameJob {
 
     #[allow(clippy::too_many_arguments)]
     fn do_render_async(
-        mut guard: MutexGuard<GameRendererInner>,
+        //mut guard: MutexGuard<GameRendererInner>,
         prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
         render_graph: RenderGraphExecutor<RenderGraphExecuteContext>,
         dyn_resource_allocator_set: DynResourceAllocatorSet,
@@ -75,13 +74,13 @@ impl RenderFrameJob {
         main_view: RenderView,
         render_registry: RenderRegistry,
         device_context: VkDeviceContext,
-        present_index: usize,
+        //present_index: usize,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let t0 = std::time::Instant::now();
         //let mut guard = self.inner.lock().unwrap();
-        let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
+        //let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
 
-        let mut command_writer = dyn_command_writer_allocator.allocate_writer(
+        let command_writer = dyn_command_writer_allocator.allocate_writer(
             device_context
                 .queue_family_indices()
                 .graphics_queue_family_index,
@@ -118,13 +117,13 @@ impl RenderFrameJob {
             command_writer,
         };
 
-        let mut command_buffers =
+        let command_buffers =
             render_graph.execute_graph(&dyn_command_writer_allocator, &mut graph_context)?;
 
-        let prepared_render_data = graph_context.prepared_render_data;
-        let main_view = graph_context.view;
-        let write_context_factory = graph_context.write_context_factory;
-        let mut command_writer = graph_context.command_writer;
+        // let prepared_render_data = graph_context.prepared_render_data;
+        // let main_view = graph_context.view;
+        // let write_context_factory = graph_context.write_context_factory;
+        // let mut command_writer = graph_context.command_writer;
 
         /*
 

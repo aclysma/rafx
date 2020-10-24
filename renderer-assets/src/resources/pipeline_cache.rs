@@ -1,15 +1,11 @@
-use crate::vk_description::SwapchainSurfaceInfo;
 use crate::{
-    vk_description as def, ResourceLookupSet, RenderPassResource, ResourceArc,
-    GraphicsPipelineResource, MaterialPassResource,
+    ResourceLookupSet, RenderPassResource, ResourceArc, GraphicsPipelineResource,
+    MaterialPassResource,
 };
-use atelier_assets::loader::handle::Handle;
-use crate::assets::RenderpassAsset;
 use renderer_nodes::{RenderPhase, RenderPhaseIndex, MAX_RENDER_PHASE_COUNT, RenderRegistry};
 use crate::resources::resource_arc::{WeakResourceArc, ResourceId};
-use fnv::{FnvHashMap, FnvHashSet};
+use fnv::FnvHashMap;
 use std::hash::Hash;
-use crate::resources::resource_lookup::GraphicsPipelineKey;
 use ash::prelude::VkResult;
 
 #[derive(PartialEq, Eq, Hash)]
@@ -194,16 +190,16 @@ impl GraphicsPipelineCache {
     pub fn drop_unused_pipelines(&mut self) {
         let current_frame_index = self.current_frame_index;
         for phase in &mut self.renderpass_assignments {
-            phase.retain(|k, v| {
+            phase.retain(|_k, v| {
                 v.renderpass.upgrade().is_some() && v.keep_until_frame > current_frame_index
             });
         }
 
         for phase in &mut self.material_pass_assignments {
-            phase.retain(|k, v| v.upgrade().is_some());
+            phase.retain(|_k, v| v.upgrade().is_some());
         }
 
-        self.cached_pipelines.retain(|k, v| {
+        self.cached_pipelines.retain(|_k, v| {
             let renderpass_still_exists = v.renderpass_resource.upgrade().is_some();
             let material_pass_still_exists = v.material_pass_resource.upgrade().is_some();
 

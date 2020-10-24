@@ -1,20 +1,16 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::{
-    vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc,
-    RenderPassResource,
-};
+use crate::{vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc};
 use atelier_assets::loader::handle::Handle;
 use std::hash::Hash;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use crate::resources::{DescriptorSetWriteSet, MaterialPassResource};
 pub use crate::resources::GraphicsPipelineResource;
 pub use crate::resources::DescriptorSetLayoutResource;
 pub use crate::resources::PipelineLayoutResource;
 use crate::resources::ShaderModuleResource;
 use fnv::FnvHashMap;
-use ash::vk;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "366d277d-6cb5-430a-a8fa-007d8ae69886"]

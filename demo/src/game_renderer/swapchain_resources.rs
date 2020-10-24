@@ -5,8 +5,8 @@ use crate::renderpass::{
 use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
 use crate::game_renderer::{GameRendererInner, RenderpassAttachmentImage};
 use renderer::assets::resources::{
-    ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource, ResourceLookupSet,
-    CommandPool, RenderPassResource,
+    ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource, CommandPool,
+    RenderPassResource,
 };
 use renderer::assets::RenderpassAsset;
 use renderer::assets::vk_description::SwapchainSurfaceInfo;
@@ -14,7 +14,6 @@ use ash::prelude::VkResult;
 use ash::vk;
 use renderer::assets::vk_description as dsc;
 use renderer::vulkan::VkImageRaw;
-use crate::asset_resource::AssetResource;
 use atelier_assets::loader::handle::Handle;
 
 pub struct SwapchainResources {

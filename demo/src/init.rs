@@ -46,7 +46,7 @@ pub fn logging_init() {
         .filter_module("renderer_shell_vulkan::device", log::LevelFilter::Debug)
         .filter_module("renderer_nodes", log::LevelFilter::Info)
         .filter_module("renderer_visibility", log::LevelFilter::Info)
-        .filter_module("renderer_assets::graph", log::LevelFilter::Info)
+        .filter_module("renderer_assets::graph", log::LevelFilter::Trace)
         // .filter_module(
         //     "renderer_assets::resources::command_buffers",
         //     log::LevelFilter::Trace,
@@ -135,16 +135,16 @@ pub fn rendering_init(
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(DebugDraw3DResource::new());
 
-    let mut context = VkContextBuilder::new()
-        .use_vulkan_debug_layer(false)
+    #[cfg(debug_assertions)]
+    let use_vulkan_debug_layer = true;
+    #[cfg(not(debug_assertions))]
+    let use_vulkan_debug_layer = false;
+
+    let context = VkContextBuilder::new()
+        .use_vulkan_debug_layer(use_vulkan_debug_layer)
         .msaa_level_priority(vec![MsaaLevel::Sample4])
         //.msaa_level_priority(vec![MsaaLevel::Sample1])
         .prefer_mailbox_present_mode();
-
-    #[cfg(debug_assertions)]
-    {
-        context = context.use_vulkan_debug_layer(true);
-    }
 
     let render_registry = renderer::nodes::RenderRegistryBuilder::default()
         .register_feature::<SpriteRenderFeature>()
@@ -158,7 +158,7 @@ pub fn rendering_init(
 
     let vk_context = context.build(&window_wrapper).unwrap();
     let device_context = vk_context.device_context().clone();
-    let mut resource_manager =
+    let resource_manager =
         renderer::assets::ResourceManager::new(&device_context, &render_registry);
 
     {

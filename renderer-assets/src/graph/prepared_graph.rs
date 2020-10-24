@@ -2,13 +2,10 @@ use super::{
     PhysicalImageId, RenderGraphOutputImageId, RenderGraphImageSpecification, RenderGraphOutputPass,
 };
 use fnv::{FnvHashMap, FnvHashSet};
-use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkImageRaw};
+use renderer_shell_vulkan::{VkDeviceContext, VkImage};
 use ash::vk;
 use crate::resources::ResourceLookupSet;
-use crate::{
-    ResourceArc, ImageKey, ImageViewResource, DynCommandWriter, DynCommandWriterAllocator,
-    ResourceCacheSet, ResourceManager,
-};
+use crate::{ResourceArc, ImageViewResource, DynCommandWriterAllocator, ResourceManager};
 use ash::prelude::VkResult;
 use std::mem::ManuallyDrop;
 use crate::vk_description as dsc;
@@ -17,9 +14,8 @@ use crate::resources::RenderPassResource;
 use crate::resources::FramebufferResource;
 use crate::graph::graph_node::RenderGraphNodeId;
 use ash::version::DeviceV1_0;
-use crate::graph::RenderGraph;
+use crate::graph::{RenderGraph, RenderGraphImageUsageId};
 use renderer_nodes::{RenderPhase, RenderPhaseIndex};
-use crate::graph::graph::RenderGraphNodeImageBarriers;
 
 //TODO: A caching system that keeps resources alive across a few frames so that we can reuse
 // images, framebuffers, and renderpasses
@@ -38,6 +34,7 @@ pub struct RenderGraphPlan {
     pub output_images: FnvHashMap<PhysicalImageId, RenderGraphPlanOutputImage>,
     pub intermediate_images: FnvHashMap<PhysicalImageId, RenderGraphImageSpecification>,
     pub node_to_renderpass_index: FnvHashMap<RenderGraphNodeId, usize>,
+    pub image_usage_to_physical: FnvHashMap<RenderGraphImageUsageId, PhysicalImageId>,
 }
 
 /// Encapsulates a render graph plan and all resources required to execute it
@@ -196,7 +193,7 @@ impl PreparedRenderGraph {
     pub fn execute_graph(
         &mut self,
         command_writer_allocator: &DynCommandWriterAllocator,
-        node_visitor: &RenderGraphNodeVisitor,
+        node_visitor: &dyn RenderGraphNodeVisitor,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         //
         // Start a command writer. For now just do a single primary writer, later we can multithread this.
@@ -221,8 +218,6 @@ impl PreparedRenderGraph {
         // Iterate through all passes
         //
         for (pass_index, pass) in self.graph_plan.passes.iter().enumerate() {
-            let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder();
-
             let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
                 .render_pass(self.render_pass_resources[pass_index].get_raw().renderpass)
                 .framebuffer(self.framebuffer_resources[pass_index].get_raw().framebuffer)
@@ -243,7 +238,7 @@ impl PreparedRenderGraph {
                 );
 
                 // callback here!
-                node_visitor.visit_renderpass(node_id, command_buffer);
+                node_visitor.visit_renderpass(node_id, command_buffer)?;
 
                 device.cmd_end_render_pass(command_buffer);
             }
@@ -257,7 +252,7 @@ impl PreparedRenderGraph {
         //     }
         // }
 
-        command_writer.end_command_buffer();
+        command_writer.end_command_buffer()?;
 
         Ok(vec![command_buffer])
     }
@@ -387,14 +382,21 @@ impl<T> RenderGraphExecutor<T> {
         //
 
         for (node_id, render_phase_indices) in &callbacks.render_phase_dependencies {
-            let renderpass_index = prepared_graph.graph_plan.node_to_renderpass_index[node_id];
-            for &render_phase_index in render_phase_indices {
-                resource_manager
-                    .graphics_pipeline_cache_mut()
-                    .register_renderpass_to_phase_index_per_frame(
-                        &prepared_graph.render_pass_resources[renderpass_index],
-                        render_phase_index,
-                    )
+            // Passes may get culled if the images are not used. This means the renderpass would
+            // not be created so pipelines are also not needed
+            if let Some(&renderpass_index) = prepared_graph
+                .graph_plan
+                .node_to_renderpass_index
+                .get(node_id)
+            {
+                for &render_phase_index in render_phase_indices {
+                    resource_manager
+                        .graphics_pipeline_cache_mut()
+                        .register_renderpass_to_phase_index_per_frame(
+                            &prepared_graph.render_pass_resources[renderpass_index],
+                            render_phase_index,
+                        )
+                }
             }
         }
         resource_manager.cache_all_graphics_pipelines()?;
@@ -411,9 +413,25 @@ impl<T> RenderGraphExecutor<T> {
     pub fn renderpass_resource(
         &self,
         node_id: RenderGraphNodeId,
-    ) -> &ResourceArc<RenderPassResource> {
-        let renderpass_index = self.prepared_graph.graph_plan.node_to_renderpass_index[&node_id];
-        &self.prepared_graph.render_pass_resources[renderpass_index]
+    ) -> Option<ResourceArc<RenderPassResource>> {
+        let renderpass_index = *self
+            .prepared_graph
+            .graph_plan
+            .node_to_renderpass_index
+            .get(&node_id)?;
+        Some(self.prepared_graph.render_pass_resources[renderpass_index].clone())
+    }
+
+    pub fn image_resource(
+        &self,
+        image_usage: RenderGraphImageUsageId,
+    ) -> Option<ResourceArc<ImageViewResource>> {
+        let image = self
+            .prepared_graph
+            .graph_plan
+            .image_usage_to_physical
+            .get(&image_usage)?;
+        Some(self.prepared_graph.image_resources[image].clone())
     }
 
     /// Executes the graph, passing through the given context parameter

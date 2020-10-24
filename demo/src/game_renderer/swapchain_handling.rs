@@ -1,6 +1,5 @@
 use renderer::vulkan::{
     VkContext, VkSurface, Window, VkSurfaceSwapchainLifetimeListener, VkDeviceContext, VkSwapchain,
-    VkImageRaw,
 };
 use crate::game_renderer::GameRenderer;
 use legion::Resources;
@@ -84,7 +83,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
     ) -> VkResult<()> {
         let mut guard = self.game_renderer.inner.lock().unwrap();
         let mut game_renderer = &mut *guard;
-        let mut resource_manager = &mut self.resource_manager;
+        let resource_manager = &mut self.resource_manager;
 
         //
         // Metadata about the swapchain
@@ -135,6 +134,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
 
         // This will clear game_renderer.swapchain_resources and drop SwapchainResources at end of fn
         let swapchain_resources = game_renderer.swapchain_resources.take().unwrap();
+        std::mem::drop(swapchain_resources);
 
         //TODO: Explicitly remove the images instead of just dropping them. This prevents anything
         // from accidentally using them after they've been freed

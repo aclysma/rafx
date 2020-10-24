@@ -1,14 +1,10 @@
 use ash::version::DeviceV1_0;
 use ash::vk;
 use ash::prelude::VkResult;
-use renderer_shell_vulkan::{
-    VkQueueFamilyIndices, VkDeviceContext, SwapchainInfo, MAX_FRAMES_IN_FLIGHT,
-};
+use renderer_shell_vulkan::VkDeviceContext;
 use crossbeam_channel::{Receiver, Sender};
-use std::sync::{Mutex, Arc, atomic::AtomicUsize};
+use std::sync::{Mutex, Arc};
 use fnv::FnvHashMap;
-use std::ops::{Deref, DerefMut};
-use std::sync::atomic::Ordering;
 use std::collections::BTreeMap;
 
 /// Info we hash across to identify equivalent command pools, allowing us to share them
@@ -213,7 +209,7 @@ impl DynCommandWriter {
 impl Drop for DynCommandWriter {
     fn drop(&mut self) {
         assert!(self.currently_writing.is_none());
-        let mut inner = self.inner.take().unwrap();
+        let inner = self.inner.take().unwrap();
         self.drop_tx.send(inner).unwrap();
     }
 }

@@ -13,7 +13,6 @@ use crate::vk_description as dsc;
 use crate::resources::ResourceArc;
 use crate::resources::resource_arc::{WeakResourceArc, ResourceWithHash, ResourceId};
 use std::sync::Arc;
-use renderer_nodes::RenderPhaseIndex;
 
 // #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 // pub(super) struct ResourceId(pub(super) u64);
@@ -328,13 +327,10 @@ pub struct MaterialPassResource {
 
 impl VkResource for MaterialPassResource {
     fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
+        _device_context: &VkDeviceContext,
+        _resource: Self,
     ) -> VkResult<()> {
-        // for pipeline in resource.pipelines {
-        //     VkResource::destroy(device_context, pipeline)?;
-        // }
-
+        // Nothing needs explicit destroying
         Ok(())
     }
 }

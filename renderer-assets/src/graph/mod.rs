@@ -1,5 +1,4 @@
 use ash::vk;
-use crate::vk_description as dsc;
 
 mod graph;
 use graph::*;
@@ -20,9 +19,6 @@ pub use prepared_graph::RenderGraphPlan;
 pub use prepared_graph::RenderGraphNodeCallbacks;
 pub use prepared_graph::PreparedRenderGraph;
 pub use prepared_graph::RenderGraphExecutor;
-
-use crate::vk_description::SwapchainSurfaceInfo;
-use renderer_shell_vulkan::MsaaLevel;
 
 #[test]
 fn graph_smoketest() {

@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use serde::export::Formatter;
-use crate::{ResourceArc, ImageViewResource, ImageKey, ImageResource};
-use renderer_shell_vulkan::VkImageRaw;
+use crate::{ResourceArc, ImageViewResource};
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum ColorSpace {

@@ -2,7 +2,7 @@ use crossbeam_channel::{Sender, Receiver};
 use std::hash::Hash;
 use std::sync::Arc;
 use renderer_shell_vulkan::{
-    VkResource, VkResourceDropSink, VkDeviceContext, VkImageRaw, VkImage, VkBufferRaw, VkBuffer,
+    VkResource, VkResourceDropSink, VkDeviceContext, VkImage, VkBufferRaw, VkBuffer,
 };
 use ash::vk;
 use super::ResourceId;
