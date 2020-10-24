@@ -133,7 +133,8 @@ impl PreparedRenderGraph {
                 subresource_range,
                 view_type: dsc::ImageViewType::Type2D,
             };
-            let image_view = resources.get_or_create_image_view(&image_resource, &image_view_meta)?;
+            let image_view =
+                resources.get_or_create_image_view(&image_resource, &image_view_meta)?;
 
             image_resources.insert(*id, image_view);
         }

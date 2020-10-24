@@ -401,7 +401,7 @@ impl VkResource for FramebufferResource {
 pub struct ImageResource {
     pub image: VkImageRaw,
     // Dynamic resources have no key
-    pub image_key: Option<ImageKey>
+    pub image_key: Option<ImageKey>,
 }
 
 impl VkResource for ImageResource {
@@ -907,7 +907,7 @@ impl ResourceLookupSet {
 
         let resource = ImageResource {
             image: raw_image,
-            image_key: Some(image_key)
+            image_key: Some(image_key),
         };
 
         self.images.insert(hash, &image_key, resource)

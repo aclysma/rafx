@@ -302,12 +302,6 @@ impl GameRenderer {
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
         let swapchain_info = swapchain_resources.swapchain_info.clone();
 
-        // let pipeline_cache = resource_manager.graphics_pipeline_cache_mut();
-        // pipeline_cache.register_renderpass_to_phase_per_frame::<OpaqueRenderPhase>(&swapchain_resources.opaque_renderpass.renderpass);
-        // pipeline_cache.register_renderpass_to_phase_per_frame::<UiRenderPhase>(&swapchain_resources.ui_renderpass.renderpass);
-        // pipeline_cache.cache_all_pipelines(resource_manager.resources_mut());
-        // resource_manager.cache_all_graphics_pipelines()?;
-
         let t2 = std::time::Instant::now();
         let render_graph = render_graph::build_render_graph(
             &swapchain_surface_info,
@@ -418,10 +412,8 @@ impl GameRenderer {
         //
         // Extract Jobs
         //
-        //let opaque_renderpass = swapchain_resources.opaque_renderpass.renderpass.clone();
-        //let ui_renderpass = swapchain_resources.ui_renderpass.renderpass.clone();
-
         let opaque_renderpass = render_graph.opaque_renderpass.clone();
+        let ui_renderpass = render_graph.ui_renderpass.clone();
 
         let frame_packet = frame_packet_builder.build();
         let extract_job_set = {
@@ -449,13 +441,13 @@ impl GameRenderer {
                 )
                 .unwrap();
 
-            // let imgui_pipeline_info = resource_manager
-            //     .get_cached_graphics_pipeline(
-            //         &guard.static_resources.imgui_material,
-            //         &ui_renderpass,
-            //         0,
-            //     )
-            //     .unwrap();
+            let imgui_pipeline_info = resource_manager
+                .get_cached_graphics_pipeline(
+                    &guard.static_resources.imgui_material,
+                    &ui_renderpass,
+                    0,
+                )
+                .unwrap();
 
             let mut extract_job_set = ExtractJobSet::new();
 
@@ -482,15 +474,15 @@ impl GameRenderer {
                 &guard.static_resources.debug3d_material,
             ));
 
-            // extract_job_set.add_job(create_imgui_extract_job(
-            //     device_context.clone(),
-            //     resource_manager.create_descriptor_set_allocator(),
-            //     imgui_pipeline_info,
-            //     swapchain_surface_info.extents,
-            //     &guard.static_resources.imgui_material,
-            //     //guard.imgui_font_atlas.clone(),
-            //     guard.imgui_font_atlas_image_view.clone(),
-            // ));
+            extract_job_set.add_job(create_imgui_extract_job(
+                device_context.clone(),
+                resource_manager.create_descriptor_set_allocator(),
+                imgui_pipeline_info,
+                swapchain_surface_info.extents,
+                &guard.static_resources.imgui_material,
+                //guard.imgui_font_atlas.clone(),
+                guard.imgui_font_atlas_image_view.clone(),
+            ));
 
             extract_job_set
         };
@@ -498,30 +490,6 @@ impl GameRenderer {
         let extract_context = RenderJobExtractContext::new(&world, &resources, resource_manager);
         let prepare_job_set =
             extract_job_set.extract(&extract_context, &frame_packet, &[&main_view]);
-
-        let opaque_pipeline_info = resource_manager.get_cached_graphics_pipeline(
-            &guard.static_resources.sprite_material,
-            &guard
-                .swapchain_resources
-                .as_ref()
-                .unwrap()
-                .opaque_renderpass
-                .renderpass
-                .clone(),
-            0,
-        );
-
-        let imgui_pipeline_info = resource_manager.get_cached_graphics_pipeline(
-            &guard.static_resources.imgui_material,
-            &guard
-                .swapchain_resources
-                .as_ref()
-                .unwrap()
-                .ui_renderpass
-                .renderpass
-                .clone(),
-            0,
-        );
 
         let dyn_resource_allocator_set = resource_manager.create_dyn_resource_allocator_set();
         let dyn_command_writer_allocator = resource_manager.create_dyn_command_writer_allocator();
@@ -544,8 +512,6 @@ impl GameRenderer {
             main_view,
             render_registry,
             device_context,
-            // opaque_pipeline_info,
-            // imgui_pipeline_info,
             frame_in_flight,
         };
 

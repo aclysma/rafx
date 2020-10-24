@@ -9,81 +9,12 @@ use renderer::assets::resources::{
 };
 use crate::render_contexts::{RenderJobWriteContextFactory, RenderJobWriteContext};
 use renderer::nodes::{PreparedRenderData, RenderView};
-use crate::phases::OpaqueRenderPhase;
+use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
 use renderer::vulkan::SwapchainInfo;
-
-/*
-mod x {
-    use std::collections::HashMap;
-
-    // This is a map of callbacks that get triggered later by passing a &T. That &T
-    // is provided to the callbacks
-    type Callback<T> = dyn Fn(&mut T) -> u32 + Send;
-    struct Callbacks<T> {
-        callbacks: HashMap<u32, Box<Callback<T>>>
-    }
-
-    // Have to impl this manually because <T> doesn't impl Default...
-    impl<T> Default for Callbacks<T> {
-        fn default() -> Self {
-            Callbacks {
-                callbacks: Default::default()
-            }
-        }
-    }
-
-    fn test() {
-        // This struct combines the parameters that I don't know now, but that I will know later and
-        // want to pass into the callback
-        struct ContextObject<'a> {
-            data1: &'a mut Vec<u32>,
-            data2: &'a mut Vec<u8>,
-            // Imagine I have a handful of things I need to pass in here that I can't simply copy/clone
-        }
-
-        // NOTE: It's problematic that I need <'a> on this struct because now any other
-        // struct that needs to pass a Callbacks<ContextObject<'a>> around has to have
-        // a lifetime <'a> too
-        //struct SomethingContainingCallbacks {
-        //    callbacks: Callbacks<ContextObject<'a>>
-        //}
-
-        // Set up a callback that will use that data later
-        let mut callbacks = Callbacks::<ContextObject>::default();
-        callbacks.callbacks.insert(0, Box::new(|context_obj| {
-            println!("data is {:?}", context_obj.data1);
-            context_obj.data2.push(0);
-            0
-        }));
-
-        // Now I have some data and want to hit callbacks with it
-        let mut data1 = Vec::default();
-        let mut data2 = Vec::default();
-
-        // So create a context object that has references to them
-        let mut context = ContextObject {
-            data1: &mut data1,
-            data2: &mut data2
-        };
-
-        // Trigger the callback
-        (callbacks.callbacks[&0])(&mut context);
-
-        std::mem::drop(context);
-        std::mem::drop(callbacks);
-
-        // ERROR:
-        // * `data1` dropped here while still borrowed
-        //   borrow might be used here, when `callbacks` is dropped and runs the destructor for type `Callbacks<test::ContextObject<'_>>`
-        //
-        // So presumably rust thinks a callback within callbacks holds a borrow to data1?
-    }
-}
-*/
 
 pub struct BuildRenderGraphResult {
     pub opaque_renderpass: ResourceArc<RenderPassResource>,
-    //pub ui_renderpass: ResourceArc<RenderPassResource>,
+    pub ui_renderpass: ResourceArc<RenderPassResource>,
     pub executor: RenderGraphExecutor<RenderGraphExecuteContext>,
 }
 
@@ -103,12 +34,10 @@ pub fn build_render_graph(
     swapchain_info: &SwapchainInfo,
     swapchain_image: ResourceArc<ImageViewResource>,
 ) -> VkResult<BuildRenderGraphResult> {
-    //let color_format = swapchain_surface_info.color_format;
     let color_format = swapchain_surface_info.surface_format.format;
     let depth_format = swapchain_surface_info.depth_format;
     let swapchain_format = swapchain_surface_info.surface_format.format;
-    //let samples = swapchain_surface_info.msaa_level.into();
-    let samples = vk::SampleCountFlags::TYPE_1;
+    let samples = swapchain_surface_info.msaa_level.into();
     let queue = 0;
 
     let mut graph = RenderGraph::default();
@@ -149,12 +78,6 @@ pub fn build_render_graph(
             },
         );
 
-        // node.set_pass_callback(|prepared_render_data, view, write_context_factory, command_writer| {
-        //     let mut write_context = write_context_factory.create_context(command_buffer);
-        //     prepared_render_data.write_view_phase::<OpaqueRenderPhase>(&view, &mut write_context);
-        //     Ok(())
-        // });
-
         graph_callbacks.add_renderphase_dependency::<OpaqueRenderPhase>(node.id());
         graph_callbacks.set_renderpass_callback(node.id(), |command_buffer, context| {
             let mut write_context = context.write_context_factory.create_context(command_buffer);
@@ -173,43 +96,39 @@ pub fn build_render_graph(
             depth,
         }
     };
-    /*
-        let transparent_pass = {
-            struct Transparent {
-                color: RenderGraphImageUsageId,
-            }
 
-            let mut node = graph.add_node();
-            node.set_name("Transparent");
+    let ui_pass = {
+        struct Ui {
+            node_id: RenderGraphNodeId,
+            color: RenderGraphImageUsageId,
+        }
 
-            let color = node.modify_color_attachment(
-                opaque_pass.color,
-                0,
-                RenderGraphImageConstraint {
-                    ..Default::default()
-                },
-            );
+        let mut node = graph.add_node();
+        let node_id = node.id();
+        node.set_name("Ui");
 
-            node.read_depth_attachment(opaque_pass.depth, Default::default());
+        let color = node.modify_color_attachment(
+            opaque_pass.color,
+            0,
+            RenderGraphImageConstraint {
+                samples: Some(vk::SampleCountFlags::TYPE_1),
+                ..Default::default()
+            },
+        );
 
+        graph_callbacks.add_renderphase_dependency::<UiRenderPhase>(node.id());
+        graph_callbacks.set_renderpass_callback(node.id(), |command_buffer, context| {
+            let mut write_context = context.write_context_factory.create_context(command_buffer);
+            context
+                .prepared_render_data
+                .write_view_phase::<UiRenderPhase>(&context.view, &mut write_context);
+            Ok(())
+        });
 
-            graph_callbacks.add_renderpass_callback(node.id(), |command_buffer, context| {
-                let mut write_context = context.write_context_factory.create_context(command_buffer);
-                context.prepared_render_data.write_view_phase::<OpaqueRenderPhase>(&context.view, &mut write_context);
-                Ok(())
-            });
+        Ui { node_id, color }
+    };
 
-
-            // node.set_pass_callback(|prepared_render_data, view, write_context_factory, command_writer| {
-            //     let mut write_context = write_context_factory.create_context(command_buffer);
-            //     prepared_render_data.write_view_phase::<TransparentRenderPhase>(&view, &mut write_context);
-            //     Ok(())
-            // });
-
-            Transparent { color }
-        };
-    */
-    let swapchain_output_image_id = graph.configure_image(opaque_pass.color).set_output_image(
+    let swapchain_output_image_id = graph.configure_image(ui_pass.color).set_output_image(
         swapchain_image,
         RenderGraphImageSpecification {
             samples: vk::SampleCountFlags::TYPE_1,
@@ -236,20 +155,11 @@ pub fn build_render_graph(
         graph_callbacks,
     )?;
 
-    // //
-    // // Execute the graph. The context can include arbitrary data
-    // //
-    // let write_context = RenderGraphExecuteContext {
-    //
-    // };
-    // executor.execute_graph(
-    //     &resource_manager.create_dyn_command_writer_allocator(),
-    //     &write_context
-    // )?;
-
     let opaque_renderpass = executor.renderpass_resource(opaque_pass.node_id).clone();
+    let ui_renderpass = executor.renderpass_resource(ui_pass.node_id).clone();
     Ok(BuildRenderGraphResult {
         executor,
         opaque_renderpass,
+        ui_renderpass,
     })
 }

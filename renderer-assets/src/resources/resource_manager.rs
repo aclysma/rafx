@@ -643,9 +643,7 @@ impl ResourceManager {
             .resources
             .get_or_create_image_view(&image, &image_view_meta)?;
 
-        Ok(ImageAsset {
-            image_view,
-        })
+        Ok(ImageAsset { image_view })
     }
 
     fn finish_load_buffer(

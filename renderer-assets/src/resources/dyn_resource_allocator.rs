@@ -108,7 +108,7 @@ impl DynResourceAllocatorSet {
         let raw_image = image.take_raw().unwrap();
         let image_resource = ImageResource {
             image_key: None,
-            image: raw_image
+            image: raw_image,
         };
         self.images.insert(image_resource)
     }

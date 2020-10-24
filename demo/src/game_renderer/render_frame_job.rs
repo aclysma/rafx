@@ -39,8 +39,6 @@ impl RenderFrameJob {
             self.main_view,
             self.render_registry,
             self.device_context,
-            // self.opaque_pipeline_info,
-            // self.imgui_pipeline_info,
             self.frame_in_flight.present_index() as usize,
         );
 
@@ -129,32 +127,6 @@ impl RenderFrameJob {
         let mut command_writer = graph_context.command_writer;
 
         /*
-                        let mut command_buffers = vec![];
-                        //
-                        // Opaque renderpass
-                        //
-                        log::trace!("opaque_renderpass update");
-                        let command_buffer = swapchain_resources.opaque_renderpass.update(
-                            &*prepared_render_data,
-                            &main_view,
-                            &write_context_factory,
-                            &mut command_writer,
-                        )?;
-                        command_buffers.push(command_buffer);
-
-                        //
-                        // Debug Renderpass
-                        //
-                        let descriptor_set_per_pass = swapchain_resources
-                            .debug_material_per_frame_data
-                            .descriptor_set()
-                            .get();
-                        log::trace!("msaa_renderpass update");
-
-                        let command_buffer = swapchain_resources
-                            .msaa_renderpass
-                            .update(&mut command_writer)?;
-                        command_buffers.push(command_buffer);
 
                         //
                         // bloom extract

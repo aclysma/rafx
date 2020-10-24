@@ -122,12 +122,7 @@ impl RenderpassAttachmentImage {
     // be MSAA
     //
     pub fn target_image(&self) -> vk::Image {
-        self.target_resource()
-            .get_raw()
-            .image
-            .get_raw()
-            .image
-            .image
+        self.target_resource().get_raw().image.get_raw().image.image
     }
 
     pub fn target_image_view(&self) -> vk::ImageView {

@@ -46,7 +46,7 @@ pub fn logging_init() {
         .filter_module("renderer_shell_vulkan::device", log::LevelFilter::Debug)
         .filter_module("renderer_nodes", log::LevelFilter::Info)
         .filter_module("renderer_visibility", log::LevelFilter::Info)
-        .filter_module("renderer_assets::graph", log::LevelFilter::Warn)
+        .filter_module("renderer_assets::graph", log::LevelFilter::Info)
         // .filter_module(
         //     "renderer_assets::resources::command_buffers",
         //     log::LevelFilter::Trace,
