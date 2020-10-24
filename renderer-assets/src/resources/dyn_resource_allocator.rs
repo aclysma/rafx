@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use crate::resources::resource_arc::ResourceWithHash;
 use crate::ImageViewResource;
 use ash::prelude::VkResult;
+use crate::resources::resource_lookup::ImageResource;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DynResourceIndex(u64);
@@ -94,7 +95,7 @@ where
 
 #[derive(Clone)]
 pub struct DynResourceAllocatorSet {
-    pub images: DynResourceAllocator<VkImageRaw>,
+    pub images: DynResourceAllocator<ImageResource>,
     pub image_views: DynResourceAllocator<ImageViewResource>,
     pub buffers: DynResourceAllocator<VkBufferRaw>,
 }
@@ -103,14 +104,18 @@ impl DynResourceAllocatorSet {
     pub fn insert_image(
         &self,
         image: VkImage,
-    ) -> ResourceArc<VkImageRaw> {
+    ) -> ResourceArc<ImageResource> {
         let raw_image = image.take_raw().unwrap();
-        self.images.insert(raw_image)
+        let image_resource = ImageResource {
+            image_key: None,
+            image: raw_image
+        };
+        self.images.insert(image_resource)
     }
 
     pub fn insert_image_view(
         &self,
-        image: ResourceArc<VkImageRaw>,
+        image: ResourceArc<ImageResource>,
         image_view: vk::ImageView,
     ) -> ResourceArc<ImageViewResource> {
         let image_view_resource = ImageViewResource {
@@ -226,7 +231,7 @@ pub struct ResourceMetrics {
 //
 pub struct DynResourceAllocatorManagerSet {
     pub device_context: VkDeviceContext,
-    pub images: DynResourceAllocatorManager<VkImageRaw>,
+    pub images: DynResourceAllocatorManager<ImageResource>,
     pub image_views: DynResourceAllocatorManager<ImageViewResource>,
     pub buffers: DynResourceAllocatorManager<VkBufferRaw>,
 }

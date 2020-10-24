@@ -115,7 +115,7 @@ impl PreparedRenderGraph {
                 1,
                 vk::MemoryPropertyFlags::DEVICE_LOCAL,
             )?;
-            let (image_key, image) = resources.insert_image(ManuallyDrop::new(image));
+            let image_resource = resources.insert_image(ManuallyDrop::new(image));
 
             //println!("SPEC {:#?}", specification);
             let subresource_range = dsc::ImageSubresourceRange {
@@ -133,7 +133,7 @@ impl PreparedRenderGraph {
                 subresource_range,
                 view_type: dsc::ImageViewType::Type2D,
             };
-            let image_view = resources.get_or_create_image_view(image_key, &image_view_meta)?;
+            let image_view = resources.get_or_create_image_view(&image_resource, &image_view_meta)?;
 
             image_resources.insert(*id, image_view);
         }

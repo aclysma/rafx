@@ -160,7 +160,7 @@ impl GameRenderer {
             .layer_count(1);
 
         let image_view_info = vk::ImageViewCreateInfo::builder()
-            .image(imgui_font_atlas_image.get_raw().image)
+            .image(imgui_font_atlas_image.get_raw().image.image)
             .view_type(vk::ImageViewType::TYPE_2D)
             .format(vk::Format::R8G8B8A8_UNORM)
             .subresource_range(*subresource_range);

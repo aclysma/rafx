@@ -45,12 +45,6 @@ use fnv::FnvHashMap;
 //TODO: Support dynamic descriptors tied to command buffers?
 //TODO: Support data inheritance for descriptors
 
-// Information about a single loaded image
-pub struct ImageInfo {
-    pub image: ResourceArc<VkImageRaw>,
-    pub image_view: ResourceArc<ImageViewResource>,
-}
-
 // Information about a single descriptor set
 pub struct DescriptorSetInfo {
     pub descriptor_set_layout_def: dsc::DescriptorSetLayout,
@@ -221,17 +215,13 @@ impl ResourceManager {
         self.descriptor_set_allocator.create_allocator_provider()
     }
 
-    pub fn get_image_info(
+    pub fn get_image_asset(
         &self,
         handle: &Handle<ImageAsset>,
-    ) -> Option<ImageInfo> {
+    ) -> Option<&ImageAsset> {
         self.loaded_assets
             .images
             .get_committed(handle.load_handle())
-            .map(|loaded_image| ImageInfo {
-                image: loaded_image.image.clone(),
-                image_view: loaded_image.image_view.clone(),
-            })
     }
 
     pub fn get_descriptor_set_info(
@@ -629,7 +619,7 @@ impl ResourceManager {
         let format = image.format.into();
         let mip_level_count = image.mip_level_count;
 
-        let (image_key, image_arc) = self.resources.insert_image(ManuallyDrop::new(image));
+        let image = self.resources.insert_image(ManuallyDrop::new(image));
 
         let image_view_meta = dsc::ImageViewMeta {
             view_type: dsc::ImageViewType::Type2D,
@@ -651,11 +641,9 @@ impl ResourceManager {
 
         let image_view = self
             .resources
-            .get_or_create_image_view(image_key, &image_view_meta)?;
+            .get_or_create_image_view(&image, &image_view_meta)?;
 
         Ok(ImageAsset {
-            image_key,
-            image: image_arc,
             image_view,
         })
     }

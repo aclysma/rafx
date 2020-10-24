@@ -7,6 +7,7 @@ pub use resource_lookup::ResourceLookupSet;
 pub use resource_lookup::ResourceHash;
 pub use resource_lookup::DescriptorSetLayoutResource;
 pub use resource_lookup::ImageKey;
+pub use resource_lookup::ImageResource;
 pub use resource_lookup::BufferKey;
 pub use resource_lookup::RenderPassResource;
 pub use resource_lookup::FramebufferResource;

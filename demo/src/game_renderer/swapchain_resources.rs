@@ -79,10 +79,10 @@ impl SwapchainResources {
                 image,
             };
 
-            let (image_key, resource) = resource_manager.resources_mut().insert_raw_image(raw);
+            let image = resource_manager.resources_mut().insert_raw_image(raw);
             let image_view = resource_manager
                 .resources_mut()
-                .get_or_create_image_view(image_key, &image_view_meta)?;
+                .get_or_create_image_view(&image, &image_view_meta)?;
 
             swapchain_images.push(image_view);
         }

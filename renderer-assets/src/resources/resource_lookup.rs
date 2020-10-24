@@ -398,10 +398,26 @@ impl VkResource for FramebufferResource {
 }
 
 #[derive(Debug, Clone)]
+pub struct ImageResource {
+    pub image: VkImageRaw,
+    // Dynamic resources have no key
+    pub image_key: Option<ImageKey>
+}
+
+impl VkResource for ImageResource {
+    fn destroy(
+        device_context: &VkDeviceContext,
+        resource: Self,
+    ) -> VkResult<()> {
+        VkResource::destroy(device_context, resource.image)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ImageViewResource {
     pub image_view: vk::ImageView,
-    pub image: ResourceArc<VkImageRaw>,
-    // The key is not available for resources created outside of ResourceLookup
+    pub image: ResourceArc<ImageResource>,
+    // Dynamic resources have no key
     pub image_view_key: Option<ImageViewKey>,
 }
 
@@ -431,17 +447,9 @@ pub struct ResourceLookupSet {
     pipeline_layouts: ResourceLookup<dsc::PipelineLayout, PipelineLayoutResource>,
     render_passes: ResourceLookup<RenderPassKey, RenderPassResource>,
     framebuffers: ResourceLookup<FrameBufferKey, FramebufferResource>,
-
-    // add a material pass/graphics pipeline base resource?
-    // add a way to refer to a renderpass without having a swapchain info?
-    //
-    // * Need to be able to load a material that determines renderpass at runtime via phase name
-    // * Material might load before the rendergraph runs
-    // * However, we do want to compile pipelines ahead of them being considered loaded, if the
-    //   rendergraph has been run
     material_passes: ResourceLookup<MaterialPassKey, MaterialPassResource>,
     graphics_pipelines: ResourceLookup<GraphicsPipelineKey, GraphicsPipelineResource>,
-    images: ResourceLookup<ImageKey, VkImageRaw>,
+    images: ResourceLookup<ImageKey, ImageResource>,
     image_views: ResourceLookup<ImageViewKey, ImageViewResource>,
     samplers: ResourceLookup<dsc::Sampler, vk::Sampler>,
     buffers: ResourceLookup<BufferKey, VkBufferRaw>,
@@ -880,7 +888,7 @@ impl ResourceLookupSet {
     pub fn insert_image(
         &mut self,
         image: ManuallyDrop<VkImage>,
-    ) -> (ImageKey, ResourceArc<VkImageRaw>) {
+    ) -> ResourceArc<ImageResource> {
         let raw_image = ManuallyDrop::into_inner(image).take_raw().unwrap();
         self.insert_raw_image(raw_image)
     }
@@ -889,15 +897,20 @@ impl ResourceLookupSet {
     pub fn insert_raw_image(
         &mut self,
         raw_image: VkImageRaw,
-    ) -> (ImageKey, ResourceArc<VkImageRaw>) {
+    ) -> ResourceArc<ImageResource> {
         let image_key = ImageKey {
             id: self.next_image_id,
         };
         self.next_image_id += 1;
 
         let hash = ResourceHash::from_key(&image_key);
-        let image = self.images.insert(hash, &image_key, raw_image);
-        (image_key, image)
+
+        let resource = ImageResource {
+            image: raw_image,
+            image_key: Some(image_key)
+        };
+
+        self.images.insert(hash, &image_key, resource)
     }
 
     //TODO: Support direct removal of raw images with verification that no references remain
@@ -922,11 +935,16 @@ impl ResourceLookupSet {
 
     pub fn get_or_create_image_view(
         &mut self,
-        image_key: ImageKey,
+        image: &ResourceArc<ImageResource>,
         image_view_meta: &dsc::ImageViewMeta,
     ) -> VkResult<ResourceArc<ImageViewResource>> {
+        if image.get_raw().image_key.is_none() {
+            log::error!("Tried to create an image view resource with a dynamic image");
+            return Err(vk::Result::ERROR_UNKNOWN);
+        }
+
         let image_view_key = ImageViewKey {
-            image_key,
+            image_key: image.get_raw().image_key.unwrap(),
             image_view_meta: image_view_meta.clone(),
         };
 
@@ -934,16 +952,10 @@ impl ResourceLookupSet {
         if let Some(image_view) = self.image_views.get(hash, &image_view_key) {
             Ok(image_view)
         } else {
-            // let image_key = ImageKey {
-            //     image_key: image_load_handle,
-            // };
-            let image_key_hash = ResourceHash::from_key(&image_key);
-            let image = self.images.get(image_key_hash, &image_key).unwrap();
-
             log::trace!("Creating image view\n{:#?}", image_view_key);
             let resource = dsc::create_image_view(
                 &self.device_context.device(),
-                image.get_raw().image,
+                image.get_raw().image.image,
                 image_view_meta,
             )?;
             log::trace!("Created image view\n{:#?}", resource);
@@ -951,7 +963,7 @@ impl ResourceLookupSet {
             let resource = ImageViewResource {
                 image_view: resource,
                 image_view_key: Some(image_view_key.clone()),
-                image,
+                image: image.clone(),
             };
 
             let image_view = self.image_views.insert(hash, &image_view_key, resource);

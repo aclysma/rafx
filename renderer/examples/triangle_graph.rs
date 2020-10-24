@@ -2,7 +2,7 @@ use renderer_shell_vulkan::{
     LogicalSize, VkDevice, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window,
     VkImageRaw,
 };
-use renderer_assets::{ResourceManager, ImageKey};
+use renderer_assets::{ResourceManager, ImageKey, ImageResource};
 use renderer_nodes::RenderRegistryBuilder;
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
@@ -29,6 +29,7 @@ pub struct Sdl2Systems {
     pub window: sdl2::video::Window,
 }
 
+// Setup SDL2 and create a window
 pub fn sdl2_init() -> Sdl2Systems {
     // Setup SDL
     let context = sdl2::init().expect("Failed to initialize sdl2");
@@ -38,7 +39,7 @@ pub fn sdl2_init() -> Sdl2Systems {
 
     // Create the window
     let window = video_subsystem
-        .window("Renderer Prototype", WINDOW_WIDTH, WINDOW_HEIGHT)
+        .window("Render Graph Example", WINDOW_WIDTH, WINDOW_HEIGHT)
         .position_centered()
         .allow_highdpi()
         .resizable()
@@ -53,14 +54,20 @@ pub fn sdl2_init() -> Sdl2Systems {
 }
 
 fn main() {
+    // Turn on some logging
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
         .filter_level(LevelFilter::Warn)
         .init();
 
+    // Set up SDL2
     let sdl2_systems = sdl2_init();
+
+    // Wrap the SDL2 window for the renderer to use. (allows us to support other windowing libraries
+    // like winit
     let window_wrapper = Sdl2Window::new(&sdl2_systems.window);
 
+    // Create the SDL2 event loop
     log::info!("Starting window event loop");
     let mut event_pump = sdl2_systems
         .context
@@ -74,43 +81,71 @@ fn run(
     window: &Window,
     event_pump: &mut EventPump,
 ) -> VkResult<()> {
+    // This is used for the material system which is not part of this sample.
+    let render_registry = renderer::nodes::RenderRegistryBuilder::default().build();
+
+    // Some basic configuration for creating the context
     let mut context = VkContextBuilder::new()
         .use_vulkan_debug_layer(true)
         .msaa_level_priority(vec![MsaaLevel::Sample1])
         .prefer_mailbox_present_mode();
 
-    let render_registry = renderer::nodes::RenderRegistryBuilder::default()
-        //.register_render_phase::<OpaqueRenderPhase>("Opaque")
-        .build();
-
+    // The context sets up the instance and device. This object will tear down all vulkan
+    // initialization when dropped. You generally just want one of these.
     let vk_context = context.build(window).unwrap();
+
+    // The device context is a cloneable, multi-threading friendly accessor into what was created by
+    // the context
     let device_context = vk_context.device_context().clone();
+
+    // The resource manager sets up reference counting/hashing for most vulkan objects as well as
+    // some multi-threading friendly helpers for creating dynamic resources. It also includes hooks
+    // for atelier assets to register data. (But atelier assets is not used in this example)
     let mut resource_manager =
         renderer::assets::ResourceManager::new(&device_context, &render_registry);
 
+    // The surface is associated with a window and handles creating the swapchain and re-creating it
+    // if the swapchain becomes out of date (commonly due to window resize)
     let mut surface = VkSurface::new(&vk_context, window, None).unwrap();
 
+    // The surface creates the swapchain immediately, and that swapchain contains images. We
+    // register those images with the resource manager so that other systems can handle them like
+    // reference counted images we might create.
     let mut swapchain_images = register_swapchain_images(&mut resource_manager, &mut surface);
 
     loop {
-        // Update graphics resources
+        // Update graphics resources, this mainly handles asset load events from atelier-assets (not
+        // used in this example).
         resource_manager.update_resources()?;
 
-        // Process input
+        // Process input, mainly to quit when hitting escape
         if !process_input(&device_context, &resource_manager, event_pump) {
             break;
         }
 
-        // Redraw
+        // Get the swapchain image. This will block until it is available.  The returned
+        // FrameInFlight must be submitted or cancelled to free up an image. An error returned here
+        // might be from a previous swapchain cancel_present call that happened in another thread.
+        // This design is meant to be multithread friendly. (i.e. allows simulating frame N + 1 while
+        // still rendering frame N). Multithreading is not part of the demo and some of the work
+        // in render_frame() would need to happen before spawning a job to finish rendering. (The
+        // graph would need to be built before returning but executing the graph could happen
+        // asynchronously.
         let frame_in_flight_result = surface.acquire_next_swapchain_image(window);
         match frame_in_flight_result {
-            Ok(frame_in_flight) => render_frame(
-                &device_context,
-                &mut resource_manager,
-                &mut surface,
-                swapchain_images.as_slice(),
-                frame_in_flight,
-            ),
+            Ok(frame_in_flight) => {
+                render_frame(
+                    &device_context,
+                    &mut resource_manager,
+                    &mut surface,
+                    swapchain_images.as_slice(),
+                    frame_in_flight,
+                )?;
+
+                // Update graphics resources, this mainly handles dropping resources that are no
+                // longer in use.
+                resource_manager.on_frame_complete()
+            }
             Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR) | Err(ash::vk::Result::SUBOPTIMAL_KHR) => {
                 surface.rebuild_swapchain(window, None)?;
 
@@ -129,7 +164,13 @@ fn run(
     Ok(())
 }
 
-fn register_swapchain_images(mut resource_manager: &mut ResourceManager, surface: &mut VkSurface) -> Vec<(ImageKey, ResourceArc<VkImageRaw>)> {
+// This takes all the swapchain images, registers them with the resource manager, and returns the
+// ResourceArcs. While ResourceArcs are reference counted, the swapchain images still belong to the
+// swapchain.
+fn register_swapchain_images(
+    mut resource_manager: &mut ResourceManager,
+    surface: &mut VkSurface,
+) -> Vec<ResourceArc<ImageResource>> {
     surface
         .swapchain()
         .swapchain_images
@@ -154,29 +195,26 @@ fn process_input(
     for event in event_pump.poll_iter() {
         //log::trace!("{:?}", event);
         match event {
-            //
             // Halt if the user requests to close the window
-            //
             Event::Quit { .. } => return false,
 
-            //
-            // Close if the escape key is hit
-            //
             Event::KeyDown {
                 keycode: Some(keycode),
                 keymod: _modifiers,
                 ..
             } => {
-                //log::trace!("Key Down {:?} {:?}", keycode, modifiers);
+                // Close if the escape key is hit
                 if keycode == Keycode::Escape {
                     return false;
                 }
 
+                // Dump memory stats
                 if keycode == Keycode::D {
                     let stats = device_context.allocator().calculate_stats().unwrap();
                     println!("{:#?}", stats);
                 }
 
+                // Show resource usage metrics
                 if keycode == Keycode::M {
                     let metrics = resource_manager.metrics();
                     println!("{:#?}", metrics);
@@ -194,7 +232,7 @@ fn render_frame(
     device_context: &VkDeviceContext,
     resource_manager: &mut ResourceManager,
     surface: &mut VkSurface,
-    swapchain_images: &[(ImageKey, ResourceArc<VkImageRaw>)],
+    swapchain_images: &[ResourceArc<ImageResource>],
     frame_in_flight: FrameInFlight,
 ) -> VkResult<()> {
     // Gather info for the frame to use
@@ -211,7 +249,7 @@ fn render_frame(
     // alive. "Recreating" an image view of the same image with the same parameters in this case
     // will just fetch the same view we created previously (unless the swapchain changes!)
     let swapchain_image_view = resource_manager.resources_mut().get_or_create_image_view(
-        swapchain_images[frame_in_flight.present_index() as usize].0,
+        &swapchain_images[frame_in_flight.present_index() as usize],
         &dsc::ImageViewMeta::default_2d_no_mips_or_layers(
             swapchain_surface_info.surface_format.format.into(),
             dsc::ImageAspectFlag::Color.into(),
@@ -220,8 +258,7 @@ fn render_frame(
 
     // Graph callbacks take a user-defined T, allowing you to pass extra state through to the
     // callback.
-    struct RenderGraphExecuteContext {
-    }
+    struct RenderGraphExecuteContext {}
 
     // Create an empty graph and callback set. These are later fed to an "executor" object which
     // will iterate across the graph, start renderpasses, and dispatch callbacks.
@@ -252,6 +289,7 @@ fn render_frame(
             },
         );
 
+        // Set up a callback for when we dispatch the opaque pass. This will happen during execute_graph()
         graph_callbacks.set_renderpass_callback(node.id(), |command_buffer, context| {
             //TODO: Draw triangle into command buffer
             Ok(())
@@ -291,6 +329,7 @@ fn render_frame(
     )?;
 
     // Dispatch the graph, producing command buffers that represent work to queue into the GPU
+    // NOTE: This point onward could be performed asynchronously to the next frame.
     let write_context = RenderGraphExecuteContext {};
     let command_buffers = executor.execute_graph(
         &resource_manager.create_dyn_command_writer_allocator(),

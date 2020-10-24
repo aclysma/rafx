@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use serde::export::Formatter;
-use crate::{ResourceArc, ImageViewResource, ImageKey};
+use crate::{ResourceArc, ImageViewResource, ImageKey, ImageResource};
 use renderer_shell_vulkan::VkImageRaw;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
@@ -46,7 +46,5 @@ impl std::fmt::Debug for ImageAssetData {
 #[derive(TypeUuid, Clone)]
 #[uuid = "7a67b850-17f9-4877-8a6e-293a1589bbd8"]
 pub struct ImageAsset {
-    pub image_key: ImageKey,
-    pub image: ResourceArc<VkImageRaw>,
     pub image_view: ResourceArc<ImageViewResource>,
 }

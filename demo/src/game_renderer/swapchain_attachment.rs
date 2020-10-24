@@ -113,8 +113,8 @@ impl RenderpassAttachmentImage {
             msaa_level,
         )?;
 
-        let (image_key, image) = resources.insert_image(image);
-        resources.get_or_create_image_view(image_key, &image_view_meta)
+        let image = resources.insert_image(image);
+        resources.get_or_create_image_view(&image, &image_view_meta)
     }
 
     //
@@ -122,12 +122,11 @@ impl RenderpassAttachmentImage {
     // be MSAA
     //
     pub fn target_image(&self) -> vk::Image {
-        self.msaa_image
-            .as_ref()
-            .unwrap_or(&self.resolved_image)
+        self.target_resource()
             .get_raw()
             .image
             .get_raw()
+            .image
             .image
     }
 
@@ -149,7 +148,7 @@ impl RenderpassAttachmentImage {
     // start
     //
     pub fn resolved_image(&self) -> vk::Image {
-        self.resolved_image.get_raw().image.get_raw().image
+        self.resolved_image.get_raw().image.get_raw().image.image
     }
 
     pub fn resolved_image_view(&self) -> vk::ImageView {

@@ -135,7 +135,7 @@ fn run(
 
     let mut framebuffers = Vec::with_capacity(surface.swapchain().swapchain_images.len());
     for &image in &surface.swapchain().swapchain_images {
-        let (image_key, image) = resource_manager
+        let image = resource_manager
             .resources_mut()
             .insert_raw_image(VkImageRaw {
                 image,
@@ -143,7 +143,7 @@ fn run(
             });
 
         let image_view = resource_manager.resources_mut().get_or_create_image_view(
-            image_key,
+            &image,
             &dsc::ImageViewMeta::default_2d_no_mips_or_layers(
                 swapchain_surface_info.surface_format.format.into(),
                 dsc::ImageAspectFlag::Color.into(),

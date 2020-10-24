@@ -159,14 +159,14 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .unwrap();
         let sprite_render_node = sprite_nodes.sprites.get_raw(render_node_handle).unwrap();
 
-        let image_info = extract_context
+        let image_asset = extract_context
             .resource_manager
-            .get_image_info(&sprite_render_node.image);
-        if image_info.is_none() {
+            .get_image_asset(&sprite_render_node.image);
+        if image_asset.is_none() {
             self.extracted_frame_node_sprite_data.push(None);
             return;
         }
-        let image_info = image_info.unwrap();
+        let image_asset = image_asset.unwrap();
 
         let descriptor_set_info =
             extract_context
@@ -177,7 +177,7 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .create_dyn_descriptor_set_uninitialized(&descriptor_set_info.descriptor_set_layout)
             .unwrap();
 
-        sprite_texture_descriptor.set_image(0, image_info.image_view);
+        sprite_texture_descriptor.set_image(0, image_asset.image_view.clone());
         sprite_texture_descriptor
             .flush(&mut self.descriptor_set_allocator)
             .unwrap();
