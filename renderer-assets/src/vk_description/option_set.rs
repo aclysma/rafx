@@ -20,9 +20,11 @@ macro_rules! option_set {
         bitflags! {
             $(#[$outer])*
             #[derive(Default)]
+            #[allow(non_upper_case_globals)]
             pub struct $name: $repr {
                 $(
                     $(#[$inner $($args)*])*
+                    #[allow(non_upper_case_globals)]
                     const $variant = $value;
                 )*
             }
@@ -51,9 +53,11 @@ macro_rules! option_set {
         bitflags! {
             $(#[$outer])*
             #[derive(Default)]
+            #[allow(non_upper_case_globals)]
             struct $name: $repr {
                 $(
                     $(#[$inner $($args)*])*
+                    #[allow(non_upper_case_globals)]
                     const $variant = $value;
                 )*
             }

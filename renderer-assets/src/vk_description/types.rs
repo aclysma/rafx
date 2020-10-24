@@ -881,23 +881,23 @@ impl Default for ImageLayout {
 
 crate::option_set! {
     pub struct PipelineStageFlags : u32 {
-        const TopOfPipe = 0b1;
-        const DrawIndirect = 0b10;
-        const VertexInput = 0b100;
-        const VertexShader = 0b1000;
-        const TesselationControlShader = 0b1_0000;
-        const TesselationEvaluationShader = 0b10_0000;
-        const GeometryShader = 0b100_0000;
-        const FragmentShader = 0b1000_0000;
-        const EarlyFragmentTests = 0b1_0000_0000;
-        const LateFragmentTests = 0b10_0000_0000;
-        const ColorAttachmentOutput = 0b100_0000_0000;
-        const ComputeShader = 0b1000_0000_0000;
-        const Transfer = 0b1_0000_0000_0000;
-        const BottomOfPipe = 0b10_0000_0000_0000;
-        const Host = 0b100_0000_0000_0000;
-        const AllGraphics = 0b1000_0000_0000_0000;
-        const AllCommands = 0b1_0000_0000_0000_0000;
+        const TOP_OF_PIPE = vk::PipelineStageFlags::TOP_OF_PIPE.as_raw();
+        const DRAW_INDIRECT = vk::PipelineStageFlags::DRAW_INDIRECT.as_raw();
+        const VERTEX_INPUT = vk::PipelineStageFlags::VERTEX_INPUT.as_raw();
+        const VERTEX_SHADER = vk::PipelineStageFlags::VERTEX_SHADER.as_raw();
+        const TESSELLATION_CONTROL_SHADER = vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER.as_raw();
+        const TESSELLATION_EVALUATION_SHADER = vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER.as_raw();
+        const GEOMETRY_SHADER = vk::PipelineStageFlags::GEOMETRY_SHADER.as_raw();
+        const FRAGMENT_SHADER = vk::PipelineStageFlags::FRAGMENT_SHADER.as_raw();
+        const EARLY_FRAGMENT_TESTS = vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS.as_raw();
+        const LATE_FRAGMENT_TESTS = vk::PipelineStageFlags::LATE_FRAGMENT_TESTS.as_raw();
+        const COLOR_ATTACHMENT_OUTPUT = vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT.as_raw();
+        const COMPUTE_SHADER = vk::PipelineStageFlags::COMPUTE_SHADER.as_raw();
+        const TRANSFER = vk::PipelineStageFlags::TRANSFER.as_raw();
+        const BOTTOM_OF_PIPE = vk::PipelineStageFlags::BOTTOM_OF_PIPE.as_raw();
+        const HOST = vk::PipelineStageFlags::HOST.as_raw();
+        const ALL_GRAPHICS = vk::PipelineStageFlags::ALL_GRAPHICS.as_raw();
+        const ALL_COMMANDS = vk::PipelineStageFlags::ALL_COMMANDS.as_raw();
     }
 }
 

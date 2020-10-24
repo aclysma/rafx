@@ -1,9 +1,8 @@
 use renderer_shell_vulkan::{
-    LogicalSize, VkDevice, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window,
+    VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window,
     VkImageRaw,
 };
 use renderer_assets::ResourceManager;
-use renderer_nodes::RenderRegistryBuilder;
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -11,7 +10,7 @@ use ash::prelude::VkResult;
 use sdl2::EventPump;
 use log::LevelFilter;
 use renderer::assets::vk_description as dsc;
-use renderer_assets::vk_description::{SwapchainSurfaceInfo, SubpassDescription, FramebufferMeta};
+use renderer_assets::vk_description::{SwapchainSurfaceInfo, FramebufferMeta};
 use ash::vk;
 use ash::version::DeviceV1_0;
 
@@ -66,10 +65,10 @@ fn main() {
 }
 
 fn run(
-    window: &Window,
+    window: &dyn Window,
     event_pump: &mut EventPump,
 ) -> VkResult<()> {
-    let mut context = VkContextBuilder::new()
+    let context = VkContextBuilder::new()
         .use_vulkan_debug_layer(true)
         .msaa_level_priority(vec![MsaaLevel::Sample1])
         .prefer_mailbox_present_mode();
@@ -118,8 +117,8 @@ fn run(
         dependencies: vec![dsc::SubpassDependency {
             src_subpass: dsc::SubpassDependencyIndex::External,
             dst_subpass: dsc::SubpassDependencyIndex::Index(0),
-            src_stage_mask: dsc::PipelineStageFlags::TopOfPipe,
-            dst_stage_mask: dsc::PipelineStageFlags::ColorAttachmentOutput,
+            src_stage_mask: dsc::PipelineStageFlags::TOP_OF_PIPE,
+            dst_stage_mask: dsc::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
             src_access_mask: vec![],
             dst_access_mask: vec![
                 dsc::AccessFlags::ColorAttachmentRead,

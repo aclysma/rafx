@@ -1,9 +1,8 @@
 use renderer_shell_vulkan::{
-    LogicalSize, VkDevice, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window,
+    VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window,
     VkImageRaw,
 };
-use renderer_assets::{ResourceManager, ImageKey, ImageResource};
-use renderer_nodes::RenderRegistryBuilder;
+use renderer_assets::{ResourceManager, ImageResource};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -11,11 +10,10 @@ use ash::prelude::VkResult;
 use sdl2::EventPump;
 use log::LevelFilter;
 use renderer::assets::{vk_description as dsc, ResourceArc};
-use renderer_assets::vk_description::{SwapchainSurfaceInfo, SubpassDescription, FramebufferMeta};
+use renderer_assets::vk_description::SwapchainSurfaceInfo;
 use ash::vk;
-use ash::version::DeviceV1_0;
 use renderer::assets::graph::{
-    RenderGraph, RenderGraphNodeCallbacks, RenderGraphNodeId, RenderGraphImageUsageId,
+    RenderGraph, RenderGraphNodeCallbacks, RenderGraphImageUsageId,
     RenderGraphImageConstraint, RenderGraphImageSpecification, RenderGraphExecutor,
 };
 use renderer::vulkan::FrameInFlight;
@@ -78,14 +76,14 @@ fn main() {
 }
 
 fn run(
-    window: &Window,
+    window: &dyn Window,
     event_pump: &mut EventPump,
 ) -> VkResult<()> {
     // This is used for the material system which is not part of this sample.
     let render_registry = renderer::nodes::RenderRegistryBuilder::default().build();
 
     // Some basic configuration for creating the context
-    let mut context = VkContextBuilder::new()
+    let context = VkContextBuilder::new()
         .use_vulkan_debug_layer(true)
         .msaa_level_priority(vec![MsaaLevel::Sample1])
         .prefer_mailbox_present_mode();
@@ -168,7 +166,7 @@ fn run(
 // ResourceArcs. While ResourceArcs are reference counted, the swapchain images still belong to the
 // swapchain.
 fn register_swapchain_images(
-    mut resource_manager: &mut ResourceManager,
+    resource_manager: &mut ResourceManager,
     surface: &mut VkSurface,
 ) -> Vec<ResourceArc<ImageResource>> {
     surface
@@ -270,12 +268,10 @@ fn render_frame(
     // causes it to render to screen.
     let opaque_pass = {
         struct Opaque {
-            node_id: RenderGraphNodeId,
             color: RenderGraphImageUsageId,
         }
 
         let mut node = graph.add_node();
-        let node_id = node.id();
         node.set_name("Opaque");
         let color = node.create_color_attachment(
             0,
@@ -290,14 +286,14 @@ fn render_frame(
         );
 
         // Set up a callback for when we dispatch the opaque pass. This will happen during execute_graph()
-        graph_callbacks.set_renderpass_callback(node.id(), |command_buffer, context| {
+        graph_callbacks.set_renderpass_callback(node.id(), |_command_buffer, _context| {
             //TODO: Draw triangle into command buffer
             Ok(())
         });
 
         graph.configure_image(color).set_name("color");
 
-        Opaque { node_id, color }
+        Opaque { color }
     };
 
     // Associate the color attachment output data with the swapchain image for this frame
@@ -320,7 +316,7 @@ fn render_frame(
 
     // Create the executor, it needs to have access to the resource manager to add framebuffers
     // and renderpasses to the resource lookups
-    let mut executor = RenderGraphExecutor::new(
+    let executor = RenderGraphExecutor::new(
         &device_context,
         graph,
         resource_manager,
