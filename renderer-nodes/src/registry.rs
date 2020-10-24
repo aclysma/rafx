@@ -112,7 +112,7 @@ impl RenderRegistry {
         &self,
         name: &str,
     ) -> Option<RenderPhaseIndex> {
-        self.inner.phase_name_to_index.get(name).map(|x| *x)
+        self.inner.phase_name_to_index.get(name).copied()
     }
 
     pub fn sort_submit_nodes(

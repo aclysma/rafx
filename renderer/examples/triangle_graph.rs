@@ -1,6 +1,5 @@
 use renderer_shell_vulkan::{
-    VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window,
-    VkImageRaw,
+    VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window, VkImageRaw,
 };
 use renderer_assets::{ResourceManager, ImageResource};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
@@ -13,8 +12,8 @@ use renderer::assets::{vk_description as dsc, ResourceArc};
 use renderer_assets::vk_description::SwapchainSurfaceInfo;
 use ash::vk;
 use renderer::assets::graph::{
-    RenderGraph, RenderGraphNodeCallbacks, RenderGraphImageUsageId,
-    RenderGraphImageConstraint, RenderGraphImageSpecification, RenderGraphExecutor,
+    RenderGraph, RenderGraphNodeCallbacks, RenderGraphImageUsageId, RenderGraphImageConstraint,
+    RenderGraphImageSpecification, RenderGraphExecutor,
 };
 use renderer::vulkan::FrameInFlight;
 

@@ -177,7 +177,7 @@ pub struct RenderGraphPassAttachment {
 }
 
 impl RenderGraphPassAttachment {
-    fn into_pass_desc(&self) -> dsc::AttachmentDescription {
+    fn create_attachment_description(&self) -> dsc::AttachmentDescription {
         dsc::AttachmentDescription {
             flags: dsc::AttachmentDescriptionFlags::None,
             format: dsc::AttachmentFormat::Format(self.format.into()),
@@ -1515,9 +1515,7 @@ impl RenderGraph {
                     resolve_attachment_index,
                     resolve_spec.clone().into(),
                 );
-                image_constraint_results
-                    .images
-                    .insert(image, resolve_spec.into());
+                image_constraint_results.images.insert(image, resolve_spec);
 
                 for usage in usages_to_move {
                     let from = self.image_usages[usage.0].version;
@@ -1611,7 +1609,7 @@ impl RenderGraph {
                 );
 
                 // Assign the image
-                let physical_image = map_image_to_physical.get(&modify.input).unwrap().clone();
+                let physical_image = *map_image_to_physical.get(&modify.input).unwrap();
                 log::info!(
                     "    Modify {:?} will pass through image {:?}",
                     modify.output,
@@ -2515,7 +2513,7 @@ impl RenderGraph {
             for attachment in &pass.attachments {
                 renderpass_desc
                     .attachments
-                    .push(attachment.into_pass_desc());
+                    .push(attachment.create_attachment_description());
             }
 
             renderpass_desc.attachments.reserve(pass.subpasses.len());

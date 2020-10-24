@@ -110,7 +110,7 @@ impl RenderFrameJob {
         let write_context_factory =
             RenderJobWriteContextFactory::new(device_context, prepare_context.dyn_resource_lookups);
 
-        let mut graph_context = RenderGraphExecuteContext {
+        let graph_context = RenderGraphExecuteContext {
             prepared_render_data,
             view: main_view,
             write_context_factory,
@@ -118,7 +118,7 @@ impl RenderFrameJob {
         };
 
         let command_buffers =
-            render_graph.execute_graph(&dyn_command_writer_allocator, &mut graph_context)?;
+            render_graph.execute_graph(&dyn_command_writer_allocator, &graph_context)?;
 
         // let prepared_render_data = graph_context.prepared_render_data;
         // let main_view = graph_context.view;

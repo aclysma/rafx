@@ -8,7 +8,7 @@ use fnv::FnvHashMap;
 use std::collections::BTreeMap;
 
 /// Info we hash across to identify equivalent command pools, allowing us to share them
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandPoolMeta {
     queue_family_index: u32,
     command_pool_create_flags: vk::CommandPoolCreateFlags,
@@ -214,7 +214,7 @@ impl Drop for DynCommandWriter {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct PendingCommandPoolMeta {
     submits_in_frame_index: u64,
     command_pool_meta: CommandPoolMeta,
@@ -371,7 +371,7 @@ impl DynCommandWriterAllocator {
         let mut pending_writer_keys: Vec<_> = Default::default();
         for key in guard.pending_writers.keys() {
             if key.submits_in_frame_index == guard.current_frame_index {
-                pending_writer_keys.push(*key);
+                pending_writer_keys.push(key.clone());
             }
         }
 
@@ -415,7 +415,7 @@ impl DynCommandWriterAllocator {
                     submitted_writer.writer_id,
                 );
 
-                let meta = submitted_writer.pool.command_pool_meta;
+                let meta = submitted_writer.pool.command_pool_meta.clone();
                 submitted_writer.pool.reset_command_pool()?;
                 guard
                     .unused_writers

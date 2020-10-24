@@ -1100,7 +1100,7 @@ impl AccessFlags {
         flags
     }
 
-    fn to_access_flag_mask(flags: &[AccessFlags]) -> vk::AccessFlags {
+    fn create_vk_access_flag_mask_from_list(flags: &[AccessFlags]) -> vk::AccessFlags {
         let mut flag_mask = vk::AccessFlags::empty();
         for flag in flags {
             flag_mask |= (*flag).into();
@@ -1907,10 +1907,10 @@ impl SubpassDependency {
             .dst_subpass(self.dst_subpass.into())
             .src_stage_mask(vk::PipelineStageFlags::from_raw(self.src_stage_mask.bits()))
             .dst_stage_mask(vk::PipelineStageFlags::from_raw(self.dst_stage_mask.bits()))
-            .src_access_mask(AccessFlags::to_access_flag_mask(
+            .src_access_mask(AccessFlags::create_vk_access_flag_mask_from_list(
                 self.src_access_mask.as_slice(),
             ))
-            .dst_access_mask(AccessFlags::to_access_flag_mask(
+            .dst_access_mask(AccessFlags::create_vk_access_flag_mask_from_list(
                 self.dst_access_mask.as_slice(),
             ))
             .dependency_flags(self.dependency_flags.into())

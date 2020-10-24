@@ -99,7 +99,7 @@ impl RenderpassAttachmentImage {
         image_usage: vk::ImageUsageFlags,
         msaa_level: MsaaLevel,
     ) -> VkResult<ResourceArc<ImageViewResource>> {
-        let image_view_meta = Self::create_view_meta(format.into(), image_aspect_flags);
+        let image_view_meta = Self::create_view_meta(format, image_aspect_flags);
 
         let image = Self::create_image(
             device_context,

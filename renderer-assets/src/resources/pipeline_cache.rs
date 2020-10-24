@@ -45,11 +45,10 @@ impl GraphicsPipelineCache {
         const DEFAULT_FRAMES_TO_PERSIST: u64 = 1;
 
         let mut renderpass_assignments = Vec::with_capacity(MAX_RENDER_PHASE_COUNT as usize);
-        renderpass_assignments.resize_with(MAX_RENDER_PHASE_COUNT as usize, || Default::default());
+        renderpass_assignments.resize_with(MAX_RENDER_PHASE_COUNT as usize, Default::default);
 
         let mut material_pass_assignments = Vec::with_capacity(MAX_RENDER_PHASE_COUNT as usize);
-        material_pass_assignments
-            .resize_with(MAX_RENDER_PHASE_COUNT as usize, || Default::default());
+        material_pass_assignments.resize_with(MAX_RENDER_PHASE_COUNT as usize, Default::default);
 
         GraphicsPipelineCache {
             render_registry: render_registry.clone(),

@@ -192,7 +192,7 @@ where
 
         match iter.find(|&(_, name)| **name == *elem) {
             Some((&flag, _)) => flags |= flag,
-            None => Err(A::Error::unknown_variant(&elem, T::NAMES))?,
+            None => return Err(A::Error::unknown_variant(&elem, T::NAMES)),
         }
 
         count += 1;

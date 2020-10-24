@@ -1,6 +1,5 @@
 use renderer_shell_vulkan::{
-    VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window,
-    VkImageRaw,
+    VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window, VkImageRaw,
 };
 use renderer_assets::ResourceManager;
 use renderer_shell_vulkan_sdl2::Sdl2Window;

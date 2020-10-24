@@ -802,7 +802,7 @@ impl ResourceLookupSet {
         let material_pass_key = MaterialPassKey {
             shader_module_metas,
             shader_module_keys,
-            pipeline_layout: pipeline_layout.get_raw().pipeline_layout_def.clone(),
+            pipeline_layout: pipeline_layout.get_raw().pipeline_layout_def,
             fixed_function_state,
         };
 
@@ -837,8 +837,8 @@ impl ResourceLookupSet {
         renderpass: &ResourceArc<RenderPassResource>,
     ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
         let pipeline_key = GraphicsPipelineKey {
-            material_pass_key: material_pass.get_raw().material_pass_key.clone(),
-            renderpass_key: renderpass.get_raw().renderpass_key.clone(),
+            material_pass_key: material_pass.get_raw().material_pass_key,
+            renderpass_key: renderpass.get_raw().renderpass_key,
         };
 
         let hash = ResourceHash::from_key(&pipeline_key);
@@ -867,7 +867,7 @@ impl ResourceLookupSet {
 
             let resource = GraphicsPipelineResource {
                 pipelines,
-                pipeline_layout: material_pass.get_raw().pipeline_layout.clone(),
+                pipeline_layout: material_pass.get_raw().pipeline_layout,
                 renderpass: renderpass.clone(),
             };
 
