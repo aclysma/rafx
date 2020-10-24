@@ -63,8 +63,8 @@ fn main() {
     //
     let render_registry = RenderRegistryBuilder::default()
         .register_feature::<DemoRenderFeature>()
-        .register_render_phase::<DemoOpaqueRenderPhase>()
-        .register_render_phase::<DemoTransparentRenderPhase>()
+        .register_render_phase::<DemoOpaqueRenderPhase>("Opaque")
+        .register_render_phase::<DemoTransparentRenderPhase>("Transparent")
         .build();
 
     //

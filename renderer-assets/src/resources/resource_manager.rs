@@ -112,6 +112,10 @@ impl ResourceManager {
         &mut self.graphics_pipeline_cache
     }
 
+    pub fn dyn_command_writer_allocator(&self) -> &DynCommandWriterAllocator {
+        &self.dyn_commands
+    }
+
     pub fn cache_all_graphics_pipelines(&mut self) -> VkResult<()> {
         self.graphics_pipeline_cache
             .cache_all_pipelines(&mut self.resources)

@@ -210,6 +210,10 @@ impl VkSurface {
         })
     }
 
+    pub fn swapchain(&self) -> &VkSwapchain {
+        &self.swapchain
+    }
+
     pub fn tear_down(
         &mut self,
         event_listener: Option<&mut dyn VkSurfaceSwapchainLifetimeListener>,
@@ -298,7 +302,7 @@ impl VkSurface {
     pub fn rebuild_swapchain(
         &mut self,
         window: &dyn Window,
-        event_listener: &mut Option<&mut dyn VkSurfaceSwapchainLifetimeListener>,
+        mut event_listener: Option<&mut dyn VkSurfaceSwapchainLifetimeListener>,
     ) -> VkResult<()> {
         // If a frame_in_flight from a previous acquire_next_swapchain_image() call is still
         // outstanding, wait for it to finish. It is referencing resources that we are about to
@@ -311,7 +315,7 @@ impl VkSurface {
         // Let event listeners know the swapchain will be destroyed
         unsafe {
             self.device_context.device().device_wait_idle()?;
-            if let Some(event_listener) = event_listener {
+            if let Some(event_listener) = event_listener.as_mut() {
                 event_listener.swapchain_destroyed(&self.device_context, &self.swapchain);
             }
         }

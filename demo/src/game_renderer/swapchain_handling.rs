@@ -56,7 +56,7 @@ impl<'a> SwapchainLifetimeListener<'a> {
             game_renderer,
         };
 
-        surface.rebuild_swapchain(window, &mut Some(&mut lifetime_listener))
+        surface.rebuild_swapchain(window, Some(&mut lifetime_listener))
     }
 
     pub fn tear_down(resources: &Resources) {
