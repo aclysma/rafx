@@ -1,6 +1,4 @@
-use super::{
-    PhysicalImageId, RenderGraphOutputImageId, RenderGraphImageSpecification, RenderGraphOutputPass,
-};
+use super::{PhysicalImageId};
 use fnv::{FnvHashMap, FnvHashSet};
 use renderer_shell_vulkan::{VkDeviceContext, VkImage};
 use ash::vk;
@@ -14,28 +12,9 @@ use crate::resources::RenderPassResource;
 use crate::resources::FramebufferResource;
 use crate::graph::graph_node::RenderGraphNodeId;
 use ash::version::DeviceV1_0;
-use crate::graph::{RenderGraph, RenderGraphImageUsageId};
+use crate::graph::{RenderGraphBuilder, RenderGraphImageUsageId};
 use renderer_nodes::{RenderPhase, RenderPhaseIndex};
-
-//TODO: A caching system that keeps resources alive across a few frames so that we can reuse
-// images, framebuffers, and renderpasses
-
-#[derive(Debug)]
-pub struct RenderGraphPlanOutputImage {
-    pub output_id: RenderGraphOutputImageId,
-    pub dst_image: ResourceArc<ImageViewResource>,
-}
-
-/// The final output of a render graph, which will be consumed by PreparedRenderGraph. This just
-/// includes the computed metadata and does not allocate resources.
-#[derive(Debug)]
-pub struct RenderGraphPlan {
-    pub passes: Vec<RenderGraphOutputPass>,
-    pub output_images: FnvHashMap<PhysicalImageId, RenderGraphPlanOutputImage>,
-    pub intermediate_images: FnvHashMap<PhysicalImageId, RenderGraphImageSpecification>,
-    pub node_to_renderpass_index: FnvHashMap<RenderGraphNodeId, usize>,
-    pub image_usage_to_physical: FnvHashMap<RenderGraphImageUsageId, PhysicalImageId>,
-}
+use crate::graph::graph_plan::RenderGraphPlan;
 
 /// Encapsulates a render graph plan and all resources required to execute it
 pub struct PreparedRenderGraph {
@@ -51,10 +30,10 @@ impl PreparedRenderGraph {
     pub fn new(
         device_context: &VkDeviceContext,
         resources: &mut ResourceLookupSet,
-        graph: RenderGraph,
+        graph: RenderGraphBuilder,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<Self> {
-        let graph_plan = graph.into_plan(swapchain_surface_info);
+        let graph_plan = graph.build_plan(swapchain_surface_info);
 
         let image_resources = Self::allocate_images(
             device_context,
@@ -347,7 +326,7 @@ impl<T> RenderGraphExecutor<T> {
     /// callbacks that will be triggered while executing it to be passed around and executed later.
     pub fn new(
         device_context: &VkDeviceContext,
-        graph: RenderGraph,
+        graph: RenderGraphBuilder,
         resource_manager: &mut ResourceManager,
         swapchain_surface_info: &SwapchainSurfaceInfo,
         callbacks: RenderGraphNodeCallbacks<T>,

@@ -1,7 +1,6 @@
 use ash::vk;
 use super::*;
 use crate::vk_description as dsc;
-use crate::resources::{ResourceArc, ImageViewResource};
 
 #[derive(Debug, Copy, Clone)]
 pub struct RenderGraphOutputImageId(pub usize);
@@ -244,104 +243,5 @@ impl RenderGraphImageResource {
             name: None,
             versions: Default::default(),
         }
-    }
-}
-
-//
-// A helper for configuring an image. This helper allows us to have a borrow against the rest of
-// the graph data, allowing us to write data into nodes as well as images
-//
-pub struct RenderGraphImageResourceConfigureContext<'a> {
-    pub(super) graph: &'a mut RenderGraph,
-    pub(super) image_id: RenderGraphImageUsageId,
-}
-
-impl<'a> RenderGraphImageResourceConfigureContext<'a> {
-    pub fn id(&self) -> RenderGraphImageUsageId {
-        self.image_id
-    }
-
-    pub fn set_name(
-        self,
-        name: RenderGraphResourceName,
-    ) {
-        self.graph.image_resource_mut(self.image_id).name = Some(name);
-    }
-
-    /*
-        // Ties an image to the intial state of an image resource. The graph may use the image directly
-        // to execute some nodes. In other words, the graph will take ownership of the image and leave
-        // it in an undefined state.
-        pub fn set_input_image(
-            &mut self,
-            src_image: (), /*ResourceArc<ImageViewResource>*/
-            state: RenderGraphImageSpecification,
-        ) -> &mut Self {
-            let image_version = self.graph.image_version_info_by_usage(self.image_id);
-            let usage = image_version.usages.len();
-
-            let version_id = RenderGraphImageVersionId {
-                index: self.image_id.index,
-                version: self.image_id.version
-            };
-            let usage_id = self.graph.add_usage(version_id, RenderGraphImageUsageType::Input, usage);
-
-            let mut image_version = self.graph.image_version_info_by_usage_mut(self.image_id);
-            image_version
-                .usages
-                .push(RenderGraphImageResourceUsage::new(
-                    RenderGraphImageUsageType::Input,
-                    usage_id
-                ));
-
-            image_version.input_image = Some(src_image);
-            image_version.input_specification = Some(state);
-
-            self.graph.input_images.push(usage_id);
-            self
-        }
-    */
-
-    // Ties an image to the final state of an image resource. After the graph executes, the result
-    // will be placed into this image. The graph may use the image directly to execute some nodes.
-    // In other words, the graph will take ownership of the image and leave it in whatever state
-    // the bound resource would have been left in.
-    pub fn set_output_image(
-        &mut self,
-        dst_image: ResourceArc<ImageViewResource>,
-        state: RenderGraphImageSpecification,
-        layout: dsc::ImageLayout,
-        access_flags: vk::AccessFlags,
-        stage_flags: vk::PipelineStageFlags,
-        image_aspect_flags: vk::ImageAspectFlags,
-    ) -> RenderGraphOutputImageId {
-        let output_image_id = RenderGraphOutputImageId(self.graph.output_images.len());
-
-        let version_id = self.graph.image_version_id(self.image_id);
-        let usage_id = self.graph.add_image_usage(
-            RenderGraphImageUser::Output(output_image_id),
-            version_id,
-            RenderGraphImageUsageType::Output,
-            layout,
-            access_flags,
-            stage_flags,
-            image_aspect_flags,
-        );
-
-        let image_version = self.graph.image_version_info_mut(self.image_id);
-        image_version.read_usages.push(usage_id);
-
-        let output_image = RenderGraphOutputImage {
-            output_image_id,
-            usage: usage_id,
-            specification: state,
-            dst_image,
-            final_layout: layout,
-            final_access_flags: access_flags,
-            final_stage_flags: stage_flags,
-        };
-
-        self.graph.output_images.push(output_image);
-        output_image_id
     }
 }

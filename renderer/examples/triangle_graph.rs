@@ -12,8 +12,8 @@ use renderer::assets::{vk_description as dsc, ResourceArc};
 use renderer_assets::vk_description::SwapchainSurfaceInfo;
 use ash::vk;
 use renderer::assets::graph::{
-    RenderGraph, RenderGraphNodeCallbacks, RenderGraphImageUsageId, RenderGraphImageConstraint,
-    RenderGraphImageSpecification, RenderGraphExecutor,
+    RenderGraphBuilder, RenderGraphNodeCallbacks, RenderGraphImageUsageId,
+    RenderGraphImageConstraint, RenderGraphImageSpecification, RenderGraphExecutor,
 };
 use renderer::vulkan::FrameInFlight;
 
@@ -259,7 +259,7 @@ fn render_frame(
 
     // Create an empty graph and callback set. These are later fed to an "executor" object which
     // will iterate across the graph, start renderpasses, and dispatch callbacks.
-    let mut graph = RenderGraph::default();
+    let mut graph = RenderGraphBuilder::default();
     let mut graph_callbacks = RenderGraphNodeCallbacks::<RenderGraphExecuteContext>::default();
 
     // Create a basic cleared screen. The node IDs and image IDs returned here can be used later. In
@@ -270,9 +270,9 @@ fn render_frame(
             color: RenderGraphImageUsageId,
         }
 
-        let mut node = graph.add_node();
-        node.set_name("Opaque");
-        let color = node.create_color_attachment(
+        let node = graph.add_node("Opaque");
+        let color = graph.create_color_attachment(
+            node,
             0,
             Some(vk::ClearColorValue {
                 float32: [0.0, 0.0, 0.0, 0.0],
@@ -283,20 +283,20 @@ fn render_frame(
                 ..Default::default()
             },
         );
+        graph.set_image_name(color, "color");
 
         // Set up a callback for when we dispatch the opaque pass. This will happen during execute_graph()
-        graph_callbacks.set_renderpass_callback(node.id(), |_command_buffer, _context| {
+        graph_callbacks.set_renderpass_callback(node, |_command_buffer, _context| {
             //TODO: Draw triangle into command buffer
             Ok(())
         });
-
-        graph.configure_image(color).set_name("color");
 
         Opaque { color }
     };
 
     // Associate the color attachment output data with the swapchain image for this frame
-    graph.configure_image(opaque_pass.color).set_output_image(
+    graph.set_output_image(
+        opaque_pass.color,
         swapchain_image_view,
         RenderGraphImageSpecification {
             samples: swapchain_surface_info.msaa_level.into(),

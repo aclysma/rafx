@@ -119,7 +119,7 @@ impl std::fmt::Debug for RenderGraphPassResolveAttachmentInfo {
 //
 pub struct RenderGraphNode {
     id: RenderGraphNodeId,
-    name: Option<RenderGraphNodeName>,
+    pub(super) name: Option<RenderGraphNodeName>,
 
     // This stores creates/reads/modifies for all images.. more detailed information about them
     // may be included in other lists (like color_attachments)
@@ -153,10 +153,13 @@ impl std::fmt::Debug for RenderGraphNode {
 
 impl RenderGraphNode {
     // Create a render node with the given ID.
-    pub(super) fn new(id: RenderGraphNodeId) -> Self {
+    pub(super) fn new(
+        id: RenderGraphNodeId,
+        name: Option<RenderGraphNodeName>,
+    ) -> Self {
         RenderGraphNode {
             id,
-            name: None,
+            name,
             image_creates: Default::default(),
             image_reads: Default::default(),
             image_modifies: Default::default(),
@@ -173,90 +176,4 @@ impl RenderGraphNode {
     pub fn name(&self) -> Option<RenderGraphNodeName> {
         self.name
     }
-}
-
-//
-// A helper for configuring a node. This helper allows us to have a borrow against the rest of
-// the graph data, allowing us to write data into resources as well as nodes
-//
-pub struct RenderGraphNodeConfigureContext<'a> {
-    pub(super) graph: &'a mut RenderGraph,
-    pub(super) node_id: RenderGraphNodeId,
-}
-
-impl<'a> RenderGraphNodeConfigureContext<'a> {
-    pub fn id(&self) -> RenderGraphNodeId {
-        self.node_id
-    }
-
-    pub fn set_name(
-        &mut self,
-        name: RenderGraphNodeName,
-    ) {
-        self.graph.node_mut(self.node_id).name = Some(name);
-    }
-
-    pub fn create_color_attachment(
-        &mut self,
-        color_attachment_index: usize,
-        clear_color_value: Option<vk::ClearColorValue>,
-        constraint: RenderGraphImageConstraint,
-    ) -> RenderGraphImageUsageId {
-        self.graph.create_color_attachment(
-            self.node_id,
-            color_attachment_index,
-            clear_color_value,
-            constraint,
-        )
-    }
-
-    pub fn create_depth_attachment(
-        &mut self,
-        clear_depth_stencil_value: Option<vk::ClearDepthStencilValue>,
-        constraint: RenderGraphImageConstraint,
-    ) -> RenderGraphImageUsageId {
-        self.graph
-            .create_depth_attachment(self.node_id, clear_depth_stencil_value, constraint)
-    }
-
-    pub fn read_color_attachment(
-        &mut self,
-        image: RenderGraphImageUsageId,
-        color_attachment_index: usize,
-        constraint: RenderGraphImageConstraint,
-    ) {
-        self.graph
-            .read_color_attachment(self.node_id, image, color_attachment_index, constraint)
-    }
-
-    pub fn read_depth_attachment(
-        &mut self,
-        image: RenderGraphImageUsageId,
-        constraint: RenderGraphImageConstraint,
-    ) {
-        self.graph
-            .read_depth_attachment(self.node_id, image, constraint)
-    }
-
-    pub fn modify_color_attachment(
-        &mut self,
-        image: RenderGraphImageUsageId,
-        color_attachment_index: usize,
-        constraint: RenderGraphImageConstraint,
-    ) -> RenderGraphImageUsageId {
-        self.graph
-            .modify_color_attachment(self.node_id, image, color_attachment_index, constraint)
-    }
-
-    pub fn modify_depth_attachment(
-        &mut self,
-        image: RenderGraphImageUsageId,
-        constraint: RenderGraphImageConstraint,
-    ) -> RenderGraphImageUsageId {
-        self.graph
-            .modify_depth_attachment(self.node_id, image, constraint)
-    }
-
-    // sample?
-    // force_no_cull?
 }

@@ -1,6 +1,8 @@
 mod resource_arc;
-use resource_arc::ResourceId;
 pub use resource_arc::ResourceArc;
+#[cfg(test)]
+pub(crate) use resource_arc::ResourceWithHash;
+pub(crate) use resource_arc::ResourceId;
 
 mod resource_lookup;
 pub use resource_lookup::ResourceLookupSet;

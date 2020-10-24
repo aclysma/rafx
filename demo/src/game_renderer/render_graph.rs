@@ -41,20 +41,20 @@ pub fn build_render_graph(
     let samples = swapchain_surface_info.msaa_level.into();
     let queue = 0;
 
-    let mut graph = RenderGraph::default();
+    let mut graph = RenderGraphBuilder::default();
     let mut graph_callbacks = RenderGraphNodeCallbacks::<RenderGraphExecuteContext>::default();
 
     let opaque_pass = {
         struct Opaque {
-            node_id: RenderGraphNodeId,
+            node: RenderGraphNodeId,
             color: RenderGraphImageUsageId,
             depth: RenderGraphImageUsageId,
         }
 
-        let mut node = graph.add_node();
-        let node_id = node.id();
-        node.set_name("Opaque");
-        let color = node.create_color_attachment(
+        let node = graph.add_node("Opaque");
+
+        let color = graph.create_color_attachment(
+            node,
             0,
             Some(vk::ClearColorValue {
                 float32: [0.0, 0.0, 0.0, 0.0],
@@ -65,8 +65,10 @@ pub fn build_render_graph(
                 ..Default::default()
             },
         );
+        graph.set_image_name(color, "color");
 
-        let depth = node.create_depth_attachment(
+        let depth = graph.create_depth_attachment(
+            node,
             Some(vk::ClearDepthStencilValue {
                 depth: 1.0,
                 stencil: 0,
@@ -78,9 +80,10 @@ pub fn build_render_graph(
                 ..Default::default()
             },
         );
+        graph.set_image_name(depth, "depth");
 
-        graph_callbacks.add_renderphase_dependency::<OpaqueRenderPhase>(node.id());
-        graph_callbacks.set_renderpass_callback(node.id(), |command_buffer, context| {
+        graph_callbacks.add_renderphase_dependency::<OpaqueRenderPhase>(node);
+        graph_callbacks.set_renderpass_callback(node, |command_buffer, context| {
             let mut write_context = context.write_context_factory.create_context(command_buffer);
             context
                 .prepared_render_data
@@ -88,27 +91,19 @@ pub fn build_render_graph(
             Ok(())
         });
 
-        graph.configure_image(color).set_name("color");
-        graph.configure_image(depth).set_name("depth");
-
-        Opaque {
-            node_id,
-            color,
-            depth,
-        }
+        Opaque { node, color, depth }
     };
 
     let ui_pass = {
         struct Ui {
-            node_id: RenderGraphNodeId,
+            node: RenderGraphNodeId,
             color: RenderGraphImageUsageId,
         }
 
-        let mut node = graph.add_node();
-        let node_id = node.id();
-        node.set_name("Ui");
+        let node = graph.add_node("Ui");
 
-        let color = node.modify_color_attachment(
+        let color = graph.modify_color_attachment(
+            node,
             opaque_pass.color,
             0,
             RenderGraphImageConstraint {
@@ -117,8 +112,8 @@ pub fn build_render_graph(
             },
         );
 
-        graph_callbacks.add_renderphase_dependency::<UiRenderPhase>(node.id());
-        graph_callbacks.set_renderpass_callback(node.id(), |command_buffer, context| {
+        graph_callbacks.add_renderphase_dependency::<UiRenderPhase>(node);
+        graph_callbacks.set_renderpass_callback(node, |command_buffer, context| {
             let mut write_context = context.write_context_factory.create_context(command_buffer);
             context
                 .prepared_render_data
@@ -126,63 +121,62 @@ pub fn build_render_graph(
             Ok(())
         });
 
-        Ui { node_id, color }
+        Ui { node, color }
     };
 
     let _blur_extract_pass = {
         struct BlurExtractPass {
-            node_id: RenderGraphNodeId,
+            node: RenderGraphNodeId,
             sdr_image: RenderGraphImageUsageId,
             hdr_image: RenderGraphImageUsageId,
         }
 
-        let mut node = graph.add_node();
-        let node_id = node.id();
-        node.set_name("BlurExtract");
+        let node = graph.add_node("BlurExtract");
 
         //node.sample_image(ui_pass.node_id);
-        let sdr_image = node.create_color_attachment(0, Default::default(), Default::default());
-        let hdr_image = node.create_color_attachment(
+        let sdr_image =
+            graph.create_color_attachment(node, 0, Default::default(), Default::default());
+        let hdr_image = graph.create_color_attachment(
+            node,
             1,
             Some(vk::ClearColorValue::default()),
             RenderGraphImageConstraint {
                 samples: Some(vk::SampleCountFlags::TYPE_1),
                 format: Some(color_format),
                 queue: Some(queue),
-                ..Default::default() //aspect_flags: vk::ImageAspectFlags::
-                                     //..Default::default()
+                ..Default::default()
             },
         );
 
-        graph_callbacks.set_renderpass_callback(node.id(), |_command_buffer, _context| {
+        graph_callbacks.set_renderpass_callback(node, |_command_buffer, _context| {
             // bind?
 
             Ok(())
         });
 
         BlurExtractPass {
-            node_id,
+            node,
             sdr_image,
             hdr_image,
         }
     };
 
-    let _swapchain_output_image_id = graph
-        .configure_image(ui_pass.color /*blur_extract_pass.sdr_image*/)
-        .set_output_image(
-            swapchain_image,
-            RenderGraphImageSpecification {
-                samples: vk::SampleCountFlags::TYPE_1,
-                format: swapchain_format,
-                queue,
-                aspect_flags: vk::ImageAspectFlags::COLOR,
-                usage_flags: swapchain_info.image_usage_flags,
-            },
-            dsc::ImageLayout::PresentSrcKhr,
-            vk::AccessFlags::empty(),
-            vk::PipelineStageFlags::empty(),
-            vk::ImageAspectFlags::COLOR,
-        );
+    let _swapchain_output_image_id = graph.set_output_image(
+        ui_pass.color,
+        //blur_extract_pass.sdr_image,
+        swapchain_image,
+        RenderGraphImageSpecification {
+            samples: vk::SampleCountFlags::TYPE_1,
+            format: swapchain_format,
+            queue,
+            aspect_flags: vk::ImageAspectFlags::COLOR,
+            usage_flags: swapchain_info.image_usage_flags,
+        },
+        dsc::ImageLayout::PresentSrcKhr,
+        vk::AccessFlags::empty(),
+        vk::PipelineStageFlags::empty(),
+        vk::ImageAspectFlags::COLOR,
+    );
 
     //
     // Create the executor, it needs to have access to the resource manager to add framebuffers
@@ -196,8 +190,8 @@ pub fn build_render_graph(
         graph_callbacks,
     )?;
 
-    let opaque_renderpass = executor.renderpass_resource(opaque_pass.node_id);
-    let ui_renderpass = executor.renderpass_resource(ui_pass.node_id);
+    let opaque_renderpass = executor.renderpass_resource(opaque_pass.node);
+    let ui_renderpass = executor.renderpass_resource(ui_pass.node);
     Ok(BuildRenderGraphResult {
         executor,
         opaque_renderpass,

@@ -8,13 +8,13 @@ use std::hash::Hash;
 
 // Hijack ResourceHash for now
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub(super) struct ResourceId(pub(super) u64);
+pub(crate) struct ResourceId(pub(crate) u64);
 
 //
 // A reference counted object that sends a signal when it's dropped
 //
 #[derive(Clone)]
-pub(super) struct ResourceWithHash<ResourceT>
+pub(crate) struct ResourceWithHash<ResourceT>
 where
     ResourceT: Clone,
 {
@@ -142,7 +142,7 @@ impl<ResourceT> ResourceArc<ResourceT>
 where
     ResourceT: Clone,
 {
-    pub(super) fn new(
+    pub(crate) fn new(
         resource: ResourceT,
         resource_hash: ResourceId,
         drop_tx: Sender<ResourceWithHash<ResourceT>>,
