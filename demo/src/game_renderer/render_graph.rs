@@ -1,5 +1,5 @@
 use ash::vk;
-use renderer::assets::vk_description as dsc;
+use renderer::assets::{vk_description as dsc};
 use renderer::assets::graph::*;
 use renderer::assets::resources::ResourceManager;
 use crate::VkDeviceContext;
@@ -15,6 +15,7 @@ use renderer::vulkan::SwapchainInfo;
 pub struct BuildRenderGraphResult {
     pub opaque_renderpass: Option<ResourceArc<RenderPassResource>>,
     pub ui_renderpass: Option<ResourceArc<RenderPassResource>>,
+    //pub bloom_extract_renderpass: Option<ResourceArc<RenderPassResource>>,
     pub executor: RenderGraphExecutor<RenderGraphExecuteContext>,
 }
 
@@ -24,7 +25,9 @@ pub struct RenderGraphExecuteContext {
     pub prepared_render_data: Box<PreparedRenderData<RenderJobWriteContext>>,
     pub view: RenderView,
     pub write_context_factory: RenderJobWriteContextFactory,
-    pub command_writer: DynCommandWriter,
+    pub command_writer: DynCommandWriter, // command buffers
+    //pub dyn_resource_allocators: DynResourceAllocatorSet, // images, image views, buffers
+    //pub descriptor_set_alloctor_provider: DescriptorSetAllocatorProvider, // descriptor sets
 }
 
 pub fn build_render_graph(
@@ -39,7 +42,6 @@ pub fn build_render_graph(
     let depth_format = swapchain_surface_info.depth_format;
     let swapchain_format = swapchain_surface_info.surface_format.format;
     let samples = swapchain_surface_info.msaa_level.into();
-    let queue = 0;
 
     let mut graph = RenderGraphBuilder::default();
     let mut graph_callbacks = RenderGraphNodeCallbacks::<RenderGraphExecuteContext>::default();
@@ -51,7 +53,7 @@ pub fn build_render_graph(
             depth: RenderGraphImageUsageId,
         }
 
-        let node = graph.add_node("Opaque");
+        let node = graph.add_node("Opaque", RenderGraphQueue::DefaultGraphics);
 
         let color = graph.create_color_attachment(
             node,
@@ -76,7 +78,6 @@ pub fn build_render_graph(
             RenderGraphImageConstraint {
                 samples: Some(samples),
                 format: Some(depth_format),
-                queue: Some(queue),
                 ..Default::default()
             },
         );
@@ -100,7 +101,7 @@ pub fn build_render_graph(
             color: RenderGraphImageUsageId,
         }
 
-        let node = graph.add_node("Ui");
+        let node = graph.add_node("Ui", RenderGraphQueue::DefaultGraphics);
 
         let color = graph.modify_color_attachment(
             node,
@@ -123,15 +124,15 @@ pub fn build_render_graph(
 
         Ui { node, color }
     };
-
-    let _blur_extract_pass = {
+/*
+    let blur_extract_pass = {
         struct BlurExtractPass {
             node: RenderGraphNodeId,
             sdr_image: RenderGraphImageUsageId,
             hdr_image: RenderGraphImageUsageId,
         }
 
-        let node = graph.add_node("BlurExtract");
+        let node = graph.add_node("BlurExtract", RenderGraphQueue::DefaultGraphics);
 
         //node.sample_image(ui_pass.node_id);
         let sdr_image =
@@ -143,12 +144,48 @@ pub fn build_render_graph(
             RenderGraphImageConstraint {
                 samples: Some(vk::SampleCountFlags::TYPE_1),
                 format: Some(color_format),
-                queue: Some(queue),
                 ..Default::default()
             },
         );
 
-        graph_callbacks.set_renderpass_callback(node, |_command_buffer, _context| {
+        graph.sample_image(node, ui_pass.color, Default::default());
+
+        graph_callbacks.set_renderpass_callback(node, |command_buffer, context| {
+            //TODO:
+            // - Resolve the pipeline from the cache using the blur_extract_pass material pass resource
+            // - Get the image that corresponds with ui_pass.color
+            // - Create a descriptor set for the pass using the image
+
+            //context.
+
+            // let descriptor_set_allocator_provider = context.descriptor_set_alloctor_provider.get_allocator();
+            //
+            // descriptor_set_allocator_provider.al
+            //
+            // //ui_pass.color
+
+
+            // device_context.cmd_bind_pipeline(
+            //     command_buffer,
+            //     vk::PipelineBindPoint::GRAPHICS,
+            //     self.pipeline_info.get_raw().pipelines[0],
+            // );
+            //
+            // logical_device.cmd_bind_descriptor_sets(
+            //     command_buffer,
+            //     vk::PipelineBindPoint::GRAPHICS,
+            //     self.pipeline_info
+            //         .get_raw()
+            //         .pipeline_layout
+            //         .get_raw()
+            //         .pipeline_layout,
+            //     0,
+            //     &[descriptor_set],
+            //     &[],
+            // );
+            //
+            // logical_device.cmd_draw(command_buffer, 3, 1, 0, 0);
+
             // bind?
 
             Ok(())
@@ -160,7 +197,7 @@ pub fn build_render_graph(
             hdr_image,
         }
     };
-
+*/
     let _swapchain_output_image_id = graph.set_output_image(
         ui_pass.color,
         //blur_extract_pass.sdr_image,
@@ -168,7 +205,6 @@ pub fn build_render_graph(
         RenderGraphImageSpecification {
             samples: vk::SampleCountFlags::TYPE_1,
             format: swapchain_format,
-            queue,
             aspect_flags: vk::ImageAspectFlags::COLOR,
             usage_flags: swapchain_info.image_usage_flags,
         },
@@ -192,9 +228,11 @@ pub fn build_render_graph(
 
     let opaque_renderpass = executor.renderpass_resource(opaque_pass.node);
     let ui_renderpass = executor.renderpass_resource(ui_pass.node);
+    //let bloom_extract_renderpass = executor.renderpass_resource(blur_extract_pass.node);
     Ok(BuildRenderGraphResult {
         executor,
         opaque_renderpass,
         ui_renderpass,
+        //bloom_extract_renderpass: bloom_extract_renderpass
     })
 }

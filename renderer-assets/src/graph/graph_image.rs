@@ -41,7 +41,6 @@ pub type RenderGraphResourceName = &'static str;
 pub struct RenderGraphImageSpecification {
     pub samples: vk::SampleCountFlags,
     pub format: vk::Format,
-    pub queue: u32,
     pub aspect_flags: vk::ImageAspectFlags,
     pub usage_flags: vk::ImageUsageFlags,
 }
@@ -53,7 +52,6 @@ pub struct RenderGraphImageSpecification {
 pub struct RenderGraphImageConstraint {
     pub samples: Option<vk::SampleCountFlags>,
     pub format: Option<vk::Format>,
-    pub queue: Option<u32>, // format? size?
     pub aspect_flags: vk::ImageAspectFlags,
     pub usage_flags: vk::ImageUsageFlags,
 }
@@ -63,7 +61,6 @@ impl From<RenderGraphImageSpecification> for RenderGraphImageConstraint {
         RenderGraphImageConstraint {
             samples: Some(specification.samples),
             format: Some(specification.format),
-            queue: Some(specification.queue),
             aspect_flags: specification.aspect_flags,
             usage_flags: specification.usage_flags,
         }
@@ -72,13 +69,12 @@ impl From<RenderGraphImageSpecification> for RenderGraphImageConstraint {
 
 impl RenderGraphImageConstraint {
     pub fn try_convert_to_specification(self) -> Option<RenderGraphImageSpecification> {
-        if self.samples.is_none() || self.format.is_none() || self.queue.is_none() {
+        if self.samples.is_none() || self.format.is_none() {
             None
         } else {
             Some(RenderGraphImageSpecification {
                 samples: self.samples.unwrap(),
                 format: self.format.unwrap(),
-                queue: self.queue.unwrap(),
                 aspect_flags: self.aspect_flags,
                 usage_flags: self.usage_flags,
             })
@@ -95,9 +91,6 @@ impl RenderGraphImageConstraint {
             return false;
         }
         if self.format.is_some() && other.format.is_some() && self.format != other.format {
-            return false;
-        }
-        if self.queue.is_some() && other.queue.is_some() && self.queue != other.queue {
             return false;
         }
 
@@ -118,9 +111,7 @@ impl RenderGraphImageConstraint {
         if self.format.is_none() && other.format.is_some() {
             self.format = other.format;
         }
-        if self.queue.is_none() && other.queue.is_some() {
-            self.queue = other.queue;
-        }
+
         self.aspect_flags |= other.aspect_flags;
         self.usage_flags |= other.usage_flags;
 
@@ -143,12 +134,6 @@ impl RenderGraphImageConstraint {
             complete_merge = false;
         } else if other.format.is_some() {
             self.format = other.format;
-        }
-
-        if self.queue.is_some() && other.queue.is_some() && self.queue != other.queue {
-            complete_merge = false;
-        } else if other.queue.is_some() {
-            self.queue = other.queue;
         }
 
         self.aspect_flags |= other.aspect_flags;

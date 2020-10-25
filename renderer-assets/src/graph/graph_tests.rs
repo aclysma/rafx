@@ -1,9 +1,6 @@
 use renderer_shell_vulkan::{MsaaLevel, VkResource, VkImageRaw};
 use ash::vk;
-use crate::graph::{
-    RenderGraphImageUsageId, RenderGraphImageConstraint, RenderGraphImageSpecification,
-    RenderGraphBuilder,
-};
+use crate::graph::{RenderGraphImageUsageId, RenderGraphImageConstraint, RenderGraphImageSpecification, RenderGraphBuilder, RenderGraphQueue};
 use crate::vk_description::SwapchainSurfaceInfo;
 use crate::{
     vk_description as dsc, ResourceArc, ResourceWithHash, ResourceId, ImageResource,
@@ -162,7 +159,6 @@ fn graph_smoketest() {
     let swapchain_format = vk::Format::R8G8B8A8_SRGB;
     let msaa_level = MsaaLevel::Sample4;
     let samples = msaa_level.into();
-    let queue = 0;
 
     let mut graph = RenderGraphBuilder::default();
 
@@ -176,7 +172,7 @@ fn graph_smoketest() {
                 depth: RenderGraphImageUsageId,
             }
 
-            let node = graph.add_node("Opaque");
+            let node = graph.add_node("Opaque", RenderGraphQueue::DefaultGraphics);
             let color = graph.create_color_attachment(
                 node,
                 0,
@@ -200,7 +196,6 @@ fn graph_smoketest() {
                 RenderGraphImageConstraint {
                     samples: Some(samples),
                     format: Some(depth_format),
-                    queue: Some(queue),
                     ..Default::default()
                 },
             );
@@ -214,7 +209,7 @@ fn graph_smoketest() {
                 color: RenderGraphImageUsageId,
             }
 
-            let node = graph.add_node("Transparent");
+            let node = graph.add_node("Transparent", RenderGraphQueue::DefaultGraphics);
 
             let color = graph.modify_color_attachment(
                 node,
@@ -241,7 +236,6 @@ fn graph_smoketest() {
             RenderGraphImageSpecification {
                 samples: vk::SampleCountFlags::TYPE_1,
                 format: swapchain_format,
-                queue,
                 aspect_flags: vk::ImageAspectFlags::empty(),
                 usage_flags: vk::ImageUsageFlags::empty(),
             },

@@ -1,5 +1,6 @@
 use super::*;
 use std::fmt::Formatter;
+use crate::graph::graph_builder::RenderGraphQueue;
 
 //
 // Nodes
@@ -14,6 +15,7 @@ pub enum RenderGraphAttachmentType {
     Color(usize),
     DepthStencil,
     Resolve(usize),
+    NotAttached
 }
 
 #[derive(Debug, Clone)]
@@ -120,6 +122,8 @@ impl std::fmt::Debug for RenderGraphPassResolveAttachmentInfo {
 pub struct RenderGraphNode {
     id: RenderGraphNodeId,
     pub(super) name: Option<RenderGraphNodeName>,
+    #[allow(dead_code)]
+    pub(super) queue: RenderGraphQueue,
 
     // This stores creates/reads/modifies for all images.. more detailed information about them
     // may be included in other lists (like color_attachments)
@@ -156,10 +160,12 @@ impl RenderGraphNode {
     pub(super) fn new(
         id: RenderGraphNodeId,
         name: Option<RenderGraphNodeName>,
+        queue: RenderGraphQueue
     ) -> Self {
         RenderGraphNode {
             id,
             name,
+            queue,
             image_creates: Default::default(),
             image_reads: Default::default(),
             image_modifies: Default::default(),

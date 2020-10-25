@@ -2,6 +2,7 @@ use ash::vk;
 
 mod graph_builder;
 pub use graph_builder::RenderGraphBuilder;
+pub use graph_builder::RenderGraphQueue;
 
 mod graph_image;
 use graph_image::*;

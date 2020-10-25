@@ -3,6 +3,12 @@ use crate::vk_description as dsc;
 use crate::vk_description::SwapchainSurfaceInfo;
 use crate::resources::{ResourceArc, ImageViewResource};
 
+#[derive(Copy, Clone)]
+pub enum RenderGraphQueue {
+    DefaultGraphics,
+    Index(u32)
+}
+
 /// An image that is being provided to the render graph that can be read from
 #[derive(Debug)]
 pub struct RenderGraphInputImage {
@@ -636,6 +642,39 @@ impl RenderGraphBuilder {
         read_image
     }
 
+    pub fn sample_image(
+        &mut self,
+        node: RenderGraphNodeId,
+        image: RenderGraphImageUsageId,
+        mut constraint: RenderGraphImageConstraint,
+    ) {
+        constraint.aspect_flags |= vk::ImageAspectFlags::COLOR;
+        constraint.usage_flags |= vk::ImageUsageFlags::SAMPLED;
+
+        // Add the read to the graph
+        self.add_image_read(
+            node,
+            image,
+            RenderGraphAttachmentType::NotAttached,
+            constraint,
+            dsc::ImageLayout::ShaderReadOnlyOptimal,
+            vk::AccessFlags::SHADER_READ,
+            vk::PipelineStageFlags::FRAGMENT_SHADER,
+            vk::ImageAspectFlags::COLOR,
+        );
+
+        // self.set_color_attachment(
+        //     node,
+        //     color_attachment_index,
+        //     RenderGraphPassColorAttachmentInfo {
+        //         attachment_type: RenderGraphPassAttachmentType::Read,
+        //         clear_color_value: None,
+        //         read_image: Some(read_image),
+        //         write_image: None,
+        //     },
+        // );
+    }
+
     pub fn set_output_image(
         &mut self,
         image_id: RenderGraphImageUsageId,
@@ -680,15 +719,19 @@ impl RenderGraphBuilder {
     pub fn add_node(
         &mut self,
         name: RenderGraphNodeName,
+        queue: RenderGraphQueue
     ) -> RenderGraphNodeId {
         let node = RenderGraphNodeId(self.nodes.len());
-        self.nodes.push(RenderGraphNode::new(node, Some(name)));
+        self.nodes.push(RenderGraphNode::new(node, Some(name), queue));
         node
     }
 
-    pub fn add_node_unnamed(&mut self) -> RenderGraphNodeId {
+    pub fn add_node_unnamed(
+        &mut self,
+        queue: RenderGraphQueue
+    ) -> RenderGraphNodeId {
         let node = RenderGraphNodeId(self.nodes.len());
-        self.nodes.push(RenderGraphNode::new(node, None));
+        self.nodes.push(RenderGraphNode::new(node, None, queue));
         node
     }
 

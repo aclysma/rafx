@@ -16,6 +16,7 @@ use renderer::assets::graph::{
     RenderGraphImageConstraint, RenderGraphImageSpecification, RenderGraphExecutor,
 };
 use renderer::vulkan::FrameInFlight;
+use renderer_assets::graph::RenderGraphQueue;
 
 const WINDOW_WIDTH: u32 = 900;
 const WINDOW_HEIGHT: u32 = 600;
@@ -270,7 +271,7 @@ fn render_frame(
             color: RenderGraphImageUsageId,
         }
 
-        let node = graph.add_node("Opaque");
+        let node = graph.add_node("Opaque", RenderGraphQueue::DefaultGraphics);
         let color = graph.create_color_attachment(
             node,
             0,
@@ -301,9 +302,6 @@ fn render_frame(
         RenderGraphImageSpecification {
             samples: swapchain_surface_info.msaa_level.into(),
             format: swapchain_surface_info.surface_format.format.into(),
-            queue: device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
             aspect_flags: vk::ImageAspectFlags::COLOR,
             usage_flags: surface.swapchain().swapchain_info.image_usage_flags,
         },
