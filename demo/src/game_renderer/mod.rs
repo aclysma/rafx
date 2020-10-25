@@ -374,6 +374,12 @@ impl GameRenderer {
             0
         ).unwrap();
 
+
+        let bloom_combine_material_pass = resource_manager.get_material_pass_by_index(
+            &static_resources.bloom_combine_material,
+            0
+        ).unwrap();
+
         //let t2 = std::time::Instant::now();
         let render_graph = render_graph::build_render_graph(
             &device_context,
@@ -383,7 +389,8 @@ impl GameRenderer {
             &swapchain_info,
             swapchain_image,
             main_view.clone(),
-            bloom_extract_material_pass
+            bloom_extract_material_pass,
+            bloom_combine_material_pass
         )?;
         // let t3 = std::time::Instant::now();
         // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);

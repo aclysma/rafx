@@ -1,6 +1,5 @@
 use crate::renderpass::{
     VkBloomRenderPassResources, VkBloomBlurRenderPass,
-    VkBloomCombineRenderPass,
 };
 use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
 use crate::game_renderer::{GameRendererInner, RenderpassAttachmentImage};
@@ -29,10 +28,8 @@ pub struct SwapchainResources {
 
     pub debug_material_per_frame_data: DynDescriptorSet,
     pub bloom_resources: VkBloomRenderPassResources,
-    pub bloom_combine_material_dyn_set: DynDescriptorSet,
 
     pub bloom_blur_renderpass: VkBloomBlurRenderPass,
-    pub bloom_combine_renderpass: VkBloomCombineRenderPass,
 
     pub swapchain_info: SwapchainInfo,
     pub swapchain_surface_info: SwapchainSurfaceInfo,
@@ -137,25 +134,6 @@ impl SwapchainResources {
         //
         // Bloom Extract Renderpass
         //
-        let bloom_extract_layout = resource_manager.get_descriptor_set_info(
-            &game_renderer.static_resources.bloom_extract_material,
-            0,
-            0,
-        );
-
-        let bloom_extract_renderpass_resource = SwapchainResources::create_renderpass_resource(
-            resource_manager,
-            &swapchain_surface_info,
-            &game_renderer.static_resources.bloom_extract_renderpass,
-        )?;
-
-        let bloom_extract_pipeline_info = resource_manager
-            .get_or_create_graphics_pipeline(
-                &game_renderer.static_resources.bloom_extract_material,
-                &bloom_extract_renderpass_resource,
-                0,
-            )
-            .unwrap();
 
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
 
@@ -187,46 +165,6 @@ impl SwapchainResources {
             &mut static_command_pool,
         )?;
 
-        //
-        // Bloom Combine Renderpass
-        //
-        log::debug!("Create VkBloomCombineRenderPass");
-
-        let bloom_combine_layout = resource_manager.get_descriptor_set_info(
-            &game_renderer.static_resources.bloom_combine_material,
-            0,
-            0,
-        );
-
-        let bloom_combine_renderpass_resource = SwapchainResources::create_renderpass_resource(
-            resource_manager,
-            &swapchain_surface_info,
-            &game_renderer.static_resources.bloom_combine_renderpass,
-        )?;
-
-        let bloom_combine_pipeline_info = resource_manager
-            .get_or_create_graphics_pipeline(
-                &game_renderer.static_resources.bloom_combine_material,
-                &bloom_combine_renderpass_resource,
-                0,
-            )
-            .unwrap();
-
-        let bloom_combine_renderpass = VkBloomCombineRenderPass::new(
-            resource_manager.resources(),
-            device_context,
-            &swapchain.swapchain_info,
-            &swapchain_images,
-            bloom_combine_pipeline_info,
-        )?;
-
-        let mut bloom_combine_material_dyn_set = descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&bloom_combine_layout.descriptor_set_layout)?;
-        bloom_combine_material_dyn_set
-            .set_image_raw(0, bloom_resources.color_image.get_raw().image_view);
-        bloom_combine_material_dyn_set
-            .set_image_raw(1, bloom_resources.bloom_images[0].get_raw().image_view);
-        bloom_combine_material_dyn_set.flush(&mut descriptor_set_allocator)?;
 
         let debug_per_frame_layout = resource_manager.get_descriptor_set_info(
             &game_renderer.static_resources.debug3d_material,
@@ -247,9 +185,7 @@ impl SwapchainResources {
             static_command_pool,
             debug_material_per_frame_data,
             bloom_resources,
-            bloom_combine_material_dyn_set,
             bloom_blur_renderpass,
-            bloom_combine_renderpass,
             swapchain_info,
             swapchain_surface_info,
         })
