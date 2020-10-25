@@ -13,7 +13,7 @@ pub struct RenderpassAttachmentImage {
 
 impl RenderpassAttachmentImage {
     pub fn new(
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         format: vk::Format,
@@ -91,7 +91,7 @@ impl RenderpassAttachmentImage {
     }
 
     pub fn create_resource(
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         format: vk::Format,

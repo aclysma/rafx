@@ -12,19 +12,9 @@ use std::mem::ManuallyDrop;
 use crate::vk_description as dsc;
 use crate::resources::ResourceArc;
 use crate::resources::resource_arc::{WeakResourceArc, ResourceWithHash, ResourceId};
-use std::sync::Arc;
-
-// #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-// pub(super) struct ResourceId(pub(super) u64);
-
-// impl From<ResourceHash> for ResourceId {
-//     fn from(resource_hash: ResourceHash) -> Self {
-//         ResourceId(resource_hash.0)
-//     }
-// }
-
-//TODO: Separate the renderpass description from the asset format. Make the description specify
-// everything.
+use std::sync::{Arc, Mutex};
+use bitflags::_core::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 
 // Hash of a GPU resource
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -56,7 +46,7 @@ impl Into<ResourceId> for ResourceHash {
 // A lookup of resources. They reference count using Arcs internally and send a signal when they
 // drop. This allows the resources to be collected and disposed of
 //
-pub struct ResourceLookup<KeyT, ResourceT>
+pub struct ResourceLookupInner<KeyT, ResourceT>
 where
     KeyT: Eq + Hash + Clone,
     ResourceT: VkResource + Clone,
@@ -70,6 +60,18 @@ where
     phantom_data: PhantomData<KeyT>,
     #[cfg(debug_assertions)]
     keys: FnvHashMap<ResourceHash, KeyT>,
+    #[cfg(debug_assertions)]
+    lock_call_count_previous_frame: u64,
+    #[cfg(debug_assertions)]
+    lock_call_count: u64,
+}
+
+pub struct ResourceLookup<KeyT, ResourceT>
+where
+    KeyT: Eq + Hash + Clone,
+    ResourceT: VkResource + Clone,
+{
+    inner: Mutex<ResourceLookupInner<KeyT, ResourceT>>,
 }
 
 impl<KeyT, ResourceT> ResourceLookup<KeyT, ResourceT>
@@ -80,7 +82,7 @@ where
     fn new(max_frames_in_flight: u32) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
 
-        ResourceLookup {
+        let inner = ResourceLookupInner {
             resources: Default::default(),
             drop_sink: VkResourceDropSink::new(max_frames_in_flight),
             drop_tx,
@@ -88,6 +90,14 @@ where
             phantom_data: Default::default(),
             #[cfg(debug_assertions)]
             keys: Default::default(),
+            #[cfg(debug_assertions)]
+            lock_call_count_previous_frame: 0,
+            #[cfg(debug_assertions)]
+            lock_call_count: 0,
+        };
+
+        ResourceLookup {
+            inner: Mutex::new(inner),
         }
     }
 
@@ -96,14 +106,18 @@ where
         hash: ResourceHash,
         _key: &KeyT,
     ) -> Option<ResourceArc<ResourceT>> {
-        if let Some(resource) = self.resources.get(&hash) {
-            let upgrade = resource.upgrade();
+        let mut guard = self.inner.lock().unwrap();
+        #[cfg(debug_assertions)]
+        {
+            guard.lock_call_count += 1;
+        }
+        let resource = guard.resources.get(&hash);
 
+        if let Some(resource) = resource {
+            let upgrade = resource.upgrade();
             #[cfg(debug_assertions)]
-            {
-                if upgrade.is_some() {
-                    debug_assert!(self.keys.get(&hash).unwrap() == _key);
-                }
+            if upgrade.is_some() {
+                debug_assert!(guard.keys.get(&hash).unwrap() == _key);
             }
 
             upgrade
@@ -112,80 +126,115 @@ where
         }
     }
 
-    fn insert(
-        &mut self,
+    fn get_or_create<F>(
+        &self,
         hash: ResourceHash,
         _key: &KeyT,
-        resource: ResourceT,
-    ) -> ResourceArc<ResourceT> {
+        create_resource_fn: F,
+    ) -> VkResult<ResourceArc<ResourceT>>
+    where
+        F: FnOnce() -> VkResult<ResourceT>,
+    {
+        let mut guard = self.inner.lock().unwrap();
+        #[cfg(debug_assertions)]
+        {
+            guard.lock_call_count += 1;
+        }
+
+        if let Some(resource) = guard.resources.get(&hash) {
+            if let Some(upgrade) = resource.upgrade() {
+                #[cfg(debug_assertions)]
+                debug_assert!(guard.keys.get(&hash).unwrap() == _key);
+                return Ok(upgrade);
+            }
+        }
+
         // Process any pending drops. If we don't do this, it's possible that the pending drop could
         // wipe out the state we're about to set
-        self.handle_dropped_resources();
+        Self::handle_dropped_resources(&mut guard);
 
+        let resource = (create_resource_fn)()?;
         log::trace!(
             "insert resource {} {:?}",
             core::any::type_name::<ResourceT>(),
             resource
         );
 
-        let arc = ResourceArc::new(resource, hash.into(), self.drop_tx.clone());
+        let arc = ResourceArc::new(resource, hash.into(), guard.drop_tx.clone());
         let downgraded = arc.downgrade();
-        let old = self.resources.insert(hash, downgraded);
+        let old = guard.resources.insert(hash, downgraded);
         assert!(old.is_none());
 
         #[cfg(debug_assertions)]
         {
-            self.keys.insert(hash, _key.clone());
+            guard.keys.insert(hash, _key.clone());
             assert!(old.is_none());
         }
 
-        arc
+        Ok(arc)
     }
 
-    fn handle_dropped_resources(&mut self) {
-        for dropped in self.drop_rx.try_iter() {
+    fn handle_dropped_resources(inner: &mut ResourceLookupInner<KeyT, ResourceT>) {
+        for dropped in inner.drop_rx.try_iter() {
             log::trace!(
                 "dropping {} {:?}",
                 core::any::type_name::<ResourceT>(),
                 dropped.resource
             );
-            self.drop_sink.retire(dropped.resource);
-            self.resources.remove(&dropped.resource_hash.into());
+            inner.drop_sink.retire(dropped.resource);
+            inner.resources.remove(&dropped.resource_hash.into());
 
             #[cfg(debug_assertions)]
             {
-                self.keys.remove(&dropped.resource_hash.into());
+                inner.keys.remove(&dropped.resource_hash.into());
             }
         }
     }
 
-    fn len(&self) -> usize {
-        self.resources.len()
-    }
-
     fn on_frame_complete(
-        &mut self,
+        &self,
         device_context: &VkDeviceContext,
     ) -> VkResult<()> {
-        self.handle_dropped_resources();
-        self.drop_sink.on_frame_complete(device_context)
+        let mut guard = self.inner.lock().unwrap();
+        #[cfg(debug_assertions)]
+        {
+            guard.lock_call_count += 1;
+        }
+
+        guard.lock_call_count_previous_frame = guard.lock_call_count + 1;
+        Self::handle_dropped_resources(&mut guard);
+        guard.drop_sink.on_frame_complete(device_context)
+    }
+
+    fn metrics(&self) -> ResourceLookupMetric {
+        let guard = self.inner.lock().unwrap();
+        ResourceLookupMetric {
+            count: guard.resources.len(),
+            previous_frame_lock_call_count: guard.lock_call_count_previous_frame,
+        }
     }
 
     fn destroy(
-        &mut self,
+        &self,
         device_context: &VkDeviceContext,
     ) -> VkResult<()> {
-        self.handle_dropped_resources();
+        let mut guard = self.inner.lock().unwrap();
+        #[cfg(debug_assertions)]
+        {
+            guard.lock_call_count += 1;
+        }
 
-        if !self.resources.is_empty() {
+        Self::handle_dropped_resources(&mut guard);
+
+        if !guard.resources.is_empty() {
             log::warn!(
                 "{} resource count {} > 0, resources will leak",
                 core::any::type_name::<ResourceT>(),
-                self.resources.len()
+                guard.resources.len()
             );
         }
 
-        self.drop_sink.destroy(device_context)
+        guard.drop_sink.destroy(device_context)
     }
 }
 
@@ -254,18 +303,24 @@ pub struct ImageViewKey {
 }
 
 #[derive(Debug)]
+pub struct ResourceLookupMetric {
+    pub count: usize,
+    pub previous_frame_lock_call_count: u64,
+}
+
+#[derive(Debug)]
 pub struct ResourceMetrics {
-    pub shader_module_count: usize,
-    pub descriptor_set_layout_count: usize,
-    pub pipeline_layout_count: usize,
-    pub renderpass_count: usize,
-    pub framebuffer_count: usize,
-    pub material_passes: usize,
-    pub graphics_pipeline_count: usize,
-    pub image_count: usize,
-    pub image_view_count: usize,
-    pub sampler_count: usize,
-    pub buffer_count: usize,
+    pub shader_module_metrics: ResourceLookupMetric,
+    pub descriptor_set_layout_metrics: ResourceLookupMetric,
+    pub pipeline_layout_metrics: ResourceLookupMetric,
+    pub renderpass_metrics: ResourceLookupMetric,
+    pub framebuffer_metrics: ResourceLookupMetric,
+    pub material_pass_metrics: ResourceLookupMetric,
+    pub graphics_pipeline_metrics: ResourceLookupMetric,
+    pub image_metrics: ResourceLookupMetric,
+    pub image_view_metrics: ResourceLookupMetric,
+    pub sampler_metrics: ResourceLookupMetric,
+    pub buffer_metrics: ResourceLookupMetric,
 }
 
 #[derive(Debug, Clone)]
@@ -435,7 +490,7 @@ impl VkResource for ImageViewResource {
 //TODO: Some of the resources like buffers and images don't need to be "keyed" and could probably
 // be kept in a slab. We *do* need a way to access and quickly remove elements though, and whatever
 // key we use is sent through a Sender/Receiver pair to be dropped later.
-pub struct ResourceLookupSet {
+pub struct ResourceLookupSetInner {
     device_context: VkDeviceContext,
 
     shader_modules: ResourceLookup<ShaderModuleKey, ShaderModuleResource>,
@@ -451,8 +506,13 @@ pub struct ResourceLookupSet {
     buffers: ResourceLookup<BufferKey, VkBufferRaw>,
 
     // Used to generate keys for images/buffers
-    next_image_id: u64,
-    next_buffer_id: u64,
+    next_image_id: AtomicU64,
+    next_buffer_id: AtomicU64,
+}
+
+#[derive(Clone)]
+pub struct ResourceLookupSet {
+    inner: Arc<ResourceLookupSetInner>,
 }
 
 impl ResourceLookupSet {
@@ -460,7 +520,7 @@ impl ResourceLookupSet {
         device_context: &VkDeviceContext,
         max_frames_in_flight: u32,
     ) -> Self {
-        ResourceLookupSet {
+        let set = ResourceLookupSetInner {
             device_context: device_context.clone(),
             shader_modules: ResourceLookup::new(max_frames_in_flight),
             descriptor_set_layouts: ResourceLookup::new(max_frames_in_flight),
@@ -473,66 +533,101 @@ impl ResourceLookupSet {
             image_views: ResourceLookup::new(max_frames_in_flight),
             samplers: ResourceLookup::new(max_frames_in_flight),
             buffers: ResourceLookup::new(max_frames_in_flight),
-            next_image_id: 0,
-            next_buffer_id: 0,
+            next_image_id: AtomicU64::new(0),
+            next_buffer_id: AtomicU64::new(0),
+        };
+
+        ResourceLookupSet {
+            inner: Arc::new(set),
         }
     }
 
-    pub fn on_frame_complete(&mut self) -> VkResult<()> {
-        self.images.on_frame_complete(&self.device_context)?;
-        self.image_views.on_frame_complete(&self.device_context)?;
-        self.buffers.on_frame_complete(&self.device_context)?;
-        self.shader_modules
-            .on_frame_complete(&self.device_context)?;
-        self.samplers.on_frame_complete(&self.device_context)?;
-        self.descriptor_set_layouts
-            .on_frame_complete(&self.device_context)?;
-        self.pipeline_layouts
-            .on_frame_complete(&self.device_context)?;
-        self.render_passes.on_frame_complete(&self.device_context)?;
-        self.framebuffers.on_frame_complete(&self.device_context)?;
-        self.material_passes
-            .on_frame_complete(&self.device_context)?;
-        self.graphics_pipelines
-            .on_frame_complete(&self.device_context)?;
+    pub fn on_frame_complete(&self) -> VkResult<()> {
+        self.inner
+            .images
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .image_views
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .buffers
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .shader_modules
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .samplers
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .descriptor_set_layouts
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .pipeline_layouts
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .render_passes
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .framebuffers
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .material_passes
+            .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .graphics_pipelines
+            .on_frame_complete(&self.inner.device_context)?;
         Ok(())
     }
 
-    pub fn destroy(&mut self) -> VkResult<()> {
+    pub fn destroy(&self) -> VkResult<()> {
         //WARNING: These need to be in order of dependencies to avoid frame-delays on destroying
         // resources.
-        self.graphics_pipelines.destroy(&self.device_context)?;
-        self.material_passes.destroy(&self.device_context)?;
-        self.framebuffers.destroy(&self.device_context)?;
-        self.render_passes.destroy(&self.device_context)?;
-        self.pipeline_layouts.destroy(&self.device_context)?;
-        self.descriptor_set_layouts.destroy(&self.device_context)?;
-        self.samplers.destroy(&self.device_context)?;
-        self.shader_modules.destroy(&self.device_context)?;
-        self.buffers.destroy(&self.device_context)?;
-        self.image_views.destroy(&self.device_context)?;
-        self.images.destroy(&self.device_context)?;
+        self.inner
+            .graphics_pipelines
+            .destroy(&self.inner.device_context)?;
+        self.inner
+            .material_passes
+            .destroy(&self.inner.device_context)?;
+        self.inner
+            .framebuffers
+            .destroy(&self.inner.device_context)?;
+        self.inner
+            .render_passes
+            .destroy(&self.inner.device_context)?;
+        self.inner
+            .pipeline_layouts
+            .destroy(&self.inner.device_context)?;
+        self.inner
+            .descriptor_set_layouts
+            .destroy(&self.inner.device_context)?;
+        self.inner.samplers.destroy(&self.inner.device_context)?;
+        self.inner
+            .shader_modules
+            .destroy(&self.inner.device_context)?;
+        self.inner.buffers.destroy(&self.inner.device_context)?;
+        self.inner.image_views.destroy(&self.inner.device_context)?;
+        self.inner.images.destroy(&self.inner.device_context)?;
         Ok(())
     }
 
     pub fn metrics(&self) -> ResourceMetrics {
         ResourceMetrics {
-            shader_module_count: self.shader_modules.len(),
-            descriptor_set_layout_count: self.descriptor_set_layouts.len(),
-            pipeline_layout_count: self.pipeline_layouts.len(),
-            renderpass_count: self.render_passes.len(),
-            framebuffer_count: self.framebuffers.len(),
-            material_passes: self.material_passes.len(),
-            graphics_pipeline_count: self.graphics_pipelines.len(),
-            image_count: self.images.len(),
-            image_view_count: self.image_views.len(),
-            sampler_count: self.samplers.len(),
-            buffer_count: self.buffers.len(),
+            shader_module_metrics: self.inner.shader_modules.metrics(),
+            descriptor_set_layout_metrics: self.inner.descriptor_set_layouts.metrics(),
+            pipeline_layout_metrics: self.inner.pipeline_layouts.metrics(),
+            renderpass_metrics: self.inner.render_passes.metrics(),
+            framebuffer_metrics: self.inner.framebuffers.metrics(),
+            material_pass_metrics: self.inner.material_passes.metrics(),
+            graphics_pipeline_metrics: self.inner.graphics_pipelines.metrics(),
+            image_metrics: self.inner.images.metrics(),
+            image_view_metrics: self.inner.image_views.metrics(),
+            sampler_metrics: self.inner.samplers.metrics(),
+            buffer_metrics: self.inner.buffers.metrics(),
         }
     }
 
     pub fn get_or_create_shader_module(
-        &mut self,
+        &self,
         shader_module_def: &Arc<dsc::ShaderModule>,
     ) -> VkResult<ResourceArc<ShaderModuleResource>> {
         let shader_module_key = ShaderModuleKey {
@@ -540,53 +635,52 @@ impl ResourceLookupSet {
         };
 
         let hash = ResourceHash::from_key(&shader_module_key);
-        if let Some(shader_module) = self.shader_modules.get(hash, &shader_module_key) {
-            Ok(shader_module)
-        } else {
-            log::trace!(
-                "Creating shader module\n[hash: {:?} bytes: {}]",
-                shader_module_key.code_hash,
-                shader_module_def.code.len()
-            );
-            let shader_module =
-                dsc::create_shader_module(self.device_context.device(), &*shader_module_def)?;
-            let resource = ShaderModuleResource {
-                shader_module,
-                shader_module_def: shader_module_def.clone(),
-                shader_module_key: shader_module_key.clone(),
-            };
-            log::trace!("Created shader module {:?}", resource);
-            let shader_module = self
-                .shader_modules
-                .insert(hash, &shader_module_key, resource);
-            Ok(shader_module)
-        }
+
+        self.inner
+            .shader_modules
+            .get_or_create(hash, &shader_module_key, || {
+                log::trace!(
+                    "Creating shader module\n[hash: {:?} bytes: {}]",
+                    shader_module_key.code_hash,
+                    shader_module_def.code.len()
+                );
+                let shader_module = dsc::create_shader_module(
+                    self.inner.device_context.device(),
+                    &*shader_module_def,
+                )?;
+                let resource = ShaderModuleResource {
+                    shader_module,
+                    shader_module_def: shader_module_def.clone(),
+                    shader_module_key: shader_module_key.clone(),
+                };
+                log::trace!("Created shader module {:?}", resource);
+                Ok(resource)
+            })
     }
 
     pub fn get_or_create_sampler(
-        &mut self,
+        &self,
         sampler: &dsc::Sampler,
     ) -> VkResult<ResourceArc<vk::Sampler>> {
         let hash = ResourceHash::from_key(sampler);
-        if let Some(sampler) = self.samplers.get(hash, sampler) {
-            Ok(sampler)
-        } else {
+
+        self.inner.samplers.get_or_create(hash, sampler, || {
             log::trace!("Creating sampler\n{:#?}", sampler);
 
-            let resource = dsc::create_sampler(self.device_context.device(), sampler)?;
+            let resource = dsc::create_sampler(self.inner.device_context.device(), sampler)?;
 
             log::trace!("Created sampler {:?}", resource);
-            let sampler = self.samplers.insert(hash, sampler, resource);
-            Ok(sampler)
-        }
+            Ok(resource)
+        })
     }
 
     pub fn get_or_create_descriptor_set_layout(
-        &mut self,
+        &self,
         descriptor_set_layout_def: &dsc::DescriptorSetLayout,
     ) -> VkResult<ResourceArc<DescriptorSetLayoutResource>> {
         let hash = ResourceHash::from_key(descriptor_set_layout_def);
         if let Some(descriptor_set_layout) = self
+            .inner
             .descriptor_set_layouts
             .get(hash, descriptor_set_layout_def)
         {
@@ -624,38 +718,40 @@ impl ResourceLookupSet {
                 }
             }
 
-            // Create the descriptor set layout
-            let resource = dsc::create_descriptor_set_layout(
-                self.device_context.device(),
-                descriptor_set_layout_def,
-                &immutable_sampler_vk_objs,
-            )?;
+            self.inner
+                .descriptor_set_layouts
+                .get_or_create(hash, descriptor_set_layout_def, || {
+                    // Create the descriptor set layout
+                    let resource = dsc::create_descriptor_set_layout(
+                        self.inner.device_context.device(),
+                        descriptor_set_layout_def,
+                        &immutable_sampler_vk_objs,
+                    )?;
 
-            // Flatten the hashmap into just the values
-            let immutable_samplers = immutable_sampler_arcs.drain().map(|(_, x)| x).collect();
+                    // Flatten the hashmap into just the values
+                    let immutable_samplers =
+                        immutable_sampler_arcs.drain().map(|(_, x)| x).collect();
 
-            // Create the resource object, which contains the descriptor set layout we created plus
-            // ResourceArcs to the samplers, which must remain alive for the lifetime of the descriptor set
-            let resource = DescriptorSetLayoutResource {
-                descriptor_set_layout: resource,
-                descriptor_set_layout_def: descriptor_set_layout_def.clone(),
-                immutable_samplers,
-            };
+                    // Create the resource object, which contains the descriptor set layout we created plus
+                    // ResourceArcs to the samplers, which must remain alive for the lifetime of the descriptor set
+                    let resource = DescriptorSetLayoutResource {
+                        descriptor_set_layout: resource,
+                        descriptor_set_layout_def: descriptor_set_layout_def.clone(),
+                        immutable_samplers,
+                    };
 
-            log::trace!("Created descriptor set layout {:?}", resource);
-            let descriptor_set_layout =
-                self.descriptor_set_layouts
-                    .insert(hash, descriptor_set_layout_def, resource);
-            Ok(descriptor_set_layout)
+                    log::trace!("Created descriptor set layout {:?}", resource);
+                    Ok(resource)
+                })
         }
     }
 
     pub fn get_or_create_pipeline_layout(
-        &mut self,
+        &self,
         pipeline_layout_def: &dsc::PipelineLayout,
     ) -> VkResult<ResourceArc<PipelineLayoutResource>> {
         let hash = ResourceHash::from_key(pipeline_layout_def);
-        if let Some(pipeline_layout) = self.pipeline_layouts.get(hash, pipeline_layout_def) {
+        if let Some(pipeline_layout) = self.inner.pipeline_layouts.get(hash, pipeline_layout_def) {
             Ok(pipeline_layout)
         } else {
             // Keep both the arcs and build an array of vk object pointers
@@ -672,30 +768,30 @@ impl ResourceLookupSet {
                     .push(loaded_descriptor_set_layout.get_raw().descriptor_set_layout);
             }
 
-            log::trace!("Creating pipeline layout\n{:#?}", pipeline_layout_def);
-            let resource = dsc::create_pipeline_layout(
-                self.device_context.device(),
-                pipeline_layout_def,
-                &descriptor_set_layouts,
-            )?;
-
-            let resource = PipelineLayoutResource {
-                pipeline_layout: resource,
-                pipeline_layout_def: pipeline_layout_def.clone(),
-                descriptor_sets: descriptor_set_layout_arcs,
-            };
-
-            log::trace!("Created pipeline layout {:?}", resource);
-            let pipeline_layout = self
+            self.inner
                 .pipeline_layouts
-                .insert(hash, pipeline_layout_def, resource);
+                .get_or_create(hash, pipeline_layout_def, || {
+                    log::trace!("Creating pipeline layout\n{:#?}", pipeline_layout_def);
+                    let resource = dsc::create_pipeline_layout(
+                        self.inner.device_context.device(),
+                        pipeline_layout_def,
+                        &descriptor_set_layouts,
+                    )?;
 
-            Ok(pipeline_layout)
+                    let resource = PipelineLayoutResource {
+                        pipeline_layout: resource,
+                        pipeline_layout_def: pipeline_layout_def.clone(),
+                        descriptor_sets: descriptor_set_layout_arcs,
+                    };
+
+                    log::trace!("Created pipeline layout {:?}", resource);
+                    Ok(resource)
+                })
         }
     }
 
     pub fn get_or_create_renderpass(
-        &mut self,
+        &self,
         renderpass: &dsc::RenderPass,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<ResourceArc<RenderPassResource>> {
@@ -705,30 +801,28 @@ impl ResourceLookupSet {
         };
 
         let hash = ResourceHash::from_key(&renderpass_key);
-        if let Some(renderpass) = self.render_passes.get(hash, &renderpass_key) {
-            Ok(renderpass)
-        } else {
-            log::trace!("Creating renderpass\n{:#?}", renderpass_key);
-            let resource = dsc::create_renderpass(
-                self.device_context.device(),
-                renderpass,
-                &swapchain_surface_info,
-            )?;
+        self.inner
+            .render_passes
+            .get_or_create(hash, &renderpass_key, || {
+                log::trace!("Creating renderpass\n{:#?}", renderpass_key);
+                let resource = dsc::create_renderpass(
+                    self.inner.device_context.device(),
+                    renderpass,
+                    &swapchain_surface_info,
+                )?;
 
-            let resource = RenderPassResource {
-                renderpass: resource,
-                renderpass_key: renderpass_key.clone(),
-            };
+                let resource = RenderPassResource {
+                    renderpass: resource,
+                    renderpass_key: renderpass_key.clone(),
+                };
 
-            log::trace!("Created renderpass {:?}", resource);
-
-            let renderpass = self.render_passes.insert(hash, &renderpass_key, resource);
-            Ok(renderpass)
-        }
+                log::trace!("Created renderpass {:?}", resource);
+                Ok(resource)
+            })
     }
 
     pub fn get_or_create_framebuffer(
-        &mut self,
+        &self,
         renderpass: ResourceArc<RenderPassResource>,
         attachments: &[ResourceArc<ImageViewResource>],
         framebuffer_meta: &dsc::FramebufferMeta,
@@ -748,35 +842,33 @@ impl ResourceLookupSet {
         };
 
         let hash = ResourceHash::from_key(&framebuffer_key);
-        if let Some(framebuffer) = self.framebuffers.get(hash, &framebuffer_key) {
-            Ok(framebuffer)
-        } else {
-            log::trace!("Creating framebuffer\n{:#?}", framebuffer_key);
+        self.inner
+            .framebuffers
+            .get_or_create(hash, &framebuffer_key, || {
+                log::trace!("Creating framebuffer\n{:#?}", framebuffer_key);
 
-            let attachment_image_views: Vec<_> = attachments
-                .iter()
-                .map(|resource| resource.get_raw().image_view)
-                .collect();
+                let attachment_image_views: Vec<_> = attachments
+                    .iter()
+                    .map(|resource| resource.get_raw().image_view)
+                    .collect();
 
-            let resource = dsc::create_framebuffer(
-                self.device_context.device(),
-                renderpass.get_raw().renderpass,
-                &attachment_image_views,
-                framebuffer_meta,
-            )?;
+                let resource = dsc::create_framebuffer(
+                    self.inner.device_context.device(),
+                    renderpass.get_raw().renderpass,
+                    &attachment_image_views,
+                    framebuffer_meta,
+                )?;
 
-            let resource = FramebufferResource {
-                framebuffer: resource,
-                framebuffer_key: framebuffer_key.clone(),
-                renderpass,
-                attachments: attachments.into(),
-            };
+                let resource = FramebufferResource {
+                    framebuffer: resource,
+                    framebuffer_key: framebuffer_key.clone(),
+                    renderpass,
+                    attachments: attachments.into(),
+                };
 
-            log::trace!("Created framebuffer {:?}", resource);
-
-            let framebuffer = self.framebuffers.insert(hash, &framebuffer_key, resource);
-            Ok(framebuffer)
-        }
+                log::trace!("Created framebuffer {:?}", resource);
+                Ok(resource)
+            })
     }
 
     // Maybe we have a dedicated allocator for framebuffers and images that end up bound to framebuffers
@@ -789,7 +881,7 @@ impl ResourceLookupSet {
     // )
 
     pub fn get_or_create_material_pass(
-        &mut self,
+        &self,
         shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
         shader_module_metas: Vec<dsc::ShaderModuleMeta>,
         pipeline_layout: ResourceArc<PipelineLayoutResource>,
@@ -807,32 +899,28 @@ impl ResourceLookupSet {
         };
 
         let hash = ResourceHash::from_key(&material_pass_key);
-        if let Some(material_pass) = self.material_passes.get(hash, &material_pass_key) {
-            Ok(material_pass)
-        } else {
-            log::trace!("Creating material pass\n{:#?}", material_pass_key);
+        self.inner
+            .material_passes
+            .get_or_create(hash, &material_pass_key, || {
+                log::trace!("Creating material pass\n{:#?}", material_pass_key);
 
-            let shader_module_vk_objs = shader_modules
-                .iter()
-                .map(|x| x.get_raw().shader_module)
-                .collect();
+                let shader_module_vk_objs = shader_modules
+                    .iter()
+                    .map(|x| x.get_raw().shader_module)
+                    .collect();
 
-            let resource = MaterialPassResource {
-                material_pass_key: material_pass_key.clone(),
-                pipeline_layout,
-                shader_modules,
-                shader_module_vk_objs,
-            };
-
-            let material_pass = self
-                .material_passes
-                .insert(hash, &material_pass_key, resource);
-            Ok(material_pass)
-        }
+                let resource = MaterialPassResource {
+                    material_pass_key: material_pass_key.clone(),
+                    pipeline_layout,
+                    shader_modules,
+                    shader_module_vk_objs,
+                };
+                Ok(resource)
+            })
     }
 
     pub fn get_or_create_graphics_pipeline(
-        &mut self,
+        &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
     ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
@@ -842,47 +930,43 @@ impl ResourceLookupSet {
         };
 
         let hash = ResourceHash::from_key(&pipeline_key);
-        if let Some(pipeline) = self.graphics_pipelines.get(hash, &pipeline_key) {
-            Ok(pipeline)
-        } else {
-            log::trace!("Creating pipeline\n{:#?}", pipeline_key);
-            let pipelines = dsc::create_graphics_pipelines(
-                &self.device_context.device(),
-                &material_pass
-                    .get_raw()
-                    .material_pass_key
-                    .fixed_function_state,
-                material_pass
-                    .get_raw()
-                    .pipeline_layout
-                    .get_raw()
-                    .pipeline_layout,
-                renderpass.get_raw().renderpass,
-                &renderpass.get_raw().renderpass_key.dsc,
-                &pipeline_key.material_pass_key.shader_module_metas,
-                &material_pass.get_raw().shader_module_vk_objs,
-                &pipeline_key.renderpass_key.swapchain_surface_info,
-            )?;
-            log::trace!("Created pipelines {:?}", pipelines);
+        self.inner
+            .graphics_pipelines
+            .get_or_create(hash, &pipeline_key, || {
+                log::trace!("Creating pipeline\n{:#?}", pipeline_key);
+                let pipelines = dsc::create_graphics_pipelines(
+                    &self.inner.device_context.device(),
+                    &material_pass
+                        .get_raw()
+                        .material_pass_key
+                        .fixed_function_state,
+                    material_pass
+                        .get_raw()
+                        .pipeline_layout
+                        .get_raw()
+                        .pipeline_layout,
+                    renderpass.get_raw().renderpass,
+                    &renderpass.get_raw().renderpass_key.dsc,
+                    &pipeline_key.material_pass_key.shader_module_metas,
+                    &material_pass.get_raw().shader_module_vk_objs,
+                    &pipeline_key.renderpass_key.swapchain_surface_info,
+                )?;
+                log::trace!("Created pipelines {:?}", pipelines);
 
-            let resource = GraphicsPipelineResource {
-                pipelines,
-                pipeline_layout: material_pass.get_raw().pipeline_layout,
-                renderpass: renderpass.clone(),
-            };
-
-            let pipeline = self
-                .graphics_pipelines
-                .insert(hash, &pipeline_key, resource);
-            Ok(pipeline)
-        }
+                let resource = GraphicsPipelineResource {
+                    pipelines,
+                    pipeline_layout: material_pass.get_raw().pipeline_layout,
+                    renderpass: renderpass.clone(),
+                };
+                Ok(resource)
+            })
     }
 
     // A key difference between this insert_image and the insert_image in a DynResourceAllocator
     // is that these can be retrieved. However, a mutable reference is required. This one is
     // more appropriate to use with loaded assets, and DynResourceAllocator with runtime assets
     pub fn insert_image(
-        &mut self,
+        &self,
         image: ManuallyDrop<VkImage>,
     ) -> ResourceArc<ImageResource> {
         let raw_image = ManuallyDrop::into_inner(image).take_raw().unwrap();
@@ -891,22 +975,23 @@ impl ResourceLookupSet {
 
     // This is useful for inserting swapchain images
     pub fn insert_raw_image(
-        &mut self,
+        &self,
         raw_image: VkImageRaw,
     ) -> ResourceArc<ImageResource> {
-        let image_key = ImageKey {
-            id: self.next_image_id,
-        };
-        self.next_image_id += 1;
+        let image_id = self.inner.next_image_id.fetch_add(1, Ordering::Relaxed);
+
+        let image_key = ImageKey { id: image_id };
 
         let hash = ResourceHash::from_key(&image_key);
-
         let resource = ImageResource {
             image: raw_image,
             image_key: Some(image_key),
         };
 
-        self.images.insert(hash, &image_key, resource)
+        self.inner
+            .images
+            .get_or_create(hash, &image_key, || Ok(resource))
+            .unwrap()
     }
 
     //TODO: Support direct removal of raw images with verification that no references remain
@@ -915,22 +1000,24 @@ impl ResourceLookupSet {
     // is that these can be retrieved. However, a mutable reference is required. This one is
     // more appropriate to use with loaded assets, and DynResourceAllocator with runtime assets
     pub fn insert_buffer(
-        &mut self,
+        &self,
         buffer: ManuallyDrop<VkBuffer>,
     ) -> (BufferKey, ResourceArc<VkBufferRaw>) {
-        let buffer_key = BufferKey {
-            id: self.next_buffer_id,
-        };
-        self.next_buffer_id += 1;
+        let buffer_id = self.inner.next_buffer_id.fetch_add(1, Ordering::Relaxed);
+        let buffer_key = BufferKey { id: buffer_id };
 
         let hash = ResourceHash::from_key(&buffer_key);
         let raw_buffer = ManuallyDrop::into_inner(buffer).take_raw().unwrap();
-        let buffer = self.buffers.insert(hash, &buffer_key, raw_buffer);
+        let buffer = self
+            .inner
+            .buffers
+            .get_or_create(hash, &buffer_key, || Ok(raw_buffer))
+            .unwrap();
         (buffer_key, buffer)
     }
 
     pub fn get_or_create_image_view(
-        &mut self,
+        &self,
         image: &ResourceArc<ImageResource>,
         image_view_meta: &dsc::ImageViewMeta,
     ) -> VkResult<ResourceArc<ImageViewResource>> {
@@ -945,26 +1032,25 @@ impl ResourceLookupSet {
         };
 
         let hash = ResourceHash::from_key(&image_view_key);
-        if let Some(image_view) = self.image_views.get(hash, &image_view_key) {
-            Ok(image_view)
-        } else {
-            log::trace!("Creating image view\n{:#?}", image_view_key);
-            let resource = dsc::create_image_view(
-                &self.device_context.device(),
-                image.get_raw().image.image,
-                image_view_meta,
-            )?;
-            log::trace!("Created image view\n{:#?}", resource);
+        self.inner
+            .image_views
+            .get_or_create(hash, &image_view_key, || {
+                log::trace!("Creating image view\n{:#?}", image_view_key);
+                let resource = dsc::create_image_view(
+                    &self.inner.device_context.device(),
+                    image.get_raw().image.image,
+                    image_view_meta,
+                )?;
+                log::trace!("Created image view\n{:#?}", resource);
 
-            let resource = ImageViewResource {
-                image_view: resource,
-                image_view_key: Some(image_view_key.clone()),
-                image: image.clone(),
-            };
+                let resource = ImageViewResource {
+                    image_view: resource,
+                    image_view_key: Some(image_view_key.clone()),
+                    image: image.clone(),
+                };
 
-            let image_view = self.image_views.insert(hash, &image_view_key, resource);
-            Ok(image_view)
-        }
+                Ok(resource)
+            })
     }
 
     // pub fn get_or_create_frame_buffer(

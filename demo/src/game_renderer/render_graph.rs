@@ -1,12 +1,10 @@
 use ash::vk;
-use renderer::assets::{vk_description as dsc};
+use renderer::assets::{vk_description as dsc, ResourceManagerContext};
 use renderer::assets::graph::*;
 use renderer::assets::resources::ResourceManager;
 use crate::VkDeviceContext;
 use ash::prelude::VkResult;
-use renderer::assets::resources::{
-    ResourceArc, ImageViewResource, DynCommandWriter, RenderPassResource,
-};
+use renderer::assets::resources::{ResourceArc, ImageViewResource, RenderPassResource};
 use crate::render_contexts::{RenderJobWriteContextFactory, RenderJobWriteContext};
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
@@ -25,9 +23,16 @@ pub struct RenderGraphExecuteContext {
     pub prepared_render_data: Box<PreparedRenderData<RenderJobWriteContext>>,
     pub view: RenderView,
     pub write_context_factory: RenderJobWriteContextFactory,
-    pub command_writer: DynCommandWriter, // command buffers
+    //pub command_writer: DynCommandWriter, // command buffers
+    //pub resource_manager_context: ResourceManagerContext
     //pub dyn_resource_allocators: DynResourceAllocatorSet, // images, image views, buffers
     //pub descriptor_set_alloctor_provider: DescriptorSetAllocatorProvider, // descriptor sets
+}
+
+impl RenderGraphExecuteContext {
+    pub fn resource_manager_context(&self) -> &ResourceManagerContext {
+        &self.write_context_factory.resource_manager_context
+    }
 }
 
 pub fn build_render_graph(
@@ -124,80 +129,80 @@ pub fn build_render_graph(
 
         Ui { node, color }
     };
-/*
-    let blur_extract_pass = {
-        struct BlurExtractPass {
-            node: RenderGraphNodeId,
-            sdr_image: RenderGraphImageUsageId,
-            hdr_image: RenderGraphImageUsageId,
-        }
+    /*
+        let blur_extract_pass = {
+            struct BlurExtractPass {
+                node: RenderGraphNodeId,
+                sdr_image: RenderGraphImageUsageId,
+                hdr_image: RenderGraphImageUsageId,
+            }
 
-        let node = graph.add_node("BlurExtract", RenderGraphQueue::DefaultGraphics);
+            let node = graph.add_node("BlurExtract", RenderGraphQueue::DefaultGraphics);
 
-        //node.sample_image(ui_pass.node_id);
-        let sdr_image =
-            graph.create_color_attachment(node, 0, Default::default(), Default::default());
-        let hdr_image = graph.create_color_attachment(
-            node,
-            1,
-            Some(vk::ClearColorValue::default()),
-            RenderGraphImageConstraint {
-                samples: Some(vk::SampleCountFlags::TYPE_1),
-                format: Some(color_format),
-                ..Default::default()
-            },
-        );
+            //node.sample_image(ui_pass.node_id);
+            let sdr_image =
+                graph.create_color_attachment(node, 0, Default::default(), Default::default());
+            let hdr_image = graph.create_color_attachment(
+                node,
+                1,
+                Some(vk::ClearColorValue::default()),
+                RenderGraphImageConstraint {
+                    samples: Some(vk::SampleCountFlags::TYPE_1),
+                    format: Some(color_format),
+                    ..Default::default()
+                },
+            );
 
-        graph.sample_image(node, ui_pass.color, Default::default());
+            graph.sample_image(node, ui_pass.color, Default::default());
 
-        graph_callbacks.set_renderpass_callback(node, |command_buffer, context| {
-            //TODO:
-            // - Resolve the pipeline from the cache using the blur_extract_pass material pass resource
-            // - Get the image that corresponds with ui_pass.color
-            // - Create a descriptor set for the pass using the image
+            graph_callbacks.set_renderpass_callback(node, |command_buffer, context| {
+                //TODO:
+                // - Resolve the pipeline from the cache using the blur_extract_pass material pass resource
+                // - Get the image that corresponds with ui_pass.color
+                // - Create a descriptor set for the pass using the image
 
-            //context.
+                //context.
 
-            // let descriptor_set_allocator_provider = context.descriptor_set_alloctor_provider.get_allocator();
-            //
-            // descriptor_set_allocator_provider.al
-            //
-            // //ui_pass.color
+                // let descriptor_set_allocator_provider = context.descriptor_set_alloctor_provider.get_allocator();
+                //
+                // descriptor_set_allocator_provider.al
+                //
+                // //ui_pass.color
 
 
-            // device_context.cmd_bind_pipeline(
-            //     command_buffer,
-            //     vk::PipelineBindPoint::GRAPHICS,
-            //     self.pipeline_info.get_raw().pipelines[0],
-            // );
-            //
-            // logical_device.cmd_bind_descriptor_sets(
-            //     command_buffer,
-            //     vk::PipelineBindPoint::GRAPHICS,
-            //     self.pipeline_info
-            //         .get_raw()
-            //         .pipeline_layout
-            //         .get_raw()
-            //         .pipeline_layout,
-            //     0,
-            //     &[descriptor_set],
-            //     &[],
-            // );
-            //
-            // logical_device.cmd_draw(command_buffer, 3, 1, 0, 0);
+                // device_context.cmd_bind_pipeline(
+                //     command_buffer,
+                //     vk::PipelineBindPoint::GRAPHICS,
+                //     self.pipeline_info.get_raw().pipelines[0],
+                // );
+                //
+                // logical_device.cmd_bind_descriptor_sets(
+                //     command_buffer,
+                //     vk::PipelineBindPoint::GRAPHICS,
+                //     self.pipeline_info
+                //         .get_raw()
+                //         .pipeline_layout
+                //         .get_raw()
+                //         .pipeline_layout,
+                //     0,
+                //     &[descriptor_set],
+                //     &[],
+                // );
+                //
+                // logical_device.cmd_draw(command_buffer, 3, 1, 0, 0);
 
-            // bind?
+                // bind?
 
-            Ok(())
-        });
+                Ok(())
+            });
 
-        BlurExtractPass {
-            node,
-            sdr_image,
-            hdr_image,
-        }
-    };
-*/
+            BlurExtractPass {
+                node,
+                sdr_image,
+                hdr_image,
+            }
+        };
+    */
     let _swapchain_output_image_id = graph.set_output_image(
         ui_pass.color,
         //blur_extract_pass.sdr_image,

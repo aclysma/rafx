@@ -1,6 +1,9 @@
 use renderer_shell_vulkan::{MsaaLevel, VkResource, VkImageRaw};
 use ash::vk;
-use crate::graph::{RenderGraphImageUsageId, RenderGraphImageConstraint, RenderGraphImageSpecification, RenderGraphBuilder, RenderGraphQueue};
+use crate::graph::{
+    RenderGraphImageUsageId, RenderGraphImageConstraint, RenderGraphImageSpecification,
+    RenderGraphBuilder, RenderGraphQueue,
+};
 use crate::vk_description::SwapchainSurfaceInfo;
 use crate::{
     vk_description as dsc, ResourceArc, ResourceWithHash, ResourceId, ImageResource,

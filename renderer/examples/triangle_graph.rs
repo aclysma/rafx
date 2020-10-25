@@ -175,12 +175,10 @@ fn register_swapchain_images(
         .iter()
         .map(|&image| {
             // Register the swapchain image as an image resource. This lets us pass it to the render graph
-            resource_manager
-                .resources_mut()
-                .insert_raw_image(VkImageRaw {
-                    image,
-                    allocation: None,
-                })
+            resource_manager.resources().insert_raw_image(VkImageRaw {
+                image,
+                allocation: None,
+            })
         })
         .collect()
 }
@@ -246,7 +244,7 @@ fn render_frame(
     // rendergraph will cache renderpasses/framebuffers for a few frames, which keep image views
     // alive. "Recreating" an image view of the same image with the same parameters in this case
     // will just fetch the same view we created previously (unless the swapchain changes!)
-    let swapchain_image_view = resource_manager.resources_mut().get_or_create_image_view(
+    let swapchain_image_view = resource_manager.resources().get_or_create_image_view(
         &swapchain_images[frame_in_flight.present_index() as usize],
         &dsc::ImageViewMeta::default_2d_no_mips_or_layers(
             swapchain_surface_info.surface_format.format.into(),
@@ -324,10 +322,8 @@ fn render_frame(
     // Dispatch the graph, producing command buffers that represent work to queue into the GPU
     // NOTE: This point onward could be performed asynchronously to the next frame.
     let write_context = RenderGraphExecuteContext {};
-    let command_buffers = executor.execute_graph(
-        &resource_manager.create_dyn_command_writer_allocator(),
-        &write_context,
-    )?;
+    let command_buffers =
+        executor.execute_graph(&resource_manager.resource_manager_context(), &write_context)?;
 
     // Present using the command buffers created via the graph
     frame_in_flight.present(&command_buffers)?;

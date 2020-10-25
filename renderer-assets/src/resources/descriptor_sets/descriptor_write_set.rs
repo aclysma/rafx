@@ -147,7 +147,7 @@ pub fn apply_material_instance_slot_assignment(
     slot_assignment: &MaterialInstanceSlotAssignment,
     pass_slot_name_lookup: &SlotNameLookup,
     assets: &AssetLookupSet,
-    resources: &mut ResourceLookupSet,
+    resources: &ResourceLookupSet,
     material_pass_write_set: &mut Vec<DescriptorSetWriteSet>,
 ) -> VkResult<()> {
     if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
@@ -225,7 +225,7 @@ pub fn create_write_sets_for_material_instance_pass(
     pass: &MaterialPass,
     slots: &[MaterialInstanceSlotAssignment],
     assets: &AssetLookupSet,
-    resources: &mut ResourceLookupSet,
+    resources: &ResourceLookupSet,
 ) -> VkResult<Vec<DescriptorSetWriteSet>> {
     let mut pass_descriptor_set_writes = create_uninitialized_write_sets_for_material_pass(pass);
 

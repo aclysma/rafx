@@ -29,12 +29,10 @@ use renderer::assets::{
 use crate::asset_loader::ResourceAssetLoader;
 
 pub fn logging_init() {
-    #[allow(unused_assignments)]
-    let mut log_level = log::LevelFilter::Info;
+    #[cfg(not(debug_assertions))]
+    let log_level = log::LevelFilter::Info;
     #[cfg(debug_assertions)]
-    {
-        log_level = log::LevelFilter::Debug;
-    }
+    let log_level = log::LevelFilter::Debug;
 
     // Setup logging
     env_logger::Builder::from_default_env()
@@ -46,7 +44,7 @@ pub fn logging_init() {
         .filter_module("renderer_shell_vulkan::device", log::LevelFilter::Debug)
         .filter_module("renderer_nodes", log::LevelFilter::Info)
         .filter_module("renderer_visibility", log::LevelFilter::Info)
-        .filter_module("renderer_assets::graph", log::LevelFilter::Trace)
+        .filter_module("renderer_assets::graph", log::LevelFilter::Warn)
         // .filter_module(
         //     "renderer_assets::resources::command_buffers",
         //     log::LevelFilter::Trace,

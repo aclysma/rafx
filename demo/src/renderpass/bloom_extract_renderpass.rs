@@ -33,7 +33,7 @@ impl VkBloomRenderPassResources {
         bloom_blur_material: Handle<MaterialAsset>,
     ) -> VkResult<Self> {
         let bloom_image0 = RenderpassAttachmentImage::create_resource(
-            resource_manager.resources_mut(),
+            resource_manager.resources(),
             device_context,
             &swapchain.swapchain_info,
             swapchain.color_format,
@@ -43,7 +43,7 @@ impl VkBloomRenderPassResources {
         )?;
 
         let bloom_image1 = RenderpassAttachmentImage::create_resource(
-            resource_manager.resources_mut(),
+            resource_manager.resources(),
             device_context,
             &swapchain.swapchain_info,
             swapchain.color_format,
@@ -53,7 +53,7 @@ impl VkBloomRenderPassResources {
         )?;
 
         let color_image = RenderpassAttachmentImage::create_resource(
-            resource_manager.resources_mut(),
+            resource_manager.resources(),
             device_context,
             &swapchain.swapchain_info,
             swapchain.color_format,
@@ -104,7 +104,7 @@ pub struct VkBloomExtractRenderPass {
 
 impl VkBloomExtractRenderPass {
     pub fn new(
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         pipeline_info: ResourceArc<GraphicsPipelineResource>,
@@ -127,7 +127,7 @@ impl VkBloomExtractRenderPass {
     }
 
     fn create_framebuffers(
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         bloom_image_view: &ResourceArc<ImageViewResource>,
         color_image_view: &ResourceArc<ImageViewResource>,
         swapchain_info: &SwapchainInfo,

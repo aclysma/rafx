@@ -42,7 +42,6 @@ where
     active_count: Arc<AtomicU32>,
 }
 
-#[derive(Clone)]
 pub struct DynResourceAllocator<ResourceT>
 where
     ResourceT: VkResource + Clone,
@@ -93,7 +92,127 @@ where
     }
 }
 
-#[derive(Clone)]
+pub struct DynResourceAllocatorManagerInner<ResourceT>
+where
+    ResourceT: VkResource + Clone,
+{
+    drop_tx: Sender<ResourceWithHash<ResourceT>>,
+    drop_rx: Receiver<ResourceWithHash<ResourceT>>,
+    next_allocator_index: AtomicU32,
+    active_count: Arc<AtomicU32>,
+}
+
+impl<ResourceT> DynResourceAllocatorManagerInner<ResourceT>
+where
+    ResourceT: VkResource + Clone + std::fmt::Debug,
+{
+    fn create_allocator(&self) -> DynResourceAllocator<ResourceT> {
+        let allocator_index = self.next_allocator_index.fetch_add(1, Ordering::Relaxed);
+        DynResourceAllocator::new(
+            self.drop_tx.clone(),
+            allocator_index,
+            self.active_count.clone(),
+        )
+    }
+}
+
+pub struct DynResourceAllocatorProvider<ResourceT>
+where
+    ResourceT: VkResource + Clone,
+{
+    inner: Arc<DynResourceAllocatorManagerInner<ResourceT>>,
+}
+
+impl<ResourceT> DynResourceAllocatorProvider<ResourceT>
+where
+    ResourceT: VkResource + Clone + std::fmt::Debug,
+{
+    fn create_allocator(&self) -> DynResourceAllocator<ResourceT> {
+        self.inner.create_allocator()
+    }
+}
+
+pub struct DynResourceAllocatorManager<ResourceT>
+where
+    ResourceT: VkResource + Clone,
+{
+    inner: Arc<DynResourceAllocatorManagerInner<ResourceT>>,
+    drop_sink: VkResourceDropSink<ResourceT>,
+}
+
+impl<ResourceT> DynResourceAllocatorManager<ResourceT>
+where
+    ResourceT: VkResource + Clone + std::fmt::Debug,
+{
+    fn new(max_frames_in_flight: u32) -> Self {
+        let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
+        let drop_sink = VkResourceDropSink::new(max_frames_in_flight);
+
+        let inner = DynResourceAllocatorManagerInner {
+            drop_tx,
+            drop_rx,
+            next_allocator_index: AtomicU32::new(1),
+            active_count: Arc::new(AtomicU32::new(0)),
+        };
+
+        DynResourceAllocatorManager {
+            inner: Arc::new(inner),
+            drop_sink,
+        }
+    }
+
+    fn create_allocator(&self) -> DynResourceAllocator<ResourceT> {
+        self.inner.create_allocator()
+    }
+
+    fn create_allocator_provider(&self) -> DynResourceAllocatorProvider<ResourceT> {
+        DynResourceAllocatorProvider {
+            inner: self.inner.clone(),
+        }
+    }
+
+    fn handle_dropped_resources(&mut self) {
+        for dropped in self.inner.drop_rx.try_iter() {
+            log::trace!(
+                "dropping {} {:?}",
+                core::any::type_name::<ResourceT>(),
+                dropped.resource
+            );
+            self.drop_sink.retire(dropped.resource);
+            self.inner.active_count.fetch_sub(1, Ordering::Relaxed);
+        }
+    }
+
+    fn on_frame_complete(
+        &mut self,
+        device_context: &VkDeviceContext,
+    ) -> VkResult<()> {
+        self.handle_dropped_resources();
+        self.drop_sink.on_frame_complete(device_context)
+    }
+
+    fn destroy(
+        &mut self,
+        device_context: &VkDeviceContext,
+    ) -> VkResult<()> {
+        self.handle_dropped_resources();
+
+        if self.len() > 0 {
+            log::warn!(
+                "{} resource count {} > 0, resources will leak",
+                core::any::type_name::<ResourceT>(),
+                self.len()
+            );
+        }
+
+        self.drop_sink.destroy(device_context)
+    }
+
+    fn len(&self) -> usize {
+        self.inner.active_count.load(Ordering::Relaxed) as usize
+    }
+}
+
 pub struct DynResourceAllocatorSet {
     pub images: DynResourceAllocator<ImageResource>,
     pub image_views: DynResourceAllocator<ImageViewResource>,
@@ -136,86 +255,6 @@ impl DynResourceAllocatorSet {
     }
 }
 
-pub struct DynResourceAllocatorManager<ResourceT>
-where
-    ResourceT: VkResource + Clone,
-{
-    drop_sink: VkResourceDropSink<ResourceT>,
-    drop_tx: Sender<ResourceWithHash<ResourceT>>,
-    drop_rx: Receiver<ResourceWithHash<ResourceT>>,
-    //allocator: DynResourceAllocator<ResourceT>
-    next_allocator_index: AtomicU32,
-    active_count: Arc<AtomicU32>,
-}
-
-impl<ResourceT> DynResourceAllocatorManager<ResourceT>
-where
-    ResourceT: VkResource + Clone + std::fmt::Debug,
-{
-    fn new(max_frames_in_flight: u32) -> Self {
-        let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
-        let drop_sink = VkResourceDropSink::new(max_frames_in_flight);
-
-        DynResourceAllocatorManager {
-            drop_sink,
-            drop_tx,
-            drop_rx,
-            next_allocator_index: AtomicU32::new(0),
-            active_count: Arc::new(AtomicU32::new(0)),
-        }
-    }
-
-    fn create_allocator(&self) -> DynResourceAllocator<ResourceT> {
-        let allocator_index = self.next_allocator_index.fetch_add(1, Ordering::Relaxed);
-        DynResourceAllocator::new(
-            self.drop_tx.clone(),
-            allocator_index,
-            self.active_count.clone(),
-        )
-    }
-
-    fn handle_dropped_resources(&mut self) {
-        for dropped in self.drop_rx.try_iter() {
-            log::trace!(
-                "dropping {} {:?}",
-                core::any::type_name::<ResourceT>(),
-                dropped.resource
-            );
-            self.drop_sink.retire(dropped.resource);
-            self.active_count.fetch_sub(1, Ordering::Relaxed);
-        }
-    }
-
-    fn on_frame_complete(
-        &mut self,
-        device_context: &VkDeviceContext,
-    ) -> VkResult<()> {
-        self.handle_dropped_resources();
-        self.drop_sink.on_frame_complete(device_context)
-    }
-
-    fn destroy(
-        &mut self,
-        device_context: &VkDeviceContext,
-    ) -> VkResult<()> {
-        self.handle_dropped_resources();
-
-        if self.len() > 0 {
-            log::warn!(
-                "{} resource count {} > 0, resources will leak",
-                core::any::type_name::<ResourceT>(),
-                self.len()
-            );
-        }
-
-        self.drop_sink.destroy(device_context)
-    }
-
-    fn len(&self) -> usize {
-        self.active_count.load(Ordering::Relaxed) as usize
-    }
-}
-
 #[derive(Debug)]
 pub struct ResourceMetrics {
     pub image_count: usize,
@@ -229,19 +268,64 @@ pub struct ResourceMetrics {
 // dropped can safely be destroyed after a few frames have passed (based on max number of frames
 // that can be submitted to the GPU)
 //
-pub struct DynResourceAllocatorManagerSet {
+// pub struct DynResourceAllocatorManagerSetInner {
+//     pub device_context: VkDeviceContext,
+//     pub images: DynResourceAllocatorManager<ImageResource>,
+//     pub image_views: DynResourceAllocatorManager<ImageViewResource>,
+//     pub buffers: DynResourceAllocatorManager<VkBufferRaw>,
+// }
+
+// impl DynResourceAllocatorManagerSetInner {
+//     pub fn new(
+//         device_context: &VkDeviceContext,
+//         max_frames_in_flight: u32,
+//     ) -> Self {
+//         DynResourceAllocatorManagerSetInner {
+//             device_context: device_context.clone(),
+//             images: DynResourceAllocatorManager::new(max_frames_in_flight),
+//             image_views: DynResourceAllocatorManager::new(max_frames_in_flight),
+//             buffers: DynResourceAllocatorManager::new(max_frames_in_flight),
+//         }
+//     }
+//
+//     pub fn create_allocator_set(&self) -> DynResourceAllocatorSet {
+//         DynResourceAllocatorSet {
+//             images: self.images.create_allocator(),
+//             image_views: self.image_views.create_allocator(),
+//             buffers: self.buffers.create_allocator(),
+//         }
+//     }
+// }
+
+pub struct DynResourceAllocatorSetProvider {
+    pub images: DynResourceAllocatorProvider<ImageResource>,
+    pub image_views: DynResourceAllocatorProvider<ImageViewResource>,
+    pub buffers: DynResourceAllocatorProvider<VkBufferRaw>,
+}
+
+impl DynResourceAllocatorSetProvider {
+    pub fn get_allocator(&self) -> DynResourceAllocatorSet {
+        DynResourceAllocatorSet {
+            images: self.images.create_allocator(),
+            image_views: self.image_views.create_allocator(),
+            buffers: self.buffers.create_allocator(),
+        }
+    }
+}
+
+pub struct DynResourceAllocatorSetManager {
     pub device_context: VkDeviceContext,
     pub images: DynResourceAllocatorManager<ImageResource>,
     pub image_views: DynResourceAllocatorManager<ImageViewResource>,
     pub buffers: DynResourceAllocatorManager<VkBufferRaw>,
 }
 
-impl DynResourceAllocatorManagerSet {
+impl DynResourceAllocatorSetManager {
     pub fn new(
         device_context: &VkDeviceContext,
         max_frames_in_flight: u32,
     ) -> Self {
-        DynResourceAllocatorManagerSet {
+        DynResourceAllocatorSetManager {
             device_context: device_context.clone(),
             images: DynResourceAllocatorManager::new(max_frames_in_flight),
             image_views: DynResourceAllocatorManager::new(max_frames_in_flight),
@@ -249,7 +333,15 @@ impl DynResourceAllocatorManagerSet {
         }
     }
 
-    pub fn create_allocator_set(&self) -> DynResourceAllocatorSet {
+    pub fn create_allocator_provider(&self) -> DynResourceAllocatorSetProvider {
+        DynResourceAllocatorSetProvider {
+            images: self.images.create_allocator_provider(),
+            image_views: self.image_views.create_allocator_provider(),
+            buffers: self.buffers.create_allocator_provider(),
+        }
+    }
+
+    pub fn get_allocator(&self) -> DynResourceAllocatorSet {
         DynResourceAllocatorSet {
             images: self.images.create_allocator(),
             image_views: self.image_views.create_allocator(),

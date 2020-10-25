@@ -75,9 +75,9 @@ impl SwapchainResources {
                 image,
             };
 
-            let image = resource_manager.resources_mut().insert_raw_image(raw);
+            let image = resource_manager.resources().insert_raw_image(raw);
             let image_view = resource_manager
-                .resources_mut()
+                .resources()
                 .get_or_create_image_view(&image, &image_view_meta)?;
 
             swapchain_images.push(image_view);
@@ -87,7 +87,7 @@ impl SwapchainResources {
         // Create images/views we use as attachments
         //
         let color_attachment = RenderpassAttachmentImage::new(
-            resource_manager.resources_mut(),
+            resource_manager.resources(),
             device_context,
             &swapchain.swapchain_info,
             swapchain.color_format,
@@ -106,7 +106,7 @@ impl SwapchainResources {
         )?;
 
         let depth_attachment = RenderpassAttachmentImage::new(
-            resource_manager.resources_mut(),
+            resource_manager.resources(),
             device_context,
             &swapchain.swapchain_info,
             swapchain.depth_format,
@@ -160,7 +160,7 @@ impl SwapchainResources {
             .unwrap();
 
         let bloom_extract_renderpass = VkBloomExtractRenderPass::new(
-            resource_manager.resources_mut(),
+            resource_manager.resources(),
             device_context,
             &swapchain.swapchain_info,
             bloom_extract_pipeline_info,
@@ -193,7 +193,7 @@ impl SwapchainResources {
             .unwrap();
 
         let bloom_blur_renderpass = VkBloomBlurRenderPass::new(
-            resource_manager.resources_mut(),
+            resource_manager.resources(),
             device_context,
             &swapchain.swapchain_info,
             bloom_blur_pipeline_info,
@@ -227,7 +227,7 @@ impl SwapchainResources {
             .unwrap();
 
         let bloom_combine_renderpass = VkBloomCombineRenderPass::new(
-            resource_manager.resources_mut(),
+            resource_manager.resources(),
             device_context,
             &swapchain.swapchain_info,
             &swapchain_images,
@@ -286,7 +286,7 @@ impl SwapchainResources {
             .clone();
 
         resource_manager
-            .resources_mut()
+            .resources()
             .get_or_create_renderpass(&renderpass_asset_data.renderpass, swapchain_surface_info)
     }
 }

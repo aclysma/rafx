@@ -302,7 +302,7 @@ impl GameRenderer {
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
         let swapchain_info = swapchain_resources.swapchain_info.clone();
 
-        let t2 = std::time::Instant::now();
+        //let t2 = std::time::Instant::now();
         let render_graph = render_graph::build_render_graph(
             &swapchain_surface_info,
             &device_context,
@@ -310,8 +310,8 @@ impl GameRenderer {
             &swapchain_info,
             swapchain_image,
         )?;
-        let t3 = std::time::Instant::now();
-        log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
+        // let t3 = std::time::Instant::now();
+        // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
 
         //
         // View Management
@@ -493,8 +493,7 @@ impl GameRenderer {
         let prepare_job_set =
             extract_job_set.extract(&extract_context, &frame_packet, &[&main_view]);
 
-        let dyn_resource_allocator_set = resource_manager.create_dyn_resource_allocator_set();
-        let dyn_command_writer_allocator = resource_manager.create_dyn_command_writer_allocator();
+        let resource_manager_context = resource_manager.resource_manager_context();
 
         let t1 = std::time::Instant::now();
         log::trace!(
@@ -508,8 +507,7 @@ impl GameRenderer {
             game_renderer,
             prepare_job_set,
             render_graph: render_graph.executor,
-            dyn_resource_allocator_set,
-            dyn_command_writer_allocator,
+            resource_manager_context,
             frame_packet,
             main_view,
             render_registry,

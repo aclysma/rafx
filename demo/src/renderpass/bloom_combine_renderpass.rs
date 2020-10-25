@@ -21,7 +21,7 @@ pub struct VkBloomCombineRenderPass {
 
 impl VkBloomCombineRenderPass {
     pub fn new(
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         swapchain_images: &[ResourceArc<ImageViewResource>],
@@ -43,7 +43,7 @@ impl VkBloomCombineRenderPass {
     }
 
     fn create_framebuffers(
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         swapchain_image_views: &[ResourceArc<ImageViewResource>],
         swapchain_info: &SwapchainInfo,
         renderpass: &ResourceArc<RenderPassResource>,

@@ -27,7 +27,7 @@ pub struct VkBloomBlurRenderPass {
 
 impl VkBloomBlurRenderPass {
     pub fn new(
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         device_context: &VkDeviceContext,
         swapchain_info: &SwapchainInfo,
         pipeline: ResourceArc<GraphicsPipelineResource>,
@@ -86,7 +86,7 @@ impl VkBloomBlurRenderPass {
     }
 
     fn create_framebuffers(
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         bloom_image_views: &[ResourceArc<ImageViewResource>],
         swapchain_info: &SwapchainInfo,
         renderpass: &ResourceArc<RenderPassResource>,

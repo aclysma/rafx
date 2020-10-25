@@ -23,7 +23,7 @@ pub struct ActiveSwapchainSurfaceInfoSet {
 impl ActiveSwapchainSurfaceInfoSet {
     fn add_material_for_swapchain(
         //&mut self,
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         swapchain_surface_info: &SwapchainSurfaceInfo,
         loaded_material: &mut MaterialAsset,
     ) -> VkResult<()> {
@@ -48,7 +48,7 @@ impl ActiveSwapchainSurfaceInfoSet {
         &mut self,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
         loaded_assets: &mut AssetLookupSet,
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
     ) -> VkResult<()> {
         let added_swapchain = match self.ref_counts.get_mut(swapchain_surface_info) {
             Some(state) => {

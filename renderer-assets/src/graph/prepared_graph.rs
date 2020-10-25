@@ -3,7 +3,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use renderer_shell_vulkan::{VkDeviceContext, VkImage};
 use ash::vk;
 use crate::resources::ResourceLookupSet;
-use crate::{ResourceArc, ImageViewResource, DynCommandWriterAllocator, ResourceManager};
+use crate::{ResourceArc, ImageViewResource, ResourceManager, ResourceManagerContext};
 use ash::prelude::VkResult;
 use std::mem::ManuallyDrop;
 use crate::vk_description as dsc;
@@ -29,7 +29,7 @@ pub struct PreparedRenderGraph {
 impl PreparedRenderGraph {
     pub fn new(
         device_context: &VkDeviceContext,
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         graph: RenderGraphBuilder,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> VkResult<Self> {
@@ -65,7 +65,7 @@ impl PreparedRenderGraph {
     fn allocate_images(
         device_context: &VkDeviceContext,
         graph: &RenderGraphPlan,
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     ) -> VkResult<FnvHashMap<PhysicalImageId, ResourceArc<ImageViewResource>>> {
         let mut image_resources: FnvHashMap<PhysicalImageId, ResourceArc<ImageViewResource>> =
@@ -119,7 +119,7 @@ impl PreparedRenderGraph {
 
     fn allocate_render_passes(
         graph: &RenderGraphPlan,
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     ) -> VkResult<Vec<ResourceArc<RenderPassResource>>> {
         let mut render_pass_resources = Vec::with_capacity(graph.passes.len());
@@ -139,7 +139,7 @@ impl PreparedRenderGraph {
 
     fn allocate_framebuffers(
         graph: &RenderGraphPlan,
-        resources: &mut ResourceLookupSet,
+        resources: &ResourceLookupSet,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
         image_resources: &FnvHashMap<PhysicalImageId, ResourceArc<ImageViewResource>>,
         render_pass_resources: &Vec<ResourceArc<RenderPassResource>>,
@@ -171,19 +171,21 @@ impl PreparedRenderGraph {
 
     pub fn execute_graph(
         &mut self,
-        command_writer_allocator: &DynCommandWriterAllocator,
+        resource_manager_context: &ResourceManagerContext,
         node_visitor: &dyn RenderGraphNodeVisitor,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         //
         // Start a command writer. For now just do a single primary writer, later we can multithread this.
         //
-        let mut command_writer = command_writer_allocator.allocate_writer(
-            self.device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
-            vk::CommandPoolCreateFlags::TRANSIENT,
-            0,
-        )?;
+        let mut command_writer = resource_manager_context
+            .dyn_command_writer_allocator()
+            .allocate_writer(
+                self.device_context
+                    .queue_family_indices()
+                    .graphics_queue_family_index,
+                vk::CommandPoolCreateFlags::TRANSIENT,
+                0,
+            )?;
 
         let command_buffer = command_writer.begin_command_buffer(
             vk::CommandBufferLevel::PRIMARY,
@@ -336,7 +338,7 @@ impl<T> RenderGraphExecutor<T> {
         //
         let prepared_graph = PreparedRenderGraph::new(
             device_context,
-            resource_manager.resources_mut(),
+            resource_manager.resources(),
             graph,
             swapchain_surface_info,
         )?;
@@ -370,7 +372,7 @@ impl<T> RenderGraphExecutor<T> {
             {
                 for &render_phase_index in render_phase_indices {
                     resource_manager
-                        .graphics_pipeline_cache_mut()
+                        .graphics_pipeline_cache()
                         .register_renderpass_to_phase_index_per_frame(
                             &prepared_graph.render_pass_resources[renderpass_index],
                             render_phase_index,
@@ -378,7 +380,9 @@ impl<T> RenderGraphExecutor<T> {
                 }
             }
         }
-        resource_manager.cache_all_graphics_pipelines()?;
+        resource_manager
+            .graphics_pipeline_cache()
+            .precache_pipelines_for_all_phases()?;
 
         //
         // Return the executor which can be triggered later
@@ -416,11 +420,11 @@ impl<T> RenderGraphExecutor<T> {
     /// Executes the graph, passing through the given context parameter
     pub fn execute_graph(
         mut self,
-        command_writer_allocator: &DynCommandWriterAllocator,
+        resource_manager_context: &ResourceManagerContext,
         context: &T,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let visitor = self.callbacks.create_visitor(context);
         self.prepared_graph
-            .execute_graph(command_writer_allocator, &*visitor)
+            .execute_graph(resource_manager_context, &*visitor)
     }
 }

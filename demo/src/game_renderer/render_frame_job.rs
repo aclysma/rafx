@@ -4,18 +4,17 @@ use crate::render_contexts::{
     RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory,
 };
 use renderer::assets::graph::RenderGraphExecutor;
-use renderer::assets::resources::{DynResourceAllocatorSet, DynCommandWriterAllocator};
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
 use ash::prelude::VkResult;
 use ash::vk;
 use crate::game_renderer::render_graph::RenderGraphExecuteContext;
+use renderer::assets::{ResourceManagerContext};
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
     pub prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
     pub render_graph: RenderGraphExecutor<RenderGraphExecuteContext>,
-    pub dyn_resource_allocator_set: DynResourceAllocatorSet,
-    pub dyn_command_writer_allocator: DynCommandWriterAllocator,
+    pub resource_manager_context: ResourceManagerContext,
     pub frame_packet: FramePacket,
     pub main_view: RenderView,
     pub render_registry: RenderRegistry,
@@ -32,8 +31,7 @@ impl RenderFrameJob {
             //guard,
             self.prepare_job_set,
             self.render_graph,
-            self.dyn_resource_allocator_set,
-            self.dyn_command_writer_allocator,
+            self.resource_manager_context,
             self.frame_packet,
             self.main_view,
             self.render_registry,
@@ -68,8 +66,9 @@ impl RenderFrameJob {
         //mut guard: MutexGuard<GameRendererInner>,
         prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
         render_graph: RenderGraphExecutor<RenderGraphExecuteContext>,
-        dyn_resource_allocator_set: DynResourceAllocatorSet,
-        dyn_command_writer_allocator: DynCommandWriterAllocator,
+        // dyn_resource_allocator_set_provider: DynResourceAllocatorSetProvider,
+        // dyn_command_writer_allocator: DynCommandWriterAllocator,
+        resource_manager_context: ResourceManagerContext,
         frame_packet: FramePacket,
         main_view: RenderView,
         render_registry: RenderRegistry,
@@ -80,18 +79,18 @@ impl RenderFrameJob {
         //let mut guard = self.inner.lock().unwrap();
         //let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
 
-        let command_writer = dyn_command_writer_allocator.allocate_writer(
-            device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
-            vk::CommandPoolCreateFlags::TRANSIENT,
-            0,
-        )?;
+        // let command_writer = resource_manager_context.dyn_command_writer_allocator().allocate_writer(
+        //     device_context
+        //         .queue_family_indices()
+        //         .graphics_queue_family_index,
+        //     vk::CommandPoolCreateFlags::TRANSIENT,
+        //     0,
+        // )?;
 
         //
         // Prepare Jobs - everything beyond this point could be done in parallel with the main thread
         //
-        let prepare_context = RenderJobPrepareContext::new(dyn_resource_allocator_set);
+        let prepare_context = RenderJobPrepareContext::new(resource_manager_context.clone());
         let prepared_render_data = prepare_job_set.prepare(
             &prepare_context,
             &frame_packet,
@@ -108,17 +107,16 @@ impl RenderFrameJob {
         // Write Jobs - called from within renderpasses for now
         //
         let write_context_factory =
-            RenderJobWriteContextFactory::new(device_context, prepare_context.dyn_resource_lookups);
+            RenderJobWriteContextFactory::new(device_context, resource_manager_context.clone());
 
         let graph_context = RenderGraphExecuteContext {
             prepared_render_data,
             view: main_view,
             write_context_factory,
-            command_writer,
         };
 
         let command_buffers =
-            render_graph.execute_graph(&dyn_command_writer_allocator, &graph_context)?;
+            render_graph.execute_graph(&resource_manager_context, &graph_context)?;
 
         // let prepared_render_data = graph_context.prepared_render_data;
         // let main_view = graph_context.view;

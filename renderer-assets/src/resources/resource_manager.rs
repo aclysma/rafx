@@ -11,7 +11,7 @@ use crate::{
     vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, GraphicsPipelineResource,
     DescriptorSetArc, DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData,
     AssetLookupSet, DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation,
-    DynPassMaterialInstance, DynDescriptorSet, DescriptorSetAllocatorRef, DynMaterialInstance,
+    DynPassMaterialInstance, DescriptorSetAllocatorRef, DynMaterialInstance,
     DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource, GraphicsPipelineCache,
 };
 use crate::assets::{
@@ -25,7 +25,9 @@ use atelier_assets::loader::AssetLoadOp;
 use atelier_assets::loader::handle::AssetHandle;
 use std::sync::Arc;
 use crate::resources::asset_lookup::LoadedAssetMetrics;
-use crate::resources::dyn_resource_allocator::DynResourceAllocatorManagerSet;
+use crate::resources::dyn_resource_allocator::{
+    DynResourceAllocatorSetManager, DynResourceAllocatorSetProvider,
+};
 use crate::resources::descriptor_sets;
 use crate::resources::resource_lookup::ResourceLookupSet;
 use crate::resources::load_queue::LoadQueueSet;
@@ -72,14 +74,48 @@ pub struct ResourceManagerLoaders {
     pub buffer_loader: GenericLoader<BufferAssetData, BufferAsset>,
 }
 
+struct ResourceManagerContextInner {
+    descriptor_set_allocator_provider: DescriptorSetAllocatorProvider,
+    dyn_resources_allocator_provider: DynResourceAllocatorSetProvider,
+    dyn_commands_allocator: DynCommandWriterAllocator,
+    resources: ResourceLookupSet,
+    graphics_pipeline_cache: GraphicsPipelineCache,
+}
+
+#[derive(Clone)]
+pub struct ResourceManagerContext {
+    inner: Arc<ResourceManagerContextInner>,
+}
+
+impl ResourceManagerContext {
+    pub fn resources(&self) -> &ResourceLookupSet {
+        &self.inner.resources
+    }
+
+    pub fn graphics_pipeline_cache(&self) -> &GraphicsPipelineCache {
+        &self.inner.graphics_pipeline_cache
+    }
+
+    pub fn dyn_command_writer_allocator(&self) -> DynCommandWriterAllocator {
+        self.inner.dyn_commands_allocator.clone()
+    }
+
+    pub fn create_dyn_resource_allocator_set(&self) -> DynResourceAllocatorSet {
+        self.inner.dyn_resources_allocator_provider.get_allocator()
+    }
+
+    pub fn create_descriptor_set_allocator(&self) -> DescriptorSetAllocatorRef {
+        self.inner.descriptor_set_allocator_provider.get_allocator()
+    }
+}
+
 pub struct ResourceManager {
-    dyn_resources: DynResourceAllocatorManagerSet,
+    dyn_resources: DynResourceAllocatorSetManager,
     dyn_commands: DynCommandWriterAllocator,
     resources: ResourceLookupSet,
     resource_caches: ResourceCacheSet,
     loaded_assets: AssetLookupSet,
     load_queues: LoadQueueSet,
-    //swapchain_surfaces: ActiveSwapchainSurfaceInfoSet,
     resource_descriptor_sets: DescriptorSetAllocator,
     descriptor_set_allocator: DescriptorSetAllocatorManager,
     upload_manager: UploadManager,
@@ -87,31 +123,87 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
-    pub fn resources(&self) -> &ResourceLookupSet {
-        &self.resources
+    pub fn new(
+        device_context: &VkDeviceContext,
+        render_registry: &RenderRegistry,
+    ) -> Self {
+        let resources = ResourceLookupSet::new(
+            device_context,
+            renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+        );
+
+        ResourceManager {
+            dyn_commands: DynCommandWriterAllocator::new(
+                device_context,
+                renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+            ),
+            dyn_resources: DynResourceAllocatorSetManager::new(
+                device_context,
+                renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+            ),
+            resources: resources.clone(),
+            resource_caches: Default::default(),
+            loaded_assets: Default::default(),
+            load_queues: Default::default(),
+            //swapchain_surfaces: Default::default(),
+            resource_descriptor_sets: DescriptorSetAllocator::new(device_context),
+            descriptor_set_allocator: DescriptorSetAllocatorManager::new(device_context),
+            upload_manager: UploadManager::new(device_context),
+            graphics_pipeline_cache: GraphicsPipelineCache::new(render_registry, resources),
+        }
     }
 
-    pub fn resources_mut(&mut self) -> &mut ResourceLookupSet {
-        &mut self.resources
+    pub fn resource_manager_context(&self) -> ResourceManagerContext {
+        let inner = ResourceManagerContextInner {
+            descriptor_set_allocator_provider: self
+                .descriptor_set_allocator
+                .create_allocator_provider(),
+            dyn_resources_allocator_provider: self.dyn_resources.create_allocator_provider(),
+            dyn_commands_allocator: self.dyn_commands.clone(),
+            resources: self.resources.clone(),
+            graphics_pipeline_cache: self.graphics_pipeline_cache.clone(),
+        };
+
+        ResourceManagerContext {
+            inner: Arc::new(inner),
+        }
+    }
+
+    pub fn resources(&self) -> &ResourceLookupSet {
+        &self.resources
     }
 
     pub fn resource_caches_mut(&mut self) -> &mut ResourceCacheSet {
         &mut self.resource_caches
     }
 
-    pub fn graphics_pipeline_cache_mut(&mut self) -> &mut GraphicsPipelineCache {
-        &mut self.graphics_pipeline_cache
+    pub fn graphics_pipeline_cache(&self) -> &GraphicsPipelineCache {
+        &self.graphics_pipeline_cache
     }
 
     pub fn dyn_command_writer_allocator(&self) -> &DynCommandWriterAllocator {
         &self.dyn_commands
     }
 
-    pub fn cache_all_graphics_pipelines(&mut self) -> VkResult<()> {
-        self.graphics_pipeline_cache
-            .cache_all_pipelines(&mut self.resources)
+    pub fn create_dyn_resource_allocator_set(&self) -> DynResourceAllocatorSet {
+        self.dyn_resources.get_allocator()
     }
 
+    pub fn create_dyn_resource_allocator_provider(&self) -> DynResourceAllocatorSetProvider {
+        self.dyn_resources.create_allocator_provider()
+    }
+
+    pub fn create_descriptor_set_allocator(&self) -> DescriptorSetAllocatorRef {
+        self.descriptor_set_allocator.get_allocator()
+    }
+
+    pub fn create_descriptor_set_allocator_provider(&self) -> DescriptorSetAllocatorProvider {
+        self.descriptor_set_allocator.create_allocator_provider()
+    }
+
+    //
+    // Asset-specific accessors
+    //
     #[allow(dead_code)]
     pub(super) fn assets(&self) -> &AssetLookupSet {
         &self.loaded_assets
@@ -122,65 +214,40 @@ impl ResourceManager {
         &mut self.loaded_assets
     }
 
-    pub fn new(
-        device_context: &VkDeviceContext,
-        render_registry: &RenderRegistry,
-    ) -> Self {
-        ResourceManager {
-            dyn_commands: DynCommandWriterAllocator::new(
-                device_context,
-                renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-            ),
-            dyn_resources: DynResourceAllocatorManagerSet::new(
-                device_context,
-                renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-            ),
-            resources: ResourceLookupSet::new(
-                device_context,
-                renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-            ),
-            resource_caches: Default::default(),
-            loaded_assets: Default::default(),
-            load_queues: Default::default(),
-            //swapchain_surfaces: Default::default(),
-            resource_descriptor_sets: DescriptorSetAllocator::new(device_context),
-            descriptor_set_allocator: DescriptorSetAllocatorManager::new(device_context),
-            upload_manager: UploadManager::new(device_context),
-            graphics_pipeline_cache: GraphicsPipelineCache::new(render_registry),
-        }
-    }
-
     pub fn loaded_assets(&self) -> &AssetLookupSet {
         &self.loaded_assets
     }
 
-    pub fn create_shader_loader(&self) -> GenericLoader<ShaderAssetData, ShaderAsset> {
+    //
+    // Loaders
+    //
+    fn create_shader_loader(&self) -> GenericLoader<ShaderAssetData, ShaderAsset> {
         self.load_queues.shader_modules.create_loader()
     }
 
-    pub fn create_pipeline_loader(&self) -> GenericLoader<PipelineAssetData, PipelineAsset> {
+    fn create_pipeline_loader(&self) -> GenericLoader<PipelineAssetData, PipelineAsset> {
         self.load_queues.graphics_pipelines.create_loader()
     }
 
-    pub fn create_renderpass_loader(&self) -> GenericLoader<RenderpassAssetData, RenderpassAsset> {
+    fn create_renderpass_loader(&self) -> GenericLoader<RenderpassAssetData, RenderpassAsset> {
         self.load_queues.renderpasses.create_loader()
     }
 
-    pub fn create_material_loader(&self) -> GenericLoader<MaterialAssetData, MaterialAsset> {
+    fn create_material_loader(&self) -> GenericLoader<MaterialAssetData, MaterialAsset> {
         self.load_queues.materials.create_loader()
     }
 
-    pub fn create_material_instance_loader(
+    fn create_material_instance_loader(
         &self
     ) -> GenericLoader<MaterialInstanceAssetData, MaterialInstanceAsset> {
         self.load_queues.material_instances.create_loader()
     }
 
-    pub fn create_image_loader(&self) -> GenericLoader<ImageAssetData, ImageAsset> {
+    fn create_image_loader(&self) -> GenericLoader<ImageAssetData, ImageAsset> {
         self.load_queues.images.create_loader()
     }
 
-    pub fn create_buffer_loader(&self) -> GenericLoader<BufferAssetData, BufferAsset> {
+    fn create_buffer_loader(&self) -> GenericLoader<BufferAssetData, BufferAsset> {
         self.load_queues.buffers.create_loader()
     }
 
@@ -196,22 +263,9 @@ impl ResourceManager {
         }
     }
 
-    pub fn create_dyn_command_writer_allocator(&self) -> DynCommandWriterAllocator {
-        self.dyn_commands.clone()
-    }
-
-    pub fn create_dyn_resource_allocator_set(&self) -> DynResourceAllocatorSet {
-        self.dyn_resources.create_allocator_set()
-    }
-
-    pub fn create_descriptor_set_allocator(&self) -> DescriptorSetAllocatorRef {
-        self.descriptor_set_allocator.get_allocator()
-    }
-
-    pub fn create_descriptor_set_allocator_provider(&self) -> DescriptorSetAllocatorProvider {
-        self.descriptor_set_allocator.create_allocator_provider()
-    }
-
+    //
+    // Find things by asset handle
+    //
     pub fn get_image_asset(
         &self,
         handle: &Handle<ImageAsset>,
@@ -303,26 +357,9 @@ impl ResourceManager {
         }
     }
 
-    // pub fn add_swapchain(
-    //     &mut self,
-    //     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    // ) -> VkResult<()> {
-    //     log::info!("add_swapchain {:?}", swapchain_surface_info);
-    //     self.swapchain_surfaces.add(
-    //         &swapchain_surface_info,
-    //         &mut self.loaded_assets,
-    //         &mut self.resources,
-    //     )
-    // }
     //
-    // pub fn remove_swapchain(
-    //     &mut self,
-    //     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    // ) {
-    //     log::info!("remove_swapchain {:?}", swapchain_surface_info);
-    //     self.swapchain_surfaces
-    //         .remove(swapchain_surface_info, &mut self.loaded_assets);
-    // }
+    //
+    //
 
     // Call whenever you want to handle assets loading/unloading
     pub fn update_resources(&mut self) -> VkResult<()> {
@@ -738,7 +775,7 @@ impl ResourceManager {
             for descriptor_set_layout_def in &pass.shader_interface.descriptor_set_layouts {
                 let descriptor_set_layout_def = descriptor_set_layout_def.into();
                 let descriptor_set_layout = self
-                    .resources_mut()
+                    .resources()
                     .get_or_create_descriptor_set_layout(&descriptor_set_layout_def)?;
                 descriptor_set_layouts.push(descriptor_set_layout);
                 descriptor_set_layout_defs.push(descriptor_set_layout_def);
@@ -753,7 +790,7 @@ impl ResourceManager {
             };
 
             let pipeline_layout = self
-                .resources_mut()
+                .resources()
                 .get_or_create_pipeline_layout(&pipeline_layout_def)?;
 
             let material_pass = self.resources.get_or_create_material_pass(
@@ -905,13 +942,13 @@ impl ResourceManager {
         ))
     }
 
-    pub fn create_dyn_descriptor_set_uninitialized(
-        &self,
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
-    ) -> VkResult<DynDescriptorSet> {
-        descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(descriptor_set_layout)
-    }
+    // pub fn create_dyn_descriptor_set_uninitialized(
+    //     &self,
+    //     descriptor_set_allocator: &mut DescriptorSetAllocator,
+    //     descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
+    // ) -> VkResult<DynDescriptorSet> {
+    //     descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(descriptor_set_layout)
+    // }
 
     pub fn create_dyn_pass_material_instance_uninitialized(
         &self,
@@ -997,7 +1034,7 @@ impl Drop for ResourceManager {
 
         // Wipe caches to ensure we don't keep anything alive
         self.resource_caches.clear();
-        self.graphics_pipeline_cache.clear_pipelines();
+        self.graphics_pipeline_cache.clear_all_pipelines();
 
         // Wipe out any loaded assets. This will potentially drop ref counts on resources
         self.loaded_assets.destroy();

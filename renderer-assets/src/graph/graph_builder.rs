@@ -6,7 +6,7 @@ use crate::resources::{ResourceArc, ImageViewResource};
 #[derive(Copy, Clone)]
 pub enum RenderGraphQueue {
     DefaultGraphics,
-    Index(u32)
+    Index(u32),
 }
 
 /// An image that is being provided to the render graph that can be read from
@@ -719,16 +719,17 @@ impl RenderGraphBuilder {
     pub fn add_node(
         &mut self,
         name: RenderGraphNodeName,
-        queue: RenderGraphQueue
+        queue: RenderGraphQueue,
     ) -> RenderGraphNodeId {
         let node = RenderGraphNodeId(self.nodes.len());
-        self.nodes.push(RenderGraphNode::new(node, Some(name), queue));
+        self.nodes
+            .push(RenderGraphNode::new(node, Some(name), queue));
         node
     }
 
     pub fn add_node_unnamed(
         &mut self,
-        queue: RenderGraphQueue
+        queue: RenderGraphQueue,
     ) -> RenderGraphNodeId {
         let node = RenderGraphNodeId(self.nodes.len());
         self.nodes.push(RenderGraphNode::new(node, None, queue));

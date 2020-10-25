@@ -15,7 +15,7 @@ pub enum RenderGraphAttachmentType {
     Color(usize),
     DepthStencil,
     Resolve(usize),
-    NotAttached
+    NotAttached,
 }
 
 #[derive(Debug, Clone)]
@@ -160,7 +160,7 @@ impl RenderGraphNode {
     pub(super) fn new(
         id: RenderGraphNodeId,
         name: Option<RenderGraphNodeName>,
-        queue: RenderGraphQueue
+        queue: RenderGraphQueue,
     ) -> Self {
         RenderGraphNode {
             id,

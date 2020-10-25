@@ -7,6 +7,7 @@ use crate::resources::resource_arc::{WeakResourceArc, ResourceId};
 use fnv::FnvHashMap;
 use std::hash::Hash;
 use ash::prelude::VkResult;
+use std::sync::{Arc, Mutex};
 
 #[derive(PartialEq, Eq, Hash)]
 struct CachedGraphicsPipelineKey {
@@ -27,8 +28,8 @@ struct RegisteredRenderpass {
     renderpass: WeakResourceArc<RenderPassResource>,
 }
 
-pub struct GraphicsPipelineCache {
-    render_registry: RenderRegistry,
+pub struct GraphicsPipelineCacheInner {
+    resource_lookup_set: ResourceLookupSet,
 
     // index by renderphase index
     renderpass_assignments: Vec<FnvHashMap<ResourceId, RegisteredRenderpass>>,
@@ -38,10 +39,24 @@ pub struct GraphicsPipelineCache {
 
     current_frame_index: u64,
     frames_to_persist: u64,
+
+    #[cfg(debug_assertions)]
+    lock_call_count_previous_frame: u64,
+    #[cfg(debug_assertions)]
+    lock_call_count: u64,
+}
+
+#[derive(Clone)]
+pub struct GraphicsPipelineCache {
+    render_registry: RenderRegistry,
+    inner: Arc<Mutex<GraphicsPipelineCacheInner>>,
 }
 
 impl GraphicsPipelineCache {
-    pub fn new(render_registry: &RenderRegistry) -> Self {
+    pub fn new(
+        render_registry: &RenderRegistry,
+        resource_lookup_set: ResourceLookupSet,
+    ) -> Self {
         const DEFAULT_FRAMES_TO_PERSIST: u64 = 1;
 
         let mut renderpass_assignments = Vec::with_capacity(MAX_RENDER_PHASE_COUNT as usize);
@@ -50,19 +65,34 @@ impl GraphicsPipelineCache {
         let mut material_pass_assignments = Vec::with_capacity(MAX_RENDER_PHASE_COUNT as usize);
         material_pass_assignments.resize_with(MAX_RENDER_PHASE_COUNT as usize, Default::default);
 
-        GraphicsPipelineCache {
-            render_registry: render_registry.clone(),
+        let inner = GraphicsPipelineCacheInner {
+            resource_lookup_set,
             renderpass_assignments,
             material_pass_assignments,
             cached_pipelines: Default::default(),
             current_frame_index: 0,
             frames_to_persist: DEFAULT_FRAMES_TO_PERSIST,
+            #[cfg(debug_assertions)]
+            lock_call_count_previous_frame: 0,
+            #[cfg(debug_assertions)]
+            lock_call_count: 0,
+        };
+
+        GraphicsPipelineCache {
+            render_registry: render_registry.clone(),
+            inner: Arc::new(Mutex::new(inner)),
         }
     }
 
-    pub fn on_frame_complete(&mut self) {
-        self.current_frame_index += 1;
-        self.drop_unused_pipelines();
+    pub fn on_frame_complete(&self) {
+        let mut guard = self.inner.lock().unwrap();
+        #[cfg(debug_assertions)]
+        {
+            guard.lock_call_count = 0;
+            guard.lock_call_count_previous_frame = guard.lock_call_count + 1;
+        }
+        guard.current_frame_index += 1;
+        Self::drop_stale_pipelines(&mut *guard);
     }
 
     pub fn get_renderphase_by_name(
@@ -75,33 +105,40 @@ impl GraphicsPipelineCache {
     // Register a renderpass as being part of a particular phase. This will a pipeline is created
     // for all appropriate renderpass/material pass pairs.
     pub fn register_renderpass_to_phase_per_frame<T: RenderPhase>(
-        &mut self,
+        &self,
         renderpass: &ResourceArc<RenderPassResource>,
     ) {
         self.register_renderpass_to_phase_index_per_frame(renderpass, T::render_phase_index())
     }
 
     pub fn register_renderpass_to_phase_index_per_frame(
-        &mut self,
+        &self,
         renderpass: &ResourceArc<RenderPassResource>,
         render_phase_index: RenderPhaseIndex,
     ) {
+        let mut guard = self.inner.lock().unwrap();
+        let mut inner = &mut *guard;
+        #[cfg(debug_assertions)]
+        {
+            inner.lock_call_count += 0;
+        }
+
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
-        if let Some(existing) =
-            self.renderpass_assignments[render_phase_index as usize].get_mut(&renderpass.get_hash())
+        if let Some(existing) = inner.renderpass_assignments[render_phase_index as usize]
+            .get_mut(&renderpass.get_hash())
         {
             if existing.renderpass.upgrade().is_some() {
-                existing.keep_until_frame = self.current_frame_index + self.frames_to_persist;
+                existing.keep_until_frame = inner.current_frame_index + inner.frames_to_persist;
                 // Nothing to do here, the previous ref is still valid
                 return;
             }
         }
 
-        self.renderpass_assignments[render_phase_index as usize].insert(
+        inner.renderpass_assignments[render_phase_index as usize].insert(
             renderpass.get_hash(),
             RegisteredRenderpass {
                 renderpass: renderpass.downgrade(),
-                keep_until_frame: self.current_frame_index + self.frames_to_persist,
+                keep_until_frame: inner.current_frame_index + inner.frames_to_persist,
             },
         );
 
@@ -109,12 +146,18 @@ impl GraphicsPipelineCache {
     }
 
     pub fn register_material_to_phase_index(
-        &mut self,
+        &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         render_phase_index: RenderPhaseIndex,
     ) {
+        let mut guard = self.inner.lock().unwrap();
+        #[cfg(debug_assertions)]
+        {
+            guard.lock_call_count += 0;
+        }
+
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
-        if let Some(existing) = self.material_pass_assignments[render_phase_index as usize]
+        if let Some(existing) = guard.material_pass_assignments[render_phase_index as usize]
             .get(&material_pass.get_hash())
         {
             if existing.upgrade().is_some() {
@@ -123,7 +166,7 @@ impl GraphicsPipelineCache {
             }
         }
 
-        self.material_pass_assignments[render_phase_index as usize]
+        guard.material_pass_assignments[render_phase_index as usize]
             .insert(material_pass.get_hash(), material_pass.downgrade());
         //TODO: Do we need to mark this as a dirty material that may need rebuilding?
     }
@@ -138,37 +181,48 @@ impl GraphicsPipelineCache {
             renderpass: renderpass.get_hash(),
         };
 
+        let mut guard = self.inner.lock().unwrap();
+        #[cfg(debug_assertions)]
+        {
+            guard.lock_call_count += 0;
+        }
+
         // Find the swapchain index for the given renderpass
-        self.cached_pipelines.get(&key).map(|x| {
+        guard.cached_pipelines.get(&key).map(|x| {
             debug_assert!(x.material_pass_resource.upgrade().is_some());
             debug_assert!(x.renderpass_resource.upgrade().is_some());
             x.graphics_pipeline.clone()
         })
     }
 
-    pub fn cache_all_pipelines(
-        &mut self,
-        resources: &mut ResourceLookupSet,
-    ) -> VkResult<()> {
+    pub fn precache_pipelines_for_all_phases(&self) -> VkResult<()> {
+        let mut guard = self.inner.lock().unwrap();
+        let mut inner = &mut *guard;
+        #[cfg(debug_assertions)]
+        {
+            inner.lock_call_count += 0;
+        }
+
         //TODO: Avoid iterating everything all the time
         for render_phase_index in 0..MAX_RENDER_PHASE_COUNT {
             for (renderpass_hash, renderpass) in
-                &self.renderpass_assignments[render_phase_index as usize]
+                &inner.renderpass_assignments[render_phase_index as usize]
             {
                 for (material_pass_hash, material_pass) in
-                    &self.material_pass_assignments[render_phase_index as usize]
+                    &inner.material_pass_assignments[render_phase_index as usize]
                 {
                     let key = CachedGraphicsPipelineKey {
                         renderpass: *renderpass_hash,
                         material_pass: *material_pass_hash,
                     };
 
-                    if !self.cached_pipelines.contains_key(&key) {
+                    if !inner.cached_pipelines.contains_key(&key) {
                         if let Some(renderpass) = renderpass.renderpass.upgrade() {
                             if let Some(material_pass) = material_pass.upgrade() {
-                                let pipeline = resources
+                                let pipeline = inner
+                                    .resource_lookup_set
                                     .get_or_create_graphics_pipeline(&material_pass, &renderpass)?;
-                                self.cached_pipelines.insert(
+                                inner.cached_pipelines.insert(
                                     key,
                                     CachedGraphicsPipeline {
                                         graphics_pipeline: pipeline,
@@ -186,19 +240,19 @@ impl GraphicsPipelineCache {
         Ok(())
     }
 
-    pub fn drop_unused_pipelines(&mut self) {
-        let current_frame_index = self.current_frame_index;
-        for phase in &mut self.renderpass_assignments {
+    fn drop_stale_pipelines(inner: &mut GraphicsPipelineCacheInner) {
+        let current_frame_index = inner.current_frame_index;
+        for phase in &mut inner.renderpass_assignments {
             phase.retain(|_k, v| {
                 v.renderpass.upgrade().is_some() && v.keep_until_frame > current_frame_index
             });
         }
 
-        for phase in &mut self.material_pass_assignments {
+        for phase in &mut inner.material_pass_assignments {
             phase.retain(|_k, v| v.upgrade().is_some());
         }
 
-        self.cached_pipelines.retain(|_k, v| {
+        inner.cached_pipelines.retain(|_k, v| {
             let renderpass_still_exists = v.renderpass_resource.upgrade().is_some();
             let material_pass_still_exists = v.material_pass_resource.upgrade().is_some();
 
@@ -210,7 +264,13 @@ impl GraphicsPipelineCache {
         })
     }
 
-    pub fn clear_pipelines(&mut self) {
-        self.cached_pipelines.clear();
+    pub fn clear_all_pipelines(&self) {
+        let mut guard = self.inner.lock().unwrap();
+        #[cfg(debug_assertions)]
+        {
+            guard.lock_call_count += 0;
+        }
+
+        guard.cached_pipelines.clear();
     }
 }

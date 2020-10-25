@@ -128,19 +128,17 @@ fn run(
     };
 
     let renderpass = resource_manager
-        .resources_mut()
+        .resources()
         .get_or_create_renderpass(&renderpass_dsc, &swapchain_surface_info)?;
 
     let mut framebuffers = Vec::with_capacity(surface.swapchain().swapchain_images.len());
     for &image in &surface.swapchain().swapchain_images {
-        let image = resource_manager
-            .resources_mut()
-            .insert_raw_image(VkImageRaw {
-                image,
-                allocation: None,
-            });
+        let image = resource_manager.resources().insert_raw_image(VkImageRaw {
+            image,
+            allocation: None,
+        });
 
-        let image_view = resource_manager.resources_mut().get_or_create_image_view(
+        let image_view = resource_manager.resources().get_or_create_image_view(
             &image,
             &dsc::ImageViewMeta::default_2d_no_mips_or_layers(
                 swapchain_surface_info.surface_format.format.into(),
@@ -148,7 +146,7 @@ fn run(
             ),
         )?;
 
-        framebuffers.push(resource_manager.resources_mut().get_or_create_framebuffer(
+        framebuffers.push(resource_manager.resources().get_or_create_framebuffer(
             renderpass.clone(),
             &[image_view],
             &FramebufferMeta {

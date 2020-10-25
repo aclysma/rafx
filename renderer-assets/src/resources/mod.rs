@@ -18,6 +18,7 @@ pub use resource_lookup::ShaderModuleResource;
 
 mod dyn_resource_allocator;
 pub use dyn_resource_allocator::DynResourceAllocatorSet;
+pub use dyn_resource_allocator::DynResourceAllocatorSetProvider;
 
 mod load_queue;
 pub use load_queue::LoadQueues;
