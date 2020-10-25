@@ -57,9 +57,7 @@ fn wait_for_asset_to_load<T>(
 
 pub struct GameRendererStaticResources {
     pub opaque_renderpass: Handle<RenderpassAsset>,
-    pub bloom_extract_renderpass: Handle<RenderpassAsset>,
     pub bloom_blur_renderpass: Handle<RenderpassAsset>,
-    pub bloom_combine_renderpass: Handle<RenderpassAsset>,
     pub ui_renderpass: Handle<RenderpassAsset>,
     pub sprite_material: Handle<MaterialAsset>,
     pub debug3d_material: Handle<MaterialAsset>,
@@ -80,18 +78,8 @@ impl GameRendererStaticResources {
             asset_resource,
         );
 
-        let bloom_extract_renderpass = begin_load_asset::<RenderpassAsset>(
-            asset_uuid!("340808eb-31f6-44e2-a8c6-839e0091ee2c"),
-            asset_resource,
-        );
-
         let bloom_blur_renderpass = begin_load_asset::<RenderpassAsset>(
             asset_uuid!("54931d31-770c-4327-bb17-fc6481e5c7a6"),
-            asset_resource,
-        );
-
-        let bloom_combine_renderpass = begin_load_asset::<RenderpassAsset>(
-            asset_uuid!("24cbe0b8-65f1-4ef7-8710-1d545e33b24c"),
             asset_resource,
         );
 
@@ -207,9 +195,7 @@ impl GameRendererStaticResources {
 
         Ok(GameRendererStaticResources {
             opaque_renderpass,
-            bloom_extract_renderpass,
             bloom_blur_renderpass,
-            bloom_combine_renderpass,
             ui_renderpass,
             sprite_material,
             debug3d_material: debug_material,
