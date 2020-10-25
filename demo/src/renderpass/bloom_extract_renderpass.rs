@@ -94,7 +94,7 @@ impl VkBloomRenderPassResources {
         })
     }
 }
-
+/*
 pub struct VkBloomExtractRenderPass {
     device_context: VkDeviceContext,
     swapchain_info: SwapchainInfo,
@@ -211,3 +211,4 @@ impl VkBloomExtractRenderPass {
         }
     }
 }
+*/

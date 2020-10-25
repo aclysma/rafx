@@ -135,6 +135,7 @@ pub struct RenderGraphNode {
     pub(super) color_attachments: Vec<Option<RenderGraphPassColorAttachmentInfo>>,
     pub(super) depth_attachment: Option<RenderGraphPassDepthAttachmentInfo>,
     pub(super) resolve_attachments: Vec<Option<RenderGraphPassResolveAttachmentInfo>>,
+    pub(super) sampled_images: Vec<RenderGraphImageUsageId>,
 }
 
 impl std::fmt::Debug for RenderGraphNode {
@@ -172,6 +173,7 @@ impl RenderGraphNode {
             color_attachments: Default::default(),
             depth_attachment: Default::default(),
             resolve_attachments: Default::default(),
+            sampled_images: Default::default()
         }
     }
 

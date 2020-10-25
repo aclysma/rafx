@@ -7,13 +7,13 @@ use renderer::assets::graph::RenderGraphExecutor;
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
 use ash::prelude::VkResult;
 use ash::vk;
-use crate::game_renderer::render_graph::RenderGraphExecuteContext;
+use crate::game_renderer::render_graph::RenderGraphUserContext;
 use renderer::assets::{ResourceContext};
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
     pub prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
-    pub render_graph: RenderGraphExecutor<RenderGraphExecuteContext>,
+    pub render_graph: RenderGraphExecutor<RenderGraphUserContext>,
     pub resource_context: ResourceContext,
     pub frame_packet: FramePacket,
     pub main_view: RenderView,
@@ -65,7 +65,7 @@ impl RenderFrameJob {
     fn do_render_async(
         //mut guard: MutexGuard<GameRendererInner>,
         prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
-        render_graph: RenderGraphExecutor<RenderGraphExecuteContext>,
+        render_graph: RenderGraphExecutor<RenderGraphUserContext>,
         // dyn_resource_allocator_set_provider: DynResourceAllocatorSetProvider,
         // dyn_command_writer_allocator: DynCommandWriterAllocator,
         resource_context: ResourceContext,
@@ -109,7 +109,7 @@ impl RenderFrameJob {
         let write_context_factory =
             RenderJobWriteContextFactory::new(device_context, resource_context.clone());
 
-        let graph_context = RenderGraphExecuteContext {
+        let graph_context = RenderGraphUserContext {
             prepared_render_data,
             write_context_factory,
         };

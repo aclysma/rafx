@@ -72,6 +72,8 @@ pub struct RenderGraphPassImageBarriers {
     invalidate: RenderGraphImageBarrier,
     flush: RenderGraphImageBarrier,
     layout: vk::ImageLayout,
+    used_by_attachment: bool,
+    used_by_sampling: bool
 }
 
 impl RenderGraphPassImageBarriers {
@@ -80,6 +82,8 @@ impl RenderGraphPassImageBarriers {
             flush: Default::default(),
             invalidate: Default::default(),
             layout,
+            used_by_attachment: false,
+            used_by_sampling: false
         }
     }
 }
@@ -174,12 +178,33 @@ impl RenderGraphPassAttachment {
     }
 }
 
+#[derive(Debug)]
+pub struct PrepassBarrier {
+    pub src_stage: vk::PipelineStageFlags,
+    pub dst_stage: vk::PipelineStageFlags,
+    pub image_barriers: Vec<PrepassImageBarrier>
+}
+
+#[derive(Debug)]
+pub struct PrepassImageBarrier {
+    pub src_access: vk::AccessFlags,
+    pub dst_access: vk::AccessFlags,
+    pub old_layout: vk::ImageLayout,
+    pub new_layout: vk::ImageLayout,
+    pub src_queue_family_index: u32,
+    pub dst_queue_family_index: u32,
+    pub image: PhysicalImageId,
+}
+
 /// Metadata required to create a renderpass
 #[derive(Debug)]
 pub struct RenderGraphPass {
     attachments: Vec<RenderGraphPassAttachment>,
     subpasses: Vec<RenderGraphSubpass>,
-    // clear colors?
+
+    // For when we want to do layout transitions on non-attachments
+    //pre_pass_image_barriers: Vec<PrepassImageBarrier>
+    pre_pass_barrier: Option<PrepassBarrier>
 }
 
 /// An ID for an image (possibly aliased)
@@ -205,6 +230,7 @@ pub struct RenderGraphOutputPass {
     pub(super) attachment_images: Vec<PhysicalImageId>,
     pub(super) clear_values: Vec<vk::ClearValue>,
     pub(super) extents: vk::Extent2D,
+    pub(super) pre_pass_barrier: Option<PrepassBarrier>
 }
 
 impl std::fmt::Debug for RenderGraphOutputPass {
@@ -1112,6 +1138,7 @@ fn build_physical_passes(
         let mut pass = RenderGraphPass {
             attachments: Default::default(),
             subpasses: Default::default(),
+            pre_pass_barrier: Default::default(),
         };
 
         for node_id in pass_node_set {
@@ -1320,6 +1347,8 @@ fn build_node_barriers(
                     RenderGraphPassImageBarriers::new(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
                 });
 
+                barrier.used_by_attachment |= true;
+
                 if color_attachment.read_image.is_some() {
                     barrier.invalidate.access_flags |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE
                         | vk::AccessFlags::COLOR_ATTACHMENT_READ;
@@ -1350,6 +1379,8 @@ fn build_node_barriers(
                     RenderGraphPassImageBarriers::new(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
                 });
 
+                barrier.used_by_attachment |= true;
+
                 barrier.flush.access_flags |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE;
                 barrier.flush.stage_flags |= vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
                 //barrier.flush.layout = vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
@@ -1371,6 +1402,8 @@ fn build_node_barriers(
             let barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
                 RenderGraphPassImageBarriers::new(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             });
+
+            barrier.used_by_attachment |= true;
 
             if depth_attachment.read_image.is_some() && depth_attachment.write_image.is_some() {
                 //barrier.invalidate.layout = vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1397,6 +1430,23 @@ fn build_node_barriers(
                 barrier.flush.access_flags |= vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE;
                 barrier.flush.stage_flags |= vk::PipelineStageFlags::LATE_FRAGMENT_TESTS;
             }
+        }
+
+        for sampled_image in &node.sampled_images {
+            let physical_image = physical_images
+                .map_image_to_physical
+                .get(sampled_image)
+                .unwrap();
+
+            let barrier = node_barriers.entry(*physical_image).or_insert_with(|| {
+                RenderGraphPassImageBarriers::new(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            });
+
+            barrier.used_by_sampling |= true;
+
+            barrier.invalidate.access_flags |= vk::AccessFlags::SHADER_READ;
+            barrier.invalidate.stage_flags |=
+                vk::PipelineStageFlags::FRAGMENT_SHADER;
         }
 
         // barriers.push(RenderGraphNodeImageBarriers {
@@ -1432,6 +1482,9 @@ fn build_pass_barriers(
     // let ALL_GRAPHICS: vk::PipelineStageFlags =
     //     vk::PipelineStageFlags::from_raw(0b111_1111_1110);
 
+    //
+    // We will walk through all nodes keeping track of memory access as we go
+    //
     struct ImageState {
         layout: vk::ImageLayout,
         pending_flush_access_flags: vk::AccessFlags,
@@ -1451,19 +1504,23 @@ fn build_pass_barriers(
         }
     }
 
-    // to support subpass, probably need image states for each previous subpass
-
+    //TODO: to support subpass, probably need image states for each previous subpass
     let mut image_states: Vec<ImageState> =
         Vec::with_capacity(physical_images.physical_image_infos.len());
     image_states.resize_with(physical_images.physical_image_infos.len(), || {
         Default::default()
     });
 
+    // dependencies for all renderpasses
     let mut pass_dependencies = Vec::default();
 
     for (pass_index, pass) in passes.iter_mut().enumerate() {
         log::info!("pass {}", pass_index);
+
+        // Dependencies for this renderpass
         let mut subpass_dependencies = Vec::default();
+
+        // Initial layout for all attachments at the start of the renderpass
         let mut attachment_initial_layout: Vec<Option<dsc::ImageLayout>> = Default::default();
         attachment_initial_layout.resize_with(pass.attachments.len(), || None);
 
@@ -1471,14 +1528,25 @@ fn build_pass_barriers(
         assert_eq!(pass.subpasses.len(), 1);
         for (subpass_index, subpass) in pass.subpasses.iter_mut().enumerate() {
             log::info!("  subpass {}", subpass_index);
-            //let node = graph.node(subpass.node);
             let node_barriers = &node_barriers[&subpass.node];
 
-            // Accumulate the invalidates here
+            // Accumulate the invalidates for this subpass here
             let mut invalidate_src_access_flags = vk::AccessFlags::empty();
             let mut invalidate_src_pipeline_stage_flags = vk::PipelineStageFlags::empty();
             let mut invalidate_dst_access_flags = vk::AccessFlags::empty();
             let mut invalidate_dst_pipeline_stage_flags = vk::PipelineStageFlags::empty();
+
+            // See if we can rely on an external dependency on the subpass to do layout transitions.
+            // Common case where this is not possible is having any image that's not an attachment
+            // being used via sampling.
+            let mut use_external_dependency_for_pass_initial_layout_transition = true;
+
+            let mut image_transitions = Vec::default();
+            for (_, image_barrier) in &node_barriers.barriers {
+                if image_barrier.used_by_sampling {
+                    use_external_dependency_for_pass_initial_layout_transition = false;
+                }
+            }
 
             // Look at all the images we read and determine what invalidates we need
             for (physical_image_id, image_barrier) in &node_barriers.barriers {
@@ -1586,8 +1654,13 @@ fn build_pass_barriers(
                     }
                 }
 
+                if layout_change && !use_external_dependency_for_pass_initial_layout_transition {
+                    image_transitions.push((physical_image_id, image_state.layout, image_barrier.layout));
+                }
+
                 image_state.layout = image_barrier.layout;
             }
+
             //
             // for (physical_image_id, image_barrier) in &node_barriers.flushes {
             //     log::info!("    flush");
@@ -1646,32 +1719,55 @@ fn build_pass_barriers(
                 invalidate_src_pipeline_stage_flags |= vk::PipelineStageFlags::TOP_OF_PIPE
             }
 
-            // Build a subpass dependency (EXTERNAL -> 0)
-            let invalidate_subpass_dependency = dsc::SubpassDependency {
-                dependency_flags: dsc::DependencyFlags::Empty,
-                src_access_mask: dsc::AccessFlags::from_access_flag_mask(
-                    invalidate_src_access_flags,
-                ),
-                src_stage_mask: dsc::PipelineStageFlags::from_bits(
-                    invalidate_src_pipeline_stage_flags.as_raw(),
-                )
-                .unwrap(),
-                dst_access_mask: dsc::AccessFlags::from_access_flag_mask(
-                    invalidate_dst_access_flags,
-                ),
-                dst_stage_mask: dsc::PipelineStageFlags::from_bits(
-                    invalidate_dst_pipeline_stage_flags.as_raw(),
-                )
-                .unwrap(),
-                src_subpass: dsc::SubpassDependencyIndex::External,
-                dst_subpass: dsc::SubpassDependencyIndex::Index(0),
-            };
-            subpass_dependencies.push(invalidate_subpass_dependency);
+            if use_external_dependency_for_pass_initial_layout_transition {
+                // Build a subpass dependency (EXTERNAL -> 0)
+                let invalidate_subpass_dependency = dsc::SubpassDependency {
+                    dependency_flags: dsc::DependencyFlags::Empty,
+                    src_access_mask: dsc::AccessFlags::from_access_flag_mask(
+                        invalidate_src_access_flags,
+                    ),
+                    src_stage_mask: dsc::PipelineStageFlags::from_bits(
+                        invalidate_src_pipeline_stage_flags.as_raw(),
+                    )
+                        .unwrap(),
+                    dst_access_mask: dsc::AccessFlags::from_access_flag_mask(
+                        invalidate_dst_access_flags,
+                    ),
+                    dst_stage_mask: dsc::PipelineStageFlags::from_bits(
+                        invalidate_dst_pipeline_stage_flags.as_raw(),
+                    )
+                        .unwrap(),
+                    src_subpass: dsc::SubpassDependencyIndex::External,
+                    dst_subpass: dsc::SubpassDependencyIndex::Index(0),
+                };
+                subpass_dependencies.push(invalidate_subpass_dependency);
+            } else {
+                let image_barriers = image_transitions.into_iter().map(|(&image, old_layout, new_layout)| {
+                    PrepassImageBarrier {
+                        image,
+                        old_layout,
+                        new_layout,
+                        src_access: invalidate_src_access_flags,
+                        dst_access: invalidate_dst_access_flags,
+                        src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+                        dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED
+                    }
+                }).collect();
 
+                let barrier = PrepassBarrier {
+                    src_stage: invalidate_src_pipeline_stage_flags,
+                    dst_stage: invalidate_dst_pipeline_stage_flags,
+                    image_barriers
+                };
+
+                pass.pre_pass_barrier = Some(barrier);
+            }
+
+            // Handle the flush synchronization
             for (physical_image_id, image_barrier) in &node_barriers.barriers {
                 let image_state = &mut image_states[physical_image_id.0];
 
-                // Queue up flushes to happen later
+                // Queue up flushes to happen later based on what this pass writes
                 image_state.pending_flush_pipeline_stage_flags |= image_barrier.flush.stage_flags;
                 image_state.pending_flush_access_flags |= image_barrier.flush.access_flags;
 
@@ -1682,32 +1778,10 @@ fn build_pass_barriers(
                     image_state.invalidated[i] = vk::AccessFlags::empty();
                 }
 
-                // let layout_change = image_state.layout != image_barrier.layout;
-                // if layout_change {
-                //     for i in 0..MAX_PIPELINE_FLAG_BITS {
-                //         if image_state.invalidated[i] != vk::AccessFlags::empty() {
-                //             // Add an execution barrier if we are transitioning the layout
-                //             // of something that is already being read from
-                //             let pipeline_stage = vk::PipelineStageFlags::from_raw(1 << i);
-                //             invalidate_src_pipeline_stage_flags |= pipeline_stage;
-                //             invalidate_dst_pipeline_stage_flags |= image_barrier.stage_flags;
-                //         }
-                //     }
-                // }
+                // If we add code to change final layout, ensure that we set up a dependency
             }
 
-            // This hack clears final layout for attachments with DONT_CARE store_op. This is happening
-            // for inserted resolves because the color attachment still has a write usage (and must have it
-            // to put the attachment on the renderpass) but this is also creating a flush for the image which
-            // means it gets placed into a layout
-            // EDIT: Vulkan spec requires final layout not be UNDEFINED
-            // for (attachment_index, attachment) in &mut pass.attachments.iter_mut().enumerate() {
-            //     if attachment.store_op == vk::AttachmentStoreOp::DONT_CARE
-            //         && attachment.stencil_store_op == vk::AttachmentStoreOp::DONT_CARE
-            //     {
-            //         attachment.final_layout = dsc::ImageLayout::Undefined;
-            //     }
-            // }
+            // Do not put unstored images into UNDEFINED layout, per vulkan spec
 
             // TODO: Figure out how to handle output images
             // TODO: This only works if no one else reads it?
@@ -1735,8 +1809,7 @@ fn build_pass_barriers(
                             attachment.final_layout = output_image.final_layout;
                         }
                     }
-
-                    //TODO: Need a 0 -> EXTERNAL dependency here
+                    //TODO: Need a 0 -> EXTERNAL dependency here?
                 }
             }
 
@@ -1757,7 +1830,7 @@ fn create_renderpass_descriptions(
     swapchain_info: &SwapchainSurfaceInfo,
 ) -> Vec<RenderGraphOutputPass> {
     let mut renderpasses = Vec::with_capacity(passes.len());
-    for (index, pass) in passes.iter().enumerate() {
+    for (index, pass) in passes.into_iter().enumerate() {
         let mut renderpass_desc = dsc::RenderPass::default();
         let mut subpass_nodes = Vec::with_capacity(pass.subpasses.len());
 
@@ -1876,6 +1949,7 @@ fn create_renderpass_descriptions(
             extents: swapchain_info.extents,
             attachment_images,
             clear_values,
+            pre_pass_barrier: pass.pre_pass_barrier
         };
 
         renderpasses.push(output_pass);

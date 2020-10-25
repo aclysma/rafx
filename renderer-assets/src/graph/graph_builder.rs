@@ -647,12 +647,12 @@ impl RenderGraphBuilder {
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
         mut constraint: RenderGraphImageConstraint,
-    ) {
+    ) -> RenderGraphImageUsageId {
         constraint.aspect_flags |= vk::ImageAspectFlags::COLOR;
         constraint.usage_flags |= vk::ImageUsageFlags::SAMPLED;
 
         // Add the read to the graph
-        self.add_image_read(
+        let usage = self.add_image_read(
             node,
             image,
             RenderGraphAttachmentType::NotAttached,
@@ -663,16 +663,8 @@ impl RenderGraphBuilder {
             vk::ImageAspectFlags::COLOR,
         );
 
-        // self.set_color_attachment(
-        //     node,
-        //     color_attachment_index,
-        //     RenderGraphPassColorAttachmentInfo {
-        //         attachment_type: RenderGraphPassAttachmentType::Read,
-        //         clear_color_value: None,
-        //         read_image: Some(read_image),
-        //         write_image: None,
-        //     },
-        // );
+        self.node_mut(node).sampled_images.push(usage);
+        usage
     }
 
     pub fn set_output_image(

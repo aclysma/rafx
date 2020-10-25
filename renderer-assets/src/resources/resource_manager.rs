@@ -7,13 +7,7 @@ use crate::assets::{
 };
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
-use crate::{
-    vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, GraphicsPipelineResource,
-    DescriptorSetArc, DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData,
-    AssetLookupSet, DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation,
-    DynPassMaterialInstance, DescriptorSetAllocatorRef, DynMaterialInstance,
-    DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource, GraphicsPipelineCache,
-};
+use crate::{vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, GraphicsPipelineResource, DescriptorSetArc, DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData, AssetLookupSet, DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation, DynPassMaterialInstance, DescriptorSetAllocatorRef, DynMaterialInstance, DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource, GraphicsPipelineCache, MaterialPassResource};
 use crate::assets::{
     ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
     BufferAsset, MaterialPass,
@@ -275,6 +269,18 @@ impl ResourceManager {
             .get_committed(handle.load_handle())
     }
 
+    pub fn get_material_pass_by_index(
+        &self,
+        handle: &Handle<MaterialAsset>,
+        index: usize
+    ) -> Option<ResourceArc<MaterialPassResource>> {
+        self.loaded_assets
+            .materials
+            .get_committed(handle.load_handle())
+            .and_then(|x| x.passes.get(index))
+            .map(|x| x.material_pass_resource.clone())
+    }
+
     pub fn get_descriptor_set_info(
         &self,
         handle: &Handle<MaterialAsset>,
@@ -319,6 +325,7 @@ impl ResourceManager {
         self.graphics_pipeline_cache.find_graphics_pipeline(
             &material.passes[pass_index].material_pass_resource,
             &renderpass,
+            false
         )
     }
 
@@ -334,11 +341,11 @@ impl ResourceManager {
             .get_committed(material_handle.load_handle())
             .unwrap();
 
-        //TODO: Cache it?
-        self.resources.get_or_create_graphics_pipeline(
+        Ok(self.graphics_pipeline_cache.find_graphics_pipeline(
             &material.passes[pass_index].material_pass_resource,
-            renderpass,
-        )
+            &renderpass,
+            true
+        ).unwrap())
     }
 
     pub fn get_material_instance_info(
@@ -356,10 +363,6 @@ impl ResourceManager {
             descriptor_sets: resource.inner.material_descriptor_sets.clone(),
         }
     }
-
-    //
-    //
-    //
 
     // Call whenever you want to handle assets loading/unloading
     pub fn update_resources(&mut self) -> VkResult<()> {

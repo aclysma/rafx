@@ -16,6 +16,7 @@ use crate::graph::{RenderGraphBuilder, RenderGraphImageUsageId};
 use renderer_nodes::{RenderPhase, RenderPhaseIndex};
 use crate::graph::graph_plan::RenderGraphPlan;
 
+#[derive(Copy, Clone)]
 pub struct RenderGraphContext<'a> {
     prepared_graph: &'a PreparedRenderGraph,
 }
@@ -27,6 +28,20 @@ impl<'a> RenderGraphContext<'a> {
     ) -> Option<ResourceArc<ImageViewResource>> {
         self.prepared_graph.image(image)
     }
+
+    pub fn device_context(&self) -> &VkDeviceContext {
+        &self.prepared_graph.device_context
+    }
+
+    pub fn resource_context(&self) -> &ResourceContext {
+        &self.prepared_graph.resource_context
+    }
+}
+
+pub struct VisitRenderpassArgs<'a> {
+    pub command_buffer: vk::CommandBuffer,
+    pub renderpass: &'a ResourceArc<RenderPassResource>,
+    pub graph_context: RenderGraphContext<'a>
 }
 
 /// Encapsulates a render graph plan and all resources required to execute it
@@ -240,14 +255,59 @@ impl PreparedRenderGraph {
             let node_id = pass.subpass_nodes[0];
 
             unsafe {
+
+                if let Some(pre_pass_barrier) = &pass.pre_pass_barrier {
+                    let mut image_memory_barriers = Vec::with_capacity(pre_pass_barrier.image_barriers.len());
+
+                    for image_barrier in &pre_pass_barrier.image_barriers {
+                        let image_view = &self.image_resources[&image_barrier.image];
+
+                        let subresource_range = vk::ImageSubresourceRange::builder()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .base_mip_level(0)
+                            .level_count(1)
+                            .base_array_layer(0)
+                            .layer_count(1);
+
+                        let image_memory_barrier = vk::ImageMemoryBarrier::builder()
+                            .src_access_mask(image_barrier.src_access)
+                            .dst_access_mask(image_barrier.dst_access)
+                            .old_layout(image_barrier.old_layout)
+                            .new_layout(image_barrier.new_layout)
+                            .src_queue_family_index(image_barrier.src_queue_family_index)
+                            .dst_queue_family_index(image_barrier.dst_queue_family_index)
+                            .image(image_view.get_raw().image.get_raw().image.image)
+                            .subresource_range(*subresource_range)
+                            .build();
+
+                        image_memory_barriers.push(image_memory_barrier);
+                    }
+
+                    device.cmd_pipeline_barrier(
+                        command_buffer,
+                        pre_pass_barrier.src_stage,
+                        pre_pass_barrier.dst_stage,
+                        vk::DependencyFlags::empty(),
+                        &[],
+                        &[],
+                        &image_memory_barriers
+                    );
+                }
+
                 device.cmd_begin_render_pass(
                     command_buffer,
                     &render_pass_begin_info,
                     vk::SubpassContents::INLINE,
                 );
 
+                let args = VisitRenderpassArgs {
+                    renderpass: &self.render_pass_resources[pass_index],
+                    graph_context: render_graph_context,
+                    command_buffer
+                };
+
                 // callback here!
-                node_visitor.visit_renderpass(node_id, &render_graph_context, command_buffer)?;
+                node_visitor.visit_renderpass(node_id, args)?;
 
                 device.cmd_end_render_pass(command_buffer);
             }
@@ -271,13 +331,12 @@ pub trait RenderGraphNodeVisitor {
     fn visit_renderpass(
         &self,
         node_id: RenderGraphNodeId,
-        graph_context: &RenderGraphContext,
-        command_buffer: vk::CommandBuffer,
+        args: VisitRenderpassArgs
     ) -> VkResult<()>;
 }
 
 type RenderGraphNodeVisitorCallback<RenderGraphUserContextT> =
-    dyn Fn(vk::CommandBuffer, &RenderGraphContext, &RenderGraphUserContextT) -> VkResult<()> + Send;
+    dyn Fn(VisitRenderpassArgs, &RenderGraphUserContextT) -> VkResult<()> + Send;
 
 /// Created by RenderGraphNodeCallbacks::create_visitor(). Implements RenderGraphNodeVisitor and
 /// forwards the call, adding the user context as a parameter.
@@ -295,10 +354,9 @@ impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
     fn visit_renderpass(
         &self,
         node_id: RenderGraphNodeId,
-        graph_context: &RenderGraphContext,
-        command_buffer: vk::CommandBuffer,
+        args: VisitRenderpassArgs
     ) -> VkResult<()> {
-        (self.node_callbacks[&node_id])(command_buffer, graph_context, self.context)
+        (self.node_callbacks[&node_id])(args, self.context)
     }
 }
 
@@ -317,7 +375,10 @@ impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> 
         node_id: RenderGraphNodeId,
         f: CallbackFnT,
     ) where
-        CallbackFnT: Fn(vk::CommandBuffer, &RenderGraphContext, &RenderGraphUserContextT) -> VkResult<()>
+        CallbackFnT: Fn(
+            VisitRenderpassArgs,
+            &RenderGraphUserContextT
+        ) -> VkResult<()>
             + 'static
             + Send,
     {

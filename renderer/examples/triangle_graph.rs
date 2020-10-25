@@ -287,7 +287,7 @@ fn render_frame(
         // Set up a callback for when we dispatch the opaque pass. This will happen during execute_graph()
         graph_callbacks.set_renderpass_callback(
             node,
-            |_command_buffer, _graph_context, _context| {
+            |_args, _context| {
                 //TODO: Draw triangle into command buffer
                 Ok(())
             },

@@ -398,6 +398,7 @@ impl VkResource for MaterialPassResource {
 
 #[derive(Debug, Clone)]
 pub struct GraphicsPipelineResource {
+    // These are per subpass of the renderpass this pipeline executes in
     pub pipelines: Vec<vk::Pipeline>,
     pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
 

@@ -173,25 +173,42 @@ impl GraphicsPipelineCache {
 
     pub fn find_graphics_pipeline(
         &self,
-        material: &ResourceArc<MaterialPassResource>,
+        material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
+        create_if_missing: bool
     ) -> Option<ResourceArc<GraphicsPipelineResource>> {
         let key = CachedGraphicsPipelineKey {
-            material_pass: material.get_hash(),
+            material_pass: material_pass.get_hash(),
             renderpass: renderpass.get_hash(),
         };
 
         let mut guard = self.inner.lock().unwrap();
+        let mut inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
-            guard.lock_call_count += 0;
+            inner.lock_call_count += 0;
         }
 
         // Find the swapchain index for the given renderpass
-        guard.cached_pipelines.get(&key).map(|x| {
+        inner.cached_pipelines.get(&key).map(|x| {
             debug_assert!(x.material_pass_resource.upgrade().is_some());
             debug_assert!(x.renderpass_resource.upgrade().is_some());
             x.graphics_pipeline.clone()
+        }).or_else(|| {
+            let pipeline = inner
+                .resource_lookup_set
+                .get_or_create_graphics_pipeline(&material_pass, &renderpass)
+                .unwrap(); //TODO: Capture this error for checking during frame end
+            inner.cached_pipelines.insert(
+                key,
+                CachedGraphicsPipeline {
+                    graphics_pipeline: pipeline.clone(),
+                    renderpass_resource: renderpass.downgrade(),
+                    material_pass_resource: material_pass.downgrade(),
+                },
+            );
+
+            Some(pipeline)
         })
     }
 

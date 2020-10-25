@@ -297,8 +297,12 @@ impl GameRenderer {
         let resource_context = resource_manager.resource_context();
 
         let mut guard = game_renderer.inner.lock().unwrap();
-        let main_camera_render_phase_mask = guard.main_camera_render_phase_mask;
-        let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
+        let game_renderer_inner = &mut *guard;
+        let main_camera_render_phase_mask = game_renderer_inner.main_camera_render_phase_mask;
+
+        let static_resources = &game_renderer_inner.static_resources;
+
+        let swapchain_resources = game_renderer_inner.swapchain_resources.as_mut().unwrap();
         let swapchain_image =
             swapchain_resources.swapchain_images[frame_in_flight.present_index() as usize].clone();
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
@@ -365,6 +369,11 @@ impl GameRenderer {
             main_view_dynamic_visibility_result.handles.len()
         );
 
+        let bloom_extract_material_pass = resource_manager.get_material_pass_by_index(
+            &static_resources.bloom_extract_material,
+            0
+        ).unwrap();
+
         //let t2 = std::time::Instant::now();
         let render_graph = render_graph::build_render_graph(
             &device_context,
@@ -374,6 +383,7 @@ impl GameRenderer {
             &swapchain_info,
             swapchain_image,
             main_view.clone(),
+            bloom_extract_material_pass
         )?;
         // let t3 = std::time::Instant::now();
         // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);

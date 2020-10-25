@@ -1,5 +1,5 @@
 use crate::renderpass::{
-    VkBloomRenderPassResources, VkBloomExtractRenderPass, VkBloomBlurRenderPass,
+    VkBloomRenderPassResources, VkBloomBlurRenderPass,
     VkBloomCombineRenderPass,
 };
 use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
@@ -29,10 +29,8 @@ pub struct SwapchainResources {
 
     pub debug_material_per_frame_data: DynDescriptorSet,
     pub bloom_resources: VkBloomRenderPassResources,
-    pub bloom_extract_material_dyn_set: DynDescriptorSet,
     pub bloom_combine_material_dyn_set: DynDescriptorSet,
 
-    pub bloom_extract_renderpass: VkBloomExtractRenderPass,
     pub bloom_blur_renderpass: VkBloomBlurRenderPass,
     pub bloom_combine_renderpass: VkBloomCombineRenderPass,
 
@@ -159,19 +157,7 @@ impl SwapchainResources {
             )
             .unwrap();
 
-        let bloom_extract_renderpass = VkBloomExtractRenderPass::new(
-            resource_manager.resources(),
-            device_context,
-            &swapchain.swapchain_info,
-            bloom_extract_pipeline_info,
-            &bloom_resources,
-        )?;
-
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
-        let mut bloom_extract_material_dyn_set = descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&bloom_extract_layout.descriptor_set_layout)?;
-        bloom_extract_material_dyn_set.set_image_raw(0, color_attachment.resolved_image_view());
-        bloom_extract_material_dyn_set.flush(&mut descriptor_set_allocator)?;
 
         //
         // Bloom Blur Renderpass
@@ -261,9 +247,7 @@ impl SwapchainResources {
             static_command_pool,
             debug_material_per_frame_data,
             bloom_resources,
-            bloom_extract_material_dyn_set,
             bloom_combine_material_dyn_set,
-            bloom_extract_renderpass,
             bloom_blur_renderpass,
             bloom_combine_renderpass,
             swapchain_info,
