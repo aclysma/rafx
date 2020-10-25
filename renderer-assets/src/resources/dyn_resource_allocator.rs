@@ -30,8 +30,11 @@ impl Into<ResourceId> for DynResourceIndex {
 
 //
 // A lookup of dynamic resources. They reference count using Arcs internally and send a signal when they
-// drop. This allows the resources to be collected and disposed of. This is threadsafe, as opposed to
-// ResourceLookup. It's intended for things that get created/thrown away
+// drop. This allows the resources to be collected and disposed of. This is threadsafe and the only
+// sync point is when dropping to send via a channel. (Although VMA memory allocator is probably
+// locking too) As opposed to ResourceLookup which uses mutexes to maintain a lookup map. It's
+// intended for things that get created/thrown away frequently although there is no problem with
+// keeping a resource created through this utility around for a long time.
 //
 pub struct DynResourceAllocatorInner<ResourceT>
 where
@@ -213,6 +216,7 @@ where
     }
 }
 
+// This is for providing per-frame allocation where the resource does not need to be
 pub struct DynResourceAllocatorSet {
     pub images: DynResourceAllocator<ImageResource>,
     pub image_views: DynResourceAllocator<ImageViewResource>,

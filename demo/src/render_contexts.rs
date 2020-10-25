@@ -1,6 +1,6 @@
 use ash::vk;
 use legion::*;
-use renderer::assets::{ResourceManager, DynResourceAllocatorSet, ResourceManagerContext};
+use renderer::assets::{ResourceManager, DynResourceAllocatorSet, ResourceContext};
 use renderer::vulkan::VkDeviceContext;
 
 pub struct RenderJobExtractContext {
@@ -26,31 +26,29 @@ impl RenderJobExtractContext {
 }
 
 pub struct RenderJobPrepareContext {
-    pub resource_manager_context: ResourceManagerContext,
+    pub resource_context: ResourceContext,
 }
 
 impl RenderJobPrepareContext {
-    pub fn new(resource_manager_context: ResourceManagerContext) -> Self {
-        RenderJobPrepareContext {
-            resource_manager_context,
-        }
+    pub fn new(resource_context: ResourceContext) -> Self {
+        RenderJobPrepareContext { resource_context }
     }
 }
 
 // Used to produce RenderJobWriteContexts per each job
 pub struct RenderJobWriteContextFactory {
     pub device_context: VkDeviceContext,
-    pub resource_manager_context: ResourceManagerContext,
+    pub resource_context: ResourceContext,
 }
 
 impl RenderJobWriteContextFactory {
     pub fn new(
         device_context: VkDeviceContext,
-        resource_manager_context: ResourceManagerContext,
+        resource_context: ResourceContext,
     ) -> Self {
         RenderJobWriteContextFactory {
             device_context,
-            resource_manager_context,
+            resource_context,
         }
     }
 
@@ -60,8 +58,7 @@ impl RenderJobWriteContextFactory {
     ) -> RenderJobWriteContext {
         RenderJobWriteContext::new(
             self.device_context.clone(),
-            self.resource_manager_context
-                .create_dyn_resource_allocator_set(),
+            self.resource_context.create_dyn_resource_allocator_set(),
             command_buffer,
         )
     }

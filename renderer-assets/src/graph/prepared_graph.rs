@@ -3,7 +3,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use renderer_shell_vulkan::{VkDeviceContext, VkImage};
 use ash::vk;
 use crate::resources::ResourceLookupSet;
-use crate::{ResourceArc, ImageViewResource, ResourceManager, ResourceManagerContext};
+use crate::{ResourceArc, ImageViewResource, ResourceManager, ResourceContext};
 use ash::prelude::VkResult;
 use std::mem::ManuallyDrop;
 use crate::vk_description as dsc;
@@ -16,9 +16,23 @@ use crate::graph::{RenderGraphBuilder, RenderGraphImageUsageId};
 use renderer_nodes::{RenderPhase, RenderPhaseIndex};
 use crate::graph::graph_plan::RenderGraphPlan;
 
+pub struct RenderGraphContext<'a> {
+    prepared_graph: &'a PreparedRenderGraph,
+}
+
+impl<'a> RenderGraphContext<'a> {
+    pub fn image(
+        &self,
+        image: RenderGraphImageUsageId,
+    ) -> Option<ResourceArc<ImageViewResource>> {
+        self.prepared_graph.image(image)
+    }
+}
+
 /// Encapsulates a render graph plan and all resources required to execute it
 pub struct PreparedRenderGraph {
     device_context: VkDeviceContext,
+    resource_context: ResourceContext,
     image_resources: FnvHashMap<PhysicalImageId, ResourceArc<ImageViewResource>>,
     render_pass_resources: Vec<ResourceArc<RenderPassResource>>,
     framebuffer_resources: Vec<ResourceArc<FramebufferResource>>,
@@ -29,6 +43,7 @@ pub struct PreparedRenderGraph {
 impl PreparedRenderGraph {
     pub fn new(
         device_context: &VkDeviceContext,
+        resource_context: &ResourceContext,
         resources: &ResourceLookupSet,
         graph: RenderGraphBuilder,
         swapchain_surface_info: &SwapchainSurfaceInfo,
@@ -54,12 +69,21 @@ impl PreparedRenderGraph {
 
         Ok(PreparedRenderGraph {
             device_context: device_context.clone(),
+            resource_context: resource_context.clone(),
             image_resources,
             render_pass_resources,
             framebuffer_resources,
             graph_plan,
             swapchain_surface_info: swapchain_surface_info.clone(),
         })
+    }
+
+    fn image(
+        &self,
+        image: RenderGraphImageUsageId,
+    ) -> Option<ResourceArc<ImageViewResource>> {
+        let physical_image = self.graph_plan.image_usage_to_physical.get(&image)?;
+        self.image_resources.get(&physical_image).cloned()
     }
 
     fn allocate_images(
@@ -170,14 +194,14 @@ impl PreparedRenderGraph {
     }
 
     pub fn execute_graph(
-        &mut self,
-        resource_manager_context: &ResourceManagerContext,
+        &self,
         node_visitor: &dyn RenderGraphNodeVisitor,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         //
         // Start a command writer. For now just do a single primary writer, later we can multithread this.
         //
-        let mut command_writer = resource_manager_context
+        let mut command_writer = self
+            .resource_context
             .dyn_command_writer_allocator()
             .allocate_writer(
                 self.device_context
@@ -194,6 +218,10 @@ impl PreparedRenderGraph {
         )?;
 
         let device = self.device_context.device();
+
+        let render_graph_context = RenderGraphContext {
+            prepared_graph: &self,
+        };
 
         //
         // Iterate through all passes
@@ -219,7 +247,7 @@ impl PreparedRenderGraph {
                 );
 
                 // callback here!
-                node_visitor.visit_renderpass(node_id, command_buffer)?;
+                node_visitor.visit_renderpass(node_id, &render_graph_context, command_buffer)?;
 
                 device.cmd_end_render_pass(command_buffer);
             }
@@ -243,65 +271,76 @@ pub trait RenderGraphNodeVisitor {
     fn visit_renderpass(
         &self,
         node_id: RenderGraphNodeId,
+        graph_context: &RenderGraphContext,
         command_buffer: vk::CommandBuffer,
     ) -> VkResult<()>;
 }
 
-type RenderGraphNodeVisitorCallback<T> = dyn Fn(vk::CommandBuffer, &T) -> VkResult<()> + Send;
+type RenderGraphNodeVisitorCallback<RenderGraphUserContextT> =
+    dyn Fn(vk::CommandBuffer, &RenderGraphContext, &RenderGraphUserContextT) -> VkResult<()> + Send;
 
 /// Created by RenderGraphNodeCallbacks::create_visitor(). Implements RenderGraphNodeVisitor and
-/// forwards the call, adding the context as a parameter.
-struct RenderGraphNodeVisitorImpl<'b, U> {
-    context: &'b U,
-    node_callbacks: &'b FnvHashMap<RenderGraphNodeId, Box<RenderGraphNodeVisitorCallback<U>>>,
+/// forwards the call, adding the user context as a parameter.
+struct RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT> {
+    context: &'b RenderGraphUserContextT,
+    node_callbacks: &'b FnvHashMap<
+        RenderGraphNodeId,
+        Box<RenderGraphNodeVisitorCallback<RenderGraphUserContextT>>,
+    >,
 }
 
-impl<'b, U> RenderGraphNodeVisitor for RenderGraphNodeVisitorImpl<'b, U> {
+impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
+    for RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT>
+{
     fn visit_renderpass(
         &self,
         node_id: RenderGraphNodeId,
+        graph_context: &RenderGraphContext,
         command_buffer: vk::CommandBuffer,
     ) -> VkResult<()> {
-        (self.node_callbacks[&node_id])(command_buffer, self.context)
+        (self.node_callbacks[&node_id])(command_buffer, graph_context, self.context)
     }
 }
 
 /// All the callbacks associated with rendergraph nodes. We keep them separate from the nodes so
 /// that we can avoid propagating generic parameters throughout the rest of the rendergraph code
-pub struct RenderGraphNodeCallbacks<T> {
-    node_callbacks: FnvHashMap<RenderGraphNodeId, Box<RenderGraphNodeVisitorCallback<T>>>,
+pub struct RenderGraphNodeCallbacks<RenderGraphUserContextT> {
+    node_callbacks:
+        FnvHashMap<RenderGraphNodeId, Box<RenderGraphNodeVisitorCallback<RenderGraphUserContextT>>>,
     render_phase_dependencies: FnvHashMap<RenderGraphNodeId, FnvHashSet<RenderPhaseIndex>>,
 }
 
-impl<T> RenderGraphNodeCallbacks<T> {
+impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> {
     /// Adds a callback that receives the renderpass associated with the node
-    pub fn set_renderpass_callback<F>(
+    pub fn set_renderpass_callback<CallbackFnT>(
         &mut self,
         node_id: RenderGraphNodeId,
-        f: F,
+        f: CallbackFnT,
     ) where
-        F: Fn(vk::CommandBuffer, &T) -> VkResult<()> + 'static + Send,
+        CallbackFnT: Fn(vk::CommandBuffer, &RenderGraphContext, &RenderGraphUserContextT) -> VkResult<()>
+            + 'static
+            + Send,
     {
         self.node_callbacks.insert(node_id, Box::new(f));
     }
 
-    pub fn add_renderphase_dependency<U: RenderPhase>(
+    pub fn add_renderphase_dependency<PhaseT: RenderPhase>(
         &mut self,
         node_id: RenderGraphNodeId,
     ) {
         self.render_phase_dependencies
             .entry(node_id)
             .or_default()
-            .insert(U::render_phase_index());
+            .insert(PhaseT::render_phase_index());
     }
 
     /// Pass to PreparedRenderGraph::execute_graph, this will cause the graph to be executed,
     /// triggering any registered callbacks
     pub fn create_visitor<'a>(
         &'a self,
-        context: &'a T,
+        context: &'a RenderGraphUserContextT,
     ) -> Box<dyn RenderGraphNodeVisitor + 'a> {
-        Box::new(RenderGraphNodeVisitorImpl::<'a, T> {
+        Box::new(RenderGraphNodeVisitorImpl::<'a, RenderGraphUserContextT> {
             context,
             node_callbacks: &self.node_callbacks,
         })
@@ -328,8 +367,9 @@ impl<T> RenderGraphExecutor<T> {
     /// callbacks that will be triggered while executing it to be passed around and executed later.
     pub fn new(
         device_context: &VkDeviceContext,
-        graph: RenderGraphBuilder,
+        resource_context: &ResourceContext,
         resource_manager: &mut ResourceManager,
+        graph: RenderGraphBuilder,
         swapchain_surface_info: &SwapchainSurfaceInfo,
         callbacks: RenderGraphNodeCallbacks<T>,
     ) -> VkResult<Self> {
@@ -338,7 +378,8 @@ impl<T> RenderGraphExecutor<T> {
         //
         let prepared_graph = PreparedRenderGraph::new(
             device_context,
-            resource_manager.resources(),
+            resource_context,
+            resource_context.resources(),
             graph,
             swapchain_surface_info,
         )?;
@@ -346,6 +387,7 @@ impl<T> RenderGraphExecutor<T> {
         //
         // Ensure expensive resources are persisted across frames so they can be reused
         //
+        //TODO: Make resource caches MT-friendly
         for renderpass in &prepared_graph.render_pass_resources {
             resource_manager
                 .resource_caches_mut()
@@ -419,12 +461,10 @@ impl<T> RenderGraphExecutor<T> {
 
     /// Executes the graph, passing through the given context parameter
     pub fn execute_graph(
-        mut self,
-        resource_manager_context: &ResourceManagerContext,
+        self,
         context: &T,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let visitor = self.callbacks.create_visitor(context);
-        self.prepared_graph
-            .execute_graph(resource_manager_context, &*visitor)
+        self.prepared_graph.execute_graph(&*visitor)
     }
 }

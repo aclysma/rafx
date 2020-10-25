@@ -66,6 +66,12 @@ where
     lock_call_count: u64,
 }
 
+//TODO: Don't love using a mutex here. If this becomes a performance bottleneck:
+// - Try making locks more granular (something like dashmap)
+// - Have a read-only hashmap that's checked first and then a read/write map that's checked if the
+//   read-only fails. At a later sync point, copy new data from the read-write into the read. This
+//   could occur during the extract phase. Or could potentially double-buffer the read-only map
+//   and swap them.
 pub struct ResourceLookup<KeyT, ResourceT>
 where
     KeyT: Eq + Hash + Clone,

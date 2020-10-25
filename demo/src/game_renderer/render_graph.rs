@@ -1,5 +1,5 @@
 use ash::vk;
-use renderer::assets::{vk_description as dsc, ResourceManagerContext};
+use renderer::assets::{vk_description as dsc, ResourceContext};
 use renderer::assets::graph::*;
 use renderer::assets::resources::ResourceManager;
 use crate::VkDeviceContext;
@@ -21,26 +21,27 @@ pub struct BuildRenderGraphResult {
 // include data that is not known until later after the extract/prepare phases have completed.
 pub struct RenderGraphExecuteContext {
     pub prepared_render_data: Box<PreparedRenderData<RenderJobWriteContext>>,
-    pub view: RenderView,
     pub write_context_factory: RenderJobWriteContextFactory,
     //pub command_writer: DynCommandWriter, // command buffers
-    //pub resource_manager_context: ResourceManagerContext
+    //pub resource_context: ResourceContext
     //pub dyn_resource_allocators: DynResourceAllocatorSet, // images, image views, buffers
     //pub descriptor_set_alloctor_provider: DescriptorSetAllocatorProvider, // descriptor sets
 }
 
 impl RenderGraphExecuteContext {
-    pub fn resource_manager_context(&self) -> &ResourceManagerContext {
-        &self.write_context_factory.resource_manager_context
+    pub fn resource_context(&self) -> &ResourceContext {
+        &self.write_context_factory.resource_context
     }
 }
 
 pub fn build_render_graph(
-    swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     device_context: &VkDeviceContext,
+    resource_context: &ResourceContext,
     resource_manager: &mut ResourceManager,
+    swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     swapchain_info: &SwapchainInfo,
     swapchain_image: ResourceArc<ImageViewResource>,
+    main_view: RenderView,
 ) -> VkResult<BuildRenderGraphResult> {
     //TODO: Fix this back to be color format
     let color_format = swapchain_surface_info.surface_format.format;
@@ -89,13 +90,20 @@ pub fn build_render_graph(
         graph.set_image_name(depth, "depth");
 
         graph_callbacks.add_renderphase_dependency::<OpaqueRenderPhase>(node);
-        graph_callbacks.set_renderpass_callback(node, |command_buffer, context| {
-            let mut write_context = context.write_context_factory.create_context(command_buffer);
-            context
-                .prepared_render_data
-                .write_view_phase::<OpaqueRenderPhase>(&context.view, &mut write_context);
-            Ok(())
-        });
+
+        let main_view = main_view.clone();
+        graph_callbacks.set_renderpass_callback(
+            node,
+            move |command_buffer, _graph_context, user_context| {
+                let mut write_context = user_context
+                    .write_context_factory
+                    .create_context(command_buffer);
+                user_context
+                    .prepared_render_data
+                    .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context);
+                Ok(())
+            },
+        );
 
         Opaque { node, color, depth }
     };
@@ -106,8 +114,8 @@ pub fn build_render_graph(
             color: RenderGraphImageUsageId,
         }
 
+        // This node has a single color attachment
         let node = graph.add_node("Ui", RenderGraphQueue::DefaultGraphics);
-
         let color = graph.modify_color_attachment(
             node,
             opaque_pass.color,
@@ -118,14 +126,30 @@ pub fn build_render_graph(
             },
         );
 
+        // Adding a phase dependency insures that we create all the pipelines for materials
+        // associated with the phase. This controls how long we keep the pipelines allocated and
+        // allows us to precache pipelines for materials as they are loaded
         graph_callbacks.add_renderphase_dependency::<UiRenderPhase>(node);
-        graph_callbacks.set_renderpass_callback(node, |command_buffer, context| {
-            let mut write_context = context.write_context_factory.create_context(command_buffer);
-            context
-                .prepared_render_data
-                .write_view_phase::<UiRenderPhase>(&context.view, &mut write_context);
-            Ok(())
-        });
+
+        // When the node is executed, we automatically set up the renderpass/framebuffer/command
+        // buffer. Just add the draw calls.
+        let main_view = main_view.clone();
+        graph_callbacks.set_renderpass_callback(
+            node,
+            move |command_buffer, _graph_context, user_context| {
+                // Can retrieve images created/used by the graph
+                //let _color_attachment = graph_context.image(color).unwrap();
+
+                // Kick the material system to emit all draw calls for the UiRenderPhase for the view
+                let mut write_context = user_context
+                    .write_context_factory
+                    .create_context(command_buffer);
+                user_context
+                    .prepared_render_data
+                    .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context);
+                Ok(())
+            },
+        );
 
         Ui { node, color }
     };
@@ -155,7 +179,7 @@ pub fn build_render_graph(
 
             graph.sample_image(node, ui_pass.color, Default::default());
 
-            graph_callbacks.set_renderpass_callback(node, |command_buffer, context| {
+            graph_callbacks.set_renderpass_callback(node, |command_buffer, graph_context. context| {
                 //TODO:
                 // - Resolve the pipeline from the cache using the blur_extract_pass material pass resource
                 // - Get the image that corresponds with ui_pass.color
@@ -225,8 +249,9 @@ pub fn build_render_graph(
     //
     let executor = RenderGraphExecutor::new(
         &device_context,
-        graph,
+        &resource_context,
         resource_manager,
+        graph,
         swapchain_surface_info,
         graph_callbacks,
     )?;

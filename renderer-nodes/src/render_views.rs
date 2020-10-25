@@ -3,6 +3,7 @@ use crate::RenderPhase;
 use crate::registry::{RenderPhaseMaskInnerType, MAX_RENDER_PHASE_COUNT};
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 pub type RenderViewIndex = u32;
 pub type RenderViewCount = u32;
@@ -65,13 +66,18 @@ impl RenderViewSet {
 }
 
 ////////////////// Views //////////////////
-pub struct RenderView {
+pub struct RenderViewInner {
     eye_position: Vec3,
     view: Mat4,
     proj: Mat4,
     view_index: RenderViewIndex,
     render_phase_mask: RenderPhaseMask,
     debug_name: String,
+}
+
+#[derive(Clone)]
+pub struct RenderView {
+    inner: Arc<RenderViewInner>,
 }
 
 impl RenderView {
@@ -84,41 +90,45 @@ impl RenderView {
         debug_name: String,
     ) -> RenderView {
         log::trace!("Allocate view {} {}", debug_name, view_index);
-        Self {
+        let inner = RenderViewInner {
             eye_position,
             view,
             proj,
             view_index,
             render_phase_mask,
             debug_name,
+        };
+
+        RenderView {
+            inner: Arc::new(inner),
         }
     }
 
     pub fn eye_position(&self) -> Vec3 {
-        self.eye_position
+        self.inner.eye_position
     }
 
     pub fn view_matrix(&self) -> Mat4 {
-        self.view
+        self.inner.view
     }
 
     pub fn projection_matrix(&self) -> Mat4 {
-        self.proj
+        self.inner.proj
     }
 
     pub fn view_index(&self) -> RenderViewIndex {
-        self.view_index
+        self.inner.view_index
     }
 
     pub fn debug_name(&self) -> &str {
-        &self.debug_name
+        &self.inner.debug_name
     }
 
     pub fn phase_is_relevant<RenderPhaseT: RenderPhase>(&self) -> bool {
-        self.render_phase_mask.is_included::<RenderPhaseT>()
+        self.inner.render_phase_mask.is_included::<RenderPhaseT>()
     }
 
     pub fn render_phase_mask(&self) -> RenderPhaseMask {
-        self.render_phase_mask
+        self.inner.render_phase_mask
     }
 }

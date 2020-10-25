@@ -294,6 +294,8 @@ impl GameRenderer {
         // Call this here - represents that the previous frame was completed
         resource_manager.on_frame_complete()?;
 
+        let resource_context = resource_manager.resource_context();
+
         let mut guard = game_renderer.inner.lock().unwrap();
         let main_camera_render_phase_mask = guard.main_camera_render_phase_mask;
         let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
@@ -301,17 +303,6 @@ impl GameRenderer {
             swapchain_resources.swapchain_images[frame_in_flight.present_index() as usize].clone();
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
         let swapchain_info = swapchain_resources.swapchain_info.clone();
-
-        //let t2 = std::time::Instant::now();
-        let render_graph = render_graph::build_render_graph(
-            &swapchain_surface_info,
-            &device_context,
-            resource_manager,
-            &swapchain_info,
-            swapchain_image,
-        )?;
-        // let t3 = std::time::Instant::now();
-        // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
 
         //
         // View Management
@@ -374,6 +365,19 @@ impl GameRenderer {
             main_view_dynamic_visibility_result.handles.len()
         );
 
+        //let t2 = std::time::Instant::now();
+        let render_graph = render_graph::build_render_graph(
+            &device_context,
+            &resource_context,
+            resource_manager,
+            &swapchain_surface_info,
+            &swapchain_info,
+            swapchain_image,
+            main_view.clone(),
+        )?;
+        // let t3 = std::time::Instant::now();
+        // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
+
         let frame_packet_builder = {
             let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
             sprite_render_nodes.update();
@@ -395,7 +399,7 @@ impl GameRenderer {
             ],
         );
 
-        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
+        let mut descriptor_set_allocator = resource_context.create_descriptor_set_allocator();
         swapchain_resources
             .debug_material_per_frame_data
             .set_buffer_data(0, &view_proj);
@@ -445,14 +449,14 @@ impl GameRenderer {
                 // Sprites
                 extract_job_set.add_job(create_sprite_extract_job(
                     device_context.clone(),
-                    resource_manager.create_descriptor_set_allocator(),
+                    resource_context.create_descriptor_set_allocator(),
                     sprite_pipeline_info,
                     &guard.static_resources.sprite_material,
                 ));
 
                 // Meshes
                 extract_job_set.add_job(create_mesh_extract_job(
-                    resource_manager.create_descriptor_set_allocator(),
+                    resource_context.create_descriptor_set_allocator(),
                     mesh_pipeline_info,
                     &guard.static_resources.mesh_material,
                 ));
@@ -460,7 +464,7 @@ impl GameRenderer {
                 // Debug 3D
                 extract_job_set.add_job(create_debug3d_extract_job(
                     device_context.clone(),
-                    resource_manager.create_descriptor_set_allocator(),
+                    resource_context.create_descriptor_set_allocator(),
                     debug3d_pipeline_info,
                     &guard.static_resources.debug3d_material,
                 ));
@@ -478,7 +482,7 @@ impl GameRenderer {
 
                 extract_job_set.add_job(create_imgui_extract_job(
                     device_context.clone(),
-                    resource_manager.create_descriptor_set_allocator(),
+                    resource_context.create_descriptor_set_allocator(),
                     imgui_pipeline_info,
                     swapchain_surface_info.extents,
                     &guard.static_resources.imgui_material,
@@ -493,8 +497,6 @@ impl GameRenderer {
         let prepare_job_set =
             extract_job_set.extract(&extract_context, &frame_packet, &[&main_view]);
 
-        let resource_manager_context = resource_manager.resource_manager_context();
-
         let t1 = std::time::Instant::now();
         log::trace!(
             "[main] render extract took {} ms",
@@ -507,7 +509,7 @@ impl GameRenderer {
             game_renderer,
             prepare_job_set,
             render_graph: render_graph.executor,
-            resource_manager_context,
+            resource_context,
             frame_packet,
             main_view,
             render_registry,

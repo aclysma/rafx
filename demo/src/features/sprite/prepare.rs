@@ -155,7 +155,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
 
         if !self.draw_calls.is_empty() {
             let dyn_resource_allocator = prepare_context
-                .resource_manager_context
+                .resource_context
                 .create_dyn_resource_allocator_set();
 
             //TODO: It's likely unnecessary to put all the data into a Vec and then copy it into the buffer. We could

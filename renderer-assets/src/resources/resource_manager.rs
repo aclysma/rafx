@@ -74,7 +74,7 @@ pub struct ResourceManagerLoaders {
     pub buffer_loader: GenericLoader<BufferAssetData, BufferAsset>,
 }
 
-struct ResourceManagerContextInner {
+struct ResourceContextInner {
     descriptor_set_allocator_provider: DescriptorSetAllocatorProvider,
     dyn_resources_allocator_provider: DynResourceAllocatorSetProvider,
     dyn_commands_allocator: DynCommandWriterAllocator,
@@ -83,11 +83,11 @@ struct ResourceManagerContextInner {
 }
 
 #[derive(Clone)]
-pub struct ResourceManagerContext {
-    inner: Arc<ResourceManagerContextInner>,
+pub struct ResourceContext {
+    inner: Arc<ResourceContextInner>,
 }
 
-impl ResourceManagerContext {
+impl ResourceContext {
     pub fn resources(&self) -> &ResourceLookupSet {
         &self.inner.resources
     }
@@ -153,8 +153,8 @@ impl ResourceManager {
         }
     }
 
-    pub fn resource_manager_context(&self) -> ResourceManagerContext {
-        let inner = ResourceManagerContextInner {
+    pub fn resource_context(&self) -> ResourceContext {
+        let inner = ResourceContextInner {
             descriptor_set_allocator_provider: self
                 .descriptor_set_allocator
                 .create_allocator_provider(),
@@ -164,7 +164,7 @@ impl ResourceManager {
             graphics_pipeline_cache: self.graphics_pipeline_cache.clone(),
         };
 
-        ResourceManagerContext {
+        ResourceContext {
             inner: Arc::new(inner),
         }
     }

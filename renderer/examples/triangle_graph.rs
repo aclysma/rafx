@@ -254,12 +254,12 @@ fn render_frame(
 
     // Graph callbacks take a user-defined T, allowing you to pass extra state through to the
     // callback.
-    struct RenderGraphExecuteContext {}
+    struct RenderGraphUserContext {}
 
     // Create an empty graph and callback set. These are later fed to an "executor" object which
     // will iterate across the graph, start renderpasses, and dispatch callbacks.
     let mut graph = RenderGraphBuilder::default();
-    let mut graph_callbacks = RenderGraphNodeCallbacks::<RenderGraphExecuteContext>::default();
+    let mut graph_callbacks = RenderGraphNodeCallbacks::<RenderGraphUserContext>::default();
 
     // Create a basic cleared screen. The node IDs and image IDs returned here can be used later. In
     // this example we will associate the color attachment with the swapchain image, which is what
@@ -285,10 +285,13 @@ fn render_frame(
         graph.set_image_name(color, "color");
 
         // Set up a callback for when we dispatch the opaque pass. This will happen during execute_graph()
-        graph_callbacks.set_renderpass_callback(node, |_command_buffer, _context| {
-            //TODO: Draw triangle into command buffer
-            Ok(())
-        });
+        graph_callbacks.set_renderpass_callback(
+            node,
+            |_command_buffer, _graph_context, _context| {
+                //TODO: Draw triangle into command buffer
+                Ok(())
+            },
+        );
 
         Opaque { color }
     };
@@ -313,17 +316,17 @@ fn render_frame(
     // and renderpasses to the resource lookups
     let executor = RenderGraphExecutor::new(
         &device_context,
-        graph,
+        &resource_manager.resource_context(),
         resource_manager,
+        graph,
         &swapchain_surface_info,
         graph_callbacks,
     )?;
 
     // Dispatch the graph, producing command buffers that represent work to queue into the GPU
     // NOTE: This point onward could be performed asynchronously to the next frame.
-    let write_context = RenderGraphExecuteContext {};
-    let command_buffers =
-        executor.execute_graph(&resource_manager.resource_manager_context(), &write_context)?;
+    let user_context = RenderGraphUserContext {};
+    let command_buffers = executor.execute_graph(&user_context)?;
 
     // Present using the command buffers created via the graph
     frame_in_flight.present(&command_buffers)?;
