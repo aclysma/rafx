@@ -7,7 +7,14 @@ use crate::assets::{
 };
 use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
-use crate::{vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, GraphicsPipelineResource, DescriptorSetArc, DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData, AssetLookupSet, DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation, DynPassMaterialInstance, DescriptorSetAllocatorRef, DynMaterialInstance, DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource, GraphicsPipelineCache, MaterialPassResource};
+use crate::{
+    vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, GraphicsPipelineResource,
+    DescriptorSetArc, DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData,
+    AssetLookupSet, DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation,
+    DynPassMaterialInstance, DescriptorSetAllocatorRef, DynMaterialInstance,
+    DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource, GraphicsPipelineCache,
+    MaterialPassResource,
+};
 use crate::assets::{
     ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
     BufferAsset, MaterialPass,
@@ -272,7 +279,7 @@ impl ResourceManager {
     pub fn get_material_pass_by_index(
         &self,
         handle: &Handle<MaterialAsset>,
-        index: usize
+        index: usize,
     ) -> Option<ResourceArc<MaterialPassResource>> {
         self.loaded_assets
             .materials
@@ -325,7 +332,7 @@ impl ResourceManager {
         self.graphics_pipeline_cache.find_graphics_pipeline(
             &material.passes[pass_index].material_pass_resource,
             &renderpass,
-            false
+            false,
         )
     }
 
@@ -341,11 +348,14 @@ impl ResourceManager {
             .get_committed(material_handle.load_handle())
             .unwrap();
 
-        Ok(self.graphics_pipeline_cache.find_graphics_pipeline(
-            &material.passes[pass_index].material_pass_resource,
-            &renderpass,
-            true
-        ).unwrap())
+        Ok(self
+            .graphics_pipeline_cache
+            .find_graphics_pipeline(
+                &material.passes[pass_index].material_pass_resource,
+                &renderpass,
+                true,
+            )
+            .unwrap())
     }
 
     pub fn get_material_instance_info(

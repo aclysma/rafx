@@ -41,7 +41,7 @@ impl<'a> RenderGraphContext<'a> {
 pub struct VisitRenderpassArgs<'a> {
     pub command_buffer: vk::CommandBuffer,
     pub renderpass: &'a ResourceArc<RenderPassResource>,
-    pub graph_context: RenderGraphContext<'a>
+    pub graph_context: RenderGraphContext<'a>,
 }
 
 /// Encapsulates a render graph plan and all resources required to execute it
@@ -255,9 +255,9 @@ impl PreparedRenderGraph {
             let node_id = pass.subpass_nodes[0];
 
             unsafe {
-
                 if let Some(pre_pass_barrier) = &pass.pre_pass_barrier {
-                    let mut image_memory_barriers = Vec::with_capacity(pre_pass_barrier.image_barriers.len());
+                    let mut image_memory_barriers =
+                        Vec::with_capacity(pre_pass_barrier.image_barriers.len());
 
                     for image_barrier in &pre_pass_barrier.image_barriers {
                         let image_view = &self.image_resources[&image_barrier.image];
@@ -290,7 +290,7 @@ impl PreparedRenderGraph {
                         vk::DependencyFlags::empty(),
                         &[],
                         &[],
-                        &image_memory_barriers
+                        &image_memory_barriers,
                     );
                 }
 
@@ -303,7 +303,7 @@ impl PreparedRenderGraph {
                 let args = VisitRenderpassArgs {
                     renderpass: &self.render_pass_resources[pass_index],
                     graph_context: render_graph_context,
-                    command_buffer
+                    command_buffer,
                 };
 
                 // callback here!
@@ -331,7 +331,7 @@ pub trait RenderGraphNodeVisitor {
     fn visit_renderpass(
         &self,
         node_id: RenderGraphNodeId,
-        args: VisitRenderpassArgs
+        args: VisitRenderpassArgs,
     ) -> VkResult<()>;
 }
 
@@ -354,7 +354,7 @@ impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
     fn visit_renderpass(
         &self,
         node_id: RenderGraphNodeId,
-        args: VisitRenderpassArgs
+        args: VisitRenderpassArgs,
     ) -> VkResult<()> {
         (self.node_callbacks[&node_id])(args, self.context)
     }
@@ -375,12 +375,8 @@ impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> 
         node_id: RenderGraphNodeId,
         f: CallbackFnT,
     ) where
-        CallbackFnT: Fn(
-            VisitRenderpassArgs,
-            &RenderGraphUserContextT
-        ) -> VkResult<()>
-            + 'static
-            + Send,
+        CallbackFnT:
+            Fn(VisitRenderpassArgs, &RenderGraphUserContextT) -> VkResult<()> + 'static + Send,
     {
         self.node_callbacks.insert(node_id, Box::new(f));
     }

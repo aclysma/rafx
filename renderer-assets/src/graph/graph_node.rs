@@ -173,7 +173,7 @@ impl RenderGraphNode {
             color_attachments: Default::default(),
             depth_attachment: Default::default(),
             resolve_attachments: Default::default(),
-            sampled_images: Default::default()
+            sampled_images: Default::default(),
         }
     }
 

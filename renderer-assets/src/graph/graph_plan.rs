@@ -73,7 +73,7 @@ pub struct RenderGraphPassImageBarriers {
     flush: RenderGraphImageBarrier,
     layout: vk::ImageLayout,
     used_by_attachment: bool,
-    used_by_sampling: bool
+    used_by_sampling: bool,
 }
 
 impl RenderGraphPassImageBarriers {
@@ -83,7 +83,7 @@ impl RenderGraphPassImageBarriers {
             invalidate: Default::default(),
             layout,
             used_by_attachment: false,
-            used_by_sampling: false
+            used_by_sampling: false,
         }
     }
 }
@@ -182,7 +182,7 @@ impl RenderGraphPassAttachment {
 pub struct PrepassBarrier {
     pub src_stage: vk::PipelineStageFlags,
     pub dst_stage: vk::PipelineStageFlags,
-    pub image_barriers: Vec<PrepassImageBarrier>
+    pub image_barriers: Vec<PrepassImageBarrier>,
 }
 
 #[derive(Debug)]
@@ -204,7 +204,7 @@ pub struct RenderGraphPass {
 
     // For when we want to do layout transitions on non-attachments
     //pre_pass_image_barriers: Vec<PrepassImageBarrier>
-    pre_pass_barrier: Option<PrepassBarrier>
+    pre_pass_barrier: Option<PrepassBarrier>,
 }
 
 /// An ID for an image (possibly aliased)
@@ -230,7 +230,7 @@ pub struct RenderGraphOutputPass {
     pub(super) attachment_images: Vec<PhysicalImageId>,
     pub(super) clear_values: Vec<vk::ClearValue>,
     pub(super) extents: vk::Extent2D,
-    pub(super) pre_pass_barrier: Option<PrepassBarrier>
+    pub(super) pre_pass_barrier: Option<PrepassBarrier>,
 }
 
 impl std::fmt::Debug for RenderGraphOutputPass {
@@ -1445,8 +1445,7 @@ fn build_node_barriers(
             barrier.used_by_sampling |= true;
 
             barrier.invalidate.access_flags |= vk::AccessFlags::SHADER_READ;
-            barrier.invalidate.stage_flags |=
-                vk::PipelineStageFlags::FRAGMENT_SHADER;
+            barrier.invalidate.stage_flags |= vk::PipelineStageFlags::FRAGMENT_SHADER;
         }
 
         // barriers.push(RenderGraphNodeImageBarriers {
@@ -1655,7 +1654,11 @@ fn build_pass_barriers(
                 }
 
                 if layout_change && !use_external_dependency_for_pass_initial_layout_transition {
-                    image_transitions.push((physical_image_id, image_state.layout, image_barrier.layout));
+                    image_transitions.push((
+                        physical_image_id,
+                        image_state.layout,
+                        image_barrier.layout,
+                    ));
                 }
 
                 image_state.layout = image_barrier.layout;
@@ -1729,35 +1732,36 @@ fn build_pass_barriers(
                     src_stage_mask: dsc::PipelineStageFlags::from_bits(
                         invalidate_src_pipeline_stage_flags.as_raw(),
                     )
-                        .unwrap(),
+                    .unwrap(),
                     dst_access_mask: dsc::AccessFlags::from_access_flag_mask(
                         invalidate_dst_access_flags,
                     ),
                     dst_stage_mask: dsc::PipelineStageFlags::from_bits(
                         invalidate_dst_pipeline_stage_flags.as_raw(),
                     )
-                        .unwrap(),
+                    .unwrap(),
                     src_subpass: dsc::SubpassDependencyIndex::External,
                     dst_subpass: dsc::SubpassDependencyIndex::Index(0),
                 };
                 subpass_dependencies.push(invalidate_subpass_dependency);
             } else {
-                let image_barriers = image_transitions.into_iter().map(|(&image, old_layout, new_layout)| {
-                    PrepassImageBarrier {
+                let image_barriers = image_transitions
+                    .into_iter()
+                    .map(|(&image, old_layout, new_layout)| PrepassImageBarrier {
                         image,
                         old_layout,
                         new_layout,
                         src_access: invalidate_src_access_flags,
                         dst_access: invalidate_dst_access_flags,
                         src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-                        dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED
-                    }
-                }).collect();
+                        dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+                    })
+                    .collect();
 
                 let barrier = PrepassBarrier {
                     src_stage: invalidate_src_pipeline_stage_flags,
                     dst_stage: invalidate_dst_pipeline_stage_flags,
-                    image_barriers
+                    image_barriers,
                 };
 
                 pass.pre_pass_barrier = Some(barrier);
@@ -1949,7 +1953,7 @@ fn create_renderpass_descriptions(
             extents: swapchain_info.extents,
             attachment_images,
             clear_values,
-            pre_pass_barrier: pass.pre_pass_barrier
+            pre_pass_barrier: pass.pre_pass_barrier,
         };
 
         renderpasses.push(output_pass);

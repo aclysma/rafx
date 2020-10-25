@@ -175,7 +175,7 @@ impl GraphicsPipelineCache {
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
-        create_if_missing: bool
+        create_if_missing: bool,
     ) -> Option<ResourceArc<GraphicsPipelineResource>> {
         let key = CachedGraphicsPipelineKey {
             material_pass: material_pass.get_hash(),
@@ -190,26 +190,30 @@ impl GraphicsPipelineCache {
         }
 
         // Find the swapchain index for the given renderpass
-        inner.cached_pipelines.get(&key).map(|x| {
-            debug_assert!(x.material_pass_resource.upgrade().is_some());
-            debug_assert!(x.renderpass_resource.upgrade().is_some());
-            x.graphics_pipeline.clone()
-        }).or_else(|| {
-            let pipeline = inner
-                .resource_lookup_set
-                .get_or_create_graphics_pipeline(&material_pass, &renderpass)
-                .unwrap(); //TODO: Capture this error for checking during frame end
-            inner.cached_pipelines.insert(
-                key,
-                CachedGraphicsPipeline {
-                    graphics_pipeline: pipeline.clone(),
-                    renderpass_resource: renderpass.downgrade(),
-                    material_pass_resource: material_pass.downgrade(),
-                },
-            );
+        inner
+            .cached_pipelines
+            .get(&key)
+            .map(|x| {
+                debug_assert!(x.material_pass_resource.upgrade().is_some());
+                debug_assert!(x.renderpass_resource.upgrade().is_some());
+                x.graphics_pipeline.clone()
+            })
+            .or_else(|| {
+                let pipeline = inner
+                    .resource_lookup_set
+                    .get_or_create_graphics_pipeline(&material_pass, &renderpass)
+                    .unwrap(); //TODO: Capture this error for checking during frame end
+                inner.cached_pipelines.insert(
+                    key,
+                    CachedGraphicsPipeline {
+                        graphics_pipeline: pipeline.clone(),
+                        renderpass_resource: renderpass.downgrade(),
+                        material_pass_resource: material_pass.downgrade(),
+                    },
+                );
 
-            Some(pipeline)
-        })
+                Some(pipeline)
+            })
     }
 
     pub fn precache_pipelines_for_all_phases(&self) -> VkResult<()> {

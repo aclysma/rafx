@@ -4,7 +4,9 @@ use renderer::assets::graph::*;
 use renderer::assets::resources::ResourceManager;
 use crate::VkDeviceContext;
 use ash::prelude::VkResult;
-use renderer::assets::resources::{ResourceArc, ImageViewResource, RenderPassResource, MaterialPassResource};
+use renderer::assets::resources::{
+    ResourceArc, ImageViewResource, RenderPassResource, MaterialPassResource,
+};
 use crate::render_contexts::{RenderJobWriteContextFactory, RenderJobWriteContext};
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
@@ -56,10 +58,10 @@ pub fn build_render_graph(
     swapchain_image: ResourceArc<ImageViewResource>,
     main_view: RenderView,
     bloom_extract_material_pass: ResourceArc<MaterialPassResource>,
-    bloom_combine_material_pass: ResourceArc<MaterialPassResource>
+    bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
 ) -> VkResult<BuildRenderGraphResult> {
     //TODO: Fix this back to be color format - need to happen in the combine pass
-    let color_format = swapchain_surface_info.surface_format.format;
+    let color_format = swapchain_surface_info.color_format;
     let depth_format = swapchain_surface_info.depth_format;
     let swapchain_format = swapchain_surface_info.surface_format.format;
     let samples = swapchain_surface_info.msaa_level.into();
@@ -101,18 +103,15 @@ pub fn build_render_graph(
         graph_callbacks.add_renderphase_dependency::<OpaqueRenderPhase>(node);
 
         let main_view = main_view.clone();
-        graph_callbacks.set_renderpass_callback(
-            node,
-            move |args, user_context| {
-                let mut write_context = user_context
-                    .write_context_factory
-                    .create_context(args.command_buffer);
-                user_context
-                    .prepared_render_data
-                    .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context);
-                Ok(())
-            },
-        );
+        graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
+            let mut write_context = user_context
+                .write_context_factory
+                .create_context(args.command_buffer);
+            user_context
+                .prepared_render_data
+                .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context);
+            Ok(())
+        });
 
         OpaquePass { node, color, depth }
     };
@@ -120,16 +119,16 @@ pub fn build_render_graph(
     let bloom_extract_pass = {
         let node = graph.add_node("BloomExtract", RenderGraphQueue::DefaultGraphics);
 
-        let sdr_image =
-            graph.create_color_attachment(
-                node,
-                0,
-                Default::default(),
-                RenderGraphImageConstraint {
-                    format: Some(color_format),
-                    ..Default::default()
-                },
-            );
+        let sdr_image = graph.create_color_attachment(
+            node,
+            0,
+            Default::default(),
+            RenderGraphImageConstraint {
+                samples: Some(vk::SampleCountFlags::TYPE_1),
+                format: Some(color_format),
+                ..Default::default()
+            },
+        );
         let hdr_image = graph.create_color_attachment(
             node,
             1,
@@ -155,16 +154,22 @@ pub fn build_render_graph(
             let sample_image = args.graph_context.image(sample_image).unwrap();
 
             // Get the pipeline
-            let pipeline = args.graph_context.resource_context().graphics_pipeline_cache().find_graphics_pipeline(
-                &bloom_extract_material_pass,
-                args.renderpass,
-                true
-            ).unwrap();
+            let pipeline = args
+                .graph_context
+                .resource_context()
+                .graphics_pipeline_cache()
+                .find_graphics_pipeline(&bloom_extract_material_pass, args.renderpass, true)
+                .unwrap();
 
             // Set up a descriptor set pointing at the image so we can sample from it
-            let mut descriptor_set_allocator = args.graph_context.resource_context().create_descriptor_set_allocator();
+            let mut descriptor_set_allocator = args
+                .graph_context
+                .resource_context()
+                .create_descriptor_set_allocator();
             let mut bloom_extract_material_dyn_set = descriptor_set_allocator
-                .create_dyn_descriptor_set_uninitialized(&pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0])?;
+                .create_dyn_descriptor_set_uninitialized(
+                    &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0],
+                )?;
             bloom_extract_material_dyn_set.set_image_raw(0, sample_image.get_raw().image_view);
             bloom_extract_material_dyn_set.flush(&mut descriptor_set_allocator)?;
 
@@ -206,39 +211,24 @@ pub fn build_render_graph(
     let bloom_combine_pass = {
         struct BloomCombinePass {
             node: RenderGraphNodeId,
-            color: RenderGraphImageUsageId
+            color: RenderGraphImageUsageId,
         }
 
         let node = graph.add_node("BloomCombine", RenderGraphQueue::DefaultGraphics);
 
-        let color =
-            graph.create_color_attachment(
-                node,
-                0,
-                Default::default(),
-                RenderGraphImageConstraint {
-                    format: Some(swapchain_format),
-                    ..Default::default()
-                },
-            );
-
-        let sdr_image = graph.sample_image(
+        let color = graph.create_color_attachment(
             node,
-            bloom_extract_pass.sdr_image,
+            0,
+            Default::default(),
             RenderGraphImageConstraint {
-                samples: Some(vk::SampleCountFlags::TYPE_1),
+                format: Some(swapchain_format),
                 ..Default::default()
             },
         );
 
-        let hdr_image = graph.sample_image(
-            node,
-            bloom_extract_pass.hdr_image,
-            RenderGraphImageConstraint {
-                samples: Some(vk::SampleCountFlags::TYPE_1),
-                ..Default::default()
-            },
-        );
+        let sdr_image = graph.sample_image(node, bloom_extract_pass.sdr_image, Default::default());
+
+        let hdr_image = graph.sample_image(node, bloom_extract_pass.hdr_image, Default::default());
 
         graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
             // Get the color image from before
@@ -246,16 +236,22 @@ pub fn build_render_graph(
             let hdr_image = args.graph_context.image(hdr_image).unwrap();
 
             // Get the pipeline
-            let pipeline = args.graph_context.resource_context().graphics_pipeline_cache().find_graphics_pipeline(
-                &bloom_combine_material_pass,
-                args.renderpass,
-                true
-            ).unwrap();
+            let pipeline = args
+                .graph_context
+                .resource_context()
+                .graphics_pipeline_cache()
+                .find_graphics_pipeline(&bloom_combine_material_pass, args.renderpass, true)
+                .unwrap();
 
             // Set up a descriptor set pointing at the image so we can sample from it
-            let mut descriptor_set_allocator = args.graph_context.resource_context().create_descriptor_set_allocator();
+            let mut descriptor_set_allocator = args
+                .graph_context
+                .resource_context()
+                .create_descriptor_set_allocator();
             let mut bloom_combine_material_dyn_set = descriptor_set_allocator
-                .create_dyn_descriptor_set_uninitialized(&pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0])?;
+                .create_dyn_descriptor_set_uninitialized(
+                    &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0],
+                )?;
             bloom_combine_material_dyn_set.set_image(0, sdr_image);
             bloom_combine_material_dyn_set.set_image(1, hdr_image);
             bloom_combine_material_dyn_set.flush(&mut descriptor_set_allocator)?;
@@ -275,11 +271,7 @@ pub fn build_render_graph(
                 device.cmd_bind_descriptor_sets(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    pipeline
-                        .get_raw()
-                        .pipeline_layout
-                        .get_raw()
-                        .pipeline_layout,
+                    pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                     0,
                     &[bloom_combine_material_dyn_set.descriptor_set().get()],
                     &[],
@@ -291,21 +283,14 @@ pub fn build_render_graph(
             Ok(())
         });
 
-        BloomCombinePass {
-            node,
-            color
-        }
+        BloomCombinePass { node, color }
     };
 
     let ui_pass = {
         // This node has a single color attachment
         let node = graph.add_node("Ui", RenderGraphQueue::DefaultGraphics);
-        let color = graph.modify_color_attachment(
-            node,
-            bloom_combine_pass.color,
-            0,
-            Default::default()
-        );
+        let color =
+            graph.modify_color_attachment(node, bloom_combine_pass.color, 0, Default::default());
 
         // Adding a phase dependency insures that we create all the pipelines for materials
         // associated with the phase. This controls how long we keep the pipelines allocated and
@@ -315,22 +300,19 @@ pub fn build_render_graph(
         // When the node is executed, we automatically set up the renderpass/framebuffer/command
         // buffer. Just add the draw calls.
         let main_view = main_view.clone();
-        graph_callbacks.set_renderpass_callback(
-            node,
-            move |args, user_context| {
-                // Can retrieve images created/used by the graph
-                //let _color_attachment = graph_context.image(color).unwrap();
+        graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
+            // Can retrieve images created/used by the graph
+            //let _color_attachment = graph_context.image(color).unwrap();
 
-                // Kick the material system to emit all draw calls for the UiRenderPhase for the view
-                let mut write_context = user_context
-                    .write_context_factory
-                    .create_context(args.command_buffer);
-                user_context
-                    .prepared_render_data
-                    .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context);
-                Ok(())
-            },
-        );
+            // Kick the material system to emit all draw calls for the UiRenderPhase for the view
+            let mut write_context = user_context
+                .write_context_factory
+                .create_context(args.command_buffer);
+            user_context
+                .prepared_render_data
+                .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context);
+            Ok(())
+        });
 
         UiPass { node, color }
     };
@@ -365,11 +347,9 @@ pub fn build_render_graph(
 
     let opaque_renderpass = executor.renderpass_resource(opaque_pass.node);
     let ui_renderpass = executor.renderpass_resource(ui_pass.node);
-    //let bloom_extract_renderpass = executor.renderpass_resource(blur_extract_pass.node);
     Ok(BuildRenderGraphResult {
         executor,
         opaque_renderpass,
         ui_renderpass,
-        //bloom_extract_renderpass: bloom_extract_renderpass
     })
 }

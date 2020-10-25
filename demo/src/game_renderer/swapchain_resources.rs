@@ -1,6 +1,4 @@
-use crate::renderpass::{
-    VkBloomRenderPassResources, VkBloomBlurRenderPass,
-};
+use crate::renderpass::{VkBloomRenderPassResources, VkBloomBlurRenderPass};
 use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
 use crate::game_renderer::{GameRendererInner, RenderpassAttachmentImage};
 use renderer::assets::resources::{
@@ -164,7 +162,6 @@ impl SwapchainResources {
             &bloom_resources,
             &mut static_command_pool,
         )?;
-
 
         let debug_per_frame_layout = resource_manager.get_descriptor_set_info(
             &game_renderer.static_resources.debug3d_material,

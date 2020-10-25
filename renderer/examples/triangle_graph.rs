@@ -285,13 +285,10 @@ fn render_frame(
         graph.set_image_name(color, "color");
 
         // Set up a callback for when we dispatch the opaque pass. This will happen during execute_graph()
-        graph_callbacks.set_renderpass_callback(
-            node,
-            |_args, _context| {
-                //TODO: Draw triangle into command buffer
-                Ok(())
-            },
-        );
+        graph_callbacks.set_renderpass_callback(node, |_args, _context| {
+            //TODO: Draw triangle into command buffer
+            Ok(())
+        });
 
         Opaque { color }
     };
