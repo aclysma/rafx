@@ -76,16 +76,6 @@ impl RenderFrameJob {
         //present_index: usize,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
         let t0 = std::time::Instant::now();
-        //let mut guard = self.inner.lock().unwrap();
-        //let swapchain_resources = guard.swapchain_resources.as_mut().unwrap();
-
-        // let command_writer = resource_context.dyn_command_writer_allocator().allocate_writer(
-        //     device_context
-        //         .queue_family_indices()
-        //         .graphics_queue_family_index,
-        //     vk::CommandPoolCreateFlags::TRANSIENT,
-        //     0,
-        // )?;
 
         //
         // Prepare Jobs - everything beyond this point could be done in parallel with the main thread
@@ -104,7 +94,7 @@ impl RenderFrameJob {
         );
 
         //
-        // Write Jobs - called from within renderpasses for now
+        // Write Jobs - triggered by the render graph
         //
         let write_context_factory =
             RenderJobWriteContextFactory::new(device_context, resource_context.clone());
@@ -116,76 +106,6 @@ impl RenderFrameJob {
 
         let command_buffers = render_graph.execute_graph(&graph_context)?;
 
-        // let prepared_render_data = graph_context.prepared_render_data;
-        // let main_view = graph_context.view;
-        // let write_context_factory = graph_context.write_context_factory;
-        // let mut command_writer = graph_context.command_writer;
-
-        /*
-
-                        //
-                        // bloom extract
-                        //
-                        let descriptor_set_per_pass = swapchain_resources
-                            .bloom_extract_material_dyn_set
-                            .descriptor_set()
-                            .get();
-                        log::trace!("bloom_extract_renderpass update");
-
-                        let command_buffer = swapchain_resources
-                            .bloom_extract_renderpass
-                            .update(descriptor_set_per_pass, &mut command_writer)?;
-                        command_buffers.push(command_buffer);
-
-                        //
-                        // bloom blur
-                        //
-                        log::trace!("bloom_blur_renderpass update");
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[0]);
-                        command_buffers.push(swapchain_resources.bloom_blur_renderpass.command_buffers[1]);
-
-                        //
-                        // bloom combine
-                        //
-                        let descriptor_set_per_pass = swapchain_resources
-                            .bloom_combine_material_dyn_set
-                            .descriptor_set()
-                            .get();
-                        log::trace!("bloom_combine_renderpass update");
-
-                        let command_buffer = swapchain_resources.bloom_combine_renderpass.update(
-                            present_index,
-                            descriptor_set_per_pass,
-                            &mut command_writer,
-                        )?;
-                        command_buffers.push(command_buffer);
-
-                        //
-                        // imgui
-                        //
-                        let command_buffer = swapchain_resources.ui_renderpass.update(
-                            present_index,
-                            &*prepared_render_data,
-                            &main_view,
-                            &write_context_factory,
-                            &mut command_writer,
-                        )?;
-                        command_buffers.push(command_buffer);
-
-                        let t2 = std::time::Instant::now();
-                        log::trace!(
-                            "[async] render write took {} ms",
-                            (t2 - t1).as_secs_f32() * 1000.0
-                        );
-        */
         Ok(command_buffers)
     }
 }

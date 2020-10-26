@@ -29,9 +29,6 @@ use render_thread::RenderThread;
 mod swapchain_resources;
 use swapchain_resources::SwapchainResources;
 
-mod swapchain_attachment;
-pub(crate) use swapchain_attachment::RenderpassAttachmentImage;
-
 mod render_frame_job;
 use render_frame_job::RenderFrameJob;
 
@@ -373,6 +370,10 @@ impl GameRenderer {
             .get_material_pass_by_index(&static_resources.bloom_extract_material, 0)
             .unwrap();
 
+        let bloom_blur_material_pass = resource_manager
+            .get_material_pass_by_index(&static_resources.bloom_blur_material, 0)
+            .unwrap();
+
         let bloom_combine_material_pass = resource_manager
             .get_material_pass_by_index(&static_resources.bloom_combine_material, 0)
             .unwrap();
@@ -387,6 +388,7 @@ impl GameRenderer {
             swapchain_image,
             main_view.clone(),
             bloom_extract_material_pass,
+            bloom_blur_material_pass,
             bloom_combine_material_pass,
         )?;
         // let t3 = std::time::Instant::now();

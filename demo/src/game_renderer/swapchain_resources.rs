@@ -1,14 +1,11 @@
-use crate::renderpass::{VkBloomRenderPassResources, VkBloomBlurRenderPass};
 use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
-use crate::game_renderer::{GameRendererInner, RenderpassAttachmentImage};
+use crate::game_renderer::GameRendererInner;
 use renderer::assets::resources::{
-    ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource, CommandPool,
-    RenderPassResource,
+    ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource, RenderPassResource,
 };
 use renderer::assets::RenderpassAsset;
 use renderer::assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
-use ash::vk;
 use renderer::assets::vk_description as dsc;
 use renderer::vulkan::VkImageRaw;
 use atelier_assets::loader::handle::Handle;
@@ -19,15 +16,7 @@ pub struct SwapchainResources {
     // of window/surface to info for the swapchain
     pub swapchain_images: Vec<ResourceArc<ImageViewResource>>,
 
-    pub color_attachment: RenderpassAttachmentImage,
-    pub depth_attachment: RenderpassAttachmentImage,
-
-    pub static_command_pool: CommandPool,
-
     pub debug_material_per_frame_data: DynDescriptorSet,
-    pub bloom_resources: VkBloomRenderPassResources,
-
-    pub bloom_blur_renderpass: VkBloomBlurRenderPass,
 
     pub swapchain_info: SwapchainInfo,
     pub swapchain_surface_info: SwapchainSurfaceInfo,
@@ -35,7 +24,7 @@ pub struct SwapchainResources {
 
 impl SwapchainResources {
     pub fn new(
-        device_context: &VkDeviceContext,
+        _device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
         game_renderer: &mut GameRendererInner,
         resource_manager: &mut ResourceManager,
@@ -76,92 +65,7 @@ impl SwapchainResources {
             swapchain_images.push(image_view);
         }
 
-        //
-        // Create images/views we use as attachments
-        //
-        let color_attachment = RenderpassAttachmentImage::new(
-            resource_manager.resources(),
-            device_context,
-            &swapchain.swapchain_info,
-            swapchain.color_format,
-            vk::ImageAspectFlags::COLOR,
-            // the msaa image won't actually be sampled, but it's being passed from the debug renderpass to the
-            // composite renderpass with layout ShaderReadOnlyOptimal for the non-msaa case. If msaa is enabled
-            // it will get resolved to the resolved image and we will sample that. If msaa is off, we don't even
-            // create an msaa image
-            vk::ImageUsageFlags::COLOR_ATTACHMENT
-                | vk::ImageUsageFlags::SAMPLED
-                | vk::ImageUsageFlags::TRANSFER_SRC,
-            vk::ImageUsageFlags::COLOR_ATTACHMENT
-                | vk::ImageUsageFlags::SAMPLED
-                | vk::ImageUsageFlags::TRANSFER_DST,
-            swapchain_surface_info.msaa_level,
-        )?;
-
-        let depth_attachment = RenderpassAttachmentImage::new(
-            resource_manager.resources(),
-            device_context,
-            &swapchain.swapchain_info,
-            swapchain.depth_format,
-            vk::ImageAspectFlags::DEPTH,
-            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-            swapchain_surface_info.msaa_level,
-        )?;
-
-        let mut static_command_pool = CommandPool::new(
-            &device_context,
-            device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
-            vk::CommandPoolCreateFlags::empty(),
-        )?;
-
-        log::debug!("Create VkBloomExtractRenderPass");
-
-        //
-        // Bloom Shared Resources
-        //
-        let bloom_resources = VkBloomRenderPassResources::new(
-            device_context,
-            swapchain,
-            resource_manager,
-            game_renderer.static_resources.bloom_blur_material.clone(),
-        )?;
-
-        //
-        // Bloom Extract Renderpass
-        //
-
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
-
-        //
-        // Bloom Blur Renderpass
-        //
-        log::debug!("Create VkBloomBlurRenderPass");
-
-        let bloom_blur_renderpass_resource = SwapchainResources::create_renderpass_resource(
-            resource_manager,
-            &swapchain_surface_info,
-            &game_renderer.static_resources.bloom_blur_renderpass,
-        )?;
-
-        let bloom_blur_pipeline_info = resource_manager
-            .get_or_create_graphics_pipeline(
-                &game_renderer.static_resources.bloom_blur_material,
-                &bloom_blur_renderpass_resource,
-                0,
-            )
-            .unwrap();
-
-        let bloom_blur_renderpass = VkBloomBlurRenderPass::new(
-            resource_manager.resources(),
-            device_context,
-            &swapchain.swapchain_info,
-            bloom_blur_pipeline_info,
-            &bloom_resources,
-            &mut static_command_pool,
-        )?;
 
         let debug_per_frame_layout = resource_manager.get_descriptor_set_info(
             &game_renderer.static_resources.debug3d_material,
@@ -177,12 +81,7 @@ impl SwapchainResources {
 
         VkResult::Ok(SwapchainResources {
             swapchain_images,
-            color_attachment,
-            depth_attachment,
-            static_command_pool,
             debug_material_per_frame_data,
-            bloom_resources,
-            bloom_blur_renderpass,
             swapchain_info,
             swapchain_surface_info,
         })

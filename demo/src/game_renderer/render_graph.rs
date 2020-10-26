@@ -32,23 +32,6 @@ impl RenderGraphUserContext {
     }
 }
 
-struct OpaquePass {
-    node: RenderGraphNodeId,
-    color: RenderGraphImageUsageId,
-    depth: RenderGraphImageUsageId,
-}
-
-struct BloomExtractPass {
-    node: RenderGraphNodeId,
-    sdr_image: RenderGraphImageUsageId,
-    hdr_image: RenderGraphImageUsageId,
-}
-
-struct UiPass {
-    node: RenderGraphNodeId,
-    color: RenderGraphImageUsageId,
-}
-
 pub fn build_render_graph(
     device_context: &VkDeviceContext,
     resource_context: &ResourceContext,
@@ -58,6 +41,7 @@ pub fn build_render_graph(
     swapchain_image: ResourceArc<ImageViewResource>,
     main_view: RenderView,
     bloom_extract_material_pass: ResourceArc<MaterialPassResource>,
+    bloom_blur_material_pass: ResourceArc<MaterialPassResource>,
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
 ) -> VkResult<BuildRenderGraphResult> {
     //TODO: Fix this back to be color format - need to happen in the combine pass
@@ -70,6 +54,12 @@ pub fn build_render_graph(
     let mut graph_callbacks = RenderGraphNodeCallbacks::<RenderGraphUserContext>::default();
 
     let opaque_pass = {
+        struct OpaquePass {
+            node: RenderGraphNodeId,
+            color: RenderGraphImageUsageId,
+            depth: RenderGraphImageUsageId,
+        }
+
         let node = graph.add_node("Opaque", RenderGraphQueue::DefaultGraphics);
 
         let color = graph.create_color_attachment(
@@ -117,6 +107,12 @@ pub fn build_render_graph(
     };
 
     let bloom_extract_pass = {
+        struct BloomExtractPass {
+            node: RenderGraphNodeId,
+            sdr_image: RenderGraphImageUsageId,
+            hdr_image: RenderGraphImageUsageId,
+        }
+
         let node = graph.add_node("BloomExtract", RenderGraphQueue::DefaultGraphics);
 
         let sdr_image = graph.create_color_attachment(
@@ -129,6 +125,7 @@ pub fn build_render_graph(
                 ..Default::default()
             },
         );
+        graph.set_image_name(sdr_image, "sdr");
         let hdr_image = graph.create_color_attachment(
             node,
             1,
@@ -139,6 +136,7 @@ pub fn build_render_graph(
                 ..Default::default()
             },
         );
+        graph.set_image_name(hdr_image, "hdr");
 
         let sample_image = graph.sample_image(
             node,
@@ -208,6 +206,100 @@ pub fn build_render_graph(
         }
     };
 
+    let bloom_blur_pass = {
+        struct BloomBlurPass {
+            color: RenderGraphImageUsageId,
+        }
+
+        let mut blur_src = bloom_extract_pass.hdr_image;
+        let mut blur_dst = None;
+
+        for blur_pass_index in 0..10 {
+            let node = graph.add_node("BloomBlur", RenderGraphQueue::DefaultGraphics);
+            blur_dst = Some(graph.create_color_attachment(
+                node,
+                0,
+                Some(Default::default()),
+                RenderGraphImageConstraint {
+                    samples: Some(vk::SampleCountFlags::TYPE_1),
+                    format: Some(color_format),
+                    ..Default::default()
+                },
+            ));
+            graph.set_image_name(blur_dst.unwrap(), "blur_dst");
+
+            let sample_image = graph.sample_image(node, blur_src, Default::default());
+            graph.set_image_name(blur_src, "blur_src");
+
+            let bloom_blur_material_pass = bloom_blur_material_pass.clone();
+            graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
+                // Get the color image from before
+                let sample_image = args.graph_context.image(sample_image).unwrap();
+
+                // Get the pipeline
+                let pipeline = args
+                    .graph_context
+                    .resource_context()
+                    .graphics_pipeline_cache()
+                    .find_graphics_pipeline(&bloom_blur_material_pass, args.renderpass, true)
+                    .unwrap();
+
+                // Set up a descriptor set pointing at the image so we can sample from it
+                let mut descriptor_set_allocator = args
+                    .graph_context
+                    .resource_context()
+                    .create_descriptor_set_allocator();
+                let mut bloom_extract_material_dyn_set = descriptor_set_allocator
+                    .create_dyn_descriptor_set_uninitialized(
+                        &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0],
+                    )?;
+                bloom_extract_material_dyn_set.set_image_raw(0, sample_image.get_raw().image_view);
+
+                let mut bloom_blur_material_dyn_set = descriptor_set_allocator
+                    .create_dyn_descriptor_set_uninitialized(
+                        &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0],
+                    )?;
+                bloom_blur_material_dyn_set.set_image(0, sample_image);
+
+                let blur_horizontally: u32 = blur_pass_index % 2;
+
+                bloom_blur_material_dyn_set.set_buffer_data(2, &blur_horizontally);
+                bloom_blur_material_dyn_set.flush(&mut descriptor_set_allocator)?;
+                descriptor_set_allocator.flush_changes()?;
+
+                // Draw calls
+                let command_buffer = args.command_buffer;
+                let device = args.graph_context.device_context().device();
+                unsafe {
+                    device.cmd_bind_pipeline(
+                        command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        pipeline.get_raw().pipelines[0],
+                    );
+
+                    device.cmd_bind_descriptor_sets(
+                        command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
+                        0,
+                        &[bloom_blur_material_dyn_set.descriptor_set().get()],
+                        &[],
+                    );
+
+                    device.cmd_draw(command_buffer, 3, 1, 0, 0);
+                }
+
+                Ok(())
+            });
+
+            blur_src = blur_dst.unwrap();
+        }
+
+        BloomBlurPass {
+            color: blur_dst.unwrap(),
+        }
+    };
+
     let bloom_combine_pass = {
         struct BloomCombinePass {
             node: RenderGraphNodeId,
@@ -225,10 +317,13 @@ pub fn build_render_graph(
                 ..Default::default()
             },
         );
+        graph.set_image_name(color, "color");
 
         let sdr_image = graph.sample_image(node, bloom_extract_pass.sdr_image, Default::default());
+        graph.set_image_name(sdr_image, "sdr");
 
-        let hdr_image = graph.sample_image(node, bloom_extract_pass.hdr_image, Default::default());
+        let hdr_image = graph.sample_image(node, bloom_blur_pass.color, Default::default());
+        graph.set_image_name(hdr_image, "hdr");
 
         graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
             // Get the color image from before
@@ -287,10 +382,16 @@ pub fn build_render_graph(
     };
 
     let ui_pass = {
+        struct UiPass {
+            node: RenderGraphNodeId,
+            color: RenderGraphImageUsageId,
+        }
+
         // This node has a single color attachment
         let node = graph.add_node("Ui", RenderGraphQueue::DefaultGraphics);
         let color =
             graph.modify_color_attachment(node, bloom_combine_pass.color, 0, Default::default());
+        graph.set_image_name(color, "color");
 
         // Adding a phase dependency insures that we create all the pipelines for materials
         // associated with the phase. This controls how long we keep the pipelines allocated and

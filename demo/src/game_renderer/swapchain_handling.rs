@@ -98,11 +98,6 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         };
 
         //
-        // Notify the resource manage of the new swapchain. This can kick recompiling pipelines
-        //
-        //resource_manager.add_swapchain(&swapchain_surface_info)?;
-
-        //
         // Construct resources that are tied to the swapchain or swapchain metadata.
         // (i.e. renderpasses, descriptor sets that refer to swapchain images)
         //

@@ -135,6 +135,7 @@ pub struct RenderGraphNode {
     pub(super) color_attachments: Vec<Option<RenderGraphPassColorAttachmentInfo>>,
     pub(super) depth_attachment: Option<RenderGraphPassDepthAttachmentInfo>,
     pub(super) resolve_attachments: Vec<Option<RenderGraphPassResolveAttachmentInfo>>,
+
     pub(super) sampled_images: Vec<RenderGraphImageUsageId>,
 }
 
