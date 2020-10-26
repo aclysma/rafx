@@ -1,12 +1,17 @@
 use renderer::assets::resources::{DescriptorSetArc, ResourceArc, AssetLookup};
 use renderer::vulkan::VkBufferRaw;
 use crate::assets::gltf::MeshAssetData;
+use renderer::assets::assets::MaterialPass;
 use type_uuid::*;
 use std::sync::Arc;
 
 pub struct MeshAssetPart {
-    //pub material: ResourceArc<LoadedMaterial>,
-    pub material_instance: Arc<Vec<Vec<DescriptorSetArc>>>,
+    pub material_passes: Arc<Vec<MaterialPass>>,
+    pub material_instance_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
+    pub vertex_buffer_offset_in_bytes: u32,
+    pub vertex_buffer_size_in_bytes: u32,
+    pub index_buffer_offset_in_bytes: u32,
+    pub index_buffer_size_in_bytes: u32,
 }
 
 pub struct MeshAssetInner {

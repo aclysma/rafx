@@ -1,7 +1,4 @@
-use renderer::assets::resources::{
-    DescriptorSetArc, AssetLookup, ResourceArc, LoadQueues, GenericLoader, ResourceManager,
-};
-use renderer::vulkan::VkBufferRaw;
+use renderer::assets::resources::{AssetLookup, LoadQueues, GenericLoader, ResourceManager};
 use crate::game_asset_lookup::{
     GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner,
 };
@@ -12,17 +9,6 @@ use atelier_assets::loader::AssetLoadOp;
 use crate::assets::gltf::MeshAssetData;
 use std::sync::Arc;
 use crossbeam_channel::Sender;
-
-pub struct MeshPartInfo {
-    pub material_instance: Arc<Vec<Vec<DescriptorSetArc>>>,
-}
-
-pub struct MeshInfo {
-    pub vertex_buffer: ResourceArc<VkBufferRaw>,
-    pub index_buffer: ResourceArc<VkBufferRaw>,
-    pub mesh_asset: MeshAssetData,
-    pub mesh_parts: Vec<MeshPartInfo>,
-}
 
 #[derive(Debug)]
 pub struct GameResourceManagerMetrics {
@@ -51,30 +37,13 @@ impl GameResourceManager {
         self.load_queues.meshes.create_loader()
     }
 
-    pub fn get_mesh_info(
+    pub fn mesh(
         &self,
         handle: &Handle<MeshAsset>,
-    ) -> Option<MeshInfo> {
+    ) -> Option<&MeshAsset> {
         self.loaded_assets
             .meshes
             .get_committed(handle.load_handle())
-            .map(|loaded_mesh| {
-                let mesh_parts: Vec<_> = loaded_mesh
-                    .inner
-                    .mesh_parts
-                    .iter()
-                    .map(|x| MeshPartInfo {
-                        material_instance: x.material_instance.clone(),
-                    })
-                    .collect();
-
-                MeshInfo {
-                    vertex_buffer: loaded_mesh.inner.vertex_buffer.clone(),
-                    index_buffer: loaded_mesh.inner.index_buffer.clone(),
-                    mesh_asset: loaded_mesh.inner.asset.clone(),
-                    mesh_parts,
-                }
-            })
     }
 
     // Call whenever you want to handle assets loading/unloading
@@ -178,11 +147,22 @@ impl GameResourceManager {
             .mesh_parts
             .iter()
             .map(|mesh_part| {
-                let material_instance_info =
-                    resource_manager.get_material_instance_info(&mesh_part.material_instance);
+                let material_instance = resource_manager
+                    .loaded_assets()
+                    .material_instances
+                    .get_committed(mesh_part.material_instance.load_handle())
+                    .unwrap();
 
                 MeshAssetPart {
-                    material_instance: material_instance_info.descriptor_sets,
+                    material_passes: material_instance.inner.material_passes.clone(),
+                    material_instance_descriptor_sets: material_instance
+                        .inner
+                        .material_descriptor_sets
+                        .clone(),
+                    vertex_buffer_offset_in_bytes: mesh_part.vertex_buffer_offset_in_bytes,
+                    vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
+                    index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
+                    index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
                 }
             })
             .collect();

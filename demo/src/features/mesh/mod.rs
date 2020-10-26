@@ -2,6 +2,7 @@ use renderer::nodes::{
     RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
     RenderNodeSet, RenderNodeCount, FrameNodeIndex,
 };
+use renderer::assets::MaterialPass;
 use crate::game_asset_lookup::MeshAsset;
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::base::slab::{DropSlabKey, DropSlab};
@@ -20,6 +21,8 @@ use renderer::assets::resources::{
     DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource,
 };
 use renderer::assets::MaterialAsset;
+use std::sync::Arc;
+use std::fmt::Debug;
 
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
@@ -160,13 +163,40 @@ pub struct ExtractedFrameNodeMeshData {
     index_buffer: ResourceArc<VkBufferRaw>,
 }
 
-#[derive(Debug)]
 pub struct MeshDrawCall {
     pub vertex_buffer_offset_in_bytes: u32,
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
+    pub material_passes: Arc<Vec<MaterialPass>>,
     pub per_material_descriptor: DescriptorSetArc, // set 1
+}
+
+impl std::fmt::Debug for MeshDrawCall {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("MeshDrawCall")
+            .field(
+                "vertex_buffer_offset_in_bytes",
+                &self.vertex_buffer_offset_in_bytes,
+            )
+            .field(
+                "vertex_buffer_size_in_bytes",
+                &self.vertex_buffer_size_in_bytes,
+            )
+            .field(
+                "index_buffer_offset_in_bytes",
+                &self.index_buffer_offset_in_bytes,
+            )
+            .field(
+                "index_buffer_size_in_bytes",
+                &self.index_buffer_size_in_bytes,
+            )
+            .field("per_material_descriptor", &self.per_material_descriptor)
+            .finish()
+    }
 }
 
 #[derive(Debug)]

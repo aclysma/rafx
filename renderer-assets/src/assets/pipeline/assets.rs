@@ -195,6 +195,7 @@ pub struct MaterialInstanceAssetData {
 
 pub struct MaterialInstanceAssetInner {
     pub material: Handle<MaterialAsset>,
+    pub material_passes: Arc<Vec<MaterialPass>>,
 
     // Arc these individually because some downstream systems care only about the descriptor sets
     pub material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
@@ -211,12 +212,14 @@ pub struct MaterialInstanceAsset {
 impl MaterialInstanceAsset {
     pub fn new(
         material: Handle<MaterialAsset>,
+        material_passes: Arc<Vec<MaterialPass>>,
         material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
         slot_assignments: Vec<MaterialInstanceSlotAssignment>,
         descriptor_set_writes: Vec<Vec<DescriptorSetWriteSet>>,
     ) -> Self {
         let inner = MaterialInstanceAssetInner {
             material,
+            material_passes,
             material_descriptor_sets,
             slot_assignments,
             descriptor_set_writes,

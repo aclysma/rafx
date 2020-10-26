@@ -138,7 +138,7 @@ pub struct MeshVertex {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct MeshPart {
+pub struct MeshPartAssetData {
     pub vertex_buffer_offset_in_bytes: u32,
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
@@ -150,7 +150,7 @@ pub struct MeshPart {
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "cf232526-3757-4d94-98d1-c2f7e27c979f"]
 pub struct MeshAssetData {
-    pub mesh_parts: Vec<MeshPart>,
+    pub mesh_parts: Vec<MeshPartAssetData>,
     pub vertex_buffer: Handle<BufferAsset>, //Vec<MeshVertex>,
     pub index_buffer: Handle<BufferAsset>,  //Vec<u16>,
 }

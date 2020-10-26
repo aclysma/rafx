@@ -103,23 +103,23 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         let mesh_info = mesh_render_node
             .mesh
             .as_ref()
-            .and_then(|mesh_asset_handle| game_resource_manager.get_mesh_info(&mesh_asset_handle));
+            .and_then(|mesh_asset_handle| game_resource_manager.mesh(mesh_asset_handle));
         if mesh_info.is_none() {
             self.extracted_frame_node_mesh_data.push(None);
             return;
         }
+
         let mesh_info = mesh_info.unwrap();
 
         let draw_calls: Vec<_> = mesh_info
-            .mesh_asset
+            .inner
             .mesh_parts
             .iter()
             .map(|mesh_part| {
-                let material_instance_info = extract_context
-                    .resource_manager
-                    .get_material_instance_info(&mesh_part.material_instance);
-                let per_material_descriptor = material_instance_info.descriptor_sets[0][1].clone();
+                let per_material_descriptor =
+                    mesh_part.material_instance_descriptor_sets[0][1].clone();
                 MeshDrawCall {
+                    material_passes: mesh_part.material_passes.clone(),
                     vertex_buffer_offset_in_bytes: mesh_part.vertex_buffer_offset_in_bytes,
                     vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
                     index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
@@ -134,8 +134,8 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         self.extracted_frame_node_mesh_data
             .push(Some(ExtractedFrameNodeMeshData {
                 world_transform,
-                vertex_buffer: mesh_info.vertex_buffer,
-                index_buffer: mesh_info.index_buffer,
+                vertex_buffer: mesh_info.inner.vertex_buffer.clone(),
+                index_buffer: mesh_info.inner.index_buffer.clone(),
                 draw_calls,
             }));
     }
@@ -163,13 +163,13 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             model_view_proj,
         };
 
-        let layout =
-            extract_context
-                .resource_manager
-                .get_descriptor_set_info(&self.mesh_material, 0, 2);
+        let layout = extract_context
+            .resource_manager
+            .get_descriptor_set_layout_for_pass(&self.mesh_material, 0, 2)
+            .unwrap();
         let mut descriptor_set = self
             .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
+            .create_dyn_descriptor_set_uninitialized(&layout)
             .unwrap();
         descriptor_set.set_buffer_data(0, &per_object_param);
         descriptor_set
@@ -261,13 +261,13 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
 
         //TODO: We should probably set these up per view (so we can pick the best lights based on
         // the view)
-        let layout =
-            extract_context
-                .resource_manager
-                .get_descriptor_set_info(&self.mesh_material, 0, 0);
+        let layout = extract_context
+            .resource_manager
+            .get_descriptor_set_layout_for_pass(&self.mesh_material, 0, 0)
+            .unwrap();
         let mut descriptor_set = self
             .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
+            .create_dyn_descriptor_set_uninitialized(&layout)
             .unwrap();
         descriptor_set.set_buffer_data(0, &per_view_data);
         descriptor_set

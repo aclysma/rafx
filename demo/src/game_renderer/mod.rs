@@ -439,7 +439,7 @@ impl GameRenderer {
             let opaque_renderpass = render_graph.opaque_renderpass.clone();
             if let Some(opaque_renderpass) = opaque_renderpass {
                 let sprite_pipeline_info = resource_manager
-                    .get_cached_graphics_pipeline(
+                    .try_get_graphics_pipeline(
                         &guard.static_resources.sprite_material,
                         &opaque_renderpass,
                         0,
@@ -447,7 +447,7 @@ impl GameRenderer {
                     .unwrap();
 
                 let mesh_pipeline_info = resource_manager
-                    .get_cached_graphics_pipeline(
+                    .try_get_graphics_pipeline(
                         &guard.static_resources.mesh_material,
                         &opaque_renderpass,
                         0,
@@ -455,7 +455,7 @@ impl GameRenderer {
                     .unwrap();
 
                 let debug3d_pipeline_info = resource_manager
-                    .get_cached_graphics_pipeline(
+                    .try_get_graphics_pipeline(
                         &guard.static_resources.debug3d_material,
                         &opaque_renderpass,
                         0,
@@ -489,7 +489,7 @@ impl GameRenderer {
             let ui_renderpass = render_graph.ui_renderpass.clone();
             if let Some(ui_renderpass) = ui_renderpass {
                 let imgui_pipeline_info = resource_manager
-                    .get_cached_graphics_pipeline(
+                    .try_get_graphics_pipeline(
                         &guard.static_resources.imgui_material,
                         &ui_renderpass,
                         0,

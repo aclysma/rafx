@@ -9,6 +9,11 @@ use std::hash::Hash;
 use ash::prelude::VkResult;
 use std::sync::{Arc, Mutex};
 
+//TODO: Allow caching for N frames
+//TODO: Return a kind of ResourceArc for a cached pipeline. Allow dropping after N frames pass with
+// nothing request/using it
+//TODO: vulkan pipeline cache object
+
 #[derive(PartialEq, Eq, Hash)]
 struct CachedGraphicsPipelineKey {
     material_pass: ResourceId,
@@ -171,12 +176,32 @@ impl GraphicsPipelineCache {
         //TODO: Do we need to mark this as a dirty material that may need rebuilding?
     }
 
-    pub fn find_graphics_pipeline(
+    pub fn try_get_graphics_pipeline(
+        &self,
+        material_pass: &ResourceArc<MaterialPassResource>,
+        renderpass: &ResourceArc<RenderPassResource>,
+    ) -> Option<ResourceArc<GraphicsPipelineResource>> {
+        // VkResult is always Ok if returning cached pipelines
+        self.graphics_pipeline(material_pass, renderpass, false)
+            .map(|x| x.unwrap())
+    }
+
+    pub fn get_or_create_graphics_pipeline(
+        &self,
+        material_pass: &ResourceArc<MaterialPassResource>,
+        renderpass: &ResourceArc<RenderPassResource>,
+    ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
+        // graphics_pipeline never returns none if create_if_missing is true
+        self.graphics_pipeline(material_pass, renderpass, true)
+            .unwrap()
+    }
+
+    pub fn graphics_pipeline(
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
         create_if_missing: bool,
-    ) -> Option<ResourceArc<GraphicsPipelineResource>> {
+    ) -> Option<VkResult<ResourceArc<GraphicsPipelineResource>>> {
         let key = CachedGraphicsPipelineKey {
             material_pass: material_pass.get_hash(),
             renderpass: renderpass.get_hash(),
@@ -196,23 +221,31 @@ impl GraphicsPipelineCache {
             .map(|x| {
                 debug_assert!(x.material_pass_resource.upgrade().is_some());
                 debug_assert!(x.renderpass_resource.upgrade().is_some());
-                x.graphics_pipeline.clone()
+                Ok(x.graphics_pipeline.clone())
             })
             .or_else(|| {
-                let pipeline = inner
-                    .resource_lookup_set
-                    .get_or_create_graphics_pipeline(&material_pass, &renderpass)
-                    .unwrap(); //TODO: Capture this error for checking during frame end
-                inner.cached_pipelines.insert(
-                    key,
-                    CachedGraphicsPipeline {
-                        graphics_pipeline: pipeline.clone(),
-                        renderpass_resource: renderpass.downgrade(),
-                        material_pass_resource: material_pass.downgrade(),
-                    },
-                );
+                if create_if_missing {
+                    let pipeline = inner
+                        .resource_lookup_set
+                        .get_or_create_graphics_pipeline(&material_pass, &renderpass);
 
-                Some(pipeline)
+                    if let Ok(pipeline) = pipeline {
+                        inner.cached_pipelines.insert(
+                            key,
+                            CachedGraphicsPipeline {
+                                graphics_pipeline: pipeline.clone(),
+                                renderpass_resource: renderpass.downgrade(),
+                                material_pass_resource: material_pass.downgrade(),
+                            },
+                        );
+
+                        Some(Ok(pipeline))
+                    } else {
+                        Some(pipeline)
+                    }
+                } else {
+                    None
+                }
             })
     }
 

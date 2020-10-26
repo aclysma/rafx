@@ -9,7 +9,7 @@ use gltf::buffer::Data as GltfBufferData;
 use fnv::FnvHashMap;
 use atelier_assets::loader::handle::Handle;
 use crate::assets::gltf::{
-    GltfMaterialAsset, MeshAssetData, MeshPart, MeshVertex, GltfMaterialDataShaderParam,
+    GltfMaterialAsset, MeshAssetData, MeshPartAssetData, MeshVertex, GltfMaterialDataShaderParam,
 };
 use renderer::assets::assets::{ImageAssetData, ColorSpace};
 use renderer::assets::assets::BufferAssetData;
@@ -799,7 +799,7 @@ fn extract_meshes_to_import(
         let mut all_vertices = PushBuffer::new(16384);
         let mut all_indices = PushBuffer::new(16384);
 
-        let mut mesh_parts: Vec<MeshPart> = Vec::with_capacity(mesh.primitives().len());
+        let mut mesh_parts: Vec<MeshPartAssetData> = Vec::with_capacity(mesh.primitives().len());
 
         //
         // Iterate all mesh parts, building a single vertex and index buffer. Each MeshPart will
@@ -866,7 +866,7 @@ fn extract_meshes_to_import(
                             )));
                         };
 
-                        Some(MeshPart {
+                        Some(MeshPartAssetData {
                             material,
                             material_instance,
                             vertex_buffer_offset_in_bytes: vertex_offset as u32,

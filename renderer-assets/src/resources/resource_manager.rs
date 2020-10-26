@@ -9,8 +9,8 @@ use atelier_assets::loader::handle::Handle;
 use std::mem::ManuallyDrop;
 use crate::{
     vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, GraphicsPipelineResource,
-    DescriptorSetArc, DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData,
-    AssetLookupSet, DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation,
+    DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData, AssetLookupSet,
+    DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation,
     DynPassMaterialInstance, DescriptorSetAllocatorRef, DynMaterialInstance,
     DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource, GraphicsPipelineCache,
     MaterialPassResource,
@@ -44,18 +44,6 @@ use fnv::FnvHashMap;
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
 //TODO: Support data inheritance for descriptors
-
-// Information about a single descriptor set
-pub struct DescriptorSetInfo {
-    pub descriptor_set_layout_def: dsc::DescriptorSetLayout,
-    pub descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
-}
-
-// Information about a descriptor set for a particular frame. Descriptor sets may be updated
-// every frame and we rotate through them, so this information must not be persisted across frames
-pub struct MaterialInstanceInfo {
-    pub descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
-}
 
 #[derive(Debug)]
 pub struct ResourceManagerMetrics {
@@ -288,36 +276,20 @@ impl ResourceManager {
             .map(|x| x.material_pass_resource.clone())
     }
 
-    pub fn get_descriptor_set_info(
+    pub fn get_descriptor_set_layout_for_pass(
         &self,
         handle: &Handle<MaterialAsset>,
         pass_index: usize,
         layout_index: usize,
-    ) -> DescriptorSetInfo {
-        let resource = self
-            .loaded_assets
+    ) -> Option<ResourceArc<DescriptorSetLayoutResource>> {
+        self.loaded_assets
             .materials
             .get_committed(handle.load_handle())
-            .unwrap();
-
-        let descriptor_set_layout_def = resource.passes[pass_index]
-            .material_pass_resource
-            .get_raw()
-            .pipeline_layout
-            .get_raw()
-            .pipeline_layout_def
-            .descriptor_set_layouts[layout_index]
-            .clone();
-        let descriptor_set_layout =
-            resource.passes[pass_index].descriptor_set_layouts[layout_index].clone();
-
-        DescriptorSetInfo {
-            descriptor_set_layout_def,
-            descriptor_set_layout,
-        }
+            .and_then(|x| x.passes.get(pass_index))
+            .map(|x| x.descriptor_set_layouts[layout_index].clone())
     }
 
-    pub fn get_cached_graphics_pipeline(
+    pub fn try_get_graphics_pipeline(
         &self,
         material_handle: &Handle<MaterialAsset>,
         renderpass: &ResourceArc<RenderPassResource>,
@@ -329,10 +301,9 @@ impl ResourceManager {
             .get_committed(material_handle.load_handle())
             .unwrap();
 
-        self.graphics_pipeline_cache.find_graphics_pipeline(
+        self.graphics_pipeline_cache.try_get_graphics_pipeline(
             &material.passes[pass_index].material_pass_resource,
             &renderpass,
-            false,
         )
     }
 
@@ -348,30 +319,11 @@ impl ResourceManager {
             .get_committed(material_handle.load_handle())
             .unwrap();
 
-        Ok(self
-            .graphics_pipeline_cache
-            .find_graphics_pipeline(
+        self.graphics_pipeline_cache
+            .get_or_create_graphics_pipeline(
                 &material.passes[pass_index].material_pass_resource,
                 &renderpass,
-                true,
             )
-            .unwrap())
-    }
-
-    pub fn get_material_instance_info(
-        &self,
-        handle: &Handle<MaterialInstanceAsset>,
-    ) -> MaterialInstanceInfo {
-        // Get the material instance
-        let resource = self
-            .loaded_assets
-            .material_instances
-            .get_committed(handle.load_handle())
-            .unwrap();
-
-        MaterialInstanceInfo {
-            descriptor_sets: resource.inner.material_descriptor_sets.clone(),
-        }
     }
 
     // Call whenever you want to handle assets loading/unloading
@@ -949,19 +901,12 @@ impl ResourceManager {
         let material_descriptor_sets = Arc::new(material_descriptor_sets);
         Ok(MaterialInstanceAsset::new(
             material_instance_asset.material.clone(),
+            material_asset.passes.clone(),
             material_descriptor_sets,
             material_instance_asset.slot_assignments.clone(),
             material_instance_descriptor_set_writes,
         ))
     }
-
-    // pub fn create_dyn_descriptor_set_uninitialized(
-    //     &self,
-    //     descriptor_set_allocator: &mut DescriptorSetAllocator,
-    //     descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
-    // ) -> VkResult<DynDescriptorSet> {
-    //     descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(descriptor_set_layout)
-    // }
 
     pub fn create_dyn_pass_material_instance_uninitialized(
         &self,

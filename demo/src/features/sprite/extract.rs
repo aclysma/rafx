@@ -126,13 +126,13 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             100.0,
         );
 
-        let layout =
-            extract_context
-                .resource_manager
-                .get_descriptor_set_info(&self.sprite_material, 0, 0);
+        let layout = extract_context
+            .resource_manager
+            .get_descriptor_set_layout_for_pass(&self.sprite_material, 0, 0)
+            .unwrap();
         let mut descriptor_set = self
             .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
+            .create_dyn_descriptor_set_uninitialized(&layout)
             .unwrap();
 
         descriptor_set.set_buffer_data(0, &view_proj);
@@ -168,13 +168,13 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         }
         let image_asset = image_asset.unwrap();
 
-        let descriptor_set_info =
-            extract_context
-                .resource_manager
-                .get_descriptor_set_info(&self.sprite_material, 0, 1);
+        let descriptor_set_info = extract_context
+            .resource_manager
+            .get_descriptor_set_layout_for_pass(&self.sprite_material, 0, 1)
+            .unwrap();
         let mut sprite_texture_descriptor = self
             .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&descriptor_set_info.descriptor_set_layout)
+            .create_dyn_descriptor_set_uninitialized(&descriptor_set_info)
             .unwrap();
 
         sprite_texture_descriptor.set_image(0, image_asset.image_view.clone());

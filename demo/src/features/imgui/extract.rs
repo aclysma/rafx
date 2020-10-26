@@ -100,27 +100,27 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         let dyn_resource_allocator = extract_context
             .resource_manager
             .create_dyn_resource_allocator_set();
-        let per_pass_layout =
-            extract_context
-                .resource_manager
-                .get_descriptor_set_info(&self.imgui_material, 0, 0);
+        let per_pass_layout = extract_context
+            .resource_manager
+            .get_descriptor_set_layout_for_pass(&self.imgui_material, 0, 0)
+            .unwrap();
 
         let mut per_pass_descriptor_set = self
             .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&per_pass_layout.descriptor_set_layout)
+            .create_dyn_descriptor_set_uninitialized(&per_pass_layout)
             .unwrap();
         per_pass_descriptor_set.set_buffer_data(0, &ubo);
         per_pass_descriptor_set
             .flush(&mut self.descriptor_set_allocator)
             .unwrap();
 
-        let per_image_layout =
-            extract_context
-                .resource_manager
-                .get_descriptor_set_info(&self.imgui_material, 0, 1);
+        let per_image_layout = extract_context
+            .resource_manager
+            .get_descriptor_set_layout_for_pass(&self.imgui_material, 0, 1)
+            .unwrap();
         let mut per_image_descriptor_set = self
             .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&per_image_layout.descriptor_set_layout)
+            .create_dyn_descriptor_set_uninitialized(&per_image_layout)
             .unwrap();
         per_image_descriptor_set.set_image(0, self.font_atlas);
         per_image_descriptor_set

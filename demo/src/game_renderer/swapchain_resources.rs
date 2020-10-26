@@ -67,15 +67,15 @@ impl SwapchainResources {
 
         let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
 
-        let debug_per_frame_layout = resource_manager.get_descriptor_set_info(
-            &game_renderer.static_resources.debug3d_material,
-            0,
-            0,
-        );
+        let debug_per_frame_layout = resource_manager
+            .get_descriptor_set_layout_for_pass(
+                &game_renderer.static_resources.debug3d_material,
+                0,
+                0,
+            )
+            .unwrap();
         let debug_material_per_frame_data = descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(
-                &debug_per_frame_layout.descriptor_set_layout,
-            )?;
+            .create_dyn_descriptor_set_uninitialized(&debug_per_frame_layout)?;
 
         log::debug!("game renderer swapchain_created finished");
 

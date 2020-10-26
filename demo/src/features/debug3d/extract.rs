@@ -46,10 +46,10 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         let dyn_resource_allocator = extract_context
             .resource_manager
             .create_dyn_resource_allocator_set();
-        let layout =
-            extract_context
-                .resource_manager
-                .get_descriptor_set_info(&self.debug3d_material, 0, 0);
+        let layout = extract_context
+            .resource_manager
+            .get_descriptor_set_layout_for_pass(&self.debug3d_material, 0, 0)
+            .unwrap();
 
         let per_view_descriptor_sets: Vec<_> = views
             .iter()
@@ -60,7 +60,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
 
                 let mut descriptor_set = self
                     .descriptor_set_allocator
-                    .create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout)
+                    .create_dyn_descriptor_set_uninitialized(&layout)
                     .unwrap();
                 descriptor_set.set_buffer_data(0, &debug3d_view);
                 descriptor_set

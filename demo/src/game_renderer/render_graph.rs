@@ -156,8 +156,7 @@ pub fn build_render_graph(
                 .graph_context
                 .resource_context()
                 .graphics_pipeline_cache()
-                .find_graphics_pipeline(&bloom_extract_material_pass, args.renderpass, true)
-                .unwrap();
+                .get_or_create_graphics_pipeline(&bloom_extract_material_pass, args.renderpass)?;
 
             // Set up a descriptor set pointing at the image so we can sample from it
             let mut descriptor_set_allocator = args
@@ -241,8 +240,7 @@ pub fn build_render_graph(
                     .graph_context
                     .resource_context()
                     .graphics_pipeline_cache()
-                    .find_graphics_pipeline(&bloom_blur_material_pass, args.renderpass, true)
-                    .unwrap();
+                    .get_or_create_graphics_pipeline(&bloom_blur_material_pass, args.renderpass)?;
 
                 // Set up a descriptor set pointing at the image so we can sample from it
                 let mut descriptor_set_allocator = args
@@ -335,8 +333,7 @@ pub fn build_render_graph(
                 .graph_context
                 .resource_context()
                 .graphics_pipeline_cache()
-                .find_graphics_pipeline(&bloom_combine_material_pass, args.renderpass, true)
-                .unwrap();
+                .get_or_create_graphics_pipeline(&bloom_combine_material_pass, args.renderpass)?;
 
             // Set up a descriptor set pointing at the image so we can sample from it
             let mut descriptor_set_allocator = args

@@ -46,9 +46,6 @@ pub use crate::resources::resource_lookup::GraphicsPipelineResource;
 
 pub use resource_lookup::ImageViewResource;
 
-// mod pipeline_create_data;
-// pub use pipeline_create_data::PipelineCreateData;
-
 mod resource_manager;
 pub use resource_manager::*;
 
