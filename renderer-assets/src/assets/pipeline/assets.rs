@@ -22,9 +22,10 @@ pub struct RenderpassAssetData {
 #[uuid = "bfefdc09-1ba6-422a-9514-b59b5b913128"]
 pub struct RenderpassAsset {
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    pub data: Arc<RenderpassAssetData>,
+    pub renderpass_def: Arc<dsc::RenderPass>,
     // Renderpass assets can produce multiple renderpass resources depending on number of active
-    // swapchains.
+    // swapchains. So they are not available here. Use get_or_create_renderpass in resource lookup
+    // to fetch the one that matches the SwapchainSurfaceInfo you have
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]

@@ -1,5 +1,4 @@
-use renderer::assets::resources::{DescriptorSetArc, ResourceArc, AssetLookup};
-use renderer::vulkan::VkBufferRaw;
+use renderer::assets::resources::{DescriptorSetArc, ResourceArc, AssetLookup, BufferResource};
 use crate::assets::gltf::MeshAssetData;
 use renderer::assets::assets::MaterialPass;
 use type_uuid::*;
@@ -16,8 +15,8 @@ pub struct MeshAssetPart {
 
 pub struct MeshAssetInner {
     pub mesh_parts: Vec<MeshAssetPart>,
-    pub vertex_buffer: ResourceArc<VkBufferRaw>,
-    pub index_buffer: ResourceArc<VkBufferRaw>,
+    pub vertex_buffer: ResourceArc<BufferResource>,
+    pub index_buffer: ResourceArc<BufferResource>,
     pub asset: MeshAssetData,
 }
 

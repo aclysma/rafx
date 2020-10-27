@@ -100,18 +100,18 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             .get::<GameResourceManager>()
             .unwrap();
 
-        let mesh_info = mesh_render_node
+        let mesh_asset = mesh_render_node
             .mesh
             .as_ref()
             .and_then(|mesh_asset_handle| game_resource_manager.mesh(mesh_asset_handle));
-        if mesh_info.is_none() {
+        if mesh_asset.is_none() {
             self.extracted_frame_node_mesh_data.push(None);
             return;
         }
 
-        let mesh_info = mesh_info.unwrap();
+        let mesh_asset = mesh_asset.unwrap();
 
-        let draw_calls: Vec<_> = mesh_info
+        let draw_calls: Vec<_> = mesh_asset
             .inner
             .mesh_parts
             .iter()
@@ -134,8 +134,8 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
         self.extracted_frame_node_mesh_data
             .push(Some(ExtractedFrameNodeMeshData {
                 world_transform,
-                vertex_buffer: mesh_info.inner.vertex_buffer.clone(),
-                index_buffer: mesh_info.inner.index_buffer.clone(),
+                vertex_buffer: mesh_asset.inner.vertex_buffer.clone(),
+                index_buffer: mesh_asset.inner.index_buffer.clone(),
                 draw_calls,
             }));
     }

@@ -93,16 +93,16 @@ impl SwapchainResources {
         asset_handle: &Handle<RenderpassAsset>,
     ) -> VkResult<ResourceArc<RenderPassResource>> {
         use atelier_assets::loader::handle::AssetHandle;
-        let renderpass_asset_data = resource_manager
+        let renderpass = resource_manager
             .loaded_assets()
             .renderpasses
             .get_committed(asset_handle.load_handle())
             .unwrap()
-            .data
+            .renderpass_def
             .clone();
 
         resource_manager
             .resources()
-            .get_or_create_renderpass(&renderpass_asset_data.renderpass, swapchain_surface_info)
+            .get_or_create_renderpass(renderpass, swapchain_surface_info)
     }
 }

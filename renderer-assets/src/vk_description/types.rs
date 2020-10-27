@@ -350,7 +350,7 @@ impl Default for Filter {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Sampler {
     pub mag_filter: Filter,
     pub min_filter: Filter,

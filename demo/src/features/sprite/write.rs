@@ -4,14 +4,15 @@ use renderer::nodes::{
     RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
-use renderer::vulkan::VkBufferRaw;
-use renderer::assets::resources::{ResourceArc, DescriptorSetArc, GraphicsPipelineResource};
+use renderer::assets::resources::{
+    ResourceArc, DescriptorSetArc, GraphicsPipelineResource, BufferResource,
+};
 use ash::vk;
 use ash::version::DeviceV1_0;
 
 pub struct SpriteCommandWriter {
-    pub vertex_buffers: Vec<ResourceArc<VkBufferRaw>>,
-    pub index_buffers: Vec<ResourceArc<VkBufferRaw>>,
+    pub vertex_buffers: Vec<ResourceArc<BufferResource>>,
+    pub index_buffers: Vec<ResourceArc<BufferResource>>,
     pub draw_calls: Vec<SpriteDrawCall>,
     pub pipeline_info: ResourceArc<GraphicsPipelineResource>,
     pub descriptor_set_per_view: Vec<DescriptorSetArc>,
@@ -51,13 +52,13 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
             logical_device.cmd_bind_vertex_buffers(
                 command_buffer,
                 0, // first binding
-                &[self.vertex_buffers[0].get_raw().buffer],
+                &[self.vertex_buffers[0].get_raw().buffer.buffer],
                 &[0], // offsets
             );
 
             logical_device.cmd_bind_index_buffer(
                 command_buffer,
-                self.index_buffers[0].get_raw().buffer,
+                self.index_buffers[0].get_raw().buffer.buffer,
                 0, // offset
                 vk::IndexType::UINT16,
             );

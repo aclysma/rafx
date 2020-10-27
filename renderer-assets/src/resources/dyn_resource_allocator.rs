@@ -1,15 +1,13 @@
 use crossbeam_channel::{Sender, Receiver};
 use std::hash::Hash;
 use std::sync::Arc;
-use renderer_shell_vulkan::{
-    VkResource, VkResourceDropSink, VkDeviceContext, VkImage, VkBufferRaw, VkBuffer,
-};
+use renderer_shell_vulkan::{VkResource, VkResourceDropSink, VkDeviceContext, VkImage, VkBuffer};
 use ash::vk;
 use super::ResourceId;
 use crate::resources::ResourceArc;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use crate::resources::resource_arc::ResourceWithHash;
-use crate::ImageViewResource;
+use crate::{ImageViewResource, BufferResource};
 use ash::prelude::VkResult;
 use crate::resources::resource_lookup::ImageResource;
 
@@ -220,7 +218,7 @@ where
 pub struct DynResourceAllocatorSet {
     pub images: DynResourceAllocator<ImageResource>,
     pub image_views: DynResourceAllocator<ImageViewResource>,
-    pub buffers: DynResourceAllocator<VkBufferRaw>,
+    pub buffers: DynResourceAllocator<BufferResource>,
 }
 
 impl DynResourceAllocatorSet {
@@ -253,9 +251,14 @@ impl DynResourceAllocatorSet {
     pub fn insert_buffer(
         &self,
         buffer: VkBuffer,
-    ) -> ResourceArc<VkBufferRaw> {
+    ) -> ResourceArc<BufferResource> {
         let raw_buffer = buffer.take_raw().unwrap();
-        self.buffers.insert(raw_buffer)
+        let buffer_resource = BufferResource {
+            buffer_key: None,
+            buffer: raw_buffer,
+        };
+
+        self.buffers.insert(buffer_resource)
     }
 }
 
@@ -304,7 +307,7 @@ pub struct ResourceMetrics {
 pub struct DynResourceAllocatorSetProvider {
     pub images: DynResourceAllocatorProvider<ImageResource>,
     pub image_views: DynResourceAllocatorProvider<ImageViewResource>,
-    pub buffers: DynResourceAllocatorProvider<VkBufferRaw>,
+    pub buffers: DynResourceAllocatorProvider<BufferResource>,
 }
 
 impl DynResourceAllocatorSetProvider {
@@ -321,7 +324,7 @@ pub struct DynResourceAllocatorSetManager {
     pub device_context: VkDeviceContext,
     pub images: DynResourceAllocatorManager<ImageResource>,
     pub image_views: DynResourceAllocatorManager<ImageViewResource>,
-    pub buffers: DynResourceAllocatorManager<VkBufferRaw>,
+    pub buffers: DynResourceAllocatorManager<BufferResource>,
 }
 
 impl DynResourceAllocatorSetManager {

@@ -649,9 +649,9 @@ impl ResourceManager {
         &mut self,
         buffer: VkBuffer,
     ) -> VkResult<BufferAsset> {
-        let (buffer_key, buffer) = self.resources.insert_buffer(ManuallyDrop::new(buffer));
+        let buffer = self.resources.insert_buffer(ManuallyDrop::new(buffer));
 
-        Ok(BufferAsset { buffer_key, buffer })
+        Ok(BufferAsset { buffer })
     }
 
     fn load_shader_module(
@@ -677,7 +677,7 @@ impl ResourceManager {
         renderpass_asset: RenderpassAssetData,
     ) -> VkResult<RenderpassAsset> {
         Ok(RenderpassAsset {
-            data: Arc::new(renderpass_asset),
+            renderpass_def: Arc::new(renderpass_asset.renderpass),
         })
     }
 
@@ -699,7 +699,7 @@ impl ResourceManager {
                 .unwrap();
             let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
 
-            let fixed_function_state = dsc::FixedFunctionState {
+            let fixed_function_state = Arc::new(dsc::FixedFunctionState {
                 vertex_input_state: pass.shader_interface.vertex_input_state.clone(),
                 input_assembly_state: pipeline_asset.input_assembly_state.clone(),
                 viewport_state: pipeline_asset.viewport_state.clone(),
@@ -708,7 +708,7 @@ impl ResourceManager {
                 color_blend_state: pipeline_asset.color_blend_state.clone(),
                 dynamic_state: pipeline_asset.dynamic_state.clone(),
                 depth_stencil_state: pipeline_asset.depth_stencil_state.clone(),
-            };
+            });
 
             //
             // Shaders
@@ -859,7 +859,7 @@ impl ResourceManager {
                     pass,
                     &material_instance_asset.slot_assignments,
                     &self.loaded_assets,
-                    &mut self.resources,
+                    &self.resources,
                 )?;
 
             log::trace!(

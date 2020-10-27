@@ -241,7 +241,8 @@ impl ManagedDescriptorSetPoolChunk {
                     // (this case is hit when using CombinedImageSampler)
                     if !element.has_immutable_sampler {
                         if let Some(sampler) = &image_info.sampler {
-                            image_info_builder = image_info_builder.sampler(sampler.get_raw());
+                            image_info_builder =
+                                image_info_builder.sampler(sampler.get_raw().sampler);
                         }
                     }
 

@@ -16,9 +16,9 @@ mod prepare;
 
 mod write;
 use write::MeshCommandWriter;
-use renderer::vulkan::VkBufferRaw;
 use renderer::assets::resources::{
     DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource,
+    BufferResource,
 };
 use renderer::assets::MaterialAsset;
 use std::sync::Arc;
@@ -159,8 +159,8 @@ renderer::declare_render_feature!(MeshRenderFeature, MESH_FEATURE_INDEX);
 pub struct ExtractedFrameNodeMeshData {
     world_transform: glam::Mat4,
     draw_calls: Vec<MeshDrawCall>,
-    vertex_buffer: ResourceArc<VkBufferRaw>,
-    index_buffer: ResourceArc<VkBufferRaw>,
+    vertex_buffer: ResourceArc<BufferResource>,
+    index_buffer: ResourceArc<BufferResource>,
 }
 
 pub struct MeshDrawCall {

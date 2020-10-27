@@ -12,6 +12,7 @@ use renderer::assets::vk_description as dsc;
 use renderer_assets::vk_description::{SwapchainSurfaceInfo, FramebufferMeta};
 use ash::vk;
 use ash::version::DeviceV1_0;
+use std::sync::Arc;
 
 const WINDOW_WIDTH: u32 = 900;
 const WINDOW_HEIGHT: u32 = 600;
@@ -91,7 +92,7 @@ fn run(
         surface_format: surface.swapchain().swapchain_info.surface_format,
     };
 
-    let renderpass_dsc = dsc::RenderPass {
+    let renderpass_dsc = Arc::new(dsc::RenderPass {
         attachments: vec![dsc::AttachmentDescription {
             flags: dsc::AttachmentDescriptionFlags::None,
             format: dsc::AttachmentFormat::MatchSurface,
@@ -125,11 +126,11 @@ fn run(
             ],
             dependency_flags: dsc::DependencyFlags::ByRegion,
         }],
-    };
+    });
 
     let renderpass = resource_manager
         .resources()
-        .get_or_create_renderpass(&renderpass_dsc, &swapchain_surface_info)?;
+        .get_or_create_renderpass(renderpass_dsc, &swapchain_surface_info)?;
 
     let mut framebuffers = Vec::with_capacity(surface.swapchain().swapchain_images.len());
     for &image in &surface.swapchain().swapchain_images {

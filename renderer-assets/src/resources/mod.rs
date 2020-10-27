@@ -15,6 +15,7 @@ pub use resource_lookup::RenderPassResource;
 pub use resource_lookup::FramebufferResource;
 pub use resource_lookup::MaterialPassResource;
 pub use resource_lookup::ShaderModuleResource;
+pub use resource_lookup::BufferResource;
 
 mod dyn_resource_allocator;
 pub use dyn_resource_allocator::DynResourceAllocatorSet;

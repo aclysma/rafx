@@ -7,6 +7,7 @@ use crate::graph::graph_node::RenderGraphNodeId;
 use crate::graph::{RenderGraphImageUsageId, RenderGraphBuilder, RenderGraphImageConstraint};
 use crate::graph::graph_image::{RenderGraphImageVersionId, RenderGraphImageUser};
 use ash::vk;
+use std::sync::Arc;
 
 /// The specification for the image by image usage
 pub struct DetermineImageConstraintsResult {
@@ -226,7 +227,7 @@ impl PhysicalImageIdAllocator {
 
 pub struct RenderGraphOutputPass {
     pub(super) subpass_nodes: Vec<RenderGraphNodeId>,
-    pub(super) description: dsc::RenderPass,
+    pub(super) description: Arc<dsc::RenderPass>,
     pub(super) attachment_images: Vec<PhysicalImageId>,
     pub(super) clear_values: Vec<vk::ClearValue>,
     pub(super) extents: vk::Extent2D,
@@ -1541,7 +1542,7 @@ fn build_pass_barriers(
             let mut use_external_dependency_for_pass_initial_layout_transition = true;
 
             let mut image_transitions = Vec::default();
-            for (_, image_barrier) in &node_barriers.barriers {
+            for image_barrier in node_barriers.barriers.values() {
                 if image_barrier.used_by_sampling {
                     use_external_dependency_for_pass_initial_layout_transition = false;
                 }
@@ -1940,7 +1941,7 @@ fn create_output_passes(
 
         let output_pass = RenderGraphOutputPass {
             subpass_nodes,
-            description: renderpass_desc,
+            description: Arc::new(renderpass_desc),
             extents: swapchain_info.extents,
             attachment_images,
             clear_values,
@@ -2428,10 +2429,10 @@ impl RenderGraphPlan {
         //     log::trace!("{:#?}", renderpass);
         // }
 
-        print_final_images(&mut output_images, &mut intermediate_images);
+        print_final_images(&output_images, &intermediate_images);
 
         print_final_image_usage(
-            &mut graph,
+            &graph,
             &assign_physical_images_result,
             &image_constraint_results,
             &renderpasses,

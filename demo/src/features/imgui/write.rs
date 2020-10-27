@@ -4,15 +4,16 @@ use renderer::nodes::{
     RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
-use renderer::vulkan::VkBufferRaw;
-use renderer::assets::resources::{ResourceArc, DescriptorSetArc, GraphicsPipelineResource};
+use renderer::assets::resources::{
+    ResourceArc, DescriptorSetArc, GraphicsPipelineResource, BufferResource,
+};
 use ash::vk;
 use ash::version::DeviceV1_0;
 use crate::imgui_support::{ImGuiDrawData, ImGuiDrawCmd};
 
 pub struct ImGuiCommandWriter {
-    pub(super) vertex_buffers: Vec<ResourceArc<VkBufferRaw>>,
-    pub(super) index_buffers: Vec<ResourceArc<VkBufferRaw>>,
+    pub(super) vertex_buffers: Vec<ResourceArc<BufferResource>>,
+    pub(super) index_buffers: Vec<ResourceArc<BufferResource>>,
     pub(super) imgui_draw_data: Option<ImGuiDrawData>,
     pub(super) pipeline_info: ResourceArc<GraphicsPipelineResource>,
     pub(super) per_pass_descriptor_set: DescriptorSetArc,
@@ -77,13 +78,13 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
                         logical_device.cmd_bind_vertex_buffers(
                             command_buffer,
                             0, // first binding
-                            &[self.vertex_buffers[draw_list_index].get_raw().buffer],
+                            &[self.vertex_buffers[draw_list_index].get_raw().buffer.buffer],
                             &[0], // offsets
                         );
 
                         logical_device.cmd_bind_index_buffer(
                             command_buffer,
-                            self.index_buffers[draw_list_index].get_raw().buffer,
+                            self.index_buffers[draw_list_index].get_raw().buffer.buffer,
                             0, // offset
                             vk::IndexType::UINT16,
                         );

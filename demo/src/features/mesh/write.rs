@@ -96,13 +96,13 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
                 logical_device.cmd_bind_vertex_buffers(
                     command_buffer,
                     0, // first binding
-                    &[frame_node_data.vertex_buffer.get_raw().buffer],
+                    &[frame_node_data.vertex_buffer.get_raw().buffer.buffer],
                     &[draw_call.vertex_buffer_offset_in_bytes as u64], // offsets
                 );
 
                 logical_device.cmd_bind_index_buffer(
                     command_buffer,
-                    frame_node_data.index_buffer.get_raw().buffer,
+                    frame_node_data.index_buffer.get_raw().buffer.buffer,
                     draw_call.index_buffer_offset_in_bytes as u64, // offset
                     vk::IndexType::UINT16,
                 );

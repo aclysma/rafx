@@ -97,7 +97,7 @@ impl RenderFrameJob {
         // Write Jobs - triggered by the render graph
         //
         let write_context_factory =
-            RenderJobWriteContextFactory::new(device_context, resource_context.clone());
+            RenderJobWriteContextFactory::new(device_context, resource_context);
 
         let graph_context = RenderGraphUserContext {
             prepared_render_data,

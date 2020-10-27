@@ -1,6 +1,6 @@
 use ash::vk;
 use crate::vk_description as dsc;
-use crate::resources::resource_lookup::{ImageViewResource, ResourceLookupSet};
+use crate::resources::resource_lookup::{ImageViewResource, ResourceLookupSet, SamplerResource};
 use fnv::FnvHashMap;
 use crate::resources::asset_lookup::AssetLookupSet;
 use crate::assets::{MaterialPass, SlotNameLookup};
@@ -32,7 +32,7 @@ impl DescriptorSetWriteElementImageValue {
 // The information needed to write image metadata for a descriptor
 #[derive(Debug, Clone, Default)]
 pub struct DescriptorSetWriteElementImage {
-    pub sampler: Option<ResourceArc<vk::Sampler>>,
+    pub sampler: Option<ResourceArc<SamplerResource>>,
     pub image_view: Option<DescriptorSetWriteElementImageValue>,
     // For now going to assume layout is always ShaderReadOnlyOptimal
     //pub image_info: vk::DescriptorImageInfo,

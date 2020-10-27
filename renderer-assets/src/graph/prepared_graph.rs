@@ -169,8 +169,8 @@ impl PreparedRenderGraph {
             //     let built = builder.build();
             //     println!("{:?}", built);
             // }
-            let render_pass_resource =
-                resources.get_or_create_renderpass(&pass.description, swapchain_surface_info)?;
+            let render_pass_resource = resources
+                .get_or_create_renderpass(pass.description.clone(), swapchain_surface_info)?;
             render_pass_resources.push(render_pass_resource);
         }
         Ok(render_pass_resources)

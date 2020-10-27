@@ -4,13 +4,14 @@ use renderer::nodes::{
     RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
-use renderer::vulkan::VkBufferRaw;
-use renderer::assets::resources::{ResourceArc, DescriptorSetArc, GraphicsPipelineResource};
+use renderer::assets::resources::{
+    ResourceArc, DescriptorSetArc, GraphicsPipelineResource, BufferResource,
+};
 use ash::vk;
 use ash::version::DeviceV1_0;
 
 pub struct Debug3dCommandWriter {
-    pub(super) vertex_buffer: Option<ResourceArc<VkBufferRaw>>,
+    pub(super) vertex_buffer: Option<ResourceArc<BufferResource>>,
     pub(super) draw_calls: Vec<Debug3dDrawCall>,
     pub(super) pipeline_info: ResourceArc<GraphicsPipelineResource>,
     pub(super) descriptor_set_per_view: Vec<DescriptorSetArc>,
@@ -50,7 +51,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
                 logical_device.cmd_bind_vertex_buffers(
                     command_buffer,
                     0, // first binding
-                    &[vertex_buffer.get_raw().buffer],
+                    &[vertex_buffer.get_raw().buffer.buffer],
                     &[0], // offsets
                 );
             }
