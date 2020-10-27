@@ -11,7 +11,7 @@ use renderer::nodes::{
     RenderFeatureIndex, RenderFeature, PerFrameNode,
 };
 use renderer::base::slab::RawSlabKey;
-use crate::features::mesh::prepare::MeshPrepareJobImpl;
+use crate::features::mesh::prepare::MeshPrepareJob;
 use renderer::assets::resources::{DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource};
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::resources::DescriptorSetArc;
@@ -101,13 +101,12 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         let mut query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
         let spot_lights = query.iter(extract_context.world).map(|(p, l)| (p.clone(), l.clone())).collect();
 
-        Box::new(DefaultPrepareJob::new(MeshPrepareJobImpl::new(
-            extract_context.resource_manager.create_descriptor_set_allocator(),
+        Box::new(MeshPrepareJob::new(
             extracted_frame_node_mesh_data,
             directional_lights,
             point_lights,
             spot_lights,
-        )))
+        ))
     }
 }
 

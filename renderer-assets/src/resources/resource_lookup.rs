@@ -241,9 +241,9 @@ where
         #[cfg(debug_assertions)]
         {
             guard.lock_call_count += 1;
+            guard.lock_call_count_previous_frame = guard.lock_call_count + 1;
         }
 
-        guard.lock_call_count_previous_frame = guard.lock_call_count + 1;
         Self::handle_dropped_resources(&mut guard);
         guard.drop_sink.on_frame_complete(device_context)
     }
@@ -252,6 +252,7 @@ where
         let guard = self.inner.lock().unwrap();
         ResourceLookupMetric {
             count: guard.resources.len(),
+            #[cfg(debug_assertions)]
             previous_frame_lock_call_count: guard.lock_call_count_previous_frame,
         }
     }
@@ -362,6 +363,7 @@ pub struct ImageViewKey {
 #[derive(Debug)]
 pub struct ResourceLookupMetric {
     pub count: usize,
+    #[cfg(debug_assertions)]
     pub previous_frame_lock_call_count: u64,
 }
 
