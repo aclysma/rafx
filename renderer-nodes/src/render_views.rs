@@ -1,5 +1,5 @@
 use glam::{Mat4, Vec3};
-use crate::RenderPhase;
+use crate::{RenderPhase, RenderPhaseIndex};
 use crate::registry::{RenderPhaseMaskInnerType, MAX_RENDER_PHASE_COUNT};
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
@@ -29,9 +29,13 @@ pub struct RenderPhaseMask(RenderPhaseMaskInnerType);
 
 impl RenderPhaseMask {
     pub fn is_included<RenderPhaseT: RenderPhase>(&self) -> bool {
+        self.is_included_index(RenderPhaseT::render_phase_index())
+    }
+
+    pub fn is_included_index(&self, index: RenderPhaseIndex) -> bool {
         // If this asserts, a render phase was not registered
-        assert!(RenderPhaseT::render_phase_index() < MAX_RENDER_PHASE_COUNT);
-        (self.0 & 1 << RenderPhaseT::render_phase_index()) != 0
+        assert!(index < MAX_RENDER_PHASE_COUNT);
+        (self.0 & 1 << index) != 0
     }
 }
 
@@ -126,6 +130,10 @@ impl RenderView {
 
     pub fn phase_is_relevant<RenderPhaseT: RenderPhase>(&self) -> bool {
         self.inner.render_phase_mask.is_included::<RenderPhaseT>()
+    }
+
+    pub fn phase_index_is_relevant(&self, phase_index: RenderPhaseIndex) -> bool {
+        self.inner.render_phase_mask.is_included_index(phase_index)
     }
 
     pub fn render_phase_mask(&self) -> RenderPhaseMask {

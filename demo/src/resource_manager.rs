@@ -171,7 +171,7 @@ impl GameResourceManager {
             vertex_buffer,
             index_buffer,
             asset: mesh_asset.clone(),
-            mesh_parts,
+            mesh_parts: Arc::new(mesh_parts),
         };
 
         Ok(MeshAsset {

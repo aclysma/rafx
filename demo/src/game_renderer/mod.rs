@@ -446,14 +446,6 @@ impl GameRenderer {
                     )
                     .unwrap();
 
-                let mesh_pipeline_info = resource_manager
-                    .try_get_graphics_pipeline(
-                        &guard.static_resources.mesh_material,
-                        &opaque_renderpass,
-                        0,
-                    )
-                    .unwrap();
-
                 let debug3d_pipeline_info = resource_manager
                     .try_get_graphics_pipeline(
                         &guard.static_resources.debug3d_material,
@@ -471,11 +463,7 @@ impl GameRenderer {
                 ));
 
                 // Meshes
-                extract_job_set.add_job(create_mesh_extract_job(
-                    resource_context.create_descriptor_set_allocator(),
-                    mesh_pipeline_info,
-                    &guard.static_resources.mesh_material,
-                ));
+                extract_job_set.add_job(create_mesh_extract_job());
 
                 // Debug 3D
                 extract_job_set.add_job(create_debug3d_extract_job(

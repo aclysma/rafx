@@ -41,6 +41,7 @@ impl<'a> RenderGraphContext<'a> {
 pub struct VisitRenderpassArgs<'a> {
     pub command_buffer: vk::CommandBuffer,
     pub renderpass: &'a ResourceArc<RenderPassResource>,
+    pub subpass_index: usize,
     pub graph_context: RenderGraphContext<'a>,
 }
 
@@ -252,7 +253,8 @@ impl PreparedRenderGraph {
                 .clear_values(&pass.clear_values);
 
             assert_eq!(pass.subpass_nodes.len(), 1);
-            let node_id = pass.subpass_nodes[0];
+            let subpass_index = 0;
+            let node_id = pass.subpass_nodes[subpass_index];
 
             unsafe {
                 if let Some(pre_pass_barrier) = &pass.pre_pass_barrier {
@@ -303,6 +305,7 @@ impl PreparedRenderGraph {
                 let args = VisitRenderpassArgs {
                     renderpass: &self.render_pass_resources[pass_index],
                     graph_context: render_graph_context,
+                    subpass_index,
                     command_buffer,
                 };
 

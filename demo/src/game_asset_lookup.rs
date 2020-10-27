@@ -14,7 +14,7 @@ pub struct MeshAssetPart {
 }
 
 pub struct MeshAssetInner {
-    pub mesh_parts: Vec<MeshAssetPart>,
+    pub mesh_parts: Arc<Vec<MeshAssetPart>>,
     pub vertex_buffer: ResourceArc<BufferResource>,
     pub index_buffer: ResourceArc<BufferResource>,
     pub asset: MeshAssetData,

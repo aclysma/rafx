@@ -3,14 +3,14 @@ use renderer::nodes::{
     RenderNodeSet, RenderNodeCount, FrameNodeIndex,
 };
 use renderer::assets::MaterialPass;
-use crate::game_asset_lookup::MeshAsset;
+use crate::game_asset_lookup::{MeshAsset, MeshAssetPart, MeshAssetInner};
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::base::slab::{DropSlabKey, DropSlab};
 use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;
 
 mod extract;
-use extract::MeshExtractJobImpl;
+use extract::MeshExtractJob;
 
 mod prepare;
 
@@ -23,6 +23,7 @@ use renderer::assets::resources::{
 use renderer::assets::MaterialAsset;
 use std::sync::Arc;
 use std::fmt::Debug;
+use image::Frame;
 
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
@@ -81,15 +82,8 @@ pub struct MeshPerObjectShaderParam {
 } // 128 bytes
 
 pub fn create_mesh_extract_job(
-    descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: ResourceArc<GraphicsPipelineResource>,
-    mesh_material: &Handle<MaterialAsset>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
-    Box::new(DefaultExtractJob::new(MeshExtractJobImpl::new(
-        descriptor_set_allocator,
-        pipeline_info,
-        mesh_material,
-    )))
+    Box::new(MeshExtractJob::default())
 }
 
 //
@@ -155,58 +149,30 @@ impl RenderNodeSet for MeshRenderNodeSet {
 
 renderer::declare_render_feature!(MeshRenderFeature, MESH_FEATURE_INDEX);
 
-#[derive(Debug)]
 pub struct ExtractedFrameNodeMeshData {
     world_transform: glam::Mat4,
-    draw_calls: Vec<MeshDrawCall>,
-    vertex_buffer: ResourceArc<BufferResource>,
-    index_buffer: ResourceArc<BufferResource>,
+    mesh_asset: MeshAsset
 }
 
-pub struct MeshDrawCall {
-    pub vertex_buffer_offset_in_bytes: u32,
-    pub vertex_buffer_size_in_bytes: u32,
-    pub index_buffer_offset_in_bytes: u32,
-    pub index_buffer_size_in_bytes: u32,
-    pub material_passes: Arc<Vec<MaterialPass>>,
-    pub per_material_descriptor: DescriptorSetArc, // set 1
-}
-
-impl std::fmt::Debug for MeshDrawCall {
+impl std::fmt::Debug for ExtractedFrameNodeMeshData {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        f.debug_struct("MeshDrawCall")
+        f.debug_struct("ExtractedFrameNodeMeshData")
             .field(
-                "vertex_buffer_offset_in_bytes",
-                &self.vertex_buffer_offset_in_bytes,
+                "world_transform",
+                &self.world_transform,
             )
-            .field(
-                "vertex_buffer_size_in_bytes",
-                &self.vertex_buffer_size_in_bytes,
-            )
-            .field(
-                "index_buffer_offset_in_bytes",
-                &self.index_buffer_offset_in_bytes,
-            )
-            .field(
-                "index_buffer_size_in_bytes",
-                &self.index_buffer_size_in_bytes,
-            )
-            .field("per_material_descriptor", &self.per_material_descriptor)
             .finish()
     }
 }
 
 #[derive(Debug)]
-pub struct ExtractedViewNodeMeshData {
-    pub per_instance_descriptor: DescriptorSetArc, // set 2
-}
-
-#[derive(Debug)]
-pub struct PreparedViewNodeMeshData {
-    pub per_instance_descriptor: DescriptorSetArc, // set 2
-    pub frame_node_index: FrameNodeIndex,
-    pub per_view_descriptor: DescriptorSetArc, // set 0
+pub struct PreparedSubmitNodeMeshData {
+    per_view_descriptor_set: DescriptorSetArc,
+    per_instance_descriptor_set: DescriptorSetArc,
+    // we can get the mesh via the frame node index
+    frame_node_index: FrameNodeIndex,
+    mesh_part_index: usize,
 }

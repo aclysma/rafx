@@ -1,6 +1,6 @@
 use ash::vk;
 use legion::*;
-use renderer::assets::{ResourceManager, DynResourceAllocatorSet, ResourceContext};
+use renderer::assets::{ResourceManager, DynResourceAllocatorSet, ResourceContext, ResourceArc, RenderPassResource};
 use renderer::vulkan::VkDeviceContext;
 
 pub struct RenderJobExtractContext {
@@ -55,31 +55,41 @@ impl RenderJobWriteContextFactory {
     pub fn create_context(
         &self,
         command_buffer: vk::CommandBuffer,
+        renderpass: ResourceArc<RenderPassResource>,
+        subpass_index: usize,
     ) -> RenderJobWriteContext {
         RenderJobWriteContext::new(
             self.device_context.clone(),
-            self.resource_context.create_dyn_resource_allocator_set(),
+            self.resource_context.clone(),
             command_buffer,
+            renderpass,
+            subpass_index,
         )
     }
 }
 
 pub struct RenderJobWriteContext {
     pub device_context: VkDeviceContext,
-    pub dyn_resource_lookups: DynResourceAllocatorSet,
+    pub resource_context: ResourceContext,
     pub command_buffer: vk::CommandBuffer,
+    pub renderpass: ResourceArc<RenderPassResource>,
+    pub subpass_index: usize,
 }
 
 impl RenderJobWriteContext {
     pub fn new(
         device_context: VkDeviceContext,
-        resource_allocators: DynResourceAllocatorSet,
+        resource_context: ResourceContext,
         command_buffer: vk::CommandBuffer,
+        renderpass: ResourceArc<RenderPassResource>,
+        subpass_index: usize,
     ) -> Self {
         RenderJobWriteContext {
             device_context,
-            dyn_resource_lookups: resource_allocators,
+            resource_context,
             command_buffer,
+            renderpass,
+            subpass_index,
         }
     }
 }
