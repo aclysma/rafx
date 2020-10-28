@@ -4,83 +4,33 @@ use crate::features::sprite::{
 use crate::components::{PositionComponent, SpriteComponent};
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
-    DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
-    RenderFeatureIndex, RenderFeature, PerFrameNode,
+    ExtractJob, FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature,
 };
 use renderer::base::slab::RawSlabKey;
-use crate::features::sprite::prepare::SpritePrepareJobImpl;
-use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resources::{DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource};
+use crate::features::sprite::prepare::SpritePrepareJob;
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::resources::DescriptorSetArc;
 use renderer::assets::MaterialAsset;
 use legion::*;
 
-// This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
-// single function
-pub fn orthographic_rh_gl(
-    left: f32,
-    right: f32,
-    bottom: f32,
-    top: f32,
-    near: f32,
-    far: f32,
-) -> [[f32; 4]; 4] {
-    let a = 2.0 / (right - left);
-    let b = 2.0 / (top - bottom);
-    let c = -2.0 / (far - near);
-    let tx = -(right + left) / (right - left);
-    let ty = -(top + bottom) / (top - bottom);
-    let tz = -(far + near) / (far - near);
-
-    [
-        [a, 0.0, 0.0, 0.0],
-        [0.0, b, 0.0, 0.0],
-        [0.0, 0.0, c, 0.0],
-        [tx, ty, tz, 1.0],
-    ]
-}
-
-pub struct SpriteExtractJobImpl {
-    device_context: VkDeviceContext,
-    descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: ResourceArc<GraphicsPipelineResource>,
+pub struct SpriteExtractJob {
     sprite_material: Handle<MaterialAsset>,
-    extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
-    per_view_descriptors: Vec<DescriptorSetArc>,
 }
 
-impl SpriteExtractJobImpl {
-    pub fn new(
-        device_context: VkDeviceContext,
-        descriptor_set_allocator: DescriptorSetAllocatorRef,
-        pipeline_info: ResourceArc<GraphicsPipelineResource>,
-        sprite_material: &Handle<MaterialAsset>,
-    ) -> Self {
-        SpriteExtractJobImpl {
-            device_context,
-            descriptor_set_allocator,
-            pipeline_info,
-            sprite_material: sprite_material.clone(),
-            //descriptor_set_per_pass,
-            extracted_frame_node_sprite_data: Default::default(),
-            per_view_descriptors: Default::default(),
-        }
+impl SpriteExtractJob {
+    pub fn new(sprite_material: Handle<MaterialAsset>) -> Self {
+        SpriteExtractJob { sprite_material }
     }
 }
 
-impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
-    for SpriteExtractJobImpl
+impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
+    for SpriteExtractJob
 {
-    fn extract_begin(
-        &mut self,
+    fn extract(
+        self: Box<Self>,
         extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
         _views: &[&RenderView],
-    ) {
-        self.extracted_frame_node_sprite_data
-            .reserve(frame_packet.frame_node_count(self.feature_index()) as usize);
-
+    ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
         // Update the mesh render nodes. This could be done earlier as part of a system
         let mut sprite_render_nodes = extract_context
             .resources
@@ -97,131 +47,46 @@ impl DefaultExtractJobImpl<RenderJobExtractContext, RenderJobPrepareContext, Ren
             render_node.position = position_component.position;
         }
 
-        // for view in views {
-        //     let layout = extract_context.resource_manager.get_descriptor_set_info(&self.sprite_material, 0, 0);
-        //     let mut descriptor_set = self.descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&layout.descriptor_set_layout).unwrap();
-        //
-        //     let view_proj = view.projection_matrix() * view.view_matrix();
-        //
-        //     descriptor_set.set_buffer_data(0, &view_proj);
-        //     descriptor_set.flush(&mut self.descriptor_set_allocator);
-        //
-        //     self.per_view_descriptors.push(descriptor_set.descriptor_set().clone());
-        // }
+        let mut extracted_frame_node_sprite_data =
+            Vec::<Option<ExtractedSpriteData>>::with_capacity(
+                frame_packet.frame_node_count(self.feature_index()) as usize,
+            );
 
-        //TODO: Multi-view support for sprites. Not clear on if we want to do a screen-space view specifically
-        // for sprites
-        //TODO: Extents is hard-coded
-        let extents_width = 900;
-        let extents_height = 600;
-        let aspect_ration = extents_width as f32 / extents_height as f32;
-        let half_width = 400.0;
-        let half_height = 400.0 / aspect_ration;
-        let view_proj = orthographic_rh_gl(
-            -half_width,
-            half_width,
-            -half_height,
-            half_height,
-            -100.0,
-            100.0,
-        );
+        for frame_node in frame_packet.frame_nodes(self.feature_index()) {
+            let render_node_index = frame_node.render_node_index();
+            let render_node_handle = RawSlabKey::<SpriteRenderNode>::new(render_node_index);
+            let sprite_render_node = sprite_render_nodes
+                .sprites
+                .get_raw(render_node_handle)
+                .unwrap();
 
-        let layout = extract_context
-            .resource_manager
-            .get_descriptor_set_layout_for_pass(&self.sprite_material, 0, 0)
-            .unwrap();
-        let mut descriptor_set = self
-            .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&layout)
-            .unwrap();
+            let image_asset = extract_context
+                .resource_manager
+                .get_image_asset(&sprite_render_node.image);
 
-        descriptor_set.set_buffer_data(0, &view_proj);
-        descriptor_set
-            .flush(&mut self.descriptor_set_allocator)
-            .unwrap();
+            let extracted_frame_node = image_asset.and_then(|image_asset| {
+                Some(ExtractedSpriteData {
+                    position: sprite_render_node.position,
+                    texture_size: glam::Vec2::new(50.0, 50.0),
+                    scale: 1.0,
+                    rotation: 0.0,
+                    alpha: sprite_render_node.alpha,
+                    image_view: image_asset.image_view.clone(),
+                })
+            });
 
-        self.per_view_descriptors
-            .push(descriptor_set.descriptor_set().clone());
-    }
-
-    fn extract_frame_node(
-        &mut self,
-        extract_context: &RenderJobExtractContext,
-        frame_node: PerFrameNode,
-        _frame_node_index: u32,
-    ) {
-        let render_node_index = frame_node.render_node_index();
-        let render_node_handle = RawSlabKey::<SpriteRenderNode>::new(render_node_index);
-
-        let sprite_nodes = extract_context
-            .resources
-            .get::<SpriteRenderNodeSet>()
-            .unwrap();
-        let sprite_render_node = sprite_nodes.sprites.get_raw(render_node_handle).unwrap();
-
-        let image_asset = extract_context
-            .resource_manager
-            .get_image_asset(&sprite_render_node.image);
-        if image_asset.is_none() {
-            self.extracted_frame_node_sprite_data.push(None);
-            return;
+            extracted_frame_node_sprite_data.push(extracted_frame_node);
         }
-        let image_asset = image_asset.unwrap();
 
-        let descriptor_set_info = extract_context
+        // For now just grab pass 0
+        let sprite_material = extract_context
             .resource_manager
-            .get_descriptor_set_layout_for_pass(&self.sprite_material, 0, 1)
-            .unwrap();
-        let mut sprite_texture_descriptor = self
-            .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&descriptor_set_info)
+            .get_material_pass_by_index(&self.sprite_material, 0)
             .unwrap();
 
-        sprite_texture_descriptor.set_image(0, image_asset.image_view.clone());
-        sprite_texture_descriptor
-            .flush(&mut self.descriptor_set_allocator)
-            .unwrap();
-        let texture_descriptor_set = sprite_texture_descriptor.descriptor_set().clone();
+        let prepare_impl = SpritePrepareJob::new(extracted_frame_node_sprite_data, sprite_material);
 
-        self.extracted_frame_node_sprite_data
-            .push(Some(ExtractedSpriteData {
-                position: sprite_render_node.position,
-                texture_size: glam::Vec2::new(50.0, 50.0),
-                scale: 1.0,
-                rotation: 0.0,
-                alpha: sprite_render_node.alpha,
-                texture_descriptor_set,
-            }));
-    }
-
-    fn extract_view_node(
-        &mut self,
-        _extract_context: &RenderJobExtractContext,
-        _view: &RenderView,
-        _view_node: PerViewNode,
-        _view_node_index: u32,
-    ) {
-    }
-
-    fn extract_view_finalize(
-        &mut self,
-        _extract_context: &RenderJobExtractContext,
-        _view: &RenderView,
-    ) {
-    }
-
-    fn extract_frame_finalize(
-        self,
-        _extract_context: &RenderJobExtractContext,
-    ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
-        let prepare_impl = SpritePrepareJobImpl::new(
-            self.device_context,
-            self.pipeline_info,
-            self.per_view_descriptors.clone(),
-            self.extracted_frame_node_sprite_data,
-        );
-
-        Box::new(DefaultPrepareJob::new(prepare_impl))
+        Box::new(prepare_impl)
     }
 
     fn feature_debug_name(&self) -> &'static str {

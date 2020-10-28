@@ -1,41 +1,40 @@
-use crate::demo_feature::{DemoRenderFeature, ExtractedDemoData, DemoRenderNodeSet, DemoRenderNode};
+use crate::demo_feature::{
+    DemoRenderFeature, ExtractedPerFrameNodeDemoData, DemoRenderNodeSet, DemoRenderNode,
+    ExtractedPerViewNodeDemoData,
+};
 use crate::{DemoExtractContext, DemoWriteContext, DemoComponent, DemoPrepareContext};
 use renderer_nodes::{
-    DefaultExtractJobImpl, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
-    RenderFeatureIndex, RenderFeature, PerFrameNode,
+    FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature, ExtractJob,
 };
 use renderer_base::slab::RawSlabKey;
-use crate::demo_feature::prepare::DemoPrepareJobImpl;
+use crate::demo_feature::prepare::DemoPrepareJob;
 use crate::PositionComponent;
 use legion::*;
 
 #[derive(Default)]
-pub struct DemoExtractJobImpl {
-    per_frame_data: Vec<ExtractedDemoData>,
-    per_view_data: Vec<Vec<ExtractedDemoData>>,
-}
+pub struct DemoExtractJob {}
 
-impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteContext>
-    for DemoExtractJobImpl
-{
-    fn extract_begin(
-        &mut self,
+impl ExtractJob<DemoExtractContext, DemoPrepareContext, DemoWriteContext> for DemoExtractJob {
+    //
+    // This function is given the framepacket. This allows iterating across all visible objects.
+    // Frame nodes will exist once per visible object, regardless of how many views it is visible in
+    // View nodes will exist per visible object, per view that it's in. For every frame node, there
+    // will be one or more view nodes. For every view node, there will be exactly one corresponding
+    // frame node.
+    //
+    fn extract(
+        self: Box<Self>,
         extract_context: &DemoExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) {
+    ) -> Box<dyn PrepareJob<DemoPrepareContext, DemoWriteContext>> {
         log::debug!("extract_begin {}", self.feature_debug_name());
-        self.per_frame_data
-            .reserve(frame_packet.frame_node_count(self.feature_index()) as usize);
 
-        self.per_view_data.reserve(views.len());
-        for view in views {
-            self.per_view_data.push(Vec::with_capacity(
-                frame_packet.view_node_count(view, self.feature_index()) as usize,
-            ));
-        }
-
-        // Update the mesh render nodes. This could be done earlier as part of a system.
+        //
+        // Update the mesh render nodes. This could be done earlier as part of a system. (Could be
+        // pulled from an ECS as in this example). The intent is that the extract process can use
+        // visibility info to index directly into the render nodes.
+        //
         let mut demo_render_nodes = extract_context
             .resources
             .get_mut::<DemoRenderNodeSet>()
@@ -51,72 +50,77 @@ impl DefaultExtractJobImpl<DemoExtractContext, DemoPrepareContext, DemoWriteCont
             render_node.position = position_component.position;
             render_node.alpha = demo_component.alpha
         }
-    }
 
-    fn extract_frame_node(
-        &mut self,
-        extract_context: &DemoExtractContext,
-        frame_node: PerFrameNode,
-        frame_node_index: u32,
-    ) {
-        log::debug!(
-            "extract_frame_node {} {}",
-            self.feature_debug_name(),
-            frame_node_index
-        );
+        //
+        // Collect per-frame-node data from the render nodes. This could share collected data for
+        // the same rendered object that will be rendered in multiple views
+        //
+        let per_frame_data: Vec<ExtractedPerFrameNodeDemoData> = frame_packet
+            .frame_nodes(self.feature_index())
+            .iter()
+            .enumerate()
+            .map(|(frame_node_index, frame_node)| {
+                log::debug!(
+                    "extract_frame_node {} {}",
+                    self.feature_debug_name(),
+                    frame_node_index
+                );
 
-        let render_node_index = frame_node.render_node_index();
-        let render_node = RawSlabKey::<DemoRenderNode>::new(render_node_index);
+                let render_node_index = frame_node.render_node_index();
+                let render_node = RawSlabKey::<DemoRenderNode>::new(render_node_index);
 
-        let demo_nodes = extract_context
-            .resources
-            .get::<DemoRenderNodeSet>()
-            .unwrap();
-        let demo_render_node = demo_nodes.demos.get_raw(render_node).unwrap();
+                let demo_render_node = demo_render_nodes.demos.get_raw(render_node).unwrap();
 
-        self.per_frame_data.push(ExtractedDemoData {
-            position: demo_render_node.position,
-            alpha: demo_render_node.alpha,
-        });
-    }
+                ExtractedPerFrameNodeDemoData {
+                    position: demo_render_node.position,
+                    alpha: demo_render_node.alpha,
+                }
+            })
+            .collect();
 
-    fn extract_view_node(
-        &mut self,
-        _extract_context: &DemoExtractContext,
-        view: &RenderView,
-        view_node: PerViewNode,
-        view_node_index: u32,
-    ) {
-        log::debug!(
-            "extract_view_nodes {} {} {:?}",
-            self.feature_debug_name(),
-            view_node_index,
-            self.per_frame_data[view_node.frame_node_index() as usize]
-        );
-        let frame_data = self.per_frame_data[view_node.frame_node_index() as usize].clone();
-        self.per_view_data[view.view_index() as usize].push(frame_data);
-    }
+        //
+        // Collect per-view-node data. This would be any data we want to fetch that's unique to the
+        // view we are drawing in. (In many cases there is no per-view data to extract and this
+        // wouldn't be needed!). We'll do it here just to demonstrate.
+        //
+        let per_view_data: Vec<Vec<ExtractedPerViewNodeDemoData>> = views
+            .iter()
+            .map(|&view| {
+                let view_nodes = frame_packet.view_nodes(view, self.feature_index());
+                if let Some(view_nodes) = view_nodes {
+                    view_nodes
+                        .iter()
+                        .enumerate()
+                        .map(|(view_node_index, view_node)| {
+                            log::debug!(
+                                "extract_view_nodes {} {} {:?}",
+                                self.feature_debug_name(),
+                                view_node_index,
+                                per_frame_data[view_node.frame_node_index() as usize]
+                            );
 
-    fn extract_view_finalize(
-        &mut self,
-        _extract_context: &DemoExtractContext,
-        _view: &RenderView,
-    ) {
-        log::debug!("extract_view_finalize {}", self.feature_debug_name());
-    }
+                            let per_frame_data =
+                                &per_frame_data[view_node.frame_node_index() as usize];
+                            ExtractedPerViewNodeDemoData {
+                                alpha: per_frame_data.alpha,
+                                position: per_frame_data.position,
+                            }
+                        })
+                        .collect()
+                } else {
+                    Vec::default()
+                }
+            })
+            .collect();
 
-    fn extract_frame_finalize(
-        self,
-        _extract_context: &DemoExtractContext,
-    ) -> Box<dyn PrepareJob<DemoPrepareContext, DemoWriteContext>> {
-        log::debug!("extract_frame_finalize {}", self.feature_debug_name());
-
-        let prepare_impl = DemoPrepareJobImpl {
-            per_frame_data: self.per_frame_data,
-            per_view_data: self.per_view_data,
-        };
-
-        Box::new(DefaultPrepareJob::new(prepare_impl))
+        //
+        // Return a prepare job - this can be used to do any processing/binding async from the next
+        // frame's simulation update
+        //
+        Box::new(DemoPrepareJob {
+            per_frame_data,
+            per_view_data,
+        })
     }
 
     fn feature_debug_name(&self) -> &'static str {

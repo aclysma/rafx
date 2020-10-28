@@ -1,7 +1,7 @@
 use crate::phases::TransparentRenderPhase;
 use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
-    FramePacket, DefaultPrepareJobImpl, PerFrameNode, PerViewNode, RenderFeature,
+    FramePacket, PrepareJob, RenderFeature,
 };
 use crate::features::sprite::{
     SpriteRenderFeature, ExtractedSpriteData, QUAD_VERTEX_LIST, QUAD_INDEX_LIST, SpriteDrawCall,
@@ -11,51 +11,81 @@ use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
 use super::SpriteCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::vulkan::{VkBuffer, VkDeviceContext};
+use renderer::vulkan::VkBuffer;
 use ash::vk;
-use renderer::assets::resources::{DescriptorSetArc, ResourceArc, GraphicsPipelineResource};
+use renderer::assets::resources::{
+    DescriptorSetArc, ResourceArc, MaterialPassResource, ImageViewResource,
+};
+use fnv::FnvHashMap;
 
-pub struct SpritePrepareJobImpl {
-    device_context: VkDeviceContext,
-    pipeline_info: ResourceArc<GraphicsPipelineResource>,
-    descriptor_set_per_view: Vec<DescriptorSetArc>,
-    extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
+const PER_VIEW_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 0;
+const PER_INSTANCE_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
 
-    draw_calls: Vec<SpriteDrawCall>,
-    vertex_list: Vec<SpriteVertex>,
-    index_list: Vec<u16>,
+// This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
+// single function
+pub fn orthographic_rh_gl(
+    left: f32,
+    right: f32,
+    bottom: f32,
+    top: f32,
+    near: f32,
+    far: f32,
+) -> [[f32; 4]; 4] {
+    let a = 2.0 / (right - left);
+    let b = 2.0 / (top - bottom);
+    let c = -2.0 / (far - near);
+    let tx = -(right + left) / (right - left);
+    let ty = -(top + bottom) / (top - bottom);
+    let tz = -(far + near) / (far - near);
+
+    [
+        [a, 0.0, 0.0, 0.0],
+        [0.0, b, 0.0, 0.0],
+        [0.0, 0.0, c, 0.0],
+        [tx, ty, tz, 1.0],
+    ]
 }
 
-impl SpritePrepareJobImpl {
+pub struct SpritePrepareJob {
+    extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
+    sprite_material: ResourceArc<MaterialPassResource>,
+}
+
+impl SpritePrepareJob {
     pub(super) fn new(
-        device_context: VkDeviceContext,
-        pipeline_info: ResourceArc<GraphicsPipelineResource>,
-        descriptor_set_per_view: Vec<DescriptorSetArc>,
         extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
+        sprite_material: ResourceArc<MaterialPassResource>,
     ) -> Self {
-        let sprite_count = extracted_sprite_data.len();
-        SpritePrepareJobImpl {
-            device_context,
+        SpritePrepareJob {
             extracted_frame_node_sprite_data: extracted_sprite_data,
-            pipeline_info,
-            descriptor_set_per_view,
-            draw_calls: Vec::with_capacity(sprite_count),
-            vertex_list: Vec::with_capacity(sprite_count * QUAD_VERTEX_LIST.len()),
-            index_list: Vec::with_capacity(sprite_count * QUAD_INDEX_LIST.len()),
+            sprite_material,
         }
     }
 }
 
-impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
-    for SpritePrepareJobImpl
-{
-    fn prepare_begin(
-        &mut self,
-        _prepare_context: &RenderJobPrepareContext,
-        _frame_packet: &FramePacket,
-        _views: &[&RenderView],
-        _submit_nodes: &mut FeatureSubmitNodes,
+impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepareJob {
+    fn prepare(
+        self: Box<Self>,
+        prepare_context: &RenderJobPrepareContext,
+        frame_packet: &FramePacket,
+        views: &[&RenderView],
+    ) -> (
+        Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
+        FeatureSubmitNodes,
     ) {
+        let mut draw_calls = Vec::<SpriteDrawCall>::default();
+        let mut vertex_list = Vec::<SpriteVertex>::default();
+        let mut index_list = Vec::<u16>::default();
+
+        let mut per_image_descriptor_sets =
+            FnvHashMap::<ResourceArc<ImageViewResource>, DescriptorSetArc>::default();
+
+        //
+        // Create per-instance descriptor sets, indexed by frame node
+        //
+        let mut descriptor_set_allocator = prepare_context
+            .resource_context
+            .create_descriptor_set_allocator();
         for sprite in &self.extracted_frame_node_sprite_data {
             if let Some(sprite) = sprite {
                 const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
@@ -68,92 +98,132 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
                         1.0,
                     ));
 
-                let vertex_buffer_first_element = self.vertex_list.len() as u16;
+                let vertex_buffer_first_element = vertex_list.len() as u16;
 
                 for vertex in &QUAD_VERTEX_LIST {
                     //let pos = vertex.pos;
                     let transformed_pos = matrix.transform_point3(vertex.pos.into());
 
-                    self.vertex_list.push(SpriteVertex {
+                    vertex_list.push(SpriteVertex {
                         pos: transformed_pos.truncate().into(),
                         tex_coord: vertex.tex_coord,
                         //color: [255, 255, 255, 255]
                     });
                 }
 
-                let index_buffer_first_element = self.index_list.len() as u16;
+                let index_buffer_first_element = index_list.len() as u16;
                 for index in &QUAD_INDEX_LIST {
-                    self.index_list.push(*index + vertex_buffer_first_element);
+                    index_list.push(*index + vertex_buffer_first_element);
                 }
+
+                //TODO: Cache and reuse where image/material is the same
+                let texture_descriptor_set = per_image_descriptor_sets
+                    .entry(sprite.image_view.clone())
+                    .or_insert_with(|| {
+                        let per_sprite_descriptor_set_layout = &self
+                            .sprite_material
+                            .get_raw()
+                            .pipeline_layout
+                            .get_raw()
+                            .descriptor_sets[PER_INSTANCE_DESCRIPTOR_SET_LAYOUT_INDEX];
+                        let mut per_sprite_descriptor_set = descriptor_set_allocator
+                            .create_dyn_descriptor_set_uninitialized(
+                                per_sprite_descriptor_set_layout,
+                            )
+                            .unwrap();
+
+                        per_sprite_descriptor_set.set_image(0, sprite.image_view.clone());
+                        per_sprite_descriptor_set
+                            .flush(&mut descriptor_set_allocator)
+                            .unwrap();
+
+                        per_sprite_descriptor_set.descriptor_set().clone()
+                    });
 
                 let draw_call = SpriteDrawCall {
                     index_buffer_first_element,
                     index_buffer_count: QUAD_INDEX_LIST.len() as u16,
-                    texture_descriptor_set: sprite.texture_descriptor_set.clone(),
+                    texture_descriptor_set: texture_descriptor_set.clone(),
                 };
 
-                self.draw_calls.push(draw_call);
+                draw_calls.push(draw_call);
             }
         }
-    }
 
-    fn prepare_frame_node(
-        &mut self,
-        _prepare_context: &RenderJobPrepareContext,
-        _frame_node: PerFrameNode,
-        _frame_node_index: u32,
-        _submit_nodes: &mut FeatureSubmitNodes,
-    ) {
-    }
+        let mut per_view_descriptor_sets = Vec::with_capacity(views.len());
 
-    fn prepare_view_node(
-        &mut self,
-        _prepare_context: &RenderJobPrepareContext,
-        view: &RenderView,
-        view_node: PerViewNode,
-        _view_node_index: u32,
-        submit_nodes: &mut ViewSubmitNodes,
-    ) {
-        // Use the frame node index as the submit ID since we don't have any view-specific data
-        // to cache
-        let frame_node_index = view_node.frame_node_index();
+        let extents_width = 900;
+        let extents_height = 600;
+        let aspect_ratio = extents_width as f32 / extents_height as f32;
+        let half_width = 400.0;
+        let half_height = 400.0 / aspect_ratio;
+        let view_proj = orthographic_rh_gl(
+            -half_width,
+            half_width,
+            -half_height,
+            half_height,
+            -100.0,
+            100.0,
+        );
 
-        // This can read per-frame and per-view data
-        if let Some(extracted_data) =
-            &self.extracted_frame_node_sprite_data[frame_node_index as usize]
-        {
-            if extracted_data.alpha >= 1.0 {
-                submit_nodes.add_submit_node::<OpaqueRenderPhase>(frame_node_index, 0, 0.0);
-            } else {
-                let distance_from_camera =
-                    Vec3::length(extracted_data.position - view.eye_position());
-                submit_nodes.add_submit_node::<TransparentRenderPhase>(
-                    frame_node_index,
-                    0,
-                    distance_from_camera,
-                );
+        //
+        // Add submit nodes per view
+        //
+        let mut submit_nodes = FeatureSubmitNodes::default();
+        for &view in views {
+            if let Some(view_nodes) = frame_packet.view_nodes(view, self.feature_index()) {
+                let mut view_submit_nodes =
+                    ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
+                for view_node in view_nodes {
+                    let frame_node_index = view_node.frame_node_index();
+                    if let Some(extracted_data) =
+                        &self.extracted_frame_node_sprite_data[frame_node_index as usize]
+                    {
+                        if extracted_data.alpha >= 1.0 {
+                            view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(
+                                frame_node_index,
+                                0,
+                                0.0,
+                            );
+                        } else {
+                            let distance =
+                                Vec3::length(extracted_data.position - view.eye_position());
+                            view_submit_nodes.add_submit_node::<TransparentRenderPhase>(
+                                frame_node_index,
+                                0,
+                                distance,
+                            );
+                        }
+                    }
+                }
+
+                submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
             }
+
+            //TODO: Multi-view support for sprites. Not clear on if we want to do a screen-space view specifically
+            // for sprites
+            //TODO: Extents is hard-coded
+            let layout = &self
+                .sprite_material
+                .get_raw()
+                .pipeline_layout
+                .get_raw()
+                .descriptor_sets[PER_VIEW_DESCRIPTOR_SET_LAYOUT_INDEX];
+            let mut descriptor_set = descriptor_set_allocator
+                .create_dyn_descriptor_set_uninitialized(&*layout)
+                .unwrap();
+
+            descriptor_set.set_buffer_data(0, &view_proj);
+            descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
+
+            per_view_descriptor_sets.push(descriptor_set.descriptor_set().clone());
         }
-    }
 
-    fn prepare_view_finalize(
-        &mut self,
-        _prepare_context: &RenderJobPrepareContext,
-        _view: &RenderView,
-        _submit_nodes: &mut ViewSubmitNodes,
-    ) {
-    }
-
-    fn prepare_frame_finalize(
-        self,
-        prepare_context: &RenderJobPrepareContext,
-        _submit_nodes: &mut FeatureSubmitNodes,
-    ) -> Box<dyn FeatureCommandWriter<RenderJobWriteContext>> {
         //TODO: indexes are u16 so we may need to produce more than one set of buffers
         let mut vertex_buffers = Vec::with_capacity(1);
         let mut index_buffers = Vec::with_capacity(1);
 
-        if !self.draw_calls.is_empty() {
+        if !draw_calls.is_empty() {
             let dyn_resource_allocator = prepare_context
                 .resource_context
                 .create_dyn_resource_allocator_set();
@@ -162,9 +232,9 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
             // write to the buffer to begin with
             let vertex_buffer = {
                 let vertex_buffer_size =
-                    self.vertex_list.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
+                    vertex_list.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
                 let mut vertex_buffer = VkBuffer::new(
-                    &self.device_context,
+                    &prepare_context.device_context,
                     vk_mem::MemoryUsage::CpuToGpu,
                     vk::BufferUsageFlags::VERTEX_BUFFER,
                     vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -173,17 +243,16 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
                 .unwrap();
 
                 vertex_buffer
-                    .write_to_host_visible_buffer(self.vertex_list.as_slice())
+                    .write_to_host_visible_buffer(vertex_list.as_slice())
                     .unwrap();
 
                 dyn_resource_allocator.insert_buffer(vertex_buffer)
             };
 
             let index_buffer = {
-                let index_buffer_size =
-                    self.index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
+                let index_buffer_size = index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
                 let mut index_buffer = VkBuffer::new(
-                    &self.device_context,
+                    &prepare_context.device_context,
                     vk_mem::MemoryUsage::CpuToGpu,
                     vk::BufferUsageFlags::INDEX_BUFFER,
                     vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -192,7 +261,7 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
                 .unwrap();
 
                 index_buffer
-                    .write_to_host_visible_buffer(self.index_list.as_slice())
+                    .write_to_host_visible_buffer(index_list.as_slice())
                     .unwrap();
 
                 dyn_resource_allocator.insert_buffer(index_buffer)
@@ -202,13 +271,15 @@ impl DefaultPrepareJobImpl<RenderJobPrepareContext, RenderJobWriteContext>
             index_buffers.push(index_buffer);
         }
 
-        Box::new(SpriteCommandWriter {
-            draw_calls: self.draw_calls,
+        let writer = Box::new(SpriteCommandWriter {
+            draw_calls,
             vertex_buffers,
             index_buffers,
-            pipeline_info: self.pipeline_info,
-            descriptor_set_per_view: self.descriptor_set_per_view,
-        })
+            per_view_descriptor_sets,
+            sprite_material: self.sprite_material,
+        });
+
+        (writer, submit_nodes)
     }
 
     fn feature_debug_name(&self) -> &'static str {

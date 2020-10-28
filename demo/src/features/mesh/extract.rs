@@ -1,31 +1,25 @@
 use crate::features::mesh::{
     ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode,
-    MeshPerObjectShaderParam, MeshPerViewShaderParam,
 };
 use crate::components::{
     PointLightComponent, SpotLightComponent, DirectionalLightComponent, PositionComponent,
 };
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
-    ExtractJob, FramePacket, RenderView, PerViewNode, PrepareJob, DefaultPrepareJob,
-    RenderFeatureIndex, RenderFeature, PerFrameNode,
+    ExtractJob, FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature,
 };
 use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJob;
-use renderer::assets::resources::{DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource};
-use atelier_assets::loader::handle::Handle;
-use renderer::assets::resources::DescriptorSetArc;
 use legion::*;
 use crate::components::MeshComponent;
 use crate::resource_manager::GameResourceManager;
-use renderer::assets::MaterialAsset;
-use fnv::{FnvHashMap, FnvHashSet};
 
 #[derive(Default)]
-pub struct MeshExtractJob {
-}
+pub struct MeshExtractJob {}
 
-impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext> for MeshExtractJob {
+impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
+    for MeshExtractJob
+{
     fn feature_debug_name(&self) -> &'static str {
         MeshRenderFeature::feature_debug_name()
     }
@@ -65,41 +59,57 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .get::<GameResourceManager>()
             .unwrap();
 
-        let mut extracted_frame_node_mesh_data = Vec::<Option<ExtractedFrameNodeMeshData>>::default();
-        extracted_frame_node_mesh_data
-            .reserve(frame_packet.frame_node_count(self.feature_index()) as usize);
+        let mut extracted_frame_node_mesh_data =
+            Vec::<Option<ExtractedFrameNodeMeshData>>::with_capacity(
+                frame_packet.frame_node_count(self.feature_index()) as usize,
+            );
 
-        for frame_node in frame_packet.frame_nodes(MeshRenderFeature::feature_index()).iter() {
+        for frame_node in frame_packet
+            .frame_nodes(MeshRenderFeature::feature_index())
+            .iter()
+        {
             let render_node_index = frame_node.render_node_index();
             let render_node_handle = RawSlabKey::<MeshRenderNode>::new(render_node_index);
-            let mesh_render_node = mesh_render_nodes.meshes.get_raw(render_node_handle).unwrap();
+            let mesh_render_node = mesh_render_nodes
+                .meshes
+                .get_raw(render_node_handle)
+                .unwrap();
 
             let mesh_asset = mesh_render_node
                 .mesh
                 .as_ref()
                 .and_then(|mesh_asset_handle| game_resource_manager.mesh(mesh_asset_handle));
 
-            if let Some(mesh_asset) = mesh_asset {
-                extracted_frame_node_mesh_data.push(Some(ExtractedFrameNodeMeshData {
+            let extracted_frame_node = mesh_asset.and_then(|mesh_asset| {
+                Some(ExtractedFrameNodeMeshData {
                     mesh_asset: mesh_asset.clone(),
-                    world_transform: mesh_render_node.transform
-                }));
-            } else {
-                extracted_frame_node_mesh_data.push(None);
-            }
+                    world_transform: mesh_render_node.transform,
+                })
+            });
+
+            extracted_frame_node_mesh_data.push(extracted_frame_node);
         }
 
         //
         // Get the lights
         //
         let mut query = <Read<DirectionalLightComponent>>::query();
-        let directional_lights = query.iter(extract_context.world).map(|x| x.clone()).collect();
+        let directional_lights = query
+            .iter(extract_context.world)
+            .map(|x| x.clone())
+            .collect();
 
         let mut query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
-        let point_lights = query.iter(extract_context.world).map(|(p, l)| (p.clone(), l.clone())).collect();
+        let point_lights = query
+            .iter(extract_context.world)
+            .map(|(p, l)| (p.clone(), l.clone()))
+            .collect();
 
         let mut query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
-        let spot_lights = query.iter(extract_context.world).map(|(p, l)| (p.clone(), l.clone())).collect();
+        let spot_lights = query
+            .iter(extract_context.world)
+            .map(|(p, l)| (p.clone(), l.clone()))
+            .collect();
 
         Box::new(MeshPrepareJob::new(
             extracted_frame_node_mesh_data,
@@ -109,4 +119,3 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         ))
     }
 }
-

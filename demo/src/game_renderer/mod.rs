@@ -438,14 +438,6 @@ impl GameRenderer {
 
             let opaque_renderpass = render_graph.opaque_renderpass.clone();
             if let Some(opaque_renderpass) = opaque_renderpass {
-                let sprite_pipeline_info = resource_manager
-                    .try_get_graphics_pipeline(
-                        &guard.static_resources.sprite_material,
-                        &opaque_renderpass,
-                        0,
-                    )
-                    .unwrap();
-
                 let debug3d_pipeline_info = resource_manager
                     .try_get_graphics_pipeline(
                         &guard.static_resources.debug3d_material,
@@ -456,10 +448,7 @@ impl GameRenderer {
 
                 // Sprites
                 extract_job_set.add_job(create_sprite_extract_job(
-                    device_context.clone(),
-                    resource_context.create_descriptor_set_allocator(),
-                    sprite_pipeline_info,
-                    &guard.static_resources.sprite_material,
+                    guard.static_resources.sprite_material.clone(),
                 ));
 
                 // Meshes

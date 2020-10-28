@@ -1,9 +1,8 @@
 use renderer::nodes::{
-    RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
-    RenderNodeSet, RenderNodeCount, FrameNodeIndex,
+    RenderFeature, RenderFeatureIndex, ExtractJob, GenericRenderNodeHandle, RenderNodeSet,
+    RenderNodeCount, FrameNodeIndex,
 };
-use renderer::assets::MaterialPass;
-use crate::game_asset_lookup::{MeshAsset, MeshAssetPart, MeshAssetInner};
+use crate::game_asset_lookup::MeshAsset;
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::base::slab::{DropSlabKey, DropSlab};
 use std::convert::TryInto;
@@ -16,14 +15,8 @@ mod prepare;
 
 mod write;
 use write::MeshCommandWriter;
-use renderer::assets::resources::{
-    DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource,
-    BufferResource,
-};
-use renderer::assets::MaterialAsset;
-use std::sync::Arc;
+use renderer::assets::resources::{DescriptorSetArc};
 use std::fmt::Debug;
-use image::Frame;
 
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
@@ -151,7 +144,7 @@ renderer::declare_render_feature!(MeshRenderFeature, MESH_FEATURE_INDEX);
 
 pub struct ExtractedFrameNodeMeshData {
     world_transform: glam::Mat4,
-    mesh_asset: MeshAsset
+    mesh_asset: MeshAsset,
 }
 
 impl std::fmt::Debug for ExtractedFrameNodeMeshData {
@@ -160,10 +153,7 @@ impl std::fmt::Debug for ExtractedFrameNodeMeshData {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         f.debug_struct("ExtractedFrameNodeMeshData")
-            .field(
-                "world_transform",
-                &self.world_transform,
-            )
+            .field("world_transform", &self.world_transform)
             .finish()
     }
 }

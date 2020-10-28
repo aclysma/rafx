@@ -12,7 +12,7 @@ pub struct SubmitNode {
     feature_index: RenderFeatureIndex,
     submit_node_id: SubmitNodeId,
     sort_key: SubmitNodeSortKey,
-    distance_from_camera: f32,
+    distance: f32,
 }
 
 impl SubmitNode {
@@ -28,8 +28,8 @@ impl SubmitNode {
         self.sort_key
     }
 
-    pub fn distance_from_camera(&self) -> f32 {
-        self.distance_from_camera
+    pub fn distance(&self) -> f32 {
+        self.distance
     }
 }
 
@@ -61,15 +61,15 @@ impl ViewSubmitNodes {
         &mut self,
         submit_node_id: SubmitNodeId,
         sort_key: SubmitNodeSortKey,
-        distance_from_camera: f32,
+        distance: f32,
     ) {
         if self.render_phase_mask.is_included::<RenderPhaseT>() {
-            log::trace!("add submit node render phase: {} feature: {} submit node id: {} sort key: {} distance: {}", RenderPhaseT::render_phase_index(), self.feature_index, submit_node_id, sort_key, distance_from_camera);
+            log::trace!("add submit node render phase: {} feature: {} submit node id: {} sort key: {} distance: {}", RenderPhaseT::render_phase_index(), self.feature_index, submit_node_id, sort_key, distance);
             self.submit_nodes[RenderPhaseT::render_phase_index() as usize].push(SubmitNode {
                 feature_index: self.feature_index,
                 submit_node_id,
                 sort_key,
-                distance_from_camera,
+                distance,
             });
         }
     }

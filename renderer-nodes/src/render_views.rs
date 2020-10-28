@@ -32,7 +32,10 @@ impl RenderPhaseMask {
         self.is_included_index(RenderPhaseT::render_phase_index())
     }
 
-    pub fn is_included_index(&self, index: RenderPhaseIndex) -> bool {
+    pub fn is_included_index(
+        &self,
+        index: RenderPhaseIndex,
+    ) -> bool {
         // If this asserts, a render phase was not registered
         assert!(index < MAX_RENDER_PHASE_COUNT);
         (self.0 & 1 << index) != 0
@@ -132,7 +135,10 @@ impl RenderView {
         self.inner.render_phase_mask.is_included::<RenderPhaseT>()
     }
 
-    pub fn phase_index_is_relevant(&self, phase_index: RenderPhaseIndex) -> bool {
+    pub fn phase_index_is_relevant(
+        &self,
+        phase_index: RenderPhaseIndex,
+    ) -> bool {
         self.inner.render_phase_mask.is_included_index(phase_index)
     }
 

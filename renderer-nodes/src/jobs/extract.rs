@@ -1,4 +1,4 @@
-use crate::{FramePacket, RenderView, PrepareJob, PrepareJobSet};
+use crate::{FramePacket, RenderView, PrepareJob, PrepareJobSet, RenderFeatureIndex};
 
 pub trait ExtractJob<ExtractContextT, PrepareContextT, WriteContextT> {
     fn extract(
@@ -59,7 +59,7 @@ impl<ExtractContextT, PrepareContextT, WriteContextT>
         PrepareJobSet::new(prepare_jobs)
     }
 }
-
+/*
 use crate::RenderFeatureIndex;
 
 use std::marker::PhantomData;
@@ -220,3 +220,4 @@ impl<
         self.extract_impl.feature_index()
     }
 }
+*/

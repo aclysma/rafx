@@ -41,7 +41,7 @@ struct PerViewNode {
     frame_node_index: u32,
 
     // Any data we want to have cache-coherent can be here as long as it stays compact
-    distance_from_camera: f32
+    distance: f32
 }
 ```
 

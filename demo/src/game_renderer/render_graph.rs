@@ -94,9 +94,11 @@ pub fn build_render_graph(
 
         let main_view = main_view.clone();
         graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
-            let mut write_context = user_context
-                .write_context_factory
-                .create_context(args.command_buffer, args.renderpass.clone(), args.subpass_index);
+            let mut write_context = user_context.write_context_factory.create_context(
+                args.command_buffer,
+                args.renderpass.clone(),
+                args.subpass_index,
+            );
             user_context
                 .prepared_render_data
                 .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context);
@@ -403,9 +405,11 @@ pub fn build_render_graph(
             //let _color_attachment = graph_context.image(color).unwrap();
 
             // Kick the material system to emit all draw calls for the UiRenderPhase for the view
-            let mut write_context = user_context
-                .write_context_factory
-                .create_context(args.command_buffer, args.renderpass.clone(), args.subpass_index);
+            let mut write_context = user_context.write_context_factory.create_context(
+                args.command_buffer,
+                args.renderpass.clone(),
+                args.subpass_index,
+            );
             user_context
                 .prepared_render_data
                 .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context);

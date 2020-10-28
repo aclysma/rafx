@@ -80,7 +80,8 @@ impl RenderFrameJob {
         //
         // Prepare Jobs - everything beyond this point could be done in parallel with the main thread
         //
-        let prepare_context = RenderJobPrepareContext::new(resource_context.clone());
+        let prepare_context =
+            RenderJobPrepareContext::new(device_context.clone(), resource_context.clone());
         let prepared_render_data = prepare_job_set.prepare(
             &prepare_context,
             &frame_packet,

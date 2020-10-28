@@ -15,11 +15,7 @@ fn transparent_render_phase_sort_submit_nodes(
         "Sort phase {}",
         TransparentRenderPhase::render_phase_debug_name()
     );
-    submit_nodes.sort_unstable_by(|a, b| {
-        b.distance_from_camera()
-            .partial_cmp(&a.distance_from_camera())
-            .unwrap()
-    });
+    submit_nodes.sort_unstable_by(|a, b| b.distance().partial_cmp(&a.distance()).unwrap());
 
     submit_nodes
 }

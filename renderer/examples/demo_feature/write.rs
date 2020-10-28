@@ -3,9 +3,16 @@ use renderer_nodes::{
     RenderPhaseIndex,
 };
 use crate::DemoWriteContext;
-use crate::demo_feature::DemoRenderFeature;
+use crate::demo_feature::{
+    DemoRenderFeature, ExtractedPerFrameNodeDemoData, ExtractedPerViewNodeDemoData,
+    PreparedPerSubmitNodeDemoData,
+};
 
-pub struct DemoCommandWriter {}
+pub struct DemoCommandWriter {
+    pub(super) per_frame_data: Vec<ExtractedPerFrameNodeDemoData>,
+    pub(super) per_view_data: Vec<Vec<ExtractedPerViewNodeDemoData>>,
+    pub(super) per_submit_node_data: Vec<PreparedPerSubmitNodeDemoData>,
+}
 
 impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
     fn apply_setup(
@@ -34,6 +41,11 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
             view.debug_name(),
             index
         );
+
+        // This demonstrates accessing data that was extracted or prepared
+        let submit_node_data = &self.per_submit_node_data[index as usize];
+        let _frame_node_data = &self.per_frame_data[submit_node_data.frame_node_index as usize];
+        let _view_node_data = &self.per_view_data[submit_node_data.view_node_index as usize];
     }
 
     fn revert_setup(

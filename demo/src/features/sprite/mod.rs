@@ -1,6 +1,6 @@
 use renderer::nodes::{
-    RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
-    RenderNodeSet, RenderNodeCount,
+    RenderFeature, RenderFeatureIndex, ExtractJob, GenericRenderNodeHandle, RenderNodeSet,
+    RenderNodeCount,
 };
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::base::slab::{DropSlabKey, DropSlab};
@@ -10,16 +10,13 @@ use renderer::assets::MaterialAsset;
 use renderer::assets::ImageAsset;
 
 mod extract;
-use extract::SpriteExtractJobImpl;
+use extract::SpriteExtractJob;
 
 mod prepare;
 
 mod write;
 use write::SpriteCommandWriter;
-use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resources::{
-    DescriptorSetArc, DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource,
-};
+use renderer::assets::resources::{DescriptorSetArc, ResourceArc, ImageViewResource};
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]
@@ -68,17 +65,9 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
 pub fn create_sprite_extract_job(
-    device_context: VkDeviceContext,
-    descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: ResourceArc<GraphicsPipelineResource>,
-    sprite_material: &Handle<MaterialAsset>,
+    sprite_material: Handle<MaterialAsset>
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
-    Box::new(DefaultExtractJob::new(SpriteExtractJobImpl::new(
-        device_context,
-        descriptor_set_allocator,
-        pipeline_info,
-        sprite_material,
-    )))
+    Box::new(SpriteExtractJob::new(sprite_material))
 }
 
 //
@@ -152,7 +141,8 @@ pub(self) struct ExtractedSpriteData {
     scale: f32,
     rotation: f32,
     alpha: f32,
-    texture_descriptor_set: DescriptorSetArc, //TODO: I'd prefer to use something ref-counted
+    //texture_descriptor_set: DescriptorSetArc, //TODO: I'd prefer to use something ref-counted
+    image_view: ResourceArc<ImageViewResource>,
 }
 
 #[derive(Debug)]

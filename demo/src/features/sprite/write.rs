@@ -4,9 +4,7 @@ use renderer::nodes::{
     RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
-use renderer::assets::resources::{
-    ResourceArc, DescriptorSetArc, GraphicsPipelineResource, BufferResource,
-};
+use renderer::assets::resources::{ResourceArc, DescriptorSetArc, BufferResource, MaterialPassResource};
 use ash::vk;
 use ash::version::DeviceV1_0;
 
@@ -14,8 +12,8 @@ pub struct SpriteCommandWriter {
     pub vertex_buffers: Vec<ResourceArc<BufferResource>>,
     pub index_buffers: Vec<ResourceArc<BufferResource>>,
     pub draw_calls: Vec<SpriteDrawCall>,
-    pub pipeline_info: ResourceArc<GraphicsPipelineResource>,
-    pub descriptor_set_per_view: Vec<DescriptorSetArc>,
+    pub per_view_descriptor_sets: Vec<DescriptorSetArc>,
+    pub sprite_material: ResourceArc<MaterialPassResource>,
 }
 
 impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
@@ -25,27 +23,33 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
         view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
     ) {
-        // println!("render");
         let logical_device = write_context.device_context.device();
         let command_buffer = write_context.command_buffer;
+
+        let pipeline = write_context
+            .resource_context
+            .graphics_pipeline_cache()
+            .get_or_create_graphics_pipeline(&self.sprite_material, &write_context.renderpass)
+            .unwrap();
+
         unsafe {
             logical_device.cmd_bind_pipeline(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_info.get_raw().pipelines[0],
+                pipeline.get_raw().pipelines[write_context.subpass_index],
             );
 
             // Bind per-pass data (UBO with view/proj matrix, sampler)
             logical_device.cmd_bind_descriptor_sets(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_info
+                self.sprite_material
                     .get_raw()
                     .pipeline_layout
                     .get_raw()
                     .pipeline_layout,
                 0,
-                &[self.descriptor_set_per_view[view.view_index() as usize].get()],
+                &[self.per_view_descriptor_sets[view.view_index() as usize].get()],
                 &[],
             );
 
@@ -72,7 +76,6 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) {
-        // //println!("render");
         let logical_device = write_context.device_context.device();
         let command_buffer = write_context.command_buffer;
         let draw_call = &self.draw_calls[index as usize];
@@ -82,7 +85,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
             logical_device.cmd_bind_descriptor_sets(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_info
+                self.sprite_material
                     .get_raw()
                     .pipeline_layout
                     .get_raw()
@@ -100,27 +103,6 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
                 0,
                 0,
             );
-
-            // for draw_call in &self.draw_calls {
-            //     // Bind per-draw-call data (i.e. texture)
-            //     logical_device.cmd_bind_descriptor_sets(
-            //         *command_buffer,
-            //         vk::PipelineBindPoint::GRAPHICS,
-            //         *pipeline_layout,
-            //         1,
-            //         &[descriptor_set_per_texture[draw_call.texture_descriptor_index as usize]],
-            //         &[],
-            //     );
-            //
-            //     logical_device.cmd_draw_indexed(
-            //         *command_buffer,
-            //         draw_call.index_buffer_count as u32,
-            //         1,
-            //         draw_call.index_buffer_first_element as u32,
-            //         0,
-            //         0,
-            //     );
-            // }
         }
     }
 

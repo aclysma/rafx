@@ -1,13 +1,13 @@
 use renderer_nodes::{
-    RenderFeature, RenderFeatureIndex, DefaultExtractJob, ExtractJob, GenericRenderNodeHandle,
-    RenderNodeSet, RenderNodeCount,
+    RenderFeature, RenderFeatureIndex, ExtractJob, GenericRenderNodeHandle, RenderNodeSet,
+    RenderNodeCount, FrameNodeIndex, ViewNodeIndex,
 };
 use glam::f32::Vec3;
 use renderer_base::slab::{DropSlabKey, DropSlab};
 use std::convert::TryInto;
 
 mod extract;
-use extract::DemoExtractJobImpl;
+use extract::DemoExtractJob;
 
 mod prepare;
 mod write;
@@ -16,7 +16,7 @@ use crate::{DemoExtractContext, DemoPrepareContext, DemoWriteContext};
 
 pub fn create_demo_extract_job(
 ) -> Box<dyn ExtractJob<DemoExtractContext, DemoPrepareContext, DemoWriteContext>> {
-    Box::new(DefaultExtractJob::new(DemoExtractJobImpl::default()))
+    Box::new(DemoExtractJob::default())
 }
 
 //
@@ -84,7 +84,21 @@ impl RenderNodeSet for DemoRenderNodeSet {
 renderer_nodes::declare_render_feature!(DemoRenderFeature, DEMO_FEATURE_INDEX);
 
 #[derive(Debug, Clone)]
-pub(self) struct ExtractedDemoData {
+pub(self) struct ExtractedPerFrameNodeDemoData {
     position: Vec3,
     alpha: f32,
+}
+
+pub(self) struct ExtractedPerViewNodeDemoData {
+    position: Vec3,
+    alpha: f32,
+}
+
+pub(self) struct PreparedPerSubmitNodeDemoData {
+    #[allow(dead_code)]
+    position: Vec3,
+    #[allow(dead_code)]
+    alpha: f32,
+    frame_node_index: FrameNodeIndex,
+    view_node_index: ViewNodeIndex,
 }

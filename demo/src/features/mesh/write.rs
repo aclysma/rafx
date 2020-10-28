@@ -4,7 +4,6 @@ use renderer::nodes::{
     RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
-use renderer::assets::resources::{DescriptorSetArc, ResourceArc, GraphicsPipelineResource};
 use ash::vk;
 use ash::version::DeviceV1_0;
 
@@ -16,7 +15,7 @@ pub struct MeshCommandWriter {
 impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
     fn apply_setup(
         &self,
-        write_context: &mut RenderJobWriteContext,
+        _write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
     ) {
@@ -43,20 +42,23 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
         let command_buffer = write_context.command_buffer;
 
         let render_node_data = &self.prepared_submit_node_mesh_data[index as usize];
-        let frame_node_data : &ExtractedFrameNodeMeshData = self.extracted_frame_node_mesh_data[render_node_data.frame_node_index as usize]
+        let frame_node_data: &ExtractedFrameNodeMeshData = self.extracted_frame_node_mesh_data
+            [render_node_data.frame_node_index as usize]
             .as_ref()
             .unwrap();
 
         unsafe {
-            let mesh_part = &frame_node_data.mesh_asset.inner.mesh_parts[render_node_data.mesh_part_index];
+            let mesh_part =
+                &frame_node_data.mesh_asset.inner.mesh_parts[render_node_data.mesh_part_index];
 
             let pipeline = write_context
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     &mesh_part.material_passes[0].material_pass_resource,
-                    &write_context.renderpass
-                ).unwrap();
+                    &write_context.renderpass,
+                )
+                .unwrap();
 
             logical_device.cmd_bind_pipeline(
                 command_buffer,
@@ -68,11 +70,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
             logical_device.cmd_bind_descriptor_sets(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                pipeline
-                    .get_raw()
-                    .pipeline_layout
-                    .get_raw()
-                    .pipeline_layout,
+                pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                 0,
                 &[render_node_data.per_view_descriptor_set.get()],
                 &[],
@@ -95,11 +93,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
             logical_device.cmd_bind_descriptor_sets(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                pipeline
-                    .get_raw()
-                    .pipeline_layout
-                    .get_raw()
-                    .pipeline_layout,
+                pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                 2,
                 &[render_node_data.per_instance_descriptor_set.get()],
                 &[],
@@ -108,13 +102,25 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
             logical_device.cmd_bind_vertex_buffers(
                 command_buffer,
                 0, // first binding
-                &[frame_node_data.mesh_asset.inner.vertex_buffer.get_raw().buffer.buffer],
+                &[frame_node_data
+                    .mesh_asset
+                    .inner
+                    .vertex_buffer
+                    .get_raw()
+                    .buffer
+                    .buffer],
                 &[mesh_part.vertex_buffer_offset_in_bytes as u64], // offsets
             );
 
             logical_device.cmd_bind_index_buffer(
                 command_buffer,
-                frame_node_data.mesh_asset.inner.index_buffer.get_raw().buffer.buffer,
+                frame_node_data
+                    .mesh_asset
+                    .inner
+                    .index_buffer
+                    .get_raw()
+                    .buffer
+                    .buffer,
                 mesh_part.index_buffer_offset_in_bytes as u64, // offset
                 vk::IndexType::UINT16,
             );

@@ -1,6 +1,6 @@
 use ash::vk;
 use legion::*;
-use renderer::assets::{ResourceManager, DynResourceAllocatorSet, ResourceContext, ResourceArc, RenderPassResource};
+use renderer::assets::{ResourceManager, ResourceContext, ResourceArc, RenderPassResource};
 use renderer::vulkan::VkDeviceContext;
 
 pub struct RenderJobExtractContext {
@@ -26,12 +26,19 @@ impl RenderJobExtractContext {
 }
 
 pub struct RenderJobPrepareContext {
+    pub device_context: VkDeviceContext,
     pub resource_context: ResourceContext,
 }
 
 impl RenderJobPrepareContext {
-    pub fn new(resource_context: ResourceContext) -> Self {
-        RenderJobPrepareContext { resource_context }
+    pub fn new(
+        device_context: VkDeviceContext,
+        resource_context: ResourceContext,
+    ) -> Self {
+        RenderJobPrepareContext {
+            device_context,
+            resource_context,
+        }
     }
 }
 

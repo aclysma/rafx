@@ -1,9 +1,7 @@
 use crate::{
-    FramePacket, RenderView, PerFrameNode, PerViewNode, RenderFeatureIndex, FeatureCommandWriter,
-    PreparedRenderData, FeatureSubmitNodes, MergedFrameSubmitNodes, ViewSubmitNodes,
-    RenderRegistry,
+    FramePacket, RenderView, RenderFeatureIndex, FeatureCommandWriter, PreparedRenderData,
+    FeatureSubmitNodes, MergedFrameSubmitNodes, RenderRegistry,
 };
-use std::marker::PhantomData;
 
 pub trait PrepareJob<PrepareContextT, WriteContextT>: Send {
     fn prepare(
@@ -56,7 +54,7 @@ impl<PrepareContextT, WriteContextT> PrepareJobSet<PrepareContextT, WriteContext
         ))
     }
 }
-
+/*
 pub trait DefaultPrepareJobImpl<PrepareContextT, WriteContextT>: Send {
     fn prepare_begin(
         &mut self,
@@ -231,3 +229,4 @@ impl<
         self.prepare_impl.feature_index()
     }
 }
+*/
