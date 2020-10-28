@@ -1,7 +1,7 @@
 use renderer_shell_vulkan::{
-    VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window, VkImageRaw,
+    VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window, VkImageRaw, VkSwapchain,
 };
-use renderer_assets::ResourceManager;
+use renderer_assets::{ResourceManager, RenderPassResource, FramebufferResource, ResourceArc};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -64,6 +64,99 @@ fn main() {
     run(&window_wrapper, &mut event_pump).unwrap();
 }
 
+struct SwapchainResources {
+    swapchain_surface_info: SwapchainSurfaceInfo,
+    renderpass: ResourceArc<RenderPassResource>,
+    framebuffers: Vec<ResourceArc<FramebufferResource>>,
+}
+
+impl SwapchainResources {
+    fn new(
+        swapchain: &VkSwapchain,
+        resource_manager: &mut ResourceManager,
+    ) -> VkResult<Self> {
+        let swapchain_surface_info = SwapchainSurfaceInfo {
+            color_format: swapchain.swapchain_info.color_format,
+            depth_format: swapchain.swapchain_info.depth_format,
+            extents: swapchain.swapchain_info.extents,
+            msaa_level: swapchain.swapchain_info.msaa_level,
+            surface_format: swapchain.swapchain_info.surface_format,
+        };
+
+        let renderpass_dsc = Arc::new(dsc::RenderPass {
+            attachments: vec![dsc::AttachmentDescription {
+                flags: dsc::AttachmentDescriptionFlags::None,
+                format: dsc::AttachmentFormat::MatchSurface,
+                samples: dsc::SampleCountFlags::MatchSwapchain,
+                load_op: dsc::AttachmentLoadOp::Clear,
+                store_op: dsc::AttachmentStoreOp::Store,
+                stencil_load_op: dsc::AttachmentLoadOp::DontCare,
+                stencil_store_op: dsc::AttachmentStoreOp::DontCare,
+                initial_layout: dsc::ImageLayout::Undefined,
+                final_layout: dsc::ImageLayout::PresentSrcKhr,
+            }],
+            subpasses: vec![dsc::SubpassDescription {
+                color_attachments: vec![dsc::AttachmentReference {
+                    attachment: dsc::AttachmentIndex::Index(0),
+                    layout: dsc::ImageLayout::ColorAttachmentOptimal,
+                }],
+                input_attachments: vec![],
+                resolve_attachments: vec![],
+                depth_stencil_attachment: None,
+                pipeline_bind_point: dsc::PipelineBindPoint::Graphics,
+            }],
+            dependencies: vec![dsc::SubpassDependency {
+                src_subpass: dsc::SubpassDependencyIndex::External,
+                dst_subpass: dsc::SubpassDependencyIndex::Index(0),
+                src_stage_mask: dsc::PipelineStageFlags::TOP_OF_PIPE,
+                dst_stage_mask: dsc::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+                src_access_mask: vec![],
+                dst_access_mask: vec![
+                    dsc::AccessFlags::ColorAttachmentRead,
+                    dsc::AccessFlags::ColorAttachmentWrite,
+                ],
+                dependency_flags: dsc::DependencyFlags::ByRegion,
+            }],
+        });
+
+        let renderpass = resource_manager
+            .resources()
+            .get_or_create_renderpass(renderpass_dsc, &swapchain_surface_info)?;
+
+        let mut framebuffers = Vec::with_capacity(swapchain.swapchain_images.len());
+        for &image in &swapchain.swapchain_images {
+            let image = resource_manager.resources().insert_raw_image(VkImageRaw {
+                image,
+                allocation: None,
+            });
+
+            let image_view = resource_manager.resources().get_or_create_image_view(
+                &image,
+                &dsc::ImageViewMeta::default_2d_no_mips_or_layers(
+                    swapchain_surface_info.surface_format.format.into(),
+                    dsc::ImageAspectFlag::Color.into(),
+                ),
+            )?;
+
+            framebuffers.push(resource_manager.resources().get_or_create_framebuffer(
+                renderpass.clone(),
+                &[image_view],
+                &FramebufferMeta {
+                    width: swapchain_surface_info.extents.width,
+                    height: swapchain_surface_info.extents.height,
+                    layers: 1,
+                },
+            )?);
+        }
+
+        Ok(SwapchainResources {
+            swapchain_surface_info,
+            renderpass,
+            framebuffers,
+        })
+    }
+}
+
 fn run(
     window: &dyn Window,
     event_pump: &mut EventPump,
@@ -84,79 +177,8 @@ fn run(
 
     let mut surface = VkSurface::new(&vk_context, window, None).unwrap();
 
-    let swapchain_surface_info = SwapchainSurfaceInfo {
-        color_format: surface.swapchain().swapchain_info.color_format,
-        depth_format: surface.swapchain().swapchain_info.depth_format,
-        extents: surface.swapchain().swapchain_info.extents,
-        msaa_level: surface.swapchain().swapchain_info.msaa_level,
-        surface_format: surface.swapchain().swapchain_info.surface_format,
-    };
-
-    let renderpass_dsc = Arc::new(dsc::RenderPass {
-        attachments: vec![dsc::AttachmentDescription {
-            flags: dsc::AttachmentDescriptionFlags::None,
-            format: dsc::AttachmentFormat::MatchSurface,
-            samples: dsc::SampleCountFlags::MatchSwapchain,
-            load_op: dsc::AttachmentLoadOp::Clear,
-            store_op: dsc::AttachmentStoreOp::Store,
-            stencil_load_op: dsc::AttachmentLoadOp::DontCare,
-            stencil_store_op: dsc::AttachmentStoreOp::DontCare,
-            initial_layout: dsc::ImageLayout::Undefined,
-            final_layout: dsc::ImageLayout::PresentSrcKhr,
-        }],
-        subpasses: vec![dsc::SubpassDescription {
-            color_attachments: vec![dsc::AttachmentReference {
-                attachment: dsc::AttachmentIndex::Index(0),
-                layout: dsc::ImageLayout::ColorAttachmentOptimal,
-            }],
-            input_attachments: vec![],
-            resolve_attachments: vec![],
-            depth_stencil_attachment: None,
-            pipeline_bind_point: dsc::PipelineBindPoint::Graphics,
-        }],
-        dependencies: vec![dsc::SubpassDependency {
-            src_subpass: dsc::SubpassDependencyIndex::External,
-            dst_subpass: dsc::SubpassDependencyIndex::Index(0),
-            src_stage_mask: dsc::PipelineStageFlags::TOP_OF_PIPE,
-            dst_stage_mask: dsc::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            src_access_mask: vec![],
-            dst_access_mask: vec![
-                dsc::AccessFlags::ColorAttachmentRead,
-                dsc::AccessFlags::ColorAttachmentWrite,
-            ],
-            dependency_flags: dsc::DependencyFlags::ByRegion,
-        }],
-    });
-
-    let renderpass = resource_manager
-        .resources()
-        .get_or_create_renderpass(renderpass_dsc, &swapchain_surface_info)?;
-
-    let mut framebuffers = Vec::with_capacity(surface.swapchain().swapchain_images.len());
-    for &image in &surface.swapchain().swapchain_images {
-        let image = resource_manager.resources().insert_raw_image(VkImageRaw {
-            image,
-            allocation: None,
-        });
-
-        let image_view = resource_manager.resources().get_or_create_image_view(
-            &image,
-            &dsc::ImageViewMeta::default_2d_no_mips_or_layers(
-                swapchain_surface_info.surface_format.format.into(),
-                dsc::ImageAspectFlag::Color.into(),
-            ),
-        )?;
-
-        framebuffers.push(resource_manager.resources().get_or_create_framebuffer(
-            renderpass.clone(),
-            &[image_view],
-            &FramebufferMeta {
-                width: swapchain_surface_info.extents.width,
-                height: swapchain_surface_info.extents.height,
-                layers: 1,
-            },
-        )?);
-    }
+    let mut swapchain_resources =
+        SwapchainResources::new(surface.swapchain(), &mut resource_manager)?;
 
     loop {
         //
@@ -187,15 +209,16 @@ fn run(
                     }];
 
                     let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-                        .render_pass(renderpass.get_raw().renderpass)
+                        .render_pass(swapchain_resources.renderpass.get_raw().renderpass)
                         .framebuffer(
-                            framebuffers[frame_in_flight.present_index() as usize]
+                            swapchain_resources.framebuffers
+                                [frame_in_flight.present_index() as usize]
                                 .get_raw()
                                 .framebuffer,
                         )
                         .render_area(vk::Rect2D {
                             offset: vk::Offset2D { x: 0, y: 0 },
-                            extent: swapchain_surface_info.extents,
+                            extent: swapchain_resources.swapchain_surface_info.extents,
                         })
                         .clear_values(&clear_values);
 
@@ -235,7 +258,10 @@ fn run(
                     Ok(())
                 }
                 Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR) => {
-                    surface.rebuild_swapchain(window, None)
+                    surface.rebuild_swapchain(window, None)?;
+                    swapchain_resources =
+                        SwapchainResources::new(surface.swapchain(), &mut resource_manager)?;
+                    Ok(())
                 }
                 Err(ash::vk::Result::SUCCESS) => Ok(()),
                 Err(ash::vk::Result::SUBOPTIMAL_KHR) => Ok(()),
