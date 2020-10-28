@@ -436,52 +436,27 @@ impl GameRenderer {
         let extract_job_set = {
             let mut extract_job_set = ExtractJobSet::new();
 
-            let opaque_renderpass = render_graph.opaque_renderpass.clone();
-            if let Some(opaque_renderpass) = opaque_renderpass {
-                let debug3d_pipeline_info = resource_manager
-                    .try_get_graphics_pipeline(
-                        &guard.static_resources.debug3d_material,
-                        &opaque_renderpass,
-                        0,
-                    )
-                    .unwrap();
+            //TODO: Is it possible to know up front what extract jobs aren't necessary based on
+            // renderphases?
 
-                // Sprites
-                extract_job_set.add_job(create_sprite_extract_job(
-                    guard.static_resources.sprite_material.clone(),
-                ));
+            // Sprites
+            extract_job_set.add_job(create_sprite_extract_job(
+                guard.static_resources.sprite_material.clone(),
+            ));
 
-                // Meshes
-                extract_job_set.add_job(create_mesh_extract_job());
+            // Meshes
+            extract_job_set.add_job(create_mesh_extract_job());
 
-                // Debug 3D
-                extract_job_set.add_job(create_debug3d_extract_job(
-                    device_context.clone(),
-                    resource_context.create_descriptor_set_allocator(),
-                    debug3d_pipeline_info,
-                    &guard.static_resources.debug3d_material,
-                ));
-            }
+            // Debug 3D
+            extract_job_set.add_job(create_debug3d_extract_job(
+                &guard.static_resources.debug3d_material,
+            ));
 
-            let ui_renderpass = render_graph.ui_renderpass.clone();
-            if let Some(ui_renderpass) = ui_renderpass {
-                let imgui_pipeline_info = resource_manager
-                    .try_get_graphics_pipeline(
-                        &guard.static_resources.imgui_material,
-                        &ui_renderpass,
-                        0,
-                    )
-                    .unwrap();
-
-                extract_job_set.add_job(create_imgui_extract_job(
-                    device_context.clone(),
-                    resource_context.create_descriptor_set_allocator(),
-                    imgui_pipeline_info,
-                    swapchain_surface_info.extents,
-                    &guard.static_resources.imgui_material,
-                    guard.imgui_font_atlas_image_view.clone(),
-                ));
-            }
+            extract_job_set.add_job(create_imgui_extract_job(
+                swapchain_surface_info.extents,
+                &guard.static_resources.imgui_material,
+                guard.imgui_font_atlas_image_view.clone(),
+            ));
 
             extract_job_set
         };

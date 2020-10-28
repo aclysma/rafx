@@ -14,7 +14,6 @@ use renderer::vulkan::SwapchainInfo;
 use ash::version::DeviceV1_0;
 
 pub struct BuildRenderGraphResult {
-    pub opaque_renderpass: Option<ResourceArc<RenderPassResource>>,
     pub ui_renderpass: Option<ResourceArc<RenderPassResource>>,
     pub executor: RenderGraphExecutor<RenderGraphUserContext>,
 }
@@ -447,11 +446,9 @@ pub fn build_render_graph(
         graph_callbacks,
     )?;
 
-    let opaque_renderpass = executor.renderpass_resource(opaque_pass.node);
     let ui_renderpass = executor.renderpass_resource(ui_pass.node);
     Ok(BuildRenderGraphResult {
         executor,
-        opaque_renderpass,
         ui_renderpass,
     })
 }

@@ -1,14 +1,11 @@
 use crate::render_contexts::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext};
 use atelier_assets::loader::handle::Handle;
-use crate::features::debug3d::extract::Debug3dExtractJobImpl;
-use renderer::vulkan::VkDeviceContext;
-use renderer::assets::DescriptorSetAllocatorRef;
+use crate::features::debug3d::extract::Debug3dExtractJob;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;
 use std::convert::TryInto;
 use renderer::assets::MaterialAsset;
-use renderer::assets::resources::{ResourceArc, GraphicsPipelineResource};
 
 mod extract;
 mod prepare;
@@ -18,15 +15,9 @@ mod debug3d_resource;
 pub use debug3d_resource::*;
 
 pub fn create_debug3d_extract_job(
-    device_context: VkDeviceContext,
-    descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     debug3d_material: &Handle<MaterialAsset>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
-    Box::new(Debug3dExtractJobImpl::new(
-        device_context,
-        descriptor_set_allocator,
-        pipeline_info,
+    Box::new(Debug3dExtractJob::new(
         debug3d_material,
     ))
 }

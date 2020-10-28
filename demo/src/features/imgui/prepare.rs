@@ -3,38 +3,32 @@ use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, RenderFeature, PrepareJob,
 };
-use crate::features::imgui::{ImGuiRenderFeature, ExtractedImGuiData};
+use crate::features::imgui::{ImGuiRenderFeature, ExtractedImGuiData, ImGuiUniformBufferObject};
 use super::write::ImGuiCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::vulkan::{VkBuffer, VkDeviceContext};
+use renderer::vulkan::VkBuffer;
 use ash::vk;
-use renderer::assets::resources::{DescriptorSetArc, ResourceArc, GraphicsPipelineResource};
+use renderer::assets::resources::{ResourceArc, MaterialPassResource, ImageViewResource};
 
 pub struct ImGuiPrepareJobImpl {
-    device_context: VkDeviceContext,
-    pipeline_info: ResourceArc<GraphicsPipelineResource>,
-    dyn_resource_allocator: renderer::assets::DynResourceAllocatorSet,
-    per_pass_descriptor_set: DescriptorSetArc,
-    per_image_descriptor_sets: Vec<DescriptorSetArc>,
     extracted_imgui_data: ExtractedImGuiData,
+    imgui_material_pass: ResourceArc<MaterialPassResource>,
+    view_ubo: ImGuiUniformBufferObject,
+    font_atlas: ResourceArc<ImageViewResource>,
 }
 
 impl ImGuiPrepareJobImpl {
     pub(super) fn new(
-        device_context: VkDeviceContext,
-        pipeline_info: ResourceArc<GraphicsPipelineResource>,
-        dyn_resource_allocator: renderer::assets::DynResourceAllocatorSet,
-        per_pass_descriptor_set: DescriptorSetArc,
-        per_image_descriptor_sets: Vec<DescriptorSetArc>,
         extracted_imgui_data: ExtractedImGuiData,
+        imgui_material_pass: ResourceArc<MaterialPassResource>,
+        view_ubo: ImGuiUniformBufferObject,
+        font_atlas: ResourceArc<ImageViewResource>,
     ) -> Self {
         ImGuiPrepareJobImpl {
-            device_context,
-            pipeline_info,
-            dyn_resource_allocator,
-            per_pass_descriptor_set,
-            per_image_descriptor_sets,
             extracted_imgui_data,
+            imgui_material_pass,
+            view_ubo,
+            font_atlas
         }
     }
 }
@@ -42,13 +36,15 @@ impl ImGuiPrepareJobImpl {
 impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepareJobImpl {
     fn prepare(
         self: Box<Self>,
-        _prepare_context: &RenderJobPrepareContext,
+        prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> (
         Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
         FeatureSubmitNodes,
     ) {
+        let mut descriptor_set_allocator = prepare_context.resource_context.create_descriptor_set_allocator();
+        let dyn_resource_allocator = prepare_context.resource_context.create_dyn_resource_allocator_set();
         let draw_list_count = self
             .extracted_imgui_data
             .imgui_draw_data
@@ -56,6 +52,28 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             .unwrap()
             .draw_lists()
             .len();
+
+        let per_pass_layout = &self.imgui_material_pass.get_raw().pipeline_layout.get_raw().descriptor_sets[0];
+        let mut per_pass_descriptor_set = descriptor_set_allocator
+            .create_dyn_descriptor_set_uninitialized(&per_pass_layout)
+            .unwrap();
+        per_pass_descriptor_set.set_buffer_data(0, &self.view_ubo);
+        per_pass_descriptor_set
+            .flush(&mut descriptor_set_allocator)
+            .unwrap();
+
+        let per_image_layout = &self.imgui_material_pass.get_raw().pipeline_layout.get_raw().descriptor_sets[1];
+        let mut per_image_descriptor_set = descriptor_set_allocator
+            .create_dyn_descriptor_set_uninitialized(&per_image_layout)
+            .unwrap();
+        per_image_descriptor_set.set_image(0, self.font_atlas.clone());
+        per_image_descriptor_set
+            .flush(&mut descriptor_set_allocator)
+            .unwrap();
+
+        let per_pass_descriptor_set = per_pass_descriptor_set.descriptor_set().clone();
+        let per_image_descriptor_sets = vec![per_image_descriptor_set.descriptor_set().clone()];
+
         let mut vertex_buffers = Vec::with_capacity(draw_list_count);
         let mut index_buffers = Vec::with_capacity(draw_list_count);
         if let Some(draw_data) = &self.extracted_imgui_data.imgui_draw_data {
@@ -63,7 +81,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
                 let vertex_buffer_size = draw_list.vertex_buffer().len() as u64
                     * std::mem::size_of::<imgui::DrawVert>() as u64;
                 let mut vertex_buffer = VkBuffer::new(
-                    &self.device_context,
+                    &prepare_context.device_context,
                     vk_mem::MemoryUsage::CpuOnly,
                     vk::BufferUsageFlags::VERTEX_BUFFER,
                     vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -73,12 +91,12 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
                 vertex_buffer
                     .write_to_host_visible_buffer(draw_list.vertex_buffer())
                     .unwrap();
-                let vertex_buffer = self.dyn_resource_allocator.insert_buffer(vertex_buffer);
+                let vertex_buffer = dyn_resource_allocator.insert_buffer(vertex_buffer);
 
                 let index_buffer_size = draw_list.index_buffer().len() as u64
                     * std::mem::size_of::<imgui::DrawIdx>() as u64;
                 let mut index_buffer = VkBuffer::new(
-                    &self.device_context,
+                    &prepare_context.device_context,
                     vk_mem::MemoryUsage::CpuOnly,
                     vk::BufferUsageFlags::INDEX_BUFFER,
                     vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
@@ -89,7 +107,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
                 index_buffer
                     .write_to_host_visible_buffer(draw_list.index_buffer())
                     .unwrap();
-                let index_buffer = self.dyn_resource_allocator.insert_buffer(index_buffer);
+                let index_buffer = dyn_resource_allocator.insert_buffer(index_buffer);
 
                 vertex_buffers.push(vertex_buffer);
                 index_buffers.push(index_buffer);
@@ -111,9 +129,9 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             imgui_draw_data: self.extracted_imgui_data.imgui_draw_data,
             vertex_buffers,
             index_buffers,
-            pipeline_info: self.pipeline_info,
-            per_pass_descriptor_set: self.per_pass_descriptor_set,
-            per_image_descriptor_sets: self.per_image_descriptor_sets,
+            per_pass_descriptor_set,
+            per_image_descriptor_sets,
+            imgui_material_pass: self.imgui_material_pass
         });
 
         (writer, submit_nodes)

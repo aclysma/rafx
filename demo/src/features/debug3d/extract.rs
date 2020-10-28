@@ -1,86 +1,50 @@
 use crate::features::debug3d::{
-    ExtractedDebug3dData, Debug3dRenderFeature, DebugDraw3DResource, Debug3dUniformBufferObject,
+    ExtractedDebug3dData, Debug3dRenderFeature, DebugDraw3DResource,
 };
 use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::nodes::{
     FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature, ExtractJob,
 };
 use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
-use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resources::{DescriptorSetAllocatorRef, ResourceArc, GraphicsPipelineResource};
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::MaterialAsset;
 
-pub struct Debug3dExtractJobImpl {
-    device_context: VkDeviceContext,
-    descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: ResourceArc<GraphicsPipelineResource>,
+pub struct Debug3dExtractJob {
     debug3d_material: Handle<MaterialAsset>,
 }
 
-impl Debug3dExtractJobImpl {
+impl Debug3dExtractJob {
     pub fn new(
-        device_context: VkDeviceContext,
-        descriptor_set_allocator: DescriptorSetAllocatorRef,
-        pipeline_info: ResourceArc<GraphicsPipelineResource>,
         debug3d_material: &Handle<MaterialAsset>,
     ) -> Self {
-        Debug3dExtractJobImpl {
-            device_context,
-            descriptor_set_allocator,
-            pipeline_info,
+        Debug3dExtractJob {
             debug3d_material: debug3d_material.clone(),
         }
     }
 }
 
 impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
-    for Debug3dExtractJobImpl
+    for Debug3dExtractJob
 {
     fn extract(
-        mut self: Box<Self>,
+        self: Box<Self>,
         extract_context: &RenderJobExtractContext,
         _frame_packet: &FramePacket,
-        views: &[&RenderView],
+        _views: &[&RenderView],
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
-        let dyn_resource_allocator = extract_context
-            .resource_manager
-            .create_dyn_resource_allocator_set();
-        let layout = extract_context
-            .resource_manager
-            .get_descriptor_set_layout_for_pass(&self.debug3d_material, 0, 0)
-            .unwrap();
-
-        let per_view_descriptor_sets: Vec<_> = views
-            .iter()
-            .map(|view| {
-                let debug3d_view = Debug3dUniformBufferObject {
-                    view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
-                };
-
-                let mut descriptor_set = self
-                    .descriptor_set_allocator
-                    .create_dyn_descriptor_set_uninitialized(&layout)
-                    .unwrap();
-                descriptor_set.set_buffer_data(0, &debug3d_view);
-                descriptor_set
-                    .flush(&mut self.descriptor_set_allocator)
-                    .unwrap();
-                descriptor_set.descriptor_set().clone()
-            })
-            .collect();
-
         let line_lists = extract_context
             .resources
             .get_mut::<DebugDraw3DResource>()
             .unwrap()
             .take_line_lists();
 
+        let debug3d_material_pass = extract_context.resource_manager.get_material_pass_by_index(
+            &self.debug3d_material,
+            0
+        ).unwrap();
+
         Box::new(Debug3dPrepareJobImpl::new(
-            self.device_context,
-            self.pipeline_info,
-            dyn_resource_allocator,
-            per_view_descriptor_sets,
+            debug3d_material_pass,
             ExtractedDebug3dData { line_lists },
         ))
     }

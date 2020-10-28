@@ -5,7 +5,7 @@ use renderer::nodes::{
 };
 use crate::render_contexts::RenderJobWriteContext;
 use renderer::assets::resources::{
-    ResourceArc, DescriptorSetArc, GraphicsPipelineResource, BufferResource,
+    ResourceArc, DescriptorSetArc, BufferResource, MaterialPassResource
 };
 use ash::vk;
 use ash::version::DeviceV1_0;
@@ -13,8 +13,8 @@ use ash::version::DeviceV1_0;
 pub struct Debug3dCommandWriter {
     pub(super) vertex_buffer: Option<ResourceArc<BufferResource>>,
     pub(super) draw_calls: Vec<Debug3dDrawCall>,
-    pub(super) pipeline_info: ResourceArc<GraphicsPipelineResource>,
-    pub(super) descriptor_set_per_view: Vec<DescriptorSetArc>,
+    pub(super) debug3d_material_pass: ResourceArc<MaterialPassResource>,
+    pub(super) per_view_descriptor_sets: Vec<DescriptorSetArc>,
 }
 
 impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
@@ -25,26 +25,31 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
         _render_phase_index: RenderPhaseIndex,
     ) {
         if let Some(vertex_buffer) = self.vertex_buffer.as_ref() {
+            let pipeline = write_context.resource_context.graphics_pipeline_cache().get_or_create_graphics_pipeline(
+                &self.debug3d_material_pass,
+                &write_context.renderpass
+            ).unwrap();
+
             let logical_device = write_context.device_context.device();
             let command_buffer = write_context.command_buffer;
             unsafe {
                 logical_device.cmd_bind_pipeline(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    self.pipeline_info.get_raw().pipelines[0],
+                    pipeline.get_raw().pipelines[0],
                 );
 
                 // Bind per-pass data (UBO with view/proj matrix, sampler)
                 logical_device.cmd_bind_descriptor_sets(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    self.pipeline_info
+                    pipeline
                         .get_raw()
                         .pipeline_layout
                         .get_raw()
                         .pipeline_layout,
                     0,
-                    &[self.descriptor_set_per_view[view.view_index() as usize].get()],
+                    &[self.per_view_descriptor_sets[view.view_index() as usize].get()],
                     &[],
                 );
 

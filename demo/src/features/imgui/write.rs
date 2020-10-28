@@ -5,7 +5,7 @@ use renderer::nodes::{
 };
 use crate::render_contexts::RenderJobWriteContext;
 use renderer::assets::resources::{
-    ResourceArc, DescriptorSetArc, GraphicsPipelineResource, BufferResource,
+    ResourceArc, DescriptorSetArc, BufferResource, MaterialPassResource
 };
 use ash::vk;
 use ash::version::DeviceV1_0;
@@ -15,9 +15,9 @@ pub struct ImGuiCommandWriter {
     pub(super) vertex_buffers: Vec<ResourceArc<BufferResource>>,
     pub(super) index_buffers: Vec<ResourceArc<BufferResource>>,
     pub(super) imgui_draw_data: Option<ImGuiDrawData>,
-    pub(super) pipeline_info: ResourceArc<GraphicsPipelineResource>,
     pub(super) per_pass_descriptor_set: DescriptorSetArc,
     pub(super) per_image_descriptor_sets: Vec<DescriptorSetArc>,
+    pub(super) imgui_material_pass: ResourceArc<MaterialPassResource>
 }
 
 impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
@@ -28,20 +28,24 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
         _render_phase_index: RenderPhaseIndex,
     ) {
         if self.imgui_draw_data.is_some() {
+            let pipeline = write_context.resource_context.graphics_pipeline_cache().get_or_create_graphics_pipeline(
+                &self.imgui_material_pass, &write_context.renderpass
+            ).unwrap();
+
             let logical_device = write_context.device_context.device();
             let command_buffer = write_context.command_buffer;
             unsafe {
                 logical_device.cmd_bind_pipeline(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    self.pipeline_info.get_raw().pipelines[0],
+                    pipeline.get_raw().pipelines[0],
                 );
 
                 // Bind per-pass data (UBO with view/proj matrix, sampler)
                 logical_device.cmd_bind_descriptor_sets(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    self.pipeline_info
+                    pipeline
                         .get_raw()
                         .pipeline_layout
                         .get_raw()

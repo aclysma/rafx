@@ -4,12 +4,10 @@ use renderer::nodes::{
     FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature, ExtractJob,
 };
 use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
-use renderer::vulkan::VkDeviceContext;
-use renderer::assets::resources::{DescriptorSetAllocatorRef};
 use atelier_assets::loader::handle::Handle;
 use crate::imgui_support::Sdl2ImguiManager;
 use ash::vk::Extent2D;
-use renderer::assets::{ImageViewResource, ResourceArc, GraphicsPipelineResource};
+use renderer::assets::{ImageViewResource, ResourceArc};
 use renderer::assets::MaterialAsset;
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
@@ -38,9 +36,6 @@ pub fn orthographic_rh_gl(
 }
 
 pub struct ImGuiExtractJobImpl {
-    device_context: VkDeviceContext,
-    descriptor_set_allocator: DescriptorSetAllocatorRef,
-    pipeline_info: ResourceArc<GraphicsPipelineResource>,
     extents: Extent2D,
     imgui_material: Handle<MaterialAsset>,
     font_atlas: ResourceArc<ImageViewResource>,
@@ -48,17 +43,11 @@ pub struct ImGuiExtractJobImpl {
 
 impl ImGuiExtractJobImpl {
     pub fn new(
-        device_context: VkDeviceContext,
-        descriptor_set_allocator: DescriptorSetAllocatorRef,
-        pipeline_info: ResourceArc<GraphicsPipelineResource>,
         extents: Extent2D,
         imgui_material: &Handle<MaterialAsset>,
         font_atlas: ResourceArc<ImageViewResource>,
     ) -> Self {
         ImGuiExtractJobImpl {
-            device_context,
-            descriptor_set_allocator,
-            pipeline_info,
             extents,
             imgui_material: imgui_material.clone(),
             font_atlas,
@@ -70,7 +59,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
     for ImGuiExtractJobImpl
 {
     fn extract(
-        mut self: Box<Self>,
+        self: Box<Self>,
         extract_context: &RenderJobExtractContext,
         _frame_packet: &FramePacket,
         _views: &[&RenderView],
@@ -95,48 +84,16 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             100.0,
         );
 
-        let ubo = ImGuiUniformBufferObject { view_proj };
 
-        let dyn_resource_allocator = extract_context
-            .resource_manager
-            .create_dyn_resource_allocator_set();
-        let per_pass_layout = extract_context
-            .resource_manager
-            .get_descriptor_set_layout_for_pass(&self.imgui_material, 0, 0)
-            .unwrap();
+        let imgui_material_pass = extract_context.resource_manager.get_material_pass_by_index(&self.imgui_material, 0).unwrap();
 
-        let mut per_pass_descriptor_set = self
-            .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&per_pass_layout)
-            .unwrap();
-        per_pass_descriptor_set.set_buffer_data(0, &ubo);
-        per_pass_descriptor_set
-            .flush(&mut self.descriptor_set_allocator)
-            .unwrap();
-
-        let per_image_layout = extract_context
-            .resource_manager
-            .get_descriptor_set_layout_for_pass(&self.imgui_material, 0, 1)
-            .unwrap();
-        let mut per_image_descriptor_set = self
-            .descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&per_image_layout)
-            .unwrap();
-        per_image_descriptor_set.set_image(0, self.font_atlas);
-        per_image_descriptor_set
-            .flush(&mut self.descriptor_set_allocator)
-            .unwrap();
-
-        let per_pass_descriptor_set = per_pass_descriptor_set.descriptor_set().clone();
-        let per_image_descriptor_sets = vec![per_image_descriptor_set.descriptor_set().clone()];
+        let view_ubo = ImGuiUniformBufferObject { view_proj };
 
         Box::new(ImGuiPrepareJobImpl::new(
-            self.device_context,
-            self.pipeline_info,
-            dyn_resource_allocator,
-            per_pass_descriptor_set,
-            per_image_descriptor_sets,
             ExtractedImGuiData { imgui_draw_data },
+            imgui_material_pass,
+            view_ubo,
+            self.font_atlas
         ))
     }
 
