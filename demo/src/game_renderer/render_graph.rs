@@ -7,7 +7,7 @@ use ash::prelude::VkResult;
 use renderer::assets::resources::{
     ResourceArc, ImageViewResource, RenderPassResource, MaterialPassResource,
 };
-use crate::render_contexts::{RenderJobWriteContextFactory, RenderJobWriteContext};
+use crate::render_contexts::RenderJobWriteContext;
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
 use renderer::vulkan::SwapchainInfo;
@@ -22,13 +22,6 @@ pub struct BuildRenderGraphResult {
 // include data that is not known until later after the extract/prepare phases have completed.
 pub struct RenderGraphUserContext {
     pub prepared_render_data: Box<PreparedRenderData<RenderJobWriteContext>>,
-    pub write_context_factory: RenderJobWriteContextFactory,
-}
-
-impl RenderGraphUserContext {
-    pub fn resource_context(&self) -> &ResourceContext {
-        &self.write_context_factory.resource_context
-    }
 }
 
 pub fn build_render_graph(
@@ -93,11 +86,7 @@ pub fn build_render_graph(
 
         let main_view = main_view.clone();
         graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
-            let mut write_context = user_context.write_context_factory.create_context(
-                args.command_buffer,
-                args.renderpass.clone(),
-                args.subpass_index,
-            );
+            let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
             user_context
                 .prepared_render_data
                 .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context);
@@ -400,15 +389,8 @@ pub fn build_render_graph(
         // buffer. Just add the draw calls.
         let main_view = main_view.clone();
         graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
-            // Can retrieve images created/used by the graph
-            //let _color_attachment = graph_context.image(color).unwrap();
-
             // Kick the material system to emit all draw calls for the UiRenderPhase for the view
-            let mut write_context = user_context.write_context_factory.create_context(
-                args.command_buffer,
-                args.renderpass.clone(),
-                args.subpass_index,
-            );
+            let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
             user_context
                 .prepared_render_data
                 .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context);

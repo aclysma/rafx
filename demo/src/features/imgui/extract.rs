@@ -84,8 +84,10 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             100.0,
         );
 
-
-        let imgui_material_pass = extract_context.resource_manager.get_material_pass_by_index(&self.imgui_material, 0).unwrap();
+        let imgui_material_pass = extract_context
+            .resource_manager
+            .get_material_pass_by_index(&self.imgui_material, 0)
+            .unwrap();
 
         let view_ubo = ImGuiUniformBufferObject { view_proj };
 
@@ -93,7 +95,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             ExtractedImGuiData { imgui_draw_data },
             imgui_material_pass,
             view_ubo,
-            self.font_atlas
+            self.font_atlas,
         ))
     }
 

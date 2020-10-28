@@ -1,8 +1,6 @@
 use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
 use crate::game_renderer::GameRendererInner;
-use renderer::assets::resources::{
-    ResourceManager, DynDescriptorSet, ResourceArc, ImageViewResource, RenderPassResource,
-};
+use renderer::assets::resources::{ResourceManager, ResourceArc, ImageViewResource, RenderPassResource};
 use renderer::assets::RenderpassAsset;
 use renderer::assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
@@ -16,8 +14,6 @@ pub struct SwapchainResources {
     // of window/surface to info for the swapchain
     pub swapchain_images: Vec<ResourceArc<ImageViewResource>>,
 
-    pub debug_material_per_frame_data: DynDescriptorSet,
-
     pub swapchain_info: SwapchainInfo,
     pub swapchain_surface_info: SwapchainSurfaceInfo,
 }
@@ -26,7 +22,7 @@ impl SwapchainResources {
     pub fn new(
         _device_context: &VkDeviceContext,
         swapchain: &VkSwapchain,
-        game_renderer: &mut GameRendererInner,
+        _game_renderer: &mut GameRendererInner,
         resource_manager: &mut ResourceManager,
         swapchain_info: SwapchainInfo,
         swapchain_surface_info: SwapchainSurfaceInfo,
@@ -65,23 +61,10 @@ impl SwapchainResources {
             swapchain_images.push(image_view);
         }
 
-        let mut descriptor_set_allocator = resource_manager.create_descriptor_set_allocator();
-
-        let debug_per_frame_layout = resource_manager
-            .get_descriptor_set_layout_for_pass(
-                &game_renderer.static_resources.debug3d_material,
-                0,
-                0,
-            )
-            .unwrap();
-        let debug_material_per_frame_data = descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&debug_per_frame_layout)?;
-
         log::debug!("game renderer swapchain_created finished");
 
         VkResult::Ok(SwapchainResources {
             swapchain_images,
-            debug_material_per_frame_data,
             swapchain_info,
             swapchain_surface_info,
         })

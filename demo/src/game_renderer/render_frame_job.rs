@@ -1,8 +1,6 @@
 use crate::game_renderer::GameRenderer;
 use renderer::nodes::{PrepareJobSet, FramePacket, RenderView, RenderRegistry};
-use crate::render_contexts::{
-    RenderJobPrepareContext, RenderJobWriteContext, RenderJobWriteContextFactory,
-};
+use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use renderer::assets::graph::RenderGraphExecutor;
 use renderer::vulkan::{VkDeviceContext, FrameInFlight};
 use ash::prelude::VkResult;
@@ -97,12 +95,8 @@ impl RenderFrameJob {
         //
         // Write Jobs - triggered by the render graph
         //
-        let write_context_factory =
-            RenderJobWriteContextFactory::new(device_context, resource_context);
-
         let graph_context = RenderGraphUserContext {
             prepared_render_data,
-            write_context_factory,
         };
 
         let command_buffers = render_graph.execute_graph(&graph_context)?;

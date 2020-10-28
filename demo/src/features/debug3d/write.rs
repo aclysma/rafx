@@ -4,9 +4,7 @@ use renderer::nodes::{
     RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
-use renderer::assets::resources::{
-    ResourceArc, DescriptorSetArc, BufferResource, MaterialPassResource
-};
+use renderer::assets::resources::{ResourceArc, DescriptorSetArc, BufferResource, MaterialPassResource};
 use ash::vk;
 use ash::version::DeviceV1_0;
 
@@ -25,10 +23,14 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
         _render_phase_index: RenderPhaseIndex,
     ) {
         if let Some(vertex_buffer) = self.vertex_buffer.as_ref() {
-            let pipeline = write_context.resource_context.graphics_pipeline_cache().get_or_create_graphics_pipeline(
-                &self.debug3d_material_pass,
-                &write_context.renderpass
-            ).unwrap();
+            let pipeline = write_context
+                .resource_context
+                .graphics_pipeline_cache()
+                .get_or_create_graphics_pipeline(
+                    &self.debug3d_material_pass,
+                    &write_context.renderpass,
+                )
+                .unwrap();
 
             let logical_device = write_context.device_context.device();
             let command_buffer = write_context.command_buffer;
@@ -43,11 +45,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
                 logical_device.cmd_bind_descriptor_sets(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    pipeline
-                        .get_raw()
-                        .pipeline_layout
-                        .get_raw()
-                        .pipeline_layout,
+                    pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                     0,
                     &[self.per_view_descriptor_sets[view.view_index() as usize].get()],
                     &[],

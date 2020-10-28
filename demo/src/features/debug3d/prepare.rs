@@ -2,7 +2,10 @@ use renderer::nodes::{
     RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
     FramePacket, RenderFeature, PrepareJob,
 };
-use crate::features::debug3d::{Debug3dRenderFeature, ExtractedDebug3dData, Debug3dDrawCall, Debug3dVertex, Debug3dUniformBufferObject};
+use crate::features::debug3d::{
+    Debug3dRenderFeature, ExtractedDebug3dData, Debug3dDrawCall, Debug3dVertex,
+    Debug3dUniformBufferObject,
+};
 use crate::phases::OpaqueRenderPhase;
 use super::write::Debug3dCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
@@ -37,9 +40,16 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
         Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
         FeatureSubmitNodes,
     ) {
-        let mut descriptor_set_allocator = prepare_context.resource_context.create_descriptor_set_allocator();
-        let per_view_descriptor_set_layout = &self.debug3d_material_pass.get_raw().pipeline_layout.get_raw().descriptor_sets[0];
-        let per_view_descriptor_sets : Vec<_> = views
+        let mut descriptor_set_allocator = prepare_context
+            .resource_context
+            .create_descriptor_set_allocator();
+        let per_view_descriptor_set_layout = &self
+            .debug3d_material_pass
+            .get_raw()
+            .pipeline_layout
+            .get_raw()
+            .descriptor_sets[0];
+        let per_view_descriptor_sets: Vec<_> = views
             .iter()
             .map(|view| {
                 let debug3d_view = Debug3dUniformBufferObject {
@@ -50,9 +60,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
                     .create_dyn_descriptor_set_uninitialized(per_view_descriptor_set_layout)
                     .unwrap();
                 descriptor_set.set_buffer_data(0, &debug3d_view);
-                descriptor_set
-                    .flush(&mut descriptor_set_allocator)
-                    .unwrap();
+                descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
                 descriptor_set.descriptor_set().clone()
             })
             .collect();
@@ -62,7 +70,9 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
         //
         let line_lists = &self.extracted_debug3d_data.line_lists;
         let mut draw_calls = Vec::with_capacity(line_lists.len());
-        let dyn_resource_allocator = prepare_context.resource_context.create_dyn_resource_allocator_set();
+        let dyn_resource_allocator = prepare_context
+            .resource_context
+            .create_dyn_resource_allocator_set();
 
         let mut vertex_list: Vec<Debug3dVertex> = vec![];
         for line_list in line_lists {

@@ -28,7 +28,7 @@ impl ImGuiPrepareJobImpl {
             extracted_imgui_data,
             imgui_material_pass,
             view_ubo,
-            font_atlas
+            font_atlas,
         }
     }
 }
@@ -43,8 +43,12 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
         Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
         FeatureSubmitNodes,
     ) {
-        let mut descriptor_set_allocator = prepare_context.resource_context.create_descriptor_set_allocator();
-        let dyn_resource_allocator = prepare_context.resource_context.create_dyn_resource_allocator_set();
+        let mut descriptor_set_allocator = prepare_context
+            .resource_context
+            .create_descriptor_set_allocator();
+        let dyn_resource_allocator = prepare_context
+            .resource_context
+            .create_dyn_resource_allocator_set();
         let draw_list_count = self
             .extracted_imgui_data
             .imgui_draw_data
@@ -53,7 +57,12 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             .draw_lists()
             .len();
 
-        let per_pass_layout = &self.imgui_material_pass.get_raw().pipeline_layout.get_raw().descriptor_sets[0];
+        let per_pass_layout = &self
+            .imgui_material_pass
+            .get_raw()
+            .pipeline_layout
+            .get_raw()
+            .descriptor_sets[0];
         let mut per_pass_descriptor_set = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(&per_pass_layout)
             .unwrap();
@@ -62,7 +71,12 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             .flush(&mut descriptor_set_allocator)
             .unwrap();
 
-        let per_image_layout = &self.imgui_material_pass.get_raw().pipeline_layout.get_raw().descriptor_sets[1];
+        let per_image_layout = &self
+            .imgui_material_pass
+            .get_raw()
+            .pipeline_layout
+            .get_raw()
+            .descriptor_sets[1];
         let mut per_image_descriptor_set = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(&per_image_layout)
             .unwrap();
@@ -131,7 +145,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             index_buffers,
             per_pass_descriptor_set,
             per_image_descriptor_sets,
-            imgui_material_pass: self.imgui_material_pass
+            imgui_material_pass: self.imgui_material_pass,
         });
 
         (writer, submit_nodes)

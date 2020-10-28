@@ -8,7 +8,6 @@ use atelier_assets::core as atelier_core;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::AssetHandle;
 use renderer::assets::MaterialAsset;
-use renderer::assets::RenderpassAsset;
 
 fn begin_load_asset<T>(
     asset_uuid: AssetUuid,
@@ -56,12 +55,8 @@ fn wait_for_asset_to_load<T>(
 }
 
 pub struct GameRendererStaticResources {
-    pub opaque_renderpass: Handle<RenderpassAsset>,
-    pub bloom_blur_renderpass: Handle<RenderpassAsset>,
-    pub ui_renderpass: Handle<RenderpassAsset>,
     pub sprite_material: Handle<MaterialAsset>,
     pub debug3d_material: Handle<MaterialAsset>,
-    pub mesh_material: Handle<MaterialAsset>,
     pub bloom_extract_material: Handle<MaterialAsset>,
     pub bloom_blur_material: Handle<MaterialAsset>,
     pub bloom_combine_material: Handle<MaterialAsset>,
@@ -73,21 +68,6 @@ impl GameRendererStaticResources {
         asset_resource: &mut AssetResource,
         resource_manager: &mut ResourceManager,
     ) -> VkResult<Self> {
-        let opaque_renderpass = begin_load_asset::<RenderpassAsset>(
-            asset_uuid!("0cc8a6a3-10de-48d5-b04f-92fbcca815a1"),
-            asset_resource,
-        );
-
-        let bloom_blur_renderpass = begin_load_asset::<RenderpassAsset>(
-            asset_uuid!("54931d31-770c-4327-bb17-fc6481e5c7a6"),
-            asset_resource,
-        );
-
-        let ui_renderpass = begin_load_asset::<RenderpassAsset>(
-            asset_uuid!("55e71363-f773-4964-9e12-ca99704b8015"),
-            asset_resource,
-        );
-
         //
         // Sprite resources
         //
@@ -99,7 +79,7 @@ impl GameRendererStaticResources {
         //
         // Debug resources
         //
-        let debug_material = begin_load_asset::<MaterialAsset>(
+        let debug3d_material = begin_load_asset::<MaterialAsset>(
             asset_uuid!("11d3b144-f564-42c9-b31f-82c8a938bf85"),
             asset_resource,
         );
@@ -129,14 +109,6 @@ impl GameRendererStaticResources {
         );
 
         //
-        // Mesh resources
-        //
-        let mesh_material = begin_load_asset::<MaterialAsset>(
-            asset_uuid!("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
-            asset_resource,
-        );
-
-        //
         // ImGui resources
         //
         let imgui_material = begin_load_asset::<MaterialAsset>(
@@ -152,7 +124,7 @@ impl GameRendererStaticResources {
         )?;
 
         wait_for_asset_to_load(
-            &debug_material,
+            &debug3d_material,
             asset_resource,
             resource_manager,
             "debub material",
@@ -180,13 +152,6 @@ impl GameRendererStaticResources {
         )?;
 
         wait_for_asset_to_load(
-            &mesh_material,
-            asset_resource,
-            resource_manager,
-            "mesh material",
-        )?;
-
-        wait_for_asset_to_load(
             &imgui_material,
             asset_resource,
             resource_manager,
@@ -194,12 +159,8 @@ impl GameRendererStaticResources {
         )?;
 
         Ok(GameRendererStaticResources {
-            opaque_renderpass,
-            bloom_blur_renderpass,
-            ui_renderpass,
             sprite_material,
-            debug3d_material: debug_material,
-            mesh_material,
+            debug3d_material,
             bloom_extract_material,
             bloom_blur_material,
             bloom_combine_material,

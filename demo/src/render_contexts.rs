@@ -2,6 +2,7 @@ use ash::vk;
 use legion::*;
 use renderer::assets::{ResourceManager, ResourceContext, ResourceArc, RenderPassResource};
 use renderer::vulkan::VkDeviceContext;
+use renderer::assets::graph::VisitRenderpassArgs;
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,
@@ -42,39 +43,6 @@ impl RenderJobPrepareContext {
     }
 }
 
-// Used to produce RenderJobWriteContexts per each job
-pub struct RenderJobWriteContextFactory {
-    pub device_context: VkDeviceContext,
-    pub resource_context: ResourceContext,
-}
-
-impl RenderJobWriteContextFactory {
-    pub fn new(
-        device_context: VkDeviceContext,
-        resource_context: ResourceContext,
-    ) -> Self {
-        RenderJobWriteContextFactory {
-            device_context,
-            resource_context,
-        }
-    }
-
-    pub fn create_context(
-        &self,
-        command_buffer: vk::CommandBuffer,
-        renderpass: ResourceArc<RenderPassResource>,
-        subpass_index: usize,
-    ) -> RenderJobWriteContext {
-        RenderJobWriteContext::new(
-            self.device_context.clone(),
-            self.resource_context.clone(),
-            command_buffer,
-            renderpass,
-            subpass_index,
-        )
-    }
-}
-
 pub struct RenderJobWriteContext {
     pub device_context: VkDeviceContext,
     pub resource_context: ResourceContext,
@@ -98,6 +66,21 @@ impl RenderJobWriteContext {
             renderpass,
             subpass_index,
         }
+    }
+
+    pub fn from_graph_visit_render_pass_args(
+        visit_renderpass_args: &VisitRenderpassArgs
+    ) -> RenderJobWriteContext {
+        RenderJobWriteContext::new(
+            visit_renderpass_args.graph_context.device_context().clone(),
+            visit_renderpass_args
+                .graph_context
+                .resource_context()
+                .clone(),
+            visit_renderpass_args.command_buffer,
+            visit_renderpass_args.renderpass.clone(),
+            visit_renderpass_args.subpass_index,
+        )
     }
 }
 

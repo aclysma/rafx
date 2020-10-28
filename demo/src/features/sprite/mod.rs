@@ -141,7 +141,6 @@ pub(self) struct ExtractedSpriteData {
     scale: f32,
     rotation: f32,
     alpha: f32,
-    //texture_descriptor_set: DescriptorSetArc, //TODO: I'd prefer to use something ref-counted
     image_view: ResourceArc<ImageViewResource>,
 }
 

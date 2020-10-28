@@ -4,9 +4,7 @@ use renderer::nodes::{
     RenderView,
 };
 use crate::render_contexts::RenderJobWriteContext;
-use renderer::assets::resources::{
-    ResourceArc, DescriptorSetArc, BufferResource, MaterialPassResource
-};
+use renderer::assets::resources::{ResourceArc, DescriptorSetArc, BufferResource, MaterialPassResource};
 use ash::vk;
 use ash::version::DeviceV1_0;
 use crate::imgui_support::{ImGuiDrawData, ImGuiDrawCmd};
@@ -17,7 +15,7 @@ pub struct ImGuiCommandWriter {
     pub(super) imgui_draw_data: Option<ImGuiDrawData>,
     pub(super) per_pass_descriptor_set: DescriptorSetArc,
     pub(super) per_image_descriptor_sets: Vec<DescriptorSetArc>,
-    pub(super) imgui_material_pass: ResourceArc<MaterialPassResource>
+    pub(super) imgui_material_pass: ResourceArc<MaterialPassResource>,
 }
 
 impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
@@ -28,9 +26,14 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
         _render_phase_index: RenderPhaseIndex,
     ) {
         if self.imgui_draw_data.is_some() {
-            let pipeline = write_context.resource_context.graphics_pipeline_cache().get_or_create_graphics_pipeline(
-                &self.imgui_material_pass, &write_context.renderpass
-            ).unwrap();
+            let pipeline = write_context
+                .resource_context
+                .graphics_pipeline_cache()
+                .get_or_create_graphics_pipeline(
+                    &self.imgui_material_pass,
+                    &write_context.renderpass,
+                )
+                .unwrap();
 
             let logical_device = write_context.device_context.device();
             let command_buffer = write_context.command_buffer;
@@ -45,11 +48,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
                 logical_device.cmd_bind_descriptor_sets(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    pipeline
-                        .get_raw()
-                        .pipeline_layout
-                        .get_raw()
-                        .pipeline_layout,
+                    pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                     0,
                     &[
                         self.per_pass_descriptor_set.get(),

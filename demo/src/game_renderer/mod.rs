@@ -322,7 +322,7 @@ impl GameRenderer {
         let aspect_ratio = extents_width as f32 / extents_height as f32;
 
         let render_view_set = RenderViewSet::default();
-        let (main_view, view_proj) = {
+        let main_view = {
             let view = glam::Mat4::look_at_rh(
                 eye,
                 glam::Vec3::new(0.0, 0.0, 0.0),
@@ -335,17 +335,14 @@ impl GameRenderer {
                 20.0,
             );
             let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
-            let view_proj = proj * view;
 
-            let main_view = render_view_set.create_view(
+            render_view_set.create_view(
                 eye,
                 view,
                 proj,
                 main_camera_render_phase_mask,
                 "main".to_string(),
-            );
-
-            (main_view, view_proj)
+            )
         };
 
         //
@@ -414,15 +411,6 @@ impl GameRenderer {
                 main_view_dynamic_visibility_result,
             ],
         );
-
-        let mut descriptor_set_allocator = resource_context.create_descriptor_set_allocator();
-        swapchain_resources
-            .debug_material_per_frame_data
-            .set_buffer_data(0, &view_proj);
-        swapchain_resources
-            .debug_material_per_frame_data
-            .flush(&mut descriptor_set_allocator)?;
-        descriptor_set_allocator.flush_changes()?;
 
         //
         // Update Resources and flush descriptor set changes
