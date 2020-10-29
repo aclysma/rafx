@@ -1,9 +1,10 @@
 use crossbeam_channel::{Receiver, Sender};
 use crate::game_renderer::RenderFrameJob;
 use std::thread::JoinHandle;
+use renderer::vulkan::FrameInFlight;
 
 enum RenderThreadMessage {
-    Render(RenderFrameJob),
+    Render(RenderFrameJob, FrameInFlight),
     Finish,
 }
 
@@ -29,9 +30,10 @@ impl RenderThread {
     pub fn render(
         &mut self,
         prepared_frame: RenderFrameJob,
+        frame_in_flight: FrameInFlight,
     ) {
         self.job_tx
-            .send(RenderThreadMessage::Render(prepared_frame))
+            .send(RenderThreadMessage::Render(prepared_frame, frame_in_flight))
             .unwrap();
     }
 
@@ -45,9 +47,9 @@ impl RenderThread {
     ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         loop {
             match job_rx.recv()? {
-                RenderThreadMessage::Render(prepared_frame) => {
+                RenderThreadMessage::Render(prepared_frame, frame_in_flight) => {
                     log::trace!("kick off render");
-                    prepared_frame.render_async();
+                    prepared_frame.render_async(frame_in_flight);
                 }
                 RenderThreadMessage::Finish => {
                     log::trace!("finishing render thread");

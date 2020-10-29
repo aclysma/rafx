@@ -51,8 +51,6 @@ pub struct GameRendererInner {
 
     main_camera_render_phase_mask: RenderPhaseMask,
 
-    previous_frame_result: Option<VkResult<()>>,
-
     render_thread: RenderThread,
 }
 
@@ -101,8 +99,6 @@ impl GameRenderer {
             main_camera_render_phase_mask,
 
             render_thread,
-
-            previous_frame_result: Some(Ok(())),
         };
 
         Ok(GameRenderer {
@@ -178,51 +174,70 @@ impl GameRenderer {
 impl GameRenderer {
     // This is externally exposed, it checks result of the previous frame (which implicitly also
     // waits for the previous frame to complete if it hasn't already)
-    pub fn begin_render(
+    pub fn start_rendering_next_frame(
         &self,
         resources: &Resources,
         world: &World,
         window: &dyn Window,
     ) -> VkResult<()> {
+        //
+        // Block until the previous frame completes being submitted to GPU
+        //
         let t0 = std::time::Instant::now();
-        // This lock will delay until the previous frame completes being submitted to GPU
-        resources
+        let previous_frame_job_result = resources
             .get_mut::<VkSurface>()
             .unwrap()
-            .wait_until_frame_not_in_flight()?;
+            .wait_until_frame_not_in_flight();
         let t1 = std::time::Instant::now();
         log::trace!(
             "[main] wait for previous frame present {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
         );
 
-        // Here, we error check from the previous frame. This includes checking for errors that happened
-        // during setup (i.e. before we finished building the frame job). So
-        {
-            let result = self.inner.lock().unwrap().previous_frame_result.take();
-            if let Some(result) = result {
-                if let Err(e) = result {
-                    match e {
-                        ash::vk::Result::ERROR_OUT_OF_DATE_KHR => {
-                            SwapchainLifetimeListener::rebuild_swapchain(resources, window, self)
-                        }
-                        ash::vk::Result::SUCCESS => Ok(()),
-                        ash::vk::Result::SUBOPTIMAL_KHR => Ok(()),
-                        //ash::vk::Result::TIMEOUT => Ok(()),
-                        _ => {
-                            log::warn!("Unexpected rendering error");
-                            return Err(e);
-                        }
-                    }?;
-                }
-            }
-        }
+        //
+        // Check the result of the previous frame. Three outcomes:
+        //  - Previous frame was successful: immediately try rendering again with the same swapchain
+        //  - Previous frame failed but resolvable by rebuilding the swapchain - skip trying to
+        //    render again with the same swapchain
+        //  - Previous frame failed with unrecoverable error: bail
+        //
+        let rebuild_swapchain = match &previous_frame_job_result {
+            Ok(_) => Ok(false),
+            Err(ash::vk::Result::SUCCESS) => Ok(false),
+            Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR) => Ok(true),
+            Err(ash::vk::Result::SUBOPTIMAL_KHR) => Ok(true),
+            Err(e) => Err(*e),
+        }?;
 
-        // If we get an error before kicking off rendering, stash it for the next frame. We could
-        // consider acting on it instead, but for now lets just have a single consistent codepath
-        if let Err(e) = self.do_begin_render(resources, world, window) {
-            log::warn!("Received error immediately from do_begin_render: {:?}", e);
-            self.inner.lock().unwrap().previous_frame_result = Some(Err(e));
+        //
+        // If the previous frame rendered properly, try to render immediately with the same
+        // swapchain as last time
+        //
+        let previous_frame_job_result = if !rebuild_swapchain {
+            self.aquire_swapchain_image_and_render(resources, world, window)
+        } else {
+            previous_frame_job_result
+        };
+
+        //
+        // Rebuild the swapchain if needed
+        //
+        if let Err(e) = previous_frame_job_result {
+            match e {
+                ash::vk::Result::ERROR_OUT_OF_DATE_KHR => {
+                    log::info!("  ERROR_OUT_OF_DATE_KHR");
+                    SwapchainLifetimeListener::rebuild_swapchain(resources, window, self)
+                }
+                ash::vk::Result::SUCCESS => Ok(()),
+                ash::vk::Result::SUBOPTIMAL_KHR => Ok(()),
+                _ => {
+                    log::warn!("Unexpected rendering error {:?}", e);
+                    return Err(e);
+                }
+            }?;
+
+            // If we fail again immediately, bail
+            self.aquire_swapchain_image_and_render(resources, world, window)?
         }
 
         Ok(())
@@ -230,7 +245,7 @@ impl GameRenderer {
 
     //TODO: In a failure, return the frame_in_flight and cancel the render. This will make
     // previous_frame_result unnecessary
-    pub fn do_begin_render(
+    fn aquire_swapchain_image_and_render(
         &self,
         resources: &Resources,
         world: &World,
@@ -249,17 +264,40 @@ impl GameRenderer {
             result?
         };
 
-        // Get command buffers to submit
-        Self::render(self, world, resources, window, frame_in_flight)
+        // After this point, any failures will be deferred to handle in next frame
+        Self::create_and_start_render_job(self, world, resources, window, frame_in_flight);
+        Ok(())
     }
 
-    pub fn render(
+    fn create_and_start_render_job(
+        game_renderer: &GameRenderer,
+        world: &World,
+        resources: &Resources,
+        window: &dyn Window,
+        frame_in_flight: FrameInFlight,
+    ) {
+        let result =
+            Self::try_create_render_job(&game_renderer, world, resources, window, &frame_in_flight);
+
+        match result {
+            Ok(prepared_frame) => {
+                let mut guard = game_renderer.inner.lock().unwrap();
+                let game_renderer_inner = &mut *guard;
+                game_renderer_inner
+                    .render_thread
+                    .render(prepared_frame, frame_in_flight)
+            }
+            Err(e) => frame_in_flight.cancel_present(Err(e)),
+        };
+    }
+
+    fn try_create_render_job(
         game_renderer: &GameRenderer,
         world: &World,
         resources: &Resources,
         _window: &dyn Window,
-        frame_in_flight: FrameInFlight,
-    ) -> VkResult<()> {
+        frame_in_flight: &FrameInFlight,
+    ) -> VkResult<RenderFrameJob> {
         let t0 = std::time::Instant::now();
 
         //
@@ -295,6 +333,7 @@ impl GameRenderer {
 
         let mut guard = game_renderer.inner.lock().unwrap();
         let game_renderer_inner = &mut *guard;
+
         let main_camera_render_phase_mask = game_renderer_inner.main_camera_render_phase_mask;
 
         let static_resources = &game_renderer_inner.static_resources;
@@ -470,11 +509,8 @@ impl GameRenderer {
             main_view,
             render_registry,
             device_context,
-            frame_in_flight,
         };
 
-        guard.render_thread.render(prepared_frame);
-
-        Ok(())
+        Ok(prepared_frame)
     }
 }

@@ -170,7 +170,7 @@ fn main() {
             let window = Sdl2Window::new(&sdl2_systems.window);
             let game_renderer = resources.get::<GameRenderer>().unwrap();
             game_renderer
-                .begin_render(&resources, &world, &window)
+                .start_rendering_next_frame(&resources, &world, &window)
                 .unwrap();
         }
 
