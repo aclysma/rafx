@@ -415,10 +415,10 @@ impl GameRenderer {
             .unwrap();
 
         //let t2 = std::time::Instant::now();
+        //TODO: This is now possible to run on the render thread
         let render_graph = render_graph::build_render_graph(
             &device_context,
             &resource_context,
-            resource_manager,
             &swapchain_surface_info,
             &swapchain_info,
             swapchain_image,

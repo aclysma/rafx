@@ -1,7 +1,6 @@
 use ash::vk;
 use renderer::assets::{vk_description as dsc, ResourceContext};
 use renderer::assets::graph::*;
-use renderer::assets::resources::ResourceManager;
 use crate::VkDeviceContext;
 use ash::prelude::VkResult;
 use renderer::assets::resources::{
@@ -27,7 +26,6 @@ pub struct RenderGraphUserContext {
 pub fn build_render_graph(
     device_context: &VkDeviceContext,
     resource_context: &ResourceContext,
-    resource_manager: &mut ResourceManager,
     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     swapchain_info: &SwapchainInfo,
     swapchain_image: ResourceArc<ImageViewResource>,
@@ -422,7 +420,6 @@ pub fn build_render_graph(
     let executor = RenderGraphExecutor::new(
         &device_context,
         &resource_context,
-        resource_manager,
         graph,
         swapchain_surface_info,
         graph_callbacks,

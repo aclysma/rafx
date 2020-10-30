@@ -314,7 +314,6 @@ fn render_frame(
     let executor = RenderGraphExecutor::new(
         &device_context,
         &resource_manager.resource_context(),
-        resource_manager,
         graph,
         &swapchain_surface_info,
         graph_callbacks,

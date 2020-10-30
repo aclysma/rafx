@@ -25,6 +25,7 @@ pub use prepared_graph::RenderGraphNodeCallbacks;
 pub use prepared_graph::PreparedRenderGraph;
 pub use prepared_graph::RenderGraphExecutor;
 pub use prepared_graph::VisitRenderpassArgs;
+pub use prepared_graph::RenderGraphCache;
 
 // Test doesn't function because the graph now takes ResourceArc<ImageViewResource>
 #[cfg(test)]

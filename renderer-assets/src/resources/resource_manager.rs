@@ -12,7 +12,7 @@ use crate::{
     DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData, AssetLookupSet,
     DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation,
     DynPassMaterialInstance, DescriptorSetAllocatorRef, DynMaterialInstance,
-    DescriptorSetAllocatorProvider, ResourceCacheSet, RenderPassResource, GraphicsPipelineCache,
+    DescriptorSetAllocatorProvider, RenderPassResource, GraphicsPipelineCache,
     MaterialPassResource,
 };
 use crate::assets::{
@@ -40,6 +40,7 @@ use crate::resources::command_buffers::DynCommandWriterAllocator;
 use ash::vk;
 use renderer_nodes::RenderRegistry;
 use fnv::FnvHashMap;
+use crate::graph::RenderGraphCache;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -69,6 +70,7 @@ struct ResourceContextInner {
     dyn_commands_allocator: DynCommandWriterAllocator,
     resources: ResourceLookupSet,
     graphics_pipeline_cache: GraphicsPipelineCache,
+    render_graph_cache: RenderGraphCache,
 }
 
 #[derive(Clone)]
@@ -83,6 +85,10 @@ impl ResourceContext {
 
     pub fn graphics_pipeline_cache(&self) -> &GraphicsPipelineCache {
         &self.inner.graphics_pipeline_cache
+    }
+
+    pub fn render_graph_cache(&self) -> &RenderGraphCache {
+        &self.inner.render_graph_cache
     }
 
     pub fn dyn_command_writer_allocator(&self) -> DynCommandWriterAllocator {
@@ -102,7 +108,7 @@ pub struct ResourceManager {
     dyn_resources: DynResourceAllocatorSetManager,
     dyn_commands: DynCommandWriterAllocator,
     resources: ResourceLookupSet,
-    resource_caches: ResourceCacheSet,
+    render_graph_cache: RenderGraphCache,
     loaded_assets: AssetLookupSet,
     load_queues: LoadQueueSet,
     resource_descriptor_sets: DescriptorSetAllocator,
@@ -131,7 +137,9 @@ impl ResourceManager {
                 renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
             ),
             resources: resources.clone(),
-            resource_caches: Default::default(),
+            render_graph_cache: RenderGraphCache::new(
+                renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+            ),
             loaded_assets: Default::default(),
             load_queues: Default::default(),
             //swapchain_surfaces: Default::default(),
@@ -151,6 +159,7 @@ impl ResourceManager {
             dyn_commands_allocator: self.dyn_commands.clone(),
             resources: self.resources.clone(),
             graphics_pipeline_cache: self.graphics_pipeline_cache.clone(),
+            render_graph_cache: self.render_graph_cache.clone(),
         };
 
         ResourceContext {
@@ -160,10 +169,6 @@ impl ResourceManager {
 
     pub fn resources(&self) -> &ResourceLookupSet {
         &self.resources
-    }
-
-    pub fn resource_caches_mut(&mut self) -> &mut ResourceCacheSet {
-        &mut self.resource_caches
     }
 
     pub fn graphics_pipeline_cache(&self) -> &GraphicsPipelineCache {
@@ -349,7 +354,7 @@ impl ResourceManager {
     }
 
     pub fn on_frame_complete(&mut self) -> VkResult<()> {
-        self.resource_caches.on_frame_complete();
+        self.render_graph_cache.on_frame_complete();
         self.graphics_pipeline_cache.on_frame_complete();
         self.resources.on_frame_complete()?;
         self.dyn_commands.on_frame_complete()?;
@@ -991,7 +996,7 @@ impl Drop for ResourceManager {
         log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
 
         // Wipe caches to ensure we don't keep anything alive
-        self.resource_caches.clear();
+        self.render_graph_cache.clear();
         self.graphics_pipeline_cache.clear_all_pipelines();
 
         // Wipe out any loaded assets. This will potentially drop ref counts on resources

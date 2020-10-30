@@ -93,8 +93,8 @@ impl GraphicsPipelineCache {
         let mut guard = self.inner.lock().unwrap();
         #[cfg(debug_assertions)]
         {
-            guard.lock_call_count = 0;
             guard.lock_call_count_previous_frame = guard.lock_call_count + 1;
+            guard.lock_call_count = 0;
         }
         guard.current_frame_index += 1;
         Self::drop_stale_pipelines(&mut *guard);
@@ -125,7 +125,7 @@ impl GraphicsPipelineCache {
         let mut inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
-            inner.lock_call_count += 0;
+            inner.lock_call_count += 1;
         }
 
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
@@ -158,7 +158,7 @@ impl GraphicsPipelineCache {
         let mut guard = self.inner.lock().unwrap();
         #[cfg(debug_assertions)]
         {
-            guard.lock_call_count += 0;
+            guard.lock_call_count += 1;
         }
 
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
@@ -211,7 +211,7 @@ impl GraphicsPipelineCache {
         let mut inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
-            inner.lock_call_count += 0;
+            inner.lock_call_count += 1;
         }
 
         // Find the swapchain index for the given renderpass
@@ -254,7 +254,7 @@ impl GraphicsPipelineCache {
         let mut inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
-            inner.lock_call_count += 0;
+            inner.lock_call_count += 1;
         }
 
         //TODO: Avoid iterating everything all the time
@@ -322,7 +322,7 @@ impl GraphicsPipelineCache {
         let mut guard = self.inner.lock().unwrap();
         #[cfg(debug_assertions)]
         {
-            guard.lock_call_count += 0;
+            guard.lock_call_count += 1;
         }
 
         guard.cached_pipelines.clear();

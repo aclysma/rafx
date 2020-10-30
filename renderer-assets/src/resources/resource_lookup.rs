@@ -23,8 +23,8 @@ pub struct ResourceHash(u64);
 impl ResourceHash {
     pub fn from_key<KeyT: Hash>(key: &KeyT) -> ResourceHash {
         use std::hash::Hasher;
-        use std::collections::hash_map::DefaultHasher;
-        let mut hasher = DefaultHasher::new();
+        use fnv::FnvHasher;
+        let mut hasher = FnvHasher::default();
         key.hash(&mut hasher);
         ResourceHash(hasher.finish())
     }
@@ -64,6 +64,8 @@ where
     lock_call_count_previous_frame: u64,
     #[cfg(debug_assertions)]
     lock_call_count: u64,
+    create_count_previous_frame: u64,
+    create_count: u64,
 }
 
 //TODO: Don't love using a mutex here. If this becomes a performance bottleneck:
@@ -100,6 +102,8 @@ where
             lock_call_count_previous_frame: 0,
             #[cfg(debug_assertions)]
             lock_call_count: 0,
+            create_count_previous_frame: 0,
+            create_count: 0,
         };
 
         ResourceLookup {
@@ -139,6 +143,8 @@ where
         // Process any pending drops. If we don't do this, it's possible that the pending drop could
         // wipe out the state we're about to set
         Self::handle_dropped_resources(inner);
+
+        inner.create_count += 1;
 
         let resource = (create_resource_fn)()?;
         log::trace!(
@@ -210,8 +216,10 @@ where
         }
 
         if let Some(resource) = Self::do_get(&mut *guard, hash, key) {
+            //println!("get {} {:?}", core::any::type_name::<ResourceT>(), hash);
             Ok(resource)
         } else {
+            //println!("create {} {:?}", core::any::type_name::<ResourceT>(), hash);
             Self::do_create(&mut *guard, hash, key, create_resource_fn)
         }
     }
@@ -240,9 +248,12 @@ where
         let mut guard = self.inner.lock().unwrap();
         #[cfg(debug_assertions)]
         {
-            guard.lock_call_count += 1;
             guard.lock_call_count_previous_frame = guard.lock_call_count + 1;
+            guard.lock_call_count = 0;
         }
+
+        guard.create_count_previous_frame = guard.create_count;
+        guard.create_count = 0;
 
         Self::handle_dropped_resources(&mut guard);
         guard.drop_sink.on_frame_complete(device_context)
@@ -252,6 +263,7 @@ where
         let guard = self.inner.lock().unwrap();
         ResourceLookupMetric {
             count: guard.resources.len(),
+            previous_frame_create_count: guard.create_count_previous_frame,
             #[cfg(debug_assertions)]
             previous_frame_lock_call_count: guard.lock_call_count_previous_frame,
         }
@@ -363,6 +375,7 @@ pub struct ImageViewKey {
 #[derive(Debug)]
 pub struct ResourceLookupMetric {
     pub count: usize,
+    pub previous_frame_create_count: u64,
     #[cfg(debug_assertions)]
     pub previous_frame_lock_call_count: u64,
 }
