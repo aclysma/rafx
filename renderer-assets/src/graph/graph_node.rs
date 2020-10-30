@@ -47,16 +47,6 @@ pub enum RenderGraphPassAttachmentType {
     Modify,
 }
 
-// impl RenderGraphPassAttachmentType {
-//     pub fn is_write(&self) -> bool {
-//         match self {
-//             RenderGraphPassAttachmentType::Create => true,
-//             RenderGraphPassAttachmentType::Modify => true,
-//             RenderGraphPassAttachmentType::Read => false,
-//         }
-//     }
-// }
-
 pub struct RenderGraphPassColorAttachmentInfo {
     pub attachment_type: RenderGraphPassAttachmentType,
     pub clear_color_value: Option<vk::ClearColorValue>,

@@ -14,8 +14,10 @@ mod graph_node;
 use graph_node::*;
 pub use graph_node::RenderGraphNodeId;
 
+mod graph_pass;
+use graph_pass::*;
+
 mod graph_plan;
-use graph_plan::*;
 pub use graph_plan::RenderGraphPlan;
 
 mod prepared_graph;

@@ -5,9 +5,10 @@ use crate::vk_description as dsc;
 use crate::vk_description::SwapchainSurfaceInfo;
 use crate::graph::graph_node::RenderGraphNodeId;
 use crate::graph::{RenderGraphImageUsageId, RenderGraphBuilder, RenderGraphImageConstraint};
-use crate::graph::graph_image::{RenderGraphImageVersionId, RenderGraphImageUser};
+use crate::graph::graph_image::{RenderGraphImageUser, VirtualImageId, PhysicalImageId};
 use ash::vk;
 use std::sync::Arc;
+use super::*;
 
 /// The specification for the image by image usage
 pub struct DetermineImageConstraintsResult {
@@ -23,227 +24,23 @@ impl DetermineImageConstraintsResult {
     }
 }
 
-#[derive(Debug)]
-struct PhysicalImageInfo {
-    usages: Vec<RenderGraphImageUsageId>,
-    versions: Vec<RenderGraphImageVersionId>,
-    specification: RenderGraphImageSpecification,
-}
-
-impl PhysicalImageInfo {
-    fn new(specification: RenderGraphImageSpecification) -> Self {
-        PhysicalImageInfo {
-            usages: Default::default(),
-            versions: Default::default(),
-            specification,
-        }
-    }
-}
-
 /// Assignment of usages to actual images. This allows a single image to be passed through a
 /// sequence of reads and writes
 #[derive(Debug)]
-pub struct AssignPhysicalImagesResult {
-    map_image_to_physical: FnvHashMap<RenderGraphImageUsageId, PhysicalImageId>,
-    // physical_image_usages: FnvHashMap<PhysicalImageId, Vec<RenderGraphImageUsageId>>,
-    // physical_image_versions: FnvHashMap<PhysicalImageId, Vec<RenderGraphImageVersionId>>,
-    physical_image_infos: FnvHashMap<PhysicalImageId, PhysicalImageInfo>,
+pub struct AssignVirtualImagesResult {
+    usage_to_virtual: FnvHashMap<RenderGraphImageUsageId, VirtualImageId>,
 }
-
-/// Represents the invalidate or flush of a RenderGraphPassImageBarriers
-#[derive(Debug)]
-pub struct RenderGraphImageBarrier {
-    access_flags: vk::AccessFlags,
-    stage_flags: vk::PipelineStageFlags,
-}
-
-impl Default for RenderGraphImageBarrier {
-    fn default() -> Self {
-        RenderGraphImageBarrier {
-            access_flags: vk::AccessFlags::empty(),
-            stage_flags: vk::PipelineStageFlags::empty(),
-        }
-    }
-}
-
-/// Information provided per image used in a pass to properly synchronize access to it from
-/// different passes
-#[derive(Debug)]
-pub struct RenderGraphPassImageBarriers {
-    invalidate: RenderGraphImageBarrier,
-    flush: RenderGraphImageBarrier,
-    layout: vk::ImageLayout,
-    used_by_attachment: bool,
-    used_by_sampling: bool,
-}
-
-impl RenderGraphPassImageBarriers {
-    fn new(layout: vk::ImageLayout) -> Self {
-        RenderGraphPassImageBarriers {
-            flush: Default::default(),
-            invalidate: Default::default(),
-            layout,
-            used_by_attachment: false,
-            used_by_sampling: false,
-        }
-    }
-}
-
-/// All the barriers required for a single node (i.e. subpass). Nodes represent passes that may be
-/// merged to be subpasses within a single pass.
-#[derive(Debug)]
-pub struct RenderGraphNodeImageBarriers {
-    barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers>,
-}
-
-const MAX_COLOR_ATTACHMENTS: usize = 4;
-const MAX_RESOLVE_ATTACHMENTS: usize = 4;
-
-/// Metadata for a subpass
-#[derive(Debug)]
-pub struct RenderGraphSubpass {
-    node: RenderGraphNodeId,
-
-    color_attachments: [Option<usize>; MAX_COLOR_ATTACHMENTS], // could ref back to node
-    resolve_attachments: [Option<usize>; MAX_RESOLVE_ATTACHMENTS],
-    depth_attachment: Option<usize>,
-}
-
-/// Clear value for either a color attachment or depth/stencil attachment
-#[derive(Clone)]
-pub enum AttachmentClearValue {
-    Color(vk::ClearColorValue),
-    DepthStencil(vk::ClearDepthStencilValue),
-}
-
-impl std::fmt::Debug for AttachmentClearValue {
-    fn fmt(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        match self {
-            AttachmentClearValue::Color(_) => {
-                f.debug_struct("AttachmentClearValue(Color)").finish()
-            }
-            AttachmentClearValue::DepthStencil(value) => f
-                .debug_struct("AttachmentClearValue(DepthStencil)")
-                .field("depth", &value.depth)
-                .field("stencil", &value.stencil)
-                .finish(),
-        }
-    }
-}
-
-impl Into<vk::ClearValue> for AttachmentClearValue {
-    fn into(self) -> vk::ClearValue {
-        match self {
-            AttachmentClearValue::Color(color) => vk::ClearValue { color },
-            AttachmentClearValue::DepthStencil(depth_stencil) => vk::ClearValue {
-                depth_stencil: vk::ClearDepthStencilValue {
-                    depth: depth_stencil.depth,
-                    stencil: depth_stencil.stencil,
-                },
-            },
-        }
-    }
-}
-
-/// Attachment for a render pass
-#[derive(Debug)]
-pub struct RenderGraphPassAttachment {
-    image: PhysicalImageId,
-    load_op: vk::AttachmentLoadOp,
-    stencil_load_op: vk::AttachmentLoadOp,
-    store_op: vk::AttachmentStoreOp,
-    stencil_store_op: vk::AttachmentStoreOp,
-    clear_color: Option<AttachmentClearValue>,
-    format: vk::Format,
-    samples: vk::SampleCountFlags,
-    initial_layout: dsc::ImageLayout,
-    final_layout: dsc::ImageLayout,
-}
-
-impl RenderGraphPassAttachment {
-    fn create_attachment_description(&self) -> dsc::AttachmentDescription {
-        dsc::AttachmentDescription {
-            flags: dsc::AttachmentDescriptionFlags::None,
-            format: dsc::AttachmentFormat::Format(self.format.into()),
-            samples: dsc::SampleCountFlags::from_vk_sample_count_flags(self.samples).unwrap(),
-            load_op: self.load_op.into(),
-            store_op: self.store_op.into(),
-            stencil_load_op: self.stencil_load_op.into(),
-            stencil_store_op: self.stencil_store_op.into(),
-            initial_layout: self.initial_layout,
-            final_layout: self.final_layout,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct PrepassBarrier {
-    pub src_stage: vk::PipelineStageFlags,
-    pub dst_stage: vk::PipelineStageFlags,
-    pub image_barriers: Vec<PrepassImageBarrier>,
-}
-
-#[derive(Debug)]
-pub struct PrepassImageBarrier {
-    pub src_access: vk::AccessFlags,
-    pub dst_access: vk::AccessFlags,
-    pub old_layout: vk::ImageLayout,
-    pub new_layout: vk::ImageLayout,
-    pub src_queue_family_index: u32,
-    pub dst_queue_family_index: u32,
-    pub image: PhysicalImageId,
-}
-
-/// Metadata required to create a renderpass
-#[derive(Debug)]
-pub struct RenderGraphPass {
-    attachments: Vec<RenderGraphPassAttachment>,
-    subpasses: Vec<RenderGraphSubpass>,
-
-    // For when we want to do layout transitions on non-attachments
-    //pre_pass_image_barriers: Vec<PrepassImageBarrier>
-    pre_pass_barrier: Option<PrepassBarrier>,
-}
-
-/// An ID for an image (possibly aliased)
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct PhysicalImageId(usize);
 
 #[derive(Default)]
-struct PhysicalImageIdAllocator {
+struct VirtualImageIdAllocator {
     next_id: usize,
 }
 
-impl PhysicalImageIdAllocator {
-    fn allocate(&mut self) -> PhysicalImageId {
-        let id = PhysicalImageId(self.next_id);
+impl VirtualImageIdAllocator {
+    fn allocate(&mut self) -> VirtualImageId {
+        let id = VirtualImageId(self.next_id);
         self.next_id += 1;
         id
-    }
-}
-
-pub struct RenderGraphOutputPass {
-    pub(super) subpass_nodes: Vec<RenderGraphNodeId>,
-    pub(super) description: Arc<dsc::RenderPass>,
-    pub(super) attachment_images: Vec<PhysicalImageId>,
-    pub(super) clear_values: Vec<vk::ClearValue>,
-    pub(super) extents: vk::Extent2D,
-    pub(super) pre_pass_barrier: Option<PrepassBarrier>,
-}
-
-impl std::fmt::Debug for RenderGraphOutputPass {
-    fn fmt(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        f.debug_struct("RenderGraphOutputPass")
-            .field("description", &self.description)
-            .field("attachment_images", &self.attachment_images)
-            .field("extents", &self.extents)
-            .finish()
     }
 }
 
@@ -831,25 +628,17 @@ fn insert_resolves(
     }
 }
 
-fn assign_physical_images(
+fn assign_virtual_images(
     graph: &RenderGraphBuilder,
     node_execution_order: &[RenderGraphNodeId],
     image_constraint_results: &mut DetermineImageConstraintsResult,
-) -> AssignPhysicalImagesResult {
-    let mut map_image_to_physical: FnvHashMap<RenderGraphImageUsageId, PhysicalImageId> =
+) -> AssignVirtualImagesResult {
+    let mut usage_to_virtual: FnvHashMap<RenderGraphImageUsageId, VirtualImageId> =
         FnvHashMap::default();
-    let mut physical_image_infos: FnvHashMap<PhysicalImageId, PhysicalImageInfo> =
-        FnvHashMap::default();
-    // let mut physical_image_usages: FnvHashMap<PhysicalImageId, Vec<RenderGraphImageUsageId>> =
-    //     FnvHashMap::default();
-    // let mut physical_image_versions: FnvHashMap<
-    //     PhysicalImageId,
-    //     Vec<RenderGraphImageVersionId>,
-    // > = FnvHashMap::default();
 
-    let mut physical_image_id_allocator = PhysicalImageIdAllocator::default();
+    let mut virtual_image_id_allocator = VirtualImageIdAllocator::default();
     //TODO: Associate input images here? We can wait until we decide which images are shared
-    log::trace!("Associate images written by nodes with physical images");
+    log::trace!("Associate images written by nodes with virtual images");
     for node in node_execution_order.iter() {
         let node = graph.node(*node);
         log::trace!("  node {:?} {:?}", node.id().0, node.name());
@@ -860,37 +649,21 @@ fn assign_physical_images(
         let mut written_images = vec![];
 
         for create in &node.image_creates {
-            // An image that's created always allocates an image (we can try to alias/pool these later)
-            let physical_image = physical_image_id_allocator.allocate();
+            // An image that's created always allocates an image (we reuse these if they are compatible
+            // and lifetimes don't overlap)
+            let virtual_image = virtual_image_id_allocator.allocate();
             log::trace!(
                 "    Create {:?} will use image {:?}",
                 create.image,
-                physical_image
+                virtual_image
             );
-            map_image_to_physical.insert(create.image, physical_image);
-            // physical_image_usages
-            //     .entry(physical_image)
-            //     .or_default()
-            //     .push(create.image);
-            // physical_image_versions
-            //     .entry(physical_image)
-            //     .or_default()
-            //     .push(graph.image_usages[create.image.0].version);
-            let mut physical_image_info =
-                PhysicalImageInfo::new(image_constraint_results.images[&create.image].clone());
-
-            physical_image_info.usages.push(create.image);
-            physical_image_info
-                .versions
-                .push(graph.image_usages[create.image.0].version);
-            physical_image_infos.insert(physical_image, physical_image_info);
-
+            usage_to_virtual.insert(create.image, virtual_image);
             // Queue this image write to try to share the image forward
             written_images.push(create.image);
         }
 
         for modify in &node.image_modifies {
-            // The physical image in the read portion of a modify must also be the write image.
+            // The virtual image in the read portion of a modify must also be the write image.
             // The format of the input/output is guaranteed to match
             assert_eq!(
                 image_constraint_results.specification(modify.input),
@@ -898,28 +671,13 @@ fn assign_physical_images(
             );
 
             // Assign the image
-            let physical_image = *map_image_to_physical.get(&modify.input).unwrap();
+            let virtual_image = *usage_to_virtual.get(&modify.input).unwrap();
             log::trace!(
                 "    Modify {:?} will pass through image {:?}",
                 modify.output,
-                physical_image
+                virtual_image
             );
-            map_image_to_physical.insert(modify.output, physical_image);
-            // physical_image_usages
-            //     .entry(physical_image)
-            //     .or_default()
-            //     .push(modify.output);
-            // physical_image_versions
-            //     .entry(physical_image)
-            //     .or_default()
-            //     .push(graph.image_usages[modify.output.0].version);
-            let mut physical_image_info =
-                PhysicalImageInfo::new(image_constraint_results.images[&modify.output].clone());
-            physical_image_info.usages.push(modify.output);
-            physical_image_info
-                .versions
-                .push(graph.image_usages[modify.output.0].version);
-            physical_image_infos.insert(physical_image, physical_image_info);
+            usage_to_virtual.insert(modify.output, virtual_image);
 
             // Queue this image write to try to share the image forward
             written_images.push(modify.output);
@@ -943,10 +701,7 @@ fn assign_physical_images(
             }
 
             // If we don't already have an image
-            // let written_physical_image = mapping.entry(written_image)
-            //     .or_insert_with(|| image_allocator.allocate(&image_constraint_results.specification(written_image)));
-
-            let write_physical_image = *map_image_to_physical.get(&written_image).unwrap();
+            let write_virtual_image = *usage_to_virtual.get(&written_image).unwrap();
             let write_type = graph.image_usages[written_image.0].usage_type;
 
             for usage_resource_id in &written_image_version_info.read_usages {
@@ -981,27 +736,15 @@ fn assign_physical_images(
                         read_type
                     );
                     let overwritten_image =
-                        map_image_to_physical.insert(*usage_resource_id, write_physical_image);
-                    // physical_image_usages
-                    //     .get_mut(&write_physical_image)
-                    //     .unwrap()
-                    //     //.or_default()
-                    //     .push(*usage_resource_id);
-
-                    physical_image_infos
-                        .get_mut(&write_physical_image)
-                        .unwrap()
-                        .usages
-                        .push(*usage_resource_id);
+                        usage_to_virtual.insert(*usage_resource_id, write_virtual_image);
 
                     assert!(overwritten_image.is_none());
                 } else {
                     // allocate new image
-                    //let specification = image_constraint_results.specification(written_image);
-                    let physical_image = physical_image_id_allocator.allocate();
+                    let virtual_image = virtual_image_id_allocator.allocate();
                     log::trace!(
                         "    Allocate image {:?} for {:?} ({:?} -> {:?})  (specifications_match match: {} is_read_or_exclusive_write: {})",
-                        physical_image,
+                        virtual_image,
                         usage_resource_id,
                         write_type,
                         read_type,
@@ -1013,23 +756,8 @@ fn assign_physical_images(
                         log::trace!("      usage  : {:?}", usage_spec);
                     }
                     let overwritten_image =
-                        map_image_to_physical.insert(*usage_resource_id, physical_image);
-                    // physical_image_usages
-                    //     .get_mut(&physical_image)
-                    //     .unwrap()
-                    //     //.or_default()
-                    //     .push(*usage_resource_id);
-                    // physical_image_infos
-                    //     .get_mut(&physical_image)
-                    //     .unwrap()
-                    //     .usages
-                    //     .push(*usage_resource_id);
+                        usage_to_virtual.insert(*usage_resource_id, virtual_image);
 
-                    let mut physical_image_info = PhysicalImageInfo::new(
-                        image_constraint_results.images[&usage_resource_id].clone(),
-                    );
-                    physical_image_info.usages.push(*usage_resource_id);
-                    physical_image_infos.insert(physical_image, physical_image_info);
                     assert!(overwritten_image.is_none());
                 }
             }
@@ -1037,11 +765,11 @@ fn assign_physical_images(
     }
 
     // vulkan image layouts: https://github.com/nannou-org/nannou/issues/271#issuecomment-465876622
-    AssignPhysicalImagesResult {
+    AssignVirtualImagesResult {
         //physical_image_usages,
-        map_image_to_physical,
+        usage_to_virtual,
         //physical_image_versions,
-        physical_image_infos,
+        //physical_image_infos,
     }
 }
 
@@ -1051,7 +779,7 @@ fn can_merge_nodes(
     before_node_id: RenderGraphNodeId,
     after_node_id: RenderGraphNodeId,
     _image_constraints: &DetermineImageConstraintsResult,
-    _physical_images: &AssignPhysicalImagesResult,
+    _virtual_images: &AssignVirtualImagesResult,
 ) -> bool {
     let _before_node = graph.node(before_node_id);
     let _after_node = graph.node(after_node_id);
@@ -1075,7 +803,7 @@ fn build_physical_passes(
     graph: &RenderGraphBuilder,
     node_execution_order: &[RenderGraphNodeId],
     image_constraints: &DetermineImageConstraintsResult,
-    physical_images: &AssignPhysicalImagesResult,
+    virtual_images: &AssignVirtualImagesResult,
     //determine_image_layouts_result: &DetermineImageLayoutsResult
 ) -> Vec<RenderGraphPass> {
     let mut pass_node_sets = Vec::default();
@@ -1089,7 +817,7 @@ fn build_physical_passes(
                 *subpass_node,
                 *node_id,
                 image_constraints,
-                physical_images,
+                virtual_images,
             ) {
                 add_to_current = false;
                 break;
@@ -1115,13 +843,17 @@ fn build_physical_passes(
         log::trace!("  nodes in pass: {:?}", pass_node_set);
         fn find_or_insert_attachment(
             attachments: &mut Vec<RenderGraphPassAttachment>,
-            image: PhysicalImageId,
+            virtual_image: VirtualImageId,
         ) -> (usize, bool) {
-            if let Some(position) = attachments.iter().position(|x| x.image == image) {
+            if let Some(position) = attachments
+                .iter()
+                .position(|x| x.virtual_image == virtual_image)
+            {
                 (position, false)
             } else {
                 attachments.push(RenderGraphPassAttachment {
-                    image,
+                    virtual_image,
+                    image: None,
                     load_op: vk::AttachmentLoadOp::DONT_CARE,
                     stencil_load_op: vk::AttachmentLoadOp::DONT_CARE,
                     store_op: vk::AttachmentStoreOp::DONT_CARE,
@@ -1161,16 +893,16 @@ fn build_physical_passes(
                         .read_image
                         .or(color_attachment.write_image)
                         .unwrap();
-                    let physical_image = physical_images
-                        .map_image_to_physical
+                    let virtual_image = virtual_images
+                        .usage_to_virtual
                         .get(&read_or_write_usage)
                         .unwrap();
                     //let version_id = graph.image_version_id(read_or_write_usage);
                     let specification = image_constraints.images.get(&read_or_write_usage).unwrap();
-                    log::trace!("      physical attachment (color): {:?}", physical_image);
+                    log::trace!("      virtual attachment (color): {:?}", virtual_image);
 
                     let (pass_attachment_index, is_first_usage) =
-                        find_or_insert_attachment(&mut pass.attachments, *physical_image);
+                        find_or_insert_attachment(&mut pass.attachments, *virtual_image);
                     subpass.color_attachments[color_attachment_index] = Some(pass_attachment_index);
 
                     let mut attachment = &mut pass.attachments[pass_attachment_index];
@@ -1209,16 +941,13 @@ fn build_physical_passes(
             {
                 if let Some(resolve_attachment) = resolve_attachment {
                     let write_image = resolve_attachment.write_image;
-                    let physical_image = physical_images
-                        .map_image_to_physical
-                        .get(&write_image)
-                        .unwrap();
+                    let virtual_image = virtual_images.usage_to_virtual.get(&write_image).unwrap();
                     //let version_id = graph.image_version_id(write_image);
                     let specification = image_constraints.images.get(&write_image).unwrap();
-                    log::trace!("      physical attachment (resolve): {:?}", physical_image);
+                    log::trace!("      virtual attachment (resolve): {:?}", virtual_image);
 
                     let (pass_attachment_index, is_first_usage) =
-                        find_or_insert_attachment(&mut pass.attachments, *physical_image);
+                        find_or_insert_attachment(&mut pass.attachments, *virtual_image);
                     subpass.resolve_attachments[resolve_attachment_index] =
                         Some(pass_attachment_index);
 
@@ -1245,16 +974,16 @@ fn build_physical_passes(
                     .read_image
                     .or(depth_attachment.write_image)
                     .unwrap();
-                let physical_image = physical_images
-                    .map_image_to_physical
+                let virtual_image = virtual_images
+                    .usage_to_virtual
                     .get(&read_or_write_usage)
                     .unwrap();
                 //let version_id = graph.image_version_id(read_or_write_usage);
                 let specification = image_constraints.images.get(&read_or_write_usage).unwrap();
-                log::trace!("      physical attachment (depth): {:?}", physical_image);
+                log::trace!("      virtaul attachment (depth): {:?}", virtual_image);
 
                 let (pass_attachment_index, is_first_usage) =
-                    find_or_insert_attachment(&mut pass.attachments, *physical_image);
+                    find_or_insert_attachment(&mut pass.attachments, *virtual_image);
                 subpass.depth_attachment = Some(pass_attachment_index);
 
                 let mut attachment = &mut pass.attachments[pass_attachment_index];
@@ -1316,6 +1045,173 @@ fn build_physical_passes(
     passes
 }
 
+#[derive(Debug)]
+struct AssignPhysicalImagesResult {
+    usage_to_physical: FnvHashMap<RenderGraphImageUsageId, PhysicalImageId>,
+    virtual_to_physical: FnvHashMap<VirtualImageId, PhysicalImageId>,
+    specifications: Vec<RenderGraphImageSpecification>,
+}
+
+fn assign_physical_images(
+    graph: &RenderGraphBuilder,
+    image_constraints: &DetermineImageConstraintsResult,
+    virtual_images: &AssignVirtualImagesResult,
+    passes: &mut [RenderGraphPass],
+) -> AssignPhysicalImagesResult {
+    struct PhysicalImageReuseRequirements {
+        virtual_id: VirtualImageId,
+        specification: RenderGraphImageSpecification,
+        first_node_pass_index: usize,
+        last_node_pass_index: usize,
+    }
+
+    fn add_or_modify_reuse_image_requirements(
+        virtual_images: &AssignVirtualImagesResult,
+        image_constraints: &DetermineImageConstraintsResult,
+        pass_index: usize,
+        usage: RenderGraphImageUsageId,
+        reuse_requirements: &mut Vec<PhysicalImageReuseRequirements>,
+        reuse_requirements_lookup: &mut FnvHashMap<VirtualImageId, usize>,
+    ) {
+        // Get physical ID from usage
+        let virtual_id = virtual_images.usage_to_virtual[&usage];
+
+        // Find requirements for this image if they exist, or create new requirements. This is a
+        // lookup for an index so that the requirements will be stored sorted by
+        // first_node_pass_index for iteration later
+        let reused_image_requirements_index = *reuse_requirements_lookup
+            .entry(virtual_id)
+            .or_insert_with(|| {
+                let reused_image_requirements_index = reuse_requirements.len();
+                let specification = &image_constraints.images[&usage];
+                reuse_requirements.push(PhysicalImageReuseRequirements {
+                    virtual_id,
+                    first_node_pass_index: pass_index,
+                    last_node_pass_index: pass_index,
+                    specification: specification.clone(),
+                });
+                reused_image_requirements_index
+            });
+
+        // Update the last pass index
+        reuse_requirements[reused_image_requirements_index].last_node_pass_index = pass_index;
+    }
+
+    let mut reuse_requirements = Vec::<PhysicalImageReuseRequirements>::default();
+    let mut reuse_requirements_lookup = FnvHashMap::<VirtualImageId, usize>::default();
+
+    for (pass_index, pass) in passes.iter().enumerate() {
+        for subpass in &pass.subpasses {
+            let node = graph.node(subpass.node);
+
+            for modify in &node.image_modifies {
+                add_or_modify_reuse_image_requirements(
+                    virtual_images,
+                    image_constraints,
+                    pass_index,
+                    modify.input,
+                    &mut reuse_requirements,
+                    &mut reuse_requirements_lookup,
+                );
+                add_or_modify_reuse_image_requirements(
+                    virtual_images,
+                    image_constraints,
+                    pass_index,
+                    modify.output,
+                    &mut reuse_requirements,
+                    &mut reuse_requirements_lookup,
+                );
+            }
+
+            for read in &node.image_reads {
+                add_or_modify_reuse_image_requirements(
+                    virtual_images,
+                    image_constraints,
+                    pass_index,
+                    read.image,
+                    &mut reuse_requirements,
+                    &mut reuse_requirements_lookup,
+                );
+            }
+
+            for create in &node.image_creates {
+                add_or_modify_reuse_image_requirements(
+                    virtual_images,
+                    image_constraints,
+                    pass_index,
+                    create.image,
+                    &mut reuse_requirements,
+                    &mut reuse_requirements_lookup,
+                );
+            }
+        }
+    }
+
+    //TODO: Find transients
+    //TODO: Mark input images as non-reuse?
+    //TODO: Stay in same queue?
+
+    struct PhysicalImage {
+        specification: RenderGraphImageSpecification,
+        last_node_pass_index: usize,
+    }
+
+    let mut physical_images = Vec::<PhysicalImage>::default();
+    let mut virtual_to_physical = FnvHashMap::<VirtualImageId, PhysicalImageId>::default();
+
+    // Images are sorted by first usage (because we register them in order of the passes that first use them)
+    for reuse_requirements in &reuse_requirements {
+        // See if we can reuse with an existing physical image
+        let mut physical_image_id = None;
+        for (physical_image_index, physical_image) in physical_images.iter_mut().enumerate() {
+            if physical_image.last_node_pass_index < reuse_requirements.first_node_pass_index {
+                if physical_image
+                    .specification
+                    .try_merge(&reuse_requirements.specification)
+                {
+                    physical_image.last_node_pass_index = reuse_requirements.last_node_pass_index;
+                    physical_image_id = Some(PhysicalImageId(physical_image_index));
+                    break;
+                }
+            }
+        }
+
+        // If the existing physical images are not compatible, make a new one
+        let physical_image_id = physical_image_id.unwrap_or_else(|| {
+            let physical_image_id = PhysicalImageId(physical_images.len());
+            physical_images.push(PhysicalImage {
+                specification: reuse_requirements.specification.clone(),
+                last_node_pass_index: reuse_requirements.last_node_pass_index,
+            });
+            physical_image_id
+        });
+
+        virtual_to_physical.insert(reuse_requirements.virtual_id, physical_image_id);
+    }
+
+    let mut map_image_to_physical = FnvHashMap::default();
+    for (&usage, virtual_image) in &virtual_images.usage_to_virtual {
+        map_image_to_physical.insert(usage, virtual_to_physical[virtual_image]);
+    }
+
+    let physical_image_specifications: Vec<_> = physical_images
+        .into_iter()
+        .map(|x| x.specification)
+        .collect();
+
+    for pass in passes {
+        for attachment in &mut pass.attachments {
+            attachment.image = Some(virtual_to_physical[&attachment.virtual_image]);
+        }
+    }
+
+    AssignPhysicalImagesResult {
+        virtual_to_physical,
+        usage_to_physical: map_image_to_physical,
+        specifications: physical_image_specifications,
+    }
+}
+
 fn build_node_barriers(
     graph: &RenderGraphBuilder,
     node_execution_order: &[RenderGraphNodeId],
@@ -1339,7 +1235,7 @@ fn build_node_barriers(
                     .or(color_attachment.write_image)
                     .unwrap();
                 let physical_image = physical_images
-                    .map_image_to_physical
+                    .usage_to_physical
                     .get(&read_or_write_usage)
                     .unwrap();
                 //let version_id = graph.image_version_id(read_or_write_usage);
@@ -1371,7 +1267,7 @@ fn build_node_barriers(
         for resolve_attachment in &node.resolve_attachments {
             if let Some(resolve_attachment) = resolve_attachment {
                 let physical_image = physical_images
-                    .map_image_to_physical
+                    .usage_to_physical
                     .get(&resolve_attachment.write_image)
                     .unwrap();
                 //let version_id = graph.image_version_id(resolve_attachment.write_image);
@@ -1395,7 +1291,7 @@ fn build_node_barriers(
                 .or(depth_attachment.write_image)
                 .unwrap();
             let physical_image = physical_images
-                .map_image_to_physical
+                .usage_to_physical
                 .get(&read_or_write_usage)
                 .unwrap();
             //let version_id = graph.image_version_id(read_or_write_usage);
@@ -1435,7 +1331,7 @@ fn build_node_barriers(
 
         for sampled_image in &node.sampled_images {
             let physical_image = physical_images
-                .map_image_to_physical
+                .usage_to_physical
                 .get(sampled_image)
                 .unwrap();
 
@@ -1506,10 +1402,8 @@ fn build_pass_barriers(
 
     //TODO: to support subpass, probably need image states for each previous subpass
     let mut image_states: Vec<ImageState> =
-        Vec::with_capacity(physical_images.physical_image_infos.len());
-    image_states.resize_with(physical_images.physical_image_infos.len(), || {
-        Default::default()
-    });
+        Vec::with_capacity(physical_images.specifications.len());
+    image_states.resize_with(physical_images.specifications.len(), || Default::default());
 
     // dependencies for all renderpasses
     let mut pass_dependencies = Vec::default();
@@ -1540,14 +1434,17 @@ fn build_pass_barriers(
             // Common case where this is not possible is having any image that's not an attachment
             // being used via sampling.
             let mut use_external_dependency_for_pass_initial_layout_transition = true;
-
-            let mut image_transitions = Vec::default();
-            for image_barrier in node_barriers.barriers.values() {
-                if image_barrier.used_by_sampling {
+            for (physical_image_id, image_barrier) in &node_barriers.barriers {
+                if image_barrier.used_by_sampling
+                    && image_states[physical_image_id.0].layout != image_barrier.layout
+                {
+                    log::trace!("    will emit separate barrier for layout transitions");
                     use_external_dependency_for_pass_initial_layout_transition = false;
+                    break;
                 }
             }
 
+            let mut image_transitions = Vec::default();
             // Look at all the images we read and determine what invalidates we need
             for (physical_image_id, image_barrier) in &node_barriers.barriers {
                 log::trace!("    image {:?}", physical_image_id);
@@ -1641,12 +1538,22 @@ fn build_pass_barriers(
                 // multiple layouts
                 for (attachment_index, attachment) in &mut pass.attachments.iter_mut().enumerate() {
                     //log::trace!("      attachment {:?}", attachment.image);
-                    if attachment.image == *physical_image_id {
+                    if attachment.image.unwrap() == *physical_image_id {
                         if attachment_initial_layout[attachment_index].is_none() {
                             //log::trace!("        initial layout {:?}", image_barrier.layout);
                             attachment_initial_layout[attachment_index] =
                                 Some(image_state.layout.into());
-                            attachment.initial_layout = image_state.layout.into();
+
+                            if use_external_dependency_for_pass_initial_layout_transition {
+                                // Use an external dependency on the renderpass to do the image
+                                // transition
+                                attachment.initial_layout = image_state.layout.into();
+                            } else {
+                                // Use an image barrier before the pass to transition the layout,
+                                // so we will already be in the correct layout before starting the
+                                // pass.
+                                attachment.initial_layout = image_barrier.layout.into();
+                            }
                         }
 
                         attachment.final_layout = image_barrier.layout.into();
@@ -1797,7 +1704,7 @@ fn build_pass_barriers(
                     //graph.image_usages[output_image.usage]
 
                     let output_physical_image =
-                        physical_images.map_image_to_physical[&output_image.usage];
+                        physical_images.usage_to_physical[&output_image.usage];
                     log::trace!(
                         "Output image {} usage {:?} created by node {:?} physical image {:?}",
                         output_image_index,
@@ -1809,7 +1716,7 @@ fn build_pass_barriers(
                     for (attachment_index, attachment) in
                         &mut pass.attachments.iter_mut().enumerate()
                     {
-                        if attachment.image == output_physical_image {
+                        if attachment.image.unwrap() == output_physical_image {
                             log::trace!("  attachment {}", attachment_index);
                             attachment.final_layout = output_image.final_layout;
                         }
@@ -1831,7 +1738,6 @@ fn create_output_passes(
     passes: Vec<RenderGraphPass>,
     node_barriers: FnvHashMap<RenderGraphNodeId, RenderGraphNodeImageBarriers>,
     subpass_dependencies: &Vec<Vec<dsc::SubpassDependency>>,
-    _physical_images: &AssignPhysicalImagesResult,
     swapchain_info: &SwapchainSurfaceInfo,
 ) -> Vec<RenderGraphOutputPass> {
     let mut renderpasses = Vec::with_capacity(passes.len());
@@ -1874,7 +1780,7 @@ fn create_output_passes(
 
             for (color_index, attachment_index) in subpass.color_attachments.iter().enumerate() {
                 if let Some(attachment_index) = attachment_index {
-                    let physical_image = pass.attachments[*attachment_index].image;
+                    let physical_image = pass.attachments[*attachment_index].image.unwrap();
                     set_attachment_reference(
                         &mut subpass_description.color_attachments,
                         color_index,
@@ -1891,7 +1797,7 @@ fn create_output_passes(
             for (resolve_index, attachment_index) in subpass.resolve_attachments.iter().enumerate()
             {
                 if let Some(attachment_index) = attachment_index {
-                    let physical_image = pass.attachments[*attachment_index].image;
+                    let physical_image = pass.attachments[*attachment_index].image.unwrap();
                     set_attachment_reference(
                         &mut subpass_description.resolve_attachments,
                         resolve_index,
@@ -1906,7 +1812,7 @@ fn create_output_passes(
             }
 
             if let Some(attachment_index) = subpass.depth_attachment {
-                let physical_image = pass.attachments[attachment_index].image;
+                let physical_image = pass.attachments[attachment_index].image.unwrap();
                 subpass_description.depth_stencil_attachment = Some(dsc::AttachmentReference {
                     attachment: dsc::AttachmentIndex::Index(attachment_index as u32),
                     layout: node_barriers[&subpass.node].barriers[&physical_image]
@@ -1928,7 +1834,7 @@ fn create_output_passes(
         let attachment_images = pass
             .attachments
             .iter()
-            .map(|attachment| attachment.image)
+            .map(|attachment| attachment.image.unwrap())
             .collect();
         let clear_values = pass
             .attachments
@@ -1952,31 +1858,6 @@ fn create_output_passes(
     }
 
     renderpasses
-}
-
-#[allow(dead_code)]
-fn print_physical_image_usage(
-    graph: &RenderGraphBuilder,
-    assign_physical_images_result: &AssignPhysicalImagesResult, /*, determine_image_layouts_result: &DetermineImageLayoutsResult*/
-) {
-    log::trace!("Physical image usage:");
-    for (physical_image_id, physical_image_info) in
-        &assign_physical_images_result.physical_image_infos
-    {
-        log::trace!("  image: {:?}", physical_image_id);
-        for version_id in &physical_image_info.versions {
-            log::trace!("    version_id {:?}", version_id);
-            let version = &graph.image_resources[version_id.index].versions[version_id.version];
-            log::trace!("    create: {:?}", version.create_usage);
-            //log::trace!("  create: {:?} {:?}", version.create_usage, graph.image_usages[version.create_usage.0].preferred_layout);
-            //log::trace!("    create: {:?} {:?}", version.create_usage, determine_image_layouts_result.image_layouts[version_id].write_layout);
-            for read in &version.read_usages {
-                log::trace!("      read: {:?}", read);
-                //log::trace!("    read: {:?} {:?}", read, graph.image_usages[read.0].preferred_layout);
-                //log::trace!("      read: {:?} {:?}", read, determine_image_layouts_result.image_layouts[version_id].read_layout);
-            }
-        }
-    }
 }
 
 #[allow(dead_code)]
@@ -2137,7 +2018,7 @@ fn print_final_image_usage(
                         .or_else(|| color_attachment.write_image)
                         .unwrap();
                     let physical_image =
-                        assign_physical_images_result.map_image_to_physical[&read_or_write];
+                        assign_physical_images_result.usage_to_physical[&read_or_write];
                     let write_name = color_attachment
                         .write_image
                         .map(|x| graph.image_resource(x).name)
@@ -2156,7 +2037,7 @@ fn print_final_image_usage(
                 node.resolve_attachments.iter().enumerate()
             {
                 if let Some(resolve_attachment) = resolve_attachment {
-                    let physical_image = assign_physical_images_result.map_image_to_physical
+                    let physical_image = assign_physical_images_result.usage_to_physical
                         [&resolve_attachment.write_image];
                     let write_name = graph.image_resource(resolve_attachment.write_image).name;
                     log::debug!(
@@ -2175,7 +2056,7 @@ fn print_final_image_usage(
                     .or_else(|| depth_attachment.write_image)
                     .unwrap();
                 let physical_image =
-                    assign_physical_images_result.map_image_to_physical[&read_or_write];
+                    assign_physical_images_result.usage_to_physical[&read_or_write];
                 let write_name = depth_attachment
                     .write_image
                     .map(|x| graph.image_resource(x).name)
@@ -2189,8 +2070,7 @@ fn print_final_image_usage(
             }
 
             for sampled_image in &node.sampled_images {
-                let physical_image =
-                    assign_physical_images_result.map_image_to_physical[sampled_image];
+                let physical_image = assign_physical_images_result.usage_to_physical[sampled_image];
                 let write_name = graph.image_resource(*sampled_image).name;
                 log::debug!(
                     "    Sampled: {:?} Name: {:?} Constraints: {:?}",
@@ -2202,8 +2082,7 @@ fn print_final_image_usage(
         }
     }
     for output_image in &graph.output_images {
-        let physical_image =
-            assign_physical_images_result.map_image_to_physical[&output_image.usage];
+        let physical_image = assign_physical_images_result.usage_to_physical[&output_image.usage];
         let write_name = graph.image_resource(output_image.usage).name;
         log::debug!(
             "    Output Image {:?} Name: {:?} Constraints: {:?}",
@@ -2284,27 +2163,11 @@ impl RenderGraphPlan {
         //print_image_compatibility(&graph, &image_constraint_results);
 
         //
-        // Assign logical images to physical images. This should give us a minimal number of images.
-        // This does not include aliasing images during graph execution. We handle this later.
+        // Assign logical images to physical images. This should give us a minimal number of images
+        // if we are not reusing or aliasing. (We reuse when we assign physical indexes)
         //
-        let assign_physical_images_result =
-            assign_physical_images(&graph, &node_execution_order, &mut image_constraint_results);
-
-        // log::trace!("Physical image usage:");
-        // for (physical_image_id, logical_image_id_list) in
-        //     &assign_physical_images_result.physical_image_infos
-        // {
-        //     log::trace!("  Physical image: {:?}", physical_image_id);
-        //     for logical_image in &logical_image_id_list.usages {
-        //         log::trace!("    {:?}", logical_image);
-        //     }
-        // }
-
-        // Print the physical images
-        // print_physical_image_usage(
-        //     &graph,
-        //     &assign_physical_images_result,
-        // );
+        let assign_virtual_images_result =
+            assign_virtual_images(&graph, &node_execution_order, &mut image_constraint_results);
 
         //
         // Combine nodes into passes where possible
@@ -2313,7 +2176,18 @@ impl RenderGraphPlan {
             &graph,
             &node_execution_order,
             &image_constraint_results,
-            &assign_physical_images_result, /*, &determine_image_layouts_result*/
+            &assign_virtual_images_result, /*, &determine_image_layouts_result*/
+        );
+
+        //
+        // Find virtual images with matching specification and non-overlapping lifetimes. Assign
+        // the same physical index to them so that we reuse a single allocation
+        //
+        let assign_physical_images_result = assign_physical_images(
+            &graph,
+            &image_constraint_results,
+            &assign_virtual_images_result,
+            &mut passes,
         );
 
         // log::trace!("Merged Renderpasses:");
@@ -2377,18 +2251,23 @@ impl RenderGraphPlan {
         //TODO: Cull images that only exist within the lifetime of a single pass? (just passed among
         // subpasses)
 
+        //TODO: Allocation of images
+        // alias_images(
+        //     &graph,
+        //     &node_execution_order,
+        //     &image_constraint_results,
+        //     &assign_physical_images_result,
+        //     &node_barriers,
+        //     &passes,
+        // );
+
         //
         // Produce the final output data. This mainly includes a descriptor object that can be
         // passed into the resource system to create the renderpass but also includes other metadata
         // required to push them through the command queue
         //
-        let renderpasses = create_output_passes(
-            passes,
-            node_barriers,
-            &subpass_dependencies,
-            &assign_physical_images_result,
-            swapchain_info,
-        );
+        let renderpasses =
+            create_output_passes(passes, node_barriers, &subpass_dependencies, swapchain_info);
 
         //
         // Separate the output images from the intermediate images (the rendergraph will be
@@ -2398,7 +2277,7 @@ impl RenderGraphPlan {
             Default::default();
         for output_image in &graph.output_images {
             let output_image_physical_id =
-                assign_physical_images_result.map_image_to_physical[&output_image.usage];
+                assign_physical_images_result.usage_to_physical[&output_image.usage];
 
             output_images.insert(
                 output_image_physical_id,
@@ -2411,17 +2290,18 @@ impl RenderGraphPlan {
 
         let mut intermediate_images: FnvHashMap<PhysicalImageId, RenderGraphImageSpecification> =
             Default::default();
-        for (physical_image, physical_image_info) in
-            &assign_physical_images_result.physical_image_infos
+        for (index, specification) in assign_physical_images_result
+            .specifications
+            .iter()
+            .enumerate()
         {
+            let physical_image = PhysicalImageId(index);
             if output_images.contains_key(&physical_image) {
                 continue;
             }
 
-            intermediate_images.insert(*physical_image, physical_image_info.specification.clone());
+            intermediate_images.insert(physical_image, specification.clone());
         }
-
-        //TODO: Allocation of images
 
         // log::trace!("-- RENDERPASS {} --", renderpass_index);
         // for (renderpass_index, renderpass) in renderpasses.iter().enumerate() {
@@ -2454,7 +2334,7 @@ impl RenderGraphPlan {
             output_images,
             intermediate_images,
             node_to_renderpass_index,
-            image_usage_to_physical: assign_physical_images_result.map_image_to_physical,
+            image_usage_to_physical: assign_physical_images_result.usage_to_physical,
         }
     }
 }

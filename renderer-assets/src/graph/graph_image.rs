@@ -2,24 +2,57 @@ use ash::vk;
 use super::*;
 use crate::vk_description as dsc;
 
-#[derive(Debug, Copy, Clone)]
-pub struct RenderGraphOutputImageId(pub usize);
+/// Unique ID for a particular usage (read or write) of a specific image
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct RenderGraphImageUsageId(pub(super) usize);
 
+/// An ID for an image used within the graph between passes
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct VirtualImageId(pub(super) usize);
+
+/// An ID for an image allocation (possibly reused)
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PhysicalImageId(pub(super) usize);
+
+/// Unique ID provided for any image registered as an output image
+#[derive(Debug, Copy, Clone)]
+pub struct RenderGraphOutputImageId(pub(super) usize);
+
+/// Unique ID for a particular version of an image. Any time an image is modified, a new version is
+/// produced
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct RenderGraphImageVersionId {
     pub(super) index: usize,
     pub(super) version: usize,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct RenderGraphImageUsageId(pub(super) usize);
+/// A "virtual" image that the render graph knows about. The render graph will allocate images as
+/// needed, but can reuse the same image for multiple resources if the lifetimes of those images
+/// don't overlap
+#[derive(Debug)]
+pub struct RenderGraphImageResource {
+    pub(super) name: Option<RenderGraphResourceName>,
 
+    pub(super) versions: Vec<RenderGraphImageResourceVersionInfo>,
+}
+
+impl RenderGraphImageResource {
+    pub(super) fn new() -> Self {
+        RenderGraphImageResource {
+            name: None,
+            versions: Default::default(),
+        }
+    }
+}
+
+/// Defines what created a RenderGraphImageUsage
 #[derive(Debug)]
 pub enum RenderGraphImageUser {
     Node(RenderGraphNodeId),
     Output(RenderGraphOutputImageId),
 }
 
+/// A usage of a particular image
 #[derive(Debug)]
 pub struct RenderGraphImageUsage {
     pub(super) user: RenderGraphImageUser,
@@ -34,9 +67,8 @@ pub struct RenderGraphImageUsage {
 
 pub type RenderGraphResourceName = &'static str;
 
-//
-// The immutable aspects of an image
-//
+/// Immutable, fully-specified attributes of an image. A *constraint* is partially specified and
+/// the graph will use constraints to solve for the specification
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RenderGraphImageSpecification {
     pub samples: vk::SampleCountFlags,
@@ -45,9 +77,41 @@ pub struct RenderGraphImageSpecification {
     pub usage_flags: vk::ImageUsageFlags,
 }
 
-//
-// Constraints on an image. Constraints are set per-field and start out None (i.e. unconstrained)
-//
+impl RenderGraphImageSpecification {
+    /// Returns true if no fields in the two constraints are conflicting
+    pub fn can_merge(
+        &self,
+        other: &RenderGraphImageSpecification,
+    ) -> bool {
+        if self.samples != other.samples {
+            return false;
+        }
+        if self.format != other.format {
+            return false;
+        }
+
+        true
+    }
+
+    /// Merge other's constraints into self, but only if there are no conflicts. No modification
+    /// occurs if any conflict exists
+    pub fn try_merge(
+        &mut self,
+        other: &RenderGraphImageSpecification,
+    ) -> bool {
+        if !self.can_merge(other) {
+            return false;
+        }
+
+        self.aspect_flags |= other.aspect_flags;
+        self.usage_flags |= other.usage_flags;
+
+        true
+    }
+}
+
+/// Constraints on an image. Constraints are set per-field and start out None (i.e. unconstrained)
+/// The rendergraph will derive specifications from the constraints
 #[derive(Default, Clone, Debug)]
 pub struct RenderGraphImageConstraint {
     pub samples: Option<vk::SampleCountFlags>,
@@ -83,6 +147,7 @@ impl RenderGraphImageConstraint {
 }
 
 impl RenderGraphImageConstraint {
+    /// Returns true if no fields in the two constraints are conflicting
     pub fn can_merge(
         &self,
         other: &RenderGraphImageConstraint,
@@ -97,6 +162,8 @@ impl RenderGraphImageConstraint {
         true
     }
 
+    /// Merge other's constraints into self, but only if there are no conflicts. No modification
+    /// occurs if any conflict exists
     pub fn try_merge(
         &mut self,
         other: &RenderGraphImageConstraint,
@@ -118,6 +185,8 @@ impl RenderGraphImageConstraint {
         true
     }
 
+    /// Merge other's constraints into self. We will merge fields where we can and skip fields with
+    /// conflicts
     pub fn partial_merge(
         &mut self,
         other: &RenderGraphImageConstraint,
@@ -142,6 +211,7 @@ impl RenderGraphImageConstraint {
         complete_merge
     }
 
+    /// Sets the constraints based on the given specification
     pub fn set(
         &mut self,
         other: &RenderGraphImageSpecification,
@@ -150,6 +220,7 @@ impl RenderGraphImageConstraint {
     }
 }
 
+/// How an image is being used
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RenderGraphImageUsageType {
     Create,
@@ -173,8 +244,11 @@ impl RenderGraphImageUsageType {
     }
 }
 
+/// Information about a specific version of the image.
 #[derive(Debug)]
 pub struct RenderGraphImageResourceVersionInfo {
+    /// What node created the image (keep in mind these are virtual images, not images provided
+    /// from outside the graph. So every image will have a creator node)
     pub(super) creator_node: RenderGraphNodeId,
 
     pub(super) create_usage: RenderGraphImageUsageId,
@@ -207,26 +281,5 @@ impl RenderGraphImageResourceVersionInfo {
         usage: RenderGraphImageUsageId,
     ) {
         self.read_usages.push(usage);
-    }
-}
-
-//
-// A "virtual" image that the render graph knows about. The render graph will allocate images as
-// needed, but can reuse the same image for multiple resources if the lifetimes of those images
-// don't overlap
-//
-#[derive(Debug)]
-pub struct RenderGraphImageResource {
-    pub(super) name: Option<RenderGraphResourceName>,
-
-    pub(super) versions: Vec<RenderGraphImageResourceVersionInfo>,
-}
-
-impl RenderGraphImageResource {
-    pub(super) fn new() -> Self {
-        RenderGraphImageResource {
-            name: None,
-            versions: Default::default(),
-        }
     }
 }
