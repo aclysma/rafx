@@ -12,7 +12,7 @@ pub struct Debug3dCommandWriter {
     pub(super) vertex_buffer: Option<ResourceArc<BufferResource>>,
     pub(super) draw_calls: Vec<Debug3dDrawCall>,
     pub(super) debug3d_material_pass: ResourceArc<MaterialPassResource>,
-    pub(super) per_view_descriptor_sets: Vec<DescriptorSetArc>,
+    pub(super) per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
 }
 
 impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
@@ -47,7 +47,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
                     vk::PipelineBindPoint::GRAPHICS,
                     pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                     0,
-                    &[self.per_view_descriptor_sets[view.view_index() as usize].get()],
+                    &[self.per_view_descriptor_sets[view.view_index() as usize].as_ref().unwrap().get()],
                     &[],
                 );
 

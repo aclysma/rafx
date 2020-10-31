@@ -12,7 +12,7 @@ pub struct SpriteCommandWriter {
     pub vertex_buffers: Vec<ResourceArc<BufferResource>>,
     pub index_buffers: Vec<ResourceArc<BufferResource>>,
     pub draw_calls: Vec<SpriteDrawCall>,
-    pub per_view_descriptor_sets: Vec<DescriptorSetArc>,
+    pub per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
     pub sprite_material: ResourceArc<MaterialPassResource>,
 }
 
@@ -49,7 +49,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
                     .get_raw()
                     .pipeline_layout,
                 0,
-                &[self.per_view_descriptor_sets[view.view_index() as usize].get()],
+                &[self.per_view_descriptor_sets[view.view_index() as usize].as_ref().unwrap().get()],
                 &[],
             );
 

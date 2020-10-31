@@ -86,16 +86,7 @@ pub fn populate_test_mesh_entities(
         let floor_mesh = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             begin_load_asset::<MeshAsset>(
-                // cement
                 asset_uuid!("f355d620-2971-48d5-b5c5-2fc9cf254525"),
-                // hex stones
-                //asset_uuid!("e8e524ef-22cf-4abe-bfa1-ad6d3f13e61c"),
-                // beige carpet
-                //asset_uuid!("26d1b7a8-bf0e-4cf0-af8f-c35de164bd5c"),
-                // old linoleum
-                //asset_uuid!("102a836a-f410-483e-aeda-c41cee662e8c"),
-                // yoga mat
-                //asset_uuid!("30867494-4098-4b0a-af17-018d113d5c7b"),
                 &asset_resource,
             )
         };
@@ -133,35 +124,17 @@ pub fn populate_test_mesh_entities(
             let asset_resource = resources.get::<AssetResource>().unwrap();
             let mut meshes = Vec::default();
 
-            // meshes.push(begin_load_asset::<MeshAsset>(
-            //     // cobblestone
-            //     asset_uuid!("bdcb02a2-e17e-403e-a96a-84ce8c9c7407"),
-            //     &asset_resource,
-            // ));
-
+            // container1
             meshes.push(begin_load_asset::<MeshAsset>(
-                // container1
                 asset_uuid!("9a513889-c0bd-45e8-9c70-d5388fd0bb5a"),
                 &asset_resource,
             ));
 
+            // container2
             meshes.push(begin_load_asset::<MeshAsset>(
-                // container2
                 asset_uuid!("07b7319f-199c-416f-87e2-414649797fe9"),
                 &asset_resource,
             ));
-            //
-            // meshes.push(begin_load_asset::<MeshAsset>(
-            //     // bamboo
-            //     asset_uuid!("ee838663-1786-4c03-8df7-2e97b65ba83e"),
-            //     &asset_resource,
-            // ));
-
-            // meshes.push(begin_load_asset::<MeshAsset>(
-            //     // braided carpet
-            //     asset_uuid!("282b0f8d-d21a-4b8b-a71a-000859485372"),
-            //     &asset_resource,
-            // ));
 
             meshes
         };

@@ -49,21 +49,38 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
             .pipeline_layout
             .get_raw()
             .descriptor_sets[0];
-        let per_view_descriptor_sets: Vec<_> = views
-            .iter()
-            .map(|view| {
-                let debug3d_view = Debug3dUniformBufferObject {
-                    view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
-                };
 
-                let mut descriptor_set = descriptor_set_allocator
-                    .create_dyn_descriptor_set_uninitialized(per_view_descriptor_set_layout)
-                    .unwrap();
-                descriptor_set.set_buffer_data(0, &debug3d_view);
-                descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
-                descriptor_set.descriptor_set().clone()
-            })
-            .collect();
+        let mut per_view_descriptor_sets = Vec::default();
+        for view in views {
+            let debug3d_view = Debug3dUniformBufferObject {
+                view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
+            };
+
+            let mut descriptor_set = descriptor_set_allocator
+                .create_dyn_descriptor_set_uninitialized(per_view_descriptor_set_layout)
+                .unwrap();
+            descriptor_set.set_buffer_data(0, &debug3d_view);
+            descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
+
+            per_view_descriptor_sets.resize(per_view_descriptor_sets.len().max(view.view_index() as usize + 1), None);
+            per_view_descriptor_sets[view.view_index() as usize] = Some(descriptor_set.descriptor_set().clone());
+        }
+
+        // let per_view_descriptor_sets: Vec<_> = views
+        //     .iter()
+        //     .map(|view| {
+        //         let debug3d_view = Debug3dUniformBufferObject {
+        //             view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
+        //         };
+        //
+        //         let mut descriptor_set = descriptor_set_allocator
+        //             .create_dyn_descriptor_set_uninitialized(per_view_descriptor_set_layout)
+        //             .unwrap();
+        //         descriptor_set.set_buffer_data(0, &debug3d_view);
+        //         descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
+        //         descriptor_set.descriptor_set().clone()
+        //     })
+        //     .collect();
 
         //
         // Gather the raw draw data

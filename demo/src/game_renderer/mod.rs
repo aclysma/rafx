@@ -39,6 +39,7 @@ mod swapchain_handling;
 pub use swapchain_handling::SwapchainLifetimeListener;
 use ash::version::DeviceV1_0;
 use crate::features::imgui::create_imgui_extract_job;
+use crate::components::DirectionalLightComponent;
 
 pub struct GameRendererInner {
     imgui_font_atlas_image_view: ResourceArc<ImageViewResource>,
@@ -389,6 +390,63 @@ impl GameRenderer {
                 "main".to_string(),
             )
         };
+
+        let mut directional_light : Option<DirectionalLightComponent> = None;
+        let mut query = <Read<DirectionalLightComponent>>::query();
+        for light in query.iter(world) {
+            directional_light = Some(light.clone());
+        }
+
+        // Temporarily assume we have a light
+        let directional_light = directional_light.unwrap();
+        let main_view = {
+            let view = glam::Mat4::look_at_rh(
+                directional_light.direction * -40.0,
+                glam::Vec3::new(0.0, 0.0, 0.0),
+                glam::Vec3::new(0.0, 0.0, 1.0),
+            );
+            let proj = glam::Mat4::orthographic_rh_gl(
+                -20.0,
+                20.0,
+                20.0,
+                -20.0,
+                0.01,
+                200.0
+            );
+            // let proj = glam::Mat4::perspective_rh_gl(
+            //     std::f32::consts::FRAC_PI_4,
+            //     aspect_ratio,
+            //     0.01,
+            //     200.0,
+            // );
+            let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
+
+            // let proj = glam::Mat4::perspective_rh_gl(
+            //     std::f32::consts::FRAC_PI_4,
+            //     aspect_ratio,
+            //     0.01,
+            //     200.0,
+            // );
+            // let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
+
+            println!("eye {:?}", directional_light.direction * -40.0);
+            println!("view {}", view);
+            println!("proj {}", proj);
+
+            render_view_set.create_view(
+                eye,
+                view,
+                proj,
+                main_camera_render_phase_mask,
+                "shadow_map".to_string(),
+            )
+        };
+
+        // let directional_light_shadow_map_view = {
+        //     let view = glam::Mat4::look_at_rh(
+        //
+        //     )
+        // }
 
         //
         // Visibility
