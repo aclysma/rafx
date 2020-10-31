@@ -13,7 +13,7 @@ use renderer::nodes::RenderRegistry;
 use crate::assets::gltf::{MeshAssetData, GltfMaterialAsset};
 use crate::resource_manager::GameResourceManager;
 use renderer::assets::ResourceManager;
-use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
+use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::game_asset_lookup::MeshAsset;
@@ -150,6 +150,7 @@ pub fn rendering_init(
         .register_feature::<Debug3dRenderFeature>()
         .register_feature::<ImGuiRenderFeature>()
         .register_render_phase::<OpaqueRenderPhase>("Opaque")
+        .register_render_phase::<ShadowMapRenderPhase>("ShadowMap")
         .register_render_phase::<TransparentRenderPhase>("Transparent")
         .register_render_phase::<UiRenderPhase>("Ui")
         .build();

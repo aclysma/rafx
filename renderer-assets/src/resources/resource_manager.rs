@@ -10,8 +10,7 @@ use std::mem::ManuallyDrop;
 use crate::{
     vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, GraphicsPipelineResource,
     DescriptorSetAllocatorMetrics, GenericLoader, BufferAssetData, AssetLookupSet,
-    DynResourceAllocatorSet, LoadQueues, AssetLookup, SlotNameLookup, SlotLocation,
-    DynPassMaterialInstance, DescriptorSetAllocatorRef, DynMaterialInstance,
+    DynResourceAllocatorSet, LoadQueues, AssetLookup, DescriptorSetAllocatorRef,
     DescriptorSetAllocatorProvider, RenderPassResource, GraphicsPipelineCache,
     MaterialPassResource,
 };
@@ -37,10 +36,10 @@ use crate::resources::descriptor_sets::{DescriptorSetAllocator, DescriptorSetAll
 use crate::resources::upload::{UploadManager, ImageUploadOpResult, BufferUploadOpResult};
 use crossbeam_channel::Sender;
 use crate::resources::command_buffers::DynCommandWriterAllocator;
-use ash::vk;
 use renderer_nodes::RenderRegistry;
 use fnv::FnvHashMap;
 use crate::graph::RenderGraphCache;
+use ash::vk;
 
 //TODO: Support descriptors that can be different per-view
 //TODO: Support dynamic descriptors tied to command buffers?
@@ -105,6 +104,7 @@ impl ResourceContext {
 }
 
 pub struct ResourceManager {
+    render_registry: RenderRegistry,
     dyn_resources: DynResourceAllocatorSetManager,
     dyn_commands: DynCommandWriterAllocator,
     resources: ResourceLookupSet,
@@ -128,6 +128,7 @@ impl ResourceManager {
         );
 
         ResourceManager {
+            render_registry: render_registry.clone(),
             dyn_commands: DynCommandWriterAllocator::new(
                 device_context,
                 renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
@@ -691,150 +692,42 @@ impl ResourceManager {
         material_asset: &MaterialAssetData,
     ) -> VkResult<MaterialAsset> {
         let mut passes = Vec::with_capacity(material_asset.passes.len());
+        let mut pass_name_to_index = FnvHashMap::default();
+        let mut pass_phase_to_index = FnvHashMap::default();
 
-        let mut pass_phase_name_to_index = FnvHashMap::default();
-        for pass in &material_asset.passes {
-            //
-            // Pipeline asset (represents fixed function state)
-            //
-            let loaded_pipeline_asset = self
-                .loaded_assets
-                .graphics_pipelines
-                .get_latest(pass.pipeline.load_handle())
-                .unwrap();
-            let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
+        for pass_data in &material_asset.passes {
+            let pass = MaterialPass::new(self, pass_data)?;
 
-            let fixed_function_state = Arc::new(dsc::FixedFunctionState {
-                vertex_input_state: pass.shader_interface.vertex_input_state.clone(),
-                input_assembly_state: pipeline_asset.input_assembly_state.clone(),
-                viewport_state: pipeline_asset.viewport_state.clone(),
-                rasterization_state: pipeline_asset.rasterization_state.clone(),
-                multisample_state: pipeline_asset.multisample_state.clone(),
-                color_blend_state: pipeline_asset.color_blend_state.clone(),
-                dynamic_state: pipeline_asset.dynamic_state.clone(),
-                depth_stencil_state: pipeline_asset.depth_stencil_state.clone(),
-            });
+            let pass_index = passes.len();
+            passes.push(pass);
 
-            //
-            // Shaders
-            //
-            let mut shader_module_metas = Vec::with_capacity(pass.shaders.len());
-            let mut shader_modules = Vec::with_capacity(pass.shaders.len());
-            for stage in &pass.shaders {
-                let shader_module_meta = dsc::ShaderModuleMeta {
-                    stage: stage.stage,
-                    entry_name: stage.entry_name.clone(),
-                };
-                shader_module_metas.push(shader_module_meta);
-
-                let shader_module = self
-                    .loaded_assets
-                    .shader_modules
-                    .get_latest(stage.shader_module.load_handle())
-                    .unwrap();
-                shader_modules.push(shader_module.shader_module.clone());
+            if let Some(name) = &pass_data.name {
+                let old = pass_name_to_index.insert(name.clone(), pass_index);
+                assert!(old.is_none());
             }
 
-            //
-            // Descriptor set layout
-            //
-            let mut descriptor_set_layouts =
-                Vec::with_capacity(pass.shader_interface.descriptor_set_layouts.len());
-            let mut descriptor_set_layout_defs =
-                Vec::with_capacity(pass.shader_interface.descriptor_set_layouts.len());
-            for descriptor_set_layout_def in &pass.shader_interface.descriptor_set_layouts {
-                let descriptor_set_layout_def = descriptor_set_layout_def.into();
-                let descriptor_set_layout = self
-                    .resources()
-                    .get_or_create_descriptor_set_layout(&descriptor_set_layout_def)?;
-                descriptor_set_layouts.push(descriptor_set_layout);
-                descriptor_set_layout_defs.push(descriptor_set_layout_def);
-            }
-
-            //
-            // Pipeline layout
-            //
-            let pipeline_layout_def = dsc::PipelineLayout {
-                descriptor_set_layouts: descriptor_set_layout_defs,
-                push_constant_ranges: pass.shader_interface.push_constant_ranges.clone(),
-            };
-
-            let pipeline_layout = self
-                .resources()
-                .get_or_create_pipeline_layout(&pipeline_layout_def)?;
-
-            let material_pass = self.resources.get_or_create_material_pass(
-                shader_modules.clone(),
-                shader_module_metas,
-                pipeline_layout.clone(),
-                fixed_function_state,
-            )?;
-
-            //
-            // If a phase name is specified, register the pass with the pipeline cache. The pipeline
-            // cache is responsible for ensuring pipelines are created for renderpasses that execute
-            // within the pipeline's phase
-            //
-            if let Some(phase_name) = &pass.phase {
-                let renderphase_index = self
-                    .graphics_pipeline_cache
-                    .get_renderphase_by_name(phase_name);
-                match renderphase_index {
-                    Some(renderphase_index) => self
-                        .graphics_pipeline_cache
-                        .register_material_to_phase_index(&material_pass, renderphase_index),
-                    None => {
-                        log::error!(
+            if let Some(phase_name) = &pass_data.phase {
+                if let Some(phase_index) = self
+                    .render_registry
+                    .render_phase_index_from_name(phase_name)
+                {
+                    let old = pass_phase_to_index.insert(phase_index, pass_index);
+                    assert!(old.is_none());
+                } else {
+                    log::error!(
                             "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
                             phase_name
                         );
-                        return Err(vk::Result::ERROR_UNKNOWN);
-                    }
+                    return Err(vk::Result::ERROR_UNKNOWN);
                 }
-            }
-
-            // Create a lookup of the slot names
-            let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
-            for (layout_index, layout) in pass
-                .shader_interface
-                .descriptor_set_layouts
-                .iter()
-                .enumerate()
-            {
-                for (binding_index, binding) in
-                    layout.descriptor_set_layout_bindings.iter().enumerate()
-                {
-                    pass_slot_name_lookup
-                        .entry(binding.slot_name.clone())
-                        .or_default()
-                        .push(SlotLocation {
-                            layout_index: layout_index as u32,
-                            binding_index: binding_index as u32,
-                            //array_index: 0
-                        });
-                }
-            }
-
-            let pass_index = passes.len();
-            passes.push(MaterialPass {
-                descriptor_set_layouts,
-                pipeline_layout,
-                shader_modules,
-                //per_swapchain_data: Mutex::new(per_swapchain_data),
-                material_pass_resource: material_pass.clone(),
-                shader_interface: pass.shader_interface.clone(),
-                pass_slot_name_lookup: Arc::new(pass_slot_name_lookup),
-            });
-            if let Some(phase_name) = &pass.phase {
-                let old = pass_phase_name_to_index.insert(phase_name.clone(), pass_index);
-                assert!(old.is_none());
             }
         }
 
-        Ok(MaterialAsset {
-            passes: Arc::new(passes),
-            pass_phase_name_to_index,
-        })
+        Ok(MaterialAsset::new(
+            passes,
+            pass_name_to_index,
+            pass_phase_to_index,
+        ))
     }
 
     fn load_material_instance(
@@ -906,87 +799,11 @@ impl ResourceManager {
         let material_descriptor_sets = Arc::new(material_descriptor_sets);
         Ok(MaterialInstanceAsset::new(
             material_instance_asset.material.clone(),
-            material_asset.passes.clone(),
+            material_asset.clone(),
             material_descriptor_sets,
             material_instance_asset.slot_assignments.clone(),
             material_instance_descriptor_set_writes,
         ))
-    }
-
-    pub fn create_dyn_pass_material_instance_uninitialized(
-        &self,
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material: Handle<MaterialAsset>,
-        pass_index: u32,
-    ) -> VkResult<DynPassMaterialInstance> {
-        let material_asset = self
-            .loaded_assets
-            .materials
-            .get_latest(material.load_handle())
-            .unwrap();
-
-        descriptor_set_allocator.create_dyn_pass_material_instance_uninitialized(
-            &material_asset.passes[pass_index as usize],
-        )
-    }
-
-    pub fn create_dyn_pass_material_instance_from_asset(
-        &mut self,
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material_instance: Handle<MaterialInstanceAsset>,
-        pass_index: u32,
-    ) -> VkResult<DynPassMaterialInstance> {
-        let material_instance_asset = self
-            .loaded_assets
-            .material_instances
-            .get_committed(material_instance.load_handle())
-            .unwrap();
-
-        let material_asset = self
-            .loaded_assets
-            .materials
-            .get_latest(material_instance_asset.inner.material.load_handle())
-            .unwrap();
-
-        descriptor_set_allocator.create_dyn_pass_material_instance_from_asset(
-            &material_asset.passes[pass_index as usize],
-            material_instance_asset.inner.descriptor_set_writes[pass_index as usize].clone(),
-        )
-    }
-
-    pub fn create_dyn_material_instance_uninitialized(
-        &self,
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material: Handle<MaterialAsset>,
-    ) -> VkResult<DynMaterialInstance> {
-        let material_asset = self
-            .loaded_assets
-            .materials
-            .get_latest(material.load_handle())
-            .unwrap();
-
-        descriptor_set_allocator.create_dyn_material_instance_uninitialized(material_asset)
-    }
-
-    pub fn create_dyn_material_instance_from_asset(
-        &self, // mut required because the asset may describe a sampler that needs to be created
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        material_instance: Handle<MaterialInstanceAsset>,
-    ) -> VkResult<DynMaterialInstance> {
-        let material_instance_asset = self
-            .loaded_assets
-            .material_instances
-            .get_committed(material_instance.load_handle())
-            .unwrap();
-
-        let material_asset = self
-            .loaded_assets
-            .materials
-            .get_latest(material_instance_asset.inner.material.load_handle())
-            .unwrap();
-
-        descriptor_set_allocator
-            .create_dyn_material_instance_from_asset(material_asset, material_instance_asset)
     }
 }
 

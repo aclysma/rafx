@@ -47,3 +47,6 @@ mopa = "0.2"
 ron = "0.5"
 
 arrayvec = "0.5"
+
+[dev-dependencies]
+env_logger = "0.6"

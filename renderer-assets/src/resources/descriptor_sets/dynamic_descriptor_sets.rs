@@ -144,7 +144,8 @@ impl DynDescriptorSet {
         }
     }
 
-    pub fn set_buffer_data<T: Copy>(
+    // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
+    pub fn set_buffer_data<T: Copy + 'static>(
         &mut self,
         binding_index: u32,
         data: &T,
@@ -152,7 +153,8 @@ impl DynDescriptorSet {
         self.set_buffer_data_array_element(binding_index, 0, data)
     }
 
-    fn set_buffer_data_array_element<T: Copy>(
+    // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
+    fn set_buffer_data_array_element<T: Copy + 'static>(
         &mut self,
         binding_index: u32,
         array_index: usize,
@@ -239,7 +241,8 @@ impl DynPassMaterialInstance {
         }
     }
 
-    pub fn set_buffer_data<T: Copy>(
+    // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
+    pub fn set_buffer_data<T: Copy + 'static>(
         &mut self,
         slot_name: &str,
         data: &T,
@@ -294,7 +297,8 @@ impl DynMaterialInstance {
         }
     }
 
-    pub fn set_buffer_data<T: Copy>(
+    // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
+    pub fn set_buffer_data<T: Copy + 'static>(
         &mut self,
         slot_name: &str,
         data: &T,

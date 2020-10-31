@@ -1,25 +1,25 @@
 (
     version: 1,
-    import_hash: Some(14779690000645711184),
+    import_hash: Some(1960568556744531592),
     importer_version: 3,
     importer_type: "90fdad4b-cec1-4f59-b679-97895711b6e1",
     importer_options: (),
-    importer_state: (Some("1b221315-ed1d-4c15-a088-dda424b5955a")),
+    importer_state: (Some("7deb80e0-f79d-49a6-a786-69a4f4c9f6bf")),
     assets: [
         (
-            id: "1b221315-ed1d-4c15-a088-dda424b5955a",
+            id: "7deb80e0-f79d-49a6-a786-69a4f4c9f6bf",
             search_tags: [
-                ("file_name", Some("debug.vert.spv")),
+                ("file_name", Some("mesh_shadow_map.frag.spv")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 4689366084084068999,
-                id: "1b221315-ed1d-4c15-a088-dda424b5955a",
+                hash: 310790141202547958,
+                id: "7deb80e0-f79d-49a6-a786-69a4f4c9f6bf",
                 build_deps: [],
                 load_deps: [],
                 compression: None,
-                compressed_size: Some(1484),
-                uncompressed_size: Some(1484),
+                compressed_size: Some(3908),
+                uncompressed_size: Some(3908),
                 type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
             )),
         ),

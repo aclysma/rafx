@@ -13,7 +13,7 @@ use renderer::nodes::{
     RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet, AllRenderNodes,
     FramePacketBuilder, ExtractJobSet,
 };
-use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
+use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
 use legion::*;
 use crate::render_contexts::{RenderJobExtractContext};
@@ -82,6 +82,7 @@ impl GameRenderer {
 
         let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
             .add_render_phase::<OpaqueRenderPhase>()
+            .add_render_phase::<ShadowMapRenderPhase>()
             .add_render_phase::<TransparentRenderPhase>()
             .add_render_phase::<UiRenderPhase>()
             .build();
@@ -391,7 +392,7 @@ impl GameRenderer {
             )
         };
 
-        let mut directional_light : Option<DirectionalLightComponent> = None;
+        let mut directional_light: Option<DirectionalLightComponent> = None;
         let mut query = <Read<DirectionalLightComponent>>::query();
         for light in query.iter(world) {
             directional_light = Some(light.clone());
@@ -399,28 +400,16 @@ impl GameRenderer {
 
         // Temporarily assume we have a light
         let directional_light = directional_light.unwrap();
-        let main_view = {
+        let directional_light_view = {
             let view = glam::Mat4::look_at_rh(
                 directional_light.direction * -40.0,
                 glam::Vec3::new(0.0, 0.0, 0.0),
                 glam::Vec3::new(0.0, 0.0, 1.0),
             );
-            let proj = glam::Mat4::orthographic_rh_gl(
-                -20.0,
-                20.0,
-                20.0,
-                -20.0,
-                0.01,
-                200.0
-            );
-            // let proj = glam::Mat4::perspective_rh_gl(
-            //     std::f32::consts::FRAC_PI_4,
-            //     aspect_ratio,
-            //     0.01,
-            //     200.0,
-            // );
-            let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
 
+            let proj = glam::Mat4::orthographic_rh(-20.0, 20.0, 20.0, -20.0, 0.01, 200.0);
+
+            //NOTE: This would be the correct way to do perspective projection in our coordinate system
             // let proj = glam::Mat4::perspective_rh_gl(
             //     std::f32::consts::FRAC_PI_4,
             //     aspect_ratio,
@@ -428,10 +417,6 @@ impl GameRenderer {
             //     200.0,
             // );
             // let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
-
-            println!("eye {:?}", directional_light.direction * -40.0);
-            println!("view {}", view);
-            println!("proj {}", proj);
 
             render_view_set.create_view(
                 eye,
@@ -442,12 +427,6 @@ impl GameRenderer {
             )
         };
 
-        // let directional_light_shadow_map_view = {
-        //     let view = glam::Mat4::look_at_rh(
-        //
-        //     )
-        // }
-
         //
         // Visibility
         //
@@ -455,6 +434,11 @@ impl GameRenderer {
             static_visibility_node_set.calculate_static_visibility(&main_view);
         let main_view_dynamic_visibility_result =
             dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
+
+        let directional_light_view_view_static_visibility_result =
+            static_visibility_node_set.calculate_static_visibility(&directional_light_view);
+        let directional_light_view_view_dynamic_visibility_result =
+            dynamic_visibility_node_set.calculate_dynamic_visibility(&directional_light_view);
 
         log::trace!(
             "main view static node count: {}",
@@ -487,6 +471,7 @@ impl GameRenderer {
             &swapchain_info,
             swapchain_image,
             main_view.clone(),
+            directional_light_view.clone(),
             bloom_extract_material_pass,
             bloom_blur_material_pass,
             bloom_combine_material_pass,
@@ -512,6 +497,14 @@ impl GameRenderer {
             &[
                 main_view_static_visibility_result,
                 main_view_dynamic_visibility_result,
+            ],
+        );
+
+        frame_packet_builder.add_view(
+            &directional_light_view,
+            &[
+                directional_light_view_view_static_visibility_result,
+                directional_light_view_view_dynamic_visibility_result,
             ],
         );
 
@@ -553,8 +546,11 @@ impl GameRenderer {
         };
 
         let extract_context = RenderJobExtractContext::new(&world, &resources, resource_manager);
-        let prepare_job_set =
-            extract_job_set.extract(&extract_context, &frame_packet, &[&main_view]);
+        let prepare_job_set = extract_job_set.extract(
+            &extract_context,
+            &frame_packet,
+            &[&main_view, &directional_light_view],
+        );
 
         let t1 = std::time::Instant::now();
         log::trace!(
@@ -571,6 +567,7 @@ impl GameRenderer {
             resource_context,
             frame_packet,
             main_view,
+            directional_light_view,
             render_registry,
             device_context,
         };

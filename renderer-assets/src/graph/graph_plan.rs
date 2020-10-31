@@ -584,8 +584,8 @@ fn insert_resolves(
                             log::trace!(
                                 "        incompatibility cannot be fixed via renderpass resolve"
                             );
-                            log::trace!("{:?}", resolve_spec);
-                            log::trace!("{:?}", read_spec);
+                            log::trace!("          resolve: {:?}", resolve_spec);
+                            log::trace!("          read   : {:?}", read_spec);
                         }
                     }
 
@@ -759,6 +759,10 @@ fn assign_virtual_images(
                         usage_to_virtual.insert(*usage_resource_id, virtual_image);
 
                     assert!(overwritten_image.is_none());
+
+                    //TODO: One issue (aside from not doing any blits right now) is that images created in this way
+                    // aren't included in the assign_physical_images logic
+                    panic!("Render graph does not currently support blit from one image to another to fix image compatibility");
                 }
             }
         }
@@ -1154,17 +1158,39 @@ fn assign_physical_images(
     struct PhysicalImage {
         specification: RenderGraphImageSpecification,
         last_node_pass_index: usize,
+        can_be_reused: bool,
     }
 
     let mut physical_images = Vec::<PhysicalImage>::default();
     let mut virtual_to_physical = FnvHashMap::<VirtualImageId, PhysicalImageId>::default();
 
+    // First allocate physical IDs for all output images
+    for output_image in &graph.output_images {
+        let physical_image_id = PhysicalImageId(physical_images.len());
+        physical_images.push(PhysicalImage {
+            specification: output_image.specification.clone(),
+            last_node_pass_index: passes.len() - 1,
+            can_be_reused: true, // Should be safe to allow reuse?
+        });
+
+        let virtual_id = virtual_images.usage_to_virtual[&output_image.usage];
+        let old = virtual_to_physical.insert(virtual_id, physical_image_id);
+        assert!(old.is_none());
+    }
+
     // Images are sorted by first usage (because we register them in order of the passes that first use them)
     for reuse_requirements in &reuse_requirements {
+        if virtual_to_physical.contains_key(&reuse_requirements.virtual_id) {
+            // May already have been registered by output image
+            continue;
+        }
+
         // See if we can reuse with an existing physical image
         let mut physical_image_id = None;
         for (physical_image_index, physical_image) in physical_images.iter_mut().enumerate() {
-            if physical_image.last_node_pass_index < reuse_requirements.first_node_pass_index {
+            if physical_image.last_node_pass_index < reuse_requirements.first_node_pass_index
+                && physical_image.can_be_reused
+            {
                 if physical_image
                     .specification
                     .try_merge(&reuse_requirements.specification)
@@ -1182,6 +1208,7 @@ fn assign_physical_images(
             physical_images.push(PhysicalImage {
                 specification: reuse_requirements.specification.clone(),
                 last_node_pass_index: reuse_requirements.last_node_pass_index,
+                can_be_reused: false,
             });
             physical_image_id
         });
@@ -1191,6 +1218,8 @@ fn assign_physical_images(
 
     let mut map_image_to_physical = FnvHashMap::default();
     for (&usage, virtual_image) in &virtual_images.usage_to_virtual {
+        //TODO: This was breaking in a test because an output image had no usage flags and we
+        // never assigned the output image a physical ID since it wasn't in a pass
         map_image_to_physical.insert(usage, virtual_to_physical[virtual_image]);
     }
 

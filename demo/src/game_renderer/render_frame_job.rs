@@ -15,6 +15,7 @@ pub struct RenderFrameJob {
     pub resource_context: ResourceContext,
     pub frame_packet: FramePacket,
     pub main_view: RenderView,
+    pub directional_light_view: RenderView,
     pub render_registry: RenderRegistry,
     pub device_context: VkDeviceContext,
 }
@@ -31,6 +32,7 @@ impl RenderFrameJob {
             self.resource_context,
             self.frame_packet,
             self.main_view,
+            self.directional_light_view,
             self.render_registry,
             self.device_context,
         );
@@ -67,6 +69,7 @@ impl RenderFrameJob {
         resource_context: ResourceContext,
         frame_packet: FramePacket,
         main_view: RenderView,
+        directional_light_view: RenderView,
         render_registry: RenderRegistry,
         device_context: VkDeviceContext,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
@@ -80,7 +83,7 @@ impl RenderFrameJob {
         let prepared_render_data = prepare_job_set.prepare(
             &prepare_context,
             &frame_packet,
-            &[&main_view],
+            &[&main_view, &directional_light_view],
             &render_registry,
         );
         let t1 = std::time::Instant::now();

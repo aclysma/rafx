@@ -306,7 +306,6 @@ fn render_frame(
         dsc::ImageLayout::PresentSrcKhr,
         vk::AccessFlags::empty(),
         vk::PipelineStageFlags::empty(),
-        vk::ImageAspectFlags::COLOR,
     );
 
     // Create the executor, it needs to have access to the resource manager to add framebuffers

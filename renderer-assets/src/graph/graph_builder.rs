@@ -671,12 +671,19 @@ impl RenderGraphBuilder {
         &mut self,
         image_id: RenderGraphImageUsageId,
         dst_image: ResourceArc<ImageViewResource>,
-        state: RenderGraphImageSpecification,
+        specification: RenderGraphImageSpecification,
         layout: dsc::ImageLayout,
         access_flags: vk::AccessFlags,
         stage_flags: vk::PipelineStageFlags,
-        image_aspect_flags: vk::ImageAspectFlags,
     ) -> RenderGraphOutputImageId {
+        if specification.usage_flags == vk::ImageUsageFlags::empty() {
+            panic!("An output image with empty ImageUsageFlags in the specification is almost certainly a mistake.");
+        }
+
+        if specification.aspect_flags == vk::ImageAspectFlags::empty() {
+            panic!("An output image with empty ImageAspectFlags in the specification is almost certainly a mistake.");
+        }
+
         let output_image_id = RenderGraphOutputImageId(self.output_images.len());
 
         let version_id = self.image_version_id(image_id);
@@ -687,7 +694,7 @@ impl RenderGraphBuilder {
             layout,
             access_flags,
             stage_flags,
-            image_aspect_flags,
+            specification.aspect_flags,
         );
 
         let image_version = self.image_version_info_mut(image_id);
@@ -696,7 +703,7 @@ impl RenderGraphBuilder {
         let output_image = RenderGraphOutputImage {
             output_image_id,
             usage: usage_id,
-            specification: state,
+            specification,
             dst_image,
             final_layout: layout,
             final_access_flags: access_flags,

@@ -216,8 +216,14 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
             descriptor_set.set_buffer_data(0, &view_proj);
             descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
-            per_view_descriptor_sets.resize(per_view_descriptor_sets.len().max(view.view_index() as usize + 1), None);
-            per_view_descriptor_sets[view.view_index() as usize] = Some(descriptor_set.descriptor_set().clone());
+            per_view_descriptor_sets.resize(
+                per_view_descriptor_sets
+                    .len()
+                    .max(view.view_index() as usize + 1),
+                None,
+            );
+            per_view_descriptor_sets[view.view_index() as usize] =
+                Some(descriptor_set.descriptor_set().clone());
         }
 
         //TODO: indexes are u16 so we may need to produce more than one set of buffers

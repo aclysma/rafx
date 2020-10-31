@@ -1,12 +1,15 @@
 use renderer::assets::resources::{DescriptorSetArc, ResourceArc, AssetLookup, BufferResource};
 use crate::assets::gltf::MeshAssetData;
-use renderer::assets::assets::MaterialPass;
+use renderer::assets::{MaterialPass, MaterialInstanceAsset};
 use type_uuid::*;
 use std::sync::Arc;
 
 pub struct MeshAssetPart {
-    pub material_passes: Arc<Vec<MaterialPass>>,
-    pub material_instance_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
+    pub opaque_pass: MaterialPass,
+    pub opaque_material_descriptor_set: DescriptorSetArc,
+    // These are optional because we might want to disable casting shadows
+    pub shadow_map_pass: Option<MaterialPass>,
+    pub shadow_map_material_descriptor_set: Option<DescriptorSetArc>,
     pub vertex_buffer_offset_in_bytes: u32,
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
@@ -14,10 +17,10 @@ pub struct MeshAssetPart {
 }
 
 pub struct MeshAssetInner {
-    pub mesh_parts: Arc<Vec<MeshAssetPart>>,
+    pub mesh_parts: Vec<Option<MeshAssetPart>>,
     pub vertex_buffer: ResourceArc<BufferResource>,
     pub index_buffer: ResourceArc<BufferResource>,
-    pub asset: MeshAssetData,
+    pub asset_data: MeshAssetData,
 }
 
 #[derive(TypeUuid, Clone)]

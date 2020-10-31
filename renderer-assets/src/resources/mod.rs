@@ -25,8 +25,6 @@ mod load_queue;
 pub use load_queue::LoadQueues;
 pub use load_queue::GenericLoader;
 
-mod swapchain_management;
-
 mod asset_lookup;
 pub use asset_lookup::AssetLookupSet;
 pub use asset_lookup::AssetLookup;

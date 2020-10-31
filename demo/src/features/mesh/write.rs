@@ -48,14 +48,17 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
             .unwrap();
 
         unsafe {
-            let mesh_part =
-                &frame_node_data.mesh_asset.inner.mesh_parts[render_node_data.mesh_part_index];
+            // Always valid, we don't generate render nodes for mesh parts that are None
+            let mesh_part = &frame_node_data.mesh_asset.inner.mesh_parts
+                [render_node_data.mesh_part_index]
+                .as_ref()
+                .unwrap();
 
             let pipeline = write_context
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
-                    &mesh_part.material_passes[0].material_pass_resource,
+                    &render_node_data.material_pass.material_pass_resource,
                     &write_context.renderpass,
                 )
                 .unwrap();
@@ -71,7 +74,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
                 pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-                0,
+                super::PER_VIEW_DESCRIPTOR_SET_INDEX,
                 &[render_node_data.per_view_descriptor_set.get()],
                 &[],
             );
@@ -80,13 +83,9 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
             logical_device.cmd_bind_descriptor_sets(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                pipeline
-                    .get_raw()
-                    .pipeline_layout
-                    .get_raw()
-                    .pipeline_layout,
-                1,
-                &[mesh_part.material_instance_descriptor_sets[0 /* pass index */][1 /* descriptor set index */].get()],
+                pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
+                super::PER_MATERIAL_DESCRIPTOR_SET_INDEX,
+                &[render_node_data.per_material_descriptor_set.get()], // pass 0, descriptor set index 1
                 &[],
             );
 
@@ -94,7 +93,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
                 pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-                2,
+                super::PER_INSTANCE_DESCRIPTOR_SET_INDEX,
                 &[render_node_data.per_instance_descriptor_set.get()],
                 &[],
             );

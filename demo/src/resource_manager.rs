@@ -2,6 +2,7 @@ use renderer::assets::resources::{AssetLookup, LoadQueues, GenericLoader, Resour
 use crate::game_asset_lookup::{
     GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner,
 };
+use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::handle::AssetHandle;
 use ash::prelude::VkResult;
@@ -153,25 +154,58 @@ impl GameResourceManager {
                     .get_committed(mesh_part.material_instance.load_handle())
                     .unwrap();
 
-                MeshAssetPart {
-                    material_passes: material_instance.inner.material_passes.clone(),
-                    material_instance_descriptor_sets: material_instance
-                        .inner
-                        .material_descriptor_sets
+                let opaque_pass_index = material_instance
+                    .material
+                    .find_pass_by_phase::<OpaqueRenderPhase>();
+                if opaque_pass_index.is_none() {
+                    log::error!(
+                        "A mesh part with material {:?} has no opaque phase",
+                        material_instance.material_handle
+                    );
+                    return None;
+                }
+                let opaque_pass_index = opaque_pass_index.unwrap();
+
+                //NOTE: For now require this, but we might want to disable shadow casting, in which
+                // case no material is necessary
+                let shadow_map_pass_index = material_instance
+                    .material
+                    .find_pass_by_phase::<ShadowMapRenderPhase>();
+                if shadow_map_pass_index.is_none() {
+                    log::error!(
+                        "A mesh part with material {:?} has no shadow map phase",
+                        material_instance.material_handle
+                    );
+                    return None;
+                }
+
+                const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
+
+                Some(MeshAssetPart {
+                    opaque_pass: material_instance.material.passes[opaque_pass_index].clone(),
+                    opaque_material_descriptor_set: material_instance.material_descriptor_sets
+                        [opaque_pass_index][PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
                         .clone(),
+                    shadow_map_pass: shadow_map_pass_index
+                        .map(|pass_index| material_instance.material.passes[pass_index].clone()),
+                    shadow_map_material_descriptor_set: shadow_map_pass_index.map(|pass_index| {
+                        material_instance.material_descriptor_sets[pass_index]
+                            [PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
+                            .clone()
+                    }),
                     vertex_buffer_offset_in_bytes: mesh_part.vertex_buffer_offset_in_bytes,
                     vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
                     index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
                     index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
-                }
+                })
             })
             .collect();
 
         let inner = MeshAssetInner {
             vertex_buffer,
             index_buffer,
-            asset: mesh_asset.clone(),
-            mesh_parts: Arc::new(mesh_parts),
+            asset_data: mesh_asset.clone(),
+            mesh_parts,
         };
 
         Ok(MeshAsset {

@@ -47,7 +47,10 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
                     vk::PipelineBindPoint::GRAPHICS,
                     pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                     0,
-                    &[self.per_view_descriptor_sets[view.view_index() as usize].as_ref().unwrap().get()],
+                    &[self.per_view_descriptor_sets[view.view_index() as usize]
+                        .as_ref()
+                        .unwrap()
+                        .get()],
                     &[],
                 );
 

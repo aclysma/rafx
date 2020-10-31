@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::{vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc};
+use crate::{
+    vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc, ResourceManager,
+};
 use atelier_assets::loader::handle::Handle;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -11,6 +13,10 @@ pub use crate::resources::DescriptorSetLayoutResource;
 pub use crate::resources::PipelineLayoutResource;
 use crate::resources::ShaderModuleResource;
 use fnv::FnvHashMap;
+use std::ops::Deref;
+use ash::vk;
+use ash::prelude::VkResult;
+use renderer_nodes::{RenderPhaseIndex, RenderPhase};
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "366d277d-6cb5-430a-a8fa-007d8ae69886"]
@@ -122,6 +128,7 @@ pub enum MaterialPassDataRenderpassRef {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialPassData {
+    pub name: Option<String>,
     pub phase: Option<String>,
     pub pipeline: Handle<PipelineAsset>,
     //pub renderpass: MaterialPassDataRenderpassRef,
@@ -143,17 +150,10 @@ pub struct SlotLocation {
 
 pub type SlotNameLookup = FnvHashMap<String, Vec<SlotLocation>>;
 
-pub struct MaterialPassSwapchainResources {
-    pub pipeline: ResourceArc<GraphicsPipelineResource>,
-}
-
-pub struct MaterialPass {
+pub struct MaterialPassInner {
     pub shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
     pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
     pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
-
-    // Potentially one of these per swapchain surface
-    //pub per_swapchain_data: Mutex<Vec<MaterialPassSwapchainResources>>,
 
     // Info required to recreate the pipeline for new swapchains
     pub material_pass_resource: ResourceArc<MaterialPassResource>,
@@ -166,14 +166,236 @@ pub struct MaterialPass {
     pub pass_slot_name_lookup: Arc<SlotNameLookup>,
 }
 
-#[derive(TypeUuid, Clone)]
-#[uuid = "165673cd-d81d-4708-b9a4-d7e1a2a67976"]
-pub struct MaterialAsset {
+#[derive(Clone)]
+pub struct MaterialPass {
+    inner: Arc<MaterialPassInner>,
+}
+
+impl MaterialPass {
+    pub fn new(
+        resource_manager: &ResourceManager,
+        material_pass_data: &MaterialPassData,
+    ) -> VkResult<MaterialPass> {
+        use atelier_assets::loader::handle::AssetHandle;
+        //
+        // Pipeline asset (represents fixed function state)
+        //
+        let loaded_pipeline_asset = resource_manager
+            .loaded_assets()
+            .graphics_pipelines
+            .get_latest(material_pass_data.pipeline.load_handle())
+            .unwrap();
+        let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
+
+        let fixed_function_state = Arc::new(dsc::FixedFunctionState {
+            vertex_input_state: material_pass_data
+                .shader_interface
+                .vertex_input_state
+                .clone(),
+            input_assembly_state: pipeline_asset.input_assembly_state.clone(),
+            viewport_state: pipeline_asset.viewport_state.clone(),
+            rasterization_state: pipeline_asset.rasterization_state.clone(),
+            multisample_state: pipeline_asset.multisample_state.clone(),
+            color_blend_state: pipeline_asset.color_blend_state.clone(),
+            dynamic_state: pipeline_asset.dynamic_state.clone(),
+            depth_stencil_state: pipeline_asset.depth_stencil_state.clone(),
+        });
+
+        //
+        // Shaders
+        //
+        let mut shader_module_metas = Vec::with_capacity(material_pass_data.shaders.len());
+        let mut shader_modules = Vec::with_capacity(material_pass_data.shaders.len());
+        for stage in &material_pass_data.shaders {
+            let shader_module_meta = dsc::ShaderModuleMeta {
+                stage: stage.stage,
+                entry_name: stage.entry_name.clone(),
+            };
+            shader_module_metas.push(shader_module_meta);
+
+            let shader_module = resource_manager
+                .loaded_assets()
+                .shader_modules
+                .get_latest(stage.shader_module.load_handle())
+                .unwrap();
+            shader_modules.push(shader_module.shader_module.clone());
+        }
+
+        //
+        // Descriptor set layout
+        //
+        let mut descriptor_set_layouts = Vec::with_capacity(
+            material_pass_data
+                .shader_interface
+                .descriptor_set_layouts
+                .len(),
+        );
+        let mut descriptor_set_layout_defs = Vec::with_capacity(
+            material_pass_data
+                .shader_interface
+                .descriptor_set_layouts
+                .len(),
+        );
+        for descriptor_set_layout_def in &material_pass_data.shader_interface.descriptor_set_layouts
+        {
+            let descriptor_set_layout_def = descriptor_set_layout_def.into();
+            let descriptor_set_layout = resource_manager
+                .resources()
+                .get_or_create_descriptor_set_layout(&descriptor_set_layout_def)?;
+            descriptor_set_layouts.push(descriptor_set_layout);
+            descriptor_set_layout_defs.push(descriptor_set_layout_def);
+        }
+
+        //
+        // Pipeline layout
+        //
+        let pipeline_layout_def = dsc::PipelineLayout {
+            descriptor_set_layouts: descriptor_set_layout_defs,
+            push_constant_ranges: material_pass_data
+                .shader_interface
+                .push_constant_ranges
+                .clone(),
+        };
+
+        let pipeline_layout = resource_manager
+            .resources()
+            .get_or_create_pipeline_layout(&pipeline_layout_def)?;
+
+        let material_pass = resource_manager.resources().get_or_create_material_pass(
+            shader_modules.clone(),
+            shader_module_metas,
+            pipeline_layout.clone(),
+            fixed_function_state,
+        )?;
+
+        //
+        // If a phase name is specified, register the pass with the pipeline cache. The pipeline
+        // cache is responsible for ensuring pipelines are created for renderpasses that execute
+        // within the pipeline's phase
+        //
+        if let Some(phase_name) = &material_pass_data.phase {
+            let renderphase_index = resource_manager
+                .graphics_pipeline_cache()
+                .get_renderphase_by_name(phase_name);
+            match renderphase_index {
+                Some(renderphase_index) => resource_manager
+                    .graphics_pipeline_cache()
+                    .register_material_to_phase_index(&material_pass, renderphase_index),
+                None => {
+                    log::error!(
+                            "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
+                            phase_name
+                        );
+                    return Err(vk::Result::ERROR_UNKNOWN);
+                }
+            }
+        }
+
+        // Create a lookup of the slot names
+        let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
+        for (layout_index, layout) in material_pass_data
+            .shader_interface
+            .descriptor_set_layouts
+            .iter()
+            .enumerate()
+        {
+            for (binding_index, binding) in layout.descriptor_set_layout_bindings.iter().enumerate()
+            {
+                pass_slot_name_lookup
+                    .entry(binding.slot_name.clone())
+                    .or_default()
+                    .push(SlotLocation {
+                        layout_index: layout_index as u32,
+                        binding_index: binding_index as u32,
+                        //array_index: 0
+                    });
+            }
+        }
+
+        let inner = MaterialPassInner {
+            descriptor_set_layouts,
+            pipeline_layout,
+            shader_modules,
+            //per_swapchain_data: Mutex::new(per_swapchain_data),
+            material_pass_resource: material_pass.clone(),
+            shader_interface: material_pass_data.shader_interface.clone(),
+            pass_slot_name_lookup: Arc::new(pass_slot_name_lookup),
+        };
+
+        Ok(MaterialPass {
+            inner: Arc::new(inner),
+        })
+    }
+}
+
+impl Deref for MaterialPass {
+    type Target = MaterialPassInner;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.inner
+    }
+}
+
+pub struct MaterialAssetInner {
     //TODO: Consider making this named
     //TODO: Get cached graphics pipelines working
     //TODO: Could consider decoupling render cache from phases
-    pub passes: Arc<Vec<MaterialPass>>,
-    pub pass_phase_name_to_index: FnvHashMap<String, usize>,
+    pub passes: Vec<MaterialPass>,
+    pub pass_name_to_index: FnvHashMap<String, usize>,
+    pub pass_phase_to_index: FnvHashMap<RenderPhaseIndex, usize>,
+}
+
+#[derive(TypeUuid, Clone)]
+#[uuid = "165673cd-d81d-4708-b9a4-d7e1a2a67976"]
+pub struct MaterialAsset {
+    pub inner: Arc<MaterialAssetInner>,
+}
+
+impl MaterialAsset {
+    pub fn new(
+        passes: Vec<MaterialPass>,
+        pass_name_to_index: FnvHashMap<String, usize>,
+        pass_phase_to_index: FnvHashMap<RenderPhaseIndex, usize>,
+    ) -> Self {
+        let inner = MaterialAssetInner {
+            passes,
+            pass_name_to_index,
+            pass_phase_to_index,
+        };
+
+        MaterialAsset {
+            inner: Arc::new(inner),
+        }
+    }
+
+    pub fn find_pass_by_name(
+        &self,
+        name: &str,
+    ) -> Option<usize> {
+        self.inner.pass_name_to_index.get(name).copied()
+    }
+
+    pub fn find_pass_by_phase<T: RenderPhase>(&self) -> Option<usize> {
+        self.inner
+            .pass_phase_to_index
+            .get(&T::render_phase_index())
+            .copied()
+    }
+
+    pub fn find_pass_by_phase_index(
+        &self,
+        index: RenderPhaseIndex,
+    ) -> Option<usize> {
+        self.inner.pass_phase_to_index.get(&index).copied()
+    }
+}
+
+impl Deref for MaterialAsset {
+    type Target = MaterialAssetInner;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.inner
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -195,8 +417,8 @@ pub struct MaterialInstanceAssetData {
 }
 
 pub struct MaterialInstanceAssetInner {
-    pub material: Handle<MaterialAsset>,
-    pub material_passes: Arc<Vec<MaterialPass>>,
+    pub material_handle: Handle<MaterialAsset>,
+    pub material: MaterialAsset,
 
     // Arc these individually because some downstream systems care only about the descriptor sets
     pub material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
@@ -213,14 +435,16 @@ pub struct MaterialInstanceAsset {
 impl MaterialInstanceAsset {
     pub fn new(
         material: Handle<MaterialAsset>,
-        material_passes: Arc<Vec<MaterialPass>>,
+        //material_passes: Arc<Vec<MaterialPass>>,
+        material_asset: MaterialAsset,
         material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
         slot_assignments: Vec<MaterialInstanceSlotAssignment>,
         descriptor_set_writes: Vec<Vec<DescriptorSetWriteSet>>,
     ) -> Self {
         let inner = MaterialInstanceAssetInner {
-            material,
-            material_passes,
+            material_handle: material,
+            //material_passes,
+            material: material_asset,
             material_descriptor_sets,
             slot_assignments,
             descriptor_set_writes,
@@ -229,5 +453,13 @@ impl MaterialInstanceAsset {
         MaterialInstanceAsset {
             inner: Arc::new(inner),
         }
+    }
+}
+
+impl Deref for MaterialInstanceAsset {
+    type Target = MaterialInstanceAssetInner;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.inner
     }
 }

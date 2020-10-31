@@ -149,6 +149,11 @@ impl Drop for TestImageViewAllocator {
 
 #[test]
 fn graph_smoketest() {
+    let _ = env_logger::builder()
+        .is_test(true)
+        .filter_level(log::LevelFilter::Trace)
+        .try_init();
+
     // - Should there be some way to "pull forward" future constraints to some point?
     // - Maybe we just rely on programmer setting the constraint where they want it since they
     //   can check what the swapchain image or whatever would be anyways. Likely a requirement
@@ -239,13 +244,12 @@ fn graph_smoketest() {
             RenderGraphImageSpecification {
                 samples: vk::SampleCountFlags::TYPE_1,
                 format: swapchain_format,
-                aspect_flags: vk::ImageAspectFlags::empty(),
-                usage_flags: vk::ImageUsageFlags::empty(),
+                aspect_flags: vk::ImageAspectFlags::COLOR,
+                usage_flags: vk::ImageUsageFlags::COLOR_ATTACHMENT,
             },
             dsc::ImageLayout::PresentSrcKhr,
             vk::AccessFlags::empty(),
             vk::PipelineStageFlags::empty(),
-            vk::ImageAspectFlags::COLOR,
         );
 
         //println!("{:#?}", graph);

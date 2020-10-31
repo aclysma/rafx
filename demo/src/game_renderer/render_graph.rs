@@ -8,7 +8,7 @@ use renderer::assets::resources::{
 };
 use crate::render_contexts::RenderJobWriteContext;
 use renderer::nodes::{PreparedRenderData, RenderView};
-use crate::phases::{OpaqueRenderPhase, UiRenderPhase};
+use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use renderer::vulkan::SwapchainInfo;
 use ash::version::DeviceV1_0;
 
@@ -30,6 +30,7 @@ pub fn build_render_graph(
     swapchain_info: &SwapchainInfo,
     swapchain_image: ResourceArc<ImageViewResource>,
     main_view: RenderView,
+    directional_light_view: RenderView,
     bloom_extract_material_pass: ResourceArc<MaterialPassResource>,
     bloom_blur_material_pass: ResourceArc<MaterialPassResource>,
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
@@ -94,6 +95,60 @@ pub fn build_render_graph(
         OpaquePass { node, color, depth }
     };
 
+    let directional_light_pass = {
+        struct DirectionalLightPass {
+            node: RenderGraphNodeId,
+            color: RenderGraphImageUsageId,
+            depth: RenderGraphImageUsageId,
+        }
+
+        let node = graph.add_node("Shadow", RenderGraphQueue::DefaultGraphics);
+
+        let color = graph.create_color_attachment(
+            node,
+            0,
+            Some(vk::ClearColorValue {
+                float32: [0.0, 0.0, 0.0, 0.0],
+            }),
+            RenderGraphImageConstraint {
+                samples: Some(samples),
+                format: Some(color_format),
+                ..Default::default()
+            },
+        );
+        graph.set_image_name(color, "color");
+
+        let depth = graph.create_depth_attachment(
+            node,
+            Some(vk::ClearDepthStencilValue {
+                depth: 1.0,
+                stencil: 0,
+            }),
+            RenderGraphImageConstraint {
+                samples: Some(samples),
+                format: Some(depth_format),
+                ..Default::default()
+            },
+        );
+        graph.set_image_name(depth, "depth");
+
+        graph_callbacks.add_renderphase_dependency::<ShadowMapRenderPhase>(node);
+
+        let directional_light_view = directional_light_view.clone();
+        graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
+            let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+            user_context
+                .prepared_render_data
+                .write_view_phase::<ShadowMapRenderPhase>(
+                    &directional_light_view,
+                    &mut write_context,
+                );
+            Ok(())
+        });
+
+        DirectionalLightPass { node, color, depth }
+    };
+
     let bloom_extract_pass = {
         struct BloomExtractPass {
             node: RenderGraphNodeId,
@@ -128,7 +183,7 @@ pub fn build_render_graph(
 
         let sample_image = graph.sample_image(
             node,
-            opaque_pass.color,
+            directional_light_pass.color,
             RenderGraphImageConstraint {
                 samples: Some(vk::SampleCountFlags::TYPE_1),
                 ..Default::default()
@@ -410,7 +465,6 @@ pub fn build_render_graph(
         dsc::ImageLayout::PresentSrcKhr,
         vk::AccessFlags::empty(),
         vk::PipelineStageFlags::empty(),
-        vk::ImageAspectFlags::COLOR,
     );
 
     //

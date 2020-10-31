@@ -7,6 +7,7 @@ use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, Ren
 use renderer::base::slab::{DropSlabKey, DropSlab};
 use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;
+use renderer::assets::assets::MaterialPass;
 
 mod extract;
 use extract::MeshExtractJob;
@@ -17,6 +18,10 @@ mod write;
 use write::MeshCommandWriter;
 use renderer::assets::resources::{DescriptorSetArc};
 use std::fmt::Debug;
+
+const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 = 0;
+const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 = 1;
+const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 = 2;
 
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
@@ -158,11 +163,24 @@ impl std::fmt::Debug for ExtractedFrameNodeMeshData {
     }
 }
 
-#[derive(Debug)]
 pub struct PreparedSubmitNodeMeshData {
+    material_pass: MaterialPass,
     per_view_descriptor_set: DescriptorSetArc,
+    per_material_descriptor_set: DescriptorSetArc,
     per_instance_descriptor_set: DescriptorSetArc,
     // we can get the mesh via the frame node index
     frame_node_index: FrameNodeIndex,
     mesh_part_index: usize,
+}
+
+impl std::fmt::Debug for PreparedSubmitNodeMeshData {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("PreparedSubmitNodeMeshData")
+            .field("frame_node_index", &self.frame_node_index)
+            .field("mesh_part_index", &self.mesh_part_index)
+            .finish()
+    }
 }

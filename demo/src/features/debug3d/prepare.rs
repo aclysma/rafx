@@ -62,8 +62,14 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
             descriptor_set.set_buffer_data(0, &debug3d_view);
             descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
-            per_view_descriptor_sets.resize(per_view_descriptor_sets.len().max(view.view_index() as usize + 1), None);
-            per_view_descriptor_sets[view.view_index() as usize] = Some(descriptor_set.descriptor_set().clone());
+            per_view_descriptor_sets.resize(
+                per_view_descriptor_sets
+                    .len()
+                    .max(view.view_index() as usize + 1),
+                None,
+            );
+            per_view_descriptor_sets[view.view_index() as usize] =
+                Some(descriptor_set.descriptor_set().clone());
         }
 
         // let per_view_descriptor_sets: Vec<_> = views
