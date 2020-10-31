@@ -876,13 +876,18 @@ fn extract_meshes_to_import(
                         })
                     } else {
                         log::error!("indices must fit in u16");
-                        None
+                        return Err(atelier_assets::importer::Error::Boxed(Box::new(
+                            GltfImportError::new("indices must fit in u16"),
+                        )));
                     }
                 } else {
                     log::error!(
                         "Mesh primitives must specify indices, positions, normals, tangents, and tex_coords"
                     );
-                    None
+
+                    return Err(atelier_assets::importer::Error::Boxed(Box::new(
+                        GltfImportError::new("Mesh primitives must specify indices, positions, normals, tangents, and tex_coords"),
+                    )));
                 }
             };
 

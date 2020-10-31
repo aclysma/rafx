@@ -91,7 +91,10 @@ impl VkBuffer {
         let (buffer, allocation, allocation_info) = device_context
             .allocator()
             .create_buffer(&buffer_info, &allocation_create_info)
-            .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
+            .map_err(|e| {
+                log::error!("Error creating buffer {:?}", e);
+                vk::Result::ERROR_UNKNOWN
+            })?;
 
         let raw = VkBufferRaw { buffer, allocation };
 

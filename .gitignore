@@ -1,4 +1,5 @@
 /target
+/assets-unused
 Cargo.lock
 .idea
 .assets_db

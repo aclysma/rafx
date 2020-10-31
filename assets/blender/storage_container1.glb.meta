@@ -1,0 +1,201 @@
+(
+    version: 1,
+    import_hash: Some(6311323730204048849),
+    importer_version: 24,
+    importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
+    importer_options: (),
+    importer_state: (
+        buffer_asset_uuids: [
+            (Index(0), "66dc9b46-c635-4c95-afed-702c8acf324e"),
+            (Index(1), "da502a0f-6f03-4545-974a-cd1aebc963cc"),
+        ],
+        image_asset_uuids: [
+            (Name("space-crate1-albedo"), "028916ad-14f1-4546-9b64-4968bb82e327"),
+            (Name("space-crate1-metallic-space-crate1-roughness"), "4f6c446e-d156-4e06-8cd6-fcce14fc347c"),
+            (Name("space-crate1-normal-ogl"), "e0f9fa4a-1f2a-4623-b685-e90be25a5038"),
+        ],
+        material_asset_uuids: [
+            (Name("Material"), "3305b45e-a0bc-4754-9a75-7d6c6c59d5fa"),
+        ],
+        material_instance_asset_uuids: [
+            (Name("Material"), "0cab471a-8aac-46be-824c-592d232f8a47"),
+        ],
+        mesh_asset_uuids: [
+            (Name("Cube"), "9a513889-c0bd-45e8-9c70-d5388fd0bb5a"),
+        ],
+    ),
+    assets: [
+        (
+            id: "e0f9fa4a-1f2a-4623-b685-e90be25a5038",
+            search_tags: [
+                ("image_name", Some("space-crate1-normal-ogl")),
+                ("file_name", Some("storage_container1.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 14903882375372548048,
+                id: "e0f9fa4a-1f2a-4623-b685-e90be25a5038",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(16777236),
+                uncompressed_size: Some(16777236),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+        (
+            id: "028916ad-14f1-4546-9b64-4968bb82e327",
+            search_tags: [
+                ("image_name", Some("space-crate1-albedo")),
+                ("file_name", Some("storage_container1.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 17635090649879963340,
+                id: "028916ad-14f1-4546-9b64-4968bb82e327",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(16777236),
+                uncompressed_size: Some(16777236),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+        (
+            id: "4f6c446e-d156-4e06-8cd6-fcce14fc347c",
+            search_tags: [
+                ("image_name", Some("space-crate1-metallic-space-crate1-roughness")),
+                ("file_name", Some("storage_container1.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 5973995336631174067,
+                id: "4f6c446e-d156-4e06-8cd6-fcce14fc347c",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(16777236),
+                uncompressed_size: Some(16777236),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+        (
+            id: "3305b45e-a0bc-4754-9a75-7d6c6c59d5fa",
+            search_tags: [
+                ("material_name", Some("Material")),
+                ("file_name", Some("storage_container1.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 17271385973700727792,
+                id: "3305b45e-a0bc-4754-9a75-7d6c6c59d5fa",
+                build_deps: [
+                    Uuid("028916ad-14f1-4546-9b64-4968bb82e327"),
+                    Uuid("e0f9fa4a-1f2a-4623-b685-e90be25a5038"),
+                    Uuid("4f6c446e-d156-4e06-8cd6-fcce14fc347c"),
+                ],
+                load_deps: [
+                    Uuid("028916ad-14f1-4546-9b64-4968bb82e327"),
+                    Uuid("e0f9fa4a-1f2a-4623-b685-e90be25a5038"),
+                    Uuid("4f6c446e-d156-4e06-8cd6-fcce14fc347c"),
+                ],
+                compression: None,
+                compressed_size: Some(130),
+                uncompressed_size: Some(130),
+                type_id: "130a91a8-ba80-4cad-9bce-848326b234c7",
+            )),
+        ),
+        (
+            id: "0cab471a-8aac-46be-824c-592d232f8a47",
+            search_tags: [
+                ("material_name", Some("Material")),
+                ("file_name", Some("storage_container1.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 4081131067234075364,
+                id: "0cab471a-8aac-46be-824c-592d232f8a47",
+                build_deps: [
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                    Uuid("e0f9fa4a-1f2a-4623-b685-e90be25a5038"),
+                    Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
+                    Uuid("4f6c446e-d156-4e06-8cd6-fcce14fc347c"),
+                    Uuid("028916ad-14f1-4546-9b64-4968bb82e327"),
+                ],
+                load_deps: [
+                    Uuid("4f6c446e-d156-4e06-8cd6-fcce14fc347c"),
+                    Uuid("028916ad-14f1-4546-9b64-4968bb82e327"),
+                    Uuid("e0f9fa4a-1f2a-4623-b685-e90be25a5038"),
+                    Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                ],
+                compression: None,
+                compressed_size: Some(414),
+                uncompressed_size: Some(414),
+                type_id: "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b",
+            )),
+        ),
+        (
+            id: "66dc9b46-c635-4c95-afed-702c8acf324e",
+            search_tags: [
+                ("file_name", Some("storage_container1.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 12455816328612593877,
+                id: "66dc9b46-c635-4c95-afed-702c8acf324e",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1160),
+                uncompressed_size: Some(1160),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "da502a0f-6f03-4545-974a-cd1aebc963cc",
+            search_tags: [
+                ("file_name", Some("storage_container1.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 7922262879614018562,
+                id: "da502a0f-6f03-4545-974a-cd1aebc963cc",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(80),
+                uncompressed_size: Some(80),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "9a513889-c0bd-45e8-9c70-d5388fd0bb5a",
+            search_tags: [
+                ("mesh_name", Some("Cube")),
+                ("file_name", Some("storage_container1.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 3565005361662792702,
+                id: "9a513889-c0bd-45e8-9c70-d5388fd0bb5a",
+                build_deps: [
+                    Uuid("66dc9b46-c635-4c95-afed-702c8acf324e"),
+                    Uuid("0cab471a-8aac-46be-824c-592d232f8a47"),
+                    Uuid("da502a0f-6f03-4545-974a-cd1aebc963cc"),
+                    Uuid("3305b45e-a0bc-4754-9a75-7d6c6c59d5fa"),
+                ],
+                load_deps: [
+                    Uuid("0cab471a-8aac-46be-824c-592d232f8a47"),
+                    Uuid("da502a0f-6f03-4545-974a-cd1aebc963cc"),
+                    Uuid("66dc9b46-c635-4c95-afed-702c8acf324e"),
+                    Uuid("3305b45e-a0bc-4754-9a75-7d6c6c59d5fa"),
+                ],
+                compression: None,
+                compressed_size: Some(120),
+                uncompressed_size: Some(120),
+                type_id: "cf232526-3757-4d94-98d1-c2f7e27c979f",
+            )),
+        ),
+    ],
+)

@@ -76,43 +76,122 @@ pub fn populate_test_mesh_entities(
     resources: &mut Resources,
     world: &mut World,
 ) {
-    let mesh = {
-        let asset_resource = resources.get::<AssetResource>().unwrap();
-        begin_load_asset::<MeshAsset>(
-            asset_uuid!("bdcb02a2-e17e-403e-a96a-84ce8c9c7407"),
-            &asset_resource,
-        )
-    };
+    let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
+    let mut dynamic_visibility_node_set = resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
 
-    for i in 0..100 {
-        let position = Vec3::new(((i / 10) * 3) as f32, ((i % 10) * 3) as f32, 0.0);
+    //
+    // Add a floor
+    //
+    {
+        let floor_mesh = {
+            let asset_resource = resources.get::<AssetResource>().unwrap();
+            begin_load_asset::<MeshAsset>(
+                // cement
+                asset_uuid!("f355d620-2971-48d5-b5c5-2fc9cf254525"),
+                // hex stones
+                //asset_uuid!("e8e524ef-22cf-4abe-bfa1-ad6d3f13e61c"),
+                // beige carpet
+                //asset_uuid!("26d1b7a8-bf0e-4cf0-af8f-c35de164bd5c"),
+                // old linoleum
+                //asset_uuid!("102a836a-f410-483e-aeda-c41cee662e8c"),
+                // yoga mat
+                //asset_uuid!("30867494-4098-4b0a-af17-018d113d5c7b"),
+                &asset_resource,
+            )
+        };
 
-        let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
-        let mut dynamic_visibility_node_set =
-            resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
+        let position = Vec3::new(0.0, 0.0, -1.0);
 
         let render_node = mesh_render_nodes.register_mesh(MeshRenderNode {
             transform: glam::Mat4::from_translation(position),
-            mesh: Some(mesh.clone()),
+            mesh: Some(floor_mesh.clone()),
         });
-
-        let aabb_info = DynamicAabbVisibilityNode {
-            handle: render_node.as_raw_generic_handle(),
-            // aabb bounds
-        };
 
         // User calls functions to register visibility objects
         // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-        let visibility_node = dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
+        let visibility_node =
+            dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
+                handle: render_node.as_raw_generic_handle(),
+                // aabb bounds
+            });
 
         let position_component = PositionComponent { position };
         let mesh_component = MeshComponent {
             render_node,
             visibility_node,
-            mesh: Some(mesh.clone()),
+            mesh: Some(floor_mesh.clone()),
         };
 
         world.extend((0..1).map(|_| (position_component, mesh_component.clone())));
+    }
+
+    //
+    // Add some cubes
+    //
+    {
+        let cube_meshes = {
+            let asset_resource = resources.get::<AssetResource>().unwrap();
+            let mut meshes = Vec::default();
+
+            // meshes.push(begin_load_asset::<MeshAsset>(
+            //     // cobblestone
+            //     asset_uuid!("bdcb02a2-e17e-403e-a96a-84ce8c9c7407"),
+            //     &asset_resource,
+            // ));
+
+            meshes.push(begin_load_asset::<MeshAsset>(
+                // container1
+                asset_uuid!("9a513889-c0bd-45e8-9c70-d5388fd0bb5a"),
+                &asset_resource,
+            ));
+
+            meshes.push(begin_load_asset::<MeshAsset>(
+                // container2
+                asset_uuid!("07b7319f-199c-416f-87e2-414649797fe9"),
+                &asset_resource,
+            ));
+            //
+            // meshes.push(begin_load_asset::<MeshAsset>(
+            //     // bamboo
+            //     asset_uuid!("ee838663-1786-4c03-8df7-2e97b65ba83e"),
+            //     &asset_resource,
+            // ));
+
+            // meshes.push(begin_load_asset::<MeshAsset>(
+            //     // braided carpet
+            //     asset_uuid!("282b0f8d-d21a-4b8b-a71a-000859485372"),
+            //     &asset_resource,
+            // ));
+
+            meshes
+        };
+
+        for i in 0..6 {
+            let position = Vec3::new(((i / 3) * 3) as f32, ((i % 3) * 3) as f32, 0.0);
+            let cube_mesh = cube_meshes[i % cube_meshes.len()].clone();
+
+            let render_node = mesh_render_nodes.register_mesh(MeshRenderNode {
+                transform: glam::Mat4::from_translation(position),
+                mesh: Some(cube_mesh.clone()),
+            });
+
+            // User calls functions to register visibility objects
+            // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
+            let visibility_node =
+                dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
+                    handle: render_node.as_raw_generic_handle(),
+                    // aabb bounds
+                });
+
+            let position_component = PositionComponent { position };
+            let mesh_component = MeshComponent {
+                render_node,
+                visibility_node,
+                mesh: Some(cube_mesh.clone()),
+            };
+
+            world.extend((0..1).map(|_| (position_component, mesh_component.clone())));
+        }
     }
 }
 
@@ -120,43 +199,43 @@ pub fn populate_test_lights(
     resources: &mut Resources,
     world: &mut World,
 ) {
-    add_point_light(
-        resources,
-        world,
-        glam::Vec3::new(-3.0, -3.0, 3.0),
-        PointLightComponent {
-            color: [1.0, 1.0, 1.0, 1.0].into(),
-            intensity: 130.0,
-            range: 25.0,
-        },
-    );
+    // add_point_light(
+    //     resources,
+    //     world,
+    //     glam::Vec3::new(-3.0, -3.0, 3.0),
+    //     PointLightComponent {
+    //         color: [1.0, 1.0, 1.0, 1.0].into(),
+    //         intensity: 130.0,
+    //         range: 25.0,
+    //     },
+    // );
+    //
+    // add_point_light(
+    //     resources,
+    //     world,
+    //     glam::Vec3::new(-3.0, 3.0, 3.0),
+    //     PointLightComponent {
+    //         color: [1.0, 1.0, 1.0, 1.0].into(),
+    //         intensity: 130.0,
+    //         range: 25.0,
+    //     },
+    // );
 
-    add_point_light(
-        resources,
-        world,
-        glam::Vec3::new(-3.0, 3.0, 3.0),
-        PointLightComponent {
-            color: [1.0, 1.0, 1.0, 1.0].into(),
-            intensity: 130.0,
-            range: 25.0,
-        },
-    );
-
-    let light_from = glam::Vec3::new(-3.0, -3.0, 0.0);
-    let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
-    let light_direction = (light_to - light_from).normalize();
-    add_spot_light(
-        resources,
-        world,
-        light_from,
-        SpotLightComponent {
-            direction: light_direction,
-            spotlight_half_angle: 10.0 * (std::f32::consts::PI / 180.0),
-            range: 8.0,
-            color: [1.0, 1.0, 1.0, 1.0].into(),
-            intensity: 1000.0,
-        },
-    );
+    // let light_from = glam::Vec3::new(-3.0, -3.0, 0.0);
+    // let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
+    // let light_direction = (light_to - light_from).normalize();
+    // add_spot_light(
+    //     resources,
+    //     world,
+    //     light_from,
+    //     SpotLightComponent {
+    //         direction: light_direction,
+    //         spotlight_half_angle: 10.0 * (std::f32::consts::PI / 180.0),
+    //         range: 8.0,
+    //         color: [1.0, 1.0, 1.0, 1.0].into(),
+    //         intensity: 1000.0,
+    //     },
+    // );
 
     let light_from = glam::Vec3::new(5.0, 5.0, 5.0);
     let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
@@ -166,7 +245,7 @@ pub fn populate_test_lights(
         world,
         DirectionalLightComponent {
             direction: light_direction,
-            intensity: 5.0,
+            intensity: 8.0,
             color: [1.0, 1.0, 1.0, 1.0].into(),
         },
     );

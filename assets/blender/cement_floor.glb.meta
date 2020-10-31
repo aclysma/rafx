@@ -1,0 +1,201 @@
+(
+    version: 1,
+    import_hash: Some(14599568009785855040),
+    importer_version: 24,
+    importer_type: "fc9ae812-110d-4daf-9223-e87b40966c6b",
+    importer_options: (),
+    importer_state: (
+        buffer_asset_uuids: [
+            (Index(0), "6a9b613d-a1be-49f1-b7ee-84775e0c0135"),
+            (Index(1), "1c6e8cbc-ed5d-44cb-9e3c-9d358992b3d9"),
+        ],
+        image_asset_uuids: [
+            (Name("patchy_cement1_Base_Color"), "b82b0931-506e-4308-93e0-a3c950b40ae5"),
+            (Name("patchy_cement1_Metallic-patchy_cement1_Roughness"), "be231ed1-3887-47b6-b05a-33832ee15059"),
+            (Name("patchy_cement1_Normal"), "74081e8f-a974-4723-a0ee-8a8146855ff0"),
+        ],
+        material_asset_uuids: [
+            (Name("Cement"), "42f8e693-2ca2-43e1-84be-01d60bbf4aa7"),
+        ],
+        material_instance_asset_uuids: [
+            (Name("Cement"), "4975068a-f4a2-484e-af69-f644ec6890d1"),
+        ],
+        mesh_asset_uuids: [
+            (Name("Cube"), "f355d620-2971-48d5-b5c5-2fc9cf254525"),
+        ],
+    ),
+    assets: [
+        (
+            id: "74081e8f-a974-4723-a0ee-8a8146855ff0",
+            search_tags: [
+                ("image_name", Some("patchy_cement1_Normal")),
+                ("file_name", Some("cement_floor.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 15896585365559787192,
+                id: "74081e8f-a974-4723-a0ee-8a8146855ff0",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(16777236),
+                uncompressed_size: Some(16777236),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+        (
+            id: "b82b0931-506e-4308-93e0-a3c950b40ae5",
+            search_tags: [
+                ("image_name", Some("patchy_cement1_Base_Color")),
+                ("file_name", Some("cement_floor.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 16628398643253213387,
+                id: "b82b0931-506e-4308-93e0-a3c950b40ae5",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(16777236),
+                uncompressed_size: Some(16777236),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+        (
+            id: "be231ed1-3887-47b6-b05a-33832ee15059",
+            search_tags: [
+                ("image_name", Some("patchy_cement1_Metallic-patchy_cement1_Roughness")),
+                ("file_name", Some("cement_floor.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 304288921071896125,
+                id: "be231ed1-3887-47b6-b05a-33832ee15059",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(16777236),
+                uncompressed_size: Some(16777236),
+                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
+            )),
+        ),
+        (
+            id: "42f8e693-2ca2-43e1-84be-01d60bbf4aa7",
+            search_tags: [
+                ("material_name", Some("Cement")),
+                ("file_name", Some("cement_floor.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 11530743259538315967,
+                id: "42f8e693-2ca2-43e1-84be-01d60bbf4aa7",
+                build_deps: [
+                    Uuid("be231ed1-3887-47b6-b05a-33832ee15059"),
+                    Uuid("b82b0931-506e-4308-93e0-a3c950b40ae5"),
+                    Uuid("74081e8f-a974-4723-a0ee-8a8146855ff0"),
+                ],
+                load_deps: [
+                    Uuid("74081e8f-a974-4723-a0ee-8a8146855ff0"),
+                    Uuid("be231ed1-3887-47b6-b05a-33832ee15059"),
+                    Uuid("b82b0931-506e-4308-93e0-a3c950b40ae5"),
+                ],
+                compression: None,
+                compressed_size: Some(130),
+                uncompressed_size: Some(130),
+                type_id: "130a91a8-ba80-4cad-9bce-848326b234c7",
+            )),
+        ),
+        (
+            id: "4975068a-f4a2-484e-af69-f644ec6890d1",
+            search_tags: [
+                ("material_name", Some("Cement")),
+                ("file_name", Some("cement_floor.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 12242080630408550176,
+                id: "4975068a-f4a2-484e-af69-f644ec6890d1",
+                build_deps: [
+                    Uuid("be231ed1-3887-47b6-b05a-33832ee15059"),
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                    Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
+                    Uuid("b82b0931-506e-4308-93e0-a3c950b40ae5"),
+                    Uuid("74081e8f-a974-4723-a0ee-8a8146855ff0"),
+                ],
+                load_deps: [
+                    Uuid("267e0388-2611-441c-9c78-2d39d1bd3cf1"),
+                    Uuid("74081e8f-a974-4723-a0ee-8a8146855ff0"),
+                    Uuid("be831a21-f4f6-45d4-b9eb-e1bb6fc19d22"),
+                    Uuid("b82b0931-506e-4308-93e0-a3c950b40ae5"),
+                    Uuid("be231ed1-3887-47b6-b05a-33832ee15059"),
+                ],
+                compression: None,
+                compressed_size: Some(414),
+                uncompressed_size: Some(414),
+                type_id: "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b",
+            )),
+        ),
+        (
+            id: "6a9b613d-a1be-49f1-b7ee-84775e0c0135",
+            search_tags: [
+                ("file_name", Some("cement_floor.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 17052263016421934119,
+                id: "6a9b613d-a1be-49f1-b7ee-84775e0c0135",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1160),
+                uncompressed_size: Some(1160),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "1c6e8cbc-ed5d-44cb-9e3c-9d358992b3d9",
+            search_tags: [
+                ("file_name", Some("cement_floor.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 13033035831117362025,
+                id: "1c6e8cbc-ed5d-44cb-9e3c-9d358992b3d9",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(80),
+                uncompressed_size: Some(80),
+                type_id: "2d6653ce-5f77-40a2-b050-f2d148699d78",
+            )),
+        ),
+        (
+            id: "f355d620-2971-48d5-b5c5-2fc9cf254525",
+            search_tags: [
+                ("mesh_name", Some("Cube")),
+                ("file_name", Some("cement_floor.glb")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                hash: 11548759134896103195,
+                id: "f355d620-2971-48d5-b5c5-2fc9cf254525",
+                build_deps: [
+                    Uuid("4975068a-f4a2-484e-af69-f644ec6890d1"),
+                    Uuid("6a9b613d-a1be-49f1-b7ee-84775e0c0135"),
+                    Uuid("42f8e693-2ca2-43e1-84be-01d60bbf4aa7"),
+                    Uuid("1c6e8cbc-ed5d-44cb-9e3c-9d358992b3d9"),
+                ],
+                load_deps: [
+                    Uuid("42f8e693-2ca2-43e1-84be-01d60bbf4aa7"),
+                    Uuid("4975068a-f4a2-484e-af69-f644ec6890d1"),
+                    Uuid("1c6e8cbc-ed5d-44cb-9e3c-9d358992b3d9"),
+                    Uuid("6a9b613d-a1be-49f1-b7ee-84775e0c0135"),
+                ],
+                compression: None,
+                compressed_size: Some(120),
+                uncompressed_size: Some(120),
+                type_id: "cf232526-3757-4d94-98d1-c2f7e27c979f",
+            )),
+        ),
+    ],
+)

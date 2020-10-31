@@ -349,11 +349,17 @@ impl GameRenderer {
         //
         let camera_rotate_speed = 1.0;
         let camera_distance_multiplier = 1.0;
+        const CAMERA_HEIGHT: f32 = 5.0;
+        const CAMERA_DISTANCE_FROM_ZERO: f32 = 12.0;
         let loop_time = time_state.total_time().as_secs_f32();
         let eye = glam::Vec3::new(
-            camera_distance_multiplier * 8.0 * f32::cos(camera_rotate_speed * loop_time / 2.0),
-            camera_distance_multiplier * 8.0 * f32::sin(camera_rotate_speed * loop_time / 2.0),
-            camera_distance_multiplier * 5.0,
+            camera_distance_multiplier
+                * CAMERA_DISTANCE_FROM_ZERO
+                * f32::cos(camera_rotate_speed * loop_time / 2.0),
+            camera_distance_multiplier
+                * CAMERA_DISTANCE_FROM_ZERO
+                * f32::sin(camera_rotate_speed * loop_time / 2.0),
+            camera_distance_multiplier * CAMERA_HEIGHT,
         );
 
         let extents_width = 900;
@@ -371,7 +377,7 @@ impl GameRenderer {
                 std::f32::consts::FRAC_PI_4,
                 aspect_ratio,
                 0.01,
-                20.0,
+                200.0,
             );
             let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
 

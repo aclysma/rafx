@@ -122,7 +122,7 @@ impl GraphicsPipelineCache {
         render_phase_index: RenderPhaseIndex,
     ) {
         let mut guard = self.inner.lock().unwrap();
-        let mut inner = &mut *guard;
+        let inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
             inner.lock_call_count += 1;
@@ -208,7 +208,7 @@ impl GraphicsPipelineCache {
         };
 
         let mut guard = self.inner.lock().unwrap();
-        let mut inner = &mut *guard;
+        let inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
             inner.lock_call_count += 1;
@@ -251,7 +251,7 @@ impl GraphicsPipelineCache {
 
     pub fn precache_pipelines_for_all_phases(&self) -> VkResult<()> {
         let mut guard = self.inner.lock().unwrap();
-        let mut inner = &mut *guard;
+        let inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
             inner.lock_call_count += 1;

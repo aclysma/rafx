@@ -195,6 +195,9 @@ impl MeshPrepareJob {
         view: &RenderView,
     ) -> MeshPerViewShaderParam {
         let mut per_view_data = MeshPerViewShaderParam::default();
+
+        per_view_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0);
+
         for light in &self.directional_lights {
             let light_count = per_view_data.directional_light_count as usize;
             if light_count > per_view_data.directional_lights.len() {

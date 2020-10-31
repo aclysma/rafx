@@ -159,7 +159,8 @@ impl VkUpload {
 
                 // If the span walks past the end of the buffer, fail
                 if write_end_ptr > self.buffer_end {
-                    return Err(vk::Result::ERROR_OUT_OF_DEVICE_MEMORY);
+                    log::error!("Failed to push data into upload buffer");
+                    return Err(vk::Result::ERROR_UNKNOWN);
                 }
 
                 std::ptr::copy_nonoverlapping(data.as_ptr(), write_begin_ptr, data.len());
@@ -168,7 +169,8 @@ impl VkUpload {
                 Ok(write_begin_ptr as vk::DeviceSize - self.buffer_begin as vk::DeviceSize)
             }
         } else {
-            Err(vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)
+            log::error!("Upload buffer is not writable");
+            Err(vk::Result::ERROR_UNKNOWN)
         }
     }
 

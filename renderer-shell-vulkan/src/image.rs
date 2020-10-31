@@ -71,7 +71,10 @@ impl VkImage {
         let (image, allocation, allocation_info) = device_context
             .allocator()
             .create_image(&image_create_info, &allocation_create_info)
-            .map_err(|_| vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)?;
+            .map_err(|_| {
+                log::error!("Error creating image");
+                vk::Result::ERROR_UNKNOWN
+            })?;
 
         let raw = VkImageRaw {
             image,
