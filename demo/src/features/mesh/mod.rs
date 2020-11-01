@@ -81,9 +81,10 @@ pub struct MeshPerFrameVertexShaderParam {
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct MeshPerObjectShaderParam {
-    pub model_view: glam::Mat4,      // +0
-    pub model_view_proj: glam::Mat4, // +64
-} // 128 bytes
+    pub model: glam::Mat4,           // +0
+    pub model_view: glam::Mat4,      // +64
+    pub model_view_proj: glam::Mat4, // +128
+} // 192 bytes
 
 pub fn create_mesh_extract_job(
     shadow_map_image: ResourceArc<ImageViewResource>,

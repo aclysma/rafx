@@ -102,7 +102,7 @@ impl RenderView {
             eye_position,
             view,
             proj,
-            view_proj: view * proj,
+            view_proj: proj * view,
             view_index,
             render_phase_mask,
             debug_name,

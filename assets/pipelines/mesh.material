@@ -137,7 +137,7 @@
                                 stage_flags: Vertex,
                                 slot_name: "per_object_data",
 
-                                internal_buffer_per_descriptor_size: Some(128)
+                                internal_buffer_per_descriptor_size: Some(192)
                             ),
                         ]
                     ),
@@ -324,7 +324,7 @@
                                 stage_flags: Vertex,
                                 slot_name: "per_object_data",
 
-                                internal_buffer_per_descriptor_size: Some(128)
+                                internal_buffer_per_descriptor_size: Some(192)
                             ),
                         ]
                     ),

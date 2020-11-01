@@ -105,6 +105,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                         let model_view_proj = view.projection_matrix() * model_view;
 
                         let per_object_param = MeshPerObjectShaderParam {
+                            model: extracted_data.world_transform,
                             model_view,
                             model_view_proj,
                         };

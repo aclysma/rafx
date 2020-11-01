@@ -521,7 +521,7 @@ vec4 pbr_path(
     float metalness,
     float roughness,
     vec3 normal_vs,
-    float shadow
+    float percent_lit
 ) {
     // used in fresnel, non-metals use 0.04 and metals use the base color
     vec3 fresnel_base = vec3(0.04);
@@ -576,7 +576,7 @@ vec4 pbr_path(
     // There are still issues here, not sure how alpha interacts and gamma looks terrible
     //
     vec3 ambient = per_frame_data.ambient_light.rgb * base_color.rgb; //TODO: Multiply ao in here
-    vec3 color = ambient + (total_light * shadow) + emissive_color.rgb;
+    vec3 color = ambient + (total_light * percent_lit) + emissive_color.rgb;
     return vec4(color, base_color.a);
 
     // tonemapping
@@ -590,15 +590,23 @@ vec4 pbr_path(
     //return vec4(mapped, base_color.a);
 }
 
-float shadow_calculation(vec4 shadow_map_pos) {
+float calculate_percent_lit(vec4 shadow_map_pos) {
+    // homogenous coordinate normalization
     vec3 projected = shadow_map_pos.xyz / shadow_map_pos.w;
-    projected = projected * 0.5 + 0.5;
-    float closest_depth = texture(sampler2D(shadow_map_image, smp), projected.xy).r;
-    float current_depth = projected.z;
-    float shadow = current_depth > closest_depth ? 1.0 : 0.0;
+
+    // Z is 0..1 already, so depth is simply z
+    float distance_from_light = projected.z;
+
+    // Convert [-1, 1] range to [0, 1] range so we can sample the shadow map
+    vec2 sample_location = projected.xy * 0.5 + 0.5;
+    float distance_from_closest_object_to_light = texture(sampler2D(shadow_map_image, smp), sample_location).r;
+
+    //TODO: Smarter biasing (shadow acne)
+    float bias = 0.0005;
+    float shadow = distance_from_light - bias < distance_from_closest_object_to_light ? 1.0 : 0.0;
+
     return shadow;
 }
-
 
 void main() {
     // Sample the base color, if it exists
@@ -642,7 +650,7 @@ void main() {
     vec3 eye_position_vs = vec3(0, 0, 0);
     vec3 surface_to_eye_vs = normalize(eye_position_vs - in_position_vs);
 
-    float shadow = shadow_calculation(in_shadow_map_pos);
+    float percent_lit = calculate_percent_lit(in_shadow_map_pos);
 
 //    out_color = non_pbr_path(
 //        surface_to_eye_vs,
@@ -658,6 +666,6 @@ void main() {
         metalness,
         roughness,
         normal_vs,
-        shadow
+        percent_lit
     );
 }

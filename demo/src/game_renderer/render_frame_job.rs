@@ -38,7 +38,7 @@ impl RenderFrameJob {
         );
 
         let t1 = std::time::Instant::now();
-        log::info!(
+        log::trace!(
             "[async] render took {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
         );

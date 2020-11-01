@@ -131,6 +131,28 @@ fn main() {
 
         add_light_debug_draw(&resources, &world);
 
+        {
+            let time_state = resources.get::<TimeState>().unwrap();
+            let mut query = <Write<DirectionalLightComponent>>::query();
+            for mut light in query.iter_mut(&mut world) {
+                const LIGHT_XY_DISTANCE: f32 = 20.0;
+                const LIGHT_Z: f32 = 30.0;
+                const LIGHT_ROTATE_SPEED: f32 = -0.0;
+                const LIGHT_LOOP_OFFSET: f32 = 0.7;
+                let loop_time = time_state.total_time().as_secs_f32();
+                let light_from = glam::Vec3::new(
+                    LIGHT_XY_DISTANCE
+                        * f32::cos(LIGHT_ROTATE_SPEED * loop_time + LIGHT_LOOP_OFFSET),
+                    LIGHT_XY_DISTANCE
+                        * f32::sin(LIGHT_ROTATE_SPEED * loop_time + LIGHT_LOOP_OFFSET),
+                    LIGHT_Z,
+                );
+                let light_to = glam::Vec3::default();
+
+                light.direction = (light_to - light_from).normalize();
+            }
+        }
+
         //
         // imgui debug draw,
         //

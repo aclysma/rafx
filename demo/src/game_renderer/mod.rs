@@ -336,14 +336,15 @@ impl GameRenderer {
         // Determine Camera Location
         //
         let main_view = {
-            let camera_rotate_speed = 1.0;
-            const CAMERA_HEIGHT: f32 = 5.0;
             const CAMERA_XY_DISTANCE: f32 = 12.0;
+            const CAMERA_Z: f32 = 5.0;
+            const CAMERA_ROTATE_SPEED: f32 = -0.2;
+            const CAMERA_LOOP_OFFSET: f32 = -0.3;
             let loop_time = time_state.total_time().as_secs_f32();
             let eye = glam::Vec3::new(
-                CAMERA_XY_DISTANCE * f32::cos(camera_rotate_speed * loop_time / 2.0),
-                CAMERA_XY_DISTANCE * f32::sin(camera_rotate_speed * loop_time / 2.0),
-                CAMERA_HEIGHT,
+                CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
+                CAMERA_XY_DISTANCE * f32::sin(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
+                CAMERA_Z,
             );
 
             let extents_width = 900;
@@ -390,7 +391,7 @@ impl GameRenderer {
                 glam::Vec3::new(0.0, 0.0, 1.0),
             );
 
-            let proj = glam::Mat4::orthographic_rh(-20.0, 20.0, 20.0, -20.0, 0.01, 200.0);
+            let proj = glam::Mat4::orthographic_rh(-30.0, 30.0, 30.0, -30.0, 0.01, 100.0);
 
             //NOTE: This would be the correct way to do perspective projection in our coordinate system
             // let proj = glam::Mat4::perspective_rh_gl(

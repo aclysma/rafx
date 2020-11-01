@@ -7,6 +7,7 @@ layout (set = 0, binding = 2) uniform PerViewDataVS {
 } per_view_data;
 
 layout(set = 2, binding = 0) uniform PerObjectData {
+    mat4 model;
     mat4 model_view;
     mat4 model_view_proj;
 } per_object_data;
@@ -37,7 +38,10 @@ void main() {
     vec3 binormal = cross(in_normal, in_tangent.xyz) * in_tangent.w;
     out_binormal_vs = mat3(per_object_data.model_view) * binormal;
 
-    out_shadow_map_pos = per_view_data.shadow_map_view_proj * vec4(in_pos, 1.0);
+    //vec3 world_pos = vec3(per_object_data.model * vec4(in_pos, 1.0));
+    //out_shadow_map_pos = per_view_data.shadow_map_view_proj * vec4(world_pos, 1.0);
+
+    out_shadow_map_pos = per_view_data.shadow_map_view_proj * per_object_data.model * vec4(in_pos, 1.0);
 
     out_uv = in_uv;
 }
