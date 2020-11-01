@@ -75,8 +75,15 @@ impl ManagedDescriptorSetPoolChunk {
         // that have been pushed into `write_descriptor_buffer_infos`. We don't want to use a Vec
         // since it can realloc and invalidate the pointers.
         const DESCRIPTOR_COUNT: usize = MAX_DESCRIPTORS_PER_POOL as usize;
-        let mut write_descriptor_buffer_infos: ArrayVec<[_; DESCRIPTOR_COUNT]> = ArrayVec::new();
+        const MAX_BUFFER_SETS_PER_DESCRIPTOR_SET: usize = 8;
+        let mut write_descriptor_buffer_infos: ArrayVec<
+            [_; DESCRIPTOR_COUNT * MAX_BUFFER_SETS_PER_DESCRIPTOR_SET],
+        > = ArrayVec::new();
         let mut descriptor_writes = Vec::new();
+
+        // If we trip this, we have more buffers in a single descriptor set than expected. It's not
+        // a problem to bump this, just increases a stack allocation a bit.
+        assert!(buffers.buffer_sets.len() < MAX_BUFFER_SETS_PER_DESCRIPTOR_SET);
 
         // For every binding/buffer set
         for (binding_key, binding_buffers) in &buffers.buffer_sets {

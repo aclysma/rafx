@@ -290,7 +290,6 @@ impl GameRenderer {
         //
         // Fetch resources
         //
-
         let time_state_fetch = resources.get::<TimeState>().unwrap();
         let time_state = &*time_state_fetch;
 
@@ -302,18 +301,15 @@ impl GameRenderer {
             resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
         let dynamic_visibility_node_set = &mut *dynamic_visibility_node_set_fetch;
 
-        // let mut debug_draw_3d_line_lists = resources
-        //     .get_mut::<DebugDraw3DResource>()
-        //     .unwrap()
-        //     .take_line_lists();
-
         let render_registry = resources.get::<RenderRegistry>().unwrap().clone();
         let device_context = resources.get::<VkDeviceContext>().unwrap().clone();
 
         let mut resource_manager_fetch = resources.get_mut::<ResourceManager>().unwrap();
         let resource_manager = &mut *resource_manager_fetch;
 
-        // Call this here - represents that the previous frame was completed
+        //
+        // Mark the previous frame as completed
+        //
         resource_manager.on_frame_complete()?;
 
         let resource_context = resource_manager.resource_context();
@@ -325,36 +321,35 @@ impl GameRenderer {
 
         let static_resources = &game_renderer_inner.static_resources;
 
+        //
+        // Swapchain Status
+        //
         let swapchain_resources = game_renderer_inner.swapchain_resources.as_mut().unwrap();
         let swapchain_image =
             swapchain_resources.swapchain_images[frame_in_flight.present_index() as usize].clone();
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
         let swapchain_info = swapchain_resources.swapchain_info.clone();
 
-        //
-        // View Management
-        //
-        let camera_rotate_speed = 1.0;
-        let camera_distance_multiplier = 1.0;
-        const CAMERA_HEIGHT: f32 = 5.0;
-        const CAMERA_DISTANCE_FROM_ZERO: f32 = 12.0;
-        let loop_time = time_state.total_time().as_secs_f32();
-        let eye = glam::Vec3::new(
-            camera_distance_multiplier
-                * CAMERA_DISTANCE_FROM_ZERO
-                * f32::cos(camera_rotate_speed * loop_time / 2.0),
-            camera_distance_multiplier
-                * CAMERA_DISTANCE_FROM_ZERO
-                * f32::sin(camera_rotate_speed * loop_time / 2.0),
-            camera_distance_multiplier * CAMERA_HEIGHT,
-        );
-
-        let extents_width = 900;
-        let extents_height = 600;
-        let aspect_ratio = extents_width as f32 / extents_height as f32;
-
         let render_view_set = RenderViewSet::default();
+
+        //
+        // Determine Camera Location
+        //
         let main_view = {
+            let camera_rotate_speed = 1.0;
+            const CAMERA_HEIGHT: f32 = 5.0;
+            const CAMERA_XY_DISTANCE: f32 = 12.0;
+            let loop_time = time_state.total_time().as_secs_f32();
+            let eye = glam::Vec3::new(
+                CAMERA_XY_DISTANCE * f32::cos(camera_rotate_speed * loop_time / 2.0),
+                CAMERA_XY_DISTANCE * f32::sin(camera_rotate_speed * loop_time / 2.0),
+                CAMERA_HEIGHT,
+            );
+
+            let extents_width = 900;
+            let extents_height = 600;
+            let aspect_ratio = extents_width as f32 / extents_height as f32;
+
             let view = glam::Mat4::look_at_rh(
                 eye,
                 glam::Vec3::new(0.0, 0.0, 0.0),
@@ -377,6 +372,9 @@ impl GameRenderer {
             )
         };
 
+        //
+        // Determine shadowmap views
+        //
         let mut directional_light: Option<DirectionalLightComponent> = None;
         let mut query = <Read<DirectionalLightComponent>>::query();
         for light in query.iter(world) {
@@ -404,7 +402,7 @@ impl GameRenderer {
             // let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
 
             render_view_set.create_view(
-                eye,
+                glam::Vec3::default(),
                 view,
                 proj,
                 main_camera_render_phase_mask,
@@ -435,35 +433,10 @@ impl GameRenderer {
             main_view_dynamic_visibility_result.handles.len()
         );
 
-        let bloom_extract_material_pass = resource_manager
-            .get_material_pass_by_index(&static_resources.bloom_extract_material, 0)
-            .unwrap();
-
-        let bloom_blur_material_pass = resource_manager
-            .get_material_pass_by_index(&static_resources.bloom_blur_material, 0)
-            .unwrap();
-
-        let bloom_combine_material_pass = resource_manager
-            .get_material_pass_by_index(&static_resources.bloom_combine_material, 0)
-            .unwrap();
-
-        //let t2 = std::time::Instant::now();
-        //TODO: This is now possible to run on the render thread
-        let render_graph = render_graph::build_render_graph(
-            &device_context,
-            &resource_context,
-            &swapchain_surface_info,
-            &swapchain_info,
-            swapchain_image,
-            main_view.clone(),
-            directional_light_view.clone(),
-            bloom_extract_material_pass,
-            bloom_blur_material_pass,
-            bloom_combine_material_pass,
-        )?;
-        // let t3 = std::time::Instant::now();
-        // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
-
+        //
+        // Build the frame packet - this takes the views and visibility results and creates a
+        // structure that's used during the extract/prepare/write phases
+        //
         let frame_packet_builder = {
             let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
             sprite_render_nodes.update();
@@ -499,6 +472,39 @@ impl GameRenderer {
         resource_manager.on_begin_frame()?;
 
         //
+        // Render Graph, this is needed now as some of the outputs from the graph may be used in
+        // the extract phase
+        //
+        let bloom_extract_material_pass = resource_manager
+            .get_material_pass_by_index(&static_resources.bloom_extract_material, 0)
+            .unwrap();
+
+        let bloom_blur_material_pass = resource_manager
+            .get_material_pass_by_index(&static_resources.bloom_blur_material, 0)
+            .unwrap();
+
+        let bloom_combine_material_pass = resource_manager
+            .get_material_pass_by_index(&static_resources.bloom_combine_material, 0)
+            .unwrap();
+
+        //let t2 = std::time::Instant::now();
+        //TODO: This is now possible to run on the render thread
+        let render_graph = render_graph::build_render_graph(
+            &device_context,
+            &resource_context,
+            &swapchain_surface_info,
+            &swapchain_info,
+            swapchain_image,
+            main_view.clone(),
+            directional_light_view.clone(),
+            bloom_extract_material_pass,
+            bloom_blur_material_pass,
+            bloom_combine_material_pass,
+        )?;
+        // let t3 = std::time::Instant::now();
+        // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
+
+        //
         // Extract Jobs
         //
         let frame_packet = frame_packet_builder.build();
@@ -514,7 +520,10 @@ impl GameRenderer {
             ));
 
             // Meshes
-            extract_job_set.add_job(create_mesh_extract_job());
+            extract_job_set.add_job(create_mesh_extract_job(
+                render_graph.shadow_map,
+                directional_light_view.view_proj(),
+            ));
 
             // Debug 3D
             extract_job_set.add_job(create_debug3d_extract_job(

@@ -3,9 +3,7 @@ use renderer::assets::{vk_description as dsc, ResourceContext};
 use renderer::assets::graph::*;
 use crate::VkDeviceContext;
 use ash::prelude::VkResult;
-use renderer::assets::resources::{
-    ResourceArc, ImageViewResource, RenderPassResource, MaterialPassResource,
-};
+use renderer::assets::resources::{ResourceArc, ImageViewResource, MaterialPassResource};
 use crate::render_contexts::RenderJobWriteContext;
 use renderer::nodes::{PreparedRenderData, RenderView};
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
@@ -13,7 +11,7 @@ use renderer::vulkan::SwapchainInfo;
 use ash::version::DeviceV1_0;
 
 pub struct BuildRenderGraphResult {
-    pub ui_renderpass: Option<ResourceArc<RenderPassResource>>,
+    pub shadow_map: ResourceArc<ImageViewResource>,
     pub executor: RenderGraphExecutor<RenderGraphUserContext>,
 }
 
@@ -43,57 +41,6 @@ pub fn build_render_graph(
 
     let mut graph = RenderGraphBuilder::default();
     let mut graph_callbacks = RenderGraphNodeCallbacks::<RenderGraphUserContext>::default();
-
-    let opaque_pass = {
-        struct OpaquePass {
-            node: RenderGraphNodeId,
-            color: RenderGraphImageUsageId,
-            depth: RenderGraphImageUsageId,
-        }
-
-        let node = graph.add_node("Opaque", RenderGraphQueue::DefaultGraphics);
-
-        let color = graph.create_color_attachment(
-            node,
-            0,
-            Some(vk::ClearColorValue {
-                float32: [0.0, 0.0, 0.0, 0.0],
-            }),
-            RenderGraphImageConstraint {
-                samples: Some(samples),
-                format: Some(color_format),
-                ..Default::default()
-            },
-        );
-        graph.set_image_name(color, "color");
-
-        let depth = graph.create_depth_attachment(
-            node,
-            Some(vk::ClearDepthStencilValue {
-                depth: 1.0,
-                stencil: 0,
-            }),
-            RenderGraphImageConstraint {
-                samples: Some(samples),
-                format: Some(depth_format),
-                ..Default::default()
-            },
-        );
-        graph.set_image_name(depth, "depth");
-
-        graph_callbacks.add_renderphase_dependency::<OpaqueRenderPhase>(node);
-
-        let main_view = main_view.clone();
-        graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
-            let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
-            user_context
-                .prepared_render_data
-                .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context);
-            Ok(())
-        });
-
-        OpaquePass { node, color, depth }
-    };
 
     let directional_light_pass = {
         struct DirectionalLightPass {
@@ -133,6 +80,65 @@ pub fn build_render_graph(
         });
 
         DirectionalLightPass { node, depth }
+    };
+
+    let opaque_pass = {
+        struct OpaquePass {
+            node: RenderGraphNodeId,
+            color: RenderGraphImageUsageId,
+            depth: RenderGraphImageUsageId,
+            shadow_map: RenderGraphImageUsageId,
+        }
+
+        let node = graph.add_node("Opaque", RenderGraphQueue::DefaultGraphics);
+
+        let color = graph.create_color_attachment(
+            node,
+            0,
+            Some(vk::ClearColorValue {
+                float32: [0.0, 0.0, 0.0, 0.0],
+            }),
+            RenderGraphImageConstraint {
+                samples: Some(samples),
+                format: Some(color_format),
+                ..Default::default()
+            },
+        );
+        graph.set_image_name(color, "color");
+
+        let depth = graph.create_depth_attachment(
+            node,
+            Some(vk::ClearDepthStencilValue {
+                depth: 1.0,
+                stencil: 0,
+            }),
+            RenderGraphImageConstraint {
+                samples: Some(samples),
+                format: Some(depth_format),
+                ..Default::default()
+            },
+        );
+        graph.set_image_name(depth, "depth");
+
+        let shadow_map = graph.sample_image(node, directional_light_pass.depth, Default::default());
+
+        graph_callbacks.add_renderphase_dependency::<OpaqueRenderPhase>(node);
+
+        let main_view = main_view.clone();
+        graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
+            let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+            user_context
+                .prepared_render_data
+                .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context);
+            Ok(())
+        });
+
+        OpaquePass {
+            node,
+            color,
+            depth,
+            shadow_map,
+        }
     };
 
     let bloom_extract_pass = {
@@ -175,10 +181,6 @@ pub fn build_render_graph(
                 ..Default::default()
             },
         );
-
-        //TODO: Temporary, just to avoid discarding the image for now so I can see it in renderdoc
-        let _sample_image2 =
-            graph.sample_image(node, directional_light_pass.depth, Default::default());
 
         graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
             // Get the color image from before
@@ -469,9 +471,10 @@ pub fn build_render_graph(
         graph_callbacks,
     )?;
 
-    let ui_renderpass = executor.renderpass_resource(ui_pass.node);
+    let shadow_map = executor.image_resource(opaque_pass.shadow_map).unwrap();
+
     Ok(BuildRenderGraphResult {
+        shadow_map,
         executor,
-        ui_renderpass,
     })
 }

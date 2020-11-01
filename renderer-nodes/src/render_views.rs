@@ -77,6 +77,7 @@ pub struct RenderViewInner {
     eye_position: Vec3,
     view: Mat4,
     proj: Mat4,
+    view_proj: Mat4,
     view_index: RenderViewIndex,
     render_phase_mask: RenderPhaseMask,
     debug_name: String,
@@ -101,6 +102,7 @@ impl RenderView {
             eye_position,
             view,
             proj,
+            view_proj: view * proj,
             view_index,
             render_phase_mask,
             debug_name,
@@ -121,6 +123,10 @@ impl RenderView {
 
     pub fn projection_matrix(&self) -> Mat4 {
         self.inner.proj
+    }
+
+    pub fn view_proj(&self) -> Mat4 {
+        self.inner.view_proj
     }
 
     pub fn view_index(&self) -> RenderViewIndex {

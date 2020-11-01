@@ -2,6 +2,10 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+layout (set = 0, binding = 2) uniform PerViewDataVS {
+    mat4 shadow_map_view_proj;
+} per_view_data;
+
 layout(set = 2, binding = 0) uniform PerObjectData {
     mat4 model_view;
     mat4 model_view_proj;
@@ -21,6 +25,7 @@ layout (location = 1) out vec3 out_normal_vs;
 layout (location = 2) out vec3 out_tangent_vs;
 layout (location = 3) out vec3 out_binormal_vs;
 layout (location = 4) out vec2 out_uv;
+layout (location = 5) out vec4 out_shadow_map_pos;
 
 void main() {
     gl_Position = per_object_data.model_view_proj * vec4(in_pos, 1.0);
@@ -31,6 +36,8 @@ void main() {
     out_tangent_vs = mat3(per_object_data.model_view) * in_tangent.xyz;
     vec3 binormal = cross(in_normal, in_tangent.xyz) * in_tangent.w;
     out_binormal_vs = mat3(per_object_data.model_view) * binormal;
+
+    out_shadow_map_pos = per_view_data.shadow_map_view_proj * vec4(in_pos, 1.0);
 
     out_uv = in_uv;
 }

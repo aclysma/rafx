@@ -44,7 +44,7 @@ struct SpotLight {
     float intensity;
 };
 
-layout (set = 0, binding = 0) uniform PerFrameData {
+layout (set = 0, binding = 0) uniform PerViewData {
     vec4 ambient_light;
     uint point_light_count;
     uint directional_light_count;
@@ -55,6 +55,8 @@ layout (set = 0, binding = 0) uniform PerFrameData {
 } per_frame_data;
 
 layout (set = 0, binding = 1) uniform sampler smp;
+
+layout (set = 0, binding = 3) uniform texture2D shadow_map_image;
 
 //
 // Per-Material Bindings
@@ -92,6 +94,7 @@ layout (location = 1) in vec3 in_normal_vs;
 layout (location = 2) in vec3 in_tangent_vs;
 layout (location = 3) in vec3 in_binormal_vs;
 layout (location = 4) in vec2 in_uv;
+layout (location = 5) in vec4 in_shadow_map_pos;
 
 // Force early depth testing, this is likely not strictly necessary
 layout(early_fragment_tests) in;
@@ -517,7 +520,8 @@ vec4 pbr_path(
     vec4 emissive_color,
     float metalness,
     float roughness,
-    vec3 normal_vs
+    vec3 normal_vs,
+    float shadow
 ) {
     // used in fresnel, non-metals use 0.04 and metals use the base color
     vec3 fresnel_base = vec3(0.04);
@@ -572,7 +576,7 @@ vec4 pbr_path(
     // There are still issues here, not sure how alpha interacts and gamma looks terrible
     //
     vec3 ambient = per_frame_data.ambient_light.rgb * base_color.rgb; //TODO: Multiply ao in here
-    vec3 color = ambient + total_light + emissive_color.rgb;
+    vec3 color = ambient + (total_light * shadow) + emissive_color.rgb;
     return vec4(color, base_color.a);
 
     // tonemapping
@@ -586,6 +590,14 @@ vec4 pbr_path(
     //return vec4(mapped, base_color.a);
 }
 
+float shadow_calculation(vec4 shadow_map_pos) {
+    vec3 projected = shadow_map_pos.xyz / shadow_map_pos.w;
+    projected = projected * 0.5 + 0.5;
+    float closest_depth = texture(sampler2D(shadow_map_image, smp), projected.xy).r;
+    float current_depth = projected.z;
+    float shadow = current_depth > closest_depth ? 1.0 : 0.0;
+    return shadow;
+}
 
 
 void main() {
@@ -630,6 +642,8 @@ void main() {
     vec3 eye_position_vs = vec3(0, 0, 0);
     vec3 surface_to_eye_vs = normalize(eye_position_vs - in_position_vs);
 
+    float shadow = shadow_calculation(in_shadow_map_pos);
+
 //    out_color = non_pbr_path(
 //        surface_to_eye_vs,
 //        base_color,
@@ -643,6 +657,7 @@ void main() {
         emissive_color,
         metalness,
         roughness,
-        normal_vs
+        normal_vs,
+        shadow
     );
 }

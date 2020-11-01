@@ -8,7 +8,6 @@ glslc mesh.vert -o mesh.vert.spv
 glslc mesh.frag -o mesh.frag.spv
 
 glslc mesh_shadow_map.vert -o mesh_shadow_map.vert.spv
-glslc mesh_shadow_map.frag -o mesh_shadow_map.frag.spv
 
 glslc debug.vert -o debug.vert.spv
 glslc debug.frag -o debug.frag.spv

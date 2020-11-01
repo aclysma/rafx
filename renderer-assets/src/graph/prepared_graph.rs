@@ -141,7 +141,7 @@ impl RenderGraphCacheInner {
                 .or_insert_with(Default::default);
 
             if let Some(cached_image) = matching_cached_images.get_mut(*next_image_index) {
-                log::info!(
+                log::trace!(
                     "  Image {:?} - REUSE {:?}  (key: {:?}, index: {})",
                     id,
                     cached_image.image_view.get_raw().image_view,
@@ -158,7 +158,7 @@ impl RenderGraphCacheInner {
                 // No unused image available, create one
                 let image_view =
                     RenderGraphCacheInner::create_image_for_key(device_context, resources, &key)?;
-                log::info!(
+                log::trace!(
                     "  Image {:?} - CREATE {:?}  (key: {:?}, index: {})",
                     id,
                     image_view.get_raw().image_view,

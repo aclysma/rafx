@@ -8,14 +8,17 @@ use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, Ren
 use renderer::nodes::{
     ExtractJob, FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature,
 };
+use renderer::assets::resources::{ResourceArc, ImageViewResource};
 use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJob;
 use legion::*;
 use crate::components::MeshComponent;
 use crate::resource_manager::GameResourceManager;
 
-#[derive(Default)]
-pub struct MeshExtractJob {}
+pub struct MeshExtractJob {
+    pub(super) shadow_map_image: ResourceArc<ImageViewResource>,
+    pub(super) shadow_map_view_proj: glam::Mat4,
+}
 
 impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
     for MeshExtractJob
@@ -111,11 +114,13 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .map(|(p, l)| (p.clone(), l.clone()))
             .collect();
 
-        Box::new(MeshPrepareJob::new(
+        Box::new(MeshPrepareJob {
             extracted_frame_node_mesh_data,
             directional_lights,
+            shadow_map_image: self.shadow_map_image,
+            shadow_map_view_proj: self.shadow_map_view_proj,
             point_lights,
             spot_lights,
-        ))
+        })
     }
 }

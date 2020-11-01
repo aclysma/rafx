@@ -3,14 +3,15 @@ use renderer::nodes::{
     FramePacket, PrepareJob, RenderFeature, RenderViewIndex, PerViewNode,
 };
 use crate::features::mesh::{
-    MeshRenderFeature, ExtractedFrameNodeMeshData, MeshPerViewShaderParam,
-    MeshPerObjectShaderParam, PreparedSubmitNodeMeshData,
+    MeshRenderFeature, ExtractedFrameNodeMeshData, MeshPerViewFragmentShaderParam,
+    MeshPerObjectShaderParam, PreparedSubmitNodeMeshData, MeshPerFrameVertexShaderParam,
 };
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use super::MeshCommandWriter;
 use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
 use renderer::assets::resources::{
     DescriptorSetArc, ResourceArc, DescriptorSetLayoutResource, DescriptorSetAllocatorRef,
+    ImageViewResource,
 };
 use renderer::assets::assets::MaterialPass;
 use crate::components::{
@@ -21,24 +22,10 @@ use fnv::{FnvHashSet, FnvHashMap};
 pub struct MeshPrepareJob {
     pub(super) extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
     pub(super) directional_lights: Vec<DirectionalLightComponent>,
+    pub(super) shadow_map_image: ResourceArc<ImageViewResource>,
+    pub(super) shadow_map_view_proj: glam::Mat4,
     pub(super) point_lights: Vec<(PositionComponent, PointLightComponent)>,
     pub(super) spot_lights: Vec<(PositionComponent, SpotLightComponent)>,
-}
-
-impl MeshPrepareJob {
-    pub(super) fn new(
-        extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
-        directional_lights: Vec<DirectionalLightComponent>,
-        point_lights: Vec<(PositionComponent, PointLightComponent)>,
-        spot_lights: Vec<(PositionComponent, SpotLightComponent)>,
-    ) -> Self {
-        MeshPrepareJob {
-            extracted_frame_node_mesh_data,
-            directional_lights,
-            point_lights,
-            spot_lights,
-        }
-    }
 }
 
 impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJob {
@@ -79,16 +66,22 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
             }
         }
 
+        let per_frame_vertex_data = MeshPerFrameVertexShaderParam {
+            shadow_map_view_proj: self.shadow_map_view_proj,
+        };
+
         // Realistically all the materials (for now) have identical layouts so iterating though them
         // like this just avoids hardcoding to find the first mesh's first opaque pass
         for &view in views {
-            let view_data = self.create_per_view_data(view);
+            let per_view_frag_data = self.create_per_view_frag_data(view);
 
             for per_view_descriptor_set_layout in &per_view_descriptor_set_layouts {
                 let mut descriptor_set = descriptor_set_allocator
                     .create_dyn_descriptor_set_uninitialized(&per_view_descriptor_set_layout)
                     .unwrap();
-                descriptor_set.set_buffer_data(0, &view_data);
+                descriptor_set.set_buffer_data(0, &per_view_frag_data);
+                descriptor_set.set_buffer_data(2, &per_frame_vertex_data);
+                descriptor_set.set_image(3, self.shadow_map_image.clone());
                 descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
                 per_view_descriptor_sets.insert(
@@ -203,11 +196,11 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
 }
 
 impl MeshPrepareJob {
-    fn create_per_view_data(
+    fn create_per_view_frag_data(
         &self,
         view: &RenderView,
-    ) -> MeshPerViewShaderParam {
-        let mut per_view_data = MeshPerViewShaderParam::default();
+    ) -> MeshPerViewFragmentShaderParam {
+        let mut per_view_data = MeshPerViewFragmentShaderParam::default();
 
         per_view_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0);
 

@@ -8,6 +8,7 @@ use renderer::base::slab::{DropSlabKey, DropSlab};
 use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::assets::MaterialPass;
+use renderer::assets::resources::{ResourceArc, ImageViewResource};
 
 mod extract;
 use extract::MeshExtractJob;
@@ -61,7 +62,7 @@ pub struct SpotLight {
 //TODO: Remove view/proj, they aren't being used. Add ambient light constant
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
-pub struct MeshPerViewShaderParam {
+pub struct MeshPerViewFragmentShaderParam {
     pub ambient_light: glam::Vec4,                  // +0
     pub point_light_count: u32,                     // +16
     pub directional_light_count: u32,               // 20
@@ -73,14 +74,25 @@ pub struct MeshPerViewShaderParam {
 
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
+pub struct MeshPerFrameVertexShaderParam {
+    pub shadow_map_view_proj: glam::Mat4, // +0
+} // 3616 bytes
+
+#[derive(Default, Copy, Clone)]
+#[repr(C)]
 pub struct MeshPerObjectShaderParam {
     pub model_view: glam::Mat4,      // +0
     pub model_view_proj: glam::Mat4, // +64
 } // 128 bytes
 
 pub fn create_mesh_extract_job(
+    shadow_map_image: ResourceArc<ImageViewResource>,
+    shadow_map_view_proj: glam::Mat4,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
-    Box::new(MeshExtractJob::default())
+    Box::new(MeshExtractJob {
+        shadow_map_image,
+        shadow_map_view_proj,
+    })
 }
 
 //

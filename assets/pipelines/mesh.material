@@ -58,6 +58,22 @@
                                     )
                                 ])                                
                             ),
+                            (
+                                binding: 2,
+                                descriptor_type: UniformBuffer,
+                                descriptor_count: 1,
+                                stage_flags: Vertex,
+                                slot_name: "per_view_data_vs",
+
+                                internal_buffer_per_descriptor_size: Some(64)
+                            ),
+                            (
+                                binding: 3,
+                                descriptor_type: SampledImage,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "shadow_map_image"
+                            ),
                         ],
                     ),
 
@@ -184,11 +200,7 @@
                     shader_module: "../shaders/mesh_shadow_map.vert.spv",
                     entry_name: "main"
                 ),
-                (
-                    stage: Fragment,
-                    shader_module: "../shaders/mesh_shadow_map.frag.spv",
-                    entry_name: "main"
-                ),
+                // No fragment shader required
             ],
 
             shader_interface: (
@@ -232,6 +244,22 @@
                                         max_lod: 5000
                                     )
                                 ])
+                            ),
+                            (
+                                binding: 2,
+                                descriptor_type: UniformBuffer,
+                                descriptor_count: 1,
+                                stage_flags: Vertex,
+                                slot_name: "per_view_data_vs",
+
+                                internal_buffer_per_descriptor_size: Some(64)
+                            ),
+                            (
+                                binding: 3,
+                                descriptor_type: SampledImage,
+                                descriptor_count: 1,
+                                stage_flags: Fragment,
+                                slot_name: "shadow_map_image"
                             ),
                         ],
                     ),
