@@ -543,6 +543,7 @@ pub struct ImageViewResource {
     pub image: ResourceArc<ImageResource>,
     // Dynamic resources have no key
     pub image_view_key: Option<ImageViewKey>,
+    pub image_view_meta: dsc::ImageViewMeta,
 }
 
 impl VkResource for ImageViewResource {
@@ -1065,9 +1066,9 @@ impl ResourceLookupSet {
     // more appropriate to use with loaded assets, and DynResourceAllocator with runtime assets
     pub fn insert_image(
         &self,
-        image: ManuallyDrop<VkImage>,
+        image: VkImage,
     ) -> ResourceArc<ImageResource> {
-        let raw_image = ManuallyDrop::into_inner(image).take_raw().unwrap();
+        let raw_image = image.take_raw().unwrap();
         self.insert_raw_image(raw_image)
     }
 
@@ -1143,6 +1144,7 @@ impl ResourceLookupSet {
                 image_view: resource,
                 image_view_key: Some(image_view_key.clone()),
                 image: image.clone(),
+                image_view_meta: image_view_meta.clone(),
             };
 
             Ok(resource)

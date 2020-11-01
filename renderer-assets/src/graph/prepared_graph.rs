@@ -5,7 +5,6 @@ use ash::vk;
 use crate::resources::ResourceLookupSet;
 use crate::{ResourceArc, ImageViewResource, ResourceContext};
 use ash::prelude::VkResult;
-use std::mem::ManuallyDrop;
 use crate::vk_description as dsc;
 use crate::vk_description::{ImageAspectFlags, SwapchainSurfaceInfo};
 use crate::resources::RenderPassResource;
@@ -142,10 +141,10 @@ impl RenderGraphCacheInner {
                 .or_insert_with(Default::default);
 
             if let Some(cached_image) = matching_cached_images.get_mut(*next_image_index) {
-                log::trace!(
+                log::info!(
                     "  Image {:?} - REUSE {:?}  (key: {:?}, index: {})",
                     id,
-                    cached_image.image_view,
+                    cached_image.image_view.get_raw().image_view,
                     key,
                     next_image_index
                 );
@@ -159,10 +158,10 @@ impl RenderGraphCacheInner {
                 // No unused image available, create one
                 let image_view =
                     RenderGraphCacheInner::create_image_for_key(device_context, resources, &key)?;
-                log::trace!(
+                log::info!(
                     "  Image {:?} - CREATE {:?}  (key: {:?}, index: {})",
                     id,
-                    image_view,
+                    image_view.get_raw().image_view,
                     key,
                     next_image_index
                 );
@@ -203,7 +202,7 @@ impl RenderGraphCacheInner {
             1,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
         )?;
-        let image_resource = resources.insert_image(ManuallyDrop::new(image));
+        let image_resource = resources.insert_image(image);
         let subresource_range = dsc::ImageSubresourceRange {
             aspect_mask: ImageAspectFlags::from_bits(key.specification.aspect_flags.as_raw())
                 .unwrap(),
@@ -460,12 +459,11 @@ impl PreparedRenderGraph {
                     for image_barrier in &pre_pass_barrier.image_barriers {
                         let image_view = &self.image_resources[&image_barrier.image];
 
-                        let subresource_range = vk::ImageSubresourceRange::builder()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .base_mip_level(0)
-                            .level_count(1)
-                            .base_array_layer(0)
-                            .layer_count(1);
+                        let subresource_range = image_view
+                            .get_raw()
+                            .image_view_meta
+                            .subresource_range
+                            .into();
 
                         let image_memory_barrier = vk::ImageMemoryBarrier::builder()
                             .src_access_mask(image_barrier.src_access)
@@ -475,7 +473,7 @@ impl PreparedRenderGraph {
                             .src_queue_family_index(image_barrier.src_queue_family_index)
                             .dst_queue_family_index(image_barrier.dst_queue_family_index)
                             .image(image_view.get_raw().image.get_raw().image.image)
-                            .subresource_range(*subresource_range)
+                            .subresource_range(subresource_range)
                             .build();
 
                         image_memory_barriers.push(image_memory_barrier);

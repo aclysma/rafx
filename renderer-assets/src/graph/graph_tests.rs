@@ -132,6 +132,10 @@ impl TestImageViewAllocator {
             image,
             image_view: vk::ImageView::null(),
             image_view_key: None,
+            image_view_meta: dsc::ImageViewMeta::default_2d_no_mips_or_layers(
+                dsc::Format::UNDEFINED,
+                dsc::ImageAspectFlags::empty(),
+            ),
         })
     }
 

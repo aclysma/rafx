@@ -648,7 +648,8 @@ impl RenderGraphBuilder {
         image: RenderGraphImageUsageId,
         mut constraint: RenderGraphImageConstraint,
     ) -> RenderGraphImageUsageId {
-        constraint.aspect_flags |= vk::ImageAspectFlags::COLOR;
+        // Don't assume color, we might sample a depth image
+        //constraint.aspect_flags |= vk::ImageAspectFlags::COLOR;
         constraint.usage_flags |= vk::ImageUsageFlags::SAMPLED;
 
         // Add the read to the graph

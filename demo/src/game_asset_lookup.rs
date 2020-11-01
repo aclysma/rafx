@@ -1,6 +1,6 @@
 use renderer::assets::resources::{DescriptorSetArc, ResourceArc, AssetLookup, BufferResource};
 use crate::assets::gltf::MeshAssetData;
-use renderer::assets::{MaterialPass, MaterialInstanceAsset};
+use renderer::assets::MaterialPass;
 use type_uuid::*;
 use std::sync::Arc;
 

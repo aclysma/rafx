@@ -1062,6 +1062,7 @@ fn assign_physical_images(
     virtual_images: &AssignVirtualImagesResult,
     passes: &mut [RenderGraphPass],
 ) -> AssignPhysicalImagesResult {
+    log::trace!("-- Assign physical images --");
     struct PhysicalImageReuseRequirements {
         virtual_id: VirtualImageId,
         specification: RenderGraphImageSpecification,
@@ -1094,6 +1095,8 @@ fn assign_physical_images(
                     last_node_pass_index: pass_index,
                     specification: specification.clone(),
                 });
+
+                log::trace!("  Add requirement {:?} {:?}", virtual_id, specification);
                 reused_image_requirements_index
             });
 
@@ -1170,11 +1173,18 @@ fn assign_physical_images(
         physical_images.push(PhysicalImage {
             specification: output_image.specification.clone(),
             last_node_pass_index: passes.len() - 1,
-            can_be_reused: true, // Should be safe to allow reuse?
+            can_be_reused: false, // Should be safe to allow reuse? But last_node_pass_index effectively makes this never reuse
         });
 
         let virtual_id = virtual_images.usage_to_virtual[&output_image.usage];
         let old = virtual_to_physical.insert(virtual_id, physical_image_id);
+        log::trace!(
+            "  Output Image {:?} -> {:?} Used in passes [{}:{}]",
+            virtual_id,
+            physical_image_id,
+            0,
+            passes.len() - 1
+        );
         assert!(old.is_none());
     }
 
@@ -1197,6 +1207,13 @@ fn assign_physical_images(
                 {
                     physical_image.last_node_pass_index = reuse_requirements.last_node_pass_index;
                     physical_image_id = Some(PhysicalImageId(physical_image_index));
+                    log::trace!(
+                        "  Intermediate Image (Reuse) {:?} -> {:?} Used in passes [{}:{}]",
+                        reuse_requirements.virtual_id,
+                        physical_image_id,
+                        reuse_requirements.first_node_pass_index,
+                        reuse_requirements.last_node_pass_index
+                    );
                     break;
                 }
             }
@@ -1208,8 +1225,16 @@ fn assign_physical_images(
             physical_images.push(PhysicalImage {
                 specification: reuse_requirements.specification.clone(),
                 last_node_pass_index: reuse_requirements.last_node_pass_index,
-                can_be_reused: false,
+                can_be_reused: true,
             });
+
+            log::trace!(
+                "  Intermediate Image (Create new) {:?} -> {:?} Used in passes [{}:{}]",
+                reuse_requirements.virtual_id,
+                physical_image_id,
+                reuse_requirements.first_node_pass_index,
+                reuse_requirements.last_node_pass_index
+            );
             physical_image_id
         });
 

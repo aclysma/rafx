@@ -2,7 +2,6 @@ use crate::imgui_support::Sdl2ImguiManager;
 use renderer::vulkan::{VkSurface, Window, VkDeviceContext, VkContext, FrameInFlight};
 use ash::prelude::VkResult;
 use std::mem::ManuallyDrop;
-use ash::vk;
 use crate::time::TimeState;
 use crate::asset_resource::AssetResource;
 use renderer::assets::resources::{ResourceManager, ResourceArc, ImageViewResource};
@@ -19,6 +18,7 @@ use legion::*;
 use crate::render_contexts::{RenderJobExtractContext};
 use crate::features::mesh::{create_mesh_extract_job, MeshRenderNodeSet};
 use std::sync::{Arc, Mutex};
+use renderer::assets::vk_description as dsc;
 
 mod static_resources;
 use static_resources::GameRendererStaticResources;
@@ -37,7 +37,6 @@ mod render_graph;
 //TODO: Find a way to not expose this
 mod swapchain_handling;
 pub use swapchain_handling::SwapchainLifetimeListener;
-use ash::version::DeviceV1_0;
 use crate::features::imgui::create_imgui_extract_job;
 use crate::components::DirectionalLightComponent;
 
@@ -130,7 +129,8 @@ impl GameRenderer {
             ),
         };
 
-        let mut imgui_font_atlas_image = renderer::assets::image_utils::load_images(
+        // Should just be one, so pop/unwrap
+        let imgui_font_atlas_image = renderer::assets::image_utils::load_images(
             &device_context,
             device_context
                 .queue_family_indices()
@@ -141,35 +141,20 @@ impl GameRenderer {
                 .graphics_queue_family_index,
             &device_context.queues().graphics_queue,
             &[imgui_font_atlas],
-        )?;
+        )?
+        .pop()
+        .unwrap();
 
         let dyn_resource_allocator = resource_manager.create_dyn_resource_allocator_set();
-        let imgui_font_atlas_image = dyn_resource_allocator
-            .insert_image(unsafe { ManuallyDrop::take(&mut imgui_font_atlas_image[0]) });
+        let image =
+            dyn_resource_allocator.insert_image(ManuallyDrop::into_inner(imgui_font_atlas_image));
 
-        let subresource_range = vk::ImageSubresourceRange::builder()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
-            .base_mip_level(0)
-            .level_count(1)
-            .base_array_layer(0)
-            .layer_count(1);
+        let image_view_meta = dsc::ImageViewMeta::default_2d_no_mips_or_layers(
+            dsc::Format::R8G8B8A8_UNORM,
+            dsc::ImageAspectFlag::Color.into(),
+        );
 
-        let image_view_info = vk::ImageViewCreateInfo::builder()
-            .image(imgui_font_atlas_image.get_raw().image.image)
-            .view_type(vk::ImageViewType::TYPE_2D)
-            .format(vk::Format::R8G8B8A8_UNORM)
-            .subresource_range(*subresource_range);
-
-        let imgui_font_atlas_image_view = unsafe {
-            device_context
-                .device()
-                .create_image_view(&image_view_info, None)?
-        };
-
-        let imgui_font_atlas_image_view = dyn_resource_allocator
-            .insert_image_view(imgui_font_atlas_image, imgui_font_atlas_image_view);
-
-        Ok(imgui_font_atlas_image_view)
+        dyn_resource_allocator.insert_image_view(device_context, &image, image_view_meta)
     }
 }
 

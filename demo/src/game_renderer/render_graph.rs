@@ -98,25 +98,10 @@ pub fn build_render_graph(
     let directional_light_pass = {
         struct DirectionalLightPass {
             node: RenderGraphNodeId,
-            color: RenderGraphImageUsageId,
             depth: RenderGraphImageUsageId,
         }
 
         let node = graph.add_node("Shadow", RenderGraphQueue::DefaultGraphics);
-
-        let color = graph.create_color_attachment(
-            node,
-            0,
-            Some(vk::ClearColorValue {
-                float32: [0.0, 0.0, 0.0, 0.0],
-            }),
-            RenderGraphImageConstraint {
-                samples: Some(samples),
-                format: Some(color_format),
-                ..Default::default()
-            },
-        );
-        graph.set_image_name(color, "color");
 
         let depth = graph.create_depth_attachment(
             node,
@@ -125,8 +110,9 @@ pub fn build_render_graph(
                 stencil: 0,
             }),
             RenderGraphImageConstraint {
-                samples: Some(samples),
+                samples: Some(vk::SampleCountFlags::TYPE_1),
                 format: Some(depth_format),
+                aspect_flags: vk::ImageAspectFlags::DEPTH,
                 ..Default::default()
             },
         );
@@ -146,7 +132,7 @@ pub fn build_render_graph(
             Ok(())
         });
 
-        DirectionalLightPass { node, color, depth }
+        DirectionalLightPass { node, depth }
     };
 
     let bloom_extract_pass = {
@@ -183,12 +169,16 @@ pub fn build_render_graph(
 
         let sample_image = graph.sample_image(
             node,
-            directional_light_pass.color,
+            opaque_pass.color,
             RenderGraphImageConstraint {
                 samples: Some(vk::SampleCountFlags::TYPE_1),
                 ..Default::default()
             },
         );
+
+        //TODO: Temporary, just to avoid discarding the image for now so I can see it in renderdoc
+        let _sample_image2 =
+            graph.sample_image(node, directional_light_pass.depth, Default::default());
 
         graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
             // Get the color image from before

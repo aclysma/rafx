@@ -72,22 +72,6 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
                 Some(descriptor_set.descriptor_set().clone());
         }
 
-        // let per_view_descriptor_sets: Vec<_> = views
-        //     .iter()
-        //     .map(|view| {
-        //         let debug3d_view = Debug3dUniformBufferObject {
-        //             view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
-        //         };
-        //
-        //         let mut descriptor_set = descriptor_set_allocator
-        //             .create_dyn_descriptor_set_uninitialized(per_view_descriptor_set_layout)
-        //             .unwrap();
-        //         descriptor_set.set_buffer_data(0, &debug3d_view);
-        //         descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
-        //         descriptor_set.descriptor_set().clone()
-        //     })
-        //     .collect();
-
         //
         // Gather the raw draw data
         //

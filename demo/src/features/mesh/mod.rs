@@ -17,7 +17,6 @@ mod prepare;
 mod write;
 use write::MeshCommandWriter;
 use renderer::assets::resources::{DescriptorSetArc};
-use std::fmt::Debug;
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 = 0;
 const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 = 1;

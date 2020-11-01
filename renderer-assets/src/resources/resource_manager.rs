@@ -624,7 +624,7 @@ impl ResourceManager {
         let format = image.format.into();
         let mip_level_count = image.mip_level_count;
 
-        let image = self.resources.insert_image(ManuallyDrop::new(image));
+        let image = self.resources.insert_image(image);
 
         let image_view_meta = dsc::ImageViewMeta {
             view_type: dsc::ImageViewType::Type2D,

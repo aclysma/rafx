@@ -10,6 +10,7 @@ use crate::resources::resource_arc::ResourceWithHash;
 use crate::{ImageViewResource, BufferResource};
 use ash::prelude::VkResult;
 use crate::resources::resource_lookup::ImageResource;
+use crate::vk_description as dsc;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DynResourceIndex(u64);
@@ -236,13 +237,30 @@ impl DynResourceAllocatorSet {
 
     pub fn insert_image_view(
         &self,
+        device_context: &VkDeviceContext,
+        image: &ResourceArc<ImageResource>,
+        image_view_meta: dsc::ImageViewMeta,
+    ) -> VkResult<ResourceArc<ImageViewResource>> {
+        let image_view = dsc::create_image_view(
+            device_context.device(),
+            image.get_raw().image.image,
+            &image_view_meta,
+        )?;
+
+        Ok(self.insert_image_view_raw(image.clone(), image_view, image_view_meta))
+    }
+
+    pub fn insert_image_view_raw(
+        &self,
         image: ResourceArc<ImageResource>,
         image_view: vk::ImageView,
+        image_view_meta: dsc::ImageViewMeta,
     ) -> ResourceArc<ImageViewResource> {
         let image_view_resource = ImageViewResource {
             image,
             image_view,
             image_view_key: None,
+            image_view_meta,
         };
 
         self.image_views.insert(image_view_resource)
