@@ -136,6 +136,12 @@ pub fn populate_test_mesh_entities(
                 &asset_resource,
             ));
 
+            // blue icosphere
+            meshes.push(begin_load_asset::<MeshAsset>(
+                asset_uuid!("8a51f05c-f3c6-4d61-bc9d-16c2337265f1"),
+                &asset_resource,
+            ));
+
             meshes
         };
 
@@ -195,7 +201,7 @@ pub fn populate_test_lights(
     // );
 
     // let light_from = glam::Vec3::new(-3.0, -3.0, 0.0);
-    // let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
+    // let light_to = glam::Vec3::zero();
     // let light_direction = (light_to - light_from).normalize();
     // add_spot_light(
     //     resources,
@@ -211,7 +217,7 @@ pub fn populate_test_lights(
     // );
 
     let light_from = glam::Vec3::new(5.0, 5.0, 5.0);
-    let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
+    let light_to = glam::Vec3::zero();
     let light_direction = (light_to - light_from).normalize();
     add_directional_light(
         resources,

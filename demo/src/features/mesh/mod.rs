@@ -9,6 +9,7 @@ use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::assets::MaterialPass;
 use renderer::assets::resources::{ResourceArc, ImageViewResource};
+use renderer::nodes::RenderView;
 
 mod extract;
 use extract::MeshExtractJob;
@@ -73,10 +74,12 @@ pub struct MeshPerViewFragmentShaderParam {
 } // 3616 bytes
 
 #[derive(Default, Copy, Clone)]
+//#[repr(C)]
 #[repr(C)]
 pub struct MeshPerFrameVertexShaderParam {
     pub shadow_map_view_proj: glam::Mat4, // +0
-} // 3616 bytes
+    pub shadow_map_light_dir: glam::Vec4, // +64
+} // 80 bytes
 
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
@@ -88,11 +91,11 @@ pub struct MeshPerObjectShaderParam {
 
 pub fn create_mesh_extract_job(
     shadow_map_image: ResourceArc<ImageViewResource>,
-    shadow_map_view_proj: glam::Mat4,
+    shadow_map_view: RenderView,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(MeshExtractJob {
         shadow_map_image,
-        shadow_map_view_proj,
+        shadow_map_view,
     })
 }
 

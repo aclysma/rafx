@@ -55,7 +55,8 @@ layout (set = 0, binding = 0) uniform PerViewData {
 } per_frame_data;
 
 layout (set = 0, binding = 1) uniform sampler smp;
-
+//layout (set = 0, binding = 2) uniform samplerShadow smp_depth;
+layout (set = 0, binding = 2) uniform sampler smp_depth;
 layout (set = 0, binding = 3) uniform texture2D shadow_map_image;
 
 //
@@ -95,6 +96,7 @@ layout (location = 2) in vec3 in_tangent_vs;
 layout (location = 3) in vec3 in_binormal_vs;
 layout (location = 4) in vec2 in_uv;
 layout (location = 5) in vec4 in_shadow_map_pos;
+layout (location = 6) in vec3 in_shadow_map_light_dir_vs;
 
 // Force early depth testing, this is likely not strictly necessary
 layout(early_fragment_tests) in;
@@ -590,7 +592,7 @@ vec4 pbr_path(
     //return vec4(mapped, base_color.a);
 }
 
-float calculate_percent_lit(vec4 shadow_map_pos) {
+float calculate_percent_lit(vec4 shadow_map_pos, vec3 normal, vec3 light_dir) {
     // homogenous coordinate normalization
     vec3 projected = shadow_map_pos.xyz / shadow_map_pos.w;
 
@@ -599,10 +601,12 @@ float calculate_percent_lit(vec4 shadow_map_pos) {
 
     // Convert [-1, 1] range to [0, 1] range so we can sample the shadow map
     vec2 sample_location = projected.xy * 0.5 + 0.5;
-    float distance_from_closest_object_to_light = texture(sampler2D(shadow_map_image, smp), sample_location).r;
+    float distance_from_closest_object_to_light = texture(sampler2D(shadow_map_image, smp_depth), sample_location).r;
 
-    //TODO: Smarter biasing (shadow acne)
-    float bias = 0.0005;
+    // I found in practice this a constant value was working fine in my scene, so can consider removing this later
+    vec3 surface_to_light_dir = -light_dir;
+    float bias = max(0.0005 * (1.0 - dot(normal, surface_to_light_dir)), 0.0001);
+    //float bias = 0.0005;
     float shadow = distance_from_light - bias < distance_from_closest_object_to_light ? 1.0 : 0.0;
 
     return shadow;
@@ -650,7 +654,7 @@ void main() {
     vec3 eye_position_vs = vec3(0, 0, 0);
     vec3 surface_to_eye_vs = normalize(eye_position_vs - in_position_vs);
 
-    float percent_lit = calculate_percent_lit(in_shadow_map_pos);
+    float percent_lit = calculate_percent_lit(in_shadow_map_pos, normal_vs, in_shadow_map_light_dir_vs);
 
 //    out_color = non_pbr_path(
 //        surface_to_eye_vs,
@@ -668,4 +672,5 @@ void main() {
         normal_vs,
         percent_lit
     );
+    //out_color = vec4(vec3(dot(normal_vs, -in_shadow_map_light_dir_vs)), 1.0);
 }

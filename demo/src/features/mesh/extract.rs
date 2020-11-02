@@ -17,7 +17,7 @@ use crate::resource_manager::GameResourceManager;
 
 pub struct MeshExtractJob {
     pub(super) shadow_map_image: ResourceArc<ImageViewResource>,
-    pub(super) shadow_map_view_proj: glam::Mat4,
+    pub(super) shadow_map_view: RenderView,
 }
 
 impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
@@ -118,7 +118,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             extracted_frame_node_mesh_data,
             directional_lights,
             shadow_map_image: self.shadow_map_image,
-            shadow_map_view_proj: self.shadow_map_view_proj,
+            shadow_map_view: self.shadow_map_view,
             point_lights,
             spot_lights,
         })

@@ -23,7 +23,7 @@ pub struct MeshPrepareJob {
     pub(super) extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
     pub(super) directional_lights: Vec<DirectionalLightComponent>,
     pub(super) shadow_map_image: ResourceArc<ImageViewResource>,
-    pub(super) shadow_map_view_proj: glam::Mat4,
+    pub(super) shadow_map_view: RenderView,
     pub(super) point_lights: Vec<(PositionComponent, PointLightComponent)>,
     pub(super) spot_lights: Vec<(PositionComponent, SpotLightComponent)>,
 }
@@ -67,7 +67,8 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
         }
 
         let per_frame_vertex_data = MeshPerFrameVertexShaderParam {
-            shadow_map_view_proj: self.shadow_map_view_proj,
+            shadow_map_view_proj: self.shadow_map_view.view_proj(),
+            shadow_map_light_dir: self.shadow_map_view.view_dir().extend(1.0)
         };
 
         // Realistically all the materials (for now) have identical layouts so iterating though them
@@ -80,8 +81,10 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                     .create_dyn_descriptor_set_uninitialized(&per_view_descriptor_set_layout)
                     .unwrap();
                 descriptor_set.set_buffer_data(0, &per_view_frag_data);
-                descriptor_set.set_buffer_data(2, &per_frame_vertex_data);
+                // 1: immutable sampler
+                // 2: immutable sampler
                 descriptor_set.set_image(3, self.shadow_map_image.clone());
+                descriptor_set.set_buffer_data(4, &per_frame_vertex_data);
                 descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
                 per_view_descriptor_sets.insert(
@@ -211,7 +214,7 @@ impl MeshPrepareJob {
                 break;
             }
 
-            let light_from = glam::Vec3::new(0.0, 0.0, 0.0);
+            let light_from = glam::Vec3::zero();
             let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
             let light_to = light.direction;
             let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();

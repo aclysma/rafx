@@ -21,7 +21,7 @@
         depth_clamp_enable: false,
         rasterizer_discard_enable: false,
         polygon_mode: Fill,
-        cull_mode: None,
+        cull_mode: Back,
         front_face: CounterClockwise,
         depth_bias_enable: false,
         depth_bias_constant_factor: 0,

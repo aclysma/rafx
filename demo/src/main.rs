@@ -135,9 +135,9 @@ fn main() {
             let time_state = resources.get::<TimeState>().unwrap();
             let mut query = <Write<DirectionalLightComponent>>::query();
             for mut light in query.iter_mut(&mut world) {
-                const LIGHT_XY_DISTANCE: f32 = 20.0;
-                const LIGHT_Z: f32 = 30.0;
-                const LIGHT_ROTATE_SPEED: f32 = -0.0;
+                const LIGHT_XY_DISTANCE: f32 = 50.0;
+                const LIGHT_Z: f32 = 50.0;
+                const LIGHT_ROTATE_SPEED: f32 = 0.2;
                 const LIGHT_LOOP_OFFSET: f32 = 0.7;
                 let loop_time = time_state.total_time().as_secs_f32();
                 let light_from = glam::Vec3::new(
@@ -146,6 +146,10 @@ fn main() {
                     LIGHT_XY_DISTANCE
                         * f32::sin(LIGHT_ROTATE_SPEED * loop_time + LIGHT_LOOP_OFFSET),
                     LIGHT_Z,
+
+                    //LIGHT_Z// * f32::sin(LIGHT_ROTATE_SPEED * loop_time + LIGHT_LOOP_OFFSET).abs(),
+                    //0.2
+                    //2.0
                 );
                 let light_to = glam::Vec3::default();
 
@@ -212,7 +216,7 @@ fn add_light_debug_draw(
     let mut query = <Read<DirectionalLightComponent>>::query();
     for light in query.iter(world) {
         let light_from = light.direction * -10.0;
-        let light_to = glam::Vec3::new(0.0, 0.0, 0.0);
+        let light_to = glam::Vec3::zero();
 
         debug_draw.add_line(light_from, light_to, light.color);
     }

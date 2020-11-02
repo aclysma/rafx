@@ -338,8 +338,8 @@ impl GameRenderer {
         let main_view = {
             const CAMERA_XY_DISTANCE: f32 = 12.0;
             const CAMERA_Z: f32 = 5.0;
-            const CAMERA_ROTATE_SPEED: f32 = -0.2;
-            const CAMERA_LOOP_OFFSET: f32 = -0.3;
+            const CAMERA_ROTATE_SPEED: f32 = -0.05;
+            const CAMERA_LOOP_OFFSET: f32 = -0.3 + 1.4;
             let loop_time = time_state.total_time().as_secs_f32();
             let eye = glam::Vec3::new(
                 CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
@@ -353,7 +353,7 @@ impl GameRenderer {
 
             let view = glam::Mat4::look_at_rh(
                 eye,
-                glam::Vec3::new(0.0, 0.0, 0.0),
+                glam::Vec3::zero(),
                 glam::Vec3::new(0.0, 0.0, 1.0),
             );
             let proj = glam::Mat4::perspective_rh_gl(
@@ -385,13 +385,15 @@ impl GameRenderer {
         // Temporarily assume we have a light
         let directional_light = directional_light.unwrap();
         let directional_light_view = {
+            let eye_position = directional_light.direction * -40.0;
             let view = glam::Mat4::look_at_rh(
-                directional_light.direction * -40.0,
-                glam::Vec3::new(0.0, 0.0, 0.0),
+                eye_position,
+                glam::Vec3::zero(),
                 glam::Vec3::new(0.0, 0.0, 1.0),
             );
 
-            let proj = glam::Mat4::orthographic_rh(-30.0, 30.0, 30.0, -30.0, 0.01, 100.0);
+            let ortho_projection_size = 10.0;
+            let proj = glam::Mat4::orthographic_rh(-ortho_projection_size, ortho_projection_size, ortho_projection_size, -ortho_projection_size, 0.01, 100.0);
 
             //NOTE: This would be the correct way to do perspective projection in our coordinate system
             // let proj = glam::Mat4::perspective_rh_gl(
@@ -402,13 +404,17 @@ impl GameRenderer {
             // );
             // let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
 
-            render_view_set.create_view(
-                glam::Vec3::default(),
+            let view = render_view_set.create_view(
+                eye_position,
                 view,
                 proj,
                 main_camera_render_phase_mask,
                 "shadow_map".to_string(),
-            )
+            );
+
+            //println!("VIEW: {:?} {:?}", (glam::Vec3::zero() - (directional_light.direction * -40.0)).normalize(), view.view_dir());
+
+            view
         };
 
         //
@@ -523,7 +529,7 @@ impl GameRenderer {
             // Meshes
             extract_job_set.add_job(create_mesh_extract_job(
                 render_graph.shadow_map,
-                directional_light_view.view_proj(),
+                directional_light_view.clone(),
             ));
 
             // Debug 3D

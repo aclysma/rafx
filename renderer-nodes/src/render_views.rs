@@ -78,6 +78,7 @@ pub struct RenderViewInner {
     view: Mat4,
     proj: Mat4,
     view_proj: Mat4,
+    view_dir: Vec3,
     view_index: RenderViewIndex,
     render_phase_mask: RenderPhaseMask,
     debug_name: String,
@@ -97,12 +98,15 @@ impl RenderView {
         render_phase_mask: RenderPhaseMask,
         debug_name: String,
     ) -> RenderView {
+        let view_dir = glam::Vec3::new(view.x_axis().z(), view.y_axis().z(), view.z_axis().z()) * -1.0;
+
         log::trace!("Allocate view {} {}", debug_name, view_index);
         let inner = RenderViewInner {
             eye_position,
             view,
             proj,
             view_proj: proj * view,
+            view_dir,
             view_index,
             render_phase_mask,
             debug_name,
@@ -115,6 +119,10 @@ impl RenderView {
 
     pub fn eye_position(&self) -> Vec3 {
         self.inner.eye_position
+    }
+
+    pub fn view_dir(&self) -> Vec3 {
+        self.inner.view_dir
     }
 
     pub fn view_matrix(&self) -> Mat4 {

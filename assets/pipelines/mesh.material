@@ -60,12 +60,32 @@
                             ),
                             (
                                 binding: 2,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Vertex,
-                                slot_name: "per_view_data_vs",
+                                descriptor_type: Sampler,
+                                descriptor_count: 0,
+                                stage_flags: Fragment,
+                                slot_name: "sampler_depth",
 
-                                internal_buffer_per_descriptor_size: Some(64)
+                                immutable_samplers: Some([
+                                    (
+                                        mag_filter: Linear,
+                                        min_filter: Linear,
+                                        address_mode_u: ClampToBorder,
+                                        address_mode_v: ClampToBorder,
+                                        address_mode_w: ClampToBorder,
+                                        anisotropy_enable: true,
+                                        max_anisotropy: 16.0, // Could be a setting later
+                                        border_color: IntOpaqueWhite,
+                                        unnormalized_coordinates: false,
+                                        compare_enable: false,
+                                        compare_op: Always,
+                                        //compare_enable: true, // PCF
+                                        //compare_op: Less,     // PCF
+                                        mipmap_mode: Linear,
+                                        mip_lod_bias: 0,
+                                        min_lod: 0,
+                                        max_lod: 5000
+                                    )
+                                ])
                             ),
                             (
                                 binding: 3,
@@ -73,6 +93,15 @@
                                 descriptor_count: 1,
                                 stage_flags: Fragment,
                                 slot_name: "shadow_map_image"
+                            ),
+                            (
+                                binding: 4,
+                                descriptor_type: UniformBuffer,
+                                descriptor_count: 1,
+                                stage_flags: Vertex,
+                                slot_name: "per_view_data_vs",
+
+                                internal_buffer_per_descriptor_size: Some(80)
                             ),
                         ],
                     ),
@@ -193,7 +222,7 @@
         ),
         (
             phase: Some("ShadowMap"),
-            pipeline: "mesh.pipeline",
+            pipeline: "mesh_shadow_map.pipeline",
             shaders: [
                 (
                     stage: Vertex,
@@ -247,12 +276,32 @@
                             ),
                             (
                                 binding: 2,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Vertex,
-                                slot_name: "per_view_data_vs",
+                                descriptor_type: Sampler,
+                                descriptor_count: 0,
+                                stage_flags: Fragment,
+                                slot_name: "sampler_depth",
 
-                                internal_buffer_per_descriptor_size: Some(64)
+                                immutable_samplers: Some([
+                                    (
+                                        mag_filter: Linear,
+                                        min_filter: Linear,
+                                        address_mode_u: ClampToBorder,
+                                        address_mode_v: ClampToBorder,
+                                        address_mode_w: ClampToBorder,
+                                        anisotropy_enable: true,
+                                        max_anisotropy: 16.0, // Could be a setting later
+                                        border_color: IntOpaqueWhite,
+                                        unnormalized_coordinates: false,
+                                        compare_enable: false,
+                                        compare_op: Always,
+                                        //compare_enable: true, // PCF
+                                        //compare_op: Less,     // PCF
+                                        mipmap_mode: Linear,
+                                        mip_lod_bias: 0,
+                                        min_lod: 0,
+                                        max_lod: 5000
+                                    )
+                                ])
                             ),
                             (
                                 binding: 3,
@@ -260,6 +309,15 @@
                                 descriptor_count: 1,
                                 stage_flags: Fragment,
                                 slot_name: "shadow_map_image"
+                            ),
+                            (
+                                binding: 4,
+                                descriptor_type: UniformBuffer,
+                                descriptor_count: 1,
+                                stage_flags: Vertex,
+                                slot_name: "per_view_data_vs",
+
+                                internal_buffer_per_descriptor_size: Some(80)
                             ),
                         ],
                     ),

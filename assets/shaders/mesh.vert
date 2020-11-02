@@ -2,8 +2,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout (set = 0, binding = 2) uniform PerViewDataVS {
+layout (set = 0, binding = 4) uniform PerViewDataVS {
     mat4 shadow_map_view_proj;
+    vec3 shadow_map_light_dir;
 } per_view_data;
 
 layout(set = 2, binding = 0) uniform PerObjectData {
@@ -27,6 +28,7 @@ layout (location = 2) out vec3 out_tangent_vs;
 layout (location = 3) out vec3 out_binormal_vs;
 layout (location = 4) out vec2 out_uv;
 layout (location = 5) out vec4 out_shadow_map_pos;
+layout (location = 6) out vec3 out_shadow_map_light_dir_vs;
 
 void main() {
     gl_Position = per_object_data.model_view_proj * vec4(in_pos, 1.0);
@@ -38,10 +40,10 @@ void main() {
     vec3 binormal = cross(in_normal, in_tangent.xyz) * in_tangent.w;
     out_binormal_vs = mat3(per_object_data.model_view) * binormal;
 
-    //vec3 world_pos = vec3(per_object_data.model * vec4(in_pos, 1.0));
-    //out_shadow_map_pos = per_view_data.shadow_map_view_proj * vec4(world_pos, 1.0);
-
+    // Used to sample the shadow map
     out_shadow_map_pos = per_view_data.shadow_map_view_proj * per_object_data.model * vec4(in_pos, 1.0);
+    // dot(light dir, normal) for purpose of bias to prevent shadow acne
+    out_shadow_map_light_dir_vs = mat3(per_object_data.model_view) * per_view_data.shadow_map_light_dir;
 
     out_uv = in_uv;
 }
