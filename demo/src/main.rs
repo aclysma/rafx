@@ -137,8 +137,8 @@ fn main() {
             for mut light in query.iter_mut(&mut world) {
                 const LIGHT_XY_DISTANCE: f32 = 50.0;
                 const LIGHT_Z: f32 = 50.0;
-                const LIGHT_ROTATE_SPEED: f32 = 0.2;
-                const LIGHT_LOOP_OFFSET: f32 = 0.7;
+                const LIGHT_ROTATE_SPEED: f32 = 0.0;
+                const LIGHT_LOOP_OFFSET: f32 = 2.0;
                 let loop_time = time_state.total_time().as_secs_f32();
                 let light_from = glam::Vec3::new(
                     LIGHT_XY_DISTANCE

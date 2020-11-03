@@ -1,6 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+//#extension GL_EXT_samplerless_texture_functions : enable
 
 // References:
 // https://www.3dgep.com/forward-plus/
@@ -601,13 +602,51 @@ float calculate_percent_lit(vec4 shadow_map_pos, vec3 normal, vec3 light_dir) {
 
     // Convert [-1, 1] range to [0, 1] range so we can sample the shadow map
     vec2 sample_location = projected.xy * 0.5 + 0.5;
-    float distance_from_closest_object_to_light = texture(sampler2D(shadow_map_image, smp_depth), sample_location).r;
 
     // I found in practice this a constant value was working fine in my scene, so can consider removing this later
     vec3 surface_to_light_dir = -light_dir;
+
+
+    // Non-PCF form
+    /*
     float bias = max(0.0005 * (1.0 - dot(normal, surface_to_light_dir)), 0.0001);
-    //float bias = 0.0005;
+    // float bias = 0.0005;
+    float distance_from_closest_object_to_light = texture(sampler2D(shadow_map_image, smp_depth), sample_location, 0.5).r;
     float shadow = distance_from_light - bias < distance_from_closest_object_to_light ? 1.0 : 0.0;
+    */
+
+    // PCF form single sample
+    /*
+    float bias = max(0.005 * (1.0 - dot(normal, surface_to_light_dir)), 0.001);
+    float shadow = texture(
+        sampler2DShadow(shadow_map_image, smp_depth),
+        vec3(
+            sample_location,
+            distance_from_light - bias
+        )
+    ).r;
+    */
+
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(sampler2DShadow(shadow_map_image, smp_depth), 0);
+    float bias = max(0.005 * (1.0 - dot(normal, surface_to_light_dir)), 0.001);
+    for(int x = -2; x <= 2; ++x)
+    {
+        for(int y = -2; y <= 2; ++y)
+        {
+            //float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+            //shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+            // Requires GL_EXT_samplerless_texture_functions
+            shadow += texture(
+                sampler2DShadow(shadow_map_image, smp_depth),
+                vec3(
+                    sample_location + vec2(x, y) * texelSize,
+                    distance_from_light - bias
+                )
+            ).r;
+        }
+    }
+    shadow /= 25.0;
 
     return shadow;
 }

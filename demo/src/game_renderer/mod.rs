@@ -338,8 +338,8 @@ impl GameRenderer {
         let main_view = {
             const CAMERA_XY_DISTANCE: f32 = 12.0;
             const CAMERA_Z: f32 = 5.0;
-            const CAMERA_ROTATE_SPEED: f32 = -0.05;
-            const CAMERA_LOOP_OFFSET: f32 = -0.3 + 1.4;
+            const CAMERA_ROTATE_SPEED: f32 = -0.00;
+            const CAMERA_LOOP_OFFSET: f32 = -0.3;
             let loop_time = time_state.total_time().as_secs_f32();
             let eye = glam::Vec3::new(
                 CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),

@@ -76,10 +76,10 @@
                                         max_anisotropy: 16.0, // Could be a setting later
                                         border_color: IntOpaqueWhite,
                                         unnormalized_coordinates: false,
-                                        compare_enable: false,
-                                        compare_op: Always,
-                                        //compare_enable: true, // PCF
-                                        //compare_op: Less,     // PCF
+                                        //compare_enable: false,
+                                        //compare_op: Always,
+                                        compare_enable: true, // PCF
+                                        compare_op: Less,     // PCF
                                         mipmap_mode: Linear,
                                         mip_lod_bias: 0,
                                         min_lod: 0,
@@ -292,10 +292,10 @@
                                         max_anisotropy: 16.0, // Could be a setting later
                                         border_color: IntOpaqueWhite,
                                         unnormalized_coordinates: false,
-                                        compare_enable: false,
-                                        compare_op: Always,
-                                        //compare_enable: true, // PCF
-                                        //compare_op: Less,     // PCF
+                                        //compare_enable: false,
+                                        //compare_op: Always,
+                                        compare_enable: true, // PCF
+                                        compare_op: Less,     // PCF
                                         mipmap_mode: Linear,
                                         mip_lod_bias: 0,
                                         min_lod: 0,
