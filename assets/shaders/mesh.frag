@@ -1,7 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
-//#extension GL_EXT_samplerless_texture_functions : enable
 
 // References:
 // https://www.3dgep.com/forward-plus/
@@ -627,6 +626,28 @@ float calculate_percent_lit(vec4 shadow_map_pos, vec3 normal, vec3 light_dir) {
     ).r;
     */
 
+    // PCF reasonable sample count
+    /*
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(sampler2DShadow(shadow_map_image, smp_depth), 0);
+    float bias = max(0.005 * (1.0 - dot(normal, surface_to_light_dir)), 0.001);
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            shadow += texture(
+                sampler2DShadow(shadow_map_image, smp_depth),
+                vec3(
+                    sample_location + vec2(x, y) * texelSize,
+                    distance_from_light - bias
+                )
+            ).r;
+        }
+    }
+    shadow /= 9.0;
+    */
+
+    // PCF probably too many samples
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(sampler2DShadow(shadow_map_image, smp_depth), 0);
     float bias = max(0.005 * (1.0 - dot(normal, surface_to_light_dir)), 0.001);
@@ -634,9 +655,6 @@ float calculate_percent_lit(vec4 shadow_map_pos, vec3 normal, vec3 light_dir) {
     {
         for(int y = -2; y <= 2; ++y)
         {
-            //float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
-            //shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
-            // Requires GL_EXT_samplerless_texture_functions
             shadow += texture(
                 sampler2DShadow(shadow_map_image, smp_depth),
                 vec3(
