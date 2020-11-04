@@ -34,7 +34,7 @@ impl Importer for PipelineImporter {
     fn import(
         &self,
         source: &mut dyn Read,
-        _options: Self::Options,
+        _options: &Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let id = state
@@ -85,7 +85,7 @@ impl Importer for RenderpassImporter {
     fn import(
         &self,
         source: &mut dyn Read,
-        _options: Self::Options,
+        _options: &Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let id = state
@@ -136,7 +136,7 @@ impl Importer for MaterialImporter {
     fn import(
         &self,
         source: &mut dyn Read,
-        _options: Self::Options,
+        _options: &Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let id = state
@@ -187,7 +187,7 @@ impl Importer for MaterialInstanceImporter {
     fn import(
         &self,
         source: &mut dyn Read,
-        _options: Self::Options,
+        _options: &Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let id = state
