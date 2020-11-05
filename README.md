@@ -1,13 +1,14 @@
 # renderer_prototype (Name TBD)
 
 This is a vulkan renderer built on top of `atelier-assets`. The objective of this repo is to build a scalable, flexible,
-data driven renderer. Scalable in the sense of performance as well as suitability for use in large, real-world projects.
-This means streaming, LODs, visibility systems, and multi-threaded draw call submission need to be possible.
-Additionally it means thinking through how an asset pipeline would work for a team with dedicated artists and supporting
-workflow-friendly features like hot reloading assets, possibly on remote devices.
+data-driven renderer. Scalable in the sense of performance as well as suitability for use in large, real-world projects.
 
-This is not an easy-to-use crate. I plan to provide a higher-level engine crate in the future. Extending and using
-this crate directly requires a good understanding of vulkan.
+Streaming, LODs, visibility systems, and multi-threaded draw call submission is considered in the architecture. The 
+asset pipeline is designed with workflow in mind, supporting dedicated artists and workflow-friendly features like hot
+reloading assets, including on remote devices.
+
+This is currently not an easy-to-use crate. Extending and using this crate directly requires a good understanding of
+vulkan. (Future work may include support for other backends.)
 
 Supported Platforms:
  * Windows
@@ -17,7 +18,10 @@ Supported Platforms:
 
 Android might work but I don't have hardware to test with.
 
-The job/phase rendering design is inspired by the 2015 GDC talk "[Destiny's Multithreaded Rendering Architecture](http://advances.realtimerendering.com/destiny/gdc_2015/Tatarchuk_GDC_2015__Destiny_Renderer_web.pdf)". 
+References:
+ * The job/phase rendering design is inspired by the 2015 GDC talk "[Destiny's Multithreaded Rendering Architecture](http://advances.realtimerendering.com/destiny/gdc_2015/Tatarchuk_GDC_2015__Destiny_Renderer_web.pdf)".
+ * The render graph is inspired by the 2017 GDC talk "[FrameGraph: Extensible Rendering Architecture in Frostbite](https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in)"
+     * see also "[Render Graphs and Vulkan - a deep dive](http://themaister.net/blog/2017/08/15/render-graphs-and-vulkan-a-deep-dive/)"  
 
 [![Build Status](https://travis-ci.org/aclysma/renderer_prototype.svg?branch=master)](https://travis-ci.org/aclysma/renderer_prototype)
 
@@ -25,12 +29,13 @@ The job/phase rendering design is inspired by the 2015 GDC talk "[Destiny's Mult
 
 [^ Video of this renderer running on iOS hardware](https://www.youtube.com/watch?v=Ks_HQbejHE4) 
 
+![Screenshot demonstrating realtime shadows](docs/shadow-screenshot.png)
+
 ## Diagrams
 
  * [Diagram of key crate dependencies](https://github.com/aclysma/renderer_prototype/blob/master/docs/crate_dependencies.png)
  * [Pipelining](https://github.com/aclysma/renderer_prototype/blob/master/docs/pipelining.png)
  * [Diagram of rendering process](https://github.com/aclysma/renderer_prototype/blob/master/docs/render_process.png)
-
 
 ## Status
 
@@ -39,10 +44,13 @@ anything real yet!
 
 The demo includes:
  * Render thread decoupled from main thread [(diagram)](https://github.com/aclysma/renderer_prototype/blob/master/docs/pipelining.png)
- * Async loading of assets (supports remote hardware)
+ * Async loading of assets
+ * Assets can be streamed to remote hardware (i.e. a phone)
  * Hot-reloading assets (needs more work, some asset types do not work reliably)
- * Game state stored in ECS (legion)
- * Extensible data-driven render pipeline
+ * Demo game state stored in ECS (NOTE: demo uses legion but the renderer is ECS-agnostic)
+ * Render graph can be used for efficient and flexible definition of a render pipeline
+ * Material System supporting multiple passes
+ * Multi-view support (can be use to produce shadow maps, for example)
  * PBR Meshes
  * Sprites
  * Debug Draw
@@ -102,9 +110,8 @@ abstraction layer like gfx-hal.
 
 I am writing a higher-level crate to dogfood this and make it easier to use.
 
-The demo shows a basic rendering pipeline with a GLTF importer, PBR, bloom, imgui, some debug drawing, and texture 
-drawing. It also demonstrates how to pipeline rendering with simulation. It's not particularly pretty, but it does show
-a fairly complete usage of the renderer.
+The demo shows a basic rendering pipeline with a GLTF importer, PBR, bloom, imgui, debug draw, sprites, and dynamic
+light/shadows. It also demonstrates how to pipeline rendering with simulation.
 
 ## License
 
