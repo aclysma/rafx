@@ -68,7 +68,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
 
         let per_frame_vertex_data = MeshPerFrameVertexShaderParam {
             shadow_map_view_proj: self.shadow_map_view.view_proj(),
-            shadow_map_light_dir: self.shadow_map_view.view_dir().extend(1.0)
+            shadow_map_light_dir: self.shadow_map_view.view_dir().extend(1.0),
         };
 
         // Realistically all the materials (for now) have identical layouts so iterating though them

@@ -351,11 +351,8 @@ impl GameRenderer {
             let extents_height = 600;
             let aspect_ratio = extents_width as f32 / extents_height as f32;
 
-            let view = glam::Mat4::look_at_rh(
-                eye,
-                glam::Vec3::zero(),
-                glam::Vec3::new(0.0, 0.0, 1.0),
-            );
+            let view =
+                glam::Mat4::look_at_rh(eye, glam::Vec3::zero(), glam::Vec3::new(0.0, 0.0, 1.0));
             let proj = glam::Mat4::perspective_rh_gl(
                 std::f32::consts::FRAC_PI_4,
                 aspect_ratio,
@@ -393,7 +390,14 @@ impl GameRenderer {
             );
 
             let ortho_projection_size = 10.0;
-            let proj = glam::Mat4::orthographic_rh(-ortho_projection_size, ortho_projection_size, ortho_projection_size, -ortho_projection_size, 0.01, 100.0);
+            let proj = glam::Mat4::orthographic_rh(
+                -ortho_projection_size,
+                ortho_projection_size,
+                ortho_projection_size,
+                -ortho_projection_size,
+                0.01,
+                100.0,
+            );
 
             //NOTE: This would be the correct way to do perspective projection in our coordinate system
             // let proj = glam::Mat4::perspective_rh_gl(

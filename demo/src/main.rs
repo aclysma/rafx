@@ -146,7 +146,6 @@ fn main() {
                     LIGHT_XY_DISTANCE
                         * f32::sin(LIGHT_ROTATE_SPEED * loop_time + LIGHT_LOOP_OFFSET),
                     LIGHT_Z,
-
                     //LIGHT_Z// * f32::sin(LIGHT_ROTATE_SPEED * loop_time + LIGHT_LOOP_OFFSET).abs(),
                     //0.2
                     //2.0
