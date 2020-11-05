@@ -33,7 +33,7 @@ impl Importer for ShaderImporter {
     fn import(
         &self,
         source: &mut dyn Read,
-        _options: Self::Options,
+        _options: &Self::Options,
         state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let id = state

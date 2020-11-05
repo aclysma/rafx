@@ -174,7 +174,7 @@ impl Importer for GltfImporter {
     fn import(
         &self,
         source: &mut dyn Read,
-        _options: Self::Options,
+        _options: &Self::Options,
         stable_state: &mut Self::State,
     ) -> atelier_assets::importer::Result<ImporterValue> {
         let mut unstable_state: GltfImporterStateUnstable = stable_state.clone().into();

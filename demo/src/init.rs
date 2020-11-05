@@ -98,7 +98,6 @@ pub fn sdl2_init() -> Sdl2Systems {
         .position_centered()
         .allow_highdpi()
         .resizable()
-        .vulkan()
         .build()
         .expect("Failed to create window");
 
