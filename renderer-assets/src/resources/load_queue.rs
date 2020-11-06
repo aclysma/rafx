@@ -1,4 +1,4 @@
-use atelier_assets::loader::AssetLoadOp;
+use atelier_assets::loader::storage::AssetLoadOp;
 use type_uuid::TypeUuid;
 use crate::ResourceLoader;
 use std::marker::PhantomData;

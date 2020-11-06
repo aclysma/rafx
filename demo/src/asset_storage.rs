@@ -1,12 +1,13 @@
 use atelier_assets::loader::{
     crossbeam_channel::Sender,
     handle::{AssetHandle, RefOp, TypedAssetStorage},
-    AssetLoadOp, AssetStorage, AssetTypeId, LoadHandle, LoaderInfoProvider, TypeUuid,
+    storage::{AssetLoadOp, AssetStorage, LoaderInfoProvider, IndirectionTable},
+    AssetTypeId, LoadHandle,
 };
 use mopa::{mopafy, Any};
 use std::{sync::Mutex, collections::HashMap, error::Error};
 
-use atelier_assets::core::AssetUuid;
+use atelier_assets::core::{AssetUuid, type_uuid::TypeUuid};
 use crossbeam_channel::Receiver;
 use atelier_assets::loader::handle::SerdeContext;
 use std::marker::PhantomData;
@@ -20,7 +21,7 @@ pub trait DynAssetStorage: Any + Send {
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         version: u32,
-    ) -> Result<(), Box<dyn Error>>;
+    ) -> Result<(), Box<dyn Error + Send + 'static>>;
     fn commit_asset_version(
         &mut self,
         handle: LoadHandle,
@@ -29,6 +30,7 @@ pub trait DynAssetStorage: Any + Send {
     fn free(
         &mut self,
         handle: LoadHandle,
+        version: u32,
     );
 
     fn type_name(&self) -> &'static str;
@@ -36,23 +38,32 @@ pub trait DynAssetStorage: Any + Send {
 
 mopafy!(DynAssetStorage);
 
-#[derive(Default)]
 pub struct AssetStorageSetInner {
     storage: HashMap<AssetTypeId, Box<dyn DynAssetStorage>>,
     asset_data_type_id_mapping: HashMap<AssetTypeId, AssetTypeId>,
+    refop_sender: Sender<RefOp>,
+    indirection_table: IndirectionTable,
 }
 
 // Contains a storage per asset type
 pub struct AssetStorageSet {
     inner: Mutex<AssetStorageSetInner>,
-    refop_sender: Sender<RefOp>,
 }
 
 impl AssetStorageSet {
-    pub fn new(refop_sender: Sender<RefOp>) -> Self {
-        Self {
-            inner: Mutex::new(Default::default()),
+    pub fn new(
+        refop_sender: Sender<RefOp>,
+        indirection_table: IndirectionTable,
+    ) -> Self {
+        let inner = AssetStorageSetInner {
+            storage: Default::default(),
+            asset_data_type_id_mapping: Default::default(),
             refop_sender,
+            indirection_table,
+        };
+
+        Self {
+            inner: Mutex::new(inner),
         }
     }
 
@@ -61,14 +72,17 @@ impl AssetStorageSet {
         T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
     {
         let mut inner = self.inner.lock().unwrap();
+        let indirection_table = inner.indirection_table.clone();
+        let refop_sender = inner.refop_sender.clone();
         inner
             .asset_data_type_id_mapping
             .insert(AssetTypeId(T::UUID), AssetTypeId(T::UUID));
         inner.storage.insert(
             AssetTypeId(T::UUID),
             Box::new(Storage::<T>::new(
-                self.refop_sender.clone(),
+                refop_sender,
                 Box::new(DefaultAssetLoader::default()),
+                indirection_table,
             )),
         );
     }
@@ -82,12 +96,18 @@ impl AssetStorageSet {
         LoaderT: DynAssetLoader<AssetT> + 'static,
     {
         let mut inner = self.inner.lock().unwrap();
+        let indirection_table = inner.indirection_table.clone();
+        let refop_sender = inner.refop_sender.clone();
         inner
             .asset_data_type_id_mapping
             .insert(AssetTypeId(AssetDataT::UUID), AssetTypeId(AssetT::UUID));
         inner.storage.insert(
             AssetTypeId(AssetT::UUID),
-            Box::new(Storage::<AssetT>::new(self.refop_sender.clone(), loader)),
+            Box::new(Storage::<AssetT>::new(
+                refop_sender,
+                loader,
+                indirection_table,
+            )),
         );
     }
 }
@@ -99,11 +119,11 @@ impl AssetStorage for AssetStorageSet {
         &self,
         loader_info: &dyn LoaderInfoProvider,
         asset_data_type_id: &AssetTypeId,
-        data: &[u8],
+        data: Vec<u8>,
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         version: u32,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Box<dyn Error + Send + 'static>> {
         let mut inner = self.inner.lock().unwrap();
 
         let asset_type_id = *inner
@@ -115,7 +135,7 @@ impl AssetStorage for AssetStorageSet {
             .storage
             .get_mut(&asset_type_id)
             .expect("unknown asset type")
-            .update_asset(loader_info, data, load_handle, load_op, version)
+            .update_asset(loader_info, &data, load_handle, load_op, version)
     }
 
     fn commit_asset_version(
@@ -142,6 +162,7 @@ impl AssetStorage for AssetStorageSet {
         &self,
         asset_data_type_id: &AssetTypeId,
         load_handle: LoadHandle,
+        version: u32,
     ) {
         let mut inner = self.inner.lock().unwrap();
 
@@ -154,7 +175,7 @@ impl AssetStorage for AssetStorageSet {
             .storage
             .get_mut(&asset_type_id)
             .expect("unknown asset type")
-            .free(load_handle)
+            .free(load_handle, version)
     }
 }
 
@@ -241,7 +262,7 @@ where
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         version: u32,
-    ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error>>;
+    ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error + Send + 'static>>;
 
     fn commit_asset_version(
         &mut self,
@@ -286,12 +307,15 @@ where
         _load_handle: LoadHandle,
         load_op: AssetLoadOp,
         _version: u32,
-    ) -> Result<UpdateAssetResult<AssetDataT>, Box<dyn Error>> {
-        // To enable automatic serde of Handle, we need to set up a SerdeContext with a RefOp sender
+    ) -> Result<UpdateAssetResult<AssetDataT>, Box<dyn Error + Send + 'static>> {
         let asset = futures_lite::future::block_on(SerdeContext::with(
             loader_info,
             refop_sender.clone(),
-            async { bincode::deserialize::<AssetDataT>(data) },
+            async {
+                bincode::deserialize::<AssetDataT>(data)
+                    // Coerce into boxed error
+                    .map_err(|x| -> Box<dyn Error + Send + 'static> { Box::new(x) })
+            },
         ))?;
 
         load_op.complete();
@@ -330,39 +354,54 @@ pub struct Storage<AssetT: TypeUuid + Send> {
     assets: HashMap<LoadHandle, AssetState<AssetT>>,
     uncommitted: HashMap<LoadHandle, UncommittedAssetState<AssetT>>,
     loader: Box<dyn DynAssetLoader<AssetT>>,
+    indirection_table: IndirectionTable,
+}
+
+fn resolve_load_handle<T: AssetHandle>(
+    handle: &T,
+    indirection_table: &IndirectionTable,
+) -> Option<LoadHandle> {
+    if handle.load_handle().is_indirect() {
+        indirection_table.resolve(handle.load_handle())
+    } else {
+        Some(handle.load_handle())
+    }
 }
 
 impl<AssetT: TypeUuid + Send> Storage<AssetT> {
     fn new(
         sender: Sender<RefOp>,
         loader: Box<dyn DynAssetLoader<AssetT>>,
+        indirection_table: IndirectionTable,
     ) -> Self {
         Self {
             refop_sender: sender,
             assets: HashMap::new(),
             uncommitted: HashMap::new(),
             loader,
+            indirection_table,
         }
     }
     fn get<T: AssetHandle>(
         &self,
         handle: &T,
     ) -> Option<&AssetT> {
-        self.assets.get(&handle.load_handle()).map(|a| &a.asset)
+        let load_handle = resolve_load_handle(handle, &self.indirection_table)?;
+        self.assets.get(&load_handle).map(|a| &a.asset)
     }
     fn get_version<T: AssetHandle>(
         &self,
         handle: &T,
     ) -> Option<u32> {
-        self.assets.get(&handle.load_handle()).map(|a| a.version)
+        let load_handle = resolve_load_handle(handle, &self.indirection_table)?;
+        self.assets.get(&load_handle).map(|a| a.version)
     }
     fn get_asset_with_version<T: AssetHandle>(
         &self,
         handle: &T,
     ) -> Option<(&AssetT, u32)> {
-        self.assets
-            .get(&handle.load_handle())
-            .map(|a| (&a.asset, a.version))
+        let load_handle = resolve_load_handle(handle, &self.indirection_table)?;
+        self.assets.get(&load_handle).map(|a| (&a.asset, a.version))
     }
 }
 
@@ -374,7 +413,7 @@ impl<AssetT: TypeUuid + 'static + Send> DynAssetStorage for Storage<AssetT> {
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         version: u32,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Box<dyn Error + Send + 'static>> {
         log::trace!(
             "update_asset {} {:?} {:?} {}",
             core::any::type_name::<AssetT>(),
@@ -450,20 +489,22 @@ impl<AssetT: TypeUuid + 'static + Send> DynAssetStorage for Storage<AssetT> {
     fn free(
         &mut self,
         load_handle: LoadHandle,
+        version: u32,
     ) {
-        // Remove it from the list of assets
-        let asset_state = self.assets.remove(&load_handle);
+        if let Some(asset_state) = self.assets.get(&load_handle) {
+            if asset_state.version == version {
+                // Remove it from the list of assets
+                let asset_state = self.assets.remove(&load_handle).unwrap();
 
-        if let Some(asset_state) = asset_state {
-            log::trace!(
-                "free {} {:?} {:?}",
-                core::any::type_name::<AssetT>(),
-                load_handle,
-                asset_state.asset_uuid
-            );
-
-            // Trigger the free callback on the load handler, if one exists
-            self.loader.free(load_handle);
+                log::trace!(
+                    "free {} {:?} {:?}",
+                    core::any::type_name::<AssetT>(),
+                    load_handle,
+                    asset_state.asset_uuid
+                );
+                // Trigger the free callback on the load handler, if one exists
+                self.loader.free(load_handle);
+            }
         }
     }
 

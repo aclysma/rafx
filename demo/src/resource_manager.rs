@@ -6,7 +6,7 @@ use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::handle::AssetHandle;
 use ash::prelude::VkResult;
-use atelier_assets::loader::AssetLoadOp;
+use atelier_assets::loader::storage::AssetLoadOp;
 use crate::assets::gltf::MeshAssetData;
 use std::sync::Arc;
 use crossbeam_channel::Sender;

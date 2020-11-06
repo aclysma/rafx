@@ -5,7 +5,7 @@ use crossbeam_channel::{Sender, Receiver};
 use ash::prelude::VkResult;
 use crate::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffers};
 use std::mem::ManuallyDrop;
-use atelier_assets::loader::{LoadHandle, AssetLoadOp};
+use atelier_assets::loader::{LoadHandle, storage::AssetLoadOp};
 use ash::vk;
 use crate::resources::load_queue::LoadRequest;
 use crate::assets::ImageAssetData;

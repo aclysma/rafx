@@ -1,4 +1,4 @@
-use atelier_assets::loader::{AssetLoadOp, LoadHandle};
+use atelier_assets::loader::{storage::AssetLoadOp, LoadHandle};
 
 use crossbeam_channel::Receiver;
 

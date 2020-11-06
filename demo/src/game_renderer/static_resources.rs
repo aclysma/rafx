@@ -2,7 +2,7 @@ use crate::asset_resource::AssetResource;
 use renderer::assets::resources::ResourceManager;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::core::asset_uuid;
-use atelier_assets::loader::LoadStatus;
+use atelier_assets::loader::storage::LoadStatus;
 use atelier_assets::core as atelier_core;
 use ash::prelude::VkResult;
 use renderer::assets::MaterialAsset;
@@ -19,6 +19,13 @@ fn wait_for_asset_to_load<T>(
         match asset_resource.load_status(&asset_handle) {
             LoadStatus::NotRequested => {
                 unreachable!();
+            }
+            LoadStatus::Unresolved => {
+                log::info!(
+                    "blocked waiting for asset to resolve {} {:?}",
+                    asset_name,
+                    asset_handle
+                );
             }
             LoadStatus::Loading => {
                 log::info!(

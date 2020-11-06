@@ -1,4 +1,4 @@
-use atelier_assets::loader::{handle::RefOp, Loader, rpc_loader::RpcLoader};
+use atelier_assets::loader::{handle::RefOp, Loader};
 
 use crate::asset_storage::AssetStorageSet;
 use crate::asset_storage::DynAssetLoader;
@@ -8,27 +8,34 @@ use type_uuid::TypeUuid;
 use atelier_assets::loader as atelier_loader;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::loader::handle::Handle;
-use atelier_assets::loader::LoadStatus;
-use atelier_assets::loader::LoadInfo;
+use atelier_assets::loader::storage::LoadStatus;
+use atelier_assets::loader::storage::LoadInfo;
+use atelier_assets::loader::storage::IndirectionResolver;
+use atelier_assets::loader::storage::IndirectIdentifier;
 use crossbeam_channel::{Receiver, Sender};
 use atelier_assets::loader::handle::AssetHandle;
 
 /// A user-friendly interface to fetching/storing/loading assets. Meant to be a resource in an ECS
 /// system
 pub struct AssetResource {
-    loader: RpcLoader,
+    loader: Loader,
+    resolver: Box<dyn IndirectionResolver + Send + Sync + 'static>,
     storage: AssetStorageSet,
     tx: Sender<RefOp>,
     rx: Receiver<RefOp>,
 }
 
 impl AssetResource {
-    pub fn new(loader: RpcLoader) -> Self {
+    pub fn new(
+        loader: Loader,
+        resolver: Box<dyn IndirectionResolver + Send + Sync + 'static>,
+    ) -> Self {
         let (tx, rx) = atelier_loader::crossbeam_channel::unbounded();
-        let storage = AssetStorageSet::new(tx.clone());
+        let storage = AssetStorageSet::new(tx.clone(), loader.indirection_table());
 
         AssetResource {
             loader,
+            resolver,
             storage,
             tx,
             rx,
@@ -60,7 +67,7 @@ impl AssetResource {
     pub fn update(&mut self) {
         atelier_loader::handle::process_ref_ops(&self.loader, &self.rx);
         self.loader
-            .process(&self.storage)
+            .process(&self.storage, &*self.resolver)
             .expect("failed to process loader");
     }
 
@@ -72,6 +79,24 @@ impl AssetResource {
         asset_uuid: AssetUuid,
     ) -> Handle<T> {
         let load_handle = self.loader.add_ref(asset_uuid);
+        Handle::<T>::new(self.tx.clone(), load_handle)
+    }
+
+    pub fn load_asset_indirect<T>(
+        &self,
+        id: IndirectIdentifier,
+    ) -> Handle<T> {
+        let load_handle = self.loader.add_ref_indirect(id);
+        Handle::<T>::new(self.tx.clone(), load_handle)
+    }
+
+    pub fn load_asset_path<T, U: Into<String>>(
+        &self,
+        path: U,
+    ) -> Handle<T> {
+        let load_handle = self
+            .loader
+            .add_ref_indirect(IndirectIdentifier::Path(path.into()));
         Handle::<T>::new(self.tx.clone(), load_handle)
     }
 

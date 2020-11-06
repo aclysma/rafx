@@ -21,7 +21,7 @@ use crate::assets::{
 use super::dyn_resource_allocator;
 use super::resource_lookup;
 
-use atelier_assets::loader::AssetLoadOp;
+use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::handle::AssetHandle;
 use std::sync::Arc;
 use crate::resources::asset_lookup::LoadedAssetMetrics;

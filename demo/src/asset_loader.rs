@@ -1,8 +1,8 @@
 use renderer::assets::ResourceLoader;
 use renderer::assets::GenericLoader;
-use atelier_assets::loader::AssetLoadOp;
+use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::LoadHandle;
-use atelier_assets::loader::LoaderInfoProvider;
+use atelier_assets::loader::storage::LoaderInfoProvider;
 use atelier_assets::loader::handle::SerdeContext;
 use atelier_assets::loader::handle::RefOp;
 use type_uuid::TypeUuid;
@@ -28,12 +28,16 @@ where
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         _version: u32,
-    ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error>> {
+    ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error + Send>> {
         // To enable automatic serde of Handle, we need to set up a SerdeContext with a RefOp sender
         let asset = futures_lite::future::block_on(SerdeContext::with(
             loader_info,
             refop_sender.clone(),
-            async { bincode::deserialize::<AssetDataT>(data) },
+            async {
+                bincode::deserialize::<AssetDataT>(data)
+                    // Coerce into boxed error
+                    .map_err(|x| -> Box<dyn Error + Send + 'static> { Box::new(x) })
+            },
         ))?;
 
         let result = self.0.update_asset(load_handle, load_op, asset);
