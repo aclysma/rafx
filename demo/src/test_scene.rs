@@ -10,19 +10,9 @@ use crate::components::{
 use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
 use atelier_assets::core::asset_uuid;
 use atelier_assets::core as atelier_core;
-use atelier_assets::core::AssetUuid;
 use crate::components::MeshComponent;
 use renderer::assets::ImageAsset;
 use crate::game_asset_lookup::MeshAsset;
-
-fn begin_load_asset<T>(
-    asset_uuid: AssetUuid,
-    asset_resource: &AssetResource,
-) -> atelier_assets::loader::handle::Handle<T> {
-    use atelier_assets::loader::Loader;
-    let load_handle = asset_resource.loader().add_ref(asset_uuid);
-    atelier_assets::loader::handle::Handle::<T>::new(asset_resource.tx().clone(), load_handle)
-}
 
 pub fn populate_test_sprite_entities(
     resources: &mut Resources,
@@ -30,10 +20,7 @@ pub fn populate_test_sprite_entities(
 ) {
     let sprite_image = {
         let asset_resource = resources.get::<AssetResource>().unwrap();
-        begin_load_asset::<ImageAsset>(
-            asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"),
-            &asset_resource,
-        )
+        asset_resource.load_asset::<ImageAsset>(asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"))
     };
 
     for i in 0..1000 {
@@ -85,10 +72,8 @@ pub fn populate_test_mesh_entities(
     {
         let floor_mesh = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            begin_load_asset::<MeshAsset>(
-                asset_uuid!("f355d620-2971-48d5-b5c5-2fc9cf254525"),
-                &asset_resource,
-            )
+            asset_resource
+                .load_asset::<MeshAsset>(asset_uuid!("f355d620-2971-48d5-b5c5-2fc9cf254525"))
         };
 
         let position = Vec3::new(0.0, 0.0, -1.0);
@@ -125,22 +110,22 @@ pub fn populate_test_mesh_entities(
             let mut meshes = Vec::default();
 
             // container1
-            meshes.push(begin_load_asset::<MeshAsset>(
-                asset_uuid!("9a513889-c0bd-45e8-9c70-d5388fd0bb5a"),
-                &asset_resource,
-            ));
+            meshes.push(
+                asset_resource
+                    .load_asset::<MeshAsset>(asset_uuid!("9a513889-c0bd-45e8-9c70-d5388fd0bb5a")),
+            );
 
             // container2
-            meshes.push(begin_load_asset::<MeshAsset>(
-                asset_uuid!("07b7319f-199c-416f-87e2-414649797fe9"),
-                &asset_resource,
-            ));
+            meshes.push(
+                asset_resource
+                    .load_asset::<MeshAsset>(asset_uuid!("07b7319f-199c-416f-87e2-414649797fe9")),
+            );
 
             // blue icosphere
-            meshes.push(begin_load_asset::<MeshAsset>(
-                asset_uuid!("8a51f05c-f3c6-4d61-bc9d-16c2337265f1"),
-                &asset_resource,
-            ));
+            meshes.push(
+                asset_resource
+                    .load_asset::<MeshAsset>(asset_uuid!("8a51f05c-f3c6-4d61-bc9d-16c2337265f1")),
+            );
 
             meshes
         };

@@ -2,21 +2,10 @@ use crate::asset_resource::AssetResource;
 use renderer::assets::resources::ResourceManager;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::core::asset_uuid;
-use atelier_assets::core::AssetUuid;
 use atelier_assets::loader::LoadStatus;
 use atelier_assets::core as atelier_core;
 use ash::prelude::VkResult;
-use atelier_assets::loader::handle::AssetHandle;
 use renderer::assets::MaterialAsset;
-
-fn begin_load_asset<T>(
-    asset_uuid: AssetUuid,
-    asset_resource: &AssetResource,
-) -> atelier_assets::loader::handle::Handle<T> {
-    use atelier_assets::loader::Loader;
-    let load_handle = asset_resource.loader().add_ref(asset_uuid);
-    atelier_assets::loader::handle::Handle::<T>::new(asset_resource.tx().clone(), load_handle)
-}
 
 fn wait_for_asset_to_load<T>(
     asset_handle: &atelier_assets::loader::handle::Handle<T>,
@@ -27,7 +16,7 @@ fn wait_for_asset_to_load<T>(
     loop {
         asset_resource.update();
         resource_manager.update_resources()?;
-        match asset_handle.load_status(asset_resource.loader()) {
+        match asset_resource.load_status(&asset_handle) {
             LoadStatus::NotRequested => {
                 unreachable!();
             }
@@ -71,50 +60,38 @@ impl GameRendererStaticResources {
         //
         // Sprite resources
         //
-        let sprite_material = begin_load_asset::<MaterialAsset>(
-            asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"),
-            asset_resource,
-        );
+        let sprite_material = asset_resource
+            .load_asset::<MaterialAsset>(asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"));
 
         //
         // Debug resources
         //
-        let debug3d_material = begin_load_asset::<MaterialAsset>(
-            asset_uuid!("11d3b144-f564-42c9-b31f-82c8a938bf85"),
-            asset_resource,
-        );
+        let debug3d_material = asset_resource
+            .load_asset::<MaterialAsset>(asset_uuid!("11d3b144-f564-42c9-b31f-82c8a938bf85"));
 
         //
         // Bloom extract resources
         //
-        let bloom_extract_material = begin_load_asset::<MaterialAsset>(
-            asset_uuid!("822c8e08-2720-4002-81da-fd9c4d61abdd"),
-            asset_resource,
-        );
+        let bloom_extract_material = asset_resource
+            .load_asset::<MaterialAsset>(asset_uuid!("822c8e08-2720-4002-81da-fd9c4d61abdd"));
 
         //
         // Bloom blur resources
         //
-        let bloom_blur_material = begin_load_asset::<MaterialAsset>(
-            asset_uuid!("22aae4c1-fd0f-414a-9de1-7f68bdf1bfb1"),
-            asset_resource,
-        );
+        let bloom_blur_material = asset_resource
+            .load_asset::<MaterialAsset>(asset_uuid!("22aae4c1-fd0f-414a-9de1-7f68bdf1bfb1"));
 
         //
         // Bloom combine resources
         //
-        let bloom_combine_material = begin_load_asset::<MaterialAsset>(
-            asset_uuid!("256e6a2d-669b-426b-900d-3bcc4249a063"),
-            asset_resource,
-        );
+        let bloom_combine_material = asset_resource
+            .load_asset::<MaterialAsset>(asset_uuid!("256e6a2d-669b-426b-900d-3bcc4249a063"));
 
         //
         // ImGui resources
         //
-        let imgui_material = begin_load_asset::<MaterialAsset>(
-            asset_uuid!("b1cd2431-5cf8-4e9c-b7f0-569ba74e0981"),
-            asset_resource,
-        );
+        let imgui_material = asset_resource
+            .load_asset::<MaterialAsset>(asset_uuid!("b1cd2431-5cf8-4e9c-b7f0-569ba74e0981"));
 
         wait_for_asset_to_load(
             &sprite_material,

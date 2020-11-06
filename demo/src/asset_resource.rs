@@ -1,16 +1,25 @@
-use atelier_assets::loader::{handle::RefOp, rpc_loader::RpcLoader, Loader};
+use atelier_assets::loader::{handle::RefOp, Loader, rpc_loader::RpcLoader};
+
+use crate::asset_storage::AssetStorageSet;
+use crate::asset_storage::DynAssetLoader;
 
 use type_uuid::TypeUuid;
 
 use atelier_assets::loader as atelier_loader;
-use crate::asset_storage::{AssetStorageSet, DynAssetLoader};
+use atelier_assets::core::AssetUuid;
+use atelier_assets::loader::handle::Handle;
+use atelier_assets::loader::LoadStatus;
+use atelier_assets::loader::LoadInfo;
+use crossbeam_channel::{Receiver, Sender};
+use atelier_assets::loader::handle::AssetHandle;
 
-// A legion-friendly container for assets storages
+/// A user-friendly interface to fetching/storing/loading assets. Meant to be a resource in an ECS
+/// system
 pub struct AssetResource {
     loader: RpcLoader,
     storage: AssetStorageSet,
-    tx: atelier_loader::crossbeam_channel::Sender<RefOp>,
-    rx: atelier_loader::crossbeam_channel::Receiver<RefOp>,
+    tx: Sender<RefOp>,
+    rx: Receiver<RefOp>,
 }
 
 impl AssetResource {
@@ -28,13 +37,14 @@ impl AssetResource {
 }
 
 impl AssetResource {
-    pub fn add_storage<AssetDataT>(&mut self)
-    where
-        AssetDataT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send,
-    {
-        self.storage.add_storage::<AssetDataT>();
+    /// Adds a default storage object for assets of type T
+    pub fn add_storage<T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send>(&mut self) {
+        self.storage.add_storage::<T>();
     }
 
+    /// Adds a storage object for assets of type T that proxies loading events to the given loader.
+    /// This allows an end-user to do additional processing to "prepare" the asset. For example, a
+    /// texture might be uploaded to GPU memory before being considered loaded.
     pub fn add_storage_with_loader<AssetDataT, AssetT, LoaderT>(
         &mut self,
         loader: Box<LoaderT>,
@@ -54,15 +64,49 @@ impl AssetResource {
             .expect("failed to process loader");
     }
 
-    pub fn loader(&self) -> &RpcLoader {
-        &self.loader
+    //
+    // These functions map to atelier-assets APIs
+    //
+    pub fn load_asset<T>(
+        &self,
+        asset_uuid: AssetUuid,
+    ) -> Handle<T> {
+        let load_handle = self.loader.add_ref(asset_uuid);
+        Handle::<T>::new(self.tx.clone(), load_handle)
     }
 
-    pub fn storage(&self) -> &AssetStorageSet {
-        &self.storage
+    pub fn asset<T: TypeUuid + 'static + Send>(
+        &self,
+        handle: &Handle<T>,
+    ) -> Option<&T> {
+        handle.asset(&self.storage)
     }
 
-    pub fn tx(&self) -> &atelier_loader::crossbeam_channel::Sender<RefOp> {
-        &self.tx
+    pub fn asset_version<T: TypeUuid + 'static + Send>(
+        &self,
+        handle: &Handle<T>,
+    ) -> Option<u32> {
+        handle.asset_version::<T, _>(&self.storage)
+    }
+
+    pub fn with_serde_context<R>(
+        &self,
+        f: impl FnMut() -> R,
+    ) -> R {
+        self.loader.with_serde_context(&self.tx, f)
+    }
+
+    pub fn load_status<T>(
+        &self,
+        handle: &Handle<T>,
+    ) -> LoadStatus {
+        handle.load_status(&self.loader)
+    }
+
+    pub fn load_info<T>(
+        &self,
+        handle: &Handle<T>,
+    ) -> Option<LoadInfo> {
+        self.loader.get_load_info(handle.load_handle())
     }
 }
