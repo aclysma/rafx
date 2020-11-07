@@ -158,12 +158,13 @@ pub fn rendering_init(
 
     let vk_context = context.build(&window_wrapper).unwrap();
     let device_context = vk_context.device_context().clone();
-    let resource_manager =
-        renderer::assets::ResourceManager::new(&device_context, &render_registry);
 
-    {
-        let loaders = resource_manager.create_loaders();
+    let resource_manager = {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
+
+        let resource_manager =
+            renderer::assets::ResourceManager::new(&device_context, &render_registry, asset_resource.loader());
+        let loaders = resource_manager.create_loaders();
 
         asset_resource.add_storage_with_loader::<ShaderAssetData, ShaderAsset, _>(Box::new(
             ResourceAssetLoader(loaders.shader_loader),
@@ -187,32 +188,32 @@ pub fn rendering_init(
         asset_resource.add_storage_with_loader::<BufferAssetData, BufferAsset, _>(Box::new(
             ResourceAssetLoader(loaders.buffer_loader),
         ));
-    }
+
+        resource_manager
+    };
 
     resources.insert(vk_context);
     resources.insert(device_context);
     resources.insert(resource_manager);
     resources.insert(render_registry);
 
-    {
+    let game_resource_manager = {
         //
         // Create the game resource manager
         //
-        let resource_manager = GameResourceManager::new();
-        resources.insert(resource_manager);
+        let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
 
-        let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
-        let asset_resource = &mut *asset_resource_fetch;
-
-        let mut resource_manager_fetch = resources.get_mut::<GameResourceManager>().unwrap();
-        let resource_manager = &mut *resource_manager_fetch;
+        let game_resource_manager = GameResourceManager::new(asset_resource.loader());
 
         asset_resource.add_storage_with_loader::<MeshAssetData, MeshAsset, _>(Box::new(
-            ResourceAssetLoader(resource_manager.create_mesh_loader()),
+            ResourceAssetLoader(game_resource_manager.create_mesh_loader()),
         ));
 
         asset_resource.add_storage::<GltfMaterialAsset>();
-    }
+        game_resource_manager
+    };
+
+    resources.insert(game_resource_manager);
 
     let game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
     resources.insert(game_renderer);

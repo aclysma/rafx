@@ -1,33 +1,33 @@
 (
     version: 1,
-    import_hash: Some(8602947418618741277),
+    import_hash: Some(17855688606532392796),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
-    importer_state: (Some("22aae4c1-fd0f-414a-9de1-7f68bdf1bfb1")),
+    importer_state: (Some("2ff4cbe7-0352-4433-a469-24aba9cc193c")),
     assets: [
         (
-            id: "22aae4c1-fd0f-414a-9de1-7f68bdf1bfb1",
+            id: "2ff4cbe7-0352-4433-a469-24aba9cc193c",
             search_tags: [
                 ("file_name", Some("bloom_blur.material")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 18143906927484963735,
-                id: "22aae4c1-fd0f-414a-9de1-7f68bdf1bfb1",
+                id: (13510674864983273436),
+                asset_id: "2ff4cbe7-0352-4433-a469-24aba9cc193c",
                 build_deps: [
                     Path("../shaders/bloom_blur.vert.spv"),
-                    Path("../shaders/bloom_blur.frag.spv"),
                     Path("bloom_blur.pipeline"),
+                    Path("../shaders/bloom_blur.frag.spv"),
                 ],
                 load_deps: [
-                    Path("../shaders/bloom_blur.vert.spv"),
                     Path("../shaders/bloom_blur.frag.spv"),
+                    Path("../shaders/bloom_blur.vert.spv"),
                     Path("bloom_blur.pipeline"),
                 ],
                 compression: None,
-                compressed_size: Some(346),
-                uncompressed_size: Some(346),
+                compressed_size: Some(347),
+                uncompressed_size: Some(347),
                 type_id: "ad94bca2-1f02-4e5f-9117-1a7b03456a11",
             )),
         ),

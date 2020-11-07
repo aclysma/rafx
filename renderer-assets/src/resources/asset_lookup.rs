@@ -1,5 +1,7 @@
 use fnv::FnvHashMap;
+use atelier_assets::loader::Loader;
 use atelier_assets::loader::LoadHandle;
+use atelier_assets::loader::storage::IndirectionTable;
 use crate::{
     ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
     BufferAsset,
@@ -22,17 +24,37 @@ impl<AssetT> Default for LoadedAssetState<AssetT> {
     }
 }
 
+fn resolve_load_handle(
+    load_handle: LoadHandle,
+    indirection_table: &IndirectionTable,
+) -> Option<LoadHandle> {
+    if load_handle.is_indirect() {
+        indirection_table.resolve(load_handle)
+    } else {
+        Some(load_handle)
+    }
+}
+
 pub struct AssetLookup<AssetT> {
     //TODO: Slab these for faster lookup?
     pub loaded_assets: FnvHashMap<LoadHandle, LoadedAssetState<AssetT>>,
+    pub indirection_table: IndirectionTable
 }
 
 impl<AssetT> AssetLookup<AssetT> {
+    pub fn new(loader: &Loader) -> Self {
+        AssetLookup {
+            loaded_assets: Default::default(),
+            indirection_table: loader.indirection_table()
+        }
+    }
+
     pub fn set_uncommitted(
         &mut self,
         load_handle: LoadHandle,
         loaded_asset: AssetT,
     ) {
+        debug_assert!(!load_handle.is_indirect());
         self.loaded_assets
             .entry(load_handle)
             .or_default()
@@ -43,6 +65,7 @@ impl<AssetT> AssetLookup<AssetT> {
         &mut self,
         load_handle: LoadHandle,
     ) {
+        debug_assert!(!load_handle.is_indirect());
         let state = self.loaded_assets.get_mut(&load_handle).unwrap();
         state.committed = state.uncommitted.take();
     }
@@ -51,6 +74,7 @@ impl<AssetT> AssetLookup<AssetT> {
         &mut self,
         load_handle: LoadHandle,
     ) {
+        debug_assert!(!load_handle.is_indirect());
         let old = self.loaded_assets.remove(&load_handle);
         assert!(old.is_some());
     }
@@ -59,6 +83,8 @@ impl<AssetT> AssetLookup<AssetT> {
         &self,
         load_handle: LoadHandle,
     ) -> Option<&AssetT> {
+        let load_handle = resolve_load_handle(load_handle, &self.indirection_table)?;
+
         if let Some(loaded_assets) = self.loaded_assets.get(&load_handle) {
             if let Some(uncommitted) = &loaded_assets.uncommitted {
                 Some(uncommitted)
@@ -78,6 +104,8 @@ impl<AssetT> AssetLookup<AssetT> {
         &self,
         load_handle: LoadHandle,
     ) -> Option<&AssetT> {
+        let load_handle = resolve_load_handle(load_handle, &self.indirection_table)?;
+
         if let Some(loaded_assets) = self.loaded_assets.get(&load_handle) {
             if let Some(committed) = &loaded_assets.committed {
                 Some(committed)
@@ -102,14 +130,6 @@ impl<AssetT> AssetLookup<AssetT> {
     }
 }
 
-impl<AssetT> Default for AssetLookup<AssetT> {
-    fn default() -> Self {
-        AssetLookup {
-            loaded_assets: Default::default(),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct LoadedAssetMetrics {
     pub shader_module_count: usize,
@@ -124,7 +144,6 @@ pub struct LoadedAssetMetrics {
 //
 // Lookups by asset for loaded asset state
 //
-#[derive(Default)]
 pub struct AssetLookupSet {
     pub shader_modules: AssetLookup<ShaderAsset>,
     pub graphics_pipelines: AssetLookup<PipelineAsset>,
@@ -136,6 +155,18 @@ pub struct AssetLookupSet {
 }
 
 impl AssetLookupSet {
+    pub fn new(loader: &Loader) -> AssetLookupSet {
+        AssetLookupSet {
+            shader_modules: AssetLookup::new(loader),
+            graphics_pipelines: AssetLookup::new(loader),
+            renderpasses: AssetLookup::new(loader),
+            materials: AssetLookup::new(loader),
+            material_instances: AssetLookup::new(loader),
+            images: AssetLookup::new(loader),
+            buffers: AssetLookup::new(loader),
+        }
+    }
+
     pub fn metrics(&self) -> LoadedAssetMetrics {
         LoadedAssetMetrics {
             shader_module_count: self.shader_modules.len(),

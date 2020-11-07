@@ -20,7 +20,7 @@ pub fn populate_test_sprite_entities(
 ) {
     let sprite_image = {
         let asset_resource = resources.get::<AssetResource>().unwrap();
-        asset_resource.load_asset::<ImageAsset>(asset_uuid!("7c42f3bc-e96b-49f6-961b-5bfc799dee50"))
+        asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
     };
 
     for i in 0..1000 {
@@ -72,8 +72,8 @@ pub fn populate_test_mesh_entities(
     {
         let floor_mesh = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource
-                .load_asset::<MeshAsset>(asset_uuid!("f355d620-2971-48d5-b5c5-2fc9cf254525"))
+            asset_resource.load_asset_path("blender/cement_floor.glb")
+            //asset_resource.load_asset::<MeshAsset>(asset_uuid!("ca8f69cc-4ca5-4ea0-a8e0-4d52e50d6a86"))
         };
 
         let position = Vec3::new(0.0, 0.0, -1.0);
@@ -112,19 +112,21 @@ pub fn populate_test_mesh_entities(
             // container1
             meshes.push(
                 asset_resource
-                    .load_asset::<MeshAsset>(asset_uuid!("9a513889-c0bd-45e8-9c70-d5388fd0bb5a")),
+                    //.load_asset_path("blender/storage_container1.glb"),
+                    .load_asset::<MeshAsset>(asset_uuid!("b461ed48-d2f8-44af-bcda-c5b64633c13d")),
             );
 
             // container2
             meshes.push(
                 asset_resource
-                    .load_asset::<MeshAsset>(asset_uuid!("07b7319f-199c-416f-87e2-414649797fe9")),
+                    //.load_asset_path("blender/storage_container2.glb"),
+                    .load_asset::<MeshAsset>(asset_uuid!("04ea64c6-d4da-4ace-83e7-56f4d60524c1")),
             );
 
-            // blue icosphere
+            // blue icosphere - load by UUID since it's one of several meshes in the file
             meshes.push(
                 asset_resource
-                    .load_asset::<MeshAsset>(asset_uuid!("8a51f05c-f3c6-4d61-bc9d-16c2337265f1")),
+                    .load_asset::<MeshAsset>(asset_uuid!("d5aed900-1e31-4f47-94ba-e356b0b0b8b0")),
             );
 
             meshes

@@ -1,24 +1,24 @@
 (
     version: 1,
-    import_hash: Some(6866993293230256692),
+    import_hash: Some(11863573292115210529),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
-    importer_state: (Some("256e6a2d-669b-426b-900d-3bcc4249a063")),
+    importer_state: (Some("a0a4f5e5-caa7-4bcc-a1fe-7a46084b0bcd")),
     assets: [
         (
-            id: "256e6a2d-669b-426b-900d-3bcc4249a063",
+            id: "a0a4f5e5-caa7-4bcc-a1fe-7a46084b0bcd",
             search_tags: [
                 ("file_name", Some("bloom_combine.material")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 6344446068222123909,
-                id: "256e6a2d-669b-426b-900d-3bcc4249a063",
+                id: (13351705441808047428),
+                asset_id: "a0a4f5e5-caa7-4bcc-a1fe-7a46084b0bcd",
                 build_deps: [
+                    Path("../shaders/bloom_combine.frag.spv"),
                     Path("bloom_combine.pipeline"),
                     Path("../shaders/bloom_combine.vert.spv"),
-                    Path("../shaders/bloom_combine.frag.spv"),
                 ],
                 load_deps: [
                     Path("../shaders/bloom_combine.frag.spv"),
@@ -26,8 +26,8 @@
                     Path("../shaders/bloom_combine.vert.spv"),
                 ],
                 compression: None,
-                compressed_size: Some(331),
-                uncompressed_size: Some(331),
+                compressed_size: Some(332),
+                uncompressed_size: Some(332),
                 type_id: "ad94bca2-1f02-4e5f-9117-1a7b03456a11",
             )),
         ),

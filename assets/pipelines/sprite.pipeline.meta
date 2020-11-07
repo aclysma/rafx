@@ -1,20 +1,20 @@
 (
     version: 1,
-    import_hash: Some(5015007840792442209),
+    import_hash: Some(3198553857389943320),
     importer_version: 2,
     importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
     importer_options: (),
-    importer_state: (Some("f43b63fa-7c85-4a3d-b790-04681938ebc5")),
+    importer_state: (Some("dfaba69a-c761-47a5-8826-a39b47a26e3d")),
     assets: [
         (
-            id: "f43b63fa-7c85-4a3d-b790-04681938ebc5",
+            id: "dfaba69a-c761-47a5-8826-a39b47a26e3d",
             search_tags: [
                 ("file_name", Some("sprite.pipeline")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 13736547803545562566,
-                id: "f43b63fa-7c85-4a3d-b790-04681938ebc5",
+                id: (4991411846863724311),
+                asset_id: "dfaba69a-c761-47a5-8826-a39b47a26e3d",
                 build_deps: [],
                 load_deps: [],
                 compression: None,

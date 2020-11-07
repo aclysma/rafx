@@ -23,6 +23,7 @@ use super::resource_lookup;
 
 use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::handle::AssetHandle;
+use atelier_assets::loader::Loader;
 use std::sync::Arc;
 use crate::resources::asset_lookup::LoadedAssetMetrics;
 use crate::resources::dyn_resource_allocator::{
@@ -121,6 +122,7 @@ impl ResourceManager {
     pub fn new(
         device_context: &VkDeviceContext,
         render_registry: &RenderRegistry,
+        loader: &Loader
     ) -> Self {
         let resources = ResourceLookupSet::new(
             device_context,
@@ -141,7 +143,7 @@ impl ResourceManager {
             render_graph_cache: RenderGraphCache::new(
                 renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
             ),
-            loaded_assets: Default::default(),
+            loaded_assets: AssetLookupSet::new(loader),
             load_queues: Default::default(),
             //swapchain_surfaces: Default::default(),
             resource_descriptor_sets: DescriptorSetAllocator::new(device_context),

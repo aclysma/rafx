@@ -64,6 +64,10 @@ impl AssetResource {
             .add_storage_with_loader::<AssetDataT, AssetT, LoaderT>(loader);
     }
 
+    pub fn loader(&self) -> &Loader {
+        &self.loader
+    }
+
     pub fn update(&mut self) {
         atelier_loader::handle::process_ref_ops(&self.loader, &self.rx);
         self.loader

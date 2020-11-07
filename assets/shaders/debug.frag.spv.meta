@@ -1,20 +1,20 @@
 (
     version: 1,
-    import_hash: Some(18172748420245371851),
+    import_hash: Some(6725213978254135935),
     importer_version: 3,
     importer_type: "90fdad4b-cec1-4f59-b679-97895711b6e1",
     importer_options: (),
-    importer_state: (Some("f1ad7e24-8ebf-46dc-8292-a5537a6f446c")),
+    importer_state: (Some("749100a1-c8df-4752-b5da-c58358448cdc")),
     assets: [
         (
-            id: "f1ad7e24-8ebf-46dc-8292-a5537a6f446c",
+            id: "749100a1-c8df-4752-b5da-c58358448cdc",
             search_tags: [
                 ("file_name", Some("debug.frag.spv")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 17477084506152546134,
-                id: "f1ad7e24-8ebf-46dc-8292-a5537a6f446c",
+                id: (15816082910432219845),
+                asset_id: "749100a1-c8df-4752-b5da-c58358448cdc",
                 build_deps: [],
                 load_deps: [],
                 compression: None,

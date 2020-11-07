@@ -1,27 +1,27 @@
 (
     version: 1,
-    import_hash: Some(5094318092485239354),
+    import_hash: Some(17897533481528391759),
     importer_version: 6,
     importer_type: "4ce02143-a5c4-4433-b843-07cdccf013b0",
     importer_options: (),
-    importer_state: (Some("84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5")),
+    importer_state: (Some("c4dbed73-145c-41aa-848d-7a010e39d3d7")),
     assets: [
         (
-            id: "84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5",
+            id: "c4dbed73-145c-41aa-848d-7a010e39d3d7",
             search_tags: [
                 ("file_name", Some("sprite.materialinstance")),
             ],
             build_pipeline: None,
             artifact: Some((
-                hash: 17603646310356054683,
-                id: "84d66f60-24b2-4eb2-b6ff-8dbc4d69e2c5",
+                id: (15439915608325781108),
+                asset_id: "c4dbed73-145c-41aa-848d-7a010e39d3d7",
                 build_deps: [
                     Path("sprite.material"),
                     Path("../textures/texture.jpg"),
                 ],
                 load_deps: [
-                    Path("sprite.material"),
                     Path("../textures/texture.jpg"),
+                    Path("sprite.material"),
                 ],
                 compression: None,
                 compressed_size: Some(74),

@@ -1,9 +1,7 @@
 use crate::asset_resource::AssetResource;
 use renderer::assets::resources::ResourceManager;
 use atelier_assets::loader::handle::Handle;
-use atelier_assets::core::asset_uuid;
 use atelier_assets::loader::storage::LoadStatus;
-use atelier_assets::core as atelier_core;
 use ash::prelude::VkResult;
 use renderer::assets::MaterialAsset;
 
@@ -68,37 +66,40 @@ impl GameRendererStaticResources {
         // Sprite resources
         //
         let sprite_material = asset_resource
-            .load_asset::<MaterialAsset>(asset_uuid!("f8c4897e-7c1d-4736-93b7-f2deda158ec7"));
+            .load_asset_path::<MaterialAsset, _>("pipelines/sprite.material");
 
         //
         // Debug resources
         //
         let debug3d_material = asset_resource
-            .load_asset::<MaterialAsset>(asset_uuid!("11d3b144-f564-42c9-b31f-82c8a938bf85"));
+            .load_asset_path::<MaterialAsset, _>("pipelines/debug.material");
 
         //
         // Bloom extract resources
         //
+        // let bloom_extract_material = asset_resource
+        //     .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
         let bloom_extract_material = asset_resource
-            .load_asset::<MaterialAsset>(asset_uuid!("822c8e08-2720-4002-81da-fd9c4d61abdd"));
+            .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
+            //.load_asset::<MaterialAsset>(asset_uuid!("4c5509e3-4a9f-45c2-a6dc-862a925d2341"));
 
         //
         // Bloom blur resources
         //
         let bloom_blur_material = asset_resource
-            .load_asset::<MaterialAsset>(asset_uuid!("22aae4c1-fd0f-414a-9de1-7f68bdf1bfb1"));
+            .load_asset_path::<MaterialAsset, _>("pipelines/bloom_blur.material");
 
         //
         // Bloom combine resources
         //
         let bloom_combine_material = asset_resource
-            .load_asset::<MaterialAsset>(asset_uuid!("256e6a2d-669b-426b-900d-3bcc4249a063"));
+            .load_asset_path::<MaterialAsset, _>("pipelines/bloom_combine.material");
 
         //
         // ImGui resources
         //
         let imgui_material = asset_resource
-            .load_asset::<MaterialAsset>(asset_uuid!("b1cd2431-5cf8-4e9c-b7f0-569ba74e0981"));
+            .load_asset_path::<MaterialAsset, _>("pipelines/imgui.material");
 
         wait_for_asset_to_load(
             &sprite_material,
@@ -111,7 +112,7 @@ impl GameRendererStaticResources {
             &debug3d_material,
             asset_resource,
             resource_manager,
-            "debub material",
+            "debug material",
         )?;
 
         wait_for_asset_to_load(

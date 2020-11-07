@@ -3,6 +3,7 @@ use crate::assets::gltf::MeshAssetData;
 use renderer::assets::MaterialPass;
 use type_uuid::*;
 use std::sync::Arc;
+use atelier_assets::loader::Loader;
 
 pub struct MeshAssetPart {
     pub opaque_pass: MaterialPass,
@@ -37,12 +38,17 @@ pub struct GameLoadedAssetMetrics {
 //
 // Lookups by asset for loaded asset state
 //
-#[derive(Default)]
 pub struct GameLoadedAssetLookupSet {
     pub meshes: AssetLookup<MeshAsset>,
 }
 
 impl GameLoadedAssetLookupSet {
+    pub fn new(loader: &Loader) -> Self {
+        GameLoadedAssetLookupSet {
+            meshes: AssetLookup::new(loader)
+        }
+    }
+
     pub fn metrics(&self) -> GameLoadedAssetMetrics {
         GameLoadedAssetMetrics {
             mesh_count: self.meshes.len(),

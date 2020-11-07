@@ -292,7 +292,7 @@ impl Importer for GltfImporter {
         }
 
         let material_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-            let material_uuid_str = "267e0388-2611-441c-9c78-2d39d1bd3cf1";
+            let material_uuid_str = "92a98639-de0d-40cf-a222-354f616346c3";
             let material_uuid =
                 AssetUuid(*uuid::Uuid::from_str(material_uuid_str).unwrap().as_bytes());
 
@@ -303,7 +303,7 @@ impl Importer for GltfImporter {
         });
 
         let null_image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-            let material_uuid_str = "be831a21-f4f6-45d4-b9eb-e1bb6fc19d22";
+            let material_uuid_str = "fc937369-cad2-4a00-bf42-5968f1210784";
             let material_uuid =
                 AssetUuid(*uuid::Uuid::from_str(material_uuid_str).unwrap().as_bytes());
 

@@ -10,6 +10,7 @@ use atelier_assets::loader::storage::AssetLoadOp;
 use crate::assets::gltf::MeshAssetData;
 use std::sync::Arc;
 use crossbeam_channel::Sender;
+use atelier_assets::loader::Loader;
 
 #[derive(Debug)]
 pub struct GameResourceManagerMetrics {
@@ -27,9 +28,9 @@ pub struct GameResourceManager {
 }
 
 impl GameResourceManager {
-    pub fn new() -> Self {
+    pub fn new(loader: &Loader) -> Self {
         GameResourceManager {
-            loaded_assets: Default::default(),
+            loaded_assets: GameLoadedAssetLookupSet::new(loader),
             load_queues: Default::default(),
         }
     }

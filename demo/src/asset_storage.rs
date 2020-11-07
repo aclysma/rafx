@@ -414,6 +414,7 @@ impl<AssetT: TypeUuid + 'static + Send> DynAssetStorage for Storage<AssetT> {
         load_op: AssetLoadOp,
         version: u32,
     ) -> Result<(), Box<dyn Error + Send + 'static>> {
+        debug_assert!(!load_handle.is_indirect());
         log::trace!(
             "update_asset {} {:?} {:?} {}",
             core::any::type_name::<AssetT>(),
@@ -450,6 +451,8 @@ impl<AssetT: TypeUuid + 'static + Send> DynAssetStorage for Storage<AssetT> {
         load_handle: LoadHandle,
         version: u32,
     ) {
+        debug_assert!(!load_handle.is_indirect());
+
         // Remove from the uncommitted list
         let uncommitted_asset_state = self
             .uncommitted
@@ -491,6 +494,7 @@ impl<AssetT: TypeUuid + 'static + Send> DynAssetStorage for Storage<AssetT> {
         load_handle: LoadHandle,
         version: u32,
     ) {
+        debug_assert!(!load_handle.is_indirect());
         if let Some(asset_state) = self.assets.get(&load_handle) {
             if asset_state.version == version {
                 // Remove it from the list of assets
