@@ -4,14 +4,14 @@ use renderer::vulkan::{
 use crate::game_renderer::GameRenderer;
 use legion::Resources;
 use ash::prelude::VkResult;
-use renderer::assets::resources::ResourceManager;
+use renderer::assets::resources::AssetManager;
 use renderer::nodes::RenderRegistry;
 use crate::game_renderer::swapchain_resources::SwapchainResources;
 use renderer::assets::vk_description as dsc;
 
 pub struct SwapchainLifetimeListener<'a> {
     pub resources: &'a Resources,
-    pub resource_manager: &'a mut ResourceManager,
+    pub asset_manager: &'a mut AssetManager,
     pub render_registry: &'a RenderRegistry,
     pub game_renderer: &'a GameRenderer,
 }
@@ -21,13 +21,13 @@ impl<'a> SwapchainLifetimeListener<'a> {
         resources: &Resources,
         window: &dyn Window,
     ) -> VkResult<VkSurface> {
-        let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
+        let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let render_registry = resources.get::<RenderRegistry>().unwrap();
         let mut game_renderer = resources.get_mut::<GameRenderer>().unwrap();
 
         let mut lifetime_listener = SwapchainLifetimeListener {
             resources: &resources,
-            resource_manager: &mut *resource_manager,
+            asset_manager: &mut *asset_manager,
             render_registry: &*render_registry,
             game_renderer: &mut *game_renderer,
         };
@@ -45,12 +45,12 @@ impl<'a> SwapchainLifetimeListener<'a> {
         game_renderer: &GameRenderer,
     ) -> VkResult<()> {
         let mut surface = resources.get_mut::<VkSurface>().unwrap();
-        let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
+        let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let render_registry = resources.get::<RenderRegistry>().unwrap();
 
         let mut lifetime_listener = SwapchainLifetimeListener {
             resources: &resources,
-            resource_manager: &mut *resource_manager,
+            asset_manager: &mut *asset_manager,
             render_registry: &*render_registry,
             game_renderer,
         };
@@ -61,12 +61,12 @@ impl<'a> SwapchainLifetimeListener<'a> {
     pub fn tear_down(resources: &Resources) {
         let mut surface = resources.get_mut::<VkSurface>().unwrap();
         let mut game_renderer = resources.get_mut::<GameRenderer>().unwrap();
-        let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
+        let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let render_registry = resources.get::<RenderRegistry>().unwrap();
 
         let mut lifetime_listener = SwapchainLifetimeListener {
             resources: &resources,
-            resource_manager: &mut *resource_manager,
+            asset_manager: &mut *asset_manager,
             render_registry: &*render_registry,
             game_renderer: &mut game_renderer,
         };
@@ -83,7 +83,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
     ) -> VkResult<()> {
         let mut guard = self.game_renderer.inner.lock().unwrap();
         let mut game_renderer = &mut *guard;
-        let resource_manager = &mut self.resource_manager;
+        let asset_manager = &mut self.asset_manager;
 
         //
         // Metadata about the swapchain
@@ -105,7 +105,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
             device_context,
             swapchain,
             game_renderer,
-            resource_manager,
+            asset_manager.resource_manager_mut(),
             swapchain.swapchain_info.clone(),
             swapchain_surface_info,
         )?;

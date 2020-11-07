@@ -14,10 +14,10 @@ use legion::*;
 
 use crate::asset_resource::AssetResource;
 use crate::time::TimeState;
-use renderer::assets::resources::ResourceManager;
+use renderer::assets::resources::AssetManager;
 use crate::game_renderer::GameRenderer;
 use crate::features::debug3d::DebugDraw3DResource;
-use crate::resource_manager::GameResourceManager;
+use crate::resource_manager::GameAssetManager;
 
 mod assets;
 mod features;
@@ -113,12 +113,12 @@ fn main() {
         // Update graphics resources
         //
         {
-            let mut resource_manager = resources.get_mut::<ResourceManager>().unwrap();
-            let mut game_resource_manager = resources.get_mut::<GameResourceManager>().unwrap();
+            let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
+            let mut game_resource_manager = resources.get_mut::<GameAssetManager>().unwrap();
 
-            resource_manager.update_resources().unwrap();
+            asset_manager.update_asset_loaders().unwrap();
             game_resource_manager
-                .update_resources(&*resource_manager)
+                .update_asset_loaders(&*asset_manager)
                 .unwrap();
         }
 
@@ -280,7 +280,7 @@ fn process_input(
                     }
 
                     if keycode == Keycode::M {
-                        let metrics = resources.get::<ResourceManager>().unwrap().metrics();
+                        let metrics = resources.get::<AssetManager>().unwrap().metrics();
                         println!("{:#?}", metrics);
                     }
                 }

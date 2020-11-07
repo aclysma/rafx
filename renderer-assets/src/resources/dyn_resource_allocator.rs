@@ -287,41 +287,6 @@ pub struct ResourceMetrics {
     pub buffer_count: usize,
 }
 
-//
-// Handles raw lookup and destruction of GPU resources. Everything is reference counted. No safety
-// is provided for dependencies/order of destruction. The general expectation is that anything
-// dropped can safely be destroyed after a few frames have passed (based on max number of frames
-// that can be submitted to the GPU)
-//
-// pub struct DynResourceAllocatorManagerSetInner {
-//     pub device_context: VkDeviceContext,
-//     pub images: DynResourceAllocatorManager<ImageResource>,
-//     pub image_views: DynResourceAllocatorManager<ImageViewResource>,
-//     pub buffers: DynResourceAllocatorManager<VkBufferRaw>,
-// }
-
-// impl DynResourceAllocatorManagerSetInner {
-//     pub fn new(
-//         device_context: &VkDeviceContext,
-//         max_frames_in_flight: u32,
-//     ) -> Self {
-//         DynResourceAllocatorManagerSetInner {
-//             device_context: device_context.clone(),
-//             images: DynResourceAllocatorManager::new(max_frames_in_flight),
-//             image_views: DynResourceAllocatorManager::new(max_frames_in_flight),
-//             buffers: DynResourceAllocatorManager::new(max_frames_in_flight),
-//         }
-//     }
-//
-//     pub fn create_allocator_set(&self) -> DynResourceAllocatorSet {
-//         DynResourceAllocatorSet {
-//             images: self.images.create_allocator(),
-//             image_views: self.image_views.create_allocator(),
-//             buffers: self.buffers.create_allocator(),
-//         }
-//     }
-// }
-
 pub struct DynResourceAllocatorSetProvider {
     pub images: DynResourceAllocatorProvider<ImageResource>,
     pub image_views: DynResourceAllocatorProvider<ImageViewResource>,

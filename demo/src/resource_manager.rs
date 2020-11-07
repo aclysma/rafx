@@ -1,4 +1,4 @@
-use renderer::assets::resources::{AssetLookup, LoadQueues, GenericLoader, ResourceManager};
+use renderer::assets::resources::{AssetLookup, LoadQueues, GenericLoader, AssetManager};
 use crate::game_asset_lookup::{
     GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner,
 };
@@ -13,7 +13,7 @@ use crossbeam_channel::Sender;
 use atelier_assets::loader::Loader;
 
 #[derive(Debug)]
-pub struct GameResourceManagerMetrics {
+pub struct GameAssetManagerMetrics {
     pub game_loaded_asset_metrics: GameLoadedAssetMetrics,
 }
 
@@ -22,14 +22,14 @@ pub struct GameLoadQueueSet {
     pub meshes: LoadQueues<MeshAssetData, MeshAsset>,
 }
 
-pub struct GameResourceManager {
+pub struct GameAssetManager {
     loaded_assets: GameLoadedAssetLookupSet,
     load_queues: GameLoadQueueSet,
 }
 
-impl GameResourceManager {
+impl GameAssetManager {
     pub fn new(loader: &Loader) -> Self {
-        GameResourceManager {
+        GameAssetManager {
             loaded_assets: GameLoadedAssetLookupSet::new(loader),
             load_queues: Default::default(),
         }
@@ -49,29 +49,29 @@ impl GameResourceManager {
     }
 
     // Call whenever you want to handle assets loading/unloading
-    pub fn update_resources(
+    pub fn update_asset_loaders(
         &mut self,
-        resource_manager: &ResourceManager,
+        asset_manager: &AssetManager,
     ) -> VkResult<()> {
-        self.process_mesh_load_requests(resource_manager);
+        self.process_mesh_load_requests(asset_manager);
         Ok(())
     }
 
-    pub fn metrics(&self) -> GameResourceManagerMetrics {
+    pub fn metrics(&self) -> GameAssetManagerMetrics {
         let game_loaded_asset_metrics = self.loaded_assets.metrics();
 
-        GameResourceManagerMetrics {
+        GameAssetManagerMetrics {
             game_loaded_asset_metrics,
         }
     }
 
     fn process_mesh_load_requests(
         &mut self,
-        resource_manager: &ResourceManager,
+        asset_manager: &AssetManager,
     ) {
         for request in self.load_queues.meshes.take_load_requests() {
             log::trace!("Create mesh {:?}", request.load_handle);
-            let loaded_asset = self.load_mesh(resource_manager, &request.asset);
+            let loaded_asset = self.load_mesh(asset_manager, &request.asset);
             Self::handle_load_result(
                 request.load_op,
                 loaded_asset,
@@ -127,17 +127,17 @@ impl GameResourceManager {
 
     fn load_mesh(
         &mut self,
-        resource_manager: &ResourceManager,
+        asset_manager: &AssetManager,
         mesh_asset: &MeshAssetData,
     ) -> VkResult<MeshAsset> {
-        let vertex_buffer = resource_manager
+        let vertex_buffer = asset_manager
             .loaded_assets()
             .buffers
             .get_latest(mesh_asset.vertex_buffer.load_handle())
             .unwrap()
             .buffer
             .clone();
-        let index_buffer = resource_manager
+        let index_buffer = asset_manager
             .loaded_assets()
             .buffers
             .get_latest(mesh_asset.index_buffer.load_handle())
@@ -149,7 +149,7 @@ impl GameResourceManager {
             .mesh_parts
             .iter()
             .map(|mesh_part| {
-                let material_instance = resource_manager
+                let material_instance = asset_manager
                     .loaded_assets()
                     .material_instances
                     .get_committed(mesh_part.material_instance.load_handle())
@@ -215,7 +215,7 @@ impl GameResourceManager {
     }
 }
 
-impl Drop for GameResourceManager {
+impl Drop for GameAssetManager {
     fn drop(&mut self) {
         log::info!("Cleaning up game resource manager");
         log::trace!("Game Resource Manager Metrics:\n{:#?}", self.metrics());

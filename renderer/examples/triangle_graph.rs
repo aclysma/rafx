@@ -112,10 +112,6 @@ fn run(
     let mut swapchain_images = register_swapchain_images(&mut resource_manager, &mut surface);
 
     loop {
-        // Update graphics resources, this mainly handles asset load events from atelier-assets (not
-        // used in this example).
-        resource_manager.update_resources()?;
-
         // Process input, mainly to quit when hitting escape
         if !process_input(&device_context, &resource_manager, event_pump) {
             break;

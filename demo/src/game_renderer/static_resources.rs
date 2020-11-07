@@ -1,5 +1,5 @@
 use crate::asset_resource::AssetResource;
-use renderer::assets::resources::ResourceManager;
+use renderer::assets::resources::AssetManager;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::storage::LoadStatus;
 use ash::prelude::VkResult;
@@ -8,12 +8,12 @@ use renderer::assets::MaterialAsset;
 fn wait_for_asset_to_load<T>(
     asset_handle: &atelier_assets::loader::handle::Handle<T>,
     asset_resource: &mut AssetResource,
-    resource_manager: &mut ResourceManager,
+    asset_manager: &mut AssetManager,
     asset_name: &str,
 ) -> VkResult<()> {
     loop {
         asset_resource.update();
-        resource_manager.update_resources()?;
+        asset_manager.update_asset_loaders()?;
         match asset_resource.load_status(&asset_handle) {
             LoadStatus::NotRequested => {
                 unreachable!();
@@ -60,7 +60,7 @@ pub struct GameRendererStaticResources {
 impl GameRendererStaticResources {
     pub fn new(
         asset_resource: &mut AssetResource,
-        resource_manager: &mut ResourceManager,
+        asset_manager: &mut AssetManager,
     ) -> VkResult<Self> {
         //
         // Sprite resources
@@ -104,42 +104,42 @@ impl GameRendererStaticResources {
         wait_for_asset_to_load(
             &sprite_material,
             asset_resource,
-            resource_manager,
+            asset_manager,
             "sprite_material",
         )?;
 
         wait_for_asset_to_load(
             &debug3d_material,
             asset_resource,
-            resource_manager,
+            asset_manager,
             "debug material",
         )?;
 
         wait_for_asset_to_load(
             &bloom_extract_material,
             asset_resource,
-            resource_manager,
+            asset_manager,
             "bloom extract material",
         )?;
 
         wait_for_asset_to_load(
             &bloom_blur_material,
             asset_resource,
-            resource_manager,
+            asset_manager,
             "bloom blur material",
         )?;
 
         wait_for_asset_to_load(
             &bloom_combine_material,
             asset_resource,
-            resource_manager,
+            asset_manager,
             "bloom combine material",
         )?;
 
         wait_for_asset_to_load(
             &imgui_material,
             asset_resource,
-            resource_manager,
+            asset_manager,
             "imgui material",
         )?;
 

@@ -13,7 +13,7 @@ use renderer::base::slab::RawSlabKey;
 use crate::features::mesh::prepare::MeshPrepareJob;
 use legion::*;
 use crate::components::MeshComponent;
-use crate::resource_manager::GameResourceManager;
+use crate::resource_manager::GameAssetManager;
 
 pub struct MeshExtractJob {
     pub(super) shadow_map_image: ResourceArc<ImageViewResource>,
@@ -57,10 +57,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         //
         // Get the position/mesh asset pairs we will draw
         //
-        let game_resource_manager = extract_context
-            .resources
-            .get::<GameResourceManager>()
-            .unwrap();
+        let game_resource_manager = extract_context.resources.get::<GameAssetManager>().unwrap();
 
         let mut extracted_frame_node_mesh_data =
             Vec::<Option<ExtractedFrameNodeMeshData>>::with_capacity(

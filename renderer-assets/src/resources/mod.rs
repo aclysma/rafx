@@ -48,6 +48,9 @@ pub use resource_lookup::ImageViewResource;
 mod resource_manager;
 pub use resource_manager::*;
 
+mod asset_manager;
+pub use asset_manager::*;
+
 mod command_buffers;
 pub use command_buffers::CommandPool;
 pub use command_buffers::DynCommandWriterAllocator;

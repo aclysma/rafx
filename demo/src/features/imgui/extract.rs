@@ -85,7 +85,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         );
 
         let imgui_material_pass = extract_context
-            .resource_manager
+            .asset_manager
             .get_material_pass_by_index(&self.imgui_material, 0)
             .unwrap();
 

@@ -4,7 +4,7 @@ use ash::prelude::VkResult;
 use std::mem::ManuallyDrop;
 use crate::time::TimeState;
 use crate::asset_resource::AssetResource;
-use renderer::assets::resources::{ResourceManager, ResourceArc, ImageViewResource};
+use renderer::assets::resources::{AssetManager, ResourceArc, ImageViewResource};
 use crate::features::debug3d::create_debug3d_extract_job;
 use crate::features::sprite::{SpriteRenderNodeSet, create_sprite_extract_job};
 use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
@@ -67,15 +67,15 @@ impl GameRenderer {
         let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
         let asset_resource = &mut *asset_resource_fetch;
 
-        let mut resource_manager_fetch = resources.get_mut::<ResourceManager>().unwrap();
-        let mut resource_manager = &mut *resource_manager_fetch;
+        let mut asset_manager_fetch = resources.get_mut::<AssetManager>().unwrap();
+        let mut asset_manager = &mut *asset_manager_fetch;
 
         let vk_context = resources.get_mut::<VkContext>().unwrap();
         let device_context = vk_context.device_context();
 
         let imgui_font_atlas_image_view = GameRenderer::create_font_atlas_image_view(
             &device_context,
-            &mut resource_manager,
+            &mut asset_manager,
             resources,
         )?;
 
@@ -88,7 +88,7 @@ impl GameRenderer {
 
         log::info!("all waits complete");
         let game_renderer_resources =
-            GameRendererStaticResources::new(asset_resource, resource_manager)?;
+            GameRendererStaticResources::new(asset_resource, asset_manager)?;
 
         let render_thread = RenderThread::start();
 
@@ -109,7 +109,7 @@ impl GameRenderer {
 
     fn create_font_atlas_image_view(
         device_context: &VkDeviceContext,
-        resource_manager: &mut ResourceManager,
+        asset_manager: &mut AssetManager,
         resources: &Resources,
     ) -> VkResult<ResourceArc<ImageViewResource>> {
         //TODO: Simplify this setup code for the imgui font atlas
@@ -145,7 +145,7 @@ impl GameRenderer {
         .pop()
         .unwrap();
 
-        let dyn_resource_allocator = resource_manager.create_dyn_resource_allocator_set();
+        let dyn_resource_allocator = asset_manager.create_dyn_resource_allocator_set();
         let image =
             dyn_resource_allocator.insert_image(ManuallyDrop::into_inner(imgui_font_atlas_image));
 
@@ -304,15 +304,15 @@ impl GameRenderer {
         let render_registry = resources.get::<RenderRegistry>().unwrap().clone();
         let device_context = resources.get::<VkDeviceContext>().unwrap().clone();
 
-        let mut resource_manager_fetch = resources.get_mut::<ResourceManager>().unwrap();
-        let resource_manager = &mut *resource_manager_fetch;
+        let mut asset_manager_fetch = resources.get_mut::<AssetManager>().unwrap();
+        let asset_manager = &mut *asset_manager_fetch;
 
         //
         // Mark the previous frame as completed
         //
-        resource_manager.on_frame_complete()?;
+        asset_manager.on_frame_complete()?;
 
-        let resource_context = resource_manager.resource_context();
+        let resource_context = asset_manager.resource_manager().resource_context();
 
         let mut guard = game_renderer.inner.lock().unwrap();
         let game_renderer_inner = &mut *guard;
@@ -480,21 +480,21 @@ impl GameRenderer {
         //
         // Update Resources and flush descriptor set changes
         //
-        resource_manager.on_begin_frame()?;
+        asset_manager.on_begin_frame()?;
 
         //
         // Render Graph, this is needed now as some of the outputs from the graph may be used in
         // the extract phase
         //
-        let bloom_extract_material_pass = resource_manager
+        let bloom_extract_material_pass = asset_manager
             .get_material_pass_by_index(&static_resources.bloom_extract_material, 0)
             .unwrap();
 
-        let bloom_blur_material_pass = resource_manager
+        let bloom_blur_material_pass = asset_manager
             .get_material_pass_by_index(&static_resources.bloom_blur_material, 0)
             .unwrap();
 
-        let bloom_combine_material_pass = resource_manager
+        let bloom_combine_material_pass = asset_manager
             .get_material_pass_by_index(&static_resources.bloom_combine_material, 0)
             .unwrap();
 
@@ -550,7 +550,7 @@ impl GameRenderer {
             extract_job_set
         };
 
-        let extract_context = RenderJobExtractContext::new(&world, &resources, resource_manager);
+        let extract_context = RenderJobExtractContext::new(&world, &resources, asset_manager);
         let prepare_job_set = extract_job_set.extract(
             &extract_context,
             &frame_packet,

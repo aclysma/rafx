@@ -35,7 +35,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .take_line_lists();
 
         let debug3d_material_pass = extract_context
-            .resource_manager
+            .asset_manager
             .get_material_pass_by_index(&self.debug3d_material, 0)
             .unwrap();
 

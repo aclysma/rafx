@@ -11,7 +11,7 @@ use crate::game_renderer::{SwapchainLifetimeListener, GameRenderer};
 use crate::features::debug3d::{DebugDraw3DResource, Debug3dRenderFeature};
 use renderer::nodes::RenderRegistry;
 use crate::assets::gltf::{MeshAssetData, GltfMaterialAsset};
-use crate::resource_manager::GameResourceManager;
+use crate::resource_manager::GameAssetManager;
 use renderer::assets::ResourceManager;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
@@ -38,7 +38,7 @@ pub fn logging_init() {
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
         .filter_module(
-            "renderer_resources::resource_managers::descriptor_sets",
+            "renderer_assets::resources::descriptor_sets",
             log::LevelFilter::Info,
         )
         .filter_module("renderer_shell_vulkan::device", log::LevelFilter::Debug)
@@ -162,12 +162,12 @@ pub fn rendering_init(
     let resource_manager = {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
 
-        let resource_manager = renderer::assets::ResourceManager::new(
+        let asset_manager = renderer::assets::AssetManager::new(
             &device_context,
             &render_registry,
             asset_resource.loader(),
         );
-        let loaders = resource_manager.create_loaders();
+        let loaders = asset_manager.create_loaders();
 
         asset_resource.add_storage_with_loader::<ShaderAssetData, ShaderAsset, _>(Box::new(
             ResourceAssetLoader(loaders.shader_loader),
@@ -192,7 +192,7 @@ pub fn rendering_init(
             ResourceAssetLoader(loaders.buffer_loader),
         ));
 
-        resource_manager
+        asset_manager
     };
 
     resources.insert(vk_context);
@@ -206,7 +206,7 @@ pub fn rendering_init(
         //
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
 
-        let game_resource_manager = GameResourceManager::new(asset_resource.loader());
+        let game_resource_manager = GameAssetManager::new(asset_resource.loader());
 
         asset_resource.add_storage_with_loader::<MeshAssetData, MeshAsset, _>(Box::new(
             ResourceAssetLoader(game_resource_manager.create_mesh_loader()),
@@ -238,7 +238,7 @@ pub fn rendering_destroy(resources: &mut Resources) {
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
         resources.remove::<DebugDraw3DResource>();
-        resources.remove::<GameResourceManager>();
+        resources.remove::<GameAssetManager>();
         resources.remove::<RenderRegistry>();
 
         // Remove the asset resource because we have asset storages that reference resources

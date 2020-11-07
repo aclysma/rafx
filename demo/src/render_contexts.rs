@@ -1,26 +1,26 @@
 use ash::vk;
 use legion::*;
-use renderer::assets::{ResourceManager, ResourceContext, ResourceArc, RenderPassResource};
+use renderer::assets::{AssetManager, ResourceContext, ResourceArc, RenderPassResource};
 use renderer::vulkan::VkDeviceContext;
 use renderer::assets::graph::VisitRenderpassArgs;
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,
     pub resources: &'static Resources,
-    pub resource_manager: &'static ResourceManager,
+    pub asset_manager: &'static AssetManager,
 }
 
 impl RenderJobExtractContext {
     pub fn new<'a>(
         world: &'a World,
         resources: &'a Resources,
-        resource_manager: &'a ResourceManager,
+        asset_manager: &'a AssetManager,
     ) -> Self {
         unsafe {
             RenderJobExtractContext {
                 world: force_to_static_lifetime(world),
                 resources: force_to_static_lifetime(resources),
-                resource_manager: force_to_static_lifetime(resource_manager),
+                asset_manager: force_to_static_lifetime(asset_manager),
             }
         }
     }

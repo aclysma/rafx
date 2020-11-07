@@ -182,13 +182,6 @@ fn run(
 
     loop {
         //
-        // Update graphics resources
-        //
-        {
-            resource_manager.update_resources()?;
-        }
-
-        //
         // Process input
         //
         if !process_input(&device_context, &resource_manager, event_pump) {
@@ -255,6 +248,7 @@ fn run(
                     writer.end_command_buffer()?;
 
                     frame_in_flight.present(&[command_buffer])?;
+                    resource_manager.on_frame_complete()?;
                     Ok(())
                 }
                 Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR) => {

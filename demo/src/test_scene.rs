@@ -20,7 +20,8 @@ pub fn populate_test_sprite_entities(
 ) {
     let sprite_image = {
         let asset_resource = resources.get::<AssetResource>().unwrap();
-        asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
+        //asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
+        asset_resource.load_asset::<ImageAsset>(asset_uuid!("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38"))
     };
 
     for i in 0..1000 {
@@ -72,8 +73,9 @@ pub fn populate_test_mesh_entities(
     {
         let floor_mesh = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_path("blender/cement_floor.glb")
-            //asset_resource.load_asset::<MeshAsset>(asset_uuid!("ca8f69cc-4ca5-4ea0-a8e0-4d52e50d6a86"))
+            //asset_resource.load_asset_path("blender/cement_floor.glb")
+            asset_resource
+                .load_asset::<MeshAsset>(asset_uuid!("ca8f69cc-4ca5-4ea0-a8e0-4d52e50d6a86"))
         };
 
         let position = Vec3::new(0.0, 0.0, -1.0);

@@ -68,6 +68,7 @@ impl AssetResource {
         &self.loader
     }
 
+    /// Call this frequently to update the asset loading system.
     pub fn update(&mut self) {
         atelier_loader::handle::process_ref_ops(&self.loader, &self.rx);
         self.loader

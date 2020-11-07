@@ -1,12 +1,10 @@
 use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
 use crate::game_renderer::GameRendererInner;
-use renderer::assets::resources::{ResourceManager, ResourceArc, ImageViewResource, RenderPassResource};
-use renderer::assets::RenderpassAsset;
+use renderer::assets::resources::{ResourceManager, ResourceArc, ImageViewResource};
 use renderer::assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
 use renderer::assets::vk_description as dsc;
 use renderer::vulkan::VkImageRaw;
-use atelier_assets::loader::handle::Handle;
 
 pub struct SwapchainResources {
     // The images presented by the swapchain
@@ -68,24 +66,5 @@ impl SwapchainResources {
             swapchain_info,
             swapchain_surface_info,
         })
-    }
-
-    fn create_renderpass_resource(
-        resource_manager: &mut ResourceManager,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
-        asset_handle: &Handle<RenderpassAsset>,
-    ) -> VkResult<ResourceArc<RenderPassResource>> {
-        use atelier_assets::loader::handle::AssetHandle;
-        let renderpass = resource_manager
-            .loaded_assets()
-            .renderpasses
-            .get_committed(asset_handle.load_handle())
-            .unwrap()
-            .renderpass_def
-            .clone();
-
-        resource_manager
-            .resources()
-            .get_or_create_renderpass(renderpass, swapchain_surface_info)
     }
 }

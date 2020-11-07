@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
 use crate::{
-    vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc, ResourceManager,
+    vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc, AssetManager,
 };
 use atelier_assets::loader::handle::Handle;
 use std::hash::Hash;
@@ -173,14 +173,14 @@ pub struct MaterialPass {
 
 impl MaterialPass {
     pub fn new(
-        resource_manager: &ResourceManager,
+        asset_manager: &AssetManager,
         material_pass_data: &MaterialPassData,
     ) -> VkResult<MaterialPass> {
         use atelier_assets::loader::handle::AssetHandle;
         //
         // Pipeline asset (represents fixed function state)
         //
-        let loaded_pipeline_asset = resource_manager
+        let loaded_pipeline_asset = asset_manager
             .loaded_assets()
             .graphics_pipelines
             .get_latest(material_pass_data.pipeline.load_handle())
@@ -213,7 +213,7 @@ impl MaterialPass {
             };
             shader_module_metas.push(shader_module_meta);
 
-            let shader_module = resource_manager
+            let shader_module = asset_manager
                 .loaded_assets()
                 .shader_modules
                 .get_latest(stage.shader_module.load_handle())
@@ -239,7 +239,7 @@ impl MaterialPass {
         for descriptor_set_layout_def in &material_pass_data.shader_interface.descriptor_set_layouts
         {
             let descriptor_set_layout_def = descriptor_set_layout_def.into();
-            let descriptor_set_layout = resource_manager
+            let descriptor_set_layout = asset_manager
                 .resources()
                 .get_or_create_descriptor_set_layout(&descriptor_set_layout_def)?;
             descriptor_set_layouts.push(descriptor_set_layout);
@@ -257,11 +257,11 @@ impl MaterialPass {
                 .clone(),
         };
 
-        let pipeline_layout = resource_manager
+        let pipeline_layout = asset_manager
             .resources()
             .get_or_create_pipeline_layout(&pipeline_layout_def)?;
 
-        let material_pass = resource_manager.resources().get_or_create_material_pass(
+        let material_pass = asset_manager.resources().get_or_create_material_pass(
             shader_modules.clone(),
             shader_module_metas,
             pipeline_layout.clone(),
@@ -274,11 +274,11 @@ impl MaterialPass {
         // within the pipeline's phase
         //
         if let Some(phase_name) = &material_pass_data.phase {
-            let renderphase_index = resource_manager
+            let renderphase_index = asset_manager
                 .graphics_pipeline_cache()
                 .get_renderphase_by_name(phase_name);
             match renderphase_index {
-                Some(renderphase_index) => resource_manager
+                Some(renderphase_index) => asset_manager
                     .graphics_pipeline_cache()
                     .register_material_to_phase_index(&material_pass, renderphase_index),
                 None => {
@@ -435,7 +435,6 @@ pub struct MaterialInstanceAsset {
 impl MaterialInstanceAsset {
     pub fn new(
         material: Handle<MaterialAsset>,
-        //material_passes: Arc<Vec<MaterialPass>>,
         material_asset: MaterialAsset,
         material_descriptor_sets: Arc<Vec<Vec<DescriptorSetArc>>>,
         slot_assignments: Vec<MaterialInstanceSlotAssignment>,
@@ -443,7 +442,6 @@ impl MaterialInstanceAsset {
     ) -> Self {
         let inner = MaterialInstanceAssetInner {
             material_handle: material,
-            //material_passes,
             material: material_asset,
             material_descriptor_sets,
             slot_assignments,

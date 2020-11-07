@@ -61,7 +61,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
                 .unwrap();
 
             let image_asset = extract_context
-                .resource_manager
+                .asset_manager
                 .get_image_asset(&sprite_render_node.image);
 
             let extracted_frame_node = image_asset.and_then(|image_asset| {
@@ -80,7 +80,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
 
         // For now just grab pass 0
         let sprite_material = extract_context
-            .resource_manager
+            .asset_manager
             .get_material_pass_by_index(&self.sprite_material, 0)
             .unwrap();
 
