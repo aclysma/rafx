@@ -65,41 +65,41 @@ impl GameRendererStaticResources {
         //
         // Sprite resources
         //
-        let sprite_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("pipelines/sprite.material");
+        let sprite_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/sprite.material");
 
         //
         // Debug resources
         //
-        let debug3d_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("pipelines/debug.material");
+        let debug3d_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/debug.material");
 
         //
         // Bloom extract resources
         //
         // let bloom_extract_material = asset_resource
         //     .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
-        let bloom_extract_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
-            //.load_asset::<MaterialAsset>(asset_uuid!("4c5509e3-4a9f-45c2-a6dc-862a925d2341"));
+        let bloom_extract_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
+        //.load_asset::<MaterialAsset>(asset_uuid!("4c5509e3-4a9f-45c2-a6dc-862a925d2341"));
 
         //
         // Bloom blur resources
         //
-        let bloom_blur_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("pipelines/bloom_blur.material");
+        let bloom_blur_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/bloom_blur.material");
 
         //
         // Bloom combine resources
         //
-        let bloom_combine_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("pipelines/bloom_combine.material");
+        let bloom_combine_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/bloom_combine.material");
 
         //
         // ImGui resources
         //
-        let imgui_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("pipelines/imgui.material");
+        let imgui_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/imgui.material");
 
         wait_for_asset_to_load(
             &sprite_material,

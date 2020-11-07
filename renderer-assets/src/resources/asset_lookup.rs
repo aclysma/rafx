@@ -38,14 +38,14 @@ fn resolve_load_handle(
 pub struct AssetLookup<AssetT> {
     //TODO: Slab these for faster lookup?
     pub loaded_assets: FnvHashMap<LoadHandle, LoadedAssetState<AssetT>>,
-    pub indirection_table: IndirectionTable
+    pub indirection_table: IndirectionTable,
 }
 
 impl<AssetT> AssetLookup<AssetT> {
     pub fn new(loader: &Loader) -> Self {
         AssetLookup {
             loaded_assets: Default::default(),
-            indirection_table: loader.indirection_table()
+            indirection_table: loader.indirection_table(),
         }
     }
 

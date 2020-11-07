@@ -162,8 +162,11 @@ pub fn rendering_init(
     let resource_manager = {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
 
-        let resource_manager =
-            renderer::assets::ResourceManager::new(&device_context, &render_registry, asset_resource.loader());
+        let resource_manager = renderer::assets::ResourceManager::new(
+            &device_context,
+            &render_registry,
+            asset_resource.loader(),
+        );
         let loaders = resource_manager.create_loaders();
 
         asset_resource.add_storage_with_loader::<ShaderAssetData, ShaderAsset, _>(Box::new(

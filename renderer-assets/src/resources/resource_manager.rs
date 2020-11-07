@@ -122,7 +122,7 @@ impl ResourceManager {
     pub fn new(
         device_context: &VkDeviceContext,
         render_registry: &RenderRegistry,
-        loader: &Loader
+        loader: &Loader,
     ) -> Self {
         let resources = ResourceLookupSet::new(
             device_context,
@@ -145,7 +145,6 @@ impl ResourceManager {
             ),
             loaded_assets: AssetLookupSet::new(loader),
             load_queues: Default::default(),
-            //swapchain_surfaces: Default::default(),
             resource_descriptor_sets: DescriptorSetAllocator::new(device_context),
             descriptor_set_allocator: DescriptorSetAllocatorManager::new(device_context),
             upload_manager: UploadManager::new(device_context),

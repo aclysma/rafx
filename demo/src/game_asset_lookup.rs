@@ -45,7 +45,7 @@ pub struct GameLoadedAssetLookupSet {
 impl GameLoadedAssetLookupSet {
     pub fn new(loader: &Loader) -> Self {
         GameLoadedAssetLookupSet {
-            meshes: AssetLookup::new(loader)
+            meshes: AssetLookup::new(loader),
         }
     }
 
