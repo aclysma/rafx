@@ -40,7 +40,8 @@ mopafy!(DynAssetStorage);
 
 pub struct AssetStorageSetInner {
     storage: HashMap<AssetTypeId, Box<dyn DynAssetStorage>>,
-    asset_data_type_id_mapping: HashMap<AssetTypeId, AssetTypeId>,
+    data_to_asset_type_uuid: HashMap<AssetTypeId, AssetTypeId>,
+    asset_to_data_type_uuid: HashMap<AssetTypeId, AssetTypeId>,
     refop_sender: Sender<RefOp>,
     indirection_table: IndirectionTable,
 }
@@ -57,7 +58,8 @@ impl AssetStorageSet {
     ) -> Self {
         let inner = AssetStorageSetInner {
             storage: Default::default(),
-            asset_data_type_id_mapping: Default::default(),
+            data_to_asset_type_uuid: Default::default(),
+            asset_to_data_type_uuid: Default::default(),
             refop_sender,
             indirection_table,
         };
@@ -74,9 +76,14 @@ impl AssetStorageSet {
         let mut inner = self.inner.lock().unwrap();
         let indirection_table = inner.indirection_table.clone();
         let refop_sender = inner.refop_sender.clone();
-        inner
-            .asset_data_type_id_mapping
+        let old = inner
+            .data_to_asset_type_uuid
             .insert(AssetTypeId(T::UUID), AssetTypeId(T::UUID));
+        assert!(old.is_none());
+        let old = inner
+            .asset_to_data_type_uuid
+            .insert(AssetTypeId(T::UUID), AssetTypeId(T::UUID));
+        assert!(old.is_none());
         inner.storage.insert(
             AssetTypeId(T::UUID),
             Box::new(Storage::<T>::new(
@@ -98,9 +105,14 @@ impl AssetStorageSet {
         let mut inner = self.inner.lock().unwrap();
         let indirection_table = inner.indirection_table.clone();
         let refop_sender = inner.refop_sender.clone();
-        inner
-            .asset_data_type_id_mapping
+        let old = inner
+            .data_to_asset_type_uuid
             .insert(AssetTypeId(AssetDataT::UUID), AssetTypeId(AssetT::UUID));
+        assert!(old.is_none());
+        let old = inner
+            .asset_to_data_type_uuid
+            .insert(AssetTypeId(AssetT::UUID), AssetTypeId(AssetDataT::UUID));
+        assert!(old.is_none());
         inner.storage.insert(
             AssetTypeId(AssetT::UUID),
             Box::new(Storage::<AssetT>::new(
@@ -109,6 +121,17 @@ impl AssetStorageSet {
                 indirection_table,
             )),
         );
+    }
+
+    pub fn asset_to_data_type_uuid<AssetT>(&self) -> Option<AssetTypeId>
+    where
+        AssetT: TypeUuid + 'static + Send,
+    {
+        let inner = self.inner.lock().unwrap();
+        inner
+            .asset_to_data_type_uuid
+            .get(&AssetTypeId(AssetT::UUID))
+            .cloned()
     }
 }
 
@@ -127,7 +150,7 @@ impl AssetStorage for AssetStorageSet {
         let mut inner = self.inner.lock().unwrap();
 
         let asset_type_id = *inner
-            .asset_data_type_id_mapping
+            .data_to_asset_type_uuid
             .get(asset_data_type_id)
             .expect("unknown asset data type");
 
@@ -147,7 +170,7 @@ impl AssetStorage for AssetStorageSet {
         let mut inner = self.inner.lock().unwrap();
 
         let asset_type_id = *inner
-            .asset_data_type_id_mapping
+            .data_to_asset_type_uuid
             .get(asset_data_type_id)
             .expect("unknown asset data type");
 
@@ -167,7 +190,7 @@ impl AssetStorage for AssetStorageSet {
         let mut inner = self.inner.lock().unwrap();
 
         let asset_type_id = *inner
-            .asset_data_type_id_mapping
+            .data_to_asset_type_uuid
             .get(asset_data_type_id)
             .expect("unknown asset data type");
 

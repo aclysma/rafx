@@ -12,7 +12,7 @@ use crate::features::debug3d::{DebugDraw3DResource, Debug3dRenderFeature};
 use renderer::nodes::RenderRegistry;
 use crate::assets::gltf::{MeshAssetData, GltfMaterialAsset};
 use crate::resource_manager::GameAssetManager;
-use renderer::assets::ResourceManager;
+use renderer::assets::AssetManager;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use crate::phases::TransparentRenderPhase;
 use crate::features::imgui::ImGuiRenderFeature;
@@ -244,7 +244,7 @@ pub fn rendering_destroy(resources: &mut Resources) {
         // Remove the asset resource because we have asset storages that reference resources
         resources.remove::<AssetResource>();
 
-        resources.remove::<ResourceManager>();
+        resources.remove::<AssetManager>();
     }
 
     // Drop this one last

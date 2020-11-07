@@ -95,13 +95,21 @@ impl AssetResource {
         Handle::<T>::new(self.tx.clone(), load_handle)
     }
 
-    pub fn load_asset_path<T, U: Into<String>>(
+    pub fn load_asset_path<T: TypeUuid + 'static + Send, U: Into<String>>(
         &self,
         path: U,
     ) -> Handle<T> {
+        let data_type_uuid = self
+            .storage
+            .asset_to_data_type_uuid::<T>()
+            .expect("Called load_asset_path with unregistered asset type");
+
         let load_handle = self
             .loader
-            .add_ref_indirect(IndirectIdentifier::Path(path.into()));
+            .add_ref_indirect(IndirectIdentifier::PathWithType(
+                path.into(),
+                data_type_uuid,
+            ));
         Handle::<T>::new(self.tx.clone(), load_handle)
     }
 

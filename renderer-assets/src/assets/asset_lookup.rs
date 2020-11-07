@@ -54,6 +54,7 @@ impl<AssetT> AssetLookup<AssetT> {
         load_handle: LoadHandle,
         loaded_asset: AssetT,
     ) {
+        log::trace!("set_uncommitted {:?}", load_handle);
         debug_assert!(!load_handle.is_indirect());
         self.loaded_assets
             .entry(load_handle)
@@ -65,6 +66,7 @@ impl<AssetT> AssetLookup<AssetT> {
         &mut self,
         load_handle: LoadHandle,
     ) {
+        log::trace!("commit {:?}", load_handle);
         debug_assert!(!load_handle.is_indirect());
         let state = self.loaded_assets.get_mut(&load_handle).unwrap();
         state.committed = state.uncommitted.take();
@@ -74,6 +76,7 @@ impl<AssetT> AssetLookup<AssetT> {
         &mut self,
         load_handle: LoadHandle,
     ) {
+        log::trace!("free {:?}", load_handle);
         debug_assert!(!load_handle.is_indirect());
         let old = self.loaded_assets.remove(&load_handle);
         assert!(old.is_some());

@@ -73,9 +73,7 @@ pub fn populate_test_mesh_entities(
     {
         let floor_mesh = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            //asset_resource.load_asset_path("blender/cement_floor.glb")
-            asset_resource
-                .load_asset::<MeshAsset>(asset_uuid!("ca8f69cc-4ca5-4ea0-a8e0-4d52e50d6a86"))
+            asset_resource.load_asset_path::<MeshAsset, _>("blender/cement_floor.glb")
         };
 
         let position = Vec3::new(0.0, 0.0, -1.0);
@@ -113,16 +111,14 @@ pub fn populate_test_mesh_entities(
 
             // container1
             meshes.push(
-                asset_resource
-                    //.load_asset_path("blender/storage_container1.glb"),
-                    .load_asset::<MeshAsset>(asset_uuid!("b461ed48-d2f8-44af-bcda-c5b64633c13d")),
+                asset_resource.load_asset_path("blender/storage_container1.glb"),
+                //.load_asset::<MeshAsset>(asset_uuid!("b461ed48-d2f8-44af-bcda-c5b64633c13d")),
             );
 
             // container2
             meshes.push(
-                asset_resource
-                    //.load_asset_path("blender/storage_container2.glb"),
-                    .load_asset::<MeshAsset>(asset_uuid!("04ea64c6-d4da-4ace-83e7-56f4d60524c1")),
+                asset_resource.load_asset_path("blender/storage_container2.glb"),
+                //.load_asset::<MeshAsset>(asset_uuid!("04ea64c6-d4da-4ace-83e7-56f4d60524c1")),
             );
 
             // blue icosphere - load by UUID since it's one of several meshes in the file
