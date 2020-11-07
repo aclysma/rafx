@@ -11,7 +11,7 @@ use crate::{
     vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, DescriptorSetAllocatorMetrics,
     GenericLoader, BufferAssetData, AssetLookupSet, DynResourceAllocatorSet, LoadQueues,
     AssetLookup, DescriptorSetAllocatorRef, DescriptorSetAllocatorProvider, GraphicsPipelineCache,
-    MaterialPassResource,
+    MaterialPassResource, MaterialInstanceSlotAssignment, SlotNameLookup, DescriptorSetWriteSet,
 };
 use crate::assets::{
     ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
@@ -22,20 +22,23 @@ use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::loader::Loader;
 use std::sync::Arc;
-use crate::resources::asset_lookup::LoadedAssetMetrics;
-use crate::resources::dyn_resource_allocator::DynResourceAllocatorSetProvider;
-use crate::resources::descriptor_sets;
-use crate::resources::resource_lookup::ResourceLookupSet;
-use crate::resources::load_queue::LoadQueueSet;
+use super::asset_lookup::LoadedAssetMetrics;
+use crate::resources::DynResourceAllocatorSetProvider;
+use crate::resources::ResourceLookupSet;
+use super::load_queue::LoadQueueSet;
 //use crate::resources::swapchain_management::ActiveSwapchainSurfaceInfoSet;
-use crate::resources::descriptor_sets::DescriptorSetAllocator;
-use crate::resources::upload::{UploadManager, ImageUploadOpResult, BufferUploadOpResult};
+use crate::resources::DescriptorSetAllocator;
+use super::upload::{UploadManager, ImageUploadOpResult, BufferUploadOpResult};
 use crossbeam_channel::Sender;
-use crate::resources::command_buffers::DynCommandWriterAllocator;
+use crate::resources::DynCommandWriterAllocator;
 use renderer_nodes::RenderRegistry;
 use fnv::FnvHashMap;
 use ash::vk;
-use super::{ResourceManagerMetrics, ResourceManager};
+use crate::resources::{ResourceManagerMetrics, ResourceManager};
+use crate::resources::descriptor_sets::{
+    DescriptorSetElementKey, DescriptorSetWriteElementImage, DescriptorSetWriteElementBuffer,
+    DescriptorSetWriteElementBufferData, /*create_uninitialized_write_sets_for_material_pass,*/
+};
 
 #[derive(Debug)]
 pub struct AssetManagerMetrics {
@@ -629,13 +632,11 @@ impl AssetManager {
         // This will be references to descriptor sets. Indexed by pass, and then by set within the pass.
         let mut material_descriptor_sets = Vec::with_capacity(material_asset.passes.len());
         for pass in &*material_asset.passes {
-            let pass_descriptor_set_writes =
-                descriptor_sets::create_write_sets_for_material_instance_pass(
-                    pass,
-                    &material_instance_asset.slot_assignments,
-                    &self.loaded_assets,
-                    self.resources(),
-                )?;
+            let pass_descriptor_set_writes = self.create_write_sets_for_material_instance_pass(
+                pass,
+                &material_instance_asset.slot_assignments,
+                self.resources(),
+            )?;
 
             log::trace!(
                 "load_material_instance descriptor set write\n{:#?}",
@@ -683,6 +684,98 @@ impl AssetManager {
             material_instance_asset.slot_assignments.clone(),
             material_instance_descriptor_set_writes,
         ))
+    }
+
+    pub fn apply_material_instance_slot_assignment(
+        &self,
+        slot_assignment: &MaterialInstanceSlotAssignment,
+        pass_slot_name_lookup: &SlotNameLookup,
+        resources: &ResourceLookupSet,
+        material_pass_write_set: &mut Vec<DescriptorSetWriteSet>,
+    ) -> VkResult<()> {
+        if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
+            for location in slot_locations {
+                let layout_descriptor_set_writes =
+                    &mut material_pass_write_set[location.layout_index as usize];
+                let write = layout_descriptor_set_writes
+                    .elements
+                    .get_mut(&DescriptorSetElementKey {
+                        dst_binding: location.binding_index,
+                        //dst_array_element: location.array_index
+                    })
+                    .unwrap();
+
+                let what_to_bind = crate::resources::descriptor_sets::what_to_bind(write);
+
+                if what_to_bind.bind_images || what_to_bind.bind_samplers {
+                    let mut write_image = DescriptorSetWriteElementImage {
+                        image_view: None,
+                        sampler: None,
+                    };
+
+                    if what_to_bind.bind_images {
+                        if let Some(image) = &slot_assignment.image {
+                            let loaded_image = self
+                                .loaded_assets
+                                .images
+                                .get_latest(image.load_handle())
+                                .unwrap();
+                            write_image.image_view =
+                                Some(crate::resources::descriptor_sets::DescriptorSetWriteElementImageValue::Resource(
+                                    loaded_image.image_view.clone(),
+                                ));
+                        }
+                    }
+
+                    if what_to_bind.bind_samplers {
+                        if let Some(sampler) = &slot_assignment.sampler {
+                            let sampler = resources.get_or_create_sampler(sampler)?;
+                            write_image.sampler = Some(sampler);
+                        }
+                    }
+
+                    write.image_info = vec![write_image];
+                }
+
+                if what_to_bind.bind_buffers {
+                    let mut write_buffer = DescriptorSetWriteElementBuffer { buffer: None };
+
+                    if let Some(buffer_data) = &slot_assignment.buffer_data {
+                        write_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(
+                            buffer_data.clone(),
+                        ));
+                    }
+
+                    write.buffer_info = vec![write_buffer];
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn create_write_sets_for_material_instance_pass(
+        &self,
+        pass: &MaterialPass,
+        slots: &[MaterialInstanceSlotAssignment],
+        resources: &ResourceLookupSet,
+    ) -> VkResult<Vec<DescriptorSetWriteSet>> {
+        let mut pass_descriptor_set_writes =
+            pass.create_uninitialized_write_sets_for_material_pass();
+
+        //
+        // Now modify the descriptor set writes to actually point at the things specified by the material
+        //
+        for slot in slots {
+            self.apply_material_instance_slot_assignment(
+                slot,
+                &pass.pass_slot_name_lookup,
+                resources,
+                &mut pass_descriptor_set_writes,
+            )?;
+        }
+
+        Ok(pass_descriptor_set_writes)
     }
 }
 

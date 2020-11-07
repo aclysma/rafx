@@ -1,4 +1,4 @@
-use renderer::assets::resources::{AssetLookup, LoadQueues, GenericLoader, AssetManager};
+use renderer::assets::{AssetLookup, LoadQueues, GenericLoader, AssetManager};
 use crate::game_asset_lookup::{
     GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner,
 };

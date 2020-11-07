@@ -1,12 +1,7 @@
 use ash::vk;
 use crate::vk_description as dsc;
-use crate::resources::resource_lookup::{ImageViewResource, ResourceLookupSet, SamplerResource};
+use crate::resources::resource_lookup::{ImageViewResource, SamplerResource};
 use fnv::FnvHashMap;
-use crate::resources::asset_lookup::AssetLookupSet;
-use crate::assets::{MaterialPass, SlotNameLookup};
-use crate::assets::MaterialInstanceSlotAssignment;
-use ash::prelude::VkResult;
-use atelier_assets::loader::handle::AssetHandle;
 use crate::resources::ResourceArc;
 
 //
@@ -141,106 +136,4 @@ pub fn create_uninitialized_write_set_for_layout(
     }
 
     write_set
-}
-
-pub fn apply_material_instance_slot_assignment(
-    slot_assignment: &MaterialInstanceSlotAssignment,
-    pass_slot_name_lookup: &SlotNameLookup,
-    assets: &AssetLookupSet,
-    resources: &ResourceLookupSet,
-    material_pass_write_set: &mut Vec<DescriptorSetWriteSet>,
-) -> VkResult<()> {
-    if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
-        for location in slot_locations {
-            let layout_descriptor_set_writes =
-                &mut material_pass_write_set[location.layout_index as usize];
-            let write = layout_descriptor_set_writes
-                .elements
-                .get_mut(&DescriptorSetElementKey {
-                    dst_binding: location.binding_index,
-                    //dst_array_element: location.array_index
-                })
-                .unwrap();
-
-            let what_to_bind = super::what_to_bind(write);
-
-            if what_to_bind.bind_images || what_to_bind.bind_samplers {
-                let mut write_image = DescriptorSetWriteElementImage {
-                    image_view: None,
-                    sampler: None,
-                };
-
-                if what_to_bind.bind_images {
-                    if let Some(image) = &slot_assignment.image {
-                        let loaded_image = assets.images.get_latest(image.load_handle()).unwrap();
-                        write_image.image_view =
-                            Some(DescriptorSetWriteElementImageValue::Resource(
-                                loaded_image.image_view.clone(),
-                            ));
-                    }
-                }
-
-                if what_to_bind.bind_samplers {
-                    if let Some(sampler) = &slot_assignment.sampler {
-                        let sampler = resources.get_or_create_sampler(sampler)?;
-                        write_image.sampler = Some(sampler);
-                    }
-                }
-
-                write.image_info = vec![write_image];
-            }
-
-            if what_to_bind.bind_buffers {
-                let mut write_buffer = DescriptorSetWriteElementBuffer { buffer: None };
-
-                if let Some(buffer_data) = &slot_assignment.buffer_data {
-                    write_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(
-                        buffer_data.clone(),
-                    ));
-                }
-
-                write.buffer_info = vec![write_buffer];
-            }
-        }
-    }
-
-    Ok(())
-}
-
-pub fn create_uninitialized_write_sets_for_material_pass(
-    pass: &MaterialPass
-) -> Vec<DescriptorSetWriteSet> {
-    // The metadata for the descriptor sets within this pass, one for each set within the pass
-    let descriptor_set_layouts = &pass.shader_interface.descriptor_set_layouts;
-
-    let pass_descriptor_set_writes: Vec<_> = descriptor_set_layouts
-        .iter()
-        .map(|layout| create_uninitialized_write_set_for_layout(&layout.into()))
-        .collect();
-
-    pass_descriptor_set_writes
-}
-
-pub fn create_write_sets_for_material_instance_pass(
-    pass: &MaterialPass,
-    slots: &[MaterialInstanceSlotAssignment],
-    assets: &AssetLookupSet,
-    resources: &ResourceLookupSet,
-) -> VkResult<Vec<DescriptorSetWriteSet>> {
-    let mut pass_descriptor_set_writes = create_uninitialized_write_sets_for_material_pass(pass);
-
-    //
-    // Now modify the descriptor set writes to actually point at the things specified by the material
-    //
-    for slot in slots {
-        apply_material_instance_slot_assignment(
-            slot,
-            &pass.pass_slot_name_lookup,
-            assets,
-            resources,
-            &mut pass_descriptor_set_writes,
-        )?;
-    }
-
-    Ok(pass_descriptor_set_writes)
 }

@@ -32,3 +32,20 @@ pub use pipeline::MaterialInstanceImporter;
 mod buffer;
 pub use buffer::BufferAssetData;
 pub use buffer::BufferAsset;
+
+mod asset_manager;
+pub use asset_manager::*;
+
+mod upload;
+
+mod asset_lookup;
+pub use asset_lookup::AssetLookupSet;
+pub use asset_lookup::AssetLookup;
+
+mod load_queue;
+pub use load_queue::LoadQueues;
+pub use load_queue::GenericLoader;
+
+mod material_descriptor_sets;
+pub use material_descriptor_sets::DynMaterialInstance;
+pub use material_descriptor_sets::DynPassMaterialInstance;

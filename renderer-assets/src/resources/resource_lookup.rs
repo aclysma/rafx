@@ -1063,7 +1063,8 @@ impl ResourceLookupSet {
 
     // A key difference between this insert_image and the insert_image in a DynResourceAllocator
     // is that these can be retrieved. However, a mutable reference is required. This one is
-    // more appropriate to use with loaded assets, and DynResourceAllocator with runtime assets
+    // more appropriate to use with descriptors loaded from assets, and DynResourceAllocator with runtime-created
+    // descriptors
     pub fn insert_image(
         &self,
         image: VkImage,

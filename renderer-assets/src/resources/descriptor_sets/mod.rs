@@ -6,8 +6,6 @@ pub use descriptor_set_arc::DescriptorSetArc;
 
 mod dynamic_descriptor_sets;
 pub use dynamic_descriptor_sets::DynDescriptorSet;
-pub use dynamic_descriptor_sets::DynPassMaterialInstance;
-pub use dynamic_descriptor_sets::DynMaterialInstance;
 
 mod descriptor_set_pool;
 use descriptor_set_pool::ManagedDescriptorSetPool;
@@ -21,6 +19,7 @@ use descriptor_set_buffers::DescriptorLayoutBufferSet;
 
 mod descriptor_write_set;
 pub use descriptor_write_set::DescriptorSetWriteElementImage;
+pub use descriptor_write_set::DescriptorSetWriteElementImageValue;
 pub use descriptor_write_set::DescriptorSetWriteElementBufferDataBufferRef;
 pub use descriptor_write_set::DescriptorSetWriteElementBufferData;
 pub use descriptor_write_set::DescriptorSetWriteElementBuffer;
@@ -28,9 +27,6 @@ pub use descriptor_write_set::DescriptorSetElementWrite;
 pub use descriptor_write_set::DescriptorSetElementKey;
 pub use descriptor_write_set::DescriptorSetWriteSet;
 pub use descriptor_write_set::create_uninitialized_write_set_for_layout;
-pub use descriptor_write_set::create_uninitialized_write_sets_for_material_pass;
-pub use descriptor_write_set::create_write_sets_for_material_instance_pass;
-pub use descriptor_write_set::apply_material_instance_slot_assignment;
 
 mod descriptor_set_allocator;
 pub use descriptor_set_allocator::DescriptorSetAllocator;
@@ -77,9 +73,9 @@ fn add_to_frame_in_flight_index(
 
 #[derive(Default, Debug)]
 pub struct WhatToBind {
-    bind_samplers: bool,
-    bind_images: bool,
-    bind_buffers: bool,
+    pub bind_samplers: bool,
+    pub bind_images: bool,
+    pub bind_buffers: bool,
 }
 
 pub fn what_to_bind(element_write: &DescriptorSetElementWrite) -> WhatToBind {

@@ -326,6 +326,22 @@ impl MaterialPass {
             inner: Arc::new(inner),
         })
     }
+
+    pub fn create_uninitialized_write_sets_for_material_pass(&self) -> Vec<DescriptorSetWriteSet> {
+        // The metadata for the descriptor sets within this pass, one for each set within the pass
+        let descriptor_set_layouts = &self.shader_interface.descriptor_set_layouts;
+
+        let pass_descriptor_set_writes: Vec<_> = descriptor_set_layouts
+            .iter()
+            .map(|layout| {
+                crate::resources::descriptor_sets::create_uninitialized_write_set_for_layout(
+                    &layout.into(),
+                )
+            })
+            .collect();
+
+        pass_descriptor_set_writes
+    }
 }
 
 impl Deref for MaterialPass {

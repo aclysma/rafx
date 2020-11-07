@@ -1,4 +1,5 @@
-use renderer::assets::resources::{DescriptorSetArc, ResourceArc, AssetLookup, BufferResource};
+use renderer::assets::resources::{DescriptorSetArc, ResourceArc, BufferResource};
+use renderer::assets::AssetLookup;
 use crate::assets::gltf::MeshAssetData;
 use renderer::assets::MaterialPass;
 use type_uuid::*;

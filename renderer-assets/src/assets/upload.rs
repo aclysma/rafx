@@ -7,10 +7,10 @@ use crate::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffe
 use std::mem::ManuallyDrop;
 use atelier_assets::loader::{LoadHandle, storage::AssetLoadOp};
 use ash::vk;
-use crate::resources::load_queue::LoadRequest;
-use crate::assets::ImageAssetData;
-use crate::assets::BufferAssetData;
-use crate::assets::{ImageAsset, BufferAsset};
+use super::load_queue::LoadRequest;
+use super::ImageAssetData;
+use super::BufferAssetData;
+use super::{ImageAsset, BufferAsset};
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result
