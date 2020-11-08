@@ -1,22 +1,20 @@
-use crate::phases::TransparentRenderPhase;
-use renderer::nodes::{
-    RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
-    FramePacket, PrepareJob, RenderFeature,
-};
+use super::SpriteCommandWriter;
 use crate::features::sprite::{
-    SpriteRenderFeature, ExtractedSpriteData, QUAD_VERTEX_LIST, QUAD_INDEX_LIST, SpriteDrawCall,
-    SpriteVertex,
+    ExtractedSpriteData, SpriteDrawCall, SpriteRenderFeature, SpriteVertex, QUAD_INDEX_LIST,
+    QUAD_VERTEX_LIST,
 };
 use crate::phases::OpaqueRenderPhase;
-use glam::Vec3;
-use super::SpriteCommandWriter;
-use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::vulkan::VkBuffer;
+use crate::phases::TransparentRenderPhase;
+use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use ash::vk;
-use renderer::assets::resources::{
-    DescriptorSetArc, ResourceArc, MaterialPassResource, ImageViewResource,
-};
 use fnv::FnvHashMap;
+use glam::Vec3;
+use renderer::nodes::{
+    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
+    RenderFeatureIndex, RenderView, ViewSubmitNodes,
+};
+use renderer::resources::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
+use renderer::vulkan::VkBuffer;
 
 const PER_VIEW_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 0;
 const PER_INSTANCE_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;

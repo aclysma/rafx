@@ -1,20 +1,20 @@
-use ash::version::{DeviceV1_0};
 use ash::prelude::VkResult;
+use ash::version::DeviceV1_0;
 
-use std::mem::ManuallyDrop;
 use ash::vk;
-use std::sync::atomic::{AtomicUsize, Ordering, AtomicBool};
+use std::mem::ManuallyDrop;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use super::VkSwapchain;
 
-use super::MAX_FRAMES_IN_FLIGHT;
 use super::PresentMode;
+use super::MAX_FRAMES_IN_FLIGHT;
 
 use super::PhysicalSize;
 use super::Window;
-use crate::{VkContext, VkDeviceContext, MsaaLevel};
+use crate::{MsaaLevel, VkContext, VkDeviceContext};
+use crossbeam_channel::{Receiver, Sender};
 use std::sync::Arc;
-use crossbeam_channel::{Sender, Receiver};
 //use crate::submit::PendingCommandBuffer;
 
 pub struct FrameInFlight {

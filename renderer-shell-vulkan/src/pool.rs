@@ -1,5 +1,5 @@
-use ash::version::DeviceV1_0;
 use ash::prelude::VkResult;
+use ash::version::DeviceV1_0;
 use ash::{vk, Device};
 use std::collections::VecDeque;
 use std::num::Wrapping;

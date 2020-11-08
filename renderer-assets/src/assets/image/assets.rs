@@ -1,7 +1,7 @@
+use renderer_resources::{ImageViewResource, ResourceArc};
+use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
-use serde::export::Formatter;
-use crate::{ResourceArc, ImageViewResource};
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum ColorSpace {

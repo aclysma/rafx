@@ -1,10 +1,10 @@
+use crate::assets::image::{ColorSpace, ImageAssetData};
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue};
-use image2::{Image};
+use image2::Image;
 use serde::{Deserialize, Serialize};
-use type_uuid::*;
 use std::io::Read;
-use crate::assets::image::{ImageAssetData, ColorSpace};
+use type_uuid::*;
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "23f90369-6916-4548-81d0-a76e0b162df2"]

@@ -1,44 +1,46 @@
-use renderer_shell_vulkan::{VkDeviceContext, VkImage, VkBuffer};
-use ash::prelude::*;
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
-};
-use atelier_assets::loader::handle::Handle;
-use std::mem::ManuallyDrop;
-use crate::{
-    vk_description as dsc, ResourceArc, DescriptorSetLayoutResource, DescriptorSetAllocatorMetrics,
-    GenericLoader, BufferAssetData, AssetLookupSet, DynResourceAllocatorSet, LoadQueues,
-    AssetLookup, DescriptorSetAllocatorRef, DescriptorSetAllocatorProvider, GraphicsPipelineCache,
-    MaterialPassResource, MaterialInstanceSlotAssignment, SlotNameLookup, DescriptorSetWriteSet,
+    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, PipelineAsset,
+    RenderpassAsset, ShaderAsset,
 };
 use crate::assets::{
-    ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
-    BufferAsset, MaterialPass,
+    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
 };
+use crate::{
+    AssetLookup, AssetLookupSet, BufferAssetData, GenericLoader, LoadQueues,
+    MaterialInstanceSlotAssignment, SlotNameLookup,
+};
+use ash::prelude::*;
+use atelier_assets::loader::handle::Handle;
+use renderer_resources::{
+    vk_description as dsc, DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider,
+    DescriptorSetAllocatorRef, DescriptorSetLayoutResource, DescriptorSetWriteSet,
+    DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPassResource, ResourceArc,
+};
+use renderer_shell_vulkan::{VkBuffer, VkDeviceContext, VkImage};
+use std::mem::ManuallyDrop;
 
-use atelier_assets::loader::storage::AssetLoadOp;
-use atelier_assets::loader::handle::AssetHandle;
-use atelier_assets::loader::Loader;
-use std::sync::Arc;
 use super::asset_lookup::LoadedAssetMetrics;
-use crate::resources::DynResourceAllocatorSetProvider;
-use crate::resources::ResourceLookupSet;
 use super::load_queue::LoadQueueSet;
-//use crate::resources::swapchain_management::ActiveSwapchainSurfaceInfoSet;
-use crate::resources::DescriptorSetAllocator;
-use super::upload::{UploadManager, ImageUploadOpResult, BufferUploadOpResult};
-use crossbeam_channel::Sender;
-use crate::resources::DynCommandWriterAllocator;
-use renderer_nodes::RenderRegistry;
-use fnv::FnvHashMap;
+use super::upload::{BufferUploadOpResult, ImageUploadOpResult, UploadManager};
 use ash::vk;
-use crate::resources::{ResourceManagerMetrics, ResourceManager};
-use crate::resources::descriptor_sets::{
-    DescriptorSetElementKey, DescriptorSetWriteElementImage, DescriptorSetWriteElementBuffer,
-    DescriptorSetWriteElementBufferData, /*create_uninitialized_write_sets_for_material_pass,*/
+use atelier_assets::loader::handle::AssetHandle;
+use atelier_assets::loader::storage::AssetLoadOp;
+use atelier_assets::loader::Loader;
+use crossbeam_channel::Sender;
+use fnv::FnvHashMap;
+use renderer_nodes::RenderRegistry;
+use renderer_resources::descriptor_sets::{
+    DescriptorSetElementKey, DescriptorSetWriteElementBuffer, DescriptorSetWriteElementBufferData,
+    DescriptorSetWriteElementImage,
 };
+use renderer_resources::DescriptorSetAllocator;
+use renderer_resources::DynCommandWriterAllocator;
+use renderer_resources::DynResourceAllocatorSetProvider;
+use renderer_resources::ResourceLookupSet;
+use renderer_resources::{ResourceManager, ResourceManagerMetrics};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct AssetManagerMetrics {
@@ -705,7 +707,7 @@ impl AssetManager {
                     })
                     .unwrap();
 
-                let what_to_bind = crate::resources::descriptor_sets::what_to_bind(write);
+                let what_to_bind = renderer_resources::descriptor_sets::what_to_bind(write);
 
                 if what_to_bind.bind_images || what_to_bind.bind_samplers {
                     let mut write_image = DescriptorSetWriteElementImage {
@@ -721,7 +723,7 @@ impl AssetManager {
                                 .get_latest(image.load_handle())
                                 .unwrap();
                             write_image.image_view =
-                                Some(crate::resources::descriptor_sets::DescriptorSetWriteElementImageValue::Resource(
+                                Some(renderer_resources::descriptor_sets::DescriptorSetWriteElementImageValue::Resource(
                                     loaded_image.image_view.clone(),
                                 ));
                         }

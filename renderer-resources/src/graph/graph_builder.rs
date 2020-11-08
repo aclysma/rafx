@@ -1,7 +1,7 @@
 use super::*;
+use crate::resources::{ImageViewResource, ResourceArc};
 use crate::vk_description as dsc;
 use crate::vk_description::SwapchainSurfaceInfo;
-use crate::resources::{ResourceArc, ImageViewResource};
 
 #[derive(Copy, Clone)]
 pub enum RenderGraphQueue {

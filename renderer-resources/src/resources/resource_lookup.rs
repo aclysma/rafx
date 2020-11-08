@@ -1,20 +1,20 @@
-use crossbeam_channel::{Sender, Receiver};
-use std::hash::Hash;
-use renderer_shell_vulkan::{
-    VkResource, VkResourceDropSink, VkDeviceContext, VkImageRaw, VkImage, VkBufferRaw, VkBuffer,
-};
-use fnv::FnvHashMap;
-use std::marker::PhantomData;
-use ash::vk;
-use ash::prelude::VkResult;
-use crate::vk_description::SwapchainSurfaceInfo;
-use std::mem::ManuallyDrop;
-use crate::vk_description as dsc;
+use crate::resources::resource_arc::{ResourceId, ResourceWithHash, WeakResourceArc};
 use crate::resources::ResourceArc;
-use crate::resources::resource_arc::{WeakResourceArc, ResourceWithHash, ResourceId};
-use std::sync::{Arc, Mutex};
+use crate::vk_description as dsc;
+use crate::vk_description::SwapchainSurfaceInfo;
+use ash::prelude::VkResult;
+use ash::vk;
 use bitflags::_core::sync::atomic::AtomicU64;
+use crossbeam_channel::{Receiver, Sender};
+use fnv::FnvHashMap;
+use renderer_shell_vulkan::{
+    VkBuffer, VkBufferRaw, VkDeviceContext, VkImage, VkImageRaw, VkResource, VkResourceDropSink,
+};
+use std::hash::Hash;
+use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, Mutex};
 
 // Hash of a GPU resource
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -22,8 +22,8 @@ pub struct ResourceHash(u64);
 
 impl ResourceHash {
     pub fn from_key<KeyT: Hash>(key: &KeyT) -> ResourceHash {
-        use std::hash::Hasher;
         use fnv::FnvHasher;
+        use std::hash::Hasher;
         let mut hasher = FnvHasher::default();
         key.hash(&mut hasher);
         ResourceHash(hasher.finish())

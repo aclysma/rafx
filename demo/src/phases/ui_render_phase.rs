@@ -1,5 +1,5 @@
-use renderer::nodes::{RenderPhaseIndex, SubmitNode};
 use renderer::nodes::RenderPhase;
+use renderer::nodes::{RenderPhaseIndex, SubmitNode};
 
 renderer::declare_render_phase!(
     UiRenderPhase,

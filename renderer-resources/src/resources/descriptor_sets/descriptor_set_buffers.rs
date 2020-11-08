@@ -1,10 +1,10 @@
-use ash::vk;
-use ash::prelude::*;
-use crate::vk_description as dsc;
 use crate::resources::descriptor_sets::{DescriptorSetElementKey, MAX_DESCRIPTORS_PER_POOL};
-use std::mem::ManuallyDrop;
-use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
+use crate::vk_description as dsc;
+use ash::prelude::*;
+use ash::vk;
 use fnv::FnvHashMap;
+use renderer_shell_vulkan::{VkBuffer, VkDeviceContext};
+use std::mem::ManuallyDrop;
 
 //
 // Metadata about a buffer for a particular descriptor in a descriptor layout

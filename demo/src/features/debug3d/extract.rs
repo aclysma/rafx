@@ -1,11 +1,13 @@
-use crate::features::debug3d::{ExtractedDebug3dData, Debug3dRenderFeature, DebugDraw3DResource};
-use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::nodes::{
-    FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature, ExtractJob,
-};
 use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
+use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource, ExtractedDebug3dData};
+use crate::render_contexts::{
+    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
+};
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::MaterialAsset;
+use renderer::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
+};
 
 pub struct Debug3dExtractJob {
     debug3d_material: Handle<MaterialAsset>,

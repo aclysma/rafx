@@ -1,6 +1,6 @@
 use crate::{
-    RenderPhase, RenderView, RenderRegistry, RenderFeatureIndex, RenderPhaseIndex, RenderViewIndex,
-    RenderPhaseMask,
+    RenderFeatureIndex, RenderPhase, RenderPhaseIndex, RenderPhaseMask, RenderRegistry, RenderView,
+    RenderViewIndex,
 };
 use fnv::FnvHashMap;
 

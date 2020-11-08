@@ -1,20 +1,22 @@
-use crate::vk_description as dsc;
-use renderer_base::slab::{RawSlab, RawSlabKey};
 use super::ManagedDescriptorSet;
-use super::{
-    DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT,
-    DescriptorSetElementKey, FrameInFlightIndex, DescriptorSetArc, DescriptorSetWriteSet,
-};
-use crate::resources::resource_lookup::{DescriptorSetLayoutResource};
-use renderer_shell_vulkan::{VkDescriptorPoolAllocator, VkResourceDropSink, VkBuffer, VkDeviceContext};
-use crossbeam_channel::{Receiver, Sender};
-use std::mem::ManuallyDrop;
-use ash::vk;
-use ash::version::DeviceV1_0;
-use ash::prelude::VkResult;
 use super::ManagedDescriptorSetPoolChunk;
+use super::{
+    DescriptorSetArc, DescriptorSetElementKey, DescriptorSetPoolRequiredBufferInfo,
+    DescriptorSetWriteSet, FrameInFlightIndex, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT,
+};
+use crate::resources::resource_lookup::DescriptorSetLayoutResource;
 use crate::resources::ResourceArc;
+use crate::vk_description as dsc;
+use ash::prelude::VkResult;
+use ash::version::DeviceV1_0;
+use ash::vk;
+use crossbeam_channel::{Receiver, Sender};
+use renderer_base::slab::{RawSlab, RawSlabKey};
+use renderer_shell_vulkan::{
+    VkBuffer, VkDescriptorPoolAllocator, VkDeviceContext, VkResourceDropSink,
+};
 use std::collections::VecDeque;
+use std::mem::ManuallyDrop;
 
 struct PendingDescriptorSetDrop {
     slab_key: RawSlabKey<ManagedDescriptorSet>,

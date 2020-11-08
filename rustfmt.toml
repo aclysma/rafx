@@ -1,9 +1,4 @@
 
-# Many of the imports and modules are in "conceptual" order, for example
-# similar imports/modules are next to each other in order.
-reorder_imports = false
-reorder_modules = false
-
 # This makes merge conflicts less likely to occur, and makes it easier to see
 # symmetry between parameters.
 fn_args_layout = "Vertical"

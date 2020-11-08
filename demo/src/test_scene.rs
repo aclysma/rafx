@@ -1,18 +1,18 @@
-use legion::{Resources, World};
 use crate::asset_resource::AssetResource;
-use glam::f32::Vec3;
-use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderNode};
-use renderer::visibility::{DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
-use crate::components::{
-    PositionComponent, SpriteComponent, PointLightComponent, SpotLightComponent,
-    DirectionalLightComponent,
-};
-use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
-use atelier_assets::core::asset_uuid;
-use atelier_assets::core as atelier_core;
 use crate::components::MeshComponent;
-use renderer::assets::ImageAsset;
+use crate::components::{
+    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+    SpriteComponent,
+};
+use crate::features::mesh::{MeshRenderNode, MeshRenderNodeSet};
+use crate::features::sprite::{SpriteRenderNode, SpriteRenderNodeSet};
 use crate::game_asset_lookup::MeshAsset;
+use atelier_assets::core as atelier_core;
+use atelier_assets::core::asset_uuid;
+use glam::f32::Vec3;
+use legion::{Resources, World};
+use renderer::assets::ImageAsset;
+use renderer::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
 pub fn populate_test_sprite_entities(
     resources: &mut Resources,

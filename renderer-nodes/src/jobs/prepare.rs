@@ -1,6 +1,6 @@
 use crate::{
-    FramePacket, RenderView, RenderFeatureIndex, FeatureCommandWriter, PreparedRenderData,
-    FeatureSubmitNodes, MergedFrameSubmitNodes, RenderRegistry,
+    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, MergedFrameSubmitNodes,
+    PreparedRenderData, RenderFeatureIndex, RenderRegistry, RenderView,
 };
 
 pub trait PrepareJob<PrepareContextT, WriteContextT>: Send {

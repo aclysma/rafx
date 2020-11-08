@@ -1,25 +1,25 @@
-use crate::imgui_support::Sdl2ImguiManager;
-use renderer::vulkan::{VkSurface, Window, VkDeviceContext, VkContext, FrameInFlight};
-use ash::prelude::VkResult;
-use std::mem::ManuallyDrop;
-use crate::time::TimeState;
 use crate::asset_resource::AssetResource;
-use renderer::assets::resources::{ResourceArc, ImageViewResource};
-use renderer::assets::AssetManager;
 use crate::features::debug3d::create_debug3d_extract_job;
-use crate::features::sprite::{SpriteRenderNodeSet, create_sprite_extract_job};
-use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
-use renderer::nodes::{
-    RenderPhaseMaskBuilder, RenderPhaseMask, RenderRegistry, RenderViewSet, AllRenderNodes,
-    FramePacketBuilder, ExtractJobSet,
-};
-use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
-use crate::phases::TransparentRenderPhase;
-use legion::*;
-use crate::render_contexts::{RenderJobExtractContext};
 use crate::features::mesh::{create_mesh_extract_job, MeshRenderNodeSet};
+use crate::features::sprite::{create_sprite_extract_job, SpriteRenderNodeSet};
+use crate::imgui_support::Sdl2ImguiManager;
+use crate::phases::TransparentRenderPhase;
+use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
+use crate::render_contexts::RenderJobExtractContext;
+use crate::time::TimeState;
+use ash::prelude::VkResult;
+use legion::*;
+use renderer::assets::AssetManager;
+use renderer::nodes::{
+    AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder,
+    RenderRegistry, RenderViewSet,
+};
+use renderer::resources::vk_description as dsc;
+use renderer::resources::{ImageViewResource, ResourceArc};
+use renderer::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use renderer::vulkan::{FrameInFlight, VkContext, VkDeviceContext, VkSurface, Window};
+use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex};
-use renderer::assets::vk_description as dsc;
 
 mod static_resources;
 use static_resources::GameRendererStaticResources;
@@ -37,9 +37,9 @@ mod render_graph;
 
 //TODO: Find a way to not expose this
 mod swapchain_handling;
-pub use swapchain_handling::SwapchainLifetimeListener;
-use crate::features::imgui::create_imgui_extract_job;
 use crate::components::DirectionalLightComponent;
+use crate::features::imgui::create_imgui_extract_job;
+pub use swapchain_handling::SwapchainLifetimeListener;
 
 pub struct GameRendererInner {
     imgui_font_atlas_image_view: ResourceArc<ImageViewResource>,

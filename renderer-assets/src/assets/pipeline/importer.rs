@@ -1,11 +1,11 @@
+use crate::assets::pipeline::{
+    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
+};
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
 use serde::{Deserialize, Serialize};
+use std::io::Read;
 use type_uuid::*;
-use std::io::{Read};
-use crate::assets::pipeline::{
-    PipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
-};
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "25c8b7df-e3a4-4436-b41c-ce32eed76e18"]

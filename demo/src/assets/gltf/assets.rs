@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
-use type_uuid::*;
 use atelier_assets::loader::handle::Handle;
+use renderer::assets::BufferAsset;
 use renderer::assets::ImageAsset;
 use renderer::assets::MaterialInstanceAsset;
-use renderer::assets::BufferAsset;
+use serde::{Deserialize, Serialize};
+use type_uuid::*;
 
 //TODO: These are extensions that might be interesting to try supporting. In particular, lights,
 // LOD, and clearcoat

@@ -2,10 +2,10 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use super::ImguiManager;
+use crate::imgui_support::{ImGuiDrawData, ImGuiFontAtlas};
 use imgui_sdl2::ImguiSdl2;
-use sdl2::video::Window;
 use sdl2::mouse::MouseState;
-use crate::imgui_support::{ImGuiFontAtlas, ImGuiDrawData};
+use sdl2::video::Window;
 
 struct Sdl2ImguiManagerInner {
     imgui_sdl2: ImguiSdl2,

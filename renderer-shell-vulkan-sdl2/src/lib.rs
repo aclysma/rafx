@@ -1,12 +1,12 @@
 pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
-use renderer_shell_vulkan::PhysicalSize;
-use renderer_shell_vulkan::LogicalSize;
-use renderer_shell_vulkan::Window;
-use renderer_shell_vulkan::VkEntry;
-use std::ffi::CStr;
 use ash::prelude::VkResult;
+use renderer_shell_vulkan::LogicalSize;
+use renderer_shell_vulkan::PhysicalSize;
+use renderer_shell_vulkan::VkEntry;
+use renderer_shell_vulkan::Window;
+use std::ffi::CStr;
 
 pub struct Sdl2Window<'a> {
     window: &'a sdl2::video::Window,

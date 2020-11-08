@@ -1,15 +1,15 @@
+use crate::demo_feature::prepare::DemoPrepareJob;
 use crate::demo_feature::{
-    DemoRenderFeature, ExtractedPerFrameNodeDemoData, DemoRenderNodeSet, DemoRenderNode,
+    DemoRenderFeature, DemoRenderNode, DemoRenderNodeSet, ExtractedPerFrameNodeDemoData,
     ExtractedPerViewNodeDemoData,
 };
-use crate::{DemoExtractContext, DemoWriteContext, DemoComponent, DemoPrepareContext};
-use renderer_nodes::{
-    FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature, ExtractJob,
-};
-use renderer_base::slab::RawSlabKey;
-use crate::demo_feature::prepare::DemoPrepareJob;
 use crate::PositionComponent;
+use crate::{DemoComponent, DemoExtractContext, DemoPrepareContext, DemoWriteContext};
 use legion::*;
+use renderer_base::slab::RawSlabKey;
+use renderer_nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
+};
 
 #[derive(Default)]
 pub struct DemoExtractJob {}

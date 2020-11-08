@@ -1,15 +1,15 @@
-use ash::vk;
 use ash::prelude::VkResult;
+use ash::vk;
 use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use renderer_shell_vulkan::{VkTransferUpload, VkTransferUploadState, VkDeviceContext};
 use renderer_shell_vulkan::VkBuffer;
+use renderer_shell_vulkan::{VkDeviceContext, VkTransferUpload, VkTransferUploadState};
 
-use renderer_shell_vulkan::VkImage;
 use image::{GenericImageView, ImageFormat};
-use std::sync::{Mutex, Arc};
+use renderer_shell_vulkan::VkImage;
+use std::sync::{Arc, Mutex};
 
 #[derive(Copy, Clone, Debug)]
 pub enum ColorSpace {

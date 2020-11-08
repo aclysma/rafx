@@ -1,10 +1,10 @@
+use crate::assets::shader::ShaderAssetData;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
+use renderer_resources::vk_description as dsc;
 use serde::{Deserialize, Serialize};
+use std::io::{Cursor, Read};
 use type_uuid::*;
-use std::io::{Read, Cursor};
-use crate::assets::shader::ShaderAssetData;
-use crate::vk_description as dsc;
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "867bc278-67b5-469c-aeea-1c05da722918"]

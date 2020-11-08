@@ -1,7 +1,7 @@
+use renderer_resources::ShaderModuleResource;
+use renderer_resources::{vk_description as dsc, ResourceArc};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
-use crate::{vk_description as dsc, ResourceArc};
-use crate::resources::ShaderModuleResource;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "e0ae2222-1a44-4022-af95-03c9101ac89e"]

@@ -1,10 +1,10 @@
-use renderer::visibility::*;
 use crate::demo_phases::*;
-use renderer::nodes::{RenderPhaseMaskBuilder, FramePacketBuilder, ExtractJobSet, AllRenderNodes};
-use renderer::nodes::RenderRegistryBuilder;
-use renderer::nodes::RenderViewSet;
 use glam::Vec3;
 use legion::*;
+use renderer::nodes::RenderRegistryBuilder;
+use renderer::nodes::RenderViewSet;
+use renderer::nodes::{AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMaskBuilder};
+use renderer::visibility::*;
 
 #[derive(Copy, Clone)]
 pub struct PositionComponent {

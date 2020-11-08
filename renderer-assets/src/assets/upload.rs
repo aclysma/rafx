@@ -1,16 +1,16 @@
-use renderer_shell_vulkan::{
-    VkTransferUploadState, VkDeviceContext, VkTransferUpload, VkImage, VkBuffer,
-};
-use crossbeam_channel::{Sender, Receiver};
-use ash::prelude::VkResult;
-use crate::image_utils::{enqueue_load_images, DecodedTexture, enqueue_load_buffers};
-use std::mem::ManuallyDrop;
-use atelier_assets::loader::{LoadHandle, storage::AssetLoadOp};
-use ash::vk;
 use super::load_queue::LoadRequest;
-use super::ImageAssetData;
 use super::BufferAssetData;
-use super::{ImageAsset, BufferAsset};
+use super::ImageAssetData;
+use super::{BufferAsset, ImageAsset};
+use crate::image_utils::{enqueue_load_buffers, enqueue_load_images, DecodedTexture};
+use ash::prelude::VkResult;
+use ash::vk;
+use atelier_assets::loader::{storage::AssetLoadOp, LoadHandle};
+use crossbeam_channel::{Receiver, Sender};
+use renderer_shell_vulkan::{
+    VkBuffer, VkDeviceContext, VkImage, VkTransferUpload, VkTransferUploadState,
+};
+use std::mem::ManuallyDrop;
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result

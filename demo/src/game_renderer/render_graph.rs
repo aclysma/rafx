@@ -1,14 +1,15 @@
-use ash::vk;
-use renderer::assets::{vk_description as dsc, ResourceContext};
-use renderer::assets::graph::*;
+use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
+use crate::render_contexts::RenderJobWriteContext;
 use crate::VkDeviceContext;
 use ash::prelude::VkResult;
-use renderer::assets::resources::{ResourceArc, ImageViewResource, MaterialPassResource};
-use crate::render_contexts::RenderJobWriteContext;
-use renderer::nodes::{PreparedRenderData, RenderView};
-use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
-use renderer::vulkan::SwapchainInfo;
 use ash::version::DeviceV1_0;
+use ash::vk;
+use renderer::nodes::{PreparedRenderData, RenderView};
+use renderer::resources::graph::*;
+use renderer::resources::vk_description as dsc;
+use renderer::resources::ResourceContext;
+use renderer::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
+use renderer::vulkan::SwapchainInfo;
 
 pub struct BuildRenderGraphResult {
     pub shadow_map: ResourceArc<ImageViewResource>,

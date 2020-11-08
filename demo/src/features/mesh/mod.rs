@@ -1,15 +1,17 @@
-use renderer::nodes::{
-    RenderFeature, RenderFeatureIndex, ExtractJob, GenericRenderNodeHandle, RenderNodeSet,
-    RenderNodeCount, FrameNodeIndex,
-};
 use crate::game_asset_lookup::MeshAsset;
-use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::base::slab::{DropSlabKey, DropSlab};
-use std::convert::TryInto;
+use crate::render_contexts::{
+    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
+};
 use atelier_assets::loader::handle::Handle;
 use renderer::assets::assets::MaterialPass;
-use renderer::assets::resources::{ResourceArc, ImageViewResource};
+use renderer::base::slab::{DropSlab, DropSlabKey};
 use renderer::nodes::RenderView;
+use renderer::nodes::{
+    ExtractJob, FrameNodeIndex, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex,
+    RenderNodeCount, RenderNodeSet,
+};
+use renderer::resources::{ImageViewResource, ResourceArc};
+use std::convert::TryInto;
 
 mod extract;
 use extract::MeshExtractJob;
@@ -17,8 +19,8 @@ use extract::MeshExtractJob;
 mod prepare;
 
 mod write;
+use renderer::resources::DescriptorSetArc;
 use write::MeshCommandWriter;
-use renderer::assets::resources::{DescriptorSetArc};
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 = 0;
 const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 = 1;

@@ -1,14 +1,14 @@
-use renderer::assets::ResourceLoader;
-use renderer::assets::GenericLoader;
-use atelier_assets::loader::storage::AssetLoadOp;
-use atelier_assets::loader::LoadHandle;
-use atelier_assets::loader::storage::LoaderInfoProvider;
-use atelier_assets::loader::handle::SerdeContext;
-use atelier_assets::loader::handle::RefOp;
-use type_uuid::TypeUuid;
 use crate::asset_storage::{DynAssetLoader, UpdateAssetResult};
+use atelier_assets::loader::handle::RefOp;
+use atelier_assets::loader::handle::SerdeContext;
+use atelier_assets::loader::storage::AssetLoadOp;
+use atelier_assets::loader::storage::LoaderInfoProvider;
+use atelier_assets::loader::LoadHandle;
 use crossbeam_channel::Sender;
+use renderer::assets::GenericLoader;
+use renderer::assets::ResourceLoader;
 use std::error::Error;
+use type_uuid::TypeUuid;
 
 pub struct ResourceAssetLoader<AssetDataT, AssetT>(pub GenericLoader<AssetDataT, AssetT>)
 where

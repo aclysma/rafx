@@ -1,9 +1,9 @@
-use renderer_nodes::{
-    RenderFeature, RenderFeatureIndex, ExtractJob, GenericRenderNodeHandle, RenderNodeSet,
-    RenderNodeCount, FrameNodeIndex, ViewNodeIndex,
-};
 use glam::f32::Vec3;
-use renderer_base::slab::{DropSlabKey, DropSlab};
+use renderer_base::slab::{DropSlab, DropSlabKey};
+use renderer_nodes::{
+    ExtractJob, FrameNodeIndex, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex,
+    RenderNodeCount, RenderNodeSet, ViewNodeIndex,
+};
 use std::convert::TryInto;
 
 mod extract;

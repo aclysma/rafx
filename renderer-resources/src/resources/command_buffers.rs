@@ -1,11 +1,11 @@
+use ash::prelude::VkResult;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use ash::prelude::VkResult;
-use renderer_shell_vulkan::VkDeviceContext;
 use crossbeam_channel::{Receiver, Sender};
-use std::sync::{Mutex, Arc};
 use fnv::FnvHashMap;
+use renderer_shell_vulkan::VkDeviceContext;
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 
 /// Info we hash across to identify equivalent command pools, allowing us to share them
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

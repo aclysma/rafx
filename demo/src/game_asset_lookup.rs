@@ -1,10 +1,10 @@
-use renderer::assets::resources::{DescriptorSetArc, ResourceArc, BufferResource};
-use renderer::assets::AssetLookup;
 use crate::assets::gltf::MeshAssetData;
-use renderer::assets::MaterialPass;
-use type_uuid::*;
-use std::sync::Arc;
 use atelier_assets::loader::Loader;
+use renderer::assets::AssetLookup;
+use renderer::assets::MaterialPass;
+use renderer::resources::{BufferResource, DescriptorSetArc, ResourceArc};
+use std::sync::Arc;
+use type_uuid::*;
 
 pub struct MeshAssetPart {
     pub opaque_pass: MaterialPass,

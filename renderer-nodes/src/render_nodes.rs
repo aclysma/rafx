@@ -1,6 +1,6 @@
 use crate::RenderFeatureIndex;
-use renderer_base::slab::SlabIndexT;
 use crate::RenderRegistry;
+use renderer_base::slab::SlabIndexT;
 
 pub type RenderNodeIndex = u32;
 pub type RenderNodeCount = u32;

@@ -1,7 +1,7 @@
+use crate::imgui_support::{ImGuiDrawData, ImGuiFontAtlas};
+use imgui::sys as imgui_sys;
 use std::sync::Arc;
 use std::sync::Mutex;
-use imgui::sys as imgui_sys;
-use crate::imgui_support::{ImGuiFontAtlas, ImGuiDrawData};
 
 // Inner state for ImguiManager, which will be protected by a Mutex. Mutex protection required since
 // this object is Send but not Sync

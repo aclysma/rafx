@@ -1,6 +1,6 @@
-use ash::vk;
 use super::*;
 use crate::vk_description as dsc;
+use ash::vk;
 
 /// Unique ID for a particular usage (read or write) of a specific image
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

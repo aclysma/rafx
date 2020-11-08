@@ -1,8 +1,8 @@
-use std::fmt::Formatter;
 use crossbeam_channel::Sender;
-use std::sync::{Weak, Arc};
 use std::borrow::Borrow;
+use std::fmt::Formatter;
 use std::hash::Hash;
+use std::sync::{Arc, Weak};
 
 //TODO: Maybe this should be an enum of ResourceHash and ResourceIndex
 

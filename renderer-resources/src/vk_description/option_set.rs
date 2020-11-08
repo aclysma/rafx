@@ -4,12 +4,12 @@
 //
 // There is probably a better way to do this so that we store a u32 or other integer value directly
 
-use std::ops::{BitAnd, BitOrAssign, Deref};
+use serde::de::{Deserialize, SeqAccess, Visitor};
+use serde::ser::SerializeSeq;
+use serde::{Deserializer, Serializer};
 use std::fmt::{self, Formatter};
 use std::marker::PhantomData;
-use serde::{Serializer, Deserializer};
-use serde::ser::SerializeSeq;
-use serde::de::{Visitor, SeqAccess, Deserialize};
+use std::ops::{BitAnd, BitOrAssign, Deref};
 
 /// Defines an option set type.
 #[macro_export]
@@ -30,20 +30,20 @@ macro_rules! option_set {
             }
         }
 
-        impl $crate::OptionSet for $name {
+        impl $crate::option_set::OptionSet for $name {
             const VARIANTS: &'static [$name] = &[$($name::$variant,)*];
             const NAMES: &'static [&'static str] = &[$(stringify!($variant),)*];
         }
 
         impl ::serde::ser::Serialize for $name {
             fn serialize<S: ::serde::ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-                $crate::serialize(self, serializer)
+                $crate::option_set::serialize(self, serializer)
             }
         }
 
         impl<'de> ::serde::de::Deserialize<'de> for $name {
             fn deserialize<D: ::serde::de::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-                $crate::deserialize(deserializer)
+                $crate::option_set::deserialize(deserializer)
             }
         }
     };

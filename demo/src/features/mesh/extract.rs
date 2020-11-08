@@ -1,19 +1,21 @@
-use crate::features::mesh::{
-    ExtractedFrameNodeMeshData, MeshRenderNodeSet, MeshRenderFeature, MeshRenderNode,
-};
-use crate::components::{
-    PointLightComponent, SpotLightComponent, DirectionalLightComponent, PositionComponent,
-};
-use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::nodes::{
-    ExtractJob, FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature,
-};
-use renderer::assets::resources::{ResourceArc, ImageViewResource};
-use renderer::base::slab::RawSlabKey;
-use crate::features::mesh::prepare::MeshPrepareJob;
-use legion::*;
 use crate::components::MeshComponent;
+use crate::components::{
+    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+};
+use crate::features::mesh::prepare::MeshPrepareJob;
+use crate::features::mesh::{
+    ExtractedFrameNodeMeshData, MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet,
+};
+use crate::render_contexts::{
+    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
+};
 use crate::resource_manager::GameAssetManager;
+use legion::*;
+use renderer::base::slab::RawSlabKey;
+use renderer::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
+};
+use renderer::resources::{ImageViewResource, ResourceArc};
 
 pub struct MeshExtractJob {
     pub(super) shadow_map_image: ResourceArc<ImageViewResource>,

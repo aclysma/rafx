@@ -1,12 +1,12 @@
+use crate::resources::resource_arc::{ResourceId, WeakResourceArc};
 use crate::{
-    ResourceLookupSet, RenderPassResource, ResourceArc, GraphicsPipelineResource,
-    MaterialPassResource,
+    GraphicsPipelineResource, MaterialPassResource, RenderPassResource, ResourceArc,
+    ResourceLookupSet,
 };
-use renderer_nodes::{RenderPhase, RenderPhaseIndex, MAX_RENDER_PHASE_COUNT, RenderRegistry};
-use crate::resources::resource_arc::{WeakResourceArc, ResourceId};
-use fnv::FnvHashMap;
-use std::hash::Hash;
 use ash::prelude::VkResult;
+use fnv::FnvHashMap;
+use renderer_nodes::{RenderPhase, RenderPhaseIndex, RenderRegistry, MAX_RENDER_PHASE_COUNT};
+use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
 //TODO: Allow caching for N frames

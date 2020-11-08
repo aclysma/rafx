@@ -1,15 +1,15 @@
 use atelier_assets::loader::{
     crossbeam_channel::Sender,
     handle::{AssetHandle, RefOp, TypedAssetStorage},
-    storage::{AssetLoadOp, AssetStorage, LoaderInfoProvider, IndirectionTable},
+    storage::{AssetLoadOp, AssetStorage, IndirectionTable, LoaderInfoProvider},
     AssetTypeId, LoadHandle,
 };
 use mopa::{mopafy, Any};
-use std::{sync::Mutex, collections::HashMap, error::Error};
+use std::{collections::HashMap, error::Error, sync::Mutex};
 
-use atelier_assets::core::{AssetUuid, type_uuid::TypeUuid};
-use crossbeam_channel::Receiver;
+use atelier_assets::core::{type_uuid::TypeUuid, AssetUuid};
 use atelier_assets::loader::handle::SerdeContext;
+use crossbeam_channel::Receiver;
 use std::marker::PhantomData;
 
 // Used to dynamic dispatch into a storage, supports checked downcasting

@@ -1,8 +1,9 @@
 use ash::vk;
 use legion::*;
-use renderer::assets::{AssetManager, ResourceContext, ResourceArc, RenderPassResource};
+use renderer::assets::AssetManager;
+use renderer::resources::graph::VisitRenderpassArgs;
+use renderer::resources::{RenderPassResource, ResourceArc, ResourceContext};
 use renderer::vulkan::VkDeviceContext;
-use renderer::assets::graph::VisitRenderpassArgs;
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,

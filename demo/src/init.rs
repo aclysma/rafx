@@ -1,32 +1,32 @@
-use crate::asset_resource::AssetResource;
-use legion::Resources;
-use renderer::vulkan::{
-    LogicalSize, VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, VkContext,
-};
-use crate::features::sprite::{SpriteRenderNodeSet, SpriteRenderFeature};
-use crate::features::mesh::{MeshRenderNodeSet, MeshRenderFeature};
-use renderer::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
-use renderer_shell_vulkan_sdl2::Sdl2Window;
-use crate::game_renderer::{SwapchainLifetimeListener, GameRenderer};
-use crate::features::debug3d::{DebugDraw3DResource, Debug3dRenderFeature};
-use renderer::nodes::RenderRegistry;
-use crate::assets::gltf::{MeshAssetData, GltfMaterialAsset};
-use crate::resource_manager::GameAssetManager;
-use renderer::assets::AssetManager;
-use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
-use crate::phases::TransparentRenderPhase;
-use crate::features::imgui::ImGuiRenderFeature;
-use crate::game_asset_lookup::MeshAsset;
-use atelier_assets::loader::{RpcIO, Loader, storage::DefaultIndirectionResolver};
-use renderer::assets::{
-    ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
-    BufferAsset,
-};
-use renderer::assets::{
-    ShaderAssetData, PipelineAssetData, RenderpassAssetData, MaterialAssetData,
-    MaterialInstanceAssetData, ImageAssetData, BufferAssetData,
-};
 use crate::asset_loader::ResourceAssetLoader;
+use crate::asset_resource::AssetResource;
+use crate::assets::gltf::{GltfMaterialAsset, MeshAssetData};
+use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource};
+use crate::features::imgui::ImGuiRenderFeature;
+use crate::features::mesh::{MeshRenderFeature, MeshRenderNodeSet};
+use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNodeSet};
+use crate::game_asset_lookup::MeshAsset;
+use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
+use crate::phases::TransparentRenderPhase;
+use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
+use crate::resource_manager::GameAssetManager;
+use atelier_assets::loader::{storage::DefaultIndirectionResolver, Loader, RpcIO};
+use legion::Resources;
+use renderer::assets::AssetManager;
+use renderer::assets::{
+    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, PipelineAsset, RenderpassAsset,
+    ShaderAsset,
+};
+use renderer::assets::{
+    BufferAssetData, ImageAssetData, MaterialAssetData, MaterialInstanceAssetData,
+    PipelineAssetData, RenderpassAssetData, ShaderAssetData,
+};
+use renderer::nodes::RenderRegistry;
+use renderer::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use renderer::vulkan::{
+    LogicalSize, MsaaLevel, VkContext, VkContextBuilder, VkDeviceContext, VkSurface,
+};
+use renderer_shell_vulkan_sdl2::Sdl2Window;
 
 pub fn logging_init() {
     #[cfg(not(debug_assertions))]

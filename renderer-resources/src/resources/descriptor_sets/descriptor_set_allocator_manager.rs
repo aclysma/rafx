@@ -1,11 +1,11 @@
-use std::sync::{Mutex, Arc};
 use super::DescriptorSetAllocator;
-use crossbeam_channel::{Sender, Receiver};
+use ash::prelude::VkResult;
+use crossbeam_channel::{Receiver, Sender};
 use renderer_shell_vulkan::VkDeviceContext;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::collections::VecDeque;
 use std::ops::{Deref, DerefMut};
-use ash::prelude::VkResult;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 // This holds the allocator and the frame on which it was "borrowed" from the allocator manager
 struct DescriptorSetAllocatorRefInner {

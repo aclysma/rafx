@@ -1,11 +1,11 @@
-use fnv::FnvHashMap;
-use atelier_assets::loader::Loader;
-use atelier_assets::loader::LoadHandle;
-use atelier_assets::loader::storage::IndirectionTable;
 use crate::{
-    ShaderAsset, PipelineAsset, RenderpassAsset, MaterialAsset, MaterialInstanceAsset, ImageAsset,
-    BufferAsset,
+    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, PipelineAsset, RenderpassAsset,
+    ShaderAsset,
 };
+use atelier_assets::loader::storage::IndirectionTable;
+use atelier_assets::loader::LoadHandle;
+use atelier_assets::loader::Loader;
+use fnv::FnvHashMap;
 
 //
 // Represents a single asset which may simultaneously have committed and uncommitted loaded state

@@ -1,7 +1,7 @@
+use crate::*;
 use renderer_base::slab::DropSlab;
 use renderer_nodes::RenderView;
 use renderer_nodes::VisibilityResult;
-use crate::*;
 
 #[derive(Default)]
 pub struct StaticVisibilityNodeSet {

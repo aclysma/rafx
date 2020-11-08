@@ -1,10 +1,10 @@
-use renderer::vulkan::{VkDeviceContext, VkSwapchain, SwapchainInfo};
 use crate::game_renderer::GameRendererInner;
-use renderer::assets::resources::{ResourceManager, ResourceArc, ImageViewResource};
-use renderer::assets::vk_description::SwapchainSurfaceInfo;
 use ash::prelude::VkResult;
-use renderer::assets::vk_description as dsc;
+use renderer::resources::vk_description as dsc;
+use renderer::resources::vk_description::SwapchainSurfaceInfo;
+use renderer::resources::{ImageViewResource, ResourceArc, ResourceManager};
 use renderer::vulkan::VkImageRaw;
+use renderer::vulkan::{SwapchainInfo, VkDeviceContext, VkSwapchain};
 
 pub struct SwapchainResources {
     // The images presented by the swapchain

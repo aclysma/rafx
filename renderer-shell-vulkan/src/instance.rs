@@ -1,13 +1,13 @@
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 
+use ash::prelude::VkResult;
 pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
-use ash::prelude::VkResult;
 
-use super::VkEntry;
-use super::Window;
 use super::debug_reporter;
 use super::VkDebugReporter;
+use super::VkEntry;
+use super::Window;
 use ash::extensions::ext::DebugReport;
 
 /// Create one of these at startup. It never gets lost/destroyed.

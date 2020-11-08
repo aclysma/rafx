@@ -1,7 +1,7 @@
+use crate::SubmitNode;
+use fnv::FnvHashMap;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
-use fnv::FnvHashMap;
-use crate::SubmitNode;
 use std::sync::Arc;
 
 pub type RenderFeatureIndex = u32;

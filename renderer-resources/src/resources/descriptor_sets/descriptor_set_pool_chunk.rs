@@ -1,18 +1,20 @@
-use ash::vk;
-use ash::version::DeviceV1_0;
+use super::DescriptorSetWriteElementBufferData;
 use super::{
-    DescriptorLayoutBufferSet, DescriptorSetPoolRequiredBufferInfo, MAX_DESCRIPTORS_PER_POOL,
-    ManagedDescriptorSet, DescriptorSetWriteSet, DescriptorSetElementKey,
+    DescriptorLayoutBufferSet, DescriptorSetElementKey, DescriptorSetPoolRequiredBufferInfo,
+    DescriptorSetWriteSet, ManagedDescriptorSet, MAX_DESCRIPTORS_PER_POOL,
+};
+use crate::vk_description as dsc;
+use arrayvec::ArrayVec;
+use ash::prelude::VkResult;
+use ash::version::DeviceV1_0;
+use ash::vk;
+use fnv::FnvHashMap;
+use renderer_base::slab::RawSlabKey;
+use renderer_shell_vulkan::{
+    VkBuffer, VkDescriptorPoolAllocator, VkDeviceContext, VkResourceDropSink,
 };
 use std::collections::VecDeque;
-use renderer_shell_vulkan::{VkDeviceContext, VkDescriptorPoolAllocator, VkResourceDropSink, VkBuffer};
-use ash::prelude::VkResult;
-use arrayvec::ArrayVec;
 use std::mem::ManuallyDrop;
-use renderer_base::slab::RawSlabKey;
-use fnv::FnvHashMap;
-use crate::vk_description as dsc;
-use super::DescriptorSetWriteElementBufferData;
 
 // A write to the descriptors within a single descriptor set that has been scheduled (i.e. will occur
 // over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames

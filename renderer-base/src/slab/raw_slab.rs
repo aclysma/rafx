@@ -1,8 +1,8 @@
 use std::prelude::v1::*;
 
 use super::SlabIndexT;
-use std::marker::PhantomData;
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 
 /// A key to a value in a RawSlab
 pub struct RawSlabKey<T: Sized> {

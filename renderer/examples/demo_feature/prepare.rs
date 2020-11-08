@@ -1,15 +1,15 @@
-use crate::demo_phases::*;
-use renderer_nodes::{
-    RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
-    FramePacket, RenderFeature, PrepareJob, SubmitNodeId, ViewNodeIndex,
-};
-use glam::Vec3;
+use crate::demo_feature::write::DemoCommandWriter;
 use crate::demo_feature::{
     DemoRenderFeature, ExtractedPerFrameNodeDemoData, ExtractedPerViewNodeDemoData,
     PreparedPerSubmitNodeDemoData,
 };
-use crate::{DemoWriteContext, DemoPrepareContext};
-use crate::demo_feature::write::DemoCommandWriter;
+use crate::demo_phases::*;
+use crate::{DemoPrepareContext, DemoWriteContext};
+use glam::Vec3;
+use renderer_nodes::{
+    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
+    RenderFeatureIndex, RenderView, SubmitNodeId, ViewNodeIndex, ViewSubmitNodes,
+};
 
 pub struct DemoPrepareJob {
     pub(super) per_frame_data: Vec<ExtractedPerFrameNodeDemoData>,

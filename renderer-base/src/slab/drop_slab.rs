@@ -1,7 +1,7 @@
 use super::RawSlab;
 use super::RawSlabKey;
-use crossbeam_channel::{Sender, Receiver};
 use super::SlabIndexT;
+use crossbeam_channel::{Receiver, Sender};
 use std::sync::Arc;
 
 pub struct DropSlabKeyInner<T> {

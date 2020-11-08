@@ -3,11 +3,11 @@
 pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
-use super::PhysicalSize;
 use super::LogicalSize;
+use super::PhysicalSize;
 use super::VkEntry;
-use std::ffi::CStr;
 use ash::prelude::VkResult;
+use std::ffi::CStr;
 
 /// This is a thin abstraction layer that lets us be compatible with both SDL2 and winit.
 pub trait Window {

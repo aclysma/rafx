@@ -1,10 +1,10 @@
-use crate::resources::DynDescriptorSet;
 use super::SlotNameLookup;
-use crate::resources::DescriptorSetAllocator;
 use ash::prelude::VkResult;
+use renderer_resources::DescriptorSetAllocator;
+use renderer_resources::DynDescriptorSet;
+use renderer_resources::ImageViewResource;
+use renderer_resources::ResourceArc;
 use std::sync::Arc;
-use crate::resources::ResourceArc;
-use crate::resources::ImageViewResource;
 
 pub struct DynPassMaterialInstance {
     descriptor_sets: Vec<DynDescriptorSet>,

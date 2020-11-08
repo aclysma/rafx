@@ -1,16 +1,18 @@
-use crate::render_contexts::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext};
-use atelier_assets::loader::handle::Handle;
 use crate::features::debug3d::extract::Debug3dExtractJob;
+use crate::render_contexts::{
+    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
+};
+use atelier_assets::loader::handle::Handle;
+use renderer::assets::MaterialAsset;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;
 use std::convert::TryInto;
-use renderer::assets::MaterialAsset;
 
+mod debug3d_resource;
 mod extract;
 mod prepare;
 mod write;
-mod debug3d_resource;
 
 pub use debug3d_resource::*;
 

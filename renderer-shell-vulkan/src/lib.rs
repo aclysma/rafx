@@ -12,31 +12,31 @@ use alignment::Align;
 pub mod util;
 
 pub mod cleanup;
-pub use cleanup::VkResourceDropSink;
 pub use cleanup::VkResource;
+pub use cleanup::VkResourceDropSink;
 
 pub mod pool;
+pub use pool::VkDescriptorPoolAllocator;
 pub use pool::VkPoolAllocator;
 pub use pool::VkPoolResourceImpl;
-pub use pool::VkDescriptorPoolAllocator;
 
 mod window_support;
 pub use window_support::Window;
 
 mod instance;
-pub use instance::VkInstance;
 pub use instance::VkCreateInstanceError;
+pub use instance::VkInstance;
 
 mod device;
+pub use device::VkCreateDeviceError;
 pub use device::VkDevice;
 pub use device::VkDeviceContext;
 pub use device::VkQueueFamilyIndices;
 pub use device::VkQueues;
-pub use device::VkCreateDeviceError;
 
 mod swapchain;
-pub use swapchain::VkSwapchain;
 pub use swapchain::SwapchainInfo;
+pub use swapchain::VkSwapchain;
 pub use swapchain::MAX_FRAMES_IN_FLIGHT;
 
 mod buffer;
@@ -48,10 +48,10 @@ pub use image::VkImage;
 pub use image::VkImageRaw;
 
 mod upload;
-pub use upload::VkUploadState;
-pub use upload::VkUpload;
-pub use upload::VkTransferUploadState;
 pub use upload::VkTransferUpload;
+pub use upload::VkTransferUploadState;
+pub use upload::VkUpload;
+pub use upload::VkUploadState;
 
 mod debug_reporter;
 pub use debug_reporter::VkDebugReporter;
@@ -63,20 +63,20 @@ pub use context::VkCreateContextError;
 
 #[allow(clippy::module_inception)]
 mod surface;
+pub use surface::FrameInFlight;
 pub use surface::VkSurface;
 pub use surface::VkSurfaceSwapchainLifetimeListener;
-pub use surface::FrameInFlight;
 
 mod coordinates;
-pub use coordinates::Size;
+use ash::vk::SampleCountFlags;
 pub use coordinates::LogicalSize;
 pub use coordinates::PhysicalSize;
-use ash::vk::SampleCountFlags;
+pub use coordinates::Size;
 
 mod entry;
-pub use entry::VkEntry;
 #[cfg(feature = "static-vulkan")]
 pub use entry::MoltenEntry;
+pub use entry::VkEntry;
 
 //mod fence;
 

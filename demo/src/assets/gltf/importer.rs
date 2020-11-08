@@ -1,28 +1,28 @@
-use atelier_assets::core::{AssetUuid, AssetRef};
-use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue};
-use serde::{Deserialize, Serialize};
-use type_uuid::*;
-use std::io::Read;
-use std::convert::TryInto;
-use gltf::image::Data as GltfImageData;
-use gltf::buffer::Data as GltfBufferData;
-use fnv::FnvHashMap;
-use atelier_assets::loader::handle::Handle;
 use crate::assets::gltf::{
-    GltfMaterialAsset, MeshAssetData, MeshPartAssetData, MeshVertex, GltfMaterialDataShaderParam,
+    GltfMaterialAsset, GltfMaterialDataShaderParam, MeshAssetData, MeshPartAssetData, MeshVertex,
 };
-use renderer::assets::assets::{ImageAssetData, ColorSpace};
-use renderer::assets::assets::BufferAssetData;
-use renderer::assets::push_buffer::PushBuffer;
+use atelier_assets::core::{AssetRef, AssetUuid};
+use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue};
+use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::handle::SerdeContext;
-use renderer::assets::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
-use std::str::FromStr;
-use serde::export::Formatter;
-use renderer::assets::ImageAsset;
-use renderer::assets::MaterialInstanceAsset;
-use renderer::assets::BufferAsset;
-use renderer::assets::MaterialAsset;
+use fnv::FnvHashMap;
+use gltf::buffer::Data as GltfBufferData;
+use gltf::image::Data as GltfImageData;
 use itertools::Itertools;
+use renderer::assets::assets::BufferAssetData;
+use renderer::assets::assets::{ColorSpace, ImageAssetData};
+use renderer::assets::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
+use renderer::assets::push_buffer::PushBuffer;
+use renderer::assets::BufferAsset;
+use renderer::assets::ImageAsset;
+use renderer::assets::MaterialAsset;
+use renderer::assets::MaterialInstanceAsset;
+use serde::export::Formatter;
+use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
+use std::io::Read;
+use std::str::FromStr;
+use type_uuid::*;
 
 #[derive(Debug)]
 struct GltfImportError {

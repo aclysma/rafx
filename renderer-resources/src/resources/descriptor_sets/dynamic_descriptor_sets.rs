@@ -1,15 +1,15 @@
 use super::DescriptorSetArc;
-use super::DescriptorSetWriteSet;
 use super::DescriptorSetElementKey;
-use crate::resources::resource_lookup::{ImageViewResource, DescriptorSetLayoutResource};
+use super::DescriptorSetWriteSet;
 use crate::resources::descriptor_sets::descriptor_write_set::{
     DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue,
 };
-use ash::vk;
-use crate::resources::ResourceArc;
-use std::fmt::Formatter;
-use ash::prelude::VkResult;
 use crate::resources::descriptor_sets::DescriptorSetAllocator;
+use crate::resources::resource_lookup::{DescriptorSetLayoutResource, ImageViewResource};
+use crate::resources::ResourceArc;
+use ash::prelude::VkResult;
+use ash::vk;
+use std::fmt::Formatter;
 
 //TODO: Create a builder that is not initialized, this will help avoid forgetting to call flush
 // as well as prevent double-allocating (allocating a descriptor set based on a material instance

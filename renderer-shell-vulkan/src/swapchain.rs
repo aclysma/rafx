@@ -1,11 +1,11 @@
-use ash::vk;
-use ash::prelude::VkResult;
 use ash::extensions::khr;
+use ash::prelude::VkResult;
+use ash::vk;
 
 use ash::version::{DeviceV1_0, InstanceV1_0};
 
-use crate::{PresentMode, VkDeviceContext, MsaaLevel};
 use super::Window;
+use crate::{MsaaLevel, PresentMode, VkDeviceContext};
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 

@@ -1,22 +1,21 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::{
-    vk_description as dsc, ImageAsset, ShaderAsset, DescriptorSetArc, ResourceArc, AssetManager,
-};
-use atelier_assets::loader::handle::Handle;
-use std::hash::Hash;
-use std::sync::Arc;
-use crate::resources::{DescriptorSetWriteSet, MaterialPassResource};
-pub use crate::resources::GraphicsPipelineResource;
-pub use crate::resources::DescriptorSetLayoutResource;
-pub use crate::resources::PipelineLayoutResource;
-use crate::resources::ShaderModuleResource;
-use fnv::FnvHashMap;
-use std::ops::Deref;
-use ash::vk;
+use crate::{AssetManager, ImageAsset, ShaderAsset};
 use ash::prelude::VkResult;
-use renderer_nodes::{RenderPhaseIndex, RenderPhase};
+use ash::vk;
+use atelier_assets::loader::handle::Handle;
+use fnv::FnvHashMap;
+use renderer_nodes::{RenderPhase, RenderPhaseIndex};
+pub use renderer_resources::DescriptorSetLayoutResource;
+pub use renderer_resources::GraphicsPipelineResource;
+pub use renderer_resources::PipelineLayoutResource;
+use renderer_resources::ShaderModuleResource;
+use renderer_resources::{vk_description as dsc, DescriptorSetArc, ResourceArc};
+use renderer_resources::{DescriptorSetWriteSet, MaterialPassResource};
+use std::hash::Hash;
+use std::ops::Deref;
+use std::sync::Arc;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "366d277d-6cb5-430a-a8fa-007d8ae69886"]
@@ -334,7 +333,7 @@ impl MaterialPass {
         let pass_descriptor_set_writes: Vec<_> = descriptor_set_layouts
             .iter()
             .map(|layout| {
-                crate::resources::descriptor_sets::create_uninitialized_write_set_for_layout(
+                renderer_resources::descriptor_sets::create_uninitialized_write_set_for_layout(
                     &layout.into(),
                 )
             })

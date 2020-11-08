@@ -1,11 +1,11 @@
-use renderer_nodes::{
-    RenderFeatureIndex, RenderFeature, SubmitNodeId, FeatureCommandWriter, RenderView,
-    RenderPhaseIndex,
-};
-use crate::DemoWriteContext;
 use crate::demo_feature::{
     DemoRenderFeature, ExtractedPerFrameNodeDemoData, ExtractedPerViewNodeDemoData,
     PreparedPerSubmitNodeDemoData,
+};
+use crate::DemoWriteContext;
+use renderer_nodes::{
+    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
+    SubmitNodeId,
 };
 
 pub struct DemoCommandWriter {

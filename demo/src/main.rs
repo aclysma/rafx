@@ -1,41 +1,40 @@
 // There's a decent amount of code that's just for example and isn't called
 #![allow(dead_code)]
 
+use crate::components::{
+    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+};
+use crate::imgui_support::Sdl2ImguiManager;
+use legion::*;
 use renderer::vulkan::VkDeviceContext;
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use crate::imgui_support::Sdl2ImguiManager;
 use sdl2::mouse::MouseState;
-use crate::components::{
-    PositionComponent, PointLightComponent, SpotLightComponent, DirectionalLightComponent,
-};
-use legion::*;
 
 use crate::asset_resource::AssetResource;
+use crate::features::debug3d::DebugDraw3DResource;
+use crate::game_renderer::GameRenderer;
+use crate::resource_manager::GameAssetManager;
 use crate::time::TimeState;
 use renderer::assets::AssetManager;
-use crate::game_renderer::GameRenderer;
-use crate::features::debug3d::DebugDraw3DResource;
-use crate::resource_manager::GameAssetManager;
 
-mod assets;
-mod features;
-mod game_renderer;
-mod daemon;
-mod init;
-mod test_scene;
-mod resource_manager;
-mod components;
-mod game_asset_lookup;
-//mod renderpass;
-mod imgui_support;
-mod phases;
-mod render_contexts;
-mod time;
+mod asset_loader;
 mod asset_resource;
 mod asset_storage;
-mod asset_loader;
+mod assets;
+mod components;
+mod daemon;
+mod features;
+mod game_asset_lookup;
+mod game_renderer;
+mod imgui_support;
+mod init;
+mod phases;
+mod render_contexts;
+mod resource_manager;
+mod test_scene;
+mod time;
 
 fn main() {
     init::logging_init();

@@ -1,4 +1,4 @@
-use crate::{FramePacket, RenderView, PrepareJob, PrepareJobSet, RenderFeatureIndex};
+use crate::{FramePacket, PrepareJob, PrepareJobSet, RenderFeatureIndex, RenderView};
 
 pub trait ExtractJob<ExtractContextT, PrepareContextT, WriteContextT> {
     fn extract(

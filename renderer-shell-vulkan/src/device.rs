@@ -1,16 +1,16 @@
-use ash::vk;
-use ash::prelude::VkResult;
 use super::VkEntry;
 use super::VkInstance;
+use ash::prelude::VkResult;
+use ash::vk;
 
+use super::Window;
 use ash::version::DeviceV1_0;
 use ash::version::InstanceV1_0;
-use super::Window;
 
 use std::ffi::CStr;
 
+use crate::PhysicalDeviceType;
 use ash::extensions::khr;
-use crate::{PhysicalDeviceType /*, VkSubmitQueue*/};
 use std::mem::ManuallyDrop;
 
 use std::sync::{Arc, Mutex};

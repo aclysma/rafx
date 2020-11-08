@@ -1,11 +1,11 @@
 use ash::vk;
 use std::hash::Hasher;
 
-use serde::{Serialize, Deserialize};
 use renderer_shell_vulkan::MsaaLevel;
+use serde::{Deserialize, Serialize};
 
-use enumflags2::BitFlags;
 use bitflags::bitflags;
+use enumflags2::BitFlags;
 
 //TODO: Rename all this from description to definition
 
@@ -2712,8 +2712,8 @@ pub struct ShaderModuleMeta {
 pub struct ShaderModuleCodeHash(u64);
 impl ShaderModuleCodeHash {
     pub fn hash_shader_code(code: &Vec<u32>) -> Self {
-        use std::hash::Hash;
         use std::collections::hash_map::DefaultHasher;
+        use std::hash::Hash;
         let mut hasher = DefaultHasher::new();
         code.hash(&mut hasher);
         let code_hash = hasher.finish();

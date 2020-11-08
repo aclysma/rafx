@@ -1,8 +1,8 @@
-use ash::vk;
 use ash::prelude::VkResult;
+use ash::vk;
 
-use ash::version::DeviceV1_0;
 use crate::{VkBuffer, VkDeviceContext};
+use ash::version::DeviceV1_0;
 use std::mem::ManuallyDrop;
 
 use std::sync::{Arc, Mutex};

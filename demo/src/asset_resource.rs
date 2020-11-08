@@ -5,15 +5,15 @@ use crate::asset_storage::DynAssetLoader;
 
 use type_uuid::TypeUuid;
 
-use atelier_assets::loader as atelier_loader;
 use atelier_assets::core::AssetUuid;
-use atelier_assets::loader::handle::Handle;
-use atelier_assets::loader::storage::LoadStatus;
-use atelier_assets::loader::storage::LoadInfo;
-use atelier_assets::loader::storage::IndirectionResolver;
-use atelier_assets::loader::storage::IndirectIdentifier;
-use crossbeam_channel::{Receiver, Sender};
+use atelier_assets::loader as atelier_loader;
 use atelier_assets::loader::handle::AssetHandle;
+use atelier_assets::loader::handle::Handle;
+use atelier_assets::loader::storage::IndirectIdentifier;
+use atelier_assets::loader::storage::IndirectionResolver;
+use atelier_assets::loader::storage::LoadInfo;
+use atelier_assets::loader::storage::LoadStatus;
+use crossbeam_channel::{Receiver, Sender};
 
 /// A user-friendly interface to fetching/storing/loading assets. Meant to be a resource in an ECS
 /// system

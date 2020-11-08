@@ -1,6 +1,6 @@
+use super::Align;
 use ash::vk;
 use std::mem;
-use super::Align;
 
 use ash::prelude::VkResult;
 

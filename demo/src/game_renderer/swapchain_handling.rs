@@ -1,13 +1,13 @@
-use renderer::vulkan::{
-    VkContext, VkSurface, Window, VkSurfaceSwapchainLifetimeListener, VkDeviceContext, VkSwapchain,
-};
+use crate::game_renderer::swapchain_resources::SwapchainResources;
 use crate::game_renderer::GameRenderer;
-use legion::Resources;
 use ash::prelude::VkResult;
+use legion::Resources;
 use renderer::assets::AssetManager;
 use renderer::nodes::RenderRegistry;
-use crate::game_renderer::swapchain_resources::SwapchainResources;
-use renderer::assets::vk_description as dsc;
+use renderer::resources::vk_description as dsc;
+use renderer::vulkan::{
+    VkContext, VkDeviceContext, VkSurface, VkSurfaceSwapchainLifetimeListener, VkSwapchain, Window,
+};
 
 pub struct SwapchainLifetimeListener<'a> {
     pub resources: &'a Resources,

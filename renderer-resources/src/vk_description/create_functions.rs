@@ -1,8 +1,8 @@
-use ash::vk;
+use super::types as dsc;
+use crate::vk_description::{AttachmentIndex, SubpassInfo};
 use ash::prelude::*;
 use ash::version::DeviceV1_0;
-use super::types as dsc;
-use crate::vk_description::{SubpassInfo, AttachmentIndex};
+use ash::vk;
 
 pub fn create_shader_module(
     device: &ash::Device,

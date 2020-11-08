@@ -1,12 +1,12 @@
 mod sdl2_imgui_manager;
-pub use sdl2_imgui_manager::Sdl2ImguiManager;
 pub use sdl2_imgui_manager::init_imgui_manager;
+pub use sdl2_imgui_manager::Sdl2ImguiManager;
 
 mod imgui_manager;
 pub use imgui_manager::ImguiManager;
 
 pub use imgui;
-use imgui::{DrawCmdParams, DrawCmd};
+use imgui::{DrawCmd, DrawCmdParams};
 
 pub struct ImGuiFontAtlas {
     pub width: u32,

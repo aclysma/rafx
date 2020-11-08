@@ -1,19 +1,19 @@
 use std::ffi::CString;
 
-use std::mem::ManuallyDrop;
 use ash::vk;
+use std::mem::ManuallyDrop;
 
-use super::VkInstance;
-use super::VkCreateInstanceError;
 use super::VkCreateDeviceError;
+use super::VkCreateInstanceError;
 use super::VkDevice;
+use super::VkInstance;
 
-use super::PresentMode;
 use super::PhysicalDeviceType;
+use super::PresentMode;
 
 use super::VkEntry;
 use super::Window;
-use crate::{VkDeviceContext, MsaaLevel, VulkanLinkMethod};
+use crate::{MsaaLevel, VkDeviceContext, VulkanLinkMethod};
 //use crate::submit::PendingCommandBuffer;
 
 /// A builder to create the renderer. It's easier to use AppBuilder and implement an AppHandler, but

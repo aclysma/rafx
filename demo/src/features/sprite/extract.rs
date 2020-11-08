@@ -1,16 +1,18 @@
-use crate::features::sprite::{
-    ExtractedSpriteData, SpriteRenderNodeSet, SpriteRenderFeature, SpriteRenderNode,
-};
 use crate::components::{PositionComponent, SpriteComponent};
-use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::nodes::{
-    ExtractJob, FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature,
-};
-use renderer::base::slab::RawSlabKey;
 use crate::features::sprite::prepare::SpritePrepareJob;
+use crate::features::sprite::{
+    ExtractedSpriteData, SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet,
+};
+use crate::render_contexts::{
+    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
+};
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::MaterialAsset;
 use legion::*;
+use renderer::assets::MaterialAsset;
+use renderer::base::slab::RawSlabKey;
+use renderer::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
+};
 
 pub struct SpriteExtractJob {
     sprite_material: Handle<MaterialAsset>,

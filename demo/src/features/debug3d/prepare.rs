@@ -1,17 +1,17 @@
-use renderer::nodes::{
-    RenderView, ViewSubmitNodes, FeatureSubmitNodes, FeatureCommandWriter, RenderFeatureIndex,
-    FramePacket, RenderFeature, PrepareJob,
-};
+use super::write::Debug3dCommandWriter;
 use crate::features::debug3d::{
-    Debug3dRenderFeature, ExtractedDebug3dData, Debug3dDrawCall, Debug3dVertex,
-    Debug3dUniformBufferObject,
+    Debug3dDrawCall, Debug3dRenderFeature, Debug3dUniformBufferObject, Debug3dVertex,
+    ExtractedDebug3dData,
 };
 use crate::phases::OpaqueRenderPhase;
-use super::write::Debug3dCommandWriter;
-use crate::render_contexts::{RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::vulkan::VkBuffer;
+use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use ash::vk;
-use renderer::assets::resources::{ResourceArc, MaterialPassResource};
+use renderer::nodes::{
+    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
+    RenderFeatureIndex, RenderView, ViewSubmitNodes,
+};
+use renderer::resources::{MaterialPassResource, ResourceArc};
+use renderer::vulkan::VkBuffer;
 
 pub struct Debug3dPrepareJobImpl {
     debug3d_material_pass: ResourceArc<MaterialPassResource>,

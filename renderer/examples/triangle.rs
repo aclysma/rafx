@@ -1,17 +1,17 @@
+use ash::prelude::VkResult;
+use ash::version::DeviceV1_0;
+use ash::vk;
+use log::LevelFilter;
+use renderer::resources::vk_description as dsc;
+use renderer::resources::vk_description::{FramebufferMeta, SwapchainSurfaceInfo};
+use renderer::resources::{FramebufferResource, RenderPassResource, ResourceArc, ResourceManager};
 use renderer_shell_vulkan::{
-    VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window, VkImageRaw, VkSwapchain,
+    MsaaLevel, VkContextBuilder, VkDeviceContext, VkImageRaw, VkSurface, VkSwapchain, Window,
 };
-use renderer::resources::{ResourceManager, RenderPassResource, FramebufferResource, ResourceArc};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use ash::prelude::VkResult;
 use sdl2::EventPump;
-use log::LevelFilter;
-use renderer::resources::vk_description as dsc;
-use renderer::resources::vk_description::{SwapchainSurfaceInfo, FramebufferMeta};
-use ash::vk;
-use ash::version::DeviceV1_0;
 use std::sync::Arc;
 
 const WINDOW_WIDTH: u32 = 900;

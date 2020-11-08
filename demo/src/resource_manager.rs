@@ -1,16 +1,16 @@
-use renderer::assets::{AssetLookup, LoadQueues, GenericLoader, AssetManager};
+use crate::assets::gltf::MeshAssetData;
 use crate::game_asset_lookup::{
-    GameLoadedAssetMetrics, GameLoadedAssetLookupSet, MeshAsset, MeshAssetPart, MeshAssetInner,
+    GameLoadedAssetLookupSet, GameLoadedAssetMetrics, MeshAsset, MeshAssetInner, MeshAssetPart,
 };
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
-use atelier_assets::loader::handle::Handle;
-use atelier_assets::loader::handle::AssetHandle;
 use ash::prelude::VkResult;
+use atelier_assets::loader::handle::AssetHandle;
+use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::storage::AssetLoadOp;
-use crate::assets::gltf::MeshAssetData;
-use std::sync::Arc;
-use crossbeam_channel::Sender;
 use atelier_assets::loader::Loader;
+use crossbeam_channel::Sender;
+use renderer::assets::{AssetLookup, AssetManager, GenericLoader, LoadQueues};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct GameAssetManagerMetrics {

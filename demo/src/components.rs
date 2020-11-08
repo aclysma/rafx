@@ -1,10 +1,10 @@
 use crate::features::mesh::MeshRenderNodeHandle;
-use renderer::visibility::DynamicAabbVisibilityNodeHandle;
+use crate::features::sprite::SpriteRenderNodeHandle;
+use crate::game_asset_lookup::MeshAsset;
 use atelier_assets::loader::handle::Handle;
 use glam::f32::Vec3;
-use crate::features::sprite::SpriteRenderNodeHandle;
 use renderer::assets::ImageAsset;
-use crate::game_asset_lookup::MeshAsset;
+use renderer::visibility::DynamicAabbVisibilityNodeHandle;
 
 #[derive(Clone)]
 pub struct MeshComponent {

@@ -1,7 +1,7 @@
-use ash::vk;
 use super::ManagedDescriptorSet;
-use renderer_base::slab::RawSlabKey;
+use ash::vk;
 use crossbeam_channel::Sender;
+use renderer_base::slab::RawSlabKey;
 use std::fmt::Formatter;
 use std::sync::Arc;
 

@@ -1,8 +1,8 @@
-use ash::vk;
-use crate::vk_description as dsc;
 use crate::resources::resource_lookup::{ImageViewResource, SamplerResource};
-use fnv::FnvHashMap;
 use crate::resources::ResourceArc;
+use crate::vk_description as dsc;
+use ash::vk;
+use fnv::FnvHashMap;
 
 //
 // These represent descriptor updates that can be applied to a descriptor set in a pool

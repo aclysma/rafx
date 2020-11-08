@@ -1,8 +1,8 @@
 use crate::asset_resource::AssetResource;
-use renderer::assets::AssetManager;
+use ash::prelude::VkResult;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::storage::LoadStatus;
-use ash::prelude::VkResult;
+use renderer::assets::AssetManager;
 use renderer::assets::MaterialAsset;
 
 fn wait_for_asset_to_load<T>(

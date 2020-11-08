@@ -1,13 +1,15 @@
-use renderer::nodes::{
-    RenderFeature, RenderFeatureIndex, ExtractJob, GenericRenderNodeHandle, RenderNodeSet,
-    RenderNodeCount,
+use crate::render_contexts::{
+    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::base::slab::{DropSlabKey, DropSlab};
-use std::convert::TryInto;
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::MaterialAsset;
 use renderer::assets::ImageAsset;
+use renderer::assets::MaterialAsset;
+use renderer::base::slab::{DropSlab, DropSlabKey};
+use renderer::nodes::{
+    ExtractJob, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex, RenderNodeCount,
+    RenderNodeSet,
+};
+use std::convert::TryInto;
 
 mod extract;
 use extract::SpriteExtractJob;
@@ -15,8 +17,8 @@ use extract::SpriteExtractJob;
 mod prepare;
 
 mod write;
+use renderer::resources::{DescriptorSetArc, ImageViewResource, ResourceArc};
 use write::SpriteCommandWriter;
-use renderer::assets::resources::{DescriptorSetArc, ResourceArc, ImageViewResource};
 
 /// Per-pass "global" data
 #[derive(Clone, Debug, Copy)]

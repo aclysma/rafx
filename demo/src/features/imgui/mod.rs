@@ -1,14 +1,16 @@
-use crate::render_contexts::{RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext};
-use atelier_assets::loader::handle::Handle;
 use crate::features::imgui::extract::ImGuiExtractJobImpl;
+use crate::imgui_support::ImGuiDrawData;
+use crate::render_contexts::{
+    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
+};
+use ash::vk::Extent2D;
+use atelier_assets::loader::handle::Handle;
+use renderer::assets::MaterialAsset;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;
+use renderer::resources::{ImageViewResource, ResourceArc};
 use std::convert::TryInto;
-use crate::imgui_support::ImGuiDrawData;
-use ash::vk::Extent2D;
-use renderer::assets::{ImageViewResource, ResourceArc};
-use renderer::assets::MaterialAsset;
 
 mod extract;
 mod prepare;

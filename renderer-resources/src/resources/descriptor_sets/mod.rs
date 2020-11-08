@@ -1,5 +1,5 @@
-use fnv::FnvHashMap;
 use crate::vk_description as dsc;
+use fnv::FnvHashMap;
 
 mod descriptor_set_arc;
 pub use descriptor_set_arc::DescriptorSetArc;
@@ -14,19 +14,19 @@ mod descriptor_set_pool_chunk;
 use descriptor_set_pool_chunk::ManagedDescriptorSetPoolChunk;
 
 mod descriptor_set_buffers;
-use descriptor_set_buffers::DescriptorSetPoolRequiredBufferInfo;
 use descriptor_set_buffers::DescriptorLayoutBufferSet;
+use descriptor_set_buffers::DescriptorSetPoolRequiredBufferInfo;
 
 mod descriptor_write_set;
+pub use descriptor_write_set::create_uninitialized_write_set_for_layout;
+pub use descriptor_write_set::DescriptorSetElementKey;
+pub use descriptor_write_set::DescriptorSetElementWrite;
+pub use descriptor_write_set::DescriptorSetWriteElementBuffer;
+pub use descriptor_write_set::DescriptorSetWriteElementBufferData;
+pub use descriptor_write_set::DescriptorSetWriteElementBufferDataBufferRef;
 pub use descriptor_write_set::DescriptorSetWriteElementImage;
 pub use descriptor_write_set::DescriptorSetWriteElementImageValue;
-pub use descriptor_write_set::DescriptorSetWriteElementBufferDataBufferRef;
-pub use descriptor_write_set::DescriptorSetWriteElementBufferData;
-pub use descriptor_write_set::DescriptorSetWriteElementBuffer;
-pub use descriptor_write_set::DescriptorSetElementWrite;
-pub use descriptor_write_set::DescriptorSetElementKey;
 pub use descriptor_write_set::DescriptorSetWriteSet;
-pub use descriptor_write_set::create_uninitialized_write_set_for_layout;
 
 mod descriptor_set_allocator;
 pub use descriptor_set_allocator::DescriptorSetAllocator;
@@ -35,8 +35,8 @@ pub use descriptor_set_allocator::DescriptorSetPoolMetrics;
 
 mod descriptor_set_allocator_manager;
 pub(super) use descriptor_set_allocator_manager::DescriptorSetAllocatorManager;
-pub use descriptor_set_allocator_manager::DescriptorSetAllocatorRef;
 pub use descriptor_set_allocator_manager::DescriptorSetAllocatorProvider;
+pub use descriptor_set_allocator_manager::DescriptorSetAllocatorRef;
 
 const MAX_DESCRIPTORS_PER_POOL: u32 = 64;
 const MAX_FRAMES_IN_FLIGHT: usize = renderer_shell_vulkan::MAX_FRAMES_IN_FLIGHT;

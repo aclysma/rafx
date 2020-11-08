@@ -1,14 +1,16 @@
-use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
-use crate::render_contexts::{RenderJobExtractContext, RenderJobWriteContext, RenderJobPrepareContext};
-use renderer::nodes::{
-    FramePacket, RenderView, PrepareJob, RenderFeatureIndex, RenderFeature, ExtractJob,
-};
 use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
-use atelier_assets::loader::handle::Handle;
+use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
 use crate::imgui_support::Sdl2ImguiManager;
+use crate::render_contexts::{
+    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
+};
 use ash::vk::Extent2D;
-use renderer::assets::{ImageViewResource, ResourceArc};
+use atelier_assets::loader::handle::Handle;
 use renderer::assets::MaterialAsset;
+use renderer::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
+};
+use renderer::resources::{ImageViewResource, ResourceArc};
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
 // single function

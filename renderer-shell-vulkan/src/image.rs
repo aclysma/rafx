@@ -1,5 +1,5 @@
-use ash::vk;
 use ash::prelude::VkResult;
+use ash::vk;
 
 use crate::device::VkDeviceContext;
 use core::fmt;
