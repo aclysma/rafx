@@ -20,7 +20,7 @@ crossbeam-channel = "0.4.2"
 
 vk-mem = "0.2"
 
-renderer = { path = "../renderer" }
+renderer = { path = "../renderer", features = ["assets"] }
 renderer-shell-vulkan-sdl2 = { path = "../renderer-shell-vulkan-sdl2" }
 
 legion = { version = "0.3.0", default-features = false, features = ["serialize"] }
@@ -41,7 +41,6 @@ serde_bytes = "0.11"
 uuid = "0.8"
 type-uuid = "0.1"
 image2 = { version = "0.11", features = [ "ser" ] }
-inventory = "0.1"
 dashmap = { version = "3.11" }
 
 itertools = "0.8"

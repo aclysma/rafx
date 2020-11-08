@@ -1,15 +1,15 @@
 use renderer_shell_vulkan::{
     VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window, VkImageRaw, VkSwapchain,
 };
-use renderer_assets::{ResourceManager, RenderPassResource, FramebufferResource, ResourceArc};
+use renderer::resources::{ResourceManager, RenderPassResource, FramebufferResource, ResourceArc};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use ash::prelude::VkResult;
 use sdl2::EventPump;
 use log::LevelFilter;
-use renderer::assets::vk_description as dsc;
-use renderer_assets::vk_description::{SwapchainSurfaceInfo, FramebufferMeta};
+use renderer::resources::vk_description as dsc;
+use renderer::resources::vk_description::{SwapchainSurfaceInfo, FramebufferMeta};
 use ash::vk;
 use ash::version::DeviceV1_0;
 use std::sync::Arc;
@@ -172,8 +172,7 @@ fn run(
 
     let vk_context = context.build(window).unwrap();
     let device_context = vk_context.device_context().clone();
-    let mut resource_manager =
-        renderer::assets::ResourceManager::new(&device_context, &render_registry);
+    let mut resource_manager = ResourceManager::new(&device_context, &render_registry);
 
     let mut surface = VkSurface::new(&vk_context, window, None).unwrap();
 

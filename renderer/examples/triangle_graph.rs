@@ -1,22 +1,22 @@
 use renderer_shell_vulkan::{
     VkContextBuilder, MsaaLevel, VkDeviceContext, VkSurface, Window, VkImageRaw,
 };
-use renderer_assets::{ResourceManager, ImageResource};
+use renderer::resources::{ResourceManager, ImageResource};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use ash::prelude::VkResult;
 use sdl2::EventPump;
 use log::LevelFilter;
-use renderer::assets::{vk_description as dsc, ResourceArc};
-use renderer_assets::vk_description::SwapchainSurfaceInfo;
+use renderer::resources::{vk_description as dsc, ResourceArc};
+use renderer::resources::vk_description::SwapchainSurfaceInfo;
 use ash::vk;
-use renderer::assets::graph::{
+use renderer::resources::graph::{
     RenderGraphBuilder, RenderGraphNodeCallbacks, RenderGraphImageUsageId,
     RenderGraphImageConstraint, RenderGraphImageSpecification, RenderGraphExecutor,
 };
 use renderer::vulkan::FrameInFlight;
-use renderer_assets::graph::RenderGraphQueue;
+use renderer::graph::RenderGraphQueue;
 
 const WINDOW_WIDTH: u32 = 900;
 const WINDOW_HEIGHT: u32 = 600;
@@ -82,15 +82,14 @@ fn run(
     // This is used for the material system which is not part of this sample.
     let render_registry = renderer::nodes::RenderRegistryBuilder::default().build();
 
-    // Some basic configuration for creating the context
-    let context = VkContextBuilder::new()
-        .use_vulkan_debug_layer(true)
-        .msaa_level_priority(vec![MsaaLevel::Sample1])
-        .prefer_mailbox_present_mode();
-
     // The context sets up the instance and device. This object will tear down all vulkan
     // initialization when dropped. You generally just want one of these.
-    let vk_context = context.build(window).unwrap();
+    let vk_context = VkContextBuilder::new()
+        .use_vulkan_debug_layer(true)
+        .msaa_level_priority(vec![MsaaLevel::Sample1])
+        .prefer_mailbox_present_mode()
+        .build(window)
+        .unwrap();
 
     // The device context is a cloneable, multi-threading friendly accessor into what was created by
     // the context
@@ -99,8 +98,7 @@ fn run(
     // The resource manager sets up reference counting/hashing for most vulkan objects as well as
     // some multi-threading friendly helpers for creating dynamic resources. It also includes hooks
     // for atelier assets to register data. (But atelier assets is not used in this example)
-    let mut resource_manager =
-        renderer::assets::ResourceManager::new(&device_context, &render_registry);
+    let mut resource_manager = ResourceManager::new(&device_context, &render_registry);
 
     // The surface is associated with a window and handles creating the swapchain and re-creating it
     // if the swapchain becomes out of date (commonly due to window resize)

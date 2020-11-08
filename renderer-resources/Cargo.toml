@@ -1,5 +1,5 @@
 [package]
-name = "renderer-assets"
+name = "renderer-resources"
 version = "0.1.0"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
@@ -10,30 +10,16 @@ edition = "2018"
 renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 renderer-base = { path = "../renderer-base" }
 renderer-nodes = { path = "../renderer-nodes" }
-renderer-resources = { path = "../renderer-resources" }
-
-atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "indirect_handles", features = ["serde_importers"] }
 
 ash = ">0.30"
-vk-mem = "0.2"
 
-#TODO: Not sure we really need both
-image = "0.23"
-image2 = { version = "0.11", features = [ "ser" ] }
+enumflags2 = { version = "0.6", features = ["serde"] }
+bitflags = "1.2"
 
 crossbeam-channel = "0.4.2"
-
 log="0.4"
-
 fnv = "1.0"
-
 serde = { version = "1", features = ["serde_derive"] }
-serde_bytes = "0.11"
-uuid = "0.8"
-type-uuid = "0.1"
-
-ron = "0.5"
-
 arrayvec = "0.5"
 
 [dev-dependencies]

@@ -2,6 +2,7 @@
 extern crate log;
 
 pub use ash;
+pub use vk_mem;
 
 use ash::vk;
 

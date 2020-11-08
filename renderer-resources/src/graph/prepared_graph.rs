@@ -189,7 +189,7 @@ impl RenderGraphCacheInner {
     ) -> VkResult<ResourceArc<ImageViewResource>> {
         let image = VkImage::new(
             device_context,
-            vk_mem::MemoryUsage::GpuOnly,
+            renderer_shell_vulkan::vk_mem::MemoryUsage::GpuOnly,
             key.specification.usage_flags,
             vk::Extent3D {
                 width: key.swapchain_surface_info.extents.width,

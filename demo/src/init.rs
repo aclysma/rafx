@@ -32,7 +32,7 @@ pub fn logging_init() {
     #[cfg(not(debug_assertions))]
     let log_level = log::LevelFilter::Info;
     #[cfg(debug_assertions)]
-    let log_level = log::LevelFilter::Debug;
+    let log_level = log::LevelFilter::Info;
 
     // Setup logging
     env_logger::Builder::from_default_env()

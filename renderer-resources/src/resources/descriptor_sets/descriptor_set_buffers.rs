@@ -35,7 +35,7 @@ impl DescriptorBindingBufferSet {
 
         let buffer = VkBuffer::new(
             device_context,
-            vk_mem::MemoryUsage::CpuToGpu,
+            renderer_shell_vulkan::vk_mem::MemoryUsage::CpuToGpu,
             vk::BufferUsageFlags::UNIFORM_BUFFER,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             (buffer_info.per_descriptor_stride * MAX_DESCRIPTORS_PER_POOL) as u64,

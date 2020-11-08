@@ -478,7 +478,7 @@ impl AssetManager {
         asset_lookup: &mut AssetLookup<AssetT>,
     ) {
         for request in load_queues.take_commit_requests() {
-            log::info!(
+            log::trace!(
                 "commit asset {:?} {}",
                 request.load_handle,
                 core::any::type_name::<AssetDataT>()
