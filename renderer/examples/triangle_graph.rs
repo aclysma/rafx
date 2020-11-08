@@ -1,18 +1,18 @@
 use ash::prelude::VkResult;
 use ash::vk;
 use log::LevelFilter;
-use renderer::graph::RenderGraphQueue;
-use renderer::resources::graph::{
+use renderer::graph::{
     RenderGraphBuilder, RenderGraphExecutor, RenderGraphImageConstraint,
     RenderGraphImageSpecification, RenderGraphImageUsageId, RenderGraphNodeCallbacks,
+    RenderGraphQueue,
 };
 use renderer::resources::vk_description::SwapchainSurfaceInfo;
 use renderer::resources::{vk_description as dsc, ResourceArc};
 use renderer::resources::{ImageResource, ResourceManager};
-use renderer::vulkan::FrameInFlight;
 use renderer_shell_vulkan::{
-    MsaaLevel, VkContextBuilder, VkDeviceContext, VkImageRaw, VkSurface, Window,
+    FrameInFlight, MsaaLevel, VkContextBuilder, VkDeviceContext, VkImageRaw, VkSurface, Window,
 };
+
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;

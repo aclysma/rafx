@@ -1,7 +1,7 @@
 use ash::vk;
 use legion::*;
 use renderer::assets::AssetManager;
-use renderer::resources::graph::VisitRenderpassArgs;
+use renderer::graph::VisitRenderpassArgs;
 use renderer::resources::{RenderPassResource, ResourceArc, ResourceContext};
 use renderer::vulkan::VkDeviceContext;
 
