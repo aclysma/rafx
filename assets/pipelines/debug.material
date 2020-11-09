@@ -6,36 +6,17 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/debug.vert.spv",
+                    shader_module: "../shaders/debug.vert.shader",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/debug.frag.spv",
+                    shader_module: "../shaders/debug.frag.shader",
                     entry_name: "main"
                 ),
             ],
 
             shader_interface: (
-                descriptor_set_layouts: [
-                    (
-                        // Contains a view/projection matrix
-                        descriptor_set_layout_bindings: [
-                            (
-                                binding: 0,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Vertex,
-                                slot_name: "per_frame_data",
-
-                                internal_buffer_per_descriptor_size: Some(64)
-                            ),
-                        ]
-                    ),
-                ],
-                push_constant_ranges: [
-                    
-                ],
                 vertex_input_state: (
                     binding_descriptions: [
                         (

@@ -6,77 +6,16 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/sprite.vert.spv",
+                    shader_module: "../shaders/sprite.vert.shader",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/sprite.frag.spv",
+                    shader_module: "../shaders/sprite.frag.shader",
                     entry_name: "main"
                 ),
             ],
             shader_interface: (
-                descriptor_set_layouts: [
-                    (
-                        descriptor_set_layout_bindings: [
-                            (
-                                binding: 0,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Vertex,
-                                slot_name: "view_proj",
-
-                                internal_buffer_per_descriptor_size: Some(64)
-                            ),
-                            (
-                                binding: 1,
-                                descriptor_type: Sampler,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "sampler",
-
-                                immutable_samplers: Some([
-                                    (
-                                        mag_filter: Linear,
-                                        min_filter: Linear,
-                                        address_mode_u: Repeat,
-                                        address_mode_v: Repeat,
-                                        address_mode_w: Repeat,
-                                        anisotropy_enable: false,
-                                        max_anisotropy: 1.0, // Could be a setting later
-                                        border_color: IntOpaqueBlack,
-                                        unnormalized_coordinates: false,
-                                        compare_enable: false,
-                                        compare_op: Always,
-                                        mipmap_mode: Linear,
-                                        mip_lod_bias: 0,
-                                        min_lod: 0,
-                                        max_lod: 0
-                                    )
-                                ])                                
-                            ),
-                        ],
-                    ),
-                    (
-                        descriptor_set_layout_bindings: [
-                            (
-                                binding: 0,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "texture"
-                            ),
-                        ],
-                    ),
-                ],
-                push_constant_ranges: [
-                    (
-                        stage_flags: Vertex,
-                        offset: 0,
-                        size: 4,
-                        slot_name: "some_fancy_value"
-                    ),
-                ],
                 vertex_input_state: (
                     binding_descriptions: [
                         (

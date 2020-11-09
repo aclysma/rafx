@@ -4,6 +4,7 @@ use renderer::assets::ImageAsset;
 use renderer::assets::MaterialInstanceAsset;
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
+use shaders::mesh_frag::MaterialDataStd140;
 
 //TODO: These are extensions that might be interesting to try supporting. In particular, lights,
 // LOD, and clearcoat
@@ -58,9 +59,11 @@ impl Default for GltfMaterialData {
     }
 }
 
-impl Into<GltfMaterialDataShaderParam> for GltfMaterialData {
-    fn into(self) -> GltfMaterialDataShaderParam {
-        GltfMaterialDataShaderParam {
+pub type GltfMaterialDataShaderParam = MaterialDataStd140;
+
+impl Into<MaterialDataStd140> for GltfMaterialData {
+    fn into(self) -> MaterialDataStd140 {
+        MaterialDataStd140 {
             base_color_factor: self.base_color_factor.into(),
             emissive_factor: self.emissive_factor.into(),
             metallic_factor: self.metallic_factor,
@@ -77,29 +80,32 @@ impl Into<GltfMaterialDataShaderParam> for GltfMaterialData {
             has_normal_texture: if self.has_normal_texture { 1 } else { 0 },
             has_occlusion_texture: if self.has_occlusion_texture { 1 } else { 0 },
             has_emissive_texture: if self.has_emissive_texture { 1 } else { 0 },
+            pad0: 0,
+            pad1: 0,
+            pad2: 0
         }
     }
 }
 
-// This is non-texture data associated with the material. It's appropriate to be loaded as a uniform
-// for a shader
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-pub struct GltfMaterialDataShaderParam {
-    pub base_color_factor: glam::Vec4,   // default: 1,1,1,1
-    pub emissive_factor: glam::Vec3,     // default: 0,0,0
-    pub metallic_factor: f32,            //default: 1,
-    pub roughness_factor: f32,           // default: 1,
-    pub normal_texture_scale: f32,       // default: 1
-    pub occlusion_texture_strength: f32, // default 1
-    pub alpha_cutoff: f32,               // default 0.5
-
-    pub has_base_color_texture: u32,
-    pub has_metallic_roughness_texture: u32,
-    pub has_normal_texture: u32,
-    pub has_occlusion_texture: u32,
-    pub has_emissive_texture: u32,
-}
+// // This is non-texture data associated with the material. It's appropriate to be loaded as a uniform
+// // for a shader
+// #[derive(Copy, Clone, Debug)]
+// #[repr(C)]
+// pub struct GltfMaterialDataShaderParam {
+//     pub base_color_factor: glam::Vec4,   // default: 1,1,1,1
+//     pub emissive_factor: glam::Vec3,     // default: 0,0,0
+//     pub metallic_factor: f32,            //default: 1,
+//     pub roughness_factor: f32,           // default: 1,
+//     pub normal_texture_scale: f32,       // default: 1
+//     pub occlusion_texture_strength: f32, // default 1
+//     pub alpha_cutoff: f32,               // default 0.5
+//
+//     pub has_base_color_texture: u32,
+//     pub has_metallic_roughness_texture: u32,
+//     pub has_normal_texture: u32,
+//     pub has_occlusion_texture: u32,
+//     pub has_emissive_texture: u32,
+// }
 
 // We would need to change the pipeline for these
 // struct GltfShaderSetting {

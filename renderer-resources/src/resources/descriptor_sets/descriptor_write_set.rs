@@ -103,9 +103,9 @@ pub fn create_uninitialized_write_set_for_layout(
     layout: &dsc::DescriptorSetLayout
 ) -> DescriptorSetWriteSet {
     let mut write_set = DescriptorSetWriteSet::default();
-    for (binding_index, binding) in layout.descriptor_set_layout_bindings.iter().enumerate() {
+    for binding in &layout.descriptor_set_layout_bindings {
         let key = DescriptorSetElementKey {
-            dst_binding: binding_index as u32,
+            dst_binding: binding.binding as u32,
             //dst_array_element: 0,
         };
 

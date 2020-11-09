@@ -295,9 +295,12 @@ pub fn build_render_graph(
                     )?;
                 bloom_blur_material_dyn_set.set_image(0, sample_image);
 
-                let blur_horizontally: u32 = blur_pass_index % 2;
+                let blur_config = shaders::bloom_blur_frag::ConfigUniform {
+                    horizontal: blur_pass_index % 2,
+                    .. Default::default()
+                };
 
-                bloom_blur_material_dyn_set.set_buffer_data(2, &blur_horizontally);
+                bloom_blur_material_dyn_set.set_buffer_data(2, &blur_config);
                 bloom_blur_material_dyn_set.flush(&mut descriptor_set_allocator)?;
                 descriptor_set_allocator.flush_changes()?;
 

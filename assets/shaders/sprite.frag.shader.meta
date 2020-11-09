@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(2605721817466383424),
+    importer_version: 4,
+    importer_type: "cab0cf4c-16ff-4dbd-aae7-8705246d85d6",
+    importer_options: (),
+    importer_state: (Some("6fbf9a4a-da33-4ea5-b067-06d2015609e6")),
+    assets: [
+        (
+            id: "6fbf9a4a-da33-4ea5-b067-06d2015609e6",
+            search_tags: [
+                ("file_name", Some("sprite.frag.shader")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                id: (9772691286931724212),
+                asset_id: "6fbf9a4a-da33-4ea5-b067-06d2015609e6",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1202),
+                uncompressed_size: Some(1202),
+                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
+            )),
+        ),
+    ],
+)

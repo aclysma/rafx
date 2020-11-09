@@ -2,15 +2,12 @@ use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
     BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, PipelineAsset,
-    RenderpassAsset, ShaderAsset,
+    RenderpassAsset, ShaderAsset, SamplerAsset
 };
 use crate::assets::{
     MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
 };
-use crate::{
-    AssetLookup, AssetLookupSet, BufferAssetData, GenericLoader, LoadQueues,
-    MaterialInstanceSlotAssignment, SlotNameLookup,
-};
+use crate::{AssetLookup, AssetLookupSet, BufferAssetData, GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SlotNameLookup, SamplerAssetData};
 use ash::prelude::*;
 use atelier_assets::loader::handle::Handle;
 use renderer_resources::{
@@ -55,6 +52,7 @@ pub struct AssetManagerLoaders {
     pub renderpass_loader: GenericLoader<RenderpassAssetData, RenderpassAsset>,
     pub material_loader: GenericLoader<MaterialAssetData, MaterialAsset>,
     pub material_instance_loader: GenericLoader<MaterialInstanceAssetData, MaterialInstanceAsset>,
+    pub sampler_loader: GenericLoader<SamplerAssetData, SamplerAsset>,
     pub image_loader: GenericLoader<ImageAssetData, ImageAsset>,
     pub buffer_loader: GenericLoader<BufferAssetData, BufferAsset>,
 }
@@ -164,6 +162,10 @@ impl AssetManager {
         self.load_queues.material_instances.create_loader()
     }
 
+    fn create_sampler_loader(&self) -> GenericLoader<SamplerAssetData, SamplerAsset> {
+        self.load_queues.samplers.create_loader()
+    }
+
     fn create_image_loader(&self) -> GenericLoader<ImageAssetData, ImageAsset> {
         self.load_queues.images.create_loader()
     }
@@ -179,6 +181,7 @@ impl AssetManager {
             renderpass_loader: self.create_renderpass_loader(),
             material_loader: self.create_material_loader(),
             material_instance_loader: self.create_material_instance_loader(),
+            sampler_loader: self.create_sampler_loader(),
             image_loader: self.create_image_loader(),
             buffer_loader: self.create_buffer_loader(),
         }
@@ -228,6 +231,7 @@ impl AssetManager {
         self.process_renderpass_load_requests();
         self.process_material_load_requests();
         self.process_material_instance_load_requests();
+        self.process_sampler_load_requests();
         self.process_image_load_requests()?;
         self.process_buffer_load_requests()?;
 
@@ -367,6 +371,28 @@ impl AssetManager {
         Self::handle_free_requests(
             &mut self.load_queues.material_instances,
             &mut self.loaded_assets.material_instances,
+        );
+    }
+
+    fn process_sampler_load_requests(&mut self) {
+        for request in self.load_queues.samplers.take_load_requests() {
+            log::trace!("Create sampler {:?}", request.load_handle);
+            let loaded_asset = self.load_sampler(&request.asset);
+            Self::handle_load_result(
+                request.load_op,
+                loaded_asset,
+                &mut self.loaded_assets.samplers,
+                request.result_tx,
+            );
+        }
+
+        Self::handle_commit_requests(
+            &mut self.load_queues.samplers,
+            &mut self.loaded_assets.samplers,
+        );
+        Self::handle_free_requests(
+            &mut self.load_queues.samplers,
+            &mut self.loaded_assets.samplers,
         );
     }
 
@@ -546,8 +572,30 @@ impl AssetManager {
         shader_module: &ShaderAssetData,
     ) -> VkResult<ShaderAsset> {
         let shader = Arc::new(shader_module.shader.clone());
+
+        let mut reflection_data_lookup = FnvHashMap::default();
+        if let Some(reflection_data) = &shader_module.reflection_data {
+            for entry_point in reflection_data {
+                let old = reflection_data_lookup.insert(entry_point.name.clone(), entry_point.clone());
+                assert!(old.is_none());
+            }
+        }
+
         let shader_module = self.resources().get_or_create_shader_module(&shader)?;
-        Ok(ShaderAsset { shader_module })
+        Ok(ShaderAsset {
+            shader_module,
+            reflection_data: Arc::new(reflection_data_lookup)
+        })
+    }
+
+    fn load_sampler(
+        &mut self,
+        sampler: &SamplerAssetData,
+    ) -> VkResult<SamplerAsset> {
+        let sampler = self.resources().get_or_create_sampler(&sampler.sampler)?;
+        Ok(SamplerAsset {
+            sampler
+        })
     }
 
     fn load_graphics_pipeline(
@@ -645,11 +693,12 @@ impl AssetManager {
                 pass_descriptor_set_writes
             );
 
-            // Save the
             material_instance_descriptor_set_writes.push(pass_descriptor_set_writes.clone());
 
             // This will contain the descriptor sets created for this pass, one for each set within the pass
             let mut pass_descriptor_sets = Vec::with_capacity(pass_descriptor_set_writes.len());
+
+            let material_pass_descriptor_sets = &pass.material_pass_resource.get_raw().pipeline_layout.get_raw().descriptor_sets;
 
             //
             // Register the writes into the correct descriptor set pools
@@ -657,19 +706,18 @@ impl AssetManager {
             //let layouts = pass.pipeline_create_data.pipeline_layout.iter().zip(&pass.pipeline_create_data.pipeline_layout_def);
             for (layout_index, layout_writes) in pass_descriptor_set_writes.into_iter().enumerate()
             {
-                let descriptor_set = self
-                    .material_instance_descriptor_sets
-                    .create_descriptor_set(
-                        &pass
-                            .material_pass_resource
-                            .get_raw()
-                            .pipeline_layout
-                            .get_raw()
-                            .descriptor_sets[layout_index],
-                        layout_writes,
-                    )?;
+                if !layout_writes.elements.is_empty() {
+                    let descriptor_set = self
+                        .material_instance_descriptor_sets
+                        .create_descriptor_set(
+                            &material_pass_descriptor_sets[layout_index],
+                            layout_writes,
+                        )?;
 
-                pass_descriptor_sets.push(descriptor_set);
+                    pass_descriptor_sets.push(Some(descriptor_set));
+                } else {
+                    pass_descriptor_sets.push(None);
+                }
             }
 
             material_descriptor_sets.push(pass_descriptor_sets);
@@ -677,7 +725,7 @@ impl AssetManager {
 
         log::trace!("Loaded material\n{:#?}", material_descriptor_sets);
 
-        // Put these in an arc because
+        // Put these in an arc to avoid cloning the underlying data repeatedly
         let material_descriptor_sets = Arc::new(material_descriptor_sets);
         Ok(MaterialInstanceAsset::new(
             material_instance_asset.material.clone(),
@@ -697,6 +745,7 @@ impl AssetManager {
     ) -> VkResult<()> {
         if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
             for location in slot_locations {
+                log::trace!("Apply write to location {:?} via slot {}", location, slot_assignment.slot_name);
                 let layout_descriptor_set_writes =
                     &mut material_pass_write_set[location.layout_index as usize];
                 let write = layout_descriptor_set_writes

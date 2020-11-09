@@ -42,12 +42,14 @@ pub fn run() {
     AssetDaemon::default()
         .with_importer("pipeline", renderer::assets::PipelineImporter)
         .with_importer("renderpass", renderer::assets::RenderpassImporter)
+        .with_importer("sampler", renderer::assets::SamplerImporter)
         .with_importer("material", renderer::assets::MaterialImporter)
         .with_importer(
             "materialinstance",
             renderer::assets::MaterialInstanceImporter,
         )
-        .with_importer("spv", renderer::assets::ShaderImporter)
+        .with_importer("spv", renderer::assets::ShaderImporterSpv)
+        .with_importer("shader", renderer::assets::ShaderImporterCooked)
         .with_importer("png", renderer::assets::ImageImporter)
         .with_importer("jpg", renderer::assets::ImageImporter)
         .with_importer("jpeg", renderer::assets::ImageImporter)

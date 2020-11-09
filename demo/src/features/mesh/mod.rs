@@ -26,6 +26,11 @@ const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 = 0;
 const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 = 1;
 const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 = 2;
 
+pub use shaders::mesh_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
+pub use shaders::mesh_vert::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
+pub use shaders::mesh_vert::PerViewDataVSUniform as MeshPerFrameVertexShaderParam;
+
+/*
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
@@ -74,22 +79,15 @@ pub struct MeshPerViewFragmentShaderParam {
     pub directional_lights: [DirectionalLight; 16], // +1056 (64*16 = 1024),
     pub spot_lights: [SpotLight; 16],               // +2080 (96*16 = 1536)
 } // 3616 bytes
+*/
 
-#[derive(Default, Copy, Clone)]
-//#[repr(C)]
-#[repr(C)]
-pub struct MeshPerFrameVertexShaderParam {
-    pub shadow_map_view_proj: glam::Mat4, // +0
-    pub shadow_map_light_dir: glam::Vec4, // +64
-} // 80 bytes
-
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-pub struct MeshPerObjectShaderParam {
-    pub model: glam::Mat4,           // +0
-    pub model_view: glam::Mat4,      // +64
-    pub model_view_proj: glam::Mat4, // +128
-} // 192 bytes
+// #[derive(Default, Copy, Clone)]
+// //#[repr(C)]
+// #[repr(C)]
+// pub struct MeshPerFrameVertexShaderParam {
+//     pub shadow_map_view_proj: glam::Mat4, // +0
+//     pub shadow_map_light_dir: glam::Vec4, // +64
+// } // 80 bytes
 
 pub fn create_mesh_extract_job(
     shadow_map_image: ResourceArc<ImageViewResource>,
@@ -182,8 +180,8 @@ impl std::fmt::Debug for ExtractedFrameNodeMeshData {
 
 pub struct PreparedSubmitNodeMeshData {
     material_pass: MaterialPass,
-    per_view_descriptor_set: DescriptorSetArc,
-    per_material_descriptor_set: DescriptorSetArc,
+    per_view_descriptor_set: Option<DescriptorSetArc>,
+    per_material_descriptor_set: Option<DescriptorSetArc>,
     per_instance_descriptor_set: DescriptorSetArc,
     // we can get the mesh via the frame node index
     frame_node_index: FrameNodeIndex,

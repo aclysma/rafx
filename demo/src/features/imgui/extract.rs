@@ -91,7 +91,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .get_material_pass_by_index(&self.imgui_material, 0)
             .unwrap();
 
-        let view_ubo = ImGuiUniformBufferObject { view_proj };
+        let view_ubo = ImGuiUniformBufferObject { mvp: view_proj };
 
         Box::new(ImGuiPrepareJobImpl::new(
             ExtractedImGuiData { imgui_draw_data },

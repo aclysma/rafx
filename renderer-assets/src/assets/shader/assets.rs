@@ -2,11 +2,29 @@ use renderer_resources::ShaderModuleResource;
 use renderer_resources::{vk_description as dsc, ResourceArc};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
+use fnv::FnvHashMap;
+use std::sync::Arc;
+use super::ReflectedEntryPoint;
 
-#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
+//TODO: Vertex formats? Autogenerate the vertex struct? Or, generate vertex layout based on known
+// vertex format. So vertex format as an asset type?
+//TODO: Samplers - external or inline in shader?
+//TODO
+
+// An import format that will get turned into ShaderAssetData
+#[derive(Serialize, Deserialize)]
+pub struct CookedShader {
+    #[serde(with = "serde_bytes")]
+    pub spv: Vec<u8>,
+    pub entry_points: Vec<ReflectedEntryPoint>,
+}
+
+
+#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "e0ae2222-1a44-4022-af95-03c9101ac89e"]
 pub struct ShaderAssetData {
     pub shader: dsc::ShaderModule,
+    pub reflection_data: Option<Vec<ReflectedEntryPoint>>
 }
 
 //
@@ -19,4 +37,5 @@ pub struct ShaderAssetData {
 #[uuid = "b6958faa-5769-4048-a507-f91a07f49af4"]
 pub struct ShaderAsset {
     pub shader_module: ResourceArc<ShaderModuleResource>,
+    pub reflection_data: Arc<FnvHashMap<String, ReflectedEntryPoint>>,
 }

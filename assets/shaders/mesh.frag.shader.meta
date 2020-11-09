@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(17513398179831042705),
+    importer_version: 4,
+    importer_type: "cab0cf4c-16ff-4dbd-aae7-8705246d85d6",
+    importer_options: (),
+    importer_state: (Some("2fc607bd-3605-44ff-a778-c49fa035d91f")),
+    assets: [
+        (
+            id: "2fc607bd-3605-44ff-a778-c49fa035d91f",
+            search_tags: [
+                ("file_name", Some("mesh.frag.shader")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                id: (16730608344425853255),
+                asset_id: "2fc607bd-3605-44ff-a778-c49fa035d91f",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(29924),
+                uncompressed_size: Some(29924),
+                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
+            )),
+        ),
+    ],
+)

@@ -1,180 +1,23 @@
 (
     passes: [
         (
+            name: Some("mesh opaque"),
             phase: Some("Opaque"),
             pipeline: "mesh.pipeline",
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh.vert.spv",
+                    shader_module: "../shaders/mesh.vert.shader",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/mesh.frag.spv",
+                    shader_module: "../shaders/mesh.frag.shader",
                     entry_name: "main"
                 ),
             ],
 
             shader_interface: (
-                descriptor_set_layouts: [
-
-                    // Global data
-                    (
-                        descriptor_set_layout_bindings: [
-                            (
-                                binding: 0,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "per_frame_data",
-
-                                internal_buffer_per_descriptor_size: Some(3616)
-                            ),
-                            (
-                                binding: 1,
-                                descriptor_type: Sampler,
-                                descriptor_count: 0,
-                                stage_flags: Fragment,
-                                slot_name: "sampler",
-
-                                immutable_samplers: Some([
-                                    (
-                                        mag_filter: Linear,
-                                        min_filter: Linear,
-                                        address_mode_u: Repeat,
-                                        address_mode_v: Repeat,
-                                        address_mode_w: Repeat,
-                                        anisotropy_enable: true,
-                                        max_anisotropy: 16.0, // Could be a setting later
-                                        border_color: IntOpaqueBlack,
-                                        unnormalized_coordinates: false,
-                                        compare_enable: false,
-                                        compare_op: Always,
-                                        mipmap_mode: Linear,
-                                        mip_lod_bias: 0,
-                                        min_lod: 0,
-                                        max_lod: 5000
-                                    )
-                                ])                                
-                            ),
-                            (
-                                binding: 2,
-                                descriptor_type: Sampler,
-                                descriptor_count: 0,
-                                stage_flags: Fragment,
-                                slot_name: "sampler_depth",
-
-                                immutable_samplers: Some([
-                                    (
-                                        mag_filter: Linear,
-                                        min_filter: Linear,
-                                        address_mode_u: ClampToBorder,
-                                        address_mode_v: ClampToBorder,
-                                        address_mode_w: ClampToBorder,
-                                        anisotropy_enable: true,
-                                        max_anisotropy: 16.0, // Could be a setting later
-                                        border_color: IntOpaqueWhite,
-                                        unnormalized_coordinates: false,
-                                        //compare_enable: false,
-                                        //compare_op: Always,
-                                        compare_enable: true, // PCF
-                                        compare_op: Less,     // PCF
-                                        mipmap_mode: Linear,
-                                        mip_lod_bias: 0,
-                                        min_lod: 0,
-                                        max_lod: 5000
-                                    )
-                                ])
-                            ),
-                            (
-                                binding: 3,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "shadow_map_image"
-                            ),
-                            (
-                                binding: 4,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Vertex,
-                                slot_name: "per_view_data_vs",
-
-                                internal_buffer_per_descriptor_size: Some(80)
-                            ),
-                        ],
-                    ),
-
-                    // Per-material values
-                    (
-                        descriptor_set_layout_bindings: [
-                            (
-                                binding: 0,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "per_material_data",
-
-                                internal_buffer_per_descriptor_size: Some(80)
-                            ),
-                            (
-                                binding: 1,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "base_color_texture"
-                            ),
-                            (
-                                binding: 2,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "metallic_roughness_texture"
-                            ),
-                            (
-                                binding: 3,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "normal_texture"
-                            ),
-                            (
-                                binding: 4,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "occlusion_texture"
-                            ),
-                            (
-                                binding: 5,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "emissive_texture"
-                            ),
-                        ]
-                    ),
-
-                    // Per-instance values
-                    (
-                        descriptor_set_layout_bindings: [
-                            (
-                                binding: 0,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Vertex,
-                                slot_name: "per_object_data",
-
-                                internal_buffer_per_descriptor_size: Some(192)
-                            ),
-                        ]
-                    ),
-                ],
-                push_constant_ranges: [
-                    
-                ],
-
                 // If a mesh has a material, it needs to be cooked so that the verts are in that format
                 // Maybe each binding is a vertex channel?
                 // Actually maybe this works out so that you can have a kitchen-sink blob of vertex
@@ -226,171 +69,13 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh_shadow_map.vert.spv",
+                    shader_module: "../shaders/mesh_shadow_map.vert.shader",
                     entry_name: "main"
                 ),
                 // No fragment shader required
             ],
 
             shader_interface: (
-                descriptor_set_layouts: [
-
-                    // Global data
-                    (
-                        descriptor_set_layout_bindings: [
-                            (
-                                binding: 0,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "per_frame_data",
-
-                                internal_buffer_per_descriptor_size: Some(3616)
-                            ),
-                            (
-                                binding: 1,
-                                descriptor_type: Sampler,
-                                descriptor_count: 0,
-                                stage_flags: Fragment,
-                                slot_name: "sampler",
-
-                                immutable_samplers: Some([
-                                    (
-                                        mag_filter: Linear,
-                                        min_filter: Linear,
-                                        address_mode_u: Repeat,
-                                        address_mode_v: Repeat,
-                                        address_mode_w: Repeat,
-                                        anisotropy_enable: true,
-                                        max_anisotropy: 16.0, // Could be a setting later
-                                        border_color: IntOpaqueBlack,
-                                        unnormalized_coordinates: false,
-                                        compare_enable: false,
-                                        compare_op: Always,
-                                        mipmap_mode: Linear,
-                                        mip_lod_bias: 0,
-                                        min_lod: 0,
-                                        max_lod: 5000
-                                    )
-                                ])
-                            ),
-                            (
-                                binding: 2,
-                                descriptor_type: Sampler,
-                                descriptor_count: 0,
-                                stage_flags: Fragment,
-                                slot_name: "sampler_depth",
-
-                                immutable_samplers: Some([
-                                    (
-                                        mag_filter: Linear,
-                                        min_filter: Linear,
-                                        address_mode_u: ClampToBorder,
-                                        address_mode_v: ClampToBorder,
-                                        address_mode_w: ClampToBorder,
-                                        anisotropy_enable: true,
-                                        max_anisotropy: 16.0, // Could be a setting later
-                                        border_color: IntOpaqueWhite,
-                                        unnormalized_coordinates: false,
-                                        //compare_enable: false,
-                                        //compare_op: Always,
-                                        compare_enable: true, // PCF
-                                        compare_op: Less,     // PCF
-                                        mipmap_mode: Linear,
-                                        mip_lod_bias: 0,
-                                        min_lod: 0,
-                                        max_lod: 5000
-                                    )
-                                ])
-                            ),
-                            (
-                                binding: 3,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "shadow_map_image"
-                            ),
-                            (
-                                binding: 4,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Vertex,
-                                slot_name: "per_view_data_vs",
-
-                                internal_buffer_per_descriptor_size: Some(80)
-                            ),
-                        ],
-                    ),
-
-                    // Per-material values
-                    (
-                        descriptor_set_layout_bindings: [
-                            (
-                                binding: 0,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "per_material_data",
-
-                                internal_buffer_per_descriptor_size: Some(80)
-                            ),
-                            (
-                                binding: 1,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "base_color_texture"
-                            ),
-                            (
-                                binding: 2,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "metallic_roughness_texture"
-                            ),
-                            (
-                                binding: 3,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "normal_texture"
-                            ),
-                            (
-                                binding: 4,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "occlusion_texture"
-                            ),
-                            (
-                                binding: 5,
-                                descriptor_type: SampledImage,
-                                descriptor_count: 1,
-                                stage_flags: Fragment,
-                                slot_name: "emissive_texture"
-                            ),
-                        ]
-                    ),
-
-                    // Per-instance values
-                    (
-                        descriptor_set_layout_bindings: [
-                            (
-                                binding: 0,
-                                descriptor_type: UniformBuffer,
-                                descriptor_count: 1,
-                                stage_flags: Vertex,
-                                slot_name: "per_object_data",
-
-                                internal_buffer_per_descriptor_size: Some(192)
-                            ),
-                        ]
-                    ),
-                ],
-                push_constant_ranges: [
-
-                ],
-
                 // If a mesh has a material, it needs to be cooked so that the verts are in that format
                 // Maybe each binding is a vertex channel?
                 // Actually maybe this works out so that you can have a kitchen-sink blob of vertex

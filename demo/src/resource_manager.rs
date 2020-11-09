@@ -186,14 +186,16 @@ impl GameAssetManager {
                     opaque_pass: material_instance.material.passes[opaque_pass_index].clone(),
                     opaque_material_descriptor_set: material_instance.material_descriptor_sets
                         [opaque_pass_index][PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
+                        .as_ref()
+                        .unwrap()
                         .clone(),
                     shadow_map_pass: shadow_map_pass_index
                         .map(|pass_index| material_instance.material.passes[pass_index].clone()),
-                    shadow_map_material_descriptor_set: shadow_map_pass_index.map(|pass_index| {
-                        material_instance.material_descriptor_sets[pass_index]
-                            [PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
-                            .clone()
-                    }),
+                    // shadow_map_material_descriptor_set: shadow_map_pass_index.map(|pass_index| {
+                    //     material_instance.material_descriptor_sets[pass_index]
+                    //         [PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
+                    //         .clone()
+                    // }),
                     vertex_buffer_offset_in_bytes: mesh_part.vertex_buffer_offset_in_bytes,
                     vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
                     index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,

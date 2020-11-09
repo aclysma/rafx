@@ -1,11 +1,6 @@
 
-export PATH=~/dev/sdk/vulkansdk-macos-1.2.131.2/macOS/bin/glslc:$PATH
+cargo run --package shader-processor -- --trace --glsl-path glsl/*.vert glsl/*.frag --rs-path src --cooked-shaders-path ../../assets/shaders
+cargo test --package shaders
 
-glslc sprite.vert -o sprite.vert.spv
-glslc sprite.frag -o sprite.frag.spv
-
-glslc imgui.vert -o imgui.vert.spv
-glslc imgui.frag -o imgui.frag.spv
-
-glslc mesh.vert -o mesh.vert.spv
-glslc mesh.frag -o mesh.frag.spv
+#cargo run --package shader-processor -- --glsl_path glsl/baseline.frag
+#cargo run --package shader-processor -- --glsl_path glsl/repro.frag

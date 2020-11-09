@@ -21,11 +21,7 @@ use renderer::resources::{DescriptorSetArc, ImageViewResource, ResourceArc};
 use write::SpriteCommandWriter;
 
 /// Per-pass "global" data
-#[derive(Clone, Debug, Copy)]
-struct SpriteUniformBufferObject {
-    // View and projection matrices
-    view_proj: [[f32; 4]; 4],
-}
+pub type SpriteUniformBufferObject = shaders::sprite_vert::ArgsUniform;
 
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy)]

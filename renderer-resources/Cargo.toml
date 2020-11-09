@@ -17,7 +17,7 @@ enumflags2 = { version = "0.6", features = ["serde"] }
 bitflags = "1.2"
 
 crossbeam-channel = "0.4.2"
-log="0.4"
+log = "0.4"
 fnv = "1.0"
 serde = { version = "1", features = ["serde_derive"] }
 arrayvec = "0.5"

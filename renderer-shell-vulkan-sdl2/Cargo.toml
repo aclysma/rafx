@@ -14,4 +14,4 @@ raw-window-handle = "0.3"
 
 renderer-shell-vulkan = { version = "0.1", path = "../renderer-shell-vulkan" }
 
-log="0.4"
+log = "0.4"
