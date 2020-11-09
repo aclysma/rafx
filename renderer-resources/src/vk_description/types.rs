@@ -138,50 +138,6 @@ pub enum ImageAspectFlag {
 
 pub type ImageAspectFlags = BitFlags<ImageAspectFlag>;
 
-// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-// #[serde(transparent)]
-// pub struct ImageAspectFlags(pub BitFlags<ImageAspectFlag>);
-
-// impl Into<vk::ImageAspectFlags> for ImageAspectFlags {
-//     fn into(self) -> vk::ImageAspectFlags {
-//         // match self {
-//         //     ImageAspectFlags::Color => vk::ImageAspectFlags::COLOR,
-//         //     ImageAspectFlags::Depth => vk::ImageAspectFlags::DEPTH,
-//         //     ImageAspectFlags::Stencil => vk::ImageAspectFlags::STENCIL,
-//         //     ImageAspectFlags::Metadata => vk::ImageAspectFlags::METADATA,
-//         // }
-//         self.
-//     }
-// }
-
-// impl ImageAspectFlag {
-//     fn from_vk_image_aspect_flags(flags: vk::ImageAspectFlags) -> BitFlags<ImageAspectFlag> {
-//         <BitFlags<ImageAspectFlag>>::from_bits(flags.as_raw()).unwrap()
-//     }
-//
-//     fn to_vk_image_aspect_flags(flags: BitFlags<ImageAspectFlag>) -> vk::ImageAspectFlags {
-//         vk::ImageAspectFlags::from_raw(flags.bits())
-//     }
-// }
-
-// impl Into<vk::ImageAspectFlags> for ImageAspectFlags {
-//     fn into(self) -> vk::ImageAspectFlags {
-//         vk::ImageAspectFlags::from_raw(self.0.bits())
-//     }
-// }
-//
-// impl From<vk::ImageAspectFlags> for ImageAspectFlags {
-//     fn from(flags: vk::ImageAspectFlags) -> ImageAspectFlags {
-//         ImageAspectFlags(<BitFlags<ImageAspectFlag>>::from_bits(flags.as_raw()).unwrap())
-//     }
-// }
-//
-// impl From<ImageAspectFlag> for ImageAspectFlags {
-//     fn from(flag: ImageAspectFlag) -> ImageAspectFlags {
-//         ImageAspectFlags(flag.into())
-//     }
-// }
-
 impl Default for ImageAspectFlag {
     fn default() -> Self {
         ImageAspectFlag::Color
@@ -451,10 +407,10 @@ impl Default for DescriptorType {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ShaderStageFlags {
+pub enum ShaderStage {
     Vertex,
-    TesselectionControl,
-    TesselactionEvaluation,
+    TessellationControl,
+    TessellationEvaluation,
     Geometry,
     Fragment,
     Compute,
@@ -462,28 +418,136 @@ pub enum ShaderStageFlags {
     All,
 }
 
-impl Into<vk::ShaderStageFlags> for ShaderStageFlags {
+impl Into<vk::ShaderStageFlags> for ShaderStage {
     fn into(self) -> vk::ShaderStageFlags {
         match self {
-            ShaderStageFlags::Vertex => vk::ShaderStageFlags::VERTEX,
-            ShaderStageFlags::TesselectionControl => vk::ShaderStageFlags::TESSELLATION_CONTROL,
-            ShaderStageFlags::TesselactionEvaluation => {
+            ShaderStage::Vertex => vk::ShaderStageFlags::VERTEX,
+            ShaderStage::TessellationControl => vk::ShaderStageFlags::TESSELLATION_CONTROL,
+            ShaderStage::TessellationEvaluation => {
                 vk::ShaderStageFlags::TESSELLATION_EVALUATION
             }
-            ShaderStageFlags::Geometry => vk::ShaderStageFlags::GEOMETRY,
-            ShaderStageFlags::Fragment => vk::ShaderStageFlags::FRAGMENT,
-            ShaderStageFlags::Compute => vk::ShaderStageFlags::COMPUTE,
-            ShaderStageFlags::AllGraphics => vk::ShaderStageFlags::ALL_GRAPHICS,
-            ShaderStageFlags::All => vk::ShaderStageFlags::ALL,
+            ShaderStage::Geometry => vk::ShaderStageFlags::GEOMETRY,
+            ShaderStage::Fragment => vk::ShaderStageFlags::FRAGMENT,
+            ShaderStage::Compute => vk::ShaderStageFlags::COMPUTE,
+            ShaderStage::AllGraphics => vk::ShaderStageFlags::ALL_GRAPHICS,
+            ShaderStage::All => vk::ShaderStageFlags::ALL,
         }
+    }
+}
+
+impl Into<ShaderStageFlags> for ShaderStage {
+    fn into(self) -> ShaderStageFlags {
+        match self {
+            ShaderStage::Vertex => ShaderStageFlags::VERTEX,
+            ShaderStage::TessellationControl => ShaderStageFlags::TESSELLATION_CONTROL,
+            ShaderStage::TessellationEvaluation => {
+                ShaderStageFlags::TESSELLATION_EVALUATION
+            }
+            ShaderStage::Geometry => ShaderStageFlags::GEOMETRY,
+            ShaderStage::Fragment => ShaderStageFlags::FRAGMENT,
+            ShaderStage::Compute => ShaderStageFlags::COMPUTE,
+            ShaderStage::AllGraphics => ShaderStageFlags::ALL_GRAPHICS,
+            ShaderStage::All => ShaderStageFlags::ALL,
+        }
+    }
+}
+
+impl Default for ShaderStage {
+    fn default() -> Self {
+        ShaderStage::Vertex
+    }
+}
+
+crate::option_set! {
+    pub struct ShaderStageFlags : u32 {
+        const VERTEX = vk::ShaderStageFlags::VERTEX.as_raw();
+        const TESSELLATION_CONTROL = vk::ShaderStageFlags::TESSELLATION_CONTROL.as_raw();
+        const TESSELLATION_EVALUATION = vk::ShaderStageFlags::TESSELLATION_EVALUATION.as_raw();
+        const GEOMETRY = vk::ShaderStageFlags::GEOMETRY.as_raw();
+        const FRAGMENT = vk::ShaderStageFlags::FRAGMENT.as_raw();
+        const COMPUTE = vk::ShaderStageFlags::COMPUTE.as_raw();
+        const ALL_GRAPHICS = vk::ShaderStageFlags::ALL_GRAPHICS.as_raw();
+        const ALL = vk::ShaderStageFlags::ALL.as_raw();
+    }
+}
+
+impl Into<vk::ShaderStageFlags> for ShaderStageFlags {
+    fn into(self) -> vk::ShaderStageFlags {
+        vk::ShaderStageFlags::from_raw(self.bits)
+    }
+}
+
+/*
+#[derive(BitFlags, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u32)]
+pub enum ShaderStageFlag {
+    Vertex = 1,
+    TesselationControl = 2,
+    TesselationEvaluation = 4,
+    Geometry = 8,
+    Fragment = 16,
+    Compute = 32,
+    AllGraphics = 64,
+    All = 128,
+}
+
+//pub type ShaderStageFlags = BitFlags<ShaderStageFlag>;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ShaderStageFlags(BitFlags<ShaderStageFlag>);
+
+impl Deref for ShaderStageFlags {
+    type Target = BitFlags<ShaderStageFlag>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for ShaderStageFlags {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Into<vk::ShaderStageFlags> for ShaderStageFlags {
+    fn into(self) -> vk::ShaderStageFlags {
+        let mut shader_stage_flags = vk::ShaderStageFlags::empty();
+        if self.contains(ShaderStageFlag::Vertex) {
+            shader_stage_flags |= vk::ShaderStageFlags::VERTEX;
+        }
+        if self.contains(ShaderStageFlag::TesselationControl) {
+            shader_stage_flags |= vk::ShaderStageFlags::TESSELLATION_CONTROL;
+        }
+        if self.contains(ShaderStageFlag::TesselationEvaluation) {
+            shader_stage_flags |= vk::ShaderStageFlags::TESSELLATION_EVALUATION;
+        }
+        if self.contains(ShaderStageFlag::Geometry) {
+            shader_stage_flags |= vk::ShaderStageFlags::GEOMETRY;
+        }
+        if self.contains(ShaderStageFlag::Fragment) {
+            shader_stage_flags |= vk::ShaderStageFlags::FRAGMENT;
+        }
+        if self.contains(ShaderStageFlag::Compute) {
+            shader_stage_flags |= vk::ShaderStageFlags::COMPUTE;
+        }
+        if self.contains(ShaderStageFlag::AllGraphics) {
+            shader_stage_flags |= vk::ShaderStageFlags::ALL_GRAPHICS;
+        }
+        if self.contains(ShaderStageFlag::All) {
+            shader_stage_flags |= vk::ShaderStageFlags::ALL;
+        }
+
+        shader_stage_flags
     }
 }
 
 impl Default for ShaderStageFlags {
     fn default() -> Self {
-        ShaderStageFlags::Vertex
+        ShaderStageFlags(Default::default())
     }
 }
+*/
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct DescriptorSetLayoutBinding {
@@ -2701,7 +2765,7 @@ pub struct FixedFunctionState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ShaderModuleMeta {
-    pub stage: ShaderStageFlags,
+    pub stage: ShaderStage,
     pub entry_name: String,
     // Reference to shader is excluded
 }
@@ -2735,25 +2799,25 @@ impl ShaderModule {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct PipelineShaderStage {
-    pub stage: ShaderStageFlags,
-    pub shader_module: ShaderModule,
-    pub entry_name: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct PipelineShaderStages {
-    pub stages: Vec<PipelineShaderStage>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct GraphicsPipeline {
-    pub pipeline_layout: PipelineLayout,
-    pub renderpass: RenderPass,
-    pub fixed_function_state: FixedFunctionState,
-    pub pipeline_shader_stages: PipelineShaderStages,
-}
+// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+// pub struct PipelineShaderStage {
+//     pub stage: ShaderStageFlags,
+//     pub shader_module: ShaderModule,
+//     pub entry_name: String,
+// }
+//
+// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+// pub struct PipelineShaderStages {
+//     pub stages: Vec<PipelineShaderStage>,
+// }
+//
+// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+// pub struct GraphicsPipeline {
+//     pub pipeline_layout: PipelineLayout,
+//     pub renderpass: RenderPass,
+//     pub fixed_function_state: FixedFunctionState,
+//     pub pipeline_shader_stages: PipelineShaderStages,
+// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct FramebufferMeta {

@@ -546,8 +546,17 @@ impl AssetManager {
         shader_module: &ShaderAssetData,
     ) -> VkResult<ShaderAsset> {
         let shader = Arc::new(shader_module.shader.clone());
+
+        let mut reflection_data = FnvHashMap::default();
+        for entry_point in &shader_module.reflection_data {
+            reflection_data.insert(entry_point.name.clone(), entry_point.clone());
+        }
+
         let shader_module = self.resources().get_or_create_shader_module(&shader)?;
-        Ok(ShaderAsset { shader_module })
+        Ok(ShaderAsset {
+            shader_module,
+            reflection_data: Arc::new(reflection_data)
+        })
     }
 
     fn load_graphics_pipeline(
@@ -697,6 +706,7 @@ impl AssetManager {
     ) -> VkResult<()> {
         if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
             for location in slot_locations {
+                log::trace!("Apply write to location {:?} via slot {}", location, slot_assignment.slot_name);
                 let layout_descriptor_set_writes =
                     &mut material_pass_write_set[location.layout_index as usize];
                 let write = layout_descriptor_set_writes

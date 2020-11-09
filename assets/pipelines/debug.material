@@ -17,6 +17,15 @@
             ],
 
             shader_interface: (
+                descriptor_configs: [
+                    (
+                        id: Name("per_frame_data"),
+                        slot_name: Some("per_frame_data"),
+                        immutable_samplers: None,
+                        enable_internal_buffer: true
+                    ),
+                ],
+            /*
                 descriptor_set_layouts: [
                     (
                         // Contains a view/projection matrix
@@ -25,7 +34,7 @@
                                 binding: 0,
                                 descriptor_type: UniformBuffer,
                                 descriptor_count: 1,
-                                stage_flags: Vertex,
+                                stage_flags: ["VERTEX"],
                                 slot_name: "per_frame_data",
 
                                 internal_buffer_per_descriptor_size: Some(64)
@@ -36,6 +45,7 @@
                 push_constant_ranges: [
                     
                 ],
+                */
                 vertex_input_state: (
                     binding_descriptions: [
                         (

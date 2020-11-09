@@ -47,7 +47,7 @@ pub fn run() {
             "materialinstance",
             renderer::assets::MaterialInstanceImporter,
         )
-        .with_importer("spv", renderer::assets::ShaderImporter)
+        .with_importer("spv", renderer::assets::ShaderImporterSpv)
         .with_importer("png", renderer::assets::ImageImporter)
         .with_importer("jpg", renderer::assets::ImageImporter)
         .with_importer("jpeg", renderer::assets::ImageImporter)

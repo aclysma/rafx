@@ -5,7 +5,7 @@ use crate::{AssetManager, ImageAsset, ShaderAsset};
 use ash::prelude::VkResult;
 use ash::vk;
 use atelier_assets::loader::handle::Handle;
-use fnv::FnvHashMap;
+use fnv::{FnvHashMap, FnvHashSet};
 use renderer_nodes::{RenderPhase, RenderPhaseIndex};
 pub use renderer_resources::DescriptorSetLayoutResource;
 pub use renderer_resources::GraphicsPipelineResource;
@@ -56,66 +56,83 @@ pub struct PipelineAsset {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PipelineShaderStage {
-    pub stage: dsc::ShaderStageFlags,
+    pub stage: dsc::ShaderStage,
     pub shader_module: Handle<ShaderAsset>,
     pub entry_name: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct DescriptorSetLayoutBindingWithSlotName {
-    pub binding: u32,
-    pub descriptor_type: dsc::DescriptorType,
-    pub descriptor_count: u32,
-    pub stage_flags: dsc::ShaderStageFlags,
-    pub slot_name: String,
+// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+// pub struct DescriptorSetLayoutBindingWithSlotName {
+//     pub binding: u32,
+//     pub descriptor_type: dsc::DescriptorType,
+//     pub descriptor_count: u32,
+//     pub stage_flags: dsc::ShaderStageFlags,
+//     pub slot_name: String,
+//
+//     pub immutable_samplers: Option<Vec<dsc::Sampler>>,
+//     pub internal_buffer_per_descriptor_size: Option<u32>,
+// }
+//
+// impl Into<dsc::DescriptorSetLayoutBinding> for &DescriptorSetLayoutBindingWithSlotName {
+//     fn into(self) -> dsc::DescriptorSetLayoutBinding {
+//         dsc::DescriptorSetLayoutBinding {
+//             binding: self.binding,
+//             descriptor_type: self.descriptor_type,
+//             descriptor_count: self.descriptor_count,
+//             stage_flags: self.stage_flags,
+//             immutable_samplers: self.immutable_samplers.clone(),
+//             internal_buffer_per_descriptor_size: self.internal_buffer_per_descriptor_size,
+//         }
+//     }
+// }
+//
+// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+// pub struct DescriptorSetLayoutWithSlotName {
+//     pub descriptor_set_layout_bindings: Vec<DescriptorSetLayoutBindingWithSlotName>,
+// }
+//
+// impl Into<dsc::DescriptorSetLayout> for &DescriptorSetLayoutWithSlotName {
+//     fn into(self) -> dsc::DescriptorSetLayout {
+//         let descriptor_set_layout_bindings = self
+//             .descriptor_set_layout_bindings
+//             .iter()
+//             .map(|x| x.into())
+//             .collect();
+//         dsc::DescriptorSetLayout {
+//             descriptor_set_layout_bindings,
+//         }
+//     }
+// }
 
-    pub immutable_samplers: Option<Vec<dsc::Sampler>>,
-    pub internal_buffer_per_descriptor_size: Option<u32>,
+// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+// pub struct PushConstantRangeWithSlotName {
+//     pub stage_flags: dsc::ShaderStageFlags,
+//     pub offset: u32,
+//     pub size: u32,
+//     pub slot_name: String,
+// }
+
+
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum DescriptorId {
+    SetAndBinding(u32, u32),
+    Name(String)
 }
 
-impl Into<dsc::DescriptorSetLayoutBinding> for &DescriptorSetLayoutBindingWithSlotName {
-    fn into(self) -> dsc::DescriptorSetLayoutBinding {
-        dsc::DescriptorSetLayoutBinding {
-            binding: self.binding,
-            descriptor_type: self.descriptor_type,
-            descriptor_count: self.descriptor_count,
-            stage_flags: self.stage_flags,
-            immutable_samplers: self.immutable_samplers.clone(),
-            internal_buffer_per_descriptor_size: self.internal_buffer_per_descriptor_size,
-        }
-    }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MaterialDescriptorConfig {
+    id: DescriptorId,
+    slot_name: Option<String>,
+    immutable_samplers: Option<Vec<dsc::Sampler>>,
+    enable_internal_buffer: bool
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct DescriptorSetLayoutWithSlotName {
-    pub descriptor_set_layout_bindings: Vec<DescriptorSetLayoutBindingWithSlotName>,
-}
-
-impl Into<dsc::DescriptorSetLayout> for &DescriptorSetLayoutWithSlotName {
-    fn into(self) -> dsc::DescriptorSetLayout {
-        let descriptor_set_layout_bindings = self
-            .descriptor_set_layout_bindings
-            .iter()
-            .map(|x| x.into())
-            .collect();
-        dsc::DescriptorSetLayout {
-            descriptor_set_layout_bindings,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct PushConstantRangeWithSlotName {
-    pub stage_flags: dsc::ShaderStageFlags,
-    pub offset: u32,
-    pub size: u32,
-    pub slot_name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialPassShaderInterface {
-    pub descriptor_set_layouts: Vec<DescriptorSetLayoutWithSlotName>,
-    pub push_constant_ranges: Vec<dsc::PushConstantRange>,
+    //pub descriptor_set_layouts: Vec<DescriptorSetLayoutWithSlotName>,
+    //pub push_constant_ranges: Vec<dsc::PushConstantRange>,
+    pub descriptor_configs: Vec<MaterialDescriptorConfig>,
     pub vertex_input_state: dsc::PipelineVertexInputState,
 }
 
@@ -141,13 +158,14 @@ pub struct MaterialAssetData {
     pub passes: Vec<MaterialPassData>,
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct SlotLocation {
     pub layout_index: u32,
     pub binding_index: u32,
     //pub array_index: u32,
 }
 
-pub type SlotNameLookup = FnvHashMap<String, Vec<SlotLocation>>;
+pub type SlotNameLookup = FnvHashMap<String, FnvHashSet<SlotLocation>>;
 
 pub struct MaterialPassInner {
     pub shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
@@ -205,44 +223,193 @@ impl MaterialPass {
         //
         let mut shader_module_metas = Vec::with_capacity(material_pass_data.shaders.len());
         let mut shader_modules = Vec::with_capacity(material_pass_data.shaders.len());
+
+        let mut descriptor_set_layout_defs = Vec::default();
+        let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
+
+        let mut push_constant_ranges = vec![];
+
+        let mut config_has_been_used = Vec::with_capacity(material_pass_data.shader_interface.descriptor_configs.len());
+        config_has_been_used.resize(material_pass_data.shader_interface.descriptor_configs.len(), false);
+
+        // We iterate through the entry points we will hit for each stage. Each stage may define
+        // slightly different
         for stage in &material_pass_data.shaders {
+            log::trace!("Set up material pass stage {:?}", stage);
             let shader_module_meta = dsc::ShaderModuleMeta {
                 stage: stage.stage,
                 entry_name: stage.entry_name.clone(),
             };
             shader_module_metas.push(shader_module_meta);
 
-            let shader_module = asset_manager
+            let shader_asset = asset_manager
                 .loaded_assets()
                 .shader_modules
                 .get_latest(stage.shader_module.load_handle())
                 .unwrap();
-            shader_modules.push(shader_module.shader_module.clone());
+            shader_modules.push(shader_asset.shader_module.clone());
+
+            let reflection_data = shader_asset.reflection_data.get(&stage.entry_name);
+            let reflection_data = reflection_data.ok_or_else(|| {
+                log::error!(
+                    "Load Material Failed - Pass refers to entry point named {}, but it was not found in the shader module",
+                    stage.entry_name
+                );
+                vk::Result::ERROR_UNKNOWN
+            })?;
+
+            // Check that the compiled shader supports the given stage
+            if (reflection_data.stage_flags & stage.stage.into()).is_empty() {
+                log::error!(
+                    "Load Material Failed - Pass is using a shader for stage {:?}, but this shader supports stages {:?}.",
+                    stage.stage,
+                    reflection_data.stage_flags
+                );
+                return Err(vk::Result::ERROR_UNKNOWN);
+            }
+
+            log::trace!("  Reflection data:\n{:#?}", reflection_data);
+
+            for (range_index, range) in reflection_data.push_constants.iter().enumerate() {
+                if let Some(existing_range) = push_constant_ranges.get(range_index) {
+                    if range.push_constant != *existing_range {
+                        log::error!(
+                            "Load Material Failed - Pass has shaders with conflicting push constants",
+                        );
+                        return Err(vk::Result::ERROR_UNKNOWN);
+                    } else {
+                        log::trace!("    Range index {} already exists and matches", range_index);
+                    }
+                } else {
+                    log::trace!("    Add range index {} {:?}", range_index, range);
+                    push_constant_ranges.push(range.push_constant.clone());
+                }
+            }
+
+            for (set_index, layout) in reflection_data.descriptor_set_layouts.iter().enumerate()
+            {
+                // Expand the layout def to include the given set index
+                while descriptor_set_layout_defs.len() <= set_index {
+                    descriptor_set_layout_defs.push(dsc::DescriptorSetLayout::default());
+                }
+
+                if let Some(layout) = layout.as_ref() {
+                    for binding in &layout.bindings {
+                        let existing_binding = descriptor_set_layout_defs[set_index]
+                            .descriptor_set_layout_bindings
+                            .iter_mut()
+                            .find(|x| x.binding == binding.binding);
+
+                        if let Some(existing_binding) = existing_binding {
+                            //
+                            // Binding already exists, just make sure this shader's definition for this binding matches
+                            // the shader that added it originally
+                            //
+                            if existing_binding.descriptor_type != binding.descriptor_type {
+                                log::error!(
+                                    "Load Material Failed - Pass is using shaders in different stages with different descriptor types for set={} binding={}",
+                                    set_index,
+                                    binding.binding
+                                );
+                                return Err(vk::Result::ERROR_UNKNOWN);
+                            }
+
+                            if existing_binding.descriptor_count != binding.descriptor_count {
+                                log::error!(
+                                    "Load Material Failed - Pass is using shaders in different stages with different descriptor counts for set={} binding={}",
+                                    set_index,
+                                    binding.binding
+                                );
+                                return Err(vk::Result::ERROR_UNKNOWN);
+                            }
+
+                            log::trace!("    Descriptor for binding set={} binding={} already exists, adding stage {:?}", set_index, binding.binding, binding.stage_flags);
+                            existing_binding.stage_flags |= binding.stage_flags;
+                        } else {
+                            //
+                            // This binding was not bound by a previous shader stage, set it up and apply any configuration from this material
+                            //
+                            let mut def = dsc::DescriptorSetLayoutBinding {
+                                binding: binding.binding,
+                                descriptor_type: binding.descriptor_type,
+                                descriptor_count: binding.descriptor_count,
+                                stage_flags: binding.stage_flags,
+                                immutable_samplers: None,
+                                internal_buffer_per_descriptor_size: None,
+                            };
+
+                            log::trace!("    Add descriptor binding set={} binding={} for stage {:?}", set_index, binding.binding, binding.stage_flags);
+
+                            for (config_index, config) in material_pass_data.shader_interface.descriptor_configs.iter().enumerate() {
+                                let should_apply = match &config.id {
+                                    DescriptorId::Name(name) => {
+                                        *name == binding.name
+                                    },
+                                    DescriptorId::SetAndBinding(s, b) => {
+                                        set_index as u32 == *s && def.binding == *b
+                                    }
+                                };
+
+                                //TODO: Assert that each config is used in some way
+                                if should_apply {
+                                    log::trace!("Apply config to binding set={} binding={}: {:?}", set_index, binding.binding, config);
+                                    config_has_been_used[config_index] = true;
+
+                                    // Add immutable samplers, if any
+                                    //TODO: Assert this binding type accepts immutable samplers
+                                    def.immutable_samplers = config.immutable_samplers.clone();
+
+                                    // Enable built-in buffer management for this descriptor
+                                    if config.enable_internal_buffer {
+                                        def.internal_buffer_per_descriptor_size = Some(binding.padded_size);
+                                    }
+
+                                    // Add an entry into slot names
+                                    if let Some(slot_name) = &config.slot_name {
+                                        pass_slot_name_lookup
+                                            .entry(slot_name.clone())
+                                            .or_default()
+                                            .insert(SlotLocation {
+                                                layout_index: set_index as u32,
+                                                binding_index: def.binding
+                                            });
+                                    }
+
+                                    break;
+                                }
+                            }
+
+                            descriptor_set_layout_defs[set_index].descriptor_set_layout_bindings.push(def);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (config_index, has_been_used) in config_has_been_used.iter().enumerate() {
+            if !has_been_used {
+                log::error!(
+                    "Load Material Failed - Pass has an unused config index {}:\n{:#?}",
+                    config_index,
+                    material_pass_data.shader_interface.descriptor_configs[config_index]
+                );
+                return Err(vk::Result::ERROR_UNKNOWN);
+            }
         }
 
         //
         // Descriptor set layout
         //
         let mut descriptor_set_layouts = Vec::with_capacity(
-            material_pass_data
-                .shader_interface
-                .descriptor_set_layouts
-                .len(),
+            descriptor_set_layout_defs.len()
         );
-        let mut descriptor_set_layout_defs = Vec::with_capacity(
-            material_pass_data
-                .shader_interface
-                .descriptor_set_layouts
-                .len(),
-        );
-        for descriptor_set_layout_def in &material_pass_data.shader_interface.descriptor_set_layouts
+
+        for descriptor_set_layout_def in &descriptor_set_layout_defs
         {
-            let descriptor_set_layout_def = descriptor_set_layout_def.into();
             let descriptor_set_layout = asset_manager
                 .resources()
                 .get_or_create_descriptor_set_layout(&descriptor_set_layout_def)?;
             descriptor_set_layouts.push(descriptor_set_layout);
-            descriptor_set_layout_defs.push(descriptor_set_layout_def);
         }
 
         //
@@ -250,10 +417,7 @@ impl MaterialPass {
         //
         let pipeline_layout_def = dsc::PipelineLayout {
             descriptor_set_layouts: descriptor_set_layout_defs,
-            push_constant_ranges: material_pass_data
-                .shader_interface
-                .push_constant_ranges
-                .clone(),
+            push_constant_ranges
         };
 
         let pipeline_layout = asset_manager
@@ -282,32 +446,11 @@ impl MaterialPass {
                     .register_material_to_phase_index(&material_pass, renderphase_index),
                 None => {
                     log::error!(
-                            "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
-                            phase_name
-                        );
+                        "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
+                        phase_name
+                    );
                     return Err(vk::Result::ERROR_UNKNOWN);
                 }
-            }
-        }
-
-        // Create a lookup of the slot names
-        let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
-        for (layout_index, layout) in material_pass_data
-            .shader_interface
-            .descriptor_set_layouts
-            .iter()
-            .enumerate()
-        {
-            for (binding_index, binding) in layout.descriptor_set_layout_bindings.iter().enumerate()
-            {
-                pass_slot_name_lookup
-                    .entry(binding.slot_name.clone())
-                    .or_default()
-                    .push(SlotLocation {
-                        layout_index: layout_index as u32,
-                        binding_index: binding_index as u32,
-                        //array_index: 0
-                    });
             }
         }
 
@@ -315,7 +458,6 @@ impl MaterialPass {
             descriptor_set_layouts,
             pipeline_layout,
             shader_modules,
-            //per_swapchain_data: Mutex::new(per_swapchain_data),
             material_pass_resource: material_pass.clone(),
             shader_interface: material_pass_data.shader_interface.clone(),
             pass_slot_name_lookup: Arc::new(pass_slot_name_lookup),
@@ -328,13 +470,13 @@ impl MaterialPass {
 
     pub fn create_uninitialized_write_sets_for_material_pass(&self) -> Vec<DescriptorSetWriteSet> {
         // The metadata for the descriptor sets within this pass, one for each set within the pass
-        let descriptor_set_layouts = &self.shader_interface.descriptor_set_layouts;
+        let descriptor_set_layouts = &self.pipeline_layout.get_raw().pipeline_layout_def.descriptor_set_layouts;
 
         let pass_descriptor_set_writes: Vec<_> = descriptor_set_layouts
             .iter()
             .map(|layout| {
                 renderer_resources::descriptor_sets::create_uninitialized_write_set_for_layout(
-                    &layout.into(),
+                    layout,
                 )
             })
             .collect();

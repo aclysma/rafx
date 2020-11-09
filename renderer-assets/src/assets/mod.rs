@@ -7,7 +7,7 @@ pub use self::image::ImageImporter;
 mod shader;
 pub use shader::ShaderAsset;
 pub use shader::ShaderAssetData;
-pub use shader::ShaderImporter;
+pub use shader::ShaderImporterSpv;
 
 mod pipeline;
 pub use pipeline::MaterialAsset;

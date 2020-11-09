@@ -16,6 +16,45 @@
                 ),
             ],
             shader_interface: (
+                descriptor_configs: [
+                    (
+                        id: Name("tex"),
+                        slot_name: Some("texture"),
+                        immutable_samplers: None,
+                        enable_internal_buffer: false
+                    ),
+                    (
+                        id: Name("smp"),
+                        slot_name: Some("sampler"),
+                        immutable_samplers: Some([
+                            (
+                                mag_filter: Nearest,
+                                min_filter: Nearest,
+                                address_mode_u: ClampToEdge,
+                                address_mode_v: ClampToEdge,
+                                address_mode_w: ClampToEdge,
+                                anisotropy_enable: false,
+                                max_anisotropy: 1.0,
+                                border_color: FloatOpaqueWhite,
+                                unnormalized_coordinates: false,
+                                compare_enable: false,
+                                compare_op: Always,
+                                mipmap_mode: Linear,
+                                mip_lod_bias: 0,
+                                min_lod: 0,
+                                max_lod: 1
+                            )
+                        ]),
+                        enable_internal_buffer: false
+                    ),
+                    (
+                        id: Name("config"),
+                        slot_name: None,
+                        immutable_samplers: None,
+                        enable_internal_buffer: true
+                    )
+                ],
+            /*
                 descriptor_set_layouts: [
                     (
                         descriptor_set_layout_bindings: [
@@ -23,14 +62,14 @@
                                 binding: 0,
                                 descriptor_type: SampledImage,
                                 descriptor_count: 1,
-                                stage_flags: Fragment,
+                                stage_flags: ["FRAGMENT"],
                                 slot_name: "texture"
                             ),
                             (
                                 binding: 1,
                                 descriptor_type: Sampler,
                                 descriptor_count: 1,
-                                stage_flags: Fragment,
+                                stage_flags: ["FRAGMENT"],
                                 slot_name: "sampler",
 
                                 immutable_samplers: Some([
@@ -57,7 +96,7 @@
                                 binding: 2,
                                 descriptor_type: UniformBuffer,
                                 descriptor_count: 1,
-                                stage_flags: Fragment,
+                                stage_flags: ["FRAGMENT"],
                                 slot_name: "per_frame_data",
 
                                 // 256 bytes required internally to transmit a boolean, lol :(
@@ -66,9 +105,7 @@
                         ],
                     ),
                 ],
-                push_constant_ranges: [
-
-                ],
+                */
                 vertex_input_state: (
                     binding_descriptions: [
 

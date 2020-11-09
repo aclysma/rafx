@@ -36,5 +36,9 @@ ron = "0.5"
 
 arrayvec = "0.5"
 
+#shaderc = "0.6"
+spirv-reflect = "0.2"
+#spirv_cross = "0.22"
+
 [dev-dependencies]
 env_logger = "0.6"
