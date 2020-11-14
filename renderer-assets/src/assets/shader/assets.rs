@@ -15,7 +15,8 @@ pub struct ReflectedDescriptorSetLayoutBinding {
     pub stage_flags: dsc::ShaderStageFlags,
 
     // Mostly for uniform data
-    pub padded_size: u32,
+    pub size: u32,
+    //pub padded_size: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -343,13 +343,21 @@
                 (
                     stage: Vertex,
                     shader_module: "../shaders/mesh_shadow_map.vert.spv",
+
                     entry_name: "main"
                 ),
                 // No fragment shader required
             ],
 
             shader_interface: (
-                descriptor_configs: [],
+                descriptor_configs: [
+                    (
+                        id: Name("per_object_data"),
+                        slot_name: Some("per_object_data"),
+                        immutable_samplers: None,
+                        enable_internal_buffer: true
+                    ),
+                ],
             /*
                 descriptor_set_layouts: [
 

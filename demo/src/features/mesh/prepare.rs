@@ -43,7 +43,9 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
             .create_descriptor_set_allocator();
 
         //TODO: reserve sizes
-        let mut per_view_descriptor_set_layouts =
+        let mut opaque_per_view_descriptor_set_layouts =
+            FnvHashSet::<ResourceArc<DescriptorSetLayoutResource>>::default();
+        let mut shadow_map_per_view_descriptor_set_layouts =
             FnvHashSet::<ResourceArc<DescriptorSetLayoutResource>>::default();
         let mut prepared_submit_node_mesh_data = Vec::<PreparedSubmitNodeMeshData>::default();
         let mut per_view_descriptor_sets = FnvHashMap::<
@@ -51,49 +53,87 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
             DescriptorSetArc,
         >::default();
 
+        //
+        // Iterate every mesh part to find all the per-view descriptor sets layouts
+        //
+        // Realistically all the materials (for now) have identical layouts so iterating though them
+        // like this just avoids hardcoding to find the first mesh's first opaque pass
+        //
         let mut submit_nodes = FeatureSubmitNodes::default();
         for mesh in &self.extracted_frame_node_mesh_data {
             if let Some(mesh) = mesh {
                 for mesh_part in &*mesh.mesh_asset.inner.mesh_parts {
                     if let Some(mesh_part) = mesh_part {
-                        per_view_descriptor_set_layouts.insert(
+                        opaque_per_view_descriptor_set_layouts.insert(
                             mesh_part.opaque_pass.descriptor_set_layouts
                                 [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
                                 .clone(),
                         );
+
+                        if let Some(shadow_map_pass) = mesh_part.shadow_map_pass.as_ref() {
+                            shadow_map_per_view_descriptor_set_layouts.insert(
+                                shadow_map_pass.descriptor_set_layouts
+                                    [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
+                                    .clone(),
+                            );
+                        }
                     }
                 }
             }
         }
 
+        // Shared per-frame data
         let per_frame_vertex_data = MeshPerFrameVertexShaderParam {
             shadow_map_view_proj: self.shadow_map_view.view_proj(),
             shadow_map_light_dir: self.shadow_map_view.view_dir().extend(1.0),
         };
 
-        // Realistically all the materials (for now) have identical layouts so iterating though them
-        // like this just avoids hardcoding to find the first mesh's first opaque pass
+        //
+        // Create per-view descriptors for all per-view descriptor layouts that are in our materials
+        //
         for &view in views {
             let per_view_frag_data = self.create_per_view_frag_data(view);
 
-            for per_view_descriptor_set_layout in &per_view_descriptor_set_layouts {
-                let mut descriptor_set = descriptor_set_allocator
-                    .create_dyn_descriptor_set_uninitialized(&per_view_descriptor_set_layout)
-                    .unwrap();
-                descriptor_set.set_buffer_data(0, &per_view_frag_data);
-                // 1: immutable sampler
-                // 2: immutable sampler
-                descriptor_set.set_image(3, self.shadow_map_image.clone());
-                descriptor_set.set_buffer_data(4, &per_frame_vertex_data);
-                descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
+            if view.phase_is_relevant::<OpaqueRenderPhase>() {
+                for per_view_descriptor_set_layout in &opaque_per_view_descriptor_set_layouts {
+                    let mut descriptor_set = descriptor_set_allocator
+                        .create_dyn_descriptor_set_uninitialized(&per_view_descriptor_set_layout)
+                        .unwrap();
+                    descriptor_set.set_buffer_data(0, &per_view_frag_data);
+                    // 1: immutable sampler
+                    // 2: immutable sampler
+                    descriptor_set.set_image(3, self.shadow_map_image.clone());
+                    descriptor_set.set_buffer_data(4, &per_frame_vertex_data);
+                    descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
-                per_view_descriptor_sets.insert(
-                    (view.view_index(), per_view_descriptor_set_layout.clone()),
-                    descriptor_set.descriptor_set().clone(),
-                );
+                    let old = per_view_descriptor_sets.insert(
+                        (view.view_index(), per_view_descriptor_set_layout.clone()),
+                        descriptor_set.descriptor_set().clone(),
+                    );
+                    assert!(old.is_none());
+                }
+            }
+
+            if view.phase_is_relevant::<ShadowMapRenderPhase>() {
+                for per_view_descriptor_set_layout in &shadow_map_per_view_descriptor_set_layouts {
+                    let mut descriptor_set = descriptor_set_allocator
+                        .create_dyn_descriptor_set_uninitialized(&per_view_descriptor_set_layout)
+                        .unwrap();
+                    descriptor_set.set_buffer_data(0, &per_view_frag_data);
+                    descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
+
+                    let old = per_view_descriptor_sets.insert(
+                        (view.view_index(), per_view_descriptor_set_layout.clone()),
+                        descriptor_set.descriptor_set().clone(),
+                    );
+                    assert!(old.is_none());
+                }
             }
         }
 
+        //
+        // Produce render nodes for every mesh
+        //
         for view in views {
             let mut view_submit_nodes =
                 ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
@@ -294,6 +334,7 @@ impl MeshPrepareJob {
         let per_view_descriptor_set_layout = material_pass.descriptor_set_layouts
             [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
             .clone();
+
         let per_view_descriptor_set =
             per_view_descriptor_sets[&(view.view_index(), per_view_descriptor_set_layout)].clone();
 

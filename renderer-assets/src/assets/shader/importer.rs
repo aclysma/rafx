@@ -70,7 +70,7 @@ impl Importer for ShaderImporterSpv {
 
         // Auto-create vulkan descriptors from reflection data
         let reflection_data = read_spv_reflection_data(&shader_module)?;
-        log::trace!("Import shader asset {:?} reflection data: \n{:#?}", asset_id, reflection_data);
+        log::info!("Import shader asset {:?} reflection data: \n{:#?}", asset_id, reflection_data);
 
         // The hash is used in some places identify the shader
         let code_hash = dsc::ShaderModuleCodeHash::hash_shader_code(&code);
@@ -192,8 +192,11 @@ fn read_spv_reflection_data(shader_module: &spirv_reflect::ShaderModule) -> atel
 
             for binding in &descriptor_set.bindings {
                 let name = &binding.name;
-                let padded_size = binding.block.padded_size;
+                //let padded_size = binding.block.padded_size;
+                let size = binding.block.size;
                 // Size is available as well, but I think padded is the better one to use here
+
+                println!("!!!!! binding {:#?}", binding);
 
                 let descriptor_set_binding = ReflectedDescriptorSetLayoutBinding {
                     name: name.clone(),
@@ -201,7 +204,8 @@ fn read_spv_reflection_data(shader_module: &spirv_reflect::ShaderModule) -> atel
                     stage_flags: entry_point_shader_stage_flags,
                     descriptor_count: binding.array.dims.get(0).cloned().unwrap_or(1),
                     descriptor_type: map_descriptor_type(binding.descriptor_type)?,
-                    padded_size,
+                    size,
+                    //padded_size,
                 };
 
                 descriptor_set_bindings.push(descriptor_set_binding);

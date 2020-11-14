@@ -361,7 +361,7 @@ impl MaterialPass {
 
                                     // Enable built-in buffer management for this descriptor
                                     if config.enable_internal_buffer {
-                                        def.internal_buffer_per_descriptor_size = Some(binding.padded_size);
+                                        def.internal_buffer_per_descriptor_size = Some(binding.size);
                                     }
 
                                     // Add an entry into slot names

@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "renderer",
-    "demo"
+    "demo",
+    "shader-processor"
 ]
 
 exclude = [

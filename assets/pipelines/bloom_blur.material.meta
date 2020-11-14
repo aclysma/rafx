@@ -21,9 +21,9 @@
                     Path("../shaders/bloom_blur.frag.spv"),
                 ],
                 load_deps: [
-                    Path("../shaders/bloom_blur.frag.spv"),
                     Path("bloom_blur.pipeline"),
                     Path("../shaders/bloom_blur.vert.spv"),
+                    Path("../shaders/bloom_blur.frag.spv"),
                 ],
                 compression: None,
                 compressed_size: Some(308),
