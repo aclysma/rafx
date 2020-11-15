@@ -3,9 +3,12 @@ use std::path::{PathBuf, Path};
 use structopt::StructOpt;
 
 mod parse;
+
 mod include;
 use include::IncludeType;
 use include::include_impl;
+
+mod codegen;
 
 #[derive(StructOpt)]
 pub struct ShaderProcessorArgs {
@@ -99,14 +102,18 @@ fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
     //
     let parse_result = parse::parse_shader_source(&args.glsl_file)?;
 
+    let _rust_code = codegen::generate_rust_code(&parse_result.declarations)?;
 
-    for declaration in parse_result.declarations {
-        for annotation in &declaration.annotations {
-            println!(">>    {}", parse::characters_to_string(&annotation.text[..]));
-        }
 
-        println!("{}\n", parse::characters_to_string(&declaration.text[..]));
-    }
+    // for declaration in parse_result.declarations {
+    //     for annotation in &declaration.annotations {
+    //         println!(">>    {}", parse::characters_to_string(&annotation.text[..]));
+    //     }
+    //
+    //     println!("{}\n", parse::characters_to_string(&declaration.text[..]));
+    // }
+
+
 
     // for declaration in declaration_ranges {
     //     let mut relevant_comments = Vec::default();

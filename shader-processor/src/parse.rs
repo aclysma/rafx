@@ -7,7 +7,6 @@ use super::IncludeType;
 use super::Annotation;
 use super::Declaration;
 
-
 fn range_of_line_at_position(
     code: &[char],
     position: usize,
@@ -35,7 +34,14 @@ fn range_of_line_at_position(
     begin_of_line..end_of_line
 }
 
-fn next_non_whitespace(
+pub(crate) fn skip_whitespace(
+    code: &[char],
+    position: &mut usize,
+) {
+    *position = next_non_whitespace(code, *position);
+}
+
+pub(crate) fn next_non_whitespace(
     code: &[char],
     mut position: usize,
 ) -> usize {
@@ -50,22 +56,72 @@ fn next_non_whitespace(
     position
 }
 
-/*
-fn next_whitespace(
+// fn next_whitespace(
+//     code: &[char],
+//     mut position: usize,
+// ) -> usize {
+//     for i in position..code.len() {
+//         match code[position] {
+//             ' ' | '\t' | '\r' | '\n' => break,
+//             _ => { },
+//         }
+//         position = i + 1;
+//     }
+//
+//     position
+// }
+
+// I'm ignoring that identifiers usually can't start with numbers
+pub(crate) fn is_identifier_char(c: char) -> bool {
+    if c >= 'a' && c <= 'z' {
+    } else if c >= 'A' && c <= 'Z' {
+    } else if is_number_char(c) {
+    } else if c == '_' {
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
+// I'm ignoring that identifiers usually can't start with numbers
+pub(crate) fn is_number_char(c: char) -> bool {
+    c >= '0' && c <= '9'
+}
+
+pub(crate) fn next_non_identifer(
     code: &[char],
     mut position: usize,
 ) -> usize {
     for i in position..code.len() {
-        match code[position] {
-            ' ' | '\t' | '\r' | '\n' => break,
-            _ => { },
+
+        if !is_identifier_char(code[position]) {
+            break;
         }
         position = i + 1;
     }
 
     position
 }
-*/
+
+// pub(crate) fn next_word_at_position(
+//     code: &[char],
+//     mut position: usize,
+// ) -> String {
+//     let begin = next_non_whitespace(code, position);
+//     let end = next_whitespace(code, begin);
+//     characters_to_string(&code[begin..end])
+// }
+
+// pub(crate) fn identifier_at_position(
+//     code: &[char],
+//     mut position: usize,
+// ) -> String {
+//     let begin = next_non_whitespace(code, position);
+//
+//
+// }
+
 
 fn next_char(
     code: &[char],
@@ -83,7 +139,44 @@ fn next_char(
     position
 }
 
-pub fn characters_to_string(
+pub(crate) fn try_consume_identifier(code: &[char], position: &mut usize) -> Option<String> {
+    let begin = next_non_whitespace(code, *position);
+
+    if begin < code.len() && is_identifier_char(code[begin]) {
+        let end = next_non_identifer(code, begin);
+        *position = end;
+        Some(characters_to_string(&code[begin..end]))
+    } else {
+        None
+    }
+}
+
+pub(crate) fn try_consume_array_index(code: &[char], position: &mut usize) -> Option<usize> {
+    let begin = next_non_whitespace(code, *position);
+    if begin < code.len() && is_number_char(code[begin]) {
+        let end = next_non_identifer(code, begin);
+
+        // If this fails, then we may have a string like "123xyz"
+        let number : usize = characters_to_string(&code[begin..end]).parse().ok()?;
+
+        *position = end;
+        Some(number)
+    } else {
+        None
+    }
+}
+
+// Return option so we can do .ok_or("error message")?
+pub(crate) fn try_consume_literal(code: &[char], position: &mut usize, literal: &str) -> Option<()> {
+    if is_string_at_position(code, *position, literal) {
+        *position += literal.len();
+        Some(())
+    } else {
+        None
+    }
+}
+
+pub(crate) fn characters_to_string(
     characters: &[char],
 ) -> String {
     let mut string = String::with_capacity(characters.len());
@@ -94,7 +187,7 @@ pub fn characters_to_string(
     string
 }
 
-fn is_string_at_position(
+pub(crate) fn is_string_at_position(
     code: &[char],
     position: usize,
     s: &str
@@ -147,8 +240,8 @@ fn remove_line_continuations(code: &[char]) -> Vec<char> {
 
     result
 }
-#[derive(Debug)]
 
+#[derive(Debug)]
 pub struct CommentText {
     pub position: usize,
     pub text: Vec<char>,
@@ -306,9 +399,8 @@ fn try_parse_include(code: &[char], mut position: usize) -> Option<ParseIncludeR
 
         // Try to find the "include" after the #
         position = next_non_whitespace(code, position);
-        if is_string_at_position(code, position, "include") {
-            position += "include".len();
-            position = next_non_whitespace(code, position);
+        if try_consume_literal(code, &mut position, "include").is_some() {
+            skip_whitespace(code, &mut position);
 
             match code[position] {
                 '"' => {
@@ -480,7 +572,6 @@ pub struct FileToProcess {
     pub include_depth: usize,
 }
 
-
 fn pop_comments_up_to_position(comments: &mut VecDeque<CommentText>, position: usize) -> Vec<CommentText> {
     let mut result = Vec::default();
 
@@ -547,7 +638,8 @@ pub fn parse_shader_source_recursive(
     //     println!("comment at {}: {:?}", comment.position, characters_to_string(&comment.text[..]));
     // }
 
-    let mut position = next_non_whitespace(&code, 0);
+    let mut position = 0;
+    skip_whitespace(&code, &mut position);
 
     while position < code.len() {
         //println!("Skip forward to non-whitespace char at {}, which is {:?}", position, code[position]);
@@ -602,7 +694,7 @@ pub fn parse_shader_source_recursive(
         // Drain comments that we've passed and haven't taken
         pop_comments_up_to_position(&mut comments, position);
 
-        position = next_non_whitespace(&code, position);
+        skip_whitespace(&code, &mut position);
     }
 
     Ok(())

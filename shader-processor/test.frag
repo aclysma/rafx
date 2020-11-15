@@ -15,14 +15,13 @@
 
 #include "test_include.frag"
 
-// @[const]
 const float PI = 3.14159265359;
 
 //
 // Per-Frame Pass
 //
 
-// @[export]
+// @[export("point_light")]
 struct PointLight {
     vec3 position_ws;
     vec3 position_vs;
@@ -47,12 +46,12 @@ struct SpotLight {
     vec3 direction_vs;
     vec4 color;
     float spotlight_half_angle;
-    float range;
-    float intensity;
+    float range[5];
+    float intensity[5][6];
 };
 
 // @[export]
-// @[use_internal_buffer]
+// @[use_internal_buffer(50)]
 layout (set = 0, binding = 0) uniform PerViewData {
     vec4 ambient_light;
     uint point_light_count;
@@ -91,6 +90,8 @@ struct MaterialData {
 layout (set = 1, binding = 0) uniform MaterialDataUbo {
     MaterialData data;
 } material_data_ubo;
+
+const int PER_VIEW_SET = 1;
 
 layout (set = 1, binding = 1) uniform texture2D base_color_texture;
 layout (set = 1, binding = 2) uniform texture2D metallic_roughness_texture;
