@@ -21,7 +21,6 @@ const float PI = 3.14159265359;
 // Per-Frame Pass
 //
 
-// @[export("point_light")]
 struct PointLight {
     vec3 position_ws;
     vec3 position_vs;
@@ -30,7 +29,6 @@ struct PointLight {
     float intensity;
 };
 
-// @[export]
 struct DirectionalLight {
     vec3 direction_ws;
     vec3 direction_vs;
@@ -38,7 +36,6 @@ struct DirectionalLight {
     float intensity;
 };
 
-// @[export]
 struct SpotLight {
     vec3 position_ws;
     vec3 direction_ws;
@@ -61,6 +58,18 @@ layout (set = 0, binding = 0) uniform PerViewData {
     DirectionalLight directional_lights[16];
     SpotLight spot_lights[16];
 } per_frame_data;
+
+/*
+layout (set = 0, binding = 4) buffer PerViewData {
+    vec4 ambient_light;
+    uint point_light_count;
+    uint directional_light_count;
+    uint spot_light_count;
+    PointLight point_lights[16];
+    DirectionalLight directional_lights[16];
+    SpotLight spot_lights[16];
+} per_frame_data_buffer;
+*/
 
 // @[export]
 layout (set = 0, binding = 1) uniform sampler smp;
@@ -109,5 +118,5 @@ void main() {
     base_color_texture;
     out_color0 = material_data_ubo.data.base_color_factor;
     //out_color0 = vec4(1.0);
-    out_color1 = vec4(1.0);
+    out_color1 = vec4(per_frame_data.ambient_light/* + per_frame_data_buffer.ambient_light*/);
 }

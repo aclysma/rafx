@@ -3,6 +3,9 @@ use serde::Deserialize;
 
 use super::Declaration;
 use super::Annotation;
+use fnv::{FnvHashSet, FnvHashMap};
+use std::collections::VecDeque;
+use std::sync::Arc;
 
 
 #[derive(Default, Deserialize, Debug)]
@@ -91,7 +94,7 @@ impl BindingAnnotations {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ParseFieldResult {
     type_name: String,
     field_name: String,
@@ -101,7 +104,7 @@ struct ParseFieldResult {
 #[derive(Debug)]
 struct ParseStructResult {
     type_name: String,
-    fields: Vec<ParseFieldResult>,
+    fields: Arc<Vec<ParseFieldResult>>,
     instance_name: Option<String>
 }
 
@@ -143,7 +146,7 @@ fn parse_field(code: &[char], position: &mut usize) -> Result<ParseFieldResult, 
     })
 }
 
-fn try_parse_fields(code: &[char], position: &mut usize) -> Result<Option<Vec<ParseFieldResult>>, String> {
+fn try_parse_fields(code: &[char], position: &mut usize) -> Result<Option<Arc<Vec<ParseFieldResult>>>, String> {
     // Consume the opening {
     if crate::parse::try_consume_literal(code, position, "{").is_none() {
         return Ok(None);
@@ -174,7 +177,7 @@ fn try_parse_fields(code: &[char], position: &mut usize) -> Result<Option<Vec<Pa
         fields.push(field);
     }
 
-    Ok(Some(fields))
+    Ok(Some(Arc::new(fields)))
 }
 
 fn try_parse_struct(code: &[char]) -> Result<Option<ParseStructResult>, String> {
@@ -213,7 +216,7 @@ struct LayoutPart {
     value: Option<String>
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum BindingType {
     Uniform,
     Buffer,
@@ -226,7 +229,7 @@ struct ParseBindingResult {
     layout_parts: Vec<LayoutPart>,
     binding_type: BindingType,
     type_name: String,
-    fields: Option<Vec<ParseFieldResult>>,
+    fields: Option<Arc<Vec<ParseFieldResult>>>,
     instance_name: String,
     array_sizes: Vec<usize>
 }
@@ -352,13 +355,63 @@ fn try_parse_const(code: &[char]) -> Result<Option<()>, String> {
 //
 // }
 
+#[derive(Debug)]
+enum StructOrBinding {
+    Struct(usize),
+    Binding(usize)
+}
+
+#[derive(Debug)]
+struct TypeAlignmentInfo {
+    rust_type: String,
+    size: usize,
+    std140_alignment: usize, // for structs/array elements, round up to multiple of 16
+    std430_alignment: usize,
+}
+
+#[derive(Debug)]
+struct UserType {
+    struct_or_binding: StructOrBinding,
+    type_name: String,
+    fields: Arc<Vec<ParseFieldResult>>,
+    export_name: Option<String>,
+    export_uniform_layout: bool,
+    export_push_constant_layout: bool,
+    export_buffer_layout: bool,
+}
+
+fn recursive_modify_user_type<F: Fn(&mut UserType) -> bool>(user_types: &mut FnvHashMap::<String, UserType>, type_name: &str, f: &F) {
+    let mut user_type = user_types.get_mut(type_name);
+    let recurse = if let Some(user_type) = user_type {
+        (f)(user_type)
+    } else {
+        // for now skip types we don't recognize
+        return;
+    };
+
+    if recurse {
+        if let Some(fields) = user_types.get(type_name).map(|x| x.fields.clone()) {
+            for field in &*fields {
+                recursive_modify_user_type(user_types, &field.type_name, f);
+            }
+        }
+    }
+}
+
+
 pub fn generate_rust_code(declarations: &[Declaration]) -> Result<String, String> {
     let mut structs = Vec::default();
     let mut bindings = Vec::default();
 
+    //
+    // Parse all declarations and their annotations
+    //
     for declaration in declarations {
         if let Some(struct_result) = try_parse_struct(&declaration.text)? {
-            println!("Parsed a struct {:?}", struct_result);
+            //
+            // Handle struct
+            //
+            //println!("Parsed a struct {:?}", struct_result);
 
             let struct_annotations = StructAnnotations::new(&declaration.annotations).map_err(|e| {
                 format!(
@@ -368,12 +421,13 @@ pub fn generate_rust_code(declarations: &[Declaration]) -> Result<String, String
                 )
             })?;
 
-            //rust_code += &generate_struct(&struct_result, &struct_annotations)?;
             structs.push((struct_result, struct_annotations));
 
         } else if let Some(binding_result) = try_parse_binding(&declaration.text)? {
-            println!("Parsed a binding {:?}", binding_result);
-
+            //
+            // Handle Binding
+            //
+            //println!("Parsed a binding {:?}", binding_result);
 
             let binding_annotations = BindingAnnotations::new(&declaration.annotations).map_err(|e| {
                 format!(
@@ -385,6 +439,9 @@ pub fn generate_rust_code(declarations: &[Declaration]) -> Result<String, String
 
             bindings.push((binding_result, binding_annotations));
         } else if try_parse_const(&declaration.text)?.is_some() {
+            //
+            // Stub for constants, not yet supported
+            //
             if !declaration.annotations.is_empty() {
                 return Err(format!("Annotations on consts not yet supported:\n{}", crate::parse::characters_to_string(&declaration.text)));
             }
@@ -393,7 +450,167 @@ pub fn generate_rust_code(declarations: &[Declaration]) -> Result<String, String
         }
     }
 
+    //
+    // Populate the user types map. Adding types in the map helps us detect duplicate type names
+    // and quickly mark what layouts need to be exported (std140 - uniforms vs. std430 - push
+    // constants/buffers)
+    //
+    // Structs and bindings can both declare new types, so gather data from both sources
+    //
+    let mut user_types = FnvHashMap::<String, UserType>::default();
+
+    //
+    // Populate user types from structs
+    //
+    for (index, (s, a)) in structs.iter().enumerate() {
+        let export_name = a.export.as_ref().map(|x| x.0.clone());
+        let old = user_types.insert(s.type_name.clone(), UserType {
+            struct_or_binding: StructOrBinding::Struct(index),
+            type_name: s.type_name.clone(),
+            fields: s.fields.clone(),
+            export_name,
+            export_uniform_layout: false,
+            export_push_constant_layout: false,
+            export_buffer_layout: false,
+        });
+
+        if let Some(old) = old {
+            return Err(format!("Duplicate user-defined type {}", s.type_name));
+        }
+    }
+
+    //
+    // Populate user types from bindings
+    //
+    for (index, (b, a)) in bindings.iter().enumerate() {
+        if let Some(fields) = &b.fields {
+            let export_name = a.export.as_ref().map(|x| x.0.clone());
+            let old = user_types.insert(b.type_name.clone(), UserType {
+                struct_or_binding: StructOrBinding::Binding(index),
+                type_name: b.type_name.clone(),
+                fields: fields.clone(),
+                export_name,
+                export_uniform_layout: false,
+                export_push_constant_layout: false,
+                export_buffer_layout: false,
+            });
+
+            if let Some(old) = old {
+                return Err(format!("Duplicate user-defined type {}", b.type_name));
+            }
+        }
+    }
+
+    //
+    // Any struct that's explicitly exported will produce all layouts
+    //
+    for (index, (s, a)) in structs.iter().enumerate() {
+        if a.export.is_some() {
+            recursive_modify_user_type(&mut user_types, &s.type_name, &|udt| {
+                let already_marked = udt.export_uniform_layout && udt.export_push_constant_layout && udt.export_buffer_layout;
+                udt.export_uniform_layout = true;
+                udt.export_push_constant_layout = true;
+                udt.export_buffer_layout = true;
+                !already_marked
+            });
+        }
+    }
+
+    //
+    // Bindings can either be std140 (uniform) or std430 (push constant/buffer). Depending on the
+    // binding, enable export for just the type that we need
+    //
+    for (index, (b, a)) in bindings.iter().enumerate() {
+        if a.export.is_some() {
+            if b.layout_parts.iter().any(|x| x.key == "push_constant") {
+                recursive_modify_user_type(&mut user_types, &b.type_name, &|udt| {
+                    let already_marked = udt.export_push_constant_layout;
+                    udt.export_push_constant_layout = true;
+                    !already_marked
+                });
+            } else if b.binding_type == BindingType::Uniform {
+                recursive_modify_user_type(&mut user_types, &b.type_name, &|udt| {
+                    let already_marked = udt.export_uniform_layout;
+                    udt.export_uniform_layout = true;
+                    !already_marked
+                });
+            } else if b.binding_type == BindingType::Buffer {
+                recursive_modify_user_type(&mut user_types, &b.type_name, &|udt| {
+                    let already_marked = udt.export_buffer_layout;
+                    udt.export_buffer_layout = true;
+                    !already_marked
+                });
+            }
+        }
+    }
+
+    fn add_type_alignment_info(
+        type_alignment_info: &mut FnvHashMap<String, TypeAlignmentInfo>,
+        type_name: &str,
+        rust_type: &str,
+        size: usize,
+        std140_alignment: usize,
+        std430_alignment: usize,
+    ) {
+        let old = type_alignment_info.insert(type_name.to_string(), TypeAlignmentInfo {
+            rust_type: rust_type.to_string(),
+            size,
+            std140_alignment,
+            std430_alignment
+        });
+        assert!(old.is_none());
+    }
+
+    let mut builtin_types = FnvHashMap::<String, TypeAlignmentInfo>::default();
+    add_type_alignment_info(&mut builtin_types, "uint", "u32", std::mem::size_of::<u32>(), 4, 4);
+    add_type_alignment_info(&mut builtin_types, "bool", "bool", std::mem::size_of::<bool>(), 4, 4);
+    add_type_alignment_info(&mut builtin_types, "float", "f32", std::mem::size_of::<f32>(), 4, 4);
+    add_type_alignment_info(&mut builtin_types, "vec2", "[f32;2]", std::mem::size_of::<[f32;2]>(), 8, 8);
+    add_type_alignment_info(&mut builtin_types, "vec3", "[f32;3]", std::mem::size_of::<[f32;3]>(), 16, 16);
+    add_type_alignment_info(&mut builtin_types, "vec4", "[f32;4]", std::mem::size_of::<[f32;4]>(), 16, 16);
+
+    for (type_name, user_type) in &user_types {
+        println!("std140 Type info for {}", type_name);
+        let alignment = determine_gpu_alignment(&builtin_types, &user_types, type_name, &[], StdAlignment::Std140)?;
+        let size = determine_gpu_size(&builtin_types, &user_types, type_name, &[], 0, 0,&type_name, StdAlignment::Std140)?;
+        println!("  {}: {} {}", type_name, alignment, size);
+
+        println!("std430 Type info for {}", type_name);
+        let alignment = determine_gpu_alignment(&builtin_types, &user_types, type_name, &[], StdAlignment::Std430)?;
+        let size = determine_gpu_size(&builtin_types, &user_types, type_name, &[], 0, 0, &type_name, StdAlignment::Std430)?;
+        println!("  {}: {} {}", type_name, alignment, size);
+
+
+
+    }
+
+
+
+
+
+
     let mut rust_code = String::default();
+
+    // for (type_name, user_type) in &user_types {
+    //     if user_type.export_buffer_layout || user_type.export_push_constant_layout {
+    //         generate_std430_layout(&user_types, type_name);
+    //     }
+    //
+    //     if user_type.export_uniform_layout {
+    //         generate_std140_layout(&user_types, type_name);
+    //     }
+    // }
+
+
+    // let mut types_to_export_set : FnvHashSet::<String>::default();
+    // let mut types_to_export_dependency_queue = VecDeque::<String>::default();
+    // for (s, a) in &structs {
+    //     if a.export.is_some() {
+    //         types_to_export_set.insert(s.type_name.clone());
+    //     }
+    // }
+
+
 
 
     //for
@@ -404,4 +621,136 @@ pub fn generate_rust_code(declarations: &[Declaration]) -> Result<String, String
 
 
     Ok(rust_code)
+}
+
+struct FieldVisitParams<'a> {
+    gpu_type_name: &'a str,
+    offset: usize
+}
+
+fn determine_gpu_size(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
+    query_type: &str,
+    array_sizes: &[usize],
+    mut offset: usize,
+    logging_offset: usize,
+    logging_name: &str,
+    std_alignment: StdAlignment
+) -> Result<usize, String> {
+    // We only need to know how many elements we have
+    let mut element_count = 1;
+    for x in array_sizes {
+        element_count *= x;
+    }
+
+    // Align this type (may be a struct, built-in, etc.
+    let alignment = determine_gpu_alignment(builtin_types, user_types, query_type, array_sizes, std_alignment)?;
+    offset = (offset + alignment - 1) / alignment * alignment;
+
+    if let Some(builtin_type) = builtin_types.get(query_type) {
+        offset = (offset + alignment - 1) / alignment * alignment;
+
+        println!("  {} +{} (size: {}) [{} elements of size {}, alignment: {}, name: {}]", query_type, logging_offset, element_count * builtin_type.size, element_count, builtin_type.size, alignment, logging_name);
+        if array_sizes.is_empty() {
+            offset += builtin_type.size;
+        } else {
+            let padded_size = (builtin_type.size + alignment - 1) / alignment * alignment;
+            offset += padded_size * element_count;
+        }
+
+        Ok(offset)
+    } else if let Some(user_type) = user_types.get(query_type) {
+        let mut offset_within_struct = 0;
+        println!("  process fields for {}", logging_name);
+        for f in &*user_type.fields {
+            // Align the member
+            let field_alignment = determine_gpu_alignment(builtin_types, user_types, &f.type_name, &f.array_sizes, std_alignment)?;
+            offset_within_struct = (offset_within_struct + field_alignment - 1) / field_alignment * field_alignment;
+
+            offset_within_struct = determine_gpu_size(builtin_types, user_types, &f.type_name, &f.array_sizes, offset_within_struct, offset + offset_within_struct, &f.field_name, std_alignment)?;
+        }
+
+        let padded_size = (offset_within_struct + alignment - 1) / alignment * alignment;
+        println!("    struct {} total size: {} [{} elements of size {}]", logging_name, padded_size * element_count, element_count, padded_size);
+        offset += padded_size * element_count;
+
+        // // the base offset of the member following the sub-structure is rounded up to the next multiple of the base alignment of the structure
+        // offset = (offset + alignment - 1) / alignment * alignment;
+        Ok(offset)
+    } else {
+        return Err(format!("Could not find type {}", query_type));
+    }
+}
+
+#[derive(Copy, Clone)]
+enum StdAlignment {
+    Std140,
+    Std430
+}
+
+fn determine_gpu_alignment(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
+    query_type: &str,
+    array_sizes: &[usize],
+    alignment: StdAlignment
+) -> Result<usize, String> {
+    match alignment {
+        StdAlignment::Std140 => determine_gpu_alignment_std140(builtin_types, user_types, query_type, array_sizes),
+        StdAlignment::Std430 => determine_gpu_alignment_std430(builtin_types, user_types, query_type, array_sizes),
+    }
+}
+
+//TODO: Do I need to generate structs for array elements that are not properly aligned?
+fn determine_gpu_alignment_std140(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
+    query_type: &str,
+    array_sizes: &[usize]
+) -> Result<usize, String> {
+    if let Some(builtin_type) = builtin_types.get(query_type) {
+        if !array_sizes.is_empty() {
+            // For std140, array element alignment is rounded up element to multiple of 16
+            Ok((builtin_type.std140_alignment + 15) / 16 * 16)
+        } else {
+            // Built-ins that are not array elements get normal alignment
+            Ok(builtin_type.std140_alignment)
+        }
+    } else if let Some(user_type) = user_types.get(query_type) {
+        let mut alignment = 16;
+        for f in &*user_type.fields {
+            let field_alignment = determine_gpu_alignment_std140(builtin_types, user_types, &f.type_name, &f.array_sizes)?;
+
+            // For std140, struct alignment is the max of its field's alignment requirements, rounded
+            // up to 16
+            //let field_alignment = (field_alignment + 15) / 16 * 16;
+            alignment = alignment.max(field_alignment);
+        }
+
+        Ok((alignment + 15) / 16 * 16)
+    } else {
+        return Err(format!("Could not find type {}", query_type));
+    }
+}
+
+fn determine_gpu_alignment_std430(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
+    query_type: &str,
+    _array_sizes: &[usize]
+) -> Result<usize, String> {
+    if let Some(builtin_type) = builtin_types.get(query_type) {
+        Ok(builtin_type.std430_alignment)
+    } else if let Some(user_type) = user_types.get(query_type) {
+        let mut alignment = 4;
+        for f in &*user_type.fields {
+            let field_alignment = determine_gpu_alignment_std430(builtin_types, user_types, &f.type_name, &f.array_sizes)?;
+            alignment = alignment.max(field_alignment);
+        }
+
+        Ok(alignment)
+    } else {
+        return Err(format!("Could not find type {}", query_type));
+    }
 }
