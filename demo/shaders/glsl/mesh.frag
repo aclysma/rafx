@@ -20,28 +20,45 @@ const float PI = 3.14159265359;
 //
 struct PointLight {
     vec3 position_ws;
+    float pad0;
     vec3 position_vs;
+    float pad1;
     vec4 color;
     float range;
     float intensity;
+    float pad2;
+    float pad3;
 };
+
+//TODO: Can I get rid of this padding?
+//TODO: Does the automatic padding need to go at the end of the struct?
 
 struct DirectionalLight {
     vec3 direction_ws;
+    float pad0;
     vec3 direction_vs;
+    float pad1;
     vec4 color;
     float intensity;
+    float pad2;
+    float pad3;
+    float pad4;
 };
 
 struct SpotLight {
     vec3 position_ws;
+    float pad0;
     vec3 direction_ws;
+    float pad1;
     vec3 position_vs;
+    float pad2;
     vec3 direction_vs;
+    float pad3;
     vec4 color;
     float spotlight_half_angle;
     float range;
     float intensity;
+    float pad4;
 };
 
 // @[export]

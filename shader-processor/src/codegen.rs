@@ -164,22 +164,26 @@ fn create_user_type_lookup(
 }
 
 fn add_type_alignment_info<T>(
-    type_alignment_info: &mut FnvHashMap<String, TypeAlignmentInfo>,
+    type_alignment_infos: &mut FnvHashMap<String, TypeAlignmentInfo>,
     type_name: &str,
     rust_type: &str,
 ) {
     let align = std::mem::align_of::<T>();
     let size = std::mem::size_of::<T>();
-    let old = type_alignment_info.insert(
+
+    let type_alignment_info = TypeAlignmentInfo {
+        rust_type: rust_type.to_string(),
+        size,
+        align,
+        // As far as I can tell, alignment is always 4, 8, or 16
+        std140_alignment: next_power_of_2(size.min(16).max(4)),
+        std430_alignment: next_power_of_2(size.min(16).max(4)),
+    };
+    log::trace!("built in type: {:?}", type_alignment_info);
+
+    let old = type_alignment_infos.insert(
         type_name.to_string(),
-        TypeAlignmentInfo {
-            rust_type: rust_type.to_string(),
-            size,
-            align,
-            // As far as I can tell, alignment is always 4, 8, or 16
-            std140_alignment: next_power_of_2(size.min(16).max(4)),
-            std430_alignment: next_power_of_2(size.min(16).max(4)),
-        },
+        type_alignment_info,
     );
     assert!(old.is_none());
 }
@@ -374,16 +378,20 @@ fn format_array_sizes(sizes: &[usize]) -> String {
     s
 }
 
+#[derive(Debug)]
 struct StructMember {
     name: String,
     ty: String,
     size: usize,
-    offset: usize
+    offset: usize,
+    align: usize,
 }
 
+#[derive(Debug)]
 struct GenerateStructResult {
     name: String,
     size: usize,
+    align: usize,
     members: Vec<StructMember>,
 }
 
@@ -416,6 +424,7 @@ impl GenerateStructResult {
         result_string += &format!("        assert_eq!(std::mem::size_of::<{}>(), {});\n", self.name, self.size);
         for m in &self.members {
             result_string += &format!("        assert_eq!(std::mem::size_of::<{}>(), {});\n", m.ty, m.size);
+            result_string += &format!("        assert_eq!(std::mem::align_of::<{}>(), {});\n", m.ty, m.align);
             result_string += &format!("        assert_eq!(memoffset::offset_of!({}, {}), {});\n", self.name, m.name, m.offset);
         }
         result_string += &format!("    }}\n");
@@ -430,6 +439,7 @@ fn format_member(name: &str, ty: &str, offset: usize, size: usize) -> String {
     str += &format!("// +{} (size: {})\n", offset, size);
     str
 }
+
 
 fn generate_struct(
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
@@ -454,6 +464,7 @@ fn generate_struct(
         // the struct. There are some std140 rules that are a bit painful :(
         //
         {
+            log::trace!("  check gpu size unaligned");
             let gpu_size_without_alignment = determine_size(
                 builtin_types,
                 user_types,
@@ -465,6 +476,7 @@ fn generate_struct(
                 layout,
             )?;
 
+            log::trace!("  check rust size unaligned");
             let rust_size_without_alignment = determine_size(
                 builtin_types,
                 user_types,
@@ -476,9 +488,12 @@ fn generate_struct(
                 MemoryLayout::C,
             )?;
 
+            //let rust_size_without_alignment = determine_generated_structure_size(builtin_types, user_types, &f.type_name, &f.array_sizes, 0, 0, &f.type_name, layout)?;
+            //println!("before: {} now: {}", rust_size_without_alignment_before, rust_size_without_alignment);
+
             if gpu_size_without_alignment != rust_size_without_alignment {
                 return Err(format!(
-                    "Field {}::{} uses type {}{} which has a different size in Rust and shader code: Rust: {} Shader Code: {}",
+                    "Field {}::{} uses type {}{} which has a different size in Rust and shader code: Rust: {} Shader Code: {}. This is usually caused by std140 requiring array elements to be 16-byte aligned. Consider adding manual padding",
                     type_name,
                     f.field_name,
                     f.type_name,
@@ -492,6 +507,7 @@ fn generate_struct(
         //
         // Determine the alignment and size of this type in the shader
         //
+        log::trace!("  get gpu required offset");
         let gpu_alignment = determine_alignment(
             builtin_types,
             user_types,
@@ -499,22 +515,24 @@ fn generate_struct(
             &f.array_sizes,
             layout,
         )?;
-        let gpu_required_offset = align_offset(gpu_offset, gpu_alignment);
 
+        log::trace!("    offset: {} align to {}", gpu_offset, gpu_alignment);
+        gpu_offset = align_offset(gpu_offset, gpu_alignment);
         let gpu_size = determine_size(
             builtin_types,
             user_types,
             &f.type_name,
             &f.array_sizes,
-            gpu_required_offset,
-            gpu_required_offset,
+            gpu_offset,
+            gpu_offset,
             &f.type_name,
             layout,
-        )? - gpu_required_offset;
+        )? - gpu_offset;
 
         //
         // Determine the alignment and size of this type in rust
         //
+        log::trace!("  get rust required offset");
         let rust_alignment = determine_alignment(
             builtin_types,
             user_types,
@@ -523,6 +541,7 @@ fn generate_struct(
             MemoryLayout::C,
         )?;
 
+        log::trace!("    offset: {} align to {}", rust_offset, rust_alignment);
         let rust_required_offset = align_offset(rust_offset, rust_alignment);
         let rust_size = determine_size(
             builtin_types,
@@ -535,54 +554,96 @@ fn generate_struct(
             MemoryLayout::C,
         )? - rust_required_offset;
 
-        if rust_required_offset < gpu_required_offset {
+        // let rust_size = determine_generated_structure_size(
+        //     builtin_types,
+        //     user_types,
+        //     &f.type_name,
+        //     &f.array_sizes,
+        //     rust_required_offset,
+        //     rust_required_offset,
+        //     &f.type_name,
+        //     layout,
+        // )? - rust_required_offset;
+        //println!("AAAA rust size {} from {}", rust_size, rust_required_offset);
+
+        //log::trace!("rust required offset: {}, gpu required offset: {}", rust_required_offset, gpu_offset);
+
+        if rust_required_offset < gpu_offset {
             // return Err(format!(
             //     "Field {}::{} ({}{}) requires {} bytes of padding in front of it. (The GPU memory layout has more padding than rust). Previous field ended at byte offset: {}",
             //     type_name,
             //     f.field_name,
             //     f.type_name,
             //     format_array_sizes(&f.array_sizes),
-            //     gpu_required_offset - rust_required_offset,
+            //     gpu_offset - rust_required_offset,
             //     rust_offset
             // ));
 
-            let required_padding = gpu_required_offset - rust_required_offset;
-            members.push(StructMember {
-                name: format!("padding{}", pad_var_count),
+            let required_padding = gpu_offset - rust_required_offset;
+            let struct_member = StructMember {
+                name: format!("_padding{}", pad_var_count),
                 ty: format!("[u8;{}]", required_padding),
                 size: required_padding,
+                align: 1,
                 offset: rust_offset
-            });
+            };
+            log::trace!("member: {:?}", struct_member);
+            members.push(struct_member);
 
             pad_var_count += 1;
             rust_offset += required_padding;
+            log::trace!("RUST: advance by {} bytes to offset {}", required_padding, rust_offset);
         }
 
-        if rust_required_offset > gpu_required_offset {
+        if rust_required_offset > gpu_offset {
+            let required_padding = rust_required_offset - gpu_offset;
             return Err(format!(
                 "Field {}::{} ({}{}) requires {} bytes of padding in front of it. (The GPU memory layout has less padding that rust). Previous field ended at byte offset: {}",
                 type_name,
                 f.field_name,
                 f.type_name,
                 format_array_sizes(&f.array_sizes),
-                gpu_required_offset - gpu_offset,
+                required_padding,
                 gpu_offset
             ));
         }
 
         debug_assert!(gpu_size == rust_size);
+        //assert!(gpu_size <= rust_size);
         let rust_type_name = get_rust_type_name(builtin_types, user_types, &f.type_name, layout, &f.array_sizes)?;
 
-        members.push(StructMember {
+        //println!("rust size: {}", rust_size);
+        let struct_member = StructMember {
             name: f.field_name.clone(),
             ty: rust_type_name,
             size: rust_size,
+            align: rust_alignment,
             offset: rust_offset
-        });
+        };
+        log::trace!("member: {:?}", struct_member);
+        members.push(struct_member);
 
         rust_offset += rust_size;
         gpu_offset += gpu_size;
+        log::trace!("RUST: advance by {} bytes to offset {}", rust_size, rust_offset);
+        log::trace!("GPU: advance by {} bytes to offset {}", gpu_size, gpu_offset);
     }
+
+    debug_assert!(rust_offset == gpu_offset);
+    // // End of struct padding to make sizes match
+    // assert!(rust_offset <= gpu_offset);
+    // if rust_offset < gpu_offset {
+    //     let required_padding = gpu_offset - rust_offset;
+    //     let struct_member = StructMember {
+    //         name: format!("_padding{}", pad_var_count),
+    //         ty: format!("[u8;{}]", required_padding),
+    //         size: required_padding,
+    //         align: 1,
+    //         offset: rust_offset
+    //     };
+    //     log::trace!("member: {:?}", struct_member);
+    //     members.push(struct_member);
+    // }
 
     let total_size = determine_size(
         builtin_types,
@@ -595,11 +656,14 @@ fn generate_struct(
         layout,
     )?;
 
+    let struct_align = determine_alignment_c(builtin_types, user_types, &type_name, &[])?;
+
     //print!("{}", result_string);
     Ok(GenerateStructResult {
         //generated_code: result_string,
         name: struct_name,
         size: total_size,
+        align: struct_align,
         members
     })
 }
@@ -609,6 +673,15 @@ fn align_offset(
     alignment: usize,
 ) -> usize {
     (offset + alignment - 1) / alignment * alignment
+}
+
+fn element_count(array_sizes: &[usize]) -> usize {
+    let mut element_count = 1;
+    for x in array_sizes {
+        element_count *= x;
+    }
+
+    element_count
 }
 
 fn determine_size(
@@ -622,10 +695,7 @@ fn determine_size(
     layout: MemoryLayout,
 ) -> Result<usize, String> {
     // We only need to know how many elements we have
-    let mut element_count = 1;
-    for x in array_sizes {
-        element_count *= x;
-    }
+    let mut element_count = element_count(array_sizes);
 
     // Align this type (may be a struct, built-in, etc.
     // Caller should probably already align
@@ -702,6 +772,64 @@ fn determine_size(
         return Err(format!("Could not find type {}", query_type));
     }
 }
+/*
+fn determine_generated_structure_size(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
+    query_type: &str,
+    array_sizes: &[usize],
+    mut offset: usize,
+    logging_offset: usize,
+    logging_name: &str,
+    layout: MemoryLayout,
+) -> Result<usize, String> {
+    // Assume we will properly align the struct by adding padding
+    let align = determine_alignment(builtin_types, user_types, query_type, array_sizes, layout)?;
+    let offset = align_offset(offset, align);
+
+    if let Some(builtin_type) = builtin_types.get(query_type) {
+        println!("builtin");
+        // Returns offset + size (TODO: Change this)
+        determine_size(
+            builtin_types,
+            user_types,
+            query_type,
+            array_sizes,
+            offset,
+            logging_offset,
+            logging_name,
+            MemoryLayout::C, // Raw types never get padding inserted into them, so return as-is
+        )
+    } else if let Some(user_type) = user_types.get(query_type) {
+        // get the ideal size (assume we align/pad the struct)
+        // If this ends up not being possible, we will fail when generating that struct
+        let size = generate_struct(
+            builtin_types,
+            user_types,
+            query_type,
+            user_type,
+            layout // The generated struct will be padded based on this layout
+        )?.size;
+
+        // Account for arrays
+        let element_count = element_count(array_sizes);
+        Ok(size * element_count)
+    } else {
+        return Err(format!("Could not find type {}", query_type));
+    }
+
+    // let rust_size_without_alignment = determine_size(
+    //     builtin_types,
+    //     user_types,
+    //     &f.type_name,
+    //     &f.array_sizes,
+    //     0,
+    //     0,
+    //     &f.type_name,
+    //     MemoryLayout::C,
+    // )?;
+}
+*/
 
 fn determine_alignment(
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
@@ -793,7 +921,8 @@ fn determine_alignment_c(
     _array_sizes: &[usize],
 ) -> Result<usize, String> {
     if let Some(builtin_type) = builtin_types.get(query_type) {
-        Ok(next_power_of_2(builtin_type.size))
+        //Ok(next_power_of_2(builtin_type.size))
+        Ok(builtin_type.align)
     } else if let Some(user_type) = user_types.get(query_type) {
         let mut alignment = 1;
         for f in &*user_type.fields {
@@ -915,10 +1044,7 @@ fn verify_layout(
                 .last()
                 .map(|x| x.offset + x.padded_size)
                 .unwrap_or(0) as usize;
-            let mut element_count = 1;
-            for array_size in array_sizes {
-                element_count *= array_size;
-            }
+            let element_count = element_count(&array_sizes);
 
             if size != size_from_reflection * element_count {
                 return Err(format!(
