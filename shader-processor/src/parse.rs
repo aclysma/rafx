@@ -1,11 +1,11 @@
-use std::ops::Range;
-use std::path::{PathBuf, Path};
-use std::collections::VecDeque;
 use fnv::FnvHashSet;
+use std::collections::VecDeque;
+use std::ops::Range;
+use std::path::{Path, PathBuf};
 
-use super::IncludeType;
 use super::Annotation;
 use super::Declaration;
+use super::IncludeType;
 
 fn range_of_line_at_position(
     code: &[char],
@@ -47,7 +47,7 @@ pub(crate) fn next_non_whitespace(
 ) -> usize {
     for i in position..code.len() {
         match code[position] {
-            ' ' | '\t' | '\r' | '\n' => { },
+            ' ' | '\t' | '\r' | '\n' => {}
             _ => break,
         }
         position = i + 1;
@@ -94,7 +94,6 @@ pub(crate) fn next_non_identifer(
     mut position: usize,
 ) -> usize {
     for i in position..code.len() {
-
         if !is_identifier_char(code[position]) {
             break;
         }
@@ -122,11 +121,10 @@ pub(crate) fn next_non_identifer(
 //
 // }
 
-
 fn next_char(
     code: &[char],
     mut position: usize,
-    search_char: char
+    search_char: char,
 ) -> usize {
     for i in position..code.len() {
         if code[position] == search_char {
@@ -139,7 +137,10 @@ fn next_char(
     position
 }
 
-pub(crate) fn try_consume_identifier(code: &[char], position: &mut usize) -> Option<String> {
+pub(crate) fn try_consume_identifier(
+    code: &[char],
+    position: &mut usize,
+) -> Option<String> {
     let begin = next_non_whitespace(code, *position);
 
     if begin < code.len() && is_identifier_char(code[begin]) {
@@ -151,13 +152,16 @@ pub(crate) fn try_consume_identifier(code: &[char], position: &mut usize) -> Opt
     }
 }
 
-pub(crate) fn try_consume_array_index(code: &[char], position: &mut usize) -> Option<usize> {
+pub(crate) fn try_consume_array_index(
+    code: &[char],
+    position: &mut usize,
+) -> Option<usize> {
     let begin = next_non_whitespace(code, *position);
     if begin < code.len() && is_number_char(code[begin]) {
         let end = next_non_identifer(code, begin);
 
         // If this fails, then we may have a string like "123xyz"
-        let number : usize = characters_to_string(&code[begin..end]).parse().ok()?;
+        let number: usize = characters_to_string(&code[begin..end]).parse().ok()?;
 
         *position = end;
         Some(number)
@@ -167,7 +171,11 @@ pub(crate) fn try_consume_array_index(code: &[char], position: &mut usize) -> Op
 }
 
 // Return option so we can do .ok_or("error message")?
-pub(crate) fn try_consume_literal(code: &[char], position: &mut usize, literal: &str) -> Option<()> {
+pub(crate) fn try_consume_literal(
+    code: &[char],
+    position: &mut usize,
+    literal: &str,
+) -> Option<()> {
     if is_string_at_position(code, *position, literal) {
         *position += literal.len();
         Some(())
@@ -176,9 +184,7 @@ pub(crate) fn try_consume_literal(code: &[char], position: &mut usize, literal: 
     }
 }
 
-pub(crate) fn characters_to_string(
-    characters: &[char],
-) -> String {
+pub(crate) fn characters_to_string(characters: &[char]) -> String {
     let mut string = String::with_capacity(characters.len());
     for &c in characters {
         string.push(c);
@@ -190,7 +196,7 @@ pub(crate) fn characters_to_string(
 pub(crate) fn is_string_at_position(
     code: &[char],
     position: usize,
-    s: &str
+    s: &str,
 ) -> bool {
     if code.len() < s.len() + position {
         return false;
@@ -224,11 +230,11 @@ fn remove_line_continuations(code: &[char]) -> Vec<char> {
                     result.push(c);
                 }
                 previous_non_whitespace = None;
-            },
+            }
             c @ ' ' | c @ '\t' | c @ '\r' => {
                 consecutive_whitespace_character_count += 1;
                 result.push(c);
-            },
+            }
             c @ _ => {
                 // Cache what the previous non-whitespace was
                 previous_non_whitespace = Some(c);
@@ -249,7 +255,7 @@ pub struct CommentText {
 
 struct RemoveCommentsResult {
     without_comments: Vec<char>,
-    comments: VecDeque<CommentText>
+    comments: VecDeque<CommentText>,
 }
 
 fn remove_comments(code: &[char]) -> RemoveCommentsResult {
@@ -258,7 +264,7 @@ fn remove_comments(code: &[char]) -> RemoveCommentsResult {
     let mut skip_this_character = false;
     let mut skip_this_character_in_comment_text = false;
     let mut in_string = false;
-    let mut without_comments : Vec<char> = Vec::with_capacity(code.len());
+    let mut without_comments: Vec<char> = Vec::with_capacity(code.len());
     let mut comments = VecDeque::<CommentText>::default();
     let mut comment_text = Vec::<char>::default();
     let mut was_in_comment = false;
@@ -271,7 +277,7 @@ fn remove_comments(code: &[char]) -> RemoveCommentsResult {
                 if !in_single_line_comment && !in_multiline_comment {
                     in_string = !in_string;
                 }
-            },
+            }
             '\n' => {
                 // End single-line comments
                 if in_single_line_comment {
@@ -282,7 +288,7 @@ fn remove_comments(code: &[char]) -> RemoveCommentsResult {
                     // But do add the newline to the code without comments
                     //without_comments.push('\n');
                 }
-            },
+            }
             '/' => {
                 if !in_single_line_comment && !in_string {
                     if in_multiline_comment {
@@ -307,10 +313,14 @@ fn remove_comments(code: &[char]) -> RemoveCommentsResult {
                         }
                     }
                 }
-            },
+            }
             '*' => {
                 // Start multi-line comment
-                if !in_single_line_comment && !in_multiline_comment && !in_string && previous_character == Some('/') {
+                if !in_single_line_comment
+                    && !in_multiline_comment
+                    && !in_string
+                    && previous_character == Some('/')
+                {
                     in_multiline_comment = true;
                     // Remove the / before this
                     without_comments.pop();
@@ -319,7 +329,7 @@ fn remove_comments(code: &[char]) -> RemoveCommentsResult {
                     // Don't include the * in the comment text
                     skip_this_character_in_comment_text = true;
                 }
-            },
+            }
             _ => {}
         }
 
@@ -335,7 +345,7 @@ fn remove_comments(code: &[char]) -> RemoveCommentsResult {
             std::mem::swap(&mut text, &mut comment_text);
             comments.push_back(CommentText {
                 position: without_comments.len(),
-                text
+                text,
             });
         }
 
@@ -359,13 +369,12 @@ fn remove_comments(code: &[char]) -> RemoveCommentsResult {
             previous_character = None;
         }
 
-
         was_in_comment = in_comment;
     }
 
     RemoveCommentsResult {
         without_comments,
-        comments
+        comments,
     }
 }
 
@@ -373,10 +382,13 @@ fn remove_comments(code: &[char]) -> RemoveCommentsResult {
 struct ParseIncludeResult {
     end_position: usize,
     include_type: IncludeType,
-    path: PathBuf
+    path: PathBuf,
 }
 
-fn try_parse_include(code: &[char], mut position: usize) -> Option<ParseIncludeResult> {
+fn try_parse_include(
+    code: &[char],
+    mut position: usize,
+) -> Option<ParseIncludeResult> {
     if position >= code.len() {
         return None;
     }
@@ -409,21 +421,19 @@ fn try_parse_include(code: &[char], mut position: usize) -> Option<ParseIncludeR
                     Some(ParseIncludeResult {
                         end_position: line_range.end,
                         include_type: IncludeType::Relative,
-                        path: as_str.into()
+                        path: as_str.into(),
                     })
-                },
+                }
                 '<' => {
                     let end = next_char(code, position + 1, '>');
                     let as_str = characters_to_string(&code[(position + 1)..end]);
                     Some(ParseIncludeResult {
                         end_position: line_range.end,
                         include_type: IncludeType::Standard,
-                        path: as_str.into()
+                        path: as_str.into(),
                     })
-                },
-                _ => {
-                    None
                 }
+                _ => None,
             }
         } else {
             None
@@ -431,8 +441,10 @@ fn try_parse_include(code: &[char], mut position: usize) -> Option<ParseIncludeR
     }
 }
 
-
-fn try_consume_preprocessor_directive(code: &[char], position: usize) -> Option<usize> {
+fn try_consume_preprocessor_directive(
+    code: &[char],
+    position: usize,
+) -> Option<usize> {
     assert!(position < code.len());
 
     if code[position] != '#' {
@@ -454,11 +466,15 @@ fn try_consume_preprocessor_directive(code: &[char], position: usize) -> Option<
     }
 }
 
-fn try_consume_declaration(code: &[char], position: usize) -> Option<usize> {
+fn try_consume_declaration(
+    code: &[char],
+    position: usize,
+) -> Option<usize> {
     assert!(position < code.len());
-    if !is_string_at_position(code, position, "layout") &&
-        !is_string_at_position(code, position, "struct") &&
-        !is_string_at_position(code, position, "const") {
+    if !is_string_at_position(code, position, "layout")
+        && !is_string_at_position(code, position, "struct")
+        && !is_string_at_position(code, position, "const")
+    {
         return None;
     }
 
@@ -481,7 +497,10 @@ fn try_consume_declaration(code: &[char], position: usize) -> Option<usize> {
 }
 
 // Skip past a curly brace block we don't recognize
-fn try_consume_unknown_block(code: &[char], position: usize) -> Option<usize> {
+fn try_consume_unknown_block(
+    code: &[char],
+    position: usize,
+) -> Option<usize> {
     assert!(position < code.len());
     if code[position] != '{' {
         // Quick early out, we only do detection if we are at the start of a curly brace block
@@ -528,7 +547,7 @@ fn find_annotations_in_comments(comments: &[CommentText]) -> Vec<Annotation> {
                     if in_annotation {
                         bracket_count += 1;
                     }
-                },
+                }
                 ']' => {
                     if in_annotation {
                         bracket_count -= 1;
@@ -539,7 +558,7 @@ fn find_annotations_in_comments(comments: &[CommentText]) -> Vec<Annotation> {
                             std::mem::swap(&mut text, &mut annotation);
                             annotations.push(Annotation {
                                 position: comment.position,
-                                text
+                                text,
                             });
                         }
                     }
@@ -572,7 +591,10 @@ pub struct FileToProcess {
     pub include_depth: usize,
 }
 
-fn pop_comments_up_to_position(comments: &mut VecDeque<CommentText>, position: usize) -> Vec<CommentText> {
+fn pop_comments_up_to_position(
+    comments: &mut VecDeque<CommentText>,
+    position: usize,
+) -> Vec<CommentText> {
     let mut result = Vec::default();
 
     while let Some(comment) = comments.front() {
@@ -587,16 +609,14 @@ fn pop_comments_up_to_position(comments: &mut VecDeque<CommentText>, position: u
 }
 
 pub struct ParseShaderSourceResult {
-    pub declarations: Vec<Declaration>
+    pub declarations: Vec<Declaration>,
 }
 
-pub fn parse_shader_source(
-    file_name: &Path
-) -> Result<ParseShaderSourceResult, String> {
+pub fn parse_shader_source(file_path: &Path) -> Result<ParseShaderSourceResult, String> {
     let first_file = FileToProcess {
-        path: file_name.into(),
+        path: file_path.file_name().ok_or_else(|| format!("Failed to get the filename from path {:?}", file_path))?.into(),
         include_type: IncludeType::Relative,
-        requested_from: file_name.into(),
+        requested_from: file_path.to_path_buf(),
         include_depth: 0,
     };
 
@@ -605,21 +625,19 @@ pub fn parse_shader_source(
 
     parse_shader_source_recursive(&first_file, &mut declarations, &mut included_files)?;
 
-    Ok(ParseShaderSourceResult {
-        declarations
-    })
+    Ok(ParseShaderSourceResult { declarations })
 }
 
 pub fn parse_shader_source_recursive(
     file_to_process: &FileToProcess,
     declarations: &mut Vec<Declaration>,
-    included_files: &mut FnvHashSet::<PathBuf>
+    included_files: &mut FnvHashSet<PathBuf>,
 ) -> Result<(), String> {
     let resolved_include = super::include_impl(
         &file_to_process.path,
         file_to_process.include_type,
         &file_to_process.requested_from,
-        file_to_process.include_depth
+        file_to_process.include_depth,
     )?;
 
     if included_files.contains(&resolved_include.resolved_path) {
@@ -628,7 +646,16 @@ pub fn parse_shader_source_recursive(
 
     included_files.insert(resolved_include.resolved_path.clone());
 
-    let code : Vec<char> = resolved_include.content.chars().collect();
+    let code: Vec<char> = resolved_include.content.chars().collect();
+    parse_shader_source_text(file_to_process, declarations, included_files, &code)
+}
+
+pub(crate) fn parse_shader_source_text(
+    file_to_process: &FileToProcess,
+    declarations: &mut Vec<Declaration>,
+    included_files: &mut FnvHashSet<PathBuf>,
+    code: &Vec<char>,
+) -> Result<(), String> {
     let code = remove_line_continuations(&code);
     let remove_comments_result = remove_comments(&code);
 
@@ -663,7 +690,6 @@ pub fn parse_shader_source_recursive(
 
             position = new_position;
         } else if let Some(new_position) = try_consume_declaration(&code, position) {
-
             // Drain comments that we've passed and haven't taken
             let relevant_comments = pop_comments_up_to_position(&mut comments, new_position);
             let annotations = find_annotations_in_comments(&relevant_comments);
@@ -673,11 +699,9 @@ pub fn parse_shader_source_recursive(
 
             let text = code[position..new_position].iter().cloned().collect();
 
-
             declarations.push(Declaration {
                 text,
-                annotations
-                //comments: relevant_comments
+                annotations, //comments: relevant_comments
             });
             position = new_position
         } else if let Some(new_position) = try_consume_unknown_block(&code, position) {
@@ -699,7 +723,6 @@ pub fn parse_shader_source_recursive(
 
     Ok(())
 }
-
 
 #[cfg(test)]
 mod test {
@@ -926,7 +949,10 @@ mod test {
 
     #[test]
     fn test_remove_comments_complex() {
-        let example: Vec<char> = "/**//* *///test\n/*\"tes\"\n*/\"t//".to_string().chars().collect();
+        let example: Vec<char> = "/**//* *///test\n/*\"tes\"\n*/\"t//"
+            .to_string()
+            .chars()
+            .collect();
         let result = remove_comments(&example);
         let without_comments = chars_to_string(&result.without_comments);
         assert_eq!("   \n \"t//", without_comments);
@@ -944,33 +970,42 @@ mod test {
     fn test_parse_include_a() {
         let code: Vec<char> = "#include \"asdf\"".to_string().chars().collect();
         let result = try_parse_include(&code, 0);
-        assert_eq!(result, Some(ParseIncludeResult {
-            end_position: code.len(),
-            include_type: IncludeType::Relative,
-            path: "asdf".into()
-        }));
+        assert_eq!(
+            result,
+            Some(ParseIncludeResult {
+                end_position: code.len(),
+                include_type: IncludeType::Relative,
+                path: "asdf".into()
+            })
+        );
     }
 
     #[test]
     fn test_parse_include_b() {
         let code: Vec<char> = "#include <asdf>".to_string().chars().collect();
         let result = try_parse_include(&code, 0);
-        assert_eq!(result, Some(ParseIncludeResult {
-            end_position: code.len(),
-            include_type: IncludeType::Standard,
-            path: "asdf".into()
-        }));
+        assert_eq!(
+            result,
+            Some(ParseIncludeResult {
+                end_position: code.len(),
+                include_type: IncludeType::Standard,
+                path: "asdf".into()
+            })
+        );
     }
 
     #[test]
     fn test_parse_include_c() {
         let code: Vec<char> = "     #include \"asdf\"".to_string().chars().collect();
         let result = try_parse_include(&code, 5);
-        assert_eq!(result, Some(ParseIncludeResult {
-            end_position: code.len(),
-            include_type: IncludeType::Relative,
-            path: "asdf".into()
-        }));
+        assert_eq!(
+            result,
+            Some(ParseIncludeResult {
+                end_position: code.len(),
+                include_type: IncludeType::Relative,
+                path: "asdf".into()
+            })
+        );
     }
 
     #[test]
@@ -1001,12 +1036,12 @@ mod test {
         assert_eq!(result, None);
     }
 
-
     #[test]
     fn test_find_annotation_in_comments_a() {
-        let comments = vec![
-            CommentText { position: 0, text: "".to_string().chars().collect() }
-        ];
+        let comments = vec![CommentText {
+            position: 0,
+            text: "".to_string().chars().collect(),
+        }];
 
         let annotations = find_annotations_in_comments(&comments);
         assert_eq!(annotations.len(), 0);
@@ -1014,9 +1049,10 @@ mod test {
 
     #[test]
     fn test_find_annotation_in_comments_b() {
-        let comments = vec![
-            CommentText { position: 0, text: "asdf".to_string().chars().collect() }
-        ];
+        let comments = vec![CommentText {
+            position: 0,
+            text: "asdf".to_string().chars().collect(),
+        }];
 
         let annotations = find_annotations_in_comments(&comments);
         assert_eq!(annotations.len(), 0);
@@ -1024,9 +1060,10 @@ mod test {
 
     #[test]
     fn test_find_annotation_in_comments_c() {
-        let comments = vec![
-            CommentText { position: 0, text: "@[".to_string().chars().collect() }
-        ];
+        let comments = vec![CommentText {
+            position: 0,
+            text: "@[".to_string().chars().collect(),
+        }];
 
         let annotations = find_annotations_in_comments(&comments);
         assert_eq!(annotations.len(), 0);
@@ -1034,21 +1071,22 @@ mod test {
 
     #[test]
     fn test_find_annotation_in_comments_d() {
-        let comments = vec![
-            CommentText { position: 0, text: "@[test]".to_string().chars().collect() }
-        ];
+        let comments = vec![CommentText {
+            position: 0,
+            text: "@[test]".to_string().chars().collect(),
+        }];
 
         let annotations = find_annotations_in_comments(&comments);
         assert_eq!(annotations.len(), 1);
         assert_eq!(characters_to_string(&annotations[0].text[..]), "test");
     }
 
-
     #[test]
     fn test_find_annotation_in_comments_e() {
-        let comments = vec![
-            CommentText { position: 0, text: "@[test]@[test]".to_string().chars().collect() }
-        ];
+        let comments = vec![CommentText {
+            position: 0,
+            text: "@[test]@[test]".to_string().chars().collect(),
+        }];
 
         let annotations = find_annotations_in_comments(&comments);
         assert_eq!(annotations.len(), 2);
@@ -1058,9 +1096,10 @@ mod test {
 
     #[test]
     fn test_find_annotation_in_comments_f() {
-        let comments = vec![
-            CommentText { position: 0, text: "@[[[test]]]@[test]".to_string().chars().collect() }
-        ];
+        let comments = vec![CommentText {
+            position: 0,
+            text: "@[[[test]]]@[test]".to_string().chars().collect(),
+        }];
 
         let annotations = find_annotations_in_comments(&comments);
         assert_eq!(annotations.len(), 2);
@@ -1070,9 +1109,10 @@ mod test {
 
     #[test]
     fn test_find_annotation_in_comments_g() {
-        let comments = vec![
-            CommentText { position: 0, text: "]".to_string().chars().collect() }
-        ];
+        let comments = vec![CommentText {
+            position: 0,
+            text: "]".to_string().chars().collect(),
+        }];
 
         let annotations = find_annotations_in_comments(&comments);
         assert_eq!(annotations.len(), 0);
@@ -1080,9 +1120,10 @@ mod test {
 
     #[test]
     fn test_find_annotation_in_comments_h() {
-        let comments = vec![
-            CommentText { position: 0, text: "@ []".to_string().chars().collect() }
-        ];
+        let comments = vec![CommentText {
+            position: 0,
+            text: "@ []".to_string().chars().collect(),
+        }];
 
         let annotations = find_annotations_in_comments(&comments);
         assert_eq!(annotations.len(), 0);
@@ -1091,8 +1132,14 @@ mod test {
     #[test]
     fn test_find_annotation_in_comments_i() {
         let comments = vec![
-            CommentText { position: 0, text: "@[asdf".to_string().chars().collect() },
-            CommentText { position: 0, text: "asdf]".to_string().chars().collect() }
+            CommentText {
+                position: 0,
+                text: "@[asdf".to_string().chars().collect(),
+            },
+            CommentText {
+                position: 0,
+                text: "asdf]".to_string().chars().collect(),
+            },
         ];
 
         let annotations = find_annotations_in_comments(&comments);

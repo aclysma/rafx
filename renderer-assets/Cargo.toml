@@ -23,7 +23,7 @@ image2 = { version = "0.11", features = [ "ser" ] }
 
 crossbeam-channel = "0.4.2"
 
-log="0.4"
+log = "0.4"
 
 fnv = "1.0"
 

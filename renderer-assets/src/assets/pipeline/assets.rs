@@ -286,6 +286,8 @@ impl MaterialPass {
                 }
             }
 
+            println!("{:?}\n{:#?}", material_pass_data.name, reflection_data);
+
             for (set_index, layout) in reflection_data.descriptor_set_layouts.iter().enumerate()
             {
                 // Expand the layout def to include the given set index
@@ -295,6 +297,8 @@ impl MaterialPass {
 
                 if let Some(layout) = layout.as_ref() {
                     for binding in &layout.bindings {
+                        println!("{:?} HANDLE BINDING {}.{}", material_pass_data.name, set_index, binding.binding);
+
                         let existing_binding = descriptor_set_layout_defs[set_index]
                             .descriptor_set_layout_bindings
                             .iter_mut()

@@ -44,6 +44,7 @@ struct SpotLight {
     float intensity;
 };
 
+// @[export]
 layout (set = 0, binding = 0) uniform PerViewData {
     vec4 ambient_light;
     uint point_light_count;
@@ -65,7 +66,6 @@ layout (set = 0, binding = 3) uniform texture2D shadow_map_image;
 struct MaterialData {
     vec4 base_color_factor;
     vec3 emissive_factor;
-    float pad0;
     float metallic_factor;
     float roughness_factor;
     float normal_texture_scale;
@@ -98,20 +98,18 @@ layout (location = 4) in vec2 in_uv;
 layout (location = 5) in vec4 in_shadow_map_pos;
 layout (location = 6) in vec3 in_shadow_map_light_dir_vs;
 
-// Force early depth testing, this is likely not strictly necessary
-layout(early_fragment_tests) in;
-
 layout (location = 0) out vec4 out_color;
 
+//TODO: It seems like passing texture/sampler through like this breaks reflection metadata
 vec4 normal_map(
     mat3 tangent_binormal_normal,
-    texture2D t, 
-    sampler s, 
+    //texture2D t,
+    //sampler s,
     vec2 uv
 ) {
     // Sample the normal and unflatten it from the texture (i.e. convert
     // range of [0, 1] to [-1, 1])
-    vec3 normal = texture(sampler2D(t, s), uv).xyz;
+    vec3 normal = texture(sampler2D(normal_texture, smp), uv).xyz;
     normal = normal * 2.0 - 1.0;
 
     // Transform the normal from the texture with the TNB matrix, which will put
@@ -701,7 +699,12 @@ void main() {
     vec3 normal_vs;
     if (material_data_ubo.data.has_normal_texture) {
         mat3 tbn = mat3(in_tangent_vs, in_binormal_vs, in_normal_vs);
-        normal_vs = normal_map(tbn, normal_texture, smp, in_uv).xyz;
+        normal_vs = normal_map(
+            tbn,
+            //normal_texture,
+            //smp,
+            in_uv
+        ).xyz;
     } else {
         normal_vs = normalize(vec4(in_normal_vs, 0)).xyz;
     }

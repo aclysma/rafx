@@ -1,6 +1,7 @@
 (
     passes: [
         (
+            name: Some("mesh opaque"),
             phase: Some("Opaque"),
             pipeline: "mesh.pipeline",
             shaders: [

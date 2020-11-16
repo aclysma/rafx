@@ -246,7 +246,7 @@ impl MeshPrepareJob {
     ) -> MeshPerViewFragmentShaderParam {
         let mut per_view_data = MeshPerViewFragmentShaderParam::default();
 
-        per_view_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0);
+        per_view_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0).into();
 
         for light in &self.directional_lights {
             let light_count = per_view_data.directional_light_count as usize;
@@ -263,9 +263,9 @@ impl MeshPrepareJob {
             let light_direction_vs = (light_to_vs - light_from_vs).normalize();
 
             let out = &mut per_view_data.directional_lights[light_count];
-            out.direction_ws = light_direction;
-            out.direction_vs = light_direction_vs;
-            out.color = light.color;
+            out.direction_ws = light_direction.into();
+            out.direction_vs = light_direction_vs.into();
+            out.color = light.color.into();
             out.intensity = light.intensity;
 
             per_view_data.directional_light_count += 1;
@@ -278,9 +278,9 @@ impl MeshPrepareJob {
             }
 
             let out = &mut per_view_data.point_lights[light_count];
-            out.position_ws = position.position;
-            out.position_vs = (view.view_matrix() * position.position.extend(1.0)).truncate();
-            out.color = light.color;
+            out.position_ws = position.position.into();
+            out.position_vs = (view.view_matrix() * position.position.extend(1.0)).truncate().into();
+            out.color = light.color.into();
             out.range = light.range;
             out.intensity = light.intensity;
 
@@ -302,12 +302,12 @@ impl MeshPrepareJob {
             let light_direction_vs = (light_to_vs - light_from_vs).normalize();
 
             let out = &mut per_view_data.spot_lights[light_count];
-            out.position_ws = light_from;
-            out.position_vs = light_from_vs;
-            out.direction_ws = light_direction;
-            out.direction_vs = light_direction_vs;
+            out.position_ws = light_from.into();
+            out.position_vs = light_from_vs.into();
+            out.direction_ws = light_direction.into();
+            out.direction_vs = light_direction_vs.into();
             out.spotlight_half_angle = light.spotlight_half_angle;
-            out.color = light.color;
+            out.color = light.color.into();
             out.range = light.range;
             out.intensity = light.intensity;
 

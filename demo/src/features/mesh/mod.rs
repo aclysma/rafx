@@ -26,6 +26,9 @@ const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 = 0;
 const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 = 1;
 const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 = 2;
 
+pub use shaders::mesh_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
+
+/*
 // Represents the data uploaded to the GPU to represent a single point light
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
@@ -74,6 +77,7 @@ pub struct MeshPerViewFragmentShaderParam {
     pub directional_lights: [DirectionalLight; 16], // +1056 (64*16 = 1024),
     pub spot_lights: [SpotLight; 16],               // +2080 (96*16 = 1536)
 } // 3616 bytes
+*/
 
 #[derive(Default, Copy, Clone)]
 //#[repr(C)]

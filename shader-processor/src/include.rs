@@ -1,4 +1,4 @@
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum IncludeType {
@@ -33,13 +33,17 @@ pub(crate) fn include_impl(
     requested_path: &Path,
     include_type: IncludeType,
     requested_from: &Path,
-    _include_depth: usize,
+    include_depth: usize,
 ) -> Result<ResolvedInclude, String> {
+    log::trace!("include file {:?} {:?} {:?} {:?}", requested_path, include_type, requested_from, include_depth);
+
     let resolved_path = match include_type {
         IncludeType::Relative => {
             if requested_path.is_absolute() {
+                log::trace!("abolute path");
                 requested_path.to_path_buf()
             } else {
+                log::trace!("relative path");
                 requested_from.parent().unwrap().join(requested_path)
             }
         }
@@ -63,9 +67,14 @@ pub(crate) fn shaderc_include_callback(
     requested_from: &str,
     include_depth: usize,
 ) -> shaderc::IncludeCallbackResult {
-    let requested_path : PathBuf = requested_path.into();
-    let requested_from : PathBuf = requested_from.into();
-    include_impl(&requested_path, include_type.into(), &requested_from, include_depth)
-        .map(|x| x.into())
-        .map_err(|x| x.into())
+    let requested_path: PathBuf = requested_path.into();
+    let requested_from: PathBuf = requested_from.into();
+    include_impl(
+        &requested_path,
+        include_type.into(),
+        &requested_from,
+        include_depth,
+    )
+    .map(|x| x.into())
+    .map_err(|x| x.into())
 }

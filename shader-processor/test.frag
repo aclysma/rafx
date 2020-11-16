@@ -36,6 +36,20 @@ struct DirectionalLight {
     float intensity;
 };
 
+struct SpotLightRange {
+    float range;
+    float pad0;
+    float pad1;
+    float pad2;
+};
+
+struct Intensity {
+    float intensity;
+    float pad0;
+    float pad1;
+    float pad2;
+};
+
 struct SpotLight {
     vec3 position_ws;
     vec3 direction_ws;
@@ -43,24 +57,25 @@ struct SpotLight {
     vec3 direction_vs;
     vec4 color;
     float spotlight_half_angle;
-    float range[5];
-    float intensity[5][6];
+    SpotLightRange range[5];
+    Intensity intensity[5][6];
 };
 
 // @[export]
 // @[use_internal_buffer(50)]
-layout (set = 0, binding = 0) uniform PerViewData {
+layout (set = 0, binding = 0) uniform PerViewDataUbo {
     vec4 ambient_light;
     uint point_light_count;
     uint directional_light_count;
     uint spot_light_count;
+    uint pad;
     PointLight point_lights[16];
     DirectionalLight directional_lights[16];
     SpotLight spot_lights[16];
-} per_frame_data;
+} per_view_data_ubo;
 
-/*
-layout (set = 0, binding = 4) buffer PerViewData {
+// @[export]
+layout (set = 0, binding = 4) buffer PerViewDataSbo {
     vec4 ambient_light;
     uint point_light_count;
     uint directional_light_count;
@@ -68,8 +83,19 @@ layout (set = 0, binding = 4) buffer PerViewData {
     PointLight point_lights[16];
     DirectionalLight directional_lights[16];
     SpotLight spot_lights[16];
-} per_frame_data_buffer;
-*/
+} per_view_data_sbo;
+
+// @[export]
+layout (push_constant) uniform PerViewDataPc {
+    vec4 ambient_light;
+    uint point_light_count;
+    uint directional_light_count;
+    uint spot_light_count;
+    PointLight point_lights[16];
+    DirectionalLight directional_lights[16];
+    SpotLight spot_lights[16];
+} per_view_data_pc;
+
 
 // @[export]
 layout (set = 0, binding = 1) uniform sampler smp;
@@ -116,7 +142,7 @@ layout (location = 1) out vec4 out_color1;
 
 void main() {
     base_color_texture;
-    out_color0 = material_data_ubo.data.base_color_factor;
+    //out_color0 = material_data_ubo.data.base_color_factor;
     //out_color0 = vec4(1.0);
-    out_color1 = vec4(per_frame_data.ambient_light/* + per_frame_data_buffer.ambient_light*/);
+    out_color1 = vec4(per_view_data_ubo.ambient_light + per_view_data_sbo.ambient_light + per_view_data_pc.ambient_light);
 }

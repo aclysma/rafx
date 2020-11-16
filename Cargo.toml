@@ -2,6 +2,7 @@
 members = [
     "renderer",
     "demo",
+    "demo/shaders",
     "shader-processor"
 ]
 

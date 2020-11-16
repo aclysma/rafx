@@ -9,7 +9,13 @@ fnv = "1.0"
 structopt = "0.3"
 spirv-reflect = "0.2"
 shaderc = "0.6"
+#spirv_cross = { version = "0.22", features = ["glsl", "hlsl", "msl"] }
+glob = "0.3"
+#memoffset = "0.6"
 
 ron = "0.5"
 serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+env_logger = "0.6"
 
+[dev-dependencies]

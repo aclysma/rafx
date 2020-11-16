@@ -5,7 +5,6 @@ use renderer_resources::vk_description as dsc;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
-use std::ops::Add;
 use spirv_reflect::types::ReflectDescriptorType;
 
 use super::{ReflectedEntryPoint, ReflectedDescriptorSetLayoutBinding, ReflectedDescriptorSetLayout, ReflectedInputVariable, ReflectedOutputVariable, ReflectedPushConstant};
@@ -66,7 +65,7 @@ impl Importer for ShaderImporterSpv {
         log::trace!("Import shader asset {:?} with {} bytes of code", asset_id, code.len() * std::mem::size_of::<u32>());
 
         // Scan the original source for custom markup/directives (doesn't do anything yet)
-        read_spv_source(asset_id, &code);
+        //read_spv_source(asset_id, &code);
 
         // Auto-create vulkan descriptors from reflection data
         let reflection_data = read_spv_reflection_data(&shader_module)?;
@@ -93,7 +92,7 @@ impl Importer for ShaderImporterSpv {
     }
 }
 
-
+/*
 fn read_source_from_spv_opcodes(spv_code: &[u32], start: usize, end: usize) -> &str {
     let source = &spv_code[(start..end)];
 
@@ -176,6 +175,7 @@ fn read_spv_source(asset_id: AssetUuid, spv_code: &[u32]) {
     log::trace!("Import shader asset {:?} version {:?}", asset_id, language_version);
     log::trace!("Import shader asset {:?} code {}", asset_id, source_text);
 }
+*/
 
 fn read_spv_reflection_data(shader_module: &spirv_reflect::ShaderModule) -> atelier_assets::importer::Result<Vec<ReflectedEntryPoint>> {
     let mut entry_points = vec![];

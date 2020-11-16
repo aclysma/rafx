@@ -16,7 +16,7 @@ renderer-assets = { path = "../renderer-assets", optional = true }
 renderer-resources = { path = "../renderer-resources" }
 renderer-visibility = { path = "../renderer-visibility" }
 
-log="0.4"
+log = "0.4"
 
 [dev-dependencies]
 env_logger = "0.6"
