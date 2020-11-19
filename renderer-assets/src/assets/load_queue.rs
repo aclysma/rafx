@@ -3,10 +3,10 @@ use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
     BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, PipelineAsset, RenderpassAsset,
-    ShaderAsset,
+    ShaderAsset, SamplerAsset,
 };
 use crate::assets::{
-    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
+    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData, SamplerAssetData
 };
 use crate::resource_loader::ResourceLoadResult;
 use crate::ResourceLoader;
@@ -194,6 +194,7 @@ pub struct LoadQueueSet {
     pub renderpasses: LoadQueues<RenderpassAssetData, RenderpassAsset>,
     pub materials: LoadQueues<MaterialAssetData, MaterialAsset>,
     pub material_instances: LoadQueues<MaterialInstanceAssetData, MaterialInstanceAsset>,
+    pub samplers: LoadQueues<SamplerAssetData, SamplerAsset>,
     pub images: LoadQueues<ImageAssetData, ImageAsset>,
     pub buffers: LoadQueues<BufferAssetData, BufferAsset>,
 }

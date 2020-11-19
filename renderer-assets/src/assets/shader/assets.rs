@@ -4,71 +4,27 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 use fnv::FnvHashMap;
 use std::sync::Arc;
+use super::ReflectedEntryPoint;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedDescriptorSetLayoutBinding {
-    pub name: String,
-    pub binding: u32,
-    pub descriptor_type: dsc::DescriptorType,
-    // (array length, essentially)
-    pub descriptor_count: u32,
-    pub stage_flags: dsc::ShaderStageFlags,
+//TODO: Vertex formats? Autogenerate the vertex struct? Or, generate vertex layout based on known
+// vertex format. So vertex format as an asset type?
+//TODO: Samplers - external or inline in shader?
+//TODO
 
-    // Mostly for uniform data
-    pub size: u32,
-    //pub padded_size: u32,
+// An import format that will get turned into ShaderAssetData
+#[derive(Serialize, Deserialize)]
+pub struct CookedShader {
+    #[serde(with = "serde_bytes")]
+    pub spv: Vec<u8>,
+    pub entry_points: Vec<ReflectedEntryPoint>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedDescriptorSetLayout {
-    // These are NOT indexable by binding (i.e. may be sparse)
-    pub bindings: Vec<ReflectedDescriptorSetLayoutBinding>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedInputVariable {
-    pub name: String,
-    pub location: u32,
-    pub format: dsc::Format
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedOutputVariable {
-    pub name: String,
-    pub location: u32,
-    pub format: dsc::Format
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedPushConstant {
-    pub name: String,
-    pub push_constant: dsc::PushConstantRange
-}
-
-// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-// pub struct ReflectedShaderReflectionData {
-//     // These are indexed by descriptor set index (i.e. not sparse)
-//     pub descriptor_sets: Vec<Option<ReflectedDescriptorSetLayout>>,
-//     pub input_variables: Vec<ReflectedInputVariable>,
-//     pub output_variables: Vec<ReflectedOutputVariable>,
-// }
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedEntryPoint {
-    pub name: String,
-    pub stage_flags: dsc::ShaderStageFlags,
-    // These are indexed by descriptor set index (i.e. not sparse)
-    pub descriptor_set_layouts: Vec<Option<ReflectedDescriptorSetLayout>>,
-    pub input_variables: Vec<ReflectedInputVariable>,
-    pub output_variables: Vec<ReflectedOutputVariable>,
-    pub push_constants: Vec<ReflectedPushConstant>,
-}
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "e0ae2222-1a44-4022-af95-03c9101ac89e"]
 pub struct ShaderAssetData {
     pub shader: dsc::ShaderModule,
-    pub reflection_data: Vec<ReflectedEntryPoint>
+    pub reflection_data: Option<Vec<ReflectedEntryPoint>>
 }
 
 //

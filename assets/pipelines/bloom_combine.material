@@ -6,12 +6,12 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/bloom_combine.vert.spv",
+                    shader_module: "../shaders/bloom_combine.vert.shader",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/bloom_combine.frag.spv",
+                    shader_module: "../shaders/bloom_combine.frag.shader",
                     entry_name: "main"
                 ),
             ],

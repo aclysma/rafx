@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(12473121290563988154),
+    import_hash: Some(5867502727945913722),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,17 +13,17 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                id: (15447114637293723956),
+                id: (8870454215189065014),
                 asset_id: "241b4b9c-b542-4aef-a2f2-e8f7268acb7b",
                 build_deps: [
+                    Path("../shaders/imgui.vert.shader"),
+                    Path("../shaders/imgui.frag.shader"),
                     Path("imgui.pipeline"),
-                    Path("../shaders/imgui.vert.spv"),
-                    Path("../shaders/imgui.frag.spv"),
                 ],
                 load_deps: [
-                    Path("../shaders/imgui.frag.spv"),
+                    Path("../shaders/imgui.vert.shader"),
+                    Path("../shaders/imgui.frag.shader"),
                     Path("imgui.pipeline"),
-                    Path("../shaders/imgui.vert.spv"),
                 ],
                 compression: None,
                 compressed_size: Some(403),

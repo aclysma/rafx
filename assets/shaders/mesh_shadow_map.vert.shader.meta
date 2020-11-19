@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(6084854865212368278),
+    importer_version: 4,
+    importer_type: "cab0cf4c-16ff-4dbd-aae7-8705246d85d6",
+    importer_options: (),
+    importer_state: (Some("b7159379-45b0-46a6-a14c-bbb5027a48c5")),
+    assets: [
+        (
+            id: "b7159379-45b0-46a6-a14c-bbb5027a48c5",
+            search_tags: [
+                ("file_name", Some("mesh_shadow_map.vert.shader")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                id: (13850380753074827271),
+                asset_id: "b7159379-45b0-46a6-a14c-bbb5027a48c5",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1846),
+                uncompressed_size: Some(1846),
+                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
+            )),
+        ),
+    ],
+)

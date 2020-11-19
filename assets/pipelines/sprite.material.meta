@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(11525319896842915555),
+    import_hash: Some(4694233996594823864),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,17 +13,17 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                id: (8111959577630336241),
+                id: (5206022052491585674),
                 asset_id: "8383bae4-588d-4bf3-97c5-f68215239bcf",
                 build_deps: [
-                    Path("../shaders/sprite.vert.spv"),
-                    Path("../shaders/sprite.frag.spv"),
+                    Path("../shaders/sprite.frag.shader"),
                     Path("sprite.pipeline"),
+                    Path("../shaders/sprite.vert.shader"),
                 ],
                 load_deps: [
+                    Path("../shaders/sprite.frag.shader"),
+                    Path("../shaders/sprite.vert.shader"),
                     Path("sprite.pipeline"),
-                    Path("../shaders/sprite.frag.spv"),
-                    Path("../shaders/sprite.vert.spv"),
                 ],
                 compression: None,
                 compressed_size: Some(391),

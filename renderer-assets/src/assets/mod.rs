@@ -8,6 +8,9 @@ mod shader;
 pub use shader::ShaderAsset;
 pub use shader::ShaderAssetData;
 pub use shader::ShaderImporterSpv;
+pub use shader::ShaderImporterCooked;
+pub use shader::CookedShader;
+pub use shader::reflect;
 
 mod pipeline;
 pub use pipeline::MaterialAsset;
@@ -28,6 +31,10 @@ pub use pipeline::RenderpassAssetData;
 pub use pipeline::RenderpassImporter;
 pub use pipeline::SlotLocation;
 pub use pipeline::SlotNameLookup;
+pub use pipeline::SamplerAssetData;
+pub use pipeline::SamplerAsset;
+pub use pipeline::SamplerImporter;
+pub use pipeline::MaterialPassShaderInterface;
 
 mod buffer;
 pub use buffer::BufferAsset;

@@ -2,15 +2,12 @@ use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
     BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, PipelineAsset,
-    RenderpassAsset, ShaderAsset,
+    RenderpassAsset, ShaderAsset, SamplerAsset
 };
 use crate::assets::{
     MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
 };
-use crate::{
-    AssetLookup, AssetLookupSet, BufferAssetData, GenericLoader, LoadQueues,
-    MaterialInstanceSlotAssignment, SlotNameLookup,
-};
+use crate::{AssetLookup, AssetLookupSet, BufferAssetData, GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SlotNameLookup, SamplerAssetData};
 use ash::prelude::*;
 use atelier_assets::loader::handle::Handle;
 use renderer_resources::{
@@ -55,6 +52,7 @@ pub struct AssetManagerLoaders {
     pub renderpass_loader: GenericLoader<RenderpassAssetData, RenderpassAsset>,
     pub material_loader: GenericLoader<MaterialAssetData, MaterialAsset>,
     pub material_instance_loader: GenericLoader<MaterialInstanceAssetData, MaterialInstanceAsset>,
+    pub sampler_loader: GenericLoader<SamplerAssetData, SamplerAsset>,
     pub image_loader: GenericLoader<ImageAssetData, ImageAsset>,
     pub buffer_loader: GenericLoader<BufferAssetData, BufferAsset>,
 }
@@ -164,6 +162,10 @@ impl AssetManager {
         self.load_queues.material_instances.create_loader()
     }
 
+    fn create_sampler_loader(&self) -> GenericLoader<SamplerAssetData, SamplerAsset> {
+        self.load_queues.samplers.create_loader()
+    }
+
     fn create_image_loader(&self) -> GenericLoader<ImageAssetData, ImageAsset> {
         self.load_queues.images.create_loader()
     }
@@ -179,6 +181,7 @@ impl AssetManager {
             renderpass_loader: self.create_renderpass_loader(),
             material_loader: self.create_material_loader(),
             material_instance_loader: self.create_material_instance_loader(),
+            sampler_loader: self.create_sampler_loader(),
             image_loader: self.create_image_loader(),
             buffer_loader: self.create_buffer_loader(),
         }
@@ -228,6 +231,7 @@ impl AssetManager {
         self.process_renderpass_load_requests();
         self.process_material_load_requests();
         self.process_material_instance_load_requests();
+        self.process_sampler_load_requests();
         self.process_image_load_requests()?;
         self.process_buffer_load_requests()?;
 
@@ -367,6 +371,28 @@ impl AssetManager {
         Self::handle_free_requests(
             &mut self.load_queues.material_instances,
             &mut self.loaded_assets.material_instances,
+        );
+    }
+
+    fn process_sampler_load_requests(&mut self) {
+        for request in self.load_queues.samplers.take_load_requests() {
+            log::trace!("Create sampler {:?}", request.load_handle);
+            let loaded_asset = self.load_sampler(&request.asset);
+            Self::handle_load_result(
+                request.load_op,
+                loaded_asset,
+                &mut self.loaded_assets.samplers,
+                request.result_tx,
+            );
+        }
+
+        Self::handle_commit_requests(
+            &mut self.load_queues.samplers,
+            &mut self.loaded_assets.samplers,
+        );
+        Self::handle_free_requests(
+            &mut self.load_queues.samplers,
+            &mut self.loaded_assets.samplers,
         );
     }
 
@@ -547,15 +573,28 @@ impl AssetManager {
     ) -> VkResult<ShaderAsset> {
         let shader = Arc::new(shader_module.shader.clone());
 
-        let mut reflection_data = FnvHashMap::default();
-        for entry_point in &shader_module.reflection_data {
-            reflection_data.insert(entry_point.name.clone(), entry_point.clone());
+        let mut reflection_data_lookup = FnvHashMap::default();
+        if let Some(reflection_data) = &shader_module.reflection_data {
+            for entry_point in reflection_data {
+                let old = reflection_data_lookup.insert(entry_point.name.clone(), entry_point.clone());
+                assert!(old.is_none());
+            }
         }
 
         let shader_module = self.resources().get_or_create_shader_module(&shader)?;
         Ok(ShaderAsset {
             shader_module,
-            reflection_data: Arc::new(reflection_data)
+            reflection_data: Arc::new(reflection_data_lookup)
+        })
+    }
+
+    fn load_sampler(
+        &mut self,
+        sampler: &SamplerAssetData,
+    ) -> VkResult<SamplerAsset> {
+        let sampler = self.resources().get_or_create_sampler(&sampler.sampler)?;
+        Ok(SamplerAsset {
+            sampler
         })
     }
 

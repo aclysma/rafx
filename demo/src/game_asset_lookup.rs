@@ -11,7 +11,7 @@ pub struct MeshAssetPart {
     pub opaque_material_descriptor_set: DescriptorSetArc,
     // These are optional because we might want to disable casting shadows
     pub shadow_map_pass: Option<MaterialPass>,
-    pub shadow_map_material_descriptor_set: Option<DescriptorSetArc>,
+    //pub shadow_map_material_descriptor_set: Option<DescriptorSetArc>,
     pub vertex_buffer_offset_in_bytes: u32,
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,

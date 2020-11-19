@@ -12,10 +12,22 @@ pub use renderer_resources::GraphicsPipelineResource;
 pub use renderer_resources::PipelineLayoutResource;
 use renderer_resources::ShaderModuleResource;
 use renderer_resources::{vk_description as dsc, DescriptorSetArc, ResourceArc};
-use renderer_resources::{DescriptorSetWriteSet, MaterialPassResource};
+use renderer_resources::{DescriptorSetWriteSet, MaterialPassResource, SamplerResource};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::Arc;
+
+#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
+#[uuid = "7f30b29c-7fb9-4b31-a354-7cefbbade2f9"]
+pub struct SamplerAssetData {
+    pub sampler: dsc::Sampler,
+}
+
+#[derive(TypeUuid, Clone)]
+#[uuid = "9fe2825d-a7c5-43f6-97bb-d3385fb2c2c9"]
+pub struct SamplerAsset {
+    pub sampler: ResourceArc<SamplerResource>
+}
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "366d277d-6cb5-430a-a8fa-007d8ae69886"]
@@ -233,7 +245,7 @@ impl MaterialPass {
         config_has_been_used.resize(material_pass_data.shader_interface.descriptor_configs.len(), false);
 
         // We iterate through the entry points we will hit for each stage. Each stage may define
-        // slightly different
+        // slightly different reflection data/bindings in use.
         for stage in &material_pass_data.shaders {
             log::trace!("Set up material pass stage {:?}", stage);
             let shader_module_meta = dsc::ShaderModuleMeta {
@@ -252,7 +264,7 @@ impl MaterialPass {
             let reflection_data = shader_asset.reflection_data.get(&stage.entry_name);
             let reflection_data = reflection_data.ok_or_else(|| {
                 log::error!(
-                    "Load Material Failed - Pass refers to entry point named {}, but it was not found in the shader module",
+                    "Load Material Failed - Pass refers to entry point named {}, but no matching reflection data was found",
                     stage.entry_name
                 );
                 vk::Result::ERROR_UNKNOWN
@@ -327,6 +339,24 @@ impl MaterialPass {
                                 return Err(vk::Result::ERROR_UNKNOWN);
                             }
 
+                            // if existing_binding.immutable_samplers != binding.immutable_samplers {
+                            //     log::error!(
+                            //         "Load Material Failed - Pass is using shaders in different stages with different immutable samplers for set={} binding={}",
+                            //         set_index,
+                            //         binding.binding
+                            //     );
+                            //     return Err(vk::Result::ERROR_UNKNOWN);
+                            // }
+
+                            if existing_binding.internal_buffer_per_descriptor_size != binding.internal_buffer_per_descriptor_size {
+                                log::error!(
+                                    "Load Material Failed - Pass is using shaders in different stages with different internal buffer configuration for set={} binding={}",
+                                    set_index,
+                                    binding.binding
+                                );
+                                return Err(vk::Result::ERROR_UNKNOWN);
+                            }
+
                             log::trace!("    Descriptor for binding set={} binding={} already exists, adding stage {:?}", set_index, binding.binding, binding.stage_flags);
                             existing_binding.stage_flags |= binding.stage_flags;
                         } else {
@@ -339,7 +369,7 @@ impl MaterialPass {
                                 descriptor_count: binding.descriptor_count,
                                 stage_flags: binding.stage_flags,
                                 immutable_samplers: None,
-                                internal_buffer_per_descriptor_size: None,
+                                internal_buffer_per_descriptor_size: binding.internal_buffer_per_descriptor_size,
                             };
 
                             log::trace!("    Add descriptor binding set={} binding={} for stage {:?}", set_index, binding.binding, binding.stage_flags);
@@ -390,16 +420,16 @@ impl MaterialPass {
             }
         }
 
-        for (config_index, has_been_used) in config_has_been_used.iter().enumerate() {
-            if !has_been_used {
-                log::error!(
-                    "Load Material Failed - Pass has an unused config index {}:\n{:#?}",
-                    config_index,
-                    material_pass_data.shader_interface.descriptor_configs[config_index]
-                );
-                return Err(vk::Result::ERROR_UNKNOWN);
-            }
-        }
+        // for (config_index, has_been_used) in config_has_been_used.iter().enumerate() {
+        //     if !has_been_used {
+        //         log::error!(
+        //             "Load Material Failed - Pass has an unused config index {}:\n{:#?}",
+        //             config_index,
+        //             material_pass_data.shader_interface.descriptor_configs[config_index]
+        //         );
+        //         return Err(vk::Result::ERROR_UNKNOWN);
+        //     }
+        // }
 
         //
         // Descriptor set layout

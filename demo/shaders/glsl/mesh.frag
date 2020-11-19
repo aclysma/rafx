@@ -30,9 +30,6 @@ struct PointLight {
     float pad3;
 };
 
-//TODO: Can I get rid of this padding?
-//TODO: Does the automatic padding need to go at the end of the struct?
-
 struct DirectionalLight {
     vec3 direction_ws;
     float pad0;
@@ -62,6 +59,7 @@ struct SpotLight {
 };
 
 // @[export]
+// @[internal_buffer]
 layout (set = 0, binding = 0) uniform PerViewData {
     vec4 ambient_light;
     uint point_light_count;
@@ -72,8 +70,48 @@ layout (set = 0, binding = 0) uniform PerViewData {
     SpotLight spot_lights[16];
 } per_frame_data;
 
+
+// @[immutable_samplers([
+//         (
+//             mag_filter: Linear,
+//             min_filter: Linear,
+//             address_mode_u: Repeat,
+//             address_mode_v: Repeat,
+//             address_mode_w: Repeat,
+//             anisotropy_enable: true,
+//             max_anisotropy: 16.0,
+//             border_color: IntOpaqueBlack,
+//             unnormalized_coordinates: false,
+//             compare_enable: false,
+//             compare_op: Always,
+//             mipmap_mode: Linear,
+//             mip_lod_bias: 0,
+//             min_lod: 0,
+//             max_lod: 0
+//         )
+// ])]
 layout (set = 0, binding = 1) uniform sampler smp;
 //layout (set = 0, binding = 2) uniform samplerShadow smp_depth;
+
+// @[immutable_samplers([
+//         (
+//             mag_filter: Linear,
+//             min_filter: Linear,
+//             address_mode_u: ClampToBorder,
+//             address_mode_v: ClampToBorder,
+//             address_mode_w: ClampToBorder,
+//             anisotropy_enable: true,
+//             max_anisotropy: 16.0,
+//             border_color: IntOpaqueWhite,
+//             unnormalized_coordinates: false,
+//             compare_enable: true,
+//             compare_op: Less,
+//             mipmap_mode: Linear,
+//             mip_lod_bias: 0,
+//             min_lod: 0,
+//             max_lod: 0
+//         )
+// ])]
 layout (set = 0, binding = 2) uniform sampler smp_depth;
 layout (set = 0, binding = 3) uniform texture2D shadow_map_image;
 
@@ -95,6 +133,7 @@ struct MaterialData {
     bool has_emissive_texture;
 };
 
+// @[internal_buffer]
 layout (set = 1, binding = 0) uniform MaterialDataUbo {
     MaterialData data;
 } material_data_ubo;

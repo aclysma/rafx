@@ -6,12 +6,12 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/bloom_blur.vert.spv",
+                    shader_module: "../shaders/bloom_blur.vert.shader",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/bloom_blur.frag.spv",
+                    shader_module: "../shaders/bloom_blur.frag.shader",
                     entry_name: "main"
                 ),
             ],

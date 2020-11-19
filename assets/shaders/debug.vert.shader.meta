@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(4741660845660579306),
+    importer_version: 4,
+    importer_type: "cab0cf4c-16ff-4dbd-aae7-8705246d85d6",
+    importer_options: (),
+    importer_state: (Some("9f794f4e-a5f3-4aa2-82a8-7d6e534bcdef")),
+    assets: [
+        (
+            id: "9f794f4e-a5f3-4aa2-82a8-7d6e534bcdef",
+            search_tags: [
+                ("file_name", Some("debug.vert.shader")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                id: (2874796963742843860),
+                asset_id: "9f794f4e-a5f3-4aa2-82a8-7d6e534bcdef",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1642),
+                uncompressed_size: Some(1642),
+                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
+            )),
+        ),
+    ],
+)

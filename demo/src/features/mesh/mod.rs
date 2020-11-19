@@ -186,8 +186,8 @@ impl std::fmt::Debug for ExtractedFrameNodeMeshData {
 
 pub struct PreparedSubmitNodeMeshData {
     material_pass: MaterialPass,
-    per_view_descriptor_set: DescriptorSetArc,
-    per_material_descriptor_set: DescriptorSetArc,
+    per_view_descriptor_set: Option<DescriptorSetArc>,
+    per_material_descriptor_set: Option<DescriptorSetArc>,
     per_instance_descriptor_set: DescriptorSetArc,
     // we can get the mesh via the frame node index
     frame_node_index: FrameNodeIndex,

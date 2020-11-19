@@ -1,11 +1,74 @@
 use crate::assets::pipeline::{
-    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
+    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData, SamplerAssetData
 };
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
+
+
+
+
+
+
+
+#[derive(TypeUuid, Serialize, Deserialize, Default)]
+#[uuid = "62e662dc-cb15-444f-a7ac-eb89f52a4042"]
+pub struct SamplerImporterState(Option<AssetUuid>);
+
+#[derive(TypeUuid)]
+#[uuid = "9dfad44f-72e8-4ba6-b89a-96b017fb9cd9"]
+pub struct SamplerImporter;
+impl Importer for SamplerImporter {
+    fn version_static() -> u32
+        where
+            Self: Sized,
+    {
+        2
+    }
+
+    fn version(&self) -> u32 {
+        Self::version_static()
+    }
+
+    type Options = ();
+
+    type State = SamplerImporterState;
+
+    /// Reads the given bytes and produces assets.
+    fn import(
+        &self,
+        source: &mut dyn Read,
+        _options: &Self::Options,
+        state: &mut Self::State,
+    ) -> atelier_assets::importer::Result<ImporterValue> {
+        let id = state
+            .0
+            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+        *state = SamplerImporterState(Some(id));
+
+        let sampler_asset = ron::de::from_reader::<_, SamplerAssetData>(source)?;
+        log::trace!("IMPORTED SAMPLER:\n{:#?}", sampler_asset);
+
+        Ok(ImporterValue {
+            assets: vec![ImportedAsset {
+                id,
+                search_tags: vec![],
+                build_deps: vec![],
+                load_deps: vec![],
+                build_pipeline: None,
+                asset_data: Box::new(sampler_asset),
+            }],
+        })
+    }
+}
+
+
+
+
+
+
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "25c8b7df-e3a4-4436-b41c-ce32eed76e18"]

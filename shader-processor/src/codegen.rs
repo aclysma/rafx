@@ -26,11 +26,7 @@ enum BindingStructType {
 }
 
 fn determine_binding_type(b: &ParsedBindingWithAnnotations) -> Result<BindingStructType, String> {
-    if b.parsed
-        .layout_parts
-        .iter()
-        .any(|x| x.key == "push_constant")
-    {
+    if b.parsed.layout_parts.push_constant {
         Ok(BindingStructType::PushConstant)
     } else if b.parsed.binding_type == BindingType::Uniform {
         Ok(BindingStructType::Uniform)
@@ -68,7 +64,7 @@ struct UserType {
     struct_or_binding: StructOrBinding,
     type_name: String,
     fields: Arc<Vec<ParseFieldResult>>,
-    export_name: Option<String>,
+    //export_name: Option<String>,
     export_uniform_layout: bool,
     export_push_constant_layout: bool,
     export_buffer_layout: bool,
@@ -105,14 +101,14 @@ fn create_user_type_lookup(
     // Populate user types from structs
     //
     for (index, s) in parsed_declarations.structs.iter().enumerate() {
-        let export_name = s.annotations.export.as_ref().map(|x| x.0.clone());
+        //let export_name = s.annotations.export.as_ref().map(|x| x.0.clone());
         let old = user_types.insert(
             s.parsed.type_name.clone(),
             UserType {
                 struct_or_binding: StructOrBinding::Struct(index),
                 type_name: s.parsed.type_name.clone(),
                 fields: s.parsed.fields.clone(),
-                export_name,
+                //export_name,
                 export_uniform_layout: false,
                 export_push_constant_layout: false,
                 export_buffer_layout: false,
@@ -136,7 +132,7 @@ fn create_user_type_lookup(
             //let struct_name_postfix = "";
             //let export_name = b.annotations.export.as_ref().map(|x| format!("{}{}", x.0, struct_name_postfix));
             //let adjusted_type_name = format!("{}{}", b.parsed.type_name, struct_name_postfix);
-            let export_name = b.annotations.export.as_ref().map(|x| x.0.clone());
+            //let export_name = b.annotations.export.as_ref().map(|x| x.0.clone());
 
             let old = user_types.insert(
                 b.parsed.type_name.clone(),
@@ -144,7 +140,7 @@ fn create_user_type_lookup(
                     struct_or_binding: StructOrBinding::Binding(index),
                     type_name: b.parsed.type_name.clone(),
                     fields: fields.clone(),
-                    export_name,
+                    //export_name,
                     export_uniform_layout: false,
                     export_push_constant_layout: false,
                     export_buffer_layout: false,
@@ -695,7 +691,7 @@ fn determine_size(
     layout: MemoryLayout,
 ) -> Result<usize, String> {
     // We only need to know how many elements we have
-    let mut element_count = element_count(array_sizes);
+    let element_count = element_count(array_sizes);
 
     // Align this type (may be a struct, built-in, etc.
     // Caller should probably already align
@@ -1078,7 +1074,7 @@ mod test {
         create_builtin_type_lookup, create_user_type_lookup, determine_size, MemoryLayout,
         TypeAlignmentInfo, UserType,
     };
-    use crate::parse::FileToProcess;
+    use crate::parse_source::FileToProcess;
     use fnv::FnvHashMap;
 
     fn verify_all_binding_layouts_in_test(
@@ -1358,7 +1354,7 @@ mod test {
         let mut declarations = Vec::default();
         let mut included_files = Default::default();
         let code: Vec<char> = shader_code.chars().collect();
-        crate::parse::parse_shader_source_text(
+        crate::parse_source::parse_shader_source_text(
             &file_to_process,
             &mut declarations,
             &mut included_files,

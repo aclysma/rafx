@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(1120574320095804005),
+    importer_version: 4,
+    importer_type: "cab0cf4c-16ff-4dbd-aae7-8705246d85d6",
+    importer_options: (),
+    importer_state: (Some("80501b93-5d83-4e13-96a5-cb2efc24a7da")),
+    assets: [
+        (
+            id: "80501b93-5d83-4e13-96a5-cb2efc24a7da",
+            search_tags: [
+                ("file_name", Some("sprite.vert.shader")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                id: (9103274540906575634),
+                asset_id: "80501b93-5d83-4e13-96a5-cb2efc24a7da",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1475),
+                uncompressed_size: Some(1475),
+                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
+            )),
+        ),
+    ],
+)

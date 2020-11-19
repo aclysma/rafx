@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(5115356659975923454),
+    import_hash: Some(15252130545505137719),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,16 +13,16 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                id: (16244550880500428379),
+                id: (3414042464215883871),
                 asset_id: "a0a4f5e5-caa7-4bcc-a1fe-7a46084b0bcd",
                 build_deps: [
+                    Path("../shaders/bloom_combine.vert.shader"),
+                    Path("../shaders/bloom_combine.frag.shader"),
                     Path("bloom_combine.pipeline"),
-                    Path("../shaders/bloom_combine.frag.spv"),
-                    Path("../shaders/bloom_combine.vert.spv"),
                 ],
                 load_deps: [
-                    Path("../shaders/bloom_combine.frag.spv"),
-                    Path("../shaders/bloom_combine.vert.spv"),
+                    Path("../shaders/bloom_combine.frag.shader"),
+                    Path("../shaders/bloom_combine.vert.shader"),
                     Path("bloom_combine.pipeline"),
                 ],
                 compression: None,

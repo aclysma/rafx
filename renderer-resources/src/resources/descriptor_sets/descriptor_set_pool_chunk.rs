@@ -276,6 +276,8 @@ impl ManagedDescriptorSetPoolChunk {
                             DescriptorSetWriteElementBufferData::Data(data) => {
                                 //TODO: Rebind the buffer if we are no longer bound to the internal buffer, or at
                                 // least fail
+                                // Failing here means that we're trying to write to a descriptor's internal buffer
+                                // but the binding was not configured to enabled internal buffering
                                 let buffer =
                                     self.buffers.buffer_sets.get_mut(&element_key).unwrap();
                                 //assert!(data.len() as u32 <= buffer.buffer_info.per_descriptor_size);

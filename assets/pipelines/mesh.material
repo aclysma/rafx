@@ -7,12 +7,12 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh.vert.spv",
+                    shader_module: "../shaders/mesh.vert.shader",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/mesh.frag.spv",
+                    shader_module: "../shaders/mesh.frag.shader",
                     entry_name: "main"
                 ),
             ],
@@ -343,8 +343,7 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh_shadow_map.vert.spv",
-
+                    shader_module: "../shaders/mesh_shadow_map.vert.shader",
                     entry_name: "main"
                 ),
                 // No fragment shader required

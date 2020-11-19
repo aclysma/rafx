@@ -1,0 +1,27 @@
+(
+    version: 1,
+    import_hash: Some(3759020532904278215),
+    importer_version: 4,
+    importer_type: "cab0cf4c-16ff-4dbd-aae7-8705246d85d6",
+    importer_options: (),
+    importer_state: (Some("a79d0f68-a5f7-48f9-83c1-18866ea88996")),
+    assets: [
+        (
+            id: "a79d0f68-a5f7-48f9-83c1-18866ea88996",
+            search_tags: [
+                ("file_name", Some("bloom_combine.vert.shader")),
+            ],
+            build_pipeline: None,
+            artifact: Some((
+                id: (16522410859897457144),
+                asset_id: "a79d0f68-a5f7-48f9-83c1-18866ea88996",
+                build_deps: [],
+                load_deps: [],
+                compression: None,
+                compressed_size: Some(1111),
+                uncompressed_size: Some(1111),
+                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
+            )),
+        ),
+    ],
+)
