@@ -85,32 +85,6 @@ impl Into<MaterialDataStd140> for GltfMaterialData {
     }
 }
 
-// // This is non-texture data associated with the material. It's appropriate to be loaded as a uniform
-// // for a shader
-// #[derive(Copy, Clone, Debug)]
-// #[repr(C)]
-// pub struct GltfMaterialDataShaderParam {
-//     pub base_color_factor: glam::Vec4,   // default: 1,1,1,1
-//     pub emissive_factor: glam::Vec3,     // default: 0,0,0
-//     pub metallic_factor: f32,            //default: 1,
-//     pub roughness_factor: f32,           // default: 1,
-//     pub normal_texture_scale: f32,       // default: 1
-//     pub occlusion_texture_strength: f32, // default 1
-//     pub alpha_cutoff: f32,               // default 0.5
-//
-//     pub has_base_color_texture: u32,
-//     pub has_metallic_roughness_texture: u32,
-//     pub has_normal_texture: u32,
-//     pub has_occlusion_texture: u32,
-//     pub has_emissive_texture: u32,
-// }
-
-// We would need to change the pipeline for these
-// struct GltfShaderSetting {
-//     double_sided: bool, // defult false
-//     alpha_mode: String, // OPAQUE, MASK, BLEND
-// }
-
 #[derive(TypeUuid, Serialize, Deserialize, Default, Clone)]
 #[uuid = "130a91a8-ba80-4cad-9bce-848326b234c7"]
 pub struct GltfMaterialAsset {

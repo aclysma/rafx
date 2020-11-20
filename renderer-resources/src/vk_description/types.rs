@@ -473,78 +473,6 @@ impl Into<vk::ShaderStageFlags> for ShaderStageFlags {
     }
 }
 
-/*
-#[derive(BitFlags, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[repr(u32)]
-pub enum ShaderStageFlag {
-    Vertex = 1,
-    TesselationControl = 2,
-    TesselationEvaluation = 4,
-    Geometry = 8,
-    Fragment = 16,
-    Compute = 32,
-    AllGraphics = 64,
-    All = 128,
-}
-
-//pub type ShaderStageFlags = BitFlags<ShaderStageFlag>;
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct ShaderStageFlags(BitFlags<ShaderStageFlag>);
-
-impl Deref for ShaderStageFlags {
-    type Target = BitFlags<ShaderStageFlag>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for ShaderStageFlags {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Into<vk::ShaderStageFlags> for ShaderStageFlags {
-    fn into(self) -> vk::ShaderStageFlags {
-        let mut shader_stage_flags = vk::ShaderStageFlags::empty();
-        if self.contains(ShaderStageFlag::Vertex) {
-            shader_stage_flags |= vk::ShaderStageFlags::VERTEX;
-        }
-        if self.contains(ShaderStageFlag::TesselationControl) {
-            shader_stage_flags |= vk::ShaderStageFlags::TESSELLATION_CONTROL;
-        }
-        if self.contains(ShaderStageFlag::TesselationEvaluation) {
-            shader_stage_flags |= vk::ShaderStageFlags::TESSELLATION_EVALUATION;
-        }
-        if self.contains(ShaderStageFlag::Geometry) {
-            shader_stage_flags |= vk::ShaderStageFlags::GEOMETRY;
-        }
-        if self.contains(ShaderStageFlag::Fragment) {
-            shader_stage_flags |= vk::ShaderStageFlags::FRAGMENT;
-        }
-        if self.contains(ShaderStageFlag::Compute) {
-            shader_stage_flags |= vk::ShaderStageFlags::COMPUTE;
-        }
-        if self.contains(ShaderStageFlag::AllGraphics) {
-            shader_stage_flags |= vk::ShaderStageFlags::ALL_GRAPHICS;
-        }
-        if self.contains(ShaderStageFlag::All) {
-            shader_stage_flags |= vk::ShaderStageFlags::ALL;
-        }
-
-        shader_stage_flags
-    }
-}
-
-impl Default for ShaderStageFlags {
-    fn default() -> Self {
-        ShaderStageFlags(Default::default())
-    }
-}
-*/
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct DescriptorSetLayoutBinding {
     pub binding: u32,
@@ -558,12 +486,6 @@ pub struct DescriptorSetLayoutBinding {
     // buffers.
     pub internal_buffer_per_descriptor_size: Option<u32>,
 }
-
-// impl Into<vk::DescriptorSetLayoutBinding> for DescriptorSetLayoutBinding {
-//     fn into(self) -> vk::DescriptorSetLayoutBinding {
-//         self.as_builder().build()
-//     }
-// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct DescriptorSetLayout {
@@ -2794,26 +2716,6 @@ impl ShaderModule {
         ShaderModule { code_hash, code }
     }
 }
-
-// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-// pub struct PipelineShaderStage {
-//     pub stage: ShaderStageFlags,
-//     pub shader_module: ShaderModule,
-//     pub entry_name: String,
-// }
-//
-// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-// pub struct PipelineShaderStages {
-//     pub stages: Vec<PipelineShaderStage>,
-// }
-//
-// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-// pub struct GraphicsPipeline {
-//     pub pipeline_layout: PipelineLayout,
-//     pub renderpass: RenderPass,
-//     pub fixed_function_state: FixedFunctionState,
-//     pub pipeline_shader_stages: PipelineShaderStages,
-// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct FramebufferMeta {

@@ -69,14 +69,6 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                                 [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
                                 .clone(),
                         );
-
-                        // if let Some(shadow_map_pass) = mesh_part.shadow_map_pass.as_ref() {
-                        //     shadow_map_per_view_descriptor_set_layouts.insert(
-                        //         shadow_map_pass.descriptor_set_layouts
-                        //             [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
-                        //             .clone(),
-                        //     );
-                        // }
                     }
                 }
             }
@@ -185,9 +177,6 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                                 // Write shadow map render node, if it's relevant
                                 //
                                 if let Some(shadow_map_pass) = &mesh_part.shadow_map_pass {
-                                    // if let Some(shadow_map_material_descriptor_set) =
-                                    //     &mesh_part.shadow_map_material_descriptor_set
-                                    // {
                                     if view.phase_is_relevant::<ShadowMapRenderPhase>() {
                                         let submit_node_index = MeshPrepareJob::add_render_node(
                                             &mut descriptor_set_allocator,
@@ -208,7 +197,6 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                                             0.0,
                                         );
                                     }
-                                    //}
                                 }
                             }
                         }

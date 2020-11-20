@@ -71,6 +71,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
                 pipeline.get_raw().pipelines[write_context.subpass_index as usize],
             );
 
+            // frag shader per-view data, not present during shadow pass
             if let Some(per_view_descriptor_set) = &render_node_data.per_view_descriptor_set {
                 // Bind per-pass data (UBO with view/proj matrix, sampler)
                 logical_device.cmd_bind_descriptor_sets(
@@ -83,17 +84,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
                 );
             };
 
-            // Bind per-pass data (UBO with view/proj matrix, sampler)
-            // logical_device.cmd_bind_descriptor_sets(
-            //     command_buffer,
-            //     vk::PipelineBindPoint::GRAPHICS,
-            //     pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-            //     super::PER_VIEW_DESCRIPTOR_SET_INDEX,
-            //     &[render_node_data.per_view_descriptor_set.get()],
-            //     &[],
-            // );
-
-            // Bind per-draw-call data (i.e. texture)
+            // frag shader material data, not present during shadow pass
             if let Some(per_material_descriptor_set) = &render_node_data.per_material_descriptor_set
             {
                 logical_device.cmd_bind_descriptor_sets(

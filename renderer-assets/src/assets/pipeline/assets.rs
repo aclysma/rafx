@@ -73,83 +73,10 @@ pub struct PipelineShaderStage {
     pub entry_name: String,
 }
 
-// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-// pub struct DescriptorSetLayoutBindingWithSlotName {
-//     pub binding: u32,
-//     pub descriptor_type: dsc::DescriptorType,
-//     pub descriptor_count: u32,
-//     pub stage_flags: dsc::ShaderStageFlags,
-//     pub slot_name: String,
-//
-//     pub immutable_samplers: Option<Vec<dsc::Sampler>>,
-//     pub internal_buffer_per_descriptor_size: Option<u32>,
-// }
-//
-// impl Into<dsc::DescriptorSetLayoutBinding> for &DescriptorSetLayoutBindingWithSlotName {
-//     fn into(self) -> dsc::DescriptorSetLayoutBinding {
-//         dsc::DescriptorSetLayoutBinding {
-//             binding: self.binding,
-//             descriptor_type: self.descriptor_type,
-//             descriptor_count: self.descriptor_count,
-//             stage_flags: self.stage_flags,
-//             immutable_samplers: self.immutable_samplers.clone(),
-//             internal_buffer_per_descriptor_size: self.internal_buffer_per_descriptor_size,
-//         }
-//     }
-// }
-//
-// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-// pub struct DescriptorSetLayoutWithSlotName {
-//     pub descriptor_set_layout_bindings: Vec<DescriptorSetLayoutBindingWithSlotName>,
-// }
-//
-// impl Into<dsc::DescriptorSetLayout> for &DescriptorSetLayoutWithSlotName {
-//     fn into(self) -> dsc::DescriptorSetLayout {
-//         let descriptor_set_layout_bindings = self
-//             .descriptor_set_layout_bindings
-//             .iter()
-//             .map(|x| x.into())
-//             .collect();
-//         dsc::DescriptorSetLayout {
-//             descriptor_set_layout_bindings,
-//         }
-//     }
-// }
-
-// #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-// pub struct PushConstantRangeWithSlotName {
-//     pub stage_flags: dsc::ShaderStageFlags,
-//     pub offset: u32,
-//     pub size: u32,
-//     pub slot_name: String,
-// }
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum DescriptorId {
-    SetAndBinding(u32, u32),
-    Name(String),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct MaterialDescriptorConfig {
-    id: DescriptorId,
-    slot_name: Option<String>,
-    immutable_samplers: Option<Vec<dsc::Sampler>>,
-    enable_internal_buffer: bool,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialPassShaderInterface {
-    //pub descriptor_set_layouts: Vec<DescriptorSetLayoutWithSlotName>,
-    //pub push_constant_ranges: Vec<dsc::PushConstantRange>,
-    //pub descriptor_configs: Vec<MaterialDescriptorConfig>,
+    // Other data (like descriptor set layouts) is auto-generated and comes from ReflectedEntryPoint
     pub vertex_input_state: dsc::PipelineVertexInputState,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum MaterialPassDataRenderpassRef {
-    Asset(Handle<RenderpassAsset>),
-    LookupByPhaseName,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -157,7 +84,6 @@ pub struct MaterialPassData {
     pub name: Option<String>,
     pub phase: Option<String>,
     pub pipeline: Handle<PipelineAsset>,
-    //pub renderpass: MaterialPassDataRenderpassRef,
     pub shaders: Vec<PipelineShaderStage>,
     pub shader_interface: MaterialPassShaderInterface,
 }
@@ -238,9 +164,6 @@ impl MaterialPass {
         let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
 
         let mut push_constant_ranges = vec![];
-
-        //let mut config_has_been_used = Vec::with_capacity(material_pass_data.shader_interface.descriptor_configs.len());
-        //config_has_been_used.resize(material_pass_data.shader_interface.descriptor_configs.len(), false);
 
         // We iterate through the entry points we will hit for each stage. Each stage may define
         // slightly different reflection data/bindings in use.
