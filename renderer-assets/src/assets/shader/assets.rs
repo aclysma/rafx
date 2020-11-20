@@ -6,11 +6,6 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
 
-//TODO: Vertex formats? Autogenerate the vertex struct? Or, generate vertex layout based on known
-// vertex format. So vertex format as an asset type?
-//TODO: Samplers - external or inline in shader?
-//TODO
-
 // An import format that will get turned into ShaderAssetData
 #[derive(Serialize, Deserialize)]
 pub struct CookedShader {

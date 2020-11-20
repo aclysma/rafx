@@ -710,7 +710,6 @@ impl AssetManager {
             //
             // Register the writes into the correct descriptor set pools
             //
-            //let layouts = pass.pipeline_create_data.pipeline_layout.iter().zip(&pass.pipeline_create_data.pipeline_layout_def);
             for (layout_index, layout_writes) in pass_descriptor_set_writes.into_iter().enumerate()
             {
                 if !layout_writes.elements.is_empty() {
@@ -723,6 +722,8 @@ impl AssetManager {
 
                     pass_descriptor_sets.push(Some(descriptor_set));
                 } else {
+                    // If there are no descriptors in this layout index, assume the layout does not
+                    // exist
                     pass_descriptor_sets.push(None);
                 }
             }

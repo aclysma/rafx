@@ -37,10 +37,10 @@ pub fn logging_init() {
     // Setup logging
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
-        // .filter_module(
-        //     "renderer_assets::resources::descriptor_sets",
-        //     log::LevelFilter::Info,
-        // )
+        .filter_module(
+            "renderer_assets::resources::descriptor_sets",
+            log::LevelFilter::Info,
+        )
         .filter_module("renderer_shell_vulkan::device", log::LevelFilter::Debug)
         .filter_module("renderer_nodes", log::LevelFilter::Info)
         .filter_module("renderer_visibility", log::LevelFilter::Info)

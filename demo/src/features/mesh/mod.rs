@@ -22,72 +22,16 @@ mod write;
 use renderer::resources::DescriptorSetArc;
 use write::MeshCommandWriter;
 
-const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 = 0;
-const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 = 1;
-const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 = 2;
+const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
+    shaders::mesh_frag::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX as u32;
+const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 =
+    shaders::mesh_frag::PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX as u32;
+const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 =
+    shaders::mesh_vert::PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX as u32;
 
 pub use shaders::mesh_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
 pub use shaders::mesh_vert::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
 pub use shaders::mesh_vert::PerViewDataVSUniform as MeshPerFrameVertexShaderParam;
-
-/*
-// Represents the data uploaded to the GPU to represent a single point light
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-pub struct PointLight {
-    pub position_ws: glam::Vec3, // +0
-    pub position_vs: glam::Vec3, // +16
-    pub color: glam::Vec4,       // +32
-    pub range: f32,              // +48
-    pub intensity: f32,          // +52
-} // 4*16 = 64 bytes
-
-// Represents the data uploaded to the GPU to represent a single directional light
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-pub struct DirectionalLight {
-    pub direction_ws: glam::Vec3, // +0
-    pub direction_vs: glam::Vec3, // +16
-    pub color: glam::Vec4,        // +32
-    pub intensity: f32,           // +48
-} // 4*16 = 64 bytes
-
-// Represents the data uploaded to the GPU to represent a single spot light
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-pub struct SpotLight {
-    pub position_ws: glam::Vec3,   // +0
-    pub direction_ws: glam::Vec3,  // +16
-    pub position_vs: glam::Vec3,   // +32
-    pub direction_vs: glam::Vec3,  // +48
-    pub color: glam::Vec4,         // +64
-    pub spotlight_half_angle: f32, //+80
-    pub range: f32,                // +84
-    pub intensity: f32,            // +88
-} // 6*16 = 96 bytes
-
-// Represents the data uploaded to the GPU to provide all data necessary to render meshes
-//TODO: Remove view/proj, they aren't being used. Add ambient light constant
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-pub struct MeshPerViewFragmentShaderParam {
-    pub ambient_light: glam::Vec4,                  // +0
-    pub point_light_count: u32,                     // +16
-    pub directional_light_count: u32,               // 20
-    pub spot_light_count: u32,                      // +24
-    pub point_lights: [PointLight; 16],             // +32 (64*16 = 1024),
-    pub directional_lights: [DirectionalLight; 16], // +1056 (64*16 = 1024),
-    pub spot_lights: [SpotLight; 16],               // +2080 (96*16 = 1536)
-} // 3616 bytes
-*/
-
-// #[derive(Default, Copy, Clone)]
-// //#[repr(C)]
-// #[repr(C)]
-// pub struct MeshPerFrameVertexShaderParam {
-//     pub shadow_map_view_proj: glam::Mat4, // +0
-//     pub shadow_map_light_dir: glam::Vec4, // +64
-// } // 80 bytes
 
 pub fn create_mesh_extract_job(
     shadow_map_image: ResourceArc<ImageViewResource>,

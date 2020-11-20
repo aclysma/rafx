@@ -22,7 +22,6 @@ pub use pipeline::MaterialInstanceImporter;
 pub use pipeline::MaterialInstanceSlotAssignment;
 pub use pipeline::MaterialPass;
 pub use pipeline::MaterialPassData;
-pub use pipeline::MaterialPassDataRenderpassRef;
 pub use pipeline::MaterialPassShaderInterface;
 pub use pipeline::PipelineAsset;
 pub use pipeline::PipelineAssetData;
