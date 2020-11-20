@@ -10,7 +10,7 @@ fn main() {
     let level = if args.trace {
         LevelFilter::Trace
     } else {
-        LevelFilter::Error
+        LevelFilter::Info
     };
 
     env_logger::Builder::from_default_env()
