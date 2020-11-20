@@ -95,13 +95,33 @@ pub struct MaterialDataUboStd140 {
 
 pub type MaterialDataUboUniform = MaterialDataUboStd140;
 
+pub const PER_FRAME_DATA_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 1;
+pub const SMP_DEPTH_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const SMP_DEPTH_DESCRIPTOR_BINDING_INDEX: usize = 2;
+pub const SHADOW_MAP_IMAGE_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const SHADOW_MAP_IMAGE_DESCRIPTOR_BINDING_INDEX: usize = 3;
+pub const PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const BASE_COLOR_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 1;
+pub const METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 2;
+pub const NORMAL_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 3;
+pub const OCCLUSION_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 4;
+pub const EMISSIVE_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 5;
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_SpotLightStd140() {
+    fn test_struct_spot_light_std140() {
         assert_eq!(std::mem::size_of::<SpotLightStd140>(), 96);
         assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
         assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
@@ -148,8 +168,7 @@ mod test {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_DirectionalLightStd140() {
+    fn test_struct_directional_light_std140() {
         assert_eq!(std::mem::size_of::<DirectionalLightStd140>(), 64);
         assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
         assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
@@ -181,8 +200,7 @@ mod test {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_PointLightStd140() {
+    fn test_struct_point_light_std140() {
         assert_eq!(std::mem::size_of::<PointLightStd140>(), 64);
         assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
         assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
@@ -211,8 +229,7 @@ mod test {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_MaterialDataStd140() {
+    fn test_struct_material_data_std140() {
         assert_eq!(std::mem::size_of::<MaterialDataStd140>(), 80);
         assert_eq!(std::mem::size_of::<[f32; 4]>(), 16);
         assert_eq!(std::mem::align_of::<[f32; 4]>(), 4);
@@ -289,8 +306,7 @@ mod test {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_PerViewDataStd140() {
+    fn test_struct_per_view_data_std140() {
         assert_eq!(std::mem::size_of::<PerViewDataStd140>(), 3616);
         assert_eq!(std::mem::size_of::<[f32; 4]>(), 16);
         assert_eq!(std::mem::align_of::<[f32; 4]>(), 4);
@@ -331,8 +347,7 @@ mod test {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_MaterialDataUboStd140() {
+    fn test_struct_material_data_ubo_std140() {
         assert_eq!(std::mem::size_of::<MaterialDataUboStd140>(), 80);
         assert_eq!(std::mem::size_of::<MaterialDataStd140>(), 80);
         assert_eq!(std::mem::align_of::<MaterialDataStd140>(), 4);

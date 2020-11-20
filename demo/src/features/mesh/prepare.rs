@@ -95,16 +95,27 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
         for &view in views {
             let per_view_frag_data = self.create_per_view_frag_data(view);
 
-            if view.phase_is_relevant::<OpaqueRenderPhase>() {
+            if view.phase_is_relevant::<OpaqueRenderPhase>()
+                || view.phase_is_relevant::<ShadowMapRenderPhase>()
+            {
                 for per_view_descriptor_set_layout in &opaque_per_view_descriptor_set_layouts {
                     let mut descriptor_set = descriptor_set_allocator
                         .create_dyn_descriptor_set_uninitialized(&per_view_descriptor_set_layout)
                         .unwrap();
-                    descriptor_set.set_buffer_data(0, &per_view_frag_data);
+                    descriptor_set.set_buffer_data(
+                        shaders::mesh_frag::PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+                        &per_view_frag_data,
+                    );
                     // 1: immutable sampler
                     // 2: immutable sampler
-                    descriptor_set.set_image(3, self.shadow_map_image.clone());
-                    descriptor_set.set_buffer_data(4, &per_frame_vertex_data);
+                    descriptor_set.set_image(
+                        shaders::mesh_frag::SHADOW_MAP_IMAGE_DESCRIPTOR_BINDING_INDEX as u32,
+                        self.shadow_map_image.clone(),
+                    );
+                    descriptor_set.set_buffer_data(
+                        shaders::mesh_vert::PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+                        &per_frame_vertex_data,
+                    );
                     descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
                     let old = per_view_descriptor_sets.insert(
@@ -114,22 +125,6 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                     assert!(old.is_none());
                 }
             }
-
-            // if view.phase_is_relevant::<ShadowMapRenderPhase>() {
-            //     for per_view_descriptor_set_layout in &shadow_map_per_view_descriptor_set_layouts {
-            //         let mut descriptor_set = descriptor_set_allocator
-            //             .create_dyn_descriptor_set_uninitialized(&per_view_descriptor_set_layout)
-            //             .unwrap();
-            //         descriptor_set.set_buffer_data(0, &per_view_frag_data);
-            //         descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
-            //
-            //         let old = per_view_descriptor_sets.insert(
-            //             (view.view_index(), per_view_descriptor_set_layout.clone()),
-            //             descriptor_set.descriptor_set().clone(),
-            //         );
-            //         assert!(old.is_none());
-            //     }
-            // }
         }
 
         //
@@ -359,7 +354,10 @@ impl MeshPrepareJob {
         let mut descriptor_set = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(per_instance_descriptor_set_layout)
             .unwrap();
-        descriptor_set.set_buffer_data(0, per_object_param);
+        descriptor_set.set_buffer_data(
+            shaders::mesh_vert::PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            per_object_param,
+        );
         descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
         let per_instance_descriptor_set = descriptor_set.descriptor_set().clone();
 

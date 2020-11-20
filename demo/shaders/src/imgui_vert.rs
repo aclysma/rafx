@@ -11,13 +11,15 @@ pub struct ArgsStd140 {
 
 pub type ArgsUniform = ArgsStd140;
 
+pub const UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX: usize = 0;
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_ArgsStd140() {
+    fn test_struct_args_std140() {
         assert_eq!(std::mem::size_of::<ArgsStd140>(), 64);
         assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
         assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);

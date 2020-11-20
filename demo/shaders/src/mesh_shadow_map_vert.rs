@@ -2,3 +2,6 @@
 
 #[allow(unused_imports)]
 use serde::{Deserialize, Serialize};
+
+pub const PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX: usize = 2;
+pub const PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;

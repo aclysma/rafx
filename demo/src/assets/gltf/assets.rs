@@ -80,9 +80,7 @@ impl Into<MaterialDataStd140> for GltfMaterialData {
             has_normal_texture: if self.has_normal_texture { 1 } else { 0 },
             has_occlusion_texture: if self.has_occlusion_texture { 1 } else { 0 },
             has_emissive_texture: if self.has_emissive_texture { 1 } else { 0 },
-            pad0: 0,
-            pad1: 0,
-            pad2: 0,
+            ..Default::default()
         }
     }
 }
