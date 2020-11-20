@@ -3,7 +3,7 @@ use structopt::StructOpt;
 
 use shader_processor::*;
 
-fn main() {
+fn main() -> Result<(), String> {
     let args = ShaderProcessorArgs::from_args();
 
     // Setup logging
@@ -20,5 +20,8 @@ fn main() {
 
     if let Err(e) = run(&args) {
         eprintln!("{}", e.to_string());
+        Err("Shader processor failed".to_string())
+    } else {
+        Ok(())
     }
 }
