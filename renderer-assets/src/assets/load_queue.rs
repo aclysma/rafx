@@ -3,10 +3,11 @@ use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
     BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, PipelineAsset, RenderpassAsset,
-    ShaderAsset, SamplerAsset,
+    SamplerAsset, ShaderAsset,
 };
 use crate::assets::{
-    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData, SamplerAssetData
+    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
+    SamplerAssetData,
 };
 use crate::resource_loader::ResourceLoadResult;
 use crate::ResourceLoader;

@@ -1,6 +1,6 @@
 use crate::{
     BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, PipelineAsset, RenderpassAsset,
-    ShaderAsset, SamplerAsset,
+    SamplerAsset, ShaderAsset,
 };
 use atelier_assets::loader::storage::IndirectionTable;
 use atelier_assets::loader::LoadHandle;

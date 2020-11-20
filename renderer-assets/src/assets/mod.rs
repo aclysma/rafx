@@ -5,12 +5,12 @@ pub use self::image::ImageAssetData;
 pub use self::image::ImageImporter;
 
 mod shader;
+pub use shader::reflect;
+pub use shader::CookedShader;
 pub use shader::ShaderAsset;
 pub use shader::ShaderAssetData;
-pub use shader::ShaderImporterSpv;
 pub use shader::ShaderImporterCooked;
-pub use shader::CookedShader;
-pub use shader::reflect;
+pub use shader::ShaderImporterSpv;
 
 mod pipeline;
 pub use pipeline::MaterialAsset;
@@ -23,18 +23,18 @@ pub use pipeline::MaterialInstanceSlotAssignment;
 pub use pipeline::MaterialPass;
 pub use pipeline::MaterialPassData;
 pub use pipeline::MaterialPassDataRenderpassRef;
+pub use pipeline::MaterialPassShaderInterface;
 pub use pipeline::PipelineAsset;
 pub use pipeline::PipelineAssetData;
 pub use pipeline::PipelineImporter;
 pub use pipeline::RenderpassAsset;
 pub use pipeline::RenderpassAssetData;
 pub use pipeline::RenderpassImporter;
+pub use pipeline::SamplerAsset;
+pub use pipeline::SamplerAssetData;
+pub use pipeline::SamplerImporter;
 pub use pipeline::SlotLocation;
 pub use pipeline::SlotNameLookup;
-pub use pipeline::SamplerAssetData;
-pub use pipeline::SamplerAsset;
-pub use pipeline::SamplerImporter;
-pub use pipeline::MaterialPassShaderInterface;
 
 mod buffer;
 pub use buffer::BufferAsset;

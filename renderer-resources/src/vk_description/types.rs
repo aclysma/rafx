@@ -423,9 +423,7 @@ impl Into<vk::ShaderStageFlags> for ShaderStage {
         match self {
             ShaderStage::Vertex => vk::ShaderStageFlags::VERTEX,
             ShaderStage::TessellationControl => vk::ShaderStageFlags::TESSELLATION_CONTROL,
-            ShaderStage::TessellationEvaluation => {
-                vk::ShaderStageFlags::TESSELLATION_EVALUATION
-            }
+            ShaderStage::TessellationEvaluation => vk::ShaderStageFlags::TESSELLATION_EVALUATION,
             ShaderStage::Geometry => vk::ShaderStageFlags::GEOMETRY,
             ShaderStage::Fragment => vk::ShaderStageFlags::FRAGMENT,
             ShaderStage::Compute => vk::ShaderStageFlags::COMPUTE,
@@ -440,9 +438,7 @@ impl Into<ShaderStageFlags> for ShaderStage {
         match self {
             ShaderStage::Vertex => ShaderStageFlags::VERTEX,
             ShaderStage::TessellationControl => ShaderStageFlags::TESSELLATION_CONTROL,
-            ShaderStage::TessellationEvaluation => {
-                ShaderStageFlags::TESSELLATION_EVALUATION
-            }
+            ShaderStage::TessellationEvaluation => ShaderStageFlags::TESSELLATION_EVALUATION,
             ShaderStage::Geometry => ShaderStageFlags::GEOMETRY,
             ShaderStage::Fragment => ShaderStageFlags::FRAGMENT,
             ShaderStage::Compute => ShaderStageFlags::COMPUTE,

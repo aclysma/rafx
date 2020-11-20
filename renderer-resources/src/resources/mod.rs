@@ -18,8 +18,8 @@ pub use resource_lookup::PipelineLayoutResource;
 pub use resource_lookup::RenderPassResource;
 pub use resource_lookup::ResourceHash;
 pub use resource_lookup::ResourceLookupSet;
-pub use resource_lookup::ShaderModuleResource;
 pub use resource_lookup::SamplerResource;
+pub use resource_lookup::ShaderModuleResource;
 
 mod dyn_resource_allocator;
 pub use dyn_resource_allocator::DynResourceAllocatorSet;

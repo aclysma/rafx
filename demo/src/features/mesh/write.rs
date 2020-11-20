@@ -94,7 +94,8 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
             // );
 
             // Bind per-draw-call data (i.e. texture)
-            if let Some(per_material_descriptor_set) = &render_node_data.per_material_descriptor_set {
+            if let Some(per_material_descriptor_set) = &render_node_data.per_material_descriptor_set
+            {
                 logical_device.cmd_bind_descriptor_sets(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,

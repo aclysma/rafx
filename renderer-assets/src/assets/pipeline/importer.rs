@@ -1,17 +1,12 @@
 use crate::assets::pipeline::{
-    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData, SamplerAssetData
+    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
+    SamplerAssetData,
 };
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
-
-
-
-
-
-
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "62e662dc-cb15-444f-a7ac-eb89f52a4042"]
@@ -22,8 +17,8 @@ pub struct SamplerImporterState(Option<AssetUuid>);
 pub struct SamplerImporter;
 impl Importer for SamplerImporter {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         2
     }
@@ -63,12 +58,6 @@ impl Importer for SamplerImporter {
         })
     }
 }
-
-
-
-
-
-
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "25c8b7df-e3a4-4436-b41c-ce32eed76e18"]

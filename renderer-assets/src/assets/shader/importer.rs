@@ -1,11 +1,11 @@
 use crate::assets::shader::ShaderAssetData;
+use crate::CookedShader;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
 use renderer_resources::vk_description as dsc;
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Cursor};
+use std::io::{Cursor, Read};
 use type_uuid::*;
-use crate::CookedShader;
 
 // There may be a better way to do this type coercing
 // fn coerce_result_str<T>(result: Result<T, &str>) -> atelier_assets::importer::Result<T> {
@@ -14,7 +14,9 @@ use crate::CookedShader;
 // }
 
 fn coerce_result_string<T>(result: Result<T, String>) -> atelier_assets::importer::Result<T> {
-    let ok = result.map_err(|x| -> Box<dyn std::error::Error + Send> { Box::<dyn std::error::Error + Send + Sync>::from(x) })?;
+    let ok = result.map_err(|x| -> Box<dyn std::error::Error + Send> {
+        Box::<dyn std::error::Error + Send + Sync>::from(x)
+    })?;
     Ok(ok)
 }
 
@@ -59,14 +61,18 @@ impl Importer for ShaderImporterSpv {
 
         let code = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
 
-        log::trace!("Import shader asset {:?} with {} bytes of code", asset_id, code.len() * std::mem::size_of::<u32>());
+        log::trace!(
+            "Import shader asset {:?} with {} bytes of code",
+            asset_id,
+            code.len() * std::mem::size_of::<u32>()
+        );
 
         // The hash is used in some places identify the shader
         let code_hash = dsc::ShaderModuleCodeHash::hash_shader_code(&code);
 
         let shader_asset = ShaderAssetData {
             shader: dsc::ShaderModule { code, code_hash },
-            reflection_data: None
+            reflection_data: None,
         };
 
         Ok(ImporterValue {
@@ -82,7 +88,6 @@ impl Importer for ShaderImporterSpv {
     }
 }
 
-
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "d4fb07ce-76e6-497e-ac31-bcaeb43528aa"]
 pub struct ShaderImporterCookedState(Option<AssetUuid>);
@@ -92,8 +97,8 @@ pub struct ShaderImporterCookedState(Option<AssetUuid>);
 pub struct ShaderImporterCooked;
 impl Importer for ShaderImporterCooked {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         4
     }
@@ -122,21 +127,25 @@ impl Importer for ShaderImporterCooked {
         let mut bytes = Vec::new();
         source.read_to_end(&mut bytes)?;
 
-        let cooked_shader : CookedShader = coerce_result_string(
+        let cooked_shader: CookedShader = coerce_result_string(
             bincode::deserialize::<CookedShader>(&bytes)
-                .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))
+                .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x)),
         )?;
 
         let code = renderer_shell_vulkan::util::read_spv(&mut Cursor::new(&cooked_shader.spv))?;
 
-        log::trace!("Import shader asset {:?} with {} bytes of code", asset_id, code.len() * std::mem::size_of::<u32>());
+        log::trace!(
+            "Import shader asset {:?} with {} bytes of code",
+            asset_id,
+            code.len() * std::mem::size_of::<u32>()
+        );
 
         // The hash is used in some places identify the shader
         let code_hash = dsc::ShaderModuleCodeHash::hash_shader_code(&code);
 
         let shader_asset = ShaderAssetData {
             shader: dsc::ShaderModule { code, code_hash },
-            reflection_data: Some(cooked_shader.entry_points)
+            reflection_data: Some(cooked_shader.entry_points),
         };
 
         Ok(ImporterValue {
@@ -151,4 +160,3 @@ impl Importer for ShaderImporterCooked {
         })
     }
 }
-

@@ -35,7 +35,13 @@ pub(crate) fn include_impl(
     requested_from: &Path,
     include_depth: usize,
 ) -> Result<ResolvedInclude, String> {
-    log::trace!("include file {:?} {:?} {:?} {:?}", requested_path, include_type, requested_from, include_depth);
+    log::trace!(
+        "include file {:?} {:?} {:?} {:?}",
+        requested_path,
+        include_type,
+        requested_from,
+        include_depth
+    );
 
     let resolved_path = match include_type {
         IncludeType::Relative => {

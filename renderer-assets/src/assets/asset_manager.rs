@@ -2,12 +2,15 @@ use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
     BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, PipelineAsset,
-    RenderpassAsset, ShaderAsset, SamplerAsset
+    RenderpassAsset, SamplerAsset, ShaderAsset,
 };
 use crate::assets::{
     MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
 };
-use crate::{AssetLookup, AssetLookupSet, BufferAssetData, GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SlotNameLookup, SamplerAssetData};
+use crate::{
+    AssetLookup, AssetLookupSet, BufferAssetData, GenericLoader, LoadQueues,
+    MaterialInstanceSlotAssignment, SamplerAssetData, SlotNameLookup,
+};
 use ash::prelude::*;
 use atelier_assets::loader::handle::Handle;
 use renderer_resources::{
@@ -576,7 +579,8 @@ impl AssetManager {
         let mut reflection_data_lookup = FnvHashMap::default();
         if let Some(reflection_data) = &shader_module.reflection_data {
             for entry_point in reflection_data {
-                let old = reflection_data_lookup.insert(entry_point.name.clone(), entry_point.clone());
+                let old =
+                    reflection_data_lookup.insert(entry_point.name.clone(), entry_point.clone());
                 assert!(old.is_none());
             }
         }
@@ -584,7 +588,7 @@ impl AssetManager {
         let shader_module = self.resources().get_or_create_shader_module(&shader)?;
         Ok(ShaderAsset {
             shader_module,
-            reflection_data: Arc::new(reflection_data_lookup)
+            reflection_data: Arc::new(reflection_data_lookup),
         })
     }
 
@@ -593,9 +597,7 @@ impl AssetManager {
         sampler: &SamplerAssetData,
     ) -> VkResult<SamplerAsset> {
         let sampler = self.resources().get_or_create_sampler(&sampler.sampler)?;
-        Ok(SamplerAsset {
-            sampler
-        })
+        Ok(SamplerAsset { sampler })
     }
 
     fn load_graphics_pipeline(
@@ -698,7 +700,12 @@ impl AssetManager {
             // This will contain the descriptor sets created for this pass, one for each set within the pass
             let mut pass_descriptor_sets = Vec::with_capacity(pass_descriptor_set_writes.len());
 
-            let material_pass_descriptor_sets = &pass.material_pass_resource.get_raw().pipeline_layout.get_raw().descriptor_sets;
+            let material_pass_descriptor_sets = &pass
+                .material_pass_resource
+                .get_raw()
+                .pipeline_layout
+                .get_raw()
+                .descriptor_sets;
 
             //
             // Register the writes into the correct descriptor set pools
@@ -745,7 +752,11 @@ impl AssetManager {
     ) -> VkResult<()> {
         if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
             for location in slot_locations {
-                log::trace!("Apply write to location {:?} via slot {}", location, slot_assignment.slot_name);
+                log::trace!(
+                    "Apply write to location {:?} via slot {}",
+                    location,
+                    slot_assignment.slot_name
+                );
                 let layout_descriptor_set_writes =
                     &mut material_pass_write_set[location.layout_index as usize];
                 let write = layout_descriptor_set_writes

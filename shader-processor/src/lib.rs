@@ -51,7 +51,7 @@ pub struct ShaderProcessorArgs {
     pub trace: bool,
 
     #[structopt(name = "optimize-shaders", long)]
-    pub optimize_shaders: bool
+    pub optimize_shaders: bool,
 }
 
 pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
@@ -79,8 +79,9 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
             args.rs_file.as_ref(),
             args.cooked_shader_file.as_ref(),
             shader_kind,
-            args.optimize_shaders
-        ).map_err(|x| format!("{}: {}", glsl_file.to_string_lossy(), x.to_string()))?;
+            args.optimize_shaders,
+        )
+        .map_err(|x| format!("{}: {}", glsl_file.to_string_lossy(), x.to_string()))?;
 
         Ok(())
     } else if let Some(glsl_file_patterns) = &args.glsl_files {
@@ -101,7 +102,10 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                 let glsl_file = glob?;
                 log::info!("Processing file {:?}", glsl_file);
 
-                let file_name = glsl_file.file_name().ok_or_else(|| "Failed to get the filename from glob match".to_string())?.to_string_lossy();
+                let file_name = glsl_file
+                    .file_name()
+                    .ok_or_else(|| "Failed to get the filename from glob match".to_string())?
+                    .to_string_lossy();
 
                 let spv_name = format!("{}.spv", file_name);
                 let spv_path = args.spv_path.as_ref().map(|x| x.join(spv_name));
@@ -111,7 +115,10 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                 let rs_path = args.rs_path.as_ref().map(|x| x.join(rs_name));
 
                 let cooked_shader_name = format!("{}.shader", file_name);
-                let cooked_shader_path = args.cooked_shaders_path.as_ref().map(|x| x.join(cooked_shader_name));
+                let cooked_shader_path = args
+                    .cooked_shaders_path
+                    .as_ref()
+                    .map(|x| x.join(cooked_shader_name));
 
                 //
                 // Try to determine what kind of shader this is from the file name
@@ -130,7 +137,8 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                     cooked_shader_path.as_ref(),
                     shader_kind,
                     args.optimize_shaders,
-                ).map_err(|x| format!("{}: {}", glsl_file.to_string_lossy(), x.to_string()))?;
+                )
+                .map_err(|x| format!("{}: {}", glsl_file.to_string_lossy(), x.to_string()))?;
 
                 //
                 // Add the module name to this list so we can generate a lib.rs later
@@ -167,7 +175,7 @@ fn process_glsl_shader(
     rs_file: Option<&PathBuf>,
     cooked_shader_file: Option<&PathBuf>,
     shader_kind: shaderc::ShaderKind,
-    optimize_shaders: bool
+    optimize_shaders: bool,
 ) -> Result<(), Box<dyn Error>> {
     log::trace!("--- Start processing shader job ---");
     log::trace!("glsl: {:?}", glsl_file);
@@ -206,10 +214,12 @@ fn process_glsl_shader(
     //
     // Read the unoptimized spv into spirv_cross so that we can grab reflection data
     //
-    let spirv_cross_module = spirv_cross::spirv::Module::from_words(unoptimized_compile_spirv_result.as_binary());
+    let spirv_cross_module =
+        spirv_cross::spirv::Module::from_words(unoptimized_compile_spirv_result.as_binary());
 
     //TEMP: Create this for now, planning to remove the dependency later
-    let spirv_reflect_module = spirv_reflect::create_shader_module(unoptimized_compile_spirv_result.as_binary_u8())?;
+    let spirv_reflect_module =
+        spirv_reflect::create_shader_module(unoptimized_compile_spirv_result.as_binary_u8())?;
 
     //
     // Parse the shader code to find all declared resources. This is a high-level parse of the file
@@ -252,22 +262,22 @@ fn process_glsl_shader(
         compile_options.set_optimization_level(shaderc::OptimizationLevel::Performance);
         //NOTE: Could also use shaderc::OptimizationLevel::Size
 
-        compiler.compile_into_spirv(
-            &code,
-            shader_kind,
-            glsl_file.to_str().unwrap(),
-            entry_point_name,
-            Some(&compile_options),
-        )?.as_binary_u8().to_vec()
+        compiler
+            .compile_into_spirv(
+                &code,
+                shader_kind,
+                glsl_file.to_str().unwrap(),
+                entry_point_name,
+                Some(&compile_options),
+            )?
+            .as_binary_u8()
+            .to_vec()
     } else {
         unoptimized_compile_spirv_result.as_binary_u8().to_vec()
     };
 
     // Don't worry about the return value
-    let cooked_shader = cook::cook_shader(
-        &reflected_data,
-        &output_spv
-    )?;
+    let cooked_shader = cook::cook_shader(&reflected_data, &output_spv)?;
 
     //
     // Write out the spv and rust files if desired
@@ -286,8 +296,6 @@ fn process_glsl_shader(
 
     Ok(())
 }
-
-
 
 fn shader_kind_from_args(args: &ShaderProcessorArgs) -> Option<shaderc::ShaderKind> {
     let extensions = [

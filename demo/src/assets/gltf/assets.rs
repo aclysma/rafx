@@ -3,8 +3,8 @@ use renderer::assets::BufferAsset;
 use renderer::assets::ImageAsset;
 use renderer::assets::MaterialInstanceAsset;
 use serde::{Deserialize, Serialize};
-use type_uuid::*;
 use shaders::mesh_frag::MaterialDataStd140;
+use type_uuid::*;
 
 //TODO: These are extensions that might be interesting to try supporting. In particular, lights,
 // LOD, and clearcoat
@@ -82,7 +82,7 @@ impl Into<MaterialDataStd140> for GltfMaterialData {
             has_emissive_texture: if self.has_emissive_texture { 1 } else { 0 },
             pad0: 0,
             pad1: 0,
-            pad2: 0
+            pad2: 0,
         }
     }
 }

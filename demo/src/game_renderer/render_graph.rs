@@ -297,7 +297,7 @@ pub fn build_render_graph(
 
                 let blur_config = shaders::bloom_blur_frag::ConfigUniform {
                     horizontal: blur_pass_index % 2,
-                    .. Default::default()
+                    ..Default::default()
                 };
 
                 bloom_blur_material_dyn_set.set_buffer_data(2, &blur_config);
