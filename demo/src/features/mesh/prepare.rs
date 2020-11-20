@@ -2,10 +2,7 @@ use super::MeshCommandWriter;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use crate::features::mesh::{
-    ExtractedFrameNodeMeshData, MeshPerFrameVertexShaderParam, MeshPerObjectShaderParam,
-    MeshPerViewFragmentShaderParam, MeshRenderFeature, PreparedSubmitNodeMeshData,
-};
+use crate::features::mesh::{ExtractedFrameNodeMeshData, MeshPerFrameVertexShaderParam, MeshPerObjectFragmentShaderParam, MeshPerViewFragmentShaderParam, MeshRenderFeature, PreparedSubmitNodeMeshData};
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use fnv::{FnvHashMap, FnvHashSet};
@@ -84,8 +81,9 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
 
         // Shared per-frame data
         let per_frame_vertex_data = MeshPerFrameVertexShaderParam {
-            shadow_map_view_proj: self.shadow_map_view.view_proj(),
-            shadow_map_light_dir: self.shadow_map_view.view_dir().extend(1.0),
+            shadow_map_view_proj: self.shadow_map_view.view_proj().to_cols_array_2d(),
+            shadow_map_light_dir: self.shadow_map_view.view_dir().into(),
+            .. Default::default()
         };
 
         //
@@ -147,10 +145,10 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                         let model_view = view.view_matrix() * extracted_data.world_transform;
                         let model_view_proj = view.projection_matrix() * model_view;
 
-                        let per_object_param = MeshPerObjectShaderParam {
-                            model: extracted_data.world_transform,
-                            model_view,
-                            model_view_proj,
+                        let per_object_param = MeshPerObjectFragmentShaderParam {
+                            model: extracted_data.world_transform.to_cols_array_2d(),
+                            model_view: model_view.to_cols_array_2d(),
+                            model_view_proj: model_view_proj.to_cols_array_2d(),
                         };
 
                         for (mesh_part_index, mesh_part) in extracted_data
@@ -328,7 +326,7 @@ impl MeshPrepareJob {
         >,
         view: &RenderView,
         view_node: &PerViewNode,
-        per_object_param: &MeshPerObjectShaderParam,
+        per_object_param: &MeshPerObjectFragmentShaderParam,
         mesh_part_index: usize,
         material_pass: &MaterialPass,
         per_material_descriptor_set: Option<DescriptorSetArc>,

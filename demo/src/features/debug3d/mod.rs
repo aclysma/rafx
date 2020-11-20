@@ -22,12 +22,7 @@ pub fn create_debug3d_extract_job(
     Box::new(Debug3dExtractJob::new(debug3d_material))
 }
 
-/// Per-pass "global" data
-#[derive(Clone, Debug, Copy)]
-struct Debug3dUniformBufferObject {
-    // View and projection matrices
-    view_proj: [[f32; 4]; 4],
-}
+pub type Debug3dUniformBufferObject = shaders::debug_vert::PerFrameUboUniform;
 
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy)]

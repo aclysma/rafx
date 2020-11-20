@@ -630,21 +630,31 @@ fn generate_struct(
         log::trace!("GPU: advance by {} bytes to offset {}", gpu_size, gpu_offset);
     }
 
-    debug_assert!(rust_offset == gpu_offset);
-    // // End of struct padding to make sizes match
-    // assert!(rust_offset <= gpu_offset);
-    // if rust_offset < gpu_offset {
-    //     let required_padding = gpu_offset - rust_offset;
-    //     let struct_member = StructMember {
-    //         name: format!("_padding{}", pad_var_count),
-    //         ty: format!("[u8;{}]", required_padding),
-    //         size: required_padding,
-    //         align: 1,
-    //         offset: rust_offset
-    //     };
-    //     log::trace!("member: {:?}", struct_member);
-    //     members.push(struct_member);
-    // }
+    let full_gpu_size = determine_size(
+        builtin_types,
+        user_types,
+        &type_name,
+        &[],
+        0,
+        0,
+        &type_name,
+        layout,
+    )?;
+
+    // End of struct padding to make sizes match
+    assert!(rust_offset <= full_gpu_size);
+    if rust_offset < full_gpu_size {
+        let required_padding = full_gpu_size - rust_offset;
+        let struct_member = StructMember {
+            name: format!("_padding{}", pad_var_count),
+            ty: format!("[u8;{}]", required_padding),
+            size: required_padding,
+            align: 1,
+            offset: rust_offset
+        };
+        log::trace!("member: {:?}", struct_member);
+        members.push(struct_member);
+    }
 
     let total_size = determine_size(
         builtin_types,

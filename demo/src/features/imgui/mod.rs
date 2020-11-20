@@ -29,11 +29,7 @@ pub fn create_imgui_extract_job(
 }
 
 /// Per-pass "global" data
-#[derive(Clone, Debug, Copy)]
-struct ImGuiUniformBufferObject {
-    // View and projection matrices
-    view_proj: [[f32; 4]; 4],
-}
+pub type ImGuiUniformBufferObject = shaders::imgui_vert::ArgsUniform;
 
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy)]

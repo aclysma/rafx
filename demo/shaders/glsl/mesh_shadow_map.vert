@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+// Keep this identical to PerObjectData in mesh.vert
 // @[internal_buffer]
 layout(set = 2, binding = 0) uniform PerObjectData {
     mat4 model;

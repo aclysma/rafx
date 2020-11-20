@@ -27,6 +27,8 @@ const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 = 1;
 const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 = 2;
 
 pub use shaders::mesh_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
+pub use shaders::mesh_vert::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
+pub use shaders::mesh_vert::PerViewDataVSUniform as MeshPerFrameVertexShaderParam;
 
 /*
 // Represents the data uploaded to the GPU to represent a single point light
@@ -79,21 +81,13 @@ pub struct MeshPerViewFragmentShaderParam {
 } // 3616 bytes
 */
 
-#[derive(Default, Copy, Clone)]
-//#[repr(C)]
-#[repr(C)]
-pub struct MeshPerFrameVertexShaderParam {
-    pub shadow_map_view_proj: glam::Mat4, // +0
-    pub shadow_map_light_dir: glam::Vec4, // +64
-} // 80 bytes
-
-#[derive(Default, Copy, Clone)]
-#[repr(C)]
-pub struct MeshPerObjectShaderParam {
-    pub model: glam::Mat4,           // +0
-    pub model_view: glam::Mat4,      // +64
-    pub model_view_proj: glam::Mat4, // +128
-} // 192 bytes
+// #[derive(Default, Copy, Clone)]
+// //#[repr(C)]
+// #[repr(C)]
+// pub struct MeshPerFrameVertexShaderParam {
+//     pub shadow_map_view_proj: glam::Mat4, // +0
+//     pub shadow_map_light_dir: glam::Vec4, // +64
+// } // 80 bytes
 
 pub fn create_mesh_extract_job(
     shadow_map_image: ResourceArc<ImageViewResource>,

@@ -3,3 +3,57 @@
 #[allow(unused_imports)]
 use serde::{Serialize, Deserialize};
 
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
+#[repr(C)]
+pub struct PerObjectDataStd140 {
+    pub model: [[f32; 4]; 4],           // +0 (size: 64)
+    pub model_view: [[f32; 4]; 4],      // +64 (size: 64)
+    pub model_view_proj: [[f32; 4]; 4], // +128 (size: 64)
+} // 192 bytes
+
+pub type PerObjectDataUniform = PerObjectDataStd140;
+
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
+#[repr(C)]
+pub struct PerViewDataVSStd140 {
+    pub shadow_map_view_proj: [[f32; 4]; 4], // +0 (size: 64)
+    pub shadow_map_light_dir: [f32; 3], // +64 (size: 12)
+    pub _padding0: [u8;4],              // +76 (size: 4)
+} // 80 bytes
+
+pub type PerViewDataVSUniform = PerViewDataVSStd140;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_struct_PerObjectDataStd140() {
+        assert_eq!(std::mem::size_of::<PerObjectDataStd140>(), 192);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(memoffset::offset_of!(PerObjectDataStd140, model), 0);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(memoffset::offset_of!(PerObjectDataStd140, model_view), 64);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(memoffset::offset_of!(PerObjectDataStd140, model_view_proj), 128);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_struct_PerViewDataVSStd140() {
+        assert_eq!(std::mem::size_of::<PerViewDataVSStd140>(), 80);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(memoffset::offset_of!(PerViewDataVSStd140, shadow_map_view_proj), 0);
+        assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
+        assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
+        assert_eq!(memoffset::offset_of!(PerViewDataVSStd140, shadow_map_light_dir), 64);
+        assert_eq!(std::mem::size_of::<[u8;4]>(), 4);
+        assert_eq!(std::mem::align_of::<[u8;4]>(), 1);
+        assert_eq!(memoffset::offset_of!(PerViewDataVSStd140, _padding0), 76);
+    }
+}

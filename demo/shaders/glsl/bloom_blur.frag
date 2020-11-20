@@ -26,6 +26,7 @@ layout (set = 0, binding = 0) uniform texture2D tex;
 // ])]
 layout (set = 0, binding = 1) uniform sampler smp;
 
+// @[export]
 // @[internal_buffer]
 layout (set = 0, binding = 2) uniform Config {
     bool horizontal;

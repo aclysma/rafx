@@ -20,42 +20,28 @@ const float PI = 3.14159265359;
 //
 struct PointLight {
     vec3 position_ws;
-    uint pad0;
     vec3 position_vs;
-    uint pad1;
     vec4 color;
     float range;
     float intensity;
-    uint pad2;
-    uint pad3;
 };
 
 struct DirectionalLight {
     vec3 direction_ws;
-    uint pad0;
     vec3 direction_vs;
-    uint pad1;
     vec4 color;
     float intensity;
-    uint pad2;
-    uint pad3;
-    uint pad4;
 };
 
 struct SpotLight {
     vec3 position_ws;
-    uint pad0;
     vec3 direction_ws;
-    uint pad1;
     vec3 position_vs;
-    uint pad2;
     vec3 direction_vs;
-    uint pad3;
     vec4 color;
     float spotlight_half_angle;
     float range;
     float intensity;
-    uint pad4;
 };
 
 // @[export]
@@ -91,7 +77,6 @@ layout (set = 0, binding = 0) uniform PerViewData {
 //         )
 // ])]
 layout (set = 0, binding = 1) uniform sampler smp;
-//layout (set = 0, binding = 2) uniform samplerShadow smp_depth;
 
 // @[immutable_samplers([
 //         (
@@ -131,9 +116,6 @@ struct MaterialData {
     bool has_normal_texture;
     bool has_occlusion_texture;
     bool has_emissive_texture;
-    uint pad0;
-    uint pad1;
-    uint pad2;
 };
 
 // @[export]
