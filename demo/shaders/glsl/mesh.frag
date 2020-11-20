@@ -20,42 +20,42 @@ const float PI = 3.14159265359;
 //
 struct PointLight {
     vec3 position_ws;
-    float pad0;
+    uint pad0;
     vec3 position_vs;
-    float pad1;
+    uint pad1;
     vec4 color;
     float range;
     float intensity;
-    float pad2;
-    float pad3;
+    uint pad2;
+    uint pad3;
 };
 
 struct DirectionalLight {
     vec3 direction_ws;
-    float pad0;
+    uint pad0;
     vec3 direction_vs;
-    float pad1;
+    uint pad1;
     vec4 color;
     float intensity;
-    float pad2;
-    float pad3;
-    float pad4;
+    uint pad2;
+    uint pad3;
+    uint pad4;
 };
 
 struct SpotLight {
     vec3 position_ws;
-    float pad0;
+    uint pad0;
     vec3 direction_ws;
-    float pad1;
+    uint pad1;
     vec3 position_vs;
-    float pad2;
+    uint pad2;
     vec3 direction_vs;
-    float pad3;
+    uint pad3;
     vec4 color;
     float spotlight_half_angle;
     float range;
     float intensity;
-    float pad4;
+    uint pad4;
 };
 
 // @[export]
@@ -131,8 +131,12 @@ struct MaterialData {
     bool has_normal_texture;
     bool has_occlusion_texture;
     bool has_emissive_texture;
+    uint pad0;
+    uint pad1;
+    uint pad2;
 };
 
+// @[export]
 // @[internal_buffer]
 layout (set = 1, binding = 0) uniform MaterialDataUbo {
     MaterialData data;
