@@ -48,7 +48,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
             .get_raw()
             .pipeline_layout
             .get_raw()
-            .descriptor_sets[0];
+            .descriptor_sets[shaders::debug_vert::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX];
 
         let mut per_view_descriptor_sets = Vec::default();
         for view in views {
@@ -59,7 +59,10 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
             let mut descriptor_set = descriptor_set_allocator
                 .create_dyn_descriptor_set_uninitialized(per_view_descriptor_set_layout)
                 .unwrap();
-            descriptor_set.set_buffer_data(0, &debug3d_view);
+            descriptor_set.set_buffer_data(
+                shaders::debug_vert::PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+                &debug3d_view,
+            );
             descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
             per_view_descriptor_sets.resize(

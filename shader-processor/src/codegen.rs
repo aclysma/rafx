@@ -319,6 +319,27 @@ pub(crate) fn generate_rust_code(
         }
     }
 
+    for binding in &parsed_declarations.bindings {
+        use heck::ShoutySnakeCase;
+        if let Some(set_index) = binding.parsed.layout_parts.set {
+            rust_code += &format!(
+                "pub const {}_DESCRIPTOR_SET_INDEX : usize = {};\n",
+                binding.parsed.instance_name.to_shouty_snake_case(),
+                set_index
+            );
+        }
+
+        if let Some(binding_index) = binding.parsed.layout_parts.binding {
+            rust_code += &format!(
+                "pub const {}_DESCRIPTOR_BINDING_INDEX : usize = {};\n",
+                binding.parsed.instance_name.to_shouty_snake_case(),
+                binding_index
+            );
+        }
+    }
+
+    rust_code += "\n\n";
+
     if !structs.is_empty() {
         rust_code += "#[cfg(test)]\nmod test {\n    use super::*;\n";
         for s in &structs {
@@ -391,10 +412,11 @@ impl GenerateStructResult {
     }
 
     fn generate_struct_test_code(&self) -> String {
+        use heck::SnakeCase;
         let mut result_string = String::default();
         result_string += &format!(
-            "\n    #[test]\n    #[allow(non_snake_case)]\n    fn test_struct_{}() {{\n",
-            self.name
+            "\n    #[test]\n    fn test_struct_{}() {{\n",
+            self.name.to_snake_case()
         );
         result_string += &format!(
             "        assert_eq!(std::mem::size_of::<{}>(), {});\n",

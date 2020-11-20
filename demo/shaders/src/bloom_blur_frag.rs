@@ -12,13 +12,19 @@ pub struct ConfigStd140 {
 
 pub type ConfigUniform = ConfigStd140;
 
+pub const TEX_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const TEX_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 1;
+pub const CONFIG_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const CONFIG_DESCRIPTOR_BINDING_INDEX: usize = 2;
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_ConfigStd140() {
+    fn test_struct_config_std140() {
         assert_eq!(std::mem::size_of::<ConfigStd140>(), 16);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);

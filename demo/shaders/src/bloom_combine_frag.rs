@@ -2,3 +2,10 @@
 
 #[allow(unused_imports)]
 use serde::{Deserialize, Serialize};
+
+pub const IN_COLOR_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const IN_COLOR_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const IN_BLUR_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const IN_BLUR_DESCRIPTOR_BINDING_INDEX: usize = 1;
+pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 2;

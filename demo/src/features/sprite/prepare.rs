@@ -16,9 +16,6 @@ use renderer::nodes::{
 use renderer::resources::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
 use renderer::vulkan::VkBuffer;
 
-const PER_VIEW_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 0;
-const PER_INSTANCE_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
-
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
 // single function
 pub fn orthographic_rh_gl(
@@ -123,14 +120,17 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
                             .get_raw()
                             .pipeline_layout
                             .get_raw()
-                            .descriptor_sets[PER_INSTANCE_DESCRIPTOR_SET_LAYOUT_INDEX];
+                            .descriptor_sets[shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX];
                         let mut per_sprite_descriptor_set = descriptor_set_allocator
                             .create_dyn_descriptor_set_uninitialized(
                                 per_sprite_descriptor_set_layout,
                             )
                             .unwrap();
 
-                        per_sprite_descriptor_set.set_image(0, sprite.image_view.clone());
+                        per_sprite_descriptor_set.set_image(
+                            shaders::sprite_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
+                            sprite.image_view.clone(),
+                        );
                         per_sprite_descriptor_set
                             .flush(&mut descriptor_set_allocator)
                             .unwrap();
@@ -206,12 +206,15 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
                 .get_raw()
                 .pipeline_layout
                 .get_raw()
-                .descriptor_sets[PER_VIEW_DESCRIPTOR_SET_LAYOUT_INDEX];
+                .descriptor_sets[shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
             let mut descriptor_set = descriptor_set_allocator
                 .create_dyn_descriptor_set_uninitialized(&*layout)
                 .unwrap();
 
-            descriptor_set.set_buffer_data(0, &view_proj);
+            descriptor_set.set_buffer_data(
+                shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX as u32,
+                &view_proj,
+            );
             descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
             per_view_descriptor_sets.resize(

@@ -23,13 +23,17 @@ pub struct PerViewDataVSStd140 {
 
 pub type PerViewDataVSUniform = PerViewDataVSStd140;
 
+pub const PER_VIEW_DATA_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX: usize = 4;
+pub const PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX: usize = 2;
+pub const PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_PerObjectDataStd140() {
+    fn test_struct_per_object_data_std140() {
         assert_eq!(std::mem::size_of::<PerObjectDataStd140>(), 192);
         assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
         assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
@@ -46,8 +50,7 @@ mod test {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn test_struct_PerViewDataVSStd140() {
+    fn test_struct_per_view_data_vs_std140() {
         assert_eq!(std::mem::size_of::<PerViewDataVSStd140>(), 80);
         assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
         assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);

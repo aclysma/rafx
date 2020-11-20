@@ -51,8 +51,8 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
                     pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                     0,
                     &[
-                        self.per_pass_descriptor_set.get(),
-                        self.per_image_descriptor_sets[0].get(),
+                        self.per_pass_descriptor_set.get(),      // view/projection
+                        self.per_image_descriptor_sets[0].get(), // font atlas
                     ],
                     &[],
                 );

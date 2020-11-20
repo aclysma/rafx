@@ -62,11 +62,14 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             .get_raw()
             .pipeline_layout
             .get_raw()
-            .descriptor_sets[0];
+            .descriptor_sets[shaders::imgui_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
         let mut per_pass_descriptor_set = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(&per_pass_layout)
             .unwrap();
-        per_pass_descriptor_set.set_buffer_data(0, &self.view_ubo);
+        per_pass_descriptor_set.set_buffer_data(
+            shaders::imgui_vert::UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX as u32,
+            &self.view_ubo,
+        );
         per_pass_descriptor_set
             .flush(&mut descriptor_set_allocator)
             .unwrap();
@@ -76,11 +79,14 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             .get_raw()
             .pipeline_layout
             .get_raw()
-            .descriptor_sets[1];
+            .descriptor_sets[shaders::imgui_frag::TEX_DESCRIPTOR_SET_INDEX];
         let mut per_image_descriptor_set = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(&per_image_layout)
             .unwrap();
-        per_image_descriptor_set.set_image(0, self.font_atlas.clone());
+        per_image_descriptor_set.set_image(
+            shaders::imgui_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
+            self.font_atlas.clone(),
+        );
         per_image_descriptor_set
             .flush(&mut descriptor_set_allocator)
             .unwrap();

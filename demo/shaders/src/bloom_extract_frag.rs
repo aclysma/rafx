@@ -2,3 +2,8 @@
 
 #[allow(unused_imports)]
 use serde::{Deserialize, Serialize};
+
+pub const TEX_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const TEX_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 1;

@@ -201,9 +201,13 @@ pub fn build_render_graph(
                 .create_descriptor_set_allocator();
             let mut bloom_extract_material_dyn_set = descriptor_set_allocator
                 .create_dyn_descriptor_set_uninitialized(
-                    &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0],
+                    &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets
+                        [shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
                 )?;
-            bloom_extract_material_dyn_set.set_image_raw(0, sample_image.get_raw().image_view);
+            bloom_extract_material_dyn_set.set_image_raw(
+                shaders::bloom_extract_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
+                sample_image.get_raw().image_view,
+            );
             bloom_extract_material_dyn_set.flush(&mut descriptor_set_allocator)?;
 
             // Flush the descriptor set change
@@ -223,7 +227,7 @@ pub fn build_render_graph(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
                     pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-                    0,
+                    shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX as u32,
                     &[bloom_extract_material_dyn_set.descriptor_set().get()],
                     &[],
                 );
@@ -285,22 +289,33 @@ pub fn build_render_graph(
                     .create_descriptor_set_allocator();
                 let mut bloom_extract_material_dyn_set = descriptor_set_allocator
                     .create_dyn_descriptor_set_uninitialized(
-                        &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0],
+                        &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets
+                            [shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
                     )?;
-                bloom_extract_material_dyn_set.set_image_raw(0, sample_image.get_raw().image_view);
+                bloom_extract_material_dyn_set.set_image_raw(
+                    shaders::bloom_extract_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
+                    sample_image.get_raw().image_view,
+                );
 
                 let mut bloom_blur_material_dyn_set = descriptor_set_allocator
                     .create_dyn_descriptor_set_uninitialized(
-                        &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0],
+                        &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets
+                            [shaders::bloom_blur_frag::TEX_DESCRIPTOR_SET_INDEX],
                     )?;
-                bloom_blur_material_dyn_set.set_image(0, sample_image);
+                bloom_blur_material_dyn_set.set_image(
+                    shaders::bloom_blur_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
+                    sample_image,
+                );
 
                 let blur_config = shaders::bloom_blur_frag::ConfigUniform {
                     horizontal: blur_pass_index % 2,
                     ..Default::default()
                 };
 
-                bloom_blur_material_dyn_set.set_buffer_data(2, &blur_config);
+                bloom_blur_material_dyn_set.set_buffer_data(
+                    shaders::bloom_blur_frag::CONFIG_DESCRIPTOR_BINDING_INDEX as u32,
+                    &blur_config,
+                );
                 bloom_blur_material_dyn_set.flush(&mut descriptor_set_allocator)?;
                 descriptor_set_allocator.flush_changes()?;
 
@@ -318,7 +333,7 @@ pub fn build_render_graph(
                         command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
                         pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-                        0,
+                        shaders::bloom_blur_frag::CONFIG_DESCRIPTOR_SET_INDEX as u32,
                         &[bloom_blur_material_dyn_set.descriptor_set().get()],
                         &[],
                     );
@@ -381,10 +396,17 @@ pub fn build_render_graph(
                 .create_descriptor_set_allocator();
             let mut bloom_combine_material_dyn_set = descriptor_set_allocator
                 .create_dyn_descriptor_set_uninitialized(
-                    &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets[0],
+                    &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets
+                        [shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX],
                 )?;
-            bloom_combine_material_dyn_set.set_image(0, sdr_image);
-            bloom_combine_material_dyn_set.set_image(1, hdr_image);
+            bloom_combine_material_dyn_set.set_image(
+                shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_BINDING_INDEX as u32,
+                sdr_image,
+            );
+            bloom_combine_material_dyn_set.set_image(
+                shaders::bloom_combine_frag::IN_BLUR_DESCRIPTOR_BINDING_INDEX as u32,
+                hdr_image,
+            );
             bloom_combine_material_dyn_set.flush(&mut descriptor_set_allocator)?;
             descriptor_set_allocator.flush_changes()?;
 
@@ -403,7 +425,7 @@ pub fn build_render_graph(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
                     pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-                    0,
+                    shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX as u32,
                     &[bloom_combine_material_dyn_set.descriptor_set().get()],
                     &[],
                 );

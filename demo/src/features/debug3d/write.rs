@@ -46,7 +46,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
                     pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-                    0,
+                    shaders::debug_vert::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX as u32,
                     &[self.per_view_descriptor_sets[view.view_index() as usize]
                         .as_ref()
                         .unwrap()

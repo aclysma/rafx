@@ -48,7 +48,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
                     .pipeline_layout
                     .get_raw()
                     .pipeline_layout,
-                0,
+                shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX as u32,
                 &[self.per_view_descriptor_sets[view.view_index() as usize]
                     .as_ref()
                     .unwrap()
@@ -93,7 +93,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
                     .pipeline_layout
                     .get_raw()
                     .pipeline_layout,
-                1,
+                shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX as u32,
                 &[draw_call.texture_descriptor_set.get()],
                 &[],
             );
