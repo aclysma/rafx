@@ -693,11 +693,12 @@ impl AssetManager {
                 pass_descriptor_set_writes
             );
 
-            // Save the
             material_instance_descriptor_set_writes.push(pass_descriptor_set_writes.clone());
 
             // This will contain the descriptor sets created for this pass, one for each set within the pass
             let mut pass_descriptor_sets = Vec::with_capacity(pass_descriptor_set_writes.len());
+
+            let material_pass_descriptor_sets = &pass.material_pass_resource.get_raw().pipeline_layout.get_raw().descriptor_sets;
 
             //
             // Register the writes into the correct descriptor set pools
@@ -705,19 +706,18 @@ impl AssetManager {
             //let layouts = pass.pipeline_create_data.pipeline_layout.iter().zip(&pass.pipeline_create_data.pipeline_layout_def);
             for (layout_index, layout_writes) in pass_descriptor_set_writes.into_iter().enumerate()
             {
-                let descriptor_set = self
-                    .material_instance_descriptor_sets
-                    .create_descriptor_set(
-                        &pass
-                            .material_pass_resource
-                            .get_raw()
-                            .pipeline_layout
-                            .get_raw()
-                            .descriptor_sets[layout_index],
-                        layout_writes,
-                    )?;
+                if !layout_writes.elements.is_empty() {
+                    let descriptor_set = self
+                        .material_instance_descriptor_sets
+                        .create_descriptor_set(
+                            &material_pass_descriptor_sets[layout_index],
+                            layout_writes,
+                        )?;
 
-                pass_descriptor_sets.push(descriptor_set);
+                    pass_descriptor_sets.push(Some(descriptor_set));
+                } else {
+                    pass_descriptor_sets.push(None);
+                }
             }
 
             material_descriptor_sets.push(pass_descriptor_sets);
@@ -725,7 +725,7 @@ impl AssetManager {
 
         log::trace!("Loaded material\n{:#?}", material_descriptor_sets);
 
-        // Put these in an arc because
+        // Put these in an arc to avoid cloning the underlying data repeatedly
         let material_descriptor_sets = Arc::new(material_descriptor_sets);
         Ok(MaterialInstanceAsset::new(
             material_instance_asset.material.clone(),

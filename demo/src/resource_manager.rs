@@ -186,6 +186,8 @@ impl GameAssetManager {
                     opaque_pass: material_instance.material.passes[opaque_pass_index].clone(),
                     opaque_material_descriptor_set: material_instance.material_descriptor_sets
                         [opaque_pass_index][PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
+                        .as_ref()
+                        .unwrap()
                         .clone(),
                     shadow_map_pass: shadow_map_pass_index
                         .map(|pass_index| material_instance.material.passes[pass_index].clone()),

@@ -17,7 +17,8 @@ pub struct ReflectedDescriptorSetLayoutBinding {
 
 
     pub internal_buffer_per_descriptor_size: Option<u32>,
-    pub immutable_samplers: Vec<dsc::Sampler>,
+    pub immutable_samplers: Option<Vec<dsc::Sampler>>,
+    pub slot_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

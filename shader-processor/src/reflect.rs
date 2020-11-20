@@ -94,9 +94,15 @@ fn get_descriptor_from_resource<TargetT>(
     };
 
     let immutable_samplers = if let Some(annotation) = &parsed_binding.annotations.immutable_samplers {
-        annotation.0.clone()
+        Some(annotation.0.clone())
     } else {
-        vec![]
+        None
+    };
+
+    let slot_name = if let Some(annotation) = &parsed_binding.annotations.slot_name {
+        Some(annotation.0.clone())
+    } else {
+        None
     };
 
     Ok(ReflectedDescriptorSetLayoutBinding {
@@ -108,7 +114,8 @@ fn get_descriptor_from_resource<TargetT>(
         stage_flags,
         descriptor_count,
         internal_buffer_per_descriptor_size,
-        immutable_samplers
+        immutable_samplers,
+        slot_name
     })
 }
 

@@ -138,14 +138,20 @@ struct MaterialData {
 
 // @[export]
 // @[internal_buffer]
+// @[slot_name("per_material_data")]
 layout (set = 1, binding = 0) uniform MaterialDataUbo {
     MaterialData data;
-} material_data_ubo;
+} per_material_data;
 
+// @[slot_name("base_color_texture")]
 layout (set = 1, binding = 1) uniform texture2D base_color_texture;
+// @[slot_name("metallic_roughness_texture")]
 layout (set = 1, binding = 2) uniform texture2D metallic_roughness_texture;
+// @[slot_name("normal_texture")]
 layout (set = 1, binding = 3) uniform texture2D normal_texture;
+// @[slot_name("occlusion_texture")]
 layout (set = 1, binding = 4) uniform texture2D occlusion_texture;
+// @[slot_name("emissive_texture")]
 layout (set = 1, binding = 5) uniform texture2D emissive_texture;
 
 layout (location = 0) in vec3 in_position_vs;
@@ -729,22 +735,22 @@ float calculate_percent_lit(vec4 shadow_map_pos, vec3 normal, vec3 light_dir) {
 
 void main() {
     // Sample the base color, if it exists
-    vec4 base_color = material_data_ubo.data.base_color_factor;
-    if (material_data_ubo.data.has_base_color_texture) {
+    vec4 base_color = per_material_data.data.base_color_factor;
+    if (per_material_data.data.has_base_color_texture) {
         base_color *= texture(sampler2D(base_color_texture, smp), in_uv);
     }
 
     // Sample the emissive color, if it exists
-    vec4 emissive_color = vec4(material_data_ubo.data.emissive_factor, 1);
-    if (material_data_ubo.data.has_emissive_texture) {
+    vec4 emissive_color = vec4(per_material_data.data.emissive_factor, 1);
+    if (per_material_data.data.has_emissive_texture) {
         emissive_color *= texture(sampler2D(emissive_texture, smp), in_uv);
         base_color = vec4(1.0, 1.0, 0.0, 1.0);
     }
 
     // Sample metalness/roughness
-    float metalness = material_data_ubo.data.metallic_factor;
-    float roughness = material_data_ubo.data.roughness_factor;
-    if (material_data_ubo.data.has_metallic_roughness_texture) {
+    float metalness = per_material_data.data.metallic_factor;
+    float roughness = per_material_data.data.roughness_factor;
+    if (per_material_data.data.has_metallic_roughness_texture) {
         vec4 sampled = texture(sampler2D(metallic_roughness_texture, smp), in_uv);
         metalness *= sampled.r;
         roughness *= sampled.g;
@@ -757,7 +763,7 @@ void main() {
 
     // Calculate the normal (use the normal map if it exists)
     vec3 normal_vs;
-    if (material_data_ubo.data.has_normal_texture) {
+    if (per_material_data.data.has_normal_texture) {
         mat3 tbn = mat3(in_tangent_vs, in_binormal_vs, in_normal_vs);
         normal_vs = normal_map(
             tbn,
@@ -782,6 +788,8 @@ void main() {
 //        emissive_color,
 //        normal_vs
 //    );
+
+    //out_color = per_material_data.data.base_color_factor;
 
     out_color = pbr_path(
         surface_to_eye_vs,

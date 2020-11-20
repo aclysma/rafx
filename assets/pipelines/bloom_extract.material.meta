@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(17754145581501868754),
+    import_hash: Some(14117546422700924994),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,7 +13,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                id: (11360378709161030713),
+                id: (6375449219121540719),
                 asset_id: "4c5509e3-4a9f-45c2-a6dc-862a925d2341",
                 build_deps: [
                     Path("../shaders/bloom_extract.vert.shader"),
@@ -21,13 +21,13 @@
                     Path("bloom_extract.pipeline"),
                 ],
                 load_deps: [
+                    Path("bloom_extract.pipeline"),
                     Path("../shaders/bloom_extract.frag.shader"),
                     Path("../shaders/bloom_extract.vert.shader"),
-                    Path("bloom_extract.pipeline"),
                 ],
                 compression: None,
-                compressed_size: Some(287),
-                uncompressed_size: Some(287),
+                compressed_size: Some(138),
+                uncompressed_size: Some(138),
                 type_id: "ad94bca2-1f02-4e5f-9117-1a7b03456a11",
             )),
         ),

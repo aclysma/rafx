@@ -19,6 +19,10 @@ pub(crate) struct UseInternalBufferAnnotation(/*pub(crate) u32*/);
 #[serde(rename = "immutable_samplers")]
 pub(crate) struct ImmutableSamplersAnnotation(pub(crate) Vec<dsc::Sampler>);
 
+#[derive(Default, Deserialize, Debug)]
+#[serde(rename = "slot_name")]
+pub(crate) struct SlotNameAnnotation(pub(crate) String);
+
 fn parse_ron_or_default<'de, T: Default + Deserialize<'de>>(data: &'de str) -> Result<T, String> {
     if !data.is_empty() {
         ron::de::from_str(&data)
@@ -69,7 +73,8 @@ impl StructAnnotations {
 pub(crate) struct BindingAnnotations {
     pub(crate) export: Option<ExportAnnotation>,
     pub(crate) use_internal_buffer: Option<UseInternalBufferAnnotation>,
-    pub(crate) immutable_samplers: Option<ImmutableSamplersAnnotation>
+    pub(crate) immutable_samplers: Option<ImmutableSamplersAnnotation>,
+    pub(crate) slot_name: Option<SlotNameAnnotation>
 }
 
 impl BindingAnnotations {
@@ -97,6 +102,10 @@ impl BindingAnnotations {
                 },
                 "immutable_samplers" => {
                     parsed_annotations.immutable_samplers =
+                        Some(parse_ron_or_default(&annotation_data)?);
+                },
+                "slot_name" => {
+                    parsed_annotations.slot_name =
                         Some(parse_ron_or_default(&annotation_data)?);
                 },
                 _ => {
