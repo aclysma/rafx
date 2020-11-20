@@ -1,5 +1,5 @@
-use structopt::StructOpt;
 use log::LevelFilter;
+use structopt::StructOpt;
 
 use shader_processor::*;
 

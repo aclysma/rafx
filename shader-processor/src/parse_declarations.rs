@@ -2,8 +2,8 @@ use serde::Deserialize;
 
 use super::AnnotationText;
 use super::DeclarationText;
-use std::sync::Arc;
 use std::num::ParseIntError;
+use std::sync::Arc;
 
 use renderer_resources::vk_description as dsc;
 
@@ -48,14 +48,15 @@ impl StructAnnotations {
                     .ok_or("Failed to read annotation name")?;
 
             //let annotation_name = crate::parse::characters_to_string(&annotation.text[name_begin..name_end]);
-            let annotation_data = crate::parse_source::characters_to_string(&annotation.text[position..]);
+            let annotation_data =
+                crate::parse_source::characters_to_string(&annotation.text[position..]);
 
             //println!("name: {} data: {}", annotation_name, annotation_data);
 
             match annotation_name.as_str() {
                 "export" => {
                     parsed_annotations.export = Some(parse_ron_or_default(&annotation_data)?);
-                },
+                }
                 _ => {
                     return Err(format!(
                         "Annotation named '{}' not allowed for structs",
@@ -74,7 +75,7 @@ pub(crate) struct BindingAnnotations {
     pub(crate) export: Option<ExportAnnotation>,
     pub(crate) use_internal_buffer: Option<UseInternalBufferAnnotation>,
     pub(crate) immutable_samplers: Option<ImmutableSamplersAnnotation>,
-    pub(crate) slot_name: Option<SlotNameAnnotation>
+    pub(crate) slot_name: Option<SlotNameAnnotation>,
 }
 
 impl BindingAnnotations {
@@ -88,7 +89,8 @@ impl BindingAnnotations {
                     .ok_or("Failed to read annotation name")?;
 
             //let annotation_name = crate::parse::characters_to_string(&annotation.text[name_begin..name_end]);
-            let annotation_data = crate::parse_source::characters_to_string(&annotation.text[position..]);
+            let annotation_data =
+                crate::parse_source::characters_to_string(&annotation.text[position..]);
 
             //println!("name: {} data: {}", annotation_name, annotation_data);
 
@@ -99,15 +101,14 @@ impl BindingAnnotations {
                 "internal_buffer" => {
                     parsed_annotations.use_internal_buffer =
                         Some(parse_ron_or_default(&annotation_data)?);
-                },
+                }
                 "immutable_samplers" => {
                     parsed_annotations.immutable_samplers =
                         Some(parse_ron_or_default(&annotation_data)?);
-                },
+                }
                 "slot_name" => {
-                    parsed_annotations.slot_name =
-                        Some(parse_ron_or_default(&annotation_data)?);
-                },
+                    parsed_annotations.slot_name = Some(parse_ron_or_default(&annotation_data)?);
+                }
                 _ => {
                     return Err(format!(
                         "Annotation named '{}' not allowed for bindings",
@@ -142,10 +143,11 @@ fn parse_array_sizes(
     let mut array_sizes = Vec::<usize>::default();
     while crate::parse_source::try_consume_literal(code, position, "[").is_some() {
         crate::parse_source::skip_whitespace(code, position);
-        let array_index = crate::parse_source::try_consume_array_index(code, position).ok_or(format!(
-            "Invalid array count while parsing struct field:\n{}",
-            crate::parse_source::characters_to_string(&code)
-        ))?;
+        let array_index =
+            crate::parse_source::try_consume_array_index(code, position).ok_or(format!(
+                "Invalid array count while parsing struct field:\n{}",
+                crate::parse_source::characters_to_string(&code)
+            ))?;
         array_sizes.push(array_index);
         crate::parse_source::skip_whitespace(code, position);
         crate::parse_source::try_consume_literal(code, position, "]").ok_or(format!(
@@ -163,10 +165,11 @@ fn parse_field(
     position: &mut usize,
 ) -> Result<ParseFieldResult, String> {
     // Consume the field's type
-    let field_type_name = crate::parse_source::try_consume_identifier(code, position).ok_or(format!(
-        "Failed to read field's type:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    let field_type_name =
+        crate::parse_source::try_consume_identifier(code, position).ok_or(format!(
+            "Failed to read field's type:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        ))?;
     crate::parse_source::skip_whitespace(code, position);
 
     // Consume the field's name
@@ -248,10 +251,11 @@ fn try_parse_struct(code: &[char]) -> Result<Option<ParseStructResult>, String> 
 
     // Consume the name of the struct and all whitespace to the opening {
     crate::parse_source::skip_whitespace(code, &mut position);
-    let type_name = crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
-        "Expected name of struct while parsing struct:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    let type_name =
+        crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
+            "Expected name of struct while parsing struct:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        ))?;
 
     crate::parse_source::skip_whitespace(code, &mut position);
     let fields = try_parse_fields(code, &mut position)?.ok_or(format!(
@@ -306,30 +310,36 @@ impl ParsedLayoutParts {
                 "push_constant" => parsed.push_constant = true,
                 "set" => {
                     if parsed.set.is_some() {
-                        return Err("layout parts for a binding defines set multiple times".to_string());
+                        return Err(
+                            "layout parts for a binding defines set multiple times".to_string()
+                        );
                     }
 
-                    let set : usize = part.value
+                    let set: usize = part
+                        .value
                         .as_ref()
                         .ok_or_else(|| "set in layout but no index assigned".to_string())?
                         .parse()
-                        .map_err(|x : ParseIntError| x.to_string())?;
+                        .map_err(|x: ParseIntError| x.to_string())?;
 
                     parsed.set = Some(set)
-                },
+                }
                 "binding" => {
                     if parsed.binding.is_some() {
-                        return Err("layout parts for a binding defines binding multiple times".to_string());
+                        return Err(
+                            "layout parts for a binding defines binding multiple times".to_string()
+                        );
                     }
 
-                    let binding : usize = part.value
+                    let binding: usize = part
+                        .value
                         .as_ref()
                         .ok_or_else(|| "binding in layout but no index assigned".to_string())?
                         .parse()
-                        .map_err(|x : ParseIntError| x.to_string())?;
+                        .map_err(|x: ParseIntError| x.to_string())?;
 
                     parsed.binding = Some(binding)
-                },
+                }
                 _ => {}
             }
         }
@@ -430,10 +440,11 @@ fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String
     crate::parse_source::skip_whitespace(code, &mut position);
 
     // Either get the uniform or buffer keyword
-    let binding_type = crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
-        "Expected keyword such as uniform, buffer, or in after layout in binding:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    let binding_type =
+        crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
+            "Expected keyword such as uniform, buffer, or in after layout in binding:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        ))?;
     let binding_type = match binding_type.as_str() {
         "uniform" => BindingType::Uniform,
         "buffer" => BindingType::Buffer,
@@ -448,10 +459,11 @@ fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String
     };
 
     crate::parse_source::skip_whitespace(code, &mut position);
-    let type_name = crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
-        "Expected type name while parsing binding:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    let type_name =
+        crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
+            "Expected type name while parsing binding:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        ))?;
 
     crate::parse_source::skip_whitespace(code, &mut position);
     let fields = try_parse_fields(code, &mut position)?;
@@ -475,7 +487,12 @@ fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String
     // buffers are std430, and push constants uniforms are std430
     // name types Uniform/Buffer/PushConstant?
 
-    let layout_parts = ParsedLayoutParts::from_parts(&layout_parts).map_err(|x| format!("Error parsing binding type '{}' name '{}': {}", type_name, instance_name, x))?;
+    let layout_parts = ParsedLayoutParts::from_parts(&layout_parts).map_err(|x| {
+        format!(
+            "Error parsing binding type '{}' name '{}': {}",
+            type_name, instance_name, x
+        )
+    })?;
 
     Ok(Some(ParseBindingResult {
         layout_parts,

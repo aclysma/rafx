@@ -624,7 +624,10 @@ pub struct ShaderText {
 
 pub fn parse_glsl(file_path: &Path) -> Result<ShaderText, String> {
     let first_file = FileToProcess {
-        path: file_path.file_name().ok_or_else(|| format!("Failed to get the filename from path {:?}", file_path))?.into(),
+        path: file_path
+            .file_name()
+            .ok_or_else(|| format!("Failed to get the filename from path {:?}", file_path))?
+            .into(),
         include_type: IncludeType::Relative,
         requested_from: file_path.to_path_buf(),
         include_depth: 0,

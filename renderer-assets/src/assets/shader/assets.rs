@@ -1,10 +1,10 @@
+use super::ReflectedEntryPoint;
+use fnv::FnvHashMap;
 use renderer_resources::ShaderModuleResource;
 use renderer_resources::{vk_description as dsc, ResourceArc};
 use serde::{Deserialize, Serialize};
-use type_uuid::*;
-use fnv::FnvHashMap;
 use std::sync::Arc;
-use super::ReflectedEntryPoint;
+use type_uuid::*;
 
 //TODO: Vertex formats? Autogenerate the vertex struct? Or, generate vertex layout based on known
 // vertex format. So vertex format as an asset type?
@@ -19,12 +19,11 @@ pub struct CookedShader {
     pub entry_points: Vec<ReflectedEntryPoint>,
 }
 
-
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "e0ae2222-1a44-4022-af95-03c9101ac89e"]
 pub struct ShaderAssetData {
     pub shader: dsc::ShaderModule,
-    pub reflection_data: Option<Vec<ReflectedEntryPoint>>
+    pub reflection_data: Option<Vec<ReflectedEntryPoint>>,
 }
 
 //

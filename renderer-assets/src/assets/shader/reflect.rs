@@ -14,8 +14,6 @@ pub struct ReflectedDescriptorSetLayoutBinding {
     // Mostly for uniform data
     pub size: u32,
     //pub padded_size: u32,
-
-
     pub internal_buffer_per_descriptor_size: Option<u32>,
     pub immutable_samplers: Option<Vec<dsc::Sampler>>,
     pub slot_name: Option<String>,
@@ -31,20 +29,20 @@ pub struct ReflectedDescriptorSetLayout {
 pub struct ReflectedInputVariable {
     pub name: String,
     pub location: u32,
-    pub format: dsc::Format
+    pub format: dsc::Format,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ReflectedOutputVariable {
     pub name: String,
     pub location: u32,
-    pub format: dsc::Format
+    pub format: dsc::Format,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ReflectedPushConstant {
     pub name: String,
-    pub push_constant: dsc::PushConstantRange
+    pub push_constant: dsc::PushConstantRange,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

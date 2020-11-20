@@ -2,7 +2,10 @@ use super::MeshCommandWriter;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use crate::features::mesh::{ExtractedFrameNodeMeshData, MeshPerFrameVertexShaderParam, MeshPerObjectFragmentShaderParam, MeshPerViewFragmentShaderParam, MeshRenderFeature, PreparedSubmitNodeMeshData};
+use crate::features::mesh::{
+    ExtractedFrameNodeMeshData, MeshPerFrameVertexShaderParam, MeshPerObjectFragmentShaderParam,
+    MeshPerViewFragmentShaderParam, MeshRenderFeature, PreparedSubmitNodeMeshData,
+};
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use fnv::{FnvHashMap, FnvHashSet};
@@ -83,7 +86,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
         let per_frame_vertex_data = MeshPerFrameVertexShaderParam {
             shadow_map_view_proj: self.shadow_map_view.view_proj().to_cols_array_2d(),
             shadow_map_light_dir: self.shadow_map_view.view_dir().into(),
-            .. Default::default()
+            ..Default::default()
         };
 
         //
@@ -173,7 +176,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                                         mesh_part_index,
                                         &mesh_part.opaque_pass,
                                         Some(mesh_part.opaque_material_descriptor_set.clone()),
-                                        false
+                                        false,
                                     );
 
                                     view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(
@@ -190,27 +193,26 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                                     // if let Some(shadow_map_material_descriptor_set) =
                                     //     &mesh_part.shadow_map_material_descriptor_set
                                     // {
-                                        if view.phase_is_relevant::<ShadowMapRenderPhase>() {
-                                            let submit_node_index = MeshPrepareJob::add_render_node(
-                                                &mut descriptor_set_allocator,
-                                                &mut prepared_submit_node_mesh_data,
-                                                &per_view_descriptor_sets,
-                                                &view,
-                                                view_node,
-                                                &per_object_param,
-                                                mesh_part_index,
-                                                shadow_map_pass,
-                                                None,
-                                                true
-                                            );
+                                    if view.phase_is_relevant::<ShadowMapRenderPhase>() {
+                                        let submit_node_index = MeshPrepareJob::add_render_node(
+                                            &mut descriptor_set_allocator,
+                                            &mut prepared_submit_node_mesh_data,
+                                            &per_view_descriptor_sets,
+                                            &view,
+                                            view_node,
+                                            &per_object_param,
+                                            mesh_part_index,
+                                            shadow_map_pass,
+                                            None,
+                                            true,
+                                        );
 
-                                            view_submit_nodes
-                                                .add_submit_node::<ShadowMapRenderPhase>(
-                                                    submit_node_index as u32,
-                                                    0,
-                                                    0.0,
-                                                );
-                                        }
+                                        view_submit_nodes.add_submit_node::<ShadowMapRenderPhase>(
+                                            submit_node_index as u32,
+                                            0,
+                                            0.0,
+                                        );
+                                    }
                                     //}
                                 }
                             }
@@ -279,7 +281,9 @@ impl MeshPrepareJob {
 
             let out = &mut per_view_data.point_lights[light_count];
             out.position_ws = position.position.into();
-            out.position_vs = (view.view_matrix() * position.position.extend(1.0)).truncate().into();
+            out.position_vs = (view.view_matrix() * position.position.extend(1.0))
+                .truncate()
+                .into();
             out.color = light.color.into();
             out.range = light.range;
             out.intensity = light.intensity;
@@ -330,14 +334,17 @@ impl MeshPrepareJob {
         mesh_part_index: usize,
         material_pass: &MaterialPass,
         per_material_descriptor_set: Option<DescriptorSetArc>,
-        is_shadow_pass: bool
+        is_shadow_pass: bool,
     ) -> usize {
         let per_view_descriptor_set = if !is_shadow_pass {
             let per_view_descriptor_set_layout = material_pass.descriptor_set_layouts
                 [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
                 .clone();
 
-            Some(per_view_descriptor_sets[&(view.view_index(), per_view_descriptor_set_layout)].clone())
+            Some(
+                per_view_descriptor_sets[&(view.view_index(), per_view_descriptor_set_layout)]
+                    .clone(),
+            )
         } else {
             None
         };
