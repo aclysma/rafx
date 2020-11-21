@@ -23,7 +23,7 @@ layout (set = 0, binding = 1) uniform texture2D in_blur;
 //             mipmap_mode: Linear,
 //             mip_lod_bias: 0,
 //             min_lod: 0,
-//             max_lod: 1
+//             max_lod: 1000
 //         )
 // ])]
 layout (set = 0, binding = 2) uniform sampler smp;

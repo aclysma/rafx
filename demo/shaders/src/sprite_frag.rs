@@ -7,10 +7,7 @@ use serde::{Deserialize, Serialize};
 use renderer_resources::ash::prelude::VkResult;
 
 #[allow(unused_imports)]
-use renderer_resources::{
-    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
-    ImageViewResource, ResourceArc,
-};
+use renderer_resources::{ResourceArc, ImageViewResource, DynDescriptorSet, DescriptorSetAllocator, DescriptorSetInitializer, DescriptorSetArc};
 
 pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 1;
@@ -24,20 +21,13 @@ pub struct DescriptorSet1Args {
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args {
     type Output = DescriptorSet1;
 
-    fn create_dyn_descriptor_set(
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> Self::Output {
+    fn create_dyn_descriptor_set(descriptor_set: DynDescriptorSet, args: Self) -> Self::Output {
         let mut descriptor = DescriptorSet1(descriptor_set);
         descriptor.set_args(args);
         descriptor
     }
 
-    fn create_descriptor_set(
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> VkResult<DescriptorSetArc> {
+    fn create_descriptor_set(descriptor_set_allocator: &mut DescriptorSetAllocator, descriptor_set: DynDescriptorSet, args: Self) -> VkResult<DescriptorSetArc> {
         let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
         descriptor.0.flush(descriptor_set_allocator)?;
         Ok(descriptor.0.descriptor_set().clone())
@@ -47,31 +37,20 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args {
 pub struct DescriptorSet1(pub DynDescriptorSet);
 
 impl DescriptorSet1 {
-    pub fn set_args_static(
-        descriptor_set: &mut DynDescriptorSet,
-        args: DescriptorSet1Args,
-    ) {
+    pub fn set_args_static(descriptor_set: &mut DynDescriptorSet, args: DescriptorSet1Args) {
         descriptor_set.set_image(TEX_DESCRIPTOR_BINDING_INDEX as u32, args.tex);
     }
 
-    pub fn set_args(
-        &mut self,
-        args: DescriptorSet1Args,
-    ) {
+    pub fn set_args(&mut self, args: DescriptorSet1Args) {
         self.set_tex(args.tex);
     }
 
-    pub fn set_tex(
-        &mut self,
-        tex: ResourceArc<ImageViewResource>,
-    ) {
+    pub fn set_tex(&mut self, tex: ResourceArc<ImageViewResource>) {
         self.0.set_image(TEX_DESCRIPTOR_BINDING_INDEX as u32, tex);
     }
 
-    pub fn flush(
-        &mut self,
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-    ) -> VkResult<()> {
+    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
         self.0.flush(descriptor_set_allocator)
     }
 }
+
