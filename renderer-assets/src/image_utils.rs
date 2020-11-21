@@ -71,16 +71,16 @@ pub fn decode_texture(
     buf: &[u8],
     format: ImageFormat,
 ) -> DecodedTexture {
-    let example_image = image::load_from_memory_with_format(buf, format).unwrap();
-    let dimensions = example_image.dimensions();
-    let example_image = example_image.to_rgba().into_raw();
+    let image_data = image::load_from_memory_with_format(buf, format).unwrap();
+    let dimensions = image_data.dimensions();
+    let image_data = image_data.to_rgba8().into_raw();
     let decoded_texture_mip_info = default_mip_settings_for_image(dimensions.0, dimensions.1);
 
     DecodedTexture {
         width: dimensions.0,
         height: dimensions.1,
         mips: decoded_texture_mip_info,
-        data: example_image,
+        data: image_data,
         color_space: ColorSpace::Srgb,
     }
 }
