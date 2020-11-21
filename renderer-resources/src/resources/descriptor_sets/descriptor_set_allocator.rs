@@ -81,7 +81,7 @@ impl DescriptorSetAllocator {
         write_set: DescriptorSetWriteSet,
     ) -> VkResult<DynDescriptorSet> {
         let descriptor_set =
-            self.create_descriptor_set(descriptor_set_layout, write_set.clone())?;
+            self.create_descriptor_set_with_writes(descriptor_set_layout, write_set.clone())?;
 
         // Create the DynDescriptorSet
         let dyn_descriptor_set =
@@ -90,7 +90,7 @@ impl DescriptorSetAllocator {
         Ok(dyn_descriptor_set)
     }
 
-    pub fn create_descriptor_set(
+    pub fn create_descriptor_set_with_writes(
         &mut self,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         write_set: DescriptorSetWriteSet,
@@ -106,6 +106,15 @@ impl DescriptorSetAllocator {
         pool.insert(&self.device_context, write_set)
     }
 
+    pub fn create_descriptor_set<'a, T: DescriptorSetInitializer<'a>>(
+        &mut self,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
+        args: T,
+    ) -> VkResult<DescriptorSetArc> {
+        let descriptor_set = self.create_dyn_descriptor_set_uninitialized(descriptor_set_layout)?;
+        T::create_descriptor_set(self, descriptor_set, args)
+    }
+
     pub fn create_dyn_descriptor_set_uninitialized(
         &mut self,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
@@ -115,4 +124,30 @@ impl DescriptorSetAllocator {
         );
         self.do_create_dyn_descriptor_set(descriptor_set_layout, write_set)
     }
+
+    pub fn create_dyn_descriptor_set<'a, T: DescriptorSetInitializer<'a>>(
+        &mut self,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
+        args: T,
+    ) -> VkResult<<T as DescriptorSetInitializer<'a>>::Output> {
+        Ok(T::create_dyn_descriptor_set(
+            self.create_dyn_descriptor_set_uninitialized(descriptor_set_layout)?,
+            args,
+        ))
+    }
+}
+
+// The lifetime here is required so that implementations of it can bind to it
+pub trait DescriptorSetInitializer<'a> {
+    type Output;
+
+    fn create_dyn_descriptor_set(
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> Self::Output;
+    fn create_descriptor_set(
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> VkResult<DescriptorSetArc>;
 }

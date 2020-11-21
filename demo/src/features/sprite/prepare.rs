@@ -81,6 +81,14 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
         let mut descriptor_set_allocator = prepare_context
             .resource_context
             .create_descriptor_set_allocator();
+
+        let descriptor_set_layouts = self
+            .sprite_material
+            .get_raw()
+            .pipeline_layout
+            .get_raw()
+            .descriptor_sets;
+
         for sprite in &self.extracted_frame_node_sprite_data {
             if let Some(sprite) = sprite {
                 const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
@@ -115,27 +123,17 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
                 let texture_descriptor_set = per_image_descriptor_sets
                     .entry(sprite.image_view.clone())
                     .or_insert_with(|| {
-                        let per_sprite_descriptor_set_layout = &self
-                            .sprite_material
-                            .get_raw()
-                            .pipeline_layout
-                            .get_raw()
-                            .descriptor_sets[shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX];
-                        let mut per_sprite_descriptor_set = descriptor_set_allocator
-                            .create_dyn_descriptor_set_uninitialized(
-                                per_sprite_descriptor_set_layout,
+                        let per_sprite_descriptor_set = descriptor_set_allocator
+                            .create_descriptor_set(
+                                &descriptor_set_layouts
+                                    [shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX],
+                                shaders::sprite_frag::DescriptorSet1Args {
+                                    tex: sprite.image_view.clone(),
+                                },
                             )
                             .unwrap();
 
-                        per_sprite_descriptor_set.set_image(
-                            shaders::sprite_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
-                            sprite.image_view.clone(),
-                        );
                         per_sprite_descriptor_set
-                            .flush(&mut descriptor_set_allocator)
-                            .unwrap();
-
-                        per_sprite_descriptor_set.descriptor_set().clone()
                     });
 
                 let draw_call = SpriteDrawCall {
@@ -207,15 +205,14 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
                 .pipeline_layout
                 .get_raw()
                 .descriptor_sets[shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
-            let mut descriptor_set = descriptor_set_allocator
-                .create_dyn_descriptor_set_uninitialized(&*layout)
+            let descriptor_set = descriptor_set_allocator
+                .create_descriptor_set(
+                    &*layout,
+                    shaders::sprite_vert::DescriptorSet0Args {
+                        uniform_buffer: &shaders::sprite_vert::ArgsUniform { mvp: view_proj },
+                    },
+                )
                 .unwrap();
-
-            descriptor_set.set_buffer_data(
-                shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX as u32,
-                &view_proj,
-            );
-            descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
             per_view_descriptor_sets.resize(
                 per_view_descriptor_sets
@@ -223,8 +220,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
                     .max(view.view_index() as usize + 1),
                 None,
             );
-            per_view_descriptor_sets[view.view_index() as usize] =
-                Some(descriptor_set.descriptor_set().clone());
+            per_view_descriptor_sets[view.view_index() as usize] = Some(descriptor_set);
         }
 
         //TODO: indexes are u16 so we may need to produce more than one set of buffers

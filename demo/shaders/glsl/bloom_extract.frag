@@ -1,6 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+// @[export]
 layout (set = 0, binding = 0) uniform texture2D tex;
 
 // @[immutable_samplers([

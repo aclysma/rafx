@@ -8,7 +8,6 @@ use crate::resources::descriptor_sets::DescriptorSetAllocator;
 use crate::resources::resource_lookup::{DescriptorSetLayoutResource, ImageViewResource};
 use crate::resources::ResourceArc;
 use ash::prelude::VkResult;
-use ash::vk;
 use std::fmt::Formatter;
 
 //TODO: Create a builder that is not initialized, this will help avoid forgetting to call flush
@@ -28,6 +27,8 @@ pub struct DynDescriptorSet {
     // As we add modifications to the set, we will insert them here. They are merged with write_set
     // when we finally flush the descriptor set
     pending_write_set: DescriptorSetWriteSet,
+
+    has_been_flushed: bool,
 }
 
 impl std::fmt::Debug for DynDescriptorSet {
@@ -38,6 +39,14 @@ impl std::fmt::Debug for DynDescriptorSet {
         f.debug_struct("DynDescriptorSet")
             .field("descriptor_set", &self.descriptor_set)
             .finish()
+    }
+}
+
+impl Drop for DynDescriptorSet {
+    fn drop(&mut self) {
+        if !self.has_been_flushed {
+            panic!("A descriptor set was dropped without being flushed");
+        }
     }
 }
 
@@ -52,6 +61,7 @@ impl DynDescriptorSet {
             descriptor_set,
             write_set,
             pending_write_set: Default::default(),
+            has_been_flushed: false,
         }
     }
 
@@ -71,8 +81,10 @@ impl DynDescriptorSet {
             self.write_set.copy_from(&pending_write_set);
 
             // create it
-            let new_descriptor_set = descriptor_set_allocator
-                .create_descriptor_set(&self.descriptor_set_layout, pending_write_set)?;
+            let new_descriptor_set = descriptor_set_allocator.create_descriptor_set_with_writes(
+                &self.descriptor_set_layout,
+                pending_write_set,
+            )?;
 
             log::trace!(
                 "DynDescriptorSet::flush {:?} -> {:?}",
@@ -82,6 +94,7 @@ impl DynDescriptorSet {
             self.descriptor_set = new_descriptor_set;
         }
 
+        self.has_been_flushed = true;
         Ok(())
     }
 
@@ -97,19 +110,7 @@ impl DynDescriptorSet {
         )
     }
 
-    pub fn set_image_raw(
-        &mut self,
-        binding_index: u32,
-        image_view: vk::ImageView,
-    ) {
-        self.set_image_array_element(
-            binding_index,
-            0,
-            DescriptorSetWriteElementImageValue::Raw(image_view),
-        )
-    }
-
-    pub fn set_image_array_element(
+    fn set_image_array_element(
         &mut self,
         binding_index: u32,
         array_index: usize,

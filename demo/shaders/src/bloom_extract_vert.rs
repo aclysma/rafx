@@ -2,3 +2,12 @@
 
 #[allow(unused_imports)]
 use serde::{Deserialize, Serialize};
+
+#[allow(unused_imports)]
+use renderer_resources::ash::prelude::VkResult;
+
+#[allow(unused_imports)]
+use renderer_resources::{
+    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
+    ImageViewResource, ResourceArc,
+};
