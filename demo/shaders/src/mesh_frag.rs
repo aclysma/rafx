@@ -7,27 +7,24 @@ use serde::{Deserialize, Serialize};
 use renderer_resources::ash::prelude::VkResult;
 
 #[allow(unused_imports)]
-use renderer_resources::{
-    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
-    ImageViewResource, ResourceArc,
-};
+use renderer_resources::{ResourceArc, ImageViewResource, DynDescriptorSet, DescriptorSetAllocator, DescriptorSetInitializer, DescriptorSetArc};
 
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(C)]
 pub struct SpotLightStd140 {
-    pub position_ws: [f32; 3],     // +0 (size: 12)
-    pub _padding0: [u8; 4],        // +12 (size: 4)
-    pub direction_ws: [f32; 3],    // +16 (size: 12)
-    pub _padding1: [u8; 4],        // +28 (size: 4)
-    pub position_vs: [f32; 3],     // +32 (size: 12)
-    pub _padding2: [u8; 4],        // +44 (size: 4)
-    pub direction_vs: [f32; 3],    // +48 (size: 12)
-    pub _padding3: [u8; 4],        // +60 (size: 4)
-    pub color: [f32; 4],           // +64 (size: 16)
-    pub spotlight_half_angle: f32, // +80 (size: 4)
-    pub range: f32,                // +84 (size: 4)
-    pub intensity: f32,            // +88 (size: 4)
-    pub _padding4: [u8; 4],        // +92 (size: 4)
+    pub position_ws: [f32; 3],          // +0 (size: 12)
+    pub _padding0: [u8; 4],             // +12 (size: 4)
+    pub direction_ws: [f32; 3],         // +16 (size: 12)
+    pub _padding1: [u8; 4],             // +28 (size: 4)
+    pub position_vs: [f32; 3],          // +32 (size: 12)
+    pub _padding2: [u8; 4],             // +44 (size: 4)
+    pub direction_vs: [f32; 3],         // +48 (size: 12)
+    pub _padding3: [u8; 4],             // +60 (size: 4)
+    pub color: [f32; 4],                // +64 (size: 16)
+    pub spotlight_half_angle: f32,      // +80 (size: 4)
+    pub range: f32,                     // +84 (size: 4)
+    pub intensity: f32,                 // +88 (size: 4)
+    pub _padding4: [u8; 4],             // +92 (size: 4)
 } // 96 bytes
 
 pub type SpotLightUniform = SpotLightStd140;
@@ -35,13 +32,13 @@ pub type SpotLightUniform = SpotLightStd140;
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(C)]
 pub struct DirectionalLightStd140 {
-    pub direction_ws: [f32; 3], // +0 (size: 12)
-    pub _padding0: [u8; 4],     // +12 (size: 4)
-    pub direction_vs: [f32; 3], // +16 (size: 12)
-    pub _padding1: [u8; 4],     // +28 (size: 4)
-    pub color: [f32; 4],        // +32 (size: 16)
-    pub intensity: f32,         // +48 (size: 4)
-    pub _padding2: [u8; 12],    // +52 (size: 12)
+    pub direction_ws: [f32; 3],         // +0 (size: 12)
+    pub _padding0: [u8; 4],             // +12 (size: 4)
+    pub direction_vs: [f32; 3],         // +16 (size: 12)
+    pub _padding1: [u8; 4],             // +28 (size: 4)
+    pub color: [f32; 4],                // +32 (size: 16)
+    pub intensity: f32,                 // +48 (size: 4)
+    pub _padding2: [u8; 12],            // +52 (size: 12)
 } // 64 bytes
 
 pub type DirectionalLightUniform = DirectionalLightStd140;
@@ -49,14 +46,14 @@ pub type DirectionalLightUniform = DirectionalLightStd140;
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(C)]
 pub struct PointLightStd140 {
-    pub position_ws: [f32; 3], // +0 (size: 12)
-    pub _padding0: [u8; 4],    // +12 (size: 4)
-    pub position_vs: [f32; 3], // +16 (size: 12)
-    pub _padding1: [u8; 4],    // +28 (size: 4)
-    pub color: [f32; 4],       // +32 (size: 16)
-    pub range: f32,            // +48 (size: 4)
-    pub intensity: f32,        // +52 (size: 4)
-    pub _padding2: [u8; 8],    // +56 (size: 8)
+    pub position_ws: [f32; 3],          // +0 (size: 12)
+    pub _padding0: [u8; 4],             // +12 (size: 4)
+    pub position_vs: [f32; 3],          // +16 (size: 12)
+    pub _padding1: [u8; 4],             // +28 (size: 4)
+    pub color: [f32; 4],                // +32 (size: 16)
+    pub range: f32,                     // +48 (size: 4)
+    pub intensity: f32,                 // +52 (size: 4)
+    pub _padding2: [u8; 8],             // +56 (size: 8)
 } // 64 bytes
 
 pub type PointLightUniform = PointLightStd140;
@@ -64,19 +61,19 @@ pub type PointLightUniform = PointLightStd140;
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(C)]
 pub struct MaterialDataStd140 {
-    pub base_color_factor: [f32; 4],         // +0 (size: 16)
-    pub emissive_factor: [f32; 3],           // +16 (size: 12)
-    pub metallic_factor: f32,                // +28 (size: 4)
-    pub roughness_factor: f32,               // +32 (size: 4)
-    pub normal_texture_scale: f32,           // +36 (size: 4)
-    pub occlusion_texture_strength: f32,     // +40 (size: 4)
-    pub alpha_cutoff: f32,                   // +44 (size: 4)
-    pub has_base_color_texture: u32,         // +48 (size: 4)
+    pub base_color_factor: [f32; 4],    // +0 (size: 16)
+    pub emissive_factor: [f32; 3],      // +16 (size: 12)
+    pub metallic_factor: f32,           // +28 (size: 4)
+    pub roughness_factor: f32,          // +32 (size: 4)
+    pub normal_texture_scale: f32,      // +36 (size: 4)
+    pub occlusion_texture_strength: f32, // +40 (size: 4)
+    pub alpha_cutoff: f32,              // +44 (size: 4)
+    pub has_base_color_texture: u32,    // +48 (size: 4)
     pub has_metallic_roughness_texture: u32, // +52 (size: 4)
-    pub has_normal_texture: u32,             // +56 (size: 4)
-    pub has_occlusion_texture: u32,          // +60 (size: 4)
-    pub has_emissive_texture: u32,           // +64 (size: 4)
-    pub _padding0: [u8; 12],                 // +68 (size: 12)
+    pub has_normal_texture: u32,        // +56 (size: 4)
+    pub has_occlusion_texture: u32,     // +60 (size: 4)
+    pub has_emissive_texture: u32,      // +64 (size: 4)
+    pub _padding0: [u8; 12],            // +68 (size: 12)
 } // 80 bytes
 
 pub type MaterialDataUniform = MaterialDataStd140;
@@ -84,14 +81,14 @@ pub type MaterialDataUniform = MaterialDataStd140;
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(C)]
 pub struct PerViewDataStd140 {
-    pub ambient_light: [f32; 4],                          // +0 (size: 16)
-    pub point_light_count: u32,                           // +16 (size: 4)
-    pub directional_light_count: u32,                     // +20 (size: 4)
-    pub spot_light_count: u32,                            // +24 (size: 4)
-    pub _padding0: [u8; 4],                               // +28 (size: 4)
-    pub point_lights: [PointLightStd140; 16],             // +32 (size: 1024)
+    pub ambient_light: [f32; 4],        // +0 (size: 16)
+    pub point_light_count: u32,         // +16 (size: 4)
+    pub directional_light_count: u32,   // +20 (size: 4)
+    pub spot_light_count: u32,          // +24 (size: 4)
+    pub _padding0: [u8; 4],             // +28 (size: 4)
+    pub point_lights: [PointLightStd140; 16], // +32 (size: 1024)
     pub directional_lights: [DirectionalLightStd140; 16], // +1056 (size: 1024)
-    pub spot_lights: [SpotLightStd140; 16],               // +2080 (size: 1536)
+    pub spot_lights: [SpotLightStd140; 16], // +2080 (size: 1536)
 } // 3616 bytes
 
 pub type PerViewDataUniform = PerViewDataStd140;
@@ -99,7 +96,7 @@ pub type PerViewDataUniform = PerViewDataStd140;
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(C)]
 pub struct MaterialDataUboStd140 {
-    pub data: MaterialDataStd140, // +0 (size: 80)
+    pub data: MaterialDataStd140,       // +0 (size: 80)
 } // 80 bytes
 
 pub type MaterialDataUboUniform = MaterialDataUboStd140;
@@ -133,20 +130,13 @@ pub struct DescriptorSet0Args<'a> {
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
     type Output = DescriptorSet0;
 
-    fn create_dyn_descriptor_set(
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> Self::Output {
+    fn create_dyn_descriptor_set(descriptor_set: DynDescriptorSet, args: Self) -> Self::Output {
         let mut descriptor = DescriptorSet0(descriptor_set);
         descriptor.set_args(args);
         descriptor
     }
 
-    fn create_descriptor_set(
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> VkResult<DescriptorSetArc> {
+    fn create_descriptor_set(descriptor_set_allocator: &mut DescriptorSetAllocator, descriptor_set: DynDescriptorSet, args: Self) -> VkResult<DescriptorSetArc> {
         let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
         descriptor.0.flush(descriptor_set_allocator)?;
         Ok(descriptor.0.descriptor_set().clone())
@@ -156,52 +146,25 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
 pub struct DescriptorSet0(pub DynDescriptorSet);
 
 impl DescriptorSet0 {
-    pub fn set_args_static(
-        descriptor_set: &mut DynDescriptorSet,
-        args: DescriptorSet0Args,
-    ) {
-        descriptor_set.set_buffer_data(
-            PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            args.per_frame_data,
-        );
-        descriptor_set.set_image(
-            SHADOW_MAP_IMAGE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.shadow_map_image,
-        );
+    pub fn set_args_static(descriptor_set: &mut DynDescriptorSet, args: DescriptorSet0Args) {
+        descriptor_set.set_buffer_data(PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32, args.per_frame_data);
+        descriptor_set.set_image(SHADOW_MAP_IMAGE_DESCRIPTOR_BINDING_INDEX as u32, args.shadow_map_image);
     }
 
-    pub fn set_args(
-        &mut self,
-        args: DescriptorSet0Args,
-    ) {
+    pub fn set_args(&mut self, args: DescriptorSet0Args) {
         self.set_per_frame_data(args.per_frame_data);
         self.set_shadow_map_image(args.shadow_map_image);
     }
 
-    pub fn set_per_frame_data(
-        &mut self,
-        per_frame_data: &PerViewDataUniform,
-    ) {
-        self.0.set_buffer_data(
-            PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            per_frame_data,
-        );
+    pub fn set_per_frame_data(&mut self, per_frame_data: &PerViewDataUniform) {
+        self.0.set_buffer_data(PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32, per_frame_data);
     }
 
-    pub fn set_shadow_map_image(
-        &mut self,
-        shadow_map_image: ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            SHADOW_MAP_IMAGE_DESCRIPTOR_BINDING_INDEX as u32,
-            shadow_map_image,
-        );
+    pub fn set_shadow_map_image(&mut self, shadow_map_image: ResourceArc<ImageViewResource>) {
+        self.0.set_image(SHADOW_MAP_IMAGE_DESCRIPTOR_BINDING_INDEX as u32, shadow_map_image);
     }
 
-    pub fn flush(
-        &mut self,
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-    ) -> VkResult<()> {
+    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
         self.0.flush(descriptor_set_allocator)
     }
 }
@@ -218,20 +181,13 @@ pub struct DescriptorSet1Args<'a> {
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
     type Output = DescriptorSet1;
 
-    fn create_dyn_descriptor_set(
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> Self::Output {
+    fn create_dyn_descriptor_set(descriptor_set: DynDescriptorSet, args: Self) -> Self::Output {
         let mut descriptor = DescriptorSet1(descriptor_set);
         descriptor.set_args(args);
         descriptor
     }
 
-    fn create_descriptor_set(
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> VkResult<DescriptorSetArc> {
+    fn create_descriptor_set(descriptor_set_allocator: &mut DescriptorSetAllocator, descriptor_set: DynDescriptorSet, args: Self) -> VkResult<DescriptorSetArc> {
         let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
         descriptor.0.flush(descriptor_set_allocator)?;
         Ok(descriptor.0.descriptor_set().clone())
@@ -241,40 +197,16 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
 pub struct DescriptorSet1(pub DynDescriptorSet);
 
 impl DescriptorSet1 {
-    pub fn set_args_static(
-        descriptor_set: &mut DynDescriptorSet,
-        args: DescriptorSet1Args,
-    ) {
-        descriptor_set.set_buffer_data(
-            PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            args.per_material_data,
-        );
-        descriptor_set.set_image(
-            BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.base_color_texture,
-        );
-        descriptor_set.set_image(
-            METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.metallic_roughness_texture,
-        );
-        descriptor_set.set_image(
-            NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.normal_texture,
-        );
-        descriptor_set.set_image(
-            OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.occlusion_texture,
-        );
-        descriptor_set.set_image(
-            EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.emissive_texture,
-        );
+    pub fn set_args_static(descriptor_set: &mut DynDescriptorSet, args: DescriptorSet1Args) {
+        descriptor_set.set_buffer_data(PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32, args.per_material_data);
+        descriptor_set.set_image(BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, args.base_color_texture);
+        descriptor_set.set_image(METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, args.metallic_roughness_texture);
+        descriptor_set.set_image(NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, args.normal_texture);
+        descriptor_set.set_image(OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, args.occlusion_texture);
+        descriptor_set.set_image(EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, args.emissive_texture);
     }
 
-    pub fn set_args(
-        &mut self,
-        args: DescriptorSet1Args,
-    ) {
+    pub fn set_args(&mut self, args: DescriptorSet1Args) {
         self.set_per_material_data(args.per_material_data);
         self.set_base_color_texture(args.base_color_texture);
         self.set_metallic_roughness_texture(args.metallic_roughness_texture);
@@ -283,70 +215,31 @@ impl DescriptorSet1 {
         self.set_emissive_texture(args.emissive_texture);
     }
 
-    pub fn set_per_material_data(
-        &mut self,
-        per_material_data: &MaterialDataUboUniform,
-    ) {
-        self.0.set_buffer_data(
-            PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            per_material_data,
-        );
+    pub fn set_per_material_data(&mut self, per_material_data: &MaterialDataUboUniform) {
+        self.0.set_buffer_data(PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32, per_material_data);
     }
 
-    pub fn set_base_color_texture(
-        &mut self,
-        base_color_texture: ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            base_color_texture,
-        );
+    pub fn set_base_color_texture(&mut self, base_color_texture: ResourceArc<ImageViewResource>) {
+        self.0.set_image(BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, base_color_texture);
     }
 
-    pub fn set_metallic_roughness_texture(
-        &mut self,
-        metallic_roughness_texture: ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            metallic_roughness_texture,
-        );
+    pub fn set_metallic_roughness_texture(&mut self, metallic_roughness_texture: ResourceArc<ImageViewResource>) {
+        self.0.set_image(METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, metallic_roughness_texture);
     }
 
-    pub fn set_normal_texture(
-        &mut self,
-        normal_texture: ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            normal_texture,
-        );
+    pub fn set_normal_texture(&mut self, normal_texture: ResourceArc<ImageViewResource>) {
+        self.0.set_image(NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, normal_texture);
     }
 
-    pub fn set_occlusion_texture(
-        &mut self,
-        occlusion_texture: ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            occlusion_texture,
-        );
+    pub fn set_occlusion_texture(&mut self, occlusion_texture: ResourceArc<ImageViewResource>) {
+        self.0.set_image(OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, occlusion_texture);
     }
 
-    pub fn set_emissive_texture(
-        &mut self,
-        emissive_texture: ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            emissive_texture,
-        );
+    pub fn set_emissive_texture(&mut self, emissive_texture: ResourceArc<ImageViewResource>) {
+        self.0.set_image(EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, emissive_texture);
     }
 
-    pub fn flush(
-        &mut self,
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-    ) -> VkResult<()> {
+    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
         self.0.flush(descriptor_set_allocator)
     }
 }
@@ -387,10 +280,7 @@ mod test {
         assert_eq!(memoffset::offset_of!(SpotLightStd140, color), 64);
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(SpotLightStd140, spotlight_half_angle),
-            80
-        );
+        assert_eq!(memoffset::offset_of!(SpotLightStd140, spotlight_half_angle), 80);
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
         assert_eq!(memoffset::offset_of!(SpotLightStd140, range), 84);
@@ -407,19 +297,13 @@ mod test {
         assert_eq!(std::mem::size_of::<DirectionalLightStd140>(), 64);
         assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
         assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(DirectionalLightStd140, direction_ws),
-            0
-        );
+        assert_eq!(memoffset::offset_of!(DirectionalLightStd140, direction_ws), 0);
         assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
         assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
         assert_eq!(memoffset::offset_of!(DirectionalLightStd140, _padding0), 12);
         assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
         assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(DirectionalLightStd140, direction_vs),
-            16
-        );
+        assert_eq!(memoffset::offset_of!(DirectionalLightStd140, direction_vs), 16);
         assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
         assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
         assert_eq!(memoffset::offset_of!(DirectionalLightStd140, _padding1), 28);
@@ -468,73 +352,40 @@ mod test {
         assert_eq!(std::mem::size_of::<MaterialDataStd140>(), 80);
         assert_eq!(std::mem::size_of::<[f32; 4]>(), 16);
         assert_eq!(std::mem::align_of::<[f32; 4]>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, base_color_factor),
-            0
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, base_color_factor), 0);
         assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
         assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, emissive_factor),
-            16
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, emissive_factor), 16);
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, metallic_factor),
-            28
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, metallic_factor), 28);
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, roughness_factor),
-            32
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, roughness_factor), 32);
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, normal_texture_scale),
-            36
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, normal_texture_scale), 36);
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, occlusion_texture_strength),
-            40
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, occlusion_texture_strength), 40);
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
         assert_eq!(memoffset::offset_of!(MaterialDataStd140, alpha_cutoff), 44);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_base_color_texture),
-            48
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, has_base_color_texture), 48);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_metallic_roughness_texture),
-            52
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, has_metallic_roughness_texture), 52);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_normal_texture),
-            56
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, has_normal_texture), 56);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_occlusion_texture),
-            60
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, has_occlusion_texture), 60);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_emissive_texture),
-            64
-        );
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, has_emissive_texture), 64);
         assert_eq!(std::mem::size_of::<[u8; 12]>(), 12);
         assert_eq!(std::mem::align_of::<[u8; 12]>(), 1);
         assert_eq!(memoffset::offset_of!(MaterialDataStd140, _padding0), 68);
@@ -548,22 +399,13 @@ mod test {
         assert_eq!(memoffset::offset_of!(PerViewDataStd140, ambient_light), 0);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(PerViewDataStd140, point_light_count),
-            16
-        );
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, point_light_count), 16);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(PerViewDataStd140, directional_light_count),
-            20
-        );
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, directional_light_count), 20);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(PerViewDataStd140, spot_light_count),
-            24
-        );
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, spot_light_count), 24);
         assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
         assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
         assert_eq!(memoffset::offset_of!(PerViewDataStd140, _padding0), 28);
@@ -572,10 +414,7 @@ mod test {
         assert_eq!(memoffset::offset_of!(PerViewDataStd140, point_lights), 32);
         assert_eq!(std::mem::size_of::<[DirectionalLightStd140; 16]>(), 1024);
         assert_eq!(std::mem::align_of::<[DirectionalLightStd140; 16]>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(PerViewDataStd140, directional_lights),
-            1056
-        );
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, directional_lights), 1056);
         assert_eq!(std::mem::size_of::<[SpotLightStd140; 16]>(), 1536);
         assert_eq!(std::mem::align_of::<[SpotLightStd140; 16]>(), 4);
         assert_eq!(memoffset::offset_of!(PerViewDataStd140, spot_lights), 2080);

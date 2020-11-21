@@ -18,7 +18,7 @@
 //             mipmap_mode: Linear,
 //             mip_lod_bias: 0,
 //             min_lod: 0,
-//             max_lod: 0
+//             max_lod: 1000
 //         )
 // ])]
 layout (set = 0, binding = 1) uniform sampler smp;
