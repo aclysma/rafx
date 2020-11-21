@@ -9,13 +9,13 @@ jobs:
   build:
     strategy:
       matrix:
-        toolchain: [stable, nightly]
+        toolchain: [stable, beta]
         os: [windows-2019, ubuntu-20.04, macos-10.15]
         exclude:
           - os: macos-10.15
-            toolchain: nightly
+            toolchain: beta
           - os: windows-2019
-            toolchain: nightly
+            toolchain: beta
     runs-on: ${{ matrix.os }}
     needs: clean
     steps:
