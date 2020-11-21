@@ -7,12 +7,15 @@ use serde::{Deserialize, Serialize};
 use renderer_resources::ash::prelude::VkResult;
 
 #[allow(unused_imports)]
-use renderer_resources::{ResourceArc, ImageViewResource, DynDescriptorSet, DescriptorSetAllocator, DescriptorSetInitializer, DescriptorSetArc};
+use renderer_resources::{
+    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
+    ImageViewResource, ResourceArc,
+};
 
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(C)]
 pub struct PerFrameUboStd140 {
-    pub view_proj: [[f32; 4]; 4],       // +0 (size: 64)
+    pub view_proj: [[f32; 4]; 4], // +0 (size: 64)
 } // 64 bytes
 
 pub type PerFrameUboUniform = PerFrameUboStd140;
@@ -27,13 +30,20 @@ pub struct DescriptorSet0Args<'a> {
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
     type Output = DescriptorSet0;
 
-    fn create_dyn_descriptor_set(descriptor_set: DynDescriptorSet, args: Self) -> Self::Output {
+    fn create_dyn_descriptor_set(
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> Self::Output {
         let mut descriptor = DescriptorSet0(descriptor_set);
         descriptor.set_args(args);
         descriptor
     }
 
-    fn create_descriptor_set(descriptor_set_allocator: &mut DescriptorSetAllocator, descriptor_set: DynDescriptorSet, args: Self) -> VkResult<DescriptorSetArc> {
+    fn create_descriptor_set(
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> VkResult<DescriptorSetArc> {
         let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
         descriptor.0.flush(descriptor_set_allocator)?;
         Ok(descriptor.0.descriptor_set().clone())
@@ -43,19 +53,37 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
 pub struct DescriptorSet0(pub DynDescriptorSet);
 
 impl DescriptorSet0 {
-    pub fn set_args_static(descriptor_set: &mut DynDescriptorSet, args: DescriptorSet0Args) {
-        descriptor_set.set_buffer_data(PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32, args.per_frame_data);
+    pub fn set_args_static(
+        descriptor_set: &mut DynDescriptorSet,
+        args: DescriptorSet0Args,
+    ) {
+        descriptor_set.set_buffer_data(
+            PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            args.per_frame_data,
+        );
     }
 
-    pub fn set_args(&mut self, args: DescriptorSet0Args) {
+    pub fn set_args(
+        &mut self,
+        args: DescriptorSet0Args,
+    ) {
         self.set_per_frame_data(args.per_frame_data);
     }
 
-    pub fn set_per_frame_data(&mut self, per_frame_data: &PerFrameUboUniform) {
-        self.0.set_buffer_data(PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32, per_frame_data);
+    pub fn set_per_frame_data(
+        &mut self,
+        per_frame_data: &PerFrameUboUniform,
+    ) {
+        self.0.set_buffer_data(
+            PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            per_frame_data,
+        );
     }
 
-    pub fn flush(&mut self, descriptor_set_allocator: &mut DescriptorSetAllocator) -> VkResult<()> {
+    pub fn flush(
+        &mut self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+    ) -> VkResult<()> {
         self.0.flush(descriptor_set_allocator)
     }
 }
