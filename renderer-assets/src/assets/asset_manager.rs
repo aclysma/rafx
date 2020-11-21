@@ -700,7 +700,7 @@ impl AssetManager {
             // This will contain the descriptor sets created for this pass, one for each set within the pass
             let mut pass_descriptor_sets = Vec::with_capacity(pass_descriptor_set_writes.len());
 
-            let material_pass_descriptor_sets = &pass
+            let material_pass_descriptor_set_layouts = &pass
                 .material_pass_resource
                 .get_raw()
                 .pipeline_layout
@@ -715,8 +715,8 @@ impl AssetManager {
                 if !layout_writes.elements.is_empty() {
                     let descriptor_set = self
                         .material_instance_descriptor_sets
-                        .create_descriptor_set(
-                            &material_pass_descriptor_sets[layout_index],
+                        .create_descriptor_set_with_writes(
+                            &material_pass_descriptor_set_layouts[layout_index],
                             layout_writes,
                         )?;
 

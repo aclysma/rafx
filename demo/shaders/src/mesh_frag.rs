@@ -3,6 +3,15 @@
 #[allow(unused_imports)]
 use serde::{Deserialize, Serialize};
 
+#[allow(unused_imports)]
+use renderer_resources::ash::prelude::VkResult;
+
+#[allow(unused_imports)]
+use renderer_resources::{
+    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
+    ImageViewResource, ResourceArc,
+};
+
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(C)]
 pub struct SpotLightStd140 {
@@ -115,6 +124,232 @@ pub const OCCLUSION_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
 pub const OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 4;
 pub const EMISSIVE_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
 pub const EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 5;
+
+pub struct DescriptorSet0Args<'a> {
+    pub per_frame_data: &'a PerViewDataUniform,
+    pub shadow_map_image: ResourceArc<ImageViewResource>,
+}
+
+impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
+    type Output = DescriptorSet0;
+
+    fn create_dyn_descriptor_set(
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> Self::Output {
+        let mut descriptor = DescriptorSet0(descriptor_set);
+        descriptor.set_args(args);
+        descriptor
+    }
+
+    fn create_descriptor_set(
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> VkResult<DescriptorSetArc> {
+        let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
+        descriptor.0.flush(descriptor_set_allocator)?;
+        Ok(descriptor.0.descriptor_set().clone())
+    }
+}
+
+pub struct DescriptorSet0(pub DynDescriptorSet);
+
+impl DescriptorSet0 {
+    pub fn set_args_static(
+        descriptor_set: &mut DynDescriptorSet,
+        args: DescriptorSet0Args,
+    ) {
+        descriptor_set.set_buffer_data(
+            PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            args.per_frame_data,
+        );
+        descriptor_set.set_image(
+            SHADOW_MAP_IMAGE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.shadow_map_image,
+        );
+    }
+
+    pub fn set_args(
+        &mut self,
+        args: DescriptorSet0Args,
+    ) {
+        self.set_per_frame_data(args.per_frame_data);
+        self.set_shadow_map_image(args.shadow_map_image);
+    }
+
+    pub fn set_per_frame_data(
+        &mut self,
+        per_frame_data: &PerViewDataUniform,
+    ) {
+        self.0.set_buffer_data(
+            PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            per_frame_data,
+        );
+    }
+
+    pub fn set_shadow_map_image(
+        &mut self,
+        shadow_map_image: ResourceArc<ImageViewResource>,
+    ) {
+        self.0.set_image(
+            SHADOW_MAP_IMAGE_DESCRIPTOR_BINDING_INDEX as u32,
+            shadow_map_image,
+        );
+    }
+
+    pub fn flush(
+        &mut self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+    ) -> VkResult<()> {
+        self.0.flush(descriptor_set_allocator)
+    }
+}
+
+pub struct DescriptorSet1Args<'a> {
+    pub per_material_data: &'a MaterialDataUboUniform,
+    pub base_color_texture: ResourceArc<ImageViewResource>,
+    pub metallic_roughness_texture: ResourceArc<ImageViewResource>,
+    pub normal_texture: ResourceArc<ImageViewResource>,
+    pub occlusion_texture: ResourceArc<ImageViewResource>,
+    pub emissive_texture: ResourceArc<ImageViewResource>,
+}
+
+impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
+    type Output = DescriptorSet1;
+
+    fn create_dyn_descriptor_set(
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> Self::Output {
+        let mut descriptor = DescriptorSet1(descriptor_set);
+        descriptor.set_args(args);
+        descriptor
+    }
+
+    fn create_descriptor_set(
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> VkResult<DescriptorSetArc> {
+        let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
+        descriptor.0.flush(descriptor_set_allocator)?;
+        Ok(descriptor.0.descriptor_set().clone())
+    }
+}
+
+pub struct DescriptorSet1(pub DynDescriptorSet);
+
+impl DescriptorSet1 {
+    pub fn set_args_static(
+        descriptor_set: &mut DynDescriptorSet,
+        args: DescriptorSet1Args,
+    ) {
+        descriptor_set.set_buffer_data(
+            PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            args.per_material_data,
+        );
+        descriptor_set.set_image(
+            BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.base_color_texture,
+        );
+        descriptor_set.set_image(
+            METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.metallic_roughness_texture,
+        );
+        descriptor_set.set_image(
+            NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.normal_texture,
+        );
+        descriptor_set.set_image(
+            OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.occlusion_texture,
+        );
+        descriptor_set.set_image(
+            EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.emissive_texture,
+        );
+    }
+
+    pub fn set_args(
+        &mut self,
+        args: DescriptorSet1Args,
+    ) {
+        self.set_per_material_data(args.per_material_data);
+        self.set_base_color_texture(args.base_color_texture);
+        self.set_metallic_roughness_texture(args.metallic_roughness_texture);
+        self.set_normal_texture(args.normal_texture);
+        self.set_occlusion_texture(args.occlusion_texture);
+        self.set_emissive_texture(args.emissive_texture);
+    }
+
+    pub fn set_per_material_data(
+        &mut self,
+        per_material_data: &MaterialDataUboUniform,
+    ) {
+        self.0.set_buffer_data(
+            PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            per_material_data,
+        );
+    }
+
+    pub fn set_base_color_texture(
+        &mut self,
+        base_color_texture: ResourceArc<ImageViewResource>,
+    ) {
+        self.0.set_image(
+            BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            base_color_texture,
+        );
+    }
+
+    pub fn set_metallic_roughness_texture(
+        &mut self,
+        metallic_roughness_texture: ResourceArc<ImageViewResource>,
+    ) {
+        self.0.set_image(
+            METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            metallic_roughness_texture,
+        );
+    }
+
+    pub fn set_normal_texture(
+        &mut self,
+        normal_texture: ResourceArc<ImageViewResource>,
+    ) {
+        self.0.set_image(
+            NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            normal_texture,
+        );
+    }
+
+    pub fn set_occlusion_texture(
+        &mut self,
+        occlusion_texture: ResourceArc<ImageViewResource>,
+    ) {
+        self.0.set_image(
+            OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            occlusion_texture,
+        );
+    }
+
+    pub fn set_emissive_texture(
+        &mut self,
+        emissive_texture: ResourceArc<ImageViewResource>,
+    ) {
+        self.0.set_image(
+            EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            emissive_texture,
+        );
+    }
+
+    pub fn flush(
+        &mut self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+    ) -> VkResult<()> {
+        self.0.flush(descriptor_set_allocator)
+    }
+}
 
 #[cfg(test)]
 mod test {

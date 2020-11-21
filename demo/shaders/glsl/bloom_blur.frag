@@ -2,7 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 // Largely taken from https://learnopengl.com/Advanced-Lighting/Bloom
-
+// @[export]
 layout (set = 0, binding = 0) uniform texture2D tex;
 
 // @[immutable_samplers([

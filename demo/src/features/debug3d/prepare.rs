@@ -56,14 +56,14 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
                 view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
             };
 
-            let mut descriptor_set = descriptor_set_allocator
-                .create_dyn_descriptor_set_uninitialized(per_view_descriptor_set_layout)
+            let descriptor_set = descriptor_set_allocator
+                .create_descriptor_set(
+                    per_view_descriptor_set_layout,
+                    shaders::debug_vert::DescriptorSet0Args {
+                        per_frame_data: &debug3d_view,
+                    },
+                )
                 .unwrap();
-            descriptor_set.set_buffer_data(
-                shaders::debug_vert::PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-                &debug3d_view,
-            );
-            descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
             per_view_descriptor_sets.resize(
                 per_view_descriptor_sets
@@ -71,8 +71,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
                     .max(view.view_index() as usize + 1),
                 None,
             );
-            per_view_descriptor_sets[view.view_index() as usize] =
-                Some(descriptor_set.descriptor_set().clone());
+            per_view_descriptor_sets[view.view_index() as usize] = Some(descriptor_set.clone());
         }
 
         //

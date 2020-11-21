@@ -94,20 +94,24 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                     let mut descriptor_set = descriptor_set_allocator
                         .create_dyn_descriptor_set_uninitialized(&per_view_descriptor_set_layout)
                         .unwrap();
-                    descriptor_set.set_buffer_data(
-                        shaders::mesh_frag::PER_FRAME_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-                        &per_view_frag_data,
+
+                    // Set up params for the vertex shader
+                    shaders::mesh_vert::DescriptorSet0::set_args_static(
+                        &mut descriptor_set,
+                        shaders::mesh_vert::DescriptorSet0Args {
+                            per_view_data: &per_frame_vertex_data,
+                        },
                     );
-                    // 1: immutable sampler
-                    // 2: immutable sampler
-                    descriptor_set.set_image(
-                        shaders::mesh_frag::SHADOW_MAP_IMAGE_DESCRIPTOR_BINDING_INDEX as u32,
-                        self.shadow_map_image.clone(),
+
+                    // Set up params for the fragment shader
+                    shaders::mesh_frag::DescriptorSet0::set_args_static(
+                        &mut descriptor_set,
+                        shaders::mesh_frag::DescriptorSet0Args {
+                            per_frame_data: &per_view_frag_data,
+                            shadow_map_image: self.shadow_map_image.clone(),
+                        },
                     );
-                    descriptor_set.set_buffer_data(
-                        shaders::mesh_vert::PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-                        &per_frame_vertex_data,
-                    );
+
                     descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
 
                     let old = per_view_descriptor_sets.insert(
@@ -305,7 +309,7 @@ impl MeshPrepareJob {
     }
 
     fn add_render_node(
-        mut descriptor_set_allocator: &mut DescriptorSetAllocatorRef,
+        descriptor_set_allocator: &mut DescriptorSetAllocatorRef,
         prepared_submit_node_mesh_data: &mut Vec<PreparedSubmitNodeMeshData>,
         per_view_descriptor_sets: &FnvHashMap<
             (u32, ResourceArc<DescriptorSetLayoutResource>),
@@ -339,15 +343,14 @@ impl MeshPrepareJob {
         //
         let per_instance_descriptor_set_layout = &material_pass.descriptor_set_layouts
             [super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
-        let mut descriptor_set = descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(per_instance_descriptor_set_layout)
+        let per_instance_descriptor_set = descriptor_set_allocator
+            .create_descriptor_set(
+                per_instance_descriptor_set_layout,
+                shaders::mesh_vert::DescriptorSet2Args {
+                    per_object_data: &per_object_param,
+                },
+            )
             .unwrap();
-        descriptor_set.set_buffer_data(
-            shaders::mesh_vert::PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            per_object_param,
-        );
-        descriptor_set.flush(&mut descriptor_set_allocator).unwrap();
-        let per_instance_descriptor_set = descriptor_set.descriptor_set().clone();
 
         //
         // Create the submit node

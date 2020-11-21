@@ -31,6 +31,7 @@ pub use descriptor_sets::DescriptorSetAllocatorMetrics;
 pub use descriptor_sets::DescriptorSetAllocatorProvider;
 pub use descriptor_sets::DescriptorSetAllocatorRef;
 pub use descriptor_sets::DescriptorSetArc;
+pub use descriptor_sets::DescriptorSetInitializer;
 pub use descriptor_sets::DescriptorSetWriteSet;
 pub use descriptor_sets::DynDescriptorSet;
 

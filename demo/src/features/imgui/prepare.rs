@@ -57,42 +57,32 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             .draw_lists()
             .len();
 
-        let per_pass_layout = &self
+        let descriptor_set_layouts = &self
             .imgui_material_pass
             .get_raw()
             .pipeline_layout
             .get_raw()
-            .descriptor_sets[shaders::imgui_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
-        let mut per_pass_descriptor_set = descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&per_pass_layout)
-            .unwrap();
-        per_pass_descriptor_set.set_buffer_data(
-            shaders::imgui_vert::UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX as u32,
-            &self.view_ubo,
-        );
-        per_pass_descriptor_set
-            .flush(&mut descriptor_set_allocator)
+            .descriptor_sets;
+
+        let per_pass_descriptor_set = descriptor_set_allocator
+            .create_descriptor_set(
+                &descriptor_set_layouts[shaders::imgui_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX],
+                shaders::imgui_vert::DescriptorSet0Args {
+                    uniform_buffer: &self.view_ubo,
+                },
+            )
             .unwrap();
 
-        let per_image_layout = &self
-            .imgui_material_pass
-            .get_raw()
-            .pipeline_layout
-            .get_raw()
-            .descriptor_sets[shaders::imgui_frag::TEX_DESCRIPTOR_SET_INDEX];
-        let mut per_image_descriptor_set = descriptor_set_allocator
-            .create_dyn_descriptor_set_uninitialized(&per_image_layout)
-            .unwrap();
-        per_image_descriptor_set.set_image(
-            shaders::imgui_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
-            self.font_atlas.clone(),
-        );
-        per_image_descriptor_set
-            .flush(&mut descriptor_set_allocator)
+        let per_image_descriptor_set = descriptor_set_allocator
+            .create_descriptor_set(
+                &descriptor_set_layouts[shaders::imgui_frag::TEX_DESCRIPTOR_SET_INDEX],
+                shaders::imgui_frag::DescriptorSet1Args {
+                    tex: self.font_atlas.clone(),
+                },
+            )
             .unwrap();
 
-        let per_pass_descriptor_set = per_pass_descriptor_set.descriptor_set().clone();
-        let per_image_descriptor_sets = vec![per_image_descriptor_set.descriptor_set().clone()];
+        let per_image_descriptor_sets = vec![per_image_descriptor_set];
 
         let mut vertex_buffers = Vec::with_capacity(draw_list_count);
         let mut index_buffers = Vec::with_capacity(draw_list_count);

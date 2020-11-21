@@ -199,18 +199,15 @@ pub fn build_render_graph(
                 .graph_context
                 .resource_context()
                 .create_descriptor_set_allocator();
-            let mut bloom_extract_material_dyn_set = descriptor_set_allocator
-                .create_dyn_descriptor_set_uninitialized(
-                    &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets
-                        [shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
-                )?;
-            bloom_extract_material_dyn_set.set_image_raw(
-                shaders::bloom_extract_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
-                sample_image.get_raw().image_view,
-            );
-            bloom_extract_material_dyn_set.flush(&mut descriptor_set_allocator)?;
 
-            // Flush the descriptor set change
+            let descriptor_set_layouts =
+                &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets;
+            let bloom_extract_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
+                &descriptor_set_layouts[shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
+                shaders::bloom_extract_frag::DescriptorSet0Args { tex: sample_image },
+            )?;
+
+            // Explicit flush since we're going to use the descriptors immediately
             descriptor_set_allocator.flush_changes()?;
 
             // Draw calls
@@ -228,7 +225,7 @@ pub fn build_render_graph(
                     vk::PipelineBindPoint::GRAPHICS,
                     pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                     shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX as u32,
-                    &[bloom_extract_material_dyn_set.descriptor_set().get()],
+                    &[bloom_extract_material_dyn_set.get()],
                     &[],
                 );
 
@@ -282,41 +279,27 @@ pub fn build_render_graph(
                     .graphics_pipeline_cache()
                     .get_or_create_graphics_pipeline(&bloom_blur_material_pass, args.renderpass)?;
 
+                let descriptor_set_layouts =
+                    &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets;
+
                 // Set up a descriptor set pointing at the image so we can sample from it
                 let mut descriptor_set_allocator = args
                     .graph_context
                     .resource_context()
                     .create_descriptor_set_allocator();
-                let mut bloom_extract_material_dyn_set = descriptor_set_allocator
-                    .create_dyn_descriptor_set_uninitialized(
-                        &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets
-                            [shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
-                    )?;
-                bloom_extract_material_dyn_set.set_image_raw(
-                    shaders::bloom_extract_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
-                    sample_image.get_raw().image_view,
-                );
 
-                let mut bloom_blur_material_dyn_set = descriptor_set_allocator
-                    .create_dyn_descriptor_set_uninitialized(
-                        &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets
-                            [shaders::bloom_blur_frag::TEX_DESCRIPTOR_SET_INDEX],
-                    )?;
-                bloom_blur_material_dyn_set.set_image(
-                    shaders::bloom_blur_frag::TEX_DESCRIPTOR_BINDING_INDEX as u32,
-                    sample_image,
-                );
+                let bloom_blur_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
+                    &descriptor_set_layouts[shaders::bloom_blur_frag::TEX_DESCRIPTOR_SET_INDEX],
+                    shaders::bloom_blur_frag::DescriptorSet0Args {
+                        tex: sample_image.clone(),
+                        config: &shaders::bloom_blur_frag::ConfigUniform {
+                            horizontal: blur_pass_index % 2,
+                            ..Default::default()
+                        },
+                    },
+                )?;
 
-                let blur_config = shaders::bloom_blur_frag::ConfigUniform {
-                    horizontal: blur_pass_index % 2,
-                    ..Default::default()
-                };
-
-                bloom_blur_material_dyn_set.set_buffer_data(
-                    shaders::bloom_blur_frag::CONFIG_DESCRIPTOR_BINDING_INDEX as u32,
-                    &blur_config,
-                );
-                bloom_blur_material_dyn_set.flush(&mut descriptor_set_allocator)?;
+                // Explicit flush since we're going to use the descriptors immediately
                 descriptor_set_allocator.flush_changes()?;
 
                 // Draw calls
@@ -334,7 +317,7 @@ pub fn build_render_graph(
                         vk::PipelineBindPoint::GRAPHICS,
                         pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                         shaders::bloom_blur_frag::CONFIG_DESCRIPTOR_SET_INDEX as u32,
-                        &[bloom_blur_material_dyn_set.descriptor_set().get()],
+                        &[bloom_blur_material_dyn_set.get()],
                         &[],
                     );
 
@@ -394,20 +377,17 @@ pub fn build_render_graph(
                 .graph_context
                 .resource_context()
                 .create_descriptor_set_allocator();
-            let mut bloom_combine_material_dyn_set = descriptor_set_allocator
-                .create_dyn_descriptor_set_uninitialized(
-                    &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets
-                        [shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX],
-                )?;
-            bloom_combine_material_dyn_set.set_image(
-                shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_BINDING_INDEX as u32,
-                sdr_image,
-            );
-            bloom_combine_material_dyn_set.set_image(
-                shaders::bloom_combine_frag::IN_BLUR_DESCRIPTOR_BINDING_INDEX as u32,
-                hdr_image,
-            );
-            bloom_combine_material_dyn_set.flush(&mut descriptor_set_allocator)?;
+
+            let descriptor_set_layouts =
+                &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets;
+            let bloom_combine_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
+                &descriptor_set_layouts[shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX],
+                shaders::bloom_combine_frag::DescriptorSet0Args {
+                    in_color: sdr_image,
+                    in_blur: hdr_image,
+                },
+            )?;
+
             descriptor_set_allocator.flush_changes()?;
 
             // Draw calls
@@ -426,7 +406,7 @@ pub fn build_render_graph(
                     vk::PipelineBindPoint::GRAPHICS,
                     pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
                     shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX as u32,
-                    &[bloom_combine_material_dyn_set.descriptor_set().get()],
+                    &[bloom_combine_material_dyn_set.get()],
                     &[],
                 );
 

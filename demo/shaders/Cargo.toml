@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+renderer-resources = { path = "../../renderer-resources" }
 
 [dev-dependencies]
 memoffset = "0.6"

@@ -1,6 +1,8 @@
 mod resources;
 pub use resources::*;
 
+pub use ash;
+
 pub mod vk_description;
 
 pub mod graph;
