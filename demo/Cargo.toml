@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 ash = ">0.30"
 imgui = "0.4"
 imgui-sdl2 = "0.11.0"
-sdl2 = { version = "0.34", features = ["bundled", "static-link"] }
+sdl2 = { version = "0.34" }
 image = "0.23.12"
 # for https://github.com/gltf-rs/gltf/pull/288
 #gltf = "0.15"
@@ -54,3 +54,9 @@ ron = "0.5"
 arrayvec = "0.5"
 
 structopt = "0.3"
+
+[features]
+default = ["sdl2-bundled", "sdl2-static-link"]
+sdl2-bundled = ["sdl2/bundled"]
+sdl2-static-link = ["sdl2/static-link"]
+static-vulkan = ["renderer/static-vulkan"]

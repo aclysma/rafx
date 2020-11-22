@@ -9,7 +9,7 @@ members = [
 
 exclude = [
     "atelier-assets",
-    "gltf"
+    "gltf",
 ]
 
 # Example of overriding a single crate. Doesn't affect dependencies though so it's of limited value

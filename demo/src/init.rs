@@ -25,9 +25,7 @@ use renderer::assets::{
 };
 use renderer::nodes::RenderRegistry;
 use renderer::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use renderer::vulkan::{
-    LogicalSize, MsaaLevel, VkContext, VkContextBuilder, VkDeviceContext, VkSurface,
-};
+use renderer::vulkan::{LogicalSize, MsaaLevel, VkContext, VkContextBuilder, VkDeviceContext, VkSurface, VulkanLinkMethod};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 
 pub fn atelier_init_daemon(
@@ -119,7 +117,13 @@ pub fn rendering_init(
     #[cfg(not(debug_assertions))]
     let use_vulkan_debug_layer = false;
 
+    #[cfg(not(feature = "static-vulkan"))]
+    let link_method = VulkanLinkMethod::Dynamic;
+    #[cfg(feature = "static-vulkan")]
+    let link_method = VulkanLinkMethod::Static;
+
     let context = VkContextBuilder::new()
+        .link_method(link_method)
         .use_vulkan_debug_layer(use_vulkan_debug_layer)
         .msaa_level_priority(vec![MsaaLevel::Sample4])
         //.msaa_level_priority(vec![MsaaLevel::Sample1])

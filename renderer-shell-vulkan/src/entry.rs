@@ -140,6 +140,8 @@ impl EntryV1_0 for MoltenEntry {
         create_info: &vk::InstanceCreateInfo,
         allocation_callbacks: Option<&vk::AllocationCallbacks>,
     ) -> Result<Self::Instance, InstanceError> {
+        use crate::entry::ash::RawPtr;
+
         let mut instance: vk::Instance = vk::Instance::null();
         let err_code = self.fp_v1_0().create_instance(
             create_info,
