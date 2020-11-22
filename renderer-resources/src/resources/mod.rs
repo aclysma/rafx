@@ -45,3 +45,9 @@ pub use command_buffers::DynCommandWriterAllocator;
 
 mod pipeline_cache;
 pub use pipeline_cache::GraphicsPipelineCache;
+
+mod vertex_data;
+pub use vertex_data::VertexCopyError;
+pub use vertex_data::VertexData;
+pub use vertex_data::VertexDataLayout;
+pub use vertex_data::VertexDataSet;

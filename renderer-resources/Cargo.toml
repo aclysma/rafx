@@ -25,3 +25,4 @@ arrayvec = "0.5"
 
 [dev-dependencies]
 env_logger = "0.6"
+memoffset = "0.6"
