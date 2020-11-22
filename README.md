@@ -47,6 +47,7 @@ The demo includes:
  * Render thread decoupled from main thread [(diagram)](docs/pipelining.png)
  * Asynchronous asset loading
  * Assets can be streamed to remote hardware (i.e. a phone)
+ * OR assets can be cooked into a binary blob for shipping
  * Hot-reloading assets (needs more work, some asset types do not work reliably)
  * Render graph can be used for efficient and flexible definition of a render pipeline
  * Auto-generated shader bindings make working with descriptor sets convenient and less error prone.
@@ -76,6 +77,24 @@ is highly recommeneded. Asset processing is extremely slow in debug mode.** (i.e
 
 The demo uses SDL2 and in debug mode, vulkan validation. If you have trouble running the demo, please check that
 dependencies for both SDL2 and vulkan are available.
+
+### Tools
+
+The renderer includes a few tools for processing shaders and packing data in a binary blob.
+
+#### Shader Compiler
+
+This tool parses GLSL and produces matching rust code. This makes working with descriptor sets easier and safer!
+ * The tool is located at [/shader-processor](shader-processor)
+ * The demo includes a `shaders` crate to compile the generated rust code. It's located at [/demo/shaders](demo/shaders).
+   Just the rust code is auto-generated, not the Cargo.toml.
+ * The easiest way to "refresh shaders" in the demo is to hit compile.bat or compile.sh in that folder
+ 
+#### CLI
+
+This tool currently is only useful for packing assets.
+ * Pack files like this: `run --package cli -- --pack out.pack`
+ * Run the demo like this: `run --package demo -- --packfile out.pack`
 
 ## Features
 

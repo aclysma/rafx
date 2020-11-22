@@ -13,8 +13,8 @@ use structopt::StructOpt;
 /// ```bash
 /// asset_daemon --db .assets_db --address "127.0.0.1:9999" assets
 /// ```
-#[derive(StructOpt)]
-pub struct AssetDaemonOpt {
+#[derive(StructOpt, Debug, Clone)]
+pub struct AssetDaemonArgs {
     /// Path to the asset metadata database directory.
     #[structopt(name = "db", long, parse(from_os_str), default_value = ".assets_db")]
     pub db_dir: PathBuf,
@@ -31,14 +31,38 @@ pub struct AssetDaemonOpt {
     pub asset_dirs: Vec<PathBuf>,
 }
 
+impl Into<AssetDaemonOpt> for AssetDaemonArgs {
+    fn into(self) -> AssetDaemonOpt {
+        AssetDaemonOpt {
+            db_dir: self.db_dir,
+            address: self.address,
+            asset_dirs: self.asset_dirs,
+        }
+    }
+}
+
+pub struct AssetDaemonOpt {
+    pub db_dir: PathBuf,
+    pub address: SocketAddr,
+    pub asset_dirs: Vec<PathBuf>,
+}
+
+impl Default for AssetDaemonOpt {
+    fn default() -> Self {
+        AssetDaemonOpt {
+            db_dir: ".assets_db".into(),
+            address: "127.0.0.1:9999".parse().unwrap(),
+            asset_dirs: vec!["assets".into()],
+        }
+    }
+}
+
 /// Parses a string as a socket address.
 fn parse_socket_addr(s: &str) -> std::result::Result<SocketAddr, AddrParseError> {
     s.parse()
 }
 
-pub fn run() {
-    let opt = AssetDaemonOpt::from_args();
-
+pub fn run(opt: AssetDaemonOpt) {
     AssetDaemon::default()
         .with_importer("pipeline", renderer::assets::PipelineImporter)
         .with_importer("renderpass", renderer::assets::RenderpassImporter)

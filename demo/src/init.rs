@@ -10,7 +10,9 @@ use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
 use crate::phases::TransparentRenderPhase;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use crate::resource_manager::GameAssetManager;
-use atelier_assets::loader::{storage::DefaultIndirectionResolver, Loader, RpcIO};
+use atelier_assets::loader::{
+    packfile_io::PackfileReader, storage::DefaultIndirectionResolver, Loader, RpcIO,
+};
 use legion::Resources;
 use renderer::assets::AssetManager;
 use renderer::assets::{
@@ -28,45 +30,23 @@ use renderer::vulkan::{
 };
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 
-pub fn logging_init() {
-    #[cfg(not(debug_assertions))]
-    let log_level = log::LevelFilter::Info;
-    #[cfg(debug_assertions)]
-    let log_level = log::LevelFilter::Info;
-
-    // Setup logging
-    env_logger::Builder::from_default_env()
-        .default_format_timestamp_nanos(true)
-        .filter_module(
-            "renderer_assets::resources::descriptor_sets",
-            log::LevelFilter::Info,
-        )
-        .filter_module("renderer_shell_vulkan::device", log::LevelFilter::Debug)
-        .filter_module("renderer_nodes", log::LevelFilter::Info)
-        .filter_module("renderer_visibility", log::LevelFilter::Info)
-        .filter_module("renderer_assets::graph", log::LevelFilter::Info)
-        // .filter_module(
-        //     "renderer_assets::resources::command_buffers",
-        //     log::LevelFilter::Trace,
-        // )
-        .filter_level(log_level)
-        // .format(|buf, record| { //TODO: Get a frame count in here
-        //     writeln!(buf,
-        //              "{} [{}] - {}",
-        //              chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
-        //              record.level(),
-        //              record.args()
-        //     )
-        // })
-        .init();
-}
-
-pub fn atelier_init(
+pub fn atelier_init_daemon(
     resources: &mut Resources,
     connect_string: String,
 ) {
     let rpc_loader = RpcIO::new(connect_string).unwrap();
     let loader = Loader::new(Box::new(rpc_loader));
+    let resolver = Box::new(DefaultIndirectionResolver);
+    resources.insert(AssetResource::new(loader, resolver));
+}
+
+pub fn atelier_init_packfile(
+    resources: &mut Resources,
+    pack_file: &std::path::Path,
+) {
+    let packfile = std::fs::File::open(pack_file).unwrap();
+    let packfile_loader = PackfileReader::new(packfile).unwrap();
+    let loader = Loader::new(Box::new(packfile_loader));
     let resolver = Box::new(DefaultIndirectionResolver);
     resources.insert(AssetResource::new(loader, resolver));
 }

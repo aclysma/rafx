@@ -26,7 +26,7 @@ renderer-shell-vulkan-sdl2 = { path = "../renderer-shell-vulkan-sdl2" }
 shaders = { path = "shaders" }
 
 legion = { version = "0.3.0", default-features = false, features = ["serialize"] }
-atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "indirect_handles", features = ["serde_importers", "asset_uuid_macro"] }
+atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "renderer", features = ["serde_importers", "asset_uuid_macro"] }
 futures-lite = "1.3.0"
 
 env_logger = "0.6"
