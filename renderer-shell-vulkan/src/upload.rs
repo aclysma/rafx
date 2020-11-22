@@ -250,8 +250,7 @@ impl Drop for VkUpload {
         unsafe {
             self.device_context
                 .allocator()
-                .unmap_memory(&self.buffer.allocation())
-                .unwrap();
+                .unmap_memory(&self.buffer.allocation());
             ManuallyDrop::drop(&mut self.buffer);
             self.device_context
                 .device()

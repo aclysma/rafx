@@ -191,11 +191,8 @@ impl VkResource for VkBufferRaw {
     ) -> VkResult<()> {
         device_context
             .allocator()
-            .destroy_buffer(resource.buffer, &resource.allocation)
-            .map_err(|err| {
-                log::error!("{:?}", err);
-                vk::Result::ERROR_UNKNOWN
-            })
+            .destroy_buffer(resource.buffer, &resource.allocation);
+        Ok(())
     }
 }
 
@@ -207,11 +204,8 @@ impl VkResource for VkImageRaw {
         if let Some(allocation) = &resource.allocation {
             device_context
                 .allocator()
-                .destroy_image(resource.image, allocation)
-                .map_err(|err| {
-                    log::error!("{:?}", err);
-                    vk::Result::ERROR_UNKNOWN
-                })
+                .destroy_image(resource.image, allocation);
+            Ok(())
         } else {
             // This path where we don't deallocate is appropriate for swapchain images or other
             // images that are owned externally from renderer systems

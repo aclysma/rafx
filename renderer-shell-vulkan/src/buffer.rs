@@ -154,8 +154,7 @@ impl VkBuffer {
             //TODO: Better way of handling allocator errors
             self.device_context
                 .allocator()
-                .unmap_memory(&allocation)
-                .map_err(|_| vk::Result::ERROR_MEMORY_MAP_FAILED)?;
+                .unmap_memory(&allocation);
         }
 
         // The staging buffer is coherent so flushing is not necessary
@@ -187,8 +186,7 @@ impl Drop for VkBuffer {
         if let Some(raw) = &self.raw {
             self.device_context
                 .allocator()
-                .destroy_buffer(raw.buffer, &raw.allocation)
-                .unwrap();
+                .destroy_buffer(raw.buffer, &raw.allocation);
         }
 
         trace!("destroyed VkBuffer");
