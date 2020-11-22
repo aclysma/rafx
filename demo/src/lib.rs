@@ -44,6 +44,9 @@ pub struct DemoArgs {
     #[structopt(name = "packfile", long, parse(from_os_str))]
     pub packfile: Option<std::path::PathBuf>,
 
+    #[structopt(name = "external-daemon", long)]
+    pub external_daemon: bool,
+
     #[structopt(flatten)]
     pub daemon_args: AssetDaemonArgs,
 }
@@ -58,14 +61,18 @@ pub fn run(args: &DemoArgs) {
         // Initialize the packfile loader with the packfile path
         init::atelier_init_packfile(&mut resources, &packfile);
     } else {
-        log::info!("Hosting local daemon at {:?}", args.daemon_args.address);
+        if !args.external_daemon {
+            log::info!("Hosting local daemon at {:?}", args.daemon_args.address);
 
-        // Spawn the daemon in a background thread. This could be a different process, but
-        // for simplicity we'll launch it here.
-        let daemon_args = args.daemon_args.clone().into();
-        std::thread::spawn(move || {
-            daemon::run(daemon_args);
-        });
+            // Spawn the daemon in a background thread. This could be a different process, but
+            // for simplicity we'll launch it here.
+            let daemon_args = args.daemon_args.clone().into();
+            std::thread::spawn(move || {
+                daemon::run(daemon_args);
+            });
+        } else {
+            log::info!("Connecting to daemon at {:?}", args.daemon_args.address);
+        }
 
         // Connect to the daemon we just launched
         init::atelier_init_daemon(&mut resources, args.daemon_args.address.to_string());
