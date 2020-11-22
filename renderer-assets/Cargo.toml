@@ -19,7 +19,7 @@ ash = ">0.30"
 vk-mem = "0.2"
 
 #TODO: Not sure we really need both
-image = "0.23"
+image = "0.23.12"
 image2 = { version = "0.11", features = [ "ser" ] }
 
 crossbeam-channel = "0.4.2"
