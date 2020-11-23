@@ -25,7 +25,10 @@ use renderer::assets::{
 };
 use renderer::nodes::RenderRegistry;
 use renderer::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use renderer::vulkan::{LogicalSize, MsaaLevel, VkContext, VkContextBuilder, VkDeviceContext, VkSurface, VulkanLinkMethod};
+use renderer::vulkan::{
+    LogicalSize, MsaaLevel, VkContext, VkContextBuilder, VkDeviceContext, VkSurface,
+    VulkanLinkMethod,
+};
 use renderer_shell_vulkan_sdl2::Sdl2Window;
 
 pub fn atelier_init_daemon(
