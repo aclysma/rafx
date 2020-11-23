@@ -64,6 +64,8 @@ impl VkInstance {
         app_name: &CString,
         validation_layer_debug_report_flags: vk::DebugReportFlagsEXT,
     ) -> Result<VkInstance, VkCreateInstanceError> {
+        debug!("Determining vulkan version");
+
         // Determine the supported version of vulkan that's available
         let vulkan_version = match entry.try_enumerate_instance_version()? {
             // Vulkan 1.1+
@@ -144,6 +146,7 @@ impl VkInstance {
 
         info!("Creating vulkan instance");
         let instance: ash::Instance = unsafe { entry.create_instance(&create_info, None)? };
+        info!("vulkan instance created");
 
         // Setup the debug callback for the validation layer
         let debug_reporter = if !validation_layer_debug_report_flags.is_empty() {

@@ -327,7 +327,9 @@ impl VkDevice {
         window: &dyn Window,
         physical_device_type_priority: &[PhysicalDeviceType],
     ) -> Result<Self, VkCreateDeviceError> {
+
         // Get the surface, needed to select the best queue family
+        info!("Creating vulkan surface");
         let surface = unsafe { window.create_vulkan_surface(&instance.entry, &instance.instance)? };
 
         let surface_loader = match &instance.entry {
@@ -337,6 +339,7 @@ impl VkDevice {
         };
 
         // Pick a physical device
+        debug!("Choosing physical device");
         let (physical_device, physical_device_info) = Self::choose_physical_device(
             &instance.instance,
             &surface_loader,

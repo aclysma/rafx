@@ -2,6 +2,7 @@ use crate::asset_resource::AssetResource;
 use crate::features::debug3d::create_debug3d_extract_job;
 use crate::features::mesh::{create_mesh_extract_job, MeshRenderNodeSet};
 use crate::features::sprite::{create_sprite_extract_job, SpriteRenderNodeSet};
+#[cfg(feature = "use-imgui")]
 use crate::imgui_support::Sdl2ImguiManager;
 use crate::phases::TransparentRenderPhase;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
@@ -38,10 +39,12 @@ mod render_graph;
 //TODO: Find a way to not expose this
 mod swapchain_handling;
 use crate::components::DirectionalLightComponent;
+#[cfg(feature = "use-imgui")]
 use crate::features::imgui::create_imgui_extract_job;
 pub use swapchain_handling::SwapchainLifetimeListener;
 
 pub struct GameRendererInner {
+    #[cfg(feature = "use-imgui")]
     imgui_font_atlas_image_view: ResourceArc<ImageViewResource>,
 
     // Everything that is loaded all the time
@@ -74,6 +77,7 @@ impl GameRenderer {
         let vk_context = resources.get_mut::<VkContext>().unwrap();
         let device_context = vk_context.device_context();
 
+        #[cfg(feature = "use-imgui")]
         let imgui_font_atlas_image_view = GameRenderer::create_font_atlas_image_view(
             &device_context,
             &mut asset_manager,
@@ -94,6 +98,7 @@ impl GameRenderer {
         let render_thread = RenderThread::start();
 
         let renderer = GameRendererInner {
+            #[cfg(feature = "use-imgui")]
             imgui_font_atlas_image_view,
             static_resources: game_renderer_resources,
             swapchain_resources: None,
@@ -108,6 +113,7 @@ impl GameRenderer {
         })
     }
 
+    #[cfg(feature = "use-imgui")]
     fn create_font_atlas_image_view(
         device_context: &VkDeviceContext,
         asset_manager: &mut AssetManager,
@@ -339,7 +345,7 @@ impl GameRenderer {
         let main_view = {
             const CAMERA_XY_DISTANCE: f32 = 12.0;
             const CAMERA_Z: f32 = 5.0;
-            const CAMERA_ROTATE_SPEED: f32 = -0.00;
+            const CAMERA_ROTATE_SPEED: f32 = -0.05;
             const CAMERA_LOOP_OFFSET: f32 = -0.3;
             let loop_time = time_state.total_time().as_secs_f32();
             let eye = glam::Vec3::new(
@@ -541,6 +547,7 @@ impl GameRenderer {
                 &guard.static_resources.debug3d_material,
             ));
 
+            #[cfg(feature = "use-imgui")]
             extract_job_set.add_job(create_imgui_extract_job(
                 swapchain_surface_info.extents,
                 &guard.static_resources.imgui_material,

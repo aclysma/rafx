@@ -4,6 +4,7 @@
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
+#[cfg(feature = "use-imgui")]
 use crate::imgui_support::Sdl2ImguiManager;
 use legion::*;
 use renderer::vulkan::VkDeviceContext;
@@ -30,6 +31,7 @@ pub mod daemon;
 mod features;
 mod game_asset_lookup;
 mod game_renderer;
+#[cfg(feature = "use-imgui")]
 mod imgui_support;
 mod init;
 mod phases;
@@ -79,6 +81,7 @@ pub fn run(args: &DemoArgs) {
     }
 
     let sdl2_systems = init::sdl2_init();
+    #[cfg(feature = "use-imgui")]
     init::imgui_init(&mut resources, &sdl2_systems.window);
     init::rendering_init(&mut resources, &sdl2_systems.window);
 
@@ -122,6 +125,7 @@ pub fn run(args: &DemoArgs) {
         //
         // Notify imgui of frame begin
         //
+        #[cfg(feature = "use-imgui")]
         {
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
@@ -163,7 +167,7 @@ pub fn run(args: &DemoArgs) {
             for mut light in query.iter_mut(&mut world) {
                 const LIGHT_XY_DISTANCE: f32 = 50.0;
                 const LIGHT_Z: f32 = 50.0;
-                const LIGHT_ROTATE_SPEED: f32 = 0.0;
+                const LIGHT_ROTATE_SPEED: f32 = -0.25;
                 const LIGHT_LOOP_OFFSET: f32 = 2.0;
                 let loop_time = time_state.total_time().as_secs_f32();
                 let light_from = glam::Vec3::new(
@@ -185,6 +189,7 @@ pub fn run(args: &DemoArgs) {
         //
         // imgui debug draw,
         //
+        #[cfg(feature = "use-imgui")]
         {
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             let time_state = resources.get::<TimeState>().unwrap();
@@ -203,6 +208,7 @@ pub fn run(args: &DemoArgs) {
         //
         // Close imgui input for this frame and render the results to memory
         //
+        #[cfg(feature = "use-imgui")]
         {
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             imgui_manager.render(&sdl2_systems.window);
@@ -271,10 +277,19 @@ fn process_input(
     resources: &Resources,
     event_pump: &mut sdl2::EventPump,
 ) -> bool {
+    #[cfg(feature = "use-imgui")]
     let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
     for event in event_pump.poll_iter() {
+        #[cfg(feature = "use-imgui")]
         imgui_manager.handle_event(&event);
-        if !imgui_manager.ignore_event(&event) {
+
+        #[cfg(feature = "use-imgui")]
+        let ignore_event = imgui_manager.ignore_event(&event);
+
+        #[cfg(not(feature = "use-imgui"))]
+        let ignore_event = false;
+
+        if !ignore_event {
             //log::trace!("{:?}", event);
             match event {
                 //

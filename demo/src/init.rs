@@ -92,6 +92,7 @@ pub fn sdl2_init() -> Sdl2Systems {
 }
 
 // Should occur *before* the renderer starts
+#[cfg(feature = "use-imgui")]
 pub fn imgui_init(
     resources: &mut Resources,
     sdl2_window: &sdl2::video::Window,
@@ -115,9 +116,9 @@ pub fn rendering_init(
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(DebugDraw3DResource::new());
 
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, not(feature = "static-vulkan")))]
     let use_vulkan_debug_layer = true;
-    #[cfg(not(debug_assertions))]
+    #[cfg(any(not(debug_assertions), feature = "static-vulkan"))]
     let use_vulkan_debug_layer = false;
 
     #[cfg(not(feature = "static-vulkan"))]
@@ -128,8 +129,8 @@ pub fn rendering_init(
     let context = VkContextBuilder::new()
         .link_method(link_method)
         .use_vulkan_debug_layer(use_vulkan_debug_layer)
-        .msaa_level_priority(vec![MsaaLevel::Sample4])
-        //.msaa_level_priority(vec![MsaaLevel::Sample1])
+        //.msaa_level_priority(vec![MsaaLevel::Sample4])
+        .msaa_level_priority(vec![MsaaLevel::Sample1])
         .prefer_mailbox_present_mode();
 
     let render_registry = renderer::nodes::RenderRegistryBuilder::default()

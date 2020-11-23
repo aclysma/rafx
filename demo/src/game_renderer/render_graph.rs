@@ -41,7 +41,7 @@ pub fn build_render_graph(
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
 ) -> VkResult<BuildRenderGraphResult> {
     //TODO: Fix this back to be color format - need to happen in the combine pass
-    let color_format = swapchain_surface_info.color_format;
+    let color_format = swapchain_surface_info.surface_format.format;
     let depth_format = swapchain_surface_info.depth_format;
     let swapchain_format = swapchain_surface_info.surface_format.format;
     let samples = swapchain_surface_info.msaa_level.into();
@@ -147,7 +147,7 @@ pub fn build_render_graph(
             shadow_map,
         }
     };
-
+/*
     let bloom_extract_pass = {
         struct BloomExtractPass {
             node: RenderGraphNodeId,
@@ -436,7 +436,7 @@ pub fn build_render_graph(
 
         BloomCombinePass { node, color }
     };
-
+*/
     let ui_pass = {
         struct UiPass {
             node: RenderGraphNodeId,
@@ -446,7 +446,7 @@ pub fn build_render_graph(
         // This node has a single color attachment
         let node = graph.add_node("Ui", RenderGraphQueue::DefaultGraphics);
         let color =
-            graph.modify_color_attachment(node, bloom_combine_pass.color, 0, Default::default());
+            graph.modify_color_attachment(node, opaque_pass.color, 0, Default::default());
         graph.set_image_name(color, "color");
 
         // Adding a phase dependency insures that we create all the pipelines for materials

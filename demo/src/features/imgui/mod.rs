@@ -1,4 +1,7 @@
+
+#[cfg(feature = "use-imgui")]
 use crate::features::imgui::extract::ImGuiExtractJobImpl;
+#[cfg(feature = "use-imgui")]
 use crate::imgui_support::ImGuiDrawData;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
@@ -12,10 +15,14 @@ use renderer::nodes::RenderFeatureIndex;
 use renderer::resources::{ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
 use std::convert::TryInto;
 
+#[cfg(feature = "use-imgui")]
 mod extract;
+#[cfg(feature = "use-imgui")]
 mod prepare;
+#[cfg(feature = "use-imgui")]
 mod write;
 
+#[cfg(feature = "use-imgui")]
 pub fn create_imgui_extract_job(
     extents: Extent2D,
     imgui_material: &Handle<MaterialAsset>,
@@ -51,6 +58,7 @@ lazy_static::lazy_static! {
 
 renderer::declare_render_feature!(ImGuiRenderFeature, DEBUG_3D_FEATURE_INDEX);
 
+#[cfg(feature = "use-imgui")]
 pub(self) struct ExtractedImGuiData {
     imgui_draw_data: Option<ImGuiDrawData>,
 }
