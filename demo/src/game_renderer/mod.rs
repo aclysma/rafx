@@ -343,10 +343,10 @@ impl GameRenderer {
         // Determine Camera Location
         //
         let main_view = {
-            const CAMERA_XY_DISTANCE: f32 = 12.0;
-            const CAMERA_Z: f32 = 5.0;
+            const CAMERA_XY_DISTANCE: f32 = 18.0;
+            const CAMERA_Z: f32 = 7.5;
             const CAMERA_ROTATE_SPEED: f32 = -0.05;
-            const CAMERA_LOOP_OFFSET: f32 = -0.3;
+            const CAMERA_LOOP_OFFSET: f32 = -4.4;
             let loop_time = time_state.total_time().as_secs_f32();
             let eye = glam::Vec3::new(
                 CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
@@ -354,9 +354,9 @@ impl GameRenderer {
                 CAMERA_Z,
             );
 
-            let extents = window.logical_size();
-            let extents_width = extents.width;
-            let extents_height = extents.height;
+            let window_size = window.logical_size();
+            let extents_width = window_size.width.max(1);
+            let extents_height = window_size.height.max(1);
             let aspect_ratio = extents_width as f32 / extents_height as f32;
 
             let view =
