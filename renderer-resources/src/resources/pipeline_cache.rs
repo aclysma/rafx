@@ -333,12 +333,12 @@ impl GraphicsPipelineCache {
     }
 
     pub fn precache_pipelines_for_all_phases(&self) -> VkResult<()> {
-        let mut guard = self.inner.lock().unwrap();
-        let inner = &mut *guard;
-        #[cfg(debug_assertions)]
-        {
-            inner.lock_call_count += 1;
-        }
+        // let mut guard = self.inner.lock().unwrap();
+        // let inner = &mut *guard;
+        // #[cfg(debug_assertions)]
+        // {
+        //     inner.lock_call_count += 1;
+        // }
 
         //TODO: Avoid iterating everything all the time
         //TODO: This will have to be reworked to include vertex layout as part of the key. Current

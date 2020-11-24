@@ -283,7 +283,7 @@ impl GameRenderer {
         game_renderer: &GameRenderer,
         world: &World,
         resources: &Resources,
-        _window: &dyn Window,
+        window: &dyn Window,
         frame_in_flight: &FrameInFlight,
     ) -> VkResult<RenderFrameJob> {
         let t0 = std::time::Instant::now();
@@ -348,8 +348,9 @@ impl GameRenderer {
                 CAMERA_Z,
             );
 
-            let extents_width = 900;
-            let extents_height = 600;
+            let extents = window.logical_size();
+            let extents_width = extents.width;
+            let extents_height = extents.height;
             let aspect_ratio = extents_width as f32 / extents_height as f32;
 
             let view =
