@@ -60,7 +60,7 @@ pub fn build_render_graph(
         let depth = graph.create_depth_attachment(
             node,
             Some(vk::ClearDepthStencilValue {
-                depth: 1.0,
+                depth: 0.0,
                 stencil: 0,
             }),
             RenderGraphImageConstraint {
@@ -116,7 +116,7 @@ pub fn build_render_graph(
         let depth = graph.create_depth_attachment(
             node,
             Some(vk::ClearDepthStencilValue {
-                depth: 1.0,
+                depth: 0.0,
                 stencil: 0,
             }),
             RenderGraphImageConstraint {

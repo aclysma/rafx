@@ -87,10 +87,10 @@ layout (set = 0, binding = 1) uniform sampler smp;
 //             address_mode_w: ClampToBorder,
 //             anisotropy_enable: true,
 //             max_anisotropy: 16.0,
-//             border_color: IntOpaqueWhite,
+//             border_color: IntOpaqueBlack,
 //             unnormalized_coordinates: false,
 //             compare_enable: true,
-//             compare_op: Less,
+//             compare_op: Greater,
 //             mipmap_mode: Linear,
 //             mip_lod_bias: 0,
 //             min_lod: 0,
@@ -669,7 +669,7 @@ float calculate_percent_lit(vec4 shadow_map_pos, vec3 normal, vec3 light_dir) {
     float bias = max(0.0005 * (1.0 - dot(normal, surface_to_light_dir)), 0.0001);
     // float bias = 0.0005;
     float distance_from_closest_object_to_light = texture(sampler2D(shadow_map_image, smp_depth), sample_location, 0.5).r;
-    float shadow = distance_from_light - bias < distance_from_closest_object_to_light ? 1.0 : 0.0;
+    float shadow = distance_from_light + bias < distance_from_closest_object_to_light ? 1.0 : 0.0;
     */
 
     // PCF form single sample
@@ -679,7 +679,7 @@ float calculate_percent_lit(vec4 shadow_map_pos, vec3 normal, vec3 light_dir) {
         sampler2DShadow(shadow_map_image, smp_depth),
         vec3(
             sample_location,
-            distance_from_light - bias
+            distance_from_light + bias
         )
     ).r;
     */
@@ -697,7 +697,7 @@ float calculate_percent_lit(vec4 shadow_map_pos, vec3 normal, vec3 light_dir) {
                 sampler2DShadow(shadow_map_image, smp_depth),
                 vec3(
                     sample_location + vec2(x, y) * texelSize,
-                    distance_from_light - bias
+                    distance_from_light + bias
                 )
             ).r;
         }
@@ -717,7 +717,7 @@ float calculate_percent_lit(vec4 shadow_map_pos, vec3 normal, vec3 light_dir) {
                 sampler2DShadow(shadow_map_image, smp_depth),
                 vec3(
                     sample_location + vec2(x, y) * texelSize,
-                    distance_from_light - bias
+                    distance_from_light + bias
                 )
             ).r;
         }

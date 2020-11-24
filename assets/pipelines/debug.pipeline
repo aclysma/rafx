@@ -62,7 +62,7 @@
     depth_stencil_state: (
         depth_test_enable: true,
         depth_write_enable: true,
-        depth_compare_op: Less,
+        depth_compare_op: Greater,
         depth_bounds_test_enable: false,
         min_depth_bounds: 0.0,
         max_depth_bounds: 1.0,
