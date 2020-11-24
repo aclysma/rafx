@@ -1,7 +1,9 @@
 use atelier_assets::loader::handle::Handle;
+use lazy_static;
 use renderer::assets::BufferAsset;
 use renderer::assets::ImageAsset;
 use renderer::assets::MaterialInstanceAsset;
+use renderer::resources::{VertexDataLayout, VertexDataSetLayout};
 use serde::{Deserialize, Serialize};
 use shaders::mesh_frag::MaterialDataStd140;
 use type_uuid::*;
@@ -104,7 +106,7 @@ pub struct GltfMaterialAsset {
 }
 
 /// Vertex format for vertices sent to the GPU
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Default)]
 #[repr(C)]
 pub struct MeshVertex {
     pub position: [f32; 3],
@@ -113,6 +115,19 @@ pub struct MeshVertex {
     // see GLTF spec for more info
     pub tangent: [f32; 4],
     pub tex_coord: [f32; 2],
+}
+
+lazy_static::lazy_static! {
+    pub static ref MESH_VERTEX_LAYOUT : VertexDataSetLayout = {
+        use renderer::resources::vk_description::Format;
+
+        VertexDataLayout::build_vertex_layout(&MeshVertex::default(), |builder, vertex| {
+            builder.add_member(&vertex.position, "POSITION", Format::R32G32B32_SFLOAT);
+            builder.add_member(&vertex.normal, "NORMAL", Format::R32G32B32_SFLOAT);
+            builder.add_member(&vertex.tangent, "TANGENT", Format::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.tex_coord, "TEXCOORD", Format::R32G32_SFLOAT);
+        }).into_set()
+    };
 }
 
 #[derive(Serialize, Deserialize, Clone)]

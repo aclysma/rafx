@@ -1,9 +1,12 @@
 use crate::resources::resource_arc::{ResourceId, WeakResourceArc};
+use crate::resources::vertex_data::{VertexDataSetLayout, VertexDataSetLayoutHash};
+use crate::vk_description as dsc;
 use crate::{
     GraphicsPipelineResource, MaterialPassResource, RenderPassResource, ResourceArc,
     ResourceLookupSet,
 };
 use ash::prelude::VkResult;
+use ash::vk;
 use fnv::FnvHashMap;
 use renderer_nodes::{RenderPhase, RenderPhaseIndex, RenderRegistry, MAX_RENDER_PHASE_COUNT};
 use std::hash::Hash;
@@ -18,6 +21,7 @@ use std::sync::{Arc, Mutex};
 struct CachedGraphicsPipelineKey {
     material_pass: ResourceId,
     renderpass: ResourceId,
+    vertex_data_set_layout: VertexDataSetLayoutHash,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -44,6 +48,9 @@ pub struct GraphicsPipelineCacheInner {
 
     current_frame_index: u64,
     frames_to_persist: u64,
+
+    #[cfg(debug_assertions)]
+    vertex_data_set_layouts: FnvHashMap<VertexDataSetLayoutHash, VertexDataSetLayout>,
 
     #[cfg(debug_assertions)]
     lock_call_count_previous_frame: u64,
@@ -78,6 +85,8 @@ impl GraphicsPipelineCache {
             current_frame_index: 0,
             frames_to_persist: DEFAULT_FRAMES_TO_PERSIST,
             #[cfg(debug_assertions)]
+            vertex_data_set_layouts: Default::default(),
+            #[cfg(debug_assertions)]
             lock_call_count_previous_frame: 0,
             #[cfg(debug_assertions)]
             lock_call_count: 0,
@@ -86,6 +95,16 @@ impl GraphicsPipelineCache {
         GraphicsPipelineCache {
             render_registry: render_registry.clone(),
             inner: Arc::new(Mutex::new(inner)),
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    fn verify_data_set_layout_hash_unique(
+        inner: &mut GraphicsPipelineCacheInner,
+        layout: &VertexDataSetLayout,
+    ) {
+        if let Some(previous_layout) = inner.vertex_data_set_layouts.get(&layout.hash()) {
+            assert_eq!(*previous_layout, *layout);
         }
     }
 
@@ -180,9 +199,10 @@ impl GraphicsPipelineCache {
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
+        vertex_data_set_layout: &VertexDataSetLayout,
     ) -> Option<ResourceArc<GraphicsPipelineResource>> {
         // VkResult is always Ok if returning cached pipelines
-        self.graphics_pipeline(material_pass, renderpass, false)
+        self.graphics_pipeline(material_pass, renderpass, vertex_data_set_layout, false)
             .map(|x| x.unwrap())
     }
 
@@ -190,27 +210,31 @@ impl GraphicsPipelineCache {
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
+        vertex_data_set_layout: &VertexDataSetLayout,
     ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
         // graphics_pipeline never returns none if create_if_missing is true
-        self.graphics_pipeline(material_pass, renderpass, true)
-            .unwrap()
+        self.graphics_pipeline(material_pass, renderpass, vertex_data_set_layout, true)
+            .ok_or(vk::Result::ERROR_UNKNOWN)?
     }
 
     pub fn graphics_pipeline(
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
+        vertex_data_set_layout: &VertexDataSetLayout,
         create_if_missing: bool,
     ) -> Option<VkResult<ResourceArc<GraphicsPipelineResource>>> {
         let key = CachedGraphicsPipelineKey {
             material_pass: material_pass.get_hash(),
             renderpass: renderpass.get_hash(),
+            vertex_data_set_layout: vertex_data_set_layout.hash(),
         };
 
         let mut guard = self.inner.lock().unwrap();
         let inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
+            Self::verify_data_set_layout_hash_unique(inner, vertex_data_set_layout);
             inner.lock_call_count += 1;
         }
 
@@ -225,9 +249,68 @@ impl GraphicsPipelineCache {
             })
             .or_else(|| {
                 if create_if_missing {
-                    let pipeline = inner
-                        .resource_lookup_set
-                        .get_or_create_graphics_pipeline(&material_pass, &renderpass);
+                    let mut binding_descriptions = Vec::default();
+                    for (binding_index, binding) in
+                        vertex_data_set_layout.bindings().iter().enumerate()
+                    {
+                        binding_descriptions.push(dsc::VertexInputBindingDescription {
+                            binding: binding_index as u32,
+                            input_rate: dsc::VertexInputRate::Vertex,
+                            stride: binding.vertex_size() as u32,
+                        });
+                    }
+
+                    let mut attribute_descriptions = Vec::default();
+
+                    for vertex_input in &*material_pass.get_raw().material_pass_key.vertex_inputs {
+                        let member = vertex_data_set_layout
+                            .member(&vertex_input.semantic)
+                            .ok_or_else(|| {
+                                log::error!(
+                                    "Vertex data does not support this material. Missing data {}",
+                                    vertex_input.semantic
+                                );
+                                log::info!(
+                                    "  required inputs:\n{:#?}",
+                                    material_pass.get_raw().material_pass_key.vertex_inputs
+                                );
+                                log::info!(
+                                    "  available inputs:\n{:#?}",
+                                    vertex_data_set_layout.members()
+                                );
+                                vk::Result::ERROR_UNKNOWN
+                            })
+                            .ok()?;
+
+                        attribute_descriptions.push(dsc::VertexInputAttributeDescription {
+                            binding: member.binding as u32,
+                            format: member.format,
+                            location: vertex_input.location,
+                            offset: member.offset as u32,
+                        })
+                    }
+
+                    let vertex_input_state = dsc::PipelineVertexInputState {
+                        binding_descriptions,
+                        attribute_descriptions,
+                    };
+
+                    log::trace!("Creating graphics pipeline. Setting up vertex formats:");
+                    log::trace!(
+                        "  required inputs:\n{:#?}",
+                        material_pass.get_raw().material_pass_key.vertex_inputs
+                    );
+                    log::trace!(
+                        "  available inputs:\n{:#?}",
+                        vertex_data_set_layout.members()
+                    );
+                    log::trace!("  produces vertex input state:\n{:#?}", vertex_input_state);
+
+                    let pipeline = inner.resource_lookup_set.get_or_create_graphics_pipeline(
+                        &material_pass,
+                        &renderpass,
+                        Arc::new(vertex_input_state),
+                    );
 
                     if let Ok(pipeline) = pipeline {
                         inner.cached_pipelines.insert(
@@ -258,6 +341,10 @@ impl GraphicsPipelineCache {
         }
 
         //TODO: Avoid iterating everything all the time
+        //TODO: This will have to be reworked to include vertex layout as part of the key. Current
+        // plan is to register vertex types in code with the registry and have materials reference
+        // them by name
+        /*
         for render_phase_index in 0..MAX_RENDER_PHASE_COUNT {
             for (renderpass_hash, renderpass) in
                 &inner.renderpass_assignments[render_phase_index as usize]
@@ -290,6 +377,7 @@ impl GraphicsPipelineCache {
                 }
             }
         }
+        */
 
         Ok(())
     }

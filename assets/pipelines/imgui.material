@@ -15,40 +15,6 @@
                     entry_name: "main"
                 ),
             ],
-            shader_interface: (
-                vertex_input_state: (
-                    binding_descriptions: [
-                        (
-                            binding: 0,
-                            stride: 20,
-                            input_rate: Vertex,
-                        ),
-                    ],
-                    attribute_descriptions: [
-                        (
-                            location: 0,
-                            binding: 0,
-                            format: R32G32_SFLOAT,
-                            offset: 0,
-                            //slot_name: "POSITION"
-                        ),
-                        (
-                            location: 1,
-                            binding: 0,
-                            format: R32G32_SFLOAT,
-                            offset: 8,
-                            //slot_name: "TEXCOORD_0"
-                        ),
-                        (
-                            location: 2,
-                            binding: 0,
-                            format: R8G8B8A8_UNORM,
-                            offset: 16,
-                            //slot_name: "COLOR_0"
-                        ),
-                    ],
-                ),
-            ),
         ),
     ]
 )

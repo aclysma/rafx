@@ -10,9 +10,9 @@ use renderer_nodes::{RenderPhase, RenderPhaseIndex};
 pub use renderer_resources::DescriptorSetLayoutResource;
 pub use renderer_resources::GraphicsPipelineResource;
 pub use renderer_resources::PipelineLayoutResource;
-use renderer_resources::ShaderModuleResource;
 use renderer_resources::{vk_description as dsc, DescriptorSetArc, ResourceArc};
 use renderer_resources::{DescriptorSetWriteSet, MaterialPassResource, SamplerResource};
+use renderer_resources::{MaterialPassVertexInput, ShaderModuleResource};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -74,18 +74,11 @@ pub struct PipelineShaderStage {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct MaterialPassShaderInterface {
-    // Other data (like descriptor set layouts) is auto-generated and comes from ReflectedEntryPoint
-    pub vertex_input_state: dsc::PipelineVertexInputState,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialPassData {
     pub name: Option<String>,
     pub phase: Option<String>,
     pub pipeline: Handle<PipelineAsset>,
     pub shaders: Vec<PipelineShaderStage>,
-    pub shader_interface: MaterialPassShaderInterface,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -112,7 +105,7 @@ pub struct MaterialPassInner {
     pub material_pass_resource: ResourceArc<MaterialPassResource>,
 
     //descriptor_set_factory: DescriptorSetFactory,
-    pub shader_interface: MaterialPassShaderInterface,
+    pub vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
 
     //TODO: Use hash instead of string. Probably want to have a "hashed string" type that keeps the
     // string around only in debug mode. Maybe this could be generalized to a HashOfThing<T>.
@@ -141,10 +134,6 @@ impl MaterialPass {
         let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
 
         let fixed_function_state = Arc::new(dsc::FixedFunctionState {
-            vertex_input_state: material_pass_data
-                .shader_interface
-                .vertex_input_state
-                .clone(),
             input_assembly_state: pipeline_asset.input_assembly_state.clone(),
             viewport_state: pipeline_asset.viewport_state.clone(),
             rasterization_state: pipeline_asset.rasterization_state.clone(),
@@ -162,6 +151,7 @@ impl MaterialPass {
 
         let mut descriptor_set_layout_defs = Vec::default();
         let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
+        let mut vertex_inputs = None;
 
         let mut push_constant_ranges = vec![];
 
@@ -206,6 +196,20 @@ impl MaterialPass {
             }
 
             log::trace!("  Reflection data:\n{:#?}", reflection_data);
+
+            if stage.stage == dsc::ShaderStage::Vertex {
+                let inputs: Vec<_> = reflection_data
+                    .vertex_inputs
+                    .iter()
+                    .map(|x| MaterialPassVertexInput {
+                        semantic: x.semantic.clone(),
+                        location: x.location,
+                    })
+                    .collect();
+
+                assert!(vertex_inputs.is_none());
+                vertex_inputs = Some(Arc::new(inputs));
+            }
 
             for (range_index, range) in reflection_data.push_constants.iter().enumerate() {
                 if let Some(existing_range) = push_constant_ranges.get(range_index) {
@@ -327,6 +331,14 @@ impl MaterialPass {
             }
         }
 
+        let vertex_inputs = vertex_inputs.ok_or_else(|| {
+            log::error!(
+                "The material pass named '{:?}' does not specify a vertex shader",
+                material_pass_data.name
+            );
+            vk::Result::ERROR_UNKNOWN
+        })?;
+
         //
         // Descriptor set layout
         //
@@ -356,6 +368,7 @@ impl MaterialPass {
             shader_module_metas,
             pipeline_layout.clone(),
             fixed_function_state,
+            vertex_inputs.clone(),
         )?;
 
         //
@@ -386,8 +399,8 @@ impl MaterialPass {
             pipeline_layout,
             shader_modules,
             material_pass_resource: material_pass.clone(),
-            shader_interface: material_pass_data.shader_interface.clone(),
             pass_slot_name_lookup: Arc::new(pass_slot_name_lookup),
+            vertex_inputs,
         };
 
         Ok(MaterialPass {

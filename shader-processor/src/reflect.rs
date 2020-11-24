@@ -1,6 +1,6 @@
 use renderer_assets::assets::reflect::{
     ReflectedDescriptorSetLayout, ReflectedDescriptorSetLayoutBinding, ReflectedEntryPoint,
-    ReflectedPushConstant,
+    ReflectedPushConstant, ReflectedVertexInput,
 };
 
 use renderer_resources::vk_description as dsc;
@@ -281,29 +281,37 @@ where
             }
         }
 
-        //TODO: Implement these
-        // let input_variables = Default::default();
-        // let output_variables = Default::default();
+        //TODO: Store the type and verify that the format associated in the game i.e. R32G32B32 is
+        // something reasonable (like vec3).
+        let mut vertex_inputs = Vec::default();
+        if entry_point.execution_model == spirv_cross::spirv::ExecutionModel::Vertex {
+            for resource in shader_resources.stage_inputs {
+                let name = &resource.name;
+                let location = ast
+                    .get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)
+                    .map_err(|_x| "could not get descriptor binding index from reflection data")?;
 
-        // let r = ReflectedInputVariable {
-        //     name,
-        //     format,
-        //     location
-        // };
+                let parsed_binding = declarations.bindings.iter().find(|x| x.parsed.layout_parts.location == Some(location as usize))
+                    .or_else(|| declarations.bindings.iter().find(|x| x.parsed.instance_name == *name))
+                    .ok_or_else(|| format!("A resource named {} in spirv reflection data was not matched up to a resource scanned in source code.", resource.name))?;
 
-        // let r = ReflectedOutputVariable {
-        //     name,
-        //     format,
-        //     location
-        // };
+                let semantic = &parsed_binding.annotations.semantic.as_ref().map(|x| x.0.clone())
+                    .ok_or_else(|| format!("No semantic annotation for vertex input '{}'. All vertex inputs must have a semantic annotation.", name))?;
+
+                vertex_inputs.push(ReflectedVertexInput {
+                    name: name.clone(),
+                    semantic: semantic.clone(),
+                    location,
+                });
+            }
+        }
 
         reflected_entry_points.push(ReflectedEntryPoint {
             name: entry_point_name,
             stage_flags,
             descriptor_set_layouts,
             push_constants,
-            // input_variables,
-            // output_variables
+            vertex_inputs,
         });
     }
 

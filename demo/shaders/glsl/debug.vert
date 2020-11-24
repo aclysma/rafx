@@ -7,7 +7,10 @@ layout(set = 0, binding = 0) uniform PerFrameUbo {
     mat4 view_proj;
 } per_frame_data;
 
+// @[semantic("POSITION")]
 layout(location = 0) in vec3 in_pos;
+
+// @[semantic("COLOR")]
 layout(location = 1) in vec4 in_color;
 
 layout(location = 0) out vec4 out_color;

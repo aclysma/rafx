@@ -29,7 +29,11 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
         let pipeline = write_context
             .resource_context
             .graphics_pipeline_cache()
-            .get_or_create_graphics_pipeline(&self.sprite_material, &write_context.renderpass)
+            .get_or_create_graphics_pipeline(
+                &self.sprite_material,
+                &write_context.renderpass,
+                &super::SPRITE_VERTEX_LAYOUT,
+            )
             .unwrap();
 
         unsafe {

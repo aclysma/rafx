@@ -9,7 +9,7 @@ use renderer::assets::MaterialAsset;
 use renderer::nodes::ExtractJob;
 use renderer::nodes::RenderFeature;
 use renderer::nodes::RenderFeatureIndex;
-use renderer::resources::{ImageViewResource, ResourceArc};
+use renderer::resources::{ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
 use std::convert::TryInto;
 
 mod extract;
@@ -31,12 +31,22 @@ pub fn create_imgui_extract_job(
 /// Per-pass "global" data
 pub type ImGuiUniformBufferObject = shaders::imgui_vert::ArgsUniform;
 
-/// Vertex format for vertices sent to the GPU
-#[derive(Clone, Debug, Copy)]
-#[repr(C)]
-pub struct ImGuiVertex {
-    pub pos: [f32; 3],
-    pub color: [f32; 4],
+lazy_static::lazy_static! {
+    pub static ref IMGUI_VERTEX_LAYOUT : VertexDataSetLayout = {
+        use renderer::resources::vk_description::Format;
+
+        let vertex = imgui::DrawVert {
+            pos: Default::default(),
+            col: Default::default(),
+            uv: Default::default()
+        };
+
+        VertexDataLayout::build_vertex_layout(&vertex, |builder, vertex| {
+            builder.add_member(&vertex.pos, "POSITION", Format::R32G32_SFLOAT);
+            builder.add_member(&vertex.uv, "TEXCOORD", Format::R32G32_SFLOAT);
+            builder.add_member(&vertex.col, "COLOR", Format::R8G8B8A8_UNORM);
+        }).into_set()
+    };
 }
 
 renderer::declare_render_feature!(ImGuiRenderFeature, DEBUG_3D_FEATURE_INDEX);

@@ -17,19 +17,32 @@ use extract::SpriteExtractJob;
 mod prepare;
 
 mod write;
-use renderer::resources::{DescriptorSetArc, ImageViewResource, ResourceArc};
+use renderer::resources::{
+    DescriptorSetArc, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,
+};
 use write::SpriteCommandWriter;
 
 /// Per-pass "global" data
 pub type SpriteUniformBufferObject = shaders::sprite_vert::ArgsUniform;
 
 /// Vertex format for vertices sent to the GPU
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Default)]
 #[repr(C)]
 pub struct SpriteVertex {
     pub pos: [f32; 2],
     pub tex_coord: [f32; 2],
     //color: [u8; 4],
+}
+
+lazy_static::lazy_static! {
+    pub static ref SPRITE_VERTEX_LAYOUT : VertexDataSetLayout = {
+        use renderer::resources::vk_description::Format;
+
+        VertexDataLayout::build_vertex_layout(&SpriteVertex::default(), |builder, vertex| {
+            builder.add_member(&vertex.pos, "POSITION", Format::R32G32_SFLOAT);
+            builder.add_member(&vertex.tex_coord, "TEXCOORD", Format::R32G32_SFLOAT);
+        }).into_set()
+    };
 }
 
 /// Used as static data to represent a quad

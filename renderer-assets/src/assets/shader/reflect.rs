@@ -26,23 +26,16 @@ pub struct ReflectedDescriptorSetLayout {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedInputVariable {
-    pub name: String,
-    pub location: u32,
-    pub format: dsc::Format,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedOutputVariable {
-    pub name: String,
-    pub location: u32,
-    pub format: dsc::Format,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ReflectedPushConstant {
     pub name: String,
     pub push_constant: dsc::PushConstantRange,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ReflectedVertexInput {
+    pub name: String,
+    pub semantic: String,
+    pub location: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -51,7 +44,6 @@ pub struct ReflectedEntryPoint {
     pub stage_flags: dsc::ShaderStageFlags,
     // These are indexed by descriptor set index (i.e. not sparse)
     pub descriptor_set_layouts: Vec<Option<ReflectedDescriptorSetLayout>>,
-    // pub input_variables: Vec<ReflectedInputVariable>,
-    // pub output_variables: Vec<ReflectedOutputVariable>,
     pub push_constants: Vec<ReflectedPushConstant>,
+    pub vertex_inputs: Vec<ReflectedVertexInput>,
 }

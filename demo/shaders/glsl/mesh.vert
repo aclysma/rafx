@@ -18,11 +18,18 @@ layout(set = 2, binding = 0) uniform PerObjectData {
     mat4 model_view_proj;
 } per_object_data;
 
+// @[semantic("POSITION")]
 layout (location = 0) in vec3 in_pos;
+
+// @[semantic("NORMAL")]
 layout (location = 1) in vec3 in_normal;
+
 // w component is a sign value (-1 or +1) indicating handedness of the tangent basis
 // see GLTF spec for more info
+// @[semantic("TANGENT")]
 layout (location = 2) in vec4 in_tangent;
+
+// @[semantic("TEXCOORD")]
 layout (location = 3) in vec2 in_uv;
 
 // Do all math in view space so that it is more easily portable to deferred/clustered

@@ -7,8 +7,13 @@ layout(set = 0, binding = 0) uniform Args {
     mat4 mvp;
 } uniform_buffer;
 
+// @[semantic("POSITION")]
 layout(location = 0) in vec2 pos;
+
+// @[semantic("TEXCOORD")]
 layout(location = 1) in vec2 in_uv;
+
+// @[semantic("COLOR")]
 layout(location = 2) in vec4 in_color;
 
 layout(location = 0) out vec2 uv;

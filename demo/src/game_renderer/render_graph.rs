@@ -6,10 +6,16 @@ use ash::version::DeviceV1_0;
 use ash::vk;
 use renderer::graph::*;
 use renderer::nodes::{PreparedRenderData, RenderView};
-use renderer::resources::vk_description as dsc;
 use renderer::resources::ResourceContext;
+use renderer::resources::{vk_description as dsc, VertexDataSetLayout};
 use renderer::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
 use renderer::vulkan::SwapchainInfo;
+
+lazy_static::lazy_static! {
+    pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
+        VertexDataSetLayout::new(vec![])
+    };
+}
 
 pub struct BuildRenderGraphResult {
     pub shadow_map: ResourceArc<ImageViewResource>,
@@ -192,7 +198,11 @@ pub fn build_render_graph(
                 .graph_context
                 .resource_context()
                 .graphics_pipeline_cache()
-                .get_or_create_graphics_pipeline(&bloom_extract_material_pass, args.renderpass)?;
+                .get_or_create_graphics_pipeline(
+                    &bloom_extract_material_pass,
+                    args.renderpass,
+                    &EMPTY_VERTEX_LAYOUT,
+                )?;
 
             // Set up a descriptor set pointing at the image so we can sample from it
             let mut descriptor_set_allocator = args
@@ -277,7 +287,11 @@ pub fn build_render_graph(
                     .graph_context
                     .resource_context()
                     .graphics_pipeline_cache()
-                    .get_or_create_graphics_pipeline(&bloom_blur_material_pass, args.renderpass)?;
+                    .get_or_create_graphics_pipeline(
+                        &bloom_blur_material_pass,
+                        args.renderpass,
+                        &EMPTY_VERTEX_LAYOUT,
+                    )?;
 
                 let descriptor_set_layouts =
                     &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets;
@@ -370,7 +384,11 @@ pub fn build_render_graph(
                 .graph_context
                 .resource_context()
                 .graphics_pipeline_cache()
-                .get_or_create_graphics_pipeline(&bloom_combine_material_pass, args.renderpass)?;
+                .get_or_create_graphics_pipeline(
+                    &bloom_combine_material_pass,
+                    args.renderpass,
+                    &EMPTY_VERTEX_LAYOUT,
+                )?;
 
             // Set up a descriptor set pointing at the image so we can sample from it
             let mut descriptor_set_allocator = args

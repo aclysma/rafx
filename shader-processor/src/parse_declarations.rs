@@ -23,6 +23,10 @@ pub(crate) struct ImmutableSamplersAnnotation(pub(crate) Vec<dsc::Sampler>);
 #[serde(rename = "slot_name")]
 pub(crate) struct SlotNameAnnotation(pub(crate) String);
 
+#[derive(Default, Deserialize, Debug)]
+#[serde(rename = "semantic")]
+pub(crate) struct SemanticAnnotation(pub(crate) String);
+
 fn parse_ron_or_default<'de, T: Default + Deserialize<'de>>(data: &'de str) -> Result<T, String> {
     if !data.is_empty() {
         ron::de::from_str(&data)
@@ -76,6 +80,7 @@ pub(crate) struct BindingAnnotations {
     pub(crate) use_internal_buffer: Option<UseInternalBufferAnnotation>,
     pub(crate) immutable_samplers: Option<ImmutableSamplersAnnotation>,
     pub(crate) slot_name: Option<SlotNameAnnotation>,
+    pub(crate) semantic: Option<SemanticAnnotation>,
 }
 
 impl BindingAnnotations {
@@ -108,6 +113,9 @@ impl BindingAnnotations {
                 }
                 "slot_name" => {
                     parsed_annotations.slot_name = Some(parse_ron_or_default(&annotation_data)?);
+                }
+                "semantic" => {
+                    parsed_annotations.semantic = Some(parse_ron_or_default(&annotation_data)?);
                 }
                 _ => {
                     return Err(format!(
@@ -298,6 +306,7 @@ pub(crate) enum BindingType {
 pub(crate) struct ParsedLayoutParts {
     pub(crate) set: Option<usize>,
     pub(crate) binding: Option<usize>,
+    pub(crate) location: Option<usize>,
     pub(crate) push_constant: bool,
 }
 
@@ -339,6 +348,21 @@ impl ParsedLayoutParts {
                         .map_err(|x: ParseIntError| x.to_string())?;
 
                     parsed.binding = Some(binding)
+                }
+                "location" => {
+                    if parsed.location.is_some() {
+                        return Err("layout parts for a binding defines location multiple times"
+                            .to_string());
+                    }
+
+                    let location: usize = part
+                        .value
+                        .as_ref()
+                        .ok_or_else(|| "location in layout but no index assigned".to_string())?
+                        .parse()
+                        .map_err(|x: ParseIntError| x.to_string())?;
+
+                    parsed.location = Some(location)
                 }
                 _ => {}
             }
@@ -527,6 +551,7 @@ pub(crate) struct ParsedStructWithAnnotations {
     pub(crate) annotations: StructAnnotations,
 }
 
+#[derive(Debug)]
 pub(crate) struct ParsedBindingWithAnnotations {
     pub(crate) parsed: ParseBindingResult,
     pub(crate) annotations: BindingAnnotations,

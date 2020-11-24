@@ -185,7 +185,7 @@ pub fn create_framebuffer(
 #[allow(clippy::too_many_arguments)]
 pub fn create_graphics_pipelines(
     device: &ash::Device,
-    //graphics_pipeline: &dsc::GraphicsPipeline,
+    vertex_input_state: &dsc::PipelineVertexInputState,
     fixed_function_state: &dsc::FixedFunctionState,
     pipeline_layout: vk::PipelineLayout,
     renderpass: vk::RenderPass,
@@ -194,22 +194,18 @@ pub fn create_graphics_pipelines(
     shader_modules: &[vk::ShaderModule],
     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
 ) -> VkResult<Vec<vk::Pipeline>> {
-    //let fixed_function_state = &graphics_pipeline.fixed_function_state;
-
     let input_assembly_state = fixed_function_state
         .input_assembly_state
         .as_builder()
         .build();
 
-    let vertex_input_attribute_descriptions: Vec<_> = fixed_function_state
-        .vertex_input_state
+    let vertex_input_attribute_descriptions: Vec<_> = vertex_input_state
         .attribute_descriptions
         .iter()
         .map(|attribute| attribute.clone().into())
         .collect();
 
-    let vertex_input_binding_descriptions: Vec<_> = fixed_function_state
-        .vertex_input_state
+    let vertex_input_binding_descriptions: Vec<_> = vertex_input_state
         .binding_descriptions
         .iter()
         .map(|binding| binding.as_builder().build())

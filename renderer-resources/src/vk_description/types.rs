@@ -2808,7 +2808,6 @@ impl PipelineDepthStencilState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct FixedFunctionState {
-    pub vertex_input_state: PipelineVertexInputState,
     pub input_assembly_state: PipelineInputAssemblyState,
     pub viewport_state: PipelineViewportState,
     pub rasterization_state: PipelineRasterizationState,

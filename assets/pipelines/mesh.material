@@ -16,52 +16,6 @@
                     entry_name: "main"
                 ),
             ],
-
-            shader_interface: (
-                // If a mesh has a material, it needs to be cooked so that the verts are in that format
-                // Maybe each binding is a vertex channel?
-                // Actually maybe this works out so that you can have a kitchen-sink blob of vertex
-                // data and automatically determine offsets/strides
-                vertex_input_state: (
-                    binding_descriptions: [
-                        (
-                            binding: 0,
-                            stride: 48,
-                            input_rate: Vertex,
-                        ),
-                    ],
-                    attribute_descriptions: [
-                        (
-                            binding: 0,
-                            location: 0,
-                            format: R32G32B32_SFLOAT,
-                            offset: 0,
-                            //slot_name: "POSITION"
-                        ),
-                        (
-                            binding: 0,
-                            location: 1,
-                            format: R32G32B32_SFLOAT,
-                            offset: 12,
-                            //slot_name: "NORMAL"
-                        ),
-                        (
-                            binding: 0,
-                            location: 2,
-                            format: R32G32B32A32_SFLOAT,
-                            offset: 24,
-                            //slot_name: "TANGENT"
-                        ),
-                        (
-                            binding: 0,
-                            location: 3,
-                            format: R32G32_SFLOAT,
-                            offset: 40,
-                            //slot_name: "TEXCOORD_0"
-                        ),
-                    ],
-                ),
-            ),
         ),
         (
             phase: Some("ShadowMap"),
@@ -74,52 +28,6 @@
                 ),
                 // No fragment shader required
             ],
-
-            shader_interface: (
-                // If a mesh has a material, it needs to be cooked so that the verts are in that format
-                // Maybe each binding is a vertex channel?
-                // Actually maybe this works out so that you can have a kitchen-sink blob of vertex
-                // data and automatically determine offsets/strides
-                vertex_input_state: (
-                    binding_descriptions: [
-                        (
-                            binding: 0,
-                            stride: 48,
-                            input_rate: Vertex,
-                        ),
-                    ],
-                    attribute_descriptions: [
-                        (
-                            binding: 0,
-                            location: 0,
-                            format: R32G32B32_SFLOAT,
-                            offset: 0,
-                            //slot_name: "POSITION"
-                        ),
-                        (
-                            binding: 0,
-                            location: 1,
-                            format: R32G32B32_SFLOAT,
-                            offset: 12,
-                            //slot_name: "NORMAL"
-                        ),
-                        (
-                            binding: 0,
-                            location: 2,
-                            format: R32G32B32A32_SFLOAT,
-                            offset: 24,
-                            //slot_name: "TANGENT"
-                        ),
-                        (
-                            binding: 0,
-                            location: 3,
-                            format: R32G32_SFLOAT,
-                            offset: 40,
-                            //slot_name: "TEXCOORD_0"
-                        ),
-                    ],
-                ),
-            ),
         ),
     ]
 )

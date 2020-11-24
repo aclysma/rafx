@@ -338,17 +338,25 @@ pub struct FrameBufferKey {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MaterialPassVertexInput {
+    pub semantic: String,
+    pub location: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MaterialPassKey {
-    pipeline_layout: dsc::PipelineLayout,
-    fixed_function_state: Arc<dsc::FixedFunctionState>,
-    shader_module_metas: Vec<dsc::ShaderModuleMeta>,
-    shader_module_keys: Vec<ShaderModuleKey>,
+    pub pipeline_layout: dsc::PipelineLayout,
+    pub fixed_function_state: Arc<dsc::FixedFunctionState>,
+    pub vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
+    pub shader_module_metas: Vec<dsc::ShaderModuleMeta>,
+    pub shader_module_keys: Vec<ShaderModuleKey>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GraphicsPipelineKey {
     material_pass_key: MaterialPassKey,
     renderpass_key: RenderPassKey,
+    vertex_input_state: Arc<dsc::PipelineVertexInputState>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -987,6 +995,7 @@ impl ResourceLookupSet {
         shader_module_metas: Vec<dsc::ShaderModuleMeta>,
         pipeline_layout: ResourceArc<PipelineLayoutResource>,
         fixed_function_state: Arc<dsc::FixedFunctionState>,
+        vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
     ) -> VkResult<ResourceArc<MaterialPassResource>> {
         let shader_module_keys = shader_modules
             .iter()
@@ -997,6 +1006,7 @@ impl ResourceLookupSet {
             shader_module_keys,
             pipeline_layout: pipeline_layout.get_raw().pipeline_layout_def,
             fixed_function_state,
+            vertex_inputs,
         };
 
         self.inner
@@ -1023,10 +1033,12 @@ impl ResourceLookupSet {
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
+        vertex_input_state: Arc<dsc::PipelineVertexInputState>,
     ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
         let pipeline_key = GraphicsPipelineKey {
             material_pass_key: material_pass.get_raw().material_pass_key,
             renderpass_key: renderpass.get_raw().renderpass_key,
+            vertex_input_state: vertex_input_state.clone(),
         };
 
         self.inner
@@ -1035,6 +1047,7 @@ impl ResourceLookupSet {
                 log::trace!("Creating pipeline\n{:#?}", pipeline_key);
                 let pipelines = dsc::create_graphics_pipelines(
                     &self.inner.device_context.device(),
+                    &*vertex_input_state,
                     &material_pass
                         .get_raw()
                         .material_pass_key

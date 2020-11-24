@@ -15,16 +15,6 @@
                     entry_name: "main"
                 ),
             ],
-            shader_interface: (
-                vertex_input_state: (
-                    binding_descriptions: [
-
-                    ],
-                    attribute_descriptions: [
-
-                    ],
-                ),
-            ),
         ),
     ]
 )
