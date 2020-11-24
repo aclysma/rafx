@@ -67,8 +67,8 @@ pub fn sdl2_init() -> Sdl2Systems {
 
     // Default window size
     let logical_size = LogicalSize {
-        width: 1125 / 4,
-        height: 2436 / 4,
+        width: 1125 / 2,
+        height: 2436 / 2,
     };
 
     // Create the window

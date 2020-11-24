@@ -38,6 +38,7 @@ pub fn create_imgui_extract_job(
 /// Per-pass "global" data
 pub type ImGuiUniformBufferObject = shaders::imgui_vert::ArgsUniform;
 
+#[cfg(feature = "use-imgui")]
 lazy_static::lazy_static! {
     pub static ref IMGUI_VERTEX_LAYOUT : VertexDataSetLayout = {
         use renderer::resources::vk_description::Format;
