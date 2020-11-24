@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(10354769772518912972),
+    import_hash: Some(12396034981239827441),
     importer_version: 2,
     importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
     importer_options: (),
@@ -13,17 +13,17 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                id: (13639481156703174681),
+                id: (3300070841192351133),
                 asset_id: "2ff4cbe7-0352-4433-a469-24aba9cc193c",
                 build_deps: [
-                    Path("../shaders/bloom_blur.vert.shader"),
                     Path("bloom_blur.pipeline"),
+                    Path("../shaders/postprocess.vert.shader"),
                     Path("../shaders/bloom_blur.frag.shader"),
                 ],
                 load_deps: [
-                    Path("../shaders/bloom_blur.frag.shader"),
                     Path("bloom_blur.pipeline"),
-                    Path("../shaders/bloom_blur.vert.shader"),
+                    Path("../shaders/postprocess.vert.shader"),
+                    Path("../shaders/bloom_blur.frag.shader"),
                 ],
                 compression: None,
                 compressed_size: Some(122),
