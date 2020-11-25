@@ -349,8 +349,8 @@ impl GameRenderer {
             );
 
             let extents = window.logical_size();
-            let extents_width = extents.width;
-            let extents_height = extents.height;
+            let extents_width = extents.width.max(1);
+            let extents_height = extents.height.max(1);
             let aspect_ratio = extents_width as f32 / extents_height as f32;
 
             let view =
