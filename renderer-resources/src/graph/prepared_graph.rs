@@ -16,6 +16,7 @@ use renderer_nodes::{RenderPhase, RenderPhaseIndex};
 use renderer_shell_vulkan::{VkDeviceContext, VkImage};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
+use renderer_profile::profile_scope;
 
 pub struct ResourceCache<T: Eq + Hash> {
     resources: FnvHashMap<T, u64>,
@@ -367,6 +368,7 @@ impl PreparedRenderGraph {
         let mut cache_guard = resource_context.render_graph_cache().inner.lock().unwrap();
         let cache = &mut *cache_guard;
 
+        profile_scope!("allocate resources");
         let image_resources = cache.allocate_images(
             device_context,
             &graph_plan,
@@ -408,6 +410,7 @@ impl PreparedRenderGraph {
         &self,
         node_visitor: &dyn RenderGraphNodeVisitor,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
+        profile_scope!("Execute Graph");
         //
         // Start a command writer. For now just do a single primary writer, later we can multithread this.
         //
@@ -438,6 +441,7 @@ impl PreparedRenderGraph {
         // Iterate through all passes
         //
         for (pass_index, pass) in self.graph_plan.passes.iter().enumerate() {
+            profile_scope!("pass", pass_index.to_string());
             let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
                 .render_pass(self.render_pass_resources[pass_index].get_raw().renderpass)
                 .framebuffer(self.framebuffer_resources[pass_index].get_raw().framebuffer)

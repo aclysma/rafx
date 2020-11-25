@@ -7,6 +7,7 @@ use renderer::graph::RenderGraphExecutor;
 use renderer::nodes::{FramePacket, PrepareJobSet, RenderRegistry, RenderView};
 use renderer::resources::ResourceContext;
 use renderer::vulkan::{FrameInFlight, VkDeviceContext};
+use renderer::profile::profile_scope;
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
@@ -78,14 +79,17 @@ impl RenderFrameJob {
         //
         // Prepare Jobs - everything beyond this point could be done in parallel with the main thread
         //
-        let prepare_context =
-            RenderJobPrepareContext::new(device_context.clone(), resource_context.clone());
-        let prepared_render_data = prepare_job_set.prepare(
-            &prepare_context,
-            &frame_packet,
-            &[&main_view, &directional_light_view],
-            &render_registry,
-        );
+        let prepared_render_data = {
+            profile_scope!("Renderer Prepare");
+            let prepare_context =
+                RenderJobPrepareContext::new(device_context.clone(), resource_context.clone());
+            prepare_job_set.prepare(
+                &prepare_context,
+                &frame_packet,
+                &[&main_view, &directional_light_view],
+                &render_registry,
+            )
+        };
         let t1 = std::time::Instant::now();
         log::trace!(
             "[async] render prepare took {} ms",
@@ -99,7 +103,10 @@ impl RenderFrameJob {
             prepared_render_data,
         };
 
-        let command_buffers = render_graph.execute_graph(&graph_context)?;
+        let command_buffers = {
+            profile_scope!("Renderer Execute Graph");
+            render_graph.execute_graph(&graph_context)?
+        };
 
         Ok(command_buffers)
     }

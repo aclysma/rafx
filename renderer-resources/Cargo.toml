@@ -11,6 +11,7 @@ license = "MIT OR Apache-2.0"
 renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 renderer-base = { path = "../renderer-base" }
 renderer-nodes = { path = "../renderer-nodes" }
+renderer-profile = { path = "../renderer-profile" }
 
 ash = ">0.30"
 

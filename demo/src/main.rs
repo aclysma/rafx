@@ -1,6 +1,11 @@
 // There's a decent amount of code that's just for example and isn't called
 #![allow(dead_code)]
 
+#[cfg(feature = "profile-with-tracy-memory")]
+#[global_allocator]
+static GLOBAL: tracy_client::ProfiledAllocator<std::alloc::System> =
+    tracy_client::ProfiledAllocator::new(std::alloc::System, 100);
+
 use structopt::StructOpt;
 
 pub fn logging_init() {

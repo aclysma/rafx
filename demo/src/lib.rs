@@ -19,6 +19,7 @@ use crate::game_renderer::GameRenderer;
 use crate::resource_manager::GameAssetManager;
 use crate::time::TimeState;
 use renderer::assets::AssetManager;
+use renderer::profile::profile_scope;
 use structopt::StructOpt;
 
 mod asset_loader;
@@ -96,7 +97,13 @@ pub fn run(args: &DemoArgs) {
 
     let mut print_time_event = crate::time::PeriodicEvent::default();
 
+    #[cfg(feature = "profile-with-puffin")]
+    let mut profiler_ui = puffin_imgui::ProfilerUi::default();
+    #[cfg(feature = "profile-with-puffin")]
+    puffin::set_scopes_on(true);
+
     'running: loop {
+        profile_scope!("Main Loop");
         let t0 = std::time::Instant::now();
         //
         // Update time
@@ -131,6 +138,7 @@ pub fn run(args: &DemoArgs) {
         // Update assets
         //
         {
+            profile_scope!("update asset resource");
             let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
             asset_resource.update();
         }
@@ -139,6 +147,7 @@ pub fn run(args: &DemoArgs) {
         // Update graphics resources
         //
         {
+            profile_scope!("update asset loaders");
             let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
             let mut game_resource_manager = resources.get_mut::<GameAssetManager>().unwrap();
 
@@ -186,6 +195,7 @@ pub fn run(args: &DemoArgs) {
         // imgui debug draw,
         //
         {
+            profile_scope!("imgui");
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             let time_state = resources.get::<TimeState>().unwrap();
             imgui_manager.with_ui(|ui| {
@@ -197,6 +207,9 @@ pub fn run(args: &DemoArgs) {
                     ui.separator();
                     ui.text(imgui::im_str!("Frame: {}", time_state.update_count()));
                 });
+
+                #[cfg(feature = "profile-with-puffin")]
+                profiler_ui.window(ui);
             });
         }
 
@@ -218,6 +231,7 @@ pub fn run(args: &DemoArgs) {
         // Redraw
         //
         {
+            profile_scope!("render");
             let window = Sdl2Window::new(&sdl2_systems.window);
             let game_renderer = resources.get::<GameRenderer>().unwrap();
             game_renderer
@@ -225,8 +239,12 @@ pub fn run(args: &DemoArgs) {
                 .unwrap();
         }
 
+        //profiler_ui.get_latest_data();
         //let t2 = std::time::Instant::now();
         //log::info!("main thread took {} ms", (t2 - t0).as_secs_f32() * 1000.0);
+
+        #[cfg(feature = "profile-with-puffin")]
+        puffin::GlobalProfiler::lock().new_frame();
     }
 
     init::rendering_destroy(&mut resources);

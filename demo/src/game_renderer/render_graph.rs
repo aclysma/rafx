@@ -10,6 +10,7 @@ use renderer::resources::ResourceContext;
 use renderer::resources::{vk_description as dsc, VertexDataSetLayout};
 use renderer::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
 use renderer::vulkan::SwapchainInfo;
+use renderer::profile::profile_scope;
 
 lazy_static::lazy_static! {
     pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
@@ -40,6 +41,8 @@ pub fn build_render_graph(
     bloom_blur_material_pass: ResourceArc<MaterialPassResource>,
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
 ) -> VkResult<BuildRenderGraphResult> {
+    profile_scope!("Build Render Graph");
+
     //TODO: Fix this back to be color format - need to happen in the combine pass
     let color_format = swapchain_surface_info.color_format;
     let depth_format = swapchain_surface_info.depth_format;

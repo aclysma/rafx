@@ -16,6 +16,7 @@ renderer-nodes = { path = "../renderer-nodes" }
 renderer-assets = { path = "../renderer-assets", optional = true }
 renderer-resources = { path = "../renderer-resources" }
 renderer-visibility = { path = "../renderer-visibility" }
+renderer-profile = { path = "../renderer-profile" }
 
 log = "0.4"
 
@@ -30,6 +31,9 @@ glam = "0.8.6"
 default = []
 static-vulkan = ["renderer-shell-vulkan/static-vulkan"]
 assets = ["renderer-assets"]
+profile-with-puffin = ["renderer-profile/profile-with-puffin"]
+profile-with-optick = ["renderer-profile/profile-with-optick"]
+profile-with-tracing = ["renderer-profile/profile-with-tracing"]
 
 [[example]]
 name = "triangle_graph"
