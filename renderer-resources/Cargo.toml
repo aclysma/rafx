@@ -11,7 +11,6 @@ license = "MIT OR Apache-2.0"
 renderer-shell-vulkan = { path = "../renderer-shell-vulkan" }
 renderer-base = { path = "../renderer-base" }
 renderer-nodes = { path = "../renderer-nodes" }
-renderer-profile = { path = "../renderer-profile" }
 
 ash = ">0.30"
 
@@ -23,6 +22,7 @@ log = "0.4"
 fnv = "1.0"
 serde = { version = "1", features = ["serde_derive"] }
 arrayvec = "0.5"
+profiling = { path = "../../profiling" }
 
 [dev-dependencies]
 env_logger = "0.6"

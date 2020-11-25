@@ -7,7 +7,6 @@ use renderer::graph::RenderGraphExecutor;
 use renderer::nodes::{FramePacket, PrepareJobSet, RenderRegistry, RenderView};
 use renderer::resources::ResourceContext;
 use renderer::vulkan::{FrameInFlight, VkDeviceContext};
-use renderer::profile::profile_scope;
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
@@ -80,7 +79,7 @@ impl RenderFrameJob {
         // Prepare Jobs - everything beyond this point could be done in parallel with the main thread
         //
         let prepared_render_data = {
-            profile_scope!("Renderer Prepare");
+            profiling::scope!("Renderer Prepare");
             let prepare_context =
                 RenderJobPrepareContext::new(device_context.clone(), resource_context.clone());
             prepare_job_set.prepare(
@@ -104,7 +103,7 @@ impl RenderFrameJob {
         };
 
         let command_buffers = {
-            profile_scope!("Renderer Execute Graph");
+            profiling::scope!("Renderer Execute Graph");
             render_graph.execute_graph(&graph_context)?
         };
 

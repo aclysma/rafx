@@ -19,7 +19,6 @@ use crate::game_renderer::GameRenderer;
 use crate::resource_manager::GameAssetManager;
 use crate::time::TimeState;
 use renderer::assets::AssetManager;
-use renderer::profile::profile_scope;
 use structopt::StructOpt;
 
 mod asset_loader;
@@ -103,7 +102,7 @@ pub fn run(args: &DemoArgs) {
     puffin::set_scopes_on(true);
 
     'running: loop {
-        profile_scope!("Main Loop");
+        profiling::scope!("Main Loop");
         let t0 = std::time::Instant::now();
         //
         // Update time
@@ -138,7 +137,7 @@ pub fn run(args: &DemoArgs) {
         // Update assets
         //
         {
-            profile_scope!("update asset resource");
+            profiling::scope!("update asset resource");
             let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
             asset_resource.update();
         }
@@ -147,7 +146,7 @@ pub fn run(args: &DemoArgs) {
         // Update graphics resources
         //
         {
-            profile_scope!("update asset loaders");
+            profiling::scope!("update asset loaders");
             let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
             let mut game_resource_manager = resources.get_mut::<GameAssetManager>().unwrap();
 
@@ -195,7 +194,7 @@ pub fn run(args: &DemoArgs) {
         // imgui debug draw,
         //
         {
-            profile_scope!("imgui");
+            profiling::scope!("imgui");
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             let time_state = resources.get::<TimeState>().unwrap();
             imgui_manager.with_ui(|ui| {
@@ -231,7 +230,7 @@ pub fn run(args: &DemoArgs) {
         // Redraw
         //
         {
-            profile_scope!("render");
+            profiling::scope!("render");
             let window = Sdl2Window::new(&sdl2_systems.window);
             let game_renderer = resources.get::<GameRenderer>().unwrap();
             game_renderer

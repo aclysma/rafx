@@ -2,7 +2,6 @@ use super::*;
 use crate::resources::{ImageViewResource, ResourceArc};
 use crate::vk_description as dsc;
 use crate::vk_description::SwapchainSurfaceInfo;
-use renderer_profile::profile_scope;
 
 #[derive(Copy, Clone)]
 pub enum RenderGraphQueue {
@@ -847,7 +846,7 @@ impl RenderGraphBuilder {
         self,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> RenderGraphPlan {
-        profile_scope!("Build Plan");
+        profiling::scope!("Build Plan");
         RenderGraphPlan::new(self, swapchain_surface_info)
     }
 }

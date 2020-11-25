@@ -18,7 +18,6 @@ use renderer::resources::vk_description as dsc;
 use renderer::resources::{ImageViewResource, ResourceArc};
 use renderer::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use renderer::vulkan::{FrameInFlight, VkContext, VkDeviceContext, VkSurface, Window};
-use renderer::profile::profile_scope;
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex};
 
@@ -552,7 +551,7 @@ impl GameRenderer {
         };
 
         let prepare_job_set = {
-            profile_scope!("renderer extract");
+            profiling::scope!("renderer extract");
             let extract_context = RenderJobExtractContext::new(&world, &resources, asset_manager);
             extract_job_set.extract(
                 &extract_context,
