@@ -7,6 +7,7 @@ renderer::declare_render_phase!(
     ui_render_phase_sort_submit_nodes
 );
 
+#[profiling::function]
 fn ui_render_phase_sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
     // Sort by feature
     log::trace!("Sort phase {}", UiRenderPhase::render_phase_debug_name());

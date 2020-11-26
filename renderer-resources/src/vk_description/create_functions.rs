@@ -4,6 +4,7 @@ use ash::prelude::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
 
+#[profiling::function]
 pub fn create_shader_module(
     device: &ash::Device,
     shader_module: &dsc::ShaderModule,
@@ -13,6 +14,7 @@ pub fn create_shader_module(
     unsafe { device.create_shader_module(&*create_info, None) }
 }
 
+#[profiling::function]
 pub fn create_descriptor_set_layout(
     device: &ash::Device,
     descriptor_set_layout: &dsc::DescriptorSetLayout,
@@ -44,6 +46,7 @@ pub fn create_descriptor_set_layout(
     unsafe { device.create_descriptor_set_layout(&*create_info, None) }
 }
 
+#[profiling::function]
 pub fn create_pipeline_layout(
     device: &ash::Device,
     pipeline_layout: &dsc::PipelineLayout,
@@ -62,6 +65,7 @@ pub fn create_pipeline_layout(
     unsafe { device.create_pipeline_layout(&*create_info, None) }
 }
 
+#[profiling::function]
 pub fn create_renderpass(
     device: &ash::Device,
     renderpass: &dsc::RenderPass,
@@ -166,6 +170,7 @@ pub fn create_renderpass(
     unsafe { device.create_render_pass(&*create_info, None) }
 }
 
+#[profiling::function]
 pub fn create_framebuffer(
     device: &ash::Device,
     renderpass: vk::RenderPass,
@@ -182,6 +187,7 @@ pub fn create_framebuffer(
     unsafe { device.create_framebuffer(&frame_buffer_create_info, None) }
 }
 
+#[profiling::function]
 #[allow(clippy::too_many_arguments)]
 pub fn create_graphics_pipelines(
     device: &ash::Device,
@@ -334,6 +340,7 @@ pub fn create_graphics_pipelines(
     }
 }
 
+#[profiling::function]
 pub fn create_image_view(
     device: &ash::Device,
     image: vk::Image,
@@ -346,6 +353,7 @@ pub fn create_image_view(
     }
 }
 
+#[profiling::function]
 pub fn create_sampler(
     device: &ash::Device,
     sampler: &dsc::Sampler,

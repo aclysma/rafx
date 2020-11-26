@@ -44,6 +44,7 @@ impl Importer for ShaderImporterSpv {
     type State = ShaderImporterSpvState;
 
     /// Reads the given bytes and produces assets.
+    #[profiling::function]
     fn import(
         &self,
         source: &mut dyn Read,
@@ -112,6 +113,7 @@ impl Importer for ShaderImporterCooked {
     type State = ShaderImporterCookedState;
 
     /// Reads the given bytes and produces assets.
+    #[profiling::function]
     fn import(
         &self,
         source: &mut dyn Read,

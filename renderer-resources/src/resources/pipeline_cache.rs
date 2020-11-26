@@ -108,6 +108,7 @@ impl GraphicsPipelineCache {
         }
     }
 
+    #[profiling::function]
     pub fn on_frame_complete(&self) {
         let mut guard = self.inner.lock().unwrap();
         #[cfg(debug_assertions)]
@@ -249,6 +250,7 @@ impl GraphicsPipelineCache {
             })
             .or_else(|| {
                 if create_if_missing {
+                    profiling::scope!("Create Pipeline");
                     let mut binding_descriptions = Vec::default();
                     for (binding_index, binding) in
                         vertex_data_set_layout.bindings().iter().enumerate()

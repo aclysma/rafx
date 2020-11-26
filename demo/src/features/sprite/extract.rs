@@ -33,6 +33,8 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         frame_packet: &FramePacket,
         _views: &[&RenderView],
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
+        profiling::scope!("Sprite Extract");
+
         // Update the mesh render nodes. This could be done earlier as part of a system
         let mut sprite_render_nodes = extract_context
             .resources

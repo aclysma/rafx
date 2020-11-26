@@ -9,7 +9,7 @@ use crate::game_asset_lookup::MeshAsset;
 use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
 use crate::phases::TransparentRenderPhase;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
-use crate::resource_manager::GameAssetManager;
+use crate::game_asset_manager::GameAssetManager;
 use atelier_assets::loader::{
     packfile_io::PackfileReader, storage::DefaultIndirectionResolver, Loader, RpcIO,
 };

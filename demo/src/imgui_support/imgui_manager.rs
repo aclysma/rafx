@@ -80,6 +80,7 @@ impl ImguiManager {
     }
 
     // Start a new frame
+    #[profiling::function]
     pub fn begin_frame(&self) {
         let mut inner_mutex_guard = self.inner.lock().unwrap();
         let inner = &mut *inner_mutex_guard;
@@ -115,6 +116,7 @@ impl ImguiManager {
         None
     }
 
+    #[profiling::function]
     pub fn render(&self) {
         let mut inner = self.inner.lock().unwrap();
 
@@ -163,6 +165,7 @@ impl ImguiManager {
         }
     }
 
+    #[profiling::function]
     pub fn copy_font_atlas_texture(&self) -> Option<ImGuiFontAtlas> {
         let inner = self.inner.lock().unwrap();
 
@@ -192,6 +195,7 @@ impl ImguiManager {
         inner.ui.is_some()
     }
 
+    #[profiling::function]
     pub fn copy_draw_data(&self) -> Option<ImGuiDrawData> {
         let inner = self.inner.lock().unwrap();
 

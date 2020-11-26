@@ -118,6 +118,7 @@ pub struct MaterialPass {
 }
 
 impl MaterialPass {
+    #[profiling::function]
     pub fn new(
         asset_manager: &AssetManager,
         material_pass_data: &MaterialPassData,

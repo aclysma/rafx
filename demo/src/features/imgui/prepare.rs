@@ -43,6 +43,8 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
         Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
         FeatureSubmitNodes,
     ) {
+        profiling::scope!("ImGui Prepare");
+
         let mut descriptor_set_allocator = prepare_context
             .resource_context
             .create_descriptor_set_allocator();

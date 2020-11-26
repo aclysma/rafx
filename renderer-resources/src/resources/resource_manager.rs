@@ -165,6 +165,7 @@ impl ResourceManager {
         }
     }
 
+    #[profiling::function]
     pub fn on_frame_complete(&mut self) -> VkResult<()> {
         self.render_graph_cache.on_frame_complete();
         self.graphics_pipeline_cache.on_frame_complete();

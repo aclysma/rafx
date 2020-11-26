@@ -306,6 +306,7 @@ impl RenderGraphCache {
         }
     }
 
+    #[profiling::function]
     pub fn on_frame_complete(&self) {
         self.inner.lock().unwrap().on_frame_complete();
     }

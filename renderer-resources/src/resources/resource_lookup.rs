@@ -655,6 +655,7 @@ impl ResourceLookupSet {
         }
     }
 
+    #[profiling::function]
     pub fn on_frame_complete(&self) -> VkResult<()> {
         self.inner
             .images

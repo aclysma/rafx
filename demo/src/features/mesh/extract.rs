@@ -9,7 +9,7 @@ use crate::features::mesh::{
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use crate::resource_manager::GameAssetManager;
+use crate::game_asset_manager::GameAssetManager;
 use legion::*;
 use renderer::base::slab::RawSlabKey;
 use renderer::nodes::{
@@ -39,6 +39,8 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         frame_packet: &FramePacket,
         _views: &[&RenderView],
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
+        profiling::scope!("Mesh Extract");
+
         //
         // Update the mesh render nodes. This could be done earlier as part of a system
         //

@@ -189,6 +189,7 @@ impl DescriptorSetAllocatorManager {
         self.inner.get_allocator()
     }
 
+    #[profiling::function]
     pub fn on_frame_complete(&self) {
         self.inner.on_frame_complete();
     }

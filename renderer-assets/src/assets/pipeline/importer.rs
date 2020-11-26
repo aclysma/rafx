@@ -32,6 +32,7 @@ impl Importer for SamplerImporter {
     type State = SamplerImporterState;
 
     /// Reads the given bytes and produces assets.
+    #[profiling::function]
     fn import(
         &self,
         source: &mut dyn Read,
@@ -83,6 +84,7 @@ impl Importer for PipelineImporter {
     type State = PipelineImporterState;
 
     /// Reads the given bytes and produces assets.
+    #[profiling::function]
     fn import(
         &self,
         source: &mut dyn Read,
@@ -134,6 +136,7 @@ impl Importer for RenderpassImporter {
     type State = RenderpassImporterState;
 
     /// Reads the given bytes and produces assets.
+    #[profiling::function]
     fn import(
         &self,
         source: &mut dyn Read,
@@ -185,6 +188,7 @@ impl Importer for MaterialImporter {
     type State = MaterialImporterState;
 
     /// Reads the given bytes and produces assets.
+    #[profiling::function]
     fn import(
         &self,
         source: &mut dyn Read,
@@ -236,6 +240,7 @@ impl Importer for MaterialInstanceImporter {
     type State = MaterialInstanceImporterState;
 
     /// Reads the given bytes and produces assets.
+    #[profiling::function]
     fn import(
         &self,
         source: &mut dyn Read,

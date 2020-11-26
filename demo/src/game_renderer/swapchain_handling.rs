@@ -17,6 +17,7 @@ pub struct SwapchainLifetimeListener<'a> {
 }
 
 impl<'a> SwapchainLifetimeListener<'a> {
+    #[profiling::function]
     pub fn create_surface(
         resources: &Resources,
         window: &dyn Window,
@@ -39,6 +40,7 @@ impl<'a> SwapchainLifetimeListener<'a> {
         )
     }
 
+    #[profiling::function]
     pub fn rebuild_swapchain(
         resources: &Resources,
         window: &dyn Window,
@@ -58,6 +60,7 @@ impl<'a> SwapchainLifetimeListener<'a> {
         surface.rebuild_swapchain(window, Some(&mut lifetime_listener))
     }
 
+    #[profiling::function]
     pub fn tear_down(resources: &Resources) {
         let mut surface = resources.get_mut::<VkSurface>().unwrap();
         let mut game_renderer = resources.get_mut::<GameRenderer>().unwrap();
@@ -76,6 +79,7 @@ impl<'a> SwapchainLifetimeListener<'a> {
 }
 
 impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
+    #[profiling::function]
     fn swapchain_created(
         &mut self,
         device_context: &VkDeviceContext,
@@ -117,6 +121,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         VkResult::Ok(())
     }
 
+    #[profiling::function]
     fn swapchain_destroyed(
         &mut self,
         _device_context: &VkDeviceContext,

@@ -185,6 +185,7 @@ where
         }
     }
 
+    #[profiling::function]
     fn on_frame_complete(
         &mut self,
         device_context: &VkDeviceContext,
@@ -339,6 +340,7 @@ impl DynResourceAllocatorSetManager {
         }
     }
 
+    #[profiling::function]
     pub fn on_frame_complete(&mut self) -> VkResult<()> {
         self.buffers.on_frame_complete(&self.device_context)?;
         self.images.on_frame_complete(&self.device_context)?;

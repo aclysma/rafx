@@ -184,6 +184,7 @@ fn visit_node(
     visiting[node_id.0] = false;
 }
 
+#[profiling::function]
 fn determine_node_order(graph: &RenderGraphBuilder) -> Vec<RenderGraphNodeId> {
     // As we depth-first traverse nodes, mark them as visiting and push them onto this stack.
     // We will use this to detect and print out cycles
@@ -238,6 +239,7 @@ fn can_passes_merge(
     false
 }
 
+#[profiling::function]
 fn determine_image_constraints(
     graph: &RenderGraphBuilder,
     node_execution_order: &[RenderGraphNodeId],
@@ -529,6 +531,7 @@ fn determine_image_constraints(
     }
 }
 
+#[profiling::function]
 fn insert_resolves(
     graph: &mut RenderGraphBuilder,
     node_execution_order: &[RenderGraphNodeId],
@@ -628,6 +631,7 @@ fn insert_resolves(
     }
 }
 
+#[profiling::function]
 fn assign_virtual_images(
     graph: &RenderGraphBuilder,
     node_execution_order: &[RenderGraphNodeId],
@@ -803,6 +807,7 @@ fn can_merge_nodes(
     false
 }
 
+#[profiling::function]
 fn build_physical_passes(
     graph: &RenderGraphBuilder,
     node_execution_order: &[RenderGraphNodeId],
@@ -1056,6 +1061,7 @@ struct AssignPhysicalImagesResult {
     specifications: Vec<RenderGraphImageSpecification>,
 }
 
+#[profiling::function]
 fn assign_physical_images(
     graph: &RenderGraphBuilder,
     image_constraints: &DetermineImageConstraintsResult,
@@ -1266,6 +1272,7 @@ fn assign_physical_images(
     }
 }
 
+#[profiling::function]
 fn build_node_barriers(
     graph: &RenderGraphBuilder,
     node_execution_order: &[RenderGraphNodeId],
@@ -1418,6 +1425,7 @@ fn build_node_barriers(
 //   know what needs to be flushed/invalidated
 // * We want to determine store_op, stencil_store_op, final_layout. And the validates/flushes
 //   we actually need to insert
+#[profiling::function]
 fn build_pass_barriers(
     graph: &RenderGraphBuilder,
     _node_execution_order: &[RenderGraphNodeId],
@@ -1788,6 +1796,7 @@ fn build_pass_barriers(
     pass_dependencies
 }
 
+#[profiling::function]
 fn create_output_passes(
     passes: Vec<RenderGraphPass>,
     node_barriers: FnvHashMap<RenderGraphNodeId, RenderGraphNodeImageBarriers>,
@@ -2165,6 +2174,7 @@ pub struct RenderGraphPlan {
 }
 
 impl RenderGraphPlan {
+    #[profiling::function]
     pub(super) fn new(
         mut graph: RenderGraphBuilder,
         swapchain_info: &SwapchainSurfaceInfo,

@@ -214,6 +214,7 @@ impl VkSurface {
         &self.swapchain
     }
 
+    #[profiling::function]
     pub fn tear_down(
         &mut self,
         event_listener: Option<&mut dyn VkSurfaceSwapchainLifetimeListener>,
@@ -236,6 +237,7 @@ impl VkSurface {
     }
 
     // If a frame is in flight, block until it completes
+    #[profiling::function]
     pub fn wait_until_frame_not_in_flight(&self) -> VkResult<()> {
         if self.frame_is_in_flight.load(Ordering::Relaxed) {
             self.frame_is_in_flight.store(false, Ordering::Relaxed);
@@ -245,6 +247,7 @@ impl VkSurface {
         Ok(())
     }
 
+    #[profiling::function]
     pub fn acquire_next_swapchain_image(
         &mut self,
         window: &dyn Window,
@@ -299,6 +302,7 @@ impl VkSurface {
         })
     }
 
+    #[profiling::function]
     pub fn rebuild_swapchain(
         &mut self,
         window: &dyn Window,

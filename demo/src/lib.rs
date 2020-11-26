@@ -16,7 +16,7 @@ use crate::asset_resource::AssetResource;
 use crate::daemon::AssetDaemonArgs;
 use crate::features::debug3d::DebugDraw3DResource;
 use crate::game_renderer::GameRenderer;
-use crate::resource_manager::GameAssetManager;
+use crate::game_asset_manager::GameAssetManager;
 use crate::time::TimeState;
 use renderer::assets::AssetManager;
 use structopt::StructOpt;
@@ -34,7 +34,7 @@ mod imgui_support;
 mod init;
 mod phases;
 mod render_contexts;
-mod resource_manager;
+mod game_asset_manager;
 mod test_scene;
 mod time;
 
@@ -203,17 +203,24 @@ pub fn run(args: &DemoArgs) {
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             let time_state = resources.get::<TimeState>().unwrap();
             imgui_manager.with_ui(|ui| {
-                ui.main_menu_bar(|| {
-                    ui.text(imgui::im_str!(
+                {
+                    profiling::scope!("main menu bar");
+                    ui.main_menu_bar(|| {
+                        ui.text(imgui::im_str!(
                         "FPS: {:.1}",
                         time_state.updates_per_second_smoothed()
                     ));
-                    ui.separator();
-                    ui.text(imgui::im_str!("Frame: {}", time_state.update_count()));
-                });
+                        ui.separator();
+                        ui.text(imgui::im_str!("Frame: {}", time_state.update_count()));
+                    });
+                }
 
                 #[cfg(feature = "profile-with-puffin")]
-                profiler_ui.window(ui);
+                {
+                    profiling::scope!("puffin profiler");
+                    profiler_ui.window(ui);
+                }
+
             });
         }
 

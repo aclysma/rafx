@@ -50,6 +50,7 @@ impl DescriptorSetAllocator {
         }
     }
 
+    #[profiling::function]
     pub fn flush_changes(&mut self) -> VkResult<()> {
         // Now process drops and flush writes to GPU
         for pool in self.pools.values_mut() {
@@ -59,6 +60,7 @@ impl DescriptorSetAllocator {
         Ok(())
     }
 
+    #[profiling::function]
     pub fn on_frame_complete(&mut self) {
         // Bump frame in flight index
         self.frame_in_flight_index =

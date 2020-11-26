@@ -176,6 +176,7 @@ impl ManagedDescriptorSetPool {
         Ok(descriptor_set)
     }
 
+    #[profiling::function]
     pub fn flush_changes(
         &mut self,
         device_context: &VkDeviceContext,

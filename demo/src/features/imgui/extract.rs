@@ -66,6 +66,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         _frame_packet: &FramePacket,
         _views: &[&RenderView],
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
+        profiling::scope!("ImGui Extract");
         let imgui_draw_data = extract_context
             .resources
             .get::<Sdl2ImguiManager>()

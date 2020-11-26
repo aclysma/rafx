@@ -30,10 +30,30 @@ glam = "0.8.6"
 default = []
 static-vulkan = ["renderer-shell-vulkan/static-vulkan"]
 assets = ["renderer-assets"]
-profile-with-puffin = ["renderer-resources/profile-with-puffin"]
-profile-with-optick = ["renderer-resources/profile-with-optick"]
-profile-with-superluminal = ["renderer-resources/profile-with-superluminal"]
-profile-with-tracing = ["renderer-resources/profile-with-tracing"]
+
+profile-with-puffin = [
+    "renderer-resources/profile-with-puffin",
+    "renderer-assets/profile-with-puffin",
+    "renderer-shell-vulkan/profile-with-puffin"
+]
+
+profile-with-optick = [
+    "renderer-resources/profile-with-optick",
+    "renderer-assets/profile-with-optick",
+    "renderer-shell-vulkan/profile-with-optick"
+]
+
+profile-with-superluminal = [
+    "renderer-resources/profile-with-superluminal",
+    "renderer-assets/profile-with-superluminal",
+    "renderer-shell-vulkan/profile-with-superluminal"
+]
+
+profile-with-tracing = [
+    "renderer-resources/profile-with-tracing",
+    "renderer-assets/profile-with-tracing",
+    "renderer-shell-vulkan/profile-with-tracing"
+]
 
 [[example]]
 name = "triangle_graph"

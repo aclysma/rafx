@@ -30,6 +30,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         _frame_packet: &FramePacket,
         _views: &[&RenderView],
     ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
+        profiling::scope!("Debug3d Extract");
         let line_lists = extract_context
             .resources
             .get_mut::<DebugDraw3DResource>()

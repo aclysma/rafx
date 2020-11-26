@@ -361,11 +361,16 @@ impl DynCommandWriterAllocator {
     }
 
     /// Call every frame to recycle command pools that are no-longer in flight
+    #[profiling::function]
     pub fn on_frame_complete(&self) -> VkResult<()> {
         let mut guard = self.inner.lock().unwrap();
         log::trace!("DynCommandWriterAllocator::on_frame_complete: DynCommandWriterAllocator on_frame_complete finishing frame {}", guard.current_frame_index);
 
-        Self::drain_drop_rx(&mut *guard);
+        {
+            profiling::scope!("drain_drop_rx");
+            Self::drain_drop_rx(&mut *guard);
+        }
+
 
         // Find any pending writers that should submit during this frame
         let mut pending_writer_keys: Vec<_> = Default::default();
@@ -416,7 +421,11 @@ impl DynCommandWriterAllocator {
                 );
 
                 let meta = submitted_writer.pool.command_pool_meta.clone();
-                submitted_writer.pool.reset_command_pool()?;
+                {
+                    profiling::scope!("reset_command_pool");
+                    submitted_writer.pool.reset_command_pool()?;
+                }
+
                 guard
                     .unused_writers
                     .entry(meta)

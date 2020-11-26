@@ -45,6 +45,7 @@ impl Sdl2ImguiManager {
         }
     }
 
+    #[profiling::function]
     pub fn build_font_atlas(&self) -> ImGuiFontAtlas {
         let mut font_atlas = None;
         self.with_context(|context| {
@@ -68,6 +69,7 @@ impl Sdl2ImguiManager {
 
     // Call when a winit event is received
     //TODO: Taking a lock per event sucks
+    #[profiling::function]
     pub fn handle_event(
         &self,
         event: &sdl2::event::Event,
@@ -88,6 +90,7 @@ impl Sdl2ImguiManager {
     }
 
     // Start a new frame
+    #[profiling::function]
     pub fn begin_frame(
         &self,
         window: &Window,
@@ -105,6 +108,7 @@ impl Sdl2ImguiManager {
     }
 
     // Finishes the frame. Draw data becomes available via get_draw_data()
+    #[profiling::function]
     pub fn render(
         &self,
         window: &Window,
@@ -177,6 +181,7 @@ impl Sdl2ImguiManager {
     }
 }
 
+#[profiling::function]
 fn init_imgui(window: &Window) -> imgui::Context {
     use imgui::Context;
 

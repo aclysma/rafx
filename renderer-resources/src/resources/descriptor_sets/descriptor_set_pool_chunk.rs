@@ -47,6 +47,7 @@ pub(super) struct ManagedDescriptorSetPoolChunk {
 }
 
 impl ManagedDescriptorSetPoolChunk {
+    #[profiling::function]
     pub(super) fn new(
         device_context: &VkDeviceContext,
         buffer_info: &[DescriptorSetPoolRequiredBufferInfo],
@@ -172,6 +173,7 @@ impl ManagedDescriptorSetPoolChunk {
         self.descriptor_sets[descriptor_index as usize]
     }
 
+    #[profiling::function]
     pub(super) fn update(
         &mut self,
         device_context: &VkDeviceContext,
@@ -332,6 +334,7 @@ impl ManagedDescriptorSetPoolChunk {
 
         if !write_builders.is_empty() {
             unsafe {
+                profiling::scope!("Device::update_descriptor_set");
                 device_context
                     .device()
                     .update_descriptor_sets(&write_builders, &[]);

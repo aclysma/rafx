@@ -68,6 +68,8 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
         Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
         FeatureSubmitNodes,
     ) {
+        profiling::scope!("Sprite Prepare");
+
         let mut draw_calls = Vec::<SpriteDrawCall>::default();
         let mut vertex_list = Vec::<SpriteVertex>::default();
         let mut index_list = Vec::<u16>::default();

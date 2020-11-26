@@ -49,6 +49,7 @@ impl GameAssetManager {
     }
 
     // Call whenever you want to handle assets loading/unloading
+    #[profiling::function]
     pub fn update_asset_loaders(
         &mut self,
         asset_manager: &AssetManager,
@@ -65,6 +66,7 @@ impl GameAssetManager {
         }
     }
 
+    #[profiling::function]
     fn process_mesh_load_requests(
         &mut self,
         asset_manager: &AssetManager,
@@ -125,6 +127,7 @@ impl GameAssetManager {
         }
     }
 
+    #[profiling::function]
     fn load_mesh(
         &mut self,
         asset_manager: &AssetManager,

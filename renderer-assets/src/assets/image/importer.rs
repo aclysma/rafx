@@ -30,6 +30,7 @@ impl Importer for ImageImporter {
     type State = ImageImporterState;
 
     /// Reads the given bytes and produces assets.
+    #[profiling::function]
     fn import(
         &self,
         source: &mut dyn Read,

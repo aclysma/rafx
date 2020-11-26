@@ -228,6 +228,7 @@ impl AssetManager {
     }
 
     // Call whenever you want to handle assets loading/unloading
+    #[profiling::function]
     pub fn update_asset_loaders(&mut self) -> VkResult<()> {
         self.process_shader_load_requests();
         self.process_pipeline_load_requests();
@@ -248,6 +249,7 @@ impl AssetManager {
         self.material_instance_descriptor_sets.flush_changes()
     }
 
+    #[profiling::function]
     pub fn on_frame_complete(&mut self) -> VkResult<()> {
         self.resource_manager.on_frame_complete()?;
         self.material_instance_descriptor_sets.on_frame_complete();
@@ -267,6 +269,7 @@ impl AssetManager {
         }
     }
 
+    #[profiling::function]
     fn process_shader_load_requests(&mut self) {
         for request in self.load_queues.shader_modules.take_load_requests() {
             log::trace!("Create shader module {:?}", request.load_handle);
@@ -289,6 +292,7 @@ impl AssetManager {
         );
     }
 
+    #[profiling::function]
     fn process_pipeline_load_requests(&mut self) {
         for request in self.load_queues.graphics_pipelines.take_load_requests() {
             log::trace!("Create pipeline {:?}", request.load_handle);
@@ -311,6 +315,7 @@ impl AssetManager {
         );
     }
 
+    #[profiling::function]
     fn process_renderpass_load_requests(&mut self) {
         for request in self.load_queues.renderpasses.take_load_requests() {
             log::trace!("Create renderpass {:?}", request.load_handle);
@@ -333,6 +338,7 @@ impl AssetManager {
         );
     }
 
+    #[profiling::function]
     fn process_material_load_requests(&mut self) {
         for request in self.load_queues.materials.take_load_requests() {
             log::trace!("Create material {:?}", request.load_handle);
@@ -355,6 +361,7 @@ impl AssetManager {
         );
     }
 
+    #[profiling::function]
     fn process_material_instance_load_requests(&mut self) {
         for request in self.load_queues.material_instances.take_load_requests() {
             log::trace!("Create material instance {:?}", request.load_handle);
@@ -377,6 +384,7 @@ impl AssetManager {
         );
     }
 
+    #[profiling::function]
     fn process_sampler_load_requests(&mut self) {
         for request in self.load_queues.samplers.take_load_requests() {
             log::trace!("Create sampler {:?}", request.load_handle);
@@ -399,6 +407,7 @@ impl AssetManager {
         );
     }
 
+    #[profiling::function]
     fn process_image_load_requests(&mut self) -> VkResult<()> {
         for request in self.load_queues.images.take_load_requests() {
             //TODO: Route the request directly to the upload queue
@@ -439,6 +448,7 @@ impl AssetManager {
         Ok(())
     }
 
+    #[profiling::function]
     fn process_buffer_load_requests(&mut self) -> VkResult<()> {
         for request in self.load_queues.buffers.take_load_requests() {
             //TODO: Route the request directly to the upload queue
@@ -527,6 +537,7 @@ impl AssetManager {
         }
     }
 
+    #[profiling::function]
     fn finish_load_image(
         &mut self,
         image: VkImage,
@@ -561,6 +572,7 @@ impl AssetManager {
         Ok(ImageAsset { image_view })
     }
 
+    #[profiling::function]
     fn finish_load_buffer(
         &mut self,
         buffer: VkBuffer,
@@ -570,6 +582,7 @@ impl AssetManager {
         Ok(BufferAsset { buffer })
     }
 
+    #[profiling::function]
     fn load_shader_module(
         &mut self,
         shader_module: &ShaderAssetData,
@@ -592,6 +605,7 @@ impl AssetManager {
         })
     }
 
+    #[profiling::function]
     fn load_sampler(
         &mut self,
         sampler: &SamplerAssetData,
@@ -600,6 +614,7 @@ impl AssetManager {
         Ok(SamplerAsset { sampler })
     }
 
+    #[profiling::function]
     fn load_graphics_pipeline(
         &mut self,
         pipeline_asset: PipelineAssetData,
@@ -609,6 +624,7 @@ impl AssetManager {
         })
     }
 
+    #[profiling::function]
     fn load_renderpass(
         &mut self,
         renderpass_asset: RenderpassAssetData,
@@ -618,6 +634,7 @@ impl AssetManager {
         })
     }
 
+    #[profiling::function]
     fn load_material(
         &mut self,
         material_asset: &MaterialAssetData,
@@ -662,6 +679,7 @@ impl AssetManager {
         ))
     }
 
+    #[profiling::function]
     fn load_material_instance(
         &mut self,
         material_instance_asset: &MaterialInstanceAssetData,
@@ -744,6 +762,7 @@ impl AssetManager {
         ))
     }
 
+    #[profiling::function]
     pub fn apply_material_instance_slot_assignment(
         &self,
         slot_assignment: &MaterialInstanceSlotAssignment,
