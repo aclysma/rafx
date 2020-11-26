@@ -26,8 +26,8 @@ opt-level = 2
 
 # Required for https://github.com/gltf-rs/gltf/pull/288
 [patch.crates-io]
-#profiling = { path = "../profiling/profiling" }
-profiling = { git = "https://github.com/aclysma/profiling.git", branch = "function-proc-macro" }
+#profiling = { path = "../profiling" }
+profiling = { git = "https://github.com/aclysma/profiling.git" }
 #gltf = { path = "gltf" }
 
 #[patch."https://github.com/aclysma/atelier-assets"]

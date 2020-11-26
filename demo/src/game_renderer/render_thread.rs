@@ -16,10 +16,12 @@ pub struct RenderThread {
 impl RenderThread {
     pub fn start() -> Self {
         let (job_tx, job_rx) = crossbeam_channel::bounded(1);
-        let join_handle = std::thread::spawn(|| match Self::render_thread(job_rx) {
+
+        let thread_builder = std::thread::Builder::new().name("Render Thread".to_string());
+        let join_handle = thread_builder.spawn(|| match Self::render_thread(job_rx) {
             Ok(_) => log::info!("Render thread ended without error"),
             Err(err) => log::info!("Render thread ended with error: {:?}", err),
-        });
+        }).unwrap();
 
         RenderThread {
             join_handle: Some(join_handle),
@@ -46,13 +48,10 @@ impl RenderThread {
         job_rx: Receiver<RenderThreadMessage>
     ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         loop {
-            #[cfg(feature = "profile-with-tracy")]
-            tracy_client::set_thread_name("Render Thread");
-            #[cfg(feature = "profile-with-optick")]
-            optick::register_thread("Render Thread");
+            profiling::register_thread!();
+
             match job_rx.recv()? {
                 RenderThreadMessage::Render(prepared_frame, frame_in_flight) => {
-
                     #[cfg(feature = "profile-with-tracy")]
                     tracy_client::start_noncontinuous_frame!("Render Frame");
 

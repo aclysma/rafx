@@ -32,6 +32,7 @@ static-vulkan = ["renderer-shell-vulkan/static-vulkan"]
 assets = ["renderer-assets"]
 profile-with-puffin = ["renderer-resources/profile-with-puffin"]
 profile-with-optick = ["renderer-resources/profile-with-optick"]
+profile-with-superluminal = ["renderer-resources/profile-with-superluminal"]
 profile-with-tracing = ["renderer-resources/profile-with-tracing"]
 
 [[example]]
