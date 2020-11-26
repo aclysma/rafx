@@ -22,8 +22,17 @@ log = "0.4"
 fnv = "1.0"
 serde = { version = "1", features = ["serde_derive"] }
 arrayvec = "0.5"
-profiling = { path = "../../profiling" }
+profiling = "0.1"
+
+puffin = { version = "0.3.1", optional = true }
+optick = { version = "1.3.4", optional = true }
+tracing = { version = "0.1", optional = true }
 
 [dev-dependencies]
 env_logger = "0.6"
 memoffset = "0.6"
+
+[features]
+profile-with-puffin = ["profiling/profile-with-puffin", "puffin"]
+profile-with-optick = ["profiling/profile-with-optick", "optick"]
+profile-with-tracing = ["profiling/profile-with-tracing", "tracing"]

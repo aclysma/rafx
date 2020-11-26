@@ -162,6 +162,7 @@ impl GameRenderer {
 impl GameRenderer {
     // This is externally exposed, it checks result of the previous frame (which implicitly also
     // waits for the previous frame to complete if it hasn't already)
+    #[profiling::function]
     pub fn start_rendering_next_frame(
         &self,
         resources: &Resources,

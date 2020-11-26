@@ -52,6 +52,11 @@ pub struct DemoArgs {
 }
 
 pub fn run(args: &DemoArgs) {
+    #[cfg(feature = "profile-with-tracy")]
+    tracy_client::set_thread_name("Main Thread");
+    #[cfg(feature = "profile-with-optick")]
+    optick::register_thread("Main Thread");
+
     let mut resources = Resources::default();
     resources.insert(TimeState::new());
 
@@ -244,6 +249,12 @@ pub fn run(args: &DemoArgs) {
 
         #[cfg(feature = "profile-with-puffin")]
         puffin::GlobalProfiler::lock().new_frame();
+
+        #[cfg(feature = "profile-with-optick")]
+        optick::next_frame();
+
+        #[cfg(feature = "profile-with-tracy")]
+        tracy_client::finish_continuous_frame!();
     }
 
     init::rendering_destroy(&mut resources);
