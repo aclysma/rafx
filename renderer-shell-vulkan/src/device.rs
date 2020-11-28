@@ -4,8 +4,8 @@ use ash::prelude::VkResult;
 use ash::vk;
 
 use super::Window;
-use ash::version::DeviceV1_0;
 use ash::version::InstanceV1_0;
+use ash::version::{DeviceV1_0, InstanceV1_1};
 
 use std::ffi::CStr;
 
@@ -464,8 +464,26 @@ impl VkDevice {
         //TODO: Check that the extensions we want to use are supported
         let extensions: Vec<ash::vk::ExtensionProperties> =
             unsafe { instance.enumerate_device_extension_properties(device)? };
-        let features: vk::PhysicalDeviceFeatures =
-            unsafe { instance.get_physical_device_features(device) };
+        // let features: vk::PhysicalDeviceFeatures =
+        //     unsafe { instance.get_physical_device_features(device) };
+
+        let mut descriptor_indexing_features =
+            ash::vk::PhysicalDeviceDescriptorIndexingFeaturesEXT::default();
+        let mut features_v2 = vk::PhysicalDeviceFeatures2::default();
+
+        unsafe {
+            features_v2.p_next =
+                &mut descriptor_indexing_features as *mut _ as *mut std::ffi::c_void;
+            instance.get_physical_device_features2(device, &mut features_v2)
+        };
+
+        let features = &features_v2.features;
+
+        println!("features:\n{:#?}", features);
+        println!(
+            "descriptor_indexing_features:\n{:#?}",
+            descriptor_indexing_features
+        );
 
         let queue_family_indices =
             Self::find_queue_families(instance, device, surface_loader, surface)?;
@@ -501,7 +519,7 @@ impl VkDevice {
                 queue_family_indices,
                 properties,
                 extension_properties: extensions,
-                features,
+                features: features.clone(),
             };
 
             trace!("{:#?}", properties);

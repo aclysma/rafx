@@ -21,6 +21,7 @@ pub struct VkInstance {
 pub enum VkCreateInstanceError {
     InstanceError(ash::InstanceError),
     VkError(vk::Result),
+    InsufficientVulkanVersion,
 }
 
 impl std::error::Error for VkCreateInstanceError {
@@ -28,6 +29,9 @@ impl std::error::Error for VkCreateInstanceError {
         match *self {
             VkCreateInstanceError::InstanceError(ref e) => Some(e),
             VkCreateInstanceError::VkError(ref e) => Some(e),
+            VkCreateInstanceError::InsufficientVulkanVersion => {
+                Some(&VkCreateInstanceError::InsufficientVulkanVersion)
+            }
         }
     }
 }
@@ -40,10 +44,12 @@ impl core::fmt::Display for VkCreateInstanceError {
         match *self {
             VkCreateInstanceError::InstanceError(ref e) => e.fmt(fmt),
             VkCreateInstanceError::VkError(ref e) => e.fmt(fmt),
+            VkCreateInstanceError::InsufficientVulkanVersion => {
+                VkCreateInstanceError::InsufficientVulkanVersion.fmt(fmt)
+            }
         }
     }
 }
-
 impl From<ash::InstanceError> for VkCreateInstanceError {
     fn from(result: ash::InstanceError) -> Self {
         VkCreateInstanceError::InstanceError(result)
@@ -89,6 +95,11 @@ impl VkInstance {
         // Expected to be 1.1.0 or 1.0.0 depeneding on what we found in try_enumerate_instance_version
         // https://vulkan.lunarg.com/doc/view/1.1.70.1/windows/tutorial/html/16-vulkan_1_1_changes.html
         let api_version = vk::make_version(vulkan_version.0, vulkan_version.1, 0);
+
+        if api_version < vk::make_version(1, 1, 0) {
+            log::error!("Renderer requires vulkan 1.1 or higher");
+            return Err(VkCreateInstanceError::InsufficientVulkanVersion);
+        }
 
         // Info that's exposed to the driver. In a real shipped product, this data might be used by
         // the driver to make specific adjustments to improve performance
