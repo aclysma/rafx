@@ -39,7 +39,7 @@ impl RenderFrameJob {
 
         let t1 = std::time::Instant::now();
         log::trace!(
-            "[async] render took {} ms",
+            "[render thread] render took {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
         );
 
@@ -57,7 +57,7 @@ impl RenderFrameJob {
 
         let t2 = std::time::Instant::now();
         log::trace!(
-            "[async] present took {} ms",
+            "[render thread] present took {} ms",
             (t2 - t1).as_secs_f32() * 1000.0
         );
     }
@@ -91,7 +91,7 @@ impl RenderFrameJob {
         };
         let t1 = std::time::Instant::now();
         log::trace!(
-            "[async] render prepare took {} ms",
+            "[render thread] render prepare took {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
         );
 
@@ -106,6 +106,11 @@ impl RenderFrameJob {
             profiling::scope!("Renderer Execute Graph");
             render_graph.execute_graph(&graph_context)?
         };
+        let t2 = std::time::Instant::now();
+        log::trace!(
+            "[render thread] execute graph took {} ms",
+            (t2 - t1).as_secs_f32() * 1000.0
+        );
 
         Ok(command_buffers)
     }

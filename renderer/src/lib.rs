@@ -10,4 +10,3 @@ pub use renderer_visibility as visibility;
 
 pub use nodes::declare_render_feature;
 pub use nodes::declare_render_phase;
-

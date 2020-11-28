@@ -6,10 +6,10 @@ use crate::features::mesh::prepare::MeshPrepareJob;
 use crate::features::mesh::{
     ExtractedFrameNodeMeshData, MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet,
 };
+use crate::game_asset_manager::GameAssetManager;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use crate::game_asset_manager::GameAssetManager;
 use legion::*;
 use renderer::base::slab::RawSlabKey;
 use renderer::nodes::{

@@ -287,8 +287,6 @@ impl GameRenderer {
         window: &dyn Window,
         frame_in_flight: &FrameInFlight,
     ) -> VkResult<RenderFrameJob> {
-        let t0 = std::time::Instant::now();
-
         //
         // Fetch resources
         //
@@ -499,7 +497,6 @@ impl GameRenderer {
             .get_material_pass_by_index(&static_resources.bloom_combine_material, 0)
             .unwrap();
 
-        //let t2 = std::time::Instant::now();
         //TODO: This is now possible to run on the render thread
         let render_graph = render_graph::build_render_graph(
             &device_context,
@@ -513,8 +510,6 @@ impl GameRenderer {
             bloom_blur_material_pass,
             bloom_combine_material_pass,
         )?;
-        // let t3 = std::time::Instant::now();
-        // log::info!("[main] graph took {} ms", (t3 - t2).as_secs_f32() * 1000.0);
 
         //
         // Extract Jobs
@@ -560,12 +555,6 @@ impl GameRenderer {
                 &[&main_view, &directional_light_view],
             )
         };
-
-        let t1 = std::time::Instant::now();
-        log::trace!(
-            "[main] render extract took {} ms",
-            (t1 - t0).as_secs_f32() * 1000.0
-        );
 
         let game_renderer = game_renderer.clone();
 

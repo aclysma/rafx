@@ -15,8 +15,8 @@ use sdl2::mouse::MouseState;
 use crate::asset_resource::AssetResource;
 use crate::daemon::AssetDaemonArgs;
 use crate::features::debug3d::DebugDraw3DResource;
-use crate::game_renderer::GameRenderer;
 use crate::game_asset_manager::GameAssetManager;
+use crate::game_renderer::GameRenderer;
 use crate::time::TimeState;
 use renderer::assets::AssetManager;
 use structopt::StructOpt;
@@ -29,12 +29,12 @@ mod components;
 pub mod daemon;
 mod features;
 mod game_asset_lookup;
+mod game_asset_manager;
 mod game_renderer;
 mod imgui_support;
 mod init;
 mod phases;
 mod render_contexts;
-mod game_asset_manager;
 mod test_scene;
 mod time;
 
@@ -216,9 +216,9 @@ pub fn run(args: &DemoArgs) {
                     profiling::scope!("main menu bar");
                     ui.main_menu_bar(|| {
                         ui.text(imgui::im_str!(
-                        "FPS: {:.1}",
-                        time_state.updates_per_second_smoothed()
-                    ));
+                            "FPS: {:.1}",
+                            time_state.updates_per_second_smoothed()
+                        ));
                         ui.separator();
                         ui.text(imgui::im_str!("Frame: {}", time_state.update_count()));
                     });
@@ -229,7 +229,6 @@ pub fn run(args: &DemoArgs) {
                     profiling::scope!("puffin profiler");
                     profiler_ui.window(ui);
                 }
-
             });
         }
 
@@ -243,7 +242,7 @@ pub fn run(args: &DemoArgs) {
 
         let t1 = std::time::Instant::now();
         log::trace!(
-            "[main] simulation took {} ms",
+            "[main] Simulation took {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
         );
 
@@ -251,7 +250,7 @@ pub fn run(args: &DemoArgs) {
         // Redraw
         //
         {
-            profiling::scope!("render");
+            profiling::scope!("Start Next Frame Render");
             let window = Sdl2Window::new(&sdl2_systems.window);
             let game_renderer = resources.get::<GameRenderer>().unwrap();
             game_renderer
@@ -259,9 +258,11 @@ pub fn run(args: &DemoArgs) {
                 .unwrap();
         }
 
-        //profiler_ui.get_latest_data();
-        //let t2 = std::time::Instant::now();
-        //log::info!("main thread took {} ms", (t2 - t0).as_secs_f32() * 1000.0);
+        let t2 = std::time::Instant::now();
+        log::trace!(
+            "[main] start rendering took {} ms",
+            (t2 - t1).as_secs_f32() * 1000.0
+        );
 
         profiling::finish_frame!();
     }

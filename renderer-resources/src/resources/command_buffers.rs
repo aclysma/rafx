@@ -371,7 +371,6 @@ impl DynCommandWriterAllocator {
             Self::drain_drop_rx(&mut *guard);
         }
 
-
         // Find any pending writers that should submit during this frame
         let mut pending_writer_keys: Vec<_> = Default::default();
         for key in guard.pending_writers.keys() {
