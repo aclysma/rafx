@@ -72,11 +72,11 @@ unlicensed = "deny"
 allow = [
     "MIT",
     "Apache-2.0",
-    #"ISC",
-    #"CC0-1.0",
-    #"BSD-3-Clause",
-    #"BSD-2-Clause",
-    #"Zlib"
+    "ISC",
+    "CC0-1.0",
+    "BSD-3-Clause",
+    "BSD-2-Clause",
+    "Zlib"
     #"Apache-2.0 WITH LLVM-exception",
 ]
 # List of explictly disallowed licenses

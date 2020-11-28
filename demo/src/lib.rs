@@ -53,9 +53,9 @@ pub struct DemoArgs {
 
 pub fn run(args: &DemoArgs) {
     #[cfg(feature = "profile-with-tracy")]
-    tracy_client::set_thread_name("Main Thread");
+    profiling::tracy_client::set_thread_name("Main Thread");
     #[cfg(feature = "profile-with-optick")]
-    optick::register_thread("Main Thread");
+    profiling::optick::register_thread("Main Thread");
 
     let mut resources = Resources::default();
     resources.insert(TimeState::new());
@@ -104,7 +104,16 @@ pub fn run(args: &DemoArgs) {
     #[cfg(feature = "profile-with-puffin")]
     let mut profiler_ui = puffin_imgui::ProfilerUi::default();
     #[cfg(feature = "profile-with-puffin")]
-    puffin::set_scopes_on(true);
+    profiling::puffin::set_scopes_on(true);
+
+    #[cfg(feature = "profile-with-tracy")]
+    {
+        use tracing_subscriber::layer::SubscriberExt;
+        tracing::subscriber::set_global_default(
+            tracing_subscriber::registry().with(tracing_tracy::TracyLayer::new()),
+        )
+        .unwrap();
+    }
 
     'running: loop {
         profiling::scope!("Main Loop");
@@ -254,14 +263,7 @@ pub fn run(args: &DemoArgs) {
         //let t2 = std::time::Instant::now();
         //log::info!("main thread took {} ms", (t2 - t0).as_secs_f32() * 1000.0);
 
-        #[cfg(feature = "profile-with-puffin")]
-        puffin::GlobalProfiler::lock().new_frame();
-
-        #[cfg(feature = "profile-with-optick")]
-        optick::next_frame();
-
-        #[cfg(feature = "profile-with-tracy")]
-        tracy_client::finish_continuous_frame!();
+        profiling::finish_frame!();
     }
 
     init::rendering_destroy(&mut resources);
