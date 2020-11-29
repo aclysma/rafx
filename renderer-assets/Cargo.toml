@@ -38,7 +38,7 @@ ron = "0.5"
 
 arrayvec = "0.5"
 
-profiling = "0.1"
+profiling = "0.1.4"
 
 #shaderc = "0.6"
 spirv-reflect = "0.2"

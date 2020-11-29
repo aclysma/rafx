@@ -46,11 +46,13 @@ pub(crate) fn include_impl(
     let resolved_path = match include_type {
         IncludeType::Relative => {
             if requested_path.is_absolute() {
-                log::trace!("abolute path");
-                requested_path.to_path_buf()
+                let path = requested_path.to_path_buf();
+                log::trace!("absolute path {:?}", path);
+                path
             } else {
-                log::trace!("relative path");
-                requested_from.parent().unwrap().join(requested_path)
+                let path = requested_from.parent().unwrap().join(requested_path);
+                log::trace!("from: {:?} relative path: {:?}", requested_from, path);
+                path
             }
         }
         IncludeType::Standard => {
@@ -59,7 +61,12 @@ pub(crate) fn include_impl(
         }
     };
 
-    let content = std::fs::read_to_string(&resolved_path).unwrap();
+    let content = std::fs::read_to_string(&resolved_path).map_err(|e| {
+        format!(
+            "Could not read file {:?} when trying to include {:?} from {:?}: {:?}",
+            resolved_path, requested_path, requested_from, e
+        )
+    })?;
 
     Ok(ResolvedInclude {
         resolved_path,

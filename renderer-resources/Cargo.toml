@@ -23,7 +23,7 @@ fnv = "1.0"
 serde = { version = "1", features = ["serde_derive"] }
 arrayvec = "0.5"
 
-profiling = "0.1"
+profiling = "0.1.4"
 
 [dev-dependencies]
 env_logger = "0.6"

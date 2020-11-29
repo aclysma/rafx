@@ -188,7 +188,7 @@ impl VkDeviceContext {
         #[cfg(debug_assertions)]
         let all_contexts = {
             let create_backtrace = backtrace::Backtrace::new_unresolved();
-            let mut all_contexts: fnv::FnvHashMap<u64, backtrace::Backtrace> = Default::default();
+            let mut all_contexts = fnv::FnvHashMap::<u64, backtrace::Backtrace>::default();
             all_contexts.insert(0, create_backtrace);
             all_contexts
         };

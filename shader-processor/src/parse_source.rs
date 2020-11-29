@@ -582,6 +582,7 @@ fn find_annotations_in_comments(comments: &[CommentText]) -> Vec<AnnotationText>
     annotations
 }
 
+#[derive(Debug)]
 pub struct FileToProcess {
     pub path: PathBuf,
     pub include_type: IncludeType,
@@ -624,19 +625,20 @@ pub struct ShaderText {
 
 pub fn parse_glsl(file_path: &Path) -> Result<ShaderText, String> {
     let first_file = FileToProcess {
-        path: file_path
-            .file_name()
-            .ok_or_else(|| format!("Failed to get the filename from path {:?}", file_path))?
-            .into(),
+        path: file_path.to_path_buf(),
         include_type: IncludeType::Relative,
-        requested_from: file_path.to_path_buf(),
+        requested_from: PathBuf::new(),
         include_depth: 0,
     };
 
     let mut included_files = FnvHashSet::<PathBuf>::default();
+    included_files.insert(file_path.to_path_buf());
     let mut declarations = Vec::default();
 
-    parse_shader_source_recursive(&first_file, &mut declarations, &mut included_files)?;
+    let content = std::fs::read_to_string(file_path)
+        .map_err(|e| format!("Could not read file {:?}: {:?}", file_path, e))?;
+    let code: Vec<char> = content.chars().collect();
+    parse_shader_source_text(&first_file, &mut declarations, &mut included_files, &code)?;
 
     Ok(ShaderText { declarations })
 }
@@ -646,6 +648,7 @@ pub fn parse_shader_source_recursive(
     declarations: &mut Vec<DeclarationText>,
     included_files: &mut FnvHashSet<PathBuf>,
 ) -> Result<(), String> {
+    log::trace!("parse_shader_source_recursive {:?}", file_to_process);
     let resolved_include = super::include_impl(
         &file_to_process.path,
         file_to_process.include_type,

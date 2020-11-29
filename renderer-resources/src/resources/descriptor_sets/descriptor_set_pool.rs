@@ -73,7 +73,9 @@ impl ManagedDescriptorSetPool {
             .descriptor_set_layout_bindings
         {
             let ty: vk::DescriptorType = desc.descriptor_type.into();
-            descriptor_counts[ty.as_raw() as usize] += MAX_DESCRIPTORS_PER_POOL;
+            assert!(desc.descriptor_count > 0);
+            descriptor_counts[ty.as_raw() as usize] +=
+                MAX_DESCRIPTORS_PER_POOL * desc.descriptor_count;
         }
 
         let mut pool_sizes = Vec::with_capacity(dsc::DescriptorType::count());

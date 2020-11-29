@@ -130,7 +130,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
                                 &descriptor_set_layouts
                                     [shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX],
                                 shaders::sprite_frag::DescriptorSet1Args {
-                                    tex: sprite.image_view.clone(),
+                                    tex: &sprite.image_view,
                                 },
                             )
                             .unwrap();

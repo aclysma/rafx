@@ -200,6 +200,7 @@ fn process_glsl_shader(
     //
     let mut compiler = shaderc::Compiler::new().unwrap();
 
+    log::trace!("{:?}: compile unoptimized", glsl_file);
     let unoptimized_compile_spirv_result = {
         let mut compile_options = shaderc::CompileOptions::new().unwrap();
         compile_options.set_include_callback(include::shaderc_include_callback);
@@ -216,10 +217,12 @@ fn process_glsl_shader(
     //
     // Read the unoptimized spv into spirv_cross so that we can grab reflection data
     //
+    log::trace!("{:?}: read spirv_cross module", glsl_file);
     let spirv_cross_module =
         spirv_cross::spirv::Module::from_words(unoptimized_compile_spirv_result.as_binary());
 
     //TEMP: Create this for now, planning to remove the dependency later
+    log::trace!("{:?}: read spirv_reflect module", glsl_file);
     let spirv_reflect_module =
         spirv_reflect::create_shader_module(unoptimized_compile_spirv_result.as_binary_u8())?;
 
@@ -227,15 +230,18 @@ fn process_glsl_shader(
     // Parse the shader code to find all declared resources. This is a high-level parse of the file
     // to extract the bits we care about along with the comments that are associated with those bits
     //
+    log::trace!("{:?}: parse glsl", glsl_file);
     let parsed_source = parse_source::parse_glsl(&glsl_file)?;
 
     //
     // Parse the declarations that were extracted from the source file
     //
+    log::trace!("{:?}: parse declarations", glsl_file);
     let parsed_declarations = parse_declarations::parse_declarations(&parsed_source.declarations)?;
 
     // example usage of spirv_cross. We can provide options here to modify the shader
     // programmatically. This could use annotations to drive this
+    log::trace!("{:?}: generate spirv_cross ast", glsl_file);
     let mut spirv_cross_glsl_options = spirv_cross::glsl::CompilerOptions::default();
     spirv_cross_glsl_options.vulkan_semantics = true;
     let mut ast = spirv_cross::spirv::Ast::<spirv_cross::glsl::Target>::parse(&spirv_cross_module)?;
@@ -255,6 +261,7 @@ fn process_glsl_shader(
     //
     // Generate rust code that matches up with the shader
     //
+    log::trace!("{:?}: generate rust code", glsl_file);
     let rust_code = codegen::generate_rust_code(
         &parsed_declarations,
         &spirv_reflect_module,
@@ -273,6 +280,7 @@ fn process_glsl_shader(
     //ast.build_combined_image_samplers();
     //let compiled = ast.compile()?;
     let output_spv = if optimize_shaders {
+        log::trace!("{:?}: compile optimized", glsl_file);
         let mut compile_options = shaderc::CompileOptions::new().unwrap();
         compile_options.set_include_callback(include::shaderc_include_callback);
         compile_options.set_optimization_level(shaderc::OptimizationLevel::Performance);
@@ -289,10 +297,12 @@ fn process_glsl_shader(
             .as_binary_u8()
             .to_vec()
     } else {
+        log::trace!("{:?}: do not recompile optimized", glsl_file);
         unoptimized_compile_spirv_result.as_binary_u8().to_vec()
     };
 
     // Don't worry about the return value
+    log::trace!("{:?}: cook shader", glsl_file);
     let cooked_shader = cook::cook_shader(&reflected_data, &output_spv)?;
 
     //

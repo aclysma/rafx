@@ -18,7 +18,7 @@ lazy_static::lazy_static! {
 }
 
 pub struct BuildRenderGraphResult {
-    pub shadow_map: ResourceArc<ImageViewResource>,
+    pub shadow_maps: Vec<ResourceArc<ImageViewResource>>,
     pub executor: RenderGraphExecutor<RenderGraphUserContext>,
 }
 
@@ -35,7 +35,7 @@ pub fn build_render_graph(
     swapchain_info: &SwapchainInfo,
     swapchain_image: ResourceArc<ImageViewResource>,
     main_view: RenderView,
-    directional_light_view: RenderView,
+    shadow_map_views: &[RenderView],
     bloom_extract_material_pass: ResourceArc<MaterialPassResource>,
     bloom_blur_material_pass: ResourceArc<MaterialPassResource>,
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
@@ -51,52 +51,57 @@ pub fn build_render_graph(
     let mut graph = RenderGraphBuilder::default();
     let mut graph_callbacks = RenderGraphNodeCallbacks::<RenderGraphUserContext>::default();
 
-    let directional_light_pass = {
-        struct DirectionalLightPass {
-            node: RenderGraphNodeId,
-            depth: RenderGraphImageUsageId,
-        }
+    let mut shadow_map_passes = Vec::default();
+    for shadow_map_view in shadow_map_views {
+        let shadow_map_pass = {
+            struct ShadowMapPass {
+                node: RenderGraphNodeId,
+                depth: RenderGraphImageUsageId,
+            }
 
-        let node = graph.add_node("Shadow", RenderGraphQueue::DefaultGraphics);
+            let node = graph.add_node("Shadow", RenderGraphQueue::DefaultGraphics);
 
-        let depth = graph.create_depth_attachment(
-            node,
-            Some(vk::ClearDepthStencilValue {
-                depth: 0.0,
-                stencil: 0,
-            }),
-            RenderGraphImageConstraint {
-                samples: Some(vk::SampleCountFlags::TYPE_1),
-                format: Some(depth_format),
-                aspect_flags: vk::ImageAspectFlags::DEPTH,
-                ..Default::default()
-            },
-        );
-        graph.set_image_name(depth, "depth");
+            let depth = graph.create_depth_attachment(
+                node,
+                Some(vk::ClearDepthStencilValue {
+                    depth: 0.0,
+                    stencil: 0,
+                }),
+                RenderGraphImageConstraint {
+                    samples: Some(vk::SampleCountFlags::TYPE_1),
+                    format: Some(depth_format),
+                    aspect_flags: vk::ImageAspectFlags::DEPTH,
+                    ..Default::default()
+                },
+            );
+            graph.set_image_name(depth, "depth");
 
-        graph_callbacks.add_renderphase_dependency::<ShadowMapRenderPhase>(node);
+            graph_callbacks.add_renderphase_dependency::<ShadowMapRenderPhase>(node);
 
-        let directional_light_view = directional_light_view.clone();
-        graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
-            let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
-            user_context
-                .prepared_render_data
-                .write_view_phase::<ShadowMapRenderPhase>(
-                    &directional_light_view,
-                    &mut write_context,
-                );
-            Ok(())
-        });
+            let directional_light_view = shadow_map_view.clone();
+            graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
+                let mut write_context =
+                    RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+                user_context
+                    .prepared_render_data
+                    .write_view_phase::<ShadowMapRenderPhase>(
+                        &directional_light_view,
+                        &mut write_context,
+                    );
+                Ok(())
+            });
 
-        DirectionalLightPass { node, depth }
-    };
+            ShadowMapPass { node, depth }
+        };
+
+        shadow_map_passes.push(shadow_map_pass);
+    }
 
     let opaque_pass = {
         struct OpaquePass {
             node: RenderGraphNodeId,
             color: RenderGraphImageUsageId,
             depth: RenderGraphImageUsageId,
-            shadow_map: RenderGraphImageUsageId,
         }
 
         let node = graph.add_node("Opaque", RenderGraphQueue::DefaultGraphics);
@@ -129,7 +134,9 @@ pub fn build_render_graph(
         );
         graph.set_image_name(depth, "depth");
 
-        let shadow_map = graph.sample_image(node, directional_light_pass.depth, Default::default());
+        for shadow_map_pass in &shadow_map_passes {
+            graph.sample_image(node, shadow_map_pass.depth, Default::default());
+        }
 
         graph_callbacks.add_renderphase_dependency::<OpaqueRenderPhase>(node);
 
@@ -142,12 +149,7 @@ pub fn build_render_graph(
             Ok(())
         });
 
-        OpaquePass {
-            node,
-            color,
-            depth,
-            shadow_map,
-        }
+        OpaquePass { node, color, depth }
     };
 
     let bloom_extract_pass = {
@@ -193,7 +195,7 @@ pub fn build_render_graph(
 
         graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
             // Get the color image from before
-            let sample_image = args.graph_context.image(sample_image).unwrap();
+            let sample_image = args.graph_context.image(sample_image);
 
             // Get the pipeline
             let pipeline = args
@@ -216,7 +218,9 @@ pub fn build_render_graph(
                 &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets;
             let bloom_extract_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
                 &descriptor_set_layouts[shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
-                shaders::bloom_extract_frag::DescriptorSet0Args { tex: sample_image },
+                shaders::bloom_extract_frag::DescriptorSet0Args {
+                    tex: sample_image.as_ref().unwrap(),
+                },
             )?;
 
             // Explicit flush since we're going to use the descriptors immediately
@@ -282,7 +286,7 @@ pub fn build_render_graph(
             let bloom_blur_material_pass = bloom_blur_material_pass.clone();
             graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
                 // Get the color image from before
-                let sample_image = args.graph_context.image(sample_image).unwrap();
+                let sample_image = args.graph_context.image(sample_image);
 
                 // Get the pipeline
                 let pipeline = args
@@ -307,7 +311,7 @@ pub fn build_render_graph(
                 let bloom_blur_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
                     &descriptor_set_layouts[shaders::bloom_blur_frag::TEX_DESCRIPTOR_SET_INDEX],
                     shaders::bloom_blur_frag::DescriptorSet0Args {
-                        tex: sample_image.clone(),
+                        tex: sample_image.as_ref().unwrap(),
                         config: &shaders::bloom_blur_frag::ConfigUniform {
                             horizontal: blur_pass_index % 2,
                             ..Default::default()
@@ -403,8 +407,8 @@ pub fn build_render_graph(
             let bloom_combine_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
                 &descriptor_set_layouts[shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX],
                 shaders::bloom_combine_frag::DescriptorSet0Args {
-                    in_color: sdr_image,
-                    in_blur: hdr_image,
+                    in_color: &sdr_image,
+                    in_blur: &hdr_image,
                 },
             )?;
 
@@ -497,10 +501,13 @@ pub fn build_render_graph(
         graph_callbacks,
     )?;
 
-    let shadow_map = executor.image_resource(opaque_pass.shadow_map).unwrap();
+    let shadow_maps = shadow_map_passes
+        .iter()
+        .map(|x| executor.image_resource(x.depth).unwrap())
+        .collect();
 
     Ok(BuildRenderGraphResult {
-        shadow_map,
+        shadow_maps,
         executor,
     })
 }

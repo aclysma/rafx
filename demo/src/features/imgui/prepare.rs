@@ -79,7 +79,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             .create_descriptor_set(
                 &descriptor_set_layouts[shaders::imgui_frag::TEX_DESCRIPTOR_SET_INDEX],
                 shaders::imgui_frag::DescriptorSet1Args {
-                    tex: self.font_atlas.clone(),
+                    tex: &self.font_atlas,
                 },
             )
             .unwrap();

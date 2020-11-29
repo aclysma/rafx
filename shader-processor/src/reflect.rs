@@ -264,7 +264,7 @@ where
 
         //TODO: This is using a list of push constants but I don't think multiple are allowed within
         // the same file
-        let mut push_constants: Vec<ReflectedPushConstant> = Default::default();
+        let mut push_constants = Vec::<ReflectedPushConstant>::default();
         for push_constant in &shader_resources.push_constant_buffers {
             let push_constant_ranges = ast
                 .get_active_buffer_ranges(push_constant.id)

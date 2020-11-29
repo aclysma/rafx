@@ -23,24 +23,53 @@ use renderer::resources::DescriptorSetArc;
 use write::MeshCommandWriter;
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
-    shaders::mesh_frag::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX as u32;
+    shaders::mesh_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
 const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 =
     shaders::mesh_frag::PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX as u32;
 const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 =
-    shaders::mesh_vert::PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX as u32;
+    shaders::mesh_frag::PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX as u32;
 
+use crate::components::{
+    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+};
+use fnv::FnvHashMap;
+pub use shaders::mesh_frag::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
 pub use shaders::mesh_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
-pub use shaders::mesh_vert::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
-pub use shaders::mesh_vert::PerViewDataVSUniform as MeshPerFrameVertexShaderParam;
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum LightId {
+    PointLight(legion::Entity),
+    SpotLight(legion::Entity),
+    DirectionalLight(legion::Entity),
+}
+
+pub struct ShadowMapData {
+    pub shadow_map_lookup: FnvHashMap<LightId, usize>,
+    pub shadow_map_render_views: Vec<RenderView>,
+    pub shadow_map_images: Vec<ResourceArc<ImageViewResource>>,
+}
+
+pub struct PreparedDirectionalLight {
+    light: DirectionalLightComponent,
+    shadow_map_index: Option<usize>,
+}
+
+pub struct PreparedPointLight {
+    light: PointLightComponent,
+    position: PositionComponent,
+    shadow_map_index: Option<usize>,
+}
+
+pub struct PreparedSpotLight {
+    light: SpotLightComponent,
+    position: PositionComponent,
+    shadow_map_index: Option<usize>,
+}
 
 pub fn create_mesh_extract_job(
-    shadow_map_image: ResourceArc<ImageViewResource>,
-    shadow_map_view: RenderView,
+    shadow_map_data: ShadowMapData
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
-    Box::new(MeshExtractJob {
-        shadow_map_image,
-        shadow_map_view,
-    })
+    Box::new(MeshExtractJob { shadow_map_data })
 }
 
 //

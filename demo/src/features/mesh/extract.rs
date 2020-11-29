@@ -4,7 +4,8 @@ use crate::components::{
 };
 use crate::features::mesh::prepare::MeshPrepareJob;
 use crate::features::mesh::{
-    ExtractedFrameNodeMeshData, MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet,
+    ExtractedFrameNodeMeshData, LightId, MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet,
+    PreparedDirectionalLight, PreparedPointLight, PreparedSpotLight, ShadowMapData,
 };
 use crate::game_asset_manager::GameAssetManager;
 use crate::render_contexts::{
@@ -15,11 +16,9 @@ use renderer::base::slab::RawSlabKey;
 use renderer::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
-use renderer::resources::{ImageViewResource, ResourceArc};
 
 pub struct MeshExtractJob {
-    pub(super) shadow_map_image: ResourceArc<ImageViewResource>,
-    pub(super) shadow_map_view: RenderView,
+    pub(super) shadow_map_data: ShadowMapData,
 }
 
 impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
@@ -97,29 +96,51 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         //
         // Get the lights
         //
-        let mut query = <Read<DirectionalLightComponent>>::query();
+        let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
         let directional_lights = query
             .iter(extract_context.world)
-            .map(|x| x.clone())
+            .map(|(e, l)| PreparedDirectionalLight {
+                shadow_map_index: self
+                    .shadow_map_data
+                    .shadow_map_lookup
+                    .get(&LightId::DirectionalLight(*e))
+                    .copied(),
+                light: l.clone(),
+            })
             .collect();
 
-        let mut query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
+        let mut query = <(Entity, Read<PositionComponent>, Read<PointLightComponent>)>::query();
         let point_lights = query
             .iter(extract_context.world)
-            .map(|(p, l)| (p.clone(), l.clone()))
+            .map(|(e, p, l)| PreparedPointLight {
+                shadow_map_index: self
+                    .shadow_map_data
+                    .shadow_map_lookup
+                    .get(&LightId::PointLight(*e))
+                    .copied(),
+                light: l.clone(),
+                position: p.clone(),
+            })
             .collect();
 
-        let mut query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
+        let mut query = <(Entity, Read<PositionComponent>, Read<SpotLightComponent>)>::query();
         let spot_lights = query
             .iter(extract_context.world)
-            .map(|(p, l)| (p.clone(), l.clone()))
+            .map(|(e, p, l)| PreparedSpotLight {
+                shadow_map_index: self
+                    .shadow_map_data
+                    .shadow_map_lookup
+                    .get(&LightId::SpotLight(*e))
+                    .copied(),
+                light: l.clone(),
+                position: p.clone(),
+            })
             .collect();
 
         Box::new(MeshPrepareJob {
             extracted_frame_node_mesh_data,
             directional_lights,
-            shadow_map_image: self.shadow_map_image,
-            shadow_map_view: self.shadow_map_view,
+            shadow_map_data: self.shadow_map_data,
             point_lights,
             spot_lights,
         })

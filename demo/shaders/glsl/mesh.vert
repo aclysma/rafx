@@ -2,21 +2,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-// @[export]
-// @[internal_buffer]
-layout (set = 0, binding = 4) uniform PerViewDataVS {
-    mat4 shadow_map_view_proj;
-    vec3 shadow_map_light_dir;
-} per_view_data;
-
-// Keep this identical to PerObjectData in mesh_shadow_map.vert
-// @[export]
-// @[internal_buffer]
-layout(set = 2, binding = 0) uniform PerObjectData {
-    mat4 model;
-    mat4 model_view;
-    mat4 model_view_proj;
-} per_object_data;
+// set = 2, binding = 0
+#include "mesh_common_bindings.glsl"
 
 // @[semantic("POSITION")]
 layout (location = 0) in vec3 in_pos;
@@ -39,8 +26,9 @@ layout (location = 1) out vec3 out_normal_vs;
 layout (location = 2) out vec3 out_tangent_vs;
 layout (location = 3) out vec3 out_binormal_vs;
 layout (location = 4) out vec2 out_uv;
-layout (location = 5) out vec4 out_shadow_map_pos;
-layout (location = 6) out vec3 out_shadow_map_light_dir_vs;
+
+// for shadows
+layout (location = 5) out vec4 out_position_ws;
 
 void main() {
     gl_Position = per_object_data.model_view_proj * vec4(in_pos, 1.0);
@@ -49,13 +37,13 @@ void main() {
     // NOTE: Not sure if I need to normalize after the matrix multiply
     out_normal_vs = mat3(per_object_data.model_view) * in_normal;
     out_tangent_vs = mat3(per_object_data.model_view) * in_tangent.xyz;
+
     vec3 binormal = cross(in_normal, in_tangent.xyz) * in_tangent.w;
     out_binormal_vs = mat3(per_object_data.model_view) * binormal;
 
-    // Used to sample the shadow map
-    out_shadow_map_pos = per_view_data.shadow_map_view_proj * per_object_data.model * vec4(in_pos, 1.0);
-    // dot(light dir, normal) for purpose of bias to prevent shadow acne
-    out_shadow_map_light_dir_vs = mat3(per_object_data.model_view) * per_view_data.shadow_map_light_dir;
-
     out_uv = in_uv;
+
+    // Used to sample the shadow map
+    out_position_ws = per_object_data.model * vec4(in_pos, 1.0);
+
 }

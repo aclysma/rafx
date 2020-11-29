@@ -372,7 +372,7 @@ impl DynCommandWriterAllocator {
         }
 
         // Find any pending writers that should submit during this frame
-        let mut pending_writer_keys: Vec<_> = Default::default();
+        let mut pending_writer_keys = Vec::default();
         for key in guard.pending_writers.keys() {
             if key.submits_in_frame_index == guard.current_frame_index {
                 pending_writer_keys.push(key.clone());
@@ -398,7 +398,7 @@ impl DynCommandWriterAllocator {
         }
 
         // Find all the submitted writers that are old enough to no longer be in flight
-        let mut submitted_writer_keys: Vec<_> = Default::default();
+        let mut submitted_writer_keys = Vec::default();
         for &submits_in_frame_index in guard.submitted_writers.keys() {
             // We can use >= here because we're bumping current_frame_index at the end of this
             // function

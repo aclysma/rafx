@@ -43,7 +43,7 @@ impl DynPassMaterialInstance {
     pub fn set_image(
         &mut self,
         slot_name: &str,
-        image_view: ResourceArc<ImageViewResource>,
+        image_view: &ResourceArc<ImageViewResource>,
     ) {
         if let Some(slot_locations) = self.slot_name_lookup.get(slot_name) {
             for slot_location in slot_locations {
@@ -51,7 +51,7 @@ impl DynPassMaterialInstance {
                     .descriptor_sets
                     .get_mut(slot_location.layout_index as usize)
                 {
-                    dyn_descriptor_set.set_image(slot_location.binding_index, image_view.clone());
+                    dyn_descriptor_set.set_image(slot_location.binding_index, image_view);
                 }
             }
         }
@@ -109,7 +109,7 @@ impl DynMaterialInstance {
         image_view: &ResourceArc<ImageViewResource>,
     ) {
         for pass in &mut self.passes {
-            pass.set_image(slot_name, image_view.clone())
+            pass.set_image(slot_name, image_view)
         }
     }
 

@@ -1284,8 +1284,8 @@ fn build_node_barriers(
 
     for node_id in node_execution_order {
         let node = graph.node(*node_id);
-        //let mut invalidate_barriers: FnvHashMap<PhysicalImageId, RenderGraphImageBarrier> = Default::default();
-        //let mut flush_barriers: FnvHashMap<PhysicalImageId, RenderGraphImageBarrier> = Default::default();
+        //let mut invalidate_barriers = FnvHashMap<PhysicalImageId, RenderGraphImageBarrier>::default();
+        //let mut flush_barriers = FnvHashMap<PhysicalImageId, RenderGraphImageBarrier>::default();
         let mut node_barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers> =
             Default::default();
 
