@@ -14,22 +14,22 @@ use atelier_assets::loader::{
     packfile_io::PackfileReader, storage::DefaultIndirectionResolver, Loader, RpcIO,
 };
 use legion::Resources;
-use renderer::assets::AssetManager;
-use renderer::assets::{
+use rafx::assets::AssetManager;
+use rafx::assets::{
     BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, PipelineAsset, RenderpassAsset,
     ShaderAsset,
 };
-use renderer::assets::{
+use rafx::assets::{
     BufferAssetData, ImageAssetData, MaterialAssetData, MaterialInstanceAssetData,
     PipelineAssetData, RenderpassAssetData, ShaderAssetData,
 };
-use renderer::nodes::RenderRegistry;
-use renderer::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use renderer::vulkan::{
+use rafx::nodes::RenderRegistry;
+use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use rafx::vulkan::{
     LogicalSize, MsaaLevel, VkContext, VkContextBuilder, VkDeviceContext, VkSurface,
     VulkanLinkMethod,
 };
-use renderer_shell_vulkan_sdl2::Sdl2Window;
+use rafx_shell_vulkan_sdl2::Sdl2Window;
 
 pub fn atelier_init_daemon(
     resources: &mut Resources,
@@ -74,7 +74,7 @@ pub fn sdl2_init() -> Sdl2Systems {
     // Create the window
     let window = video_subsystem
         .window(
-            "Renderer Prototype",
+            "Rafx Demo",
             logical_size.width,
             logical_size.height,
         )
@@ -132,7 +132,7 @@ pub fn rendering_init(
         //.msaa_level_priority(vec![MsaaLevel::Sample1])
         .prefer_mailbox_present_mode();
 
-    let render_registry = renderer::nodes::RenderRegistryBuilder::default()
+    let render_registry = rafx::nodes::RenderRegistryBuilder::default()
         .register_feature::<SpriteRenderFeature>()
         .register_feature::<MeshRenderFeature>()
         .register_feature::<Debug3dRenderFeature>()
@@ -149,7 +149,7 @@ pub fn rendering_init(
     let resource_manager = {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
 
-        let asset_manager = renderer::assets::AssetManager::new(
+        let asset_manager = rafx::assets::AssetManager::new(
             &device_context,
             &render_registry,
             asset_resource.loader(),

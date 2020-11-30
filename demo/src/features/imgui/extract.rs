@@ -6,11 +6,11 @@ use crate::render_contexts::{
 };
 use ash::vk::Extent2D;
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::MaterialAsset;
-use renderer::nodes::{
+use rafx::assets::MaterialAsset;
+use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
-use renderer::resources::{ImageViewResource, ResourceArc};
+use rafx::resources::{ImageViewResource, ResourceArc};
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
 // single function

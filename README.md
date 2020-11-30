@@ -1,4 +1,4 @@
-# renderer_prototype (Name TBD)
+# Rafx
 
 This is a vulkan renderer built on top of the [`atelier-assets`](https://github.com/amethyst/atelier-assets) asset 
 pipeline. It's intended to be performant, flexible, workflow-friendly, and suitable for use in real-world projects in a 
@@ -24,7 +24,7 @@ References:
  * The render graph is inspired by the 2017 GDC talk "[FrameGraph: Extensible Rendering Architecture in Frostbite](https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in)"
      * see also "[Render Graphs and Vulkan - a deep dive](http://themaister.net/blog/2017/08/15/render-graphs-and-vulkan-a-deep-dive/)"  
 
-[![Build Status](https://github.com/aclysma/renderer_prototype/workflows/CI/badge.svg)](https://github.com/aclysma/renderer_prototype/actions)
+[![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
 
 [![Video of Renderer in Use](docs/ios-screenshot.png)](https://www.youtube.com/watch?v=Ks_HQbejHE4 "Video of Renderer in Use")
 
@@ -40,8 +40,7 @@ References:
 
 ## Status
 
-This project should still be considered a prototype, shared for informational purposes only. Please don't use it in
-anything real yet!
+Not production ready!
 
 The demo includes:
  * Render thread decoupled from main thread [(diagram)](docs/pipelining.png)
@@ -63,8 +62,8 @@ The demo includes:
 ## Running the Demo
 
 ```
-git clone https://github.com/aclysma/renderer_prototype.git
-cd renderer_prototype
+git clone https://github.com/aclysma/rafx.git
+cd rafx
 cargo update -p tokio --precise 0.2.13
 cargo run --release
 ```
@@ -85,7 +84,7 @@ The renderer includes a few tools for processing shaders and packing data in a b
 #### Shader Compiler
 
 This tool parses GLSL and produces matching rust code. This makes working with descriptor sets easier and safer!
- * The tool is located at [/shader-processor](shader-processor)
+ * The tool is located at [/shader-processor](rafx-shader-processor)
  * The demo includes a `shaders` crate to compile the generated rust code. It's located at [/demo/shaders](demo/shaders).
    Just the rust code is auto-generated, not the Cargo.toml.
  * The easiest way to "refresh shaders" in the demo is to hit compile.bat or compile.sh in that folder
@@ -98,26 +97,26 @@ This tool currently is only useful for packing assets.
 
 ## Features
 
- * `renderer-shell-vulkan`, `renderer-shell-vulkan-sdl2` - Basic helpers for vulkan
+ * `rafx-shell-vulkan`, `rafx-shell-vulkan-sdl2` - Basic helpers for vulkan
    * Friendly helpers for setting up the device and window
    * Some basic, unopinionated helpers for vulkan. Things like async image uploads, deferring destruction of resources, 
      and pooling/reusing resources
- * `renderer-base` - Shared helpers/data structures. Nothing exciting
- * `renderer-nodes` - Inspired by the 2015 GDC talk "Destiny's Multithreaded Rendering Architecture." (A low-budget
+ * `rafx-base` - Shared helpers/data structures. Nothing exciting
+ * `rafx-nodes` - Inspired by the 2015 GDC talk "Destiny's Multithreaded Rendering Architecture." (A low-budget
    version and jobs are not actually MT yet)
    * A job system with extract, prepare, and write phases
    * Rendering is pipelined with simulation thread, and the job structure is intended to be highly parallel
    * Handles multiple views and phases allowing advanced features like shadow maps
    * Flexible sorting mechanism for interleaving and batching write commands from multiple rendering features
- * `renderer-visibility` - Placeholder visibility system. Doesn't do anything yet (returns all things visible all the 
+ * `rafx-visibility` - Placeholder visibility system. Doesn't do anything yet (returns all things visible all the 
    time). See the GDC talk for more info on how this will work.
- * `renderer-resources` - Resource management for images, buffers, descriptor sets, etc.
+ * `rafx-resources` - Resource management for images, buffers, descriptor sets, etc.
    * Most things are hashed and reference counted
    * Provides a render graph
    * Nearly all vulkan assets are data-driven from serializable and hashable structures rather than hard-coded.
    * Buffers and images are asynchronously uploaded on dedicated transfer queue when available
- * `renderer-assets` - An asset loading and management system.
-   * Assets can hot reload from files (but see [#14](renderer_prototype/issues/14))
+ * `rafx-assets` - An asset loading and management system.
+   * Assets can hot reload from files (but see [#14](rafx/issues/14))
    * Because atelier-assets pre-processes and stores cached assets as they change, custom processing/packing can be
      implemented while maintaining extremely fast load times. For example, texture compression could be implemented
      as an import step.  

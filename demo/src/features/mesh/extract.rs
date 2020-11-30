@@ -12,8 +12,8 @@ use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
 use legion::*;
-use renderer::base::slab::RawSlabKey;
-use renderer::nodes::{
+use rafx::base::slab::RawSlabKey;
+use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
 

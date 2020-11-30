@@ -1,0 +1,68 @@
+[package]
+name = "rafx"
+version = "0.1.0"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rafx-shell-vulkan = { path = "../rafx-shell-vulkan" }
+rafx-shell-vulkan-sdl2 = { path = "../rafx-shell-vulkan-sdl2" }
+
+rafx-base = { path = "../rafx-base" }
+rafx-nodes = { path = "../rafx-nodes" }
+rafx-assets = { path = "../rafx-assets", optional = true }
+rafx-resources = { path = "../rafx-resources" }
+rafx-visibility = { path = "../rafx-visibility" }
+
+log = "0.4"
+
+[dev-dependencies]
+env_logger = "0.6"
+legion = { version = "0.3.0", default-features = false }
+sdl2 = { version = ">=0.33" }
+ash = ">=0.30"
+glam = "0.8.6"
+
+[features]
+default = []
+static-vulkan = ["rafx-shell-vulkan/static-vulkan"]
+assets = ["rafx-assets"]
+
+profile-with-puffin = [
+    "rafx-resources/profile-with-puffin",
+    "rafx-assets/profile-with-puffin",
+    "rafx-shell-vulkan/profile-with-puffin"
+]
+
+profile-with-optick = [
+    "rafx-resources/profile-with-optick",
+    "rafx-assets/profile-with-optick",
+    "rafx-shell-vulkan/profile-with-optick"
+]
+
+profile-with-superluminal = [
+    "rafx-resources/profile-with-superluminal",
+    "rafx-assets/profile-with-superluminal",
+    "rafx-shell-vulkan/profile-with-superluminal"
+]
+
+profile-with-tracing = [
+    "rafx-resources/profile-with-tracing",
+    "rafx-assets/profile-with-tracing",
+    "rafx-shell-vulkan/profile-with-tracing"
+]
+
+[[example]]
+name = "triangle_graph"
+required-features = []
+
+[[example]]
+name = "triangle"
+required-features = []
+
+[[example]]
+name = "nodes_api_design"
+required-features = []

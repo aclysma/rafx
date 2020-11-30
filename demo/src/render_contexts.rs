@@ -1,9 +1,9 @@
 use ash::vk;
 use legion::*;
-use renderer::assets::AssetManager;
-use renderer::graph::VisitRenderpassArgs;
-use renderer::resources::{RenderPassResource, ResourceArc, ResourceContext};
-use renderer::vulkan::VkDeviceContext;
+use rafx::assets::AssetManager;
+use rafx::graph::VisitRenderpassArgs;
+use rafx::resources::{RenderPassResource, ResourceArc, ResourceContext};
+use rafx::vulkan::VkDeviceContext;
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,

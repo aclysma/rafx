@@ -9,17 +9,18 @@ use crate::render_contexts::RenderJobExtractContext;
 use crate::time::TimeState;
 use ash::prelude::VkResult;
 use legion::*;
-use renderer::assets::AssetManager;
-use renderer::nodes::{
+use rafx::assets::AssetManager;
+use rafx::nodes::{
     AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMaskBuilder, RenderRegistry,
     RenderView, RenderViewSet, VisibilityResult,
 };
-use renderer::resources::vk_description as dsc;
-use renderer::resources::{ImageViewResource, ResourceArc};
-use renderer::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use renderer::vulkan::{FrameInFlight, VkContext, VkDeviceContext, VkSurface, Window};
+use rafx::resources::vk_description as dsc;
+use rafx::resources::{ImageViewResource, ResourceArc};
+use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use rafx::vulkan::{FrameInFlight, VkContext, VkDeviceContext, VkSurface, Window};
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex};
+use rafx::assets::image_utils;
 
 mod static_resources;
 use static_resources::GameRendererStaticResources;
@@ -144,19 +145,19 @@ impl GameRenderer {
             .unwrap()
             .build_font_atlas();
 
-        let imgui_font_atlas = renderer::assets::image_utils::DecodedTexture {
+        let imgui_font_atlas = image_utils::DecodedTexture {
             width: imgui_font_atlas.width,
             height: imgui_font_atlas.height,
             data: imgui_font_atlas.data,
-            color_space: renderer::assets::image_utils::ColorSpace::Linear,
-            mips: renderer::assets::image_utils::default_mip_settings_for_image(
+            color_space: image_utils::ColorSpace::Linear,
+            mips: image_utils::default_mip_settings_for_image(
                 imgui_font_atlas.width,
                 imgui_font_atlas.height,
             ),
         };
 
         // Should just be one, so pop/unwrap
-        let imgui_font_atlas_image = renderer::assets::image_utils::load_images(
+        let imgui_font_atlas_image = image_utils::load_images(
             &device_context,
             device_context
                 .queue_family_indices()

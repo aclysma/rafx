@@ -6,12 +6,12 @@ use crate::features::debug3d::{
 use crate::phases::OpaqueRenderPhase;
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use ash::vk;
-use renderer::nodes::{
+use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, ViewSubmitNodes,
 };
-use renderer::resources::{MaterialPassResource, ResourceArc};
-use renderer::vulkan::VkBuffer;
+use rafx::resources::{MaterialPassResource, ResourceArc};
+use rafx::vulkan::VkBuffer;
 
 pub struct Debug3dPrepareJobImpl {
     debug3d_material_pass: ResourceArc<MaterialPassResource>,

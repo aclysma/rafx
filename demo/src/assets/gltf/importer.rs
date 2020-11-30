@@ -9,14 +9,14 @@ use fnv::FnvHashMap;
 use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
 use itertools::Itertools;
-use renderer::assets::assets::BufferAssetData;
-use renderer::assets::assets::{ColorSpace, ImageAssetData};
-use renderer::assets::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
-use renderer::assets::push_buffer::PushBuffer;
-use renderer::assets::BufferAsset;
-use renderer::assets::ImageAsset;
-use renderer::assets::MaterialAsset;
-use renderer::assets::MaterialInstanceAsset;
+use rafx::assets::assets::BufferAssetData;
+use rafx::assets::assets::{ColorSpace, ImageAssetData};
+use rafx::assets::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
+use rafx::assets::push_buffer::PushBuffer;
+use rafx::assets::BufferAsset;
+use rafx::assets::ImageAsset;
+use rafx::assets::MaterialAsset;
+use rafx::assets::MaterialInstanceAsset;
 use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -348,7 +348,7 @@ impl Importer for GltfImporter {
                 image: None,
                 sampler: None,
                 buffer_data: Some(
-                    renderer::vulkan::util::any_as_bytes(&material_data_shader_param).into(),
+                    rafx::vulkan::util::any_as_bytes(&material_data_shader_param).into(),
                 ),
             });
 

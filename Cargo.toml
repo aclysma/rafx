@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "renderer",
-    "shader-processor",
+    "rafx",
+    "rafx-shader-processor",
     "demo",
     "demo/shaders",
     "demo/cli",

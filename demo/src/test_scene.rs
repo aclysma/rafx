@@ -11,8 +11,8 @@ use atelier_assets::core as atelier_core;
 use atelier_assets::core::asset_uuid;
 use glam::f32::Vec3;
 use legion::{Resources, World};
-use renderer::assets::ImageAsset;
-use renderer::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
+use rafx::assets::ImageAsset;
+use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
 pub fn populate_test_sprite_entities(
     resources: &mut Resources,

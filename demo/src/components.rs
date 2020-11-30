@@ -3,8 +3,8 @@ use crate::features::sprite::SpriteRenderNodeHandle;
 use crate::game_asset_lookup::MeshAsset;
 use atelier_assets::loader::handle::Handle;
 use glam::f32::Vec3;
-use renderer::assets::ImageAsset;
-use renderer::visibility::DynamicAabbVisibilityNodeHandle;
+use rafx::assets::ImageAsset;
+use rafx::visibility::DynamicAabbVisibilityNodeHandle;
 
 #[derive(Clone)]
 pub struct MeshComponent {

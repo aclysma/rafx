@@ -4,12 +4,12 @@ use crate::VkDeviceContext;
 use ash::prelude::VkResult;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use renderer::graph::*;
-use renderer::nodes::{PreparedRenderData, RenderView};
-use renderer::resources::ResourceContext;
-use renderer::resources::{vk_description as dsc, VertexDataSetLayout};
-use renderer::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
-use renderer::vulkan::SwapchainInfo;
+use rafx::graph::*;
+use rafx::nodes::{PreparedRenderData, RenderView};
+use rafx::resources::ResourceContext;
+use rafx::resources::{vk_description as dsc, VertexDataSetLayout};
+use rafx::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
+use rafx::vulkan::SwapchainInfo;
 
 lazy_static::lazy_static! {
     pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {

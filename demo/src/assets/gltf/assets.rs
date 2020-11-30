@@ -1,9 +1,9 @@
 use atelier_assets::loader::handle::Handle;
 use lazy_static;
-use renderer::assets::BufferAsset;
-use renderer::assets::ImageAsset;
-use renderer::assets::MaterialInstanceAsset;
-use renderer::resources::{VertexDataLayout, VertexDataSetLayout};
+use rafx::assets::BufferAsset;
+use rafx::assets::ImageAsset;
+use rafx::assets::MaterialInstanceAsset;
+use rafx::resources::{VertexDataLayout, VertexDataSetLayout};
 use serde::{Deserialize, Serialize};
 use shaders::mesh_frag::MaterialDataStd140;
 use type_uuid::*;
@@ -119,7 +119,7 @@ pub struct MeshVertex {
 
 lazy_static::lazy_static! {
     pub static ref MESH_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use renderer::resources::vk_description::Format;
+        use rafx::resources::vk_description::Format;
 
         VertexDataLayout::build_vertex_layout(&MeshVertex::default(), |builder, vertex| {
             builder.add_member(&vertex.position, "POSITION", Format::R32G32B32_SFLOAT);

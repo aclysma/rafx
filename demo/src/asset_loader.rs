@@ -5,8 +5,8 @@ use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::storage::LoaderInfoProvider;
 use atelier_assets::loader::LoadHandle;
 use crossbeam_channel::Sender;
-use renderer::assets::GenericLoader;
-use renderer::assets::ResourceLoader;
+use rafx::assets::GenericLoader;
+use rafx::assets::ResourceLoader;
 use std::error::Error;
 use type_uuid::TypeUuid;
 

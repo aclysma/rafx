@@ -6,8 +6,8 @@ use crate::components::{
 };
 use crate::imgui_support::Sdl2ImguiManager;
 use legion::*;
-use renderer::vulkan::VkDeviceContext;
-use renderer_shell_vulkan_sdl2::Sdl2Window;
+use rafx::vulkan::VkDeviceContext;
+use rafx_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseState;
@@ -18,7 +18,7 @@ use crate::features::debug3d::DebugDraw3DResource;
 use crate::game_asset_manager::GameAssetManager;
 use crate::game_renderer::GameRenderer;
 use crate::time::TimeState;
-use renderer::assets::AssetManager;
+use rafx::assets::AssetManager;
 use structopt::StructOpt;
 
 mod asset_loader;

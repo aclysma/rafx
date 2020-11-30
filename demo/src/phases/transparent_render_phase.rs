@@ -1,7 +1,7 @@
-use renderer::nodes::RenderPhase;
-use renderer::nodes::{RenderPhaseIndex, SubmitNode};
+use rafx::nodes::RenderPhase;
+use rafx::nodes::{RenderPhaseIndex, SubmitNode};
 
-renderer::declare_render_phase!(
+rafx::declare_render_phase!(
     TransparentRenderPhase,
     TRANSPARENT_RENDER_PHASE_INDEX,
     transparent_render_phase_sort_submit_nodes

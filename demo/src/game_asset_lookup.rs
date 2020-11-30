@@ -1,8 +1,8 @@
 use crate::assets::gltf::MeshAssetData;
 use atelier_assets::loader::Loader;
-use renderer::assets::AssetLookup;
-use renderer::assets::MaterialPass;
-use renderer::resources::{BufferResource, DescriptorSetArc, ResourceArc};
+use rafx::assets::AssetLookup;
+use rafx::assets::MaterialPass;
+use rafx::resources::{BufferResource, DescriptorSetArc, ResourceArc};
 use std::sync::Arc;
 use type_uuid::*;
 

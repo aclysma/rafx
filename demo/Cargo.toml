@@ -21,8 +21,8 @@ crossbeam-channel = "0.4.2"
 
 vk-mem = "0.2"
 
-renderer = { path = "../renderer", features = ["assets"] }
-renderer-shell-vulkan-sdl2 = { path = "../renderer-shell-vulkan-sdl2" }
+rafx = { path = "../rafx", features = ["assets"] }
+rafx-shell-vulkan-sdl2 = { path = "../rafx-shell-vulkan-sdl2" }
 shaders = { path = "shaders" }
 
 legion = { version = "0.3.0", default-features = false, features = ["serialize"] }
@@ -74,23 +74,23 @@ default = [
 ]
 sdl2-bundled = ["sdl2/bundled"]
 sdl2-static-link = ["sdl2/static-link"]
-static-vulkan = ["renderer/static-vulkan"]
+static-vulkan = ["rafx/static-vulkan"]
 profile-with-puffin = [
     "profiling/profile-with-puffin",
-    "renderer/profile-with-puffin",
+    "rafx/profile-with-puffin",
     "puffin-imgui"
 ]
 profile-with-optick = [
     "profiling/profile-with-optick",
-    "renderer/profile-with-optick",
+    "rafx/profile-with-optick",
 ]
 profile-with-superluminal = [
     "profiling/profile-with-superluminal",
-    "renderer/profile-with-superluminal",
+    "rafx/profile-with-superluminal",
 ]
 profile-with-tracy = [
     "profiling/profile-with-tracing",
-    "renderer/profile-with-tracing",
+    "rafx/profile-with-tracing",
     "tracing-subscriber",
     "tracing"
 ]

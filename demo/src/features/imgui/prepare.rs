@@ -3,12 +3,12 @@ use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUnifor
 use crate::phases::UiRenderPhase;
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use ash::vk;
-use renderer::nodes::{
+use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, ViewSubmitNodes,
 };
-use renderer::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
-use renderer::vulkan::VkBuffer;
+use rafx::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
+use rafx::vulkan::VkBuffer;
 
 pub struct ImGuiPrepareJobImpl {
     extracted_imgui_data: ExtractedImGuiData,

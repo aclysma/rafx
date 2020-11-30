@@ -5,11 +5,11 @@ use crate::render_contexts::{
 };
 use ash::vk::Extent2D;
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::MaterialAsset;
-use renderer::nodes::ExtractJob;
-use renderer::nodes::RenderFeature;
-use renderer::nodes::RenderFeatureIndex;
-use renderer::resources::{ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use rafx::assets::MaterialAsset;
+use rafx::nodes::ExtractJob;
+use rafx::nodes::RenderFeature;
+use rafx::nodes::RenderFeatureIndex;
+use rafx::resources::{ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
 use std::convert::TryInto;
 
 mod extract;
@@ -33,7 +33,7 @@ pub type ImGuiUniformBufferObject = shaders::imgui_vert::ArgsUniform;
 
 lazy_static::lazy_static! {
     pub static ref IMGUI_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use renderer::resources::vk_description::Format;
+        use rafx::resources::vk_description::Format;
 
         let vertex = imgui::DrawVert {
             pos: Default::default(),
@@ -49,7 +49,7 @@ lazy_static::lazy_static! {
     };
 }
 
-renderer::declare_render_feature!(ImGuiRenderFeature, DEBUG_3D_FEATURE_INDEX);
+rafx::declare_render_feature!(ImGuiRenderFeature, DEBUG_3D_FEATURE_INDEX);
 
 pub(self) struct ExtractedImGuiData {
     imgui_draw_data: Option<ImGuiDrawData>,

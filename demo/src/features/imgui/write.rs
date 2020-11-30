@@ -3,11 +3,11 @@ use crate::imgui_support::{ImGuiDrawCmd, ImGuiDrawData};
 use crate::render_contexts::RenderJobWriteContext;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use renderer::nodes::{
+use rafx::nodes::{
     FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
     SubmitNodeId,
 };
-use renderer::resources::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
+use rafx::resources::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 
 pub struct ImGuiCommandWriter {
     pub(super) vertex_buffers: Vec<ResourceArc<BufferResource>>,

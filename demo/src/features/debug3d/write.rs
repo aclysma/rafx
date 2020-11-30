@@ -2,11 +2,11 @@ use crate::features::debug3d::{Debug3dDrawCall, Debug3dRenderFeature};
 use crate::render_contexts::RenderJobWriteContext;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use renderer::nodes::{
+use rafx::nodes::{
     FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
     SubmitNodeId,
 };
-use renderer::resources::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
+use rafx::resources::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 
 pub struct Debug3dCommandWriter {
     pub(super) vertex_buffer: Option<ResourceArc<BufferResource>>,

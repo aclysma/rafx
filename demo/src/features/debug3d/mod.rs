@@ -3,11 +3,11 @@ use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::MaterialAsset;
-use renderer::nodes::ExtractJob;
-use renderer::nodes::RenderFeature;
-use renderer::nodes::RenderFeatureIndex;
-use renderer::resources::{VertexDataLayout, VertexDataSetLayout};
+use rafx::assets::MaterialAsset;
+use rafx::nodes::ExtractJob;
+use rafx::nodes::RenderFeature;
+use rafx::nodes::RenderFeatureIndex;
+use rafx::resources::{VertexDataLayout, VertexDataSetLayout};
 use std::convert::TryInto;
 
 mod debug3d_resource;
@@ -35,7 +35,7 @@ pub struct Debug3dVertex {
 
 lazy_static::lazy_static! {
     pub static ref DEBUG_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use renderer::resources::vk_description::Format;
+        use rafx::resources::vk_description::Format;
 
         VertexDataLayout::build_vertex_layout(&Debug3dVertex::default(), |builder, vertex| {
             builder.add_member(&vertex.pos, "POSITION", Format::R32G32B32_SFLOAT);
@@ -44,7 +44,7 @@ lazy_static::lazy_static! {
     };
 }
 
-renderer::declare_render_feature!(Debug3dRenderFeature, DEBUG_3D_FEATURE_INDEX);
+rafx::declare_render_feature!(Debug3dRenderFeature, DEBUG_3D_FEATURE_INDEX);
 
 pub(self) struct ExtractedDebug3dData {
     line_lists: Vec<LineList3D>,

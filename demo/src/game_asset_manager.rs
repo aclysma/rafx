@@ -9,7 +9,7 @@ use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::Loader;
 use crossbeam_channel::Sender;
-use renderer::assets::{AssetLookup, AssetManager, GenericLoader, LoadQueues};
+use rafx::assets::{AssetLookup, AssetManager, GenericLoader, LoadQueues};
 use std::sync::Arc;
 
 #[derive(Debug)]

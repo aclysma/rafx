@@ -2,10 +2,10 @@ use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::ImageAsset;
-use renderer::assets::MaterialAsset;
-use renderer::base::slab::{DropSlab, DropSlabKey};
-use renderer::nodes::{
+use rafx::assets::ImageAsset;
+use rafx::assets::MaterialAsset;
+use rafx::base::slab::{DropSlab, DropSlabKey};
+use rafx::nodes::{
     ExtractJob, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex, RenderNodeCount,
     RenderNodeSet,
 };
@@ -17,7 +17,7 @@ use extract::SpriteExtractJob;
 mod prepare;
 
 mod write;
-use renderer::resources::{
+use rafx::resources::{
     DescriptorSetArc, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,
 };
 use write::SpriteCommandWriter;
@@ -36,7 +36,7 @@ pub struct SpriteVertex {
 
 lazy_static::lazy_static! {
     pub static ref SPRITE_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use renderer::resources::vk_description::Format;
+        use rafx::resources::vk_description::Format;
 
         VertexDataLayout::build_vertex_layout(&SpriteVertex::default(), |builder, vertex| {
             builder.add_member(&vertex.pos, "POSITION", Format::R32G32_SFLOAT);
@@ -143,7 +143,7 @@ impl RenderNodeSet for SpriteRenderNodeSet {
     }
 }
 
-renderer::declare_render_feature!(SpriteRenderFeature, SPRITE_FEATURE_INDEX);
+rafx::declare_render_feature!(SpriteRenderFeature, SPRITE_FEATURE_INDEX);
 
 #[derive(Debug)]
 pub(self) struct ExtractedSpriteData {

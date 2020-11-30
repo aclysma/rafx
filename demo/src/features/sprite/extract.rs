@@ -8,9 +8,9 @@ use crate::render_contexts::{
 };
 use atelier_assets::loader::handle::Handle;
 use legion::*;
-use renderer::assets::MaterialAsset;
-use renderer::base::slab::RawSlabKey;
-use renderer::nodes::{
+use rafx::assets::MaterialAsset;
+use rafx::base::slab::RawSlabKey;
+use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
 

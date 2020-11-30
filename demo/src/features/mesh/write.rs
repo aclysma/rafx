@@ -4,7 +4,7 @@ use crate::features::mesh::{
 use crate::render_contexts::RenderJobWriteContext;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use renderer::nodes::{
+use rafx::nodes::{
     FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
     SubmitNodeId,
 };

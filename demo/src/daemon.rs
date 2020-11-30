@@ -64,21 +64,21 @@ fn parse_socket_addr(s: &str) -> std::result::Result<SocketAddr, AddrParseError>
 
 pub fn run(opt: AssetDaemonOpt) {
     AssetDaemon::default()
-        .with_importer("pipeline", renderer::assets::PipelineImporter)
-        .with_importer("renderpass", renderer::assets::RenderpassImporter)
-        .with_importer("sampler", renderer::assets::SamplerImporter)
-        .with_importer("material", renderer::assets::MaterialImporter)
+        .with_importer("pipeline", rafx::assets::PipelineImporter)
+        .with_importer("renderpass", rafx::assets::RenderpassImporter)
+        .with_importer("sampler", rafx::assets::SamplerImporter)
+        .with_importer("material", rafx::assets::MaterialImporter)
         .with_importer(
             "materialinstance",
-            renderer::assets::MaterialInstanceImporter,
+            rafx::assets::MaterialInstanceImporter,
         )
-        .with_importer("spv", renderer::assets::ShaderImporterSpv)
-        .with_importer("shader", renderer::assets::ShaderImporterCooked)
-        .with_importer("png", renderer::assets::ImageImporter)
-        .with_importer("jpg", renderer::assets::ImageImporter)
-        .with_importer("jpeg", renderer::assets::ImageImporter)
-        .with_importer("tga", renderer::assets::ImageImporter)
-        .with_importer("bmp", renderer::assets::ImageImporter)
+        .with_importer("spv", rafx::assets::ShaderImporterSpv)
+        .with_importer("shader", rafx::assets::ShaderImporterCooked)
+        .with_importer("png", rafx::assets::ImageImporter)
+        .with_importer("jpg", rafx::assets::ImageImporter)
+        .with_importer("jpeg", rafx::assets::ImageImporter)
+        .with_importer("tga", rafx::assets::ImageImporter)
+        .with_importer("bmp", rafx::assets::ImageImporter)
         .with_importer("gltf", crate::assets::gltf::GltfImporter)
         .with_importer("glb", crate::assets::gltf::GltfImporter)
         .with_db_path(opt.db_dir)

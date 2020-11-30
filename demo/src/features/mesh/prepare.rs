@@ -7,12 +7,12 @@ use crate::features::mesh::{
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use fnv::{FnvHashMap, FnvHashSet};
-use renderer::assets::assets::MaterialPass;
-use renderer::nodes::{
+use rafx::assets::assets::MaterialPass;
+use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, RenderViewIndex, ViewSubmitNodes,
 };
-use renderer::resources::{
+use rafx::resources::{
     DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
 };
 

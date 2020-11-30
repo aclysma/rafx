@@ -2,10 +2,10 @@ use crate::game_renderer::swapchain_resources::SwapchainResources;
 use crate::game_renderer::GameRenderer;
 use ash::prelude::VkResult;
 use legion::Resources;
-use renderer::assets::AssetManager;
-use renderer::nodes::RenderRegistry;
-use renderer::resources::vk_description as dsc;
-use renderer::vulkan::{
+use rafx::assets::AssetManager;
+use rafx::nodes::RenderRegistry;
+use rafx::resources::vk_description as dsc;
+use rafx::vulkan::{
     VkContext, VkDeviceContext, VkSurface, VkSurfaceSwapchainLifetimeListener, VkSwapchain, Window,
 };
 

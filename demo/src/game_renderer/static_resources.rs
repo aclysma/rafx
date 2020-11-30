@@ -2,8 +2,8 @@ use crate::asset_resource::AssetResource;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::storage::LoadStatus;
-use renderer::assets::AssetManager;
-use renderer::assets::MaterialAsset;
+use rafx::assets::AssetManager;
+use rafx::assets::MaterialAsset;
 
 fn wait_for_asset_to_load<T>(
     asset_handle: &atelier_assets::loader::handle::Handle<T>,

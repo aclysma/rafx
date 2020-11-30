@@ -18,15 +18,15 @@ pub fn logging_init() {
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
         .filter_module(
-            "renderer_assets::resources::descriptor_sets",
+            "rafx_assets::resources::descriptor_sets",
             log::LevelFilter::Info,
         )
-        .filter_module("renderer_shell_vulkan::device", log::LevelFilter::Debug)
-        .filter_module("renderer_nodes", log::LevelFilter::Info)
-        .filter_module("renderer_visibility", log::LevelFilter::Info)
-        .filter_module("renderer_assets::graph", log::LevelFilter::Info)
+        .filter_module("rafx_shell_vulkan::device", log::LevelFilter::Debug)
+        .filter_module("rafx_nodes", log::LevelFilter::Info)
+        .filter_module("rafx_visibility", log::LevelFilter::Info)
+        .filter_module("rafx_assets::graph", log::LevelFilter::Info)
         // .filter_module(
-        //     "renderer_assets::resources::command_buffers",
+        //     "rafx_assets::resources::command_buffers",
         //     log::LevelFilter::Trace,
         // )
         .filter_level(log_level)

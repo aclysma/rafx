@@ -4,8 +4,8 @@ use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
 use atelier_assets::loader::handle::Handle;
-use renderer::assets::MaterialAsset;
-use renderer::nodes::{
+use rafx::assets::MaterialAsset;
+use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
 
