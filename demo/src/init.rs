@@ -73,11 +73,7 @@ pub fn sdl2_init() -> Sdl2Systems {
 
     // Create the window
     let window = video_subsystem
-        .window(
-            "Rafx Demo",
-            logical_size.width,
-            logical_size.height,
-        )
+        .window("Rafx Demo", logical_size.width, logical_size.height)
         .position_centered()
         .allow_highdpi()
         .resizable()

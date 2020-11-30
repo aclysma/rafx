@@ -9,6 +9,7 @@ use crate::render_contexts::RenderJobExtractContext;
 use crate::time::TimeState;
 use ash::prelude::VkResult;
 use legion::*;
+use rafx::assets::image_utils;
 use rafx::assets::AssetManager;
 use rafx::nodes::{
     AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMaskBuilder, RenderRegistry,
@@ -20,7 +21,6 @@ use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use rafx::vulkan::{FrameInFlight, VkContext, VkDeviceContext, VkSurface, Window};
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex};
-use rafx::assets::image_utils;
 
 mod static_resources;
 use static_resources::GameRendererStaticResources;

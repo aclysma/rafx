@@ -420,9 +420,7 @@ impl MaterialPass {
         let pass_descriptor_set_writes: Vec<_> = descriptor_set_layouts
             .iter()
             .map(|layout| {
-                rafx_resources::descriptor_sets::create_uninitialized_write_set_for_layout(
-                    layout,
-                )
+                rafx_resources::descriptor_sets::create_uninitialized_write_set_for_layout(layout)
             })
             .collect();
 

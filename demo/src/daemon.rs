@@ -68,10 +68,7 @@ pub fn run(opt: AssetDaemonOpt) {
         .with_importer("renderpass", rafx::assets::RenderpassImporter)
         .with_importer("sampler", rafx::assets::SamplerImporter)
         .with_importer("material", rafx::assets::MaterialImporter)
-        .with_importer(
-            "materialinstance",
-            rafx::assets::MaterialInstanceImporter,
-        )
+        .with_importer("materialinstance", rafx::assets::MaterialInstanceImporter)
         .with_importer("spv", rafx::assets::ShaderImporterSpv)
         .with_importer("shader", rafx::assets::ShaderImporterCooked)
         .with_importer("png", rafx::assets::ImageImporter)
