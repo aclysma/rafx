@@ -47,8 +47,8 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .resources
             .get_mut::<MeshRenderNodeSet>()
             .unwrap();
-        let mut query = <(Read<PositionComponent>, Read<MeshComponent>)>::query();
 
+        let mut query = <(Read<PositionComponent>, Read<MeshComponent>)>::query();
         for (position_component, mesh_component) in query.iter(extract_context.world) {
             let render_node = mesh_render_nodes
                 .get_mut(&mesh_component.render_node)

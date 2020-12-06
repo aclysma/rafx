@@ -40,8 +40,8 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .resources
             .get_mut::<SpriteRenderNodeSet>()
             .unwrap();
-        let mut query = <(Read<PositionComponent>, Read<SpriteComponent>)>::query();
 
+        let mut query = <(Read<PositionComponent>, Read<SpriteComponent>)>::query();
         for (position_component, sprite_component) in query.iter(extract_context.world) {
             let render_node = sprite_render_nodes
                 .get_mut(&sprite_component.render_node)
