@@ -14,6 +14,10 @@ pub struct VirtualImageId(pub(super) usize);
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PhysicalImageId(pub(super) usize);
 
+/// An ID for an image view allocation (possibly reused)
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PhysicalImageViewId(pub(super) usize);
+
 /// Unique ID provided for any image registered as an output image
 #[derive(Debug, Copy, Clone)]
 pub struct RenderGraphOutputImageId(pub(super) usize);
@@ -45,11 +49,108 @@ impl RenderGraphImageResource {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RenderGraphImageView {
+    pub(super) physical_image: PhysicalImageId,
+    pub(super) subresource_range: dsc::ImageSubresourceRange,
+    pub(super) view_type: dsc::ImageViewType,
+}
+
 /// Defines what created a RenderGraphImageUsage
 #[derive(Debug)]
 pub enum RenderGraphImageUser {
     Node(RenderGraphNodeId),
     Output(RenderGraphOutputImageId),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum RenderGraphImageExtents {
+    MatchSurface,
+    // (width, height, depth)
+    Custom(u32, u32, u32),
+}
+
+impl RenderGraphImageExtents {
+    pub fn into_vk_extent_3d(
+        self,
+        swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
+    ) -> vk::Extent3D {
+        match self {
+            RenderGraphImageExtents::MatchSurface => vk::Extent3D {
+                width: swapchain_surface_info.extents.width,
+                height: swapchain_surface_info.extents.height,
+                depth: 1,
+            },
+            RenderGraphImageExtents::Custom(width, height, depth) => vk::Extent3D {
+                width,
+                height,
+                depth,
+            },
+        }
+    }
+
+    pub fn into_vk_extent_2d(
+        self,
+        swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
+    ) -> vk::Extent2D {
+        let extent_3d = self.into_vk_extent_3d(swapchain_surface_info);
+        vk::Extent2D {
+            width: extent_3d.width,
+            height: extent_3d.height,
+        }
+    }
+}
+
+impl Default for RenderGraphImageExtents {
+    fn default() -> Self {
+        RenderGraphImageExtents::MatchSurface
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum RenderGraphImageSubresourceRange {
+    // Use the entire image
+    AllMipsAllLayers,
+    // Mip 0 with given layer
+    NoMipsSingleLayer(u32),
+    // Mip 0 layer 0
+    NoMipsNoLayers,
+    Custom(dsc::ImageSubresourceRange),
+}
+
+impl RenderGraphImageSubresourceRange {
+    pub fn into_subresource_range(
+        &self,
+        specification: &RenderGraphImageSpecification,
+    ) -> dsc::ImageSubresourceRange {
+        match self {
+            RenderGraphImageSubresourceRange::AllMipsAllLayers => {
+                dsc::ImageSubresourceRange::default_all_mips_all_layers(
+                    dsc::ImageAspectFlag::from_vk_image_aspect_flags(specification.aspect_flags),
+                    specification.mip_count,
+                    specification.layer_count,
+                )
+            }
+            RenderGraphImageSubresourceRange::NoMipsSingleLayer(layer) => {
+                dsc::ImageSubresourceRange::default_no_mips_single_layer(
+                    dsc::ImageAspectFlag::from_vk_image_aspect_flags(specification.aspect_flags),
+                    *layer,
+                )
+            }
+            RenderGraphImageSubresourceRange::NoMipsNoLayers => {
+                dsc::ImageSubresourceRange::default_no_mips_no_layers(
+                    dsc::ImageAspectFlag::from_vk_image_aspect_flags(specification.aspect_flags),
+                )
+            }
+            RenderGraphImageSubresourceRange::Custom(custom) => custom.clone(),
+        }
+    }
+}
+
+impl Default for RenderGraphImageSubresourceRange {
+    fn default() -> Self {
+        RenderGraphImageSubresourceRange::AllMipsAllLayers
+    }
 }
 
 /// A usage of a particular image
@@ -60,6 +161,8 @@ pub struct RenderGraphImageUsage {
     pub(super) version: RenderGraphImageVersionId,
 
     pub(super) preferred_layout: dsc::ImageLayout,
+    pub(super) subresource_range: RenderGraphImageSubresourceRange,
+    pub(super) view_type: dsc::ImageViewType,
     //pub(super) access_flags: vk::AccessFlags,
     //pub(super) stage_flags: vk::PipelineStageFlags,
     //pub(super) image_aspect_flags: vk::ImageAspectFlags,
@@ -71,10 +174,20 @@ pub type RenderGraphResourceName = &'static str;
 /// the graph will use constraints to solve for the specification
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RenderGraphImageSpecification {
+    // Rename to RenderGraphImageUsageSpecification?
     pub samples: vk::SampleCountFlags,
     pub format: vk::Format,
     pub aspect_flags: vk::ImageAspectFlags,
     pub usage_flags: vk::ImageUsageFlags,
+    pub create_flags: vk::ImageCreateFlags,
+    pub extents: RenderGraphImageExtents,
+    pub layer_count: u32,
+    pub mip_count: u32,
+    // image type - always 2D
+    // extents - always matches the render surface
+    // tiling - always optimal
+    // layout - controlled by graph
+    // sharing mode - always exclusive
 }
 
 impl RenderGraphImageSpecification {
@@ -87,6 +200,15 @@ impl RenderGraphImageSpecification {
             return false;
         }
         if self.format != other.format {
+            return false;
+        }
+        if self.mip_count != other.mip_count {
+            return false;
+        }
+        if self.layer_count != other.layer_count {
+            return false;
+        }
+        if self.extents != other.extents {
             return false;
         }
 
@@ -114,10 +236,16 @@ impl RenderGraphImageSpecification {
 /// The rendergraph will derive specifications from the constraints
 #[derive(Default, Clone, Debug)]
 pub struct RenderGraphImageConstraint {
+    // Rename to RenderGraphImageUsageConstraint?
     pub samples: Option<vk::SampleCountFlags>,
     pub format: Option<vk::Format>,
     pub aspect_flags: vk::ImageAspectFlags,
     pub usage_flags: vk::ImageUsageFlags,
+    pub create_flags: vk::ImageCreateFlags,
+    pub extents: Option<RenderGraphImageExtents>,
+    //pub dimensions: vk::ImageSubresource
+    pub layer_count: Option<u32>,
+    pub mip_count: Option<u32>,
 }
 
 impl From<RenderGraphImageSpecification> for RenderGraphImageConstraint {
@@ -125,22 +253,33 @@ impl From<RenderGraphImageSpecification> for RenderGraphImageConstraint {
         RenderGraphImageConstraint {
             samples: Some(specification.samples),
             format: Some(specification.format),
+            layer_count: Some(specification.layer_count),
+            mip_count: Some(specification.mip_count),
+            extents: Some(specification.extents),
             aspect_flags: specification.aspect_flags,
             usage_flags: specification.usage_flags,
+            create_flags: specification.create_flags,
         }
     }
 }
 
 impl RenderGraphImageConstraint {
     pub fn try_convert_to_specification(self) -> Option<RenderGraphImageSpecification> {
-        if self.samples.is_none() || self.format.is_none() {
+        // Format is the only thing we can't default sensibly
+        if self.format.is_none() {
             None
         } else {
             Some(RenderGraphImageSpecification {
-                samples: self.samples.unwrap(),
+                samples: self.samples.unwrap_or(vk::SampleCountFlags::TYPE_1),
                 format: self.format.unwrap(),
+                layer_count: self.layer_count.unwrap_or(1),
+                mip_count: self.mip_count.unwrap_or(1),
+                extents: self
+                    .extents
+                    .unwrap_or(RenderGraphImageExtents::MatchSurface),
                 aspect_flags: self.aspect_flags,
                 usage_flags: self.usage_flags,
+                create_flags: self.create_flags,
             })
         }
     }
@@ -156,6 +295,21 @@ impl RenderGraphImageConstraint {
             return false;
         }
         if self.format.is_some() && other.format.is_some() && self.format != other.format {
+            return false;
+        }
+        if self.layer_count.is_some()
+            && other.layer_count.is_some()
+            && self.layer_count != other.layer_count
+        {
+            return false;
+        }
+        if self.mip_count.is_some()
+            && other.mip_count.is_some()
+            && self.mip_count != other.mip_count
+        {
+            return false;
+        }
+        if self.extents.is_some() && other.extents.is_some() && self.extents != other.extents {
             return false;
         }
 
@@ -178,9 +332,19 @@ impl RenderGraphImageConstraint {
         if self.format.is_none() && other.format.is_some() {
             self.format = other.format;
         }
+        if self.layer_count.is_none() && other.layer_count.is_some() {
+            self.layer_count = other.layer_count;
+        }
+        if self.mip_count.is_none() && other.mip_count.is_some() {
+            self.mip_count = other.mip_count;
+        }
+        if self.extents.is_none() && other.extents.is_some() {
+            self.extents = other.extents;
+        }
 
         self.aspect_flags |= other.aspect_flags;
         self.usage_flags |= other.usage_flags;
+        self.create_flags |= other.create_flags;
 
         true
     }
@@ -205,8 +369,33 @@ impl RenderGraphImageConstraint {
             self.format = other.format;
         }
 
+        if self.layer_count.is_some()
+            && other.layer_count.is_some()
+            && self.layer_count != other.layer_count
+        {
+            complete_merge = false;
+        } else if other.layer_count.is_some() {
+            self.layer_count = other.layer_count;
+        }
+
+        if self.mip_count.is_some()
+            && other.mip_count.is_some()
+            && self.mip_count != other.mip_count
+        {
+            complete_merge = false;
+        } else if other.mip_count.is_some() {
+            self.mip_count = other.mip_count;
+        }
+
+        if self.extents.is_some() && other.extents.is_some() && self.extents != other.extents {
+            complete_merge = false;
+        } else if other.extents.is_some() {
+            self.extents = other.extents;
+        }
+
         self.aspect_flags |= other.aspect_flags;
         self.usage_flags |= other.usage_flags;
+        self.create_flags |= other.create_flags;
 
         complete_merge
     }
@@ -232,6 +421,7 @@ pub enum RenderGraphImageUsageType {
 }
 
 impl RenderGraphImageUsageType {
+    //TODO: Add support to see if multiple writes actually overlap
     pub fn is_read_only(&self) -> bool {
         match self {
             RenderGraphImageUsageType::Read => true,

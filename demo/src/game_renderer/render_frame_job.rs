@@ -1,3 +1,4 @@
+use crate::features::mesh::ShadowMapRenderView;
 use crate::game_renderer::render_graph::RenderGraphUserContext;
 use crate::game_renderer::GameRenderer;
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
@@ -15,7 +16,7 @@ pub struct RenderFrameJob {
     pub resource_context: ResourceContext,
     pub frame_packet: FramePacket,
     pub main_view: RenderView,
-    pub shadow_map_render_views: Vec<RenderView>,
+    pub shadow_map_render_views: Vec<ShadowMapRenderView>,
     pub render_registry: RenderRegistry,
     pub device_context: VkDeviceContext,
 }
@@ -69,7 +70,7 @@ impl RenderFrameJob {
         resource_context: ResourceContext,
         frame_packet: FramePacket,
         main_view: RenderView,
-        shadow_map_render_views: Vec<RenderView>,
+        shadow_map_render_views: Vec<ShadowMapRenderView>,
         render_registry: RenderRegistry,
         device_context: VkDeviceContext,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
@@ -81,15 +82,29 @@ impl RenderFrameJob {
         let prepared_render_data = {
             profiling::scope!("Renderer Prepare");
 
-            let mut views = Vec::default();
-            views.push(&main_view);
+            let mut prepare_views = Vec::default();
+            prepare_views.push(&main_view);
             for shadow_map_view in &shadow_map_render_views {
-                views.push(shadow_map_view);
+                match shadow_map_view {
+                    ShadowMapRenderView::Single(view) => {
+                        prepare_views.push(view);
+                    }
+                    ShadowMapRenderView::Cube(views) => {
+                        for view in views {
+                            prepare_views.push(view);
+                        }
+                    }
+                }
             }
 
             let prepare_context =
                 RenderJobPrepareContext::new(device_context.clone(), resource_context.clone());
-            prepare_job_set.prepare(&prepare_context, &frame_packet, &views, &render_registry)
+            prepare_job_set.prepare(
+                &prepare_context,
+                &frame_packet,
+                &prepare_views,
+                &render_registry,
+            )
         };
         let t1 = std::time::Instant::now();
         log::trace!(

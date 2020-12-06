@@ -1,8 +1,11 @@
 use super::MeshCommandWriter;
+use crate::components::{
+    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+};
 use crate::features::mesh::{
-    ExtractedFrameNodeMeshData, MeshPerObjectFragmentShaderParam, MeshPerViewFragmentShaderParam,
-    MeshRenderFeature, PreparedDirectionalLight, PreparedPointLight, PreparedSpotLight,
-    PreparedSubmitNodeMeshData, ShadowMapData,
+    ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
+    LightId, MeshPerObjectFragmentShaderParam, MeshPerViewFragmentShaderParam, MeshRenderFeature,
+    PreparedSubmitNodeMeshData, ShadowMapData, ShadowMapRenderView,
 };
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
@@ -16,11 +19,28 @@ use rafx::resources::{
     DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
 };
 
+pub struct PreparedDirectionalLight<'a> {
+    light: &'a DirectionalLightComponent,
+    shadow_map_index: Option<usize>,
+}
+
+pub struct PreparedPointLight<'a> {
+    light: &'a PointLightComponent,
+    position: &'a PositionComponent,
+    shadow_map_index: Option<usize>,
+}
+
+pub struct PreparedSpotLight<'a> {
+    light: &'a SpotLightComponent,
+    position: &'a PositionComponent,
+    shadow_map_index: Option<usize>,
+}
+
 pub struct MeshPrepareJob {
     pub(super) extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
-    pub(super) directional_lights: Vec<PreparedDirectionalLight>,
-    pub(super) point_lights: Vec<PreparedPointLight>,
-    pub(super) spot_lights: Vec<PreparedSpotLight>,
+    pub(super) directional_lights: Vec<ExtractedDirectionalLight>,
+    pub(super) point_lights: Vec<ExtractedPointLight>,
+    pub(super) spot_lights: Vec<ExtractedSpotLight>,
     pub(super) shadow_map_data: ShadowMapData,
 }
 
@@ -43,8 +63,6 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
         //TODO: reserve sizes
         let mut opaque_per_view_descriptor_set_layouts =
             FnvHashSet::<ResourceArc<DescriptorSetLayoutResource>>::default();
-        // let mut shadow_map_per_view_descriptor_set_layouts =
-        //     FnvHashSet::<ResourceArc<DescriptorSetLayoutResource>>::default();
         let mut prepared_submit_node_mesh_data = Vec::<PreparedSubmitNodeMeshData>::default();
         let mut per_view_descriptor_sets = FnvHashMap::<
             (RenderViewIndex, ResourceArc<DescriptorSetLayoutResource>),
@@ -73,49 +91,159 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
         }
 
         //
-        // Create uniform data for each shadow map and a properly-sized static array of the images
+        // Create uniform data for each shadow map and a properly-sized static array of the images.
+        // This will take our mixed list of shadow maps and separate them into 2d (spot and
+        // directional lights) and cube (point lights)
         //
         //TODO: Pull this const from the shader
-        const MAX_SHADOW_MAPS: usize = 48;
-        let mut shadow_maps = [shaders::mesh_frag::ShadowMapDataStd140::default(); MAX_SHADOW_MAPS];
-        let mut shadow_map_images = [None; MAX_SHADOW_MAPS];
+        const MAX_SHADOW_MAPS_2D: usize = 32;
+        const MAX_SHADOW_MAPS_CUBE: usize = 16;
+
+        let mut shadow_map_2d_count = 0;
+        let mut shadow_map_2d_data =
+            [shaders::mesh_frag::ShadowMap2DDataStd140::default(); MAX_SHADOW_MAPS_2D];
+        let mut shadow_map_2d_image_views = [None; MAX_SHADOW_MAPS_2D];
+
+        let mut shadow_map_cube_count = 0;
+        let mut shadow_map_cube_data =
+            [shaders::mesh_frag::ShadowMapCubeDataStd140::default(); MAX_SHADOW_MAPS_CUBE];
+        let mut shadow_map_cube_image_views = [None; MAX_SHADOW_MAPS_CUBE];
+
+        // This maps the index in the combined list to indices in the 2d/cube maps
+        let mut image_index_remap = vec![None; self.shadow_map_data.shadow_map_image_views.len()];
+
+        assert_eq!(
+            self.shadow_map_data.shadow_map_render_views.len(),
+            self.shadow_map_data.shadow_map_image_views.len()
+        );
         for (index, shadow_map_render_view) in &mut self
             .shadow_map_data
             .shadow_map_render_views
             .iter()
             .enumerate()
         {
-            if index > shadow_map_images.len() {
-                log::warn!("More shadow maps than the mesh shader can support");
-                break;
-            }
+            match shadow_map_render_view {
+                ShadowMapRenderView::Single(view) => {
+                    if shadow_map_2d_count >= MAX_SHADOW_MAPS_2D {
+                        log::warn!("More 2D shadow maps than the mesh shader can support");
+                        continue;
+                    }
 
-            shadow_maps[index] = shaders::mesh_frag::ShadowMapDataStd140 {
-                shadow_map_view_proj: shadow_map_render_view.view_proj().to_cols_array_2d(),
-                shadow_map_light_dir: shadow_map_render_view.view_dir().into(),
-                ..Default::default()
-            };
-            shadow_map_images[index] = Some(&self.shadow_map_data.shadow_map_images[index]);
+                    shadow_map_2d_data[shadow_map_2d_count] =
+                        shaders::mesh_frag::ShadowMap2DDataStd140 {
+                            shadow_map_view_proj: view.view_proj().to_cols_array_2d(),
+                            shadow_map_light_dir: view.view_dir().into(),
+                            ..Default::default()
+                        };
+
+                    shadow_map_2d_image_views[shadow_map_2d_count] =
+                        Some(&self.shadow_map_data.shadow_map_image_views[index]);
+                    image_index_remap[index] = Some(shadow_map_2d_count);
+                    shadow_map_2d_count += 1;
+                }
+                ShadowMapRenderView::Cube(views) => {
+                    if shadow_map_cube_count >= MAX_SHADOW_MAPS_CUBE {
+                        log::warn!("More cube shadow maps than the mesh shader can support");
+                        continue;
+                    }
+
+                    // Shader not set up for infinite far plane
+                    let (near, far) = views[0]
+                        .depth_range()
+                        .finite_planes_after_reverse()
+                        .unwrap();
+                    shadow_map_cube_data[shadow_map_cube_count] =
+                        shaders::mesh_frag::ShadowMapCubeDataStd140 {
+                            cube_map_projection_near_z: near,
+                            cube_map_projection_far_z: far,
+                            ..Default::default()
+                        };
+
+                    // Don't need the view/projection for cube maps
+                    shadow_map_cube_image_views[shadow_map_cube_count] =
+                        Some(&self.shadow_map_data.shadow_map_image_views[index]);
+                    image_index_remap[index] = Some(shadow_map_cube_count);
+                    shadow_map_cube_count += 1;
+                }
+            }
         }
 
         // HACK: Placate vulkan validation for now
-        if let Some(first) = self.shadow_map_data.shadow_map_images.first() {
-            for index in self.shadow_map_data.shadow_map_images.len()..MAX_SHADOW_MAPS {
-                shadow_map_images[index] = Some(first);
+        if let Some(first) = shadow_map_2d_image_views[0] {
+            for index in shadow_map_2d_count..MAX_SHADOW_MAPS_2D {
+                shadow_map_2d_image_views[index] = Some(first);
             }
+        }
+
+        if let Some(first) = shadow_map_cube_image_views[0] {
+            for index in shadow_map_cube_count..MAX_SHADOW_MAPS_CUBE {
+                shadow_map_cube_image_views[index] = Some(first);
+            }
+        }
+
+        //
+        // Assign all direction lights a shadow map slot
+        //
+        let mut prepared_directional_lights = Vec::with_capacity(self.directional_lights.len());
+        for directional_light in &self.directional_lights {
+            prepared_directional_lights.push(PreparedDirectionalLight {
+                light: &directional_light.light,
+                shadow_map_index: self
+                    .shadow_map_data
+                    .shadow_map_lookup
+                    .get(&LightId::DirectionalLight(directional_light.entity))
+                    .map(|x| image_index_remap[*x])
+                    .flatten(),
+            });
+        }
+
+        //
+        // Assign all spot lights a shadow map slot
+        //
+        let mut prepared_spot_lights = Vec::with_capacity(self.spot_lights.len());
+        for spot_light in &self.spot_lights {
+            prepared_spot_lights.push(PreparedSpotLight {
+                light: &spot_light.light,
+                position: &spot_light.position,
+                shadow_map_index: self
+                    .shadow_map_data
+                    .shadow_map_lookup
+                    .get(&LightId::SpotLight(spot_light.entity))
+                    .map(|x| image_index_remap[*x])
+                    .flatten(),
+            });
+        }
+
+        //
+        // Assign all point lights a CUBE shadow map slot
+        //
+        let mut prepared_point_lights = Vec::with_capacity(self.point_lights.len());
+        for point_light in &self.point_lights {
+            prepared_point_lights.push(PreparedPointLight {
+                light: &point_light.light,
+                position: &point_light.position,
+                shadow_map_index: self
+                    .shadow_map_data
+                    .shadow_map_lookup
+                    .get(&LightId::PointLight(point_light.entity))
+                    .map(|x| image_index_remap[*x])
+                    .flatten(),
+            });
         }
 
         //
         // Create per-view descriptors for all per-view descriptor layouts that are in our materials
         //
         for &view in views {
-            let mut per_view_frag_data = self.create_per_view_frag_data(view);
-            per_view_frag_data.shadow_map_count =
-                self.shadow_map_data
-                    .shadow_map_render_views
-                    .len()
-                    .min(per_view_frag_data.shadow_maps.len()) as u32;
-            per_view_frag_data.shadow_maps = shadow_maps;
+            let mut per_view_frag_data = self.create_per_view_frag_data(
+                view,
+                &prepared_directional_lights,
+                &prepared_spot_lights,
+                &prepared_point_lights,
+            );
+
+            per_view_frag_data.shadow_map_2d_data = shadow_map_2d_data;
+            per_view_frag_data.shadow_map_cube_data = shadow_map_cube_data;
 
             if view.phase_is_relevant::<OpaqueRenderPhase>()
                 || view.phase_is_relevant::<ShadowMapRenderPhase>()
@@ -125,7 +253,8 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                         .create_descriptor_set(
                             &per_view_descriptor_set_layout,
                             shaders::mesh_frag::DescriptorSet0Args {
-                                shadow_map_images: &shadow_map_images,
+                                shadow_map_images: &shadow_map_2d_image_views,
+                                shadow_map_images_cube: &shadow_map_cube_image_views,
                                 per_view_data: &per_view_frag_data,
                             },
                         )
@@ -249,12 +378,15 @@ impl MeshPrepareJob {
     fn create_per_view_frag_data(
         &self,
         view: &RenderView,
+        directional_lights: &[PreparedDirectionalLight],
+        spot_lights: &[PreparedSpotLight],
+        point_lights: &[PreparedPointLight],
     ) -> MeshPerViewFragmentShaderParam {
         let mut per_view_data = MeshPerViewFragmentShaderParam::default();
 
         per_view_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0).into();
 
-        for light in &self.directional_lights {
+        for light in directional_lights {
             let light_count = per_view_data.directional_light_count as usize;
             if light_count > per_view_data.directional_lights.len() {
                 break;
@@ -278,7 +410,7 @@ impl MeshPrepareJob {
             per_view_data.directional_light_count += 1;
         }
 
-        for light in &self.point_lights {
+        for light in point_lights {
             let light_count = per_view_data.point_light_count as usize;
             if light_count > per_view_data.point_lights.len() {
                 break;
@@ -297,7 +429,7 @@ impl MeshPrepareJob {
             per_view_data.point_light_count += 1;
         }
 
-        for light in &self.spot_lights {
+        for light in spot_lights {
             let light_count = per_view_data.spot_light_count as usize;
             if light_count > per_view_data.spot_lights.len() {
                 break;

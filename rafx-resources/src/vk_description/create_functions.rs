@@ -199,6 +199,7 @@ pub fn create_graphics_pipelines(
     shader_modules_meta: &[dsc::ShaderModuleMeta],
     shader_modules: &[vk::ShaderModule],
     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
+    framebuffer_meta: &dsc::FramebufferMeta,
 ) -> VkResult<Vec<vk::Pipeline>> {
     let input_assembly_state = fixed_function_state
         .input_assembly_state
@@ -225,14 +226,18 @@ pub fn create_graphics_pipelines(
         .viewport_state
         .scissors
         .iter()
-        .map(|scissors| scissors.to_rect2d(swapchain_surface_info))
+        .map(|scissors| scissors.to_rect2d(swapchain_surface_info, framebuffer_meta))
         .collect();
 
     let viewports: Vec<_> = fixed_function_state
         .viewport_state
         .viewports
         .iter()
-        .map(|viewport| viewport.as_builder(swapchain_surface_info).build())
+        .map(|viewport| {
+            viewport
+                .as_builder(swapchain_surface_info, framebuffer_meta)
+                .build()
+        })
         .collect();
 
     let viewport_state = vk::PipelineViewportStateCreateInfo::builder()

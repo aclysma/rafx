@@ -6,14 +6,14 @@
     viewport_state: (
         viewports: [
             (
-                dimensions: MatchSwapchain,
+                dimensions: MatchFramebuffer,
                 min_depth: 0,
                 max_depth: 1,
             ),
         ],
         scissors: [
             (
-                dimensions: MatchSwapchain,
+                dimensions: MatchFramebuffer,
             ),
         ],
     ),

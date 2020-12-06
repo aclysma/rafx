@@ -62,6 +62,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
                 .get_or_create_graphics_pipeline(
                     &render_node_data.material_pass.material_pass_resource,
                     &write_context.renderpass,
+                    &write_context.framebuffer_meta,
                     &*crate::assets::gltf::MESH_VERTEX_LAYOUT,
                 )
                 .unwrap();

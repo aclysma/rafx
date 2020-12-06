@@ -2,6 +2,7 @@ use ash::vk;
 use legion::*;
 use rafx::assets::AssetManager;
 use rafx::graph::VisitRenderpassArgs;
+use rafx::resources::vk_description as dsc;
 use rafx::resources::{RenderPassResource, ResourceArc, ResourceContext};
 use rafx::vulkan::VkDeviceContext;
 
@@ -49,6 +50,7 @@ pub struct RenderJobWriteContext {
     pub resource_context: ResourceContext,
     pub command_buffer: vk::CommandBuffer,
     pub renderpass: ResourceArc<RenderPassResource>,
+    pub framebuffer_meta: dsc::FramebufferMeta,
     pub subpass_index: usize,
 }
 
@@ -58,6 +60,7 @@ impl RenderJobWriteContext {
         resource_context: ResourceContext,
         command_buffer: vk::CommandBuffer,
         renderpass: ResourceArc<RenderPassResource>,
+        framebuffer_meta: dsc::FramebufferMeta,
         subpass_index: usize,
     ) -> Self {
         RenderJobWriteContext {
@@ -65,6 +68,7 @@ impl RenderJobWriteContext {
             resource_context,
             command_buffer,
             renderpass,
+            framebuffer_meta,
             subpass_index,
         }
     }
@@ -79,7 +83,13 @@ impl RenderJobWriteContext {
                 .resource_context()
                 .clone(),
             visit_renderpass_args.command_buffer,
-            visit_renderpass_args.renderpass.clone(),
+            visit_renderpass_args.renderpass_resource.clone(),
+            visit_renderpass_args
+                .framebuffer_resource
+                .get_raw()
+                .framebuffer_key
+                .framebuffer_meta
+                .clone(),
             visit_renderpass_args.subpass_index,
         )
     }

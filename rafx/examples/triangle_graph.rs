@@ -2,7 +2,7 @@ use ash::prelude::VkResult;
 use ash::vk;
 use log::LevelFilter;
 use rafx::graph::{
-    RenderGraphBuilder, RenderGraphExecutor, RenderGraphImageConstraint,
+    RenderGraphBuilder, RenderGraphExecutor, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphImageUsageId, RenderGraphNodeCallbacks,
     RenderGraphQueue,
 };
@@ -296,7 +296,13 @@ fn render_frame(
             format: swapchain_surface_info.surface_format.format.into(),
             aspect_flags: vk::ImageAspectFlags::COLOR,
             usage_flags: surface.swapchain().swapchain_info.image_usage_flags,
+            create_flags: Default::default(),
+            extents: RenderGraphImageExtents::MatchSurface,
+            layer_count: 1,
+            mip_count: 1,
         },
+        Default::default(),
+        Default::default(),
         dsc::ImageLayout::PresentSrcKhr,
         vk::AccessFlags::empty(),
         vk::PipelineStageFlags::empty(),

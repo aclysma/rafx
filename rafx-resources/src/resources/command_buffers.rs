@@ -28,6 +28,7 @@ pub struct CommandPool {
     device_context: VkDeviceContext,
     command_pool: vk::CommandPool,
     command_pool_meta: CommandPoolMeta,
+    allocated_command_buffers: Vec<vk::CommandBuffer>,
 }
 
 impl CommandPool {
@@ -58,12 +59,13 @@ impl CommandPool {
             device_context: device_context.clone(),
             command_pool,
             command_pool_meta,
+            allocated_command_buffers: Default::default(),
         })
     }
 
     /// Allocates command buffers from the pool
     pub fn create_command_buffers(
-        &self,
+        &mut self,
         command_buffer_level: vk::CommandBufferLevel,
         count: u32,
     ) -> VkResult<Vec<vk::CommandBuffer>> {
@@ -77,18 +79,33 @@ impl CommandPool {
             .level(command_buffer_level)
             .command_buffer_count(count);
 
-        unsafe {
+        let command_buffers = unsafe {
             self.device_context
                 .device()
                 .allocate_command_buffers(&command_buffer_allocate_info)
+        }?;
+
+        // Add the command buffers to the allocated list so we can free them later in
+        // reset_command_pool
+        for command_buffer in &command_buffers {
+            self.allocated_command_buffers.push(*command_buffer);
         }
+
+        Ok(command_buffers)
     }
 
     /// Resets the command pool, invalidating all command buffers that have previously been created
-    pub fn reset_command_pool(&self) -> VkResult<()> {
+    pub fn reset_command_pool(&mut self) -> VkResult<()> {
         log::trace!("Resetting command buffer pool {:?}", self.command_pool_meta);
 
         unsafe {
+            // First free the command buffers
+            self.device_context
+                .device()
+                .free_command_buffers(self.command_pool, &self.allocated_command_buffers);
+            self.allocated_command_buffers.clear();
+
+            // Reset all command buffers
             self.device_context
                 .device()
                 .reset_command_pool(self.command_pool, vk::CommandPoolResetFlags::empty())
@@ -151,7 +168,7 @@ impl DynCommandWriter {
         command_buffer_usage_flags: vk::CommandBufferUsageFlags,
         inheritance_info: Option<&vk::CommandBufferInheritanceInfo>,
     ) -> VkResult<vk::CommandBuffer> {
-        let inner = self.inner.as_ref().unwrap();
+        let inner = self.inner.as_mut().unwrap();
         log::trace!(
             "DynCommandWriter({}) begin_command_buffer Level: {:?} Usage Flags: {:?} Inheritance Info: {:?}",
             inner.writer_id,
@@ -413,7 +430,7 @@ impl DynCommandWriterAllocator {
         // Move them to the unused collection
         for key in submitted_writer_keys {
             let submitted_writers = guard.submitted_writers.remove(&key).unwrap();
-            for submitted_writer in submitted_writers {
+            for mut submitted_writer in submitted_writers {
                 log::trace!(
                     "DynCommandWriterAllocator::on_frame_complete: DynCommandWriter({}) being moved to unused writer map",
                     submitted_writer.writer_id,

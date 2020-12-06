@@ -10,26 +10,16 @@ pub struct RenderGraphNodeId(pub(super) usize);
 
 pub type RenderGraphNodeName = &'static str;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum RenderGraphAttachmentType {
-    Color(usize),
-    DepthStencil,
-    Resolve(usize),
-    NotAttached,
-}
-
 #[derive(Debug, Clone)]
 pub struct RenderGraphImageCreate {
     pub image: RenderGraphImageUsageId,
     pub constraint: RenderGraphImageConstraint,
-    pub attachment_type: RenderGraphAttachmentType,
 }
 
 #[derive(Debug, Clone)]
 pub struct RenderGraphImageRead {
     pub image: RenderGraphImageUsageId,
     pub constraint: RenderGraphImageConstraint,
-    pub attachment_type: RenderGraphAttachmentType,
 }
 
 #[derive(Debug, Clone)]
@@ -37,7 +27,6 @@ pub struct RenderGraphImageModify {
     pub input: RenderGraphImageUsageId,
     pub output: RenderGraphImageUsageId,
     pub constraint: RenderGraphImageConstraint,
-    pub attachment_type: RenderGraphAttachmentType,
 }
 
 #[derive(Debug, Copy, Clone)]

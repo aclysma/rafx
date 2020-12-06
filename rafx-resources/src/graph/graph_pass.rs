@@ -1,5 +1,6 @@
-use crate::graph::graph_image::{PhysicalImageId, VirtualImageId};
-use crate::graph::RenderGraphNodeId;
+use crate::graph::graph_image::{PhysicalImageId, PhysicalImageViewId, VirtualImageId};
+use crate::graph::graph_node::RenderGraphNodeName;
+use crate::graph::{RenderGraphImageUsageId, RenderGraphNodeId};
 use crate::vk_description as dsc;
 use ash::vk;
 use fnv::FnvHashMap;
@@ -106,8 +107,10 @@ impl Into<vk::ClearValue> for AttachmentClearValue {
 /// Attachment for a render pass
 #[derive(Debug)]
 pub struct RenderGraphPassAttachment {
+    pub(super) usage: RenderGraphImageUsageId,
     pub(super) virtual_image: VirtualImageId,
     pub(super) image: Option<PhysicalImageId>,
+    pub(super) image_view: Option<PhysicalImageViewId>,
     pub(super) load_op: vk::AttachmentLoadOp,
     pub(super) stencil_load_op: vk::AttachmentLoadOp,
     pub(super) store_op: vk::AttachmentStoreOp,
@@ -151,10 +154,11 @@ pub struct PrepassImageBarrier {
     pub src_queue_family_index: u32,
     pub dst_queue_family_index: u32,
     pub image: PhysicalImageId,
+    pub subresource_range: dsc::ImageSubresourceRange,
 }
 
 /// Metadata required to create a renderpass
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RenderGraphPass {
     pub(super) attachments: Vec<RenderGraphPassAttachment>,
     pub(super) subpasses: Vec<RenderGraphSubpass>,
@@ -162,15 +166,17 @@ pub struct RenderGraphPass {
     // For when we want to do layout transitions on non-attachments
     //pre_pass_image_barriers: Vec<PrepassImageBarrier>
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
+    pub(super) extents: Option<vk::Extent2D>,
 }
 
 pub struct RenderGraphOutputPass {
     pub(super) subpass_nodes: Vec<RenderGraphNodeId>,
     pub(super) description: Arc<dsc::RenderPass>,
-    pub(super) attachment_images: Vec<PhysicalImageId>,
+    pub(super) attachment_images: Vec<PhysicalImageViewId>,
     pub(super) clear_values: Vec<vk::ClearValue>,
     pub(super) extents: vk::Extent2D,
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
+    pub(super) debug_name: Option<RenderGraphNodeName>,
 }
 
 impl std::fmt::Debug for RenderGraphOutputPass {

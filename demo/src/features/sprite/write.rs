@@ -32,6 +32,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
             .get_or_create_graphics_pipeline(
                 &self.sprite_material,
                 &write_context.renderpass,
+                &write_context.framebuffer_meta,
                 &super::SPRITE_VERTEX_LAYOUT,
             )
             .unwrap();

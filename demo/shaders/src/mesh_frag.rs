@@ -11,6 +11,26 @@ use rafx_resources::{
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
+pub struct ShadowMap2DDataStd140 {
+    pub shadow_map_view_proj: [[f32; 4]; 4], // +0 (size: 64)
+    pub shadow_map_light_dir: [f32; 3],      // +64 (size: 12)
+    pub _padding0: [u8; 4],                  // +76 (size: 4)
+} // 80 bytes
+
+impl Default for ShadowMap2DDataStd140 {
+    fn default() -> Self {
+        ShadowMap2DDataStd140 {
+            shadow_map_view_proj: <[[f32; 4]; 4]>::default(),
+            shadow_map_light_dir: <[f32; 3]>::default(),
+            _padding0: [u8::default(); 4],
+        }
+    }
+}
+
+pub type ShadowMap2DDataUniform = ShadowMap2DDataStd140;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
 pub struct MaterialDataStd140 {
     pub base_color_factor: [f32; 4],         // +0 (size: 16)
     pub emissive_factor: [f32; 3],           // +16 (size: 12)
@@ -51,39 +71,18 @@ pub type MaterialDataUniform = MaterialDataStd140;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct ShadowMapDataStd140 {
-    pub shadow_map_view_proj: [[f32; 4]; 4], // +0 (size: 64)
-    pub shadow_map_light_dir: [f32; 3],      // +64 (size: 12)
-    pub _padding0: [u8; 4],                  // +76 (size: 4)
-} // 80 bytes
-
-impl Default for ShadowMapDataStd140 {
-    fn default() -> Self {
-        ShadowMapDataStd140 {
-            shadow_map_view_proj: <[[f32; 4]; 4]>::default(),
-            shadow_map_light_dir: <[f32; 3]>::default(),
-            _padding0: [u8::default(); 4],
-        }
-    }
-}
-
-pub type ShadowMapDataUniform = ShadowMapDataStd140;
-
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
 pub struct PerViewDataStd140 {
-    pub ambient_light: [f32; 4],                          // +0 (size: 16)
-    pub point_light_count: u32,                           // +16 (size: 4)
-    pub directional_light_count: u32,                     // +20 (size: 4)
-    pub spot_light_count: u32,                            // +24 (size: 4)
-    pub _padding0: [u8; 4],                               // +28 (size: 4)
-    pub point_lights: [PointLightStd140; 16],             // +32 (size: 1024)
-    pub directional_lights: [DirectionalLightStd140; 16], // +1056 (size: 1024)
-    pub spot_lights: [SpotLightStd140; 16],               // +2080 (size: 1536)
-    pub shadow_map_count: u32,                            // +3616 (size: 4)
-    pub _padding1: [u8; 12],                              // +3620 (size: 12)
-    pub shadow_maps: [ShadowMapDataStd140; 48],           // +3632 (size: 3840)
-} // 7472 bytes
+    pub ambient_light: [f32; 4],                             // +0 (size: 16)
+    pub point_light_count: u32,                              // +16 (size: 4)
+    pub directional_light_count: u32,                        // +20 (size: 4)
+    pub spot_light_count: u32,                               // +24 (size: 4)
+    pub _padding0: [u8; 4],                                  // +28 (size: 4)
+    pub point_lights: [PointLightStd140; 16],                // +32 (size: 1024)
+    pub directional_lights: [DirectionalLightStd140; 16],    // +1056 (size: 1024)
+    pub spot_lights: [SpotLightStd140; 16],                  // +2080 (size: 1536)
+    pub shadow_map_2d_data: [ShadowMap2DDataStd140; 32],     // +3616 (size: 2560)
+    pub shadow_map_cube_data: [ShadowMapCubeDataStd140; 16], // +6176 (size: 256)
+} // 6432 bytes
 
 impl Default for PerViewDataStd140 {
     fn default() -> Self {
@@ -96,9 +95,8 @@ impl Default for PerViewDataStd140 {
             point_lights: [<PointLightStd140>::default(); 16],
             directional_lights: [<DirectionalLightStd140>::default(); 16],
             spot_lights: [<SpotLightStd140>::default(); 16],
-            shadow_map_count: <u32>::default(),
-            _padding1: [u8::default(); 12],
-            shadow_maps: [<ShadowMapDataStd140>::default(); 48],
+            shadow_map_2d_data: [<ShadowMap2DDataStd140>::default(); 32],
+            shadow_map_cube_data: [<ShadowMapCubeDataStd140>::default(); 16],
         }
     }
 }
@@ -209,6 +207,26 @@ pub type PointLightUniform = PointLightStd140;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
+pub struct ShadowMapCubeDataStd140 {
+    pub cube_map_projection_near_z: f32, // +0 (size: 4)
+    pub cube_map_projection_far_z: f32,  // +4 (size: 4)
+    pub _padding0: [u8; 8],              // +8 (size: 8)
+} // 16 bytes
+
+impl Default for ShadowMapCubeDataStd140 {
+    fn default() -> Self {
+        ShadowMapCubeDataStd140 {
+            cube_map_projection_near_z: <f32>::default(),
+            cube_map_projection_far_z: <f32>::default(),
+            _padding0: [u8::default(); 8],
+        }
+    }
+}
+
+pub type ShadowMapCubeDataUniform = ShadowMapCubeDataStd140;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
 pub struct MaterialDataUboStd140 {
     pub data: MaterialDataStd140, // +0 (size: 80)
 } // 80 bytes
@@ -251,6 +269,8 @@ pub const SMP_DEPTH_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const SMP_DEPTH_DESCRIPTOR_BINDING_INDEX: usize = 2;
 pub const SHADOW_MAP_IMAGES_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const SHADOW_MAP_IMAGES_DESCRIPTOR_BINDING_INDEX: usize = 3;
+pub const SHADOW_MAP_IMAGES_CUBE_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const SHADOW_MAP_IMAGES_CUBE_DESCRIPTOR_BINDING_INDEX: usize = 4;
 pub const PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX: usize = 1;
 pub const PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
 pub const BASE_COLOR_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
@@ -268,7 +288,8 @@ pub const PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
 
 pub struct DescriptorSet0Args<'a> {
     pub per_view_data: &'a PerViewDataUniform,
-    pub shadow_map_images: &'a [Option<&'a ResourceArc<ImageViewResource>>; 48],
+    pub shadow_map_images: &'a [Option<&'a ResourceArc<ImageViewResource>>; 32],
+    pub shadow_map_images_cube: &'a [Option<&'a ResourceArc<ImageViewResource>>; 16],
 }
 
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
@@ -309,6 +330,10 @@ impl DescriptorSet0 {
             SHADOW_MAP_IMAGES_DESCRIPTOR_BINDING_INDEX as u32,
             args.shadow_map_images,
         );
+        descriptor_set.set_images(
+            SHADOW_MAP_IMAGES_CUBE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.shadow_map_images_cube,
+        );
     }
 
     pub fn set_args(
@@ -317,6 +342,7 @@ impl DescriptorSet0 {
     ) {
         self.set_per_view_data(args.per_view_data);
         self.set_shadow_map_images(args.shadow_map_images);
+        self.set_shadow_map_images_cube(args.shadow_map_images_cube);
     }
 
     pub fn set_per_view_data(
@@ -329,7 +355,7 @@ impl DescriptorSet0 {
 
     pub fn set_shadow_map_images(
         &mut self,
-        shadow_map_images: &[Option<&ResourceArc<ImageViewResource>>; 48],
+        shadow_map_images: &[Option<&ResourceArc<ImageViewResource>>; 32],
     ) {
         self.0.set_images(
             SHADOW_MAP_IMAGES_DESCRIPTOR_BINDING_INDEX as u32,
@@ -344,6 +370,28 @@ impl DescriptorSet0 {
     ) {
         self.0.set_image_at_index(
             SHADOW_MAP_IMAGES_DESCRIPTOR_BINDING_INDEX as u32,
+            index,
+            element,
+        );
+    }
+
+    pub fn set_shadow_map_images_cube(
+        &mut self,
+        shadow_map_images_cube: &[Option<&ResourceArc<ImageViewResource>>; 16],
+    ) {
+        self.0.set_images(
+            SHADOW_MAP_IMAGES_CUBE_DESCRIPTOR_BINDING_INDEX as u32,
+            shadow_map_images_cube,
+        );
+    }
+
+    pub fn set_shadow_map_images_cube_element(
+        &mut self,
+        index: usize,
+        element: &ResourceArc<ImageViewResource>,
+    ) {
+        self.0.set_image_at_index(
+            SHADOW_MAP_IMAGES_CUBE_DESCRIPTOR_BINDING_INDEX as u32,
             index,
             element,
         );
@@ -572,6 +620,26 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_struct_shadow_map2_d_data_std140() {
+        assert_eq!(std::mem::size_of::<ShadowMap2DDataStd140>(), 80);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMap2DDataStd140, shadow_map_view_proj),
+            0
+        );
+        assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
+        assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMap2DDataStd140, shadow_map_light_dir),
+            64
+        );
+        assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
+        assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
+        assert_eq!(memoffset::offset_of!(ShadowMap2DDataStd140, _padding0), 76);
+    }
+
+    #[test]
     fn test_struct_material_data_std140() {
         assert_eq!(std::mem::size_of::<MaterialDataStd140>(), 80);
         assert_eq!(std::mem::size_of::<[f32; 4]>(), 16);
@@ -649,28 +717,8 @@ mod test {
     }
 
     #[test]
-    fn test_struct_shadow_map_data_std140() {
-        assert_eq!(std::mem::size_of::<ShadowMapDataStd140>(), 80);
-        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
-        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(ShadowMapDataStd140, shadow_map_view_proj),
-            0
-        );
-        assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
-        assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(ShadowMapDataStd140, shadow_map_light_dir),
-            64
-        );
-        assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
-        assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
-        assert_eq!(memoffset::offset_of!(ShadowMapDataStd140, _padding0), 76);
-    }
-
-    #[test]
     fn test_struct_per_view_data_std140() {
-        assert_eq!(std::mem::size_of::<PerViewDataStd140>(), 7472);
+        assert_eq!(std::mem::size_of::<PerViewDataStd140>(), 6432);
         assert_eq!(std::mem::size_of::<[f32; 4]>(), 16);
         assert_eq!(std::mem::align_of::<[f32; 4]>(), 4);
         assert_eq!(memoffset::offset_of!(PerViewDataStd140, ambient_light), 0);
@@ -707,18 +755,18 @@ mod test {
         assert_eq!(std::mem::size_of::<[SpotLightStd140; 16]>(), 1536);
         assert_eq!(std::mem::align_of::<[SpotLightStd140; 16]>(), 4);
         assert_eq!(memoffset::offset_of!(PerViewDataStd140, spot_lights), 2080);
-        assert_eq!(std::mem::size_of::<u32>(), 4);
-        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(std::mem::size_of::<[ShadowMap2DDataStd140; 32]>(), 2560);
+        assert_eq!(std::mem::align_of::<[ShadowMap2DDataStd140; 32]>(), 4);
         assert_eq!(
-            memoffset::offset_of!(PerViewDataStd140, shadow_map_count),
+            memoffset::offset_of!(PerViewDataStd140, shadow_map_2d_data),
             3616
         );
-        assert_eq!(std::mem::size_of::<[u8; 12]>(), 12);
-        assert_eq!(std::mem::align_of::<[u8; 12]>(), 1);
-        assert_eq!(memoffset::offset_of!(PerViewDataStd140, _padding1), 3620);
-        assert_eq!(std::mem::size_of::<[ShadowMapDataStd140; 48]>(), 3840);
-        assert_eq!(std::mem::align_of::<[ShadowMapDataStd140; 48]>(), 4);
-        assert_eq!(memoffset::offset_of!(PerViewDataStd140, shadow_maps), 3632);
+        assert_eq!(std::mem::size_of::<[ShadowMapCubeDataStd140; 16]>(), 256);
+        assert_eq!(std::mem::align_of::<[ShadowMapCubeDataStd140; 16]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(PerViewDataStd140, shadow_map_cube_data),
+            6176
+        );
     }
 
     #[test]
@@ -836,6 +884,26 @@ mod test {
         assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
         assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
         assert_eq!(memoffset::offset_of!(PointLightStd140, _padding2), 60);
+    }
+
+    #[test]
+    fn test_struct_shadow_map_cube_data_std140() {
+        assert_eq!(std::mem::size_of::<ShadowMapCubeDataStd140>(), 16);
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMapCubeDataStd140, cube_map_projection_near_z),
+            0
+        );
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMapCubeDataStd140, cube_map_projection_far_z),
+            4
+        );
+        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
+        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
+        assert_eq!(memoffset::offset_of!(ShadowMapCubeDataStd140, _padding0), 8);
     }
 
     #[test]

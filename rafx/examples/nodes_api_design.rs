@@ -13,6 +13,7 @@ pub struct PositionComponent {
 
 mod demo_feature;
 use demo_feature::*;
+use rafx_nodes::RenderViewDepthRange;
 
 mod demo_phases;
 
@@ -168,13 +169,15 @@ fn main() {
 
         let frustum_width = 800;
         let frustum_height = 600;
+        let near = 0.1;
+        let far = 100.0;
         let projection = glam::Mat4::orthographic_rh(
             0.0,
             frustum_width as f32,
             0.0,
             frustum_height as f32,
-            100.0,
-            -100.0,
+            near,
+            far,
         );
 
         let view_proj = projection * view;
@@ -185,6 +188,8 @@ fn main() {
             eye_position,
             view_proj,
             glam::Mat4::identity(),
+            (frustum_width, frustum_height),
+            RenderViewDepthRange::new(near, far),
             main_camera_render_phase_mask,
             "main".to_string(),
         );
@@ -213,6 +218,8 @@ fn main() {
             eye_position,
             view_proj,
             glam::Mat4::identity(),
+            (frustum_width, frustum_height),
+            RenderViewDepthRange::new(near, far),
             minimap_render_phase_mask,
             "minimap".to_string(),
         );

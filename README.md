@@ -6,7 +6,7 @@ team environment.
 
 The asset pipeline is designed with user workflow in mind (including dedicated artists!), supporting workflow-friendly
 features like hot reloading assets, including on remote devices. The architecture of the renderer is intended to support
-advance use-cases such as streaming, LODs, visibility systems, and multi-threaded draw call submission. 
+advanced use-cases such as streaming, LODs, visibility systems, and multi-threaded draw call submission. 
 
 Extending and using this crate directly requires some understanding of vulkan. However, there are many tools to make
 iteration much faster such as a **render graph** and **auto-generated shader bindings**.
@@ -48,16 +48,19 @@ The demo includes:
  * Assets can be streamed to remote hardware (i.e. a phone)
  * OR assets can be cooked into a binary blob for shipping
  * Hot-reloading assets (needs more work, some asset types do not work reliably)
- * Render graph can be used for efficient and flexible definition of a render pipeline
+ * Render graph can be used for efficient and flexible definition of a render pipeline, including rendering to textures
+   and multiple cameras.
  * Auto-generated shader bindings make working with descriptor sets convenient and less error prone.
  * Material System supporting multiple passes
- * Multi-view support (to produce shadow maps, for example)
+ * Multi-camera support (to produce shadow maps, for example)
  * Demo game state stored in ECS (NOTE: demo uses legion but the renderer is ECS-agnostic)
  * PBR Meshes
  * Sprites
  * Debug Draw
  * imgui
  * HDR Pipeline with Bloom
+ * Point, Spot, and Directional Lights
+ * Multiple Spot/Directional/Point light soft shadows
 
 ## Running the Demo
 

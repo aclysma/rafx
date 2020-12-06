@@ -205,6 +205,32 @@ pub fn run(args: &DemoArgs) {
                     }
                 }
         */
+
+        /*
+        {
+            let time_state = resources.get::<TimeState>().unwrap();
+            let mut query = <(Write<PositionComponent>, Read<PointLightComponent>)>::query();
+            for (position, light) in query.iter_mut(&mut world) {
+                const LIGHT_XY_DISTANCE: f32 = 6.0;
+                const LIGHT_Z: f32 = 3.5;
+                const LIGHT_ROTATE_SPEED: f32 = 0.5;
+                const LIGHT_LOOP_OFFSET: f32 = 2.0;
+                let loop_time = time_state.total_time().as_secs_f32();
+                let light_from = glam::Vec3::new(
+                    LIGHT_XY_DISTANCE
+                        * f32::cos(LIGHT_ROTATE_SPEED * loop_time + LIGHT_LOOP_OFFSET),
+                    LIGHT_XY_DISTANCE
+                        * f32::sin(LIGHT_ROTATE_SPEED * loop_time + LIGHT_LOOP_OFFSET),
+                    LIGHT_Z,
+                    //LIGHT_Z// * f32::sin(LIGHT_ROTATE_SPEED * loop_time + LIGHT_LOOP_OFFSET).abs(),
+                    //0.2
+                    //2.0
+                );
+                position.position = light_from;
+            }
+        }
+        */
+
         //
         // imgui debug draw,
         //

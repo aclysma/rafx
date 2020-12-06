@@ -29,6 +29,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
                 .get_or_create_graphics_pipeline(
                     &self.debug3d_material_pass,
                     &write_context.renderpass,
+                    &write_context.framebuffer_meta,
                     &*super::DEBUG_VERTEX_LAYOUT,
                 )
                 .unwrap();

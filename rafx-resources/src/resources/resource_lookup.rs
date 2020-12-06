@@ -1,7 +1,7 @@
 use crate::resources::resource_arc::{ResourceId, ResourceWithHash, WeakResourceArc};
 use crate::resources::ResourceArc;
 use crate::vk_description as dsc;
-use crate::vk_description::SwapchainSurfaceInfo;
+use crate::vk_description::{FramebufferMeta, SwapchainSurfaceInfo};
 use ash::prelude::VkResult;
 use ash::vk;
 use bitflags::_core::sync::atomic::AtomicU64;
@@ -332,9 +332,9 @@ impl RenderPassKey {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FrameBufferKey {
-    renderpass: Arc<dsc::RenderPass>,
-    image_view_keys: Vec<ImageViewKey>,
-    framebuffer_meta: dsc::FramebufferMeta,
+    pub renderpass: Arc<dsc::RenderPass>,
+    pub image_view_keys: Vec<ImageViewKey>,
+    pub framebuffer_meta: dsc::FramebufferMeta,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -356,6 +356,7 @@ pub struct MaterialPassKey {
 pub struct GraphicsPipelineKey {
     material_pass_key: MaterialPassKey,
     renderpass_key: RenderPassKey,
+    framebuffer_meta: FramebufferMeta,
     vertex_input_state: Arc<dsc::PipelineVertexInputState>,
 }
 
@@ -1034,11 +1035,13 @@ impl ResourceLookupSet {
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
+        framebuffer_meta: &dsc::FramebufferMeta,
         vertex_input_state: Arc<dsc::PipelineVertexInputState>,
     ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
         let pipeline_key = GraphicsPipelineKey {
             material_pass_key: material_pass.get_raw().material_pass_key,
             renderpass_key: renderpass.get_raw().renderpass_key,
+            framebuffer_meta: framebuffer_meta.clone(),
             vertex_input_state: vertex_input_state.clone(),
         };
 
@@ -1063,6 +1066,7 @@ impl ResourceLookupSet {
                     &pipeline_key.material_pass_key.shader_module_metas,
                     &material_pass.get_raw().shader_module_vk_objs,
                     &pipeline_key.renderpass_key.swapchain_surface_info,
+                    &pipeline_key.framebuffer_meta,
                 )?;
                 log::trace!("Created pipelines {:?}", pipelines);
 

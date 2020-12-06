@@ -176,36 +176,37 @@ pub fn populate_test_lights(
     //     },
     // );
     //
-    // add_point_light(
-    //     resources,
-    //     world,
-    //     glam::Vec3::new(-3.0, 3.0, 3.0),
-    //     PointLightComponent {
-    //         color: [1.0, 1.0, 1.0, 1.0].into(),
-    //         intensity: 130.0,
-    //         range: 25.0,
-    //     },
-    // );
-
-    //
-    // KEY LIGHT
-    //
-    let light_from = glam::Vec3::new(5.0, 5.0, 5.0);
-    let light_to = glam::Vec3::zero();
-    let light_direction = (light_to - light_from).normalize();
-    add_directional_light(
+    add_point_light(
         resources,
         world,
-        DirectionalLightComponent {
-            direction: light_direction,
-            intensity: 1.0,
-            color: [1.0, 1.0, 1.0, 1.0].into(),
+        //glam::Vec3::new(-3.0, 3.0, 2.0),
+        glam::Vec3::new(5.0, 5.0, 2.0),
+        PointLightComponent {
+            color: [0.0, 1.0, 0.0, 1.0].into(),
+            intensity: 50.0,
+            range: 25.0,
         },
     );
 
     //
     // KEY LIGHT
     //
+    // let light_from = glam::Vec3::new(5.0, 5.0, 5.0);
+    // let light_to = glam::Vec3::zero();
+    // let light_direction = (light_to - light_from).normalize();
+    // add_directional_light(
+    //     resources,
+    //     world,
+    //     DirectionalLightComponent {
+    //         direction: light_direction,
+    //         intensity: 1.0,
+    //         color: [1.0, 1.0, 1.0, 1.0].into(),
+    //     },
+    // );
+    //
+    // //
+    // // KEY LIGHT
+    // //
     let light_from = glam::Vec3::new(-5.0, 5.0, 5.0);
     let light_to = glam::Vec3::zero();
     let light_direction = (light_to - light_from).normalize();
@@ -215,7 +216,7 @@ pub fn populate_test_lights(
         DirectionalLightComponent {
             direction: light_direction,
             intensity: 1.0,
-            color: [1.0, 1.0, 1.0, 1.0].into(),
+            color: [0.0, 0.0, 1.0, 1.0].into(),
         },
     );
 
@@ -231,7 +232,7 @@ pub fn populate_test_lights(
     //     DirectionalLightComponent {
     //         direction: light_direction,
     //         intensity: 2.0,
-    //         color: [1.0, 1.0, 1.0, 1.0].into(),
+    //         color: [0.0, 0.0, 1.0, 1.0].into(),
     //     },
     // );
 

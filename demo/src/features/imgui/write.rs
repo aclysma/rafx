@@ -32,6 +32,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
                 .get_or_create_graphics_pipeline(
                     &self.imgui_material_pass,
                     &write_context.renderpass,
+                    &write_context.framebuffer_meta,
                     &*super::IMGUI_VERTEX_LAYOUT,
                 )
                 .unwrap();

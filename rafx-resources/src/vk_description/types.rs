@@ -63,6 +63,12 @@ pub enum ImageViewType {
     CubeArray,
 }
 
+impl Default for ImageViewType {
+    fn default() -> Self {
+        ImageViewType::Type2D
+    }
+}
+
 impl Into<vk::ImageViewType> for ImageViewType {
     fn into(self) -> vk::ImageViewType {
         match self {
@@ -138,6 +144,25 @@ pub enum ImageAspectFlag {
 
 pub type ImageAspectFlags = BitFlags<ImageAspectFlag>;
 
+impl ImageAspectFlag {
+    pub fn from_vk_image_aspect_flags(vk_flags: vk::ImageAspectFlags) -> ImageAspectFlags {
+        let mut flags = ImageAspectFlags::empty();
+        if vk_flags.contains(vk::ImageAspectFlags::COLOR) {
+            flags |= ImageAspectFlag::Color;
+        }
+        if vk_flags.contains(vk::ImageAspectFlags::DEPTH) {
+            flags |= ImageAspectFlag::Depth;
+        }
+        if vk_flags.contains(vk::ImageAspectFlags::STENCIL) {
+            flags |= ImageAspectFlag::Stencil;
+        }
+        if vk_flags.contains(vk::ImageAspectFlags::METADATA) {
+            flags |= ImageAspectFlag::Metadata;
+        }
+        flags
+    }
+}
+
 impl Default for ImageAspectFlag {
     fn default() -> Self {
         ImageAspectFlag::Color
@@ -166,13 +191,40 @@ impl Into<vk::ImageSubresourceRange> for ImageSubresourceRange {
 }
 
 impl ImageSubresourceRange {
-    pub fn default_no_mips_or_layers(aspect_mask: ImageAspectFlags) -> Self {
+    pub fn default_no_mips_no_layers(aspect_mask: ImageAspectFlags) -> Self {
         ImageSubresourceRange {
             aspect_mask,
             base_mip_level: 0,
             level_count: 1,
             base_array_layer: 0,
             layer_count: 1,
+        }
+    }
+
+    pub fn default_no_mips_single_layer(
+        aspect_mask: ImageAspectFlags,
+        layer: u32,
+    ) -> Self {
+        ImageSubresourceRange {
+            aspect_mask,
+            base_mip_level: 0,
+            level_count: 1,
+            base_array_layer: layer,
+            layer_count: 1,
+        }
+    }
+
+    pub fn default_all_mips_all_layers(
+        aspect_mask: ImageAspectFlags,
+        mip_count: u32,
+        layer_count: u32,
+    ) -> Self {
+        ImageSubresourceRange {
+            aspect_mask,
+            base_mip_level: 0,
+            level_count: mip_count,
+            base_array_layer: 0,
+            layer_count: layer_count,
         }
     }
 }
@@ -356,7 +408,7 @@ impl ImageViewMeta {
             view_type: ImageViewType::Type2D,
             format,
             components: Default::default(),
-            subresource_range: ImageSubresourceRange::default_no_mips_or_layers(image_aspect_flags),
+            subresource_range: ImageSubresourceRange::default_no_mips_no_layers(image_aspect_flags),
         }
     }
 }
@@ -2225,6 +2277,7 @@ pub struct RectI32 {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Dimensions {
     MatchSwapchain,
+    MatchFramebuffer,
     Raw(RectDecimal),
 }
 
@@ -2232,6 +2285,7 @@ impl Dimensions {
     fn as_rect_f32(
         &self,
         swapchain_surface_info: &SwapchainSurfaceInfo,
+        framebuffer_meta: &FramebufferMeta,
     ) -> RectF32 {
         match self {
             Dimensions::MatchSwapchain => RectF32 {
@@ -2239,6 +2293,12 @@ impl Dimensions {
                 y: 0.0,
                 width: swapchain_surface_info.extents.width as f32,
                 height: swapchain_surface_info.extents.height as f32,
+            },
+            Dimensions::MatchFramebuffer => RectF32 {
+                x: 0.0,
+                y: 0.0,
+                width: framebuffer_meta.width as f32,
+                height: framebuffer_meta.height as f32,
             },
             Dimensions::Raw(rect) => RectF32 {
                 x: rect.x.to_f32(),
@@ -2252,6 +2312,7 @@ impl Dimensions {
     fn as_rect_i32(
         &self,
         swapchain_surface_info: &SwapchainSurfaceInfo,
+        framebuffer_meta: &FramebufferMeta,
     ) -> RectI32 {
         match self {
             Dimensions::MatchSwapchain => RectI32 {
@@ -2259,6 +2320,12 @@ impl Dimensions {
                 y: 0,
                 width: swapchain_surface_info.extents.width,
                 height: swapchain_surface_info.extents.height,
+            },
+            Dimensions::MatchFramebuffer => RectI32 {
+                x: 0,
+                y: 0,
+                width: framebuffer_meta.width,
+                height: framebuffer_meta.height,
             },
             Dimensions::Raw(rect) => RectI32 {
                 x: rect.x.to_i32(),
@@ -2287,8 +2354,11 @@ impl Viewport {
     pub fn as_builder(
         &self,
         swapchain_surface_info: &SwapchainSurfaceInfo,
+        framebuffer_meta: &FramebufferMeta,
     ) -> vk::ViewportBuilder {
-        let rect_f32 = self.dimensions.as_rect_f32(swapchain_surface_info);
+        let rect_f32 = self
+            .dimensions
+            .as_rect_f32(swapchain_surface_info, framebuffer_meta);
         vk::Viewport::builder()
             .x(rect_f32.x)
             .y(rect_f32.y)
@@ -2308,8 +2378,11 @@ impl Scissors {
     pub fn to_rect2d(
         &self,
         swapchain_surface_info: &SwapchainSurfaceInfo,
+        framebuffer_meta: &FramebufferMeta,
     ) -> vk::Rect2D {
-        let rect_i32 = self.dimensions.as_rect_i32(swapchain_surface_info);
+        let rect_i32 = self
+            .dimensions
+            .as_rect_i32(swapchain_surface_info, framebuffer_meta);
         vk::Rect2D {
             offset: vk::Offset2D {
                 x: rect_i32.x,

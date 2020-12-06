@@ -6,7 +6,9 @@ pub use graph_builder::RenderGraphQueue;
 
 mod graph_image;
 pub use graph_image::RenderGraphImageConstraint;
+pub use graph_image::RenderGraphImageExtents;
 pub use graph_image::RenderGraphImageSpecification;
+pub use graph_image::RenderGraphImageSubresourceRange;
 pub use graph_image::RenderGraphImageUsageId;
 use graph_image::*;
 

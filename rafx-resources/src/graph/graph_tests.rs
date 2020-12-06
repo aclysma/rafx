@@ -1,6 +1,6 @@
 use crate::graph::{
-    RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageSpecification,
-    RenderGraphImageUsageId, RenderGraphQueue,
+    RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageExtents,
+    RenderGraphImageSpecification, RenderGraphImageUsageId, RenderGraphQueue,
 };
 use crate::vk_description::SwapchainSurfaceInfo;
 use crate::{
@@ -227,17 +227,18 @@ fn graph_smoketest() {
                 node,
                 opaque_pass.color,
                 0,
-                RenderGraphImageConstraint {
-                    //layout: Some(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL),
-                    // samples: Some(vk::SampleCountFlags::TYPE_1),
-                    // format: Some(swapchain_format),
-                    // queue: Some(queue),
-                    ..Default::default()
-                },
+                None,
+                Default::default(),
+                Default::default(),
             );
             graph.set_image_name(color, "color");
 
-            graph.read_depth_attachment(node, opaque_pass.depth, Default::default());
+            graph.read_depth_attachment(
+                node,
+                opaque_pass.depth,
+                Default::default(),
+                Default::default(),
+            );
 
             Transparent { color }
         };
@@ -250,7 +251,13 @@ fn graph_smoketest() {
                 format: swapchain_format,
                 aspect_flags: vk::ImageAspectFlags::COLOR,
                 usage_flags: vk::ImageUsageFlags::COLOR_ATTACHMENT,
+                create_flags: Default::default(),
+                extents: RenderGraphImageExtents::MatchSurface,
+                layer_count: 1,
+                mip_count: 1,
             },
+            Default::default(),
+            Default::default(),
             dsc::ImageLayout::PresentSrcKhr,
             vk::AccessFlags::empty(),
             vk::PipelineStageFlags::empty(),

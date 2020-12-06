@@ -21,6 +21,7 @@ use std::sync::{Arc, Mutex};
 struct CachedGraphicsPipelineKey {
     material_pass: ResourceId,
     renderpass: ResourceId,
+    framebuffer_meta: dsc::FramebufferMeta,
     vertex_data_set_layout: VertexDataSetLayoutHash,
 }
 
@@ -56,6 +57,21 @@ pub struct GraphicsPipelineCacheInner {
     lock_call_count_previous_frame: u64,
     #[cfg(debug_assertions)]
     lock_call_count: u64,
+
+    #[cfg(debug_assertions)]
+    pipeline_create_count_previous_frame: u64,
+    #[cfg(debug_assertions)]
+    pipeline_create_count: u64,
+}
+
+#[derive(Debug)]
+pub struct GraphicsPipelineCacheMetrics {
+    pipeline_count: usize,
+
+    #[cfg(debug_assertions)]
+    lock_call_count_previous_frame: u64,
+    #[cfg(debug_assertions)]
+    pipeline_create_count_previous_frame: u64,
 }
 
 #[derive(Clone)]
@@ -90,11 +106,32 @@ impl GraphicsPipelineCache {
             lock_call_count_previous_frame: 0,
             #[cfg(debug_assertions)]
             lock_call_count: 0,
+            #[cfg(debug_assertions)]
+            pipeline_create_count_previous_frame: 0,
+            #[cfg(debug_assertions)]
+            pipeline_create_count: 0,
         };
 
         GraphicsPipelineCache {
             render_registry: render_registry.clone(),
             inner: Arc::new(Mutex::new(inner)),
+        }
+    }
+
+    pub fn metrics(&self) -> GraphicsPipelineCacheMetrics {
+        let mut guard = self.inner.lock().unwrap();
+        let inner = &mut *guard;
+        #[cfg(debug_assertions)]
+        {
+            inner.lock_call_count += 1;
+        }
+
+        GraphicsPipelineCacheMetrics {
+            pipeline_count: inner.cached_pipelines.len(),
+            #[cfg(debug_assertions)]
+            lock_call_count_previous_frame: inner.lock_call_count_previous_frame,
+            #[cfg(debug_assertions)]
+            pipeline_create_count_previous_frame: inner.pipeline_create_count_previous_frame,
         }
     }
 
@@ -113,8 +150,12 @@ impl GraphicsPipelineCache {
         let mut guard = self.inner.lock().unwrap();
         #[cfg(debug_assertions)]
         {
+            // add one for this call
             guard.lock_call_count_previous_frame = guard.lock_call_count + 1;
             guard.lock_call_count = 0;
+
+            guard.pipeline_create_count_previous_frame = guard.pipeline_create_count;
+            guard.pipeline_create_count = 0;
         }
         guard.current_frame_index += 1;
         Self::drop_stale_pipelines(&mut *guard);
@@ -200,34 +241,50 @@ impl GraphicsPipelineCache {
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
+        framebuffer_meta: &dsc::FramebufferMeta,
         vertex_data_set_layout: &VertexDataSetLayout,
     ) -> Option<ResourceArc<GraphicsPipelineResource>> {
         // VkResult is always Ok if returning cached pipelines
-        self.graphics_pipeline(material_pass, renderpass, vertex_data_set_layout, false)
-            .map(|x| x.unwrap())
+        self.graphics_pipeline(
+            material_pass,
+            renderpass,
+            framebuffer_meta,
+            vertex_data_set_layout,
+            false,
+        )
+        .map(|x| x.unwrap())
     }
 
     pub fn get_or_create_graphics_pipeline(
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
+        framebuffer_meta: &dsc::FramebufferMeta,
         vertex_data_set_layout: &VertexDataSetLayout,
     ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
         // graphics_pipeline never returns none if create_if_missing is true
-        self.graphics_pipeline(material_pass, renderpass, vertex_data_set_layout, true)
-            .ok_or(vk::Result::ERROR_UNKNOWN)?
+        self.graphics_pipeline(
+            material_pass,
+            renderpass,
+            framebuffer_meta,
+            vertex_data_set_layout,
+            true,
+        )
+        .ok_or(vk::Result::ERROR_UNKNOWN)?
     }
 
     pub fn graphics_pipeline(
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
         renderpass: &ResourceArc<RenderPassResource>,
+        framebuffer_meta: &dsc::FramebufferMeta,
         vertex_data_set_layout: &VertexDataSetLayout,
         create_if_missing: bool,
     ) -> Option<VkResult<ResourceArc<GraphicsPipelineResource>>> {
         let key = CachedGraphicsPipelineKey {
             material_pass: material_pass.get_hash(),
             renderpass: renderpass.get_hash(),
+            framebuffer_meta: framebuffer_meta.clone(),
             vertex_data_set_layout: vertex_data_set_layout.hash(),
         };
 
@@ -239,7 +296,6 @@ impl GraphicsPipelineCache {
             inner.lock_call_count += 1;
         }
 
-        // Find the swapchain index for the given renderpass
         inner
             .cached_pipelines
             .get(&key)
@@ -308,9 +364,15 @@ impl GraphicsPipelineCache {
                     );
                     log::trace!("  produces vertex input state:\n{:#?}", vertex_input_state);
 
+                    #[cfg(debug_assertions)]
+                    {
+                        inner.pipeline_create_count += 1;
+                    }
+
                     let pipeline = inner.resource_lookup_set.get_or_create_graphics_pipeline(
                         &material_pass,
                         &renderpass,
+                        framebuffer_meta,
                         Arc::new(vertex_input_state),
                     );
 
@@ -362,6 +424,11 @@ impl GraphicsPipelineCache {
                     if !inner.cached_pipelines.contains_key(&key) {
                         if let Some(renderpass) = renderpass.renderpass.upgrade() {
                             if let Some(material_pass) = material_pass.upgrade() {
+                                #[cfg(debug_assertions)]
+                                {
+                                    guard.pipeline_create_count += 1;
+                                }
+
                                 let pipeline = inner
                                     .resource_lookup_set
                                     .get_or_create_graphics_pipeline(&material_pass, &renderpass)?;

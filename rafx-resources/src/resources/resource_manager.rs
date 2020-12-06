@@ -1,4 +1,5 @@
 use super::dyn_resource_allocator;
+use super::pipeline_cache;
 use super::resource_lookup;
 use crate::{
     DescriptorSetAllocatorProvider, DescriptorSetAllocatorRef, DynResourceAllocatorSet,
@@ -25,6 +26,7 @@ use std::sync::Arc;
 pub struct ResourceManagerMetrics {
     pub dyn_resource_metrics: dyn_resource_allocator::ResourceMetrics,
     pub resource_metrics: resource_lookup::ResourceMetrics,
+    pub graphics_pipeline_cache_metrics: pipeline_cache::GraphicsPipelineCacheMetrics,
 }
 
 struct ResourceContextInner {
@@ -158,10 +160,12 @@ impl ResourceManager {
     pub fn metrics(&self) -> ResourceManagerMetrics {
         let dyn_resource_metrics = self.dyn_resources.metrics();
         let resource_metrics = self.resources.metrics();
+        let graphics_pipeline_cache_metrics = self.graphics_pipeline_cache.metrics();
 
         ResourceManagerMetrics {
             dyn_resource_metrics,
             resource_metrics,
+            graphics_pipeline_cache_metrics,
         }
     }
 
