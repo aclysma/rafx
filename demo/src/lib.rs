@@ -38,6 +38,64 @@ mod render_contexts;
 mod test_scene;
 mod time;
 
+#[derive(Clone)]
+pub struct RenderOptions {
+    pub enable_msaa: bool,
+    pub enable_hdr: bool,
+    pub enable_bloom: bool,
+    pub blur_pass_count: usize,
+}
+
+impl Default for RenderOptions {
+    fn default() -> Self {
+        RenderOptions {
+            enable_msaa: true,
+            enable_hdr: true,
+            enable_bloom: true,
+            blur_pass_count: 5,
+        }
+    }
+}
+
+impl RenderOptions {
+    pub fn window(
+        &mut self,
+        ui: &imgui::Ui<'_>,
+    ) -> bool {
+        let mut open = true;
+        //TODO: tweak this and use imgui-inspect
+        imgui::Window::new(imgui::im_str!("Render Options"))
+            //.position([10.0, 25.0], imgui::Condition::FirstUseEver)
+            //.size([600.0, 250.0], imgui::Condition::FirstUseEver)
+            .opened(&mut open)
+            .build(ui, || self.ui(ui));
+        open
+    }
+
+    pub fn ui(
+        &mut self,
+        ui: &imgui::Ui<'_>,
+    ) {
+        ui.checkbox(imgui::im_str!("enable_msaa"), &mut self.enable_msaa);
+        ui.checkbox(imgui::im_str!("enable_hdr"), &mut self.enable_hdr);
+        ui.checkbox(imgui::im_str!("enable_bloom"), &mut self.enable_bloom);
+        let mut blur_pass_count = self.blur_pass_count as i32;
+        ui.drag_int(imgui::im_str!("blur_pass_count"), &mut blur_pass_count)
+            .min(0)
+            .max(10)
+            .build();
+        self.blur_pass_count = blur_pass_count as usize;
+    }
+}
+
+#[derive(Default)]
+pub struct DebugUiState {
+    show_render_options: bool,
+
+    #[cfg(feature = "profile-with-puffin")]
+    show_profiler: bool,
+}
+
 #[derive(StructOpt)]
 pub struct DemoArgs {
     /// Path to the packfile
@@ -59,6 +117,8 @@ pub fn run(args: &DemoArgs) {
 
     let mut resources = Resources::default();
     resources.insert(TimeState::new());
+    resources.insert(RenderOptions::default());
+    resources.insert(DebugUiState::default());
 
     if let Some(packfile) = &args.packfile {
         log::info!("Reading from packfile {:?}", packfile);
@@ -103,8 +163,6 @@ pub fn run(args: &DemoArgs) {
 
     #[cfg(feature = "profile-with-puffin")]
     let mut profiler_ui = puffin_imgui::ProfilerUi::default();
-    #[cfg(feature = "profile-with-puffin")]
-    profiling::puffin::set_scopes_on(true);
 
     #[cfg(feature = "profile-with-tracy")]
     {
@@ -238,21 +296,49 @@ pub fn run(args: &DemoArgs) {
             profiling::scope!("imgui");
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             let time_state = resources.get::<TimeState>().unwrap();
+            let mut debug_ui_state = resources.get_mut::<DebugUiState>().unwrap();
+            let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
             imgui_manager.with_ui(|ui| {
-                {
-                    profiling::scope!("main menu bar");
-                    ui.main_menu_bar(|| {
-                        ui.text(imgui::im_str!(
-                            "FPS: {:.1}",
-                            time_state.updates_per_second_smoothed()
-                        ));
-                        ui.separator();
-                        ui.text(imgui::im_str!("Frame: {}", time_state.update_count()));
+                profiling::scope!("main menu bar");
+                ui.main_menu_bar(|| {
+                    ui.menu(imgui::im_str!("Windows"), true, || {
+                        ui.checkbox(
+                            imgui::im_str!("Render Options"),
+                            &mut debug_ui_state.show_render_options,
+                        );
+
+                        #[cfg(feature = "profile-with-puffin")]
+                        if ui.checkbox(
+                            imgui::im_str!("Profiler"),
+                            &mut debug_ui_state.show_profiler,
+                        ) {
+                            log::info!(
+                                "Setting puffin profiler enabled: {:?}",
+                                debug_ui_state.show_profiler
+                            );
+                            profiling::puffin::set_scopes_on(debug_ui_state.show_profiler);
+                        }
                     });
+                    ui.text(imgui::im_str!(
+                        "FPS: {:.1}",
+                        time_state.updates_per_second_smoothed()
+                    ));
+                    ui.separator();
+                    ui.text(imgui::im_str!("Frame: {}", time_state.update_count()));
+                });
+
+                if debug_ui_state.show_render_options {
+                    let window = imgui::Window::new(imgui::im_str!("Render Options"))
+                        .begin(ui)
+                        .unwrap();
+
+                    render_options.window(ui);
+
+                    window.end(ui);
                 }
 
                 #[cfg(feature = "profile-with-puffin")]
-                {
+                if debug_ui_state.show_profiler {
                     profiling::scope!("puffin profiler");
                     profiler_ui.window(ui);
                 }

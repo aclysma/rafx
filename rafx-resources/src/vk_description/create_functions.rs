@@ -226,18 +226,14 @@ pub fn create_graphics_pipelines(
         .viewport_state
         .scissors
         .iter()
-        .map(|scissors| scissors.to_rect2d(swapchain_surface_info, framebuffer_meta))
+        .map(|scissors| scissors.to_rect2d(framebuffer_meta))
         .collect();
 
     let viewports: Vec<_> = fixed_function_state
         .viewport_state
         .viewports
         .iter()
-        .map(|viewport| {
-            viewport
-                .as_builder(swapchain_surface_info, framebuffer_meta)
-                .build()
-        })
+        .map(|viewport| viewport.as_builder(framebuffer_meta).build())
         .collect();
 
     let viewport_state = vk::PipelineViewportStateCreateInfo::builder()
@@ -295,18 +291,16 @@ pub fn create_graphics_pipelines(
         for attachment_reference in &subpass.color_attachments {
             if let AttachmentIndex::Index(index) = attachment_reference.attachment {
                 let attachment = &renderpass_dsc.attachments[index as usize];
-                subpass_info.subpass_sample_count_flags |= attachment
-                    .samples
-                    .as_vk_sample_count_flags(&swapchain_surface_info);
+                subpass_info.subpass_sample_count_flags |=
+                    attachment.samples.as_vk_sample_count_flags();
             }
         }
 
         if let Some(attachment_reference) = &subpass.depth_stencil_attachment {
             if let AttachmentIndex::Index(index) = attachment_reference.attachment {
                 let attachment = &renderpass_dsc.attachments[index as usize];
-                subpass_info.subpass_sample_count_flags |= attachment
-                    .samples
-                    .as_vk_sample_count_flags(&swapchain_surface_info);
+                subpass_info.subpass_sample_count_flags |=
+                    attachment.samples.as_vk_sample_count_flags();
             }
         }
 

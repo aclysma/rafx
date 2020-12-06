@@ -20,9 +20,6 @@ pub struct SwapchainInfo {
     pub present_mode: vk::PresentModeKHR,
     pub extents: vk::Extent2D,
     pub image_count: usize,
-    pub msaa_level: MsaaLevel,
-    pub color_format: vk::Format,
-    pub depth_format: vk::Format,
     pub image_usage_flags: vk::ImageUsageFlags,
 }
 
@@ -35,8 +32,6 @@ pub struct VkSwapchain {
     pub swapchain_loader: khr::Swapchain,
     pub swapchain: vk::SwapchainKHR,
     pub swapchain_images: Vec<vk::Image>,
-    pub color_format: vk::Format,
-    pub depth_format: vk::Format,
 
     // One per MAX_FRAMES_IN_FLIGHT
     pub image_available_semaphores: Vec<vk::Semaphore>,
@@ -50,7 +45,6 @@ impl VkSwapchain {
         window: &dyn Window,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[PresentMode],
-        msaa_level_priority: &[MsaaLevel],
     ) -> VkResult<VkSwapchain> {
         let (available_formats, available_present_modes, surface_capabilities) =
             Self::query_swapchain_support(
@@ -68,15 +62,6 @@ impl VkSwapchain {
 
         let extents = Self::choose_extents(&surface_capabilities, window);
         info!("Extents: {:?}", extents);
-
-        let msaa_level = Self::choose_msaa_level(device_context.limits(), msaa_level_priority);
-        log::debug!("MSAA level: {:?}", msaa_level);
-
-        let color_format = Self::choose_color_format(device_context);
-        log::debug!("Color format: {:?}", color_format);
-
-        let depth_format = Self::choose_depth_format(device_context);
-        log::debug!("Depth format: {:?}", depth_format);
 
         let swapchain_image_usage_flags = vk::ImageUsageFlags::COLOR_ATTACHMENT;
         let create_swapchain_result = Self::create_swapchain(
@@ -99,9 +84,6 @@ impl VkSwapchain {
             surface_format,
             extents,
             present_mode,
-            msaa_level,
-            depth_format,
-            color_format,
             image_usage_flags: swapchain_image_usage_flags,
             image_count: swapchain_images.len(),
         };
@@ -116,8 +98,6 @@ impl VkSwapchain {
             swapchain_loader: create_swapchain_result.swapchain_loader,
             swapchain: create_swapchain_result.swapchain,
             swapchain_images,
-            color_format,
-            depth_format,
             image_available_semaphores,
             render_finished_semaphores,
             in_flight_fences,
@@ -320,7 +300,7 @@ impl VkSwapchain {
         })
     }
 
-    fn choose_msaa_level(
+    pub fn choose_msaa_level(
         limits: &vk::PhysicalDeviceLimits,
         msaa_level_priority: &[MsaaLevel],
     ) -> MsaaLevel {
@@ -345,7 +325,7 @@ impl VkSwapchain {
         MsaaLevel::Sample1
     }
 
-    fn find_supported_format(
+    pub fn find_supported_format(
         instance: &ash::Instance,
         physical_device: vk::PhysicalDevice,
         candidates: &[vk::Format],
@@ -371,39 +351,20 @@ impl VkSwapchain {
         None
     }
 
-    fn choose_color_format(device_context: &VkDeviceContext) -> vk::Format {
+    pub fn choose_supported_format(
+        device_context: &VkDeviceContext,
+        candidates: &[vk::Format],
+        format_features: vk::FormatFeatureFlags,
+    ) -> vk::Format {
         let format = Self::find_supported_format(
             device_context.instance(),
             device_context.physical_device(),
-            &[
-                //TODO: Don't hardcode
-                vk::Format::R32G32B32A32_SFLOAT, // 100% coverage with optimal
-            ],
+            candidates,
             vk::ImageTiling::OPTIMAL,
-            vk::FormatFeatureFlags::COLOR_ATTACHMENT,
+            format_features,
         )
         .unwrap();
 
-        log::trace!("Chose color format {:?}", format);
-        format
-    }
-
-    fn choose_depth_format(device_context: &VkDeviceContext) -> vk::Format {
-        let format = Self::find_supported_format(
-            device_context.instance(),
-            device_context.physical_device(),
-            &[
-                //TODO: Don't hardcode
-                vk::Format::D32_SFLOAT,         // 100% coverage with optimal
-                vk::Format::D32_SFLOAT_S8_UINT, // 100% coverage with optimal
-                vk::Format::D24_UNORM_S8_UINT,
-            ],
-            vk::ImageTiling::OPTIMAL,
-            vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
-        )
-        .unwrap();
-
-        log::trace!("Chose depth format {:?}", format);
         format
     }
 

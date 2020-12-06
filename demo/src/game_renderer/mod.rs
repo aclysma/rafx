@@ -20,7 +20,7 @@ use rafx::nodes::{
 use rafx::resources::vk_description as dsc;
 use rafx::resources::{ImageViewResource, ResourceArc};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use rafx::vulkan::{FrameInFlight, VkContext, VkDeviceContext, VkSurface, Window};
+use rafx::vulkan::{FrameInFlight, MsaaLevel, VkContext, VkDeviceContext, VkSurface, Window};
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex};
 
@@ -44,6 +44,7 @@ use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
 use crate::features::imgui::create_imgui_extract_job;
+use crate::RenderOptions;
 use arrayvec::ArrayVec;
 use fnv::FnvHashMap;
 pub use swapchain_handling::SwapchainLifetimeListener;
@@ -332,6 +333,8 @@ impl GameRenderer {
             resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
         let dynamic_visibility_node_set = &mut *dynamic_visibility_node_set_fetch;
 
+        let render_options = resources.get::<RenderOptions>().unwrap().clone();
+
         let render_registry = resources.get::<RenderRegistry>().unwrap().clone();
         let device_context = resources.get::<VkDeviceContext>().unwrap().clone();
 
@@ -544,10 +547,36 @@ impl GameRenderer {
             .get_material_pass_by_index(&static_resources.bloom_combine_material, 0)
             .unwrap();
 
+        let graph_config = {
+            let swapchain_format = swapchain_surface_info.surface_format.format;
+            let msaa_level = if render_options.enable_msaa {
+                MsaaLevel::Sample4
+            } else {
+                MsaaLevel::Sample1
+            };
+
+            let color_format = if render_options.enable_hdr {
+                swapchain_resources.default_color_format_hdr
+            } else {
+                swapchain_resources.default_color_format_sdr
+            };
+
+            render_graph::RenderGraphConfig {
+                color_format,
+                depth_format: swapchain_resources.default_depth_format,
+                samples: msaa_level.into(),
+                enable_hdr: render_options.enable_hdr,
+                swapchain_format,
+                enable_bloom: render_options.enable_bloom,
+                blur_pass_count: render_options.blur_pass_count,
+            }
+        };
+
         //TODO: This is now possible to run on the render thread
         let render_graph = render_graph::build_render_graph(
             &device_context,
             &resource_context,
+            &graph_config,
             &swapchain_surface_info,
             &swapchain_info,
             swapchain_image,

@@ -67,7 +67,7 @@ profiling = "0.1.4"
 default = [
     "sdl2-bundled",
     "sdl2-static-link",
-    #"profile-with-puffin",
+    "profile-with-puffin",
     #"profile-with-optick",
     #"profile-with-tracy",
     #"profile-with-superluminal"

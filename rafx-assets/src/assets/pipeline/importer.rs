@@ -72,7 +72,7 @@ impl Importer for PipelineImporter {
     where
         Self: Sized,
     {
-        2
+        3
     }
 
     fn version(&self) -> u32 {

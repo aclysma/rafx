@@ -265,9 +265,6 @@ fn graph_smoketest() {
 
         //println!("{:#?}", graph);
         let swapchain_surface_info = SwapchainSurfaceInfo {
-            color_format,
-            depth_format,
-            msaa_level,
             extents: vk::Extent2D {
                 width: 900,
                 height: 600,

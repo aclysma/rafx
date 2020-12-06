@@ -1,7 +1,6 @@
 use ash::vk;
 use std::hash::Hasher;
 
-use rafx_shell_vulkan::MsaaLevel;
 use serde::{Deserialize, Serialize};
 
 use bitflags::bitflags;
@@ -613,10 +612,7 @@ impl Default for AttachmentDescriptionFlags {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct SwapchainSurfaceInfo {
     pub extents: vk::Extent2D,
-    pub msaa_level: MsaaLevel,
     pub surface_format: vk::SurfaceFormatKHR,
-    pub color_format: vk::Format,
-    pub depth_format: vk::Format,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -627,7 +623,6 @@ pub struct SubpassInfo {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SampleCountFlags {
-    MatchSwapchain,
     SampleCount1,
     SampleCount2,
     SampleCount4,
@@ -638,12 +633,8 @@ pub enum SampleCountFlags {
 }
 
 impl SampleCountFlags {
-    pub fn as_vk_sample_count_flags(
-        &self,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
-    ) -> vk::SampleCountFlags {
+    pub fn as_vk_sample_count_flags(&self) -> vk::SampleCountFlags {
         match self {
-            SampleCountFlags::MatchSwapchain => swapchain_surface_info.msaa_level.into(),
             SampleCountFlags::SampleCount1 => vk::SampleCountFlags::TYPE_1,
             SampleCountFlags::SampleCount2 => vk::SampleCountFlags::TYPE_2,
             SampleCountFlags::SampleCount4 => vk::SampleCountFlags::TYPE_4,
@@ -676,7 +667,6 @@ impl Default for SampleCountFlags {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PipelineSampleCountFlags {
-    MatchSwapchain,
     MatchSubpass,
     SampleCount1,
     SampleCount2,
@@ -693,7 +683,6 @@ impl PipelineSampleCountFlags {
         subpass_info: &SubpassInfo,
     ) -> vk::SampleCountFlags {
         match self {
-            PipelineSampleCountFlags::MatchSwapchain => subpass_info.surface_info.msaa_level.into(),
             PipelineSampleCountFlags::MatchSubpass => subpass_info.subpass_sample_count_flags,
             PipelineSampleCountFlags::SampleCount1 => vk::SampleCountFlags::TYPE_1,
             PipelineSampleCountFlags::SampleCount2 => vk::SampleCountFlags::TYPE_2,
@@ -1202,8 +1191,6 @@ impl Default for DependencyFlags {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentFormat {
     MatchSurface,
-    MatchColorAttachment,
-    MatchDepthAttachment,
     Format(Format),
 }
 
@@ -1214,8 +1201,6 @@ impl AttachmentFormat {
     ) -> vk::Format {
         match self {
             AttachmentFormat::MatchSurface => swapchain_surface_info.surface_format.format,
-            AttachmentFormat::MatchColorAttachment => swapchain_surface_info.color_format,
-            AttachmentFormat::MatchDepthAttachment => swapchain_surface_info.depth_format,
             AttachmentFormat::Format(format) => (*format).into(),
         }
     }
@@ -1223,7 +1208,7 @@ impl AttachmentFormat {
 
 impl Default for AttachmentFormat {
     fn default() -> Self {
-        AttachmentFormat::MatchColorAttachment
+        AttachmentFormat::MatchSurface
     }
 }
 
@@ -1965,10 +1950,7 @@ impl AttachmentDescription {
         vk::AttachmentDescription::builder()
             .flags(self.flags.into())
             .format(self.format.as_vk_format(swapchain_surface_info))
-            .samples(
-                self.samples
-                    .as_vk_sample_count_flags(swapchain_surface_info),
-            )
+            .samples(self.samples.as_vk_sample_count_flags())
             .load_op(self.load_op.into())
             .store_op(self.store_op.into())
             .stencil_load_op(self.stencil_load_op.into())
@@ -2276,7 +2258,6 @@ pub struct RectI32 {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Dimensions {
-    MatchSwapchain,
     MatchFramebuffer,
     Raw(RectDecimal),
 }
@@ -2284,16 +2265,9 @@ pub enum Dimensions {
 impl Dimensions {
     fn as_rect_f32(
         &self,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
         framebuffer_meta: &FramebufferMeta,
     ) -> RectF32 {
         match self {
-            Dimensions::MatchSwapchain => RectF32 {
-                x: 0.0,
-                y: 0.0,
-                width: swapchain_surface_info.extents.width as f32,
-                height: swapchain_surface_info.extents.height as f32,
-            },
             Dimensions::MatchFramebuffer => RectF32 {
                 x: 0.0,
                 y: 0.0,
@@ -2311,16 +2285,9 @@ impl Dimensions {
 
     fn as_rect_i32(
         &self,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
         framebuffer_meta: &FramebufferMeta,
     ) -> RectI32 {
         match self {
-            Dimensions::MatchSwapchain => RectI32 {
-                x: 0,
-                y: 0,
-                width: swapchain_surface_info.extents.width,
-                height: swapchain_surface_info.extents.height,
-            },
             Dimensions::MatchFramebuffer => RectI32 {
                 x: 0,
                 y: 0,
@@ -2339,7 +2306,7 @@ impl Dimensions {
 
 impl Default for Dimensions {
     fn default() -> Self {
-        Dimensions::MatchSwapchain
+        Dimensions::MatchFramebuffer
     }
 }
 
@@ -2353,12 +2320,9 @@ pub struct Viewport {
 impl Viewport {
     pub fn as_builder(
         &self,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
         framebuffer_meta: &FramebufferMeta,
     ) -> vk::ViewportBuilder {
-        let rect_f32 = self
-            .dimensions
-            .as_rect_f32(swapchain_surface_info, framebuffer_meta);
+        let rect_f32 = self.dimensions.as_rect_f32(framebuffer_meta);
         vk::Viewport::builder()
             .x(rect_f32.x)
             .y(rect_f32.y)
@@ -2377,12 +2341,9 @@ pub struct Scissors {
 impl Scissors {
     pub fn to_rect2d(
         &self,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
         framebuffer_meta: &FramebufferMeta,
     ) -> vk::Rect2D {
-        let rect_i32 = self
-            .dimensions
-            .as_rect_i32(swapchain_surface_info, framebuffer_meta);
+        let rect_i32 = self.dimensions.as_rect_i32(framebuffer_meta);
         vk::Rect2D {
             offset: vk::Offset2D {
                 x: rect_i32.x,

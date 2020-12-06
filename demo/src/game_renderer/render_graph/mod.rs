@@ -45,13 +45,14 @@ pub struct BuildRenderGraphResult {
 }
 
 // All the data that can influence the rendergraph
-struct RenderGraphConfig {
-    color_format: vk::Format,
-    depth_format: vk::Format,
-    swapchain_format: vk::Format,
-    samples: vk::SampleCountFlags,
-    enable_hdr: bool,
-    blur_pass_count: usize,
+pub struct RenderGraphConfig {
+    pub color_format: vk::Format,
+    pub depth_format: vk::Format,
+    pub swapchain_format: vk::Format,
+    pub samples: vk::SampleCountFlags,
+    pub enable_hdr: bool,
+    pub enable_bloom: bool,
+    pub blur_pass_count: usize,
 }
 
 // This just wraps a bunch of values so they don't have to be passed individually to all the passes
@@ -65,6 +66,7 @@ struct RenderGraphContext<'a> {
 pub fn build_render_graph(
     device_context: &VkDeviceContext,
     resource_context: &ResourceContext,
+    graph_config: &RenderGraphConfig,
     swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
     swapchain_info: &SwapchainInfo,
     swapchain_image: ResourceArc<ImageViewResource>,
@@ -76,57 +78,42 @@ pub fn build_render_graph(
 ) -> VkResult<BuildRenderGraphResult> {
     profiling::scope!("Build Render Graph");
 
-    let enable_hdr = true;
-
-    //TODO: Fix this back to be color format - need to happen in the combine pass
-    let color_format = if enable_hdr {
-        swapchain_surface_info.color_format
-    } else {
-        swapchain_surface_info.surface_format.format
-    };
-
-    let depth_format = swapchain_surface_info.depth_format;
-    let swapchain_format = swapchain_surface_info.surface_format.format;
-    let samples = swapchain_surface_info.msaa_level.into();
-
-    let graph_config = RenderGraphConfig {
-        color_format,
-        depth_format,
-        samples,
-        enable_hdr,
-        swapchain_format,
-        blur_pass_count: 5,
-    };
-
     let mut graph = RenderGraphBuilder::default();
     let mut graph_callbacks = RenderGraphNodeCallbacks::<RenderGraphUserContext>::default();
 
     let mut graph_context = RenderGraphContext {
         graph: &mut graph,
         graph_callbacks: &mut graph_callbacks,
-        graph_config: &graph_config,
+        graph_config,
         main_view: &main_view,
     };
 
     let shadow_maps = shadow_map_pass::shadow_map_passes(&mut graph_context, shadow_map_views);
     let opaque_pass = opaque_pass::opaque_pass(&mut graph_context, &shadow_maps);
 
-    let previous_pass_color = if enable_hdr {
+    let previous_pass_color = if graph_config.enable_hdr {
         let bloom_extract_pass = bloom_extract_pass::bloom_extract_pass(
             &mut graph_context,
             bloom_extract_material_pass,
             &opaque_pass,
         );
-        let bloom_blur_pass = bloom_blur_pass::bloom_blur_pass(
-            &mut graph_context,
-            bloom_blur_material_pass,
-            &bloom_extract_pass,
-        );
+
+        let blurred_color = if graph_config.enable_bloom && graph_config.blur_pass_count > 0 {
+            let bloom_blur_pass = bloom_blur_pass::bloom_blur_pass(
+                &mut graph_context,
+                bloom_blur_material_pass,
+                &bloom_extract_pass,
+            );
+            bloom_blur_pass.color
+        } else {
+            bloom_extract_pass.hdr_image
+        };
+
         let bloom_combine_pass = bloom_combine_pass::bloom_combine_pass(
             &mut graph_context,
             bloom_combine_material_pass,
             &bloom_extract_pass,
-            &bloom_blur_pass,
+            blurred_color,
         );
 
         bloom_combine_pass.color
@@ -141,7 +128,7 @@ pub fn build_render_graph(
         swapchain_image,
         RenderGraphImageSpecification {
             samples: vk::SampleCountFlags::TYPE_1,
-            format: swapchain_format,
+            format: graph_config.swapchain_format,
             aspect_flags: vk::ImageAspectFlags::COLOR,
             usage_flags: swapchain_info.image_usage_flags,
             create_flags: Default::default(),

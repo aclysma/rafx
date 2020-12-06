@@ -95,10 +95,7 @@ impl<'a> VkSurfaceSwapchainLifetimeListener for SwapchainLifetimeListener<'a> {
         log::debug!("game renderer swapchain_created called");
         let swapchain_surface_info = dsc::SwapchainSurfaceInfo {
             extents: swapchain.swapchain_info.extents,
-            msaa_level: swapchain.swapchain_info.msaa_level,
             surface_format: swapchain.swapchain_info.surface_format,
-            color_format: swapchain.color_format,
-            depth_format: swapchain.depth_format,
         };
 
         //

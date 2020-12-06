@@ -6,7 +6,6 @@ use rafx::resources::{MaterialPassResource, ResourceArc};
 use super::BloomExtractPass;
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
-use crate::game_renderer::render_graph::bloom_blur_pass::BloomBlurPass;
 
 pub(super) struct BloomCombinePass {
     pub(super) node: RenderGraphNodeId,
@@ -17,7 +16,7 @@ pub(super) fn bloom_combine_pass(
     context: &mut RenderGraphContext,
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
     bloom_extract_pass: &BloomExtractPass,
-    bloom_blur_pass: &BloomBlurPass,
+    blurred_color: RenderGraphImageUsageId,
 ) -> BloomCombinePass {
     let node = context
         .graph
@@ -45,7 +44,7 @@ pub(super) fn bloom_combine_pass(
 
     let hdr_image = context.graph.sample_image(
         node,
-        bloom_blur_pass.color,
+        blurred_color,
         Default::default(),
         Default::default(),
         Default::default(),

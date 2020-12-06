@@ -227,10 +227,7 @@ fn render_frame(
 ) -> VkResult<()> {
     // Gather info for the frame to use
     let swapchain_surface_info = SwapchainSurfaceInfo {
-        color_format: surface.swapchain().swapchain_info.color_format,
-        depth_format: surface.swapchain().swapchain_info.depth_format,
         extents: surface.swapchain().swapchain_info.extents,
-        msaa_level: surface.swapchain().swapchain_info.msaa_level,
         surface_format: surface.swapchain().swapchain_info.surface_format,
     };
 

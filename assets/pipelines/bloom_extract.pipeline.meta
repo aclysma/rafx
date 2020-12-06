@@ -1,7 +1,7 @@
 (
     version: 1,
-    import_hash: Some(673013909677998922),
-    importer_version: 2,
+    import_hash: Some(14825836786137819833),
+    importer_version: 3,
     importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
     importer_options: (),
     importer_state: (Some("2edcc251-fd40-42ce-8c35-64c0505eb844")),
@@ -13,7 +13,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                id: (16358233964982740883),
+                id: (6182716690877553139),
                 asset_id: "2edcc251-fd40-42ce-8c35-64c0505eb844",
                 build_deps: [],
                 load_deps: [],

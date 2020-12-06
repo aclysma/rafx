@@ -76,10 +76,7 @@ impl SwapchainResources {
         resource_manager: &mut ResourceManager,
     ) -> VkResult<Self> {
         let swapchain_surface_info = SwapchainSurfaceInfo {
-            color_format: swapchain.swapchain_info.color_format,
-            depth_format: swapchain.swapchain_info.depth_format,
             extents: swapchain.swapchain_info.extents,
-            msaa_level: swapchain.swapchain_info.msaa_level,
             surface_format: swapchain.swapchain_info.surface_format,
         };
 
@@ -87,7 +84,7 @@ impl SwapchainResources {
             attachments: vec![dsc::AttachmentDescription {
                 flags: dsc::AttachmentDescriptionFlags::None,
                 format: dsc::AttachmentFormat::MatchSurface,
-                samples: dsc::SampleCountFlags::MatchSwapchain,
+                samples: dsc::SampleCountFlags::SampleCount1,
                 load_op: dsc::AttachmentLoadOp::Clear,
                 store_op: dsc::AttachmentStoreOp::Store,
                 stencil_load_op: dsc::AttachmentLoadOp::DontCare,
@@ -163,7 +160,6 @@ fn run(
 ) -> VkResult<()> {
     let context = VkContextBuilder::new()
         .use_vulkan_debug_layer(true)
-        .msaa_level_priority(vec![MsaaLevel::Sample1])
         .prefer_mailbox_present_mode();
 
     let render_registry = rafx::nodes::RenderRegistryBuilder::default()

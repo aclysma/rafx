@@ -13,7 +13,7 @@ use super::PresentMode;
 
 use super::VkEntry;
 use super::Window;
-use crate::{MsaaLevel, VkDeviceContext, VulkanLinkMethod};
+use crate::{VkDeviceContext, VulkanLinkMethod};
 //use crate::submit::PendingCommandBuffer;
 
 /// A builder to create the renderer. It's easier to use AppBuilder and implement an AppHandler, but
@@ -24,7 +24,6 @@ pub struct VkContextBuilder {
     validation_layer_debug_report_flags: vk::DebugReportFlagsEXT,
     present_mode_priority: Vec<PresentMode>,
     physical_device_type_priority: Vec<PhysicalDeviceType>,
-    msaa_level_priority: Vec<MsaaLevel>,
     link_method: VulkanLinkMethod,
 }
 
@@ -39,7 +38,6 @@ impl VkContextBuilder {
                 PhysicalDeviceType::DiscreteGpu,
                 PhysicalDeviceType::IntegratedGpu,
             ],
-            msaa_level_priority: vec![MsaaLevel::Sample1],
             link_method: VulkanLinkMethod::default(),
         }
     }
@@ -116,17 +114,6 @@ impl VkContextBuilder {
         self
     }
 
-    /// Specify the MSAA level that is preferred. The first in the list that is available on the hardware
-    /// will become the default for a surface to use. One sample (i.e. no anti-aliasing) is always supported
-    /// and will be used if none of the provided levels are available
-    pub fn msaa_level_priority(
-        mut self,
-        msaa_level_priority: Vec<MsaaLevel>,
-    ) -> Self {
-        self.msaa_level_priority = msaa_level_priority;
-        self
-    }
-
     /// Easy shortcut to set device type priority to `Integrated`, then `Discrete`, then any.
     pub fn prefer_integrated_gpu(self) -> Self {
         self.physical_device_type_priority(vec![
@@ -188,7 +175,6 @@ impl VkContextBuilder {
             self.validation_layer_debug_report_flags,
             self.physical_device_type_priority.clone(),
             self.present_mode_priority.clone(),
-            self.msaa_level_priority.clone(),
             self.link_method,
         )
     }
@@ -262,7 +248,6 @@ pub struct VkContext {
     device: ManuallyDrop<VkDevice>,
 
     present_mode_priority: Vec<PresentMode>,
-    msaa_level_priority: Vec<MsaaLevel>,
 }
 
 impl VkContext {
@@ -273,7 +258,6 @@ impl VkContext {
         validation_layer_debug_report_flags: vk::DebugReportFlagsEXT,
         physical_device_type_priority: Vec<PhysicalDeviceType>,
         present_mode_priority: Vec<PresentMode>,
-        msaa_level_priority: Vec<MsaaLevel>,
         link_method: VulkanLinkMethod,
     ) -> Result<VkContext, VkCreateContextError> {
         // This loads the dll/so if needed
@@ -301,7 +285,6 @@ impl VkContext {
             instance,
             device,
             present_mode_priority,
-            msaa_level_priority,
         })
     }
 
@@ -319,10 +302,6 @@ impl VkContext {
 
     pub fn present_mode_priority(&self) -> &Vec<PresentMode> {
         &self.present_mode_priority
-    }
-
-    pub fn msaa_level_priority(&self) -> &Vec<MsaaLevel> {
-        &self.msaa_level_priority
     }
 }
 
