@@ -1,6 +1,6 @@
 (
     version: 1,
-    import_hash: Some(3198553857389943320),
+    import_hash: Some(4168965500030825704),
     importer_version: 2,
     importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
     importer_options: (),
@@ -13,7 +13,7 @@
             ],
             build_pipeline: None,
             artifact: Some((
-                id: (4991411846863724311),
+                id: (869299260341711552),
                 asset_id: "dfaba69a-c761-47a5-8826-a39b47a26e3d",
                 build_deps: [],
                 load_deps: [],
