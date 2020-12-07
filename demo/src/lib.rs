@@ -283,13 +283,9 @@ pub fn run(args: &DemoArgs) {
                 });
 
                 if debug_ui_state.show_render_options {
-                    let window = imgui::Window::new(imgui::im_str!("Render Options"))
-                        .begin(ui)
-                        .unwrap();
-
-                    render_options.window(ui);
-
-                    window.end(ui);
+                    imgui::Window::new(imgui::im_str!("Render Options")).build(ui, || {
+                        render_options.window(ui);
+                    });
                 }
 
                 #[cfg(feature = "profile-with-puffin")]
