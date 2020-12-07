@@ -6,7 +6,7 @@ use rafx::resources::vk_description as dsc;
 use rafx::resources::vk_description::{FramebufferMeta, SwapchainSurfaceInfo};
 use rafx::resources::{FramebufferResource, RenderPassResource, ResourceArc, ResourceManager};
 use rafx_shell_vulkan::{
-    MsaaLevel, VkContextBuilder, VkDeviceContext, VkImageRaw, VkSurface, VkSwapchain, Window,
+    VkContextBuilder, VkDeviceContext, VkImageRaw, VkSurface, VkSwapchain, Window,
 };
 use rafx_shell_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;

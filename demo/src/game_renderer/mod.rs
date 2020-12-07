@@ -11,13 +11,13 @@ use crate::render_contexts::RenderJobExtractContext;
 use crate::time::TimeState;
 use ash::prelude::VkResult;
 use legion::*;
-use rafx::assets::image_utils;
-use rafx::assets::AssetManager;
+use rafx::assets::{image_upload, DecodedImage, DecodedImageColorSpace};
+use rafx::assets::{AssetManager, DecodedImageMips};
 use rafx::nodes::{
     AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder,
     RenderRegistry, RenderView, RenderViewDepthRange, RenderViewSet, VisibilityResult,
 };
-use rafx::resources::vk_description as dsc;
+use rafx::resources::{vk_description as dsc, DynResourceAllocatorSet};
 use rafx::resources::{ImageViewResource, ResourceArc};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use rafx::vulkan::{FrameInFlight, MsaaLevel, VkContext, VkDeviceContext, VkSurface, Window};
@@ -46,7 +46,9 @@ use crate::components::{
 use crate::features::imgui::create_imgui_extract_job;
 use crate::RenderOptions;
 use arrayvec::ArrayVec;
+use ash::vk;
 use fnv::FnvHashMap;
+use rafx::resources::vulkan::VkTransferUpload;
 pub use swapchain_handling::SwapchainLifetimeListener;
 
 /// Creates a right-handed perspective projection matrix with [0,1] depth range.
@@ -86,6 +88,8 @@ pub fn matrix_reverse_z(proj: glam::Mat4) -> glam::Mat4 {
 
 pub struct GameRendererInner {
     imgui_font_atlas_image_view: ResourceArc<ImageViewResource>,
+    invalid_image: ResourceArc<ImageViewResource>,
+    invalid_cube_map_image: ResourceArc<ImageViewResource>,
 
     // Everything that is loaded all the time
     static_resources: GameRendererStaticResources,
@@ -110,15 +114,57 @@ impl GameRenderer {
         let asset_resource = &mut *asset_resource_fetch;
 
         let mut asset_manager_fetch = resources.get_mut::<AssetManager>().unwrap();
-        let mut asset_manager = &mut *asset_manager_fetch;
+        let asset_manager = &mut *asset_manager_fetch;
 
         let vk_context = resources.get_mut::<VkContext>().unwrap();
         let device_context = vk_context.device_context();
 
+        let dyn_resource_allocator = asset_manager.create_dyn_resource_allocator_set();
+
+        let mut upload = VkTransferUpload::new(
+            device_context,
+            device_context
+                .queue_family_indices()
+                .transfer_queue_family_index,
+            device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            16 * 1024 * 1024,
+        )?;
+
         let imgui_font_atlas_image_view = GameRenderer::create_font_atlas_image_view(
-            &device_context,
-            &mut asset_manager,
             resources,
+            &device_context,
+            &mut upload,
+            &dyn_resource_allocator,
+        )?;
+
+        let invalid_image = Self::upload_single_image(
+            &device_context,
+            &mut upload,
+            &dyn_resource_allocator,
+            &DecodedImage::new_1x1(255, 0, 255, 255, DecodedImageColorSpace::Linear),
+        )?;
+
+        let invalid_cube_map_image = Self::upload_single_layered_image_2d(
+            &device_context,
+            &mut upload,
+            &dyn_resource_allocator,
+            &[DecodedImage::new_1x1(
+                255,
+                0,
+                255,
+                255,
+                DecodedImageColorSpace::Linear,
+            )],
+            &[0, 0, 0, 0, 0, 0],
+            vk::ImageCreateFlags::CUBE_COMPATIBLE,
+            dsc::ImageViewType::Cube,
+        )?;
+
+        upload.block_until_upload_complete(
+            &device_context.queues().transfer_queue,
+            &device_context.queues().graphics_queue,
         )?;
 
         log::info!("all waits complete");
@@ -129,6 +175,8 @@ impl GameRenderer {
 
         let renderer = GameRendererInner {
             imgui_font_atlas_image_view,
+            invalid_image,
+            invalid_cube_map_image,
             static_resources: game_renderer_resources,
             swapchain_resources: None,
 
@@ -140,10 +188,69 @@ impl GameRenderer {
         })
     }
 
-    fn create_font_atlas_image_view(
+    fn upload_single_layered_image_2d(
         device_context: &VkDeviceContext,
-        asset_manager: &mut AssetManager,
+        upload: &mut VkTransferUpload,
+        dyn_resource_allocator: &DynResourceAllocatorSet,
+        decoded_images: &[DecodedImage],
+        layer_texture_assignments: &[usize],
+        create_flags: vk::ImageCreateFlags,
+        view_type: dsc::ImageViewType,
+    ) -> VkResult<ResourceArc<ImageViewResource>> {
+        let image = image_upload::enqueue_load_layered_image_2d(
+            &device_context,
+            upload,
+            device_context
+                .queue_family_indices()
+                .transfer_queue_family_index,
+            device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            decoded_images,
+            layer_texture_assignments,
+            create_flags,
+        )?;
+
+        let image = dyn_resource_allocator.insert_image(ManuallyDrop::into_inner(image));
+
+        let mip_count = decoded_images[0].mips.mip_level_count();
+        let layer_count = layer_texture_assignments.len();
+        let image_view_meta = dsc::ImageViewMeta {
+            format: dsc::Format::R8G8B8A8_UNORM,
+            components: Default::default(),
+            view_type,
+            subresource_range: dsc::ImageSubresourceRange::default_all_mips_all_layers(
+                dsc::ImageAspectFlag::Color.into(),
+                mip_count,
+                layer_count as u32,
+            ),
+        };
+
+        dyn_resource_allocator.insert_image_view(device_context, &image, image_view_meta)
+    }
+
+    fn upload_single_image(
+        device_context: &VkDeviceContext,
+        upload: &mut VkTransferUpload,
+        dyn_resource_allocator: &DynResourceAllocatorSet,
+        decoded_image: &DecodedImage,
+    ) -> VkResult<ResourceArc<ImageViewResource>> {
+        Self::upload_single_layered_image_2d(
+            device_context,
+            upload,
+            dyn_resource_allocator,
+            std::slice::from_ref(decoded_image),
+            &[0],
+            vk::ImageCreateFlags::empty(),
+            dsc::ImageViewType::Type2D,
+        )
+    }
+
+    fn create_font_atlas_image_view(
         resources: &Resources,
+        device_context: &VkDeviceContext,
+        upload: &mut VkTransferUpload,
+        dyn_resource_allocator: &DynResourceAllocatorSet,
     ) -> VkResult<ResourceArc<ImageViewResource>> {
         //TODO: Simplify this setup code for the imgui font atlas
         let imgui_font_atlas = resources
@@ -151,43 +258,20 @@ impl GameRenderer {
             .unwrap()
             .build_font_atlas();
 
-        let imgui_font_atlas = image_utils::DecodedTexture {
+        let imgui_font_atlas = DecodedImage {
             width: imgui_font_atlas.width,
             height: imgui_font_atlas.height,
             data: imgui_font_atlas.data,
-            color_space: image_utils::ColorSpace::Linear,
-            mips: image_utils::default_mip_settings_for_image(
-                imgui_font_atlas.width,
-                imgui_font_atlas.height,
-            ),
+            color_space: DecodedImageColorSpace::Linear,
+            mips: DecodedImageMips::None,
         };
 
-        // Should just be one, so pop/unwrap
-        let imgui_font_atlas_image = image_utils::load_images(
-            &device_context,
-            device_context
-                .queue_family_indices()
-                .transfer_queue_family_index,
-            &device_context.queues().transfer_queue,
-            device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
-            &device_context.queues().graphics_queue,
-            &[imgui_font_atlas],
-        )?
-        .pop()
-        .unwrap();
-
-        let dyn_resource_allocator = asset_manager.create_dyn_resource_allocator_set();
-        let image =
-            dyn_resource_allocator.insert_image(ManuallyDrop::into_inner(imgui_font_atlas_image));
-
-        let image_view_meta = dsc::ImageViewMeta::default_2d_no_mips_or_layers(
-            dsc::Format::R8G8B8A8_UNORM,
-            dsc::ImageAspectFlag::Color.into(),
-        );
-
-        dyn_resource_allocator.insert_image_view(device_context, &image, image_view_meta)
+        Self::upload_single_image(
+            device_context,
+            upload,
+            dyn_resource_allocator,
+            &imgui_font_atlas,
+        )
     }
 }
 
@@ -613,7 +697,11 @@ impl GameRenderer {
             ));
 
             // Meshes
-            extract_job_set.add_job(create_mesh_extract_job(shadow_map_data));
+            extract_job_set.add_job(create_mesh_extract_job(
+                shadow_map_data,
+                guard.invalid_image.clone(),
+                guard.invalid_cube_map_image.clone(),
+            ));
 
             // Debug 3D
             extract_job_set.add_job(create_debug3d_extract_job(
@@ -814,7 +902,7 @@ impl GameRenderer {
 
         let mut query = <(Entity, Read<PointLightComponent>, Read<PositionComponent>)>::query();
         for (entity, light, position) in query.iter(world) {
-            fn cubemap_face(
+            fn cube_map_face(
                 phase_mask: RenderPhaseMask,
                 render_view_set: &RenderViewSet,
                 light: &PointLightComponent,
@@ -846,12 +934,12 @@ impl GameRenderer {
 
             #[rustfmt::skip]
             let cube_map_views = [
-                cubemap_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[0]),
-                cubemap_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[1]),
-                cubemap_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[2]),
-                cubemap_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[3]),
-                cubemap_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[4]),
-                cubemap_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[5]),
+                cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[0]),
+                cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[1]),
+                cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[2]),
+                cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[3]),
+                cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[4]),
+                cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[5]),
             ];
 
             let index = shadow_map_render_views.len();

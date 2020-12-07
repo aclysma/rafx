@@ -1,20 +1,20 @@
 (
     version: 1,
-    import_hash: Some(18112133661509938906),
+    import_hash: Some(18259420241997741432),
     importer_version: 2,
     importer_type: "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251",
     importer_options: (),
-    importer_state: (Some("fc937369-cad2-4a00-bf42-5968f1210784")),
+    importer_state: (Some("02afd9fc-532c-40a3-bac4-f1d1f0df7de7")),
     assets: [
         (
-            id: "fc937369-cad2-4a00-bf42-5968f1210784",
+            id: "02afd9fc-532c-40a3-bac4-f1d1f0df7de7",
             search_tags: [
-                ("file_name", Some("1x1white.tga")),
+                ("file_name", Some("1x1h300.tga")),
             ],
             build_pipeline: None,
             artifact: Some((
-                id: (10892267957646112158),
-                asset_id: "fc937369-cad2-4a00-bf42-5968f1210784",
+                id: (14315321495216479301),
+                asset_id: "02afd9fc-532c-40a3-bac4-f1d1f0df7de7",
                 build_deps: [],
                 load_deps: [],
                 compression: None,

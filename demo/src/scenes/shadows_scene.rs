@@ -1,8 +1,6 @@
 use crate::asset_resource::AssetResource;
-use crate::components::MeshComponent;
-use crate::components::{
-    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
-};
+use crate::components::{DirectionalLightComponent, PointLightComponent, PositionComponent};
+use crate::components::{MeshComponent, SpotLightComponent};
 use crate::features::mesh::{MeshRenderNode, MeshRenderNodeSet};
 use crate::game_asset_lookup::MeshAsset;
 use crate::time::TimeState;

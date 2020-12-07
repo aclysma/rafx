@@ -463,6 +463,28 @@ impl VkTransferUpload {
             }
         }
     }
+
+    pub fn block_until_upload_complete(
+        &mut self,
+        transfer_queue: &Arc<Mutex<vk::Queue>>,
+        dst_queue: &Arc<Mutex<vk::Queue>>,
+    ) -> VkResult<()> {
+        self.submit_transfer(transfer_queue)?;
+        loop {
+            if self.state()? == VkTransferUploadState::PendingSubmitDstQueue {
+                break;
+            }
+        }
+
+        self.submit_dst(dst_queue)?;
+        loop {
+            if self.state()? == VkTransferUploadState::Complete {
+                break;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Drop for VkTransferUpload {

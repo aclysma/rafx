@@ -1,6 +1,6 @@
 mod image;
-pub use self::image::ColorSpace;
 pub use self::image::ImageAsset;
+pub use self::image::ImageAssetColorSpace;
 pub use self::image::ImageAssetData;
 pub use self::image::ImageImporter;
 

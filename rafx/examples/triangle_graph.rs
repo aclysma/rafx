@@ -86,7 +86,6 @@ fn run(
     // initialization when dropped. You generally just want one of these.
     let vk_context = VkContextBuilder::new()
         .use_vulkan_debug_layer(true)
-        .msaa_level_priority(vec![MsaaLevel::Sample1])
         .prefer_mailbox_present_mode()
         .build(window)
         .unwrap();
@@ -268,7 +267,6 @@ fn render_frame(
                 float32: [0.0, 0.0, 0.0, 0.0],
             }),
             RenderGraphImageConstraint {
-                samples: Some(swapchain_surface_info.msaa_level.into()),
                 format: Some(swapchain_surface_info.surface_format.format.into()),
                 ..Default::default()
             },
@@ -289,7 +287,7 @@ fn render_frame(
         opaque_pass.color,
         swapchain_image_view,
         RenderGraphImageSpecification {
-            samples: swapchain_surface_info.msaa_level.into(),
+            samples: MsaaLevel::Sample1.into(),
             format: swapchain_surface_info.surface_format.format.into(),
             aspect_flags: vk::ImageAspectFlags::COLOR,
             usage_flags: surface.swapchain().swapchain_info.image_usage_flags,

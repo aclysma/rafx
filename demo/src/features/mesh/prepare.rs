@@ -16,7 +16,8 @@ use rafx::nodes::{
     RenderFeatureIndex, RenderView, RenderViewIndex, ViewSubmitNodes,
 };
 use rafx::resources::{
-    DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
+    DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ImageViewResource,
+    ResourceArc,
 };
 
 pub struct PreparedDirectionalLight<'a> {
@@ -42,6 +43,8 @@ pub struct MeshPrepareJob {
     pub(super) point_lights: Vec<ExtractedPointLight>,
     pub(super) spot_lights: Vec<ExtractedSpotLight>,
     pub(super) shadow_map_data: ShadowMapData,
+    pub(super) invalid_image: ResourceArc<ImageViewResource>,
+    pub(super) invalid_cube_map_image: ResourceArc<ImageViewResource>,
 }
 
 impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJob {
@@ -159,7 +162,6 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                             ..Default::default()
                         };
 
-                    // Don't need the view/projection for cube maps
                     shadow_map_cube_image_views[shadow_map_cube_count] =
                         Some(&self.shadow_map_data.shadow_map_image_views[index]);
                     image_index_remap[index] = Some(shadow_map_cube_count);
@@ -168,17 +170,12 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
             }
         }
 
-        // HACK: Placate vulkan validation for now
-        if let Some(first) = shadow_map_2d_image_views[0] {
-            for index in shadow_map_2d_count..MAX_SHADOW_MAPS_2D {
-                shadow_map_2d_image_views[index] = Some(first);
-            }
+        for index in shadow_map_2d_count..MAX_SHADOW_MAPS_2D {
+            shadow_map_2d_image_views[index] = Some(&self.invalid_image);
         }
 
-        if let Some(first) = shadow_map_cube_image_views[0] {
-            for index in shadow_map_cube_count..MAX_SHADOW_MAPS_CUBE {
-                shadow_map_cube_image_views[index] = Some(first);
-            }
+        for index in shadow_map_cube_count..MAX_SHADOW_MAPS_CUBE {
+            shadow_map_cube_image_views[index] = Some(&self.invalid_cube_map_image);
         }
 
         //

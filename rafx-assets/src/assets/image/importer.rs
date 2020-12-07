@@ -1,4 +1,4 @@
-use crate::assets::image::{ColorSpace, ImageAssetData};
+use crate::assets::image::{ImageAssetColorSpace, ImageAssetData};
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue};
 use image2::Image;
@@ -50,7 +50,7 @@ impl Importer for ImageImporter {
         let image_asset = ImageAssetData {
             width: decoded_image.width() as u32,
             height: decoded_image.height() as u32,
-            color_space: ColorSpace::Srgb,
+            color_space: ImageAssetColorSpace::Srgb,
             data: decoded_image.data().to_vec(),
         };
 

@@ -4,16 +4,16 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub enum ColorSpace {
+pub enum ImageAssetColorSpace {
     Srgb,
     Linear,
 }
 
-impl Into<crate::image_utils::ColorSpace> for ColorSpace {
-    fn into(self) -> crate::image_utils::ColorSpace {
+impl Into<crate::DecodedImageColorSpace> for ImageAssetColorSpace {
+    fn into(self) -> crate::DecodedImageColorSpace {
         match self {
-            ColorSpace::Srgb => crate::image_utils::ColorSpace::Srgb,
-            ColorSpace::Linear => crate::image_utils::ColorSpace::Linear,
+            ImageAssetColorSpace::Srgb => crate::DecodedImageColorSpace::Srgb,
+            ImageAssetColorSpace::Linear => crate::DecodedImageColorSpace::Linear,
         }
     }
 }
@@ -23,7 +23,7 @@ impl Into<crate::image_utils::ColorSpace> for ColorSpace {
 pub struct ImageAssetData {
     pub width: u32,
     pub height: u32,
-    pub color_space: ColorSpace,
+    pub color_space: ImageAssetColorSpace,
 
     #[serde(with = "serde_bytes")]
     pub data: Vec<u8>,

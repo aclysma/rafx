@@ -2,7 +2,9 @@ use super::load_queue::LoadRequest;
 use super::BufferAssetData;
 use super::ImageAssetData;
 use super::{BufferAsset, ImageAsset};
-use crate::image_utils::{enqueue_load_buffers, enqueue_load_images, DecodedTexture};
+use crate::buffer_upload::enqueue_load_buffers;
+use crate::image_upload::enqueue_load_images;
+use crate::DecodedImage;
 use ash::prelude::VkResult;
 use ash::vk;
 use atelier_assets::loader::{storage::AssetLoadOp, LoadHandle};
@@ -88,7 +90,7 @@ pub type BufferUploadOp = UploadOp<VkBuffer, BufferAsset>;
 pub struct PendingImageUpload {
     pub load_op: AssetLoadOp,
     pub upload_op: ImageUploadOp,
-    pub texture: DecodedTexture,
+    pub texture: DecodedImage,
 }
 
 pub struct PendingBufferUpload {
@@ -306,7 +308,7 @@ impl UploadQueue {
         upload: &mut VkTransferUpload,
     ) -> VkResult<Vec<InFlightImageUpload>> {
         let mut ops = vec![];
-        let mut decoded_textures = vec![];
+        let mut decoded_images = vec![];
 
         for pending_upload in self.pending_image_rx.try_iter() {
             log::trace!(
@@ -314,12 +316,12 @@ impl UploadQueue {
                 pending_upload.texture.data.len()
             );
             ops.push((pending_upload.load_op, pending_upload.upload_op));
-            decoded_textures.push(pending_upload.texture);
+            decoded_images.push(pending_upload.texture);
 
             //TODO: Handle budgeting how much we can upload at once
         }
 
-        if decoded_textures.is_empty() {
+        if decoded_images.is_empty() {
             return Ok(vec![]);
         }
 
@@ -332,7 +334,7 @@ impl UploadQueue {
             self.device_context
                 .queue_family_indices()
                 .graphics_queue_family_index,
-            &decoded_textures,
+            &decoded_images,
         )?;
 
         let mut in_flight_uploads = Vec::with_capacity(ops.len());
@@ -484,14 +486,14 @@ impl UploadManager {
         &self,
         request: LoadRequest<ImageAssetData, ImageAsset>,
     ) -> VkResult<()> {
-        let mips = crate::image_utils::default_mip_settings_for_image(
+        let mips = DecodedImage::default_mip_settings_for_image_size(
             request.asset.width,
             request.asset.height,
         );
 
         let color_space = request.asset.color_space.into();
 
-        let decoded_texture = DecodedTexture {
+        let decoded_image = DecodedImage {
             width: request.asset.width,
             height: request.asset.height,
             mips,
@@ -508,7 +510,7 @@ impl UploadManager {
                     request.result_tx,
                     self.image_upload_result_tx.clone(),
                 ),
-                texture: decoded_texture,
+                texture: decoded_image,
             })
             .map_err(|_err| {
                 log::error!("Could not enqueue image upload");
