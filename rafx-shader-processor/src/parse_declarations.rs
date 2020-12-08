@@ -151,11 +151,7 @@ fn parse_array_sizes(
     let mut array_sizes = Vec::<usize>::default();
     while crate::parse_source::try_consume_literal(code, position, "[").is_some() {
         crate::parse_source::skip_whitespace(code, position);
-        let array_index =
-            crate::parse_source::try_consume_array_index(code, position).ok_or(format!(
-                "Invalid array count while parsing struct field:\n{}",
-                crate::parse_source::characters_to_string(&code)
-            ))?;
+        let array_index = crate::parse_source::try_consume_array_index(code, position).unwrap_or(0);
         array_sizes.push(array_index);
         crate::parse_source::skip_whitespace(code, position);
         crate::parse_source::try_consume_literal(code, position, "]").ok_or(format!(
@@ -445,14 +441,21 @@ fn parse_layout_parts(
     Ok(layout_parts)
 }
 
-fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String> {
+fn try_parse_binding(
+    code: &[char],
+) -> Result<Option<ParseBindingResult>, String> {
     let mut position = 0;
 
-    // Consume the layout keyword. If it's missing, assume this isn't a binding and return None
+    //
+    // See if it starts with layout. If not, assume this isn't a binding and return None
+    //
     if crate::parse_source::try_consume_literal(code, &mut position, "layout").is_none() {
         return Ok(None);
     }
 
+    //
+    // Parse the (...) in the layout (...) prefix for this binding
+    //
     crate::parse_source::skip_whitespace(code, &mut position);
     crate::parse_source::try_consume_literal(code, &mut position, "(").ok_or(format!(
         "Expected opening ( while parsing binding:\n{}",
@@ -463,41 +466,62 @@ fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String
     let layout_parts = parse_layout_parts(code, &mut position)?;
     crate::parse_source::skip_whitespace(code, &mut position);
 
-    // Either get the uniform or buffer keyword
-    let binding_type =
-        crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
-            "Expected keyword such as uniform, buffer, or in after layout in binding:\n{}",
-            crate::parse_source::characters_to_string(&code)
-        ))?;
-    let binding_type = match binding_type.as_str() {
-        "uniform" => BindingType::Uniform,
-        "buffer" => BindingType::Buffer,
-        "in" => BindingType::In,
-        "out" => BindingType::Out,
-        _ => {
-            return Err(format!(
-                "Expected keyword such as uniform, buffer, or in after layout in binding:\n{}",
-                crate::parse_source::characters_to_string(&code)
-            ));
-        }
-    };
+    //
+    // Grab all the identifers, optionally grab struct fields, then try to grab one more identifier
+    //
+    let mut identifiers = Vec::default();
+    while let Some(identifier) = crate::parse_source::try_consume_identifier(code, &mut position) {
+        identifiers.push(identifier);
+        crate::parse_source::skip_whitespace(code, &mut position);
+    }
 
-    crate::parse_source::skip_whitespace(code, &mut position);
-    let type_name =
-        crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
-            "Expected type name while parsing binding:\n{}",
-            crate::parse_source::characters_to_string(&code)
-        ))?;
-
-    crate::parse_source::skip_whitespace(code, &mut position);
+    // Optionally get struct fields
     let fields = try_parse_fields(code, &mut position)?;
+    if fields.is_some() {
+        // If struct fields exist, we need one more identifier
+        crate::parse_source::skip_whitespace(code, &mut position);
+        let instance_name =
+            crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
+                "Expected instance name while parsing binding (required for exported bindings):\n{}",
+                crate::parse_source::characters_to_string(&code)
+            ))?;
+        identifiers.push(instance_name);
+    }
 
-    crate::parse_source::skip_whitespace(code, &mut position);
-    let instance_name =
-        crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
-            "Expected instance name while parsing binding (required for exported bindings):\n{}",
+    let modifiers = &identifiers[0..(identifiers.len() - 2)];
+    let type_name = identifiers[identifiers.len() - 2].clone();
+    let instance_name = identifiers[identifiers.len() - 1].clone();
+
+    log::trace!("parsing binding: type name: {}, instance_name: {}, modifiers: {:?}", type_name, instance_name, modifiers);
+
+    let mut binding_type = None;
+    for modifier in modifiers {
+        let bt = match modifier.as_str() {
+            "uniform" => Some(BindingType::Uniform),
+            "buffer" => Some(BindingType::Buffer),
+            "in" => Some(BindingType::In),
+            "out" => Some(BindingType::Out),
+            _ => None
+        };
+
+        if bt.is_some() {
+            if binding_type.is_some() {
+                Err(format!(
+                    "Multiple keywords indicating binding type (uniform/buffer/in/out) in binding:\n{}",
+                    crate::parse_source::characters_to_string(&code)
+                ))?
+            }
+
+            binding_type = bt;
+        }
+    }
+
+    let binding_type = binding_type.ok_or_else(|| {
+        format!(
+            "Expected keyword indicating binding type (uniform/buffer/in/out) after layout in binding:\n{}",
             crate::parse_source::characters_to_string(&code)
-        ))?;
+        )
+    })?;
 
     let array_sizes = parse_array_sizes(code, &mut position)?;
 
@@ -563,7 +587,7 @@ pub(crate) struct ParseDeclarationsResult {
 }
 
 pub(crate) fn parse_declarations(
-    declarations: &[DeclarationText]
+    declarations: &[DeclarationText],
 ) -> Result<ParseDeclarationsResult, String> {
     let mut structs = Vec::default();
     let mut bindings = Vec::default();

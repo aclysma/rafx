@@ -3,6 +3,7 @@
 pub mod bloom_blur_frag;
 pub mod bloom_combine_frag;
 pub mod bloom_extract_frag;
+pub mod compute_test_comp;
 pub mod debug_frag;
 pub mod debug_vert;
 pub mod imgui_frag;

@@ -360,6 +360,13 @@ pub struct GraphicsPipelineKey {
     vertex_input_state: Arc<dsc::PipelineVertexInputState>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ComputePipelineKey {
+    pub pipeline_layout: dsc::PipelineLayout,
+    pub shader_module_meta: dsc::ShaderModuleMeta,
+    pub shader_module_key: ShaderModuleKey,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ImageKey {
     id: u64,
@@ -398,6 +405,7 @@ pub struct ResourceMetrics {
     pub framebuffer_metrics: ResourceLookupMetric,
     pub material_pass_metrics: ResourceLookupMetric,
     pub graphics_pipeline_metrics: ResourceLookupMetric,
+    pub compute_pipeline_metrics: ResourceLookupMetric,
     pub image_metrics: ResourceLookupMetric,
     pub image_view_metrics: ResourceLookupMetric,
     pub sampler_metrics: ResourceLookupMetric,
@@ -493,6 +501,22 @@ impl VkResource for GraphicsPipelineResource {
         for pipeline in resource.pipelines {
             VkResource::destroy(device_context, pipeline)?;
         }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ComputePipelineResource {
+    pub pipeline: vk::Pipeline,
+    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
+}
+
+impl VkResource for ComputePipelineResource {
+    fn destroy(
+        _device_context: &VkDeviceContext,
+        _resource: Self,
+    ) -> VkResult<()> {
 
         Ok(())
     }
@@ -614,6 +638,7 @@ pub struct ResourceLookupSetInner {
     framebuffers: ResourceLookup<FrameBufferKey, FramebufferResource>,
     material_passes: ResourceLookup<MaterialPassKey, MaterialPassResource>,
     graphics_pipelines: ResourceLookup<GraphicsPipelineKey, GraphicsPipelineResource>,
+    compute_pipelines: ResourceLookup<ComputePipelineKey, ComputePipelineResource>,
     images: ResourceLookup<ImageKey, ImageResource>,
     image_views: ResourceLookup<ImageViewKey, ImageViewResource>,
     samplers: ResourceLookup<SamplerKey, SamplerResource>,
@@ -643,6 +668,7 @@ impl ResourceLookupSet {
             framebuffers: ResourceLookup::new(max_frames_in_flight),
             material_passes: ResourceLookup::new(max_frames_in_flight),
             graphics_pipelines: ResourceLookup::new(max_frames_in_flight),
+            compute_pipelines: ResourceLookup::new(max_frames_in_flight),
             images: ResourceLookup::new(max_frames_in_flight),
             image_views: ResourceLookup::new(max_frames_in_flight),
             samplers: ResourceLookup::new(max_frames_in_flight),
@@ -691,12 +717,18 @@ impl ResourceLookupSet {
         self.inner
             .graphics_pipelines
             .on_frame_complete(&self.inner.device_context)?;
+        self.inner
+            .compute_pipelines
+            .on_frame_complete(&self.inner.device_context)?;
         Ok(())
     }
 
     pub fn destroy(&self) -> VkResult<()> {
         //WARNING: These need to be in order of dependencies to avoid frame-delays on destroying
         // resources.
+        self.inner
+            .compute_pipelines
+            .destroy(&self.inner.device_context)?;
         self.inner
             .graphics_pipelines
             .destroy(&self.inner.device_context)?;
@@ -734,6 +766,7 @@ impl ResourceLookupSet {
             framebuffer_metrics: self.inner.framebuffers.metrics(),
             material_pass_metrics: self.inner.material_passes.metrics(),
             graphics_pipeline_metrics: self.inner.graphics_pipelines.metrics(),
+            compute_pipeline_metrics: self.inner.compute_pipelines.metrics(),
             image_metrics: self.inner.images.metrics(),
             image_view_metrics: self.inner.image_views.metrics(),
             sampler_metrics: self.inner.samplers.metrics(),
@@ -1048,7 +1081,7 @@ impl ResourceLookupSet {
         self.inner
             .graphics_pipelines
             .get_or_create(&pipeline_key, || {
-                log::trace!("Creating pipeline\n{:#?}", pipeline_key);
+                log::trace!("Creating graphics pipeline\n{:#?}", pipeline_key);
                 let pipelines = dsc::create_graphics_pipelines(
                     &self.inner.device_context.device(),
                     &*vertex_input_state,
@@ -1068,12 +1101,46 @@ impl ResourceLookupSet {
                     &pipeline_key.renderpass_key.swapchain_surface_info,
                     &pipeline_key.framebuffer_meta,
                 )?;
-                log::trace!("Created pipelines {:?}", pipelines);
+                log::trace!("Created graphics pipelines {:?}", pipelines);
 
                 let resource = GraphicsPipelineResource {
                     pipelines,
                     pipeline_layout: material_pass.get_raw().pipeline_layout,
                     renderpass: renderpass.clone(),
+                };
+                Ok(resource)
+            })
+    }
+
+    pub fn get_or_create_compute_pipeline(
+        &self,
+        shader_module: ResourceArc<ShaderModuleResource>,
+        shader_module_meta: dsc::ShaderModuleMeta,
+        pipeline_layout: ResourceArc<PipelineLayoutResource>,
+    ) -> VkResult<ResourceArc<ComputePipelineResource>>  {
+        let pipeline_key = ComputePipelineKey {
+            shader_module_meta,
+            shader_module_key: shader_module.get_raw().shader_module_key,
+            pipeline_layout: pipeline_layout.get_raw().pipeline_layout_def,
+        };
+
+        self.inner
+            .compute_pipelines
+            .get_or_create(&pipeline_key, || {
+                log::trace!("Creating compute pipeline\n{:#?}", pipeline_key);
+                let pipeline = dsc::create_compute_pipeline(
+                    &self.inner.device_context.device(),
+                    pipeline_layout
+                        .get_raw()
+                        .pipeline_layout,
+                    &pipeline_key.shader_module_meta,
+                    shader_module.get_raw().shader_module,
+                )?;
+                log::trace!("Created compute pipeline {:?}", pipeline);
+
+                let resource = ComputePipelineResource {
+                    pipeline,
+                    pipeline_layout: pipeline_layout.clone(),
                 };
                 Ok(resource)
             })

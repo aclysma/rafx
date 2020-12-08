@@ -226,6 +226,8 @@ fn process_glsl_shader(
     let spirv_reflect_module =
         spirv_reflect::create_shader_module(unoptimized_compile_spirv_result.as_binary_u8())?;
 
+
+
     //
     // Parse the shader code to find all declared resources. This is a high-level parse of the file
     // to extract the bits we care about along with the comments that are associated with those bits

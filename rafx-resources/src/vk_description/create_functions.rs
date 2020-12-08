@@ -339,6 +339,33 @@ pub fn create_graphics_pipelines(
     }
 }
 
+pub fn create_compute_pipeline(
+    device: &ash::Device,
+    pipeline_layout: vk::PipelineLayout,
+    shader_module_meta: &dsc::ShaderModuleMeta,
+    shader_module: vk::ShaderModule,
+) -> VkResult<vk::Pipeline> {
+    let name = std::ffi::CString::new(shader_module_meta.entry_name.clone()).unwrap();
+
+    // No flags, specialization not yet supported
+    let stage = vk::PipelineShaderStageCreateInfo::builder()
+        .stage(vk::ShaderStageFlags::COMPUTE)
+        .name(&name)
+        .module(shader_module);
+
+    // No flags, no base pipelines
+    let create_info = vk::ComputePipelineCreateInfo::builder()
+        .layout(pipeline_layout)
+        .stage(*stage);
+
+    unsafe {
+        match device.create_compute_pipelines(vk::PipelineCache::null(), &[*create_info], None) {
+            Ok(result) => Ok(result[0]),
+            Err(e) => Err(e.1),
+        }
+    }
+}
+
 #[profiling::function]
 pub fn create_image_view(
     device: &ash::Device,
