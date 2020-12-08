@@ -42,6 +42,7 @@ mod asset_manager;
 pub use asset_manager::*;
 
 mod upload;
+pub use upload::UploadQueueConfig;
 
 mod asset_lookup;
 pub use asset_lookup::AssetLookup;

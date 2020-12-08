@@ -2,15 +2,13 @@ use super::load_queue::LoadRequest;
 use super::BufferAssetData;
 use super::ImageAssetData;
 use super::{BufferAsset, ImageAsset};
-use crate::buffer_upload::enqueue_load_buffers;
-use crate::image_upload::enqueue_load_images;
-use crate::DecodedImage;
+use crate::{buffer_upload, image_upload, DecodedImage};
 use ash::prelude::VkResult;
 use ash::vk;
 use atelier_assets::loader::{storage::AssetLoadOp, LoadHandle};
 use crossbeam_channel::{Receiver, Sender};
 use rafx_shell_vulkan::{
-    VkBuffer, VkDeviceContext, VkImage, VkTransferUpload, VkTransferUploadState,
+    VkBuffer, VkDeviceContext, VkImage, VkTransferUpload, VkTransferUploadState, VkUploadError,
 };
 use std::mem::ManuallyDrop;
 
@@ -135,9 +133,19 @@ struct InProgressUploadInner {
     upload: VkTransferUpload,
 }
 
+struct InProgressUploadDebugInfo {
+    upload_id: usize,
+    start_time: std::time::Instant,
+    size: u64,
+    image_count: usize,
+    buffer_count: usize,
+}
+
 // A single upload which may contain multiple images
 struct InProgressUpload {
+    // Only valid if the upload is actually in progress
     inner: Option<InProgressUploadInner>,
+    debug_info: InProgressUploadDebugInfo,
 }
 
 impl InProgressUpload {
@@ -145,6 +153,7 @@ impl InProgressUpload {
         image_uploads: Vec<InFlightImageUpload>,
         buffer_uploads: Vec<InFlightBufferUpload>,
         upload: VkTransferUpload,
+        debug_info: InProgressUploadDebugInfo,
     ) -> Self {
         let inner = InProgressUploadInner {
             image_uploads,
@@ -152,7 +161,10 @@ impl InProgressUpload {
             upload,
         };
 
-        InProgressUpload { inner: Some(inner) }
+        InProgressUpload {
+            inner: Some(inner),
+            debug_info,
+        }
     }
 
     // The main state machine for an upload:
@@ -261,37 +273,59 @@ impl Drop for InProgressUpload {
     }
 }
 
+pub struct UploadQueueConfig {
+    pub max_bytes_per_upload: usize,
+    pub max_concurrent_uploads: usize,
+    pub max_new_uploads_in_single_frame: usize,
+}
+
 //
 // Receives sets of images that need to be uploaded and kicks off the upload. Responsible for
 // batching image updates together into uploads
 //
 pub struct UploadQueue {
     device_context: VkDeviceContext,
+    config: UploadQueueConfig,
 
     // For enqueueing images to upload
     pending_image_tx: Sender<PendingImageUpload>,
     pending_image_rx: Receiver<PendingImageUpload>,
 
+    // If we fail to upload due to size limitation, keep the failed upload here to retry later
+    next_image_upload: Option<PendingImageUpload>,
+
     // For enqueueing buffers to upload
     pending_buffer_tx: Sender<PendingBufferUpload>,
     pending_buffer_rx: Receiver<PendingBufferUpload>,
 
+    // If we fail to upload due to size limitation, keep the failed upload here to retry later
+    next_buffer_upload: Option<PendingBufferUpload>,
+
     // These are uploads that are currently in progress
     uploads_in_progress: Vec<InProgressUpload>,
+
+    next_upload_id: usize,
 }
 
 impl UploadQueue {
-    pub fn new(device_context: &VkDeviceContext) -> Self {
+    pub fn new(
+        device_context: &VkDeviceContext,
+        config: UploadQueueConfig,
+    ) -> Self {
         let (pending_image_tx, pending_image_rx) = crossbeam_channel::unbounded();
         let (pending_buffer_tx, pending_buffer_rx) = crossbeam_channel::unbounded();
 
         UploadQueue {
             device_context: device_context.clone(),
+            config,
             pending_image_tx,
             pending_image_rx,
+            next_image_upload: None,
             pending_buffer_tx,
             pending_buffer_rx,
+            next_buffer_upload: None,
             uploads_in_progress: Default::default(),
+            next_upload_id: 1,
         }
     }
 
@@ -303,29 +337,16 @@ impl UploadQueue {
         &self.pending_buffer_tx
     }
 
-    fn start_new_image_uploads(
+    // Ok(None) = upload enqueue
+    // Ok(Some) = upload not enqueued because there was not enough room
+    // Err = Vulkan error
+    fn try_enqueue_image_upload(
         &mut self,
         upload: &mut VkTransferUpload,
-    ) -> VkResult<Vec<InFlightImageUpload>> {
-        let mut ops = vec![];
-        let mut decoded_images = vec![];
-
-        for pending_upload in self.pending_image_rx.try_iter() {
-            log::trace!(
-                "start image upload size: {}",
-                pending_upload.texture.data.len()
-            );
-            ops.push((pending_upload.load_op, pending_upload.upload_op));
-            decoded_images.push(pending_upload.texture);
-
-            //TODO: Handle budgeting how much we can upload at once
-        }
-
-        if decoded_images.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let images = enqueue_load_images(
+        pending_image: PendingImageUpload,
+        in_flight_uploads: &mut Vec<InFlightImageUpload>,
+    ) -> VkResult<Option<PendingImageUpload>> {
+        let result = image_upload::enqueue_load_image(
             &self.device_context,
             upload,
             self.device_context
@@ -334,69 +355,170 @@ impl UploadQueue {
             self.device_context
                 .queue_family_indices()
                 .graphics_queue_family_index,
-            &decoded_images,
-        )?;
+            &pending_image.texture,
+        );
 
-        let mut in_flight_uploads = Vec::with_capacity(ops.len());
-        for (op, image) in ops.into_iter().zip(images) {
-            in_flight_uploads.push(InFlightImageUpload {
-                load_op: op.0,
-                upload_op: op.1,
-                image,
-            });
+        match result {
+            Ok(image) => {
+                in_flight_uploads.push(InFlightImageUpload {
+                    image,
+                    load_op: pending_image.load_op,
+                    upload_op: pending_image.upload_op,
+                });
+                Ok(None)
+            }
+            Err(VkUploadError::VkError(e)) => Err(e),
+            Err(VkUploadError::BufferFull) => Ok(Some(pending_image)),
+        }
+    }
+
+    fn start_new_image_uploads(
+        &mut self,
+        upload: &mut VkTransferUpload,
+    ) -> VkResult<Vec<InFlightImageUpload>> {
+        let mut in_flight_uploads = vec![];
+
+        // If we had a pending image upload from before, try to upload it now
+        self.next_image_upload = if let Some(next_image_upload) = self.next_image_upload.take() {
+            self.try_enqueue_image_upload(upload, next_image_upload, &mut in_flight_uploads)?
+        } else {
+            None
+        };
+
+        // The first image we tried to upload failed. Log an error since we aren't making forward progress
+        if let Some(next_image_upload) = &self.next_image_upload {
+            log::error!(
+                "Image of {} bytes has repeatedly exceeded the available room in the upload buffer. ({} of {} bytes free)",
+                next_image_upload.texture.data.len(),
+                upload.bytes_free(),
+                upload.buffer_size()
+            );
+            return Ok(vec![]);
+        }
+
+        let rx = self.pending_image_rx.clone();
+        for pending_upload in rx.try_iter() {
+            self.next_image_upload =
+                self.try_enqueue_image_upload(upload, pending_upload, &mut in_flight_uploads)?;
+
+            if let Some(next_image_upload) = &self.next_image_upload {
+                log::debug!(
+                    "Image of {} bytes exceeds the available room in the upload buffer. ({} of {} bytes free)",
+                    next_image_upload.texture.data.len(),
+                    upload.bytes_free(),
+                    upload.buffer_size(),
+                );
+                break;
+            }
         }
 
         Ok(in_flight_uploads)
+    }
+
+    // Ok(None) = upload enqueue
+    // Ok(Some) = upload not enqueued because there was not enough room
+    // Err = Vulkan error
+    fn try_enqueue_buffer_upload(
+        &mut self,
+        upload: &mut VkTransferUpload,
+        pending_buffer: PendingBufferUpload,
+        in_flight_uploads: &mut Vec<InFlightBufferUpload>,
+    ) -> VkResult<Option<PendingBufferUpload>> {
+        let result = buffer_upload::enqueue_load_buffer(
+            &self.device_context,
+            upload,
+            self.device_context
+                .queue_family_indices()
+                .transfer_queue_family_index,
+            self.device_context
+                .queue_family_indices()
+                .graphics_queue_family_index,
+            &pending_buffer.data,
+        );
+
+        match result {
+            Ok(buffer) => {
+                in_flight_uploads.push(InFlightBufferUpload {
+                    buffer,
+                    load_op: pending_buffer.load_op,
+                    upload_op: pending_buffer.upload_op,
+                });
+                Ok(None)
+            }
+            Err(VkUploadError::VkError(e)) => Err(e),
+            Err(VkUploadError::BufferFull) => Ok(Some(pending_buffer)),
+        }
     }
 
     fn start_new_buffer_uploads(
         &mut self,
         upload: &mut VkTransferUpload,
     ) -> VkResult<Vec<InFlightBufferUpload>> {
-        let mut ops = vec![];
-        let mut buffer_data = vec![];
+        let mut in_flight_uploads = vec![];
 
-        for pending_upload in self.pending_buffer_rx.try_iter() {
-            log::trace!("start buffer upload size: {}", pending_upload.data.len());
-            ops.push((pending_upload.load_op, pending_upload.upload_op));
-            buffer_data.push(pending_upload.data);
+        // If we had a pending image upload from before, try to upload it now
+        self.next_buffer_upload = if let Some(next_buffer_upload) = self.next_buffer_upload.take() {
+            self.try_enqueue_buffer_upload(upload, next_buffer_upload, &mut in_flight_uploads)?
+        } else {
+            None
+        };
 
-            //TODO: Handle budgeting how much we can upload at once
-        }
-
-        if buffer_data.is_empty() {
+        // The first buffer we tried to upload failed. Log an error since we aren't making forward progress
+        if let Some(next_buffer_upload) = &self.next_buffer_upload {
+            log::error!(
+                "Buffer of {} bytes has repeatedly exceeded the available room in the upload buffer. ({} of {} bytes free)",
+                next_buffer_upload.data.len(),
+                upload.bytes_free(),
+                upload.buffer_size()
+            );
             return Ok(vec![]);
         }
 
-        let buffers = enqueue_load_buffers(
-            &self.device_context,
-            upload,
-            self.device_context
-                .queue_family_indices()
-                .transfer_queue_family_index,
-            self.device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
-            &buffer_data,
-        )?;
+        let rx = self.pending_buffer_rx.clone();
+        for pending_upload in rx.try_iter() {
+            self.next_buffer_upload =
+                self.try_enqueue_buffer_upload(upload, pending_upload, &mut in_flight_uploads)?;
 
-        let mut in_flight_uploads = Vec::with_capacity(ops.len());
-        for (op, buffer) in ops.into_iter().zip(buffers) {
-            in_flight_uploads.push(InFlightBufferUpload {
-                load_op: op.0,
-                upload_op: op.1,
-                buffer,
-            });
+            if let Some(next_buffer_upload) = &self.next_buffer_upload {
+                log::debug!(
+                    "Buffer of {} bytes exceeds the available room in the upload buffer. ({} of {} bytes free)",
+                    next_buffer_upload.data.len(),
+                    upload.bytes_free(),
+                    upload.buffer_size(),
+                );
+                break;
+            }
         }
 
         Ok(in_flight_uploads)
     }
 
     fn start_new_uploads(&mut self) -> VkResult<()> {
-        if self.pending_image_rx.is_empty() && self.pending_buffer_rx.is_empty() {
-            return Ok(());
+        for _ in 0..self.config.max_new_uploads_in_single_frame {
+            if self.pending_image_rx.is_empty()
+                && self.next_image_upload.is_none()
+                && self.pending_buffer_rx.is_empty()
+                && self.next_buffer_upload.is_none()
+            {
+                return Ok(());
+            }
+
+            if self.uploads_in_progress.len() >= self.config.max_concurrent_uploads {
+                log::trace!(
+                    "Max number of uploads already in progress. Waiting to start a new one"
+                );
+                return Ok(());
+            }
+
+            if !self.start_new_upload()? {
+                return Ok(());
+            }
         }
 
+        Ok(())
+    }
+
+    fn start_new_upload(&mut self) -> VkResult<bool> {
         let mut upload = VkTransferUpload::new(
             &self.device_context,
             self.device_context
@@ -405,22 +527,45 @@ impl UploadQueue {
             self.device_context
                 .queue_family_indices()
                 .graphics_queue_family_index,
-            1024 * 1024 * 256,
+            self.config.max_bytes_per_upload as u64,
         )?;
 
         let in_flight_image_uploads = self.start_new_image_uploads(&mut upload)?;
         let in_flight_buffer_uploads = self.start_new_buffer_uploads(&mut upload)?;
 
         if !in_flight_image_uploads.is_empty() || !in_flight_buffer_uploads.is_empty() {
+            let upload_id = self.next_upload_id;
+            self.next_upload_id += 1;
+
+            log::debug!(
+                "Submitting {} byte upload with {} images and {} buffers, UploadId = {}",
+                upload.bytes_written(),
+                in_flight_image_uploads.len(),
+                in_flight_buffer_uploads.len(),
+                upload_id
+            );
+
             upload.submit_transfer(&self.device_context.queues().transfer_queue)?;
+
+            let debug_info = InProgressUploadDebugInfo {
+                upload_id,
+                buffer_count: in_flight_buffer_uploads.len(),
+                image_count: in_flight_image_uploads.len(),
+                size: upload.bytes_written(),
+                start_time: std::time::Instant::now(),
+            };
+
             self.uploads_in_progress.push(InProgressUpload::new(
                 in_flight_image_uploads,
                 in_flight_buffer_uploads,
                 upload,
+                debug_info,
             ));
-        }
 
-        Ok(())
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     fn update_existing_uploads(&mut self) {
@@ -433,10 +578,32 @@ impl UploadQueue {
                 }
                 InProgressUploadPollResult::Complete => {
                     //load_op.complete() is called by poll_load
+
+                    let debug_info = &self.uploads_in_progress[i].debug_info;
+                    log::debug!(
+                        "Completed {} byte upload with {} images and {} buffers in {} ms, UploadId = {}",
+                        debug_info.size,
+                        debug_info.image_count,
+                        debug_info.buffer_count,
+                        (std::time::Instant::now() - debug_info.start_time).as_secs_f32(),
+                        debug_info.upload_id
+                    );
+
                     self.uploads_in_progress.swap_remove(i);
                 }
                 InProgressUploadPollResult::Error => {
                     //load_op.error() is called by poll_load
+
+                    let debug_info = &self.uploads_in_progress[i].debug_info;
+                    log::error!(
+                        "Failed {} byte upload with {} images and {} buffers in {} ms, UploadId = {}",
+                        debug_info.size,
+                        debug_info.image_count,
+                        debug_info.buffer_count,
+                        (std::time::Instant::now() - debug_info.start_time).as_secs_f32(),
+                        debug_info.upload_id
+                    );
+
                     self.uploads_in_progress.swap_remove(i);
                 }
                 InProgressUploadPollResult::Destroyed => {
@@ -465,12 +632,15 @@ pub struct UploadManager {
 }
 
 impl UploadManager {
-    pub fn new(device_context: &VkDeviceContext) -> Self {
+    pub fn new(
+        device_context: &VkDeviceContext,
+        upload_queue_config: UploadQueueConfig,
+    ) -> Self {
         let (image_upload_result_tx, image_upload_result_rx) = crossbeam_channel::unbounded();
         let (buffer_upload_result_tx, buffer_upload_result_rx) = crossbeam_channel::unbounded();
 
         UploadManager {
-            upload_queue: UploadQueue::new(device_context),
+            upload_queue: UploadQueue::new(device_context, upload_queue_config),
             image_upload_result_rx,
             image_upload_result_tx,
             buffer_upload_result_rx,

@@ -146,6 +146,11 @@ pub fn rendering_init(
             &device_context,
             &render_registry,
             asset_resource.loader(),
+            rafx::assets::UploadQueueConfig {
+                max_concurrent_uploads: 4,
+                max_new_uploads_in_single_frame: 4,
+                max_bytes_per_upload: 32 * 1024 * 1024,
+            },
         );
         let loaders = asset_manager.create_loaders();
 

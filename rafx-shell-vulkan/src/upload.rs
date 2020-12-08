@@ -10,6 +10,39 @@ use std::sync::{Arc, Mutex};
 // Based on UploadHeap in cauldron
 // (https://github.com/GPUOpen-LibrariesAndSDKs/Cauldron/blob/5acc12602c55e469cc1f9181967dbcb122f8e6c7/src/VK/base/UploadHeap.h)
 
+#[derive(Debug)]
+pub enum VkUploadError {
+    BufferFull,
+    VkError(vk::Result),
+}
+
+impl core::fmt::Display for VkUploadError {
+    fn fmt(
+        &self,
+        fmt: &mut core::fmt::Formatter,
+    ) -> core::fmt::Result {
+        match *self {
+            VkUploadError::BufferFull => write!(fmt, "UploadBufferFull"),
+            VkUploadError::VkError(ref e) => e.fmt(fmt),
+        }
+    }
+}
+
+impl From<vk::Result> for VkUploadError {
+    fn from(result: vk::Result) -> Self {
+        VkUploadError::VkError(result)
+    }
+}
+
+impl Into<vk::Result> for VkUploadError {
+    fn into(self) -> vk::Result {
+        match self {
+            VkUploadError::BufferFull => vk::Result::ERROR_UNKNOWN,
+            VkUploadError::VkError(e) => e,
+        }
+    }
+}
+
 #[derive(PartialEq)]
 pub enum VkUploadState {
     /// The upload is not submitted yet and data may be appended to it
@@ -47,7 +80,7 @@ impl VkUpload {
     pub fn new(
         device_context: &VkDeviceContext,
         queue_family_index: u32,
-        size: u64,
+        buffer_size: u64,
     ) -> VkResult<Self> {
         //
         // Command Buffers
@@ -62,7 +95,7 @@ impl VkUpload {
             vk_mem::MemoryUsage::CpuOnly,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            size,
+            buffer_size,
         )?);
 
         let (buffer_begin, buffer_end, buffer_write_pointer) = unsafe {
@@ -141,11 +174,30 @@ impl VkUpload {
         unsafe { logical_device.begin_command_buffer(command_buffer, &command_buffer_begin_info) }
     }
 
+    pub fn has_space_available(
+        &self,
+        bytes_to_write: usize,
+        required_alignment: usize,
+        number_of_writes: usize,
+    ) -> bool {
+        let mut write_end_ptr = self.buffer_write_pointer as usize;
+
+        for _ in 0..number_of_writes {
+            // Align the current write pointer
+            let write_begin_ptr = ((write_end_ptr + required_alignment - 1) / required_alignment)
+                * required_alignment;
+            write_end_ptr = write_begin_ptr + bytes_to_write;
+        }
+
+        // See if we would walk past the end of the buffer
+        write_end_ptr <= self.buffer_end as usize
+    }
+
     pub fn push(
         &mut self,
         data: &[u8],
         required_alignment: usize,
-    ) -> VkResult<vk::DeviceSize> {
+    ) -> Result<vk::DeviceSize, VkUploadError> {
         log::trace!("Pushing {} bytes into upload", data.len());
 
         if self.writable {
@@ -159,8 +211,7 @@ impl VkUpload {
 
                 // If the span walks past the end of the buffer, fail
                 if write_end_ptr > self.buffer_end {
-                    log::error!("Failed to push data into upload buffer");
-                    return Err(vk::Result::ERROR_UNKNOWN);
+                    Err(VkUploadError::BufferFull)?;
                 }
 
                 std::ptr::copy_nonoverlapping(data.as_ptr(), write_begin_ptr, data.len());
@@ -170,8 +221,20 @@ impl VkUpload {
             }
         } else {
             log::error!("Upload buffer is not writable");
-            Err(vk::Result::ERROR_UNKNOWN)
+            Err(vk::Result::ERROR_UNKNOWN)?
         }
+    }
+
+    pub fn buffer_size(&self) -> u64 {
+        self.buffer_end as u64 - self.buffer_begin as u64
+    }
+
+    pub fn bytes_written(&self) -> u64 {
+        self.buffer_write_pointer as u64 - self.buffer_begin as u64
+    }
+
+    pub fn bytes_free(&self) -> u64 {
+        self.buffer_end as u64 - self.buffer_write_pointer as u64
     }
 
     pub fn command_buffer(&self) -> vk::CommandBuffer {
@@ -328,12 +391,34 @@ impl VkTransferUpload {
         })
     }
 
+    pub fn has_space_available(
+        &self,
+        bytes_to_write: usize,
+        required_alignment: usize,
+        number_of_writes: usize,
+    ) -> bool {
+        self.upload
+            .has_space_available(bytes_to_write, required_alignment, number_of_writes)
+    }
+
     pub fn push(
         &mut self,
         data: &[u8],
         required_alignment: usize,
-    ) -> VkResult<vk::DeviceSize> {
+    ) -> Result<vk::DeviceSize, VkUploadError> {
         self.upload.push(data, required_alignment)
+    }
+
+    pub fn buffer_size(&self) -> u64 {
+        self.upload.buffer_size()
+    }
+
+    pub fn bytes_written(&self) -> u64 {
+        self.upload.bytes_written()
+    }
+
+    pub fn bytes_free(&self) -> u64 {
+        self.upload.bytes_free()
     }
 
     pub fn staging_buffer(&self) -> &VkBuffer {

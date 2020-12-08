@@ -1,10 +1,9 @@
-use ash::prelude::VkResult;
 use ash::vk;
 use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use rafx_shell_vulkan::VkBuffer;
+use rafx_shell_vulkan::{VkBuffer, VkUploadError};
 use rafx_shell_vulkan::{VkDeviceContext, VkTransferUpload};
 
 #[derive(PartialEq)]
@@ -101,65 +100,57 @@ pub fn cmd_copy_buffer_to_buffer(
     }
 }
 
-pub fn enqueue_load_buffers(
+pub fn enqueue_load_buffer(
     device_context: &VkDeviceContext,
     upload: &mut VkTransferUpload,
     transfer_queue_family_index: u32,
     dst_queue_family_index: u32,
-    data_arrays: &[Vec<u8>],
-) -> VkResult<Vec<ManuallyDrop<VkBuffer>>> {
-    let mut dst_buffers = Vec::with_capacity(data_arrays.len());
+    data: &[u8],
+) -> Result<ManuallyDrop<VkBuffer>, VkUploadError> {
+    // Arbitrary, not sure if there is any requirement
+    const REQUIRED_ALIGNMENT: usize = 16;
 
-    for data_array in data_arrays {
-        // Arbitrary, not sure if there is any requirement
-        const REQUIRED_ALIGNMENT: usize = 16;
+    // Push data into the staging buffer
+    let offset = upload.push(data, REQUIRED_ALIGNMENT)?;
+    let size = data.len() as u64;
 
-        // Push data into the staging buffer
-        let offset = upload.push(&data_array, REQUIRED_ALIGNMENT)?;
-        let size = data_array.len() as u64;
+    // Allocate a buffer
+    let dst_buffer = ManuallyDrop::new(VkBuffer::new(
+        device_context,
+        vk_mem::MemoryUsage::GpuOnly,
+        vk::BufferUsageFlags::TRANSFER_DST
+            | vk::BufferUsageFlags::VERTEX_BUFFER
+            | vk::BufferUsageFlags::INDEX_BUFFER,
+        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+        size,
+    )?);
 
-        // Allocate an image
-        let dst_buffer = ManuallyDrop::new(VkBuffer::new(
-            device_context,
-            vk_mem::MemoryUsage::GpuOnly,
-            vk::BufferUsageFlags::TRANSFER_DST
-                | vk::BufferUsageFlags::VERTEX_BUFFER
-                | vk::BufferUsageFlags::INDEX_BUFFER,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL,
-            size,
-        )?);
+    cmd_copy_buffer_to_buffer(
+        device_context.device(),
+        upload.transfer_command_buffer(),
+        upload.staging_buffer().buffer(),
+        dst_buffer.buffer(),
+        offset,
+        size,
+    );
 
-        cmd_copy_buffer_to_buffer(
-            device_context.device(),
-            upload.transfer_command_buffer(),
-            upload.staging_buffer().buffer(),
-            dst_buffer.buffer(),
-            offset,
-            size,
-        );
+    cmd_buffer_memory_barrier(
+        device_context.device(),
+        upload.transfer_command_buffer(),
+        &[dst_buffer.buffer()],
+        BufferMemoryBarrierType::PostUploadTransferQueue,
+        transfer_queue_family_index,
+        dst_queue_family_index,
+    );
 
-        cmd_buffer_memory_barrier(
-            device_context.device(),
-            upload.transfer_command_buffer(),
-            &[dst_buffer.buffer()],
-            BufferMemoryBarrierType::PostUploadTransferQueue,
-            transfer_queue_family_index,
-            dst_queue_family_index,
-        );
+    cmd_buffer_memory_barrier(
+        device_context.device(),
+        upload.dst_command_buffer(),
+        &[dst_buffer.buffer()],
+        BufferMemoryBarrierType::PostUploadDstQueue,
+        transfer_queue_family_index,
+        dst_queue_family_index,
+    );
 
-        dst_buffers.push(dst_buffer);
-    }
-
-    for dst_buffer in &dst_buffers {
-        cmd_buffer_memory_barrier(
-            device_context.device(),
-            upload.dst_command_buffer(),
-            &[dst_buffer.buffer()],
-            BufferMemoryBarrierType::PostUploadDstQueue,
-            transfer_queue_family_index,
-            dst_queue_family_index,
-        );
-    }
-
-    Ok(dst_buffers)
+    Ok(dst_buffer)
 }

@@ -51,6 +51,7 @@ mod upload;
 pub use upload::VkTransferUpload;
 pub use upload::VkTransferUploadState;
 pub use upload::VkUpload;
+pub use upload::VkUploadError;
 pub use upload::VkUploadState;
 
 mod debug_reporter;

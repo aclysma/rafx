@@ -9,7 +9,7 @@ use crate::assets::{
 };
 use crate::{
     AssetLookup, AssetLookupSet, BufferAssetData, GenericLoader, LoadQueues,
-    MaterialInstanceSlotAssignment, SamplerAssetData, SlotNameLookup,
+    MaterialInstanceSlotAssignment, SamplerAssetData, SlotNameLookup, UploadQueueConfig,
 };
 use ash::prelude::*;
 use atelier_assets::loader::handle::Handle;
@@ -73,6 +73,7 @@ impl AssetManager {
         device_context: &VkDeviceContext,
         render_registry: &RenderRegistry,
         loader: &Loader,
+        upload_queue_config: UploadQueueConfig,
     ) -> Self {
         let resource_manager = ResourceManager::new(device_context, render_registry);
 
@@ -80,7 +81,7 @@ impl AssetManager {
             resource_manager,
             loaded_assets: AssetLookupSet::new(loader),
             load_queues: Default::default(),
-            upload_manager: UploadManager::new(device_context),
+            upload_manager: UploadManager::new(device_context, upload_queue_config),
             material_instance_descriptor_sets: DescriptorSetAllocator::new(device_context),
         }
     }

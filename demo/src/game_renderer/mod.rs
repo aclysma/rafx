@@ -48,7 +48,7 @@ use crate::RenderOptions;
 use arrayvec::ArrayVec;
 use ash::vk;
 use fnv::FnvHashMap;
-use rafx::resources::vulkan::VkTransferUpload;
+use rafx::resources::vulkan::{VkTransferUpload, VkUploadError};
 pub use swapchain_handling::SwapchainLifetimeListener;
 
 /// Creates a right-handed perspective projection matrix with [0,1] depth range.
@@ -160,7 +160,8 @@ impl GameRenderer {
             &[0, 0, 0, 0, 0, 0],
             vk::ImageCreateFlags::CUBE_COMPATIBLE,
             dsc::ImageViewType::Cube,
-        )?;
+        )
+        .map_err(|x| x.into())?;
 
         upload.block_until_upload_complete(
             &device_context.queues().transfer_queue,
@@ -196,7 +197,7 @@ impl GameRenderer {
         layer_texture_assignments: &[usize],
         create_flags: vk::ImageCreateFlags,
         view_type: dsc::ImageViewType,
-    ) -> VkResult<ResourceArc<ImageViewResource>> {
+    ) -> Result<ResourceArc<ImageViewResource>, VkUploadError> {
         let image = image_upload::enqueue_load_layered_image_2d(
             &device_context,
             upload,
@@ -226,7 +227,7 @@ impl GameRenderer {
             ),
         };
 
-        dyn_resource_allocator.insert_image_view(device_context, &image, image_view_meta)
+        Ok(dyn_resource_allocator.insert_image_view(device_context, &image, image_view_meta)?)
     }
 
     fn upload_single_image(
@@ -244,6 +245,7 @@ impl GameRenderer {
             vk::ImageCreateFlags::empty(),
             dsc::ImageViewType::Type2D,
         )
+        .map_err(|x| x.into())
     }
 
     fn create_font_atlas_image_view(

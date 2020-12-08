@@ -1,10 +1,9 @@
-use ash::prelude::VkResult;
 use ash::vk;
 use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use rafx_shell_vulkan::{VkDeviceContext, VkTransferUpload};
+use rafx_shell_vulkan::{VkDeviceContext, VkTransferUpload, VkUploadError};
 
 use rafx_shell_vulkan::VkImage;
 use std::sync::{Arc, Mutex};
@@ -377,7 +376,7 @@ pub fn enqueue_load_layered_image_2d(
     decoded_images: &[DecodedImage],
     layer_image_assignments: &[usize],
     create_flags: vk::ImageCreateFlags,
-) -> VkResult<ManuallyDrop<VkImage>> {
+) -> Result<ManuallyDrop<VkImage>, VkUploadError> {
     // All images must have identical mip level count
     #[cfg(debug_assertions)]
     {
@@ -387,7 +386,21 @@ pub fn enqueue_load_layered_image_2d(
             assert_eq!(first.width, decoded_image.width);
             assert_eq!(first.height, decoded_image.height);
             assert_eq!(first.color_space, decoded_image.color_space);
+            assert_eq!(first.data.len(), decoded_image.data.len());
         }
+    }
+
+    // Arbitrary, not sure if there is any requirement
+    const REQUIRED_ALIGNMENT: usize = 16;
+
+    // Check ahead of time if there is space since we are uploading multiple images
+    let has_space_available = upload.has_space_available(
+        decoded_images[0].data.len(),
+        REQUIRED_ALIGNMENT,
+        decoded_images.len(),
+    );
+    if !has_space_available {
+        Err(VkUploadError::BufferFull)?;
     }
 
     let extent = vk::Extent3D {
@@ -401,9 +414,6 @@ pub fn enqueue_load_layered_image_2d(
         DecodedImageMips::Precomputed(_mip_count) => unimplemented!(), //(info.mip_level_count, false),
         DecodedImageMips::Runtime(mip_count) => (mip_count, true),
     };
-
-    // Arbitrary, not sure if there is any requirement
-    const REQUIRED_ALIGNMENT: usize = 16;
 
     // Push all images into the staging buffer
     let mut layer_offsets = Vec::default();
@@ -526,30 +536,22 @@ pub fn enqueue_load_layered_image_2d(
     Ok(image)
 }
 
-pub fn enqueue_load_images(
+pub fn enqueue_load_image(
     device_context: &VkDeviceContext,
     upload: &mut VkTransferUpload,
     transfer_queue_family_index: u32,
     dst_queue_family_index: u32,
-    decoded_images: &[DecodedImage],
-) -> VkResult<Vec<ManuallyDrop<VkImage>>> {
-    let mut images = Vec::with_capacity(decoded_images.len());
-
-    for decoded_image in decoded_images {
-        let image = enqueue_load_layered_image_2d(
-            device_context,
-            upload,
-            transfer_queue_family_index,
-            dst_queue_family_index,
-            std::slice::from_ref(decoded_image),
-            &[0],
-            vk::ImageCreateFlags::empty(),
-        )?;
-
-        images.push(image);
-    }
-
-    Ok(images)
+    decoded_image: &DecodedImage,
+) -> Result<ManuallyDrop<VkImage>, VkUploadError> {
+    enqueue_load_layered_image_2d(
+        device_context,
+        upload,
+        transfer_queue_family_index,
+        dst_queue_family_index,
+        std::slice::from_ref(decoded_image),
+        &[0],
+        vk::ImageCreateFlags::empty(),
+    )
 }
 
 pub fn load_layered_image_2d_blocking(
@@ -562,7 +564,7 @@ pub fn load_layered_image_2d_blocking(
     layer_image_assignments: &[usize],
     create_flags: vk::ImageCreateFlags,
     upload_buffer_max_size: u64,
-) -> VkResult<ManuallyDrop<VkImage>> {
+) -> Result<ManuallyDrop<VkImage>, VkUploadError> {
     let mut upload = VkTransferUpload::new(
         device_context,
         transfer_queue_family_index,
@@ -585,15 +587,15 @@ pub fn load_layered_image_2d_blocking(
     Ok(image)
 }
 
-pub fn load_images_blocking(
+pub fn load_image_blocking(
     device_context: &VkDeviceContext,
     transfer_queue_family_index: u32,
     transfer_queue: &Arc<Mutex<vk::Queue>>,
     dst_queue_family_index: u32,
     dst_queue: &Arc<Mutex<vk::Queue>>,
-    decoded_images: &[DecodedImage],
+    decoded_image: &DecodedImage,
     upload_buffer_max_size: u64,
-) -> VkResult<Vec<ManuallyDrop<VkImage>>> {
+) -> Result<ManuallyDrop<VkImage>, VkUploadError> {
     let mut upload = VkTransferUpload::new(
         device_context,
         transfer_queue_family_index,
@@ -601,15 +603,15 @@ pub fn load_images_blocking(
         upload_buffer_max_size,
     )?;
 
-    let images = enqueue_load_images(
+    let image = enqueue_load_image(
         device_context,
         &mut upload,
         transfer_queue_family_index,
         dst_queue_family_index,
-        decoded_images,
+        decoded_image,
     )?;
 
     upload.block_until_upload_complete(transfer_queue, dst_queue)?;
 
-    Ok(images)
+    Ok(image)
 }
