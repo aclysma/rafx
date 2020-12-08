@@ -2,15 +2,15 @@ use crate::assets::BufferAssetData;
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, PipelineAsset, RenderpassAsset,
+    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, GraphicsPipelineAsset, RenderpassAsset,
     SamplerAsset, ShaderAsset,
 };
 use crate::assets::{
-    MaterialAssetData, MaterialInstanceAssetData, PipelineAssetData, RenderpassAssetData,
+    MaterialAssetData, MaterialInstanceAssetData, GraphicsPipelineAssetData, RenderpassAssetData,
     SamplerAssetData,
 };
 use crate::resource_loader::ResourceLoadResult;
-use crate::ResourceLoader;
+use crate::{ResourceLoader, ComputePipelineAsset, ComputePipelineAssetData};
 use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::LoadHandle;
 use crossbeam_channel::{Receiver, Sender};
@@ -191,7 +191,8 @@ where
 #[derive(Default)]
 pub struct LoadQueueSet {
     pub shader_modules: LoadQueues<ShaderAssetData, ShaderAsset>,
-    pub graphics_pipelines: LoadQueues<PipelineAssetData, PipelineAsset>,
+    pub graphics_pipelines: LoadQueues<GraphicsPipelineAssetData, GraphicsPipelineAsset>,
+    pub compute_pipelines: LoadQueues<ComputePipelineAssetData, ComputePipelineAsset>,
     pub renderpasses: LoadQueues<RenderpassAssetData, RenderpassAsset>,
     pub materials: LoadQueues<MaterialAssetData, MaterialAsset>,
     pub material_instances: LoadQueues<MaterialInstanceAssetData, MaterialInstanceAsset>,

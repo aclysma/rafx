@@ -1,7 +1,4 @@
-use crate::{
-    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, PipelineAsset, RenderpassAsset,
-    SamplerAsset, ShaderAsset,
-};
+use crate::{BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, GraphicsPipelineAsset, RenderpassAsset, SamplerAsset, ShaderAsset, ComputePipelineAsset};
 use atelier_assets::loader::storage::IndirectionTable;
 use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::Loader;
@@ -136,7 +133,8 @@ impl<AssetT> AssetLookup<AssetT> {
 #[derive(Debug)]
 pub struct LoadedAssetMetrics {
     pub shader_module_count: usize,
-    pub pipeline_count: usize,
+    pub graphics_pipeline_count: usize,
+    pub compute_pipeline_count: usize,
     pub renderpass_count: usize,
     pub material_count: usize,
     pub material_instance_count: usize,
@@ -150,7 +148,8 @@ pub struct LoadedAssetMetrics {
 //
 pub struct AssetLookupSet {
     pub shader_modules: AssetLookup<ShaderAsset>,
-    pub graphics_pipelines: AssetLookup<PipelineAsset>,
+    pub graphics_pipelines: AssetLookup<GraphicsPipelineAsset>,
+    pub compute_pipelines: AssetLookup<ComputePipelineAsset>,
     pub renderpasses: AssetLookup<RenderpassAsset>,
     pub materials: AssetLookup<MaterialAsset>,
     pub material_instances: AssetLookup<MaterialInstanceAsset>,
@@ -164,6 +163,7 @@ impl AssetLookupSet {
         AssetLookupSet {
             shader_modules: AssetLookup::new(loader),
             graphics_pipelines: AssetLookup::new(loader),
+            compute_pipelines: AssetLookup::new(loader),
             renderpasses: AssetLookup::new(loader),
             materials: AssetLookup::new(loader),
             material_instances: AssetLookup::new(loader),
@@ -176,7 +176,8 @@ impl AssetLookupSet {
     pub fn metrics(&self) -> LoadedAssetMetrics {
         LoadedAssetMetrics {
             shader_module_count: self.shader_modules.len(),
-            pipeline_count: self.graphics_pipelines.len(),
+            graphics_pipeline_count: self.graphics_pipelines.len(),
+            compute_pipeline_count: self.compute_pipelines.len(),
             renderpass_count: self.renderpasses.len(),
             material_count: self.materials.len(),
             material_instance_count: self.material_instances.len(),
@@ -189,6 +190,7 @@ impl AssetLookupSet {
     pub fn destroy(&mut self) {
         self.shader_modules.destroy();
         self.graphics_pipelines.destroy();
+        self.compute_pipelines.destroy();
         self.renderpasses.destroy();
         self.materials.destroy();
         self.material_instances.destroy();

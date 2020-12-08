@@ -47,7 +47,7 @@ pub struct RenderpassAsset {
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "0dfa5d9a-89cd-40a1-adac-baf801db61db"]
-pub struct PipelineAssetData {
+pub struct GraphicsPipelineAssetData {
     pub input_assembly_state: dsc::PipelineInputAssemblyState,
     pub viewport_state: dsc::PipelineViewportState,
     pub rasterization_state: dsc::PipelineRasterizationState,
@@ -61,13 +61,13 @@ pub struct PipelineAssetData {
 // needed to create the pipeline
 #[derive(TypeUuid, Clone)]
 #[uuid = "7a6a7ba8-a3ca-41eb-94f4-5d3723cd8b44"]
-pub struct PipelineAsset {
+pub struct GraphicsPipelineAsset {
     // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    pub pipeline_asset: Arc<PipelineAssetData>,
+    pub pipeline_asset: Arc<GraphicsPipelineAssetData>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct PipelineShaderStage {
+pub struct GraphicsPipelineShaderStage {
     pub stage: dsc::ShaderStage,
     pub shader_module: Handle<ShaderAsset>,
     pub entry_name: String,
@@ -77,8 +77,8 @@ pub struct PipelineShaderStage {
 pub struct MaterialPassData {
     pub name: Option<String>,
     pub phase: Option<String>,
-    pub pipeline: Handle<PipelineAsset>,
-    pub shaders: Vec<PipelineShaderStage>,
+    pub pipeline: Handle<GraphicsPipelineAsset>,
+    pub shaders: Vec<GraphicsPipelineShaderStage>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]

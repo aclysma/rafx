@@ -2,7 +2,7 @@ use crate::asset_resource::AssetResource;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::storage::LoadStatus;
-use rafx::assets::AssetManager;
+use rafx::assets::{AssetManager, ComputePipelineAsset};
 use rafx::assets::MaterialAsset;
 
 fn wait_for_asset_to_load<T>(
@@ -55,6 +55,7 @@ pub struct GameRendererStaticResources {
     pub bloom_blur_material: Handle<MaterialAsset>,
     pub bloom_combine_material: Handle<MaterialAsset>,
     pub imgui_material: Handle<MaterialAsset>,
+    pub compute_test: Handle<ComputePipelineAsset>,
 }
 
 impl GameRendererStaticResources {
@@ -101,6 +102,12 @@ impl GameRendererStaticResources {
         let imgui_material =
             asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/imgui.material");
 
+        //
+        // Compute pipeline
+        //
+        let compute_test =
+            asset_resource.load_asset_path::<ComputePipelineAsset, _>("pipelines/compute_test.compute");
+
         wait_for_asset_to_load(
             &sprite_material,
             asset_resource,
@@ -143,6 +150,13 @@ impl GameRendererStaticResources {
             "imgui material",
         )?;
 
+        wait_for_asset_to_load(
+            &compute_test,
+            asset_resource,
+            asset_manager,
+            "compute pipeline",
+        )?;
+
         Ok(GameRendererStaticResources {
             sprite_material,
             debug3d_material,
@@ -150,6 +164,7 @@ impl GameRendererStaticResources {
             bloom_blur_material,
             bloom_combine_material,
             imgui_material,
+            compute_test
         })
     }
 }
