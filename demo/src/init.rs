@@ -14,14 +14,14 @@ use atelier_assets::loader::{
     packfile_io::PackfileReader, storage::DefaultIndirectionResolver, Loader, RpcIO,
 };
 use legion::Resources;
-use rafx::assets::{AssetManager, ComputePipelineAssetData, ComputePipelineAsset};
+use rafx::assets::{AssetManager, ComputePipelineAsset, ComputePipelineAssetData};
 use rafx::assets::{
-    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, GraphicsPipelineAsset, RenderpassAsset,
-    ShaderAsset,
+    BufferAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
+    RenderpassAsset, ShaderAsset,
 };
 use rafx::assets::{
-    BufferAssetData, ImageAssetData, MaterialAssetData, MaterialInstanceAssetData,
-    GraphicsPipelineAssetData, RenderpassAssetData, ShaderAssetData,
+    BufferAssetData, GraphicsPipelineAssetData, ImageAssetData, MaterialAssetData,
+    MaterialInstanceAssetData, RenderpassAssetData, ShaderAssetData,
 };
 use rafx::nodes::RenderRegistry;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
@@ -157,12 +157,14 @@ pub fn rendering_init(
         asset_resource.add_storage_with_loader::<ShaderAssetData, ShaderAsset, _>(Box::new(
             ResourceAssetLoader(loaders.shader_loader),
         ));
-        asset_resource.add_storage_with_loader::<GraphicsPipelineAssetData, GraphicsPipelineAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.graphics_pipeline_loader),
-        ));
-        asset_resource.add_storage_with_loader::<ComputePipelineAssetData, ComputePipelineAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.compute_pipeline_loader),
-        ));
+        asset_resource
+            .add_storage_with_loader::<GraphicsPipelineAssetData, GraphicsPipelineAsset, _>(
+                Box::new(ResourceAssetLoader(loaders.graphics_pipeline_loader)),
+            );
+        asset_resource
+            .add_storage_with_loader::<ComputePipelineAssetData, ComputePipelineAsset, _>(
+                Box::new(ResourceAssetLoader(loaders.compute_pipeline_loader)),
+            );
         asset_resource.add_storage_with_loader::<RenderpassAssetData, RenderpassAsset, _>(
             Box::new(ResourceAssetLoader(loaders.renderpass_loader)),
         );

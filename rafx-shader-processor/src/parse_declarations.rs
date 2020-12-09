@@ -441,9 +441,7 @@ fn parse_layout_parts(
     Ok(layout_parts)
 }
 
-fn try_parse_binding(
-    code: &[char],
-) -> Result<Option<ParseBindingResult>, String> {
+fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String> {
     let mut position = 0;
 
     //
@@ -480,11 +478,11 @@ fn try_parse_binding(
     if fields.is_some() {
         // If struct fields exist, we need one more identifier
         crate::parse_source::skip_whitespace(code, &mut position);
-        let instance_name =
-            crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
-                "Expected instance name while parsing binding (required for exported bindings):\n{}",
-                crate::parse_source::characters_to_string(&code)
-            ))?;
+        let instance_name = crate::parse_source::try_consume_identifier(code, &mut position)
+            .ok_or(format!(
+            "Expected instance name while parsing binding (required for exported bindings):\n{}",
+            crate::parse_source::characters_to_string(&code)
+        ))?;
         identifiers.push(instance_name);
     }
 
@@ -492,7 +490,12 @@ fn try_parse_binding(
     let type_name = identifiers[identifiers.len() - 2].clone();
     let instance_name = identifiers[identifiers.len() - 1].clone();
 
-    log::trace!("parsing binding: type name: {}, instance_name: {}, modifiers: {:?}", type_name, instance_name, modifiers);
+    log::trace!(
+        "parsing binding: type name: {}, instance_name: {}, modifiers: {:?}",
+        type_name,
+        instance_name,
+        modifiers
+    );
 
     let mut binding_type = None;
     for modifier in modifiers {
@@ -501,7 +504,7 @@ fn try_parse_binding(
             "buffer" => Some(BindingType::Buffer),
             "in" => Some(BindingType::In),
             "out" => Some(BindingType::Out),
-            _ => None
+            _ => None,
         };
 
         if bt.is_some() {
@@ -587,7 +590,7 @@ pub(crate) struct ParseDeclarationsResult {
 }
 
 pub(crate) fn parse_declarations(
-    declarations: &[DeclarationText],
+    declarations: &[DeclarationText]
 ) -> Result<ParseDeclarationsResult, String> {
     let mut structs = Vec::default();
     let mut bindings = Vec::default();

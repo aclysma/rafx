@@ -2,8 +2,8 @@ use crate::asset_resource::AssetResource;
 use ash::prelude::VkResult;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::storage::LoadStatus;
-use rafx::assets::{AssetManager, ComputePipelineAsset};
 use rafx::assets::MaterialAsset;
+use rafx::assets::{AssetManager, ComputePipelineAsset};
 
 fn wait_for_asset_to_load<T>(
     asset_handle: &atelier_assets::loader::handle::Handle<T>,
@@ -105,8 +105,8 @@ impl GameRendererStaticResources {
         //
         // Compute pipeline
         //
-        let compute_test =
-            asset_resource.load_asset_path::<ComputePipelineAsset, _>("pipelines/compute_test.compute");
+        let compute_test = asset_resource
+            .load_asset_path::<ComputePipelineAsset, _>("pipelines/compute_test.compute");
 
         wait_for_asset_to_load(
             &sprite_material,
@@ -164,7 +164,7 @@ impl GameRendererStaticResources {
             bloom_blur_material,
             bloom_combine_material,
             imgui_material,
-            compute_test
+            compute_test,
         })
     }
 }

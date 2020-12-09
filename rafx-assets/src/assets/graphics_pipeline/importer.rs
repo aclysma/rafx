@@ -1,6 +1,6 @@
 use crate::assets::graphics_pipeline::{
-    MaterialAssetData, MaterialInstanceAssetData, GraphicsPipelineAssetData, RenderpassAssetData,
-    SamplerAssetData
+    GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
+    SamplerAssetData,
 };
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};

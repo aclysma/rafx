@@ -1,13 +1,17 @@
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, GraphicsPipelineAsset,
-    RenderpassAsset, SamplerAsset, ShaderAsset,
+    BufferAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
+    MaterialPass, RenderpassAsset, SamplerAsset, ShaderAsset,
 };
 use crate::assets::{
-    MaterialAssetData, MaterialInstanceAssetData, GraphicsPipelineAssetData, RenderpassAssetData,
+    GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
 };
-use crate::{AssetLookup, AssetLookupSet, BufferAssetData, GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SamplerAssetData, SlotNameLookup, UploadQueueConfig, ComputePipelineAssetData, ComputePipelineAsset};
+use crate::{
+    AssetLookup, AssetLookupSet, BufferAssetData, ComputePipelineAsset, ComputePipelineAssetData,
+    GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SamplerAssetData, SlotNameLookup,
+    UploadQueueConfig,
+};
 use ash::prelude::*;
 use atelier_assets::loader::handle::Handle;
 use rafx_resources::{
@@ -32,13 +36,13 @@ use rafx_resources::descriptor_sets::{
     DescriptorSetElementKey, DescriptorSetWriteElementBuffer, DescriptorSetWriteElementBufferData,
     DescriptorSetWriteElementImage,
 };
+use rafx_resources::vk_description::ShaderModuleMeta;
 use rafx_resources::DescriptorSetAllocator;
 use rafx_resources::DynCommandWriterAllocator;
 use rafx_resources::DynResourceAllocatorSetProvider;
 use rafx_resources::ResourceLookupSet;
 use rafx_resources::{ResourceManager, ResourceManagerMetrics};
 use std::sync::Arc;
-use rafx_resources::vk_description::ShaderModuleMeta;
 
 #[derive(Debug)]
 pub struct AssetManagerMetrics {
@@ -147,11 +151,15 @@ impl AssetManager {
         self.load_queues.shader_modules.create_loader()
     }
 
-    fn create_graphics_pipeline_loader(&self) -> GenericLoader<GraphicsPipelineAssetData, GraphicsPipelineAsset> {
+    fn create_graphics_pipeline_loader(
+        &self
+    ) -> GenericLoader<GraphicsPipelineAssetData, GraphicsPipelineAsset> {
         self.load_queues.graphics_pipelines.create_loader()
     }
 
-    fn create_compute_pipeline_loader(&self) -> GenericLoader<ComputePipelineAssetData, ComputePipelineAsset> {
+    fn create_compute_pipeline_loader(
+        &self
+    ) -> GenericLoader<ComputePipelineAssetData, ComputePipelineAsset> {
         self.load_queues.compute_pipelines.create_loader()
     }
 
@@ -661,7 +669,11 @@ impl AssetManager {
         //
         // Get the shader module
         //
-        let shader_module = self.assets().shader_modules.get_latest(compute_pipeline_asset_data.shader_module.load_handle()).unwrap();
+        let shader_module = self
+            .assets()
+            .shader_modules
+            .get_latest(compute_pipeline_asset_data.shader_module.load_handle())
+            .unwrap();
         let shader_module_meta = ShaderModuleMeta {
             entry_name: compute_pipeline_asset_data.entry_name,
             stage: dsc::ShaderStage::Compute,
@@ -670,7 +682,9 @@ impl AssetManager {
         //
         // Find the reflection data in the shader module for the given entry point
         //
-        let reflection_data = shader_module.reflection_data.get(&shader_module_meta.entry_name);
+        let reflection_data = shader_module
+            .reflection_data
+            .get(&shader_module_meta.entry_name);
         let reflection_data = reflection_data.ok_or_else(|| {
             log::error!(
                 "Load Compute Shader Failed - Pass refers to entry point named {}, but no matching reflection data was found",
@@ -693,7 +707,6 @@ impl AssetManager {
         //
         let mut descriptor_set_layout_defs = Vec::default();
         for (set_index, layout) in reflection_data.descriptor_set_layouts.iter().enumerate() {
-
             // Expand the layout def to include the given set index
             while descriptor_set_layout_defs.len() <= set_index {
                 descriptor_set_layout_defs.push(dsc::DescriptorSetLayout::default());
@@ -745,7 +758,9 @@ impl AssetManager {
             push_constant_ranges,
         };
 
-        let pipeline_layout = self.resources().get_or_create_pipeline_layout(&pipeline_layout_def)?;
+        let pipeline_layout = self
+            .resources()
+            .get_or_create_pipeline_layout(&pipeline_layout_def)?;
 
         //
         // Create the compute pipeline
@@ -753,12 +768,10 @@ impl AssetManager {
         let compute_pipeline = self.resources().get_or_create_compute_pipeline(
             shader_module.shader_module.clone(),
             shader_module_meta,
-            pipeline_layout
+            pipeline_layout,
         )?;
 
-        Ok(ComputePipelineAsset {
-            compute_pipeline,
-        })
+        Ok(ComputePipelineAsset { compute_pipeline })
     }
 
     #[profiling::function]

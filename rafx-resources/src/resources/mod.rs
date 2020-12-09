@@ -7,6 +7,8 @@ pub(crate) use resource_arc::ResourceWithHash;
 mod resource_lookup;
 pub use resource_lookup::BufferKey;
 pub use resource_lookup::BufferResource;
+pub use resource_lookup::ComputePipelineKey;
+pub use resource_lookup::ComputePipelineResource;
 pub use resource_lookup::DescriptorSetLayoutResource;
 pub use resource_lookup::FramebufferResource;
 pub use resource_lookup::GraphicsPipelineResource;
@@ -21,8 +23,6 @@ pub use resource_lookup::ResourceHash;
 pub use resource_lookup::ResourceLookupSet;
 pub use resource_lookup::SamplerResource;
 pub use resource_lookup::ShaderModuleResource;
-pub use resource_lookup::ComputePipelineKey;
-pub use resource_lookup::ComputePipelineResource;
 
 mod dyn_resource_allocator;
 pub use dyn_resource_allocator::DynResourceAllocatorSet;

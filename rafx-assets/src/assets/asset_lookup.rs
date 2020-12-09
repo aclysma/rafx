@@ -1,4 +1,7 @@
-use crate::{BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, GraphicsPipelineAsset, RenderpassAsset, SamplerAsset, ShaderAsset, ComputePipelineAsset};
+use crate::{
+    BufferAsset, ComputePipelineAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset,
+    MaterialInstanceAsset, RenderpassAsset, SamplerAsset, ShaderAsset,
+};
 use atelier_assets::loader::storage::IndirectionTable;
 use atelier_assets::loader::LoadHandle;
 use atelier_assets::loader::Loader;

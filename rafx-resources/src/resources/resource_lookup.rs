@@ -517,7 +517,6 @@ impl VkResource for ComputePipelineResource {
         _device_context: &VkDeviceContext,
         _resource: Self,
     ) -> VkResult<()> {
-
         Ok(())
     }
 }
@@ -1117,7 +1116,7 @@ impl ResourceLookupSet {
         shader_module: ResourceArc<ShaderModuleResource>,
         shader_module_meta: dsc::ShaderModuleMeta,
         pipeline_layout: ResourceArc<PipelineLayoutResource>,
-    ) -> VkResult<ResourceArc<ComputePipelineResource>>  {
+    ) -> VkResult<ResourceArc<ComputePipelineResource>> {
         let pipeline_key = ComputePipelineKey {
             shader_module_meta,
             shader_module_key: shader_module.get_raw().shader_module_key,
@@ -1130,9 +1129,7 @@ impl ResourceLookupSet {
                 log::trace!("Creating compute pipeline\n{:#?}", pipeline_key);
                 let pipeline = dsc::create_compute_pipeline(
                     &self.inner.device_context.device(),
-                    pipeline_layout
-                        .get_raw()
-                        .pipeline_layout,
+                    pipeline_layout.get_raw().pipeline_layout,
                     &pipeline_key.shader_module_meta,
                     shader_module.get_raw().shader_module,
                 )?;

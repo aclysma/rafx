@@ -14,8 +14,8 @@ pub struct ComputePipelineImporterState(Option<AssetUuid>);
 pub struct ComputePipelineImporter;
 impl Importer for ComputePipelineImporter {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         1
     }

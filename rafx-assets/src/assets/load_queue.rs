@@ -2,15 +2,15 @@ use crate::assets::BufferAssetData;
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, GraphicsPipelineAsset, RenderpassAsset,
-    SamplerAsset, ShaderAsset,
+    BufferAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
+    RenderpassAsset, SamplerAsset, ShaderAsset,
 };
 use crate::assets::{
-    MaterialAssetData, MaterialInstanceAssetData, GraphicsPipelineAssetData, RenderpassAssetData,
+    GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
     SamplerAssetData,
 };
 use crate::resource_loader::ResourceLoadResult;
-use crate::{ResourceLoader, ComputePipelineAsset, ComputePipelineAssetData};
+use crate::{ComputePipelineAsset, ComputePipelineAssetData, ResourceLoader};
 use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::LoadHandle;
 use crossbeam_channel::{Receiver, Sender};
