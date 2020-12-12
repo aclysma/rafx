@@ -12,7 +12,6 @@ use rafx_shell_vulkan::{
 };
 use std::hash::Hash;
 use std::marker::PhantomData;
-use std::mem::ManuallyDrop;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
@@ -514,10 +513,10 @@ pub struct ComputePipelineResource {
 
 impl VkResource for ComputePipelineResource {
     fn destroy(
-        _device_context: &VkDeviceContext,
-        _resource: Self,
+        device_context: &VkDeviceContext,
+        resource: Self,
     ) -> VkResult<()> {
-        Ok(())
+        VkResource::destroy(device_context, resource.pipeline)
     }
 }
 
@@ -1180,14 +1179,22 @@ impl ResourceLookupSet {
     // A key difference between this insert_buffer and the insert_buffer in a DynResourceAllocator
     // is that these can be retrieved. However, a mutable reference is required. This one is
     // more appropriate to use with loaded assets, and DynResourceAllocator with runtime assets
+
     pub fn insert_buffer(
         &self,
-        buffer: ManuallyDrop<VkBuffer>,
+        buffer: VkBuffer,
+    ) -> ResourceArc<BufferResource> {
+        //let raw_buffer = ManuallyDrop::into_inner(buffer).take_raw().unwrap();
+        self.insert_raw_buffer(buffer.take_raw().unwrap())
+    }
+
+    pub fn insert_raw_buffer(
+        &self,
+        raw_buffer: VkBufferRaw,
     ) -> ResourceArc<BufferResource> {
         let buffer_id = self.inner.next_buffer_id.fetch_add(1, Ordering::Relaxed);
         let buffer_key = BufferKey { id: buffer_id };
 
-        let raw_buffer = ManuallyDrop::into_inner(buffer).take_raw().unwrap();
         let resource = BufferResource {
             buffer: raw_buffer,
             buffer_key: Some(buffer_key),

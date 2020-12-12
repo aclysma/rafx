@@ -168,8 +168,6 @@ pub struct RenderGraphImageUsage {
     //pub(super) image_aspect_flags: vk::ImageAspectFlags,
 }
 
-pub type RenderGraphResourceName = &'static str;
-
 /// Immutable, fully-specified attributes of an image. A *constraint* is partially specified and
 /// the graph will use constraints to solve for the specification
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -457,6 +455,7 @@ impl RenderGraphImageResourceVersionInfo {
         }
     }
 
+    // for redirect_image_usage
     pub(super) fn remove_read_usage(
         &mut self,
         usage: RenderGraphImageUsageId,

@@ -1,3 +1,4 @@
+use crate::graph::graph_buffer::PhysicalBufferId;
 use crate::graph::graph_image::{PhysicalImageId, PhysicalImageViewId, VirtualImageId};
 use crate::graph::graph_node::RenderGraphNodeName;
 use crate::graph::{RenderGraphImageUsageId, RenderGraphNodeId};
@@ -29,7 +30,6 @@ pub struct RenderGraphPassImageBarriers {
     pub(super) invalidate: RenderGraphImageBarrier,
     pub(super) flush: RenderGraphImageBarrier,
     pub(super) layout: vk::ImageLayout,
-    pub(super) used_by_attachment: bool,
     pub(super) used_by_sampling: bool,
 }
 
@@ -39,7 +39,6 @@ impl RenderGraphPassImageBarriers {
             flush: Default::default(),
             invalidate: Default::default(),
             layout,
-            used_by_attachment: false,
             used_by_sampling: false,
         }
     }
@@ -48,8 +47,49 @@ impl RenderGraphPassImageBarriers {
 /// All the barriers required for a single node (i.e. subpass). Nodes represent passes that may be
 /// merged to be subpasses within a single pass.
 #[derive(Debug)]
-pub struct RenderGraphNodeImageBarriers {
-    pub(super) barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers>,
+pub struct RenderGraphNodeResourceBarriers {
+    pub(super) image_barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers>,
+    pub(super) buffer_barriers: FnvHashMap<PhysicalBufferId, RenderGraphPassBufferBarriers>,
+}
+
+/// Represents the invalidate or flush of a RenderGraphPassBufferBarriers
+#[derive(Debug)]
+pub struct RenderGraphBufferBarrier {
+    pub(super) access_flags: vk::AccessFlags,
+    pub(super) stage_flags: vk::PipelineStageFlags,
+}
+
+impl Default for RenderGraphBufferBarrier {
+    fn default() -> Self {
+        RenderGraphBufferBarrier {
+            access_flags: vk::AccessFlags::empty(),
+            stage_flags: vk::PipelineStageFlags::empty(),
+        }
+    }
+}
+
+/// Information provided per buffer used in a pass to properly synchronize access to it from
+/// different passes
+#[derive(Debug)]
+pub struct RenderGraphPassBufferBarriers {
+    pub(super) invalidate: RenderGraphBufferBarrier,
+    pub(super) flush: RenderGraphBufferBarrier,
+}
+
+impl RenderGraphPassBufferBarriers {
+    pub(super) fn new() -> Self {
+        RenderGraphPassBufferBarriers {
+            flush: Default::default(),
+            invalidate: Default::default(),
+        }
+    }
+}
+
+/// All the barriers required for a single node (i.e. subpass). Nodes represent passes that may be
+/// merged to be subpasses within a single pass.
+#[derive(Debug)]
+pub struct RenderGraphNodeBufferBarriers {
+    pub(super) barriers: FnvHashMap<PhysicalBufferId, RenderGraphPassBufferBarriers>,
 }
 
 const MAX_COLOR_ATTACHMENTS: usize = 4;
@@ -143,6 +183,7 @@ pub struct PrepassBarrier {
     pub src_stage: vk::PipelineStageFlags,
     pub dst_stage: vk::PipelineStageFlags,
     pub image_barriers: Vec<PrepassImageBarrier>,
+    pub buffer_barriers: Vec<PrepassBufferBarrier>,
 }
 
 #[derive(Debug)]
@@ -157,37 +198,116 @@ pub struct PrepassImageBarrier {
     pub subresource_range: dsc::ImageSubresourceRange,
 }
 
+#[derive(Debug)]
+pub struct PrepassBufferBarrier {
+    pub src_access: vk::AccessFlags,
+    pub dst_access: vk::AccessFlags,
+    pub src_queue_family_index: u32,
+    pub dst_queue_family_index: u32,
+    pub buffer: PhysicalBufferId,
+    pub size: u64,
+}
+
 /// Metadata required to create a renderpass
 #[derive(Debug, Default)]
-pub struct RenderGraphPass {
+pub struct RenderGraphRenderPass {
+    pub(super) nodes: Vec<RenderGraphNodeId>,
     pub(super) attachments: Vec<RenderGraphPassAttachment>,
     pub(super) subpasses: Vec<RenderGraphSubpass>,
 
     // For when we want to do layout transitions on non-attachments
-    //pre_pass_image_barriers: Vec<PrepassImageBarrier>
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
     pub(super) extents: Option<vk::Extent2D>,
 }
 
-pub struct RenderGraphOutputPass {
+#[derive(Debug)]
+pub struct RenderGraphComputePass {
+    pub(super) node: RenderGraphNodeId,
+    pub(super) pre_pass_barrier: Option<PrepassBarrier>,
+}
+
+#[derive(Debug)]
+pub enum RenderGraphPass {
+    Renderpass(RenderGraphRenderPass),
+    Compute(RenderGraphComputePass),
+}
+
+impl RenderGraphPass {
+    pub fn nodes(&self) -> &[RenderGraphNodeId] {
+        match self {
+            RenderGraphPass::Renderpass(renderpass) => renderpass.nodes.as_slice(),
+            RenderGraphPass::Compute(compute_pass) => std::slice::from_ref(&compute_pass.node),
+        }
+    }
+
+    pub fn set_pre_pass_barrier(
+        &mut self,
+        barrier: PrepassBarrier,
+    ) {
+        match self {
+            RenderGraphPass::Renderpass(renderpass) => renderpass.pre_pass_barrier = Some(barrier),
+            RenderGraphPass::Compute(compute_pass) => {
+                compute_pass.pre_pass_barrier = Some(barrier);
+            }
+        }
+    }
+}
+
+pub struct RenderGraphOutputRenderPass {
     pub(super) subpass_nodes: Vec<RenderGraphNodeId>,
+    pub(super) pre_pass_barrier: Option<PrepassBarrier>,
+    pub(super) debug_name: Option<RenderGraphNodeName>,
     pub(super) description: Arc<dsc::RenderPass>,
     pub(super) attachment_images: Vec<PhysicalImageViewId>,
     pub(super) clear_values: Vec<vk::ClearValue>,
     pub(super) extents: vk::Extent2D,
-    pub(super) pre_pass_barrier: Option<PrepassBarrier>,
-    pub(super) debug_name: Option<RenderGraphNodeName>,
 }
 
-impl std::fmt::Debug for RenderGraphOutputPass {
+impl std::fmt::Debug for RenderGraphOutputRenderPass {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        f.debug_struct("RenderGraphOutputPass")
+        f.debug_struct("RenderGraphOutputRenderPass")
             .field("description", &self.description)
             .field("attachment_images", &self.attachment_images)
             .field("extents", &self.extents)
             .finish()
+    }
+}
+
+#[derive(Debug)]
+pub struct RenderGraphOutputComputePass {
+    pub(super) node: RenderGraphNodeId,
+    pub(super) pre_pass_barrier: Option<PrepassBarrier>,
+    pub(super) debug_name: Option<RenderGraphNodeName>,
+}
+
+#[derive(Debug)]
+pub enum RenderGraphOutputPass {
+    Renderpass(RenderGraphOutputRenderPass),
+    Compute(RenderGraphOutputComputePass),
+}
+
+impl RenderGraphOutputPass {
+    pub fn nodes(&self) -> &[RenderGraphNodeId] {
+        match self {
+            RenderGraphOutputPass::Renderpass(pass) => &pass.subpass_nodes,
+            RenderGraphOutputPass::Compute(pass) => std::slice::from_ref(&pass.node),
+        }
+    }
+
+    pub fn pre_pass_barrier(&self) -> Option<&PrepassBarrier> {
+        match self {
+            RenderGraphOutputPass::Renderpass(pass) => pass.pre_pass_barrier.as_ref(),
+            RenderGraphOutputPass::Compute(pass) => pass.pre_pass_barrier.as_ref(),
+        }
+    }
+
+    pub fn debug_name(&self) -> Option<RenderGraphNodeName> {
+        match self {
+            RenderGraphOutputPass::Renderpass(pass) => pass.debug_name,
+            RenderGraphOutputPass::Compute(pass) => pass.debug_name,
+        }
     }
 }

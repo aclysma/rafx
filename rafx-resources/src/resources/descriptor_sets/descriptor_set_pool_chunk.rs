@@ -104,8 +104,7 @@ impl ManagedDescriptorSetPoolChunk {
                 let descriptor_set_write = vk::WriteDescriptorSet::builder()
                     .dst_set(*descriptor_set)
                     .dst_binding(binding_key.dst_binding)
-                    //.dst_array_element(element_key.dst_array_element)
-                    .dst_array_element(0)
+                    .dst_array_element(0) // this is zero because we're binding an array of elements
                     .descriptor_type(binding_buffers.buffer_info.descriptor_type.into())
                     .buffer_info(&*write_descriptor_buffer_infos.last().unwrap())
                     .build();
@@ -183,6 +182,7 @@ impl ManagedDescriptorSetPoolChunk {
         // you call build() it completely trusts that any pointers it holds will stay valid. So
         // while these lists are mutable to allow pushing data in, the Vecs inside must not be modified.
         let mut vk_image_infos = vec![];
+        let mut vk_buffer_infos = vec![];
         //let mut vk_buffer_infos = vec![];
 
         #[derive(PartialEq, Eq, Hash, Debug)]
@@ -218,8 +218,7 @@ impl ManagedDescriptorSetPoolChunk {
             let mut builder = vk::WriteDescriptorSet::builder()
                 .dst_set(descriptor_set)
                 .dst_binding(element_key.dst_binding)
-                //.dst_array_element(element_key.dst_array_element)
-                .dst_array_element(0)
+                .dst_array_element(0) // This is zero because we are binding an array of elements
                 .descriptor_type(element.descriptor_type.into());
 
             //TODO: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkWriteDescriptorSet.html has
@@ -261,17 +260,18 @@ impl ManagedDescriptorSetPoolChunk {
                 builder = builder.image_info(&image_infos);
             }
 
+            let mut buffer_infos = Vec::with_capacity(element.buffer_info.len());
             if !element.buffer_info.is_empty() {
                 for buffer_info in &element.buffer_info {
                     if let Some(buffer_info) = &buffer_info.buffer {
-                        //let mut buffer_info_builder = vk::DescriptorBufferInfo::builder();
                         match buffer_info {
-                            DescriptorSetWriteElementBufferData::BufferRef(_buffer) => {
-                                unimplemented!();
-                                // buffer_info_builder = buffer_info_builder
-                                //     .buffer(buffer.buffer.get_raw())
-                                //     .range(buffer.size)
-                                //     .offset(buffer.offset);
+                            DescriptorSetWriteElementBufferData::BufferRef(buffer) => {
+                                let buffer_info_builder = vk::DescriptorBufferInfo::builder()
+                                    .buffer(buffer.buffer.get_raw().buffer.buffer)
+                                    .offset(buffer.offset)
+                                    .range(buffer.size);
+
+                                buffer_infos.push(buffer_info_builder.build());
                             }
                             DescriptorSetWriteElementBufferData::Data(data) => {
                                 //TODO: Rebind the buffer if we are no longer bound to the internal buffer, or at
@@ -319,6 +319,8 @@ impl ManagedDescriptorSetPoolChunk {
                         }
                     }
                 }
+
+                builder = builder.buffer_info(&buffer_infos);
             }
 
             //TODO: DIRTY HACK
@@ -328,6 +330,7 @@ impl ManagedDescriptorSetPoolChunk {
 
             write_builders.push(builder.build());
             vk_image_infos.push(image_infos);
+            vk_buffer_infos.push(buffer_infos);
         }
 
         if !write_builders.is_empty() {

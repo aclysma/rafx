@@ -1,6 +1,6 @@
 use crate::resources::resource_lookup::{ImageViewResource, SamplerResource};
 use crate::resources::ResourceArc;
-use crate::vk_description as dsc;
+use crate::{vk_description as dsc, BufferResource};
 use ash::vk;
 use fnv::FnvHashMap;
 
@@ -36,7 +36,7 @@ pub struct DescriptorSetWriteElementImage {
 // Info needed to write a buffer reference to a descriptor set
 #[derive(Debug, Clone)]
 pub struct DescriptorSetWriteElementBufferDataBufferRef {
-    pub buffer: ResourceArc<vk::Buffer>,
+    pub buffer: ResourceArc<BufferResource>,
     pub offset: vk::DeviceSize,
     pub size: vk::DeviceSize, // may use vk::WHOLE_SIZE
 }
@@ -79,7 +79,6 @@ pub struct DescriptorSetElementWrite {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DescriptorSetElementKey {
     pub dst_binding: u32,
-    //pub dst_array_element: u32,
 }
 
 // A set of writes to descriptors within a descriptor set
@@ -106,7 +105,6 @@ pub fn create_uninitialized_write_set_for_layout(
     for binding in &layout.descriptor_set_layout_bindings {
         let key = DescriptorSetElementKey {
             dst_binding: binding.binding as u32,
-            //dst_array_element: 0,
         };
 
         let mut element_write = DescriptorSetElementWrite {

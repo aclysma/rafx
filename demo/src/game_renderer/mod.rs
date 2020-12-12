@@ -47,6 +47,7 @@ use crate::features::imgui::create_imgui_extract_job;
 use crate::RenderOptions;
 use arrayvec::ArrayVec;
 use ash::vk;
+use atelier_assets::loader::handle::AssetHandle;
 use fnv::FnvHashMap;
 use rafx::resources::vulkan::{VkTransferUpload, VkUploadError};
 pub use swapchain_handling::SwapchainLifetimeListener;
@@ -633,6 +634,14 @@ impl GameRenderer {
             .get_material_pass_by_index(&static_resources.bloom_combine_material, 0)
             .unwrap();
 
+        let compute_test_pipeline = asset_manager
+            .loaded_assets()
+            .compute_pipelines
+            .get_committed(static_resources.compute_test.load_handle())
+            .unwrap()
+            .compute_pipeline
+            .clone();
+
         let graph_config = {
             let swapchain_format = swapchain_surface_info.surface_format.format;
             let msaa_level = if render_options.enable_msaa {
@@ -671,6 +680,7 @@ impl GameRenderer {
             bloom_extract_material_pass,
             bloom_blur_material_pass,
             bloom_combine_material_pass,
+            &compute_test_pipeline,
         )?;
 
         assert_eq!(

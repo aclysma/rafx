@@ -4,9 +4,13 @@ use super::DescriptorSetWriteSet;
 use crate::resources::descriptor_sets::descriptor_write_set::{
     DescriptorSetWriteElementBufferData, DescriptorSetWriteElementImageValue,
 };
-use crate::resources::descriptor_sets::DescriptorSetAllocator;
+use crate::resources::descriptor_sets::{
+    DescriptorSetAllocator, DescriptorSetWriteElementBufferDataBufferRef,
+};
 use crate::resources::resource_lookup::{DescriptorSetLayoutResource, ImageViewResource};
 use crate::resources::ResourceArc;
+use crate::vulkan::ash::vk;
+use crate::BufferResource;
 use ash::prelude::VkResult;
 use std::fmt::Formatter;
 
@@ -147,7 +151,6 @@ impl DynDescriptorSet {
     ) {
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
-            //dst_array_element: 0
         };
 
         if let Some(element) = self.write_set.elements.get_mut(&key) {
@@ -161,6 +164,61 @@ impl DynDescriptorSet {
                 //self.dirty.insert(key);
                 } else {
                     log::warn!("Tried to set image index {} but it did not exist. The image array is {} elements long.", array_index, element.image_info.len());
+                }
+            } else {
+                // This is not necessarily an error if the user is binding with a slot name (although not sure
+                // if that's the right approach long term)
+                //log::warn!("Tried to bind an image to a descriptor set where the type does not accept an image", array_index)
+            }
+        } else {
+            log::warn!("Tried to set image on a binding index that does not exist");
+        }
+    }
+
+    pub fn set_buffer(
+        &mut self,
+        binding_index: u32,
+        data: &ResourceArc<BufferResource>,
+    ) {
+        self.set_buffer_array_element(binding_index, 0, data)
+    }
+
+    pub fn set_buffer_at_index(
+        &mut self,
+        binding_index: u32,
+        array_index: usize,
+        data: &ResourceArc<BufferResource>,
+    ) {
+        self.set_buffer_array_element(binding_index, array_index, data)
+    }
+
+    fn set_buffer_array_element(
+        &mut self,
+        binding_index: u32,
+        array_index: usize,
+        buffer: &ResourceArc<BufferResource>,
+    ) {
+        let key = DescriptorSetElementKey {
+            dst_binding: binding_index,
+        };
+
+        if let Some(element) = self.write_set.elements.get_mut(&key) {
+            let what_to_bind = super::what_to_bind(element);
+            if what_to_bind.bind_buffers {
+                if let Some(element_buffer) = element.buffer_info.get_mut(array_index) {
+                    element_buffer.buffer = Some(DescriptorSetWriteElementBufferData::BufferRef(
+                        DescriptorSetWriteElementBufferDataBufferRef {
+                            buffer: buffer.clone(),
+                            offset: 0,
+                            size: vk::WHOLE_SIZE,
+                        },
+                    ));
+
+                    self.pending_write_set.elements.insert(key, element.clone());
+
+                //self.dirty.insert(key);
+                } else {
+                    log::warn!("Tried to set image index {} but it did not exist. The image array is {} elements long.", array_index, element.buffer_info.len());
                 }
             } else {
                 // This is not necessarily an error if the user is binding with a slot name (although not sure
@@ -199,20 +257,16 @@ impl DynDescriptorSet {
         data: &T,
     ) {
         //TODO: Verify that T's size matches the buffer
-
-        // Not supporting array indices yet
-        assert!(array_index == 0);
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
-            //dst_array_element: 0
         };
 
         if let Some(element) = self.write_set.elements.get_mut(&key) {
             let what_to_bind = super::what_to_bind(element);
             if what_to_bind.bind_buffers {
                 let data = rafx_shell_vulkan::util::any_as_bytes(data).into();
-                if let Some(element_image) = element.buffer_info.get_mut(array_index) {
-                    element_image.buffer = Some(DescriptorSetWriteElementBufferData::Data(data));
+                if let Some(element_buffer) = element.buffer_info.get_mut(array_index) {
+                    element_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(data));
                     self.pending_write_set.elements.insert(key, element.clone());
                 } else {
                     log::warn!("Tried to set buffer data for index {} but it did not exist. The buffer array is {} elements long.", array_index, element.buffer_info.len());

@@ -1,13 +1,19 @@
 use super::PhysicalImageId;
+use crate::graph::graph_buffer::PhysicalBufferId;
 use crate::graph::graph_image::PhysicalImageViewId;
-use crate::graph::graph_node::RenderGraphNodeId;
+use crate::graph::graph_node::{RenderGraphNodeId, RenderGraphNodeName};
+use crate::graph::graph_pass::RenderGraphOutputPass;
 use crate::graph::graph_plan::RenderGraphPlan;
-use crate::graph::{RenderGraphBuilder, RenderGraphImageSpecification, RenderGraphImageUsageId};
+use crate::graph::{
+    RenderGraphBufferSpecification, RenderGraphBufferUsageId, RenderGraphBuilder,
+    RenderGraphImageSpecification, RenderGraphImageUsageId,
+};
 use crate::resources::FramebufferResource;
 use crate::resources::RenderPassResource;
 use crate::resources::ResourceLookupSet;
 use crate::vk_description::SwapchainSurfaceInfo;
-use crate::{vk_description as dsc, ImageResource};
+use crate::vulkan::VkBuffer;
+use crate::{vk_description as dsc, BufferResource, ImageResource};
 use crate::{ImageViewResource, ResourceArc, ResourceContext};
 use ash::prelude::VkResult;
 use ash::version::DeviceV1_0;
@@ -52,6 +58,16 @@ impl<T: Eq + Hash> ResourceCache<T> {
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
+struct RenderGraphCachedBufferKey {
+    specification: RenderGraphBufferSpecification,
+}
+
+struct RenderGraphCachedBuffer {
+    keep_until_frame: u64,
+    buffer: ResourceArc<BufferResource>,
+}
+
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 struct RenderGraphCachedImageKey {
     specification: RenderGraphImageSpecification,
     swapchain_surface_info: SwapchainSurfaceInfo,
@@ -63,6 +79,7 @@ struct RenderGraphCachedImage {
 }
 
 pub struct RenderGraphCacheInner {
+    buffers: FnvHashMap<RenderGraphCachedBufferKey, Vec<RenderGraphCachedBuffer>>,
     images: FnvHashMap<RenderGraphCachedImageKey, Vec<RenderGraphCachedImage>>,
     render_passes: ResourceCache<ResourceArc<RenderPassResource>>,
     framebuffers: ResourceCache<ResourceArc<FramebufferResource>>,
@@ -73,6 +90,7 @@ pub struct RenderGraphCacheInner {
 impl RenderGraphCacheInner {
     pub fn new(max_frames_in_flight: u32) -> Self {
         RenderGraphCacheInner {
+            buffers: Default::default(),
             images: Default::default(),
             render_passes: ResourceCache::new(),
             framebuffers: ResourceCache::new(),
@@ -84,6 +102,13 @@ impl RenderGraphCacheInner {
     pub fn on_frame_complete(&mut self) {
         //println!("-- FRAME COMPLETE -- drop framebuffer if keep_until <= {}", self.current_frame_index);
         let current_frame_index = self.current_frame_index;
+
+        for value in self.buffers.values_mut() {
+            value.retain(|x| x.keep_until_frame > current_frame_index);
+        }
+
+        self.buffers.retain(|_k, v| !v.is_empty());
+
         for value in self.images.values_mut() {
             value.retain(|x| x.keep_until_frame > current_frame_index);
         }
@@ -97,9 +122,94 @@ impl RenderGraphCacheInner {
     }
 
     pub fn clear(&mut self) {
+        self.buffers.clear();
         self.images.clear();
         self.render_passes.clear();
         self.framebuffers.clear();
+    }
+
+    fn allocate_buffers(
+        &mut self,
+        device_context: &VkDeviceContext,
+        graph: &RenderGraphPlan,
+        resources: &ResourceLookupSet,
+    ) -> VkResult<FnvHashMap<PhysicalBufferId, ResourceArc<BufferResource>>> {
+        log::trace!("Allocate buffers for rendergraph");
+        let mut buffer_resources: FnvHashMap<PhysicalBufferId, ResourceArc<BufferResource>> =
+            Default::default();
+
+        // Keeps track of what index in the cache we will use next. This starts at 0 for each key
+        // and increments every time we use an image. If the next image is >= length of buffers, we
+        // allocate one and push it into that key's list of cached buffers
+        let mut next_buffer_to_use = FnvHashMap::<RenderGraphCachedBufferKey, usize>::default();
+
+        // Using a buffer will bump the keep_until_frame for that buffer
+        let keep_until_frame = self.current_frame_index + self.frames_to_persist;
+
+        for (&physical_id, buffer) in &graph.output_buffers {
+            buffer_resources.insert(physical_id, buffer.dst_buffer.clone());
+        }
+
+        // Iterate all intermediate buffers, assigning an existing buffer from a previous frame or
+        // allocating a new one
+        for (&id, specification) in &graph.intermediate_buffers {
+            let key = RenderGraphCachedBufferKey {
+                specification: specification.clone(),
+            };
+
+            let next_buffer_index = next_buffer_to_use.entry(key.clone()).or_insert(0);
+            let matching_cached_buffers = self
+                .buffers
+                .entry(key.clone())
+                .or_insert_with(Default::default);
+
+            if let Some(cached_buffer) = matching_cached_buffers.get_mut(*next_buffer_index) {
+                log::trace!(
+                    "  Buffer {:?} - REUSE {:?}  (key: {:?}, index: {})",
+                    id,
+                    cached_buffer.buffer,
+                    key,
+                    next_buffer_index
+                );
+
+                // Reuse a buffer from a previous frame, bump keep_until_frame
+                cached_buffer.keep_until_frame = keep_until_frame;
+                *next_buffer_index += 1;
+
+                buffer_resources.insert(id, cached_buffer.buffer.clone());
+            } else {
+                // No unused buffer available, create one
+                let buffer = VkBuffer::new(
+                    device_context,
+                    rafx_shell_vulkan::vk_mem::MemoryUsage::GpuOnly,
+                    key.specification.usage_flags,
+                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                    key.specification.size,
+                )?;
+                let buffer = resources.insert_buffer(buffer);
+
+                log::trace!(
+                    "  Buffer {:?} - CREATE {:?}  (key: {:?}, index: {})",
+                    id,
+                    buffer.get_raw().buffer,
+                    key,
+                    next_buffer_index
+                );
+
+                // Add the buffer to the cache
+                debug_assert_eq!(matching_cached_buffers.len(), *next_buffer_index);
+                matching_cached_buffers.push(RenderGraphCachedBuffer {
+                    keep_until_frame,
+                    buffer: buffer.clone(),
+                });
+                *next_buffer_index += 1;
+
+                // Associate the physical id with this buffer
+                buffer_resources.insert(id, buffer);
+            }
+        }
+
+        Ok(buffer_resources)
     }
 
     fn allocate_images(
@@ -250,23 +360,27 @@ impl RenderGraphCacheInner {
         graph: &RenderGraphPlan,
         resources: &ResourceLookupSet,
         swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    ) -> VkResult<Vec<ResourceArc<RenderPassResource>>> {
+    ) -> VkResult<Vec<Option<ResourceArc<RenderPassResource>>>> {
         log::trace!("Allocate renderpasses for rendergraph");
         let mut render_pass_resources = Vec::with_capacity(graph.passes.len());
         for (pass_index, pass) in graph.passes.iter().enumerate() {
-            let render_pass_resource = resources
-                .get_or_create_renderpass(pass.description.clone(), swapchain_surface_info)?;
-            log::trace!(
-                "(pass {}) Keep renderpass {:?} until {}",
-                pass_index,
-                render_pass_resource.get_raw().renderpass,
-                self.current_frame_index + self.frames_to_persist
-            );
-            self.render_passes.touch_resource(
-                render_pass_resource.clone(),
-                self.current_frame_index + self.frames_to_persist,
-            );
-            render_pass_resources.push(render_pass_resource);
+            if let RenderGraphOutputPass::Renderpass(pass) = pass {
+                let render_pass_resource = resources
+                    .get_or_create_renderpass(pass.description.clone(), swapchain_surface_info)?;
+                log::trace!(
+                    "(pass {}) Keep renderpass {:?} until {}",
+                    pass_index,
+                    render_pass_resource.get_raw().renderpass,
+                    self.current_frame_index + self.frames_to_persist
+                );
+                self.render_passes.touch_resource(
+                    render_pass_resource.clone(),
+                    self.current_frame_index + self.frames_to_persist,
+                );
+                render_pass_resources.push(Some(render_pass_resource));
+            } else {
+                render_pass_resources.push(None);
+            }
         }
         Ok(render_pass_resources)
     }
@@ -276,41 +390,45 @@ impl RenderGraphCacheInner {
         graph: &RenderGraphPlan,
         resources: &ResourceLookupSet,
         image_resources: &FnvHashMap<PhysicalImageViewId, ResourceArc<ImageViewResource>>,
-        render_pass_resources: &Vec<ResourceArc<RenderPassResource>>,
-    ) -> VkResult<Vec<ResourceArc<FramebufferResource>>> {
+        render_pass_resources: &Vec<Option<ResourceArc<RenderPassResource>>>,
+    ) -> VkResult<Vec<Option<ResourceArc<FramebufferResource>>>> {
         log::trace!("Allocate framebuffers for rendergraph");
         let mut framebuffers = Vec::with_capacity(graph.passes.len());
         for (pass_index, pass) in graph.passes.iter().enumerate() {
-            let attachments: Vec<_> = pass
-                .attachment_images
-                .iter()
-                .map(|x| image_resources[x].clone())
-                .collect();
+            if let RenderGraphOutputPass::Renderpass(pass) = pass {
+                let attachments: Vec<_> = pass
+                    .attachment_images
+                    .iter()
+                    .map(|x| image_resources[x].clone())
+                    .collect();
 
-            let framebuffer_meta = dsc::FramebufferMeta {
-                width: pass.extents.width,
-                height: pass.extents.height,
-                layers: 1,
-            };
+                let framebuffer_meta = dsc::FramebufferMeta {
+                    width: pass.extents.width,
+                    height: pass.extents.height,
+                    layers: 1,
+                };
 
-            let framebuffer = resources.get_or_create_framebuffer(
-                render_pass_resources[pass_index].clone(),
-                &attachments,
-                &framebuffer_meta,
-            )?;
+                let framebuffer = resources.get_or_create_framebuffer(
+                    render_pass_resources[pass_index].as_ref().unwrap().clone(),
+                    &attachments,
+                    &framebuffer_meta,
+                )?;
 
-            log::trace!(
-                "(pass {}) Keep framebuffer {:?} until {}",
-                pass_index,
-                framebuffer.get_raw().framebuffer,
-                self.current_frame_index + self.frames_to_persist
-            );
+                log::trace!(
+                    "(pass {}) Keep framebuffer {:?} until {}",
+                    pass_index,
+                    framebuffer.get_raw().framebuffer,
+                    self.current_frame_index + self.frames_to_persist
+                );
 
-            self.framebuffers.touch_resource(
-                framebuffer.clone(),
-                self.current_frame_index + self.frames_to_persist,
-            );
-            framebuffers.push(framebuffer);
+                self.framebuffers.touch_resource(
+                    framebuffer.clone(),
+                    self.current_frame_index + self.frames_to_persist,
+                );
+                framebuffers.push(Some(framebuffer));
+            } else {
+                framebuffers.push(None);
+            }
         }
         Ok(framebuffers)
     }
@@ -345,6 +463,13 @@ pub struct RenderGraphContext<'a> {
 }
 
 impl<'a> RenderGraphContext<'a> {
+    pub fn buffer(
+        &self,
+        buffer: RenderGraphBufferUsageId,
+    ) -> Option<ResourceArc<BufferResource>> {
+        self.prepared_graph.buffer(buffer)
+    }
+
     pub fn image_view(
         &self,
         image: RenderGraphImageUsageId,
@@ -361,7 +486,12 @@ impl<'a> RenderGraphContext<'a> {
     }
 }
 
-pub struct VisitRenderpassArgs<'a> {
+pub struct VisitComputeNodeArgs<'a> {
+    pub command_buffer: vk::CommandBuffer,
+    pub graph_context: RenderGraphContext<'a>,
+}
+
+pub struct VisitRenderpassNodeArgs<'a> {
     pub command_buffer: vk::CommandBuffer,
     pub renderpass_resource: &'a ResourceArc<RenderPassResource>,
     pub framebuffer_resource: &'a ResourceArc<FramebufferResource>,
@@ -373,14 +503,23 @@ pub struct VisitRenderpassArgs<'a> {
 pub struct PreparedRenderGraph {
     device_context: VkDeviceContext,
     resource_context: ResourceContext,
+    buffer_resources: FnvHashMap<PhysicalBufferId, ResourceArc<BufferResource>>,
     image_resources: FnvHashMap<PhysicalImageId, ResourceArc<ImageResource>>,
     image_view_resources: FnvHashMap<PhysicalImageViewId, ResourceArc<ImageViewResource>>,
-    render_pass_resources: Vec<ResourceArc<RenderPassResource>>,
-    framebuffer_resources: Vec<ResourceArc<FramebufferResource>>,
+    renderpass_resources: Vec<Option<ResourceArc<RenderPassResource>>>,
+    framebuffer_resources: Vec<Option<ResourceArc<FramebufferResource>>>,
     graph_plan: RenderGraphPlan,
 }
 
 impl PreparedRenderGraph {
+    pub fn node_debug_name(
+        &self,
+        node_id: RenderGraphNodeId,
+    ) -> Option<RenderGraphNodeName> {
+        let pass_index = *self.graph_plan.node_to_pass_index.get(&node_id)?;
+        self.graph_plan.passes[pass_index].debug_name()
+    }
+
     pub fn new(
         device_context: &VkDeviceContext,
         resource_context: &ResourceContext,
@@ -393,6 +532,8 @@ impl PreparedRenderGraph {
         let cache = &mut *cache_guard;
 
         profiling::scope!("allocate resources");
+        let buffer_resources = cache.allocate_buffers(device_context, &graph_plan, resources)?;
+
         let image_resources = cache.allocate_images(
             device_context,
             &graph_plan,
@@ -416,12 +557,21 @@ impl PreparedRenderGraph {
         Ok(PreparedRenderGraph {
             device_context: device_context.clone(),
             resource_context: resource_context.clone(),
+            buffer_resources,
             image_resources,
             image_view_resources,
-            render_pass_resources,
+            renderpass_resources: render_pass_resources,
             framebuffer_resources,
             graph_plan,
         })
+    }
+
+    fn buffer(
+        &self,
+        buffer: RenderGraphBufferUsageId,
+    ) -> Option<ResourceArc<BufferResource>> {
+        let physical_buffer = self.graph_plan.buffer_usage_to_physical.get(&buffer)?;
+        self.buffer_resources.get(physical_buffer).cloned()
     }
 
     fn image_view(
@@ -429,7 +579,7 @@ impl PreparedRenderGraph {
         image: RenderGraphImageUsageId,
     ) -> Option<ResourceArc<ImageViewResource>> {
         let physical_image = self.graph_plan.image_usage_to_view.get(&image)?;
-        self.image_view_resources.get(&physical_image).cloned()
+        self.image_view_resources.get(physical_image).cloned()
     }
 
     pub fn execute_graph(
@@ -467,23 +617,38 @@ impl PreparedRenderGraph {
         // Iterate through all passes
         //
         for (pass_index, pass) in self.graph_plan.passes.iter().enumerate() {
-            profiling::scope!("pass", pass.debug_name.unwrap_or("unnamed"));
-            log::trace!("Execute pass name: {:?}", pass.debug_name);
-            let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-                .render_pass(self.render_pass_resources[pass_index].get_raw().renderpass)
-                .framebuffer(self.framebuffer_resources[pass_index].get_raw().framebuffer)
-                .render_area(vk::Rect2D {
-                    offset: vk::Offset2D { x: 0, y: 0 },
-                    extent: pass.extents,
-                })
-                .clear_values(&pass.clear_values);
+            //TODO output pass is?
+            //TODO: add_compute_node/add_render_node?
 
-            assert_eq!(pass.subpass_nodes.len(), 1);
+            profiling::scope!("pass", pass.debug_name().unwrap_or("unnamed"));
+            log::trace!("Execute pass name: {:?}", pass.debug_name());
+
+            assert_eq!(pass.nodes().len(), 1);
             let subpass_index = 0;
-            let node_id = pass.subpass_nodes[subpass_index];
+            let node_id = pass.nodes()[subpass_index];
 
             unsafe {
-                if let Some(pre_pass_barrier) = &pass.pre_pass_barrier {
+                if let Some(pre_pass_barrier) = pass.pre_pass_barrier() {
+                    let mut buffer_memory_barriers =
+                        Vec::with_capacity(pre_pass_barrier.buffer_barriers.len());
+
+                    for buffer_barrier in &pre_pass_barrier.buffer_barriers {
+                        log::trace!("add buffer barrier for buffer {:?}", buffer_barrier.buffer);
+                        let buffer = &self.buffer_resources[&buffer_barrier.buffer];
+
+                        let buffer_memory_barrier = vk::BufferMemoryBarrier::builder()
+                            .src_access_mask(buffer_barrier.src_access)
+                            .dst_access_mask(buffer_barrier.dst_access)
+                            .src_queue_family_index(buffer_barrier.src_queue_family_index)
+                            .dst_queue_family_index(buffer_barrier.dst_queue_family_index)
+                            .buffer(buffer.get_raw().buffer.buffer)
+                            .offset(0)
+                            .size(buffer_barrier.size)
+                            .build();
+
+                        buffer_memory_barriers.push(buffer_memory_barrier);
+                    }
+
                     let mut image_memory_barriers =
                         Vec::with_capacity(pre_pass_barrier.image_barriers.len());
 
@@ -512,39 +677,58 @@ impl PreparedRenderGraph {
                         pre_pass_barrier.dst_stage,
                         vk::DependencyFlags::empty(),
                         &[],
-                        &[],
+                        &buffer_memory_barriers,
                         &image_memory_barriers,
                     );
                 }
 
-                device.cmd_begin_render_pass(
-                    command_buffer,
-                    &render_pass_begin_info,
-                    vk::SubpassContents::INLINE,
-                );
+                match pass {
+                    RenderGraphOutputPass::Renderpass(pass) => {
+                        let renderpass_resource =
+                            self.renderpass_resources[pass_index].as_ref().unwrap();
+                        let framebuffer_resource =
+                            self.framebuffer_resources[pass_index].as_ref().unwrap();
+                        // this code will need to be updated to support subpasses
+                        debug_assert_eq!(1, pass.subpass_nodes.len());
 
-                let args = VisitRenderpassArgs {
-                    renderpass_resource: &self.render_pass_resources[pass_index],
-                    framebuffer_resource: &self.framebuffer_resources[pass_index],
-                    graph_context: render_graph_context,
-                    subpass_index,
-                    command_buffer,
-                };
+                        let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
+                            .render_pass(renderpass_resource.get_raw().renderpass)
+                            .framebuffer(framebuffer_resource.get_raw().framebuffer)
+                            .render_area(vk::Rect2D {
+                                offset: vk::Offset2D { x: 0, y: 0 },
+                                extent: pass.extents,
+                            })
+                            .clear_values(&pass.clear_values);
 
-                // callback here!
-                node_visitor.visit_renderpass(node_id, args)?;
+                        device.cmd_begin_render_pass(
+                            command_buffer,
+                            &render_pass_begin_info,
+                            vk::SubpassContents::INLINE,
+                        );
 
-                device.cmd_end_render_pass(command_buffer);
+                        let args = VisitRenderpassNodeArgs {
+                            renderpass_resource,
+                            framebuffer_resource,
+                            graph_context: render_graph_context,
+                            subpass_index,
+                            command_buffer,
+                        };
+
+                        node_visitor.visit_renderpass_node(node_id, args)?;
+
+                        device.cmd_end_render_pass(command_buffer);
+                    }
+                    RenderGraphOutputPass::Compute(_pass) => {
+                        let args = VisitComputeNodeArgs {
+                            graph_context: render_graph_context,
+                            command_buffer,
+                        };
+
+                        node_visitor.visit_compute_node(node_id, args)?;
+                    }
+                }
             }
         }
-
-        // for framebuffer in framebuffers {
-        //     let device = self.device_context.device();
-        //     use ash::version::DeviceV1_0;
-        //     unsafe {
-        //         device.destroy_framebuffer(framebuffer, None);
-        //     }
-        // }
 
         command_writer.end_command_buffer()?;
 
@@ -553,38 +737,80 @@ impl PreparedRenderGraph {
 }
 
 pub trait RenderGraphNodeVisitor {
-    fn visit_renderpass(
+    fn visit_renderpass_node(
         &self,
         node_id: RenderGraphNodeId,
-        args: VisitRenderpassArgs,
+        args: VisitRenderpassNodeArgs,
+    ) -> VkResult<()>;
+
+    fn visit_compute_node(
+        &self,
+        node_id: RenderGraphNodeId,
+        args: VisitComputeNodeArgs,
     ) -> VkResult<()>;
 }
 
-type RenderGraphNodeVisitorCallback<RenderGraphUserContextT> =
-    dyn Fn(VisitRenderpassArgs, &RenderGraphUserContextT) -> VkResult<()> + Send;
+type RenderGraphNodeVisitRenderpassNodeCallback<RenderGraphUserContextT> =
+    dyn Fn(VisitRenderpassNodeArgs, &RenderGraphUserContextT) -> VkResult<()> + Send;
+
+type RenderGraphNodeVisitComputeNodeCallback<RenderGraphUserContextT> =
+    dyn Fn(VisitComputeNodeArgs, &RenderGraphUserContextT) -> VkResult<()> + Send;
+
+enum RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT> {
+    Renderpass(Box<RenderGraphNodeVisitRenderpassNodeCallback<RenderGraphUserContextT>>),
+    Compute(Box<RenderGraphNodeVisitComputeNodeCallback<RenderGraphUserContextT>>),
+}
 
 /// Created by RenderGraphNodeCallbacks::create_visitor(). Implements RenderGraphNodeVisitor and
 /// forwards the call, adding the user context as a parameter.
 struct RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT> {
     context: &'b RenderGraphUserContextT,
-    node_callbacks: &'b FnvHashMap<
+    callbacks: &'b FnvHashMap<
         RenderGraphNodeId,
-        Box<RenderGraphNodeVisitorCallback<RenderGraphUserContextT>>,
+        RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT>,
     >,
 }
 
 impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
     for RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT>
 {
-    fn visit_renderpass(
+    fn visit_renderpass_node(
         &self,
         node_id: RenderGraphNodeId,
-        args: VisitRenderpassArgs,
+        args: VisitRenderpassNodeArgs,
     ) -> VkResult<()> {
-        // "Empty" nodes are sometimes helpful for manually allocating resources
-        if self.node_callbacks.contains_key(&node_id) {
-            (self.node_callbacks[&node_id])(args, self.context)?
+        if let Some(callback) = self.callbacks.get(&node_id) {
+            if let RenderGraphNodeVisitNodeCallback::Renderpass(render_callback) = callback {
+                (render_callback)(args, self.context)?
+            } else {
+                let debug_name = args.graph_context.prepared_graph.node_debug_name(node_id);
+                log::error!("Tried to call a render node callback but a compute callback was registered for node {:?} ({:?})", node_id, debug_name);
+            }
+        } else {
+            //let debug_name = args.graph_context.prepared_graph.node_debug_name(node_id);
+            //log::error!("No callback found for node {:?} ({:?})", node_id, debug_name);
         }
+
+        Ok(())
+    }
+
+    fn visit_compute_node(
+        &self,
+        node_id: RenderGraphNodeId,
+        args: VisitComputeNodeArgs,
+    ) -> VkResult<()> {
+        if let Some(callback) = self.callbacks.get(&node_id) {
+            if let RenderGraphNodeVisitNodeCallback::Compute(compute_callback) = callback {
+                (compute_callback)(args, self.context)?
+            } else {
+                let debug_name = args.graph_context.prepared_graph.node_debug_name(node_id);
+                log::error!("Tried to call a compute node callback but a render node callback was registered for node {:?} ({:?})", node_id, debug_name);
+            }
+        } else {
+            //let debug_name = args.graph_context.prepared_graph.node_debug_name(node_id);
+            //log::error!("No callback found for node {:?} {:?}", node_id, debug_name);
+        }
+
         Ok(())
     }
 }
@@ -592,8 +818,8 @@ impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
 /// All the callbacks associated with rendergraph nodes. We keep them separate from the nodes so
 /// that we can avoid propagating generic parameters throughout the rest of the rendergraph code
 pub struct RenderGraphNodeCallbacks<RenderGraphUserContextT> {
-    node_callbacks:
-        FnvHashMap<RenderGraphNodeId, Box<RenderGraphNodeVisitorCallback<RenderGraphUserContextT>>>,
+    callbacks:
+        FnvHashMap<RenderGraphNodeId, RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT>>,
     render_phase_dependencies: FnvHashMap<RenderGraphNodeId, FnvHashSet<RenderPhaseIndex>>,
 }
 
@@ -605,9 +831,31 @@ impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> 
         f: CallbackFnT,
     ) where
         CallbackFnT:
-            Fn(VisitRenderpassArgs, &RenderGraphUserContextT) -> VkResult<()> + 'static + Send,
+            Fn(VisitRenderpassNodeArgs, &RenderGraphUserContextT) -> VkResult<()> + 'static + Send,
     {
-        self.node_callbacks.insert(node_id, Box::new(f));
+        let old = self.callbacks.insert(
+            node_id,
+            RenderGraphNodeVisitNodeCallback::Renderpass(Box::new(f)),
+        );
+        // If this trips, multiple callbacks were set on the node
+        assert!(old.is_none());
+    }
+
+    /// Adds a callback for compute based nodes
+    pub fn set_compute_callback<CallbackFnT>(
+        &mut self,
+        node_id: RenderGraphNodeId,
+        f: CallbackFnT,
+    ) where
+        CallbackFnT:
+            Fn(VisitComputeNodeArgs, &RenderGraphUserContextT) -> VkResult<()> + 'static + Send,
+    {
+        let old = self.callbacks.insert(
+            node_id,
+            RenderGraphNodeVisitNodeCallback::Compute(Box::new(f)),
+        );
+        // If this trips, multiple callbacks were set on the node
+        assert!(old.is_none());
     }
 
     pub fn add_renderphase_dependency<PhaseT: RenderPhase>(
@@ -628,7 +876,7 @@ impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> 
     ) -> Box<dyn RenderGraphNodeVisitor + 'a> {
         Box::new(RenderGraphNodeVisitorImpl::<'a, RenderGraphUserContextT> {
             context,
-            node_callbacks: &self.node_callbacks,
+            callbacks: &self.callbacks,
         })
     }
 }
@@ -636,7 +884,7 @@ impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> 
 impl<T> Default for RenderGraphNodeCallbacks<T> {
     fn default() -> Self {
         RenderGraphNodeCallbacks {
-            node_callbacks: Default::default(),
+            callbacks: Default::default(),
             render_phase_dependencies: Default::default(),
         }
     }
@@ -675,18 +923,21 @@ impl<T> RenderGraphExecutor<T> {
         for (node_id, render_phase_indices) in &callbacks.render_phase_dependencies {
             // Passes may get culled if the images are not used. This means the renderpass would
             // not be created so pipelines are also not needed
-            if let Some(&renderpass_index) = prepared_graph
-                .graph_plan
-                .node_to_renderpass_index
-                .get(node_id)
+            if let Some(&renderpass_index) =
+                prepared_graph.graph_plan.node_to_pass_index.get(node_id)
             {
-                for &render_phase_index in render_phase_indices {
-                    resource_context
-                        .graphics_pipeline_cache()
-                        .register_renderpass_to_phase_index_per_frame(
-                            &prepared_graph.render_pass_resources[renderpass_index],
-                            render_phase_index,
-                        )
+                let renderpass = &prepared_graph.renderpass_resources[renderpass_index];
+                if let Some(renderpass) = renderpass {
+                    for &render_phase_index in render_phase_indices {
+                        resource_context
+                            .graphics_pipeline_cache()
+                            .register_renderpass_to_phase_index_per_frame(
+                                renderpass,
+                                render_phase_index,
+                            )
+                    }
+                } else {
+                    log::error!("add_renderphase_dependency was called on node {:?} ({:?}) that is not a renderpass", node_id, prepared_graph.graph_plan.passes[renderpass_index].debug_name());
                 }
             }
         }
@@ -710,9 +961,21 @@ impl<T> RenderGraphExecutor<T> {
         let renderpass_index = *self
             .prepared_graph
             .graph_plan
-            .node_to_renderpass_index
+            .node_to_pass_index
             .get(&node_id)?;
-        Some(self.prepared_graph.render_pass_resources[renderpass_index].clone())
+        self.prepared_graph.renderpass_resources[renderpass_index].clone()
+    }
+
+    pub fn buffer_resource(
+        &self,
+        buffer_usage: RenderGraphBufferUsageId,
+    ) -> Option<ResourceArc<BufferResource>> {
+        let buffer = self
+            .prepared_graph
+            .graph_plan
+            .buffer_usage_to_physical
+            .get(&buffer_usage)?;
+        Some(self.prepared_graph.buffer_resources[buffer].clone())
     }
 
     pub fn image_resource(

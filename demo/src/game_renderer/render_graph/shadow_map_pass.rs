@@ -34,7 +34,7 @@ pub(super) fn shadow_map_passes(
                 let shadow_map_node = context
                     .graph
                     .add_node("create shadowmap", RenderGraphQueue::DefaultGraphics);
-                let depth_image = context.graph.add_image(
+                let depth_image = context.graph.create_unattached_image(
                     shadow_map_node,
                     RenderGraphImageConstraint {
                         format: Some(context.graph_config.depth_format),
@@ -55,7 +55,7 @@ pub(super) fn shadow_map_passes(
                 let cube_map_node = context
                     .graph
                     .add_node("create cube shadowmap", RenderGraphQueue::DefaultGraphics);
-                let mut cube_map_image = context.graph.add_image(
+                let mut cube_map_image = context.graph.create_unattached_image(
                     cube_map_node,
                     RenderGraphImageConstraint {
                         format: Some(context.graph_config.depth_format),

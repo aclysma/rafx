@@ -5,8 +5,8 @@ use ash::prelude::VkResult;
 use ash::vk;
 use rafx::graph::*;
 use rafx::nodes::{PreparedRenderData, RenderView};
-use rafx::resources::ResourceContext;
 use rafx::resources::{vk_description as dsc, VertexDataSetLayout};
+use rafx::resources::{ComputePipelineResource, ResourceContext};
 use rafx::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
 use rafx::vulkan::SwapchainInfo;
 
@@ -24,6 +24,8 @@ mod bloom_blur_pass;
 mod bloom_combine_pass;
 
 mod ui_pass;
+
+mod compute_test;
 
 lazy_static::lazy_static! {
     pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
@@ -75,6 +77,7 @@ pub fn build_render_graph(
     bloom_extract_material_pass: ResourceArc<MaterialPassResource>,
     bloom_blur_material_pass: ResourceArc<MaterialPassResource>,
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
+    test_compute_pipeline: &ResourceArc<ComputePipelineResource>,
 ) -> VkResult<BuildRenderGraphResult> {
     profiling::scope!("Build Render Graph");
 
@@ -89,7 +92,20 @@ pub fn build_render_graph(
     };
 
     let shadow_maps = shadow_map_pass::shadow_map_passes(&mut graph_context, shadow_map_views);
+
+    let compute_test_pass =
+        compute_test::compute_test_pass(&mut graph_context, test_compute_pipeline);
+
     let opaque_pass = opaque_pass::opaque_pass(&mut graph_context, &shadow_maps);
+    {
+        let _out = graph_context.graph.read_storage_buffer(
+            opaque_pass.node,
+            compute_test_pass.position_buffer,
+            RenderGraphBufferConstraint {
+                ..Default::default()
+            },
+        );
+    }
 
     let previous_pass_color = if graph_config.enable_hdr {
         let bloom_extract_pass = bloom_extract_pass::bloom_extract_pass(

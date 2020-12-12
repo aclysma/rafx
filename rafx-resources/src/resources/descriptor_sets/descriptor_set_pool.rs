@@ -110,6 +110,8 @@ impl ManagedDescriptorSetPool {
             if let Some(per_descriptor_size) = binding.internal_buffer_per_descriptor_size {
                 // 256 is the max allowed by the vulkan spec but we can improve this by using the
                 // actual hardware value given by device limits
+
+                //TODO: Should use min_storage_buffer_offset_alignment for storage buffers
                 let required_alignment =
                     device_context.limits().min_uniform_buffer_offset_alignment as u32;
                 let per_descriptor_stride = rafx_shell_vulkan::util::round_size_up_to_alignment_u32(

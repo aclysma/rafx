@@ -29,6 +29,25 @@ pub struct RenderGraphImageModify {
     pub constraint: RenderGraphImageConstraint,
 }
 
+#[derive(Debug, Clone)]
+pub struct RenderGraphBufferCreate {
+    pub buffer: RenderGraphBufferUsageId,
+    pub constraint: RenderGraphBufferConstraint,
+}
+
+#[derive(Debug, Clone)]
+pub struct RenderGraphBufferRead {
+    pub buffer: RenderGraphBufferUsageId,
+    pub constraint: RenderGraphBufferConstraint,
+}
+
+#[derive(Debug, Clone)]
+pub struct RenderGraphBufferModify {
+    pub input: RenderGraphBufferUsageId,
+    pub output: RenderGraphBufferUsageId,
+    pub constraint: RenderGraphBufferConstraint,
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum RenderGraphPassAttachmentType {
     Create,
@@ -110,6 +129,10 @@ pub struct RenderGraphNode {
     pub(super) image_reads: Vec<RenderGraphImageRead>,
     pub(super) image_modifies: Vec<RenderGraphImageModify>,
 
+    pub(super) buffer_creates: Vec<RenderGraphBufferCreate>,
+    pub(super) buffer_reads: Vec<RenderGraphBufferRead>,
+    pub(super) buffer_modifies: Vec<RenderGraphBufferModify>,
+
     // Indexed by attachment index
     pub(super) color_attachments: Vec<Option<RenderGraphPassColorAttachmentInfo>>,
     pub(super) depth_attachment: Option<RenderGraphPassDepthAttachmentInfo>,
@@ -129,9 +152,13 @@ impl std::fmt::Debug for RenderGraphNode {
             .field("image_creates", &self.image_creates)
             .field("image_reads", &self.image_reads)
             .field("image_modifies", &self.image_modifies)
+            .field("buffer_creates", &self.buffer_creates)
+            .field("buffer_reads", &self.buffer_reads)
+            .field("buffer_modifies", &self.buffer_modifies)
             .field("color_attachments", &self.color_attachments)
             .field("depth_attachment", &self.depth_attachment)
             .field("resolve_attachments", &self.resolve_attachments)
+            .field("sampled_images", &self.sampled_images)
             .finish()
     }
 }
@@ -150,6 +177,9 @@ impl RenderGraphNode {
             image_creates: Default::default(),
             image_reads: Default::default(),
             image_modifies: Default::default(),
+            buffer_creates: Default::default(),
+            buffer_reads: Default::default(),
+            buffer_modifies: Default::default(),
             color_attachments: Default::default(),
             depth_attachment: Default::default(),
             resolve_attachments: Default::default(),

@@ -12,6 +12,12 @@ pub use graph_image::RenderGraphImageSubresourceRange;
 pub use graph_image::RenderGraphImageUsageId;
 use graph_image::*;
 
+mod graph_buffer;
+pub use graph_buffer::RenderGraphBufferConstraint;
+pub use graph_buffer::RenderGraphBufferSpecification;
+pub use graph_buffer::RenderGraphBufferUsageId;
+use graph_buffer::*;
+
 mod graph_node;
 pub use graph_node::RenderGraphNodeId;
 use graph_node::*;
@@ -27,7 +33,10 @@ pub use prepared_graph::PreparedRenderGraph;
 pub use prepared_graph::RenderGraphCache;
 pub use prepared_graph::RenderGraphExecutor;
 pub use prepared_graph::RenderGraphNodeCallbacks;
-pub use prepared_graph::VisitRenderpassArgs;
+pub use prepared_graph::VisitComputeNodeArgs;
+pub use prepared_graph::VisitRenderpassNodeArgs;
+
+pub type RenderGraphResourceName = &'static str;
 
 // Test doesn't function because the graph now takes ResourceArc<ImageViewResource>
 #[cfg(test)]

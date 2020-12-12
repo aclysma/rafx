@@ -15,12 +15,12 @@ use crate::{
 use ash::prelude::*;
 use atelier_assets::loader::handle::Handle;
 use rafx_resources::{
-    vk_description as dsc, DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider,
-    DescriptorSetAllocatorRef, DescriptorSetLayoutResource, DescriptorSetWriteSet,
-    DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPassResource, ResourceArc,
+    vk_description as dsc, ComputePipelineResource, DescriptorSetAllocatorMetrics,
+    DescriptorSetAllocatorProvider, DescriptorSetAllocatorRef, DescriptorSetLayoutResource,
+    DescriptorSetWriteSet, DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPassResource,
+    ResourceArc,
 };
 use rafx_shell_vulkan::{VkBuffer, VkDeviceContext, VkImage};
-use std::mem::ManuallyDrop;
 
 use super::asset_lookup::LoadedAssetMetrics;
 use super::load_queue::LoadQueueSet;
@@ -225,6 +225,16 @@ impl AssetManager {
             .get_committed(handle.load_handle())
             .and_then(|x| x.passes.get(index))
             .map(|x| x.material_pass_resource.clone())
+    }
+
+    pub fn get_compute_pipeline(
+        &self,
+        handle: &Handle<ComputePipelineAsset>,
+    ) -> Option<ResourceArc<ComputePipelineResource>> {
+        self.loaded_assets
+            .compute_pipelines
+            .get_committed(handle.load_handle())
+            .and_then(|x| Some(x.compute_pipeline.clone()))
     }
 
     pub fn get_descriptor_set_layout_for_pass(
@@ -614,7 +624,7 @@ impl AssetManager {
         &mut self,
         buffer: VkBuffer,
     ) -> VkResult<BufferAsset> {
-        let buffer = self.resources().insert_buffer(ManuallyDrop::new(buffer));
+        let buffer = self.resources().insert_buffer(buffer);
 
         Ok(BufferAsset { buffer })
     }
@@ -933,7 +943,6 @@ impl AssetManager {
                     .elements
                     .get_mut(&DescriptorSetElementKey {
                         dst_binding: location.binding_index,
-                        //dst_array_element: location.array_index
                     })
                     .unwrap();
 
