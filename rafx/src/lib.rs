@@ -1,6 +1,11 @@
 pub use rafx_base as base;
 
-pub use rafx_api_vulkan as vulkan;
+#[cfg(feature = "vulkan")]
+pub use rafx_api_vulkan as api_vulkan;
+
+#[cfg(feature = "vulkan-sdl2")]
+pub use rafx_api_vulkan_sdl2 as api_vulkan_sdl2;
+
 #[cfg(feature = "assets")]
 pub use rafx_assets as assets;
 pub use rafx_nodes as nodes;

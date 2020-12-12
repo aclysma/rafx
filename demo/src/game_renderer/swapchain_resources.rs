@@ -1,11 +1,11 @@
 use crate::game_renderer::GameRendererInner;
 use ash::prelude::VkResult;
 use ash::vk;
+use rafx::api_vulkan::VkImageRaw;
+use rafx::api_vulkan::{SwapchainInfo, VkDeviceContext, VkSwapchain};
 use rafx::resources::vk_description as dsc;
 use rafx::resources::vk_description::SwapchainSurfaceInfo;
 use rafx::resources::{ImageViewResource, ResourceArc, ResourceManager};
-use rafx::vulkan::VkImageRaw;
-use rafx::vulkan::{SwapchainInfo, VkDeviceContext, VkSwapchain};
 
 pub struct SwapchainResources {
     // The images presented by the swapchain
@@ -35,17 +35,17 @@ impl SwapchainResources {
         //
         // Determine default color formats
         //
-        let default_color_format_hdr = rafx::vulkan::VkSwapchain::choose_supported_format(
+        let default_color_format_hdr = rafx::api_vulkan::VkSwapchain::choose_supported_format(
             &device_context,
-            &rafx::vulkan::DEFAULT_COLOR_FORMATS_HDR,
+            &rafx::api_vulkan::DEFAULT_COLOR_FORMATS_HDR,
             vk::FormatFeatureFlags::COLOR_ATTACHMENT,
         );
 
         let default_color_format_sdr = swapchain_surface_info.surface_format.format;
 
-        let default_depth_format = rafx::vulkan::VkSwapchain::choose_supported_format(
+        let default_depth_format = rafx::api_vulkan::VkSwapchain::choose_supported_format(
             &device_context,
-            &rafx::vulkan::DEFAULT_DEPTH_FORMATS,
+            &rafx::api_vulkan::DEFAULT_DEPTH_FORMATS,
             vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
         );
 

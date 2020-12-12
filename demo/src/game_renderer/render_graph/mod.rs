@@ -3,12 +3,12 @@ use crate::render_contexts::RenderJobWriteContext;
 use crate::VkDeviceContext;
 use ash::prelude::VkResult;
 use ash::vk;
+use rafx::api_vulkan::SwapchainInfo;
 use rafx::graph::*;
 use rafx::nodes::{PreparedRenderData, RenderView};
 use rafx::resources::{vk_description as dsc, VertexDataSetLayout};
 use rafx::resources::{ComputePipelineResource, ResourceContext};
 use rafx::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::vulkan::SwapchainInfo;
 
 mod shadow_map_pass;
 use shadow_map_pass::ShadowMapImageResources;

@@ -3,8 +3,8 @@
 
 use crate::imgui_support::Sdl2ImguiManager;
 use legion::*;
-use rafx::vulkan::VkDeviceContext;
-use rafx_api_vulkan_sdl2::Sdl2Window;
+use rafx::api_vulkan::VkDeviceContext;
+use rafx::api_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseState;

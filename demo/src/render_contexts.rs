@@ -1,10 +1,10 @@
 use ash::vk;
 use legion::*;
+use rafx::api_vulkan::VkDeviceContext;
 use rafx::assets::AssetManager;
 use rafx::graph::VisitRenderpassNodeArgs;
 use rafx::resources::vk_description as dsc;
 use rafx::resources::{RenderPassResource, ResourceArc, ResourceContext};
-use rafx::vulkan::VkDeviceContext;
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,

@@ -2,12 +2,12 @@ use crate::game_renderer::swapchain_resources::SwapchainResources;
 use crate::game_renderer::GameRenderer;
 use ash::prelude::VkResult;
 use legion::Resources;
+use rafx::api_vulkan::{
+    VkContext, VkDeviceContext, VkSurface, VkSurfaceSwapchainLifetimeListener, VkSwapchain, Window,
+};
 use rafx::assets::AssetManager;
 use rafx::nodes::RenderRegistry;
 use rafx::resources::vk_description as dsc;
-use rafx::vulkan::{
-    VkContext, VkDeviceContext, VkSurface, VkSurfaceSwapchainLifetimeListener, VkSwapchain, Window,
-};
 
 pub struct SwapchainLifetimeListener<'a> {
     pub resources: &'a Resources,

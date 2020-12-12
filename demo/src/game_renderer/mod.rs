@@ -11,6 +11,7 @@ use crate::render_contexts::RenderJobExtractContext;
 use crate::time::TimeState;
 use ash::prelude::VkResult;
 use legion::*;
+use rafx::api_vulkan::{FrameInFlight, MsaaLevel, VkContext, VkDeviceContext, VkSurface, Window};
 use rafx::assets::{image_upload, DecodedImage, DecodedImageColorSpace};
 use rafx::assets::{AssetManager, DecodedImageMips};
 use rafx::nodes::{
@@ -20,7 +21,6 @@ use rafx::nodes::{
 use rafx::resources::{vk_description as dsc, DynResourceAllocatorSet};
 use rafx::resources::{ImageViewResource, ResourceArc};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use rafx::vulkan::{FrameInFlight, MsaaLevel, VkContext, VkDeviceContext, VkSurface, Window};
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex};
 

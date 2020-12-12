@@ -348,7 +348,7 @@ impl Importer for GltfImporter {
                 image: None,
                 sampler: None,
                 buffer_data: Some(
-                    rafx::vulkan::util::any_as_bytes(&material_data_shader_param).into(),
+                    rafx::api_vulkan::util::any_as_bytes(&material_data_shader_param).into(),
                 ),
             });
 

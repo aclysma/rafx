@@ -14,6 +14,9 @@ use atelier_assets::loader::{
     packfile_io::PackfileReader, storage::DefaultIndirectionResolver, Loader, RpcIO,
 };
 use legion::Resources;
+use rafx::api_vulkan::{
+    LogicalSize, VkContext, VkContextBuilder, VkDeviceContext, VkSurface, VulkanLinkMethod,
+};
 use rafx::assets::{AssetManager, ComputePipelineAsset, ComputePipelineAssetData};
 use rafx::assets::{
     BufferAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
@@ -25,9 +28,6 @@ use rafx::assets::{
 };
 use rafx::nodes::RenderRegistry;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use rafx::vulkan::{
-    LogicalSize, VkContext, VkContextBuilder, VkDeviceContext, VkSurface, VulkanLinkMethod,
-};
 use rafx_api_vulkan_sdl2::Sdl2Window;
 
 pub fn atelier_init_daemon(

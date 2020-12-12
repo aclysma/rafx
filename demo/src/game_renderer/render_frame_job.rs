@@ -4,10 +4,10 @@ use crate::game_renderer::GameRenderer;
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use ash::prelude::VkResult;
 use ash::vk;
+use rafx::api_vulkan::{FrameInFlight, VkDeviceContext};
 use rafx::graph::RenderGraphExecutor;
 use rafx::nodes::{FramePacket, PrepareJobSet, RenderRegistry, RenderView};
 use rafx::resources::ResourceContext;
-use rafx::vulkan::{FrameInFlight, VkDeviceContext};
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,

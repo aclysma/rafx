@@ -1,6 +1,6 @@
 use crate::game_renderer::RenderFrameJob;
 use crossbeam_channel::{Receiver, Sender};
-use rafx::vulkan::FrameInFlight;
+use rafx::api_vulkan::FrameInFlight;
 use std::thread::JoinHandle;
 
 enum RenderThreadMessage {

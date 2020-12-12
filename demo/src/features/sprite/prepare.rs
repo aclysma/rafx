@@ -9,12 +9,12 @@ use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use ash::vk;
 use fnv::FnvHashMap;
 use glam::Vec3;
+use rafx::api_vulkan::VkBuffer;
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, ViewSubmitNodes,
 };
 use rafx::resources::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::vulkan::VkBuffer;
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
 // single function
