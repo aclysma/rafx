@@ -100,7 +100,7 @@ This tool currently is only useful for packing assets.
 
 ## Features
 
- * `rafx-shell-vulkan`, `rafx-shell-vulkan-sdl2` - Basic helpers for vulkan
+ * `rafx-api-vulkan`, `rafx-api-vulkan-sdl2` - Basic helpers for vulkan
    * Friendly helpers for setting up the device and window
    * Some basic, unopinionated helpers for vulkan. Things like async image uploads, deferring destruction of resources, 
      and pooling/reusing resources

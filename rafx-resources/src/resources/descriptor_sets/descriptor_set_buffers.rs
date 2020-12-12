@@ -3,7 +3,7 @@ use crate::vk_description as dsc;
 use ash::prelude::*;
 use ash::vk;
 use fnv::FnvHashMap;
-use rafx_shell_vulkan::{VkBuffer, VkDeviceContext};
+use rafx_api_vulkan::{VkBuffer, VkDeviceContext};
 use std::mem::ManuallyDrop;
 
 //
@@ -35,7 +35,7 @@ impl DescriptorBindingBufferSet {
 
         let buffer = VkBuffer::new(
             device_context,
-            rafx_shell_vulkan::vk_mem::MemoryUsage::CpuToGpu,
+            rafx_api_vulkan::vk_mem::MemoryUsage::CpuToGpu,
             vk::BufferUsageFlags::UNIFORM_BUFFER,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             (buffer_info.per_descriptor_stride * MAX_DESCRIPTORS_PER_POOL) as u64,

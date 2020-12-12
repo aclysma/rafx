@@ -1,5 +1,5 @@
 [package]
-name = "rafx-shell-vulkan"
+name = "rafx-api-vulkan"
 version = "0.1.0"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"

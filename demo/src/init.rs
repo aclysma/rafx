@@ -28,7 +28,7 @@ use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use rafx::vulkan::{
     LogicalSize, VkContext, VkContextBuilder, VkDeviceContext, VkSurface, VulkanLinkMethod,
 };
-use rafx_shell_vulkan_sdl2::Sdl2Window;
+use rafx_api_vulkan_sdl2::Sdl2Window;
 
 pub fn atelier_init_daemon(
     resources: &mut Resources,

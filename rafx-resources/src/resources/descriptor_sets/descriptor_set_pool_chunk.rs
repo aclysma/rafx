@@ -9,8 +9,8 @@ use ash::prelude::VkResult;
 use ash::version::DeviceV1_0;
 use ash::vk;
 use fnv::FnvHashMap;
+use rafx_api_vulkan::{VkBuffer, VkDescriptorPoolAllocator, VkDeviceContext, VkResourceDropSink};
 use rafx_base::slab::RawSlabKey;
-use rafx_shell_vulkan::{VkBuffer, VkDescriptorPoolAllocator, VkDeviceContext, VkResourceDropSink};
 use std::collections::VecDeque;
 use std::mem::ManuallyDrop;
 

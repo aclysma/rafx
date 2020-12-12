@@ -1,7 +1,7 @@
 use super::DescriptorSetAllocator;
 use ash::prelude::VkResult;
 use crossbeam_channel::{Receiver, Sender};
-use rafx_shell_vulkan::VkDeviceContext;
+use rafx_api_vulkan::VkDeviceContext;
 use std::collections::VecDeque;
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicU64, Ordering};

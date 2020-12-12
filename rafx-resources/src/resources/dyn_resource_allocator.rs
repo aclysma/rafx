@@ -7,7 +7,7 @@ use crate::{BufferResource, ImageViewResource};
 use ash::prelude::VkResult;
 use ash::vk;
 use crossbeam_channel::{Receiver, Sender};
-use rafx_shell_vulkan::{VkBuffer, VkDeviceContext, VkImage, VkResource, VkResourceDropSink};
+use rafx_api_vulkan::{VkBuffer, VkDeviceContext, VkImage, VkResource, VkResourceDropSink};
 use std::hash::Hash;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;

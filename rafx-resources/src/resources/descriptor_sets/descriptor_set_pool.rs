@@ -11,8 +11,8 @@ use ash::prelude::VkResult;
 use ash::version::DeviceV1_0;
 use ash::vk;
 use crossbeam_channel::{Receiver, Sender};
+use rafx_api_vulkan::{VkBuffer, VkDescriptorPoolAllocator, VkDeviceContext, VkResourceDropSink};
 use rafx_base::slab::{RawSlab, RawSlabKey};
-use rafx_shell_vulkan::{VkBuffer, VkDescriptorPoolAllocator, VkDeviceContext, VkResourceDropSink};
 use std::collections::VecDeque;
 use std::mem::ManuallyDrop;
 
@@ -114,7 +114,7 @@ impl ManagedDescriptorSetPool {
                 //TODO: Should use min_storage_buffer_offset_alignment for storage buffers
                 let required_alignment =
                     device_context.limits().min_uniform_buffer_offset_alignment as u32;
-                let per_descriptor_stride = rafx_shell_vulkan::util::round_size_up_to_alignment_u32(
+                let per_descriptor_stride = rafx_api_vulkan::util::round_size_up_to_alignment_u32(
                     per_descriptor_size,
                     required_alignment,
                 );

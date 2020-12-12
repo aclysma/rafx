@@ -60,7 +60,7 @@ impl Importer for ShaderImporterSpv {
         let mut bytes = Vec::new();
         source.read_to_end(&mut bytes)?;
 
-        let code = rafx_shell_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
+        let code = rafx_api_vulkan::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
 
         log::trace!(
             "Import shader asset {:?} with {} bytes of code",
@@ -134,7 +134,7 @@ impl Importer for ShaderImporterCooked {
                 .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x)),
         )?;
 
-        let code = rafx_shell_vulkan::util::read_spv(&mut Cursor::new(&cooked_shader.spv))?;
+        let code = rafx_api_vulkan::util::read_spv(&mut Cursor::new(&cooked_shader.spv))?;
 
         log::trace!(
             "Import shader asset {:?} with {} bytes of code",

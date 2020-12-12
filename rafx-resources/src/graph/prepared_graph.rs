@@ -19,8 +19,8 @@ use ash::prelude::VkResult;
 use ash::version::DeviceV1_0;
 use ash::vk;
 use fnv::{FnvHashMap, FnvHashSet};
+use rafx_api_vulkan::{VkDeviceContext, VkImage};
 use rafx_nodes::{RenderPhase, RenderPhaseIndex};
-use rafx_shell_vulkan::{VkDeviceContext, VkImage};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
@@ -181,7 +181,7 @@ impl RenderGraphCacheInner {
                 // No unused buffer available, create one
                 let buffer = VkBuffer::new(
                     device_context,
-                    rafx_shell_vulkan::vk_mem::MemoryUsage::GpuOnly,
+                    rafx_api_vulkan::vk_mem::MemoryUsage::GpuOnly,
                     key.specification.usage_flags,
                     vk::MemoryPropertyFlags::DEVICE_LOCAL,
                     key.specification.size,
@@ -272,7 +272,7 @@ impl RenderGraphCacheInner {
                     .into_vk_extent_3d(&key.swapchain_surface_info);
                 let image = VkImage::new(
                     device_context,
-                    rafx_shell_vulkan::vk_mem::MemoryUsage::GpuOnly,
+                    rafx_api_vulkan::vk_mem::MemoryUsage::GpuOnly,
                     key.specification.create_flags,
                     key.specification.usage_flags,
                     extent,

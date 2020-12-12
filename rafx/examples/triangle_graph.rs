@@ -9,11 +9,11 @@ use rafx::graph::{
 use rafx::resources::vk_description::SwapchainSurfaceInfo;
 use rafx::resources::{vk_description as dsc, ResourceArc};
 use rafx::resources::{ImageResource, ResourceManager};
-use rafx_shell_vulkan::{
+use rafx_api_vulkan::{
     FrameInFlight, MsaaLevel, VkContextBuilder, VkDeviceContext, VkImageRaw, VkSurface, Window,
 };
 
-use rafx_shell_vulkan_sdl2::Sdl2Window;
+use rafx_api_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::EventPump;

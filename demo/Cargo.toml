@@ -22,7 +22,7 @@ crossbeam-channel = "0.4.2"
 vk-mem = "0.2"
 
 rafx = { path = "../rafx", features = ["assets"] }
-rafx-shell-vulkan-sdl2 = { path = "../rafx-shell-vulkan-sdl2" }
+rafx-api-vulkan-sdl2 = { path = "../rafx-api-vulkan-sdl2" }
 shaders = { path = "shaders" }
 
 legion = { version = "0.3.0", default-features = false, features = ["serialize"] }

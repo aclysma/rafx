@@ -3,9 +3,9 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use rafx_shell_vulkan::{VkDeviceContext, VkTransferUpload, VkUploadError};
+use rafx_api_vulkan::{VkDeviceContext, VkTransferUpload, VkUploadError};
 
-use rafx_shell_vulkan::VkImage;
+use rafx_api_vulkan::VkImage;
 use std::sync::{Arc, Mutex};
 
 use crate::DecodedImage;

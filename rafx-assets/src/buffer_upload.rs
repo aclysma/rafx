@@ -3,8 +3,8 @@ use std::mem::ManuallyDrop;
 
 use ash::version::DeviceV1_0;
 
-use rafx_shell_vulkan::{VkBuffer, VkUploadError};
-use rafx_shell_vulkan::{VkDeviceContext, VkTransferUpload};
+use rafx_api_vulkan::{VkBuffer, VkUploadError};
+use rafx_api_vulkan::{VkDeviceContext, VkTransferUpload};
 
 #[derive(PartialEq)]
 pub enum BufferMemoryBarrierType {

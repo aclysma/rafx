@@ -5,7 +5,7 @@ use crate::resources::resource_lookup::{DescriptorSetLayoutResource, ResourceHas
 use crate::resources::{DynDescriptorSet, ResourceArc};
 use ash::prelude::VkResult;
 use fnv::FnvHashMap;
-use rafx_shell_vulkan::VkDeviceContext;
+use rafx_api_vulkan::VkDeviceContext;
 
 #[derive(Debug)]
 pub struct DescriptorSetPoolMetrics {

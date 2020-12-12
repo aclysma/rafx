@@ -2,10 +2,10 @@ pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
 use ash::prelude::VkResult;
-use rafx_shell_vulkan::LogicalSize;
-use rafx_shell_vulkan::PhysicalSize;
-use rafx_shell_vulkan::VkEntry;
-use rafx_shell_vulkan::Window;
+use rafx_api_vulkan::LogicalSize;
+use rafx_api_vulkan::PhysicalSize;
+use rafx_api_vulkan::VkEntry;
+use rafx_api_vulkan::Window;
 use std::ffi::CStr;
 
 pub struct Sdl2Window<'a> {

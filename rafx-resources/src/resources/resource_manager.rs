@@ -6,7 +6,7 @@ use crate::{
     GraphicsPipelineCache,
 };
 use ash::prelude::*;
-use rafx_shell_vulkan::VkDeviceContext;
+use rafx_api_vulkan::VkDeviceContext;
 
 use crate::graph::RenderGraphCache;
 use crate::resources::command_buffers::DynCommandWriterAllocator;
@@ -84,25 +84,21 @@ impl ResourceManager {
         device_context: &VkDeviceContext,
         render_registry: &RenderRegistry,
     ) -> Self {
-        let resources = ResourceLookupSet::new(
-            device_context,
-            rafx_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-        );
+        let resources =
+            ResourceLookupSet::new(device_context, rafx_api_vulkan::MAX_FRAMES_IN_FLIGHT as u32);
 
         ResourceManager {
             render_registry: render_registry.clone(),
             dyn_commands: DynCommandWriterAllocator::new(
                 device_context,
-                rafx_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+                rafx_api_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
             ),
             dyn_resources: DynResourceAllocatorSetManager::new(
                 device_context,
-                rafx_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
+                rafx_api_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
             ),
             resources: resources.clone(),
-            render_graph_cache: RenderGraphCache::new(
-                rafx_shell_vulkan::MAX_FRAMES_IN_FLIGHT as u32,
-            ),
+            render_graph_cache: RenderGraphCache::new(rafx_api_vulkan::MAX_FRAMES_IN_FLIGHT as u32),
             descriptor_set_allocator: DescriptorSetAllocatorManager::new(device_context),
             graphics_pipeline_cache: GraphicsPipelineCache::new(render_registry, resources),
         }

@@ -14,8 +14,8 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-shell-vulkan = { path = "../rafx-shell-vulkan" }
-rafx-shell-vulkan-sdl2 = { path = "../rafx-shell-vulkan-sdl2" }
+rafx-api-vulkan = { path = "../rafx-api-vulkan" }
+rafx-api-vulkan-sdl2 = { path = "../rafx-api-vulkan-sdl2" }
 
 rafx-base = { path = "../rafx-base" }
 rafx-nodes = { path = "../rafx-nodes" }
@@ -34,31 +34,31 @@ glam = "0.8.6"
 
 [features]
 default = []
-static-vulkan = ["rafx-shell-vulkan/static-vulkan"]
+static-vulkan = ["rafx-api-vulkan/static-vulkan"]
 assets = ["rafx-assets"]
 
 profile-with-puffin = [
     "rafx-resources/profile-with-puffin",
     "rafx-assets/profile-with-puffin",
-    "rafx-shell-vulkan/profile-with-puffin"
+    "rafx-api-vulkan/profile-with-puffin"
 ]
 
 profile-with-optick = [
     "rafx-resources/profile-with-optick",
     "rafx-assets/profile-with-optick",
-    "rafx-shell-vulkan/profile-with-optick"
+    "rafx-api-vulkan/profile-with-optick"
 ]
 
 profile-with-superluminal = [
     "rafx-resources/profile-with-superluminal",
     "rafx-assets/profile-with-superluminal",
-    "rafx-shell-vulkan/profile-with-superluminal"
+    "rafx-api-vulkan/profile-with-superluminal"
 ]
 
 profile-with-tracing = [
     "rafx-resources/profile-with-tracing",
     "rafx-assets/profile-with-tracing",
-    "rafx-shell-vulkan/profile-with-tracing"
+    "rafx-api-vulkan/profile-with-tracing"
 ]
 
 [[example]]

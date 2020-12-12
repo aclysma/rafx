@@ -264,7 +264,7 @@ impl DynDescriptorSet {
         if let Some(element) = self.write_set.elements.get_mut(&key) {
             let what_to_bind = super::what_to_bind(element);
             if what_to_bind.bind_buffers {
-                let data = rafx_shell_vulkan::util::any_as_bytes(data).into();
+                let data = rafx_api_vulkan::util::any_as_bytes(data).into();
                 if let Some(element_buffer) = element.buffer_info.get_mut(array_index) {
                     element_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(data));
                     self.pending_write_set.elements.insert(key, element.clone());

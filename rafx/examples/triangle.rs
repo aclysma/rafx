@@ -5,10 +5,10 @@ use log::LevelFilter;
 use rafx::resources::vk_description as dsc;
 use rafx::resources::vk_description::{FramebufferMeta, SwapchainSurfaceInfo};
 use rafx::resources::{FramebufferResource, RenderPassResource, ResourceArc, ResourceManager};
-use rafx_shell_vulkan::{
+use rafx_api_vulkan::{
     VkContextBuilder, VkDeviceContext, VkImageRaw, VkSurface, VkSwapchain, Window,
 };
-use rafx_shell_vulkan_sdl2::Sdl2Window;
+use rafx_api_vulkan_sdl2::Sdl2Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::EventPump;

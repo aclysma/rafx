@@ -9,7 +9,7 @@ use crate::{
 };
 use ash::vk;
 use crossbeam_channel::{Receiver, Sender};
-use rafx_shell_vulkan::{MsaaLevel, VkImageRaw, VkResource};
+use rafx_api_vulkan::{MsaaLevel, VkImageRaw, VkResource};
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;

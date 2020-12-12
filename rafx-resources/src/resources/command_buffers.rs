@@ -3,7 +3,7 @@ use ash::version::DeviceV1_0;
 use ash::vk;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::FnvHashMap;
-use rafx_shell_vulkan::VkDeviceContext;
+use rafx_api_vulkan::VkDeviceContext;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 

@@ -1,11 +1,11 @@
 pub use rafx_base as base;
 
+pub use rafx_api_vulkan as vulkan;
 #[cfg(feature = "assets")]
 pub use rafx_assets as assets;
 pub use rafx_nodes as nodes;
 pub use rafx_resources as resources;
 pub use rafx_resources::graph;
-pub use rafx_shell_vulkan as vulkan;
 pub use rafx_visibility as visibility;
 
 pub use nodes::declare_render_feature;

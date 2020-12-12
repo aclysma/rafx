@@ -7,7 +7,7 @@ use ash::vk;
 use bitflags::_core::sync::atomic::AtomicU64;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::FnvHashMap;
-use rafx_shell_vulkan::{
+use rafx_api_vulkan::{
     VkBuffer, VkBufferRaw, VkDeviceContext, VkImage, VkImageRaw, VkResource, VkResourceDropSink,
 };
 use std::hash::Hash;

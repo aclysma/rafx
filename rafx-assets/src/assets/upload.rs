@@ -7,7 +7,7 @@ use ash::prelude::VkResult;
 use ash::vk;
 use atelier_assets::loader::{storage::AssetLoadOp, LoadHandle};
 use crossbeam_channel::{Receiver, Sender};
-use rafx_shell_vulkan::{
+use rafx_api_vulkan::{
     VkBuffer, VkDeviceContext, VkImage, VkTransferUpload, VkTransferUploadState, VkUploadError,
 };
 use std::mem::ManuallyDrop;

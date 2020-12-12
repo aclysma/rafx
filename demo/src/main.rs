@@ -21,7 +21,7 @@ pub fn logging_init() {
             "rafx_assets::resources::descriptor_sets",
             log::LevelFilter::Info,
         )
-        .filter_module("rafx_shell_vulkan::device", log::LevelFilter::Debug)
+        .filter_module("rafx_api_vulkan::device", log::LevelFilter::Debug)
         .filter_module("rafx_nodes", log::LevelFilter::Info)
         .filter_module("rafx_visibility", log::LevelFilter::Info)
         .filter_module("rafx_assets::graph", log::LevelFilter::Trace)
