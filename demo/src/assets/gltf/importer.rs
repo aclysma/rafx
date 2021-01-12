@@ -17,7 +17,6 @@ use rafx::assets::BufferAsset;
 use rafx::assets::ImageAsset;
 use rafx::assets::MaterialAsset;
 use rafx::assets::MaterialInstanceAsset;
-use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::Read;
@@ -42,7 +41,7 @@ impl std::error::Error for GltfImportError {}
 impl std::fmt::Display for GltfImportError {
     fn fmt(
         &self,
-        f: &mut Formatter<'_>,
+        f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         write!(f, "{}", self.error_message)
     }
@@ -348,7 +347,7 @@ impl Importer for GltfImporter {
                 image: None,
                 sampler: None,
                 buffer_data: Some(
-                    rafx::api_vulkan::util::any_as_bytes(&material_data_shader_param).into(),
+                    rafx::base::memory::any_as_bytes(&material_data_shader_param).into(),
                 ),
             });
 

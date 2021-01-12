@@ -3,9 +3,8 @@ use super::ManagedDescriptorSetPool;
 use super::{DescriptorSetArc, FrameInFlightIndex};
 use crate::resources::resource_lookup::{DescriptorSetLayoutResource, ResourceHash};
 use crate::resources::{DynDescriptorSet, ResourceArc};
-use ash::prelude::VkResult;
 use fnv::FnvHashMap;
-use rafx_api_vulkan::VkDeviceContext;
+use rafx_api::{RafxDeviceContext, RafxResult};
 
 #[derive(Debug)]
 pub struct DescriptorSetPoolMetrics {
@@ -19,7 +18,7 @@ pub struct DescriptorSetAllocatorMetrics {
 }
 
 pub struct DescriptorSetAllocator {
-    device_context: VkDeviceContext,
+    device_context: RafxDeviceContext,
     pools: FnvHashMap<ResourceHash, ManagedDescriptorSetPool>,
 
     // This index represents the set of resources that will be written to when update() is called.
@@ -27,7 +26,7 @@ pub struct DescriptorSetAllocator {
 }
 
 impl DescriptorSetAllocator {
-    pub fn new(device_context: &VkDeviceContext) -> Self {
+    pub fn new(device_context: &RafxDeviceContext) -> Self {
         DescriptorSetAllocator {
             device_context: device_context.clone(),
             pools: Default::default(),
@@ -51,10 +50,10 @@ impl DescriptorSetAllocator {
     }
 
     #[profiling::function]
-    pub fn flush_changes(&mut self) -> VkResult<()> {
+    pub fn flush_changes(&mut self) -> RafxResult<()> {
         // Now process drops and flush writes to GPU
         for pool in self.pools.values_mut() {
-            pool.flush_changes(&self.device_context, self.frame_in_flight_index)?;
+            pool.flush_changes(self.frame_in_flight_index)?;
         }
 
         Ok(())
@@ -67,7 +66,7 @@ impl DescriptorSetAllocator {
             super::add_to_frame_in_flight_index(self.frame_in_flight_index, 1);
     }
 
-    pub fn destroy(&mut self) -> VkResult<()> {
+    pub fn destroy(&mut self) -> RafxResult<()> {
         for pool in self.pools.values_mut() {
             pool.destroy(&self.device_context)?;
         }
@@ -81,7 +80,7 @@ impl DescriptorSetAllocator {
         &mut self,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         write_set: DescriptorSetWriteSet,
-    ) -> VkResult<DynDescriptorSet> {
+    ) -> RafxResult<DynDescriptorSet> {
         let descriptor_set =
             self.create_descriptor_set_with_writes(descriptor_set_layout, write_set.clone())?;
 
@@ -96,7 +95,7 @@ impl DescriptorSetAllocator {
         &mut self,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         write_set: DescriptorSetWriteSet,
-    ) -> VkResult<DescriptorSetArc> {
+    ) -> RafxResult<DescriptorSetArc> {
         // Get or create the pool for the layout
         let hash = descriptor_set_layout.get_hash().into();
         let device_context = self.device_context.clone();
@@ -112,7 +111,7 @@ impl DescriptorSetAllocator {
         &mut self,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         args: T,
-    ) -> VkResult<DescriptorSetArc> {
+    ) -> RafxResult<DescriptorSetArc> {
         let descriptor_set = self.create_dyn_descriptor_set_uninitialized(descriptor_set_layout)?;
         T::create_descriptor_set(self, descriptor_set, args)
     }
@@ -120,7 +119,7 @@ impl DescriptorSetAllocator {
     pub fn create_dyn_descriptor_set_uninitialized(
         &mut self,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
-    ) -> VkResult<DynDescriptorSet> {
+    ) -> RafxResult<DynDescriptorSet> {
         let write_set = super::create_uninitialized_write_set_for_layout(
             &descriptor_set_layout.get_raw().descriptor_set_layout_def,
         );
@@ -131,7 +130,7 @@ impl DescriptorSetAllocator {
         &mut self,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         args: T,
-    ) -> VkResult<<T as DescriptorSetInitializer<'a>>::Output> {
+    ) -> RafxResult<<T as DescriptorSetInitializer<'a>>::Output> {
         Ok(T::create_dyn_descriptor_set(
             self.create_dyn_descriptor_set_uninitialized(descriptor_set_layout)?,
             args,
@@ -151,5 +150,5 @@ pub trait DescriptorSetInitializer<'a> {
         descriptor_set_allocator: &mut DescriptorSetAllocator,
         descriptor_set: DynDescriptorSet,
         args: Self,
-    ) -> VkResult<DescriptorSetArc>;
+    ) -> RafxResult<DescriptorSetArc>;
 }

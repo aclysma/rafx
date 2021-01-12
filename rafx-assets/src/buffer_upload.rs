@@ -1,112 +1,16 @@
-use ash::vk;
-use std::mem::ManuallyDrop;
-
-use ash::version::DeviceV1_0;
-
-use rafx_api_vulkan::{VkBuffer, VkUploadError};
-use rafx_api_vulkan::{VkDeviceContext, VkTransferUpload};
-
-#[derive(PartialEq)]
-pub enum BufferMemoryBarrierType {
-    PostUploadUnifiedQueues,
-    PostUploadTransferQueue,
-    PostUploadDstQueue,
-}
-
-pub fn cmd_buffer_memory_barrier(
-    logical_device: &ash::Device,
-    command_buffer: vk::CommandBuffer,
-    buffers: &[vk::Buffer],
-    barrier_type: BufferMemoryBarrierType,
-    mut src_queue_family: u32,
-    mut dst_queue_family: u32,
-) {
-    if src_queue_family == dst_queue_family {
-        src_queue_family = vk::QUEUE_FAMILY_IGNORED;
-        dst_queue_family = vk::QUEUE_FAMILY_IGNORED;
-    }
-
-    struct SyncInfo {
-        src_access_mask: vk::AccessFlags,
-        dst_access_mask: vk::AccessFlags,
-        src_stage: vk::PipelineStageFlags,
-        dst_stage: vk::PipelineStageFlags,
-    }
-
-    let sync_info = match barrier_type {
-        BufferMemoryBarrierType::PostUploadUnifiedQueues => SyncInfo {
-            src_access_mask: vk::AccessFlags::TRANSFER_WRITE,
-            dst_access_mask: vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
-            src_stage: vk::PipelineStageFlags::TRANSFER,
-            dst_stage: vk::PipelineStageFlags::VERTEX_INPUT,
-        },
-        BufferMemoryBarrierType::PostUploadTransferQueue => SyncInfo {
-            src_access_mask: vk::AccessFlags::TRANSFER_WRITE,
-            dst_access_mask: vk::AccessFlags::empty(),
-            src_stage: vk::PipelineStageFlags::TRANSFER,
-            dst_stage: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-        },
-        BufferMemoryBarrierType::PostUploadDstQueue => SyncInfo {
-            src_access_mask: vk::AccessFlags::empty(),
-            dst_access_mask: vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
-            src_stage: vk::PipelineStageFlags::TOP_OF_PIPE,
-            dst_stage: vk::PipelineStageFlags::VERTEX_INPUT,
-        },
-    };
-
-    let barrier_infos: Vec<_> = buffers
-        .iter()
-        .map(|buffer| {
-            vk::BufferMemoryBarrier::builder()
-                .src_access_mask(sync_info.src_access_mask)
-                .dst_access_mask(sync_info.dst_access_mask)
-                .src_queue_family_index(src_queue_family)
-                .dst_queue_family_index(dst_queue_family)
-                .buffer(*buffer)
-                .size(vk::WHOLE_SIZE)
-                .offset(0)
-                .build()
-        })
-        .collect();
-
-    unsafe {
-        logical_device.cmd_pipeline_barrier(
-            command_buffer,
-            sync_info.src_stage,
-            sync_info.dst_stage,
-            vk::DependencyFlags::BY_REGION,
-            &[],
-            &barrier_infos,
-            &[],
-        );
-    }
-}
-
-pub fn cmd_copy_buffer_to_buffer(
-    logical_device: &ash::Device,
-    command_buffer: vk::CommandBuffer,
-    src_buffer: vk::Buffer,
-    dst_buffer: vk::Buffer,
-    src_buffer_offset: u64,
-    size: u64,
-) {
-    let buffer_copy = vk::BufferCopy::builder()
-        .src_offset(src_buffer_offset)
-        .dst_offset(0)
-        .size(size);
-
-    unsafe {
-        logical_device.cmd_copy_buffer(command_buffer, src_buffer, dst_buffer, &[*buffer_copy]);
-    }
-}
+use rafx_api::extra::upload::{RafxTransferUpload, RafxUploadError};
+use rafx_api::{
+    RafxBarrierQueueTransition, RafxBuffer, RafxBufferBarrier, RafxBufferDef, RafxDeviceContext,
+    RafxMemoryUsage, RafxResourceState, RafxResourceType,
+};
 
 pub fn enqueue_load_buffer(
-    device_context: &VkDeviceContext,
-    upload: &mut VkTransferUpload,
-    transfer_queue_family_index: u32,
-    dst_queue_family_index: u32,
+    device_context: &RafxDeviceContext,
+    upload: &mut RafxTransferUpload,
+    // transfer_queue_family_index: u32,
+    // dst_queue_family_index: u32,
     data: &[u8],
-) -> Result<ManuallyDrop<VkBuffer>, VkUploadError> {
+) -> Result<RafxBuffer, RafxUploadError> {
     // Arbitrary, not sure if there is any requirement
     const REQUIRED_ALIGNMENT: usize = 16;
 
@@ -114,43 +18,50 @@ pub fn enqueue_load_buffer(
     let offset = upload.push(data, REQUIRED_ALIGNMENT)?;
     let size = data.len() as u64;
 
-    // Allocate a buffer
-    let dst_buffer = ManuallyDrop::new(VkBuffer::new(
-        device_context,
-        vk_mem::MemoryUsage::GpuOnly,
-        vk::BufferUsageFlags::TRANSFER_DST
-            | vk::BufferUsageFlags::VERTEX_BUFFER
-            | vk::BufferUsageFlags::INDEX_BUFFER,
-        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+    // Allocate a GPU buffer
+    let dst_buffer = device_context.create_buffer(&RafxBufferDef {
         size,
-    )?);
+        memory_usage: RafxMemoryUsage::GpuOnly,
+        queue_type: upload.dst_queue().queue_type(),
+        resource_type: RafxResourceType::VERTEX_BUFFER | RafxResourceType::INDEX_BUFFER,
+        ..Default::default()
+    })?;
 
-    cmd_copy_buffer_to_buffer(
-        device_context.device(),
-        upload.transfer_command_buffer(),
-        upload.staging_buffer().buffer(),
-        dst_buffer.buffer(),
+    upload.transfer_command_buffer().cmd_copy_buffer_to_buffer(
+        &upload.staging_buffer(),
+        &dst_buffer,
         offset,
+        0,
         size,
-    );
+    )?;
 
-    cmd_buffer_memory_barrier(
-        device_context.device(),
-        upload.transfer_command_buffer(),
-        &[dst_buffer.buffer()],
-        BufferMemoryBarrierType::PostUploadTransferQueue,
-        transfer_queue_family_index,
-        dst_queue_family_index,
-    );
+    upload.transfer_command_buffer().cmd_resource_barrier(
+        &[RafxBufferBarrier {
+            buffer: &dst_buffer,
+            src_state: RafxResourceState::COPY_DST,
+            dst_state: RafxResourceState::VERTEX_AND_CONSTANT_BUFFER
+                | RafxResourceState::INDEX_BUFFER,
+            queue_transition: RafxBarrierQueueTransition::ReleaseTo(
+                upload.dst_queue().queue_type(),
+            ),
+        }],
+        &[],
+        &[],
+    )?;
 
-    cmd_buffer_memory_barrier(
-        device_context.device(),
-        upload.dst_command_buffer(),
-        &[dst_buffer.buffer()],
-        BufferMemoryBarrierType::PostUploadDstQueue,
-        transfer_queue_family_index,
-        dst_queue_family_index,
-    );
+    upload.dst_command_buffer().cmd_resource_barrier(
+        &[RafxBufferBarrier {
+            buffer: &dst_buffer,
+            src_state: RafxResourceState::COPY_DST,
+            dst_state: RafxResourceState::VERTEX_AND_CONSTANT_BUFFER
+                | RafxResourceState::INDEX_BUFFER,
+            queue_transition: RafxBarrierQueueTransition::AcquireFrom(
+                upload.transfer_queue().queue_type(),
+            ),
+        }],
+        &[],
+        &[],
+    )?;
 
     Ok(dst_buffer)
 }

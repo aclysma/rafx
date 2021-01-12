@@ -3,14 +3,12 @@ use super::BufferAssetData;
 use super::ImageAssetData;
 use super::{BufferAsset, ImageAsset};
 use crate::{buffer_upload, image_upload, DecodedImage};
-use ash::prelude::VkResult;
-use ash::vk;
 use atelier_assets::loader::{storage::AssetLoadOp, LoadHandle};
 use crossbeam_channel::{Receiver, Sender};
-use rafx_api_vulkan::{
-    VkBuffer, VkDeviceContext, VkImage, VkTransferUpload, VkTransferUploadState, VkUploadError,
+use rafx_api::{
+    extra::upload::*, RafxBuffer, RafxDeviceContext, RafxError, RafxQueue, RafxResourceType,
+    RafxResult, RafxTexture,
 };
-use std::mem::ManuallyDrop;
 
 //
 // Ghetto futures - UploadOp is used to signal completion and UploadOpAwaiter is used to check the result
@@ -75,11 +73,11 @@ impl<ResourceT, AssetT> Drop for UploadOp<ResourceT, AssetT> {
     }
 }
 
-pub type ImageUploadOpResult = UploadOpResult<VkImage, ImageAsset>;
-pub type ImageUploadOp = UploadOp<VkImage, ImageAsset>;
+pub type ImageUploadOpResult = UploadOpResult<RafxTexture, ImageAsset>;
+pub type ImageUploadOp = UploadOp<RafxTexture, ImageAsset>;
 
-pub type BufferUploadOpResult = UploadOpResult<VkBuffer, BufferAsset>;
-pub type BufferUploadOp = UploadOp<VkBuffer, BufferAsset>;
+pub type BufferUploadOpResult = UploadOpResult<RafxBuffer, BufferAsset>;
+pub type BufferUploadOp = UploadOp<RafxBuffer, BufferAsset>;
 
 //
 // Represents a single request inserted into the upload queue that hasn't started yet
@@ -103,13 +101,13 @@ pub struct PendingBufferUpload {
 struct InFlightImageUpload {
     load_op: AssetLoadOp,
     upload_op: ImageUploadOp,
-    image: ManuallyDrop<VkImage>,
+    texture: RafxTexture,
 }
 
 pub struct InFlightBufferUpload {
     load_op: AssetLoadOp,
     upload_op: BufferUploadOp,
-    buffer: ManuallyDrop<VkBuffer>,
+    buffer: RafxBuffer,
 }
 
 //
@@ -130,7 +128,7 @@ pub enum InProgressUploadPollResult {
 struct InProgressUploadInner {
     image_uploads: Vec<InFlightImageUpload>,
     buffer_uploads: Vec<InFlightBufferUpload>,
-    upload: VkTransferUpload,
+    upload: RafxTransferUpload,
 }
 
 struct InProgressUploadDebugInfo {
@@ -152,7 +150,7 @@ impl InProgressUpload {
     pub fn new(
         image_uploads: Vec<InFlightImageUpload>,
         buffer_uploads: Vec<InFlightBufferUpload>,
-        upload: VkTransferUpload,
+        upload: RafxTransferUpload,
         debug_info: InProgressUploadDebugInfo,
     ) -> Self {
         let inner = InProgressUploadInner {
@@ -172,49 +170,40 @@ impl InProgressUpload {
     // - Submits on the graphics queue and waits
     //
     // Calls load_op.complete() or load_op.error() as appropriate
-    pub fn poll_load(
-        &mut self,
-        device_context: &VkDeviceContext,
-    ) -> InProgressUploadPollResult {
+    pub fn poll_load(&mut self) -> InProgressUploadPollResult {
         loop {
             if let Some(mut inner) = self.take_inner() {
                 match inner.upload.state() {
                     Ok(state) => match state {
-                        VkTransferUploadState::Writable => {
-                            //log::trace!("VkTransferUploadState::Writable");
-                            inner
-                                .upload
-                                .submit_transfer(&device_context.queues().transfer_queue)
-                                .unwrap();
+                        RafxTransferUploadState::Writable => {
+                            //log::trace!("RafxTransferUploadState::Writable");
+                            inner.upload.submit_transfer().unwrap();
                             self.inner = Some(inner);
                         }
-                        VkTransferUploadState::SentToTransferQueue => {
-                            //log::trace!("VkTransferUploadState::SentToTransferQueue");
+                        RafxTransferUploadState::SentToTransferQueue => {
+                            //log::trace!("RafxTransferUploadState::SentToTransferQueue");
                             self.inner = Some(inner);
                             break InProgressUploadPollResult::Pending;
                         }
-                        VkTransferUploadState::PendingSubmitDstQueue => {
-                            //log::trace!("VkTransferUploadState::PendingSubmitDstQueue");
-                            inner
-                                .upload
-                                .submit_dst(&device_context.queues().graphics_queue)
-                                .unwrap();
+                        RafxTransferUploadState::PendingSubmitDstQueue => {
+                            //log::trace!("RafxTransferUploadState::PendingSubmitDstQueue");
+                            inner.upload.submit_dst().unwrap();
                             self.inner = Some(inner);
                         }
-                        VkTransferUploadState::SentToDstQueue => {
-                            //log::trace!("VkTransferUploadState::SentToDstQueue");
+                        RafxTransferUploadState::SentToDstQueue => {
+                            //log::trace!("RafxTransferUploadState::SentToDstQueue");
                             self.inner = Some(inner);
                             break InProgressUploadPollResult::Pending;
                         }
-                        VkTransferUploadState::Complete => {
-                            //log::trace!("VkTransferUploadState::Complete");
-                            for mut upload in inner.image_uploads {
-                                let image = unsafe { ManuallyDrop::take(&mut upload.image) };
-                                upload.upload_op.complete(image, upload.load_op);
+                        RafxTransferUploadState::Complete => {
+                            //log::trace!("RafxTransferUploadState::Complete");
+                            for upload in inner.image_uploads {
+                                let texture = upload.texture;
+                                upload.upload_op.complete(texture, upload.load_op);
                             }
 
-                            for mut upload in inner.buffer_uploads {
-                                let buffer = unsafe { ManuallyDrop::take(&mut upload.buffer) };
+                            for upload in inner.buffer_uploads {
+                                let buffer = upload.buffer;
                                 upload.upload_op.complete(buffer, upload.load_op);
                             }
 
@@ -222,20 +211,16 @@ impl InProgressUpload {
                         }
                     },
                     Err(err) => {
-                        for mut upload in inner.image_uploads {
-                            upload.load_op.error(err);
+                        for upload in inner.image_uploads {
+                            upload.load_op.error(err.clone());
                             upload.upload_op.error();
-                            unsafe {
-                                ManuallyDrop::drop(&mut upload.image);
-                            }
+                            // Image is dropped here
                         }
 
-                        for mut upload in inner.buffer_uploads {
-                            upload.load_op.error(err);
+                        for upload in inner.buffer_uploads {
+                            upload.load_op.error(err.clone());
                             upload.upload_op.error();
-                            unsafe {
-                                ManuallyDrop::drop(&mut upload.buffer);
-                            }
+                            // Buffer is dropped here
                         }
 
                         break InProgressUploadPollResult::Error;
@@ -258,17 +243,9 @@ impl InProgressUpload {
 impl Drop for InProgressUpload {
     fn drop(&mut self) {
         if let Some(mut inner) = self.take_inner() {
-            for image in &mut inner.image_uploads {
-                unsafe {
-                    ManuallyDrop::drop(&mut image.image);
-                }
-            }
-
-            for buffer in &mut inner.buffer_uploads {
-                unsafe {
-                    ManuallyDrop::drop(&mut buffer.buffer);
-                }
-            }
+            // I don't think order of destruction matters but just in case
+            inner.image_uploads.clear();
+            inner.buffer_uploads.clear();
         }
     }
 }
@@ -280,11 +257,11 @@ pub struct UploadQueueConfig {
 }
 
 //
-// Receives sets of images that need to be uploaded and kicks off the upload. Responsible for
-// batching image updates together into uploads
+// Receives sets of images/buffers that need to be uploaded and kicks off the upload. Responsible
+// for batching image updates together into uploads
 //
 pub struct UploadQueue {
-    device_context: VkDeviceContext,
+    device_context: RafxDeviceContext,
     config: UploadQueueConfig,
 
     // For enqueueing images to upload
@@ -304,13 +281,18 @@ pub struct UploadQueue {
     // These are uploads that are currently in progress
     uploads_in_progress: Vec<InProgressUpload>,
 
+    graphics_queue: RafxQueue,
+    transfer_queue: RafxQueue,
+
     next_upload_id: usize,
 }
 
 impl UploadQueue {
     pub fn new(
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         config: UploadQueueConfig,
+        graphics_queue: RafxQueue,
+        transfer_queue: RafxQueue,
     ) -> Self {
         let (pending_image_tx, pending_image_rx) = crossbeam_channel::unbounded();
         let (pending_buffer_tx, pending_buffer_rx) = crossbeam_channel::unbounded();
@@ -326,6 +308,8 @@ impl UploadQueue {
             next_buffer_upload: None,
             uploads_in_progress: Default::default(),
             next_upload_id: 1,
+            graphics_queue,
+            transfer_queue,
         }
     }
 
@@ -342,40 +326,37 @@ impl UploadQueue {
     // Err = Vulkan error
     fn try_enqueue_image_upload(
         &mut self,
-        upload: &mut VkTransferUpload,
+        upload: &mut RafxTransferUpload,
         pending_image: PendingImageUpload,
         in_flight_uploads: &mut Vec<InFlightImageUpload>,
-    ) -> VkResult<Option<PendingImageUpload>> {
+    ) -> RafxResult<Option<PendingImageUpload>> {
         let result = image_upload::enqueue_load_image(
             &self.device_context,
             upload,
-            self.device_context
-                .queue_family_indices()
-                .transfer_queue_family_index,
-            self.device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
+            // self.transfer_queue.queue_family_index(),
+            // self.graphics_queue.queue_family_index(),
             &pending_image.texture,
+            RafxResourceType::TEXTURE,
         );
 
         match result {
-            Ok(image) => {
+            Ok(texture) => {
                 in_flight_uploads.push(InFlightImageUpload {
-                    image,
+                    texture,
                     load_op: pending_image.load_op,
                     upload_op: pending_image.upload_op,
                 });
                 Ok(None)
             }
-            Err(VkUploadError::VkError(e)) => Err(e),
-            Err(VkUploadError::BufferFull) => Ok(Some(pending_image)),
+            Err(RafxUploadError::Other(e)) => Err(e),
+            Err(RafxUploadError::BufferFull) => Ok(Some(pending_image)),
         }
     }
 
     fn start_new_image_uploads(
         &mut self,
-        upload: &mut VkTransferUpload,
-    ) -> VkResult<Vec<InFlightImageUpload>> {
+        upload: &mut RafxTransferUpload,
+    ) -> RafxResult<Vec<InFlightImageUpload>> {
         let mut in_flight_uploads = vec![];
 
         // If we had a pending image upload from before, try to upload it now
@@ -420,19 +401,15 @@ impl UploadQueue {
     // Err = Vulkan error
     fn try_enqueue_buffer_upload(
         &mut self,
-        upload: &mut VkTransferUpload,
+        upload: &mut RafxTransferUpload,
         pending_buffer: PendingBufferUpload,
         in_flight_uploads: &mut Vec<InFlightBufferUpload>,
-    ) -> VkResult<Option<PendingBufferUpload>> {
+    ) -> RafxResult<Option<PendingBufferUpload>> {
         let result = buffer_upload::enqueue_load_buffer(
             &self.device_context,
             upload,
-            self.device_context
-                .queue_family_indices()
-                .transfer_queue_family_index,
-            self.device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
+            // self.transfer_queue.queue_family_index(),
+            // self.graphics_queue.queue_family_index(),
             &pending_buffer.data,
         );
 
@@ -445,15 +422,15 @@ impl UploadQueue {
                 });
                 Ok(None)
             }
-            Err(VkUploadError::VkError(e)) => Err(e),
-            Err(VkUploadError::BufferFull) => Ok(Some(pending_buffer)),
+            Err(RafxUploadError::Other(e)) => Err(e),
+            Err(RafxUploadError::BufferFull) => Ok(Some(pending_buffer)),
         }
     }
 
     fn start_new_buffer_uploads(
         &mut self,
-        upload: &mut VkTransferUpload,
-    ) -> VkResult<Vec<InFlightBufferUpload>> {
+        upload: &mut RafxTransferUpload,
+    ) -> RafxResult<Vec<InFlightBufferUpload>> {
         let mut in_flight_uploads = vec![];
 
         // If we had a pending image upload from before, try to upload it now
@@ -493,7 +470,7 @@ impl UploadQueue {
         Ok(in_flight_uploads)
     }
 
-    fn start_new_uploads(&mut self) -> VkResult<()> {
+    fn start_new_uploads(&mut self) -> RafxResult<()> {
         for _ in 0..self.config.max_new_uploads_in_single_frame {
             if self.pending_image_rx.is_empty()
                 && self.next_image_upload.is_none()
@@ -518,15 +495,11 @@ impl UploadQueue {
         Ok(())
     }
 
-    fn start_new_upload(&mut self) -> VkResult<bool> {
-        let mut upload = VkTransferUpload::new(
+    fn start_new_upload(&mut self) -> RafxResult<bool> {
+        let mut upload = RafxTransferUpload::new(
             &self.device_context,
-            self.device_context
-                .queue_family_indices()
-                .transfer_queue_family_index,
-            self.device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
+            &self.transfer_queue,
+            &self.graphics_queue,
             self.config.max_bytes_per_upload as u64,
         )?;
 
@@ -545,7 +518,7 @@ impl UploadQueue {
                 upload_id
             );
 
-            upload.submit_transfer(&self.device_context.queues().transfer_queue)?;
+            upload.submit_transfer()?;
 
             let debug_info = InProgressUploadDebugInfo {
                 upload_id,
@@ -571,7 +544,7 @@ impl UploadQueue {
     fn update_existing_uploads(&mut self) {
         // iterate backwards so we can use swap_remove
         for i in (0..self.uploads_in_progress.len()).rev() {
-            let result = self.uploads_in_progress[i].poll_load(&self.device_context);
+            let result = self.uploads_in_progress[i].poll_load();
             match result {
                 InProgressUploadPollResult::Pending => {
                     // do nothing
@@ -614,7 +587,7 @@ impl UploadQueue {
         }
     }
 
-    pub fn update(&mut self) -> VkResult<()> {
+    pub fn update(&mut self) -> RafxResult<()> {
         self.start_new_uploads()?;
         self.update_existing_uploads();
         Ok(())
@@ -633,29 +606,38 @@ pub struct UploadManager {
 
 impl UploadManager {
     pub fn new(
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         upload_queue_config: UploadQueueConfig,
+        graphics_queue: RafxQueue,
+        transfer_queue: RafxQueue,
     ) -> Self {
         let (image_upload_result_tx, image_upload_result_rx) = crossbeam_channel::unbounded();
         let (buffer_upload_result_tx, buffer_upload_result_rx) = crossbeam_channel::unbounded();
 
         UploadManager {
-            upload_queue: UploadQueue::new(device_context, upload_queue_config),
+            upload_queue: UploadQueue::new(
+                device_context,
+                upload_queue_config,
+                graphics_queue,
+                transfer_queue,
+            ),
             image_upload_result_rx,
             image_upload_result_tx,
             buffer_upload_result_rx,
             buffer_upload_result_tx,
+            //transfer_queue,
+            //graphics_queue
         }
     }
 
-    pub fn update(&mut self) -> VkResult<()> {
+    pub fn update(&mut self) -> RafxResult<()> {
         self.upload_queue.update()
     }
 
     pub fn upload_image(
         &self,
         request: LoadRequest<ImageAssetData, ImageAsset>,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         let mips = DecodedImage::default_mip_settings_for_image_size(
             request.asset.width,
             request.asset.height,
@@ -683,15 +665,16 @@ impl UploadManager {
                 texture: decoded_image,
             })
             .map_err(|_err| {
-                log::error!("Could not enqueue image upload");
-                vk::Result::ERROR_UNKNOWN
+                let error = format!("Could not enqueue image upload");
+                log::error!("{}", error);
+                RafxError::StringError(error)
             })
     }
 
     pub fn upload_buffer(
         &self,
         request: LoadRequest<BufferAssetData, BufferAsset>,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         self.upload_queue
             .pending_buffer_tx()
             .send(PendingBufferUpload {
@@ -704,8 +687,9 @@ impl UploadManager {
                 data: request.asset.data,
             })
             .map_err(|_err| {
-                log::error!("Could not enqueue buffer upload");
-                vk::Result::ERROR_UNKNOWN
+                let error = format!("Could not enqueue buffer upload");
+                log::error!("{}", error);
+                RafxError::StringError(error)
             })
     }
 }

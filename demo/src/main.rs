@@ -12,7 +12,7 @@ pub fn logging_init() {
     #[cfg(not(debug_assertions))]
     let log_level = log::LevelFilter::Info;
     #[cfg(debug_assertions)]
-    let log_level = log::LevelFilter::Info;
+    let log_level = log::LevelFilter::Debug;
 
     // Setup logging
     env_logger::Builder::from_default_env()
@@ -21,11 +21,11 @@ pub fn logging_init() {
             "rafx_assets::resources::descriptor_sets",
             log::LevelFilter::Info,
         )
-        .filter_module("rafx_api_vulkan::device", log::LevelFilter::Debug)
         .filter_module("rafx_nodes", log::LevelFilter::Info)
         .filter_module("rafx_visibility", log::LevelFilter::Info)
         .filter_module("rafx_assets::graph", log::LevelFilter::Trace)
         .filter_module("rafx_resources::resources", log::LevelFilter::Debug)
+        .filter_module("rafx_resources::graph::graph_plan", log::LevelFilter::Info)
         .filter_module("mio", log::LevelFilter::Debug)
         // .filter_module(
         //     "rafx_assets::resources::command_buffers",
@@ -48,5 +48,5 @@ fn main() {
 
     let args = demo::DemoArgs::from_args();
 
-    demo::run(&args);
+    demo::run(&args).unwrap();
 }

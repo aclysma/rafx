@@ -2,6 +2,11 @@
 members = [
     "rafx",
     "rafx-shader-processor",
+    "rafx-api",
+    "rafx-base",
+    "rafx-nodes",
+    "rafx-resources",
+    "rafx-assets",
     "demo",
     "demo/shaders",
     "demo/cli",

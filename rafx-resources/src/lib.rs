@@ -3,10 +3,8 @@ pub use resources::*;
 
 pub use ash;
 
-pub mod vk_description;
-
 pub mod graph;
 
-pub use rafx_api_vulkan as vulkan;
+pub type RafxResult<T> = rafx_api::RafxResult<T>;
 
-use vk_description::option_set;
+pub const MAX_FRAMES_IN_FLIGHT: usize = 2;

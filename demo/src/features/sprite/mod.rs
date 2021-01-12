@@ -17,6 +17,7 @@ use extract::SpriteExtractJob;
 mod prepare;
 
 mod write;
+use rafx::api::RafxPrimitiveTopology;
 use rafx::resources::{
     DescriptorSetArc, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,
 };
@@ -36,12 +37,12 @@ pub struct SpriteVertex {
 
 lazy_static::lazy_static! {
     pub static ref SPRITE_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use rafx::resources::vk_description::Format;
+        use rafx::api::RafxFormat;
 
         VertexDataLayout::build_vertex_layout(&SpriteVertex::default(), |builder, vertex| {
-            builder.add_member(&vertex.pos, "POSITION", Format::R32G32_SFLOAT);
-            builder.add_member(&vertex.tex_coord, "TEXCOORD", Format::R32G32_SFLOAT);
-        }).into_set()
+            builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32_SFLOAT);
+            builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+        }).into_set(RafxPrimitiveTopology::TriangleList)
     };
 }
 

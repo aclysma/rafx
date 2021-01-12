@@ -14,3 +14,4 @@ fnv = "1.0"
 atomicbox = "0.3"
 
 rafx-base = { path = "../rafx-base" }
+rafx-api = { path = "../rafx-api" }

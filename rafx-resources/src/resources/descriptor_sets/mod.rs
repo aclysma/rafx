@@ -1,5 +1,8 @@
-use crate::vk_description as dsc;
 use fnv::FnvHashMap;
+
+mod descriptor_set_layout;
+pub use descriptor_set_layout::DescriptorSetLayout;
+pub use descriptor_set_layout::DescriptorSetLayoutBinding;
 
 mod descriptor_set_arc;
 pub use descriptor_set_arc::DescriptorSetArc;
@@ -38,9 +41,10 @@ mod descriptor_set_allocator_manager;
 pub(super) use descriptor_set_allocator_manager::DescriptorSetAllocatorManager;
 pub use descriptor_set_allocator_manager::DescriptorSetAllocatorProvider;
 pub use descriptor_set_allocator_manager::DescriptorSetAllocatorRef;
+use rafx_api::RafxResourceType;
 
-const MAX_DESCRIPTORS_PER_POOL: u32 = 64;
-const MAX_FRAMES_IN_FLIGHT: usize = rafx_api_vulkan::MAX_FRAMES_IN_FLIGHT;
+const MAX_DESCRIPTOR_SETS_PER_POOL: u32 = 64;
+const MAX_FRAMES_IN_FLIGHT: usize = crate::MAX_FRAMES_IN_FLIGHT;
 const MAX_FRAMES_IN_FLIGHT_PLUS_1: usize = MAX_FRAMES_IN_FLIGHT + 1;
 
 // A set of write to buffers that back a descriptor set
@@ -84,20 +88,20 @@ pub fn what_to_bind(element_write: &DescriptorSetElementWrite) -> WhatToBind {
 
     // See https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkWriteDescriptorSet.html
     match element_write.descriptor_type {
-        dsc::DescriptorType::Sampler => {
+        RafxResourceType::SAMPLER => {
             what.bind_samplers = !element_write.has_immutable_sampler;
         }
-        dsc::DescriptorType::CombinedImageSampler => {
+        RafxResourceType::COMBINED_IMAGE_SAMPLER => {
             what.bind_samplers = !element_write.has_immutable_sampler;
             what.bind_images = true;
         }
-        dsc::DescriptorType::SampledImage => {
+        RafxResourceType::TEXTURE => {
             what.bind_images = true;
         }
-        dsc::DescriptorType::UniformBuffer => {
+        RafxResourceType::UNIFORM_BUFFER => {
             what.bind_buffers = true;
         }
-        dsc::DescriptorType::StorageBuffer => {
+        RafxResourceType::BUFFER => {
             what.bind_buffers = true;
         }
         _ => unimplemented!(),

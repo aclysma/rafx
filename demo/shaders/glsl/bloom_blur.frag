@@ -9,19 +9,10 @@ layout (set = 0, binding = 0) uniform texture2D tex;
 //         (
 //             mag_filter: Nearest,
 //             min_filter: Nearest,
+//             mip_map_mode: Linear,
 //             address_mode_u: ClampToEdge,
 //             address_mode_v: ClampToEdge,
 //             address_mode_w: ClampToEdge,
-//             anisotropy_enable: false,
-//             max_anisotropy: 1.0,
-//             border_color: FloatOpaqueWhite,
-//             unnormalized_coordinates: false,
-//             compare_enable: false,
-//             compare_op: Always,
-//             mipmap_mode: Linear,
-//             mip_lod_bias: 0,
-//             min_lod: 0,
-//             max_lod: 1000
 //         )
 // ])]
 layout (set = 0, binding = 1) uniform sampler smp;

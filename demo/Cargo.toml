@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 ash = ">0.30"
 imgui = "0.4"
 imgui-sdl2 = "0.11.0"
-sdl2 = { version = "0.34" }
+sdl2 = { version = "0.34", features = ["raw-window-handle"] }
 image = "0.23.12"
 # for https://github.com/gltf-rs/gltf/pull/288
 #gltf = "0.15"
@@ -22,11 +22,10 @@ crossbeam-channel = "0.4.2"
 vk-mem = "0.2"
 
 rafx = { path = "../rafx", features = ["assets"] }
-rafx-api-vulkan-sdl2 = { path = "../rafx-api-vulkan-sdl2" }
 shaders = { path = "shaders" }
 
 legion = { version = "0.3.0", default-features = false, features = ["serialize"] }
-atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "renderer", features = ["serde_importers", "asset_uuid_macro"] }
+atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "rafx", features = ["serde_importers", "asset_uuid_macro"] }
 futures-lite = "1.3.0"
 
 env_logger = "0.6"

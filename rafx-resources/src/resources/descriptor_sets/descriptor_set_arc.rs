@@ -1,6 +1,7 @@
 use super::ManagedDescriptorSet;
-use ash::vk;
+use crate::{DescriptorSetLayoutResource, ResourceArc};
 use crossbeam_channel::Sender;
+use rafx_api::{RafxCommandBuffer, RafxDescriptorSetHandle, RafxResult};
 use rafx_base::slab::RawSlabKey;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -14,11 +15,11 @@ pub(super) struct DescriptorSetArcInner {
     // Unique ID of the descriptor set
     pub(super) slab_key: RawSlabKey<ManagedDescriptorSet>,
 
-    // Cache the raw descriptor set here
-    pub(super) descriptor_set: vk::DescriptorSet,
-
     // When this object is dropped, send a message to the pool to deallocate this descriptor set
     drop_tx: Sender<RawSlabKey<ManagedDescriptorSet>>,
+
+    descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
+    handle: RafxDescriptorSetHandle,
 }
 
 impl Drop for DescriptorSetArcInner {
@@ -34,7 +35,6 @@ impl std::fmt::Debug for DescriptorSetArcInner {
     ) -> std::fmt::Result {
         f.debug_struct("DescriptorSetArcInner")
             .field("slab_key", &self.slab_key)
-            .field("raw", &self.descriptor_set)
             .finish()
     }
 }
@@ -47,13 +47,15 @@ pub struct DescriptorSetArc {
 impl DescriptorSetArc {
     pub(super) fn new(
         slab_key: RawSlabKey<ManagedDescriptorSet>,
-        descriptor_set: vk::DescriptorSet,
         drop_tx: Sender<RawSlabKey<ManagedDescriptorSet>>,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
+        handle: RafxDescriptorSetHandle,
     ) -> Self {
         let inner = DescriptorSetArcInner {
             slab_key,
-            descriptor_set,
             drop_tx,
+            descriptor_set_layout: descriptor_set_layout.clone(),
+            handle,
         };
 
         DescriptorSetArc {
@@ -61,8 +63,24 @@ impl DescriptorSetArc {
         }
     }
 
-    pub fn get(&self) -> vk::DescriptorSet {
-        self.inner.descriptor_set
+    pub fn handle(&self) -> &RafxDescriptorSetHandle {
+        &self.inner.handle
+    }
+
+    pub fn layout(&self) -> &ResourceArc<DescriptorSetLayoutResource> {
+        &self.inner.descriptor_set_layout
+    }
+
+    pub fn bind(
+        &self,
+        command_buffer: &RafxCommandBuffer,
+    ) -> RafxResult<()> {
+        let descriptor_set_layout = &self.inner.descriptor_set_layout.get_raw();
+        command_buffer.cmd_bind_descriptor_set_handle(
+            &descriptor_set_layout.root_signature,
+            descriptor_set_layout.set_index,
+            &self.inner.handle,
+        )
     }
 }
 

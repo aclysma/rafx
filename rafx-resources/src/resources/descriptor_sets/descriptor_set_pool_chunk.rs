@@ -1,18 +1,19 @@
 use super::DescriptorSetWriteElementBufferData;
 use super::{
     DescriptorLayoutBufferSet, DescriptorSetElementKey, DescriptorSetPoolRequiredBufferInfo,
-    DescriptorSetWriteSet, ManagedDescriptorSet, MAX_DESCRIPTORS_PER_POOL,
+    DescriptorSetWriteSet, ManagedDescriptorSet, MAX_DESCRIPTOR_SETS_PER_POOL,
 };
-use crate::vk_description as dsc;
-use arrayvec::ArrayVec;
-use ash::prelude::VkResult;
-use ash::version::DeviceV1_0;
-use ash::vk;
+use crate::{
+    DescriptorSetLayoutResource, ResourceArc, ResourceDropSink, VkDescriptorPoolAllocator,
+};
 use fnv::FnvHashMap;
-use rafx_api_vulkan::{VkBuffer, VkDescriptorPoolAllocator, VkDeviceContext, VkResourceDropSink};
+use rafx_api::{
+    RafxBuffer, RafxDescriptorElements, RafxDescriptorKey, RafxDescriptorSetArray,
+    RafxDescriptorSetHandle, RafxDescriptorUpdate, RafxDeviceContext, RafxOffsetSize,
+    RafxResourceType, RafxResult,
+};
 use rafx_base::slab::RawSlabKey;
 use std::collections::VecDeque;
-use std::mem::ManuallyDrop;
 
 // A write to the descriptors within a single descriptor set that has been scheduled (i.e. will occur
 // over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames
@@ -23,18 +24,17 @@ struct PendingDescriptorSetWriteSet {
 }
 
 //
-// A single chunk within a pool. This allows us to create MAX_DESCRIPTORS_PER_POOL * MAX_FRAMES_IN_FLIGHT_PLUS_1
+// A single chunk within a pool. This allows us to create MAX_DESCRIPTOR_SETS_PER_POOL * MAX_FRAMES_IN_FLIGHT_PLUS_1
 // descriptors for a single descriptor set layout
 //
 pub(super) struct ManagedDescriptorSetPoolChunk {
-    // We only need the layout for logging
-    descriptor_set_layout: vk::DescriptorSetLayout,
+    // for logging
+    descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
 
     // The pool holding all descriptors in this chunk
-    pool: vk::DescriptorPool,
-
-    // The descriptors
-    descriptor_sets: Vec<vk::DescriptorSet>,
+    // This is Some until destroy() is called, at which point the descriptor set array is returned
+    // to a pool for future reuse
+    descriptor_set_array: Option<RafxDescriptorSetArray>,
 
     // The buffers that back the descriptor sets
     buffers: DescriptorLayoutBufferSet,
@@ -47,84 +47,46 @@ pub(super) struct ManagedDescriptorSetPoolChunk {
 impl ManagedDescriptorSetPoolChunk {
     #[profiling::function]
     pub(super) fn new(
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         buffer_info: &[DescriptorSetPoolRequiredBufferInfo],
-        descriptor_set_layout: vk::DescriptorSetLayout,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         allocator: &mut VkDescriptorPoolAllocator,
-    ) -> VkResult<Self> {
-        let pool = allocator.allocate_pool(device_context.device())?;
-
-        // This structure describes how the descriptor sets will be allocated.
-        let descriptor_set_layouts = [descriptor_set_layout; MAX_DESCRIPTORS_PER_POOL as usize];
-
-        // We need to allocate the full set once per frame in flight, plus one frame not-in-flight
-        // that we can modify
-        let set_create_info = vk::DescriptorSetAllocateInfo::builder()
-            .descriptor_pool(pool)
-            .set_layouts(&descriptor_set_layouts);
-
-        let descriptor_sets = unsafe {
-            device_context
-                .device()
-                .allocate_descriptor_sets(&*set_create_info)?
-        };
+    ) -> RafxResult<Self> {
+        let mut descriptor_set_array = allocator.allocate_pool()?;
 
         // Now allocate all the buffers that act as backing-stores for descriptor sets
         let buffers = DescriptorLayoutBufferSet::new(device_context, buffer_info)?;
-
-        // There is some trickiness here, vk::WriteDescriptorSet will hold a pointer to vk::DescriptorBufferInfos
-        // that have been pushed into `write_descriptor_buffer_infos`. We don't want to use a Vec
-        // since it can realloc and invalidate the pointers.
-        const DESCRIPTOR_COUNT: usize = MAX_DESCRIPTORS_PER_POOL as usize;
-        const MAX_BUFFER_SETS_PER_DESCRIPTOR_SET: usize = 8;
-        let mut write_descriptor_buffer_infos: ArrayVec<
-            [_; DESCRIPTOR_COUNT * MAX_BUFFER_SETS_PER_DESCRIPTOR_SET],
-        > = ArrayVec::new();
-        let mut descriptor_writes = Vec::new();
-
-        // If we trip this, we have more buffers in a single descriptor set than expected. It's not
-        // a problem to bump this, just increases a stack allocation a bit.
-        assert!(buffers.buffer_sets.len() < MAX_BUFFER_SETS_PER_DESCRIPTOR_SET);
 
         // For every binding/buffer set
         for (binding_key, binding_buffers) in &buffers.buffer_sets {
             // For every descriptor
             let mut offset = 0;
-            for descriptor_set in &descriptor_sets {
-                let buffer_info = [vk::DescriptorBufferInfo::builder()
-                    .buffer(binding_buffers.buffer.buffer())
-                    .range(binding_buffers.buffer_info.per_descriptor_size as u64)
-                    .offset(offset)
-                    .build()];
-
-                // The array of buffer infos has to persist until all WriteDescriptorSet are
-                // built and written
-                write_descriptor_buffer_infos.push(buffer_info);
-
-                let descriptor_set_write = vk::WriteDescriptorSet::builder()
-                    .dst_set(*descriptor_set)
-                    .dst_binding(binding_key.dst_binding)
-                    .dst_array_element(0) // this is zero because we're binding an array of elements
-                    .descriptor_type(binding_buffers.buffer_info.descriptor_type.into())
-                    .buffer_info(&*write_descriptor_buffer_infos.last().unwrap())
-                    .build();
-
-                descriptor_writes.push(descriptor_set_write);
+            for i in 0..MAX_DESCRIPTOR_SETS_PER_POOL {
+                descriptor_set_array.queue_descriptor_set_update(&RafxDescriptorUpdate {
+                    descriptor_key: RafxDescriptorKey::Binding(binding_key.dst_binding),
+                    array_index: i,
+                    elements: RafxDescriptorElements {
+                        buffers: Some(&[&binding_buffers.buffer]),
+                        buffer_offset_sizes: Some(&[RafxOffsetSize {
+                            offset: offset,
+                            size: binding_buffers.buffer_info.per_descriptor_size as u64,
+                        }]),
+                        ..Default::default()
+                    },
+                    dst_element_offset: 0,
+                    texture_bind_type: None,
+                })?;
 
                 offset += binding_buffers.buffer_info.per_descriptor_stride as u64;
             }
         }
 
-        unsafe {
-            device_context
-                .device()
-                .update_descriptor_sets(&descriptor_writes, &[]);
-        }
+        descriptor_set_array.flush_descriptor_set_updates()?;
 
         Ok(ManagedDescriptorSetPoolChunk {
-            descriptor_set_layout,
-            pool,
-            descriptor_sets,
+            descriptor_set_layout: descriptor_set_layout.clone(),
+            descriptor_set_array: Some(descriptor_set_array),
+            //descriptor_sets,
             pending_set_writes: Default::default(),
             buffers,
         })
@@ -133,9 +95,9 @@ impl ManagedDescriptorSetPoolChunk {
     pub(super) fn destroy(
         &mut self,
         pool_allocator: &mut VkDescriptorPoolAllocator,
-        buffer_drop_sink: &mut VkResourceDropSink<ManuallyDrop<VkBuffer>>,
+        buffer_drop_sink: &mut ResourceDropSink<RafxBuffer>,
     ) {
-        pool_allocator.retire_pool(self.pool);
+        pool_allocator.retire_pool(self.descriptor_set_array.take().unwrap());
         for (_, buffer_set) in self.buffers.buffer_sets.drain() {
             buffer_drop_sink.retire(buffer_set.buffer);
         }
@@ -145,7 +107,7 @@ impl ManagedDescriptorSetPoolChunk {
         &mut self,
         slab_key: RawSlabKey<ManagedDescriptorSet>,
         write_set: DescriptorSetWriteSet,
-    ) -> vk::DescriptorSet {
+    ) -> RafxDescriptorSetHandle {
         log::trace!(
             "Schedule a write for descriptor set {:?} on layout {:?}",
             slab_key,
@@ -166,25 +128,16 @@ impl ManagedDescriptorSetPoolChunk {
         // be a list of hashmaps
         self.pending_set_writes.push_back(pending_write);
 
-        let descriptor_index = slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
-        self.descriptor_sets[descriptor_index as usize]
+        let descriptor_index = slab_key.index() % MAX_DESCRIPTOR_SETS_PER_POOL;
+        self.descriptor_set_array
+            .as_ref()
+            .unwrap()
+            .handle(descriptor_index)
+            .unwrap()
     }
 
     #[profiling::function]
-    pub(super) fn update(
-        &mut self,
-        device_context: &VkDeviceContext,
-    ) {
-        // This function is a bit tricky unfortunately. We need to build a list of vk::WriteDescriptorSet
-        // but this struct has a pointer to data in image_infos/buffer_infos. To deal with this, we
-        // need to push the temporary lists of these infos into these lists. This way they don't
-        // drop out of scope while we are using them. Ash does do some lifetime tracking, but once
-        // you call build() it completely trusts that any pointers it holds will stay valid. So
-        // while these lists are mutable to allow pushing data in, the Vecs inside must not be modified.
-        let mut vk_image_infos = vec![];
-        let mut vk_buffer_infos = vec![];
-        //let mut vk_buffer_infos = vec![];
-
+    pub(super) fn update(&mut self) -> RafxResult<()> {
         #[derive(PartialEq, Eq, Hash, Debug)]
         struct SlabElementKey(RawSlabKey<ManagedDescriptorSet>, DescriptorSetElementKey);
 
@@ -197,37 +150,29 @@ impl ManagedDescriptorSetPoolChunk {
             }
         }
 
-        let mut write_builders = vec![];
+        let descriptor_set_array = self.descriptor_set_array.as_mut().unwrap();
+
         for (key, element) in all_set_writes {
             let slab_key = key.0;
             let element_key = key.1;
 
             //log::trace!("{:#?}", element);
 
-            let descriptor_set_index = slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
-            let descriptor_set = self.descriptor_sets[descriptor_set_index as usize];
+            let descriptor_set_index = slab_key.index() % MAX_DESCRIPTOR_SETS_PER_POOL;
 
             log::trace!(
-                "Process descriptor set pending_write for {:?} {:?}. layout {:?} set {:?}",
+                "Process descriptor set pending_write for {:?} {:?}. layout {:?}",
                 slab_key,
                 element_key,
                 self.descriptor_set_layout,
-                descriptor_set
             );
 
-            let mut builder = vk::WriteDescriptorSet::builder()
-                .dst_set(descriptor_set)
-                .dst_binding(element_key.dst_binding)
-                .dst_array_element(0) // This is zero because we are binding an array of elements
-                .descriptor_type(element.descriptor_type.into());
-
-            //TODO: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkWriteDescriptorSet.html has
-            // info on what fields need to be set based on descriptor type
-            let mut image_infos = Vec::with_capacity(element.image_info.len());
             if !element.image_info.is_empty() {
-                for image_info in &element.image_info {
+                for (image_info_index, image_info) in element.image_info.iter().enumerate() {
                     if element.has_immutable_sampler
-                        && element.descriptor_type == dsc::DescriptorType::Sampler
+                        && element.descriptor_type.intersects(
+                            RafxResourceType::SAMPLER | RafxResourceType::COMBINED_IMAGE_SAMPLER,
+                        )
                     {
                         // Skip any sampler bindings if the binding is populated with an immutable sampler
                         continue;
@@ -235,43 +180,78 @@ impl ManagedDescriptorSetPoolChunk {
 
                     if image_info.sampler.is_none() && image_info.image_view.is_none() {
                         // Don't bind anything that has both a null sampler and image_view
+                        //TODO: Could set back to default state
                         continue;
                     }
 
-                    let mut image_info_builder = vk::DescriptorImageInfo::builder();
-                    image_info_builder =
-                        image_info_builder.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
                     if let Some(image_view) = &image_info.image_view {
-                        image_info_builder = image_info_builder.image_view(image_view.get_raw());
+                        descriptor_set_array.queue_descriptor_set_update(
+                            &RafxDescriptorUpdate {
+                                array_index: descriptor_set_index,
+                                descriptor_key: RafxDescriptorKey::Binding(element_key.dst_binding),
+                                elements: RafxDescriptorElements {
+                                    textures: Some(&[image_view.get_image().texture()]),
+                                    ..Default::default()
+                                },
+                                dst_element_offset: image_info_index as u32,
+                                texture_bind_type: Default::default(),
+                            },
+                        )?;
                     }
 
                     // Skip adding samplers if the binding is populated with an immutable sampler
                     // (this case is hit when using CombinedImageSampler)
                     if !element.has_immutable_sampler {
                         if let Some(sampler) = &image_info.sampler {
-                            image_info_builder =
-                                image_info_builder.sampler(sampler.get_raw().sampler);
+                            descriptor_set_array.queue_descriptor_set_update(
+                                &RafxDescriptorUpdate {
+                                    array_index: descriptor_set_index,
+                                    descriptor_key: RafxDescriptorKey::Binding(
+                                        element_key.dst_binding,
+                                    ),
+                                    elements: RafxDescriptorElements {
+                                        samplers: Some(&[&sampler.get_raw().sampler]),
+                                        ..Default::default()
+                                    },
+                                    dst_element_offset: image_info_index as u32,
+                                    texture_bind_type: Default::default(),
+                                },
+                            )?;
                         }
                     }
-
-                    image_infos.push(image_info_builder.build());
                 }
-
-                builder = builder.image_info(&image_infos);
             }
 
-            let mut buffer_infos = Vec::with_capacity(element.buffer_info.len());
             if !element.buffer_info.is_empty() {
-                for buffer_info in &element.buffer_info {
+                for (buffer_info_index, buffer_info) in element.buffer_info.iter().enumerate() {
                     if let Some(buffer_info) = &buffer_info.buffer {
                         match buffer_info {
                             DescriptorSetWriteElementBufferData::BufferRef(buffer) => {
-                                let buffer_info_builder = vk::DescriptorBufferInfo::builder()
-                                    .buffer(buffer.buffer.get_raw().buffer.buffer)
-                                    .offset(buffer.offset)
-                                    .range(buffer.size);
+                                let mut offset_sizes = None;
+                                if buffer.offset.is_some() || buffer.size.is_some() {
+                                    offset_sizes = Some([RafxOffsetSize {
+                                        offset: buffer.offset.unwrap_or(0),
+                                        size: buffer.size.unwrap_or(0),
+                                    }])
+                                }
 
-                                buffer_infos.push(buffer_info_builder.build());
+                                descriptor_set_array.queue_descriptor_set_update(
+                                    &RafxDescriptorUpdate {
+                                        array_index: descriptor_set_index,
+                                        descriptor_key: RafxDescriptorKey::Binding(
+                                            element_key.dst_binding,
+                                        ),
+                                        elements: RafxDescriptorElements {
+                                            buffers: Some(&[&*buffer.buffer.get_raw().buffer]),
+                                            buffer_offset_sizes: offset_sizes
+                                                .as_ref()
+                                                .map(|x| &x[..]),
+                                            ..Default::default()
+                                        },
+                                        dst_element_offset: buffer_info_index as u32,
+                                        texture_bind_type: Default::default(),
+                                    },
+                                )?;
                             }
                             DescriptorSetWriteElementBufferData::Data(data) => {
                                 //TODO: Rebind the buffer if we are no longer bound to the internal buffer, or at
@@ -300,11 +280,9 @@ impl ManagedDescriptorSetPoolChunk {
                                 }
 
                                 let descriptor_set_index =
-                                    slab_key.index() % MAX_DESCRIPTORS_PER_POOL;
+                                    slab_key.index() % MAX_DESCRIPTOR_SETS_PER_POOL;
                                 let offset =
                                     buffer.buffer_info.per_descriptor_stride * descriptor_set_index;
-
-                                let buffer = &mut buffer.buffer;
 
                                 log::trace!(
                                     "Writing {} bytes to internal buffer to set {} at offset {}",
@@ -313,35 +291,38 @@ impl ManagedDescriptorSetPoolChunk {
                                     offset
                                 );
                                 buffer
-                                    .write_to_host_visible_buffer_with_offset(&data, offset as u64)
+                                    .buffer
+                                    .copy_to_host_visible_buffer_with_offset(&data, offset as u64)
                                     .unwrap();
+
+                                //TODO: If we bound this as BufferRef, we would need to reset it back to Data
+
+                                // descriptor_set_array.queue_descriptor_set_update(&RafxDescriptorUpdate {
+                                //     array_index: descriptor_set_index,
+                                //     descriptor_key: RafxDescriptorKey::Binding(element_key.dst_binding),
+                                //     elements: RafxDescriptorElements {
+                                //         buffers: Some(&[&buffer.buffer]),
+                                //         buffer_offset_sizes: Some(&[
+                                //             RafxOffsetSize {
+                                //                 offset: offset as u64,
+                                //                 size: buffer.buffer_info.per_descriptor_size as u64
+                                //             }
+                                //         ]),
+                                //         ..Default::default()
+                                //     },
+                                //     dst_element_offset: buffer_info_index as u32,
+                                //     texture_bind_type: Default::default(),
+                                // });
                             }
                         }
                     }
                 }
-
-                builder = builder.buffer_info(&buffer_infos);
-            }
-
-            //TODO: DIRTY HACK
-            if builder.descriptor_count == 0 {
-                continue;
-            }
-
-            write_builders.push(builder.build());
-            vk_image_infos.push(image_infos);
-            vk_buffer_infos.push(buffer_infos);
-        }
-
-        if !write_builders.is_empty() {
-            unsafe {
-                profiling::scope!("Device::update_descriptor_set");
-                device_context
-                    .device()
-                    .update_descriptor_sets(&write_builders, &[]);
             }
         }
+
+        descriptor_set_array.flush_descriptor_set_updates()?;
 
         self.pending_set_writes.clear();
+        Ok(())
     }
 }

@@ -1,6 +1,5 @@
-use crate::vk_description as dsc;
-use crate::vk_description::Format;
 use fnv::FnvHashMap;
+use rafx_api::{RafxFormat, RafxPrimitiveTopology};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -10,7 +9,7 @@ pub struct VertexDataLayoutHash(u64);
 
 impl VertexDataLayoutHash {
     fn new(
-        vertex_size: usize,
+        vertex_stride: usize,
         members: &FnvHashMap<String, VertexDataMemberMeta>,
     ) -> VertexDataLayoutHash {
         // Put everything in the BTree so that we get a deterministic sort
@@ -24,7 +23,7 @@ impl VertexDataLayoutHash {
         use std::hash::Hash;
         use std::hash::Hasher;
         let mut hasher = FnvHasher::default();
-        vertex_size.hash(&mut hasher);
+        vertex_stride.hash(&mut hasher);
         sorted.hash(&mut hasher);
         VertexDataLayoutHash(hasher.finish())
     }
@@ -35,7 +34,10 @@ impl VertexDataLayoutHash {
 pub struct VertexDataSetLayoutHash(u64);
 
 impl VertexDataSetLayoutHash {
-    fn new(layouts: &[VertexDataLayout]) -> VertexDataSetLayoutHash {
+    fn new(
+        layouts: &[VertexDataLayout],
+        primitive_topology: RafxPrimitiveTopology,
+    ) -> VertexDataSetLayoutHash {
         // Hash the hashes
         use fnv::FnvHasher;
         use std::hash::Hash;
@@ -44,6 +46,7 @@ impl VertexDataSetLayoutHash {
         for layout in layouts {
             layout.hash().0.hash(&mut hasher);
         }
+        primitive_topology.hash(&mut hasher);
         VertexDataSetLayoutHash(hasher.finish())
     }
 }
@@ -59,7 +62,7 @@ pub enum VertexCopyError {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VertexMember {
     pub semantic: String,
-    pub format: dsc::Format,
+    pub format: RafxFormat,
     pub offset: usize,
 }
 
@@ -69,7 +72,7 @@ impl VertexMember {
         vertex: &VertexT,
         member: &MemberT,
         semantic: String,
-        format: Format,
+        format: RafxFormat,
     ) -> VertexMember {
         // Get ptrs as usize to do some math
         let vertex_addr = vertex as *const _ as usize;
@@ -83,7 +86,7 @@ impl VertexMember {
         assert!((member_addr + rust_member_size) <= (vertex_addr + std::mem::size_of::<VertexT>()));
 
         // Check that the provided format is size-compatible with the rust type
-        let format_size = dsc::size_of_vertex_format(format).expect(
+        let format_size = format.size_of_format_in_bytes().expect(
             "The provided format {:?} has an unknown size. Is it valid to use as vertex data?",
         );
         assert_eq!(
@@ -116,7 +119,7 @@ impl<'a, VertexT: Copy + 'static> VertexMemberAccumulator<'a, VertexT> {
         &mut self,
         member: &MemberT,
         semantic: StrT,
-        format: Format,
+        format: RafxFormat,
     ) {
         self.members.push(VertexMember::new(
             self.vertex,
@@ -129,7 +132,7 @@ impl<'a, VertexT: Copy + 'static> VertexMemberAccumulator<'a, VertexT> {
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub struct VertexDataMemberMeta {
-    pub format: dsc::Format,
+    pub format: RafxFormat,
     pub offset: usize,
     pub size: usize,
 }
@@ -139,7 +142,7 @@ pub struct VertexDataLayoutInner {
     //TODO: Change strings to hashes
     //TODO: Not clear if hashmap is better than linear or binary search on few elements
     members: FnvHashMap<String, VertexDataMemberMeta>,
-    vertex_size: usize,
+    vertex_stride: usize,
     hash: VertexDataLayoutHash,
 }
 
@@ -152,19 +155,19 @@ pub struct VertexDataLayout {
 
 impl VertexDataLayout {
     pub fn new(
-        vertex_size: usize,
+        vertex_stride: usize,
         members: &[VertexMember],
     ) -> Self {
         let mut map = Default::default();
         for member in members {
-            Self::add_member_to_map(vertex_size, &mut map, member);
+            Self::add_member_to_map(vertex_stride, &mut map, member);
         }
 
-        let hash = VertexDataLayoutHash::new(vertex_size, &map);
+        let hash = VertexDataLayoutHash::new(vertex_stride, &map);
 
         let inner = VertexDataLayoutInner {
             members: map,
-            vertex_size,
+            vertex_stride,
             hash,
         };
 
@@ -179,7 +182,7 @@ impl VertexDataLayout {
     ///
     /// ```
     /// use rafx_resources::VertexDataLayout;
-    /// use rafx_resources::vk_description::Format;
+    /// use rafx_api::{RafxFormat, RafxPrimitiveTopology};
     ///
     /// #[derive(Default, Copy, Clone)]
     /// #[repr(C)]
@@ -190,10 +193,10 @@ impl VertexDataLayout {
     /// }
     ///
     /// VertexDataLayout::build_vertex_layout(&ExampleVertex::default(), |builder, vertex| {
-    ///     builder.add_member(&vertex.position, "POSITION", Format::R32G32B32_SFLOAT);
-    ///     builder.add_member(&vertex.normal, "NORMAL", Format::R32G32B32_SFLOAT);
-    ///     builder.add_member(&vertex.tex_coord, "TEXCOORD", Format::R32G32_SFLOAT);
-    /// }).into_set();
+    ///     builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+    ///     builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
+    ///     builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+    /// }).into_set(RafxPrimitiveTopology::TriangleList);
     /// ```
     pub fn build_vertex_layout<
         VertexT,
@@ -212,12 +215,12 @@ impl VertexDataLayout {
     }
 
     fn add_member_to_map(
-        vertex_size: usize,
+        vertex_stride: usize,
         map: &mut FnvHashMap<String, VertexDataMemberMeta>,
         member: &VertexMember,
     ) {
-        let size = dsc::size_of_vertex_format(member.format).unwrap();
-        assert!(member.offset + size <= vertex_size);
+        let size = member.format.size_of_format_in_bytes().unwrap();
+        assert!(member.offset + size <= vertex_stride);
         let old = map.insert(
             member.semantic.clone(),
             VertexDataMemberMeta {
@@ -244,12 +247,15 @@ impl VertexDataLayout {
         self.inner.hash
     }
 
-    pub fn vertex_size(&self) -> usize {
-        self.inner.vertex_size
+    pub fn vertex_stride(&self) -> usize {
+        self.inner.vertex_stride
     }
 
-    pub fn into_set(self) -> VertexDataSetLayout {
-        VertexDataSetLayout::new(vec![self])
+    pub fn into_set(
+        self,
+        primitive_topology: RafxPrimitiveTopology,
+    ) -> VertexDataSetLayout {
+        VertexDataSetLayout::new(vec![self], primitive_topology)
     }
 
     pub fn intersects_with(
@@ -304,7 +310,7 @@ impl VertexDataLayout {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct VertexDataSetMemberMeta {
-    pub format: dsc::Format,
+    pub format: RafxFormat,
     pub offset: usize,
     pub size: usize,
     pub binding: usize,
@@ -317,6 +323,7 @@ pub struct VertexDataSetLayoutInner {
     members: Arc<FnvHashMap<String, VertexDataSetMemberMeta>>,
     layouts: Vec<VertexDataLayout>,
     hash: VertexDataSetLayoutHash,
+    primitive_topology: RafxPrimitiveTopology,
 }
 
 #[derive(Debug, PartialEq)]
@@ -325,7 +332,10 @@ pub struct VertexDataSetLayout {
 }
 
 impl VertexDataSetLayout {
-    pub fn new(layouts: Vec<VertexDataLayout>) -> Self {
+    pub fn new(
+        layouts: Vec<VertexDataLayout>,
+        primitive_topology: RafxPrimitiveTopology,
+    ) -> Self {
         let mut members = FnvHashMap::default();
         for (binding, layout) in layouts.iter().enumerate() {
             for (member_name, meta) in &layout.inner.members {
@@ -342,12 +352,13 @@ impl VertexDataSetLayout {
             }
         }
 
-        let hash = VertexDataSetLayoutHash::new(&layouts);
+        let hash = VertexDataSetLayoutHash::new(&layouts, primitive_topology);
 
         let inner = VertexDataSetLayoutInner {
             members: Arc::new(members),
             layouts,
             hash,
+            primitive_topology,
         };
 
         VertexDataSetLayout {
@@ -380,6 +391,10 @@ impl VertexDataSetLayout {
     pub fn hash(&self) -> VertexDataSetLayoutHash {
         self.inner.hash
     }
+
+    pub fn primitive_topology(&self) -> RafxPrimitiveTopology {
+        self.inner.primitive_topology
+    }
 }
 
 #[derive(Clone)]
@@ -395,7 +410,7 @@ impl VertexData {
         layout: VertexDataLayout,
         vertex_count: usize,
     ) -> Self {
-        let total_size = layout.vertex_size() * vertex_count;
+        let total_size = layout.vertex_stride() * vertex_count;
 
         // Allocate 16-byte aligned blob of memory that is large enough to contain the data
         let data = vec![0_u128; (total_size + 15) / 16];
@@ -477,7 +492,7 @@ impl VertexData {
             return Err(VertexCopyError::VertexCountDoesNotMatch);
         }
 
-        if std::mem::size_of::<T>() != src_layout.vertex_size() {
+        if std::mem::size_of::<T>() != src_layout.vertex_stride() {
             return Err(VertexCopyError::SizeOfSliceTypeDoesNotMatchLayout);
         }
 
@@ -502,7 +517,7 @@ impl VertexData {
             return Err(VertexCopyError::VertexCountDoesNotMatch);
         }
 
-        if std::mem::size_of::<T>() != dst_layout.vertex_size() {
+        if std::mem::size_of::<T>() != dst_layout.vertex_stride() {
             return Err(VertexCopyError::SizeOfSliceTypeDoesNotMatchLayout);
         }
 
@@ -528,11 +543,11 @@ impl VertexData {
             return Err(VertexCopyError::VertexCountDoesNotMatch);
         }
 
-        if std::mem::size_of::<T>() != src_layout.vertex_size() {
+        if std::mem::size_of::<T>() != src_layout.vertex_stride() {
             return Err(VertexCopyError::SizeOfSliceTypeDoesNotMatchLayout);
         }
 
-        if std::mem::size_of::<U>() != dst_layout.vertex_size() {
+        if std::mem::size_of::<U>() != dst_layout.vertex_stride() {
             return Err(VertexCopyError::SizeOfSliceTypeDoesNotMatchLayout);
         }
 
@@ -577,7 +592,7 @@ impl VertexData {
             std::ptr::copy_nonoverlapping(
                 src_data,
                 dst_data,
-                vertex_count * src_layout.vertex_size(),
+                vertex_count * src_layout.vertex_stride(),
             );
             return Ok(());
         }
@@ -593,8 +608,10 @@ impl VertexData {
         for (member_name, src_member) in src_layout.members() {
             if let Some(dst_member) = dst_layout.members().get(member_name) {
                 for i in 0..vertex_count {
-                    let src_ptr = src_data.add((src_layout.vertex_size() * i) + src_member.offset);
-                    let dst_ptr = dst_data.add((dst_layout.vertex_size() * i) + dst_member.offset);
+                    let src_ptr =
+                        src_data.add((src_layout.vertex_stride() * i) + src_member.offset);
+                    let dst_ptr =
+                        dst_data.add((dst_layout.vertex_stride() * i) + dst_member.offset);
 
                     std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_member.size);
                 }
@@ -782,7 +799,7 @@ impl VertexDataSet {
             return Err(VertexCopyError::VertexCountDoesNotMatch);
         }
 
-        if std::mem::size_of::<T>() != src_layout.vertex_size() {
+        if std::mem::size_of::<T>() != src_layout.vertex_stride() {
             return Err(VertexCopyError::SizeOfSliceTypeDoesNotMatchLayout);
         }
 
@@ -806,7 +823,7 @@ impl VertexDataSet {
             return Err(VertexCopyError::VertexCountDoesNotMatch);
         }
 
-        if std::mem::size_of::<T>() != dst_layout.vertex_size() {
+        if std::mem::size_of::<T>() != dst_layout.vertex_stride() {
             return Err(VertexCopyError::SizeOfSliceTypeDoesNotMatchLayout);
         }
 
@@ -833,7 +850,7 @@ impl VertexDataSet {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::vk_description::Format;
+    use rafx_api::RafxFormat;
 
     #[derive(Default, Clone, Copy, Debug)]
     #[repr(C)]
@@ -848,11 +865,11 @@ mod test {
     impl MediumVertex {
         fn get_layout() -> VertexDataLayout {
             VertexDataLayout::build_vertex_layout(&Self::default(), |builder, vertex| {
-                builder.add_member(&vertex.position, "POSITION", Format::R32G32B32_SFLOAT);
-                builder.add_member(&vertex.normal, "NORMAL", Format::R32G32B32_SFLOAT);
-                builder.add_member(&vertex.color, "COLOR", Format::R32G32B32A32_SFLOAT);
-                builder.add_member(&vertex.tangent, "TANGENT", Format::R32G32B32_SFLOAT);
-                builder.add_member(&vertex.tex_coord, "TEXCOORD", Format::R32G32_SFLOAT);
+                builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+                builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
+                builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
+                builder.add_member(&vertex.tangent, "TANGENT", RafxFormat::R32G32B32_SFLOAT);
+                builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
             })
         }
 
@@ -886,8 +903,8 @@ mod test {
     impl SmallVertex {
         fn get_layout() -> VertexDataLayout {
             VertexDataLayout::build_vertex_layout(&Self::default(), |builder, vertex| {
-                builder.add_member(&vertex.position, "POSITION", Format::R32G32B32_SFLOAT);
-                builder.add_member(&vertex.normal, "NORMAL", Format::R32G32B32_SFLOAT);
+                builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+                builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
             })
         }
 
@@ -917,7 +934,7 @@ mod test {
     impl TinyVertex {
         fn get_layout() -> VertexDataLayout {
             VertexDataLayout::build_vertex_layout(&Self::default(), |builder, vertex| {
-                builder.add_member(&vertex.color, "COLOR", Format::R32G32B32A32_SFLOAT);
+                builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
             })
         }
     }

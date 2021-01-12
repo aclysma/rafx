@@ -1,5 +1,3 @@
-use ash::version::DeviceV1_0;
-use ash::vk;
 use rafx::graph::*;
 use rafx::resources::{MaterialPassResource, ResourceArc};
 
@@ -30,6 +28,7 @@ pub(super) fn bloom_combine_pass(
             format: Some(context.graph_config.swapchain_format),
             ..Default::default()
         },
+        Default::default(),
     );
     context.graph.set_image_name(color, "color");
 
@@ -38,17 +37,13 @@ pub(super) fn bloom_combine_pass(
         bloom_extract_pass.sdr_image,
         Default::default(),
         Default::default(),
-        Default::default(),
     );
     context.graph.set_image_name(sdr_image, "sdr");
 
-    let hdr_image = context.graph.sample_image(
-        node,
-        blurred_color,
-        Default::default(),
-        Default::default(),
-        Default::default(),
-    );
+    let hdr_image =
+        context
+            .graph
+            .sample_image(node, blurred_color, Default::default(), Default::default());
     context.graph.set_image_name(hdr_image, "hdr");
 
     context
@@ -65,12 +60,7 @@ pub(super) fn bloom_combine_pass(
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     &bloom_combine_material_pass,
-                    args.renderpass_resource,
-                    &args
-                        .framebuffer_resource
-                        .get_raw()
-                        .framebuffer_key
-                        .framebuffer_meta,
+                    &args.render_target_meta,
                     &EMPTY_VERTEX_LAYOUT,
                 )?;
 
@@ -80,8 +70,7 @@ pub(super) fn bloom_combine_pass(
                 .resource_context()
                 .create_descriptor_set_allocator();
 
-            let descriptor_set_layouts =
-                &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets;
+            let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
             let bloom_combine_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
                 &descriptor_set_layouts[shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX],
                 shaders::bloom_combine_frag::DescriptorSet0Args {
@@ -93,27 +82,12 @@ pub(super) fn bloom_combine_pass(
             descriptor_set_allocator.flush_changes()?;
 
             // Draw calls
-            let command_buffer = args.command_buffer;
-            let device = args.graph_context.device_context().device();
-
-            unsafe {
-                device.cmd_bind_pipeline(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    pipeline.get_raw().pipelines[0],
-                );
-
-                device.cmd_bind_descriptor_sets(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-                    shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX as u32,
-                    &[bloom_combine_material_dyn_set.get()],
-                    &[],
-                );
-
-                device.cmd_draw(command_buffer, 3, 1, 0, 0);
-            }
+            let command_buffer = &args.command_buffer;
+            command_buffer
+                .cmd_bind_pipeline(&*pipeline.get_raw().pipeline)
+                .unwrap();
+            bloom_combine_material_dyn_set.bind(command_buffer).unwrap();
+            command_buffer.cmd_draw(3, 0).unwrap();
 
             Ok(())
         });

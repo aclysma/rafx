@@ -4,8 +4,8 @@ use crate::imgui_support::Sdl2ImguiManager;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use ash::vk::Extent2D;
 use atelier_assets::loader::handle::Handle;
+use rafx::api::RafxExtents2D;
 use rafx::assets::MaterialAsset;
 use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
@@ -38,14 +38,14 @@ pub fn orthographic_rh_gl(
 }
 
 pub struct ImGuiExtractJobImpl {
-    extents: Extent2D,
+    extents: RafxExtents2D,
     imgui_material: Handle<MaterialAsset>,
     font_atlas: ResourceArc<ImageViewResource>,
 }
 
 impl ImGuiExtractJobImpl {
     pub fn new(
-        extents: Extent2D,
+        extents: RafxExtents2D,
         imgui_material: &Handle<MaterialAsset>,
         font_atlas: ResourceArc<ImageViewResource>,
     ) -> Self {

@@ -1,6 +1,5 @@
 use crate::assets::graphics_pipeline::{
-    GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
-    SamplerAssetData,
+    GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, SamplerAssetData,
 };
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
@@ -107,58 +106,6 @@ impl Importer for PipelineImporter {
                 load_deps: vec![],
                 build_pipeline: None,
                 asset_data: Box::new(pipeline_asset),
-            }],
-        })
-    }
-}
-
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "d09c8061-3458-4f97-9265-6396344c271c"]
-pub struct RenderpassImporterState(Option<AssetUuid>);
-
-#[derive(TypeUuid)]
-#[uuid = "a188149d-bb0c-4c7d-8a43-0267a528bec6"]
-pub struct RenderpassImporter;
-impl Importer for RenderpassImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        2
-    }
-
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ();
-
-    type State = RenderpassImporterState;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
-        &self,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        state: &mut Self::State,
-    ) -> atelier_assets::importer::Result<ImporterValue> {
-        let id = state
-            .0
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = RenderpassImporterState(Some(id));
-
-        let renderpass_asset = ron::de::from_reader::<_, RenderpassAssetData>(source)?;
-        log::trace!("IMPORTED RENDERPASS:\n{:#?}", renderpass_asset);
-
-        Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(renderpass_asset),
             }],
         })
     }

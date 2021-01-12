@@ -1,9 +1,8 @@
 use super::SlotNameLookup;
-use ash::prelude::VkResult;
-use rafx_resources::DescriptorSetAllocator;
 use rafx_resources::DynDescriptorSet;
 use rafx_resources::ImageViewResource;
 use rafx_resources::ResourceArc;
+use rafx_resources::{DescriptorSetAllocator, RafxResult};
 use std::sync::Arc;
 
 pub struct DynPassMaterialInstance {
@@ -32,7 +31,7 @@ impl DynPassMaterialInstance {
     pub fn flush(
         &mut self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         for set in &mut self.descriptor_sets {
             set.flush(descriptor_set_allocator)?
         }
@@ -95,7 +94,7 @@ impl DynMaterialInstance {
     pub fn flush(
         &mut self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         for pass in &mut self.passes {
             pass.flush(descriptor_set_allocator)?
         }

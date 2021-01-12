@@ -84,7 +84,11 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                 for mesh_part in &*mesh.mesh_asset.inner.mesh_parts {
                     if let Some(mesh_part) = mesh_part {
                         opaque_per_view_descriptor_set_layouts.insert(
-                            mesh_part.opaque_pass.descriptor_set_layouts
+                            mesh_part
+                                .opaque_pass
+                                .material_pass_resource
+                                .get_raw()
+                                .descriptor_set_layouts
                                 [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
                                 .clone(),
                         );
@@ -473,8 +477,10 @@ impl MeshPrepareJob {
         is_shadow_pass: bool,
     ) -> usize {
         let per_view_descriptor_set = if !is_shadow_pass {
-            let per_view_descriptor_set_layout = material_pass.descriptor_set_layouts
-                [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
+            let per_view_descriptor_set_layout = material_pass
+                .material_pass_resource
+                .get_raw()
+                .descriptor_set_layouts[super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
                 .clone();
 
             Some(
@@ -490,8 +496,10 @@ impl MeshPrepareJob {
         // TODO: Common case is that parts in the same mesh use same material, so only create new descriptor set if the material is
         // different between parts.
         //
-        let per_instance_descriptor_set_layout = &material_pass.descriptor_set_layouts
-            [super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
+        let per_instance_descriptor_set_layout = &material_pass
+            .material_pass_resource
+            .get_raw()
+            .descriptor_set_layouts[super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
 
         let per_instance_descriptor_set = descriptor_set_allocator
             .create_descriptor_set(

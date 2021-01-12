@@ -7,28 +7,26 @@ use crate::features::mesh::{MeshRenderFeature, MeshRenderNodeSet};
 use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNodeSet};
 use crate::game_asset_lookup::MeshAsset;
 use crate::game_asset_manager::GameAssetManager;
-use crate::game_renderer::{GameRenderer, SwapchainLifetimeListener};
+use crate::game_renderer::{GameRenderer, SwapchainHandler};
 use crate::phases::TransparentRenderPhase;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use atelier_assets::loader::{
     packfile_io::PackfileReader, storage::DefaultIndirectionResolver, Loader, RpcIO,
 };
 use legion::Resources;
-use rafx::api_vulkan::{
-    LogicalSize, VkContext, VkContextBuilder, VkDeviceContext, VkSurface, VulkanLinkMethod,
-};
+use rafx::api::vulkan::VulkanLinkMethod;
+use rafx::api::{RafxApi, RafxDeviceContext, RafxQueueType, RafxResult};
 use rafx::assets::{AssetManager, ComputePipelineAsset, ComputePipelineAssetData};
 use rafx::assets::{
     BufferAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
-    RenderpassAsset, ShaderAsset,
+    ShaderAsset,
 };
 use rafx::assets::{
     BufferAssetData, GraphicsPipelineAssetData, ImageAssetData, MaterialAssetData,
-    MaterialInstanceAssetData, RenderpassAssetData, ShaderAssetData,
+    MaterialInstanceAssetData, ShaderAssetData,
 };
 use rafx::nodes::RenderRegistry;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use rafx_api_vulkan_sdl2::Sdl2Window;
 
 pub fn atelier_init_daemon(
     resources: &mut Resources,
@@ -64,15 +62,9 @@ pub fn sdl2_init() -> Sdl2Systems {
         .video()
         .expect("Failed to create sdl video subsystem");
 
-    // Default window size
-    let logical_size = LogicalSize {
-        width: 900,
-        height: 600,
-    };
-
     // Create the window
     let window = video_subsystem
-        .window("Rafx Demo", logical_size.width, logical_size.height)
+        .window("Rafx Demo", 900, 600)
         .position_centered()
         .allow_highdpi()
         .resizable()
@@ -100,10 +92,7 @@ pub fn imgui_init(
 pub fn rendering_init(
     resources: &mut Resources,
     sdl2_window: &sdl2::video::Window,
-) {
-    // Thin window wrapper to decouple the renderer from a specific windowing crate
-    let window_wrapper = Sdl2Window::new(&sdl2_window);
-
+) -> RafxResult<()> {
     resources.insert(SpriteRenderNodeSet::default());
     resources.insert(MeshRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
@@ -111,19 +100,14 @@ pub fn rendering_init(
     resources.insert(DebugDraw3DResource::new());
 
     #[cfg(debug_assertions)]
-    let use_vulkan_debug_layer = true;
+    let validation_mode = rafx::api::RafxValidationMode::EnabledIfAvailable;
     #[cfg(not(debug_assertions))]
-    let use_vulkan_debug_layer = false;
+    let validation_mode = rafx::api::RafxValidationMode::Disabled;
 
     #[cfg(not(feature = "static-vulkan"))]
     let link_method = VulkanLinkMethod::Dynamic;
     #[cfg(feature = "static-vulkan")]
     let link_method = VulkanLinkMethod::Static;
-
-    let context = VkContextBuilder::new()
-        .link_method(link_method)
-        .use_vulkan_debug_layer(use_vulkan_debug_layer)
-        .prefer_mailbox_present_mode();
 
     let render_registry = rafx::nodes::RenderRegistryBuilder::default()
         .register_feature::<SpriteRenderFeature>()
@@ -136,8 +120,19 @@ pub fn rendering_init(
         .register_render_phase::<UiRenderPhase>("Ui")
         .build();
 
-    let vk_context = context.build(&window_wrapper).unwrap();
-    let device_context = vk_context.device_context().clone();
+    let rafx_api = rafx::api::RafxApi::new_vulkan(
+        sdl2_window,
+        &rafx::api::RafxApiDef { validation_mode },
+        &rafx::api::RafxApiDefVulkan {
+            link_method: Some(link_method),
+            app_name: None,
+        },
+    )?;
+
+    let device_context = rafx_api.device_context();
+
+    let graphics_queue = device_context.create_queue(RafxQueueType::Graphics)?;
+    let transfer_queue = device_context.create_queue(RafxQueueType::Transfer)?;
 
     let resource_manager = {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
@@ -151,6 +146,8 @@ pub fn rendering_init(
                 max_new_uploads_in_single_frame: 4,
                 max_bytes_per_upload: 32 * 1024 * 1024,
             },
+            &graphics_queue,
+            &transfer_queue,
         );
         let loaders = asset_manager.create_loaders();
 
@@ -165,9 +162,6 @@ pub fn rendering_init(
             .add_storage_with_loader::<ComputePipelineAssetData, ComputePipelineAsset, _>(
                 Box::new(ResourceAssetLoader(loaders.compute_pipeline_loader)),
             );
-        asset_resource.add_storage_with_loader::<RenderpassAssetData, RenderpassAsset, _>(
-            Box::new(ResourceAssetLoader(loaders.renderpass_loader)),
-        );
         asset_resource.add_storage_with_loader::<MaterialAssetData, MaterialAsset, _>(Box::new(
             ResourceAssetLoader(loaders.material_loader),
         ));
@@ -185,7 +179,7 @@ pub fn rendering_init(
         asset_manager
     };
 
-    resources.insert(vk_context);
+    resources.insert(rafx_api);
     resources.insert(device_context);
     resources.insert(resource_manager);
     resources.insert(render_registry);
@@ -208,21 +202,20 @@ pub fn rendering_init(
 
     resources.insert(game_resource_manager);
 
-    let game_renderer = GameRenderer::new(&window_wrapper, &resources).unwrap();
+    let game_renderer = GameRenderer::new(&resources, &graphics_queue, &transfer_queue).unwrap();
     resources.insert(game_renderer);
 
-    let window_surface =
-        SwapchainLifetimeListener::create_surface(resources, &window_wrapper).unwrap();
-    resources.insert(window_surface);
+    let (width, height) = sdl2_window.vulkan_drawable_size();
+    SwapchainHandler::create_swapchain(resources, sdl2_window, width, height)?;
+
+    Ok(())
 }
 
-pub fn rendering_destroy(resources: &mut Resources) {
+pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
     // Destroy these first
     {
-        SwapchainLifetimeListener::tear_down(resources);
-        resources.remove::<VkSurface>();
+        SwapchainHandler::destroy_swapchain(resources)?;
         resources.remove::<GameRenderer>();
-        resources.remove::<VkDeviceContext>();
         resources.remove::<SpriteRenderNodeSet>();
         resources.remove::<MeshRenderNodeSet>();
         resources.remove::<StaticVisibilityNodeSet>();
@@ -235,8 +228,10 @@ pub fn rendering_destroy(resources: &mut Resources) {
         resources.remove::<AssetResource>();
 
         resources.remove::<AssetManager>();
+        resources.remove::<RafxDeviceContext>();
     }
 
     // Drop this one last
-    resources.remove::<VkContext>();
+    resources.remove::<RafxApi>();
+    Ok(())
 }

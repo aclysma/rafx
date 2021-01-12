@@ -8,12 +8,12 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-api-vulkan = { path = "../rafx-api-vulkan" }
+rafx-api = { path = "../rafx-api" }
 rafx-base = { path = "../rafx-base" }
 rafx-nodes = { path = "../rafx-nodes" }
 rafx-resources = { path = "../rafx-resources" }
 
-atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "renderer", features = ["serde_importers"] }
+atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "rafx", features = ["serde_importers"] }
 
 ash = ">0.30"
 vk-mem = "0.2"

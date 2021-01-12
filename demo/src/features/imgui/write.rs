@@ -1,8 +1,7 @@
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::imgui_support::{ImGuiDrawCmd, ImGuiDrawData};
 use crate::render_contexts::RenderJobWriteContext;
-use ash::version::DeviceV1_0;
-use ash::vk;
+use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
 use rafx::nodes::{
     FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
     SubmitNodeId,
@@ -24,42 +23,25 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
         write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
-    ) {
+    ) -> RafxResult<()> {
         if self.imgui_draw_data.is_some() {
             let pipeline = write_context
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     &self.imgui_material_pass,
-                    &write_context.renderpass,
-                    &write_context.framebuffer_meta,
+                    &write_context.render_target_meta,
                     &*super::IMGUI_VERTEX_LAYOUT,
-                )
-                .unwrap();
+                )?;
 
-            let logical_device = write_context.device_context.device();
-            let command_buffer = write_context.command_buffer;
-            unsafe {
-                logical_device.cmd_bind_pipeline(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    pipeline.get_raw().pipelines[0],
-                );
+            let command_buffer = &write_context.command_buffer;
+            command_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
 
-                // Bind per-pass data (UBO with view/proj matrix, sampler)
-                logical_device.cmd_bind_descriptor_sets(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-                    0,
-                    &[
-                        self.per_pass_descriptor_set.get(),      // view/projection
-                        self.per_image_descriptor_sets[0].get(), // font atlas
-                    ],
-                    &[],
-                );
-            }
+            self.per_pass_descriptor_set.bind(command_buffer)?; // view/projection
+            self.per_image_descriptor_sets[0].bind(command_buffer)?; // font atlas
         }
+
+        Ok(())
     }
 
     fn render_element(
@@ -68,91 +50,85 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
         _view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
-    ) {
+    ) -> RafxResult<()> {
         // The prepare phase emits a single node which will draw everything. In the future it might
         // emit a node per draw call that uses transparency
         if index == 0 {
-            // //println!("render");
-            let logical_device = write_context.device_context.device();
-            let command_buffer = write_context.command_buffer;
+            let command_buffer = &write_context.command_buffer;
 
-            unsafe {
-                let mut draw_list_index = 0;
-                if let Some(draw_data) = &self.imgui_draw_data {
-                    for draw_list in draw_data.draw_lists() {
-                        logical_device.cmd_bind_vertex_buffers(
-                            command_buffer,
-                            0, // first binding
-                            &[self.vertex_buffers[draw_list_index].get_raw().buffer.buffer],
-                            &[0], // offsets
-                        );
+            let mut draw_list_index = 0;
+            if let Some(draw_data) = &self.imgui_draw_data {
+                for draw_list in draw_data.draw_lists() {
+                    command_buffer.cmd_bind_vertex_buffers(
+                        0, // first binding
+                        &[RafxVertexBufferBinding {
+                            buffer: &self.vertex_buffers[draw_list_index].get_raw().buffer,
+                            offset: 0,
+                        }],
+                    )?;
 
-                        logical_device.cmd_bind_index_buffer(
-                            command_buffer,
-                            self.index_buffers[draw_list_index].get_raw().buffer.buffer,
-                            0, // offset
-                            vk::IndexType::UINT16,
-                        );
+                    command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
+                        buffer: &self.index_buffers[draw_list_index].get_raw().buffer,
+                        offset: 0,
+                        index_type: RafxIndexType::Uint16,
+                    })?;
 
-                        let mut element_begin_index: u32 = 0;
-                        for cmd in draw_list.commands() {
-                            match cmd {
-                                ImGuiDrawCmd::Elements {
-                                    count,
-                                    cmd_params:
-                                        imgui::DrawCmdParams {
-                                            clip_rect,
-                                            //texture_id,
-                                            ..
-                                        },
-                                } => {
-                                    let element_end_index = element_begin_index + *count as u32;
+                    let mut element_begin_index: u32 = 0;
+                    for cmd in draw_list.commands() {
+                        match cmd {
+                            ImGuiDrawCmd::Elements {
+                                count,
+                                cmd_params:
+                                    imgui::DrawCmdParams {
+                                        clip_rect,
+                                        //texture_id,
+                                        ..
+                                    },
+                            } => {
+                                let element_end_index = element_begin_index + *count as u32;
 
-                                    let scissors = vk::Rect2D {
-                                        offset: vk::Offset2D {
-                                            x: ((clip_rect[0] - draw_data.display_pos[0])
-                                                * draw_data.framebuffer_scale[0])
-                                                as i32,
-                                            y: ((clip_rect[1] - draw_data.display_pos[1])
-                                                * draw_data.framebuffer_scale[1])
-                                                as i32,
-                                        },
-                                        extent: vk::Extent2D {
-                                            width: ((clip_rect[2]
-                                                - clip_rect[0]
-                                                - draw_data.display_pos[0])
-                                                * draw_data.framebuffer_scale[0])
-                                                as u32,
-                                            height: ((clip_rect[3]
-                                                - clip_rect[1]
-                                                - draw_data.display_pos[1])
-                                                * draw_data.framebuffer_scale[1])
-                                                as u32,
-                                        },
-                                    };
+                                let scissor_x = ((clip_rect[0] - draw_data.display_pos[0])
+                                    * draw_data.framebuffer_scale[0])
+                                    as u32;
 
-                                    logical_device.cmd_set_scissor(command_buffer, 0, &[scissors]);
+                                let scissor_y = ((clip_rect[1] - draw_data.display_pos[1])
+                                    * draw_data.framebuffer_scale[1])
+                                    as u32;
 
-                                    logical_device.cmd_draw_indexed(
-                                        command_buffer,
-                                        element_end_index - element_begin_index,
-                                        1,
-                                        element_begin_index,
-                                        0,
-                                        0,
-                                    );
+                                let scissor_width =
+                                    ((clip_rect[2] - clip_rect[0] - draw_data.display_pos[0])
+                                        * draw_data.framebuffer_scale[0])
+                                        as u32;
 
-                                    element_begin_index = element_end_index;
-                                }
-                                _ => panic!("unexpected draw command"),
+                                let scissor_height =
+                                    ((clip_rect[3] - clip_rect[1] - draw_data.display_pos[1])
+                                        * draw_data.framebuffer_scale[1])
+                                        as u32;
+
+                                command_buffer.cmd_set_scissor(
+                                    scissor_x,
+                                    scissor_y,
+                                    scissor_width,
+                                    scissor_height,
+                                )?;
+
+                                command_buffer.cmd_draw_indexed(
+                                    element_end_index - element_begin_index,
+                                    element_begin_index,
+                                    0,
+                                )?;
+
+                                element_begin_index = element_end_index;
                             }
+                            _ => panic!("unexpected draw command"),
                         }
-
-                        draw_list_index += 1;
                     }
+
+                    draw_list_index += 1;
                 }
             }
         }
+        Ok(())
     }
 
     fn revert_setup(
@@ -160,7 +136,8 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
         _write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
-    ) {
+    ) -> RafxResult<()> {
+        Ok(())
     }
 
     fn feature_debug_name(&self) -> &'static str {

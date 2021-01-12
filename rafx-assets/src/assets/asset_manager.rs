@@ -2,43 +2,41 @@ use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
     BufferAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
-    MaterialPass, RenderpassAsset, SamplerAsset, ShaderAsset,
+    MaterialPass, SamplerAsset, ShaderAsset,
 };
-use crate::assets::{
-    GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, RenderpassAssetData,
-};
+use crate::assets::{GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData};
 use crate::{
     AssetLookup, AssetLookupSet, BufferAssetData, ComputePipelineAsset, ComputePipelineAssetData,
     GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SamplerAssetData, SlotNameLookup,
     UploadQueueConfig,
 };
-use ash::prelude::*;
 use atelier_assets::loader::handle::Handle;
-use rafx_api_vulkan::{VkBuffer, VkDeviceContext, VkImage};
 use rafx_resources::{
-    vk_description as dsc, ComputePipelineResource, DescriptorSetAllocatorMetrics,
-    DescriptorSetAllocatorProvider, DescriptorSetAllocatorRef, DescriptorSetLayoutResource,
+    ComputePipelineResource, DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider,
+    DescriptorSetAllocatorRef, DescriptorSetLayout, DescriptorSetLayoutResource,
     DescriptorSetWriteSet, DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPassResource,
-    ResourceArc,
+    ResourceArc, ShaderModuleMeta,
 };
 
 use super::asset_lookup::LoadedAssetMetrics;
 use super::load_queue::LoadQueueSet;
 use super::upload::{BufferUploadOpResult, ImageUploadOpResult, UploadManager};
-use ash::vk;
 use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::Loader;
 use crossbeam_channel::Sender;
 use fnv::FnvHashMap;
+use rafx_api::{
+    RafxBuffer, RafxDeviceContext, RafxQueue, RafxResult, RafxShaderStageDef, RafxShaderStageFlags,
+    RafxTexture,
+};
 use rafx_nodes::RenderRegistry;
 use rafx_resources::descriptor_sets::{
     DescriptorSetElementKey, DescriptorSetWriteElementBuffer, DescriptorSetWriteElementBufferData,
     DescriptorSetWriteElementImage,
 };
-use rafx_resources::vk_description::ShaderModuleMeta;
 use rafx_resources::DescriptorSetAllocator;
-use rafx_resources::DynCommandWriterAllocator;
+use rafx_resources::DynCommandPoolAllocator;
 use rafx_resources::DynResourceAllocatorSetProvider;
 use rafx_resources::ResourceLookupSet;
 use rafx_resources::{ResourceManager, ResourceManagerMetrics};
@@ -55,7 +53,6 @@ pub struct AssetManagerLoaders {
     pub shader_loader: GenericLoader<ShaderAssetData, ShaderAsset>,
     pub graphics_pipeline_loader: GenericLoader<GraphicsPipelineAssetData, GraphicsPipelineAsset>,
     pub compute_pipeline_loader: GenericLoader<ComputePipelineAssetData, ComputePipelineAsset>,
-    pub renderpass_loader: GenericLoader<RenderpassAssetData, RenderpassAsset>,
     pub material_loader: GenericLoader<MaterialAssetData, MaterialAsset>,
     pub material_instance_loader: GenericLoader<MaterialInstanceAssetData, MaterialInstanceAsset>,
     pub sampler_loader: GenericLoader<SamplerAssetData, SamplerAsset>,
@@ -64,29 +61,54 @@ pub struct AssetManagerLoaders {
 }
 
 pub struct AssetManager {
+    device_context: RafxDeviceContext,
     resource_manager: ResourceManager,
     loaded_assets: AssetLookupSet,
     load_queues: LoadQueueSet,
     upload_manager: UploadManager,
     material_instance_descriptor_sets: DescriptorSetAllocator,
+    graphics_queue: RafxQueue,
+    transfer_queue: RafxQueue,
 }
 
 impl AssetManager {
     pub fn new(
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         render_registry: &RenderRegistry,
         loader: &Loader,
         upload_queue_config: UploadQueueConfig,
+        graphics_queue: &RafxQueue,
+        transfer_queue: &RafxQueue,
     ) -> Self {
         let resource_manager = ResourceManager::new(device_context, render_registry);
 
         AssetManager {
+            device_context: device_context.clone(),
             resource_manager,
             loaded_assets: AssetLookupSet::new(loader),
             load_queues: Default::default(),
-            upload_manager: UploadManager::new(device_context, upload_queue_config),
+            upload_manager: UploadManager::new(
+                device_context,
+                upload_queue_config,
+                graphics_queue.clone(),
+                transfer_queue.clone(),
+            ),
             material_instance_descriptor_sets: DescriptorSetAllocator::new(device_context),
+            graphics_queue: graphics_queue.clone(),
+            transfer_queue: transfer_queue.clone(),
         }
+    }
+
+    pub fn device_context(&self) -> &RafxDeviceContext {
+        &self.device_context
+    }
+
+    pub fn graphics_queue(&self) -> &RafxQueue {
+        &self.graphics_queue
+    }
+
+    pub fn transfer_queue(&self) -> &RafxQueue {
+        &self.transfer_queue
     }
 
     pub fn resource_manager(&self) -> &ResourceManager {
@@ -105,8 +127,8 @@ impl AssetManager {
         self.resource_manager.graphics_pipeline_cache()
     }
 
-    pub fn dyn_command_writer_allocator(&self) -> &DynCommandWriterAllocator {
-        self.resource_manager.dyn_command_writer_allocator()
+    pub fn dyn_command_pool_allocator(&self) -> &DynCommandPoolAllocator {
+        self.resource_manager.dyn_command_pool_allocator()
     }
 
     pub fn create_dyn_resource_allocator_set(&self) -> DynResourceAllocatorSet {
@@ -163,10 +185,6 @@ impl AssetManager {
         self.load_queues.compute_pipelines.create_loader()
     }
 
-    fn create_renderpass_loader(&self) -> GenericLoader<RenderpassAssetData, RenderpassAsset> {
-        self.load_queues.renderpasses.create_loader()
-    }
-
     fn create_material_loader(&self) -> GenericLoader<MaterialAssetData, MaterialAsset> {
         self.load_queues.materials.create_loader()
     }
@@ -194,7 +212,6 @@ impl AssetManager {
             shader_loader: self.create_shader_loader(),
             graphics_pipeline_loader: self.create_graphics_pipeline_loader(),
             compute_pipeline_loader: self.create_compute_pipeline_loader(),
-            renderpass_loader: self.create_renderpass_loader(),
             material_loader: self.create_material_loader(),
             material_instance_loader: self.create_material_instance_loader(),
             sampler_loader: self.create_sampler_loader(),
@@ -247,16 +264,17 @@ impl AssetManager {
             .materials
             .get_committed(handle.load_handle())
             .and_then(|x| x.passes.get(pass_index))
-            .map(|x| x.descriptor_set_layouts[layout_index].clone())
+            .map(|x| {
+                x.material_pass_resource.get_raw().descriptor_set_layouts[layout_index].clone()
+            })
     }
 
     // Call whenever you want to handle assets loading/unloading
     #[profiling::function]
-    pub fn update_asset_loaders(&mut self) -> VkResult<()> {
+    pub fn update_asset_loaders(&mut self) -> RafxResult<()> {
         self.process_shader_load_requests();
         self.process_graphics_pipeline_load_requests();
         self.process_compute_pipeline_load_requests();
-        self.process_renderpass_load_requests();
         self.process_material_load_requests();
         self.process_material_instance_load_requests();
         self.process_sampler_load_requests();
@@ -269,12 +287,12 @@ impl AssetManager {
     }
 
     // Call just before rendering
-    pub fn on_begin_frame(&mut self) -> VkResult<()> {
+    pub fn on_begin_frame(&mut self) -> RafxResult<()> {
         self.material_instance_descriptor_sets.flush_changes()
     }
 
     #[profiling::function]
-    pub fn on_frame_complete(&mut self) -> VkResult<()> {
+    pub fn on_frame_complete(&mut self) -> RafxResult<()> {
         self.resource_manager.on_frame_complete()?;
         self.material_instance_descriptor_sets.on_frame_complete();
         Ok(())
@@ -363,29 +381,6 @@ impl AssetManager {
     }
 
     #[profiling::function]
-    fn process_renderpass_load_requests(&mut self) {
-        for request in self.load_queues.renderpasses.take_load_requests() {
-            log::trace!("Create renderpass {:?}", request.load_handle);
-            let loaded_asset = self.load_renderpass(request.asset);
-            Self::handle_load_result(
-                request.load_op,
-                loaded_asset,
-                &mut self.loaded_assets.renderpasses,
-                request.result_tx,
-            );
-        }
-
-        Self::handle_commit_requests(
-            &mut self.load_queues.renderpasses,
-            &mut self.loaded_assets.renderpasses,
-        );
-        Self::handle_free_requests(
-            &mut self.load_queues.renderpasses,
-            &mut self.loaded_assets.renderpasses,
-        );
-    }
-
-    #[profiling::function]
     fn process_material_load_requests(&mut self) {
         for request in self.load_queues.materials.take_load_requests() {
             log::trace!("Create material {:?}", request.load_handle);
@@ -455,7 +450,7 @@ impl AssetManager {
     }
 
     #[profiling::function]
-    fn process_image_load_requests(&mut self) -> VkResult<()> {
+    fn process_image_load_requests(&mut self) -> RafxResult<()> {
         for request in self.load_queues.images.take_load_requests() {
             //TODO: Route the request directly to the upload queue
             log::trace!("Uploading image {:?}", request.load_handle);
@@ -469,9 +464,9 @@ impl AssetManager {
             .collect();
         for result in results {
             match result {
-                ImageUploadOpResult::UploadComplete(load_op, result_tx, image) => {
+                ImageUploadOpResult::UploadComplete(load_op, result_tx, texture) => {
                     log::trace!("Uploading image {:?} complete", load_op.load_handle());
-                    let loaded_asset = self.finish_load_image(image);
+                    let loaded_asset = self.finish_load_image(texture);
                     Self::handle_load_result(
                         load_op,
                         loaded_asset,
@@ -496,7 +491,7 @@ impl AssetManager {
     }
 
     #[profiling::function]
-    fn process_buffer_load_requests(&mut self) -> VkResult<()> {
+    fn process_buffer_load_requests(&mut self) -> RafxResult<()> {
         for request in self.load_queues.buffers.take_load_requests() {
             //TODO: Route the request directly to the upload queue
             log::trace!("Uploading buffer {:?}", request.load_handle);
@@ -545,7 +540,7 @@ impl AssetManager {
 
     fn handle_load_result<AssetT: Clone>(
         load_op: AssetLoadOp,
-        loaded_asset: VkResult<AssetT>,
+        loaded_asset: RafxResult<AssetT>,
         asset_lookup: &mut AssetLookup<AssetT>,
         result_tx: Sender<AssetT>,
     ) {
@@ -587,43 +582,20 @@ impl AssetManager {
     #[profiling::function]
     fn finish_load_image(
         &mut self,
-        image: VkImage,
-    ) -> VkResult<ImageAsset> {
-        let format = image.format.into();
-        let mip_level_count = image.mip_level_count;
+        texture: RafxTexture,
+    ) -> RafxResult<ImageAsset> {
+        let image = self.resources().insert_texture(texture);
 
-        let image = self.resources().insert_image(image);
+        let image_view = self.resources().get_or_create_image_view(&image, None)?;
 
-        let image_view_meta = dsc::ImageViewMeta {
-            view_type: dsc::ImageViewType::Type2D,
-            format,
-            subresource_range: dsc::ImageSubresourceRange {
-                aspect_mask: dsc::ImageAspectFlag::Color.into(),
-                base_mip_level: 0,
-                level_count: mip_level_count,
-                base_array_layer: 0,
-                layer_count: 1,
-            },
-            components: dsc::ComponentMapping {
-                r: dsc::ComponentSwizzle::Identity,
-                g: dsc::ComponentSwizzle::Identity,
-                b: dsc::ComponentSwizzle::Identity,
-                a: dsc::ComponentSwizzle::Identity,
-            },
-        };
-
-        let image_view = self
-            .resources()
-            .get_or_create_image_view(&image, &image_view_meta)?;
-
-        Ok(ImageAsset { image_view })
+        Ok(ImageAsset { image, image_view })
     }
 
     #[profiling::function]
     fn finish_load_buffer(
         &mut self,
-        buffer: VkBuffer,
-    ) -> VkResult<BufferAsset> {
+        buffer: RafxBuffer,
+    ) -> RafxResult<BufferAsset> {
         let buffer = self.resources().insert_buffer(buffer);
 
         Ok(BufferAsset { buffer })
@@ -633,14 +605,16 @@ impl AssetManager {
     fn load_shader_module(
         &mut self,
         shader_module: &ShaderAssetData,
-    ) -> VkResult<ShaderAsset> {
+    ) -> RafxResult<ShaderAsset> {
         let shader = Arc::new(shader_module.shader.clone());
 
         let mut reflection_data_lookup = FnvHashMap::default();
         if let Some(reflection_data) = &shader_module.reflection_data {
             for entry_point in reflection_data {
-                let old =
-                    reflection_data_lookup.insert(entry_point.name.clone(), entry_point.clone());
+                let old = reflection_data_lookup.insert(
+                    entry_point.rafx_reflection.entry_point_name.clone(),
+                    entry_point.clone(),
+                );
                 assert!(old.is_none());
             }
         }
@@ -656,7 +630,7 @@ impl AssetManager {
     fn load_sampler(
         &mut self,
         sampler: &SamplerAssetData,
-    ) -> VkResult<SamplerAsset> {
+    ) -> RafxResult<SamplerAsset> {
         let sampler = self.resources().get_or_create_sampler(&sampler.sampler)?;
         Ok(SamplerAsset { sampler })
     }
@@ -665,9 +639,9 @@ impl AssetManager {
     fn load_graphics_pipeline(
         &mut self,
         graphics_pipeline_asset_data: GraphicsPipelineAssetData,
-    ) -> VkResult<GraphicsPipelineAsset> {
+    ) -> RafxResult<GraphicsPipelineAsset> {
         Ok(GraphicsPipelineAsset {
-            pipeline_asset: Arc::new(graphics_pipeline_asset_data),
+            pipeline_asset: Arc::new(graphics_pipeline_asset_data.prepare()?),
         })
     }
 
@@ -675,7 +649,7 @@ impl AssetManager {
     fn load_compute_pipeline(
         &mut self,
         compute_pipeline_asset_data: ComputePipelineAssetData,
-    ) -> VkResult<ComputePipelineAsset> {
+    ) -> RafxResult<ComputePipelineAsset> {
         //
         // Get the shader module
         //
@@ -685,8 +659,8 @@ impl AssetManager {
             .get_latest(compute_pipeline_asset_data.shader_module.load_handle())
             .unwrap();
         let shader_module_meta = ShaderModuleMeta {
-            entry_name: compute_pipeline_asset_data.entry_name,
-            stage: dsc::ShaderStage::Compute,
+            entry_name: compute_pipeline_asset_data.entry_name.clone(),
+            stage: RafxShaderStageFlags::COMPUTE,
         };
 
         //
@@ -696,21 +670,38 @@ impl AssetManager {
             .reflection_data
             .get(&shader_module_meta.entry_name);
         let reflection_data = reflection_data.ok_or_else(|| {
-            log::error!(
+            let error_message = format!(
                 "Load Compute Shader Failed - Pass refers to entry point named {}, but no matching reflection data was found",
                 shader_module_meta.entry_name
             );
-            vk::Result::ERROR_UNKNOWN
+            log::error!("{}", error_message);
+            error_message
         })?;
+
+        let shader = self.resources().get_or_create_shader(
+            &[RafxShaderStageDef {
+                shader_module: shader_module.shader_module.get_raw().shader_module.clone(),
+                entry_point: compute_pipeline_asset_data.entry_name,
+                shader_stage: RafxShaderStageFlags::COMPUTE,
+                resources: reflection_data.rafx_reflection.resources.clone(),
+            }],
+            &[shader_module.shader_module.clone()],
+        )?;
+
+        let root_signature =
+            self.resources()
+                .get_or_create_root_signature(&[shader.clone()], &[], &[])?;
 
         //
         // Create the push constant ranges
         //
-        let mut push_constant_ranges = vec![];
-        for (range_index, range) in reflection_data.push_constants.iter().enumerate() {
-            log::trace!("    Add range index {} {:?}", range_index, range);
-            push_constant_ranges.push(range.push_constant.clone());
-        }
+
+        // Currently unused, can be handled by the rafx api layer
+        // let mut push_constant_ranges = vec![];
+        // for (range_index, range) in reflection_data.push_constants.iter().enumerate() {
+        //     log::trace!("    Add range index {} {:?}", range_index, range);
+        //     push_constant_ranges.push(range.push_constant.clone());
+        // }
 
         //
         // Gather the descriptor set bindings
@@ -719,31 +710,20 @@ impl AssetManager {
         for (set_index, layout) in reflection_data.descriptor_set_layouts.iter().enumerate() {
             // Expand the layout def to include the given set index
             while descriptor_set_layout_defs.len() <= set_index {
-                descriptor_set_layout_defs.push(dsc::DescriptorSetLayout::default());
+                descriptor_set_layout_defs.push(DescriptorSetLayout::default());
             }
 
             if let Some(layout) = layout.as_ref() {
                 for binding in &layout.bindings {
-                    let def = dsc::DescriptorSetLayoutBinding {
-                        binding: binding.binding,
-                        descriptor_type: binding.descriptor_type,
-                        descriptor_count: binding.descriptor_count,
-                        stage_flags: binding.stage_flags,
-                        immutable_samplers: binding.immutable_samplers.clone(),
-                        internal_buffer_per_descriptor_size: binding
-                            .internal_buffer_per_descriptor_size,
-                    };
-
                     log::trace!(
                         "    Add descriptor binding set={} binding={} for stage {:?}",
                         set_index,
-                        binding.binding,
-                        binding.stage_flags
+                        binding.resource.binding,
+                        binding.resource.used_in_shader_stages
                     );
+                    let def = binding.clone().into();
 
-                    descriptor_set_layout_defs[set_index]
-                        .descriptor_set_layout_bindings
-                        .push(def);
+                    descriptor_set_layout_defs[set_index].bindings.push(def);
                 }
             }
         }
@@ -753,52 +733,33 @@ impl AssetManager {
         //
         let mut descriptor_set_layouts = Vec::with_capacity(descriptor_set_layout_defs.len());
 
-        for descriptor_set_layout_def in &descriptor_set_layout_defs {
-            let descriptor_set_layout = self
-                .resources()
-                .get_or_create_descriptor_set_layout(&descriptor_set_layout_def)?;
+        for (set_index, descriptor_set_layout_def) in descriptor_set_layout_defs.iter().enumerate()
+        {
+            let descriptor_set_layout = self.resources().get_or_create_descriptor_set_layout(
+                &root_signature,
+                set_index as u32,
+                &descriptor_set_layout_def,
+            )?;
             descriptor_set_layouts.push(descriptor_set_layout);
         }
-
-        //
-        // Create the pipeline layout
-        //
-        let pipeline_layout_def = dsc::PipelineLayout {
-            descriptor_set_layouts: descriptor_set_layout_defs,
-            push_constant_ranges,
-        };
-
-        let pipeline_layout = self
-            .resources()
-            .get_or_create_pipeline_layout(&pipeline_layout_def)?;
 
         //
         // Create the compute pipeline
         //
         let compute_pipeline = self.resources().get_or_create_compute_pipeline(
-            shader_module.shader_module.clone(),
-            shader_module_meta,
-            pipeline_layout,
+            &shader,
+            &root_signature,
+            descriptor_set_layouts,
         )?;
 
         Ok(ComputePipelineAsset { compute_pipeline })
     }
 
     #[profiling::function]
-    fn load_renderpass(
-        &mut self,
-        renderpass_asset: RenderpassAssetData,
-    ) -> VkResult<RenderpassAsset> {
-        Ok(RenderpassAsset {
-            renderpass_def: Arc::new(renderpass_asset.renderpass),
-        })
-    }
-
-    #[profiling::function]
     fn load_material(
         &mut self,
         material_asset: &MaterialAssetData,
-    ) -> VkResult<MaterialAsset> {
+    ) -> RafxResult<MaterialAsset> {
         let mut passes = Vec::with_capacity(material_asset.passes.len());
         let mut pass_name_to_index = FnvHashMap::default();
         let mut pass_phase_to_index = FnvHashMap::default();
@@ -823,11 +784,12 @@ impl AssetManager {
                     let old = pass_phase_to_index.insert(phase_index, pass_index);
                     assert!(old.is_none());
                 } else {
-                    log::error!(
-                            "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
-                            phase_name
-                        );
-                    return Err(vk::Result::ERROR_UNKNOWN);
+                    let error = format!(
+                        "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
+                        phase_name
+                    );
+                    log::error!("{}", error);
+                    return Err(error)?;
                 }
             }
         }
@@ -843,7 +805,7 @@ impl AssetManager {
     fn load_material_instance(
         &mut self,
         material_instance_asset: &MaterialInstanceAssetData,
-    ) -> VkResult<MaterialInstanceAsset> {
+    ) -> RafxResult<MaterialInstanceAsset> {
         // Find the material we will bind over, we need the metadata from it
         let material_asset = self
             .loaded_assets
@@ -878,12 +840,8 @@ impl AssetManager {
             // This will contain the descriptor sets created for this pass, one for each set within the pass
             let mut pass_descriptor_sets = Vec::with_capacity(pass_descriptor_set_writes.len());
 
-            let material_pass_descriptor_set_layouts = &pass
-                .material_pass_resource
-                .get_raw()
-                .pipeline_layout
-                .get_raw()
-                .descriptor_sets;
+            let material_pass_descriptor_set_layouts =
+                &pass.material_pass_resource.get_raw().descriptor_set_layouts;
 
             //
             // Register the writes into the correct descriptor set pools
@@ -929,7 +887,7 @@ impl AssetManager {
         pass_slot_name_lookup: &SlotNameLookup,
         resources: &ResourceLookupSet,
         material_pass_write_set: &mut Vec<DescriptorSetWriteSet>,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         if let Some(slot_locations) = pass_slot_name_lookup.get(&slot_assignment.slot_name) {
             for location in slot_locations {
                 log::trace!(
@@ -1000,7 +958,7 @@ impl AssetManager {
         pass: &MaterialPass,
         slots: &[MaterialInstanceSlotAssignment],
         resources: &ResourceLookupSet,
-    ) -> VkResult<Vec<DescriptorSetWriteSet>> {
+    ) -> RafxResult<Vec<DescriptorSetWriteSet>> {
         let mut pass_descriptor_set_writes =
             pass.create_uninitialized_write_sets_for_material_pass();
 

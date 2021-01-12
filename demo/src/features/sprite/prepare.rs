@@ -6,10 +6,9 @@ use crate::features::sprite::{
 use crate::phases::OpaqueRenderPhase;
 use crate::phases::TransparentRenderPhase;
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
-use ash::vk;
 use fnv::FnvHashMap;
 use glam::Vec3;
-use rafx::api_vulkan::VkBuffer;
+use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, ViewSubmitNodes,
@@ -84,12 +83,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
             .resource_context
             .create_descriptor_set_allocator();
 
-        let descriptor_set_layouts = self
-            .sprite_material
-            .get_raw()
-            .pipeline_layout
-            .get_raw()
-            .descriptor_sets;
+        let descriptor_set_layouts = self.sprite_material.get_raw().descriptor_set_layouts;
 
         for sprite in &self.extracted_frame_node_sprite_data {
             if let Some(sprite) = sprite {
@@ -201,12 +195,8 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
             //TODO: Multi-view support for sprites. Not clear on if we want to do a screen-space view specifically
             // for sprites
             //TODO: Extents is hard-coded
-            let layout = &self
-                .sprite_material
-                .get_raw()
-                .pipeline_layout
-                .get_raw()
-                .descriptor_sets[shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
+            let layout = &self.sprite_material.get_raw().descriptor_set_layouts
+                [shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
             let descriptor_set = descriptor_set_allocator
                 .create_descriptor_set(
                     &*layout,
@@ -239,17 +229,19 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
             let vertex_buffer = {
                 let vertex_buffer_size =
                     vertex_list.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
-                let mut vertex_buffer = VkBuffer::new(
-                    &prepare_context.device_context,
-                    vk_mem::MemoryUsage::CpuToGpu,
-                    vk::BufferUsageFlags::VERTEX_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                    vertex_buffer_size,
-                )
-                .unwrap();
+
+                let vertex_buffer = prepare_context
+                    .device_context
+                    .create_buffer(&RafxBufferDef {
+                        size: vertex_buffer_size,
+                        memory_usage: RafxMemoryUsage::CpuToGpu,
+                        resource_type: RafxResourceType::VERTEX_BUFFER,
+                        ..Default::default()
+                    })
+                    .unwrap();
 
                 vertex_buffer
-                    .write_to_host_visible_buffer(vertex_list.as_slice())
+                    .copy_to_host_visible_buffer(vertex_list.as_slice())
                     .unwrap();
 
                 dyn_resource_allocator.insert_buffer(vertex_buffer)
@@ -257,17 +249,19 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
 
             let index_buffer = {
                 let index_buffer_size = index_list.len() as u64 * std::mem::size_of::<u16>() as u64;
-                let mut index_buffer = VkBuffer::new(
-                    &prepare_context.device_context,
-                    vk_mem::MemoryUsage::CpuToGpu,
-                    vk::BufferUsageFlags::INDEX_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                    index_buffer_size,
-                )
-                .unwrap();
+
+                let index_buffer = prepare_context
+                    .device_context
+                    .create_buffer(&RafxBufferDef {
+                        size: index_buffer_size,
+                        memory_usage: RafxMemoryUsage::CpuToGpu,
+                        resource_type: RafxResourceType::INDEX_BUFFER,
+                        ..Default::default()
+                    })
+                    .unwrap();
 
                 index_buffer
-                    .write_to_host_visible_buffer(index_list.as_slice())
+                    .copy_to_host_visible_buffer(index_list.as_slice())
                     .unwrap();
 
                 dyn_resource_allocator.insert_buffer(index_buffer)

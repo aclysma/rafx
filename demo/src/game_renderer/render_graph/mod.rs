@@ -1,12 +1,12 @@
 use crate::features::mesh::ShadowMapRenderView;
 use crate::render_contexts::RenderJobWriteContext;
-use crate::VkDeviceContext;
-use ash::prelude::VkResult;
-use ash::vk;
-use rafx::api_vulkan::SwapchainInfo;
+use rafx::api::{
+    RafxDeviceContext, RafxFormat, RafxPrimitiveTopology, RafxResourceState, RafxResourceType,
+    RafxResult, RafxSampleCount,
+};
 use rafx::graph::*;
 use rafx::nodes::{PreparedRenderData, RenderView};
-use rafx::resources::{vk_description as dsc, VertexDataSetLayout};
+use rafx::resources::VertexDataSetLayout;
 use rafx::resources::{ComputePipelineResource, ResourceContext};
 use rafx::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
 
@@ -29,7 +29,7 @@ mod compute_test;
 
 lazy_static::lazy_static! {
     pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
-        VertexDataSetLayout::new(vec![])
+        VertexDataSetLayout::new(vec![], RafxPrimitiveTopology::TriangleList)
     };
 }
 
@@ -48,10 +48,10 @@ pub struct BuildRenderGraphResult {
 
 // All the data that can influence the rendergraph
 pub struct RenderGraphConfig {
-    pub color_format: vk::Format,
-    pub depth_format: vk::Format,
-    pub swapchain_format: vk::Format,
-    pub samples: vk::SampleCountFlags,
+    pub color_format: RafxFormat,
+    pub depth_format: RafxFormat,
+    pub swapchain_format: RafxFormat,
+    pub samples: RafxSampleCount,
     pub enable_hdr: bool,
     pub enable_bloom: bool,
     pub blur_pass_count: usize,
@@ -66,11 +66,10 @@ struct RenderGraphContext<'a> {
 }
 
 pub fn build_render_graph(
-    device_context: &VkDeviceContext,
+    device_context: &RafxDeviceContext,
     resource_context: &ResourceContext,
     graph_config: &RenderGraphConfig,
-    swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    swapchain_info: &SwapchainInfo,
+    swapchain_surface_info: &SwapchainSurfaceInfo,
     swapchain_image: ResourceArc<ImageViewResource>,
     main_view: RenderView,
     shadow_map_views: &[ShadowMapRenderView],
@@ -78,7 +77,7 @@ pub fn build_render_graph(
     bloom_blur_material_pass: ResourceArc<MaterialPassResource>,
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
     test_compute_pipeline: &ResourceArc<ComputePipelineResource>,
-) -> VkResult<BuildRenderGraphResult> {
+) -> RafxResult<BuildRenderGraphResult> {
     profiling::scope!("Build Render Graph");
 
     let mut graph = RenderGraphBuilder::default();
@@ -143,20 +142,15 @@ pub fn build_render_graph(
         ui_pass.color,
         swapchain_image,
         RenderGraphImageSpecification {
-            samples: vk::SampleCountFlags::TYPE_1,
+            samples: RafxSampleCount::SampleCount1,
             format: graph_config.swapchain_format,
-            aspect_flags: vk::ImageAspectFlags::COLOR,
-            usage_flags: swapchain_info.image_usage_flags,
-            create_flags: Default::default(),
+            resource_type: RafxResourceType::TEXTURE,
             extents: RenderGraphImageExtents::MatchSurface,
             layer_count: 1,
             mip_count: 1,
         },
         Default::default(),
-        Default::default(),
-        dsc::ImageLayout::PresentSrcKhr,
-        vk::AccessFlags::empty(),
-        vk::PipelineStageFlags::empty(),
+        RafxResourceState::PRESENT,
     );
 
     //

@@ -1,7 +1,7 @@
 use crate::asset_resource::AssetResource;
-use ash::prelude::VkResult;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::storage::LoadStatus;
+use rafx::api::RafxResult;
 use rafx::assets::MaterialAsset;
 use rafx::assets::{AssetManager, ComputePipelineAsset};
 
@@ -10,7 +10,7 @@ fn wait_for_asset_to_load<T>(
     asset_resource: &mut AssetResource,
     asset_manager: &mut AssetManager,
     asset_name: &str,
-) -> VkResult<()> {
+) -> RafxResult<()> {
     loop {
         asset_resource.update();
         asset_manager.update_asset_loaders()?;
@@ -62,7 +62,7 @@ impl GameRendererStaticResources {
     pub fn new(
         asset_resource: &mut AssetResource,
         asset_manager: &mut AssetManager,
-    ) -> VkResult<Self> {
+    ) -> RafxResult<Self> {
         //
         // Sprite resources
         //

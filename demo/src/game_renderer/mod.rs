@@ -9,19 +9,16 @@ use crate::phases::TransparentRenderPhase;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use crate::render_contexts::RenderJobExtractContext;
 use crate::time::TimeState;
-use ash::prelude::VkResult;
 use legion::*;
-use rafx::api_vulkan::{FrameInFlight, MsaaLevel, VkContext, VkDeviceContext, VkSurface, Window};
 use rafx::assets::{image_upload, DecodedImage, DecodedImageColorSpace};
 use rafx::assets::{AssetManager, DecodedImageMips};
 use rafx::nodes::{
     AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder,
     RenderRegistry, RenderView, RenderViewDepthRange, RenderViewSet, VisibilityResult,
 };
-use rafx::resources::{vk_description as dsc, DynResourceAllocatorSet};
+use rafx::resources::DynResourceAllocatorSet;
 use rafx::resources::{ImageViewResource, ResourceArc};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex};
 
 mod static_resources;
@@ -40,17 +37,21 @@ mod render_graph;
 
 //TODO: Find a way to not expose this
 mod swapchain_handling;
+pub use swapchain_handling::SwapchainHandler;
+
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
 use crate::features::imgui::create_imgui_extract_job;
 use crate::RenderOptions;
 use arrayvec::ArrayVec;
-use ash::vk;
 use atelier_assets::loader::handle::AssetHandle;
 use fnv::FnvHashMap;
-use rafx::resources::vulkan::{VkTransferUpload, VkUploadError};
-pub use swapchain_handling::SwapchainLifetimeListener;
+use rafx::api::extra::upload::{RafxTransferUpload, RafxUploadError};
+use rafx::api::{
+    RafxApi, RafxDeviceContext, RafxError, RafxPresentableFrame, RafxQueue, RafxResourceType,
+    RafxResult, RafxSampleCount,
+};
 
 /// Creates a right-handed perspective projection matrix with [0,1] depth range.
 pub fn perspective_rh(
@@ -104,32 +105,31 @@ pub struct GameRendererInner {
 #[derive(Clone)]
 pub struct GameRenderer {
     inner: Arc<Mutex<GameRendererInner>>,
+    graphics_queue: RafxQueue,
+    transfer_queue: RafxQueue,
 }
 
 impl GameRenderer {
     pub fn new(
-        _window: &dyn Window,
         resources: &Resources,
-    ) -> VkResult<Self> {
+        graphics_queue: &RafxQueue,
+        transfer_queue: &RafxQueue,
+    ) -> RafxResult<Self> {
         let mut asset_resource_fetch = resources.get_mut::<AssetResource>().unwrap();
         let asset_resource = &mut *asset_resource_fetch;
 
         let mut asset_manager_fetch = resources.get_mut::<AssetManager>().unwrap();
         let asset_manager = &mut *asset_manager_fetch;
 
-        let vk_context = resources.get_mut::<VkContext>().unwrap();
-        let device_context = vk_context.device_context();
+        let rafx_api = resources.get_mut::<RafxApi>().unwrap();
+        let device_context = rafx_api.device_context();
 
         let dyn_resource_allocator = asset_manager.create_dyn_resource_allocator_set();
 
-        let mut upload = VkTransferUpload::new(
-            device_context,
-            device_context
-                .queue_family_indices()
-                .transfer_queue_family_index,
-            device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
+        let mut upload = RafxTransferUpload::new(
+            &device_context,
+            asset_manager.transfer_queue(),
+            asset_manager.graphics_queue(),
             16 * 1024 * 1024,
         )?;
 
@@ -145,6 +145,7 @@ impl GameRenderer {
             &mut upload,
             &dyn_resource_allocator,
             &DecodedImage::new_1x1(255, 0, 255, 255, DecodedImageColorSpace::Linear),
+            RafxResourceType::TEXTURE,
         )?;
 
         let invalid_cube_map_image = Self::upload_single_layered_image_2d(
@@ -159,15 +160,14 @@ impl GameRenderer {
                 DecodedImageColorSpace::Linear,
             )],
             &[0, 0, 0, 0, 0, 0],
-            vk::ImageCreateFlags::CUBE_COMPATIBLE,
-            dsc::ImageViewType::Cube,
+            RafxResourceType::TEXTURE_CUBE,
         )
-        .map_err(|x| x.into())?;
+        .map_err(|x: RafxUploadError| {
+            let error: RafxError = x.into();
+            error
+        })?;
 
-        upload.block_until_upload_complete(
-            &device_context.queues().transfer_queue,
-            &device_context.queues().graphics_queue,
-        )?;
+        upload.block_until_upload_complete()?;
 
         log::info!("all waits complete");
         let game_renderer_resources =
@@ -187,74 +187,64 @@ impl GameRenderer {
 
         Ok(GameRenderer {
             inner: Arc::new(Mutex::new(renderer)),
+            graphics_queue: graphics_queue.clone(),
+            transfer_queue: transfer_queue.clone(),
         })
     }
 
+    fn graphics_queue(&self) -> &RafxQueue {
+        &self.graphics_queue
+    }
+
+    fn transfer_queue(&self) -> &RafxQueue {
+        &self.transfer_queue
+    }
+
     fn upload_single_layered_image_2d(
-        device_context: &VkDeviceContext,
-        upload: &mut VkTransferUpload,
+        device_context: &RafxDeviceContext,
+        upload: &mut RafxTransferUpload,
         dyn_resource_allocator: &DynResourceAllocatorSet,
         decoded_images: &[DecodedImage],
         layer_texture_assignments: &[usize],
-        create_flags: vk::ImageCreateFlags,
-        view_type: dsc::ImageViewType,
-    ) -> Result<ResourceArc<ImageViewResource>, VkUploadError> {
-        let image = image_upload::enqueue_load_layered_image_2d(
-            &device_context,
+        resource_type: RafxResourceType,
+    ) -> Result<ResourceArc<ImageViewResource>, RafxUploadError> {
+        let texture = image_upload::enqueue_load_layered_image_2d(
+            device_context,
             upload,
-            device_context
-                .queue_family_indices()
-                .transfer_queue_family_index,
-            device_context
-                .queue_family_indices()
-                .graphics_queue_family_index,
             decoded_images,
             layer_texture_assignments,
-            create_flags,
+            resource_type,
         )?;
 
-        let image = dyn_resource_allocator.insert_image(ManuallyDrop::into_inner(image));
+        let image = dyn_resource_allocator.insert_texture(texture);
 
-        let mip_count = decoded_images[0].mips.mip_level_count();
-        let layer_count = layer_texture_assignments.len();
-        let image_view_meta = dsc::ImageViewMeta {
-            format: dsc::Format::R8G8B8A8_UNORM,
-            components: Default::default(),
-            view_type,
-            subresource_range: dsc::ImageSubresourceRange::default_all_mips_all_layers(
-                dsc::ImageAspectFlag::Color.into(),
-                mip_count,
-                layer_count as u32,
-            ),
-        };
-
-        Ok(dyn_resource_allocator.insert_image_view(device_context, &image, image_view_meta)?)
+        Ok(dyn_resource_allocator.insert_image_view(&image, None)?)
     }
 
     fn upload_single_image(
-        device_context: &VkDeviceContext,
-        upload: &mut VkTransferUpload,
+        device_context: &RafxDeviceContext,
+        upload: &mut RafxTransferUpload,
         dyn_resource_allocator: &DynResourceAllocatorSet,
         decoded_image: &DecodedImage,
-    ) -> VkResult<ResourceArc<ImageViewResource>> {
+        resource_type: RafxResourceType,
+    ) -> RafxResult<ResourceArc<ImageViewResource>> {
         Self::upload_single_layered_image_2d(
             device_context,
             upload,
             dyn_resource_allocator,
             std::slice::from_ref(decoded_image),
             &[0],
-            vk::ImageCreateFlags::empty(),
-            dsc::ImageViewType::Type2D,
+            resource_type,
         )
         .map_err(|x| x.into())
     }
 
     fn create_font_atlas_image_view(
         resources: &Resources,
-        device_context: &VkDeviceContext,
-        upload: &mut VkTransferUpload,
+        device_context: &RafxDeviceContext,
+        upload: &mut RafxTransferUpload,
         dyn_resource_allocator: &DynResourceAllocatorSet,
-    ) -> VkResult<ResourceArc<ImageViewResource>> {
+    ) -> RafxResult<ResourceArc<ImageViewResource>> {
         //TODO: Simplify this setup code for the imgui font atlas
         let imgui_font_atlas = resources
             .get::<Sdl2ImguiManager>()
@@ -274,11 +264,10 @@ impl GameRenderer {
             upload,
             dyn_resource_allocator,
             &imgui_font_atlas,
+            RafxResourceType::TEXTURE,
         )
     }
-}
 
-impl GameRenderer {
     // This is externally exposed, it checks result of the previous frame (which implicitly also
     // waits for the previous frame to complete if it hasn't already)
     #[profiling::function]
@@ -286,94 +275,34 @@ impl GameRenderer {
         &self,
         resources: &Resources,
         world: &World,
-        window: &dyn Window,
-    ) -> VkResult<()> {
+        window_width: u32,
+        window_height: u32,
+    ) -> RafxResult<()> {
         //
         // Block until the previous frame completes being submitted to GPU
         //
         let t0 = std::time::Instant::now();
-        let previous_frame_job_result = resources
-            .get_mut::<VkSurface>()
-            .unwrap()
-            .wait_until_frame_not_in_flight();
+        //let mut swapchain_helper = resources.get_mut::<RafxSwapchainHelper>().unwrap();
+
+        let presentable_frame =
+            SwapchainHandler::acquire_next_image(resources, window_width, window_height, self)?;
+
+        //let presentable_frame = swapchain_helper.acquire_next_image(window, window_width, window_height, )?;
         let t1 = std::time::Instant::now();
         log::trace!(
             "[main] wait for previous frame present {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
         );
 
-        //
-        // Check the result of the previous frame. Three outcomes:
-        //  - Previous frame was successful: immediately try rendering again with the same swapchain
-        //  - Previous frame failed but resolvable by rebuilding the swapchain - skip trying to
-        //    render again with the same swapchain
-        //  - Previous frame failed with unrecoverable error: bail
-        //
-        let rebuild_swapchain = match &previous_frame_job_result {
-            Ok(_) => Ok(false),
-            Err(ash::vk::Result::SUCCESS) => Ok(false),
-            Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR) => Ok(true),
-            Err(ash::vk::Result::SUBOPTIMAL_KHR) => Ok(true),
-            Err(e) => Err(*e),
-        }?;
+        Self::create_and_start_render_job(
+            self,
+            world,
+            resources,
+            window_width,
+            window_height,
+            presentable_frame,
+        );
 
-        //
-        // If the previous frame rendered properly, try to render immediately with the same
-        // swapchain as last time
-        //
-        let previous_frame_job_result = if !rebuild_swapchain {
-            self.aquire_swapchain_image_and_render(resources, world, window)
-        } else {
-            previous_frame_job_result
-        };
-
-        //
-        // Rebuild the swapchain if needed
-        //
-        if let Err(e) = previous_frame_job_result {
-            match e {
-                ash::vk::Result::ERROR_OUT_OF_DATE_KHR => {
-                    log::info!("  ERROR_OUT_OF_DATE_KHR");
-                    SwapchainLifetimeListener::rebuild_swapchain(resources, window, self)
-                }
-                ash::vk::Result::SUCCESS => Ok(()),
-                ash::vk::Result::SUBOPTIMAL_KHR => Ok(()),
-                _ => {
-                    log::warn!("Unexpected rendering error {:?}", e);
-                    return Err(e);
-                }
-            }?;
-
-            // If we fail again immediately, bail
-            self.aquire_swapchain_image_and_render(resources, world, window)?
-        }
-
-        Ok(())
-    }
-
-    //TODO: In a failure, return the frame_in_flight and cancel the render. This will make
-    // previous_frame_result unnecessary
-    fn aquire_swapchain_image_and_render(
-        &self,
-        resources: &Resources,
-        world: &World,
-        window: &dyn Window,
-    ) -> VkResult<()> {
-        // Fetch the next swapchain image
-        let frame_in_flight = {
-            let mut surface = resources.get_mut::<VkSurface>().unwrap();
-            let t0 = std::time::Instant::now();
-            let result = surface.acquire_next_swapchain_image(window);
-            let t1 = std::time::Instant::now();
-            log::trace!(
-                "[main] wait for swapchain image took {} ms",
-                (t1 - t0).as_secs_f32() * 1000.0
-            );
-            result?
-        };
-
-        // After this point, any failures will be deferred to handle in next frame
-        Self::create_and_start_render_job(self, world, resources, window, frame_in_flight);
         Ok(())
     }
 
@@ -381,11 +310,18 @@ impl GameRenderer {
         game_renderer: &GameRenderer,
         world: &World,
         resources: &Resources,
-        window: &dyn Window,
-        frame_in_flight: FrameInFlight,
+        window_width: u32,
+        window_height: u32,
+        presentable_frame: RafxPresentableFrame,
     ) {
-        let result =
-            Self::try_create_render_job(&game_renderer, world, resources, window, &frame_in_flight);
+        let result = Self::try_create_render_job(
+            &game_renderer,
+            world,
+            resources,
+            window_width,
+            window_height,
+            &presentable_frame,
+        );
 
         match result {
             Ok(prepared_frame) => {
@@ -393,9 +329,12 @@ impl GameRenderer {
                 let game_renderer_inner = &mut *guard;
                 game_renderer_inner
                     .render_thread
-                    .render(prepared_frame, frame_in_flight)
+                    .render(prepared_frame, presentable_frame)
             }
-            Err(e) => frame_in_flight.cancel_present(Err(e)),
+            Err(e) => {
+                let graphics_queue = game_renderer.graphics_queue();
+                presentable_frame.present_with_error(graphics_queue, e)
+            }
         };
     }
 
@@ -403,9 +342,10 @@ impl GameRenderer {
         game_renderer: &GameRenderer,
         world: &World,
         resources: &Resources,
-        window: &dyn Window,
-        frame_in_flight: &FrameInFlight,
-    ) -> VkResult<RenderFrameJob> {
+        window_width: u32,
+        window_height: u32,
+        presentable_frame: &RafxPresentableFrame,
+    ) -> RafxResult<RenderFrameJob> {
         //
         // Fetch resources
         //
@@ -423,7 +363,7 @@ impl GameRenderer {
         let render_options = resources.get::<RenderOptions>().unwrap().clone();
 
         let render_registry = resources.get::<RenderRegistry>().unwrap().clone();
-        let device_context = resources.get::<VkDeviceContext>().unwrap().clone();
+        let device_context = resources.get::<RafxDeviceContext>().unwrap().clone();
 
         let mut asset_manager_fetch = resources.get_mut::<AssetManager>().unwrap();
         let asset_manager = &mut *asset_manager_fetch;
@@ -444,17 +384,35 @@ impl GameRenderer {
         // Swapchain Status
         //
         let swapchain_resources = game_renderer_inner.swapchain_resources.as_mut().unwrap();
-        let swapchain_image =
-            swapchain_resources.swapchain_images[frame_in_flight.present_index() as usize].clone();
+
+        let swapchain_image = {
+            // Temporary hack to jam a RafxRenderTarget into the existing resource lookups.. may want
+            // to reconsider this later since the ResourceArc can be held past the lifetime of the
+            // swapchain image
+            let swapchain_image = presentable_frame.render_target().clone();
+
+            let swapchain_image = resource_context
+                .resources()
+                .insert_render_target(swapchain_image);
+
+            resource_context
+                .resources()
+                .get_or_create_image_view(&swapchain_image, None)?
+        };
+
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
-        let swapchain_info = swapchain_resources.swapchain_info.clone();
 
         let render_view_set = RenderViewSet::default();
 
         //
         // Determine Camera Location
         //
-        let main_view = GameRenderer::calculte_main_view(&render_view_set, window, time_state);
+        let main_view = GameRenderer::calculate_main_view(
+            &render_view_set,
+            window_width,
+            window_height,
+            time_state,
+        );
 
         //
         // Determine shadowmap views
@@ -643,11 +601,11 @@ impl GameRenderer {
             .clone();
 
         let graph_config = {
-            let swapchain_format = swapchain_surface_info.surface_format.format;
-            let msaa_level = if render_options.enable_msaa {
-                MsaaLevel::Sample4
+            let swapchain_format = swapchain_surface_info.format;
+            let sample_count = if render_options.enable_msaa {
+                RafxSampleCount::SampleCount4
             } else {
-                MsaaLevel::Sample1
+                RafxSampleCount::SampleCount1
             };
 
             let color_format = if render_options.enable_hdr {
@@ -659,7 +617,7 @@ impl GameRenderer {
             render_graph::RenderGraphConfig {
                 color_format,
                 depth_format: swapchain_resources.default_depth_format,
-                samples: msaa_level.into(),
+                samples: sample_count,
                 enable_hdr: render_options.enable_hdr,
                 swapchain_format,
                 enable_bloom: render_options.enable_bloom,
@@ -673,7 +631,6 @@ impl GameRenderer {
             &resource_context,
             &graph_config,
             &swapchain_surface_info,
-            &swapchain_info,
             swapchain_image,
             main_view.clone(),
             &shadow_map_render_views,
@@ -752,6 +709,7 @@ impl GameRenderer {
         };
 
         let game_renderer = game_renderer.clone();
+        let graphics_queue = game_renderer.graphics_queue.clone();
 
         let prepared_frame = RenderFrameJob {
             game_renderer,
@@ -763,15 +721,17 @@ impl GameRenderer {
             shadow_map_render_views,
             render_registry,
             device_context,
+            graphics_queue,
         };
 
         Ok(prepared_frame)
     }
 
     #[profiling::function]
-    fn calculte_main_view(
+    fn calculate_main_view(
         render_view_set: &RenderViewSet,
-        window: &dyn Window,
+        window_width: u32,
+        window_height: u32,
         time_state: &TimeState,
     ) -> RenderView {
         let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
@@ -791,10 +751,7 @@ impl GameRenderer {
             CAMERA_Z,
         );
 
-        let extents = window.logical_size();
-        let extents_width = extents.width.max(1);
-        let extents_height = extents.height.max(1);
-        let aspect_ratio = extents_width as f32 / extents_height as f32;
+        let aspect_ratio = window_width as f32 / window_height as f32;
 
         let view = glam::Mat4::look_at_rh(eye, glam::Vec3::zero(), glam::Vec3::new(0.0, 0.0, 1.0));
 
@@ -811,7 +768,7 @@ impl GameRenderer {
             eye,
             view,
             proj,
-            (extents_width, extents_height),
+            (window_width, window_height),
             RenderViewDepthRange::new_infinite_reverse(near_plane),
             main_camera_render_phase_mask,
             "main".to_string(),

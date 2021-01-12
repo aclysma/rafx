@@ -2,45 +2,24 @@ use crate::graph::graph_buffer::PhysicalBufferId;
 use crate::graph::graph_image::{PhysicalImageId, PhysicalImageViewId, VirtualImageId};
 use crate::graph::graph_node::RenderGraphNodeName;
 use crate::graph::{RenderGraphImageUsageId, RenderGraphNodeId};
-use crate::vk_description as dsc;
+use crate::GraphicsPipelineRenderTargetMeta;
 use ash::vk;
 use fnv::FnvHashMap;
-use std::sync::Arc;
-
-/// Represents the invalidate or flush of a RenderGraphPassImageBarriers
-#[derive(Debug)]
-pub struct RenderGraphImageBarrier {
-    pub(super) access_flags: vk::AccessFlags,
-    pub(super) stage_flags: vk::PipelineStageFlags,
-}
-
-impl Default for RenderGraphImageBarrier {
-    fn default() -> Self {
-        RenderGraphImageBarrier {
-            access_flags: vk::AccessFlags::empty(),
-            stage_flags: vk::PipelineStageFlags::empty(),
-        }
-    }
-}
+use rafx_api::{
+    RafxColorClearValue, RafxDepthStencilClearValue, RafxFormat, RafxLoadOp, RafxResourceState,
+    RafxSampleCount,
+};
 
 /// Information provided per image used in a pass to properly synchronize access to it from
 /// different passes
 #[derive(Debug)]
 pub struct RenderGraphPassImageBarriers {
-    pub(super) invalidate: RenderGraphImageBarrier,
-    pub(super) flush: RenderGraphImageBarrier,
-    pub(super) layout: vk::ImageLayout,
-    pub(super) used_by_sampling: bool,
+    pub(super) resource_state: RafxResourceState,
 }
 
 impl RenderGraphPassImageBarriers {
-    pub(super) fn new(layout: vk::ImageLayout) -> Self {
-        RenderGraphPassImageBarriers {
-            flush: Default::default(),
-            invalidate: Default::default(),
-            layout,
-            used_by_sampling: false,
-        }
+    pub(super) fn new(resource_state: RafxResourceState) -> Self {
+        RenderGraphPassImageBarriers { resource_state }
     }
 }
 
@@ -52,36 +31,16 @@ pub struct RenderGraphNodeResourceBarriers {
     pub(super) buffer_barriers: FnvHashMap<PhysicalBufferId, RenderGraphPassBufferBarriers>,
 }
 
-/// Represents the invalidate or flush of a RenderGraphPassBufferBarriers
-#[derive(Debug)]
-pub struct RenderGraphBufferBarrier {
-    pub(super) access_flags: vk::AccessFlags,
-    pub(super) stage_flags: vk::PipelineStageFlags,
-}
-
-impl Default for RenderGraphBufferBarrier {
-    fn default() -> Self {
-        RenderGraphBufferBarrier {
-            access_flags: vk::AccessFlags::empty(),
-            stage_flags: vk::PipelineStageFlags::empty(),
-        }
-    }
-}
-
 /// Information provided per buffer used in a pass to properly synchronize access to it from
 /// different passes
 #[derive(Debug)]
 pub struct RenderGraphPassBufferBarriers {
-    pub(super) invalidate: RenderGraphBufferBarrier,
-    pub(super) flush: RenderGraphBufferBarrier,
+    pub(super) resource_state: RafxResourceState,
 }
 
 impl RenderGraphPassBufferBarriers {
-    pub(super) fn new() -> Self {
-        RenderGraphPassBufferBarriers {
-            flush: Default::default(),
-            invalidate: Default::default(),
-        }
+    pub(super) fn new(resource_state: RafxResourceState) -> Self {
+        RenderGraphPassBufferBarriers { resource_state }
     }
 }
 
@@ -92,8 +51,8 @@ pub struct RenderGraphNodeBufferBarriers {
     pub(super) barriers: FnvHashMap<PhysicalBufferId, RenderGraphPassBufferBarriers>,
 }
 
-const MAX_COLOR_ATTACHMENTS: usize = 4;
-const MAX_RESOLVE_ATTACHMENTS: usize = 4;
+pub const MAX_COLOR_ATTACHMENTS: usize = 4;
+pub const MAX_RESOLVE_ATTACHMENTS: usize = 4;
 
 /// Metadata for a subpass
 #[derive(Debug)]
@@ -108,8 +67,24 @@ pub struct RenderGraphSubpass {
 /// Clear value for either a color attachment or depth/stencil attachment
 #[derive(Clone)]
 pub enum AttachmentClearValue {
-    Color(vk::ClearColorValue),
-    DepthStencil(vk::ClearDepthStencilValue),
+    Color(RafxColorClearValue),
+    DepthStencil(RafxDepthStencilClearValue),
+}
+
+impl AttachmentClearValue {
+    pub fn to_color_clear_value(self) -> RafxColorClearValue {
+        match self {
+            AttachmentClearValue::Color(color) => color,
+            _ => panic!("wrong color type"),
+        }
+    }
+
+    pub fn to_depth_stencil_clear_value(self) -> RafxDepthStencilClearValue {
+        match self {
+            AttachmentClearValue::DepthStencil(color) => color,
+            _ => panic!("wrong color type"),
+        }
+    }
 }
 
 impl std::fmt::Debug for AttachmentClearValue {
@@ -130,20 +105,6 @@ impl std::fmt::Debug for AttachmentClearValue {
     }
 }
 
-impl Into<vk::ClearValue> for AttachmentClearValue {
-    fn into(self) -> vk::ClearValue {
-        match self {
-            AttachmentClearValue::Color(color) => vk::ClearValue { color },
-            AttachmentClearValue::DepthStencil(depth_stencil) => vk::ClearValue {
-                depth_stencil: vk::ClearDepthStencilValue {
-                    depth: depth_stencil.depth,
-                    stencil: depth_stencil.stencil,
-                },
-            },
-        }
-    }
-}
-
 /// Attachment for a render pass
 #[derive(Debug)]
 pub struct RenderGraphPassAttachment {
@@ -151,61 +112,45 @@ pub struct RenderGraphPassAttachment {
     pub(super) virtual_image: VirtualImageId,
     pub(super) image: Option<PhysicalImageId>,
     pub(super) image_view: Option<PhysicalImageViewId>,
-    pub(super) load_op: vk::AttachmentLoadOp,
-    pub(super) stencil_load_op: vk::AttachmentLoadOp,
+    pub(super) load_op: RafxLoadOp,
+    pub(super) stencil_load_op: RafxLoadOp,
     pub(super) store_op: vk::AttachmentStoreOp,
     pub(super) stencil_store_op: vk::AttachmentStoreOp,
     pub(super) clear_color: Option<AttachmentClearValue>,
-    pub(super) format: vk::Format,
-    pub(super) samples: vk::SampleCountFlags,
-    pub(super) initial_layout: dsc::ImageLayout,
-    pub(super) final_layout: dsc::ImageLayout,
-}
-
-impl RenderGraphPassAttachment {
-    pub(super) fn create_attachment_description(&self) -> dsc::AttachmentDescription {
-        dsc::AttachmentDescription {
-            flags: dsc::AttachmentDescriptionFlags::None,
-            format: dsc::AttachmentFormat::Format(self.format.into()),
-            samples: dsc::SampleCountFlags::from_vk_sample_count_flags(self.samples).unwrap(),
-            load_op: self.load_op.into(),
-            store_op: self.store_op.into(),
-            stencil_load_op: self.stencil_load_op.into(),
-            stencil_store_op: self.stencil_store_op.into(),
-            initial_layout: self.initial_layout,
-            final_layout: self.final_layout,
-        }
-    }
+    //pub(super) array_slice: Option<u16>,
+    //pub(super) mip_slice: Option<u8>,
+    pub(super) format: RafxFormat,
+    pub(super) samples: RafxSampleCount,
+    pub(super) initial_state: RafxResourceState,
+    pub(super) final_state: RafxResourceState,
 }
 
 #[derive(Debug)]
 pub struct PrepassBarrier {
-    pub src_stage: vk::PipelineStageFlags,
-    pub dst_stage: vk::PipelineStageFlags,
     pub image_barriers: Vec<PrepassImageBarrier>,
     pub buffer_barriers: Vec<PrepassBufferBarrier>,
 }
 
 #[derive(Debug)]
+pub struct PostpassBarrier {
+    // layout transition
+    pub image_barriers: Vec<PrepassImageBarrier>,
+    pub buffer_barriers: Vec<PrepassBufferBarrier>,
+    // resolve? probably do that in rafx api level
+}
+
+#[derive(Debug)]
 pub struct PrepassImageBarrier {
-    pub src_access: vk::AccessFlags,
-    pub dst_access: vk::AccessFlags,
-    pub old_layout: vk::ImageLayout,
-    pub new_layout: vk::ImageLayout,
-    pub src_queue_family_index: u32,
-    pub dst_queue_family_index: u32,
     pub image: PhysicalImageId,
-    pub subresource_range: dsc::ImageSubresourceRange,
+    pub old_state: RafxResourceState,
+    pub new_state: RafxResourceState,
 }
 
 #[derive(Debug)]
 pub struct PrepassBufferBarrier {
-    pub src_access: vk::AccessFlags,
-    pub dst_access: vk::AccessFlags,
-    pub src_queue_family_index: u32,
-    pub dst_queue_family_index: u32,
     pub buffer: PhysicalBufferId,
-    pub size: u64,
+    pub old_state: RafxResourceState,
+    pub new_state: RafxResourceState,
 }
 
 /// Metadata required to create a renderpass
@@ -217,7 +162,7 @@ pub struct RenderGraphRenderPass {
 
     // For when we want to do layout transitions on non-attachments
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
-    pub(super) extents: Option<vk::Extent2D>,
+    pub(super) post_pass_barrier: Option<PostpassBarrier>,
 }
 
 #[derive(Debug)]
@@ -253,14 +198,35 @@ impl RenderGraphPass {
     }
 }
 
+pub struct RenderGraphColorRenderTarget {
+    pub image: PhysicalImageId,
+    pub clear_value: RafxColorClearValue,
+    pub load_op: RafxLoadOp,
+    pub array_slice: Option<u16>,
+    pub mip_slice: Option<u8>,
+    pub resolve_image: Option<PhysicalImageId>,
+    pub resolve_array_slice: Option<u16>,
+    pub resolve_mip_slice: Option<u8>,
+}
+
+pub struct RenderGraphDepthStencilRenderTarget {
+    pub image: PhysicalImageId,
+    pub clear_value: RafxDepthStencilClearValue,
+    pub depth_load_op: RafxLoadOp,
+    pub stencil_load_op: RafxLoadOp,
+    pub array_slice: Option<u16>,
+    pub mip_slice: Option<u8>,
+}
+
 pub struct RenderGraphOutputRenderPass {
     pub(super) subpass_nodes: Vec<RenderGraphNodeId>,
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
+    pub(super) post_pass_barrier: Option<PostpassBarrier>,
     pub(super) debug_name: Option<RenderGraphNodeName>,
-    pub(super) description: Arc<dsc::RenderPass>,
     pub(super) attachment_images: Vec<PhysicalImageViewId>,
-    pub(super) clear_values: Vec<vk::ClearValue>,
-    pub(super) extents: vk::Extent2D,
+    pub(super) color_render_targets: Vec<RenderGraphColorRenderTarget>,
+    pub(super) depth_stencil_render_target: Option<RenderGraphDepthStencilRenderTarget>,
+    pub(super) render_target_meta: GraphicsPipelineRenderTargetMeta,
 }
 
 impl std::fmt::Debug for RenderGraphOutputRenderPass {
@@ -269,9 +235,9 @@ impl std::fmt::Debug for RenderGraphOutputRenderPass {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         f.debug_struct("RenderGraphOutputRenderPass")
-            .field("description", &self.description)
+            //.field("description", &self.description)
             .field("attachment_images", &self.attachment_images)
-            .field("extents", &self.extents)
+            //.field("extents", &self.extents)
             .finish()
     }
 }
@@ -280,6 +246,7 @@ impl std::fmt::Debug for RenderGraphOutputRenderPass {
 pub struct RenderGraphOutputComputePass {
     pub(super) node: RenderGraphNodeId,
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
+    pub(super) post_pass_barrier: Option<PostpassBarrier>,
     pub(super) debug_name: Option<RenderGraphNodeName>,
 }
 
@@ -301,6 +268,13 @@ impl RenderGraphOutputPass {
         match self {
             RenderGraphOutputPass::Renderpass(pass) => pass.pre_pass_barrier.as_ref(),
             RenderGraphOutputPass::Compute(pass) => pass.pre_pass_barrier.as_ref(),
+        }
+    }
+
+    pub fn post_pass_barrier(&self) -> Option<&PostpassBarrier> {
+        match self {
+            RenderGraphOutputPass::Renderpass(pass) => pass.post_pass_barrier.as_ref(),
+            RenderGraphOutputPass::Compute(pass) => pass.post_pass_barrier.as_ref(),
         }
     }
 

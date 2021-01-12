@@ -2,59 +2,31 @@ use super::PhysicalImageId;
 use crate::graph::graph_buffer::PhysicalBufferId;
 use crate::graph::graph_image::PhysicalImageViewId;
 use crate::graph::graph_node::{RenderGraphNodeId, RenderGraphNodeName};
-use crate::graph::graph_pass::RenderGraphOutputPass;
+use crate::graph::graph_pass::{PrepassBufferBarrier, PrepassImageBarrier, RenderGraphOutputPass};
 use crate::graph::graph_plan::RenderGraphPlan;
 use crate::graph::{
     RenderGraphBufferSpecification, RenderGraphBufferUsageId, RenderGraphBuilder,
     RenderGraphImageSpecification, RenderGraphImageUsageId,
 };
-use crate::resources::FramebufferResource;
-use crate::resources::RenderPassResource;
+use crate::resources::DynCommandBuffer;
 use crate::resources::ResourceLookupSet;
-use crate::vk_description::SwapchainSurfaceInfo;
-use crate::vulkan::VkBuffer;
-use crate::{vk_description as dsc, BufferResource, ImageResource};
+use crate::{BufferResource, GraphicsPipelineRenderTargetMeta, ImageResource};
 use crate::{ImageViewResource, ResourceArc, ResourceContext};
-use ash::prelude::VkResult;
-use ash::version::DeviceV1_0;
-use ash::vk;
 use fnv::{FnvHashMap, FnvHashSet};
-use rafx_api_vulkan::{VkDeviceContext, VkImage};
+use rafx_api::{
+    RafxBarrierQueueTransition, RafxBufferBarrier, RafxBufferDef, RafxColorRenderTargetBinding,
+    RafxCommandBuffer, RafxCommandBufferDef, RafxCommandPoolDef, RafxDepthRenderTargetBinding,
+    RafxDeviceContext, RafxExtents2D, RafxFormat, RafxMemoryUsage, RafxQueue,
+    RafxRenderTargetBarrier, RafxRenderTargetDef, RafxResult,
+};
 use rafx_nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
-pub struct ResourceCache<T: Eq + Hash> {
-    resources: FnvHashMap<T, u64>,
-}
-
-impl<T: Eq + Hash> ResourceCache<T> {
-    pub fn new() -> Self {
-        ResourceCache {
-            resources: Default::default(),
-        }
-    }
-
-    pub fn touch_resource(
-        &mut self,
-        resource: T,
-        keep_until_frame: u64,
-    ) {
-        let x = self.resources.entry(resource).or_insert(keep_until_frame);
-        *x = keep_until_frame;
-    }
-
-    pub fn on_frame_complete(
-        &mut self,
-        current_frame_index: u64,
-    ) {
-        self.resources
-            .retain(|_, keep_until_frame| *keep_until_frame > current_frame_index);
-    }
-
-    pub fn clear(&mut self) {
-        self.resources.clear();
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub struct SwapchainSurfaceInfo {
+    pub extents: RafxExtents2D,
+    pub format: RafxFormat,
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -81,8 +53,6 @@ struct RenderGraphCachedImage {
 pub struct RenderGraphCacheInner {
     buffers: FnvHashMap<RenderGraphCachedBufferKey, Vec<RenderGraphCachedBuffer>>,
     images: FnvHashMap<RenderGraphCachedImageKey, Vec<RenderGraphCachedImage>>,
-    render_passes: ResourceCache<ResourceArc<RenderPassResource>>,
-    framebuffers: ResourceCache<ResourceArc<FramebufferResource>>,
     current_frame_index: u64,
     frames_to_persist: u64,
 }
@@ -92,8 +62,6 @@ impl RenderGraphCacheInner {
         RenderGraphCacheInner {
             buffers: Default::default(),
             images: Default::default(),
-            render_passes: ResourceCache::new(),
-            framebuffers: ResourceCache::new(),
             current_frame_index: 0,
             frames_to_persist: max_frames_in_flight as u64 + 1,
         }
@@ -115,25 +83,20 @@ impl RenderGraphCacheInner {
 
         self.images.retain(|_k, v| !v.is_empty());
 
-        self.render_passes.on_frame_complete(current_frame_index);
-        self.framebuffers.on_frame_complete(current_frame_index);
-
         self.current_frame_index += 1;
     }
 
     pub fn clear(&mut self) {
         self.buffers.clear();
         self.images.clear();
-        self.render_passes.clear();
-        self.framebuffers.clear();
     }
 
     fn allocate_buffers(
         &mut self,
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         graph: &RenderGraphPlan,
         resources: &ResourceLookupSet,
-    ) -> VkResult<FnvHashMap<PhysicalBufferId, ResourceArc<BufferResource>>> {
+    ) -> RafxResult<FnvHashMap<PhysicalBufferId, ResourceArc<BufferResource>>> {
         log::trace!("Allocate buffers for rendergraph");
         let mut buffer_resources: FnvHashMap<PhysicalBufferId, ResourceArc<BufferResource>> =
             Default::default();
@@ -179,13 +142,14 @@ impl RenderGraphCacheInner {
                 buffer_resources.insert(id, cached_buffer.buffer.clone());
             } else {
                 // No unused buffer available, create one
-                let buffer = VkBuffer::new(
-                    device_context,
-                    rafx_api_vulkan::vk_mem::MemoryUsage::GpuOnly,
-                    key.specification.usage_flags,
-                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                    key.specification.size,
-                )?;
+                let buffer = device_context.create_buffer(&RafxBufferDef {
+                    size: key.specification.size,
+                    //alignment: key.specification.alignment,
+                    memory_usage: RafxMemoryUsage::GpuOnly,
+                    resource_type: key.specification.resource_type,
+                    //initial_state: key.specification.initial_state,
+                    ..Default::default()
+                })?;
                 let buffer = resources.insert_buffer(buffer);
 
                 log::trace!(
@@ -214,11 +178,11 @@ impl RenderGraphCacheInner {
 
     fn allocate_images(
         &mut self,
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         graph: &RenderGraphPlan,
         resources: &ResourceLookupSet,
-        swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    ) -> VkResult<FnvHashMap<PhysicalImageId, ResourceArc<ImageResource>>> {
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> RafxResult<FnvHashMap<PhysicalImageId, ResourceArc<ImageResource>>> {
         log::trace!("Allocate images for rendergraph");
         let mut image_resources: FnvHashMap<PhysicalImageId, ResourceArc<ImageResource>> =
             Default::default();
@@ -266,24 +230,21 @@ impl RenderGraphCacheInner {
                 image_resources.insert(id, cached_image.image.clone());
             } else {
                 // No unused image available, create one
-                let extent = key
+                let extents = key
                     .specification
                     .extents
-                    .into_vk_extent_3d(&key.swapchain_surface_info);
-                let image = VkImage::new(
-                    device_context,
-                    rafx_api_vulkan::vk_mem::MemoryUsage::GpuOnly,
-                    key.specification.create_flags,
-                    key.specification.usage_flags,
-                    extent,
-                    key.specification.format,
-                    vk::ImageTiling::OPTIMAL,
-                    key.specification.samples,
-                    specification.layer_count,
-                    1,
-                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                )?;
-                let image = resources.insert_image(image);
+                    .into_rafx_extents(&key.swapchain_surface_info);
+
+                let render_target = device_context.create_render_target(&RafxRenderTargetDef {
+                    extents,
+                    array_length: specification.layer_count,
+                    mip_count: specification.mip_count,
+                    format: specification.format,
+                    sample_count: specification.samples,
+                    resource_type: specification.resource_type,
+                    dimensions: Default::default(),
+                })?;
+                let image = resources.insert_render_target(render_target);
 
                 log::trace!(
                     "  Image {:?} - CREATE {:?}  (key: {:?}, index: {})",
@@ -314,7 +275,7 @@ impl RenderGraphCacheInner {
         graph: &RenderGraphPlan,
         resources: &ResourceLookupSet,
         image_resources: &FnvHashMap<PhysicalImageId, ResourceArc<ImageResource>>,
-    ) -> VkResult<FnvHashMap<PhysicalImageViewId, ResourceArc<ImageViewResource>>> {
+    ) -> RafxResult<FnvHashMap<PhysicalImageViewId, ResourceArc<ImageViewResource>>> {
         let mut image_view_resources: FnvHashMap<
             PhysicalImageViewId,
             ResourceArc<ImageViewResource>,
@@ -334,103 +295,20 @@ impl RenderGraphCacheInner {
                 continue;
             }
 
-            let specification = &graph.intermediate_images[&view.physical_image];
-            let image_view_meta = dsc::ImageViewMeta {
-                format: specification.format.into(),
-                components: Default::default(),
-                subresource_range: view.subresource_range.clone(),
-                view_type: view.view_type,
-            };
-
             log::trace!("get_or_create_image_view for {:?}", view.physical_image);
             let image_resource = &image_resources[&view.physical_image];
 
             let old = image_view_resources.insert(
                 id,
-                resources.get_or_create_image_view(image_resource, &image_view_meta)?,
+                resources.get_or_create_image_view(
+                    image_resource,
+                    view.view_options.texture_bind_type,
+                )?,
             );
             assert!(old.is_none());
         }
 
         Ok(image_view_resources)
-    }
-
-    fn allocate_render_passes(
-        &mut self,
-        graph: &RenderGraphPlan,
-        resources: &ResourceLookupSet,
-        swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    ) -> VkResult<Vec<Option<ResourceArc<RenderPassResource>>>> {
-        log::trace!("Allocate renderpasses for rendergraph");
-        let mut render_pass_resources = Vec::with_capacity(graph.passes.len());
-        for (pass_index, pass) in graph.passes.iter().enumerate() {
-            if let RenderGraphOutputPass::Renderpass(pass) = pass {
-                let render_pass_resource = resources
-                    .get_or_create_renderpass(pass.description.clone(), swapchain_surface_info)?;
-                log::trace!(
-                    "(pass {}) Keep renderpass {:?} until {}",
-                    pass_index,
-                    render_pass_resource.get_raw().renderpass,
-                    self.current_frame_index + self.frames_to_persist
-                );
-                self.render_passes.touch_resource(
-                    render_pass_resource.clone(),
-                    self.current_frame_index + self.frames_to_persist,
-                );
-                render_pass_resources.push(Some(render_pass_resource));
-            } else {
-                render_pass_resources.push(None);
-            }
-        }
-        Ok(render_pass_resources)
-    }
-
-    fn allocate_framebuffers(
-        &mut self,
-        graph: &RenderGraphPlan,
-        resources: &ResourceLookupSet,
-        image_resources: &FnvHashMap<PhysicalImageViewId, ResourceArc<ImageViewResource>>,
-        render_pass_resources: &Vec<Option<ResourceArc<RenderPassResource>>>,
-    ) -> VkResult<Vec<Option<ResourceArc<FramebufferResource>>>> {
-        log::trace!("Allocate framebuffers for rendergraph");
-        let mut framebuffers = Vec::with_capacity(graph.passes.len());
-        for (pass_index, pass) in graph.passes.iter().enumerate() {
-            if let RenderGraphOutputPass::Renderpass(pass) = pass {
-                let attachments: Vec<_> = pass
-                    .attachment_images
-                    .iter()
-                    .map(|x| image_resources[x].clone())
-                    .collect();
-
-                let framebuffer_meta = dsc::FramebufferMeta {
-                    width: pass.extents.width,
-                    height: pass.extents.height,
-                    layers: 1,
-                };
-
-                let framebuffer = resources.get_or_create_framebuffer(
-                    render_pass_resources[pass_index].as_ref().unwrap().clone(),
-                    &attachments,
-                    &framebuffer_meta,
-                )?;
-
-                log::trace!(
-                    "(pass {}) Keep framebuffer {:?} until {}",
-                    pass_index,
-                    framebuffer.get_raw().framebuffer,
-                    self.current_frame_index + self.frames_to_persist
-                );
-
-                self.framebuffers.touch_resource(
-                    framebuffer.clone(),
-                    self.current_frame_index + self.frames_to_persist,
-                );
-                framebuffers.push(Some(framebuffer));
-            } else {
-                framebuffers.push(None);
-            }
-        }
-        Ok(framebuffers)
     }
 }
 
@@ -477,7 +355,7 @@ impl<'a> RenderGraphContext<'a> {
         self.prepared_graph.image_view(image)
     }
 
-    pub fn device_context(&self) -> &VkDeviceContext {
+    pub fn device_context(&self) -> &RafxDeviceContext {
         &self.prepared_graph.device_context
     }
 
@@ -487,27 +365,24 @@ impl<'a> RenderGraphContext<'a> {
 }
 
 pub struct VisitComputeNodeArgs<'a> {
-    pub command_buffer: vk::CommandBuffer,
+    pub command_buffer: DynCommandBuffer,
     pub graph_context: RenderGraphContext<'a>,
 }
 
 pub struct VisitRenderpassNodeArgs<'a> {
-    pub command_buffer: vk::CommandBuffer,
-    pub renderpass_resource: &'a ResourceArc<RenderPassResource>,
-    pub framebuffer_resource: &'a ResourceArc<FramebufferResource>,
+    pub command_buffer: DynCommandBuffer,
+    pub render_target_meta: GraphicsPipelineRenderTargetMeta,
     pub subpass_index: usize,
     pub graph_context: RenderGraphContext<'a>,
 }
 
 /// Encapsulates a render graph plan and all resources required to execute it
 pub struct PreparedRenderGraph {
-    device_context: VkDeviceContext,
+    device_context: RafxDeviceContext,
     resource_context: ResourceContext,
     buffer_resources: FnvHashMap<PhysicalBufferId, ResourceArc<BufferResource>>,
     image_resources: FnvHashMap<PhysicalImageId, ResourceArc<ImageResource>>,
     image_view_resources: FnvHashMap<PhysicalImageViewId, ResourceArc<ImageViewResource>>,
-    renderpass_resources: Vec<Option<ResourceArc<RenderPassResource>>>,
-    framebuffer_resources: Vec<Option<ResourceArc<FramebufferResource>>>,
     graph_plan: RenderGraphPlan,
 }
 
@@ -521,13 +396,13 @@ impl PreparedRenderGraph {
     }
 
     pub fn new(
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         resource_context: &ResourceContext,
         resources: &ResourceLookupSet,
         graph: RenderGraphBuilder,
         swapchain_surface_info: &SwapchainSurfaceInfo,
-    ) -> VkResult<Self> {
-        let graph_plan = graph.build_plan(swapchain_surface_info);
+    ) -> RafxResult<Self> {
+        let graph_plan = graph.build_plan();
         let mut cache_guard = resource_context.render_graph_cache().inner.lock().unwrap();
         let cache = &mut *cache_guard;
 
@@ -544,15 +419,15 @@ impl PreparedRenderGraph {
         let image_view_resources =
             cache.allocate_image_views(&graph_plan, resources, &image_resources)?;
 
-        let render_pass_resources =
-            cache.allocate_render_passes(&graph_plan, resources, swapchain_surface_info)?;
-
-        let framebuffer_resources = cache.allocate_framebuffers(
-            &graph_plan,
-            resources,
-            &image_view_resources,
-            &render_pass_resources,
-        )?;
+        // let render_pass_resources =
+        //     cache.allocate_render_passes(&graph_plan, resources, swapchain_surface_info)?;
+        //
+        // let framebuffer_resources = cache.allocate_framebuffers(
+        //     &graph_plan,
+        //     resources,
+        //     &image_view_resources,
+        //     &render_pass_resources,
+        // )?;
 
         Ok(PreparedRenderGraph {
             device_context: device_context.clone(),
@@ -560,8 +435,8 @@ impl PreparedRenderGraph {
             buffer_resources,
             image_resources,
             image_view_resources,
-            renderpass_resources: render_pass_resources,
-            framebuffer_resources,
+            //renderpass_resources: render_pass_resources,
+            //framebuffer_resources,
             graph_plan,
         })
     }
@@ -582,32 +457,88 @@ impl PreparedRenderGraph {
         self.image_view_resources.get(physical_image).cloned()
     }
 
+    fn insert_barriers(
+        &self,
+        command_buffer: &RafxCommandBuffer,
+        pass_buffer_barriers: &[PrepassBufferBarrier],
+        pass_image_barriers: &[PrepassImageBarrier],
+    ) -> RafxResult<()> {
+        assert!(!pass_buffer_barriers.is_empty() || !pass_image_barriers.is_empty());
+
+        let mut buffer_barriers = Vec::with_capacity(pass_buffer_barriers.len());
+        let buffers: Vec<_> = pass_buffer_barriers
+            .iter()
+            .map(|x| self.buffer_resources[&x.buffer].get_raw().buffer.clone())
+            .collect();
+        for (buffer_barrier, buffer) in pass_buffer_barriers.iter().zip(&buffers) {
+            log::trace!(
+                "add buffer barrier for buffer {:?} state {:?} -> {:?}",
+                buffer_barrier.buffer,
+                buffer_barrier.old_state,
+                buffer_barrier.new_state
+            );
+
+            buffer_barriers.push(RafxBufferBarrier {
+                buffer: buffer.as_ref(),
+                src_state: buffer_barrier.old_state,
+                dst_state: buffer_barrier.new_state,
+                queue_transition: RafxBarrierQueueTransition::None,
+            });
+        }
+
+        let mut rt_barriers = Vec::with_capacity(pass_image_barriers.len());
+        let images: Vec<_> = pass_image_barriers
+            .iter()
+            .map(|x| self.image_resources[&x.image].get_raw().image.clone())
+            .collect();
+        for (image_barrier, image) in pass_image_barriers.iter().zip(&images) {
+            log::trace!(
+                "add image barrier for image {:?} state {:?} -> {:?}",
+                image_barrier.image,
+                image_barrier.old_state,
+                image_barrier.new_state
+            );
+
+            rt_barriers.push(RafxRenderTargetBarrier {
+                render_target: image.render_target().unwrap(),
+                src_state: image_barrier.old_state,
+                dst_state: image_barrier.new_state,
+                array_slice: None,
+                mip_slice: None,
+                queue_transition: RafxBarrierQueueTransition::None,
+            });
+        }
+
+        // for buffer_barrier in rafx_buffer_barriers {
+        //     println!("{:?}", buffer_barrier);
+        // }
+        //
+        // for rt_barrier in rt_barriers {
+        //     println!("{:?}", rt_barrier);
+        // }
+
+        command_buffer.cmd_resource_barrier(&buffer_barriers, &[], &rt_barriers)
+    }
+
     pub fn execute_graph(
         &self,
         node_visitor: &dyn RenderGraphNodeVisitor,
-    ) -> VkResult<Vec<vk::CommandBuffer>> {
+        queue: &RafxQueue,
+    ) -> RafxResult<Vec<DynCommandBuffer>> {
         profiling::scope!("Execute Graph");
         //
         // Start a command writer. For now just do a single primary writer, later we can multithread this.
         //
         let mut command_writer = self
             .resource_context
-            .dyn_command_writer_allocator()
-            .allocate_writer(
-                self.device_context
-                    .queue_family_indices()
-                    .graphics_queue_family_index,
-                vk::CommandPoolCreateFlags::TRANSIENT,
-                0,
-            )?;
+            .dyn_command_pool_allocator()
+            .allocate_dyn_pool(queue, &RafxCommandPoolDef { transient: true }, 0)?;
 
-        let command_buffer = command_writer.begin_command_buffer(
-            vk::CommandBufferLevel::PRIMARY,
-            vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
-            None,
-        )?;
+        let command_buffer = command_writer.allocate_dyn_command_buffer(&RafxCommandBufferDef {
+            is_secondary: false,
+        })?;
 
-        let device = self.device_context.device();
+        command_buffer.begin()?;
 
         let render_graph_context = RenderGraphContext {
             prepared_graph: &self,
@@ -627,110 +558,121 @@ impl PreparedRenderGraph {
             let subpass_index = 0;
             let node_id = pass.nodes()[subpass_index];
 
-            unsafe {
-                if let Some(pre_pass_barrier) = pass.pre_pass_barrier() {
-                    let mut buffer_memory_barriers =
-                        Vec::with_capacity(pre_pass_barrier.buffer_barriers.len());
+            if let Some(pre_pass_barrier) = pass.pre_pass_barrier() {
+                log::trace!(
+                    "prepass barriers for pass {} {:?}",
+                    pass_index,
+                    pass.debug_name()
+                );
+                self.insert_barriers(
+                    &command_buffer,
+                    &pre_pass_barrier.buffer_barriers,
+                    &pre_pass_barrier.image_barriers,
+                )?;
+            }
 
-                    for buffer_barrier in &pre_pass_barrier.buffer_barriers {
-                        log::trace!("add buffer barrier for buffer {:?}", buffer_barrier.buffer);
-                        let buffer = &self.buffer_resources[&buffer_barrier.buffer];
+            match pass {
+                RenderGraphOutputPass::Renderpass(pass) => {
+                    debug_assert_eq!(1, pass.subpass_nodes.len());
 
-                        let buffer_memory_barrier = vk::BufferMemoryBarrier::builder()
-                            .src_access_mask(buffer_barrier.src_access)
-                            .dst_access_mask(buffer_barrier.dst_access)
-                            .src_queue_family_index(buffer_barrier.src_queue_family_index)
-                            .dst_queue_family_index(buffer_barrier.dst_queue_family_index)
-                            .buffer(buffer.get_raw().buffer.buffer)
-                            .offset(0)
-                            .size(buffer_barrier.size)
-                            .build();
+                    let color_images: Vec<_> = pass
+                        .color_render_targets
+                        .iter()
+                        .map(|x| self.image_resources[&x.image].get_raw().image.clone())
+                        .collect();
 
-                        buffer_memory_barriers.push(buffer_memory_barrier);
-                    }
+                    let resolve_images: Vec<_> = pass
+                        .color_render_targets
+                        .iter()
+                        .map(|x| {
+                            //x.map(|x| self.image_resources[&x.image].get_raw().image.clone())
+                            x.resolve_image
+                                .map(|x| self.image_resources[&x].get_raw().image.clone())
+                        })
+                        .collect();
 
-                    let mut image_memory_barriers =
-                        Vec::with_capacity(pre_pass_barrier.image_barriers.len());
+                    let color_target_bindings: Vec<_> = pass
+                        .color_render_targets
+                        .iter()
+                        .enumerate()
+                        .map(
+                            |(color_image_index, color_image)| RafxColorRenderTargetBinding {
+                                render_target: color_images[color_image_index]
+                                    .render_target()
+                                    .unwrap(),
+                                clear_value: color_image.clear_value.clone(),
+                                load_op: color_image.load_op,
+                                array_slice: color_image.array_slice,
+                                mip_slice: color_image.mip_slice,
+                                resolve_target: resolve_images[color_image_index]
+                                    .as_ref()
+                                    .map(|x| x.render_target().unwrap()),
+                                resolve_array_slice: color_image.resolve_array_slice,
+                                resolve_mip_slice: color_image.resolve_mip_slice,
+                            },
+                        )
+                        .collect();
 
-                    for image_barrier in &pre_pass_barrier.image_barriers {
-                        log::trace!("add image barrier for image {:?}", image_barrier.image);
-                        let image = &self.image_resources[&image_barrier.image];
-                        let subresource_range = image_barrier.subresource_range.clone().into();
+                    let mut depth_stencil_image = None;
+                    let depth_target_binding = pass.depth_stencil_render_target.as_ref().map(|x| {
+                        depth_stencil_image =
+                            Some(self.image_resources[&x.image].get_raw().image.clone());
+                        RafxDepthRenderTargetBinding {
+                            render_target: depth_stencil_image
+                                .as_ref()
+                                .unwrap()
+                                .render_target()
+                                .unwrap(),
+                            clear_value: x.clear_value.clone(),
+                            depth_load_op: x.depth_load_op,
+                            stencil_load_op: x.stencil_load_op,
+                            array_slice: x.array_slice,
+                            mip_slice: x.mip_slice,
+                        }
+                    });
 
-                        let image_memory_barrier = vk::ImageMemoryBarrier::builder()
-                            .src_access_mask(image_barrier.src_access)
-                            .dst_access_mask(image_barrier.dst_access)
-                            .old_layout(image_barrier.old_layout)
-                            .new_layout(image_barrier.new_layout)
-                            .src_queue_family_index(image_barrier.src_queue_family_index)
-                            .dst_queue_family_index(image_barrier.dst_queue_family_index)
-                            .image(image.get_raw().image.image)
-                            .subresource_range(subresource_range)
-                            .build();
+                    //println!("color bindings:\n{:#?}", color_target_bindings);
+                    //println!("depth binding:\n{:#?}", depth_target_binding);
 
-                        image_memory_barriers.push(image_memory_barrier);
-                    }
+                    command_buffer
+                        .cmd_bind_render_targets(&color_target_bindings, depth_target_binding)?;
 
-                    device.cmd_pipeline_barrier(
-                        command_buffer,
-                        pre_pass_barrier.src_stage,
-                        pre_pass_barrier.dst_stage,
-                        vk::DependencyFlags::empty(),
-                        &[],
-                        &buffer_memory_barriers,
-                        &image_memory_barriers,
-                    );
+                    let args = VisitRenderpassNodeArgs {
+                        render_target_meta: pass.render_target_meta.clone(),
+                        graph_context: render_graph_context,
+                        subpass_index,
+                        command_buffer: command_buffer.clone(),
+                    };
+
+                    node_visitor.visit_renderpass_node(node_id, args)?;
+
+                    command_buffer.cmd_unbind_render_targets()?;
                 }
+                RenderGraphOutputPass::Compute(_pass) => {
+                    let args = VisitComputeNodeArgs {
+                        graph_context: render_graph_context,
+                        command_buffer: command_buffer.clone(),
+                    };
 
-                match pass {
-                    RenderGraphOutputPass::Renderpass(pass) => {
-                        let renderpass_resource =
-                            self.renderpass_resources[pass_index].as_ref().unwrap();
-                        let framebuffer_resource =
-                            self.framebuffer_resources[pass_index].as_ref().unwrap();
-                        // this code will need to be updated to support subpasses
-                        debug_assert_eq!(1, pass.subpass_nodes.len());
-
-                        let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-                            .render_pass(renderpass_resource.get_raw().renderpass)
-                            .framebuffer(framebuffer_resource.get_raw().framebuffer)
-                            .render_area(vk::Rect2D {
-                                offset: vk::Offset2D { x: 0, y: 0 },
-                                extent: pass.extents,
-                            })
-                            .clear_values(&pass.clear_values);
-
-                        device.cmd_begin_render_pass(
-                            command_buffer,
-                            &render_pass_begin_info,
-                            vk::SubpassContents::INLINE,
-                        );
-
-                        let args = VisitRenderpassNodeArgs {
-                            renderpass_resource,
-                            framebuffer_resource,
-                            graph_context: render_graph_context,
-                            subpass_index,
-                            command_buffer,
-                        };
-
-                        node_visitor.visit_renderpass_node(node_id, args)?;
-
-                        device.cmd_end_render_pass(command_buffer);
-                    }
-                    RenderGraphOutputPass::Compute(_pass) => {
-                        let args = VisitComputeNodeArgs {
-                            graph_context: render_graph_context,
-                            command_buffer,
-                        };
-
-                        node_visitor.visit_compute_node(node_id, args)?;
-                    }
+                    node_visitor.visit_compute_node(node_id, args)?;
                 }
+            }
+
+            if let Some(post_pass_barrier) = pass.post_pass_barrier() {
+                log::trace!(
+                    "postpass barriers for pass {} {:?}",
+                    pass_index,
+                    pass.debug_name()
+                );
+                self.insert_barriers(
+                    &command_buffer,
+                    &post_pass_barrier.buffer_barriers,
+                    &post_pass_barrier.image_barriers,
+                )?;
             }
         }
 
-        command_writer.end_command_buffer()?;
+        command_buffer.end()?;
 
         Ok(vec![command_buffer])
     }
@@ -741,20 +683,20 @@ pub trait RenderGraphNodeVisitor {
         &self,
         node_id: RenderGraphNodeId,
         args: VisitRenderpassNodeArgs,
-    ) -> VkResult<()>;
+    ) -> RafxResult<()>;
 
     fn visit_compute_node(
         &self,
         node_id: RenderGraphNodeId,
         args: VisitComputeNodeArgs,
-    ) -> VkResult<()>;
+    ) -> RafxResult<()>;
 }
 
 type RenderGraphNodeVisitRenderpassNodeCallback<RenderGraphUserContextT> =
-    dyn Fn(VisitRenderpassNodeArgs, &RenderGraphUserContextT) -> VkResult<()> + Send;
+    dyn Fn(VisitRenderpassNodeArgs, &RenderGraphUserContextT) -> RafxResult<()> + Send;
 
 type RenderGraphNodeVisitComputeNodeCallback<RenderGraphUserContextT> =
-    dyn Fn(VisitComputeNodeArgs, &RenderGraphUserContextT) -> VkResult<()> + Send;
+    dyn Fn(VisitComputeNodeArgs, &RenderGraphUserContextT) -> RafxResult<()> + Send;
 
 enum RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT> {
     Renderpass(Box<RenderGraphNodeVisitRenderpassNodeCallback<RenderGraphUserContextT>>),
@@ -778,7 +720,7 @@ impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
         &self,
         node_id: RenderGraphNodeId,
         args: VisitRenderpassNodeArgs,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         if let Some(callback) = self.callbacks.get(&node_id) {
             if let RenderGraphNodeVisitNodeCallback::Renderpass(render_callback) = callback {
                 (render_callback)(args, self.context)?
@@ -798,7 +740,7 @@ impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
         &self,
         node_id: RenderGraphNodeId,
         args: VisitComputeNodeArgs,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         if let Some(callback) = self.callbacks.get(&node_id) {
             if let RenderGraphNodeVisitNodeCallback::Compute(compute_callback) = callback {
                 (compute_callback)(args, self.context)?
@@ -830,8 +772,9 @@ impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> 
         node_id: RenderGraphNodeId,
         f: CallbackFnT,
     ) where
-        CallbackFnT:
-            Fn(VisitRenderpassNodeArgs, &RenderGraphUserContextT) -> VkResult<()> + 'static + Send,
+        CallbackFnT: Fn(VisitRenderpassNodeArgs, &RenderGraphUserContextT) -> RafxResult<()>
+            + 'static
+            + Send,
     {
         let old = self.callbacks.insert(
             node_id,
@@ -848,7 +791,7 @@ impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> 
         f: CallbackFnT,
     ) where
         CallbackFnT:
-            Fn(VisitComputeNodeArgs, &RenderGraphUserContextT) -> VkResult<()> + 'static + Send,
+            Fn(VisitComputeNodeArgs, &RenderGraphUserContextT) -> RafxResult<()> + 'static + Send,
     {
         let old = self.callbacks.insert(
             node_id,
@@ -900,12 +843,12 @@ impl<T> RenderGraphExecutor<T> {
     /// Create the executor. This allows the prepared graph, resources required to execute it, and
     /// callbacks that will be triggered while executing it to be passed around and executed later.
     pub fn new(
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         resource_context: &ResourceContext,
         graph: RenderGraphBuilder,
         swapchain_surface_info: &SwapchainSurfaceInfo,
         callbacks: RenderGraphNodeCallbacks<T>,
-    ) -> VkResult<Self> {
+    ) -> RafxResult<Self> {
         //
         // Allocate the resources for the graph
         //
@@ -920,30 +863,30 @@ impl<T> RenderGraphExecutor<T> {
         //
         // Pre-warm caches for pipelines that we may need
         //
-        for (node_id, render_phase_indices) in &callbacks.render_phase_dependencies {
-            // Passes may get culled if the images are not used. This means the renderpass would
-            // not be created so pipelines are also not needed
-            if let Some(&renderpass_index) =
-                prepared_graph.graph_plan.node_to_pass_index.get(node_id)
-            {
-                let renderpass = &prepared_graph.renderpass_resources[renderpass_index];
-                if let Some(renderpass) = renderpass {
-                    for &render_phase_index in render_phase_indices {
-                        resource_context
-                            .graphics_pipeline_cache()
-                            .register_renderpass_to_phase_index_per_frame(
-                                renderpass,
-                                render_phase_index,
-                            )
-                    }
-                } else {
-                    log::error!("add_renderphase_dependency was called on node {:?} ({:?}) that is not a renderpass", node_id, prepared_graph.graph_plan.passes[renderpass_index].debug_name());
-                }
-            }
-        }
-        resource_context
-            .graphics_pipeline_cache()
-            .precache_pipelines_for_all_phases()?;
+        // for (node_id, render_phase_indices) in &callbacks.render_phase_dependencies {
+        //     // Passes may get culled if the images are not used. This means the renderpass would
+        //     // not be created so pipelines are also not needed
+        //     if let Some(&renderpass_index) =
+        //         prepared_graph.graph_plan.node_to_pass_index.get(node_id)
+        //     {
+        //         let renderpass = &prepared_graph.renderpass_resources[renderpass_index];
+        //         if let Some(renderpass) = renderpass {
+        //             for &render_phase_index in render_phase_indices {
+        //                 resource_context
+        //                     .graphics_pipeline_cache()
+        //                     .register_renderpass_to_phase_index_per_frame(
+        //                         renderpass,
+        //                         render_phase_index,
+        //                     )
+        //             }
+        //         } else {
+        //             log::error!("add_renderphase_dependency was called on node {:?} ({:?}) that is not a renderpass", node_id, prepared_graph.graph_plan.passes[renderpass_index].debug_name());
+        //         }
+        //     }
+        // }
+        // resource_context
+        //     .graphics_pipeline_cache()
+        //     .precache_pipelines_for_all_phases()?;
 
         //
         // Return the executor which can be triggered later
@@ -952,18 +895,6 @@ impl<T> RenderGraphExecutor<T> {
             prepared_graph,
             callbacks,
         })
-    }
-
-    pub fn renderpass_resource(
-        &self,
-        node_id: RenderGraphNodeId,
-    ) -> Option<ResourceArc<RenderPassResource>> {
-        let renderpass_index = *self
-            .prepared_graph
-            .graph_plan
-            .node_to_pass_index
-            .get(&node_id)?;
-        self.prepared_graph.renderpass_resources[renderpass_index].clone()
     }
 
     pub fn buffer_resource(
@@ -1006,8 +937,9 @@ impl<T> RenderGraphExecutor<T> {
     pub fn execute_graph(
         self,
         context: &T,
-    ) -> VkResult<Vec<vk::CommandBuffer>> {
+        queue: &RafxQueue,
+    ) -> RafxResult<Vec<DynCommandBuffer>> {
         let visitor = self.callbacks.create_visitor(context);
-        self.prepared_graph.execute_graph(&*visitor)
+        self.prepared_graph.execute_graph(&*visitor, queue)
     }
 }

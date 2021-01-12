@@ -1,10 +1,9 @@
-use ash::version::DeviceV1_0;
-use ash::vk;
 use rafx::graph::*;
 use rafx::resources::{MaterialPassResource, ResourceArc};
 
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
+use rafx::api::RafxSampleCount;
 
 #[derive(PartialEq)]
 pub(super) enum BlurDirection {
@@ -55,20 +54,18 @@ fn bloom_blur_internal_pass(
         0,
         Some(Default::default()),
         RenderGraphImageConstraint {
-            samples: Some(vk::SampleCountFlags::TYPE_1),
+            samples: Some(RafxSampleCount::SampleCount1),
             format: Some(context.graph_config.color_format),
             ..Default::default()
         },
+        Default::default(),
     );
     context.graph.set_image_name(blur_dst, "blur_dst");
 
-    let sample_image = context.graph.sample_image(
-        node,
-        blur_src,
-        Default::default(),
-        Default::default(),
-        Default::default(),
-    );
+    let sample_image =
+        context
+            .graph
+            .sample_image(node, blur_src, Default::default(), Default::default());
     context.graph.set_image_name(blur_src, "blur_src");
 
     let bloom_blur_material_pass = bloom_blur_material_pass.clone();
@@ -85,17 +82,11 @@ fn bloom_blur_internal_pass(
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     &bloom_blur_material_pass,
-                    args.renderpass_resource,
-                    &args
-                        .framebuffer_resource
-                        .get_raw()
-                        .framebuffer_key
-                        .framebuffer_meta,
+                    &args.render_target_meta,
                     &EMPTY_VERTEX_LAYOUT,
                 )?;
 
-            let descriptor_set_layouts =
-                &pipeline.get_raw().pipeline_layout.get_raw().descriptor_sets;
+            let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
 
             // Set up a descriptor set pointing at the image so we can sample from it
             let mut descriptor_set_allocator = args
@@ -124,26 +115,10 @@ fn bloom_blur_internal_pass(
             descriptor_set_allocator.flush_changes()?;
 
             // Draw calls
-            let command_buffer = args.command_buffer;
-            let device = args.graph_context.device_context().device();
-            unsafe {
-                device.cmd_bind_pipeline(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    pipeline.get_raw().pipelines[0],
-                );
-
-                device.cmd_bind_descriptor_sets(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    pipeline.get_raw().pipeline_layout.get_raw().pipeline_layout,
-                    shaders::bloom_blur_frag::CONFIG_DESCRIPTOR_SET_INDEX as u32,
-                    &[bloom_blur_material_dyn_set.get()],
-                    &[],
-                );
-
-                device.cmd_draw(command_buffer, 3, 1, 0, 0);
-            }
+            let command_buffer = &args.command_buffer;
+            command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
+            bloom_blur_material_dyn_set.bind(command_buffer)?;
+            command_buffer.cmd_draw(3, 0)?;
 
             Ok(())
         });

@@ -1,7 +1,9 @@
 use super::*;
 use crate::resources::{ImageViewResource, ResourceArc};
-use crate::vk_description::SwapchainSurfaceInfo;
-use crate::{vk_description as dsc, BufferResource};
+use crate::BufferResource;
+use rafx_api::{
+    RafxColorClearValue, RafxDepthStencilClearValue, RafxResourceState, RafxResourceType,
+};
 
 #[derive(Copy, Clone)]
 pub enum RenderGraphQueue {
@@ -24,9 +26,7 @@ pub struct RenderGraphOutputImage {
     pub specification: RenderGraphImageSpecification,
     pub dst_image: ResourceArc<ImageViewResource>,
 
-    pub(super) final_layout: dsc::ImageLayout,
-    pub(super) final_access_flags: vk::AccessFlags,
-    pub(super) final_stage_flags: vk::PipelineStageFlags,
+    pub(super) final_state: RafxResourceState,
 }
 
 // /// A buffer that is being provided to the render graph that can be read from
@@ -43,9 +43,6 @@ pub struct RenderGraphOutputBuffer {
     pub usage: RenderGraphBufferUsageId,
     pub specification: RenderGraphBufferSpecification,
     pub dst_buffer: ResourceArc<BufferResource>,
-
-    pub(super) final_access_flags: vk::AccessFlags,
-    pub(super) final_stage_flags: vk::PipelineStageFlags,
 }
 
 /// A collection of nodes and resources. Nodes represent an event or process that will occur at
@@ -87,24 +84,15 @@ impl RenderGraphBuilder {
         user: RenderGraphImageUser,
         version: RenderGraphImageVersionId,
         usage_type: RenderGraphImageUsageType,
-        preferred_layout: dsc::ImageLayout,
-        subresource_range: RenderGraphImageSubresourceRange,
-        view_type: dsc::ImageViewType,
-        // _access_flags: vk::AccessFlags,
-        // _stage_flags: vk::PipelineStageFlags,
-        // _image_aspect_flags: vk::ImageAspectFlags,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
         let usage_id = RenderGraphImageUsageId(self.image_usages.len());
+
         self.image_usages.push(RenderGraphImageUsage {
             user,
             usage_type,
             version,
-            preferred_layout,
-            subresource_range,
-            view_type,
-            //access_flags,
-            //stage_flags,
-            //image_aspect_flags
+            view_options,
         });
         usage_id
     }
@@ -114,12 +102,7 @@ impl RenderGraphBuilder {
         &mut self,
         create_node: RenderGraphNodeId,
         constraint: RenderGraphImageConstraint,
-        preferred_layout: dsc::ImageLayout,
-        subresource_range: RenderGraphImageSubresourceRange,
-        view_type: dsc::ImageViewType,
-        // access_flags: vk::AccessFlags,
-        // stage_flags: vk::PipelineStageFlags,
-        // image_aspect_flags: vk::ImageAspectFlags,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
         let version_id = RenderGraphImageVersionId {
             index: self.image_resources.len(),
@@ -129,12 +112,7 @@ impl RenderGraphBuilder {
             RenderGraphImageUser::Node(create_node),
             version_id,
             RenderGraphImageUsageType::Create,
-            preferred_layout,
-            subresource_range,
-            view_type,
-            // access_flags,
-            // stage_flags,
-            // image_aspect_flags,
+            view_options,
         );
 
         let mut resource = RenderGraphImageResource::new();
@@ -161,12 +139,7 @@ impl RenderGraphBuilder {
         read_node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
         constraint: RenderGraphImageConstraint,
-        subresource_range: RenderGraphImageSubresourceRange,
-        view_type: dsc::ImageViewType,
-        preferred_layout: dsc::ImageLayout,
-        // access_flags: vk::AccessFlags,
-        // stage_flags: vk::PipelineStageFlags,
-        // image_aspect_flags: vk::ImageAspectFlags,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
         let version_id = self.image_usages[image.0].version;
 
@@ -174,12 +147,7 @@ impl RenderGraphBuilder {
             RenderGraphImageUser::Node(read_node),
             version_id,
             RenderGraphImageUsageType::Read,
-            preferred_layout,
-            subresource_range,
-            view_type,
-            // access_flags,
-            // stage_flags,
-            // image_aspect_flags,
+            view_options,
         );
 
         self.image_resources[version_id.index].versions[version_id.version]
@@ -200,15 +168,7 @@ impl RenderGraphBuilder {
         modify_node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
         constraint: RenderGraphImageConstraint,
-        subresource_range: RenderGraphImageSubresourceRange,
-        view_type: dsc::ImageViewType,
-        preferred_layout: dsc::ImageLayout,
-        // read_access_flags: vk::AccessFlags,
-        // read_stage_flags: vk::PipelineStageFlags,
-        // read_image_aspect_flags: vk::ImageAspectFlags,
-        // write_access_flags: vk::AccessFlags,
-        // write_stage_flags: vk::PipelineStageFlags,
-        // write_image_aspect_flags: vk::ImageAspectFlags,
+        view_options: RenderGraphImageViewOptions,
     ) -> (RenderGraphImageUsageId, RenderGraphImageUsageId) {
         let read_version_id = self.image_usages[image.0].version;
 
@@ -216,12 +176,7 @@ impl RenderGraphBuilder {
             RenderGraphImageUser::Node(modify_node),
             read_version_id,
             RenderGraphImageUsageType::ModifyRead,
-            preferred_layout,
-            subresource_range.clone(),
-            view_type.clone(),
-            // read_access_flags,
-            // read_stage_flags,
-            // read_image_aspect_flags,
+            view_options.clone(),
         );
 
         self.image_resources[read_version_id.index].versions[read_version_id.version]
@@ -237,12 +192,7 @@ impl RenderGraphBuilder {
             RenderGraphImageUser::Node(modify_node),
             write_version_id,
             RenderGraphImageUsageType::ModifyWrite,
-            preferred_layout,
-            subresource_range,
-            view_type,
-            // write_access_flags,
-            // write_stage_flags,
-            // write_image_aspect_flags,
+            view_options,
         );
 
         let version_info = RenderGraphImageResourceVersionInfo::new(modify_node, write_usage_id);
@@ -307,41 +257,21 @@ impl RenderGraphBuilder {
         &mut self,
         create_node: RenderGraphNodeId,
         constraint: RenderGraphImageConstraint,
-        view_type: dsc::ImageViewType,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
-        self.add_image_create(
-            create_node,
-            constraint,
-            dsc::ImageLayout::Undefined,
-            RenderGraphImageSubresourceRange::AllMipsAllLayers,
-            view_type,
-            // vk::AccessFlags::empty(),
-            // vk::PipelineStageFlags::empty(),
-            // vk::ImageAspectFlags::empty(),
-        )
+        self.add_image_create(create_node, constraint, view_options)
     }
 
     pub fn create_color_attachment(
         &mut self,
         node: RenderGraphNodeId,
         color_attachment_index: usize,
-        clear_color_value: Option<vk::ClearColorValue>,
-        mut constraint: RenderGraphImageConstraint,
+        clear_color_value: Option<RafxColorClearValue>,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
-        constraint.aspect_flags |= vk::ImageAspectFlags::COLOR;
-        constraint.usage_flags |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
-
         // Add the read to the graph
-        let create_image = self.add_image_create(
-            node,
-            constraint,
-            dsc::ImageLayout::ColorAttachmentOptimal,
-            RenderGraphImageSubresourceRange::NoMipsNoLayers,
-            dsc::ImageViewType::Type2D,
-            // vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-            // vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            // vk::ImageAspectFlags::COLOR,
-        );
+        let create_image = self.add_image_create(node, constraint, view_options);
 
         self.set_color_attachment(
             node,
@@ -360,24 +290,12 @@ impl RenderGraphBuilder {
     pub fn create_depth_attachment(
         &mut self,
         node: RenderGraphNodeId,
-        clear_depth_stencil_value: Option<vk::ClearDepthStencilValue>,
-        mut constraint: RenderGraphImageConstraint,
+        clear_depth_stencil_value: Option<RafxDepthStencilClearValue>,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
-        constraint.aspect_flags |= vk::ImageAspectFlags::DEPTH;
-        constraint.usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
-
         // Add the read to the graph
-        let create_image = self.add_image_create(
-            node,
-            constraint,
-            dsc::ImageLayout::DepthAttachmentOptimal,
-            RenderGraphImageSubresourceRange::NoMipsNoLayers,
-            dsc::ImageViewType::Type2D,
-            // vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-            // vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
-            //     | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            // vk::ImageAspectFlags::DEPTH,
-        );
+        let create_image = self.add_image_create(node, constraint, view_options);
 
         self.set_depth_attachment(
             node,
@@ -397,24 +315,12 @@ impl RenderGraphBuilder {
     pub fn create_depth_stencil_attachment(
         &mut self,
         node: RenderGraphNodeId,
-        clear_depth_stencil_value: Option<vk::ClearDepthStencilValue>,
-        mut constraint: RenderGraphImageConstraint,
+        clear_depth_stencil_value: Option<RafxDepthStencilClearValue>,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
-        constraint.aspect_flags |= vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL;
-        constraint.usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
-
         // Add the read to the graph
-        let create_image = self.add_image_create(
-            node,
-            constraint,
-            dsc::ImageLayout::DepthStencilAttachmentOptimal,
-            RenderGraphImageSubresourceRange::NoMipsNoLayers,
-            dsc::ImageViewType::Type2D,
-            // vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-            // vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
-            //     | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            // vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL,
-        );
+        let create_image = self.add_image_create(node, constraint, view_options);
 
         self.set_depth_attachment(
             node,
@@ -435,21 +341,10 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         resolve_attachment_index: usize,
-        mut constraint: RenderGraphImageConstraint,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
-        constraint.aspect_flags |= vk::ImageAspectFlags::COLOR;
-        constraint.usage_flags |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
-
-        let create_image = self.add_image_create(
-            node,
-            constraint,
-            dsc::ImageLayout::ColorAttachmentOptimal,
-            RenderGraphImageSubresourceRange::NoMipsNoLayers,
-            dsc::ImageViewType::Type2D,
-            // vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-            // vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            // vk::ImageAspectFlags::COLOR,
-        );
+        let create_image = self.add_image_create(node, constraint, view_options);
 
         self.set_resolve_attachment(
             node,
@@ -468,24 +363,11 @@ impl RenderGraphBuilder {
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
         color_attachment_index: usize,
-        mut constraint: RenderGraphImageConstraint,
-        subresource_range: RenderGraphImageSubresourceRange,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) {
-        constraint.aspect_flags |= vk::ImageAspectFlags::COLOR;
-        constraint.usage_flags |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
-
         // Add the read to the graph
-        let read_image = self.add_image_read(
-            node,
-            image,
-            constraint,
-            subresource_range,
-            dsc::ImageViewType::Type2D,
-            dsc::ImageLayout::ColorAttachmentOptimal,
-            // vk::AccessFlags::COLOR_ATTACHMENT_READ,
-            // vk::PipelineStageFlags::FRAGMENT_SHADER,
-            // vk::ImageAspectFlags::COLOR,
-        );
+        let read_image = self.add_image_read(node, image, constraint, view_options);
 
         self.set_color_attachment(
             node,
@@ -503,25 +385,11 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
-        mut constraint: RenderGraphImageConstraint,
-        subresource_range: RenderGraphImageSubresourceRange,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) {
-        constraint.aspect_flags |= vk::ImageAspectFlags::DEPTH;
-        constraint.usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
-
         // Add the read to the graph
-        let read_image = self.add_image_read(
-            node,
-            image,
-            constraint,
-            subresource_range,
-            dsc::ImageViewType::Type2D,
-            dsc::ImageLayout::DepthAttachmentOptimal,
-            // vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
-            // vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
-            //     | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            // vk::ImageAspectFlags::DEPTH,
-        );
+        let read_image = self.add_image_read(node, image, constraint, view_options);
 
         self.set_depth_attachment(
             node,
@@ -540,25 +408,11 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
-        mut constraint: RenderGraphImageConstraint,
-        subresource_range: RenderGraphImageSubresourceRange,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) {
-        constraint.aspect_flags |= vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL;
-        constraint.usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
-
         // Add the read to the graph
-        let read_image = self.add_image_read(
-            node,
-            image,
-            constraint,
-            subresource_range,
-            dsc::ImageViewType::Type2D,
-            dsc::ImageLayout::DepthStencilAttachmentOptimal,
-            // vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
-            // vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
-            //     | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            // vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL,
-        );
+        let read_image = self.add_image_read(node, image, constraint, view_options);
 
         self.set_depth_attachment(
             node,
@@ -578,28 +432,13 @@ impl RenderGraphBuilder {
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
         color_attachment_index: usize,
-        clear_color_value: Option<vk::ClearColorValue>,
-        mut constraint: RenderGraphImageConstraint,
-        subresource_range: RenderGraphImageSubresourceRange,
+        clear_color_value: Option<RafxColorClearValue>,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
-        constraint.aspect_flags |= vk::ImageAspectFlags::COLOR;
-        constraint.usage_flags |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
-
         // Add the read to the graph
-        let (read_image, write_image) = self.add_image_modify(
-            node,
-            image,
-            constraint,
-            subresource_range,
-            dsc::ImageViewType::Type2D,
-            dsc::ImageLayout::ColorAttachmentOptimal,
-            // vk::AccessFlags::COLOR_ATTACHMENT_READ,
-            // vk::PipelineStageFlags::FRAGMENT_SHADER,
-            // vk::ImageAspectFlags::COLOR,
-            // vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-            // vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            // vk::ImageAspectFlags::COLOR,
-        );
+        let (read_image, write_image) =
+            self.add_image_modify(node, image, constraint, view_options);
 
         self.set_color_attachment(
             node,
@@ -619,31 +458,13 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
-        clear_depth_stencil_value: Option<vk::ClearDepthStencilValue>,
-        mut constraint: RenderGraphImageConstraint,
-        subresource_range: RenderGraphImageSubresourceRange,
+        clear_depth_stencil_value: Option<RafxDepthStencilClearValue>,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
-        constraint.aspect_flags |= vk::ImageAspectFlags::DEPTH;
-        constraint.usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
-
         // Add the read to the graph
-        let (read_image, write_image) = self.add_image_modify(
-            node,
-            image,
-            constraint,
-            subresource_range,
-            dsc::ImageViewType::Type2D,
-            dsc::ImageLayout::DepthAttachmentOptimal,
-            // vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
-            //     | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-            // vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
-            //     | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            // vk::ImageAspectFlags::DEPTH,
-            // vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-            // vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
-            //     | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            // vk::ImageAspectFlags::DEPTH,
-        );
+        let (read_image, write_image) =
+            self.add_image_modify(node, image, constraint, view_options);
 
         self.set_depth_attachment(
             node,
@@ -664,31 +485,13 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
-        clear_depth_stencil_value: Option<vk::ClearDepthStencilValue>,
-        mut constraint: RenderGraphImageConstraint,
-        subresource_range: RenderGraphImageSubresourceRange,
+        clear_depth_stencil_value: Option<RafxDepthStencilClearValue>,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
-        constraint.aspect_flags |= vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL;
-        constraint.usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
-
         // Add the read to the graph
-        let (read_image, write_image) = self.add_image_modify(
-            node,
-            image,
-            constraint,
-            subresource_range,
-            dsc::ImageViewType::Type2D,
-            dsc::ImageLayout::DepthStencilAttachmentOptimal,
-            // vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
-            //     | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-            // vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
-            //     | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            // vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL,
-            // vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-            // vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
-            //     | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-            // vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL,
-        );
+        let (read_image, write_image) =
+            self.add_image_modify(node, image, constraint, view_options);
 
         self.set_depth_attachment(
             node,
@@ -709,27 +512,11 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
-        mut constraint: RenderGraphImageConstraint,
-        subresource_range: RenderGraphImageSubresourceRange,
-        view_type: dsc::ImageViewType,
+        constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
-        // Don't assume color, we might sample a depth image
-        //constraint.aspect_flags |= vk::ImageAspectFlags::COLOR;
-        constraint.usage_flags |= vk::ImageUsageFlags::SAMPLED;
-
         // Add the read to the graph
-        let usage = self.add_image_read(
-            node,
-            image,
-            //RenderGraphAttachmentType::NotAttached,
-            constraint,
-            subresource_range,
-            view_type,
-            dsc::ImageLayout::ShaderReadOnlyOptimal,
-            // vk::AccessFlags::SHADER_READ,
-            // vk::PipelineStageFlags::FRAGMENT_SHADER,
-            // vk::ImageAspectFlags::COLOR,
-        );
+        let usage = self.add_image_read(node, image, constraint, view_options);
 
         self.node_mut(node).sampled_images.push(usage);
         usage
@@ -740,20 +527,9 @@ impl RenderGraphBuilder {
         image_id: RenderGraphImageUsageId,
         dst_image: ResourceArc<ImageViewResource>,
         specification: RenderGraphImageSpecification,
-        subresource_range: RenderGraphImageSubresourceRange,
-        view_type: dsc::ImageViewType,
-        layout: dsc::ImageLayout,
-        access_flags: vk::AccessFlags,
-        stage_flags: vk::PipelineStageFlags,
+        view_options: RenderGraphImageViewOptions,
+        final_state: RafxResourceState,
     ) -> RenderGraphOutputImageId {
-        if specification.usage_flags == vk::ImageUsageFlags::empty() {
-            panic!("An output image with empty ImageUsageFlags in the specification is almost certainly a mistake.");
-        }
-
-        if specification.aspect_flags == vk::ImageAspectFlags::empty() {
-            panic!("An output image with empty ImageAspectFlags in the specification is almost certainly a mistake.");
-        }
-
         let output_image_id = RenderGraphOutputImageId(self.output_images.len());
 
         let version_id = self.image_version_id(image_id);
@@ -761,12 +537,7 @@ impl RenderGraphBuilder {
             RenderGraphImageUser::Output(output_image_id),
             version_id,
             RenderGraphImageUsageType::Output,
-            layout,
-            subresource_range,
-            view_type,
-            // access_flags,
-            // stage_flags,
-            // specification.aspect_flags,
+            view_options,
         );
 
         let image_version = self.image_version_info_mut(image_id);
@@ -777,9 +548,7 @@ impl RenderGraphBuilder {
             usage: usage_id,
             specification,
             dst_image,
-            final_layout: layout,
-            final_access_flags: access_flags,
-            final_stage_flags: stage_flags,
+            final_state,
         };
 
         self.output_images.push(output_image);
@@ -794,16 +563,12 @@ impl RenderGraphBuilder {
         user: RenderGraphBufferUser,
         version: RenderGraphBufferVersionId,
         usage_type: RenderGraphBufferUsageType,
-        access_flags: vk::AccessFlags,
-        stage_flags: vk::PipelineStageFlags,
     ) -> RenderGraphBufferUsageId {
         let usage_id = RenderGraphBufferUsageId(self.buffer_usages.len());
         self.buffer_usages.push(RenderGraphBufferUsage {
             user,
             usage_type,
             version,
-            access_flags,
-            stage_flags,
         });
         usage_id
     }
@@ -813,8 +578,6 @@ impl RenderGraphBuilder {
         &mut self,
         create_node: RenderGraphNodeId,
         constraint: RenderGraphBufferConstraint,
-        access_flags: vk::AccessFlags,
-        stage_flags: vk::PipelineStageFlags,
     ) -> RenderGraphBufferUsageId {
         let version_id = RenderGraphBufferVersionId {
             index: self.buffer_resources.len(),
@@ -824,8 +587,6 @@ impl RenderGraphBuilder {
             RenderGraphBufferUser::Node(create_node),
             version_id,
             RenderGraphBufferUsageType::Create,
-            access_flags,
-            stage_flags,
         );
 
         let mut resource = RenderGraphBufferResource::new();
@@ -851,17 +612,13 @@ impl RenderGraphBuilder {
         read_node: RenderGraphNodeId,
         buffer: RenderGraphBufferUsageId,
         constraint: RenderGraphBufferConstraint,
-        access_flags: vk::AccessFlags,
-        stage_flags: vk::PipelineStageFlags,
     ) -> RenderGraphBufferUsageId {
-        let version_id = self.buffer_usages[buffer.0].version;
+        let version_id = self.buffer_usage(buffer).version;
 
         let usage_id = self.add_buffer_usage(
             RenderGraphBufferUser::Node(read_node),
             version_id,
             RenderGraphBufferUsageType::Read,
-            access_flags,
-            stage_flags,
         );
 
         self.buffer_resources[version_id.index].versions[version_id.version]
@@ -882,19 +639,13 @@ impl RenderGraphBuilder {
         modify_node: RenderGraphNodeId,
         buffer: RenderGraphBufferUsageId,
         constraint: RenderGraphBufferConstraint,
-        read_access_flags: vk::AccessFlags,
-        read_stage_flags: vk::PipelineStageFlags,
-        write_access_flags: vk::AccessFlags,
-        write_stage_flags: vk::PipelineStageFlags,
     ) -> (RenderGraphBufferUsageId, RenderGraphBufferUsageId) {
-        let read_version_id = self.buffer_usages[buffer.0].version;
+        let read_version_id = self.buffer_usage(buffer).version;
 
         let read_usage_id = self.add_buffer_usage(
             RenderGraphBufferUser::Node(modify_node),
             read_version_id,
             RenderGraphBufferUsageType::ModifyRead,
-            read_access_flags,
-            read_stage_flags,
         );
 
         self.buffer_resources[read_version_id.index].versions[read_version_id.version]
@@ -910,8 +661,6 @@ impl RenderGraphBuilder {
             RenderGraphBufferUser::Node(modify_node),
             write_version_id,
             RenderGraphBufferUsageType::ModifyWrite,
-            write_access_flags,
-            write_stage_flags,
         );
 
         let version_info = RenderGraphBufferResourceVersionInfo::new(modify_node, write_usage_id);
@@ -935,12 +684,7 @@ impl RenderGraphBuilder {
         create_node: RenderGraphNodeId,
         constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
-        self.add_buffer_create(
-            create_node,
-            constraint,
-            vk::AccessFlags::empty(),
-            vk::PipelineStageFlags::empty(),
-        )
+        self.add_buffer_create(create_node, constraint)
     }
 
     pub fn read_vertex_buffer(
@@ -949,15 +693,9 @@ impl RenderGraphBuilder {
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
-        constraint.usage_flags |= vk::BufferUsageFlags::VERTEX_BUFFER;
+        constraint.resource_type |= RafxResourceType::VERTEX_BUFFER;
 
-        self.add_buffer_read(
-            read_node,
-            buffer,
-            constraint,
-            vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
-            vk::PipelineStageFlags::VERTEX_INPUT,
-        )
+        self.add_buffer_read(read_node, buffer, constraint)
     }
 
     pub fn read_index_buffer(
@@ -966,15 +704,9 @@ impl RenderGraphBuilder {
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
-        constraint.usage_flags |= vk::BufferUsageFlags::INDEX_BUFFER;
+        constraint.resource_type |= RafxResourceType::INDEX_BUFFER;
 
-        self.add_buffer_read(
-            read_node,
-            buffer,
-            constraint,
-            vk::AccessFlags::INDEX_READ,
-            vk::PipelineStageFlags::VERTEX_INPUT,
-        )
+        self.add_buffer_read(read_node, buffer, constraint)
     }
 
     pub fn read_indirect_buffer(
@@ -983,15 +715,9 @@ impl RenderGraphBuilder {
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
-        constraint.usage_flags |= vk::BufferUsageFlags::INDIRECT_BUFFER;
+        constraint.resource_type |= RafxResourceType::INDIRECT_BUFFER;
 
-        self.add_buffer_read(
-            read_node,
-            buffer,
-            constraint,
-            vk::AccessFlags::INDIRECT_COMMAND_READ,
-            vk::PipelineStageFlags::DRAW_INDIRECT,
-        )
+        self.add_buffer_read(read_node, buffer, constraint)
     }
 
     pub fn read_uniform_buffer(
@@ -1000,17 +726,11 @@ impl RenderGraphBuilder {
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
-        constraint.usage_flags |= vk::BufferUsageFlags::UNIFORM_BUFFER;
+        constraint.resource_type |= RafxResourceType::UNIFORM_BUFFER;
 
         //TODO: In the future could consider options for determining stage flags to be compute or
         // fragment. Check node queue? Check if attachments exist? Explicit?
-        self.add_buffer_read(
-            read_node,
-            buffer,
-            constraint,
-            vk::AccessFlags::UNIFORM_READ,
-            vk::PipelineStageFlags::COMPUTE_SHADER | vk::PipelineStageFlags::FRAGMENT_SHADER,
-        )
+        self.add_buffer_read(read_node, buffer, constraint)
     }
 
     pub fn create_storage_buffer(
@@ -1018,16 +738,11 @@ impl RenderGraphBuilder {
         create_node: RenderGraphNodeId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
-        constraint.usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
+        constraint.resource_type |= RafxResourceType::BUFFER_READ_WRITE;
 
         //TODO: In the future could consider options for determining stage flags to be compute or
         // fragment. Check node queue? Check if attachments exist? Explicit?
-        self.add_buffer_create(
-            create_node,
-            constraint,
-            vk::AccessFlags::SHADER_WRITE,
-            vk::PipelineStageFlags::COMPUTE_SHADER | vk::PipelineStageFlags::FRAGMENT_SHADER,
-        )
+        self.add_buffer_create(create_node, constraint)
     }
 
     pub fn read_storage_buffer(
@@ -1036,17 +751,11 @@ impl RenderGraphBuilder {
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
-        constraint.usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
+        constraint.resource_type |= RafxResourceType::BUFFER_READ_WRITE;
 
         //TODO: In the future could consider options for determining stage flags to be compute or
         // fragment. Check node queue? Check if attachments exist? Explicit?
-        self.add_buffer_read(
-            read_node,
-            buffer,
-            constraint,
-            vk::AccessFlags::SHADER_READ,
-            vk::PipelineStageFlags::COMPUTE_SHADER | vk::PipelineStageFlags::FRAGMENT_SHADER,
-        )
+        self.add_buffer_read(read_node, buffer, constraint)
     }
 
     pub fn modify_storage_buffer(
@@ -1055,19 +764,11 @@ impl RenderGraphBuilder {
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
-        constraint.usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
+        constraint.resource_type |= RafxResourceType::BUFFER_READ_WRITE;
 
         //TODO: In the future could consider options for determining stage flags to be compute or
         // fragment. Check node queue? Check if attachments exist? Explicit?
-        let (_read_buffer, write_buffer) = self.add_buffer_modify(
-            read_node,
-            buffer,
-            constraint,
-            vk::AccessFlags::SHADER_READ | vk::AccessFlags::SHADER_WRITE,
-            vk::PipelineStageFlags::COMPUTE_SHADER | vk::PipelineStageFlags::FRAGMENT_SHADER,
-            vk::AccessFlags::SHADER_WRITE,
-            vk::PipelineStageFlags::COMPUTE_SHADER | vk::PipelineStageFlags::FRAGMENT_SHADER,
-        );
+        let (_read_buffer, write_buffer) = self.add_buffer_modify(read_node, buffer, constraint);
 
         write_buffer
     }
@@ -1077,11 +778,9 @@ impl RenderGraphBuilder {
         buffer_id: RenderGraphBufferUsageId,
         dst_buffer: ResourceArc<BufferResource>,
         specification: RenderGraphBufferSpecification,
-        access_flags: vk::AccessFlags,
-        stage_flags: vk::PipelineStageFlags,
     ) -> RenderGraphOutputBufferId {
-        if specification.usage_flags == vk::BufferUsageFlags::empty() {
-            panic!("An output buffer with empty BufferUsageFlags in the specification is almost certainly a mistake.");
+        if specification.resource_type == RafxResourceType::UNDEFINED {
+            panic!("An output buffer with empty resource_type in the specification is almost certainly a mistake.");
         }
 
         let output_buffer_id = RenderGraphOutputBufferId(self.output_buffers.len());
@@ -1091,8 +790,6 @@ impl RenderGraphBuilder {
             RenderGraphBufferUser::Output(output_buffer_id),
             version_id,
             RenderGraphBufferUsageType::Output,
-            access_flags,
-            stage_flags,
         );
 
         let buffer_version = self.buffer_version_info_mut(buffer_id);
@@ -1103,8 +800,6 @@ impl RenderGraphBuilder {
             usage: usage_id,
             specification,
             dst_buffer,
-            final_access_flags: access_flags,
-            final_stage_flags: stage_flags,
         };
 
         self.output_buffers.push(output_buffer);
@@ -1243,7 +938,7 @@ impl RenderGraphBuilder {
         &self,
         usage_id: RenderGraphBufferUsageId,
     ) -> &RenderGraphBufferResource {
-        let version = self.buffer_usages[usage_id.0].version;
+        let version = self.buffer_usage(usage_id).version;
         &self.buffer_resources[version.index]
     }
 
@@ -1251,7 +946,7 @@ impl RenderGraphBuilder {
         &mut self,
         usage_id: RenderGraphBufferUsageId,
     ) -> &mut RenderGraphBufferResource {
-        let version = self.buffer_usages[usage_id.0].version;
+        let version = self.buffer_usage(usage_id).version;
         &mut self.buffer_resources[version.index]
     }
 
@@ -1269,7 +964,7 @@ impl RenderGraphBuilder {
         &self,
         usage_id: RenderGraphBufferUsageId,
     ) -> &RenderGraphBufferResourceVersionInfo {
-        let version = self.buffer_usages[usage_id.0].version;
+        let version = self.buffer_usage(usage_id).version;
         &self.buffer_resources[version.index].versions[version.version]
     }
 
@@ -1277,7 +972,7 @@ impl RenderGraphBuilder {
         &mut self,
         usage_id: RenderGraphBufferUsageId,
     ) -> &mut RenderGraphBufferResourceVersionInfo {
-        let version = self.buffer_usages[usage_id.0].version;
+        let version = self.buffer_usage(usage_id).version;
         &mut self.buffer_resources[version.index].versions[version.version]
     }
 
@@ -1285,22 +980,19 @@ impl RenderGraphBuilder {
         &self,
         usage_id: RenderGraphBufferUsageId,
     ) -> RenderGraphBufferVersionId {
-        self.buffer_usages[usage_id.0].version
+        self.buffer_usage(usage_id).version
     }
 
     pub(super) fn buffer_version_create_usage(
         &self,
         usage: RenderGraphBufferUsageId,
     ) -> RenderGraphBufferUsageId {
-        let version = self.buffer_usages[usage.0].version;
+        let version = self.buffer_usage(usage).version;
         self.buffer_resources[version.index].versions[version.version].create_usage
     }
 
-    pub fn build_plan(
-        self,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
-    ) -> RenderGraphPlan {
+    pub fn build_plan(self) -> RenderGraphPlan {
         profiling::scope!("Build Plan");
-        RenderGraphPlan::new(self, swapchain_surface_info)
+        RenderGraphPlan::new(self)
     }
 }

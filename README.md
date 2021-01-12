@@ -1,6 +1,6 @@
 # Rafx
 
-This is a vulkan renderer built on top of the [`atelier-assets`](https://github.com/amethyst/atelier-assets) asset 
+This is a multi-backend renderer built on top of the [`atelier-assets`](https://github.com/amethyst/atelier-assets) asset 
 pipeline. It's intended to be performant, flexible, workflow-friendly, and suitable for use in real-world projects in a 
 team environment.
 
@@ -8,8 +8,11 @@ The asset pipeline is designed with user workflow in mind (including dedicated a
 features like hot reloading assets, including on remote devices. The architecture of the renderer is intended to support
 advanced use-cases such as streaming, LODs, visibility systems, and multi-threaded draw call submission. 
 
-Extending and using this crate directly requires some understanding of vulkan. However, there are many tools to make
-iteration much faster such as a **render graph** and **auto-generated shader bindings**.
+This crate contains several layers:
+ * Low-level graphics API abstraction 
+ * Higher-level resource management and lifetime handling (via **render graph** and other helpful utilities)
+ * Asset layer that integrates with `atelier-assets`
+ * Tools for packing assets for a shipped build and **auto-generating shader binding code**
 
 Supported Platforms:
  * Windows
@@ -22,7 +25,8 @@ Android might work but I don't have hardware to test with.
 References:
  * The job/phase rendering design is inspired by the 2015 GDC talk "[Destiny's Multithreaded Rendering Architecture](http://advances.realtimerendering.com/destiny/gdc_2015/Tatarchuk_GDC_2015__Destiny_Renderer_web.pdf)".
  * The render graph is inspired by the 2017 GDC talk "[FrameGraph: Extensible Rendering Architecture in Frostbite](https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in)"
-     * see also "[Render Graphs and Vulkan - a deep dive](http://themaister.net/blog/2017/08/15/render-graphs-and-vulkan-a-deep-dive/)"  
+     * see also "[Render Graphs and Vulkan - a deep dive](http://themaister.net/blog/2017/08/15/render-graphs-and-vulkan-a-deep-dive/)"
+ * The low-level API is somewhat similar to the API from "[The Forge](https://github.com/ConfettiFX/The-Forge)"
 
 [![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
 
@@ -73,7 +77,7 @@ cargo run --release
 
 ([Tokio >= 0.2.14 hangs](https://github.com/tokio-rs/tokio/issues/2390))
 
-Running in release reduces logging and disables vulkan validation. The first time it will load more slowly because it
+Running in release reduces logging and disables GPU validation. The first time it will load more slowly because it
 has to import the assets, including a GLTF mesh with large textures. **Using profile overrides to optimize upstream crates
 is highly recommeneded. Asset processing is extremely slow in debug mode.** (i.e. 30s instead of 2s)
 
@@ -100,11 +104,10 @@ This tool currently is only useful for packing assets.
 
 ## Features
 
- * `rafx-api-vulkan`, `rafx-api-vulkan-sdl2` - Basic helpers for vulkan
-   * Friendly helpers for setting up the device and window
-   * Some basic, unopinionated helpers for vulkan. Things like async image uploads, deferring destruction of resources, 
-     and pooling/reusing resources
  * `rafx-base` - Shared helpers/data structures. Nothing exciting
+ * `rafx-api` - Rendering API abstraction layer.
+   * Vulkan backend for windows/linux (native/direct, not through a translation layer)
+   * MoltenVK currently required for macOS but native metal backend coming soon!
  * `rafx-nodes` - Inspired by the 2015 GDC talk "Destiny's Multithreaded Rendering Architecture." (A low-budget
    version and jobs are not actually MT yet)
    * A job system with extract, prepare, and write phases
@@ -126,10 +129,6 @@ This tool currently is only useful for packing assets.
    * Separate multi-thread friendly path for creating assets at runtime
    * Multi-pass material abstraction with bindable parameters
 
-Notably, this project does not support multiple rendering backends. This is something I want to get to eventually! I
-also would prefer to work with other rendering APIs (like metal, dx12) directly rather than through a complete generic
-abstraction layer like gfx-hal.
-
 ## Roadmap
 
  * Better shadows
@@ -148,6 +147,7 @@ Licensed under either of
 
 at your option.
 
+### Upstream Dependencies
 The demo/fonts directory contains several fonts under their own licenses:
  * [Feather](https://github.com/AT-UI/feather-font), MIT
  * [Material Design Icons](https://materialdesignicons.com), SIL OFL 1.1
@@ -159,7 +159,7 @@ The assets/blender contains some shaders from from https://freepbr.com, availabl
 Some dependencies may be licensed under other terms. These licenses include "ISC", "CC0-1.0", "BSD-2-Clause",
 "BSD-3-Clause", and "Zlib". This is validated on a best-effort basis in every CI run using cargo-deny.
 
-### Contribution
+## Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally
 submitted for inclusion in the work by you, as defined in the Apache-2.0

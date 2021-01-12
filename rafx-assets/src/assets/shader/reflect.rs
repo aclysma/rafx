@@ -1,34 +1,35 @@
-use rafx_resources::vk_description as dsc;
+use rafx_api::{RafxSamplerDef, RafxShaderResource, RafxShaderStageReflection};
+use rafx_resources::DescriptorSetLayoutBinding;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ReflectedDescriptorSetLayoutBinding {
-    pub name: String,
-    pub set: u32,
-    pub binding: u32,
-    pub descriptor_type: dsc::DescriptorType,
-    // (array length, essentially)
-    pub descriptor_count: u32,
-    pub stage_flags: dsc::ShaderStageFlags,
+    // Basic info required to create the RafxRootSignature
+    pub resource: RafxShaderResource,
 
-    // Mostly for uniform data
-    pub size: u32,
-    //pub padded_size: u32,
+    // Samplers created here will be automatically created/bound
+    pub immutable_samplers: Option<Vec<RafxSamplerDef>>,
+
+    // If this is non-zero we will allocate a buffer owned by the descriptor set pool chunk,
+    // and automatically bind it - this makes binding data easy to do without having to manage
+    // buffers.
     pub internal_buffer_per_descriptor_size: Option<u32>,
-    pub immutable_samplers: Option<Vec<dsc::Sampler>>,
-    pub slot_name: Option<String>,
+}
+
+impl Into<DescriptorSetLayoutBinding> for ReflectedDescriptorSetLayoutBinding {
+    fn into(self) -> DescriptorSetLayoutBinding {
+        DescriptorSetLayoutBinding {
+            resource: self.resource.clone(),
+            immutable_samplers: self.immutable_samplers.clone(),
+            internal_buffer_per_descriptor_size: self.internal_buffer_per_descriptor_size,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ReflectedDescriptorSetLayout {
     // These are NOT indexable by binding (i.e. may be sparse)
     pub bindings: Vec<ReflectedDescriptorSetLayoutBinding>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedPushConstant {
-    pub name: String,
-    pub push_constant: dsc::PushConstantRange,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -40,10 +41,12 @@ pub struct ReflectedVertexInput {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ReflectedEntryPoint {
-    pub name: String,
-    pub stage_flags: dsc::ShaderStageFlags,
-    // These are indexed by descriptor set index (i.e. not sparse)
+    // The reflection data used by rafx API
+    pub rafx_reflection: RafxShaderStageReflection,
+
+    // Additional reflection data used by the framework level for descriptor sets
     pub descriptor_set_layouts: Vec<Option<ReflectedDescriptorSetLayout>>,
-    pub push_constants: Vec<ReflectedPushConstant>,
+
+    // Additional reflection data used by the framework level for vertex inputs
     pub vertex_inputs: Vec<ReflectedVertexInput>,
 }

@@ -1,16 +1,15 @@
+use crate::resources::pipeline_cache::GraphicsPipelineRenderTargetMeta;
 use crate::resources::resource_arc::{ResourceId, ResourceWithHash, WeakResourceArc};
+use crate::resources::DescriptorSetLayout;
 use crate::resources::ResourceArc;
-use crate::vk_description as dsc;
-use crate::vk_description::{FramebufferMeta, SwapchainSurfaceInfo};
-use ash::prelude::VkResult;
-use ash::vk;
+use crate::ResourceDropSink;
 use bitflags::_core::sync::atomic::AtomicU64;
 use crossbeam_channel::{Receiver, Sender};
-use fnv::FnvHashMap;
-use rafx_api_vulkan::{
-    VkBuffer, VkBufferRaw, VkDeviceContext, VkImage, VkImageRaw, VkResource, VkResourceDropSink,
-};
-use std::hash::Hash;
+use fnv::{FnvHashMap, FnvHasher};
+use rafx_api::extra::image::RafxImage;
+use rafx_api::*;
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
@@ -21,8 +20,6 @@ pub struct ResourceHash(u64);
 
 impl ResourceHash {
     pub fn from_key<KeyT: Hash>(key: &KeyT) -> ResourceHash {
-        use fnv::FnvHasher;
-        use std::hash::Hasher;
         let mut hasher = FnvHasher::default();
         key.hash(&mut hasher);
         ResourceHash(hasher.finish())
@@ -48,12 +45,12 @@ impl Into<ResourceId> for ResourceHash {
 pub struct ResourceLookupInner<KeyT, ResourceT>
 where
     KeyT: Eq + Hash + Clone,
-    ResourceT: VkResource + Clone,
+    ResourceT: Clone,
 {
     resources: FnvHashMap<ResourceHash, WeakResourceArc<ResourceT>>,
     //TODO: Add support for "cancelling" dropping stuff. This would likely be a ring of hashmaps.
     // that gets cycled.
-    drop_sink: VkResourceDropSink<ResourceT>,
+    drop_sink: ResourceDropSink<ResourceT>,
     drop_tx: Sender<ResourceWithHash<ResourceT>>,
     drop_rx: Receiver<ResourceWithHash<ResourceT>>,
     phantom_data: PhantomData<KeyT>,
@@ -76,7 +73,7 @@ where
 pub struct ResourceLookup<KeyT, ResourceT>
 where
     KeyT: Eq + Hash + Clone,
-    ResourceT: VkResource + Clone,
+    ResourceT: Clone,
 {
     inner: Mutex<ResourceLookupInner<KeyT, ResourceT>>,
 }
@@ -84,14 +81,14 @@ where
 impl<KeyT, ResourceT> ResourceLookup<KeyT, ResourceT>
 where
     KeyT: Eq + Hash + Clone,
-    ResourceT: VkResource + Clone + std::fmt::Debug,
+    ResourceT: Clone + std::fmt::Debug,
 {
-    fn new(max_frames_in_flight: u32) -> Self {
+    pub fn new(max_frames_in_flight: u32) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
 
         let inner = ResourceLookupInner {
             resources: Default::default(),
-            drop_sink: VkResourceDropSink::new(max_frames_in_flight),
+            drop_sink: ResourceDropSink::new(max_frames_in_flight),
             drop_tx,
             drop_rx,
             phantom_data: Default::default(),
@@ -135,9 +132,9 @@ where
         hash: ResourceHash,
         _key: &KeyT,
         create_resource_fn: F,
-    ) -> VkResult<ResourceArc<ResourceT>>
+    ) -> RafxResult<ResourceArc<ResourceT>>
     where
-        F: FnOnce() -> VkResult<ResourceT>,
+        F: FnOnce() -> RafxResult<ResourceT>,
     {
         // Process any pending drops. If we don't do this, it's possible that the pending drop could
         // wipe out the state we're about to set
@@ -166,7 +163,8 @@ where
         Ok(arc)
     }
 
-    fn get(
+    #[allow(dead_code)]
+    pub fn get(
         &self,
         key: &KeyT,
     ) -> Option<ResourceArc<ResourceT>> {
@@ -180,13 +178,13 @@ where
         Self::do_get(&mut *guard, hash, key)
     }
 
-    fn create<F>(
+    pub fn create<F>(
         &self,
         key: &KeyT,
         create_resource_fn: F,
-    ) -> VkResult<ResourceArc<ResourceT>>
+    ) -> RafxResult<ResourceArc<ResourceT>>
     where
-        F: FnOnce() -> VkResult<ResourceT>,
+        F: FnOnce() -> RafxResult<ResourceT>,
     {
         let hash = ResourceHash::from_key(key);
         let mut guard = self.inner.lock().unwrap();
@@ -198,13 +196,13 @@ where
         Self::do_create(&mut *guard, hash, key, create_resource_fn)
     }
 
-    fn get_or_create<F>(
+    pub fn get_or_create<F>(
         &self,
         key: &KeyT,
         create_resource_fn: F,
-    ) -> VkResult<ResourceArc<ResourceT>>
+    ) -> RafxResult<ResourceArc<ResourceT>>
     where
-        F: FnOnce() -> VkResult<ResourceT>,
+        F: FnOnce() -> RafxResult<ResourceT>,
     {
         let hash = ResourceHash::from_key(key);
 
@@ -240,10 +238,7 @@ where
         }
     }
 
-    fn on_frame_complete(
-        &self,
-        device_context: &VkDeviceContext,
-    ) -> VkResult<()> {
+    fn on_frame_complete(&self) -> RafxResult<()> {
         let mut guard = self.inner.lock().unwrap();
         #[cfg(debug_assertions)]
         {
@@ -255,7 +250,8 @@ where
         guard.create_count = 0;
 
         Self::handle_dropped_resources(&mut guard);
-        guard.drop_sink.on_frame_complete(device_context)
+        guard.drop_sink.on_frame_complete()?;
+        Ok(())
     }
 
     fn metrics(&self) -> ResourceLookupMetric {
@@ -270,8 +266,8 @@ where
 
     fn destroy(
         &self,
-        device_context: &VkDeviceContext,
-    ) -> VkResult<()> {
+        device_context: &RafxDeviceContext,
+    ) -> RafxResult<()> {
         let mut guard = self.inner.lock().unwrap();
         #[cfg(debug_assertions)]
         {
@@ -288,7 +284,8 @@ where
             );
         }
 
-        guard.drop_sink.destroy(device_context)
+        guard.drop_sink.destroy(device_context)?;
+        Ok(())
     }
 }
 
@@ -298,42 +295,178 @@ where
 // renderpass with the swapchain surface it would be applied to)
 //
 
-//TODO: Should I Arc the dsc objects in these keys?
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ShaderModuleKey {
-    code_hash: dsc::ShaderModuleCodeHash,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct FixedFunctionState {
+    pub blend_state: RafxBlendState,
+    pub depth_state: RafxDepthState,
+    pub rasterizer_state: RafxRasterizerState,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DescriptorSetLayoutKey {
-    def: dsc::DescriptorSetLayout,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct ShaderModuleMeta {
+    pub stage: RafxShaderStageFlags,
+    pub entry_name: String,
+    // Reference to shader is excluded
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PipelineLayoutKey {
-    def: dsc::PipelineLayout,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct ShaderModule {
+    // Precalculate a hash so we can avoid hashing this blob of bytes at runtime
+    pub shader_module_hash: ShaderModuleHash,
+    pub code: Vec<u32>,
 }
 
-//TODO: The hashing here should probably be on the description after it is populated with
-// fields from swapchain surface info.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RenderPassKey {
-    dsc: Arc<dsc::RenderPass>,
-    swapchain_surface_info: dsc::SwapchainSurfaceInfo,
-}
-
-impl RenderPassKey {
-    pub fn renderpass_def(&self) -> &dsc::RenderPass {
-        &self.dsc
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct ShaderModuleHash(u64);
+impl ShaderModuleHash {
+    pub fn new(shader_module: &RafxShaderModuleDef) -> Self {
+        let mut hasher = FnvHasher::default();
+        shader_module.hash_definition(&mut hasher);
+        let hash = hasher.finish();
+        ShaderModuleHash(hash)
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FrameBufferKey {
-    pub renderpass: Arc<dsc::RenderPass>,
-    pub image_view_keys: Vec<ImageViewKey>,
-    pub framebuffer_meta: dsc::FramebufferMeta,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct ShaderHash(u64);
+impl ShaderHash {
+    pub fn new(
+        stage_defs: &[RafxShaderStageDef],
+        shader_module_hashes: &[ShaderModuleHash],
+    ) -> Self {
+        let mut hasher = FnvHasher::default();
+        RafxShaderStageDef::hash_definition(&mut hasher, stage_defs, shader_module_hashes);
+        let hash = hasher.finish();
+        ShaderHash(hash)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct SamplerHash(u64);
+impl SamplerHash {
+    pub fn new(sampler_def: &RafxSamplerDef) -> Self {
+        let mut hasher = FnvHasher::default();
+        sampler_def.hash_definition(&mut hasher);
+        let hash = hasher.finish();
+        SamplerHash(hash)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct RootSignatureHash(u64);
+impl RootSignatureHash {
+    pub fn new(
+        shader_hashes: &[ShaderHash],
+        immutable_sampler_keys: &[RafxImmutableSamplerKey],
+        immutable_sampler_hashes: &[Vec<SamplerHash>],
+    ) -> Self {
+        let mut hasher = FnvHasher::default();
+        RafxRootSignatureDef::hash_definition(
+            &mut hasher,
+            shader_hashes,
+            immutable_sampler_keys,
+            immutable_sampler_hashes,
+        );
+        let hash = hasher.finish();
+        RootSignatureHash(hash)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct DescriptorSetLayoutHash(u64);
+impl DescriptorSetLayoutHash {
+    pub fn new(
+        root_signature_hash: RootSignatureHash,
+        set_index: u32,
+        bindings: &DescriptorSetLayout,
+    ) -> Self {
+        let mut hasher = FnvHasher::default();
+        root_signature_hash.hash(&mut hasher);
+        set_index.hash(&mut hasher);
+        bindings.hash(&mut hasher);
+        let hash = hasher.finish();
+        DescriptorSetLayoutHash(hash)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct MaterialPassHash(u64);
+impl MaterialPassHash {
+    pub fn new(
+        shader_hash: ShaderHash,
+        root_signature_hash: RootSignatureHash,
+        descriptor_set_layout_hashes: &[DescriptorSetLayoutHash],
+        fixed_function_state: &FixedFunctionState,
+        vertex_inputs: &[MaterialPassVertexInput],
+    ) -> Self {
+        let mut hasher = FnvHasher::default();
+        shader_hash.hash(&mut hasher);
+        root_signature_hash.hash(&mut hasher);
+        descriptor_set_layout_hashes.hash(&mut hasher);
+        fixed_function_state.hash(&mut hasher);
+        for vertex_input in vertex_inputs {
+            vertex_input.hash(&mut hasher);
+        }
+        let hash = hasher.finish();
+        MaterialPassHash(hash)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct GraphicsPipelineHash(u64);
+impl GraphicsPipelineHash {
+    pub fn new(
+        material_pass_key: MaterialPassHash,
+        render_target_meta: &GraphicsPipelineRenderTargetMeta,
+        primitive_topology: RafxPrimitiveTopology,
+        vertex_layout: &RafxVertexLayout,
+    ) -> Self {
+        let mut hasher = FnvHasher::default();
+        material_pass_key.hash(&mut hasher);
+        render_target_meta.hash(&mut hasher);
+        primitive_topology.hash(&mut hasher);
+        vertex_layout.hash(&mut hasher);
+        let hash = hasher.finish();
+        GraphicsPipelineHash(hash)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct ComputePipelineHash(u64);
+impl ComputePipelineHash {
+    pub fn new(
+        shader_hash: ShaderHash,
+        root_signature_hash: RootSignatureHash,
+        descriptor_set_layout_hashes: &[DescriptorSetLayoutHash],
+    ) -> Self {
+        let mut hasher = FnvHasher::default();
+        shader_hash.hash(&mut hasher);
+        root_signature_hash.hash(&mut hasher);
+        descriptor_set_layout_hashes.hash(&mut hasher);
+        let hash = hasher.finish();
+        ComputePipelineHash(hash)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ShaderModuleKey {
+    hash: ShaderModuleHash,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ShaderKey {
+    hash: ShaderHash,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RootSignatureKey {
+    // hash is based on shader code hash, stage, and entry point
+    hash: RootSignatureHash,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct DescriptorSetLayoutKey {
+    hash: DescriptorSetLayoutHash,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -344,26 +477,17 @@ pub struct MaterialPassVertexInput {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MaterialPassKey {
-    pub pipeline_layout: dsc::PipelineLayout,
-    pub fixed_function_state: Arc<dsc::FixedFunctionState>,
-    pub vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
-    pub shader_module_metas: Vec<dsc::ShaderModuleMeta>,
-    pub shader_module_keys: Vec<ShaderModuleKey>,
+    hash: MaterialPassHash,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GraphicsPipelineKey {
-    material_pass_key: MaterialPassKey,
-    renderpass_key: RenderPassKey,
-    framebuffer_meta: FramebufferMeta,
-    vertex_input_state: Arc<dsc::PipelineVertexInputState>,
+    hash: GraphicsPipelineHash,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComputePipelineKey {
-    pub pipeline_layout: dsc::PipelineLayout,
-    pub shader_module_meta: dsc::ShaderModuleMeta,
-    pub shader_module_key: ShaderModuleKey,
+    hash: ComputePipelineHash,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -378,13 +502,13 @@ pub struct BufferKey {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SamplerKey {
-    sampler_def: dsc::Sampler,
+    hash: SamplerHash,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImageViewKey {
     image_key: ImageKey,
-    image_view_meta: dsc::ImageViewMeta,
+    texture_bind_type: Option<RafxTextureBindType>,
 }
 
 #[derive(Debug)]
@@ -398,10 +522,9 @@ pub struct ResourceLookupMetric {
 #[derive(Debug)]
 pub struct ResourceMetrics {
     pub shader_module_metrics: ResourceLookupMetric,
+    pub shader_metrics: ResourceLookupMetric,
+    pub root_signature_metrics: ResourceLookupMetric,
     pub descriptor_set_layout_metrics: ResourceLookupMetric,
-    pub pipeline_layout_metrics: ResourceLookupMetric,
-    pub renderpass_metrics: ResourceLookupMetric,
-    pub framebuffer_metrics: ResourceLookupMetric,
     pub material_pass_metrics: ResourceLookupMetric,
     pub graphics_pipeline_metrics: ResourceLookupMetric,
     pub compute_pipeline_metrics: ResourceLookupMetric,
@@ -414,207 +537,87 @@ pub struct ResourceMetrics {
 #[derive(Debug, Clone)]
 pub struct ShaderModuleResource {
     pub shader_module_key: ShaderModuleKey,
-    pub shader_module_def: Arc<dsc::ShaderModule>,
-    pub shader_module: vk::ShaderModule,
+    pub shader_module_def: Arc<ShaderModule>,
+    pub shader_module: RafxShaderModule,
 }
 
-impl VkResource for ShaderModuleResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.shader_module)
-    }
+#[derive(Debug, Clone)]
+pub struct ShaderResource {
+    pub key: ShaderKey,
+    pub shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
+    pub shader: RafxShader,
+}
+
+#[derive(Debug, Clone)]
+pub struct RootSignatureResource {
+    pub key: RootSignatureKey,
+    pub shaders: Vec<ResourceArc<ShaderResource>>,
+    pub immutable_samplers: Vec<ResourceArc<SamplerResource>>,
+    pub root_signature: RafxRootSignature,
 }
 
 #[derive(Debug, Clone)]
 pub struct DescriptorSetLayoutResource {
-    pub descriptor_set_layout: vk::DescriptorSetLayout,
-    pub descriptor_set_layout_def: dsc::DescriptorSetLayout,
-    pub immutable_samplers: Vec<ResourceArc<SamplerResource>>,
-}
+    // Just keep it in scope
+    pub root_signature_arc: ResourceArc<RootSignatureResource>,
+    pub root_signature: RafxRootSignature,
+    pub set_index: u32,
 
-impl VkResource for DescriptorSetLayoutResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.descriptor_set_layout)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PipelineLayoutResource {
-    pub pipeline_layout: vk::PipelineLayout,
-    pub pipeline_layout_def: dsc::PipelineLayout,
-    pub descriptor_sets: Vec<ResourceArc<DescriptorSetLayoutResource>>,
-}
-
-impl VkResource for PipelineLayoutResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.pipeline_layout)
-    }
+    pub descriptor_set_layout_def: DescriptorSetLayout,
+    pub key: DescriptorSetLayoutKey,
 }
 
 #[derive(Debug, Clone)]
 pub struct MaterialPassResource {
     pub material_pass_key: MaterialPassKey,
-    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
-    pub shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
-    // This is just cached, shader_modules handles cleaning these up
-    pub shader_module_vk_objs: Vec<vk::ShaderModule>,
-}
+    pub shader: ResourceArc<ShaderResource>,
+    pub root_signature: ResourceArc<RootSignatureResource>,
+    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
 
-impl VkResource for MaterialPassResource {
-    fn destroy(
-        _device_context: &VkDeviceContext,
-        _resource: Self,
-    ) -> VkResult<()> {
-        // Nothing needs explicit destroying
-        Ok(())
-    }
+    pub fixed_function_state: Arc<FixedFunctionState>,
+    pub vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct GraphicsPipelineResource {
-    // These are per subpass of the renderpass this pipeline executes in
-    pub pipelines: Vec<vk::Pipeline>,
-    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
-
-    // Renderpasses must be re-registered regularly to the GraphicsPipelineCache. Otherwise, we
-    // would have a cyclical reference between cached pipelines and their renderpasses.
-    pub renderpass: ResourceArc<RenderPassResource>,
-    // This does not have a ResourceArc<MaterialPassResource>. If we end up adding it here,
-    // this will potentially cause GraphicsPipelineCache's strong ref to cached pipelines to keep
-    // material pass resources alive.
-}
-
-impl VkResource for GraphicsPipelineResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        for pipeline in resource.pipelines {
-            VkResource::destroy(device_context, pipeline)?;
-        }
-
-        Ok(())
-    }
+    pub render_target_meta: GraphicsPipelineRenderTargetMeta,
+    pub pipeline: Arc<RafxPipeline>,
+    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ComputePipelineResource {
-    pub pipeline: vk::Pipeline,
-    pub pipeline_layout: ResourceArc<PipelineLayoutResource>,
-}
-
-impl VkResource for ComputePipelineResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.pipeline)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct RenderPassResource {
-    pub renderpass: vk::RenderPass,
-    pub renderpass_key: RenderPassKey,
-}
-
-impl VkResource for RenderPassResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.renderpass)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct FramebufferResource {
-    pub framebuffer: vk::Framebuffer,
-    pub framebuffer_key: FrameBufferKey,
-    pub renderpass: ResourceArc<RenderPassResource>,
-    pub attachments: Vec<ResourceArc<ImageViewResource>>,
-}
-
-impl VkResource for FramebufferResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.framebuffer)
-    }
+    pub root_signature: ResourceArc<RootSignatureResource>,
+    pub pipeline: Arc<RafxPipeline>,
+    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ImageResource {
-    pub image: VkImageRaw,
+    pub image: Arc<RafxImage>,
     // Dynamic resources have no key
     pub image_key: Option<ImageKey>,
 }
 
-impl VkResource for ImageResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.image)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ImageViewResource {
-    pub image_view: vk::ImageView,
     pub image: ResourceArc<ImageResource>,
     // Dynamic resources have no key
     pub image_view_key: Option<ImageViewKey>,
-    pub image_view_meta: dsc::ImageViewMeta,
-}
-
-impl VkResource for ImageViewResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.image_view)
-    }
+    pub texture_bind_type: Option<RafxTextureBindType>,
 }
 
 #[derive(Debug, Clone)]
 pub struct SamplerResource {
-    pub sampler: vk::Sampler,
+    pub sampler: RafxSampler,
     pub sampler_key: SamplerKey,
-}
-
-impl VkResource for SamplerResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.sampler)
-    }
 }
 
 #[derive(Debug, Clone)]
 pub struct BufferResource {
-    pub buffer: VkBufferRaw,
+    pub buffer: Arc<RafxBuffer>,
     // Dynamic resources have no key
     pub buffer_key: Option<BufferKey>,
-}
-
-impl VkResource for BufferResource {
-    fn destroy(
-        device_context: &VkDeviceContext,
-        resource: Self,
-    ) -> VkResult<()> {
-        VkResource::destroy(device_context, resource.buffer)
-    }
 }
 
 //
@@ -627,13 +630,12 @@ impl VkResource for BufferResource {
 // be kept in a slab. We *do* need a way to access and quickly remove elements though, and whatever
 // key we use is sent through a Sender/Receiver pair to be dropped later.
 pub struct ResourceLookupSetInner {
-    device_context: VkDeviceContext,
+    device_context: RafxDeviceContext,
 
     shader_modules: ResourceLookup<ShaderModuleKey, ShaderModuleResource>,
+    shaders: ResourceLookup<ShaderKey, ShaderResource>,
+    root_signatures: ResourceLookup<RootSignatureKey, RootSignatureResource>,
     descriptor_set_layouts: ResourceLookup<DescriptorSetLayoutKey, DescriptorSetLayoutResource>,
-    pipeline_layouts: ResourceLookup<PipelineLayoutKey, PipelineLayoutResource>,
-    render_passes: ResourceLookup<RenderPassKey, RenderPassResource>,
-    framebuffers: ResourceLookup<FrameBufferKey, FramebufferResource>,
     material_passes: ResourceLookup<MaterialPassKey, MaterialPassResource>,
     graphics_pipelines: ResourceLookup<GraphicsPipelineKey, GraphicsPipelineResource>,
     compute_pipelines: ResourceLookup<ComputePipelineKey, ComputePipelineResource>,
@@ -654,16 +656,15 @@ pub struct ResourceLookupSet {
 
 impl ResourceLookupSet {
     pub fn new(
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         max_frames_in_flight: u32,
     ) -> Self {
         let set = ResourceLookupSetInner {
             device_context: device_context.clone(),
             shader_modules: ResourceLookup::new(max_frames_in_flight),
+            shaders: ResourceLookup::new(max_frames_in_flight),
+            root_signatures: ResourceLookup::new(max_frames_in_flight),
             descriptor_set_layouts: ResourceLookup::new(max_frames_in_flight),
-            pipeline_layouts: ResourceLookup::new(max_frames_in_flight),
-            render_passes: ResourceLookup::new(max_frames_in_flight),
-            framebuffers: ResourceLookup::new(max_frames_in_flight),
             material_passes: ResourceLookup::new(max_frames_in_flight),
             graphics_pipelines: ResourceLookup::new(max_frames_in_flight),
             compute_pipelines: ResourceLookup::new(max_frames_in_flight),
@@ -681,47 +682,22 @@ impl ResourceLookupSet {
     }
 
     #[profiling::function]
-    pub fn on_frame_complete(&self) -> VkResult<()> {
-        self.inner
-            .images
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .image_views
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .buffers
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .shader_modules
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .samplers
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .descriptor_set_layouts
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .pipeline_layouts
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .render_passes
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .framebuffers
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .material_passes
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .graphics_pipelines
-            .on_frame_complete(&self.inner.device_context)?;
-        self.inner
-            .compute_pipelines
-            .on_frame_complete(&self.inner.device_context)?;
+    pub fn on_frame_complete(&self) -> RafxResult<()> {
+        self.inner.images.on_frame_complete()?;
+        self.inner.image_views.on_frame_complete()?;
+        self.inner.buffers.on_frame_complete()?;
+        self.inner.shader_modules.on_frame_complete()?;
+        self.inner.shaders.on_frame_complete()?;
+        self.inner.samplers.on_frame_complete()?;
+        self.inner.root_signatures.on_frame_complete()?;
+        self.inner.descriptor_set_layouts.on_frame_complete()?;
+        self.inner.material_passes.on_frame_complete()?;
+        self.inner.graphics_pipelines.on_frame_complete()?;
+        self.inner.compute_pipelines.on_frame_complete()?;
         Ok(())
     }
 
-    pub fn destroy(&self) -> VkResult<()> {
+    pub fn destroy(&self) -> RafxResult<()> {
         //WARNING: These need to be in order of dependencies to avoid frame-delays on destroying
         // resources.
         self.inner
@@ -734,18 +710,13 @@ impl ResourceLookupSet {
             .material_passes
             .destroy(&self.inner.device_context)?;
         self.inner
-            .framebuffers
-            .destroy(&self.inner.device_context)?;
-        self.inner
-            .render_passes
-            .destroy(&self.inner.device_context)?;
-        self.inner
-            .pipeline_layouts
-            .destroy(&self.inner.device_context)?;
-        self.inner
             .descriptor_set_layouts
             .destroy(&self.inner.device_context)?;
+        self.inner
+            .root_signatures
+            .destroy(&self.inner.device_context)?;
         self.inner.samplers.destroy(&self.inner.device_context)?;
+        self.inner.shaders.destroy(&self.inner.device_context)?;
         self.inner
             .shader_modules
             .destroy(&self.inner.device_context)?;
@@ -758,10 +729,9 @@ impl ResourceLookupSet {
     pub fn metrics(&self) -> ResourceMetrics {
         ResourceMetrics {
             shader_module_metrics: self.inner.shader_modules.metrics(),
+            shader_metrics: self.inner.shaders.metrics(),
+            root_signature_metrics: self.inner.root_signatures.metrics(),
             descriptor_set_layout_metrics: self.inner.descriptor_set_layouts.metrics(),
-            pipeline_layout_metrics: self.inner.pipeline_layouts.metrics(),
-            renderpass_metrics: self.inner.render_passes.metrics(),
-            framebuffer_metrics: self.inner.framebuffers.metrics(),
             material_pass_metrics: self.inner.material_passes.metrics(),
             graphics_pipeline_metrics: self.inner.graphics_pipelines.metrics(),
             compute_pipeline_metrics: self.inner.compute_pipelines.metrics(),
@@ -774,10 +744,10 @@ impl ResourceLookupSet {
 
     pub fn get_or_create_shader_module(
         &self,
-        shader_module_def: &Arc<dsc::ShaderModule>,
-    ) -> VkResult<ResourceArc<ShaderModuleResource>> {
+        shader_module_def: &Arc<ShaderModule>,
+    ) -> RafxResult<ResourceArc<ShaderModuleResource>> {
         let shader_module_key = ShaderModuleKey {
-            code_hash: shader_module_def.code_hash,
+            hash: shader_module_def.shader_module_hash,
         };
 
         self.inner
@@ -785,13 +755,18 @@ impl ResourceLookupSet {
             .get_or_create(&shader_module_key, || {
                 log::trace!(
                     "Creating shader module\n[hash: {:?} bytes: {}]",
-                    shader_module_key.code_hash,
+                    shader_module_key.hash,
                     shader_module_def.code.len()
                 );
-                let shader_module = dsc::create_shader_module(
-                    self.inner.device_context.device(),
-                    &*shader_module_def,
-                )?;
+
+                let shader_module = self
+                    .inner
+                    .device_context
+                    .vk_device_context()
+                    .unwrap()
+                    .create_shader_module_from_spv(&shader_module_def.code)?
+                    .into();
+
                 let resource = ShaderModuleResource {
                     shader_module,
                     shader_module_def: shader_module_def.clone(),
@@ -804,19 +779,18 @@ impl ResourceLookupSet {
 
     pub fn get_or_create_sampler(
         &self,
-        sampler: &dsc::Sampler,
-    ) -> VkResult<ResourceArc<SamplerResource>> {
-        let sampler_key = SamplerKey {
-            sampler_def: sampler.clone(),
-        };
+        sampler_def: &RafxSamplerDef,
+    ) -> RafxResult<ResourceArc<SamplerResource>> {
+        let hash = SamplerHash::new(sampler_def);
+        let sampler_key = SamplerKey { hash };
 
         self.inner.samplers.get_or_create(&sampler_key, || {
-            log::trace!("Creating sampler\n{:#?}", sampler);
+            log::trace!("Creating sampler\n{:#?}", sampler_def);
 
-            let resource = dsc::create_sampler(self.inner.device_context.device(), sampler)?;
+            let sampler = self.inner.device_context.create_sampler(sampler_def)?;
 
             let resource = SamplerResource {
-                sampler: resource,
+                sampler,
                 sampler_key: sampler_key.clone(),
             };
 
@@ -825,238 +799,179 @@ impl ResourceLookupSet {
         })
     }
 
-    pub fn get_or_create_descriptor_set_layout(
+    pub fn get_or_create_shader(
         &self,
-        descriptor_set_layout_def: &dsc::DescriptorSetLayout,
-    ) -> VkResult<ResourceArc<DescriptorSetLayoutResource>> {
-        let key = DescriptorSetLayoutKey {
-            def: descriptor_set_layout_def.clone(),
-        };
+        shader_stage_defs: &[RafxShaderStageDef],
+        shader_modules: &[ResourceArc<ShaderModuleResource>],
+    ) -> RafxResult<ResourceArc<ShaderResource>> {
+        let shader_module_hashes: Vec<_> = shader_modules
+            .iter()
+            .map(|x| x.get_raw().shader_module_key.hash)
+            .collect();
+        let hash = ShaderHash::new(shader_stage_defs, &shader_module_hashes);
+        let key = ShaderKey { hash };
 
-        if let Some(descriptor_set_layout) = self.inner.descriptor_set_layouts.get(&key) {
-            Ok(descriptor_set_layout)
-        } else {
-            log::trace!(
-                "Creating descriptor set layout\n{:#?}",
-                descriptor_set_layout_def
-            );
+        self.inner.shaders.get_or_create(&key, || {
+            log::trace!("Creating sampler\n{:#?}", shader_stage_defs);
 
-            // Put all samplers into a hashmap so that we avoid collecting duplicates. This prevents
-            // samplers from dropping out of scope and being destroyed
-            let mut immutable_sampler_arcs = FnvHashMap::default();
+            let shader = self
+                .inner
+                .device_context
+                .create_shader(shader_stage_defs.iter().cloned().collect())?;
 
-            // But we also need to put raw vk objects into a format compatible with
-            // create_descriptor_set_layout
-            let mut immutable_sampler_vk_objs = Vec::with_capacity(
-                descriptor_set_layout_def
-                    .descriptor_set_layout_bindings
-                    .len(),
-            );
+            let resource = ShaderResource {
+                key,
+                shader,
+                shader_modules: shader_modules.iter().cloned().collect(),
+            };
 
-            // Get or create samplers and add them to the two above structures
-            for x in &descriptor_set_layout_def.descriptor_set_layout_bindings {
-                if let Some(sampler_defs) = &x.immutable_samplers {
-                    let mut samplers = Vec::with_capacity(sampler_defs.len());
-                    for sampler_def in sampler_defs {
-                        let sampler = self.get_or_create_sampler(sampler_def)?;
-                        samplers.push(sampler.get_raw().sampler);
-                        immutable_sampler_arcs.insert(sampler_def, sampler);
-                    }
-                    immutable_sampler_vk_objs.push(Some(samplers));
-                } else {
-                    immutable_sampler_vk_objs.push(None);
+            log::trace!("Created sampler {:?}", resource);
+            Ok(resource)
+        })
+    }
+
+    pub fn get_or_create_root_signature(
+        &self,
+        shader_resources: &[ResourceArc<ShaderResource>],
+        immutable_sampler_keys: &[RafxImmutableSamplerKey],
+        immutable_sampler_resources: &[Vec<ResourceArc<SamplerResource>>],
+    ) -> RafxResult<ResourceArc<RootSignatureResource>> {
+        let shader_hashes: Vec<_> = shader_resources
+            .iter()
+            .map(|x| x.get_raw().key.hash)
+            .collect();
+
+        let mut sampler_hashes = Vec::with_capacity(immutable_sampler_resources.len());
+        for sampler_list in immutable_sampler_resources {
+            let hashes: Vec<_> = sampler_list
+                .iter()
+                .map(|x| x.get_raw().sampler_key.hash)
+                .collect();
+            sampler_hashes.push(hashes);
+        }
+
+        let hash = RootSignatureHash::new(&shader_hashes, immutable_sampler_keys, &sampler_hashes);
+        let key = RootSignatureKey { hash };
+
+        self.inner.root_signatures.get_or_create(&key, || {
+            let mut samplers = Vec::with_capacity(immutable_sampler_resources.len());
+            for sampler_list in immutable_sampler_resources {
+                let cloned_sampler_list: Vec<_> = sampler_list
+                    .iter()
+                    .map(|x| x.get_raw().sampler.clone())
+                    .collect();
+                samplers.push(cloned_sampler_list);
+            }
+
+            let mut immutable_samplers = Vec::with_capacity(samplers.len());
+            for i in 0..samplers.len() {
+                immutable_samplers.push(RafxImmutableSamplers {
+                    key: immutable_sampler_keys[i].clone(),
+                    samplers: &samplers[i],
+                });
+            }
+
+            log::trace!("Creating root signature\n{:#?}", key);
+            let shaders: Vec<_> = shader_resources
+                .iter()
+                .map(|x| x.get_raw().shader.clone())
+                .collect();
+            let root_signature =
+                self.inner
+                    .device_context
+                    .create_root_signature(&RafxRootSignatureDef {
+                        shaders: &shaders,
+                        immutable_samplers: &immutable_samplers,
+                    })?;
+
+            let shaders = shader_resources.iter().cloned().collect();
+
+            let mut immutable_samplers = vec![];
+            for resource_list in immutable_sampler_resources {
+                for resource in resource_list {
+                    immutable_samplers.push(resource.clone());
                 }
             }
 
-            self.inner.descriptor_set_layouts.get_or_create(&key, || {
-                // Create the descriptor set layout
-                let resource = dsc::create_descriptor_set_layout(
-                    self.inner.device_context.device(),
-                    descriptor_set_layout_def,
-                    &immutable_sampler_vk_objs,
-                )?;
-
-                // Flatten the hashmap into just the values
-                let immutable_samplers = immutable_sampler_arcs.drain().map(|(_, x)| x).collect();
-
-                // Create the resource object, which contains the descriptor set layout we created plus
-                // ResourceArcs to the samplers, which must remain alive for the lifetime of the descriptor set
-                let resource = DescriptorSetLayoutResource {
-                    descriptor_set_layout: resource,
-                    descriptor_set_layout_def: descriptor_set_layout_def.clone(),
-                    immutable_samplers,
-                };
-
-                log::trace!("Created descriptor set layout {:?}", resource);
-                Ok(resource)
-            })
-        }
-    }
-
-    pub fn get_or_create_pipeline_layout(
-        &self,
-        pipeline_layout_def: &dsc::PipelineLayout,
-    ) -> VkResult<ResourceArc<PipelineLayoutResource>> {
-        let key = PipelineLayoutKey {
-            def: pipeline_layout_def.clone(),
-        };
-
-        if let Some(pipeline_layout) = self.inner.pipeline_layouts.get(&key) {
-            Ok(pipeline_layout)
-        } else {
-            // Keep both the arcs and build an array of vk object pointers
-            let mut descriptor_set_layout_arcs =
-                Vec::with_capacity(pipeline_layout_def.descriptor_set_layouts.len());
-            let mut descriptor_set_layouts =
-                Vec::with_capacity(pipeline_layout_def.descriptor_set_layouts.len());
-
-            for descriptor_set_layout_def in &pipeline_layout_def.descriptor_set_layouts {
-                let loaded_descriptor_set_layout =
-                    self.get_or_create_descriptor_set_layout(descriptor_set_layout_def)?;
-                descriptor_set_layout_arcs.push(loaded_descriptor_set_layout.clone());
-                descriptor_set_layouts
-                    .push(loaded_descriptor_set_layout.get_raw().descriptor_set_layout);
-            }
-
-            self.inner.pipeline_layouts.get_or_create(&key, || {
-                log::trace!("Creating pipeline layout\n{:#?}", pipeline_layout_def);
-                let resource = dsc::create_pipeline_layout(
-                    self.inner.device_context.device(),
-                    pipeline_layout_def,
-                    &descriptor_set_layouts,
-                )?;
-
-                let resource = PipelineLayoutResource {
-                    pipeline_layout: resource,
-                    pipeline_layout_def: pipeline_layout_def.clone(),
-                    descriptor_sets: descriptor_set_layout_arcs,
-                };
-
-                log::trace!("Created pipeline layout {:?}", resource);
-                Ok(resource)
-            })
-        }
-    }
-
-    pub fn get_or_create_renderpass(
-        &self,
-        renderpass: Arc<dsc::RenderPass>,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
-    ) -> VkResult<ResourceArc<RenderPassResource>> {
-        let renderpass_key = RenderPassKey {
-            dsc: renderpass.clone(),
-            swapchain_surface_info: swapchain_surface_info.clone(),
-        };
-
-        self.inner.render_passes.get_or_create(&renderpass_key, || {
-            log::trace!("Creating renderpass\n{:#?}", renderpass_key);
-            let resource = dsc::create_renderpass(
-                self.inner.device_context.device(),
-                &*renderpass,
-                &swapchain_surface_info,
-            )?;
-
-            let resource = RenderPassResource {
-                renderpass: resource,
-                renderpass_key: renderpass_key.clone(),
+            let resource = RootSignatureResource {
+                key,
+                root_signature,
+                shaders,
+                immutable_samplers,
             };
 
-            log::trace!("Created renderpass {:?}", resource);
+            log::trace!("Created root signature");
             Ok(resource)
         })
     }
 
-    pub fn get_or_create_framebuffer(
+    pub fn get_or_create_descriptor_set_layout(
         &self,
-        renderpass: ResourceArc<RenderPassResource>,
-        attachments: &[ResourceArc<ImageViewResource>],
-        framebuffer_meta: &dsc::FramebufferMeta,
-    ) -> VkResult<ResourceArc<FramebufferResource>> {
-        let framebuffer_key = FrameBufferKey {
-            renderpass: renderpass.get_raw().renderpass_key.dsc,
-            image_view_keys: attachments
-                .iter()
-                .map(|resource| {
-                    resource
-                        .get_raw()
-                        .image_view_key
-                        .expect("Only keyed image views allowed in get_or_create_framebuffer")
-                })
-                .collect(),
-            framebuffer_meta: framebuffer_meta.clone(),
-        };
+        root_signature: &ResourceArc<RootSignatureResource>,
+        set_index: u32,
+        descriptor_set_layout_def: &DescriptorSetLayout,
+    ) -> RafxResult<ResourceArc<DescriptorSetLayoutResource>> {
+        let hash = DescriptorSetLayoutHash::new(
+            root_signature.get_raw().key.hash,
+            set_index,
+            descriptor_set_layout_def,
+        );
+        let key = DescriptorSetLayoutKey { hash };
 
-        self.inner.framebuffers.get_or_create(&framebuffer_key, || {
-            log::trace!("Creating framebuffer\n{:#?}", framebuffer_key);
+        self.inner.descriptor_set_layouts.get_or_create(&key, || {
+            log::trace!(
+                "Creating descriptor set layout set_index={}, root_signature:\n{:#?}",
+                set_index,
+                root_signature
+            );
 
-            let attachment_image_views: Vec<_> = attachments
-                .iter()
-                .map(|resource| resource.get_raw().image_view)
-                .collect();
-
-            let resource = dsc::create_framebuffer(
-                self.inner.device_context.device(),
-                renderpass.get_raw().renderpass,
-                &attachment_image_views,
-                framebuffer_meta,
-            )?;
-
-            let resource = FramebufferResource {
-                framebuffer: resource,
-                framebuffer_key: framebuffer_key.clone(),
-                renderpass,
-                attachments: attachments.into(),
+            // Create the resource object, which contains the descriptor set layout we created plus
+            // ResourceArcs to the samplers, which must remain alive for the lifetime of the descriptor set
+            let resource = DescriptorSetLayoutResource {
+                root_signature_arc: root_signature.clone(),
+                root_signature: root_signature.get_raw().root_signature.clone(),
+                set_index,
+                descriptor_set_layout_def: descriptor_set_layout_def.clone(),
+                key: key.clone(),
             };
 
-            log::trace!("Created framebuffer {:?}", resource);
+            log::trace!("Created descriptor set layout {:?}", resource);
             Ok(resource)
         })
     }
-
-    // Maybe we have a dedicated allocator for framebuffers and images that end up bound to framebuffers
-    // These images shouldn't be throw-away because then we have to remake framebuffers constantly
-    // So they either need to be inserted here or pooled in some way
-    // pub fn get_or_create_framebuffer(
-    //     &mut self,
-    //     framebuffer: &dsc::FrameBufferMeta,
-    //     images:
-    // )
 
     pub fn get_or_create_material_pass(
         &self,
-        shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
-        shader_module_metas: Vec<dsc::ShaderModuleMeta>,
-        pipeline_layout: ResourceArc<PipelineLayoutResource>,
-        fixed_function_state: Arc<dsc::FixedFunctionState>,
+        shader: ResourceArc<ShaderResource>,
+        root_signature: ResourceArc<RootSignatureResource>,
+        descriptor_sets: Vec<ResourceArc<DescriptorSetLayoutResource>>,
+        fixed_function_state: Arc<FixedFunctionState>,
         vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
-    ) -> VkResult<ResourceArc<MaterialPassResource>> {
-        let shader_module_keys = shader_modules
+    ) -> RafxResult<ResourceArc<MaterialPassResource>> {
+        let descriptor_set_hashes: Vec<_> = descriptor_sets
             .iter()
-            .map(|x| x.get_raw().shader_module_key)
+            .map(|x| x.get_raw().key.hash)
             .collect();
-        let material_pass_key = MaterialPassKey {
-            shader_module_metas,
-            shader_module_keys,
-            pipeline_layout: pipeline_layout.get_raw().pipeline_layout_def,
-            fixed_function_state,
-            vertex_inputs,
-        };
+        let hash = MaterialPassHash::new(
+            shader.get_raw().key.hash,
+            root_signature.get_raw().key.hash,
+            &descriptor_set_hashes,
+            &*fixed_function_state,
+            &*vertex_inputs,
+        );
+        let material_pass_key = MaterialPassKey { hash };
 
         self.inner
             .material_passes
             .get_or_create(&material_pass_key, || {
                 log::trace!("Creating material pass\n{:#?}", material_pass_key);
-
-                let shader_module_vk_objs = shader_modules
-                    .iter()
-                    .map(|x| x.get_raw().shader_module)
-                    .collect();
-
                 let resource = MaterialPassResource {
                     material_pass_key: material_pass_key.clone(),
-                    pipeline_layout,
-                    shader_modules,
-                    shader_module_vk_objs,
+                    root_signature,
+                    descriptor_set_layouts: descriptor_sets,
+                    shader,
+                    fixed_function_state,
+                    vertex_inputs,
                 };
                 Ok(resource)
             })
@@ -1065,46 +980,52 @@ impl ResourceLookupSet {
     pub fn get_or_create_graphics_pipeline(
         &self,
         material_pass: &ResourceArc<MaterialPassResource>,
-        renderpass: &ResourceArc<RenderPassResource>,
-        framebuffer_meta: &dsc::FramebufferMeta,
-        vertex_input_state: Arc<dsc::PipelineVertexInputState>,
-    ) -> VkResult<ResourceArc<GraphicsPipelineResource>> {
-        let pipeline_key = GraphicsPipelineKey {
-            material_pass_key: material_pass.get_raw().material_pass_key,
-            renderpass_key: renderpass.get_raw().renderpass_key,
-            framebuffer_meta: framebuffer_meta.clone(),
-            vertex_input_state: vertex_input_state.clone(),
-        };
+        render_target_meta: &GraphicsPipelineRenderTargetMeta,
+        primitive_topology: RafxPrimitiveTopology,
+        vertex_layout: &RafxVertexLayout,
+    ) -> RafxResult<ResourceArc<GraphicsPipelineResource>> {
+        let hash = GraphicsPipelineHash::new(
+            material_pass.get_raw().material_pass_key.hash,
+            render_target_meta,
+            primitive_topology,
+            vertex_layout,
+        );
+
+        let pipeline_key = GraphicsPipelineKey { hash };
 
         self.inner
             .graphics_pipelines
             .get_or_create(&pipeline_key, || {
                 log::trace!("Creating graphics pipeline\n{:#?}", pipeline_key);
-                let pipelines = dsc::create_graphics_pipelines(
-                    &self.inner.device_context.device(),
-                    &*vertex_input_state,
-                    &material_pass
-                        .get_raw()
-                        .material_pass_key
-                        .fixed_function_state,
-                    material_pass
-                        .get_raw()
-                        .pipeline_layout
-                        .get_raw()
-                        .pipeline_layout,
-                    renderpass.get_raw().renderpass,
-                    &renderpass.get_raw().renderpass_key.dsc,
-                    &pipeline_key.material_pass_key.shader_module_metas,
-                    &material_pass.get_raw().shader_module_vk_objs,
-                    &pipeline_key.renderpass_key.swapchain_surface_info,
-                    &pipeline_key.framebuffer_meta,
+
+                let fixed_function_state = &material_pass.get_raw().fixed_function_state;
+                let pipeline = self.inner.device_context.create_graphics_pipeline(
+                    &RafxGraphicsPipelineDef {
+                        root_signature: &material_pass
+                            .get_raw()
+                            .root_signature
+                            .get_raw()
+                            .root_signature,
+
+                        shader: &material_pass.get_raw().shader.get_raw().shader,
+
+                        blend_state: &fixed_function_state.blend_state,
+                        depth_state: &fixed_function_state.depth_state,
+                        rasterizer_state: &fixed_function_state.rasterizer_state,
+
+                        primitive_topology,
+                        vertex_layout: &vertex_layout,
+
+                        color_formats: &render_target_meta.color_formats,
+                        depth_stencil_format: render_target_meta.depth_stencil_format,
+                        sample_count: render_target_meta.sample_count,
+                    },
                 )?;
-                log::trace!("Created graphics pipelines {:?}", pipelines);
 
                 let resource = GraphicsPipelineResource {
-                    pipelines,
-                    pipeline_layout: material_pass.get_raw().pipeline_layout,
-                    renderpass: renderpass.clone(),
+                    render_target_meta: render_target_meta.clone(),
+                    pipeline: Arc::new(pipeline),
+                    descriptor_set_layouts: material_pass.get_raw().descriptor_set_layouts.clone(),
                 };
                 Ok(resource)
             })
@@ -1112,59 +1033,75 @@ impl ResourceLookupSet {
 
     pub fn get_or_create_compute_pipeline(
         &self,
-        shader_module: ResourceArc<ShaderModuleResource>,
-        shader_module_meta: dsc::ShaderModuleMeta,
-        pipeline_layout: ResourceArc<PipelineLayoutResource>,
-    ) -> VkResult<ResourceArc<ComputePipelineResource>> {
-        let pipeline_key = ComputePipelineKey {
-            shader_module_meta,
-            shader_module_key: shader_module.get_raw().shader_module_key,
-            pipeline_layout: pipeline_layout.get_raw().pipeline_layout_def,
-        };
+        shader: &ResourceArc<ShaderResource>,
+        root_signature: &ResourceArc<RootSignatureResource>,
+        descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
+    ) -> RafxResult<ResourceArc<ComputePipelineResource>> {
+        let descriptor_set_hashes: Vec<_> = descriptor_set_layouts
+            .iter()
+            .map(|x| x.get_raw().key.hash)
+            .collect();
+        let hash = ComputePipelineHash::new(
+            shader.get_raw().key.hash,
+            root_signature.get_raw().key.hash,
+            &descriptor_set_hashes,
+        );
+        let pipeline_key = ComputePipelineKey { hash };
 
         self.inner
             .compute_pipelines
             .get_or_create(&pipeline_key, || {
                 log::trace!("Creating compute pipeline\n{:#?}", pipeline_key);
-                let pipeline = dsc::create_compute_pipeline(
-                    &self.inner.device_context.device(),
-                    pipeline_layout.get_raw().pipeline_layout,
-                    &pipeline_key.shader_module_meta,
-                    shader_module.get_raw().shader_module,
-                )?;
-                log::trace!("Created compute pipeline {:?}", pipeline);
+                let rafx_pipeline =
+                    self.inner
+                        .device_context
+                        .create_compute_pipeline(&RafxComputePipelineDef {
+                            root_signature: &root_signature.get_raw().root_signature,
+                            shader: &shader.get_raw().shader,
+                        })?;
+                log::trace!("Created compute pipeline {:?}", rafx_pipeline);
 
                 let resource = ComputePipelineResource {
-                    pipeline,
-                    pipeline_layout: pipeline_layout.clone(),
+                    root_signature: root_signature.clone(),
+                    pipeline: Arc::new(rafx_pipeline),
+                    descriptor_set_layouts,
                 };
                 Ok(resource)
             })
     }
 
-    // A key difference between this insert_image and the insert_image in a DynResourceAllocator
+    //
+    // A key difference between these insert_image and the insert_image in a DynResourceAllocator
     // is that these can be retrieved. However, a mutable reference is required. This one is
     // more appropriate to use with descriptors loaded from assets, and DynResourceAllocator with runtime-created
     // descriptors
-    pub fn insert_image(
+    //
+    pub fn insert_texture(
         &self,
-        image: VkImage,
+        texture: RafxTexture,
     ) -> ResourceArc<ImageResource> {
-        let raw_image = image.take_raw().unwrap();
-        self.insert_raw_image(raw_image)
+        let image = RafxImage::Texture(texture);
+        self.insert_image(image)
     }
 
-    // This is useful for inserting swapchain images
-    pub fn insert_raw_image(
+    pub fn insert_render_target(
         &self,
-        raw_image: VkImageRaw,
+        render_target: RafxRenderTarget,
+    ) -> ResourceArc<ImageResource> {
+        let image = RafxImage::RenderTarget(render_target);
+        self.insert_image(image)
+    }
+
+    pub fn insert_image(
+        &self,
+        image: RafxImage,
     ) -> ResourceArc<ImageResource> {
         let image_id = self.inner.next_image_id.fetch_add(1, Ordering::Relaxed);
 
         let image_key = ImageKey { id: image_id };
 
         let resource = ImageResource {
-            image: raw_image,
+            image: Arc::new(image),
             image_key: Some(image_key),
         };
 
@@ -1177,26 +1114,17 @@ impl ResourceLookupSet {
     //TODO: Support direct removal of raw images with verification that no references remain
 
     // A key difference between this insert_buffer and the insert_buffer in a DynResourceAllocator
-    // is that these can be retrieved. However, a mutable reference is required. This one is
-    // more appropriate to use with loaded assets, and DynResourceAllocator with runtime assets
-
+    // is that these can be retrieved. This one is more appropriate to use with loaded assets, and
+    // DynResourceAllocator with runtime assets
     pub fn insert_buffer(
         &self,
-        buffer: VkBuffer,
-    ) -> ResourceArc<BufferResource> {
-        //let raw_buffer = ManuallyDrop::into_inner(buffer).take_raw().unwrap();
-        self.insert_raw_buffer(buffer.take_raw().unwrap())
-    }
-
-    pub fn insert_raw_buffer(
-        &self,
-        raw_buffer: VkBufferRaw,
+        buffer: RafxBuffer,
     ) -> ResourceArc<BufferResource> {
         let buffer_id = self.inner.next_buffer_id.fetch_add(1, Ordering::Relaxed);
         let buffer_key = BufferKey { id: buffer_id };
 
         let resource = BufferResource {
-            buffer: raw_buffer,
+            buffer: Arc::new(buffer),
             buffer_key: Some(buffer_key),
         };
 
@@ -1209,41 +1137,28 @@ impl ResourceLookupSet {
     pub fn get_or_create_image_view(
         &self,
         image: &ResourceArc<ImageResource>,
-        image_view_meta: &dsc::ImageViewMeta,
-    ) -> VkResult<ResourceArc<ImageViewResource>> {
+        texture_bind_type: Option<RafxTextureBindType>,
+    ) -> RafxResult<ResourceArc<ImageViewResource>> {
         if image.get_raw().image_key.is_none() {
             log::error!("Tried to create an image view resource with a dynamic image");
-            return Err(vk::Result::ERROR_UNKNOWN);
+            return Err("Tried to create an image view resource with a dynamic image")?;
         }
 
         let image_view_key = ImageViewKey {
             image_key: image.get_raw().image_key.unwrap(),
-            image_view_meta: image_view_meta.clone(),
+            texture_bind_type,
         };
 
         self.inner.image_views.get_or_create(&image_view_key, || {
             log::trace!("Creating image view\n{:#?}", image_view_key);
-            let resource = dsc::create_image_view(
-                &self.inner.device_context.device(),
-                image.get_raw().image.image,
-                image_view_meta,
-            )?;
-            log::trace!("Created image view\n{:#?}", resource);
-
             let resource = ImageViewResource {
-                image_view: resource,
-                image_view_key: Some(image_view_key.clone()),
                 image: image.clone(),
-                image_view_meta: image_view_meta.clone(),
+                texture_bind_type,
+                image_view_key: Some(image_view_key.clone()),
             };
+            log::trace!("Created image view\n{:#?}", resource);
 
             Ok(resource)
         })
     }
-
-    // pub fn get_or_create_frame_buffer(
-    //     &mut self,
-    //     frame_buffer_meta: dsc::FrameBufferMeta,
-    //     images: dsc::ImageViewMeta,
-    // )
 }

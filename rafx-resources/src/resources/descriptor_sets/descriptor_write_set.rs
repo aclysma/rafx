@@ -1,24 +1,24 @@
 use crate::resources::resource_lookup::{ImageViewResource, SamplerResource};
 use crate::resources::ResourceArc;
-use crate::{vk_description as dsc, BufferResource};
-use ash::vk;
+use crate::{BufferResource, DescriptorSetLayout};
 use fnv::FnvHashMap;
+use rafx_api::extra::image::RafxImage;
+use rafx_api::RafxResourceType;
+use std::sync::Arc;
 
 //
 // These represent descriptor updates that can be applied to a descriptor set in a pool
 //
 #[derive(Debug, Clone)]
 pub enum DescriptorSetWriteElementImageValue {
-    Raw(vk::ImageView),
     Resource(ResourceArc<ImageViewResource>),
 }
 
 impl DescriptorSetWriteElementImageValue {
-    pub fn get_raw(&self) -> vk::ImageView {
+    pub fn get_image(&self) -> Arc<RafxImage> {
         match self {
-            DescriptorSetWriteElementImageValue::Raw(view) => *view,
             DescriptorSetWriteElementImageValue::Resource(resource) => {
-                resource.get_raw().image_view
+                resource.get_raw().image.get_raw().image.clone()
             }
         }
     }
@@ -29,16 +29,14 @@ impl DescriptorSetWriteElementImageValue {
 pub struct DescriptorSetWriteElementImage {
     pub sampler: Option<ResourceArc<SamplerResource>>,
     pub image_view: Option<DescriptorSetWriteElementImageValue>,
-    // For now going to assume layout is always ShaderReadOnlyOptimal
-    //pub image_info: vk::DescriptorImageInfo,
 }
 
 // Info needed to write a buffer reference to a descriptor set
 #[derive(Debug, Clone)]
 pub struct DescriptorSetWriteElementBufferDataBufferRef {
     pub buffer: ResourceArc<BufferResource>,
-    pub offset: vk::DeviceSize,
-    pub size: vk::DeviceSize, // may use vk::WHOLE_SIZE
+    pub offset: Option<u64>,
+    pub size: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -58,7 +56,7 @@ pub struct DescriptorSetWriteElementBuffer {
 #[derive(Debug, Clone)]
 pub struct DescriptorSetElementWrite {
     // This is a complete spec for
-    pub descriptor_type: dsc::DescriptorType,
+    pub descriptor_type: RafxResourceType,
 
     //TODO: Should these be Option<Vec>?
     pub image_info: Vec<DescriptorSetWriteElementImage>,
@@ -99,17 +97,17 @@ impl DescriptorSetWriteSet {
 }
 
 pub fn create_uninitialized_write_set_for_layout(
-    layout: &dsc::DescriptorSetLayout
+    layout: &DescriptorSetLayout
 ) -> DescriptorSetWriteSet {
     let mut write_set = DescriptorSetWriteSet::default();
-    for binding in &layout.descriptor_set_layout_bindings {
+    for binding in &layout.bindings {
         let key = DescriptorSetElementKey {
-            dst_binding: binding.binding as u32,
+            dst_binding: binding.resource.binding as u32,
         };
 
         let mut element_write = DescriptorSetElementWrite {
             has_immutable_sampler: binding.immutable_samplers.is_some(),
-            descriptor_type: binding.descriptor_type,
+            descriptor_type: binding.resource.resource_type,
             image_info: Default::default(),
             buffer_info: Default::default(),
         };
@@ -118,14 +116,14 @@ pub fn create_uninitialized_write_set_for_layout(
 
         if what_to_bind.bind_images || what_to_bind.bind_samplers {
             element_write.image_info.resize(
-                binding.descriptor_count as usize,
+                binding.resource.element_count as usize,
                 DescriptorSetWriteElementImage::default(),
             );
         }
 
         if what_to_bind.bind_buffers {
             element_write.buffer_info.resize(
-                binding.descriptor_count as usize,
+                binding.resource.element_count as usize,
                 DescriptorSetWriteElementBuffer::default(),
             );
         }

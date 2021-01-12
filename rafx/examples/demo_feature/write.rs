@@ -3,6 +3,7 @@ use crate::demo_feature::{
     PreparedPerSubmitNodeDemoData,
 };
 use crate::DemoWriteContext;
+use rafx_api::RafxResult;
 use rafx_nodes::{
     FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
     SubmitNodeId,
@@ -20,12 +21,14 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
         _write_context: &mut DemoWriteContext,
         view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
-    ) {
+    ) -> RafxResult<()> {
         log::debug!(
             "apply_setup {} view: {}",
             self.feature_debug_name(),
             view.debug_name()
         );
+
+        Ok(())
     }
 
     fn render_element(
@@ -34,7 +37,7 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
         view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
-    ) {
+    ) -> RafxResult<()> {
         log::info!(
             "render_element {} view: {} id: {}",
             self.feature_debug_name(),
@@ -46,6 +49,8 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
         let submit_node_data = &self.per_submit_node_data[index as usize];
         let _frame_node_data = &self.per_frame_data[submit_node_data.frame_node_index as usize];
         let _view_node_data = &self.per_view_data[submit_node_data.view_node_index as usize];
+
+        Ok(())
     }
 
     fn revert_setup(
@@ -53,12 +58,13 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
         _write_context: &mut DemoWriteContext,
         view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
-    ) {
+    ) -> RafxResult<()> {
         log::debug!(
             "revert_setup {} view: {}",
             self.feature_debug_name(),
             view.debug_name()
         );
+        Ok(())
     }
 
     fn feature_debug_name(&self) -> &'static str {

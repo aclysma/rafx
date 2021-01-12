@@ -1,11 +1,10 @@
 use crate::phases::OpaqueRenderPhase;
 use crate::render_contexts::RenderJobWriteContext;
-use ash::vk;
 use rafx::graph::*;
-use rafx::resources::vk_description as dsc;
 
 use super::RenderGraphContext;
 use super::ShadowMapImageResources;
+use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
 
 pub(super) struct OpaquePass {
     pub(super) node: RenderGraphNodeId,
@@ -25,20 +24,19 @@ pub(super) fn opaque_pass(
     let color = context.graph.create_color_attachment(
         node,
         0,
-        Some(vk::ClearColorValue {
-            float32: [0.0, 0.0, 0.0, 0.0],
-        }),
+        Some(RafxColorClearValue([0.0, 0.0, 0.0, 0.0])),
         RenderGraphImageConstraint {
             samples: Some(context.graph_config.samples),
             format: Some(context.graph_config.color_format),
             ..Default::default()
         },
+        Default::default(),
     );
     context.graph.set_image_name(color, "color");
 
     let depth = context.graph.create_depth_attachment(
         node,
-        Some(vk::ClearDepthStencilValue {
+        Some(RafxDepthStencilClearValue {
             depth: 0.0,
             stencil: 0,
         }),
@@ -47,25 +45,23 @@ pub(super) fn opaque_pass(
             format: Some(context.graph_config.depth_format),
             ..Default::default()
         },
+        Default::default(),
     );
     context.graph.set_image_name(depth, "depth");
 
     let mut shadow_maps = Vec::with_capacity(shadow_map_passes.len());
     for shadow_map_pass in shadow_map_passes {
         let sampled_image = match shadow_map_pass {
-            ShadowMapImageResources::Single(image) => context.graph.sample_image(
-                node,
-                *image,
-                Default::default(),
-                RenderGraphImageSubresourceRange::AllMipsAllLayers,
-                dsc::ImageViewType::Type2D,
-            ),
+            ShadowMapImageResources::Single(image) => {
+                context
+                    .graph
+                    .sample_image(node, *image, Default::default(), Default::default())
+            }
             ShadowMapImageResources::Cube(cube_map_image) => context.graph.sample_image(
                 node,
                 *cube_map_image,
                 Default::default(),
-                RenderGraphImageSubresourceRange::AllMipsAllLayers,
-                dsc::ImageViewType::Cube,
+                Default::default(),
             ),
         };
         shadow_maps.push(sampled_image);
@@ -82,8 +78,7 @@ pub(super) fn opaque_pass(
             let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
             user_context
                 .prepared_render_data
-                .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context);
-            Ok(())
+                .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context)
         });
 
     OpaquePass {

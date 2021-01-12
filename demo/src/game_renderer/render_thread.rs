@@ -1,10 +1,10 @@
 use crate::game_renderer::RenderFrameJob;
 use crossbeam_channel::{Receiver, Sender};
-use rafx::api_vulkan::FrameInFlight;
+use rafx::api::RafxPresentableFrame;
 use std::thread::JoinHandle;
 
 enum RenderThreadMessage {
-    Render(RenderFrameJob, FrameInFlight),
+    Render(RenderFrameJob, RafxPresentableFrame),
     Finish,
 }
 
@@ -34,10 +34,13 @@ impl RenderThread {
     pub fn render(
         &mut self,
         prepared_frame: RenderFrameJob,
-        frame_in_flight: FrameInFlight,
+        presentable_frame: RafxPresentableFrame,
     ) {
         self.job_tx
-            .send(RenderThreadMessage::Render(prepared_frame, frame_in_flight))
+            .send(RenderThreadMessage::Render(
+                prepared_frame,
+                presentable_frame,
+            ))
             .unwrap();
     }
 

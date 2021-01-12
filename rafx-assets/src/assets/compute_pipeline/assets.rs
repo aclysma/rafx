@@ -5,7 +5,6 @@ use crate::ShaderAsset;
 use atelier_assets::loader::handle::Handle;
 pub use rafx_resources::DescriptorSetLayoutResource;
 pub use rafx_resources::GraphicsPipelineResource;
-pub use rafx_resources::PipelineLayoutResource;
 use rafx_resources::{ComputePipelineResource, ResourceArc};
 use std::hash::Hash;
 

@@ -9,9 +9,8 @@ use crate::resources::descriptor_sets::{
 };
 use crate::resources::resource_lookup::{DescriptorSetLayoutResource, ImageViewResource};
 use crate::resources::ResourceArc;
-use crate::vulkan::ash::vk;
 use crate::BufferResource;
-use ash::prelude::VkResult;
+use rafx_api::{RafxCommandBuffer, RafxResult};
 use std::fmt::Formatter;
 
 //TODO: Create a builder that is not initialized, this will help avoid forgetting to call flush
@@ -73,11 +72,18 @@ impl DynDescriptorSet {
         &self.descriptor_set
     }
 
+    pub fn bind(
+        &self,
+        command_buffer: &RafxCommandBuffer,
+    ) -> RafxResult<()> {
+        self.descriptor_set.bind(command_buffer)
+    }
+
     //TODO: Make a commit-like API so that it's not so easy to forget to call flush
     pub fn flush(
         &mut self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         if !self.pending_write_set.elements.is_empty() {
             let mut pending_write_set = Default::default();
             std::mem::swap(&mut pending_write_set, &mut self.pending_write_set);
@@ -209,8 +215,8 @@ impl DynDescriptorSet {
                     element_buffer.buffer = Some(DescriptorSetWriteElementBufferData::BufferRef(
                         DescriptorSetWriteElementBufferDataBufferRef {
                             buffer: buffer.clone(),
-                            offset: 0,
-                            size: vk::WHOLE_SIZE,
+                            offset: None,
+                            size: None,
                         },
                     ));
 
@@ -218,7 +224,7 @@ impl DynDescriptorSet {
 
                 //self.dirty.insert(key);
                 } else {
-                    log::warn!("Tried to set image index {} but it did not exist. The image array is {} elements long.", array_index, element.buffer_info.len());
+                    log::warn!("Tried to set buffer index {} but it did not exist. The image array is {} elements long.", array_index, element.buffer_info.len());
                 }
             } else {
                 // This is not necessarily an error if the user is binding with a slot name (although not sure
@@ -264,7 +270,7 @@ impl DynDescriptorSet {
         if let Some(element) = self.write_set.elements.get_mut(&key) {
             let what_to_bind = super::what_to_bind(element);
             if what_to_bind.bind_buffers {
-                let data = rafx_api_vulkan::util::any_as_bytes(data).into();
+                let data = rafx_base::memory::any_as_bytes(data).into();
                 if let Some(element_buffer) = element.buffer_info.get_mut(array_index) {
                     element_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(data));
                     self.pending_write_set.elements.insert(key, element.clone());

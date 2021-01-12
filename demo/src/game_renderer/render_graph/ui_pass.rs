@@ -44,8 +44,7 @@ pub(super) fn ui_pass(
             let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
             user_context
                 .prepared_render_data
-                .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context);
-            Ok(())
+                .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context)
         });
 
     UiPass { node, color }

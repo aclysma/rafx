@@ -3,12 +3,12 @@ use crate::game_asset_lookup::{
     GameLoadedAssetLookupSet, GameLoadedAssetMetrics, MeshAsset, MeshAssetInner, MeshAssetPart,
 };
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
-use ash::prelude::VkResult;
 use atelier_assets::loader::handle::AssetHandle;
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::loader::storage::AssetLoadOp;
 use atelier_assets::loader::Loader;
 use crossbeam_channel::Sender;
+use rafx::api::RafxResult;
 use rafx::assets::{AssetLookup, AssetManager, GenericLoader, LoadQueues};
 use std::sync::Arc;
 
@@ -53,7 +53,7 @@ impl GameAssetManager {
     pub fn update_asset_loaders(
         &mut self,
         asset_manager: &AssetManager,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         self.process_mesh_load_requests(asset_manager);
         Ok(())
     }
@@ -88,7 +88,7 @@ impl GameAssetManager {
 
     fn handle_load_result<AssetT: Clone>(
         load_op: AssetLoadOp,
-        loaded_asset: VkResult<AssetT>,
+        loaded_asset: RafxResult<AssetT>,
         asset_lookup: &mut AssetLookup<AssetT>,
         result_tx: Sender<AssetT>,
     ) {
@@ -132,7 +132,7 @@ impl GameAssetManager {
         &mut self,
         asset_manager: &AssetManager,
         mesh_asset: &MeshAssetData,
-    ) -> VkResult<MeshAsset> {
+    ) -> RafxResult<MeshAsset> {
         let vertex_buffer = asset_manager
             .loaded_assets()
             .buffers

@@ -1,5 +1,6 @@
 use atelier_assets::loader::handle::Handle;
 use lazy_static;
+use rafx::api::RafxPrimitiveTopology;
 use rafx::assets::BufferAsset;
 use rafx::assets::ImageAsset;
 use rafx::assets::MaterialInstanceAsset;
@@ -119,14 +120,14 @@ pub struct MeshVertex {
 
 lazy_static::lazy_static! {
     pub static ref MESH_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use rafx::resources::vk_description::Format;
+        use rafx::api::RafxFormat;
 
         VertexDataLayout::build_vertex_layout(&MeshVertex::default(), |builder, vertex| {
-            builder.add_member(&vertex.position, "POSITION", Format::R32G32B32_SFLOAT);
-            builder.add_member(&vertex.normal, "NORMAL", Format::R32G32B32_SFLOAT);
-            builder.add_member(&vertex.tangent, "TANGENT", Format::R32G32B32A32_SFLOAT);
-            builder.add_member(&vertex.tex_coord, "TEXCOORD", Format::R32G32_SFLOAT);
-        }).into_set()
+            builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+            builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
+            builder.add_member(&vertex.tangent, "TANGENT", RafxFormat::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+        }).into_set(RafxPrimitiveTopology::TriangleList)
     };
 }
 

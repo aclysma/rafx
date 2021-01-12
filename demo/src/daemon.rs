@@ -65,7 +65,6 @@ fn parse_socket_addr(s: &str) -> std::result::Result<SocketAddr, AddrParseError>
 pub fn run(opt: AssetDaemonOpt) {
     AssetDaemon::default()
         .with_importer("pipeline", rafx::assets::PipelineImporter)
-        .with_importer("renderpass", rafx::assets::RenderpassImporter)
         .with_importer("sampler", rafx::assets::SamplerImporter)
         .with_importer("material", rafx::assets::MaterialImporter)
         .with_importer("materialinstance", rafx::assets::MaterialInstanceImporter)

@@ -2,6 +2,7 @@ use crate::{
     MergedFrameSubmitNodes, RenderFeatureIndex, RenderPhase, RenderPhaseIndex, RenderRegistry,
     RenderView, SubmitNodeId,
 };
+use rafx_api::RafxResult;
 
 pub trait FeatureCommandWriter<WriteContextT> {
     fn apply_setup(
@@ -9,20 +10,20 @@ pub trait FeatureCommandWriter<WriteContextT> {
         write_context: &mut WriteContextT,
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
-    );
+    ) -> RafxResult<()>;
     fn render_element(
         &self,
         write_context: &mut WriteContextT,
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
-    );
+    ) -> RafxResult<()>;
     fn revert_setup(
         &self,
         write_context: &mut WriteContextT,
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
-    );
+    ) -> RafxResult<()>;
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
@@ -61,7 +62,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
         &self,
         view: &RenderView,
         write_context: &mut WriteContextT,
-    ) {
+    ) -> RafxResult<()> {
         let submit_nodes = self.submit_nodes.submit_nodes::<PhaseT>(view);
         let render_phase_index = PhaseT::render_phase_index();
 
@@ -74,7 +75,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                     self.feature_writers[previous_node_feature_index as usize]
                         .as_ref()
                         .unwrap()
-                        .revert_setup(write_context, view, render_phase_index);
+                        .revert_setup(write_context, view, render_phase_index)?;
                 }
 
                 // call apply setup
@@ -82,7 +83,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                 self.feature_writers[submit_node.feature_index() as usize]
                     .as_ref()
                     .unwrap()
-                    .apply_setup(write_context, view, render_phase_index);
+                    .apply_setup(write_context, view, render_phase_index)?;
 
                 previous_node_feature_index = submit_node.feature_index() as i32;
             }
@@ -102,7 +103,7 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
                     view,
                     render_phase_index,
                     submit_node.submit_node_id(),
-                );
+                )?;
         }
 
         if previous_node_feature_index != -1 {
@@ -111,7 +112,9 @@ impl<WriteContextT> PreparedRenderData<WriteContextT> {
             self.feature_writers[previous_node_feature_index as usize]
                 .as_ref()
                 .unwrap()
-                .revert_setup(write_context, view, render_phase_index);
+                .revert_setup(write_context, view, render_phase_index)?;
         }
+
+        Ok(())
     }
 }

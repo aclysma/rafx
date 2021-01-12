@@ -2,16 +2,9 @@ use super::RenderGraphContext;
 use crate::features::mesh::ShadowMapRenderView;
 use crate::phases::ShadowMapRenderPhase;
 use crate::render_contexts::RenderJobWriteContext;
-use ash::vk;
+use rafx::api::{RafxDepthStencilClearValue, RafxResourceType};
 use rafx::graph::*;
 use rafx::nodes::RenderView;
-use rafx::resources::{vk_description as dsc, VertexDataSetLayout};
-
-lazy_static::lazy_static! {
-    pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
-        VertexDataSetLayout::new(vec![])
-    };
-}
 
 pub(super) struct ShadowMapPass {
     pub(super) node: RenderGraphNodeId,
@@ -45,7 +38,7 @@ pub(super) fn shadow_map_passes(
                         )),
                         ..Default::default()
                     },
-                    dsc::ImageViewType::Type2D,
+                    Default::default(),
                 );
 
                 let shadow_map_pass = shadow_map_pass(context, render_view, depth_image, 0);
@@ -59,16 +52,17 @@ pub(super) fn shadow_map_passes(
                     cube_map_node,
                     RenderGraphImageConstraint {
                         format: Some(context.graph_config.depth_format),
-                        create_flags: vk::ImageCreateFlags::CUBE_COMPATIBLE,
                         layer_count: Some(6),
                         extents: Some(RenderGraphImageExtents::Custom(
                             render_view[0].extents_width(),
                             render_view[0].extents_height(),
                             1,
                         )),
+                        resource_type: RafxResourceType::TEXTURE_CUBE
+                            | RafxResourceType::RENDER_TARGET_ARRAY_SLICES,
                         ..Default::default()
                     },
-                    dsc::ImageViewType::Cube,
+                    Default::default(),
                 );
 
                 for i in 0..6 {
@@ -97,12 +91,12 @@ fn shadow_map_pass(
     let depth = context.graph.modify_depth_attachment(
         node,
         depth_image,
-        Some(vk::ClearDepthStencilValue {
+        Some(RafxDepthStencilClearValue {
             depth: 0.0,
             stencil: 0,
         }),
         RenderGraphImageConstraint::default(),
-        RenderGraphImageSubresourceRange::NoMipsSingleLayer(layer as u32),
+        RenderGraphImageViewOptions::array_slice(layer as u16),
     );
     context.graph.set_image_name(depth, "depth");
 
@@ -117,8 +111,7 @@ fn shadow_map_pass(
             let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
             user_context
                 .prepared_render_data
-                .write_view_phase::<ShadowMapRenderPhase>(&render_view, &mut write_context);
-            Ok(())
+                .write_view_phase::<ShadowMapRenderPhase>(&render_view, &mut write_context)
         });
 
     ShadowMapPass { node, depth }

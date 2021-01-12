@@ -1,0 +1,73 @@
+[package]
+name = "rafx-api"
+version = "0.1.0"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+raw-window-handle = "0.3"
+log = "0.4"
+
+# vulkan
+rafx-base = { path = "../rafx-base" }
+
+serde = { version = "1", features = ["serde_derive"], optional = true }
+crossbeam-channel = "0.4.2"
+bitflags = "1.2"
+fnv = "1.0"
+
+ash = ">=0.30"
+vk-mem = "0.2"
+backtrace = { version = "0.3", optional = true }
+ash-window = "0.5.0"
+
+# metal
+#metal = "0.20"
+#objc = "0.2.4"
+#raw-window-metal = "0.1.1"
+#cocoa = "0.23"
+#cocoa-foundation = "0.1.0"
+
+#foreign-types-shared = "0.1"
+
+# METAL DEPENDENCIES
+metal = { version = "0.20", optional = true }
+objc = { version = "0.2.4", features = ["exception"], optional = true }
+raw-window-metal = { version = "0.1.1", optional = true }
+cocoa-foundation = { version = "0.1.0", optional = true }
+
+profiling = "0.1.4"
+
+[dev-dependencies]
+env_logger = "0.6"
+legion = { version = "0.3.0", default-features = false }
+sdl2 = { version = ">=0.33", features = ["raw-window-handle", "bundled", "static-link"] }
+ash = ">=0.30"
+glam = "0.8.6"
+
+[features]
+default = ["rafx-vulkan", "serde-support"]
+rafx-vulkan = []
+static-vulkan = []
+rafx-metal = ["metal", "objc", "raw-window-metal", "cocoa-foundation"]
+serde-support = ["serde"]
+track-device-contexts = ["backtrace"]
+
+profile-with-puffin = ["profiling/profile-with-puffin"]
+profile-with-optick = ["profiling/profile-with-optick"]
+profile-with-superluminal = ["profiling/profile-with-superluminal"]
+profile-with-tracing = ["profiling/profile-with-tracing"]
+
+[[example]]
+name = "triangle"
+path = "examples/triangle/triangle.rs"
+required-features = ["rafx-vulkan"]
+
+[[example]]
+name = "metal_triangle"
+path = "examples/metal_triangle/metal_triangle.rs"
+required-features = ["rafx-metal"]
+

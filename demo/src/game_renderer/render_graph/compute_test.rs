@@ -1,8 +1,6 @@
 use rafx::graph::*;
 
 use super::RenderGraphContext;
-use ash::version::DeviceV1_0;
-use ash::vk;
 use rafx::resources::{ComputePipelineResource, ResourceArc};
 
 pub(super) struct ComputeTestPass {
@@ -49,11 +47,7 @@ pub(super) fn compute_test_pass(
                 .create_descriptor_set_allocator();
             let mut descriptor_set = descriptor_set_allocator
                 .create_dyn_descriptor_set_uninitialized(
-                    &test_compute_pipeline
-                        .get_raw()
-                        .pipeline_layout
-                        .get_raw()
-                        .descriptor_sets[0],
+                    &test_compute_pipeline.get_raw().descriptor_set_layouts[0],
                 )?;
 
             let positions = args.graph_context.buffer(position_buffer).unwrap();
@@ -65,31 +59,10 @@ pub(super) fn compute_test_pass(
             descriptor_set_allocator.flush_changes()?;
 
             // Draw calls
-            let command_buffer = args.command_buffer;
-            let device = args.graph_context.device_context().device();
-
-            unsafe {
-                device.cmd_bind_pipeline(
-                    command_buffer,
-                    vk::PipelineBindPoint::COMPUTE,
-                    test_compute_pipeline.get_raw().pipeline,
-                );
-
-                device.cmd_bind_descriptor_sets(
-                    command_buffer,
-                    vk::PipelineBindPoint::COMPUTE,
-                    test_compute_pipeline
-                        .get_raw()
-                        .pipeline_layout
-                        .get_raw()
-                        .pipeline_layout,
-                    0,
-                    &[descriptor_set.descriptor_set().get()],
-                    &[],
-                );
-
-                device.cmd_dispatch(command_buffer, 100, 1, 1);
-            }
+            let command_buffer = &args.command_buffer;
+            command_buffer.cmd_bind_pipeline(&*test_compute_pipeline.get_raw().pipeline)?;
+            descriptor_set.bind(command_buffer)?;
+            command_buffer.cmd_dispatch(100, 1, 1)?;
             Ok(())
         });
 

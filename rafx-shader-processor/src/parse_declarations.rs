@@ -5,7 +5,7 @@ use super::DeclarationText;
 use std::num::ParseIntError;
 use std::sync::Arc;
 
-use rafx_resources::vk_description as dsc;
+use rafx_api::RafxSamplerDef;
 
 #[derive(Default, Deserialize, Debug)]
 #[serde(rename = "export")]
@@ -17,7 +17,7 @@ pub(crate) struct UseInternalBufferAnnotation(/*pub(crate) u32*/);
 
 #[derive(Default, Deserialize, Debug)]
 #[serde(rename = "immutable_samplers")]
-pub(crate) struct ImmutableSamplersAnnotation(pub(crate) Vec<dsc::Sampler>);
+pub(crate) struct ImmutableSamplersAnnotation(pub(crate) Vec<RafxSamplerDef>);
 
 #[derive(Default, Deserialize, Debug)]
 #[serde(rename = "slot_name")]

@@ -1,5 +1,4 @@
-use rafx_resources::{ImageViewResource, ResourceArc};
-use serde::export::Formatter;
+use rafx_resources::{ImageResource, ImageViewResource, ResourceArc};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
@@ -32,7 +31,7 @@ pub struct ImageAssetData {
 impl std::fmt::Debug for ImageAssetData {
     fn fmt(
         &self,
-        f: &mut Formatter<'_>,
+        f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         f.debug_struct("Point")
             .field("width", &self.width)
@@ -45,5 +44,6 @@ impl std::fmt::Debug for ImageAssetData {
 #[derive(TypeUuid, Clone)]
 #[uuid = "7a67b850-17f9-4877-8a6e-293a1589bbd8"]
 pub struct ImageAsset {
+    pub image: ResourceArc<ImageResource>,
     pub image_view: ResourceArc<ImageViewResource>,
 }

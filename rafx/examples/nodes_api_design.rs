@@ -337,19 +337,23 @@ fn main() {
 
         println!("write view phase DemoOpaqueRenderPhase for main_view");
         prepared_render_data
-            .write_view_phase::<DemoOpaqueRenderPhase>(&main_view, &mut write_context);
+            .write_view_phase::<DemoOpaqueRenderPhase>(&main_view, &mut write_context)
+            .unwrap();
 
         println!("write view phase DemoTransparentRenderPhase for main_view");
         prepared_render_data
-            .write_view_phase::<DemoTransparentRenderPhase>(&main_view, &mut write_context);
+            .write_view_phase::<DemoTransparentRenderPhase>(&main_view, &mut write_context)
+            .unwrap();
 
         println!("write view phase DemoOpaqueRenderPhase for minimap_view");
         prepared_render_data
-            .write_view_phase::<DemoOpaqueRenderPhase>(&minimap_view, &mut write_context);
+            .write_view_phase::<DemoOpaqueRenderPhase>(&minimap_view, &mut write_context)
+            .unwrap();
 
         println!("write view phase DemoTransparentRenderPhase for minimap_view");
         prepared_render_data
-            .write_view_phase::<DemoTransparentRenderPhase>(&minimap_view, &mut write_context);
+            .write_view_phase::<DemoTransparentRenderPhase>(&minimap_view, &mut write_context)
+            .unwrap();
     }
 
     // Unregistration of render nodes/visibility objects is automatic when they drop out of scope

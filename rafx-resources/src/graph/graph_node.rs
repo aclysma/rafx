@@ -1,5 +1,6 @@
 use super::*;
 use crate::graph::graph_builder::RenderGraphQueue;
+use rafx_api::{RafxColorClearValue, RafxDepthStencilClearValue};
 use std::fmt::Formatter;
 
 //
@@ -57,7 +58,7 @@ pub enum RenderGraphPassAttachmentType {
 
 pub struct RenderGraphPassColorAttachmentInfo {
     pub attachment_type: RenderGraphPassAttachmentType,
-    pub clear_color_value: Option<vk::ClearColorValue>,
+    pub clear_color_value: Option<RafxColorClearValue>,
     pub read_image: Option<RenderGraphImageUsageId>,
     pub write_image: Option<RenderGraphImageUsageId>,
 }
@@ -77,7 +78,7 @@ impl std::fmt::Debug for RenderGraphPassColorAttachmentInfo {
 
 pub struct RenderGraphPassDepthAttachmentInfo {
     pub attachment_type: RenderGraphPassAttachmentType,
-    pub clear_depth_stencil_value: Option<vk::ClearDepthStencilValue>,
+    pub clear_depth_stencil_value: Option<RafxDepthStencilClearValue>,
     pub read_image: Option<RenderGraphImageUsageId>,
     pub write_image: Option<RenderGraphImageUsageId>,
     pub has_depth: bool,

@@ -2,8 +2,7 @@ use super::write::ImGuiCommandWriter;
 use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
 use crate::phases::UiRenderPhase;
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
-use ash::vk;
-use rafx::api_vulkan::VkBuffer;
+use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, ViewSubmitNodes,
@@ -59,12 +58,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             .draw_lists()
             .len();
 
-        let descriptor_set_layouts = &self
-            .imgui_material_pass
-            .get_raw()
-            .pipeline_layout
-            .get_raw()
-            .descriptor_sets;
+        let descriptor_set_layouts = &self.imgui_material_pass.get_raw().descriptor_set_layouts;
 
         let per_pass_descriptor_set = descriptor_set_allocator
             .create_descriptor_set(
@@ -92,32 +86,37 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepare
             for draw_list in draw_data.draw_lists() {
                 let vertex_buffer_size = draw_list.vertex_buffer().len() as u64
                     * std::mem::size_of::<imgui::DrawVert>() as u64;
-                let mut vertex_buffer = VkBuffer::new(
-                    &prepare_context.device_context,
-                    vk_mem::MemoryUsage::CpuOnly,
-                    vk::BufferUsageFlags::VERTEX_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                    vertex_buffer_size,
-                )
-                .unwrap();
+
+                let vertex_buffer = prepare_context
+                    .device_context
+                    .create_buffer(&RafxBufferDef {
+                        size: vertex_buffer_size,
+                        memory_usage: RafxMemoryUsage::CpuToGpu,
+                        resource_type: RafxResourceType::VERTEX_BUFFER,
+                        ..Default::default()
+                    })
+                    .unwrap();
+
                 vertex_buffer
-                    .write_to_host_visible_buffer(draw_list.vertex_buffer())
+                    .copy_to_host_visible_buffer(draw_list.vertex_buffer())
                     .unwrap();
                 let vertex_buffer = dyn_resource_allocator.insert_buffer(vertex_buffer);
 
                 let index_buffer_size = draw_list.index_buffer().len() as u64
                     * std::mem::size_of::<imgui::DrawIdx>() as u64;
-                let mut index_buffer = VkBuffer::new(
-                    &prepare_context.device_context,
-                    vk_mem::MemoryUsage::CpuOnly,
-                    vk::BufferUsageFlags::INDEX_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                    index_buffer_size,
-                )
-                .unwrap();
+
+                let index_buffer = prepare_context
+                    .device_context
+                    .create_buffer(&RafxBufferDef {
+                        size: index_buffer_size,
+                        memory_usage: RafxMemoryUsage::CpuToGpu,
+                        resource_type: RafxResourceType::INDEX_BUFFER,
+                        ..Default::default()
+                    })
+                    .unwrap();
 
                 index_buffer
-                    .write_to_host_visible_buffer(draw_list.index_buffer())
+                    .copy_to_host_visible_buffer(draw_list.index_buffer())
                     .unwrap();
                 let index_buffer = dyn_resource_allocator.insert_buffer(index_buffer);
 

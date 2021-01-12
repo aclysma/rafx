@@ -1,5 +1,5 @@
 use crate::graph::{RenderGraphNodeId, RenderGraphResourceName};
-use ash::vk;
+use rafx_api::RafxResourceType;
 
 /// Unique ID for a particular usage (read or write) of a specific buffer
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -57,8 +57,6 @@ pub struct RenderGraphBufferUsage {
     pub(super) user: RenderGraphBufferUser,
     pub(super) usage_type: RenderGraphBufferUsageType,
     pub(super) version: RenderGraphBufferVersionId,
-    pub(super) access_flags: vk::AccessFlags,
-    pub(super) stage_flags: vk::PipelineStageFlags,
 }
 
 /// Immutable, fully-specified attributes of a buffer. A *constraint* is partially specified and
@@ -66,8 +64,7 @@ pub struct RenderGraphBufferUsage {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RenderGraphBufferSpecification {
     pub size: u64,
-    pub usage_flags: vk::BufferUsageFlags,
-    // sharing mode - always exclusive
+    pub resource_type: RafxResourceType,
 }
 
 impl RenderGraphBufferSpecification {
@@ -93,7 +90,7 @@ impl RenderGraphBufferSpecification {
             return false;
         }
 
-        self.usage_flags |= other.usage_flags;
+        self.resource_type |= other.resource_type;
 
         true
     }
@@ -101,18 +98,27 @@ impl RenderGraphBufferSpecification {
 
 /// Constraints on a buffer. Constraints are set per-field and start out None (i.e. unconstrained)
 /// The rendergraph will derive specifications from the constraints
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct RenderGraphBufferConstraint {
     // Rename to RenderGraphBufferUsageConstraint?
     pub size: Option<u64>,
-    pub usage_flags: vk::BufferUsageFlags,
+    pub resource_type: RafxResourceType,
+}
+
+impl Default for RenderGraphBufferConstraint {
+    fn default() -> Self {
+        RenderGraphBufferConstraint {
+            size: None,
+            resource_type: RafxResourceType::UNDEFINED,
+        }
+    }
 }
 
 impl From<RenderGraphBufferSpecification> for RenderGraphBufferConstraint {
     fn from(specification: RenderGraphBufferSpecification) -> Self {
         RenderGraphBufferConstraint {
             size: Some(specification.size),
-            usage_flags: specification.usage_flags,
+            resource_type: specification.resource_type,
         }
     }
 }
@@ -125,7 +131,7 @@ impl RenderGraphBufferConstraint {
         } else {
             Some(RenderGraphBufferSpecification {
                 size: self.size.unwrap(),
-                usage_flags: self.usage_flags,
+                resource_type: self.resource_type,
             })
         }
     }
@@ -158,7 +164,7 @@ impl RenderGraphBufferConstraint {
             self.size = other.size;
         }
 
-        self.usage_flags |= other.usage_flags;
+        self.resource_type |= other.resource_type;
 
         true
     }
@@ -177,7 +183,7 @@ impl RenderGraphBufferConstraint {
             self.size = other.size;
         }
 
-        self.usage_flags |= other.usage_flags;
+        self.resource_type |= other.resource_type;
 
         complete_merge
     }

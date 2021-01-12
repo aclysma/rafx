@@ -250,7 +250,7 @@ fn process_glsl_shader(
 
     let reflected_entry_point = reflected_data
         .iter()
-        .find(|x| x.name == entry_point_name)
+        .find(|x| x.rafx_reflection.entry_point_name == entry_point_name)
         .ok_or_else(|| {
             format!(
                 "Could not find entry point {} in compiled shader file",
@@ -300,6 +300,14 @@ fn process_glsl_shader(
         log::trace!("{:?}: do not recompile optimized", glsl_file);
         unoptimized_compile_spirv_result.as_binary_u8().to_vec()
     };
+
+    //let mut msl_ast =
+    //    spirv_cross::spirv::Ast::<spirv_cross::msl::Target>::parse(&spirv_cross_module)?;
+    //let mut spirv_cross_msl_options = spirv_cross::msl::CompilerOptions::default();
+    //spirv_cross_msl_options.version = spirv_cross::msl::Version::V2_0;
+    //msl_ast.set_compiler_options(&spirv_cross_msl_options)?;
+    //let msl_compiled = msl_ast.compile()?;
+    //println!("{}", msl_compiled);
 
     // Don't worry about the return value
     log::trace!("{:?}: cook shader", glsl_file);

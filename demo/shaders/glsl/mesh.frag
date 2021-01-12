@@ -138,19 +138,11 @@ layout (set = 0, binding = 0) uniform PerViewData {
 //     (
 //         mag_filter: Linear,
 //         min_filter: Linear,
+//         mip_map_mode: Linear,
 //         address_mode_u: Repeat,
 //         address_mode_v: Repeat,
 //         address_mode_w: Repeat,
-//         anisotropy_enable: true,
 //         max_anisotropy: 16.0,
-//         border_color: IntOpaqueBlack,
-//         unnormalized_coordinates: false,
-//         compare_enable: false,
-//         compare_op: Always,
-//         mipmap_mode: Linear,
-//         mip_lod_bias: 0,
-//         min_lod: 0,
-//         max_lod: 1000
 //     )
 // ])]
 layout (set = 0, binding = 1) uniform sampler smp;
@@ -159,19 +151,13 @@ layout (set = 0, binding = 1) uniform sampler smp;
 //     (
 //         mag_filter: Linear,
 //         min_filter: Linear,
+//         mip_map_mode: Linear,
 //         address_mode_u: ClampToBorder,
 //         address_mode_v: ClampToBorder,
 //         address_mode_w: ClampToBorder,
 //         anisotropy_enable: true,
 //         max_anisotropy: 16.0,
-//         border_color: IntOpaqueBlack,
-//         unnormalized_coordinates: false,
-//         compare_enable: true,
 //         compare_op: Greater,
-//         mipmap_mode: Linear,
-//         mip_lod_bias: 0,
-//         min_lod: 0,
-//         max_lod: 1000
 //     )
 // ])]
 layout (set = 0, binding = 2) uniform sampler smp_depth;

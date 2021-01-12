@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 rafx-assets = { path = "../rafx-assets" }
 rafx-resources = { path = "../rafx-resources" }
+rafx-api = { path = "../rafx-api" }
 
 fnv = "1.0"
 structopt = "0.3"

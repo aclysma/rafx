@@ -1,10 +1,9 @@
-use ash::vk;
 use legion::*;
-use rafx::api_vulkan::VkDeviceContext;
+use rafx::api::RafxDeviceContext;
 use rafx::assets::AssetManager;
 use rafx::graph::VisitRenderpassNodeArgs;
-use rafx::resources::vk_description as dsc;
-use rafx::resources::{RenderPassResource, ResourceArc, ResourceContext};
+use rafx::resources::ResourceContext;
+use rafx::resources::{DynCommandBuffer, GraphicsPipelineRenderTargetMeta};
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,
@@ -29,13 +28,13 @@ impl RenderJobExtractContext {
 }
 
 pub struct RenderJobPrepareContext {
-    pub device_context: VkDeviceContext,
+    pub device_context: RafxDeviceContext,
     pub resource_context: ResourceContext,
 }
 
 impl RenderJobPrepareContext {
     pub fn new(
-        device_context: VkDeviceContext,
+        device_context: RafxDeviceContext,
         resource_context: ResourceContext,
     ) -> Self {
         RenderJobPrepareContext {
@@ -46,29 +45,26 @@ impl RenderJobPrepareContext {
 }
 
 pub struct RenderJobWriteContext {
-    pub device_context: VkDeviceContext,
+    pub device_context: RafxDeviceContext,
     pub resource_context: ResourceContext,
-    pub command_buffer: vk::CommandBuffer,
-    pub renderpass: ResourceArc<RenderPassResource>,
-    pub framebuffer_meta: dsc::FramebufferMeta,
+    pub command_buffer: DynCommandBuffer,
+    pub render_target_meta: GraphicsPipelineRenderTargetMeta,
     pub subpass_index: usize,
 }
 
 impl RenderJobWriteContext {
     pub fn new(
-        device_context: VkDeviceContext,
+        device_context: RafxDeviceContext,
         resource_context: ResourceContext,
-        command_buffer: vk::CommandBuffer,
-        renderpass: ResourceArc<RenderPassResource>,
-        framebuffer_meta: dsc::FramebufferMeta,
+        command_buffer: DynCommandBuffer,
+        render_target_meta: GraphicsPipelineRenderTargetMeta,
         subpass_index: usize,
     ) -> Self {
         RenderJobWriteContext {
             device_context,
             resource_context,
             command_buffer,
-            renderpass,
-            framebuffer_meta,
+            render_target_meta,
             subpass_index,
         }
     }
@@ -82,14 +78,8 @@ impl RenderJobWriteContext {
                 .graph_context
                 .resource_context()
                 .clone(),
-            visit_renderpass_args.command_buffer,
-            visit_renderpass_args.renderpass_resource.clone(),
-            visit_renderpass_args
-                .framebuffer_resource
-                .get_raw()
-                .framebuffer_key
-                .framebuffer_meta
-                .clone(),
+            visit_renderpass_args.command_buffer.clone(),
+            visit_renderpass_args.render_target_meta.clone(),
             visit_renderpass_args.subpass_index,
         )
     }

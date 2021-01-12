@@ -3,3 +3,4 @@
 Cargo.lock
 .idea
 .assets_db
+.DS_store

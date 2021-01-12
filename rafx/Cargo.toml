@@ -14,8 +14,7 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-api-vulkan = { path = "../rafx-api-vulkan", optional = true }
-rafx-api-vulkan-sdl2 = { path = "../rafx-api-vulkan-sdl2", optional = true }
+rafx-api = { path = "../rafx-api" }
 
 rafx-base = { path = "../rafx-base" }
 rafx-nodes = { path = "../rafx-nodes" }
@@ -23,53 +22,49 @@ rafx-assets = { path = "../rafx-assets", optional = true }
 rafx-resources = { path = "../rafx-resources" }
 rafx-visibility = { path = "../rafx-visibility" }
 
+raw-window-handle = { version = "0.3" }
+
+#foreign-types-shared = { version = "0.1", optional = true }
+
 log = "0.4"
 
 [dev-dependencies]
 env_logger = "0.6"
 legion = { version = "0.3.0", default-features = false }
-sdl2 = { version = ">=0.33" }
+sdl2 = { version = ">=0.33", features = ["raw-window-handle"] }
 ash = ">=0.30"
 glam = "0.8.6"
 
 [features]
-default = ["vulkan", "vulkan-sdl2"]
-vulkan = ["rafx-api-vulkan"]
-vulkan-sdl2 = ["rafx-api-vulkan-sdl2"]
-static-vulkan = ["rafx-api-vulkan/static-vulkan"]
+default = ["rafx-vulkan"]
+rafx-vulkan = []
+rafx-metal = []
+static-vulkan = ["rafx-api/static-vulkan"]
 assets = ["rafx-assets"]
 
 profile-with-puffin = [
     "rafx-resources/profile-with-puffin",
     "rafx-assets/profile-with-puffin",
-    "rafx-api-vulkan/profile-with-puffin"
+    "rafx-api/profile-with-puffin"
 ]
 
 profile-with-optick = [
     "rafx-resources/profile-with-optick",
     "rafx-assets/profile-with-optick",
-    "rafx-api-vulkan/profile-with-optick"
+    "rafx-api/profile-with-optick"
 ]
 
 profile-with-superluminal = [
     "rafx-resources/profile-with-superluminal",
     "rafx-assets/profile-with-superluminal",
-    "rafx-api-vulkan/profile-with-superluminal"
+    "rafx-api/profile-with-superluminal"
 ]
 
 profile-with-tracing = [
     "rafx-resources/profile-with-tracing",
     "rafx-assets/profile-with-tracing",
-    "rafx-api-vulkan/profile-with-tracing"
+    "rafx-api/profile-with-tracing"
 ]
-
-[[example]]
-name = "triangle_graph"
-required-features = []
-
-[[example]]
-name = "triangle"
-required-features = []
 
 [[example]]
 name = "nodes_api_design"

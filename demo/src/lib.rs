@@ -3,8 +3,7 @@
 
 use crate::imgui_support::Sdl2ImguiManager;
 use legion::*;
-use rafx::api_vulkan::VkDeviceContext;
-use rafx::api_vulkan_sdl2::Sdl2Window;
+use rafx::api::RafxResult;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseState;
@@ -106,7 +105,7 @@ pub struct DemoArgs {
     pub daemon_args: AssetDaemonArgs,
 }
 
-pub fn run(args: &DemoArgs) {
+pub fn run(args: &DemoArgs) -> RafxResult<()> {
     #[cfg(feature = "profile-with-tracy")]
     profiling::tracy_client::set_thread_name("Main Thread");
     #[cfg(feature = "profile-with-optick")]
@@ -143,7 +142,7 @@ pub fn run(args: &DemoArgs) {
 
     let sdl2_systems = init::sdl2_init();
     init::imgui_init(&mut resources, &sdl2_systems.window);
-    init::rendering_init(&mut resources, &sdl2_systems.window);
+    init::rendering_init(&mut resources, &sdl2_systems.window)?;
 
     log::info!("Starting window event loop");
     let mut event_pump = sdl2_systems
@@ -315,10 +314,12 @@ pub fn run(args: &DemoArgs) {
         //
         {
             profiling::scope!("Start Next Frame Render");
-            let window = Sdl2Window::new(&sdl2_systems.window);
             let game_renderer = resources.get::<GameRenderer>().unwrap();
+
+            let (window_width, window_height) = sdl2_systems.window.vulkan_drawable_size();
+
             game_renderer
-                .start_rendering_next_frame(&resources, &world, &window)
+                .start_rendering_next_frame(&resources, &world, window_width, window_height)
                 .unwrap();
         }
 
@@ -331,7 +332,7 @@ pub fn run(args: &DemoArgs) {
         profiling::finish_frame!();
     }
 
-    init::rendering_destroy(&mut resources);
+    init::rendering_destroy(&mut resources)
 }
 
 fn process_input(
@@ -363,9 +364,12 @@ fn process_input(
                         return false;
                     }
 
+                    #[cfg(feature = "rafx-vulkan")]
                     if keycode == Keycode::D {
                         let stats = resources
-                            .get::<VkDeviceContext>()
+                            .get::<RafxDeviceContext>()
+                            .unwrap()
+                            .vk_device_context()
                             .unwrap()
                             .allocator()
                             .calculate_stats()

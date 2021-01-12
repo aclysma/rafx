@@ -2,19 +2,15 @@ use super::ManagedDescriptorSet;
 use super::ManagedDescriptorSetPoolChunk;
 use super::{
     DescriptorSetArc, DescriptorSetElementKey, DescriptorSetPoolRequiredBufferInfo,
-    DescriptorSetWriteSet, FrameInFlightIndex, MAX_DESCRIPTORS_PER_POOL, MAX_FRAMES_IN_FLIGHT,
+    DescriptorSetWriteSet, FrameInFlightIndex, MAX_DESCRIPTOR_SETS_PER_POOL, MAX_FRAMES_IN_FLIGHT,
 };
 use crate::resources::resource_lookup::DescriptorSetLayoutResource;
 use crate::resources::ResourceArc;
-use crate::vk_description as dsc;
-use ash::prelude::VkResult;
-use ash::version::DeviceV1_0;
-use ash::vk;
+use crate::{ResourceDropSink, VkDescriptorPoolAllocator};
 use crossbeam_channel::{Receiver, Sender};
-use rafx_api_vulkan::{VkBuffer, VkDescriptorPoolAllocator, VkDeviceContext, VkResourceDropSink};
+use rafx_api::{RafxBuffer, RafxDescriptorSetArrayDef, RafxDeviceContext, RafxResult};
 use rafx_base::slab::{RawSlab, RawSlabKey};
 use std::collections::VecDeque;
-use std::mem::ManuallyDrop;
 
 struct PendingDescriptorSetDrop {
     slab_key: RawSlabKey<ManagedDescriptorSet>,
@@ -39,7 +35,7 @@ pub(super) struct ManagedDescriptorSetPool {
 
     // Defers dropping buffers
     //TODO: We defer dropping descriptor sets so we may not need to defer dropping buffers
-    buffer_drop_sink: VkResourceDropSink<ManuallyDrop<VkBuffer>>,
+    buffer_drop_sink: ResourceDropSink<RafxBuffer>,
 
     // Metadata about buffers that back data in descriptor sets (this is an opt-in feature per binding)
     buffer_infos: Vec<DescriptorSetPoolRequiredBufferInfo>,
@@ -54,50 +50,24 @@ pub(super) struct ManagedDescriptorSetPool {
 
 impl ManagedDescriptorSetPool {
     pub fn new(
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
     ) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
 
-        //
-        // This is a little gross but it creates the pool sizes required for the
-        // DescriptorPoolCreateInfo passed into create_descriptor_pool. Do it here once instead of
-        // in the allocator callback
-        //
-        let mut descriptor_counts = vec![0; dsc::DescriptorType::count()];
-        for desc in &descriptor_set_layout
-            .get_raw()
-            .descriptor_set_layout_def
-            .descriptor_set_layout_bindings
-        {
-            let ty: vk::DescriptorType = desc.descriptor_type.into();
-            assert!(desc.descriptor_count > 0);
-            descriptor_counts[ty.as_raw() as usize] +=
-                MAX_DESCRIPTORS_PER_POOL * desc.descriptor_count;
-        }
-
-        let mut pool_sizes = Vec::with_capacity(dsc::DescriptorType::count());
-        for (descriptor_type, count) in descriptor_counts.into_iter().enumerate() {
-            if count > 0 {
-                let pool_size = vk::DescriptorPoolSize::builder()
-                    .descriptor_count(count as u32)
-                    .ty(vk::DescriptorType::from_raw(descriptor_type as i32))
-                    .build();
-                pool_sizes.push(pool_size);
-            }
-        }
-
         // The allocator will produce descriptor sets as needed and destroy them after waiting a few
         // frames for them to finish any submits that reference them
+        let descriptor_set_layout_clone = descriptor_set_layout.clone();
         let descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
+            device_context,
             MAX_FRAMES_IN_FLIGHT as u32,
             std::u32::MAX, // No upper bound on pool count
-            move |device| {
-                let pool_builder = vk::DescriptorPoolCreateInfo::builder()
-                    .max_sets(MAX_DESCRIPTORS_PER_POOL)
-                    .pool_sizes(&pool_sizes);
-
-                unsafe { device.create_descriptor_pool(&*pool_builder, None) }
+            move |device_context| {
+                device_context.create_descriptor_set_array(&RafxDescriptorSetArrayDef {
+                    root_signature: &descriptor_set_layout_clone.get_raw().root_signature,
+                    set_index: descriptor_set_layout_clone.get_raw().set_index,
+                    array_length: MAX_DESCRIPTOR_SETS_PER_POOL as usize,
+                })
             },
         );
 
@@ -105,16 +75,20 @@ impl ManagedDescriptorSetPool {
         for binding in &descriptor_set_layout
             .get_raw()
             .descriptor_set_layout_def
-            .descriptor_set_layout_bindings
+            .bindings
         {
             if let Some(per_descriptor_size) = binding.internal_buffer_per_descriptor_size {
                 // 256 is the max allowed by the vulkan spec but we can improve this by using the
                 // actual hardware value given by device limits
 
                 //TODO: Should use min_storage_buffer_offset_alignment for storage buffers
-                let required_alignment =
-                    device_context.limits().min_uniform_buffer_offset_alignment as u32;
-                let per_descriptor_stride = rafx_api_vulkan::util::round_size_up_to_alignment_u32(
+                let required_alignment = device_context
+                    .vk_device_context()
+                    .unwrap()
+                    .limits()
+                    .min_uniform_buffer_offset_alignment
+                    as u32;
+                let per_descriptor_stride = rafx_base::memory::round_size_up_to_alignment_u32(
                     per_descriptor_size,
                     required_alignment,
                 );
@@ -122,32 +96,32 @@ impl ManagedDescriptorSetPool {
                 buffer_infos.push(DescriptorSetPoolRequiredBufferInfo {
                     per_descriptor_size,
                     per_descriptor_stride,
-                    descriptor_type: binding.descriptor_type,
+                    descriptor_type: binding.resource.resource_type,
                     dst_element: DescriptorSetElementKey {
-                        dst_binding: binding.binding,
+                        dst_binding: binding.resource.binding,
                     },
                 })
             }
         }
 
         ManagedDescriptorSetPool {
-            slab: RawSlab::with_capacity(MAX_DESCRIPTORS_PER_POOL),
+            slab: RawSlab::with_capacity(MAX_DESCRIPTOR_SETS_PER_POOL),
             drop_tx,
             drop_rx,
             descriptor_pool_allocator,
             descriptor_set_layout,
             chunks: Default::default(),
             buffer_infos,
-            buffer_drop_sink: VkResourceDropSink::new(MAX_FRAMES_IN_FLIGHT as u32),
+            buffer_drop_sink: ResourceDropSink::new(MAX_FRAMES_IN_FLIGHT as u32),
             pending_drops: Default::default(),
         }
     }
 
     pub fn insert(
         &mut self,
-        device_context: &VkDeviceContext,
+        device_context: &RafxDeviceContext,
         write_set: DescriptorSetWriteSet,
-    ) -> VkResult<DescriptorSetArc> {
+    ) -> RafxResult<DescriptorSetArc> {
         let registered_set = ManagedDescriptorSet {
             // Don't have anything to store yet
             //write_set: write_set.clone()
@@ -155,34 +129,37 @@ impl ManagedDescriptorSetPool {
 
         // Use the slab allocator to find an unused index, determine the chunk index from that
         let slab_key = self.slab.allocate(registered_set);
-        let chunk_index = (slab_key.index() / MAX_DESCRIPTORS_PER_POOL) as usize;
+        let chunk_index = (slab_key.index() / MAX_DESCRIPTOR_SETS_PER_POOL) as usize;
 
         // Add more chunks if necessary
         while chunk_index as usize >= self.chunks.len() {
             self.chunks.push(ManagedDescriptorSetPoolChunk::new(
                 device_context,
                 &self.buffer_infos,
-                self.descriptor_set_layout.get_raw().descriptor_set_layout,
+                &self.descriptor_set_layout,
                 &mut self.descriptor_pool_allocator,
             )?);
         }
 
         // Insert the write into the chunk, it will be applied when update() is next called on it
-        let descriptor_sets_per_frame =
+        let descriptor_set_handle =
             self.chunks[chunk_index].schedule_write_set(slab_key, write_set);
 
         // Return the ref-counted descriptor set
-        let descriptor_set =
-            DescriptorSetArc::new(slab_key, descriptor_sets_per_frame, self.drop_tx.clone());
-        Ok(descriptor_set)
+        let descriptor_set_arc = DescriptorSetArc::new(
+            slab_key,
+            self.drop_tx.clone(),
+            &self.descriptor_set_layout,
+            descriptor_set_handle,
+        );
+        Ok(descriptor_set_arc)
     }
 
     #[profiling::function]
     pub fn flush_changes(
         &mut self,
-        device_context: &VkDeviceContext,
         frame_in_flight_index: FrameInFlightIndex,
-    ) -> VkResult<()> {
+    ) -> RafxResult<()> {
         // Route messages that indicate a dropped descriptor set to the chunk that owns it
         for dropped in self.drop_rx.try_iter() {
             self.pending_drops.push_back(PendingDescriptorSetDrop {
@@ -221,17 +198,16 @@ impl ManagedDescriptorSetPool {
 
         // Commit pending writes/removes, rotate to the descriptor set for the next frame
         for chunk in &mut self.chunks {
-            chunk.update(device_context);
+            chunk.update()?;
         }
 
-        self.descriptor_pool_allocator
-            .update(device_context.device())
+        self.descriptor_pool_allocator.update()
     }
 
     pub fn destroy(
         &mut self,
-        device_context: &VkDeviceContext,
-    ) -> VkResult<()> {
+        device_context: &RafxDeviceContext,
+    ) -> RafxResult<()> {
         for chunk in &mut self.chunks {
             chunk.destroy(
                 &mut self.descriptor_pool_allocator,
@@ -239,9 +215,8 @@ impl ManagedDescriptorSetPool {
             );
         }
 
-        self.descriptor_pool_allocator
-            .destroy(device_context.device())?;
-        self.buffer_drop_sink.destroy(&device_context)?;
+        self.descriptor_pool_allocator.destroy()?;
+        self.buffer_drop_sink.destroy(device_context)?;
         self.chunks.clear();
         Ok(())
     }

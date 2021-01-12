@@ -1,7 +1,6 @@
 use super::DescriptorSetAllocator;
-use ash::prelude::VkResult;
 use crossbeam_channel::{Receiver, Sender};
-use rafx_api_vulkan::VkDeviceContext;
+use rafx_api::{RafxDeviceContext, RafxResult};
 use std::collections::VecDeque;
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -60,7 +59,7 @@ impl Drop for DescriptorSetAllocatorRef {
 // A pool of descriptor set allocators. The allocators themselves contain pools for descriptor set
 // layouts.
 pub struct DescriptorSetAllocatorManagerInner {
-    device_context: VkDeviceContext,
+    device_context: RafxDeviceContext,
     allocators: Mutex<VecDeque<Box<DescriptorSetAllocator>>>,
     drop_tx: Sender<DescriptorSetAllocatorRefInner>,
     drop_rx: Receiver<DescriptorSetAllocatorRefInner>,
@@ -68,7 +67,7 @@ pub struct DescriptorSetAllocatorManagerInner {
 }
 
 impl DescriptorSetAllocatorManagerInner {
-    fn new(device_context: VkDeviceContext) -> Self {
+    fn new(device_context: RafxDeviceContext) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
 
         DescriptorSetAllocatorManagerInner {
@@ -142,7 +141,7 @@ impl DescriptorSetAllocatorManagerInner {
         }
     }
 
-    fn destroy(&self) -> VkResult<()> {
+    fn destroy(&self) -> RafxResult<()> {
         let frame_index = self.frame_index.load(Ordering::Relaxed);
         let mut allocators = self.allocators.lock().unwrap();
 
@@ -171,7 +170,7 @@ pub struct DescriptorSetAllocatorManager {
 }
 
 impl DescriptorSetAllocatorManager {
-    pub fn new(device_context: &VkDeviceContext) -> Self {
+    pub fn new(device_context: &RafxDeviceContext) -> Self {
         DescriptorSetAllocatorManager {
             inner: Arc::new(DescriptorSetAllocatorManagerInner::new(
                 device_context.clone(),
@@ -194,7 +193,7 @@ impl DescriptorSetAllocatorManager {
         self.inner.on_frame_complete();
     }
 
-    pub fn destroy(&mut self) -> VkResult<()> {
+    pub fn destroy(&mut self) -> RafxResult<()> {
         self.inner.destroy()
     }
 }

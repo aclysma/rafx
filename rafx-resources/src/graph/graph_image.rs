@@ -1,6 +1,5 @@
 use super::*;
-use crate::vk_description as dsc;
-use ash::vk;
+use rafx_api::{RafxExtents3D, RafxFormat, RafxResourceType, RafxSampleCount, RafxTextureBindType};
 
 /// Unique ID for a particular usage (read or write) of a specific image
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -52,8 +51,8 @@ impl RenderGraphImageResource {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RenderGraphImageView {
     pub(super) physical_image: PhysicalImageId,
-    pub(super) subresource_range: dsc::ImageSubresourceRange,
-    pub(super) view_type: dsc::ImageViewType,
+    pub(super) format: RafxFormat,
+    pub(super) view_options: RenderGraphImageViewOptions,
 }
 
 /// Defines what created a RenderGraphImageUsage
@@ -71,32 +70,21 @@ pub enum RenderGraphImageExtents {
 }
 
 impl RenderGraphImageExtents {
-    pub fn into_vk_extent_3d(
+    pub fn into_rafx_extents(
         self,
-        swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    ) -> vk::Extent3D {
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> RafxExtents3D {
         match self {
-            RenderGraphImageExtents::MatchSurface => vk::Extent3D {
+            RenderGraphImageExtents::MatchSurface => RafxExtents3D {
                 width: swapchain_surface_info.extents.width,
                 height: swapchain_surface_info.extents.height,
                 depth: 1,
             },
-            RenderGraphImageExtents::Custom(width, height, depth) => vk::Extent3D {
+            RenderGraphImageExtents::Custom(width, height, depth) => RafxExtents3D {
                 width,
                 height,
                 depth,
             },
-        }
-    }
-
-    pub fn into_vk_extent_2d(
-        self,
-        swapchain_surface_info: &dsc::SwapchainSurfaceInfo,
-    ) -> vk::Extent2D {
-        let extent_3d = self.into_vk_extent_3d(swapchain_surface_info);
-        vk::Extent2D {
-            width: extent_3d.width,
-            height: extent_3d.height,
         }
     }
 }
@@ -107,49 +95,28 @@ impl Default for RenderGraphImageExtents {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum RenderGraphImageSubresourceRange {
-    // Use the entire image
-    AllMipsAllLayers,
-    // Mip 0 with given layer
-    NoMipsSingleLayer(u32),
-    // Mip 0 layer 0
-    NoMipsNoLayers,
-    Custom(dsc::ImageSubresourceRange),
+#[derive(Default, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct RenderGraphImageViewOptions {
+    pub texture_bind_type: Option<RafxTextureBindType>,
+    pub array_slice: Option<u16>,
+    pub mip_slice: Option<u8>,
 }
 
-impl RenderGraphImageSubresourceRange {
-    pub fn into_subresource_range(
-        &self,
-        specification: &RenderGraphImageSpecification,
-    ) -> dsc::ImageSubresourceRange {
-        match self {
-            RenderGraphImageSubresourceRange::AllMipsAllLayers => {
-                dsc::ImageSubresourceRange::default_all_mips_all_layers(
-                    dsc::ImageAspectFlag::from_vk_image_aspect_flags(specification.aspect_flags),
-                    specification.mip_count,
-                    specification.layer_count,
-                )
-            }
-            RenderGraphImageSubresourceRange::NoMipsSingleLayer(layer) => {
-                dsc::ImageSubresourceRange::default_no_mips_single_layer(
-                    dsc::ImageAspectFlag::from_vk_image_aspect_flags(specification.aspect_flags),
-                    *layer,
-                )
-            }
-            RenderGraphImageSubresourceRange::NoMipsNoLayers => {
-                dsc::ImageSubresourceRange::default_no_mips_no_layers(
-                    dsc::ImageAspectFlag::from_vk_image_aspect_flags(specification.aspect_flags),
-                )
-            }
-            RenderGraphImageSubresourceRange::Custom(custom) => custom.clone(),
+impl RenderGraphImageViewOptions {
+    pub fn array_slice(array_slice: u16) -> Self {
+        RenderGraphImageViewOptions {
+            texture_bind_type: None,
+            array_slice: Some(array_slice),
+            mip_slice: None,
         }
     }
-}
 
-impl Default for RenderGraphImageSubresourceRange {
-    fn default() -> Self {
-        RenderGraphImageSubresourceRange::AllMipsAllLayers
+    pub fn mip_slice(mip_slice: u8) -> Self {
+        RenderGraphImageViewOptions {
+            texture_bind_type: None,
+            array_slice: None,
+            mip_slice: Some(mip_slice),
+        }
     }
 }
 
@@ -160,12 +127,7 @@ pub struct RenderGraphImageUsage {
     pub(super) usage_type: RenderGraphImageUsageType,
     pub(super) version: RenderGraphImageVersionId,
 
-    pub(super) preferred_layout: dsc::ImageLayout,
-    pub(super) subresource_range: RenderGraphImageSubresourceRange,
-    pub(super) view_type: dsc::ImageViewType,
-    //pub(super) access_flags: vk::AccessFlags,
-    //pub(super) stage_flags: vk::PipelineStageFlags,
-    //pub(super) image_aspect_flags: vk::ImageAspectFlags,
+    pub(super) view_options: RenderGraphImageViewOptions,
 }
 
 /// Immutable, fully-specified attributes of an image. A *constraint* is partially specified and
@@ -173,11 +135,9 @@ pub struct RenderGraphImageUsage {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RenderGraphImageSpecification {
     // Rename to RenderGraphImageUsageSpecification?
-    pub samples: vk::SampleCountFlags,
-    pub format: vk::Format,
-    pub aspect_flags: vk::ImageAspectFlags,
-    pub usage_flags: vk::ImageUsageFlags,
-    pub create_flags: vk::ImageCreateFlags,
+    pub samples: RafxSampleCount,
+    pub format: RafxFormat,
+    pub resource_type: RafxResourceType,
     pub extents: RenderGraphImageExtents,
     pub layer_count: u32,
     pub mip_count: u32,
@@ -223,8 +183,7 @@ impl RenderGraphImageSpecification {
             return false;
         }
 
-        self.aspect_flags |= other.aspect_flags;
-        self.usage_flags |= other.usage_flags;
+        self.resource_type |= other.resource_type;
 
         true
     }
@@ -235,13 +194,10 @@ impl RenderGraphImageSpecification {
 #[derive(Default, Clone, Debug)]
 pub struct RenderGraphImageConstraint {
     // Rename to RenderGraphImageUsageConstraint?
-    pub samples: Option<vk::SampleCountFlags>,
-    pub format: Option<vk::Format>,
-    pub aspect_flags: vk::ImageAspectFlags,
-    pub usage_flags: vk::ImageUsageFlags,
-    pub create_flags: vk::ImageCreateFlags,
+    pub samples: Option<RafxSampleCount>,
+    pub format: Option<RafxFormat>,
+    pub resource_type: RafxResourceType,
     pub extents: Option<RenderGraphImageExtents>,
-    //pub dimensions: vk::ImageSubresource
     pub layer_count: Option<u32>,
     pub mip_count: Option<u32>,
 }
@@ -251,12 +207,10 @@ impl From<RenderGraphImageSpecification> for RenderGraphImageConstraint {
         RenderGraphImageConstraint {
             samples: Some(specification.samples),
             format: Some(specification.format),
+            resource_type: specification.resource_type,
             layer_count: Some(specification.layer_count),
             mip_count: Some(specification.mip_count),
             extents: Some(specification.extents),
-            aspect_flags: specification.aspect_flags,
-            usage_flags: specification.usage_flags,
-            create_flags: specification.create_flags,
         }
     }
 }
@@ -268,16 +222,14 @@ impl RenderGraphImageConstraint {
             None
         } else {
             Some(RenderGraphImageSpecification {
-                samples: self.samples.unwrap_or(vk::SampleCountFlags::TYPE_1),
+                samples: self.samples.unwrap_or(RafxSampleCount::SampleCount1),
                 format: self.format.unwrap(),
                 layer_count: self.layer_count.unwrap_or(1),
                 mip_count: self.mip_count.unwrap_or(1),
                 extents: self
                     .extents
                     .unwrap_or(RenderGraphImageExtents::MatchSurface),
-                aspect_flags: self.aspect_flags,
-                usage_flags: self.usage_flags,
-                create_flags: self.create_flags,
+                resource_type: self.resource_type,
             })
         }
     }
@@ -340,9 +292,7 @@ impl RenderGraphImageConstraint {
             self.extents = other.extents;
         }
 
-        self.aspect_flags |= other.aspect_flags;
-        self.usage_flags |= other.usage_flags;
-        self.create_flags |= other.create_flags;
+        self.resource_type |= other.resource_type;
 
         true
     }
@@ -391,9 +341,7 @@ impl RenderGraphImageConstraint {
             self.extents = other.extents;
         }
 
-        self.aspect_flags |= other.aspect_flags;
-        self.usage_flags |= other.usage_flags;
-        self.create_flags |= other.create_flags;
+        self.resource_type |= other.resource_type;
 
         complete_merge
     }

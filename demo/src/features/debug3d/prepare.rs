@@ -5,8 +5,7 @@ use crate::features::debug3d::{
 };
 use crate::phases::OpaqueRenderPhase;
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
-use ash::vk;
-use rafx::api_vulkan::VkBuffer;
+use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, ViewSubmitNodes,
@@ -30,7 +29,7 @@ impl Debug3dPrepareJobImpl {
     }
 }
 
-impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepareJobImpl {
+impl<'a> PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepareJobImpl {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
@@ -45,12 +44,9 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
         let mut descriptor_set_allocator = prepare_context
             .resource_context
             .create_descriptor_set_allocator();
-        let per_view_descriptor_set_layout = &self
-            .debug3d_material_pass
-            .get_raw()
-            .pipeline_layout
-            .get_raw()
-            .descriptor_sets[shaders::debug_vert::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX];
+        let per_view_descriptor_set_layout =
+            &self.debug3d_material_pass.get_raw().descriptor_set_layouts
+                [shaders::debug_vert::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX];
 
         let mut per_view_descriptor_sets = Vec::default();
         for view in views {
@@ -108,17 +104,19 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepa
         let vertex_buffer = if !draw_calls.is_empty() {
             let vertex_buffer_size =
                 vertex_list.len() as u64 * std::mem::size_of::<Debug3dVertex>() as u64;
-            let mut vertex_buffer = VkBuffer::new(
-                &prepare_context.device_context,
-                vk_mem::MemoryUsage::CpuToGpu,
-                vk::BufferUsageFlags::VERTEX_BUFFER,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                vertex_buffer_size,
-            )
-            .unwrap();
+
+            let vertex_buffer = prepare_context
+                .device_context
+                .create_buffer(&RafxBufferDef {
+                    size: vertex_buffer_size,
+                    memory_usage: RafxMemoryUsage::CpuToGpu,
+                    resource_type: RafxResourceType::VERTEX_BUFFER,
+                    ..Default::default()
+                })
+                .unwrap();
 
             vertex_buffer
-                .write_to_host_visible_buffer(vertex_list.as_slice())
+                .copy_to_host_visible_buffer(vertex_list.as_slice())
                 .unwrap();
 
             Some(dyn_resource_allocator.insert_buffer(vertex_buffer))

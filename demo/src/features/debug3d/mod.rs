@@ -16,6 +16,7 @@ mod prepare;
 mod write;
 
 pub use debug3d_resource::*;
+use rafx::api::RafxPrimitiveTopology;
 
 pub fn create_debug3d_extract_job(
     debug3d_material: &Handle<MaterialAsset>
@@ -35,12 +36,12 @@ pub struct Debug3dVertex {
 
 lazy_static::lazy_static! {
     pub static ref DEBUG_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use rafx::resources::vk_description::Format;
+        use rafx::api::RafxFormat;
 
         VertexDataLayout::build_vertex_layout(&Debug3dVertex::default(), |builder, vertex| {
-            builder.add_member(&vertex.pos, "POSITION", Format::R32G32B32_SFLOAT);
-            builder.add_member(&vertex.color, "COLOR", Format::R32G32B32A32_SFLOAT);
-        }).into_set()
+            builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+            builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
+        }).into_set(RafxPrimitiveTopology::LineStrip)
     };
 }
 
