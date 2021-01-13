@@ -6,6 +6,18 @@ use crate::{
     RafxQueueType, RafxResult, RafxSemaphore, RafxSwapchain,
 };
 
+/// A queue allows work to be submitted to the GPU
+///
+/// Work that has been submitted to the same queue has some ordering guarantees.
+///
+/// Resources may only be accessed from one queue type at a time. If a resource is to be used by
+/// a different queue, a memory barrier on both the "sending" and "receiving" queue is required.
+///
+/// The default configuration is to return the same underlying queue every time create_queue() is
+/// called. A mutex protects against multiple threads submitting work to the queue at the same time.
+///
+/// Most applications can just create and use graphics queues freely, relying on the API returning
+/// the same underlying queue every time.
 #[derive(Clone, Debug)]
 pub enum RafxQueue {
     Vk(RafxQueueVulkan),

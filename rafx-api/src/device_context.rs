@@ -4,7 +4,10 @@ use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
 use raw_window_handle::HasRawWindowHandle;
 
-/// Create a device using the given API. Generally processes only need one device.
+/// A cloneable, thread-safe handle used to create graphics resources.
+///
+/// All device contexts, and resources created from them, must be dropped before the `RafxApi`
+/// object that they came from is dropped or destroyed.
 #[derive(Clone)]
 pub enum RafxDeviceContext {
     Vk(RafxDeviceContextVulkan),

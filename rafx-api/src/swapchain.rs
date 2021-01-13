@@ -5,6 +5,7 @@ use crate::{
     RafxFence, RafxFormat, RafxResult, RafxSemaphore, RafxSwapchainDef, RafxSwapchainImage,
 };
 
+/// A set of images that act as a "backbuffer" of a window.
 pub enum RafxSwapchain {
     Vk(RafxSwapchainVulkan),
     #[cfg(feature = "rafx-metal")]

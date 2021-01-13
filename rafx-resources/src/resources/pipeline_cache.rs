@@ -399,10 +399,10 @@ impl GraphicsPipelineCache {
 
     pub fn precache_pipelines_for_all_phases(&self) -> RafxResult<()> {
         let mut guard = self.inner.lock().unwrap();
-        let inner = &mut *guard;
+        let _inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
-            inner.lock_call_count += 1;
+            _inner.lock_call_count += 1;
         }
 
         //TODO: Avoid iterating everything all the time

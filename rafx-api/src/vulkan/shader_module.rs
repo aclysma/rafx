@@ -1,6 +1,6 @@
 use crate::RafxResult;
 
-use crate::vk;
+use ash::vk;
 use crate::vulkan::RafxDeviceContextVulkan;
 use ash::version::DeviceV1_0;
 use std::sync::Arc;

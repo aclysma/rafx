@@ -4,7 +4,17 @@ use crate::vulkan::{RafxApiDefVulkan, RafxApiVulkan};
 use crate::*;
 use raw_window_handle::HasRawWindowHandle;
 
-/// Create a device using the given API. Generally processes only need one device.
+/// Primary entry point to using the API. Use the `new_*` functions to initialize the desired
+/// backend.
+///
+/// **This API object must persist for the lifetime of all objects created through it.** This
+/// is verified at runtime when the API object is destroyed - either explicitly via `destroy()` or
+/// by dropping the object.
+///
+/// Once the API object is created, use `device_context()` to obtain a cloneable handle to the
+/// device. The `RafxDeviceContext` is the primary way of interacting with the API once it has been
+/// initialized. These contexts and all other objects created through them must be dropped before
+/// dropping `RafxApi` or calling `RafxApi::destroy()`.
 pub enum RafxApi {
     Vk(RafxApiVulkan),
     #[cfg(feature = "rafx-metal")]
@@ -23,6 +33,15 @@ impl RafxApi {
         )?))
     }
 
+    /// Create a cloneable handle to the device. Most of the interaction with the graphics backend
+    /// is done through this handle.
+    ///
+    /// The `RafxDeviceContext` does not need to be kept in scope. As long as the `RafxApi` remains
+    /// in scope, dropping the device context does not do anything, and it can be obtained again
+    /// by calling this function.
+    ///
+    /// This context is intended to be safely shared across threads. This function is thread-safe,
+    /// and generally all APIs on the device context itself are thread-safe.
     pub fn device_context(&self) -> RafxDeviceContext {
         match self {
             RafxApi::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
@@ -31,6 +50,11 @@ impl RafxApi {
         }
     }
 
+    /// Destroys the graphics API instance. Any `RafxDeviceContext` created through this API, and
+    /// any object created through those device contexts, must be dropped before calling destroy()
+    ///
+    /// `destroy()` is automatically called if RafxApi is dropped and it has not yet been called, so
+    /// it is not necessary to call this function explicitly.
     pub fn destroy(&mut self) -> RafxResult<()> {
         match self {
             RafxApi::Vk(inner) => inner.destroy(),
@@ -39,7 +63,9 @@ impl RafxApi {
         }
     }
 
-    pub fn vk_device(&self) -> Option<&RafxApiVulkan> {
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
+    pub fn vk_api(&self) -> Option<&RafxApiVulkan> {
         match self {
             RafxApi::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
@@ -47,8 +73,10 @@ impl RafxApi {
         }
     }
 
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
     #[cfg(feature = "rafx-metal")]
-    pub fn metal_device(&self) -> Option<&RafxApiMetal> {
+    pub fn metal_api(&self) -> Option<&RafxApiMetal> {
         match self {
             RafxApi::Vk(_) => None,
             RafxApi::Metal(inner) => Some(inner),

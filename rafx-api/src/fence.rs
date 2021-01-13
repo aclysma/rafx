@@ -3,6 +3,18 @@ use crate::metal::RafxFenceMetal;
 use crate::vulkan::RafxFenceVulkan;
 use crate::{RafxFenceStatus, RafxResult};
 
+/// A GPU -> CPU synchronization mechanism.
+///
+/// A fence can be in the following states:
+///  * Unsubmitted - Initial state when created
+///  * Incomplete - Once a command buffer is submitted, the fence is marked as incomplete
+///  * Complete - The GPU can mark a fence as complete to signal completion of work.
+///
+/// The status of the fence returns to Unsubmitted when get_fence_status() is called while in a
+/// completed state. In other words, the Complete status can only be returned one time unless the
+/// fence is submitted again.
+///
+/// Fences must not be dropped if they are in use by the GPU.
 pub enum RafxFence {
     Vk(RafxFenceVulkan),
     #[cfg(feature = "rafx-metal")]

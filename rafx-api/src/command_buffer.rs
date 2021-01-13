@@ -8,6 +8,27 @@ use crate::{
     RafxResult, RafxRootSignature, RafxTexture, RafxTextureBarrier, RafxVertexBufferBinding,
 };
 
+/// A command buffer contains a list of work for the GPU to do.
+///
+/// It cannot be created directly. It must be allocated out of a pool.
+///
+/// The command pool and all command buffers allocated from it share memory. The standard rust rules
+/// about mutability apply but are not enforced at compile time or runtime.
+///  * Do not modify two command buffers from the same pool concurrently
+///  * Do not allocate from a command pool while modifying one of its command buffers
+///  * Once a command buffer is submitted to the GPU, do not modify its pool, or any command buffers
+///    created from it, until the GPU completes its work.
+///
+/// In general, do not modify textures, buffers, command buffers, or other GPU resources while a
+/// command buffer referencing them is submitted. Additionally, these resources must persist for
+/// the entire duration of the submitted workload.
+///
+/// Semaphores and fences can be used for achieve the more fine-grained scheduling necessary to
+/// modify resources that are referenced from a submitted and in-use command buffer.
+///
+/// Command pools MAY be dropped if they are in use by the GPU, but the command pool must not be
+/// dropped. Dropped command pools that are not returned to the pool will not be available for
+/// reuse.
 #[derive(Debug)]
 pub enum RafxCommandBuffer {
     Vk(RafxCommandBufferVulkan),

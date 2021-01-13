@@ -2,6 +2,14 @@
 use crate::metal::RafxSemaphoreMetal;
 use crate::vulkan::RafxSemaphoreVulkan;
 
+/// A GPU -> GPU synchronization mechanism.
+///
+/// A semaphore is either "signalled" or "unsignalled". Only the GPU can read or write this status.
+///
+/// Semaphores can be used to queue multiple dependent units of work to the GPU where one unit of
+/// work cannot start until another unit of work completes.
+///
+/// Semaphores must not be dropped if they are in use by the GPU.
 pub enum RafxSemaphore {
     Vk(RafxSemaphoreVulkan),
     #[cfg(feature = "rafx-metal")]

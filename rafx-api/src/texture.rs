@@ -3,6 +3,9 @@ use crate::metal::RafxTextureMetal;
 use crate::vulkan::RafxTextureVulkan;
 use crate::RafxTextureDef;
 
+/// An image that can be used by the GPU.
+///
+/// Textures must not be dropped if they are in use by the GPU.
 #[derive(Debug)]
 pub enum RafxTexture {
     Vk(RafxTextureVulkan),

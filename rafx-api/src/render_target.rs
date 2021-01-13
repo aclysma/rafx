@@ -3,9 +3,21 @@ use crate::metal::RafxRenderTargetMetal;
 use crate::vulkan::RafxRenderTargetVulkan;
 use crate::{RafxRenderTargetDef, RafxTexture};
 
-// This is clone because the swapchain provides images with other resources (like vulkan image
-// views) and it's better to share those than duplicate. As long as I'm having to Arc them, might
-// as well expose cloneable
+/// Render targets are writable textures that the GPU can render to.
+///
+/// The general flow is to bind a render target and pipeline to a command buffer and draw
+/// primitives.
+///
+/// Render targets can generally be used in APIs that accept textures. (However they may require
+/// being transitioned to a state appropriate to how they will be used.)
+///
+/// Render targets are cloneable because they are sometimes owned by the swapchain. Using a
+/// render target provided by a swapchain after the swapchain has been destroyed will result in
+/// undefined behavior. However, a render target created by an application can be used as long as
+/// it is not dropped and as long as the GPU is using it.
+///
+/// Render targets not owned by a swapchain must not be dropped if they are in use by the GPU.
+/// (Individual clones may be dropped, but one of the instances must remain)
 #[derive(Clone, Debug)]
 pub enum RafxRenderTarget {
     Vk(RafxRenderTargetVulkan),

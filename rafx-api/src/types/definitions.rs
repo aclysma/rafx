@@ -160,7 +160,7 @@ impl Default for RafxTextureDef {
             mip_count: 0,
             sample_count: RafxSampleCount::SampleCount1,
             format: RafxFormat::UNDEFINED,
-            resource_type: RafxResourceType::UNDEFINED,
+            resource_type: RafxResourceType::TEXTURE,
             dimensions: RafxTextureDimensions::Auto,
         }
     }
@@ -192,7 +192,7 @@ impl Default for RafxRenderTargetDef {
             mip_count: 0,
             sample_count: RafxSampleCount::SampleCount1,
             format: RafxFormat::UNDEFINED,
-            resource_type: RafxResourceType::UNDEFINED,
+            resource_type: RafxResourceType::RENDER_TARGET_COLOR,
             dimensions: RafxTextureDimensions::Auto,
         }
     }

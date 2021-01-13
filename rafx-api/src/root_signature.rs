@@ -2,6 +2,10 @@
 use crate::metal::RafxRootSignatureMetal;
 use crate::vulkan::RafxRootSignatureVulkan;
 
+/// Represents the full "layout" or "interface" of a shader (or set of shaders.)
+///
+/// A root signature is created from shader metadata that can be manually supplied or generated via
+/// reflection.
 #[derive(Clone, Debug)]
 pub enum RafxRootSignature {
     Vk(RafxRootSignatureVulkan),

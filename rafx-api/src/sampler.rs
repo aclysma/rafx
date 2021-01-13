@@ -2,6 +2,9 @@
 use crate::metal::RafxSamplerMetal;
 use crate::vulkan::RafxSamplerVulkan;
 
+/// Configures how images will be sampled by the GPU
+///
+/// Samplers must not be dropped if they are in use by the GPU
 #[derive(Debug, Clone)]
 pub enum RafxSampler {
     Vk(RafxSamplerVulkan),

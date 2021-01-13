@@ -2,6 +2,7 @@
 use crate::metal::RafxShaderMetal;
 use crate::vulkan::RafxShaderVulkan;
 
+/// Represents one or more shader stages, producing an entire "program" to execute on the GPU
 #[derive(Clone, Debug)]
 pub enum RafxShader {
     Vk(RafxShaderVulkan),

@@ -5,6 +5,8 @@ use crate::{RafxBufferDef, RafxResult};
 
 /// A buffer is a piece of memory that can be accessed by the GPU. It may reside in CPU or GPU
 /// memory depending on how it is created.
+///
+/// Buffers must not be dropped if they are in use by the GPU.
 #[derive(Debug)]
 pub enum RafxBuffer {
     Vk(RafxBufferVulkan),
