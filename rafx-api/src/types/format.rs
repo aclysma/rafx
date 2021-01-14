@@ -1,4 +1,6 @@
+#[cfg(feature = "rafx-vulkan")]
 use ash::vk;
+#[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
 //TODO: Try using Some/None instead of UNDEFINED format
@@ -200,6 +202,7 @@ impl Default for RafxFormat {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::Format> for RafxFormat {
     fn into(self) -> vk::Format {
         match self {
@@ -391,6 +394,8 @@ impl Into<vk::Format> for RafxFormat {
         }
     }
 }
+
+#[cfg(feature = "rafx-vulkan")]
 impl From<vk::Format> for RafxFormat {
     fn from(format: vk::Format) -> RafxFormat {
         match format {

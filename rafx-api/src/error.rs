@@ -1,5 +1,8 @@
+#[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::device::VkCreateDeviceError;
+#[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::VkCreateInstanceError;
+#[cfg(feature = "rafx-vulkan")]
 use ash::vk;
 use std::sync::Arc;
 

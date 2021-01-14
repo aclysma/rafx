@@ -18,14 +18,17 @@ use crate::{RafxDescriptorUpdate, RafxResult, RafxRootSignature};
 /// `RafxDescriptorSetArray` directly at any time.
 #[derive(Clone, Debug)]
 pub enum RafxDescriptorSetHandle {
+    #[cfg(feature = "rafx-vulkan")]
     Vk(RafxDescriptorSetHandleVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxDescriptorSetHandleMetal),
 }
 
 impl RafxDescriptorSetHandle {
+    #[cfg(feature = "rafx-vulkan")]
     pub fn vk_descriptor_set_handle(&self) -> Option<&RafxDescriptorSetHandleVulkan> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetHandle::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetHandle::Metal(_inner) => None,
@@ -35,7 +38,9 @@ impl RafxDescriptorSetHandle {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_descriptor_set_handle(&self) -> Option<&RafxDescriptorSetHandleMetal> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetHandle::Vk(_inner) => None,
+            #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetHandle::Metal(inner) => Some(inner),
         }
     }

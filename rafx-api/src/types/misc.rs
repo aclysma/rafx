@@ -1,5 +1,7 @@
+#[cfg(feature = "rafx-vulkan")]
 use ash::vk;
 
+#[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
 use crate::{RafxBuffer, RafxRenderTarget, RafxSampler, RafxTexture};
@@ -121,6 +123,7 @@ impl Default for RafxSampleCount {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::SampleCountFlags> for RafxSampleCount {
     fn into(self) -> vk::SampleCountFlags {
         match self {
@@ -194,6 +197,7 @@ impl Default for RafxColorFlags {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::ColorComponentFlags> for RafxColorFlags {
     fn into(self) -> vk::ColorComponentFlags {
         let mut flags = vk::ColorComponentFlags::empty();
@@ -222,6 +226,7 @@ pub enum RafxMemoryUsage {
     GpuToCpu,
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk_mem::MemoryUsage> for RafxMemoryUsage {
     fn into(self) -> vk_mem::MemoryUsage {
         use vk_mem::MemoryUsage;
@@ -298,6 +303,7 @@ pub const ALL_SHADER_STAGE_FLAGS: [RafxShaderStageFlags; 6] = [
     RafxShaderStageFlags::COMPUTE,
 ];
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::ShaderStageFlags> for RafxShaderStageFlags {
     fn into(self) -> vk::ShaderStageFlags {
         let mut result = vk::ShaderStageFlags::empty();
@@ -352,6 +358,7 @@ impl Default for RafxVertexAttributeRate {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::VertexInputRate> for RafxVertexAttributeRate {
     fn into(self) -> vk::VertexInputRate {
         match self {
@@ -374,6 +381,7 @@ impl Default for RafxLoadOp {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::AttachmentLoadOp> for RafxLoadOp {
     fn into(self) -> vk::AttachmentLoadOp {
         match self {
@@ -395,6 +403,7 @@ pub enum RafxPrimitiveTopology {
     PatchList,
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::PrimitiveTopology> for RafxPrimitiveTopology {
     fn into(self) -> vk::PrimitiveTopology {
         match self {
@@ -420,6 +429,7 @@ impl Default for RafxIndexType {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::IndexType> for RafxIndexType {
     fn into(self) -> vk::IndexType {
         match self {
@@ -453,6 +463,7 @@ impl Default for RafxBlendFactor {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::BlendFactor> for RafxBlendFactor {
     fn into(self) -> vk::BlendFactor {
         match self {
@@ -489,6 +500,7 @@ impl Default for RafxBlendOp {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::BlendOp> for RafxBlendOp {
     fn into(self) -> vk::BlendOp {
         match self {
@@ -520,6 +532,7 @@ impl Default for RafxCompareOp {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::CompareOp> for RafxCompareOp {
     fn into(self) -> vk::CompareOp {
         match self {
@@ -554,6 +567,7 @@ impl Default for RafxStencilOp {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::StencilOp> for RafxStencilOp {
     fn into(self) -> vk::StencilOp {
         match self {
@@ -584,6 +598,7 @@ impl Default for RafxCullMode {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::CullModeFlags> for RafxCullMode {
     fn into(self) -> vk::CullModeFlags {
         match self {
@@ -608,6 +623,7 @@ impl Default for RafxFrontFace {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::FrontFace> for RafxFrontFace {
     fn into(self) -> vk::FrontFace {
         match self {
@@ -630,6 +646,7 @@ impl Default for RafxFillMode {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::PolygonMode> for RafxFillMode {
     fn into(self) -> vk::PolygonMode {
         match self {
@@ -652,6 +669,7 @@ impl Default for RafxFilterType {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::Filter> for RafxFilterType {
     fn into(self) -> vk::Filter {
         match self {
@@ -676,6 +694,7 @@ impl Default for RafxAddressMode {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::SamplerAddressMode> for RafxAddressMode {
     fn into(self) -> vk::SamplerAddressMode {
         match self {
@@ -700,6 +719,7 @@ impl Default for RafxMipMapMode {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::SamplerMipmapMode> for RafxMipMapMode {
     fn into(self) -> vk::SamplerMipmapMode {
         match self {
@@ -723,6 +743,7 @@ impl Hash for RafxColorClearValue {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::ClearValue> for RafxColorClearValue {
     fn into(self) -> vk::ClearValue {
         vk::ClearValue {
@@ -756,6 +777,7 @@ impl Hash for RafxDepthStencilClearValue {
     }
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl Into<vk::ClearValue> for RafxDepthStencilClearValue {
     fn into(self) -> vk::ClearValue {
         vk::ClearValue {

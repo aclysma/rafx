@@ -1,5 +1,6 @@
 use super::*;
 use crate::{RafxRootSignature, RafxSampler, RafxShader, RafxShaderModule};
+#[cfg(feature = "rafx-vulkan")]
 use ash::vk;
 use rafx_base::DecimalF32;
 use std::hash::{Hash, Hasher};
@@ -234,10 +235,13 @@ pub enum RafxShaderModuleDefVulkan<'a> {
 }
 
 #[derive(Hash)]
+#[cfg(any(feature = "rafx-vulkan"))]
 pub enum RafxShaderModuleDef<'a> {
+    #[cfg(feature = "rafx-vulkan")]
     Vk(RafxShaderModuleDefVulkan<'a>),
 }
 
+#[cfg(any(feature = "rafx-vulkan"))]
 impl<'a> RafxShaderModuleDef<'a> {
     pub fn hash_definition<HasherT: std::hash::Hasher>(
         &self,
@@ -245,6 +249,11 @@ impl<'a> RafxShaderModuleDef<'a> {
     ) {
         self.hash(hasher);
     }
+}
+
+#[derive(Hash)]
+#[cfg(not(any(feature = "rafx-vulkan")))]
+pub enum RafxShaderModuleDef {
 }
 
 #[derive(Clone, Debug)]
@@ -380,23 +389,23 @@ impl<'a> RafxRootSignatureDef<'a> {
 #[derive(Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxSamplerDef {
-    #[serde(default)]
+    #[cfg_attr(feature = "serde-support", serde(default))]
     pub min_filter: RafxFilterType,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde-support", serde(default))]
     pub mag_filter: RafxFilterType,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde-support", serde(default))]
     pub mip_map_mode: RafxMipMapMode,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde-support", serde(default))]
     pub address_mode_u: RafxAddressMode,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde-support", serde(default))]
     pub address_mode_v: RafxAddressMode,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde-support", serde(default))]
     pub address_mode_w: RafxAddressMode,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde-support", serde(default))]
     pub mip_lod_bias: f32,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde-support", serde(default))]
     pub max_anisotropy: f32,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde-support", serde(default))]
     pub compare_op: RafxCompareOp,
     //NOTE: Custom hash impl, don't forget to add changes there too!
 }
@@ -491,6 +500,7 @@ impl Default for RafxDepthState {
 }
 
 impl RafxDepthState {
+    #[cfg(feature = "rafx-vulkan")]
     pub fn into_vk_create_info(&self) -> vk::PipelineDepthStencilStateCreateInfo {
         let front = vk::StencilOpState::builder()
             .fail_op(self.front_stencil_fail_op.into())
@@ -572,6 +582,7 @@ impl Default for RafxRasterizerState {
 }
 
 impl RafxRasterizerState {
+    #[cfg(feature = "rafx-vulkan")]
     pub fn into_vk_create_info(&self) -> vk::PipelineRasterizationStateCreateInfo {
         vk::PipelineRasterizationStateCreateInfo::builder()
             .depth_clamp_enable(self.depth_clamp_enable)
@@ -633,6 +644,7 @@ impl RafxBlendStateRenderTarget {
 }
 
 impl RafxBlendStateRenderTarget {
+    #[cfg(feature = "rafx-vulkan")]
     pub fn into_vk_create_info(&self) -> vk::PipelineColorBlendAttachmentState {
         let blend_enable = self.src_factor != RafxBlendFactor::One
             || self.src_factor_alpha != RafxBlendFactor::One
@@ -673,11 +685,13 @@ impl Default for RafxBlendState {
 
 //WARNING: This struct has pointers into the attachments vector. Don't mutate or drop the
 // attachments vector
+#[cfg(feature = "rafx-vulkan")]
 pub struct RafxBlendStateVkCreateInfo {
     _attachments: Vec<vk::PipelineColorBlendAttachmentState>,
     blend_state: vk::PipelineColorBlendStateCreateInfo,
 }
 
+#[cfg(feature = "rafx-vulkan")]
 impl RafxBlendStateVkCreateInfo {
     pub fn blend_state(&self) -> &vk::PipelineColorBlendStateCreateInfo {
         &self.blend_state
@@ -685,6 +699,7 @@ impl RafxBlendStateVkCreateInfo {
 }
 
 impl RafxBlendState {
+    #[cfg(feature = "rafx-vulkan")]
     pub fn into_vk_create_info(
         &self,
         color_attachment_count: usize,

@@ -25,6 +25,7 @@ pub enum RafxApi {
 
 impl RafxApi {
     /// Initialize a device using vulkan
+    #[cfg(feature = "rafx-vulkan")]
     pub fn new_vulkan(
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,

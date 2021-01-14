@@ -8,6 +8,7 @@ use crate::vulkan::RafxSamplerVulkan;
 /// Samplers must not be dropped if they are in use by the GPU
 #[derive(Debug, Clone)]
 pub enum RafxSampler {
+    #[cfg(feature = "rafx-vulkan")]
     Vk(RafxSamplerVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSamplerMetal),
@@ -19,6 +20,7 @@ impl RafxSampler {
     #[cfg(feature = "rafx-vulkan")]
     pub fn vk_sampler(&self) -> Option<&RafxSamplerVulkan> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxSampler::Metal(_inner) => None,
@@ -30,7 +32,9 @@ impl RafxSampler {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_sampler(&self) -> Option<&RafxSamplerMetal> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(_inner) => None,
+            #[cfg(feature = "rafx-metal")]
             RafxSampler::Metal(inner) => Some(inner),
         }
     }

@@ -16,6 +16,7 @@ use crate::{RafxCommandBuffer, RafxCommandBufferDef, RafxDeviceContext, RafxResu
 /// is ok to drop a command pool while command buffers are allocated, as long as those command
 /// buffers are never used again. (The command pool owns the memory the command buffer points to)
 pub enum RafxCommandPool {
+    #[cfg(feature = "rafx-vulkan")]
     Vk(RafxCommandPoolVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxCommandPoolMetal),
