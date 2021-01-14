@@ -1,5 +1,6 @@
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxRenderTargetMetal;
+#[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxRenderTargetVulkan;
 use crate::{RafxRenderTargetDef, RafxTexture};
 
@@ -20,22 +21,27 @@ use crate::{RafxRenderTargetDef, RafxTexture};
 /// (Individual clones may be dropped, but one of the instances must remain)
 #[derive(Clone, Debug)]
 pub enum RafxRenderTarget {
+    #[cfg(feature = "rafx-vulkan")]
     Vk(RafxRenderTargetVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxRenderTargetMetal),
 }
 
 impl RafxRenderTarget {
+    /// Return the metadata used to create the render target
     pub fn render_target_def(&self) -> &RafxRenderTargetDef {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxRenderTarget::Vk(inner) => inner.render_target_def(),
             #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(_inner) => unimplemented!(),
         }
     }
 
+    /// Returns this render target as a texture. (All render targets can be used as textures.)
     pub fn texture(&self) -> &RafxTexture {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxRenderTarget::Vk(inner) => inner.texture(),
             #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(_inner) => unimplemented!(),
@@ -45,31 +51,43 @@ impl RafxRenderTarget {
     // each render target gets a new ID, meant for hashing
     pub(crate) fn render_target_id(&self) -> u32 {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxRenderTarget::Vk(inner) => inner.render_target_id(),
             #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(_inner) => unimplemented!(),
         }
     }
+
+    // used to transition the resource from UNKNOWN state on first use
     pub(crate) fn take_is_undefined_layout(&self) -> bool {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxRenderTarget::Vk(inner) => inner.take_is_undefined_layout(),
             #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(_inner) => unimplemented!(),
         }
     }
 
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
+    #[cfg(feature = "rafx-vulkan")]
     pub fn vk_render_target(&self) -> Option<&RafxRenderTargetVulkan> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxRenderTarget::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(_inner) => None,
         }
     }
 
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
     #[cfg(feature = "rafx-metal")]
     pub fn metal_render_target(&self) -> Option<&RafxRenderTargetMetal> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxRenderTarget::Vk(_inner) => None,
+            #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(inner) => Some(inner),
         }
     }

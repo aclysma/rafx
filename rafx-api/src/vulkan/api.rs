@@ -8,12 +8,13 @@ use crate::vulkan::internal::device::VkDeviceContext;
 use crate::vulkan::{RafxDeviceContextVulkan, RafxDeviceContextVulkanInner};
 use std::ffi::CString;
 
+/// Determines the method of finding the vulkan loader
 #[derive(Copy, Clone, Debug)]
 pub enum VulkanLinkMethod {
     /// Link vulkan dynamically (recommended and default)
     Dynamic,
 
-    /// Mainly for platforms like iOS
+    /// Assume the vulkan loader is statically linked.. intended for platforms like iOS
     #[cfg(feature = "static-vulkan")]
     Static,
 }

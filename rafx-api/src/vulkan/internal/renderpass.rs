@@ -1,8 +1,8 @@
 use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
 use ash::version::DeviceV1_0;
-use std::sync::Arc;
 use ash::vk;
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub(crate) struct RafxRenderpassVulkanColorAttachment {

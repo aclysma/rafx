@@ -356,6 +356,22 @@ impl RafxCommandBufferVulkan {
         Ok(())
     }
 
+    pub fn cmd_bind_index_buffer(
+        &self,
+        binding: &RafxIndexBufferBinding,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.device_context.device().cmd_bind_index_buffer(
+                self.vk_command_buffer,
+                binding.buffer.vk_buffer().unwrap().vk_buffer(),
+                binding.offset,
+                binding.index_type.into(),
+            )
+        }
+
+        Ok(())
+    }
+
     pub fn cmd_bind_descriptor_set(
         &self,
         descriptor_set_array: &RafxDescriptorSetArrayVulkan,
@@ -387,22 +403,6 @@ impl RafxCommandBufferVulkan {
                 set_index,
                 &[descriptor_set_handle.0],
                 &[],
-            )
-        }
-
-        Ok(())
-    }
-
-    pub fn cmd_bind_index_buffer(
-        &self,
-        binding: &RafxIndexBufferBinding,
-    ) -> RafxResult<()> {
-        unsafe {
-            self.device_context.device().cmd_bind_index_buffer(
-                self.vk_command_buffer,
-                binding.buffer.vk_buffer().unwrap().vk_buffer(),
-                binding.offset,
-                binding.index_type.into(),
             )
         }
 

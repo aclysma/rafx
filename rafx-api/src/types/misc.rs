@@ -249,8 +249,12 @@ pub enum RafxPresentSuccessResult {
 
 #[derive(PartialEq)]
 pub enum RafxFenceStatus {
+    /// The fence was submitted to the command buffer and signaled as completed by the GPU
     Complete,
+    /// The fence will be signaled as complete later by the GPU
     Incomplete,
+    /// The fence was never submitted, or was submitted and already returned complete once, putting
+    /// it back into the unsubmitted state
     Unsubmitted,
 }
 

@@ -1,5 +1,6 @@
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxDescriptorSetArrayMetal, RafxDescriptorSetHandleMetal};
+#[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::{RafxDescriptorSetArrayVulkan, RafxDescriptorSetHandleVulkan};
 use crate::{RafxDescriptorUpdate, RafxResult, RafxRootSignature};
 
@@ -63,73 +64,98 @@ impl RafxDescriptorSetHandle {
 /// this can include GPU hangs, driver crashes, and kernel panics**.
 #[derive(Debug)]
 pub enum RafxDescriptorSetArray {
+    #[cfg(feature = "rafx-vulkan")]
     Vk(RafxDescriptorSetArrayVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxDescriptorSetArrayMetal),
 }
 
 impl RafxDescriptorSetArray {
+    /// Create a lightweight, opaque pointer to a particular set in the array. This pointer can only
+    /// be used for binding the given set in a command buffer.
     pub fn handle(
         &self,
         index: u32,
     ) -> Option<RafxDescriptorSetHandle> {
         Some(match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => RafxDescriptorSetHandle::Vk(inner.handle(index)?),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
         })
     }
 
+    /// Get the root signature that this descriptor set is created from
     pub fn root_signature(&self) -> &RafxRootSignature {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => inner.root_signature(),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
         }
     }
 
+    /// Update one or more descriptor sets with new values. This is the same as calling
+    /// queue_descriptor_set_update, followed by flush_descriptor_set_updates
     pub fn update_descriptor_set(
         &mut self,
         params: &[RafxDescriptorUpdate],
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => inner.update_descriptor_set(params),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
         }
     }
 
+    /// Update a CPU-only copy of the descriptor set, but does not apply the write to the descriptor
+    /// set until flush_descriptor_set_updates() is called.
+    ///
+    /// The main reason for allowing queueing/flushing in separate calls is to help calling code
+    /// avoid borrow-checking difficulties.
     pub fn queue_descriptor_set_update(
         &mut self,
         update: &RafxDescriptorUpdate,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => inner.queue_descriptor_set_update(update),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
         }
     }
 
+    /// Flush all queued descriptor set writes
     pub fn flush_descriptor_set_updates(&mut self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => inner.flush_descriptor_set_updates(),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
         }
     }
 
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
+    #[cfg(feature = "rafx-vulkan")]
     pub fn vk_descriptor_set_array(&self) -> Option<&RafxDescriptorSetArrayVulkan> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(_inner) => None,
         }
     }
 
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
     #[cfg(feature = "rafx-metal")]
     pub fn metal_descriptor_set_array(&self) -> Option<&RafxDescriptorSetArrayMetal> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(_inner) => None,
+            #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(inner) => Some(inner),
         }
     }

@@ -1,5 +1,6 @@
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxQueueMetal;
+#[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxQueueVulkan;
 use crate::{
     RafxCommandBuffer, RafxCommandPool, RafxCommandPoolDef, RafxFence, RafxPresentSuccessResult,
@@ -20,33 +21,41 @@ use crate::{
 /// the same underlying queue every time.
 #[derive(Clone, Debug)]
 pub enum RafxQueue {
+    #[cfg(feature = "rafx-vulkan")]
     Vk(RafxQueueVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxQueueMetal),
 }
 
 impl RafxQueue {
+    /// Returns an opaque ID associated with this queue. It may be used to hash which queue a
+    /// command pool is associated with
     pub fn queue_id(&self) -> u32 {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => inner.queue_id(),
             #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(inner) => unimplemented!(),
         }
     }
 
+    /// Get the type of queue that this is
     pub fn queue_type(&self) -> RafxQueueType {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => inner.queue_type(),
             #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(inner) => inner.queue_type(),
         }
     }
 
+    /// Create a command pool for use with this queue
     pub fn create_command_pool(
         &self,
         command_pool_def: &RafxCommandPoolDef,
     ) -> RafxResult<RafxCommandPool> {
         Ok(match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => {
                 RafxCommandPool::Vk(inner.create_command_pool(command_pool_def)?)
             }
@@ -55,6 +64,11 @@ impl RafxQueue {
         })
     }
 
+    /// Submit command buffers for processing by the GPU.
+    ///
+    /// Execution will not begin until all `wait_semaphores` are signaled.
+    ///
+    /// After execution, the given `signal_semaphores` and `signal_fence` are signaled as completed.
     pub fn submit(
         &self,
         command_buffers: &[&RafxCommandBuffer],
@@ -63,6 +77,7 @@ impl RafxQueue {
         signal_fence: Option<&RafxFence>,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => {
                 let command_buffers: Vec<_> = command_buffers
                     .iter()
@@ -88,6 +103,9 @@ impl RafxQueue {
         }
     }
 
+    /// Presents an image in the swapchain.
+    ///
+    /// Execution will not begin until all `wait_semaphores` are signaled.
     pub fn present(
         &self,
         swapchain: &RafxSwapchain,
@@ -95,6 +113,7 @@ impl RafxQueue {
         image_index: u32,
     ) -> RafxResult<RafxPresentSuccessResult> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => {
                 let wait_semaphores: Vec<_> = wait_semaphores
                     .iter()
@@ -111,26 +130,36 @@ impl RafxQueue {
         }
     }
 
+    /// Wait until all work submitted to this queue is completed
     pub fn wait_for_queue_idle(&self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => inner.wait_for_queue_idle(),
             #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(_inner) => unimplemented!(),
         }
     }
 
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
+    #[cfg(feature = "rafx-vulkan")]
     pub fn vk_queue(&self) -> Option<&RafxQueueVulkan> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(_inner) => None,
         }
     }
 
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
     #[cfg(feature = "rafx-metal")]
     pub fn metal_queue(&self) -> Option<&RafxQueueMetal> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(_inner) => None,
+            #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(inner) => Some(inner),
         }
     }

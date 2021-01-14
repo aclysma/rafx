@@ -1,5 +1,6 @@
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxApiMetal;
+#[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::{RafxApiDefVulkan, RafxApiVulkan};
 use crate::*;
 use raw_window_handle::HasRawWindowHandle;
@@ -16,6 +17,7 @@ use raw_window_handle::HasRawWindowHandle;
 /// initialized. These contexts and all other objects created through them must be dropped before
 /// dropping `RafxApi` or calling `RafxApi::destroy()`.
 pub enum RafxApi {
+    #[cfg(feature = "rafx-vulkan")]
     Vk(RafxApiVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxApiMetal),
@@ -44,6 +46,7 @@ impl RafxApi {
     /// and generally all APIs on the device context itself are thread-safe.
     pub fn device_context(&self) -> RafxDeviceContext {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_inner) => unimplemented!(),
@@ -57,6 +60,7 @@ impl RafxApi {
     /// it is not necessary to call this function explicitly.
     pub fn destroy(&mut self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(inner) => inner.destroy(),
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_inner) => unimplemented!(),
@@ -65,8 +69,10 @@ impl RafxApi {
 
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
+    #[cfg(feature = "rafx-vulkan")]
     pub fn vk_api(&self) -> Option<&RafxApiVulkan> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_) => None,
@@ -78,7 +84,9 @@ impl RafxApi {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_api(&self) -> Option<&RafxApiMetal> {
         match self {
+            #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => Some(inner),
         }
     }

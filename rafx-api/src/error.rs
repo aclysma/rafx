@@ -1,7 +1,7 @@
+use crate::vulkan::device::VkCreateDeviceError;
+use crate::vulkan::VkCreateInstanceError;
 use ash::vk;
 use std::sync::Arc;
-use crate::vulkan::VkCreateInstanceError;
-use crate::vulkan::device::VkCreateDeviceError;
 
 pub type RafxResult<T> = Result<T, RafxError>;
 
