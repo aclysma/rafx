@@ -32,7 +32,8 @@ impl Default for RafxValidationMode {
 }
 
 pub struct RafxDeviceInfo {
-    pub uniform_buffer_alignment: u32,
+    pub min_uniform_buffer_offset_alignment: u32,
+    pub min_storage_buffer_offset_alignment: u32,
     pub upload_buffer_texture_alignment: u32,
     pub upload_buffer_texture_row_alignment: u32,
     // max_vertex_input_binding_count: u32,
@@ -175,8 +176,19 @@ bitflags::bitflags! {
         const ARGUMENT_BUFFER = 1<<20;
         const INDIRECT_COMMAND_BUFFER = 1<<21;
         const RENDER_PIPELINE_STATE = 1<<22;
+        // Render target types
         const RENDER_TARGET_COLOR = 1<<23;
         const RENDER_TARGET_DEPTH_STENCIL = 1<<24;
+    }
+}
+
+impl RafxResourceType {
+    pub fn is_uniform_buffer(self) -> bool {
+        self.intersects(RafxResourceType::UNIFORM_BUFFER)
+    }
+
+    pub fn is_storage_buffer(self) -> bool {
+        self.intersects(RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE)
     }
 }
 

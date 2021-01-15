@@ -765,3 +765,26 @@ impl RafxFormat {
         }
     }
 }
+
+//
+// The following represent reasonable defaults with broad hardware support. These lists work well
+// with RafxDeviceContext::find_supported_format()
+//
+pub mod recommended_formats {
+    use super::RafxFormat;
+
+    // If using an SDR format, consider using the swapchain surface format!
+    pub const COLOR_FORMATS_SDR: [RafxFormat; 1] = [
+        RafxFormat::R8G8B8A8_SNORM, // vulkan: 100% coverage with optimal
+    ];
+
+    pub const COLOR_FORMATS_HDR: [RafxFormat; 1] = [
+        RafxFormat::R32G32B32A32_SFLOAT, // vulkan: 100% coverage with optimal
+    ];
+
+    pub const DEPTH_FORMATS: [RafxFormat; 3] = [
+        RafxFormat::D32_SFLOAT,         // vulkan: 100% coverage with optimal
+        RafxFormat::D32_SFLOAT_S8_UINT, // vulkan: 100% coverage with optimal
+        RafxFormat::D24_UNORM_S8_UINT,
+    ];
+}

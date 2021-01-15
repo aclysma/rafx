@@ -1,6 +1,5 @@
 use crate::game_renderer::GameRendererInner;
-use ash::vk;
-use rafx::api::{RafxDeviceContext, RafxFormat, RafxResult, RafxSwapchain};
+use rafx::api::{RafxDeviceContext, RafxFormat, RafxResourceType, RafxResult, RafxSwapchain};
 use rafx::resources::graph::SwapchainSurfaceInfo;
 use rafx::resources::ResourceManager;
 
@@ -26,39 +25,28 @@ impl SwapchainResources {
     ) -> RafxResult<SwapchainResources> {
         log::debug!("creating swapchain resources");
 
-        //
-        // Determine default color formats
-        //
-        let default_color_format_hdr = device_context
-            .vk_device_context()
-            .unwrap()
-            .find_supported_format(
-                &rafx::api::vulkan::DEFAULT_COLOR_FORMATS_HDR,
-                vk::ImageTiling::OPTIMAL,
-                vk::FormatFeatureFlags::COLOR_ATTACHMENT,
-            )
-            .ok_or_else(|| "Could not find a supported HDR color format")?;
-
+        // Use swapchain format for SDR color
         let default_color_format_sdr = swapchain_surface_info.format;
 
-        let default_depth_format = device_context
-            .vk_device_context()
-            .unwrap()
+        let default_color_format_hdr = device_context
             .find_supported_format(
-                &rafx::api::vulkan::DEFAULT_DEPTH_FORMATS,
-                vk::ImageTiling::OPTIMAL,
-                vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
+                &rafx::api::recommended_formats::COLOR_FORMATS_HDR,
+                RafxResourceType::RENDER_TARGET_COLOR,
+            )
+            .ok_or_else(|| "Could not find a supported hdr color format")?;
+
+        let default_depth_format = device_context
+            .find_supported_format(
+                &rafx::api::recommended_formats::DEPTH_FORMATS,
+                RafxResourceType::RENDER_TARGET_DEPTH_STENCIL,
             )
             .ok_or_else(|| "Could not find a supported depth format")?;
 
-        log::debug!("game renderer swapchain_created finished");
-
         Ok(SwapchainResources {
-            //swapchain_images,
             swapchain_surface_info,
-            default_color_format_hdr: default_color_format_hdr.into(),
-            default_color_format_sdr: default_color_format_sdr.into(),
-            default_depth_format: default_depth_format.into(),
+            default_color_format_hdr,
+            default_color_format_sdr,
+            default_depth_format,
         })
     }
 }

@@ -78,20 +78,26 @@ impl ManagedDescriptorSetPool {
             .bindings
         {
             if let Some(per_descriptor_size) = binding.internal_buffer_per_descriptor_size {
-                // 256 is the max allowed by the vulkan spec but we can improve this by using the
-                // actual hardware value given by device limits
+                // Our stride is at least as large as the descriptor's buffer
+                let mut per_descriptor_stride = per_descriptor_size;
 
-                //TODO: Should use min_storage_buffer_offset_alignment for storage buffers
-                let required_alignment = device_context
-                    .vk_device_context()
-                    .unwrap()
-                    .limits()
-                    .min_uniform_buffer_offset_alignment
-                    as u32;
-                let per_descriptor_stride = rafx_base::memory::round_size_up_to_alignment_u32(
-                    per_descriptor_size,
-                    required_alignment,
-                );
+                let device_info = device_context.device_info();
+
+                // Round up uniform buffer stride to space them out as needed by the GPU
+                if binding.resource.resource_type.is_uniform_buffer() {
+                    per_descriptor_stride = rafx_base::memory::round_size_up_to_alignment_u32(
+                        per_descriptor_stride,
+                        device_info.min_uniform_buffer_offset_alignment,
+                    );
+                }
+
+                // Round up storage buffer stride to space them out as needed by the GPU
+                if binding.resource.resource_type.is_storage_buffer() {
+                    per_descriptor_stride = rafx_base::memory::round_size_up_to_alignment_u32(
+                        per_descriptor_stride,
+                        device_info.min_storage_buffer_offset_alignment,
+                    );
+                }
 
                 buffer_infos.push(DescriptorSetPoolRequiredBufferInfo {
                     per_descriptor_size,

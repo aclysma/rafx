@@ -1,9 +1,9 @@
 use super::internal::*;
 use crate::{
     RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext,
-    RafxDeviceInfo, RafxGraphicsPipelineDef, RafxQueueType, RafxRenderTargetDef, RafxResult,
-    RafxRootSignatureDef, RafxSamplerDef, RafxShaderModule, RafxShaderStageDef, RafxSwapchainDef,
-    RafxTextureDef,
+    RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxRenderTargetDef,
+    RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSamplerDef, RafxShaderModule,
+    RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
 use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::vk;
@@ -144,7 +144,8 @@ impl RafxDeviceContextVulkanInner {
         let limits = &physical_device_info.properties.limits;
 
         let device_info = RafxDeviceInfo {
-            uniform_buffer_alignment: limits.min_uniform_buffer_offset_alignment as u32,
+            min_uniform_buffer_offset_alignment: limits.min_uniform_buffer_offset_alignment as u32,
+            min_storage_buffer_offset_alignment: limits.min_storage_buffer_offset_alignment as u32,
             upload_buffer_texture_alignment: limits.optimal_buffer_copy_offset_alignment as u32,
             upload_buffer_texture_row_alignment: limits.optimal_buffer_copy_row_pitch_alignment
                 as u32,
@@ -315,15 +316,37 @@ impl RafxDeviceContextVulkan {
 
     pub fn find_supported_format(
         &self,
-        candidates: &[vk::Format],
+        candidates: &[RafxFormat],
+        resource_type: RafxResourceType,
+    ) -> Option<RafxFormat> {
+        let mut features = vk::FormatFeatureFlags::empty();
+        if resource_type.intersects(RafxResourceType::RENDER_TARGET_COLOR) {
+            features |= vk::FormatFeatureFlags::COLOR_ATTACHMENT;
+        }
+
+        if resource_type.intersects(RafxResourceType::RENDER_TARGET_DEPTH_STENCIL) {
+            features |= vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT;
+        }
+
+        Self::do_find_supported_format(
+            &self.inner.instance,
+            self.inner.physical_device,
+            candidates,
+            vk::ImageTiling::OPTIMAL,
+            features,
+        )
+    }
+
+    pub fn do_find_supported_format(
+        instance: &ash::Instance,
+        physical_device: vk::PhysicalDevice,
+        candidates: &[RafxFormat],
         image_tiling: vk::ImageTiling,
         features: vk::FormatFeatureFlags,
-    ) -> Option<vk::Format> {
-        for candidate in candidates {
+    ) -> Option<RafxFormat> {
+        for &candidate in candidates {
             let props = unsafe {
-                self.inner
-                    .instance
-                    .get_physical_device_format_properties(self.inner.physical_device, *candidate)
+                instance.get_physical_device_format_properties(physical_device, candidate.into())
             };
 
             let is_supported = match image_tiling {
@@ -333,7 +356,7 @@ impl RafxDeviceContextVulkan {
             };
 
             if is_supported {
-                return Some(*candidate);
+                return Some(candidate);
             }
         }
 

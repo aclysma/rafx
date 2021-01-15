@@ -28,6 +28,19 @@ impl RafxDeviceContext {
         }
     }
 
+    pub fn find_supported_format(
+        &self,
+        candidates: &[RafxFormat],
+        resource_type: RafxResourceType,
+    ) -> Option<RafxFormat> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxDeviceContext::Vk(inner) => inner.find_supported_format(candidates, resource_type),
+            #[cfg(feature = "rafx-metal")]
+            RafxDeviceContext::Metal(_inner) => unimplemented!(),
+        }
+    }
+
     /// Create a queue
     pub fn create_queue(
         &self,
