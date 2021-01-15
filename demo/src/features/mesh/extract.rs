@@ -1,27 +1,23 @@
-use crate::components::MeshComponent;
+use crate::{components::MeshComponent};
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
 use crate::features::mesh::prepare::MeshPrepareJob;
 use crate::features::mesh::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
-    MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet, ShadowMapData,
+    MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet,
 };
 use crate::game_asset_manager::GameAssetManager;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
 use legion::*;
-use rafx::base::slab::RawSlabKey;
+use rafx::{base::slab::RawSlabKey};
 use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
-use rafx::resources::{ImageViewResource, ResourceArc};
 
 pub struct MeshExtractJob {
-    pub(super) shadow_map_data: ShadowMapData,
-    pub(super) invalid_image: ResourceArc<ImageViewResource>,
-    pub(super) invalid_cube_map_image: ResourceArc<ImageViewResource>,
 }
 
 impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
@@ -131,11 +127,8 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         Box::new(MeshPrepareJob {
             extracted_frame_node_mesh_data,
             directional_lights,
-            shadow_map_data: self.shadow_map_data,
             point_lights,
             spot_lights,
-            invalid_image: self.invalid_image,
-            invalid_cube_map_image: self.invalid_cube_map_image,
         })
     }
 }

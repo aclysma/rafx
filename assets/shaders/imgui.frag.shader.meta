@@ -1,27 +1,5 @@
 (
-    version: 1,
-    import_hash: Some(3523593422415408636),
-    importer_version: 4,
-    importer_type: "cab0cf4c-16ff-4dbd-aae7-8705246d85d6",
+    version: 2,
     importer_options: (),
     importer_state: (Some("365771cd-77e9-49c1-acab-9b668c591ea8")),
-    assets: [
-        (
-            id: "365771cd-77e9-49c1-acab-9b668c591ea8",
-            search_tags: [
-                ("file_name", Some("imgui.frag.shader")),
-            ],
-            build_pipeline: None,
-            artifact: Some((
-                id: (3274981747111515674),
-                asset_id: "365771cd-77e9-49c1-acab-9b668c591ea8",
-                build_deps: [],
-                load_deps: [],
-                compression: None,
-                compressed_size: Some(1145),
-                uncompressed_size: Some(1145),
-                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
-            )),
-        ),
-    ],
 )

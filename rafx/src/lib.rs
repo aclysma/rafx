@@ -13,3 +13,4 @@ pub use nodes::declare_render_feature;
 pub use nodes::declare_render_phase;
 
 pub use raw_window_handle;
+pub use base::resources::ResourceMap as RenderResources;

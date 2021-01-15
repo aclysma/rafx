@@ -7,6 +7,7 @@ use rafx::api::{RafxPresentableFrame, RafxResult};
 use rafx::graph::RenderGraphExecutor;
 use rafx::nodes::{FramePacket, PrepareJobSet, RenderRegistry, RenderView};
 use rafx::resources::{DynCommandBuffer, ResourceContext};
+use rafx::RenderResources;
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
@@ -18,6 +19,7 @@ pub struct RenderFrameJob {
     pub shadow_map_render_views: Vec<ShadowMapRenderView>,
     pub render_registry: RenderRegistry,
     pub device_context: RafxDeviceContext,
+    pub render_resources: RenderResources,
     pub graphics_queue: RafxQueue,
 }
 
@@ -36,6 +38,7 @@ impl RenderFrameJob {
             self.shadow_map_render_views,
             self.render_registry,
             self.device_context,
+            self.render_resources,
             self.graphics_queue,
         );
 
@@ -78,6 +81,7 @@ impl RenderFrameJob {
         shadow_map_render_views: Vec<ShadowMapRenderView>,
         render_registry: RenderRegistry,
         device_context: RafxDeviceContext,
+        render_resources: RenderResources,
         graphics_queue: RafxQueue,
     ) -> RafxResult<Vec<DynCommandBuffer>> {
         let t0 = std::time::Instant::now();
@@ -104,7 +108,7 @@ impl RenderFrameJob {
             }
 
             let prepare_context =
-                RenderJobPrepareContext::new(device_context.clone(), resource_context.clone());
+                RenderJobPrepareContext::new(device_context.clone(), resource_context.clone(), &render_resources);
             prepare_job_set.prepare(
                 &prepare_context,
                 &frame_packet,

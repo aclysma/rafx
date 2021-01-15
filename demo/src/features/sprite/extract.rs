@@ -1,4 +1,4 @@
-use crate::components::{PositionComponent, SpriteComponent};
+use crate::{components::{PositionComponent, SpriteComponent}, game_renderer::GameRendererStaticResources};
 use crate::features::sprite::prepare::SpritePrepareJob;
 use crate::features::sprite::{
     ExtractedSpriteData, SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet,
@@ -6,21 +6,17 @@ use crate::features::sprite::{
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use atelier_assets::loader::handle::Handle;
 use legion::*;
-use rafx::assets::MaterialAsset;
 use rafx::base::slab::RawSlabKey;
 use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
 
-pub struct SpriteExtractJob {
-    sprite_material: Handle<MaterialAsset>,
-}
+pub struct SpriteExtractJob { }
 
 impl SpriteExtractJob {
-    pub fn new(sprite_material: Handle<MaterialAsset>) -> Self {
-        SpriteExtractJob { sprite_material }
+    pub fn new() -> Self {
+        Self { }
     }
 }
 
@@ -82,10 +78,11 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             extracted_frame_node_sprite_data.push(extracted_frame_node);
         }
 
+        let static_resources = extract_context.render_resources.fetch::<GameRendererStaticResources>();
         // For now just grab pass 0
         let sprite_material = extract_context
             .asset_manager
-            .get_material_pass_by_index(&self.sprite_material, 0)
+            .get_material_pass_by_index(&static_resources.sprite_material, 0)
             .unwrap();
 
         let prepare_impl = SpritePrepareJob::new(extracted_frame_node_sprite_data, sprite_material);

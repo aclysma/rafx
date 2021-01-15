@@ -73,14 +73,8 @@ pub struct ExtractedSpotLight {
 }
 
 pub fn create_mesh_extract_job(
-    shadow_map_data: ShadowMapData,
-    invalid_image: ResourceArc<ImageViewResource>,
-    invalid_cube_map_image: ResourceArc<ImageViewResource>,
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(MeshExtractJob {
-        shadow_map_data,
-        invalid_image,
-        invalid_cube_map_image,
     })
 }
 

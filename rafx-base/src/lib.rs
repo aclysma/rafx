@@ -7,3 +7,5 @@ pub mod slab;
 pub mod memory;
 
 pub mod offsetof;
+
+pub mod resources;

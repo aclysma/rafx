@@ -3,29 +3,19 @@ use crate::imgui_support::ImGuiDrawData;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use atelier_assets::loader::handle::Handle;
-use rafx::api::{RafxExtents2D, RafxPrimitiveTopology};
-use rafx::assets::MaterialAsset;
+use rafx::api::{RafxPrimitiveTopology};
 use rafx::nodes::ExtractJob;
 use rafx::nodes::RenderFeature;
 use rafx::nodes::RenderFeatureIndex;
-use rafx::resources::{ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use rafx::resources::{VertexDataLayout, VertexDataSetLayout};
 use std::convert::TryInto;
 
 mod extract;
 mod prepare;
 mod write;
 
-pub fn create_imgui_extract_job(
-    extents: RafxExtents2D,
-    imgui_material: &Handle<MaterialAsset>,
-    font_atlas: ResourceArc<ImageViewResource>,
-) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
-    Box::new(ImGuiExtractJobImpl::new(
-        extents,
-        imgui_material,
-        font_atlas,
-    ))
+pub fn create_imgui_extract_job() -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
+    Box::new(ImGuiExtractJobImpl::new())
 }
 
 /// Per-pass "global" data

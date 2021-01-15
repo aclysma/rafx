@@ -1,6 +1,6 @@
 use crate::assets::compute_pipeline::ComputePipelineAssetData;
 use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
+use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, ImportOp};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
@@ -32,6 +32,7 @@ impl Importer for ComputePipelineImporter {
     #[profiling::function]
     fn import(
         &self,
+        _op: &mut ImportOp,
         source: &mut dyn Read,
         _options: &Self::Options,
         state: &mut Self::State,

@@ -36,3 +36,5 @@ opt-level = 2
 #[patch."https://github.com/aclysma/atelier-assets"]
 #atelier-assets = { path = "atelier-assets" }
 #atelier-cli = { path = "atelier-assets/cli" }
+#atelier-assets = { git = "https://github.com/amethyst/atelier-assets.git" }
+#atelier-cli = { git = "https://github.com/amethyst/atelier-assets.git" }

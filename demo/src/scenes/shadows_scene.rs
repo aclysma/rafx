@@ -4,8 +4,6 @@ use crate::components::{MeshComponent, SpotLightComponent};
 use crate::features::mesh::{MeshRenderNode, MeshRenderNodeSet};
 use crate::game_asset_lookup::MeshAsset;
 use crate::time::TimeState;
-use atelier_assets::core as atelier_core;
-use atelier_assets::core::asset_uuid;
 use glam::f32::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
@@ -78,9 +76,9 @@ impl ShadowsScene {
                     );
 
                     // blue icosphere - load by UUID since it's one of several meshes in the file
-                    meshes.push(asset_resource.load_asset::<MeshAsset>(asset_uuid!(
-                        "d5aed900-1e31-4f47-94ba-e356b0b0b8b0"
-                    )));
+                    meshes.push(asset_resource.load_asset::<MeshAsset>(
+                        "d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into()
+                    ));
 
                     meshes
                 };

@@ -1,27 +1,5 @@
 (
-    version: 1,
-    import_hash: Some(13647489853790745333),
-    importer_version: 2,
-    importer_type: "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251",
+    version: 2,
     importer_options: (),
     importer_state: (Some("5a5c1851-f61b-4643-9e08-9837fc5b9f9a")),
-    assets: [
-        (
-            id: "5a5c1851-f61b-4643-9e08-9837fc5b9f9a",
-            search_tags: [
-                ("file_name", Some("texture.jpg")),
-            ],
-            build_pipeline: None,
-            artifact: Some((
-                id: (9377833501097268606),
-                asset_id: "5a5c1851-f61b-4643-9e08-9837fc5b9f9a",
-                build_deps: [],
-                load_deps: [],
-                compression: None,
-                compressed_size: Some(1048596),
-                uncompressed_size: Some(1048596),
-                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
-            )),
-        ),
-    ],
 )

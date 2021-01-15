@@ -1,13 +1,15 @@
 use legion::*;
-use rafx::api::RafxDeviceContext;
+use rafx::{RenderResources};
 use rafx::assets::AssetManager;
 use rafx::graph::VisitRenderpassNodeArgs;
 use rafx::resources::ResourceContext;
 use rafx::resources::{DynCommandBuffer, GraphicsPipelineRenderTargetMeta};
+use rafx::api::RafxDeviceContext;
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,
     pub resources: &'static Resources,
+    pub render_resources: &'static RenderResources,
     pub asset_manager: &'static AssetManager,
 }
 
@@ -15,12 +17,14 @@ impl RenderJobExtractContext {
     pub fn new<'a>(
         world: &'a World,
         resources: &'a Resources,
+        render_resources: &'a RenderResources,
         asset_manager: &'a AssetManager,
     ) -> Self {
         unsafe {
             RenderJobExtractContext {
                 world: force_to_static_lifetime(world),
                 resources: force_to_static_lifetime(resources),
+                render_resources: force_to_static_lifetime(render_resources),
                 asset_manager: force_to_static_lifetime(asset_manager),
             }
         }
@@ -30,16 +34,19 @@ impl RenderJobExtractContext {
 pub struct RenderJobPrepareContext {
     pub device_context: RafxDeviceContext,
     pub resource_context: ResourceContext,
+    pub render_resources: &'static RenderResources,
 }
 
 impl RenderJobPrepareContext {
-    pub fn new(
+    pub fn new<'a>(
         device_context: RafxDeviceContext,
         resource_context: ResourceContext,
+        render_resources: &'a RenderResources,
     ) -> Self {
         RenderJobPrepareContext {
             device_context,
             resource_context,
+            render_resources: unsafe { force_to_static_lifetime(render_resources) },
         }
     }
 }

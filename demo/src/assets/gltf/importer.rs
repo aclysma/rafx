@@ -1,10 +1,10 @@
 use crate::assets::gltf::{
     GltfMaterialAsset, GltfMaterialDataShaderParam, MeshAssetData, MeshPartAssetData, MeshVertex,
 };
-use atelier_assets::core::{AssetRef, AssetUuid};
-use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue};
+use atelier_assets::core::AssetUuid;
+use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue, ImportOp};
 use atelier_assets::loader::handle::Handle;
-use atelier_assets::loader::handle::SerdeContext;
+use atelier_assets::{make_handle, make_handle_from_str};
 use fnv::FnvHashMap;
 use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
@@ -13,14 +13,11 @@ use rafx::assets::assets::BufferAssetData;
 use rafx::assets::assets::{ImageAssetColorSpace, ImageAssetData};
 use rafx::assets::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
 use rafx::assets::push_buffer::PushBuffer;
-use rafx::assets::BufferAsset;
 use rafx::assets::ImageAsset;
-use rafx::assets::MaterialAsset;
 use rafx::assets::MaterialInstanceAsset;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::Read;
-use std::str::FromStr;
 use type_uuid::*;
 
 #[derive(Debug)]
@@ -172,6 +169,7 @@ impl Importer for GltfImporter {
     /// Reads the given bytes and produces assets.
     fn import(
         &self,
+        op: &mut ImportOp,
         source: &mut dyn Read,
         _options: &Self::Options,
         stable_state: &mut Self::State,
@@ -208,15 +206,9 @@ impl Importer for GltfImporter {
             let image_uuid = *unstable_state
                 .image_asset_uuids
                 .entry(image_to_import.id.clone())
-                .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+                .or_insert_with(|| op.new_asset_uuid());
 
-            let image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider
-                    .get_load_handle(&AssetRef::Uuid(image_uuid))
-                    .unwrap();
-                Handle::<ImageAsset>::new(ref_op_sender.clone(), load_handle)
-            });
-
+            let image_handle = make_handle(image_uuid);
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
             image_index_to_handle.push(image_handle);
 
@@ -249,15 +241,9 @@ impl Importer for GltfImporter {
             let material_uuid = *unstable_state
                 .material_asset_uuids
                 .entry(material_to_import.id.clone())
-                .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+                .or_insert_with(|| op.new_asset_uuid());
 
-            let material_handle =
-                SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                    let load_handle = loader_info_provider
-                        .get_load_handle(&AssetRef::Uuid(material_uuid))
-                        .unwrap();
-                    Handle::<GltfMaterialAsset>::new(ref_op_sender.clone(), load_handle)
-                });
+            let material_handle = make_handle(material_uuid);
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
             material_index_to_handle.push(material_handle);
@@ -290,27 +276,9 @@ impl Importer for GltfImporter {
             });
         }
 
-        let material_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-            let material_uuid_str = "92a98639-de0d-40cf-a222-354f616346c3";
-            let material_uuid =
-                AssetUuid(*uuid::Uuid::from_str(material_uuid_str).unwrap().as_bytes());
+        let material_handle = make_handle_from_str("92a98639-de0d-40cf-a222-354f616346c3")?;
 
-            let material_load_handle = loader_info_provider
-                .get_load_handle(&AssetRef::Uuid(material_uuid))
-                .unwrap();
-            Handle::<MaterialAsset>::new(ref_op_sender.clone(), material_load_handle)
-        });
-
-        let null_image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-            let material_uuid_str = "fc937369-cad2-4a00-bf42-5968f1210784";
-            let material_uuid =
-                AssetUuid(*uuid::Uuid::from_str(material_uuid_str).unwrap().as_bytes());
-
-            let material_load_handle = loader_info_provider
-                .get_load_handle(&AssetRef::Uuid(material_uuid))
-                .unwrap();
-            Handle::<ImageAsset>::new(ref_op_sender.clone(), material_load_handle)
-        });
+        let null_image_handle = make_handle_from_str("fc937369-cad2-4a00-bf42-5968f1210784")?;
 
         //
         // Material instance
@@ -320,15 +288,9 @@ impl Importer for GltfImporter {
             let material_instance_uuid = *unstable_state
                 .material_instance_asset_uuids
                 .entry(material_to_import.id.clone())
-                .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+                .or_insert_with(|| op.new_asset_uuid());
 
-            let material_instance_handle =
-                SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                    let load_handle = loader_info_provider
-                        .get_load_handle(&AssetRef::Uuid(material_instance_uuid))
-                        .unwrap();
-                    Handle::<MaterialInstanceAsset>::new(ref_op_sender.clone(), load_handle)
-                });
+            let material_instance_handle = make_handle(material_instance_uuid);
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
             material_instance_index_to_handle.push(material_instance_handle);
@@ -424,6 +386,7 @@ impl Importer for GltfImporter {
         // Meshes
         //
         let (meshes_to_import, buffers_to_import) = extract_meshes_to_import(
+            op,
             &mut unstable_state,
             &doc,
             &buffers,
@@ -438,14 +401,9 @@ impl Importer for GltfImporter {
             let buffer_uuid = *unstable_state
                 .buffer_asset_uuids
                 .entry(buffer_to_import.id.clone())
-                .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+                .or_insert_with(|| op.new_asset_uuid());
 
-            let buffer_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider
-                    .get_load_handle(&AssetRef::Uuid(buffer_uuid))
-                    .unwrap();
-                Handle::<GltfMaterialAsset>::new(ref_op_sender.clone(), load_handle)
-            });
+            let buffer_handle = make_handle::<BufferAssetData>(buffer_uuid);
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
             buffer_index_to_handle.push(buffer_handle);
@@ -469,7 +427,7 @@ impl Importer for GltfImporter {
             let mesh_uuid = *unstable_state
                 .mesh_asset_uuids
                 .entry(mesh_to_import.id.clone())
-                .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+                .or_insert_with(|| op.new_asset_uuid());
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
             //mesh_index_to_uuid_lookup.push(mesh_uuid.clone());
@@ -794,6 +752,7 @@ fn convert_to_u16_indices(
 }
 
 fn extract_meshes_to_import(
+    op: &mut ImportOp,
     state: &mut GltfImporterStateUnstable,
     doc: &gltf::Document,
     buffers: &[GltfBufferData],
@@ -921,17 +880,11 @@ fn extract_meshes_to_import(
         let vertex_buffer_uuid = *state
             .buffer_asset_uuids
             .entry(vertex_buffer_id)
-            .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+            .or_insert_with(|| op.new_asset_uuid());
 
         buffers_to_import.push(vertex_buffer_to_import);
 
-        let vertex_buffer_handle =
-            SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider
-                    .get_load_handle(&AssetRef::Uuid(vertex_buffer_uuid))
-                    .unwrap();
-                Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
-            });
+        let vertex_buffer_handle = make_handle(vertex_buffer_uuid);
 
         //
         // Index Buffer
@@ -949,17 +902,11 @@ fn extract_meshes_to_import(
         let index_buffer_uuid = *state
             .buffer_asset_uuids
             .entry(index_buffer_id)
-            .or_insert_with(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+            .or_insert_with(|| op.new_asset_uuid());
 
         buffers_to_import.push(index_buffer_to_import);
 
-        let index_buffer_handle =
-            SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider
-                    .get_load_handle(&AssetRef::Uuid(index_buffer_uuid))
-                    .unwrap();
-                Handle::<BufferAsset>::new(ref_op_sender.clone(), load_handle)
-            });
+        let index_buffer_handle = make_handle(index_buffer_uuid);
 
         let asset = MeshAssetData {
             mesh_parts,

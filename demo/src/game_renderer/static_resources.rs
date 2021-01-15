@@ -48,6 +48,7 @@ fn wait_for_asset_to_load<T>(
     }
 }
 
+#[derive(Clone)]
 pub struct GameRendererStaticResources {
     pub sprite_material: Handle<MaterialAsset>,
     pub debug3d_material: Handle<MaterialAsset>,

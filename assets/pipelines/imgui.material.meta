@@ -1,35 +1,5 @@
 (
-    version: 1,
-    import_hash: Some(12202863046063361910),
-    importer_version: 2,
-    importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
+    version: 2,
     importer_options: (),
     importer_state: (Some("241b4b9c-b542-4aef-a2f2-e8f7268acb7b")),
-    assets: [
-        (
-            id: "241b4b9c-b542-4aef-a2f2-e8f7268acb7b",
-            search_tags: [
-                ("file_name", Some("imgui.material")),
-            ],
-            build_pipeline: None,
-            artifact: Some((
-                id: (4026028083428424501),
-                asset_id: "241b4b9c-b542-4aef-a2f2-e8f7268acb7b",
-                build_deps: [
-                    Path("imgui.pipeline"),
-                    Path("../shaders/imgui.frag.shader"),
-                    Path("../shaders/imgui.vert.shader"),
-                ],
-                load_deps: [
-                    Path("../shaders/imgui.frag.shader"),
-                    Path("../shaders/imgui.vert.shader"),
-                    Path("imgui.pipeline"),
-                ],
-                compression: None,
-                compressed_size: Some(132),
-                uncompressed_size: Some(132),
-                type_id: "ad94bca2-1f02-4e5f-9117-1a7b03456a11",
-            )),
-        ),
-    ],
 )

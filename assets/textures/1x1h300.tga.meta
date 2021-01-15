@@ -1,27 +1,5 @@
 (
-    version: 1,
-    import_hash: Some(18259420241997741432),
-    importer_version: 2,
-    importer_type: "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251",
+    version: 2,
     importer_options: (),
     importer_state: (Some("02afd9fc-532c-40a3-bac4-f1d1f0df7de7")),
-    assets: [
-        (
-            id: "02afd9fc-532c-40a3-bac4-f1d1f0df7de7",
-            search_tags: [
-                ("file_name", Some("1x1h300.tga")),
-            ],
-            build_pipeline: None,
-            artifact: Some((
-                id: (14315321495216479301),
-                asset_id: "02afd9fc-532c-40a3-bac4-f1d1f0df7de7",
-                build_deps: [],
-                load_deps: [],
-                compression: None,
-                compressed_size: Some(24),
-                uncompressed_size: Some(24),
-                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
-            )),
-        ),
-    ],
 )

@@ -1,27 +1,5 @@
 (
-    version: 1,
-    import_hash: Some(14781441541098533643),
-    importer_version: 4,
-    importer_type: "cab0cf4c-16ff-4dbd-aae7-8705246d85d6",
+    version: 2,
     importer_options: (),
     importer_state: (Some("0e67427c-c4e1-4735-86e6-9b61f00c46a0")),
-    assets: [
-        (
-            id: "0e67427c-c4e1-4735-86e6-9b61f00c46a0",
-            search_tags: [
-                ("file_name", Some("imgui.vert.shader")),
-            ],
-            build_pipeline: None,
-            artifact: Some((
-                id: (3011922977685628262),
-                asset_id: "0e67427c-c4e1-4735-86e6-9b61f00c46a0",
-                build_deps: [],
-                load_deps: [],
-                compression: None,
-                compressed_size: Some(1807),
-                uncompressed_size: Some(1807),
-                type_id: "e0ae2222-1a44-4022-af95-03c9101ac89e",
-            )),
-        ),
-    ],
 )

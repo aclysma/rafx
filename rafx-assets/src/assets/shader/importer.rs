@@ -1,12 +1,12 @@
 use crate::assets::shader::ShaderAssetData;
 use crate::CookedShader;
-use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue};
+use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, ImportOp};
 use rafx_api::{RafxShaderModuleDef, RafxShaderModuleDefVulkan};
 use rafx_resources::{ShaderModule, ShaderModuleHash};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read};
 use type_uuid::*;
+use atelier_assets::core::AssetUuid;
 
 // There may be a better way to do this type coercing
 // fn coerce_result_str<T>(result: Result<T, &str>) -> atelier_assets::importer::Result<T> {
@@ -48,6 +48,7 @@ impl Importer for ShaderImporterSpv {
     #[profiling::function]
     fn import(
         &self,
+        _op: &mut ImportOp,
         source: &mut dyn Read,
         _options: &Self::Options,
         state: &mut Self::State,
@@ -122,6 +123,7 @@ impl Importer for ShaderImporterCooked {
     #[profiling::function]
     fn import(
         &self,
+        _op: &mut ImportOp,
         source: &mut dyn Read,
         _options: &Self::Options,
         state: &mut Self::State,

@@ -1,27 +1,5 @@
 (
-    version: 1,
-    import_hash: Some(238285775990147711),
-    importer_version: 2,
-    importer_type: "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251",
+    version: 2,
     importer_options: (),
     importer_state: (Some("31d55f24-1a86-4882-a67e-a089cc01c84b")),
-    assets: [
-        (
-            id: "31d55f24-1a86-4882-a67e-a089cc01c84b",
-            search_tags: [
-                ("file_name", Some("1x1black.tga")),
-            ],
-            build_pipeline: None,
-            artifact: Some((
-                id: (12854551448236718802),
-                asset_id: "31d55f24-1a86-4882-a67e-a089cc01c84b",
-                build_deps: [],
-                load_deps: [],
-                compression: None,
-                compressed_size: Some(24),
-                uncompressed_size: Some(24),
-                type_id: "e6166902-8716-401b-9d2e-8b01701c5626",
-            )),
-        ),
-    ],
 )

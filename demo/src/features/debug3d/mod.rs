@@ -2,8 +2,6 @@ use crate::features::debug3d::extract::Debug3dExtractJob;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use atelier_assets::loader::handle::Handle;
-use rafx::assets::MaterialAsset;
 use rafx::nodes::ExtractJob;
 use rafx::nodes::RenderFeature;
 use rafx::nodes::RenderFeatureIndex;
@@ -19,9 +17,8 @@ pub use debug3d_resource::*;
 use rafx::api::RafxPrimitiveTopology;
 
 pub fn create_debug3d_extract_job(
-    debug3d_material: &Handle<MaterialAsset>
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
-    Box::new(Debug3dExtractJob::new(debug3d_material))
+    Box::new(Debug3dExtractJob::new())
 }
 
 pub type Debug3dUniformBufferObject = shaders::debug_vert::PerFrameUboUniform;

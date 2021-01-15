@@ -1,7 +1,7 @@
 use super::MeshCommandWriter;
-use crate::components::{
+use crate::{components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
-};
+}, game_renderer::InvalidResources};
 use crate::features::mesh::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
     LightId, MeshPerObjectFragmentShaderParam, MeshPerViewFragmentShaderParam, MeshRenderFeature,
@@ -10,13 +10,13 @@ use crate::features::mesh::{
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use fnv::{FnvHashMap, FnvHashSet};
-use rafx::assets::assets::MaterialPass;
+use rafx::{assets::assets::MaterialPass};
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, RenderViewIndex, ViewSubmitNodes,
 };
 use rafx::resources::{
-    DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ImageViewResource,
+    DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource,
     ResourceArc,
 };
 
@@ -42,9 +42,6 @@ pub struct MeshPrepareJob {
     pub(super) directional_lights: Vec<ExtractedDirectionalLight>,
     pub(super) point_lights: Vec<ExtractedPointLight>,
     pub(super) spot_lights: Vec<ExtractedSpotLight>,
-    pub(super) shadow_map_data: ShadowMapData,
-    pub(super) invalid_image: ResourceArc<ImageViewResource>,
-    pub(super) invalid_cube_map_image: ResourceArc<ImageViewResource>,
 }
 
 impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJob {
@@ -58,6 +55,8 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
         FeatureSubmitNodes,
     ) {
         profiling::scope!("Mesh Prepare");
+        let invalid_resources = prepare_context.render_resources.fetch::<InvalidResources>();
+        let shadow_map_data = prepare_context.render_resources.fetch::<ShadowMapData>();
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
@@ -117,14 +116,13 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
         let mut shadow_map_cube_image_views = [None; MAX_SHADOW_MAPS_CUBE];
 
         // This maps the index in the combined list to indices in the 2d/cube maps
-        let mut image_index_remap = vec![None; self.shadow_map_data.shadow_map_image_views.len()];
+        let mut image_index_remap = vec![None; shadow_map_data.shadow_map_image_views.len()];
 
         assert_eq!(
-            self.shadow_map_data.shadow_map_render_views.len(),
-            self.shadow_map_data.shadow_map_image_views.len()
+            shadow_map_data.shadow_map_render_views.len(),
+            shadow_map_data.shadow_map_image_views.len()
         );
-        for (index, shadow_map_render_view) in &mut self
-            .shadow_map_data
+        for (index, shadow_map_render_view) in shadow_map_data
             .shadow_map_render_views
             .iter()
             .enumerate()
@@ -144,7 +142,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                         };
 
                     shadow_map_2d_image_views[shadow_map_2d_count] =
-                        Some(&self.shadow_map_data.shadow_map_image_views[index]);
+                        Some(&shadow_map_data.shadow_map_image_views[index]);
                     image_index_remap[index] = Some(shadow_map_2d_count);
                     shadow_map_2d_count += 1;
                 }
@@ -167,7 +165,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
                         };
 
                     shadow_map_cube_image_views[shadow_map_cube_count] =
-                        Some(&self.shadow_map_data.shadow_map_image_views[index]);
+                        Some(&shadow_map_data.shadow_map_image_views[index]);
                     image_index_remap[index] = Some(shadow_map_cube_count);
                     shadow_map_cube_count += 1;
                 }
@@ -175,11 +173,11 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
         }
 
         for index in shadow_map_2d_count..MAX_SHADOW_MAPS_2D {
-            shadow_map_2d_image_views[index] = Some(&self.invalid_image);
+            shadow_map_2d_image_views[index] = Some(&invalid_resources.invalid_image);
         }
 
         for index in shadow_map_cube_count..MAX_SHADOW_MAPS_CUBE {
-            shadow_map_cube_image_views[index] = Some(&self.invalid_cube_map_image);
+            shadow_map_cube_image_views[index] = Some(&invalid_resources.invalid_cube_map_image);
         }
 
         //
@@ -189,8 +187,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
         for directional_light in &self.directional_lights {
             prepared_directional_lights.push(PreparedDirectionalLight {
                 light: &directional_light.light,
-                shadow_map_index: self
-                    .shadow_map_data
+                shadow_map_index: shadow_map_data
                     .shadow_map_lookup
                     .get(&LightId::DirectionalLight(directional_light.entity))
                     .map(|x| image_index_remap[*x])
@@ -206,8 +203,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
             prepared_spot_lights.push(PreparedSpotLight {
                 light: &spot_light.light,
                 position: &spot_light.position,
-                shadow_map_index: self
-                    .shadow_map_data
+                shadow_map_index: shadow_map_data
                     .shadow_map_lookup
                     .get(&LightId::SpotLight(spot_light.entity))
                     .map(|x| image_index_remap[*x])
@@ -223,8 +219,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
             prepared_point_lights.push(PreparedPointLight {
                 light: &point_light.light,
                 position: &point_light.position,
-                shadow_map_index: self
-                    .shadow_map_data
+                shadow_map_index: shadow_map_data
                     .shadow_map_lookup
                     .get(&LightId::PointLight(point_light.entity))
                     .map(|x| image_index_remap[*x])

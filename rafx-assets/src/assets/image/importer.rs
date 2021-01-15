@@ -1,6 +1,6 @@
 use crate::assets::image::{ImageAssetColorSpace, ImageAssetData};
-use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue};
+use atelier_assets::{core::AssetUuid, importer::ImportOp};
 use image2::Image;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -33,6 +33,7 @@ impl Importer for ImageImporter {
     #[profiling::function]
     fn import(
         &self,
+        _op: &mut ImportOp,
         source: &mut dyn Read,
         _options: &Self::Options,
         state: &mut Self::State,

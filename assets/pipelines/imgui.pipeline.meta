@@ -1,27 +1,5 @@
 (
-    version: 1,
-    import_hash: Some(18362661471624841115),
-    importer_version: 3,
-    importer_type: "3906ac10-8782-446d-aee4-e94611c6d61e",
+    version: 2,
     importer_options: (),
     importer_state: (Some("a2c4fb94-2b39-4217-a52b-e7a4d0598f67")),
-    assets: [
-        (
-            id: "a2c4fb94-2b39-4217-a52b-e7a4d0598f67",
-            search_tags: [
-                ("file_name", Some("imgui.pipeline")),
-            ],
-            build_pipeline: None,
-            artifact: Some((
-                id: (13866811304489820493),
-                asset_id: "a2c4fb94-2b39-4217-a52b-e7a4d0598f67",
-                build_deps: [],
-                load_deps: [],
-                compression: None,
-                compressed_size: Some(110),
-                uncompressed_size: Some(110),
-                type_id: "0dfa5d9a-89cd-40a1-adac-baf801db61db",
-            )),
-        ),
-    ],
 )

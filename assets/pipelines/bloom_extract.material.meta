@@ -1,35 +1,5 @@
 (
-    version: 1,
-    import_hash: Some(16745256182901038827),
-    importer_version: 2,
-    importer_type: "eb9a20b7-3957-46fd-b832-2e7e99852bb0",
+    version: 2,
     importer_options: (),
     importer_state: (Some("4c5509e3-4a9f-45c2-a6dc-862a925d2341")),
-    assets: [
-        (
-            id: "4c5509e3-4a9f-45c2-a6dc-862a925d2341",
-            search_tags: [
-                ("file_name", Some("bloom_extract.material")),
-            ],
-            build_pipeline: None,
-            artifact: Some((
-                id: (9103783730702874738),
-                asset_id: "4c5509e3-4a9f-45c2-a6dc-862a925d2341",
-                build_deps: [
-                    Path("bloom_extract.pipeline"),
-                    Path("../shaders/bloom_extract.frag.shader"),
-                    Path("../shaders/postprocess.vert.shader"),
-                ],
-                load_deps: [
-                    Path("../shaders/postprocess.vert.shader"),
-                    Path("bloom_extract.pipeline"),
-                    Path("../shaders/bloom_extract.frag.shader"),
-                ],
-                compression: None,
-                compressed_size: Some(122),
-                uncompressed_size: Some(122),
-                type_id: "ad94bca2-1f02-4e5f-9117-1a7b03456a11",
-            )),
-        ),
-    ],
 )

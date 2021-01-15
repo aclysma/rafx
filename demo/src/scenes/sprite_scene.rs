@@ -1,8 +1,6 @@
 use crate::asset_resource::AssetResource;
 use crate::components::{PositionComponent, SpriteComponent};
 use crate::features::sprite::{SpriteRenderNode, SpriteRenderNodeSet};
-use atelier_assets::core as atelier_core;
-use atelier_assets::core::asset_uuid;
 use glam::f32::Vec3;
 use legion::{Resources, World};
 use rafx::assets::ImageAsset;
@@ -19,7 +17,7 @@ impl SpriteScene {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             //asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
             asset_resource
-                .load_asset::<ImageAsset>(asset_uuid!("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38"))
+                .load_asset::<ImageAsset>("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38".into())
         };
 
         for i in 0..1000 {
