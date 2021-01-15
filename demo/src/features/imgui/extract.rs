@@ -1,13 +1,16 @@
-use crate::{features::imgui::prepare::ImGuiPrepareJobImpl, game_renderer::{GameRendererStaticResources, ImguiFontAtlas}};
 use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
 use crate::imgui_support::Sdl2ImguiManager;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
+use crate::{
+    features::imgui::prepare::ImGuiPrepareJobImpl,
+    game_renderer::{GameRendererStaticResources, ImguiFontAtlas},
+};
+use rafx::graph::SwapchainSurfaceInfo;
 use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
-use rafx::graph::SwapchainSurfaceInfo;
 
 // This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
 // single function
@@ -34,8 +37,7 @@ pub fn orthographic_rh_gl(
     ]
 }
 
-pub struct ImGuiExtractJobImpl {
-}
+pub struct ImGuiExtractJobImpl {}
 
 impl ImGuiExtractJobImpl {
     pub fn new() -> Self {
@@ -64,7 +66,9 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             None => [1.0, 1.0],
         };
 
-        let swapchain_info = extract_context.render_resources.fetch::<SwapchainSurfaceInfo>();
+        let swapchain_info = extract_context
+            .render_resources
+            .fetch::<SwapchainSurfaceInfo>();
         let view_proj = orthographic_rh_gl(
             0.0,
             swapchain_info.extents.width as f32 / framebuffer_scale[0],
@@ -74,7 +78,10 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             100.0,
         );
 
-        let imgui_material = &extract_context.render_resources.fetch::<GameRendererStaticResources>().imgui_material;
+        let imgui_material = &extract_context
+            .render_resources
+            .fetch::<GameRendererStaticResources>()
+            .imgui_material;
         let imgui_material_pass = extract_context
             .asset_manager
             .get_material_pass_by_index(imgui_material, 0)

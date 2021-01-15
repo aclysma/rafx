@@ -1,11 +1,11 @@
 use atelier_assets::loader::handle::Handle;
+use rafx::api::RafxPrimitiveTopology;
 use rafx::assets::BufferAsset;
 use rafx::assets::ImageAsset;
 use rafx::assets::MaterialInstanceAsset;
 use rafx::resources::{VertexDataLayout, VertexDataSetLayout};
 use serde::{Deserialize, Serialize};
 use shaders::mesh_frag::MaterialDataStd140;
-use rafx::api::RafxPrimitiveTopology;
 use type_uuid::*;
 
 //TODO: These are extensions that might be interesting to try supporting. In particular, lights,

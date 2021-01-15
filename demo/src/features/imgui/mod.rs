@@ -3,7 +3,7 @@ use crate::imgui_support::ImGuiDrawData;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use rafx::api::{RafxPrimitiveTopology};
+use rafx::api::RafxPrimitiveTopology;
 use rafx::nodes::ExtractJob;
 use rafx::nodes::RenderFeature;
 use rafx::nodes::RenderFeatureIndex;
@@ -14,7 +14,8 @@ mod extract;
 mod prepare;
 mod write;
 
-pub fn create_imgui_extract_job() -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
+pub fn create_imgui_extract_job(
+) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
     Box::new(ImGuiExtractJobImpl::new())
 }
 

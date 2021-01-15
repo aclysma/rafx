@@ -74,8 +74,7 @@ pub struct ExtractedSpotLight {
 
 pub fn create_mesh_extract_job(
 ) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
-    Box::new(MeshExtractJob {
-    })
+    Box::new(MeshExtractJob {})
 }
 
 //

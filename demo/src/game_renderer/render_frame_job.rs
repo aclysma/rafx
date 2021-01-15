@@ -107,8 +107,11 @@ impl RenderFrameJob {
                 }
             }
 
-            let prepare_context =
-                RenderJobPrepareContext::new(device_context.clone(), resource_context.clone(), &render_resources);
+            let prepare_context = RenderJobPrepareContext::new(
+                device_context.clone(),
+                resource_context.clone(),
+                &render_resources,
+            );
             prepare_job_set.prepare(
                 &prepare_context,
                 &frame_packet,

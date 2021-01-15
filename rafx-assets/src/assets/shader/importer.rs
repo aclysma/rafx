@@ -1,12 +1,12 @@
 use crate::assets::shader::ShaderAssetData;
 use crate::CookedShader;
-use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, ImportOp};
+use atelier_assets::core::AssetUuid;
+use atelier_assets::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
 use rafx_api::{RafxShaderModuleDef, RafxShaderModuleDefVulkan};
 use rafx_resources::{ShaderModule, ShaderModuleHash};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read};
 use type_uuid::*;
-use atelier_assets::core::AssetUuid;
 
 // There may be a better way to do this type coercing
 // fn coerce_result_str<T>(result: Result<T, &str>) -> atelier_assets::importer::Result<T> {

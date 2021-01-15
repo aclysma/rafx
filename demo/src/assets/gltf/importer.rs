@@ -2,7 +2,7 @@ use crate::assets::gltf::{
     GltfMaterialAsset, GltfMaterialDataShaderParam, MeshAssetData, MeshPartAssetData, MeshVertex,
 };
 use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue, ImportOp};
+use atelier_assets::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
 use atelier_assets::loader::handle::Handle;
 use atelier_assets::{make_handle, make_handle_from_str};
 use fnv::FnvHashMap;

@@ -253,8 +253,7 @@ impl<'a> RafxShaderModuleDef<'a> {
 
 #[derive(Hash)]
 #[cfg(not(any(feature = "rafx-vulkan")))]
-pub enum RafxShaderModuleDef {
-}
+pub enum RafxShaderModuleDef {}
 
 #[derive(Clone, Debug)]
 pub struct RafxShaderStageDef {

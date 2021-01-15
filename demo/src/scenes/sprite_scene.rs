@@ -16,8 +16,7 @@ impl SpriteScene {
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             //asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
-            asset_resource
-                .load_asset::<ImageAsset>("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38".into())
+            asset_resource.load_asset::<ImageAsset>("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38".into())
         };
 
         for i in 0..1000 {

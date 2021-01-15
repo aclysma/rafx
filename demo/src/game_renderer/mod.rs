@@ -184,9 +184,9 @@ impl GameRenderer {
 
         let renderer = GameRendererInner {
             imgui_font_atlas_image_view: ImguiFontAtlas(imgui_font_atlas_image_view),
-            invalid_resources: InvalidResources { 
+            invalid_resources: InvalidResources {
                 invalid_image,
-                invalid_cube_map_image
+                invalid_cube_map_image,
             },
             static_resources: game_renderer_resources,
             swapchain_resources: None,
@@ -665,7 +665,8 @@ impl GameRenderer {
 
         let prepare_job_set = {
             profiling::scope!("renderer extract");
-            let extract_context = RenderJobExtractContext::new(&world, &resources, &render_resources, asset_manager);
+            let extract_context =
+                RenderJobExtractContext::new(&world, &resources, &render_resources, asset_manager);
 
             let mut extract_views = Vec::default();
             extract_views.push(&main_view);
@@ -710,7 +711,6 @@ impl GameRenderer {
             shadow_map_image_views: render_graph.shadow_map_image_views.clone(),
         };
         render_resources.insert(shadow_map_data);
-
 
         let game_renderer = game_renderer.clone();
         let graphics_queue = game_renderer.graphics_queue.clone();

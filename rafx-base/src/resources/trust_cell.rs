@@ -51,7 +51,10 @@ macro_rules! borrow_panic {
 pub struct InvalidBorrow;
 
 impl Display for InvalidBorrow {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), FormatError> {
+    fn fmt(
+        &self,
+        f: &mut Formatter,
+    ) -> Result<(), FormatError> {
         write!(f, "Tried to borrow when it was illegal")
     }
 }
@@ -130,7 +133,10 @@ impl<'a, T: ?Sized> Ref<'a, T> {
     /// let b2: Ref<'_, u32> = Ref::map(b1, |t| &t.0);
     /// assert_eq!(*b2, 5);
     /// ```
-    pub fn map<U, F>(self, f: F) -> Ref<'a, U>
+    pub fn map<U, F>(
+        self,
+        f: F,
+    ) -> Ref<'a, U>
     where
         F: FnOnce(&T) -> &U,
         U: ?Sized,
@@ -232,7 +238,10 @@ impl<'a, T: ?Sized> RefMut<'a, T> {
     /// let b2: RefMut<'_, u32> = RefMut::map(b1, |t| &mut t.0);
     /// assert_eq!(*b2, 5);
     /// ```
-    pub fn map<U, F>(self, f: F) -> RefMut<'a, U>
+    pub fn map<U, F>(
+        self,
+        f: F,
+    ) -> RefMut<'a, U>
     where
         F: FnOnce(&mut T) -> &mut U,
         U: ?Sized,

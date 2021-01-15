@@ -1,4 +1,4 @@
-use crate::{components::MeshComponent};
+use crate::components::MeshComponent;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
@@ -12,13 +12,12 @@ use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
 use legion::*;
-use rafx::{base::slab::RawSlabKey};
+use rafx::base::slab::RawSlabKey;
 use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
 
-pub struct MeshExtractJob {
-}
+pub struct MeshExtractJob {}
 
 impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
     for MeshExtractJob

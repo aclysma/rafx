@@ -58,30 +58,30 @@ impl ShadowsScene {
         // Add some meshes
         //
         {
-            let cube_meshes =
-                {
-                    let asset_resource = resources.get::<AssetResource>().unwrap();
-                    let mut meshes = Vec::default();
+            let cube_meshes = {
+                let asset_resource = resources.get::<AssetResource>().unwrap();
+                let mut meshes = Vec::default();
 
-                    // container1
-                    meshes.push(
-                        asset_resource.load_asset_path("blender/storage_container1.glb"),
-                        //.load_asset::<MeshAsset>(asset_uuid!("b461ed48-d2f8-44af-bcda-c5b64633c13d")),
-                    );
+                // container1
+                meshes.push(
+                    asset_resource.load_asset_path("blender/storage_container1.glb"),
+                    //.load_asset::<MeshAsset>(asset_uuid!("b461ed48-d2f8-44af-bcda-c5b64633c13d")),
+                );
 
-                    // container2
-                    meshes.push(
-                        asset_resource.load_asset_path("blender/storage_container2.glb"),
-                        //.load_asset::<MeshAsset>(asset_uuid!("04ea64c6-d4da-4ace-83e7-56f4d60524c1")),
-                    );
+                // container2
+                meshes.push(
+                    asset_resource.load_asset_path("blender/storage_container2.glb"),
+                    //.load_asset::<MeshAsset>(asset_uuid!("04ea64c6-d4da-4ace-83e7-56f4d60524c1")),
+                );
 
-                    // blue icosphere - load by UUID since it's one of several meshes in the file
-                    meshes.push(asset_resource.load_asset::<MeshAsset>(
-                        "d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into()
-                    ));
+                // blue icosphere - load by UUID since it's one of several meshes in the file
+                meshes.push(
+                    asset_resource
+                        .load_asset::<MeshAsset>("d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into()),
+                );
 
-                    meshes
-                };
+                meshes
+            };
 
             for i in 0..6 {
                 let position = Vec3::new(((i / 3) * 3) as f32, ((i % 3) * 3) as f32, 0.0);

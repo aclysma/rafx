@@ -1,7 +1,4 @@
 use super::MeshCommandWriter;
-use crate::{components::{
-    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
-}, game_renderer::InvalidResources};
 use crate::features::mesh::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
     LightId, MeshPerObjectFragmentShaderParam, MeshPerViewFragmentShaderParam, MeshRenderFeature,
@@ -9,15 +6,20 @@ use crate::features::mesh::{
 };
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
+use crate::{
+    components::{
+        DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+    },
+    game_renderer::InvalidResources,
+};
 use fnv::{FnvHashMap, FnvHashSet};
-use rafx::{assets::assets::MaterialPass};
+use rafx::assets::assets::MaterialPass;
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, RenderViewIndex, ViewSubmitNodes,
 };
 use rafx::resources::{
-    DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource,
-    ResourceArc,
+    DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
 };
 
 pub struct PreparedDirectionalLight<'a> {
@@ -122,10 +124,8 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJ
             shadow_map_data.shadow_map_render_views.len(),
             shadow_map_data.shadow_map_image_views.len()
         );
-        for (index, shadow_map_render_view) in shadow_map_data
-            .shadow_map_render_views
-            .iter()
-            .enumerate()
+        for (index, shadow_map_render_view) in
+            shadow_map_data.shadow_map_render_views.iter().enumerate()
         {
             match shadow_map_render_view {
                 ShadowMapRenderView::Single(view) => {

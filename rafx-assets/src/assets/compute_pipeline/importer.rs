@@ -1,6 +1,6 @@
 use crate::assets::compute_pipeline::ComputePipelineAssetData;
 use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{ImportedAsset, Importer, ImporterValue, ImportOp};
+use atelier_assets::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;

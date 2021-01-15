@@ -1,9 +1,9 @@
 use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
 use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource, ExtractedDebug3dData};
+use crate::game_renderer::GameRendererStaticResources;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use crate::game_renderer::GameRendererStaticResources;
 use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
 };
@@ -32,7 +32,10 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .unwrap()
             .take_line_lists();
 
-        let debug3d_material = &extract_context.render_resources.fetch::<GameRendererStaticResources>().debug3d_material;
+        let debug3d_material = &extract_context
+            .render_resources
+            .fetch::<GameRendererStaticResources>()
+            .debug3d_material;
         let debug3d_material_pass = extract_context
             .asset_manager
             .get_material_pass_by_index(&debug3d_material, 0)

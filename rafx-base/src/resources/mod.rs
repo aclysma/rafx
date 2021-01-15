@@ -15,8 +15,8 @@ use fnv::FnvHashMap as HashMap;
 use std::marker::PhantomData;
 
 mod trust_cell;
-use trust_cell::{TrustCell, Ref, RefMut};
- 
+use trust_cell::{Ref, RefMut, TrustCell};
+
 //
 // ResourceId
 //
@@ -67,7 +67,10 @@ impl ResourceMapBuilder {
     }
 
     /// Builder-style API that adds the resource to the map
-    pub fn with_resource<R>(mut self, r: R) -> Self
+    pub fn with_resource<R>(
+        mut self,
+        r: R,
+    ) -> Self
     where
         R: Resource,
     {
@@ -76,8 +79,10 @@ impl ResourceMapBuilder {
     }
 
     /// Adds the resource to the map
-    pub fn insert<R>(&mut self, r: R)
-    where
+    pub fn insert<R>(
+        &mut self,
+        r: R,
+    ) where
         R: Resource,
     {
         self.resource_map.insert(r);
@@ -104,8 +109,10 @@ impl ResourceMap {
     }
 
     /// Add a type/resource instance to the map
-    pub fn insert<R>(&mut self, r: R)
-    where
+    pub fn insert<R>(
+        &mut self,
+        r: R,
+    ) where
         R: Resource,
     {
         self.insert_by_id(ResourceId::new::<R>(), r);
@@ -119,14 +126,20 @@ impl ResourceMap {
         self.remove_by_id(ResourceId::new::<R>())
     }
 
-    fn insert_by_id<R>(&mut self, id: ResourceId, r: R)
-    where
+    fn insert_by_id<R>(
+        &mut self,
+        id: ResourceId,
+        r: R,
+    ) where
         R: Resource,
     {
         self.resources.insert(id, TrustCell::new(Box::new(r)));
     }
 
-    fn remove_by_id<R>(&mut self, id: ResourceId) -> Option<R>
+    fn remove_by_id<R>(
+        &mut self,
+        id: ResourceId,
+    ) -> Option<R>
     where
         R: Resource,
     {
@@ -202,7 +215,10 @@ impl ResourceMap {
         self.has_value_raw(ResourceId::new::<R>())
     }
 
-    fn has_value_raw(&self, id: ResourceId) -> bool {
+    fn has_value_raw(
+        &self,
+        id: ResourceId,
+    ) -> bool {
         self.resources.contains_key(&id)
     }
 
