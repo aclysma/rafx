@@ -70,8 +70,8 @@ impl ResourceMapBuilder {
         mut self,
         r: R,
     ) -> Self
-        where
-            R: Resource,
+    where
+        R: Resource,
     {
         self.resource_map.insert(r);
         self
@@ -119,8 +119,8 @@ impl ResourceMap {
 
     /// Remove a type/resource instance from the map
     pub fn remove<R>(&mut self) -> Option<R>
-        where
-            R: Resource,
+    where
+        R: Resource,
     {
         self.remove_by_id(ResourceId::new::<R>())
     }
@@ -139,8 +139,8 @@ impl ResourceMap {
         &mut self,
         id: ResourceId,
     ) -> Option<R>
-        where
-            R: Resource,
+    where
+        R: Resource,
     {
         self.resources
             .remove(&id)
@@ -208,8 +208,8 @@ impl ResourceMap {
 
     /// Returns true if the resource is registered.
     pub fn has_value<R>(&self) -> bool
-        where
-            R: Resource,
+    where
+        R: Resource,
     {
         self.has_value_raw(ResourceId::new::<R>())
     }
@@ -308,8 +308,8 @@ impl<'a, T> DataBorrow for ReadBorrow<'a, T> {}
 impl<'a, T> DataBorrow for Option<ReadBorrow<'a, T>> {}
 
 impl<'a, T> std::ops::Deref for ReadBorrow<'a, T>
-    where
-        T: Resource,
+where
+    T: Resource,
 {
     type Target = T;
 
@@ -337,8 +337,8 @@ impl<'a, T> DataBorrow for WriteBorrow<'a, T> {}
 impl<'a, T> DataBorrow for Option<WriteBorrow<'a, T>> {}
 
 impl<'a, T> std::ops::Deref for WriteBorrow<'a, T>
-    where
-        T: Resource,
+where
+    T: Resource,
 {
     type Target = T;
 
@@ -348,8 +348,8 @@ impl<'a, T> std::ops::Deref for WriteBorrow<'a, T>
 }
 
 impl<'a, T> std::ops::DerefMut for WriteBorrow<'a, T>
-    where
-        T: Resource,
+where
+    T: Resource,
 {
     fn deref_mut(&mut self) -> &mut T {
         self.inner.downcast_mut().unwrap()
