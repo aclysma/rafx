@@ -19,8 +19,6 @@ gltf = { git = "https://github.com/gltf-rs/gltf.git", rev = "e49aef5ee7b40c2c8f8
 
 crossbeam-channel = "0.5"
 
-vk-mem = "0.2"
-
 rafx = { path = "../rafx", features = ["assets"] }
 shaders = { path = "shaders" }
 

@@ -5,7 +5,7 @@ use atelier_assets::importer::{ImportOp, ImportedAsset, Importer, ImporterValue}
 use rafx_api::{RafxShaderModuleDef, RafxShaderModuleDefVulkan};
 use rafx_resources::{ShaderModule, ShaderModuleHash};
 use serde::{Deserialize, Serialize};
-use std::io::{Cursor, Read};
+use std::io::Read;
 use type_uuid::*;
 
 // There may be a better way to do this type coercing
@@ -59,25 +59,23 @@ impl Importer for ShaderImporterSpv {
         *state = ShaderImporterSpvState(Some(asset_id));
 
         // Raw compiled shader
-        let mut bytes = Vec::new();
-        source.read_to_end(&mut bytes)?;
-
-        let code = ash::util::read_spv(&mut Cursor::new(bytes.as_mut_slice()))?;
+        let mut spv_bytes = Vec::new();
+        source.read_to_end(&mut spv_bytes)?;
 
         log::trace!(
             "Import shader asset {:?} with {} bytes of code",
             asset_id,
-            code.len() * std::mem::size_of::<u32>()
+            spv_bytes.len()
         );
 
         // The hash is used in some places identify the shader
         let rafx_shader_module_def =
-            RafxShaderModuleDef::Vk(RafxShaderModuleDefVulkan::SpvPrepared(&code));
+            RafxShaderModuleDef::Vk(RafxShaderModuleDefVulkan::SpvBytes(&spv_bytes));
         let shader_module_hash = ShaderModuleHash::new(&rafx_shader_module_def);
 
         let shader_asset = ShaderAssetData {
             shader: ShaderModule {
-                code,
+                code: spv_bytes,
                 shader_module_hash,
             },
             reflection_data: None,
@@ -142,22 +140,20 @@ impl Importer for ShaderImporterCooked {
                 .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x)),
         )?;
 
-        let code = ash::util::read_spv(&mut Cursor::new(&cooked_shader.spv))?;
-
         log::trace!(
             "Import shader asset {:?} with {} bytes of code",
             asset_id,
-            code.len() * std::mem::size_of::<u32>()
+            cooked_shader.spv.len()
         );
 
         // The hash is used in some places identify the shader
         let rafx_shader_module_def =
-            RafxShaderModuleDef::Vk(RafxShaderModuleDefVulkan::SpvPrepared(&code));
+            RafxShaderModuleDef::Vk(RafxShaderModuleDefVulkan::SpvBytes(&cooked_shader.spv));
         let shader_module_hash = ShaderModuleHash::new(&rafx_shader_module_def);
 
         let shader_asset = ShaderAssetData {
             shader: ShaderModule {
-                code,
+                code: cooked_shader.spv,
                 shader_module_hash,
             },
             reflection_data: Some(cooked_shader.entry_points),

@@ -2,34 +2,33 @@ use rafx_api::{RafxDescriptorSetArray, RafxDeviceContext, RafxResult};
 use std::collections::VecDeque;
 use std::num::Wrapping;
 
-pub type VkPoolResourceAllocatorAllocFn<T> =
+pub type PoolResourceAllocatorAllocFn<T> =
     dyn Fn(&RafxDeviceContext) -> RafxResult<T> + Send + Sync;
 
-/// Implement to customize how VkPoolAllocator resets and destroys pools
+/// Implement to customize how PoolAllocator resets and destroys pools
 pub trait PooledResourceImpl {
     fn reset(&mut self) -> RafxResult<()>;
 }
 
-struct VkPoolResourceInFlight<T: PooledResourceImpl> {
+struct PoolResourceInFlight<T: PooledResourceImpl> {
     pool: T,
     live_until_frame: Wrapping<u32>,
 }
 
 /// This handles waiting for N frames to pass before resetting the pool. "Restting" could mean
-/// different things depending on the resource.. for example a vk::DesciptorPool we would want to
-/// call device.reset_descriptor_pool. This allocator also has a callback for allocating new pools
-/// for use. A maximum pool count should be provided so that an unbounded leak of pools can be
-/// detected.
+/// different things depending on the resource. This allocator also has a callback for allocating
+/// new pools for use. A maximum pool count should be provided so that an unbounded leak of pools
+/// can be detected.
 pub struct PooledResourceAllocator<T: PooledResourceImpl> {
     device_context: RafxDeviceContext,
 
     // Allocates a new pool
-    allocate_fn: Box<VkPoolResourceAllocatorAllocFn<T>>,
+    allocate_fn: Box<PoolResourceAllocatorAllocFn<T>>,
 
     // We are assuming that all pools can survive for the same amount of time so the data in
     // this VecDeque will naturally be orderered such that things that need to be reset sooner
     // are at the front
-    in_flight_pools: VecDeque<VkPoolResourceInFlight<T>>,
+    in_flight_pools: VecDeque<PoolResourceInFlight<T>>,
 
     // Pools that have been reset and are ready for allocation
     reset_pools: Vec<T>,
@@ -87,7 +86,7 @@ impl<T: PooledResourceImpl> PooledResourceAllocator<T> {
         &mut self,
         pool: T,
     ) {
-        self.in_flight_pools.push_back(VkPoolResourceInFlight {
+        self.in_flight_pools.push_back(PoolResourceInFlight {
             pool,
             live_until_frame: self.frame_index + self.max_in_flight_frames + Wrapping(1),
         });
@@ -154,4 +153,4 @@ impl PooledResourceImpl for RafxDescriptorSetArray {
     }
 }
 
-pub type VkDescriptorPoolAllocator = PooledResourceAllocator<RafxDescriptorSetArray>;
+pub type DescriptorSetArrayPoolAllocator = PooledResourceAllocator<RafxDescriptorSetArray>;

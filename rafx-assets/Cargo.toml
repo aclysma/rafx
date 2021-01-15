@@ -15,9 +15,6 @@ rafx-resources = { path = "../rafx-resources" }
 
 atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "rafx", features = ["serde_importers"] }
 
-ash = ">0.30"
-vk-mem = "0.2"
-
 #TODO: Not sure we really need both
 image = "0.23.12"
 image2 = { version = "0.11", features = [ "ser" ] }
@@ -41,7 +38,7 @@ arrayvec = "0.5"
 profiling = "0.1.4"
 
 #shaderc = "0.6"
-spirv-reflect = "0.2"
+#spirv-reflect = "0.2"
 #spirv_cross = "0.22"
 
 [dev-dependencies]

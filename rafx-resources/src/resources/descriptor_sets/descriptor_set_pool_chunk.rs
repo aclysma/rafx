@@ -4,7 +4,7 @@ use super::{
     DescriptorSetWriteSet, ManagedDescriptorSet, MAX_DESCRIPTOR_SETS_PER_POOL,
 };
 use crate::{
-    DescriptorSetLayoutResource, ResourceArc, ResourceDropSink, VkDescriptorPoolAllocator,
+    DescriptorSetArrayPoolAllocator, DescriptorSetLayoutResource, ResourceArc, ResourceDropSink,
 };
 use fnv::FnvHashMap;
 use rafx_api::{
@@ -50,7 +50,7 @@ impl ManagedDescriptorSetPoolChunk {
         device_context: &RafxDeviceContext,
         buffer_info: &[DescriptorSetPoolRequiredBufferInfo],
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
-        allocator: &mut VkDescriptorPoolAllocator,
+        allocator: &mut DescriptorSetArrayPoolAllocator,
     ) -> RafxResult<Self> {
         let mut descriptor_set_array = allocator.allocate_pool()?;
 
@@ -94,7 +94,7 @@ impl ManagedDescriptorSetPoolChunk {
 
     pub(super) fn destroy(
         &mut self,
-        pool_allocator: &mut VkDescriptorPoolAllocator,
+        pool_allocator: &mut DescriptorSetArrayPoolAllocator,
         buffer_drop_sink: &mut ResourceDropSink<RafxBuffer>,
     ) {
         pool_allocator.retire_pool(self.descriptor_set_array.take().unwrap());

@@ -1,9 +1,8 @@
-use ash::prelude::VkResult;
 use rafx_api::{RafxDeviceContext, RafxResult};
 use std::collections::VecDeque;
 use std::num::Wrapping;
 
-struct VkDropSinkResourceInFlight<T> {
+struct DropSinkResourceInFlight<T> {
     // prefixed with _ to silence "field not used" warning. The purpose of the var is to hold the
     // resource for a while then drop this entire structure
     _resource: T,
@@ -15,7 +14,7 @@ pub struct ResourceDropSink<T> {
     // We are assuming that all resources can survive for the same amount of time so the data in
     // this VecDeque will naturally be orderered such that things that need to be destroyed sooner
     // are at the front
-    resources_in_flight: VecDeque<VkDropSinkResourceInFlight<T>>,
+    resources_in_flight: VecDeque<DropSinkResourceInFlight<T>>,
 
     // All resources pushed into the sink will be destroyed after N frames
     max_in_flight_frames: Wrapping<u32>,
@@ -44,7 +43,7 @@ impl<T> ResourceDropSink<T> {
         resource: T,
     ) {
         self.resources_in_flight
-            .push_back(VkDropSinkResourceInFlight::<T> {
+            .push_back(DropSinkResourceInFlight::<T> {
                 _resource: resource,
                 live_until_frame: self.frame_index + self.max_in_flight_frames + Wrapping(1),
             });
@@ -52,7 +51,7 @@ impl<T> ResourceDropSink<T> {
 
     /// Call when we are ready to drop another set of resources, most likely when a frame is
     /// presented or a new frame begins
-    pub fn on_frame_complete(&mut self) -> VkResult<()> {
+    pub fn on_frame_complete(&mut self) -> RafxResult<()> {
         self.frame_index += Wrapping(1);
 
         // Determine how many resources we should drain

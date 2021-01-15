@@ -5,7 +5,6 @@ use crate::graph::graph_node::RenderGraphNodeId;
 use crate::graph::{RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageUsageId};
 use crate::{BufferResource, GraphicsPipelineRenderTargetMeta};
 use crate::{ImageViewResource, ResourceArc};
-use ash::vk;
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::{RafxFormat, RafxLoadOp, RafxResourceState, RafxSampleCount};
 
@@ -1304,8 +1303,8 @@ fn build_physical_passes(
 
                     load_op: RafxLoadOp::DontCare,
                     stencil_load_op: RafxLoadOp::DontCare,
-                    store_op: vk::AttachmentStoreOp::DONT_CARE,
-                    stencil_store_op: vk::AttachmentStoreOp::DONT_CARE,
+                    store_op: RenderGraphStoreOp::DontCare,
+                    stencil_store_op: RenderGraphStoreOp::DontCare,
                     clear_color: Default::default(),
                     format: RafxFormat::UNDEFINED,
                     samples: RafxSampleCount::SampleCount1,
@@ -1392,16 +1391,16 @@ fn build_physical_passes(
 
                             let store_op = if let Some(write_image) = color_attachment.write_image {
                                 if !graph.image_version_info(write_image).read_usages.is_empty() {
-                                    vk::AttachmentStoreOp::STORE
+                                    RenderGraphStoreOp::Store
                                 } else {
-                                    vk::AttachmentStoreOp::DONT_CARE
+                                    RenderGraphStoreOp::DontCare
                                 }
                             } else {
-                                vk::AttachmentStoreOp::DONT_CARE
+                                RenderGraphStoreOp::DontCare
                             };
 
                             attachment.store_op = store_op;
-                            attachment.stencil_store_op = vk::AttachmentStoreOp::DONT_CARE;
+                            attachment.stencil_store_op = RenderGraphStoreOp::DontCare;
                         }
                     }
 
@@ -1434,13 +1433,13 @@ fn build_physical_passes(
                             //TODO: Should we skip resolving if there is no reader?
                             let store_op =
                                 if !graph.image_version_info(write_image).read_usages.is_empty() {
-                                    vk::AttachmentStoreOp::STORE
+                                    RenderGraphStoreOp::Store
                                 } else {
-                                    vk::AttachmentStoreOp::DONT_CARE
+                                    RenderGraphStoreOp::DontCare
                                 };
 
                             attachment.store_op = store_op;
-                            attachment.stencil_store_op = vk::AttachmentStoreOp::DONT_CARE;
+                            attachment.stencil_store_op = RenderGraphStoreOp::DontCare;
                         }
                     }
 
@@ -1494,12 +1493,12 @@ fn build_physical_passes(
 
                         let store_op = if let Some(write_image) = depth_attachment.write_image {
                             if !graph.image_version_info(write_image).read_usages.is_empty() {
-                                vk::AttachmentStoreOp::STORE
+                                RenderGraphStoreOp::Store
                             } else {
-                                vk::AttachmentStoreOp::DONT_CARE
+                                RenderGraphStoreOp::DontCare
                             }
                         } else {
-                            vk::AttachmentStoreOp::DONT_CARE
+                            RenderGraphStoreOp::DontCare
                         };
 
                         if depth_attachment.has_depth {
@@ -2463,6 +2462,7 @@ fn create_output_passes(
                             let mut resolve_image = None;
                             let mut resolve_array_slice = None;
                             let mut resolve_mip_slice = None;
+                            let mut resolve_store_op = RenderGraphStoreOp::DontCare;
                             if let Some(resolve_attachment_index) =
                                 subpass.resolve_attachments[color_index]
                             {
@@ -2474,11 +2474,18 @@ fn create_output_passes(
                                 resolve_array_slice =
                                     resolve_attachment_usage.view_options.array_slice;
                                 resolve_mip_slice = resolve_attachment_usage.view_options.mip_slice;
+                                resolve_store_op = resolve_attachment.store_op;
                             }
+
+                            let store_op = RenderGraphStoreOp::to_rafx_color(
+                                attachment.store_op,
+                                resolve_store_op,
+                            );
 
                             color_render_targets.push(RenderGraphColorRenderTarget {
                                 image: attachment.image.unwrap(),
                                 load_op: attachment.load_op,
+                                store_op,
                                 clear_value: attachment
                                     .clear_color
                                     .clone()
@@ -2508,6 +2515,8 @@ fn create_output_passes(
                             image: attachment.image.unwrap(),
                             depth_load_op: attachment.load_op,
                             stencil_load_op: attachment.stencil_load_op,
+                            depth_store_op: attachment.store_op.to_rafx_depth_stencil(),
+                            stencil_store_op: attachment.stencil_store_op.to_rafx_depth_stencil(),
                             clear_value: attachment
                                 .clear_color
                                 .clone()

@@ -602,6 +602,7 @@ impl PreparedRenderGraph {
                                     .unwrap(),
                                 clear_value: color_image.clear_value.clone(),
                                 load_op: color_image.load_op,
+                                store_op: color_image.store_op,
                                 array_slice: color_image.array_slice,
                                 mip_slice: color_image.mip_slice,
                                 resolve_target: resolve_images[color_image_index]
@@ -626,6 +627,8 @@ impl PreparedRenderGraph {
                             clear_value: x.clear_value.clone(),
                             depth_load_op: x.depth_load_op,
                             stencil_load_op: x.stencil_load_op,
+                            depth_store_op: x.depth_store_op,
+                            stencil_store_op: x.stencil_store_op,
                             array_slice: x.array_slice,
                             mip_slice: x.mip_slice,
                         }

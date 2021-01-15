@@ -12,7 +12,7 @@ rafx-api = { path = "../rafx-api" }
 rafx-base = { path = "../rafx-base" }
 rafx-nodes = { path = "../rafx-nodes" }
 
-ash = ">0.30"
+#ash = ">0.30"
 
 enumflags2 = { version = "0.6", features = ["serde"] }
 bitflags = "1.2"

@@ -6,7 +6,7 @@ use super::{
 };
 use crate::resources::resource_lookup::DescriptorSetLayoutResource;
 use crate::resources::ResourceArc;
-use crate::{ResourceDropSink, VkDescriptorPoolAllocator};
+use crate::{DescriptorSetArrayPoolAllocator, ResourceDropSink};
 use crossbeam_channel::{Receiver, Sender};
 use rafx_api::{RafxBuffer, RafxDescriptorSetArrayDef, RafxDeviceContext, RafxResult};
 use rafx_base::slab::{RawSlab, RawSlabKey};
@@ -28,7 +28,7 @@ pub(super) struct ManagedDescriptorSetPool {
     drop_rx: Receiver<RawSlabKey<ManagedDescriptorSet>>,
 
     // Used to create new pools
-    descriptor_pool_allocator: VkDescriptorPoolAllocator,
+    descriptor_pool_allocator: DescriptorSetArrayPoolAllocator,
 
     // The layout of descriptor sets that this pool contains
     descriptor_set_layout: ResourceArc<DescriptorSetLayoutResource>,
@@ -58,7 +58,7 @@ impl ManagedDescriptorSetPool {
         // The allocator will produce descriptor sets as needed and destroy them after waiting a few
         // frames for them to finish any submits that reference them
         let descriptor_set_layout_clone = descriptor_set_layout.clone();
-        let descriptor_pool_allocator = VkDescriptorPoolAllocator::new(
+        let descriptor_pool_allocator = DescriptorSetArrayPoolAllocator::new(
             device_context,
             MAX_FRAMES_IN_FLIGHT as u32,
             std::u32::MAX, // No upper bound on pool count

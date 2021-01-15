@@ -1,8 +1,6 @@
 mod resources;
 pub use resources::*;
 
-pub use ash;
-
 pub mod graph;
 
 pub type RafxResult<T> = rafx_api::RafxResult<T>;

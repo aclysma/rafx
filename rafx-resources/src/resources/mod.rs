@@ -61,9 +61,9 @@ pub use vertex_data::VertexDataSetLayout;
 pub use vertex_data::VertexMember;
 
 mod pool;
+pub use pool::DescriptorSetArrayPoolAllocator;
 pub use pool::PooledResourceAllocator;
 pub use pool::PooledResourceImpl;
-pub use pool::VkDescriptorPoolAllocator;
 
 mod cleanup;
 pub use cleanup::ResourceDropSink;
