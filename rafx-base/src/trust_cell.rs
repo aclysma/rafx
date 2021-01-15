@@ -107,7 +107,7 @@ impl<'a, T: ?Sized> Ref<'a, T> {
     /// stored in the `TrustCell`.
     ///
     /// ```
-    /// use minimum::util::{Ref, TrustCell};
+    /// use rafx_base::trust_cell::{Ref, TrustCell};
     ///
     /// let cb = TrustCell::new(Box::new(5));
     ///
@@ -126,7 +126,7 @@ impl<'a, T: ?Sized> Ref<'a, T> {
     /// value.
     ///
     /// ```rust
-    /// # use minimum::util::{TrustCell, Ref};
+    /// # use rafx_base::trust_cell::{TrustCell, Ref};
     ///
     /// let c = TrustCell::new((5, 'b'));
     /// let b1: Ref<'_, (u32, char)> = c.borrow();
@@ -211,7 +211,7 @@ impl<'a, T: ?Sized> RefMut<'a, T> {
     /// stored in the `TrustCell`.
     ///
     /// ```
-    /// use minimum::util::{RefMut, TrustCell};
+    /// use rafx_base::trust_cell::{RefMut, TrustCell};
     ///
     /// let cb = TrustCell::new(Box::new(5));
     ///
@@ -230,7 +230,7 @@ impl<'a, T: ?Sized> RefMut<'a, T> {
     /// value.
     ///
     /// ```rust
-    /// # use minimum::util::{TrustCell, RefMut};
+    /// # use rafx_base::trust_cell::{TrustCell, RefMut};
     ///
     /// let c = TrustCell::new((5, 'b'));
     ///

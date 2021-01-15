@@ -8,4 +8,6 @@ pub mod memory;
 
 pub mod offsetof;
 
-pub mod resources;
+pub mod resource_map;
+
+pub mod trust_cell;

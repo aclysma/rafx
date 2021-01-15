@@ -7,20 +7,17 @@
 //! Lots of inspiration taken from `shred` for how to create a type system
 //! to express read/write dependencies
 
+//
+// ResourceId
+//
+use std::any::TypeId;
+use std::marker::PhantomData;
 use std::prelude::v1::*;
 
 use downcast_rs::Downcast;
 use fnv::FnvHashMap as HashMap;
 
-use std::marker::PhantomData;
-
-mod trust_cell;
-use trust_cell::{Ref, RefMut, TrustCell};
-
-//
-// ResourceId
-//
-use std::any::TypeId;
+use crate::trust_cell::{Ref, RefMut, TrustCell};
 
 /// Every type can be converted to a `ResourceId`. The ResourceId is used to look up the type's value
 /// in the `ResourceMap`
@@ -48,7 +45,9 @@ impl<T> Resource for T where T: Downcast + Send + Sync {}
 // Used for downcastic
 mod __resource_mopafy_scope {
     #![allow(clippy::all)]
+
     use super::Resource;
+
     downcast_rs::impl_downcast!(Resource);
 }
 
@@ -71,8 +70,8 @@ impl ResourceMapBuilder {
         mut self,
         r: R,
     ) -> Self
-    where
-        R: Resource,
+        where
+            R: Resource,
     {
         self.resource_map.insert(r);
         self
@@ -120,8 +119,8 @@ impl ResourceMap {
 
     /// Remove a type/resource instance from the map
     pub fn remove<R>(&mut self) -> Option<R>
-    where
-        R: Resource,
+        where
+            R: Resource,
     {
         self.remove_by_id(ResourceId::new::<R>())
     }
@@ -140,8 +139,8 @@ impl ResourceMap {
         &mut self,
         id: ResourceId,
     ) -> Option<R>
-    where
-        R: Resource,
+        where
+            R: Resource,
     {
         self.resources
             .remove(&id)
@@ -209,8 +208,8 @@ impl ResourceMap {
 
     /// Returns true if the resource is registered.
     pub fn has_value<R>(&self) -> bool
-    where
-        R: Resource,
+        where
+            R: Resource,
     {
         self.has_value_raw(ResourceId::new::<R>())
     }
@@ -309,8 +308,8 @@ impl<'a, T> DataBorrow for ReadBorrow<'a, T> {}
 impl<'a, T> DataBorrow for Option<ReadBorrow<'a, T>> {}
 
 impl<'a, T> std::ops::Deref for ReadBorrow<'a, T>
-where
-    T: Resource,
+    where
+        T: Resource,
 {
     type Target = T;
 
@@ -338,8 +337,8 @@ impl<'a, T> DataBorrow for WriteBorrow<'a, T> {}
 impl<'a, T> DataBorrow for Option<WriteBorrow<'a, T>> {}
 
 impl<'a, T> std::ops::Deref for WriteBorrow<'a, T>
-where
-    T: Resource,
+    where
+        T: Resource,
 {
     type Target = T;
 
@@ -349,8 +348,8 @@ where
 }
 
 impl<'a, T> std::ops::DerefMut for WriteBorrow<'a, T>
-where
-    T: Resource,
+    where
+        T: Resource,
 {
     fn deref_mut(&mut self) -> &mut T {
         self.inner.downcast_mut().unwrap()

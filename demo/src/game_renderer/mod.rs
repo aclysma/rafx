@@ -375,7 +375,7 @@ impl GameRenderer {
         let device_context = resources.get::<RafxDeviceContext>().unwrap().clone();
 
         let mut asset_manager_fetch = resources.get_mut::<AssetManager>().unwrap();
-        let mut render_resources = rafx::base::resources::ResourceMap::new();
+        let mut render_resources = rafx::RenderResources::new();
         let asset_manager = &mut *asset_manager_fetch;
 
         //

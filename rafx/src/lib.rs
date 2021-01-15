@@ -12,5 +12,5 @@ pub use rafx_visibility as visibility;
 pub use nodes::declare_render_feature;
 pub use nodes::declare_render_phase;
 
-pub use base::resources::ResourceMap as RenderResources;
+pub use base::resource_map::ResourceMap as RenderResources;
 pub use raw_window_handle;
