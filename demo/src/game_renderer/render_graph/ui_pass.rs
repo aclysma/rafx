@@ -32,7 +32,7 @@ pub(super) fn ui_pass(
     // allows us to precache pipelines for materials as they are loaded
     context
         .graph_callbacks
-        .add_renderphase_dependency::<UiRenderPhase>(node);
+        .add_render_phase_dependency::<UiRenderPhase>(node);
 
     // When the node is executed, we automatically set up the renderpass/framebuffer/command
     // buffer. Just add the draw calls.

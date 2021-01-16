@@ -647,7 +647,7 @@ impl GameRenderer {
             let mut extract_job_set = ExtractJobSet::new();
 
             //TODO: Is it possible to know up front what extract jobs aren't necessary based on
-            // renderphases?
+            // render phases?
 
             // Sprites
             extract_job_set.add_job(create_sprite_extract_job());

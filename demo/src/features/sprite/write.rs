@@ -20,7 +20,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
         &self,
         write_context: &mut RenderJobWriteContext,
         view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
+        render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
         let command_buffer = &write_context.command_buffer;
 
@@ -28,6 +28,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
+                render_phase_index,
                 &self.sprite_material,
                 &write_context.render_target_meta,
                 &super::SPRITE_VERTEX_LAYOUT,

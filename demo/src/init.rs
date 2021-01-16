@@ -8,6 +8,7 @@ use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNodeSet};
 use crate::game_asset_lookup::MeshAsset;
 use crate::game_asset_manager::GameAssetManager;
 use crate::game_renderer::{GameRenderer, SwapchainHandler};
+use crate::phases::PostProcessRenderPhase;
 use crate::phases::TransparentRenderPhase;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use atelier_assets::loader::{
@@ -117,6 +118,7 @@ pub fn rendering_init(
         .register_render_phase::<OpaqueRenderPhase>("Opaque")
         .register_render_phase::<ShadowMapRenderPhase>("ShadowMap")
         .register_render_phase::<TransparentRenderPhase>("Transparent")
+        .register_render_phase::<PostProcessRenderPhase>("PostProcess")
         .register_render_phase::<UiRenderPhase>("Ui")
         .build();
 

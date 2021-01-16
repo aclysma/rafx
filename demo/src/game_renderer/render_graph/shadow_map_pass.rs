@@ -102,7 +102,7 @@ fn shadow_map_pass(
 
     context
         .graph_callbacks
-        .add_renderphase_dependency::<ShadowMapRenderPhase>(node);
+        .add_render_phase_dependency::<ShadowMapRenderPhase>(node);
 
     let render_view = render_view.clone();
     context

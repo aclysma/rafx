@@ -1,13 +1,13 @@
 use crate::resources::resource_arc::{ResourceId, WeakResourceArc};
 use crate::resources::vertex_data::{VertexDataSetLayout, VertexDataSetLayoutHash};
 use crate::{GraphicsPipelineResource, MaterialPassResource, ResourceArc, ResourceLookupSet};
-use fnv::{FnvHashMap, FnvHashSet};
+use fnv::{FnvHashMap, FnvHashSet, FnvHasher};
 use rafx_api::{
     RafxFormat, RafxResult, RafxSampleCount, RafxVertexAttributeRate, RafxVertexLayout,
     RafxVertexLayoutAttribute, RafxVertexLayoutBuffer,
 };
 use rafx_nodes::{RenderPhase, RenderPhaseIndex, RenderRegistry, MAX_RENDER_PHASE_COUNT};
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 
 //TODO: Allow caching for N frames
@@ -16,37 +16,92 @@ use std::sync::{Arc, Mutex};
 //TODO: vulkan pipeline cache object
 
 //TODO: Remove Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GraphicsPipelineRenderTargetMeta {
-    pub color_formats: Vec<RafxFormat>,
-    pub depth_stencil_format: Option<RafxFormat>,
-    pub sample_count: RafxSampleCount,
+    color_formats: Vec<RafxFormat>,
+    depth_stencil_format: Option<RafxFormat>,
+    sample_count: RafxSampleCount,
+    hash: GraphicsPipelineRenderTargetMetaHash,
+}
+
+impl GraphicsPipelineRenderTargetMeta {
+    pub fn new(
+        color_formats: Vec<RafxFormat>,
+        depth_stencil_format: Option<RafxFormat>,
+        sample_count: RafxSampleCount,
+    ) -> Self {
+        let hash = GraphicsPipelineRenderTargetMetaHash::new(
+            &color_formats,
+            depth_stencil_format,
+            sample_count,
+        );
+        GraphicsPipelineRenderTargetMeta {
+            color_formats,
+            depth_stencil_format,
+            sample_count,
+            hash,
+        }
+    }
+
+    pub fn color_formats(&self) -> &[RafxFormat] {
+        &self.color_formats
+    }
+
+    pub fn depth_stencil_format(&self) -> Option<RafxFormat> {
+        self.depth_stencil_format
+    }
+
+    pub fn sample_count(&self) -> RafxSampleCount {
+        self.sample_count
+    }
+
+    pub fn render_target_meta_hash(&self) -> GraphicsPipelineRenderTargetMetaHash {
+        self.hash
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct GraphicsPipelineRenderTargetMetaHash(u64);
+impl GraphicsPipelineRenderTargetMetaHash {
+    fn new(
+        color_formats: &[RafxFormat],
+        depth_stencil_format: Option<RafxFormat>,
+        sample_count: RafxSampleCount,
+    ) -> Self {
+        let mut hasher = FnvHasher::default();
+        color_formats.hash(&mut hasher);
+        depth_stencil_format.hash(&mut hasher);
+        sample_count.hash(&mut hasher);
+        let hash = hasher.finish();
+        GraphicsPipelineRenderTargetMetaHash(hash)
+    }
 }
 
 #[derive(PartialEq, Eq, Hash)]
 struct CachedGraphicsPipelineKey {
     material_pass: ResourceId,
-    render_target_meta: GraphicsPipelineRenderTargetMeta,
+    render_target_meta_hash: GraphicsPipelineRenderTargetMetaHash,
     vertex_data_set_layout: VertexDataSetLayoutHash,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq)]
 struct CachedGraphicsPipeline {
     material_pass_resource: WeakResourceArc<MaterialPassResource>,
     graphics_pipeline: ResourceArc<GraphicsPipelineResource>,
 }
 
 #[derive(Debug)]
-struct RegisteredRenderpass {
+struct RegisteredRenderTargetMeta {
     keep_until_frame: u64,
+    meta: GraphicsPipelineRenderTargetMeta,
 }
 
 pub struct GraphicsPipelineCacheInner {
     resource_lookup_set: ResourceLookupSet,
 
-    // index by renderphase index
+    // index by render phase index
     render_target_meta_assignments:
-        Vec<FnvHashMap<GraphicsPipelineRenderTargetMeta, RegisteredRenderpass>>,
+        Vec<FnvHashMap<GraphicsPipelineRenderTargetMetaHash, RegisteredRenderTargetMeta>>,
     material_pass_assignments: Vec<FnvHashMap<ResourceId, WeakResourceArc<MaterialPassResource>>>,
 
     cached_pipelines: FnvHashMap<CachedGraphicsPipelineKey, CachedGraphicsPipeline>,
@@ -56,6 +111,9 @@ pub struct GraphicsPipelineCacheInner {
 
     #[cfg(debug_assertions)]
     vertex_data_set_layouts: FnvHashMap<VertexDataSetLayoutHash, VertexDataSetLayout>,
+    #[cfg(debug_assertions)]
+    render_target_metas:
+        FnvHashMap<GraphicsPipelineRenderTargetMetaHash, GraphicsPipelineRenderTargetMeta>,
 
     #[cfg(debug_assertions)]
     lock_call_count_previous_frame: u64,
@@ -89,6 +147,8 @@ impl GraphicsPipelineCache {
         render_registry: &RenderRegistry,
         resource_lookup_set: ResourceLookupSet,
     ) -> Self {
+        // 0 keeps to end of current frame
+        // 1 keeps to end of next frame
         const DEFAULT_FRAMES_TO_PERSIST: u64 = 1;
 
         let mut render_target_meta_assignments =
@@ -108,6 +168,8 @@ impl GraphicsPipelineCache {
             frames_to_persist: DEFAULT_FRAMES_TO_PERSIST,
             #[cfg(debug_assertions)]
             vertex_data_set_layouts: Default::default(),
+            #[cfg(debug_assertions)]
+            render_target_metas: Default::default(),
             #[cfg(debug_assertions)]
             lock_call_count_previous_frame: 0,
             #[cfg(debug_assertions)]
@@ -148,7 +210,33 @@ impl GraphicsPipelineCache {
     ) {
         if let Some(previous_layout) = inner.vertex_data_set_layouts.get(&layout.hash()) {
             assert_eq!(*previous_layout, *layout);
+            return;
         }
+
+        let old = inner
+            .vertex_data_set_layouts
+            .insert(layout.hash(), layout.clone());
+        assert!(old.is_none());
+    }
+
+    #[cfg(debug_assertions)]
+    fn verify_render_target_meta_hash_unique(
+        inner: &mut GraphicsPipelineCacheInner,
+        render_target_meta: &GraphicsPipelineRenderTargetMeta,
+    ) {
+        if let Some(previous_render_target_meta) = inner
+            .render_target_metas
+            .get(&render_target_meta.render_target_meta_hash())
+        {
+            assert_eq!(*previous_render_target_meta, *render_target_meta);
+            return;
+        }
+
+        let old = inner.render_target_metas.insert(
+            render_target_meta.render_target_meta_hash(),
+            render_target_meta.clone(),
+        );
+        assert!(old.is_none());
     }
 
     #[profiling::function]
@@ -163,11 +251,14 @@ impl GraphicsPipelineCache {
             guard.pipeline_create_count_previous_frame = guard.pipeline_create_count;
             guard.pipeline_create_count = 0;
         }
-        guard.current_frame_index += 1;
+
+        // This is just removing from cache, not destroying. Resource lookup will keep them alive
+        // for however long is necessary
         Self::drop_stale_pipelines(&mut *guard);
+        guard.current_frame_index += 1;
     }
 
-    pub fn get_renderphase_by_name(
+    pub fn get_render_phase_by_name(
         &self,
         name: &str,
     ) -> Option<RenderPhaseIndex> {
@@ -198,9 +289,21 @@ impl GraphicsPipelineCache {
             inner.lock_call_count += 1;
         }
 
+        Self::do_register_renderpass_to_phase_index_per_frame(
+            inner,
+            render_target_meta,
+            render_phase_index,
+        );
+    }
+
+    pub fn do_register_renderpass_to_phase_index_per_frame(
+        inner: &mut GraphicsPipelineCacheInner,
+        render_target_meta: &GraphicsPipelineRenderTargetMeta,
+        render_phase_index: RenderPhaseIndex,
+    ) {
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
         if let Some(existing) = inner.render_target_meta_assignments[render_phase_index as usize]
-            .get_mut(&render_target_meta)
+            .get_mut(&render_target_meta.render_target_meta_hash())
         {
             existing.keep_until_frame = inner.current_frame_index + inner.frames_to_persist;
             // Nothing to do here, the previous ref is still valid
@@ -208,13 +311,15 @@ impl GraphicsPipelineCache {
         }
 
         inner.render_target_meta_assignments[render_phase_index as usize].insert(
-            render_target_meta.clone(),
-            RegisteredRenderpass {
+            render_target_meta.render_target_meta_hash(),
+            RegisteredRenderTargetMeta {
                 keep_until_frame: inner.current_frame_index + inner.frames_to_persist,
+                meta: render_target_meta.clone(),
             },
         );
 
-        //TODO: Do we need to mark this as a dirty renderpass that may need rebuilding materials?
+        //TODO: Do we need to mark this as a dirty renderpass that may need to build additional
+        // pipelines?
     }
 
     pub fn register_material_to_phase_index(
@@ -223,13 +328,23 @@ impl GraphicsPipelineCache {
         render_phase_index: RenderPhaseIndex,
     ) {
         let mut guard = self.inner.lock().unwrap();
+        let inner = &mut *guard;
         #[cfg(debug_assertions)]
         {
-            guard.lock_call_count += 1;
+            inner.lock_call_count += 1;
         }
 
+        Self::do_register_material_to_phase_index(inner, material_pass, render_phase_index);
+    }
+
+    pub fn do_register_material_to_phase_index(
+        inner: &mut GraphicsPipelineCacheInner,
+        material_pass: &ResourceArc<MaterialPassResource>,
+        render_phase_index: RenderPhaseIndex,
+    ) {
+        // May be caused by not registering a render phase before using it
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
-        if let Some(existing) = guard.material_pass_assignments[render_phase_index as usize]
+        if let Some(existing) = inner.material_pass_assignments[render_phase_index as usize]
             .get(&material_pass.get_hash())
         {
             if existing.upgrade().is_some() {
@@ -238,19 +353,22 @@ impl GraphicsPipelineCache {
             }
         }
 
-        guard.material_pass_assignments[render_phase_index as usize]
+        inner.material_pass_assignments[render_phase_index as usize]
             .insert(material_pass.get_hash(), material_pass.downgrade());
-        //TODO: Do we need to mark this as a dirty material that may need rebuilding?
+        //TODO: Do we need to mark this as a dirty material that may need to build additional
+        // pipelines?
     }
 
     pub fn try_get_graphics_pipeline(
         &self,
+        render_phase_index: RenderPhaseIndex,
         material_pass: &ResourceArc<MaterialPassResource>,
         render_target_meta: &GraphicsPipelineRenderTargetMeta,
         vertex_data_set_layout: &VertexDataSetLayout,
     ) -> Option<ResourceArc<GraphicsPipelineResource>> {
         // RafxResult is always Ok if returning cached pipelines
         self.graphics_pipeline(
+            render_phase_index,
             material_pass,
             render_target_meta,
             vertex_data_set_layout,
@@ -261,12 +379,14 @@ impl GraphicsPipelineCache {
 
     pub fn get_or_create_graphics_pipeline(
         &self,
+        render_phase_index: RenderPhaseIndex,
         material_pass: &ResourceArc<MaterialPassResource>,
         render_target_meta: &GraphicsPipelineRenderTargetMeta,
         vertex_data_set_layout: &VertexDataSetLayout,
     ) -> RafxResult<ResourceArc<GraphicsPipelineResource>> {
         // graphics_pipeline never returns none if create_if_missing is true
         self.graphics_pipeline(
+            render_phase_index,
             material_pass,
             render_target_meta,
             vertex_data_set_layout,
@@ -277,6 +397,7 @@ impl GraphicsPipelineCache {
 
     pub fn graphics_pipeline(
         &self,
+        render_phase_index: RenderPhaseIndex,
         material_pass: &ResourceArc<MaterialPassResource>,
         render_target_meta: &GraphicsPipelineRenderTargetMeta,
         vertex_data_set_layout: &VertexDataSetLayout,
@@ -284,7 +405,7 @@ impl GraphicsPipelineCache {
     ) -> Option<RafxResult<ResourceArc<GraphicsPipelineResource>>> {
         let key = CachedGraphicsPipelineKey {
             material_pass: material_pass.get_hash(),
-            render_target_meta: render_target_meta.clone(),
+            render_target_meta_hash: render_target_meta.render_target_meta_hash(),
             vertex_data_set_layout: vertex_data_set_layout.hash(),
         };
 
@@ -293,8 +414,16 @@ impl GraphicsPipelineCache {
         #[cfg(debug_assertions)]
         {
             Self::verify_data_set_layout_hash_unique(inner, vertex_data_set_layout);
+            Self::verify_render_target_meta_hash_unique(inner, render_target_meta);
             inner.lock_call_count += 1;
         }
+
+        Self::do_register_renderpass_to_phase_index_per_frame(
+            inner,
+            render_target_meta,
+            render_phase_index,
+        );
+        Self::do_register_material_to_phase_index(inner, material_pass, render_phase_index);
 
         inner
             .cached_pipelines
@@ -305,6 +434,7 @@ impl GraphicsPipelineCache {
             })
             .or_else(|| {
                 if create_if_missing {
+                    log::debug!("Creating graphics pipeline");
                     profiling::scope!("Create Pipeline");
                     //let mut binding_descriptions = Vec::default();
                     let mut vertex_layout_buffers =
@@ -454,6 +584,7 @@ impl GraphicsPipelineCache {
 
     fn drop_stale_pipelines(inner: &mut GraphicsPipelineCacheInner) {
         let current_frame_index = inner.current_frame_index;
+
         for phase in &mut inner.render_target_meta_assignments {
             phase.retain(|_k, v| v.keep_until_frame > current_frame_index);
         }
@@ -466,16 +597,20 @@ impl GraphicsPipelineCache {
         let mut all_render_target_meta = FnvHashSet::default();
         for phase in &inner.render_target_meta_assignments {
             for key in phase.keys() {
-                all_render_target_meta.insert(key.clone());
+                all_render_target_meta.insert(key);
             }
         }
 
         inner.cached_pipelines.retain(|k, v| {
-            let render_target_meta_still_exists = all_render_target_meta.contains(&k.render_target_meta);
+            let render_target_meta_still_exists = all_render_target_meta.contains(&k.render_target_meta_hash);
             let material_pass_still_exists = v.material_pass_resource.upgrade().is_some();
 
             if !render_target_meta_still_exists || !material_pass_still_exists {
-                log::trace!("Dropping pipeline, render_target_meta_still_exists: {}, material_pass_still_exists: {}", render_target_meta_still_exists, material_pass_still_exists);
+                log::debug!(
+                    "Dropping pipeline from cache, render_target_meta_still_exists: {}, material_pass_still_exists: {}",
+                    render_target_meta_still_exists,
+                    material_pass_still_exists
+                );
             }
 
             render_target_meta_still_exists && material_pass_still_exists

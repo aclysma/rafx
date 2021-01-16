@@ -423,7 +423,9 @@ impl GraphicsPipelineHash {
     ) -> Self {
         let mut hasher = FnvHasher::default();
         material_pass_key.hash(&mut hasher);
-        render_target_meta.hash(&mut hasher);
+        render_target_meta
+            .render_target_meta_hash()
+            .hash(&mut hasher);
         primitive_topology.hash(&mut hasher);
         vertex_layout.hash(&mut hasher);
         let hash = hasher.finish();
@@ -1016,9 +1018,9 @@ impl ResourceLookupSet {
                         primitive_topology,
                         vertex_layout: &vertex_layout,
 
-                        color_formats: &render_target_meta.color_formats,
-                        depth_stencil_format: render_target_meta.depth_stencil_format,
-                        sample_count: render_target_meta.sample_count,
+                        color_formats: &render_target_meta.color_formats(),
+                        depth_stencil_format: render_target_meta.depth_stencil_format(),
+                        sample_count: render_target_meta.sample_count(),
                     },
                 )?;
 

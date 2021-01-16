@@ -22,13 +22,14 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
         &self,
         write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
+        render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
         if self.imgui_draw_data.is_some() {
             let pipeline = write_context
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
+                    render_phase_index,
                     &self.imgui_material_pass,
                     &write_context.render_target_meta,
                     &*super::IMGUI_VERTEX_LAYOUT,

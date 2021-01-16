@@ -253,6 +253,10 @@ pub struct MaterialPassInner {
     //TODO: Use hash instead of string. Probably want to have a "hashed string" type that keeps the
     // string around only in debug mode. Maybe this could be generalized to a HashOfThing<T>.
     pub pass_slot_name_lookup: Arc<SlotNameLookup>,
+
+    // This is a hint of what render phase we should register a material with in the pipeline cache
+    // It is optional and the pipeline cache can handle materials used in any render phase
+    pub render_phase_index: Option<RenderPhaseIndex>,
 }
 
 #[derive(Clone)]
@@ -564,14 +568,14 @@ impl MaterialPass {
         // cache is responsible for ensuring pipelines are created for renderpasses that execute
         // within the pipeline's phase
         //
-        if let Some(phase_name) = &material_pass_data.phase {
-            let renderphase_index = asset_manager
+        let render_phase_index = if let Some(phase_name) = &material_pass_data.phase {
+            let render_phase_index = asset_manager
                 .graphics_pipeline_cache()
-                .get_renderphase_by_name(phase_name);
-            match renderphase_index {
-                Some(renderphase_index) => asset_manager
+                .get_render_phase_by_name(phase_name);
+            match render_phase_index {
+                Some(render_phase_index) => asset_manager
                     .graphics_pipeline_cache()
-                    .register_material_to_phase_index(&material_pass, renderphase_index),
+                    .register_material_to_phase_index(&material_pass, render_phase_index),
                 None => {
                     let error = format!(
                         "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
@@ -581,13 +585,18 @@ impl MaterialPass {
                     return Err(error)?;
                 }
             }
-        }
+
+            render_phase_index
+        } else {
+            None
+        };
 
         let inner = MaterialPassInner {
             shader_modules,
             material_pass_resource: material_pass.clone(),
             pass_slot_name_lookup: Arc::new(pass_slot_name_lookup),
             vertex_inputs,
+            render_phase_index,
         };
 
         Ok(MaterialPass {

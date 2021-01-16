@@ -488,7 +488,7 @@ impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> 
         assert!(old.is_none());
     }
 
-    pub fn add_renderphase_dependency<PhaseT: RenderPhase>(
+    pub fn add_render_phase_dependency<PhaseT: RenderPhase>(
         &mut self,
         node_id: RenderGraphNodeId,
     ) {
@@ -567,7 +567,7 @@ impl<T> RenderGraphExecutor<T> {
         //                     )
         //             }
         //         } else {
-        //             log::error!("add_renderphase_dependency was called on node {:?} ({:?}) that is not a renderpass", node_id, prepared_graph.graph_plan.passes[renderpass_index].debug_name());
+        //             log::error!("add_render_phase_dependency was called on node {:?} ({:?}) that is not a renderpass", node_id, prepared_graph.graph_plan.passes[renderpass_index].debug_name());
         //         }
         //     }
         // }

@@ -19,13 +19,14 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
         &self,
         write_context: &mut RenderJobWriteContext,
         view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
+        render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
         if let Some(vertex_buffer) = self.vertex_buffer.as_ref() {
             let pipeline = write_context
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
+                    render_phase_index,
                     &self.debug3d_material_pass,
                     &write_context.render_target_meta,
                     &*super::DEBUG_VERTEX_LAYOUT,

@@ -50,6 +50,7 @@ pub use dyn_commands::DynCommandPoolAllocator;
 mod pipeline_cache;
 pub use pipeline_cache::GraphicsPipelineCache;
 pub use pipeline_cache::GraphicsPipelineRenderTargetMeta;
+pub use pipeline_cache::GraphicsPipelineRenderTargetMetaHash;
 
 mod vertex_data;
 pub use vertex_data::VertexCopyError;

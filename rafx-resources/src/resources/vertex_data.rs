@@ -326,7 +326,7 @@ pub struct VertexDataSetLayoutInner {
     primitive_topology: RafxPrimitiveTopology,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct VertexDataSetLayout {
     inner: Arc<VertexDataSetLayoutInner>,
 }

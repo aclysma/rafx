@@ -27,7 +27,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
         &self,
         write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
+        render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
         let command_buffer = &write_context.command_buffer;
@@ -48,6 +48,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
+                render_phase_index,
                 &render_node_data.material_pass.material_pass_resource,
                 &write_context.render_target_meta,
                 &*crate::assets::gltf::MESH_VERTEX_LAYOUT,

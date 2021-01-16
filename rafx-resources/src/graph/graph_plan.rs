@@ -2262,11 +2262,11 @@ fn create_output_passes(
                         Some(sample_count.unwrap_or(pass.attachments[depth_attachment].samples));
                 }
 
-                let render_target_meta = GraphicsPipelineRenderTargetMeta {
+                let render_target_meta = GraphicsPipelineRenderTargetMeta::new(
                     color_formats,
-                    depth_stencil_format: depth_format,
-                    sample_count: sample_count.unwrap(),
-                };
+                    depth_format,
+                    sample_count.unwrap(),
+                );
 
                 let mut color_render_targets = Vec::with_capacity(MAX_COLOR_ATTACHMENTS);
 

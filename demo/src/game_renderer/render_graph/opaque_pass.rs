@@ -69,7 +69,7 @@ pub(super) fn opaque_pass(
 
     context
         .graph_callbacks
-        .add_renderphase_dependency::<OpaqueRenderPhase>(node);
+        .add_render_phase_dependency::<OpaqueRenderPhase>(node);
 
     let main_view = context.main_view.clone();
     context

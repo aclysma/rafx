@@ -1,7 +1,7 @@
 (
     passes: [
         (
-            phase: None,
+            phase: Some("PostProcess"),
             pipeline: "bloom_extract.pipeline",
             shaders: [
                 (

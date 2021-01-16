@@ -1,4 +1,6 @@
+use crate::phases::PostProcessRenderPhase;
 use rafx::graph::*;
+use rafx::nodes::RenderPhase;
 use rafx::resources::{MaterialPassResource, ResourceArc};
 
 use super::BloomExtractPass;
@@ -59,6 +61,7 @@ pub(super) fn bloom_combine_pass(
                 .resource_context()
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
+                    PostProcessRenderPhase::render_phase_index(),
                     &bloom_combine_material_pass,
                     &args.render_target_meta,
                     &EMPTY_VERTEX_LAYOUT,

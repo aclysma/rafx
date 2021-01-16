@@ -69,12 +69,12 @@ impl PrepareJob<DemoPrepareContext, DemoWriteContext> for DemoPrepareJob {
                     //   like. In this case since we are drawing one thing per view node, we will
                     //   let it be the view node index.
                     // - The sort key and distance are user-defined and can be used by the
-                    //   renderphase in any way a user wants. Distance might be distance from camera
+                    //   render phase in any way a user wants. Distance might be distance from camera
                     //   to do depth sorting, and sort key could be hashed in a way to allow
                     //   batching like-materials and descriptor sets
                     //
                     if per_view_extracted_data.alpha >= 1.0 {
-                        // Add to the opaque renderphase if no alpha-blending is needed. The sort
+                        // Add to the opaque render phase if no alpha-blending is needed. The sort
                         // key and distance from camera are user-driven and can be used in whatever
                         // way makes sense for the phase.
                         view_submit_nodes.add_submit_node::<DemoOpaqueRenderPhase>(
