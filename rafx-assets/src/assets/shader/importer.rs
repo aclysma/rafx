@@ -3,7 +3,7 @@ use crate::CookedShader;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
 use rafx_api::{RafxShaderModuleDef, RafxShaderModuleDefVulkan};
-use rafx_resources::{ShaderModule, ShaderModuleHash};
+use rafx_resources::{ShaderModuleHash, ShaderModuleResourceDef};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
@@ -74,7 +74,7 @@ impl Importer for ShaderImporterSpv {
         let shader_module_hash = ShaderModuleHash::new(&rafx_shader_module_def);
 
         let shader_asset = ShaderAssetData {
-            shader: ShaderModule {
+            shader: ShaderModuleResourceDef {
                 code: spv_bytes,
                 shader_module_hash,
             },
@@ -152,7 +152,7 @@ impl Importer for ShaderImporterCooked {
         let shader_module_hash = ShaderModuleHash::new(&rafx_shader_module_def);
 
         let shader_asset = ShaderAssetData {
-            shader: ShaderModule {
+            shader: ShaderModuleResourceDef {
                 code: cooked_shader.spv,
                 shader_module_hash,
             },

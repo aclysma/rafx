@@ -14,6 +14,11 @@ fn main() {
     run().unwrap();
 }
 
+struct PositionColorVertex {
+    position: [f32; 3],
+    color: [f32; 2],
+}
+
 fn run() -> RafxResult<()> {
     //
     // Init SDL2
@@ -70,9 +75,9 @@ fn run() -> RafxResult<()> {
         //
         #[rustfmt::skip]
         let vertex_data = [
-            0.0f32, 0.5, 1.0, 0.0, 0.0,
-            -0.5, -0.5, 0.0, 1.0, 0.0,
-            0.5, 0.5, 0.0, 0.0, 1.0,
+            PositionColorVertex { position: [0.0, 0.5, 1.0], color: [0.0, 0.0] },
+            PositionColorVertex { position: [-0.5, -0.5, 0.0], color: [1.0, 0.0] },
+            PositionColorVertex { position: [0.5, 0.5, 0.0], color: [0.0, 1.0] },
         ];
 
         let uniform_data = [1.0f32, 0.0, 1.0, 1.0];
@@ -157,19 +162,21 @@ fn run() -> RafxResult<()> {
         // (But see the shader pipeline in higher-level rafx crates for example usage, generated
         // from spirv_cross)
         //
+        let color_shader_resource = RafxShaderResource {
+            name: Some("color".to_string()),
+            set_index: 0,
+            binding: 0,
+            resource_type: RafxResourceType::UNIFORM_BUFFER,
+            ..Default::default()
+        };
+
         let vert_shader_stage_def = RafxShaderStageDef {
             shader_stage: RafxShaderStageFlags::VERTEX,
             entry_point: "main".to_string(),
             shader_module: vert_shader_module,
             resources: vec![
                 // Example binding
-                RafxShaderResource {
-                    name: Some("color".to_string()),
-                    set_index: 0,
-                    binding: 0,
-                    resource_type: RafxResourceType::UNIFORM_BUFFER,
-                    ..Default::default()
-                },
+                color_shader_resource.clone(),
             ],
         };
 
@@ -179,13 +186,7 @@ fn run() -> RafxResult<()> {
             shader_module: frag_shader_module,
             resources: vec![
                 // Example binding
-                RafxShaderResource {
-                    name: Some("color".to_string()),
-                    set_index: 0,
-                    binding: 0,
-                    resource_type: RafxResourceType::UNIFORM_BUFFER,
-                    ..Default::default()
-                },
+                color_shader_resource,
             ],
         };
 
@@ -385,7 +386,8 @@ fn run() -> RafxResult<()> {
             presentable_frame.present(&graphics_queue, &[&cmd_buffer])?;
         }
 
-        // Wait until all the submitted work gets flushed before continuing
+        // We are about to terminate, wait until all the submitted work gets flushed before
+        // continuing
         graphics_queue.wait_for_queue_idle()?;
     }
 

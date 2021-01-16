@@ -68,14 +68,14 @@ The demo includes:
 
 ## Running the Demo
 
+The demo should be run from the root of the repository. These commands should clone the repo
+and run the demo.
+
 ```
 git clone https://github.com/aclysma/rafx.git
 cd rafx
-cargo update -p tokio --precise 0.2.13
-cargo run --release
+cargo run --bin demo --release
 ```
-
-([Tokio >= 0.2.14 hangs](https://github.com/tokio-rs/tokio/issues/2390))
 
 Running in release reduces logging and disables GPU validation. The first time it will load more slowly because it
 has to import the assets, including a GLTF mesh with large textures. **Using profile overrides to optimize upstream crates

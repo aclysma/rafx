@@ -28,9 +28,20 @@ profiling = "0.1.4"
 [dev-dependencies]
 env_logger = "0.6"
 memoffset = "0.6"
+sdl2 = { version = ">=0.33", features = ["raw-window-handle", "bundled", "static-link"] }
 
 [features]
+default = ["rafx-vulkan"]
+rafx-vulkan = []
+rafx-metal = []
+static-vulkan = ["rafx-api/static-vulkan"]
+
 profile-with-puffin = ["profiling/profile-with-puffin"]
 profile-with-optick = ["profiling/profile-with-optick"]
 profile-with-superluminal = ["profiling/profile-with-superluminal"]
 profile-with-tracing = ["profiling/profile-with-tracing"]
+
+[[example]]
+name = "triangle_graph"
+path = "examples/triangle_graph/triangle_graph.rs"
+required-features = ["rafx-vulkan"]

@@ -297,6 +297,10 @@ impl RafxSwapchainHelper {
         self.image_count
     }
 
+    pub fn swapchain_def(&self) -> &RafxSwapchainDef {
+        &self.swapchain_def
+    }
+
     pub fn wait_until_previous_frame_submitted(
         &mut self
     ) -> RafxResult<Option<RafxPresentSuccessResult>> {

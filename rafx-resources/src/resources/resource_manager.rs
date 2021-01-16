@@ -55,7 +55,7 @@ impl ResourceContext {
         &self.inner.render_graph_cache
     }
 
-    pub fn dyn_command_pool_allocator(&self) -> DynCommandPoolAllocator {
+    pub fn create_dyn_command_pool_allocator(&self) -> DynCommandPoolAllocator {
         self.inner.dyn_command_pool_allocator.clone()
     }
 

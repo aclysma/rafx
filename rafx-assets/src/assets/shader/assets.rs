@@ -1,7 +1,7 @@
 use super::ReflectedEntryPoint;
 use fnv::FnvHashMap;
 use rafx_resources::ShaderModuleResource;
-use rafx_resources::{ResourceArc, ShaderModule};
+use rafx_resources::{ResourceArc, ShaderModuleResourceDef};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
@@ -17,7 +17,7 @@ pub struct CookedShader {
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "e0ae2222-1a44-4022-af95-03c9101ac89e"]
 pub struct ShaderAssetData {
-    pub shader: ShaderModule,
+    pub shader: ShaderModuleResourceDef,
     pub reflection_data: Option<Vec<ReflectedEntryPoint>>,
 }
 

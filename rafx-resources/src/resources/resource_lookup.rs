@@ -310,7 +310,7 @@ pub struct ShaderModuleMeta {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct ShaderModule {
+pub struct ShaderModuleResourceDef {
     // Precalculate a hash so we can avoid hashing this blob of bytes at runtime
     pub shader_module_hash: ShaderModuleHash,
     pub code: Vec<u8>,
@@ -539,7 +539,7 @@ pub struct ResourceMetrics {
 #[derive(Debug, Clone)]
 pub struct ShaderModuleResource {
     pub shader_module_key: ShaderModuleKey,
-    pub shader_module_def: Arc<ShaderModule>,
+    pub shader_module_resource_def: Arc<ShaderModuleResourceDef>,
     pub shader_module: RafxShaderModule,
 }
 
@@ -746,10 +746,10 @@ impl ResourceLookupSet {
 
     pub fn get_or_create_shader_module(
         &self,
-        shader_module_def: &Arc<ShaderModule>,
+        shader_module_resource_def: &Arc<ShaderModuleResourceDef>,
     ) -> RafxResult<ResourceArc<ShaderModuleResource>> {
         let shader_module_key = ShaderModuleKey {
-            hash: shader_module_def.shader_module_hash,
+            hash: shader_module_resource_def.shader_module_hash,
         };
 
         self.inner
@@ -758,7 +758,7 @@ impl ResourceLookupSet {
                 log::trace!(
                     "Creating shader module\n[hash: {:?} bytes: {}]",
                     shader_module_key.hash,
-                    shader_module_def.code.len()
+                    shader_module_resource_def.code.len()
                 );
 
                 let shader_module = self
@@ -766,12 +766,12 @@ impl ResourceLookupSet {
                     .device_context
                     .vk_device_context()
                     .unwrap()
-                    .create_shader_module_from_bytes(&shader_module_def.code)?
+                    .create_shader_module_from_bytes(&shader_module_resource_def.code)?
                     .into();
 
                 let resource = ShaderModuleResource {
                     shader_module,
-                    shader_module_def: shader_module_def.clone(),
+                    shader_module_resource_def: shader_module_resource_def.clone(),
                     shader_module_key: shader_module_key.clone(),
                 };
                 log::trace!("Created shader module {:?}", resource);

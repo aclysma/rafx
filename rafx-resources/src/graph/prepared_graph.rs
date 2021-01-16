@@ -219,7 +219,7 @@ impl PreparedRenderGraph {
         //
         let mut command_writer = self
             .resource_context
-            .dyn_command_pool_allocator()
+            .create_dyn_command_pool_allocator()
             .allocate_dyn_pool(queue, &RafxCommandPoolDef { transient: true }, 0)?;
 
         let command_buffer = command_writer.allocate_dyn_command_buffer(&RafxCommandBufferDef {
