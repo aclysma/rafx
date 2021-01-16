@@ -26,9 +26,11 @@ use graph_pass::*;
 mod graph_plan;
 pub use graph_plan::RenderGraphPlan;
 
+mod graph_resource_cache;
+pub use graph_resource_cache::RenderGraphCache;
+
 mod prepared_graph;
 pub use prepared_graph::PreparedRenderGraph;
-pub use prepared_graph::RenderGraphCache;
 pub use prepared_graph::RenderGraphExecutor;
 pub use prepared_graph::RenderGraphNodeCallbacks;
 pub use prepared_graph::SwapchainSurfaceInfo;
