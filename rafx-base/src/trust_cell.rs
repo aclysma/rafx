@@ -391,8 +391,17 @@ impl<T> TrustCell<T> {
                 return Err(InvalidBorrow);
             }
 
-            if self.flag.compare_and_swap(val, val + 1, Ordering::AcqRel) == val {
-                return Ok(());
+            match self
+                .flag
+                .compare_exchange_weak(val, val + 1, Ordering::AcqRel, Ordering::Relaxed)
+            {
+                Ok(_result) => {
+                    debug_assert_eq!(val, _result);
+                    return Ok(());
+                }
+                _ => {
+                    // try again..
+                }
             }
         }
     }
@@ -402,8 +411,11 @@ impl<T> TrustCell<T> {
     fn check_flag_write(&self) -> Result<(), InvalidBorrow> {
         // Check we have 0 references out, and then set the ref count to usize::MAX to
         // indicate a write lock.
-        match self.flag.compare_and_swap(0, usize::MAX, Ordering::AcqRel) {
-            0 => Ok(()),
+        match self
+            .flag
+            .compare_exchange(0, usize::MAX, Ordering::AcqRel, Ordering::Relaxed)
+        {
+            Ok(0) => Ok(()),
             _ => Err(InvalidBorrow),
         }
     }
