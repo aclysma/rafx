@@ -608,6 +608,7 @@ impl PreparedRenderGraph {
                                 resolve_target: resolve_images[color_image_index]
                                     .as_ref()
                                     .map(|x| x.render_target().unwrap()),
+                                resolve_store_op: color_image.resolve_store_op.into(),
                                 resolve_array_slice: color_image.resolve_array_slice,
                                 resolve_mip_slice: color_image.resolve_mip_slice,
                             },

@@ -62,6 +62,7 @@ impl RafxPipelineVulkan {
             .map(|&format| RafxRenderpassVulkanColorAttachment {
                 format,
                 load_op: Default::default(),
+                store_op: Default::default(),
             })
             .collect();
 
@@ -74,6 +75,8 @@ impl RafxPipelineVulkan {
                 format: depth_format,
                 depth_load_op: Default::default(),
                 stencil_load_op: Default::default(),
+                depth_store_op: Default::default(),
+                stencil_store_op: Default::default(),
             })
         } else {
             None

@@ -65,6 +65,7 @@ impl RafxRenderpassVulkanCache {
             .map(|x| RafxRenderpassVulkanColorAttachment {
                 format: x.render_target.render_target_def().format,
                 load_op: x.load_op,
+                store_op: x.store_op,
             })
             .collect();
 
@@ -84,6 +85,8 @@ impl RafxRenderpassVulkanCache {
                 format: x.render_target.render_target_def().format,
                 depth_load_op: x.depth_load_op,
                 stencil_load_op: x.stencil_load_op,
+                depth_store_op: x.depth_store_op,
+                stencil_store_op: x.stencil_store_op,
             });
 
         assert_eq!(color_attachments.len(), resolve_attachments.len());

@@ -339,11 +339,12 @@ fn run() -> RafxResult<()> {
                 &[RafxColorRenderTargetBinding {
                     render_target: &render_target,
                     load_op: RafxLoadOp::Clear,
-                    store_op: RafxColorStoreOp::StoreOrResolve,
+                    store_op: RafxStoreOp::Store,
                     array_slice: None,
                     mip_slice: None,
                     clear_value: RafxColorClearValue([0.0, 0.0, 0.0, 0.0]),
                     resolve_target: None,
+                    resolve_store_op: RafxStoreOp::DontCare,
                     resolve_mip_slice: None,
                     resolve_array_slice: None,
                 }],

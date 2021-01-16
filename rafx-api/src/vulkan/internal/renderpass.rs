@@ -8,6 +8,7 @@ use std::sync::Arc;
 pub(crate) struct RafxRenderpassVulkanColorAttachment {
     pub(crate) format: RafxFormat,
     pub(crate) load_op: RafxLoadOp,
+    pub(crate) store_op: RafxStoreOp,
 }
 
 #[derive(Clone, Debug)]
@@ -20,6 +21,8 @@ pub(crate) struct RafxRenderpassVulkanDepthAttachment {
     pub(crate) format: RafxFormat,
     pub(crate) depth_load_op: RafxLoadOp,
     pub(crate) stencil_load_op: RafxLoadOp,
+    pub(crate) depth_store_op: RafxStoreOp,
+    pub(crate) stencil_store_op: RafxStoreOp,
 }
 
 #[derive(Clone, Debug)]
@@ -70,26 +73,12 @@ impl RafxRenderpassVulkan {
         for (color_attachment_index, color_attachment) in
             renderpass_def.color_attachments.iter().enumerate()
         {
-            //resolve attachments might be < color attachments when we make dummy renderpasses for creating pipelines
-            let store_op = if let Some(resolve_attachment) = renderpass_def
-                .resolve_attachments
-                .get(color_attachment_index)
-            {
-                if resolve_attachment.is_some() {
-                    vk::AttachmentStoreOp::DONT_CARE
-                } else {
-                    vk::AttachmentStoreOp::STORE
-                }
-            } else {
-                vk::AttachmentStoreOp::STORE
-            };
-
             attachments.push(
                 vk::AttachmentDescription::builder()
                     .format(color_attachment.format.into())
                     .samples(samples)
                     .load_op(color_attachment.load_op.into())
-                    .store_op(store_op)
+                    .store_op(color_attachment.store_op.into())
                     .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
                     .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
                     .initial_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
@@ -163,9 +152,9 @@ impl RafxRenderpassVulkan {
                     .format(depth_attachment.format.into())
                     .samples(samples)
                     .load_op(depth_attachment.depth_load_op.into())
-                    .store_op(vk::AttachmentStoreOp::STORE)
+                    .store_op(depth_attachment.depth_store_op.into())
                     .stencil_load_op(depth_attachment.stencil_load_op.into())
-                    .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+                    .stencil_store_op(depth_attachment.stencil_store_op.into())
                     .initial_layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .final_layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .build(),

@@ -405,32 +405,7 @@ impl Into<vk::AttachmentLoadOp> for RafxLoadOp {
 }
 
 #[derive(Copy, Clone, Debug, Hash)]
-pub enum RafxColorStoreOp {
-    /// Do not store the render target, leaving the contents of it undefined
-    DontCare,
-
-    /// If a resolve image is not provided, store the render target. If a resolve render target is
-    /// provided, store only the resolve render target. This is usually the correct choice.
-    ///
-    /// A resolve target can only be provided for color render targets, so depth/stencil render
-    /// targets will always be stored with this option
-    StoreOrResolve,
-
-    /// Always store the render target. Also store the resolve render target if provided.
-    ///
-    /// A resolve target can only be provided for color render targets, so depth/stencil render
-    /// targets will always be stored with this option
-    StoreAndResolve,
-}
-
-impl Default for RafxColorStoreOp {
-    fn default() -> Self {
-        RafxColorStoreOp::StoreOrResolve
-    }
-}
-
-#[derive(Copy, Clone, Debug, Hash)]
-pub enum RafxDepthStencilStoreOp {
+pub enum RafxStoreOp {
     /// Do not store the render target, leaving the contents of it undefined
     DontCare,
 
@@ -438,9 +413,19 @@ pub enum RafxDepthStencilStoreOp {
     Store,
 }
 
-impl Default for RafxDepthStencilStoreOp {
+impl Default for RafxStoreOp {
     fn default() -> Self {
-        RafxDepthStencilStoreOp::Store
+        RafxStoreOp::Store
+    }
+}
+
+#[cfg(feature = "rafx-vulkan")]
+impl Into<vk::AttachmentStoreOp> for RafxStoreOp {
+    fn into(self) -> vk::AttachmentStoreOp {
+        match self {
+            RafxStoreOp::DontCare => vk::AttachmentStoreOp::DONT_CARE,
+            RafxStoreOp::Store => vk::AttachmentStoreOp::STORE,
+        }
     }
 }
 
@@ -932,11 +917,12 @@ pub struct RafxSwapchainImage {
 pub struct RafxColorRenderTargetBinding<'a> {
     pub render_target: &'a RafxRenderTarget,
     pub load_op: RafxLoadOp,
-    pub store_op: RafxColorStoreOp,
+    pub store_op: RafxStoreOp,
     pub mip_slice: Option<u8>,
     pub array_slice: Option<u16>,
     pub clear_value: RafxColorClearValue,
     pub resolve_target: Option<&'a RafxRenderTarget>,
+    pub resolve_store_op: RafxStoreOp,
     pub resolve_mip_slice: Option<u8>,
     pub resolve_array_slice: Option<u16>,
 }
@@ -946,8 +932,8 @@ pub struct RafxDepthRenderTargetBinding<'a> {
     pub render_target: &'a RafxRenderTarget,
     pub depth_load_op: RafxLoadOp,
     pub stencil_load_op: RafxLoadOp,
-    pub depth_store_op: RafxDepthStencilStoreOp,
-    pub stencil_store_op: RafxDepthStencilStoreOp,
+    pub depth_store_op: RafxStoreOp,
+    pub stencil_store_op: RafxStoreOp,
     pub mip_slice: Option<u8>,
     pub array_slice: Option<u16>,
     pub clear_value: RafxDepthStencilClearValue,

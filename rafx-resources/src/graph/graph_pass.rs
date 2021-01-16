@@ -5,8 +5,8 @@ use crate::graph::{RenderGraphImageUsageId, RenderGraphNodeId};
 use crate::GraphicsPipelineRenderTargetMeta;
 use fnv::FnvHashMap;
 use rafx_api::{
-    RafxColorClearValue, RafxColorStoreOp, RafxDepthStencilClearValue, RafxDepthStencilStoreOp,
-    RafxFormat, RafxLoadOp, RafxResourceState, RafxSampleCount,
+    RafxColorClearValue, RafxDepthStencilClearValue, RafxFormat, RafxLoadOp, RafxResourceState,
+    RafxSampleCount, RafxStoreOp,
 };
 
 /// Information provided per image used in a pass to properly synchronize access to it from
@@ -104,37 +104,6 @@ impl std::fmt::Debug for AttachmentClearValue {
     }
 }
 
-// Since color/resolve attachments are kept separate in the graph, and color/depth targets are
-// represented by the same struct, RafxColorStoreOp/RafxDepthStencilStoreOp is not appropriate to
-// use here. So have our own store op defined here that we turn into the correct Rafx type later
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub(super) enum RenderGraphStoreOp {
-    DontCare,
-    Store,
-}
-
-impl RenderGraphStoreOp {
-    pub(super) fn to_rafx_depth_stencil(self) -> RafxDepthStencilStoreOp {
-        match self {
-            RenderGraphStoreOp::DontCare => RafxDepthStencilStoreOp::DontCare,
-            RenderGraphStoreOp::Store => RafxDepthStencilStoreOp::Store,
-        }
-    }
-
-    pub(super) fn to_rafx_color(
-        color: RenderGraphStoreOp,
-        resolve: RenderGraphStoreOp,
-    ) -> RafxColorStoreOp {
-        if color == RenderGraphStoreOp::DontCare && resolve == RenderGraphStoreOp::DontCare {
-            RafxColorStoreOp::DontCare
-        } else if color != RenderGraphStoreOp::DontCare && resolve != RenderGraphStoreOp::DontCare {
-            RafxColorStoreOp::StoreAndResolve
-        } else {
-            RafxColorStoreOp::StoreOrResolve
-        }
-    }
-}
-
 /// Attachment for a render pass
 #[derive(Debug)]
 pub struct RenderGraphPassAttachment {
@@ -144,8 +113,8 @@ pub struct RenderGraphPassAttachment {
     pub(super) image_view: Option<PhysicalImageViewId>,
     pub(super) load_op: RafxLoadOp,
     pub(super) stencil_load_op: RafxLoadOp,
-    pub(super) store_op: RenderGraphStoreOp,
-    pub(super) stencil_store_op: RenderGraphStoreOp,
+    pub(super) store_op: RafxStoreOp,
+    pub(super) stencil_store_op: RafxStoreOp,
     pub(super) clear_color: Option<AttachmentClearValue>,
     //pub(super) array_slice: Option<u16>,
     //pub(super) mip_slice: Option<u8>,
@@ -232,10 +201,11 @@ pub struct RenderGraphColorRenderTarget {
     pub image: PhysicalImageId,
     pub clear_value: RafxColorClearValue,
     pub load_op: RafxLoadOp,
-    pub store_op: RafxColorStoreOp,
+    pub store_op: RafxStoreOp,
     pub array_slice: Option<u16>,
     pub mip_slice: Option<u8>,
     pub resolve_image: Option<PhysicalImageId>,
+    pub resolve_store_op: RafxStoreOp,
     pub resolve_array_slice: Option<u16>,
     pub resolve_mip_slice: Option<u8>,
 }
@@ -245,8 +215,8 @@ pub struct RenderGraphDepthStencilRenderTarget {
     pub clear_value: RafxDepthStencilClearValue,
     pub depth_load_op: RafxLoadOp,
     pub stencil_load_op: RafxLoadOp,
-    pub depth_store_op: RafxDepthStencilStoreOp,
-    pub stencil_store_op: RafxDepthStencilStoreOp,
+    pub depth_store_op: RafxStoreOp,
+    pub stencil_store_op: RafxStoreOp,
     pub array_slice: Option<u16>,
     pub mip_slice: Option<u8>,
 }
