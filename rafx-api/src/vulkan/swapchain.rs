@@ -12,6 +12,65 @@ use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
+use ash::extensions::khr;
+use ash::prelude::VkResult;
+
+use ash::vk::Extent2D;
+use std::mem::ManuallyDrop;
+
+pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
+
+/// Used to select which PresentMode is preferred. Some of this is hardware/platform dependent and
+/// it's a good idea to read the Vulkan spec.
+///
+/// `Fifo` is always available on Vulkan devices that comply with the spec and is a good default for
+/// many cases.
+///
+/// Values here match VkPresentModeKHR
+#[derive(Copy, Clone, Debug)]
+pub enum VkPresentMode {
+    /// (`VK_PRESENT_MODE_IMMEDIATE_KHR`) - No internal buffering, and can result in screen
+    /// tearin.
+    Immediate = 0,
+
+    /// (`VK_PRESENT_MODE_MAILBOX_KHR`) - This allows rendering as fast as the hardware will
+    /// allow, but queues the rendered images in a way that avoids tearing. In other words, if the
+    /// hardware renders 10 frames within a single vertical blanking period, the first 9 will be
+    /// dropped. This is the best choice for lowest latency where power consumption is not a
+    /// concern.
+    Mailbox = 1,
+
+    /// (`VK_PRESENT_MODE_FIFO_KHR`) - Default option, guaranteed to be available, and locks
+    /// screen draw to vsync. This is a good default choice generally, and more power efficient
+    /// than mailbox, but can have higher latency than mailbox.
+    Fifo = 2,
+
+    /// (`VK_PRESENT_MODE_FIFO_RELAXED_KHR`) - Similar to Fifo but if rendering is late,
+    /// screen tearing can be observed.
+    FifoRelaxed = 3,
+}
+
+impl VkPresentMode {
+    /// Convert to `vk::PresentModeKHR`
+    pub fn to_vk(self) -> vk::PresentModeKHR {
+        match self {
+            VkPresentMode::Immediate => vk::PresentModeKHR::IMMEDIATE,
+            VkPresentMode::Mailbox => vk::PresentModeKHR::MAILBOX,
+            VkPresentMode::Fifo => vk::PresentModeKHR::FIFO,
+            VkPresentMode::FifoRelaxed => vk::PresentModeKHR::FIFO_RELAXED,
+        }
+    }
+}
+
+#[derive(Clone)]
+struct SwapchainInfo {
+    surface_format: vk::SurfaceFormatKHR,
+    present_mode: vk::PresentModeKHR,
+    extents: vk::Extent2D,
+    image_count: usize,
+    image_usage_flags: vk::ImageUsageFlags,
+}
+
 //TODO: Allow these to be overridden when setting up vulkan?
 const VSYNC_ON_PRESENT_MODES: [VkPresentMode; 2] = [VkPresentMode::Mailbox, VkPresentMode::Fifo];
 const VSYNC_OFF_PRESENT_MODES: [VkPresentMode; 3] = [
@@ -28,9 +87,10 @@ fn present_mode_priority(swapchain_def: &RafxSwapchainDef) -> &'static [VkPresen
     }
 }
 
+/// Represents a vulkan swapchain that can be rebuilt as needed
 pub struct RafxSwapchainVulkan {
     device_context: RafxDeviceContextVulkan,
-    swapchain: ManuallyDrop<VkSwapchain>,
+    swapchain: ManuallyDrop<RafxSwapchainVulkanInstance>,
     swapchain_def: RafxSwapchainDef,
     last_image_suboptimal: bool,
     swapchain_images: Vec<RafxSwapchainImage>,
@@ -75,7 +135,7 @@ impl RafxSwapchainVulkan {
 
         let present_mode_priority = present_mode_priority(swapchain_def);
 
-        let swapchain = VkSwapchain::new(
+        let swapchain = RafxSwapchainVulkanInstance::new(
             device_context,
             surface,
             &surface_loader,
@@ -110,7 +170,7 @@ impl RafxSwapchainVulkan {
     ) -> RafxResult<()> {
         let present_mode_priority = present_mode_priority(swapchain_def);
 
-        let new_swapchain = VkSwapchain::new(
+        let new_swapchain = RafxSwapchainVulkanInstance::new(
             &self.device_context,
             self.surface,
             &self.surface_loader,
@@ -133,14 +193,6 @@ impl RafxSwapchainVulkan {
         Ok(())
     }
 
-    pub fn swapchain(&self) -> &VkSwapchain {
-        &self.swapchain
-    }
-
-    pub fn swapchain_mut(&mut self) -> &mut VkSwapchain {
-        &mut self.swapchain
-    }
-
     pub fn swapchain_def(&self) -> &RafxSwapchainDef {
         &self.swapchain_def
     }
@@ -151,6 +203,18 @@ impl RafxSwapchainVulkan {
 
     pub fn format(&self) -> RafxFormat {
         self.swapchain.swapchain_info.surface_format.format.into()
+    }
+
+    pub(crate) fn dedicated_present_queue(&self) -> Option<vk::Queue> {
+        self.swapchain.dedicated_present_queue
+    }
+
+    pub(crate) fn vk_swapchain(&self) -> vk::SwapchainKHR {
+        self.swapchain.swapchain
+    }
+
+    pub(crate) fn vk_swapchain_loader(&self) -> &khr::Swapchain {
+        &*self.swapchain.swapchain_loader
     }
 
     //TODO: Return something like PresentResult?
@@ -217,7 +281,7 @@ impl RafxSwapchainVulkan {
 
     fn setup_swapchain_images(
         device_context: &RafxDeviceContextVulkan,
-        swapchain: &VkSwapchain,
+        swapchain: &RafxSwapchainVulkanInstance,
     ) -> RafxResult<Vec<RafxSwapchainImage>> {
         let queue = device_context.create_queue(RafxQueueType::Graphics)?;
         let cmd_pool = queue.create_command_pool(&RafxCommandPoolDef { transient: true })?;
@@ -248,59 +312,34 @@ impl RafxSwapchainVulkan {
     }
 }
 
-use ash::extensions::khr;
-use ash::prelude::VkResult;
-
-use crate::vulkan::device::VkPresentMode;
-use ash::vk::Extent2D;
-use std::mem::ManuallyDrop;
-
-pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
-
 struct CreateSwapchainResult {
     swapchain_loader: khr::Swapchain,
     swapchain: vk::SwapchainKHR,
     dedicated_present_queue: Option<vk::Queue>,
 }
 
-#[derive(Clone)]
-pub struct SwapchainInfo {
-    pub surface_format: vk::SurfaceFormatKHR,
-    pub present_mode: vk::PresentModeKHR,
-    pub extents: vk::Extent2D,
-    pub image_count: usize,
-    pub image_usage_flags: vk::ImageUsageFlags,
+/// Handles setting up the swapchain resources required to present. This is discarded and recreated
+/// whenever the swapchain is rebuilt
+struct RafxSwapchainVulkanInstance {
+    device_context: RafxDeviceContextVulkan,
+
+    swapchain_info: SwapchainInfo,
+    swapchain_loader: Arc<khr::Swapchain>,
+    swapchain: vk::SwapchainKHR,
+    swapchain_images: Vec<vk::Image>,
+
+    dedicated_present_queue: Option<vk::Queue>,
 }
 
-/// Handles setting up the swapchain resources required to present
-pub struct VkSwapchain {
-    //pub device: ash::Device, // VkDevice is responsible for cleaning this up
-    pub device_context: RafxDeviceContextVulkan,
-    pub surface: vk::SurfaceKHR,
-    pub surface_loader: Arc<khr::Surface>,
-
-    pub swapchain_info: SwapchainInfo,
-    pub swapchain_loader: Arc<khr::Swapchain>,
-    pub swapchain: vk::SwapchainKHR,
-    pub swapchain_images: Vec<vk::Image>,
-
-    pub present_queue_family_index: u32,
-    pub dedicated_present_queue: Option<vk::Queue>,
-}
-
-impl VkSwapchain {
-    pub(crate) fn dedicated_present_queue(&self) -> Option<vk::Queue> {
-        self.dedicated_present_queue
-    }
-
-    pub fn new(
+impl RafxSwapchainVulkanInstance {
+    fn new(
         device_context: &RafxDeviceContextVulkan,
         surface: vk::SurfaceKHR,
         surface_loader: &Arc<khr::Surface>,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[VkPresentMode],
         window_inner_size: Extent2D,
-    ) -> VkResult<VkSwapchain> {
+    ) -> VkResult<RafxSwapchainVulkanInstance> {
         let (available_formats, available_present_modes, surface_capabilities) =
             Self::query_swapchain_support(
                 device_context.physical_device(),
@@ -355,16 +394,13 @@ impl VkSwapchain {
             image_count: swapchain_images.len(),
         };
 
-        Ok(VkSwapchain {
+        Ok(RafxSwapchainVulkanInstance {
             device_context: device_context.clone(),
-            surface,
-            surface_loader: surface_loader.clone(),
             swapchain_info,
             swapchain_loader: Arc::new(create_swapchain_result.swapchain_loader),
             swapchain: create_swapchain_result.swapchain,
             dedicated_present_queue: create_swapchain_result.dedicated_present_queue,
             swapchain_images,
-            present_queue_family_index,
         })
     }
 
@@ -478,7 +514,7 @@ impl VkSwapchain {
     ) -> ash::vk::Extent2D {
         // Copied from num-traits under MIT/Apache-2.0 dual license. It doesn't make much sense
         // to pull in a whole crate just for this utility function. This will be in std rust soon
-        pub fn clamp<T: PartialOrd>(
+        fn clamp<T: PartialOrd>(
             input: T,
             min: T,
             max: T,
@@ -675,34 +711,9 @@ impl VkSwapchain {
             dedicated_present_queue,
         })
     }
-
-    pub fn choose_sample_count(
-        limits: &vk::PhysicalDeviceLimits,
-        sample_count_priority: &[RafxSampleCount],
-    ) -> RafxSampleCount {
-        for &sample_count in sample_count_priority {
-            let vk_sample_count: vk::SampleCountFlags = sample_count.into();
-            if (vk_sample_count.as_raw()
-                & limits.framebuffer_depth_sample_counts.as_raw()
-                & limits.framebuffer_color_sample_counts.as_raw())
-                != 0
-            {
-                log::trace!("Sample count {:?} is supported", sample_count);
-                return sample_count;
-            } else {
-                log::trace!("Sample count {:?} is unsupported", sample_count);
-            }
-        }
-
-        log::trace!(
-            "None of the provided MSAA levels are supported defaulting to {:?}",
-            RafxSampleCount::SampleCount1
-        );
-        RafxSampleCount::SampleCount1
-    }
 }
 
-impl Drop for VkSwapchain {
+impl Drop for RafxSwapchainVulkanInstance {
     fn drop(&mut self) {
         log::trace!("destroying VkSwapchain");
 

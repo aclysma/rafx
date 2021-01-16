@@ -1,6 +1,4 @@
 #[cfg(feature = "rafx-vulkan")]
-use crate::vulkan::device::VkCreateDeviceError;
-#[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::VkCreateInstanceError;
 #[cfg(feature = "rafx-vulkan")]
 use ash::vk;
@@ -20,8 +18,6 @@ pub enum RafxError {
     #[cfg(feature = "rafx-vulkan")]
     VkCreateInstanceError(Arc<VkCreateInstanceError>),
     #[cfg(feature = "rafx-vulkan")]
-    VkCreateDeviceError(Arc<VkCreateDeviceError>),
-    #[cfg(feature = "rafx-vulkan")]
     VkMemError(Arc<vk_mem::Error>),
 }
 
@@ -37,8 +33,6 @@ impl std::error::Error for RafxError {
             RafxError::VkLoadingError(ref e) => Some(&**e),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkCreateInstanceError(ref e) => Some(&**e),
-            #[cfg(feature = "rafx-vulkan")]
-            RafxError::VkCreateDeviceError(ref e) => Some(&**e),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkMemError(ref e) => Some(&**e),
         }
@@ -59,8 +53,6 @@ impl core::fmt::Display for RafxError {
             RafxError::VkLoadingError(ref e) => e.fmt(fmt),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkCreateInstanceError(ref e) => e.fmt(fmt),
-            #[cfg(feature = "rafx-vulkan")]
-            RafxError::VkCreateDeviceError(ref e) => e.fmt(fmt),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkMemError(ref e) => e.fmt(fmt),
         }
@@ -103,13 +95,6 @@ impl From<ash::LoadingError> for RafxError {
 impl From<VkCreateInstanceError> for RafxError {
     fn from(result: VkCreateInstanceError) -> Self {
         RafxError::VkCreateInstanceError(Arc::new(result))
-    }
-}
-
-#[cfg(feature = "rafx-vulkan")]
-impl From<VkCreateDeviceError> for RafxError {
-    fn from(result: VkCreateDeviceError) -> Self {
-        RafxError::VkCreateDeviceError(Arc::new(result))
     }
 }
 

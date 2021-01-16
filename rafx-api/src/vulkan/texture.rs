@@ -4,6 +4,9 @@ use crate::{RafxSampleCount, RafxTextureDimensions};
 use ash::version::DeviceV1_0;
 use ash::vk;
 
+// This is used to allow the underlying image/allocation to be removed from a RafxTextureVulkan,
+// or to init a RafxTextureVulkan with an existing image/allocation. If the allocation is none, we
+// will not destroy the image when RafxRawImageVulkan is dropped
 #[derive(Debug)]
 pub struct RafxRawImageVulkan {
     pub image: vk::Image,
@@ -39,6 +42,8 @@ impl Drop for RafxRawImageVulkan {
     }
 }
 
+/// Holds the vk::Image and allocation as well as a few vk::ImageViews depending on the
+/// provided RafxResourceType in the texture_def.
 #[derive(Debug)]
 pub struct RafxTextureVulkan {
     device_context: RafxDeviceContextVulkan,

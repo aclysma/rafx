@@ -73,7 +73,7 @@ pub enum RafxUploadState {
     Complete,
 }
 
-/// This is a convenience class that allows accumulating writes into a staging buffer and commands
+/// Convenience struct that allows accumulating writes into a staging buffer and commands
 /// to execute on the staging buffer. This allows for batching uploading resources.
 pub struct RafxUpload {
     queue: RafxQueue,

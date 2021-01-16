@@ -2,16 +2,14 @@ use super::internal::*;
 use crate::{
     RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext,
     RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxRenderTargetDef,
-    RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSamplerDef, RafxShaderModule,
-    RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
+    RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef,
+    RafxShaderModule, RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
 use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::{Arc, Mutex};
 
-use crate::vulkan::device::VkPresentMode;
-use crate::vulkan::internal::device::{PhysicalDeviceInfo, VkDeviceContext, VkQueueFamilyIndices};
 use crate::vulkan::{
     RafxBufferVulkan, RafxDescriptorSetArrayVulkan, RafxFenceVulkan, RafxPipelineVulkan,
     RafxQueueVulkan, RafxRenderTargetVulkan, RafxRootSignatureVulkan, RafxSamplerVulkan,
@@ -23,7 +21,8 @@ use fnv::FnvHashMap;
 use std::ffi::CStr;
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
 /// spec to understand precisely what these types mean
@@ -60,17 +59,36 @@ impl PhysicalDeviceType {
     }
 }
 
+#[derive(Clone)]
+pub struct PhysicalDeviceInfo {
+    pub score: i32,
+    pub queue_family_indices: VkQueueFamilyIndices,
+    pub properties: vk::PhysicalDeviceProperties,
+    pub features: vk::PhysicalDeviceFeatures,
+    pub extension_properties: Vec<ash::vk::ExtensionProperties>,
+    pub all_queue_families: Vec<ash::vk::QueueFamilyProperties>,
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct VkQueueFamilyIndices {
+    pub graphics_queue_family_index: u32,
+    pub compute_queue_family_index: u32,
+    pub transfer_queue_family_index: u32,
+}
+
 pub struct RafxDeviceContextVulkanInner {
     pub(crate) resource_cache: RafxDeviceVulkanResourceCache,
     pub(crate) descriptor_heap: RafxDescriptorHeapVulkan,
     pub(crate) device_info: RafxDeviceInfo,
-    pub(crate) device_context: VkDeviceContext,
     pub(crate) queue_allocator: VkQueueAllocatorSet,
 
     // If we need a dedicated present queue, we share a single queue across all swapchains. This
     // lock ensures that the present operations for those swapchains do not occur concurrently
     pub(crate) dedicated_present_queue_lock: Mutex<()>,
 
+    device: ash::Device,
+    allocator: vk_mem::Allocator,
+    destroyed: AtomicBool,
     entry: Arc<VkEntry>,
     instance: ash::Instance,
     physical_device: vk::PhysicalDevice,
@@ -85,14 +103,26 @@ pub struct RafxDeviceContextVulkanInner {
     pub(crate) all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 }
 
+impl Drop for RafxDeviceContextVulkanInner {
+    fn drop(&mut self) {
+        if !self.destroyed.swap(true, Ordering::AcqRel) {
+            unsafe {
+                log::trace!("destroying device");
+                self.allocator.destroy();
+                self.device.destroy_device(None);
+                //self.surface_loader.destroy_surface(self.surface, None);
+                log::trace!("destroyed device");
+            }
+        }
+    }
+}
+
 impl RafxDeviceContextVulkanInner {
     pub fn new(instance: &VkInstance) -> RafxResult<Self> {
         let physical_device_type_priority = vec![
             PhysicalDeviceType::DiscreteGpu,
             PhysicalDeviceType::IntegratedGpu,
         ];
-
-        let default_present_mode_priority = vec![VkPresentMode::Fifo];
 
         // Pick a physical device
         let (physical_device, physical_device_info) =
@@ -133,14 +163,6 @@ impl RafxDeviceContextVulkanInner {
 
         let allocator = vk_mem::Allocator::new(&allocator_create_info)?;
 
-        let device_context = VkDeviceContext::new(
-            default_present_mode_priority,
-            logical_device.clone(),
-            allocator,
-            physical_device,
-            physical_device_info.clone(),
-        )?;
-
         let limits = &physical_device_info.properties.limits;
 
         let device_info = RafxDeviceInfo {
@@ -164,7 +186,6 @@ impl RafxDeviceContextVulkanInner {
         };
 
         Ok(RafxDeviceContextVulkanInner {
-            device_context,
             resource_cache,
             descriptor_heap,
             device_info,
@@ -174,6 +195,9 @@ impl RafxDeviceContextVulkanInner {
             instance: instance.instance.clone(),
             physical_device,
             physical_device_info,
+            device: logical_device,
+            allocator,
+            destroyed: AtomicBool::new(false),
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
@@ -199,7 +223,7 @@ impl std::fmt::Debug for RafxDeviceContextVulkan {
         f: &mut std::fmt::Formatter,
     ) -> std::fmt::Result {
         f.debug_struct("RafxDeviceContextVulkan")
-            .field("handle", &self.inner.device_context.device().handle())
+            .field("handle", &self.device().handle())
             .finish()
     }
 }
@@ -270,10 +294,6 @@ impl RafxDeviceContextVulkan {
         &self.inner.device_info
     }
 
-    pub fn vk_device_context(&self) -> &VkDeviceContext {
-        &self.inner.device_context
-    }
-
     pub fn entry(&self) -> &VkEntry {
         &*self.inner.entry
     }
@@ -283,7 +303,7 @@ impl RafxDeviceContextVulkan {
     }
 
     pub fn device(&self) -> &ash::Device {
-        self.inner.device_context.device()
+        &self.inner.device
     }
 
     pub fn physical_device(&self) -> vk::PhysicalDevice {
@@ -299,7 +319,7 @@ impl RafxDeviceContextVulkan {
     }
 
     pub fn allocator(&self) -> &vk_mem::Allocator {
-        self.inner.device_context.allocator()
+        &self.inner.allocator
     }
 
     pub fn queue_allocator(&self) -> &VkQueueAllocatorSet {
@@ -312,55 +332,6 @@ impl RafxDeviceContextVulkan {
 
     pub fn dedicated_present_queue_lock(&self) -> &Mutex<()> {
         &self.inner.dedicated_present_queue_lock
-    }
-
-    pub fn find_supported_format(
-        &self,
-        candidates: &[RafxFormat],
-        resource_type: RafxResourceType,
-    ) -> Option<RafxFormat> {
-        let mut features = vk::FormatFeatureFlags::empty();
-        if resource_type.intersects(RafxResourceType::RENDER_TARGET_COLOR) {
-            features |= vk::FormatFeatureFlags::COLOR_ATTACHMENT;
-        }
-
-        if resource_type.intersects(RafxResourceType::RENDER_TARGET_DEPTH_STENCIL) {
-            features |= vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT;
-        }
-
-        Self::do_find_supported_format(
-            &self.inner.instance,
-            self.inner.physical_device,
-            candidates,
-            vk::ImageTiling::OPTIMAL,
-            features,
-        )
-    }
-
-    pub fn do_find_supported_format(
-        instance: &ash::Instance,
-        physical_device: vk::PhysicalDevice,
-        candidates: &[RafxFormat],
-        image_tiling: vk::ImageTiling,
-        features: vk::FormatFeatureFlags,
-    ) -> Option<RafxFormat> {
-        for &candidate in candidates {
-            let props = unsafe {
-                instance.get_physical_device_format_properties(physical_device, candidate.into())
-            };
-
-            let is_supported = match image_tiling {
-                vk::ImageTiling::LINEAR => (props.linear_tiling_features & features) == features,
-                vk::ImageTiling::OPTIMAL => (props.optimal_tiling_features & features) == features,
-                _ => unimplemented!(),
-            };
-
-            if is_supported {
-                return Some(candidate);
-            }
-        }
-
-        None
     }
 
     pub fn new(
@@ -413,7 +384,7 @@ impl RafxDeviceContextVulkan {
         }
 
         if !fence_list.is_empty() {
-            let device = self.vk_device_context().device();
+            let device = self.device();
             unsafe {
                 device.wait_for_fences(&fence_list, true, std::u64::MAX)?;
                 device.reset_fences(&fence_list)?;
@@ -429,7 +400,7 @@ impl RafxDeviceContextVulkan {
 
     pub fn wait_for_device_idle(&self) -> RafxResult<()> {
         unsafe {
-            self.vk_device_context().device().device_wait_idle()?;
+            self.device().device_wait_idle()?;
             Ok(())
         }
     }
@@ -519,6 +490,83 @@ impl RafxDeviceContextVulkan {
     ) -> RafxResult<RafxShaderModuleVulkan> {
         RafxShaderModuleVulkan::new_from_spv(self, spv)
     }
+
+    pub fn find_supported_format(
+        &self,
+        candidates: &[RafxFormat],
+        resource_type: RafxResourceType,
+    ) -> Option<RafxFormat> {
+        let mut features = vk::FormatFeatureFlags::empty();
+        if resource_type.intersects(RafxResourceType::RENDER_TARGET_COLOR) {
+            features |= vk::FormatFeatureFlags::COLOR_ATTACHMENT;
+        }
+
+        if resource_type.intersects(RafxResourceType::RENDER_TARGET_DEPTH_STENCIL) {
+            features |= vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT;
+        }
+
+        do_find_supported_format(
+            &self.inner.instance,
+            self.inner.physical_device,
+            candidates,
+            vk::ImageTiling::OPTIMAL,
+            features,
+        )
+    }
+
+    pub fn find_supported_sample_count(
+        &self,
+        candidates: &[RafxSampleCount],
+    ) -> Option<RafxSampleCount> {
+        do_find_supported_sample_count(self.limits(), candidates)
+    }
+}
+
+pub fn do_find_supported_format(
+    instance: &ash::Instance,
+    physical_device: vk::PhysicalDevice,
+    candidates: &[RafxFormat],
+    image_tiling: vk::ImageTiling,
+    features: vk::FormatFeatureFlags,
+) -> Option<RafxFormat> {
+    for &candidate in candidates {
+        let props = unsafe {
+            instance.get_physical_device_format_properties(physical_device, candidate.into())
+        };
+
+        let is_supported = match image_tiling {
+            vk::ImageTiling::LINEAR => (props.linear_tiling_features & features) == features,
+            vk::ImageTiling::OPTIMAL => (props.optimal_tiling_features & features) == features,
+            _ => unimplemented!(),
+        };
+
+        if is_supported {
+            return Some(candidate);
+        }
+    }
+
+    None
+}
+
+fn do_find_supported_sample_count(
+    limits: &vk::PhysicalDeviceLimits,
+    sample_count_priority: &[RafxSampleCount],
+) -> Option<RafxSampleCount> {
+    for &sample_count in sample_count_priority {
+        let vk_sample_count: vk::SampleCountFlags = sample_count.into();
+        if (vk_sample_count.as_raw()
+            & limits.framebuffer_depth_sample_counts.as_raw()
+            & limits.framebuffer_color_sample_counts.as_raw())
+            != 0
+        {
+            log::trace!("Sample count {:?} is supported", sample_count);
+            return Some(sample_count);
+        } else {
+            log::trace!("Sample count {:?} is unsupported", sample_count);
+        }
+    }
+
+    None
 }
 
 fn choose_physical_device(

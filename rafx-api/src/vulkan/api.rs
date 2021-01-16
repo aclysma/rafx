@@ -4,7 +4,6 @@ use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
-use crate::vulkan::internal::device::VkDeviceContext;
 use crate::vulkan::{RafxDeviceContextVulkan, RafxDeviceContextVulkanInner};
 use std::ffi::CString;
 
@@ -54,11 +53,6 @@ impl Drop for RafxApiVulkan {
 }
 
 impl RafxApiVulkan {
-    //TEMPORARY
-    pub fn vk_device_context(&self) -> &VkDeviceContext {
-        self.device_context.as_ref().unwrap().vk_device_context()
-    }
-
     pub fn device_context(&self) -> &RafxDeviceContextVulkan {
         self.device_context.as_ref().unwrap()
     }
@@ -125,7 +119,7 @@ impl RafxApiVulkan {
 
             let _strong_count = Arc::strong_count(&inner);
             match Arc::try_unwrap(inner) {
-                Ok(mut inner) => unsafe { inner.device_context.destroy() },
+                Ok(inner) => std::mem::drop(inner),
                 Err(_arc) => {
                     Err(format!(
                         "Could not destroy device, {} references to it exist",

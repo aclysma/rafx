@@ -4,8 +4,7 @@ use ash::version::DeviceV1_0;
 
 use std::sync::{Arc, Mutex};
 
-use crate::vulkan::internal::device::VkQueueFamilyIndices;
-use crate::vulkan::RafxDeviceContextVulkan;
+use crate::vulkan::{RafxDeviceContextVulkan, VkQueueFamilyIndices};
 use crossbeam_channel::{Receiver, Sender};
 use fnv::FnvHashMap;
 
@@ -19,7 +18,7 @@ use fnv::FnvHashMap;
 ///
 /// Present queue is not here because if we need a dedicated present queue, it will be found and
 /// used by the swapchain directly. There is a single global lock for all dedicated present queues
-/// on VkDevice.
+/// on RafxDeviceContext.
 
 pub struct VkQueueInner {
     device_context: RafxDeviceContextVulkan,
@@ -308,9 +307,8 @@ impl VkQueueRequirements {
     }
 }
 
-/// Created by VkDevice, provides logic for allocating/releasing queues
+/// Created by RafxApiVulkan, provides logic for allocating/releasing queues
 pub struct VkQueueAllocatorSet {
-    //queue_counts: FnvHashMap<u32, u32>,
     graphics_queue_allocator: Mutex<VkQueueAllocator>,
     compute_queue_allocator: Mutex<VkQueueAllocator>,
     transfer_queue_allocator: Mutex<VkQueueAllocator>,
@@ -407,8 +405,4 @@ impl VkQueueAllocatorSet {
             .unwrap()
             .allocate_queue(device_context)
     }
-
-    // pub fn queue_counts(&self) -> &FnvHashMap<u32, u32> {
-    //     &self.queue_counts
-    // }
 }

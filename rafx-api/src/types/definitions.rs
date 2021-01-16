@@ -217,10 +217,7 @@ pub struct RafxSwapchainDef {
     pub width: u32,
     pub height: u32,
     pub enable_vsync: bool,
-    // raw window handle by value?
     // image count?
-    // format?
-    // clear value?
 }
 
 // Stage refers to shader modules, but the method for creating them is very API-specific right now

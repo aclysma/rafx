@@ -1,5 +1,9 @@
 use crate::{RafxRenderTarget, RafxTexture, RafxTextureDef};
 
+/// Enum that holds either a texture or render target.
+///
+/// `texture()` and `texture_def()` can always be called, but `render_target()` may return none if
+/// the image is a texture but not a render target
 #[derive(Debug)]
 pub enum RafxImage {
     Texture(RafxTexture),

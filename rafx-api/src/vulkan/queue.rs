@@ -1,7 +1,7 @@
 use super::internal::VkQueue;
 use crate::vulkan::{
     RafxCommandBufferVulkan, RafxCommandPoolVulkan, RafxDeviceContextVulkan, RafxFenceVulkan,
-    RafxSemaphoreVulkan, RafxSwapchainVulkan, VkSwapchain,
+    RafxSemaphoreVulkan, RafxSwapchainVulkan,
 };
 use crate::{RafxCommandPoolDef, RafxError, RafxPresentSuccessResult, RafxQueueType, RafxResult};
 use ash::version::DeviceV1_0;
@@ -144,8 +144,6 @@ impl RafxQueueVulkan {
         wait_semaphores: &[&RafxSemaphoreVulkan],
         image_index: u32,
     ) -> RafxResult<RafxPresentSuccessResult> {
-        let swapchain = swapchain.swapchain();
-
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
         for wait_semaphore in wait_semaphores {
             if wait_semaphore.signal_available() {
@@ -154,7 +152,7 @@ impl RafxQueueVulkan {
             }
         }
 
-        let swapchains = [swapchain.swapchain];
+        let swapchains = [swapchain.vk_swapchain()];
         let image_indices = [image_index];
         let present_info = vk::PresentInfoKHR::builder()
             .wait_semaphores(&wait_semaphore_list)
@@ -186,7 +184,7 @@ impl RafxQueueVulkan {
     // Make sure we always use the dedicated queue if it exists
     fn present_to_given_or_dedicated_queue(
         &self,
-        swapchain: &VkSwapchain,
+        swapchain: &RafxSwapchainVulkan,
         present_info: &vk::PresentInfoKHR,
     ) -> RafxResult<bool> {
         let is_suboptimal =
@@ -205,7 +203,7 @@ impl RafxQueueVulkan {
                         dedicated_present_queue
                     );
                     swapchain
-                        .swapchain_loader
+                        .vk_swapchain_loader()
                         .queue_present(dedicated_present_queue, present_info)?
                 }
             } else {
@@ -213,7 +211,7 @@ impl RafxQueueVulkan {
                 log::trace!("present to dedicated present queue {:?}", *queue);
                 unsafe {
                     swapchain
-                        .swapchain_loader
+                        .vk_swapchain_loader()
                         .queue_present(*queue, &present_info)?
                 }
             };
