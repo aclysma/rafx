@@ -53,16 +53,6 @@ pub struct RenderGraphNodeBufferBarriers {
 pub const MAX_COLOR_ATTACHMENTS: usize = 4;
 pub const MAX_RESOLVE_ATTACHMENTS: usize = 4;
 
-/// Metadata for a subpass
-#[derive(Debug)]
-pub struct RenderGraphSubpass {
-    pub(super) node: RenderGraphNodeId,
-
-    pub(super) color_attachments: [Option<usize>; MAX_COLOR_ATTACHMENTS], // could ref back to node
-    pub(super) resolve_attachments: [Option<usize>; MAX_RESOLVE_ATTACHMENTS],
-    pub(super) depth_attachment: Option<usize>,
-}
-
 /// Clear value for either a color attachment or depth/stencil attachment
 #[derive(Clone)]
 pub enum AttachmentClearValue {
@@ -153,11 +143,14 @@ pub struct PrepassBufferBarrier {
 }
 
 /// Metadata required to create a renderpass
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RenderGraphRenderPass {
-    pub(super) nodes: Vec<RenderGraphNodeId>,
+    pub(super) node_id: RenderGraphNodeId,
     pub(super) attachments: Vec<RenderGraphPassAttachment>,
-    pub(super) subpasses: Vec<RenderGraphSubpass>,
+
+    pub(super) color_attachments: [Option<usize>; MAX_COLOR_ATTACHMENTS], // could ref back to node
+    pub(super) resolve_attachments: [Option<usize>; MAX_RESOLVE_ATTACHMENTS],
+    pub(super) depth_attachment: Option<usize>,
 
     // For when we want to do layout transitions on non-attachments
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
@@ -177,10 +170,10 @@ pub enum RenderGraphPass {
 }
 
 impl RenderGraphPass {
-    pub fn nodes(&self) -> &[RenderGraphNodeId] {
+    pub fn node(&self) -> RenderGraphNodeId {
         match self {
-            RenderGraphPass::Renderpass(renderpass) => renderpass.nodes.as_slice(),
-            RenderGraphPass::Compute(compute_pass) => std::slice::from_ref(&compute_pass.node),
+            RenderGraphPass::Renderpass(renderpass) => renderpass.node_id,
+            RenderGraphPass::Compute(compute_pass) => compute_pass.node,
         }
     }
 
@@ -222,7 +215,7 @@ pub struct RenderGraphDepthStencilRenderTarget {
 }
 
 pub struct RenderGraphOutputRenderPass {
-    pub(super) subpass_nodes: Vec<RenderGraphNodeId>,
+    pub(super) node_id: RenderGraphNodeId,
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
     pub(super) post_pass_barrier: Option<PostpassBarrier>,
     pub(super) debug_name: Option<RenderGraphNodeName>,
@@ -260,10 +253,10 @@ pub enum RenderGraphOutputPass {
 }
 
 impl RenderGraphOutputPass {
-    pub fn nodes(&self) -> &[RenderGraphNodeId] {
+    pub fn node(&self) -> RenderGraphNodeId {
         match self {
-            RenderGraphOutputPass::Renderpass(pass) => &pass.subpass_nodes,
-            RenderGraphOutputPass::Compute(pass) => std::slice::from_ref(&pass.node),
+            RenderGraphOutputPass::Renderpass(pass) => pass.node_id,
+            RenderGraphOutputPass::Compute(pass) => pass.node,
         }
     }
 

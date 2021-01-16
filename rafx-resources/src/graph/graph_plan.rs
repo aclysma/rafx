@@ -46,133 +46,62 @@ fn visit_node(
     //log::trace!("  Begin visit {:?}", node_id);
     let node = graph.node(node_id);
 
-    // The order of visiting nodes here matters. If we consider merging subpasses, trying to
-    // visit a node we want to merge with last will show that there are no indirect dependencies
-    // between the merge candidate and the node we are visiting now. However, if there are
-    // indirect dependencies, visiting a different node might mark the merge candidate as
-    // already visited. So while we could try to visit the merge candidate last, it won't
-    // guarantee that the merge candidate will actually be inserted later in the ordered_list
-    // than any other dependency
-    //
-    // Also if we are trying to merge with a dependency (which will execute before us), then any
-    // other requirements we have will need to be fulfilled before that node starts
-    //
-    // Other priorities might be to front-load anything compute-light/GPU-heavy. We can do this
-    // by some sort of flagging/priority system to influence this logic. We could also expose
-    // a way for end-users to add arbitrary dependencies for the sole purpose of influencing the
-    // ordering here.
-    //
-    // As a first pass implementation, just ensure any merge dependencies are visited last so
-    // that we will be more likely to be able to merge passes
-
-    //
-    // Delay visiting these nodes so that we get the best chance possible of mergeable passes
-    // being adjacent to each other in the orderered list
-    //
-    let mut merge_candidates = FnvHashSet::default();
-    if let Some(depth_attachment) = &node.depth_attachment {
-        if let Some(read_image) = depth_attachment.read_image {
-            let upstream_node = graph.image_version_info(read_image).creator_node;
-
-            // This might be too expensive to check
-            if can_passes_merge(graph, upstream_node, node.id()) {
-                merge_candidates.insert(upstream_node);
-            }
-        }
-    }
-
-    for color_attachment in &node.color_attachments {
-        // If this is an attachment we are reading, then the node that created it is a merge candidate
-        if let Some(read_image) = color_attachment.as_ref().and_then(|x| x.read_image) {
-            let upstream_node = graph.image_version_info(read_image).creator_node;
-
-            // This might be too expensive to check
-            if can_passes_merge(graph, upstream_node, node.id()) {
-                merge_candidates.insert(upstream_node);
-            }
-        }
-    }
-
     //
     // Visit all the nodes we aren't delaying
     //
     for read in &node.image_reads {
         let upstream_node = graph.image_version_info(read.image).creator_node;
-        if !merge_candidates.contains(&upstream_node) {
-            visit_node(
-                graph,
-                upstream_node,
-                visited,
-                visiting,
-                visiting_stack,
-                ordered_list,
-            );
-        }
+        visit_node(
+            graph,
+            upstream_node,
+            visited,
+            visiting,
+            visiting_stack,
+            ordered_list,
+        );
     }
 
     for modify in &node.image_modifies {
         let upstream_node = graph.image_version_info(modify.input).creator_node;
-        if !merge_candidates.contains(&upstream_node) {
-            visit_node(
-                graph,
-                upstream_node,
-                visited,
-                visiting,
-                visiting_stack,
-                ordered_list,
-            );
-        }
+        visit_node(
+            graph,
+            upstream_node,
+            visited,
+            visiting,
+            visiting_stack,
+            ordered_list,
+        );
     }
 
     for sampled_image in &node.sampled_images {
         let upstream_node = graph.image_version_info(*sampled_image).creator_node;
-        if !merge_candidates.contains(&upstream_node) {
-            visit_node(
-                graph,
-                upstream_node,
-                visited,
-                visiting,
-                visiting_stack,
-                ordered_list,
-            );
-        }
+        visit_node(
+            graph,
+            upstream_node,
+            visited,
+            visiting,
+            visiting_stack,
+            ordered_list,
+        );
     }
 
     for read in &node.buffer_reads {
         let upstream_node = graph.buffer_version_info(read.buffer).creator_node;
-        if !merge_candidates.contains(&upstream_node) {
-            visit_node(
-                graph,
-                upstream_node,
-                visited,
-                visiting,
-                visiting_stack,
-                ordered_list,
-            );
-        }
+        visit_node(
+            graph,
+            upstream_node,
+            visited,
+            visiting,
+            visiting_stack,
+            ordered_list,
+        );
     }
 
     for modify in &node.buffer_modifies {
         let upstream_node = graph.buffer_version_info(modify.input).creator_node;
-        if !merge_candidates.contains(&upstream_node) {
-            visit_node(
-                graph,
-                upstream_node,
-                visited,
-                visiting,
-                visiting_stack,
-                ordered_list,
-            );
-        }
-    }
-
-    //
-    // Now visit the nodes we delayed visiting
-    //
-    for merge_candidate in merge_candidates {
         visit_node(
             graph,
-            merge_candidate,
+            upstream_node,
             visited,
             visiting,
             visiting_stack,
@@ -252,25 +181,6 @@ fn determine_node_order(graph: &RenderGraphBuilder) -> Vec<RenderGraphNodeId> {
     }
 
     ordered_list
-}
-
-//TODO: Redundant with can_merge_nodes
-fn can_passes_merge(
-    _graph: &RenderGraphBuilder,
-    _prev: RenderGraphNodeId,
-    _next: RenderGraphNodeId,
-) -> bool {
-    // Reasons to reject merging:
-    // - Queues match and are not compute based
-    // - Global flag to disable merging
-    // - Don't need to mipmap previous outputs
-    // - Next doesn't need to sample from any previous output (image or buffer)
-    // - Using different depth attachment? Not sure why
-
-    // Reasons to allow merging:
-    // - They share any color or depth attachments
-
-    false
 }
 
 /// The specification for the image by image usage
@@ -1168,32 +1078,6 @@ fn assign_virtual_resources(
     }
 }
 
-//TODO: Redundant with can_passes_merge
-fn can_merge_nodes(
-    graph: &RenderGraphBuilder,
-    before_node_id: RenderGraphNodeId,
-    after_node_id: RenderGraphNodeId,
-    _constraints: &DetermineConstraintsResult,
-    _virtual_resources: &AssignVirtualResourcesResult,
-) -> bool {
-    let _before_node = graph.node(before_node_id);
-    let _after_node = graph.node(after_node_id);
-
-    //TODO: Reject if not on the same queue, and not both graphics nodes
-
-    //TODO: Reject if after reads something that before writes
-
-    //TODO: Check if depth attachments are not the same?
-    // https://developer.arm.com/documentation/101897/0200/fragment-shading/multipass-rendering
-    // implies that the depth buffer must not change but this could be mali specific
-
-    //TODO: Verify that some color or depth attachment gets used between the passes to justify
-    // merging them. Unclear if this is necessarily desirable but likely is
-
-    // For now don't merge anything
-    false
-}
-
 //
 // This walks through the nodes and creates passes/subpasses. Most of the info to create them is
 // determined here along with stage/access/queue family barrier info. (The barrier info is used
@@ -1207,20 +1091,14 @@ fn build_physical_passes(
     virtual_resources: &AssignVirtualResourcesResult,
 ) -> Vec<RenderGraphPass> {
     #[derive(Debug)]
-    enum PassNodeSet {
-        RenderNodeSet(Vec<RenderGraphNodeId>),
+    enum PassNode {
+        RenderNode(RenderGraphNodeId),
         ComputeNode(RenderGraphNodeId),
     }
 
     // All passes
-    let mut pass_node_sets = Vec::default();
+    let mut pass_nodes = Vec::default();
 
-    // A set of nodes we are accumulating that we will merge into a single renderpass (compute does
-    // not support merging)
-    let mut subpass_nodes = Vec::default();
-
-    // The last node - we store subpass_nodes in pass_node_sets if we are at the end of the list
-    let last_node_id = node_execution_order.last();
     for node_id in node_execution_order {
         let node = graph.node(*node_id);
 
@@ -1228,60 +1106,19 @@ fn build_physical_passes(
         let is_compute = node.color_attachments.is_empty() && node.depth_attachment.is_none();
         debug_assert_eq!(is_compute && !node.resolve_attachments.is_empty(), false);
 
-        // See if we can combine this pass with previous passes
-        let mut add_to_current = true;
+        // If this is a compute node, store it as a compute pass, otherwise buffer it for later
         if is_compute {
-            // Compute nodes cannot be subpasses
-            add_to_current = false
+            pass_nodes.push(PassNode::ComputeNode(*node_id));
         } else {
-            // Verify this pass is compatible with other passes
-            for subpass_node in &subpass_nodes {
-                if !can_merge_nodes(
-                    graph,
-                    *subpass_node,
-                    *node_id,
-                    constraints,
-                    virtual_resources,
-                ) {
-                    add_to_current = false;
-                    break;
-                }
-            }
-        }
-
-        if add_to_current {
-            // If it's a compatible pass, just store it for later
-            subpass_nodes.push(*node_id);
-        } else {
-            // If it's not compatible and we have previously saved nodes, store them as a renderpass
-            if !subpass_nodes.is_empty() {
-                let mut tmp = Vec::default();
-                std::mem::swap(&mut tmp, &mut subpass_nodes);
-                pass_node_sets.push(PassNodeSet::RenderNodeSet(tmp));
-                subpass_nodes = Vec::default();
-            }
-
-            // If this is a compute node, store it as a compute pass, otherwise buffer it for later
-            if is_compute {
-                pass_node_sets.push(PassNodeSet::ComputeNode(*node_id));
-            } else {
-                subpass_nodes.push(*node_id);
-            }
-        }
-
-        // If this is the last node and we've been buffering up subpasses, put them into a
-        // renderpass now
-        if Some(node_id) == last_node_id && !subpass_nodes.is_empty() {
-            let mut tmp = Vec::default();
-            std::mem::swap(&mut tmp, &mut subpass_nodes);
-            pass_node_sets.push(PassNodeSet::RenderNodeSet(tmp));
+            pass_nodes.push(PassNode::RenderNode(*node_id));
         }
     }
 
     log::trace!("gather pass info");
     let mut passes = Vec::default();
-    for pass_node_set in pass_node_sets {
-        log::trace!("  nodes in pass: {:?}", pass_node_set);
+    for pass_node in pass_nodes {
+        log::trace!("  nodes in pass: {:?}", pass_node);
+
         fn find_or_insert_attachment(
             attachments: &mut Vec<RenderGraphPassAttachment>,
             usage: RenderGraphImageUsageId,
@@ -1317,181 +1154,75 @@ fn build_physical_passes(
             }
         }
 
-        match pass_node_set {
-            PassNodeSet::ComputeNode(compute_node) => {
+        match pass_node {
+            PassNode::ComputeNode(compute_node) => {
                 passes.push(RenderGraphPass::Compute(RenderGraphComputePass {
                     node: compute_node,
                     pre_pass_barrier: Default::default(),
                 }));
             }
-            PassNodeSet::RenderNodeSet(renderpass_nodes) => {
+            PassNode::RenderNode(renderpass_node) => {
                 let mut renderpass_attachments = Vec::default();
-                let mut renderpass_subpasses = Vec::default();
 
-                for &node_id in &renderpass_nodes {
-                    log::trace!("    subpass node: {:?}", node_id);
-                    let subpass_node = graph.node(node_id);
+                log::trace!("    subpass node: {:?}", renderpass_node);
+                let subpass_node = graph.node(renderpass_node);
 
-                    // Don't create a subpass if there are no attachments
-                    if subpass_node.color_attachments.is_empty()
-                        && subpass_node.depth_attachment.is_none()
-                    {
-                        assert!(subpass_node.resolve_attachments.is_empty());
-                        log::trace!("      Not generating a subpass - no attachments");
-                        continue;
-                    }
+                // Don't create a subpass if there are no attachments
+                if subpass_node.color_attachments.is_empty()
+                    && subpass_node.depth_attachment.is_none()
+                {
+                    assert!(subpass_node.resolve_attachments.is_empty());
+                    log::trace!("      Not generating a subpass - no attachments");
+                    continue;
+                }
 
-                    let mut render_subpass = RenderGraphSubpass {
-                        node: node_id,
-                        color_attachments: Default::default(),
-                        resolve_attachments: Default::default(),
-                        depth_attachment: Default::default(),
-                    };
+                let mut pass_color_attachments: [Option<usize>; MAX_COLOR_ATTACHMENTS] =
+                    Default::default();
+                let mut pass_resolve_attachments: [Option<usize>; MAX_COLOR_ATTACHMENTS] =
+                    Default::default();
+                let mut pass_depth_attachment = Default::default();
 
-                    for (color_attachment_index, color_attachment) in
-                        subpass_node.color_attachments.iter().enumerate()
-                    {
-                        if let Some(color_attachment) = color_attachment {
-                            let read_or_write_usage = color_attachment
-                                .read_image
-                                .or(color_attachment.write_image)
-                                .unwrap();
-                            let virtual_image = virtual_resources
-                                .image_usage_to_virtual
-                                .get(&read_or_write_usage)
-                                .unwrap();
-
-                            let specification =
-                                constraints.images.get(&read_or_write_usage).unwrap();
-                            log::trace!("      virtual attachment (color): {:?}", virtual_image);
-
-                            let (pass_attachment_index, is_first_usage) = find_or_insert_attachment(
-                                &mut renderpass_attachments,
-                                read_or_write_usage,
-                                *virtual_image, /*, subresource_range*/
-                            );
-                            render_subpass.color_attachments[color_attachment_index] =
-                                Some(pass_attachment_index);
-
-                            let mut attachment = &mut renderpass_attachments[pass_attachment_index];
-                            if is_first_usage {
-                                // Check if we load or clear
-                                if color_attachment.clear_color_value.is_some() {
-                                    attachment.load_op = RafxLoadOp::Clear;
-                                    attachment.clear_color = Some(AttachmentClearValue::Color(
-                                        color_attachment.clear_color_value.unwrap(),
-                                    ))
-                                } else if color_attachment.read_image.is_some() {
-                                    attachment.load_op = RafxLoadOp::Load;
-                                }
-
-                                attachment.format = specification.format.into();
-                                attachment.samples = specification.samples.into();
-                            };
-
-                            let store_op = if let Some(write_image) = color_attachment.write_image {
-                                if !graph.image_version_info(write_image).read_usages.is_empty() {
-                                    RafxStoreOp::Store
-                                } else {
-                                    RafxStoreOp::DontCare
-                                }
-                            } else {
-                                RafxStoreOp::DontCare
-                            };
-
-                            attachment.store_op = store_op;
-                            attachment.stencil_store_op = RafxStoreOp::DontCare;
-                        }
-                    }
-
-                    for (resolve_attachment_index, resolve_attachment) in
-                        subpass_node.resolve_attachments.iter().enumerate()
-                    {
-                        if let Some(resolve_attachment) = resolve_attachment {
-                            let write_image = resolve_attachment.write_image;
-                            let virtual_image = virtual_resources
-                                .image_usage_to_virtual
-                                .get(&write_image)
-                                .unwrap();
-                            //let version_id = graph.image_version_id(write_image);
-                            let specification = constraints.images.get(&write_image).unwrap();
-                            log::trace!("      virtual attachment (resolve): {:?}", virtual_image);
-
-                            let (pass_attachment_index, is_first_usage) = find_or_insert_attachment(
-                                &mut renderpass_attachments,
-                                write_image,
-                                *virtual_image, /*, subresource_range*/
-                            );
-                            render_subpass.resolve_attachments[resolve_attachment_index] =
-                                Some(pass_attachment_index);
-
-                            assert!(is_first_usage); // Not sure if this assert is valid
-                            let mut attachment = &mut renderpass_attachments[pass_attachment_index];
-                            attachment.format = specification.format.into();
-                            attachment.samples = specification.samples.into();
-
-                            //TODO: Should we skip resolving if there is no reader?
-                            let store_op =
-                                if !graph.image_version_info(write_image).read_usages.is_empty() {
-                                    RafxStoreOp::Store
-                                } else {
-                                    RafxStoreOp::DontCare
-                                };
-
-                            attachment.store_op = store_op;
-                            attachment.stencil_store_op = RafxStoreOp::DontCare;
-                        }
-                    }
-
-                    if let Some(depth_attachment) = &subpass_node.depth_attachment {
-                        let read_or_write_usage = depth_attachment
+                for (color_attachment_index, color_attachment) in
+                    subpass_node.color_attachments.iter().enumerate()
+                {
+                    if let Some(color_attachment) = color_attachment {
+                        let read_or_write_usage = color_attachment
                             .read_image
-                            .or(depth_attachment.write_image)
+                            .or(color_attachment.write_image)
                             .unwrap();
                         let virtual_image = virtual_resources
                             .image_usage_to_virtual
                             .get(&read_or_write_usage)
                             .unwrap();
+
                         let specification = constraints.images.get(&read_or_write_usage).unwrap();
-                        log::trace!("      virtual attachment (depth): {:?}", virtual_image);
+                        log::trace!("      virtual attachment (color): {:?}", virtual_image);
 
                         let (pass_attachment_index, is_first_usage) = find_or_insert_attachment(
                             &mut renderpass_attachments,
                             read_or_write_usage,
                             *virtual_image, /*, subresource_range*/
                         );
-                        render_subpass.depth_attachment = Some(pass_attachment_index);
+                        pass_color_attachments[color_attachment_index] =
+                            Some(pass_attachment_index);
 
                         let mut attachment = &mut renderpass_attachments[pass_attachment_index];
                         if is_first_usage {
                             // Check if we load or clear
-                            //TODO: Support load_op for stencil
-
-                            if depth_attachment.clear_depth_stencil_value.is_some() {
-                                if depth_attachment.has_depth {
-                                    attachment.load_op = RafxLoadOp::Clear;
-                                }
-                                if depth_attachment.has_stencil {
-                                    attachment.stencil_load_op = RafxLoadOp::Clear;
-                                }
-                                attachment.clear_color = Some(AttachmentClearValue::DepthStencil(
-                                    depth_attachment.clear_depth_stencil_value.unwrap(),
-                                ));
-                            } else if depth_attachment.read_image.is_some() {
-                                if depth_attachment.has_depth {
-                                    attachment.load_op = RafxLoadOp::Load;
-                                }
-
-                                if depth_attachment.has_stencil {
-                                    attachment.stencil_load_op = RafxLoadOp::Load;
-                                }
+                            if color_attachment.clear_color_value.is_some() {
+                                attachment.load_op = RafxLoadOp::Clear;
+                                attachment.clear_color = Some(AttachmentClearValue::Color(
+                                    color_attachment.clear_color_value.unwrap(),
+                                ))
+                            } else if color_attachment.read_image.is_some() {
+                                attachment.load_op = RafxLoadOp::Load;
                             }
 
                             attachment.format = specification.format.into();
                             attachment.samples = specification.samples.into();
                         };
 
-                        let store_op = if let Some(write_image) = depth_attachment.write_image {
+                        let store_op = if let Some(write_image) = color_attachment.write_image {
                             if !graph.image_version_info(write_image).read_usages.is_empty() {
                                 RafxStoreOp::Store
                             } else {
@@ -1501,22 +1232,123 @@ fn build_physical_passes(
                             RafxStoreOp::DontCare
                         };
 
-                        if depth_attachment.has_depth {
-                            attachment.store_op = store_op;
+                        attachment.store_op = store_op;
+                        attachment.stencil_store_op = RafxStoreOp::DontCare;
+                    }
+                }
+
+                for (resolve_attachment_index, resolve_attachment) in
+                    subpass_node.resolve_attachments.iter().enumerate()
+                {
+                    if let Some(resolve_attachment) = resolve_attachment {
+                        let write_image = resolve_attachment.write_image;
+                        let virtual_image = virtual_resources
+                            .image_usage_to_virtual
+                            .get(&write_image)
+                            .unwrap();
+                        //let version_id = graph.image_version_id(write_image);
+                        let specification = constraints.images.get(&write_image).unwrap();
+                        log::trace!("      virtual attachment (resolve): {:?}", virtual_image);
+
+                        let (pass_attachment_index, is_first_usage) = find_or_insert_attachment(
+                            &mut renderpass_attachments,
+                            write_image,
+                            *virtual_image, /*, subresource_range*/
+                        );
+                        pass_resolve_attachments[resolve_attachment_index] =
+                            Some(pass_attachment_index);
+
+                        assert!(is_first_usage); // Not sure if this assert is valid
+                        let mut attachment = &mut renderpass_attachments[pass_attachment_index];
+                        attachment.format = specification.format.into();
+                        attachment.samples = specification.samples.into();
+
+                        //TODO: Should we skip resolving if there is no reader?
+                        let store_op =
+                            if !graph.image_version_info(write_image).read_usages.is_empty() {
+                                RafxStoreOp::Store
+                            } else {
+                                RafxStoreOp::DontCare
+                            };
+
+                        attachment.store_op = store_op;
+                        attachment.stencil_store_op = RafxStoreOp::DontCare;
+                    }
+                }
+
+                if let Some(depth_attachment) = &subpass_node.depth_attachment {
+                    let read_or_write_usage = depth_attachment
+                        .read_image
+                        .or(depth_attachment.write_image)
+                        .unwrap();
+                    let virtual_image = virtual_resources
+                        .image_usage_to_virtual
+                        .get(&read_or_write_usage)
+                        .unwrap();
+                    let specification = constraints.images.get(&read_or_write_usage).unwrap();
+                    log::trace!("      virtual attachment (depth): {:?}", virtual_image);
+
+                    let (pass_attachment_index, is_first_usage) = find_or_insert_attachment(
+                        &mut renderpass_attachments,
+                        read_or_write_usage,
+                        *virtual_image, /*, subresource_range*/
+                    );
+                    pass_depth_attachment = Some(pass_attachment_index);
+
+                    let mut attachment = &mut renderpass_attachments[pass_attachment_index];
+                    if is_first_usage {
+                        // Check if we load or clear
+                        //TODO: Support load_op for stencil
+
+                        if depth_attachment.clear_depth_stencil_value.is_some() {
+                            if depth_attachment.has_depth {
+                                attachment.load_op = RafxLoadOp::Clear;
+                            }
+                            if depth_attachment.has_stencil {
+                                attachment.stencil_load_op = RafxLoadOp::Clear;
+                            }
+                            attachment.clear_color = Some(AttachmentClearValue::DepthStencil(
+                                depth_attachment.clear_depth_stencil_value.unwrap(),
+                            ));
+                        } else if depth_attachment.read_image.is_some() {
+                            if depth_attachment.has_depth {
+                                attachment.load_op = RafxLoadOp::Load;
+                            }
+
+                            if depth_attachment.has_stencil {
+                                attachment.stencil_load_op = RafxLoadOp::Load;
+                            }
                         }
 
-                        if depth_attachment.has_stencil {
-                            attachment.stencil_store_op = store_op;
+                        attachment.format = specification.format.into();
+                        attachment.samples = specification.samples.into();
+                    };
+
+                    let store_op = if let Some(write_image) = depth_attachment.write_image {
+                        if !graph.image_version_info(write_image).read_usages.is_empty() {
+                            RafxStoreOp::Store
+                        } else {
+                            RafxStoreOp::DontCare
                         }
+                    } else {
+                        RafxStoreOp::DontCare
+                    };
+
+                    if depth_attachment.has_depth {
+                        attachment.store_op = store_op;
                     }
 
-                    renderpass_subpasses.push(render_subpass);
+                    if depth_attachment.has_stencil {
+                        attachment.stencil_store_op = store_op;
+                    }
                 }
 
                 passes.push(RenderGraphPass::Renderpass(RenderGraphRenderPass {
-                    nodes: renderpass_nodes,
+                    node_id: renderpass_node,
                     attachments: renderpass_attachments,
-                    subpasses: renderpass_subpasses,
+                    color_attachments: pass_color_attachments,
+                    depth_attachment: pass_depth_attachment,
+                    resolve_attachments: pass_resolve_attachments,
                     pre_pass_barrier: None,
                     post_pass_barrier: None,
                 }));
@@ -1649,101 +1481,100 @@ fn assign_physical_resources(
     // Walk through all image/buffer usages to determine their lifetimes
     //
     for (pass_index, pass) in passes.iter().enumerate() {
-        for subpass_node_id in pass.nodes() {
-            let node = graph.node(*subpass_node_id);
+        let subpass_node_id = pass.node();
+        let node = graph.node(subpass_node_id);
 
-            for image_modify in &node.image_modifies {
-                add_or_modify_reuse_image_requirements(
-                    virtual_resources,
-                    constraints,
-                    pass_index,
-                    image_modify.input,
-                    &mut image_reuse_requirements,
-                    &mut image_reuse_requirements_lookup,
-                );
-                add_or_modify_reuse_image_requirements(
-                    virtual_resources,
-                    constraints,
-                    pass_index,
-                    image_modify.output,
-                    &mut image_reuse_requirements,
-                    &mut image_reuse_requirements_lookup,
-                );
-            }
+        for image_modify in &node.image_modifies {
+            add_or_modify_reuse_image_requirements(
+                virtual_resources,
+                constraints,
+                pass_index,
+                image_modify.input,
+                &mut image_reuse_requirements,
+                &mut image_reuse_requirements_lookup,
+            );
+            add_or_modify_reuse_image_requirements(
+                virtual_resources,
+                constraints,
+                pass_index,
+                image_modify.output,
+                &mut image_reuse_requirements,
+                &mut image_reuse_requirements_lookup,
+            );
+        }
 
-            for image_read in &node.image_reads {
-                add_or_modify_reuse_image_requirements(
-                    virtual_resources,
-                    constraints,
-                    pass_index,
-                    image_read.image,
-                    &mut image_reuse_requirements,
-                    &mut image_reuse_requirements_lookup,
-                );
-            }
+        for image_read in &node.image_reads {
+            add_or_modify_reuse_image_requirements(
+                virtual_resources,
+                constraints,
+                pass_index,
+                image_read.image,
+                &mut image_reuse_requirements,
+                &mut image_reuse_requirements_lookup,
+            );
+        }
 
-            for image_create in &node.image_creates {
-                add_or_modify_reuse_image_requirements(
-                    virtual_resources,
-                    constraints,
-                    pass_index,
-                    image_create.image,
-                    &mut image_reuse_requirements,
-                    &mut image_reuse_requirements_lookup,
-                );
-            }
+        for image_create in &node.image_creates {
+            add_or_modify_reuse_image_requirements(
+                virtual_resources,
+                constraints,
+                pass_index,
+                image_create.image,
+                &mut image_reuse_requirements,
+                &mut image_reuse_requirements_lookup,
+            );
+        }
 
-            for image_sample in &node.sampled_images {
-                add_or_modify_reuse_image_requirements(
-                    virtual_resources,
-                    constraints,
-                    pass_index,
-                    *image_sample,
-                    &mut image_reuse_requirements,
-                    &mut image_reuse_requirements_lookup,
-                );
-            }
+        for image_sample in &node.sampled_images {
+            add_or_modify_reuse_image_requirements(
+                virtual_resources,
+                constraints,
+                pass_index,
+                *image_sample,
+                &mut image_reuse_requirements,
+                &mut image_reuse_requirements_lookup,
+            );
+        }
 
-            for buffer_modify in &node.buffer_modifies {
-                add_or_modify_reuse_buffer_requirements(
-                    virtual_resources,
-                    constraints,
-                    pass_index,
-                    buffer_modify.input,
-                    &mut buffer_reuse_requirements,
-                    &mut buffer_reuse_requirements_lookup,
-                );
-                add_or_modify_reuse_buffer_requirements(
-                    virtual_resources,
-                    constraints,
-                    pass_index,
-                    buffer_modify.output,
-                    &mut buffer_reuse_requirements,
-                    &mut buffer_reuse_requirements_lookup,
-                );
-            }
+        for buffer_modify in &node.buffer_modifies {
+            add_or_modify_reuse_buffer_requirements(
+                virtual_resources,
+                constraints,
+                pass_index,
+                buffer_modify.input,
+                &mut buffer_reuse_requirements,
+                &mut buffer_reuse_requirements_lookup,
+            );
+            add_or_modify_reuse_buffer_requirements(
+                virtual_resources,
+                constraints,
+                pass_index,
+                buffer_modify.output,
+                &mut buffer_reuse_requirements,
+                &mut buffer_reuse_requirements_lookup,
+            );
+        }
 
-            for buffer_read in &node.buffer_reads {
-                add_or_modify_reuse_buffer_requirements(
-                    virtual_resources,
-                    constraints,
-                    pass_index,
-                    buffer_read.buffer,
-                    &mut buffer_reuse_requirements,
-                    &mut buffer_reuse_requirements_lookup,
-                );
-            }
+        for buffer_read in &node.buffer_reads {
+            add_or_modify_reuse_buffer_requirements(
+                virtual_resources,
+                constraints,
+                pass_index,
+                buffer_read.buffer,
+                &mut buffer_reuse_requirements,
+                &mut buffer_reuse_requirements_lookup,
+            );
+        }
 
-            for buffer_create in &node.buffer_creates {
-                add_or_modify_reuse_buffer_requirements(
-                    virtual_resources,
-                    constraints,
-                    pass_index,
-                    buffer_create.buffer,
-                    &mut buffer_reuse_requirements,
-                    &mut buffer_reuse_requirements_lookup,
-                );
-            }
+        for buffer_create in &node.buffer_creates {
+            add_or_modify_reuse_buffer_requirements(
+                virtual_resources,
+                constraints,
+                pass_index,
+                buffer_create.buffer,
+                &mut buffer_reuse_requirements,
+                &mut buffer_reuse_requirements_lookup,
+            );
         }
     }
 
@@ -2219,183 +2050,177 @@ fn build_pass_barriers(
             attachment_initial_state.resize_with(pass.attachments.len(), || None);
         }
 
-        //TODO: This does not support multiple subpasses in a single pass
-        assert_eq!(pass.nodes().len(), 1);
-        let nodes: Vec<_> = pass.nodes().iter().copied().collect();
-        for (subpass_index, subpass_node_id) in nodes.iter().enumerate() {
-            log::trace!("  subpass {}", subpass_index);
-            let node_barriers = &node_barriers[subpass_node_id];
+        //let nodes: Vec<_> = pass.nodes().iter().copied().collect();
+        //for (subpass_index, subpass_node_id) in nodes.iter().enumerate() {
+        let subpass_node_id = pass.node();
+        let node_barriers = &node_barriers[&subpass_node_id];
 
-            struct ImageTransition {
-                physical_image_id: PhysicalImageId,
-                old_state: RafxResourceState,
-                new_state: RafxResourceState,
-            }
+        struct ImageTransition {
+            physical_image_id: PhysicalImageId,
+            old_state: RafxResourceState,
+            new_state: RafxResourceState,
+        }
 
-            struct BufferTransition {
-                physical_buffer_id: PhysicalBufferId,
-                old_state: RafxResourceState,
-                new_state: RafxResourceState,
-            }
+        struct BufferTransition {
+            physical_buffer_id: PhysicalBufferId,
+            old_state: RafxResourceState,
+            new_state: RafxResourceState,
+        }
 
-            let mut image_transitions = Vec::default();
-            // Look at all the images we read and determine what invalidates we need
-            for (physical_image_id, image_barrier) in &node_barriers.image_barriers {
-                log::trace!("    image {:?}", physical_image_id);
-                let image_state = &mut image_states[physical_image_id.0];
+        let mut image_transitions = Vec::default();
+        // Look at all the images we read and determine what invalidates we need
+        for (physical_image_id, image_barrier) in &node_barriers.image_barriers {
+            log::trace!("    image {:?}", physical_image_id);
+            let image_state = &mut image_states[physical_image_id.0];
 
-                let resource_state_change =
-                    image_state.resource_state != image_barrier.resource_state;
+            let resource_state_change = image_state.resource_state != image_barrier.resource_state;
+            if resource_state_change {
+                log::trace!(
+                    "      state change! {:?} -> {:?}",
+                    image_state.resource_state,
+                    image_barrier.resource_state
+                );
+
                 if resource_state_change {
-                    log::trace!(
-                        "      state change! {:?} -> {:?}",
-                        image_state.resource_state,
-                        image_barrier.resource_state
-                    );
-
-                    if resource_state_change {
-                        image_transitions.push(ImageTransition {
-                            physical_image_id: *physical_image_id,
-                            old_state: image_state.resource_state,
-                            new_state: image_barrier.resource_state,
-                        });
-                    }
-
-                    image_state.resource_state = image_barrier.resource_state;
+                    image_transitions.push(ImageTransition {
+                        physical_image_id: *physical_image_id,
+                        old_state: image_state.resource_state,
+                        new_state: image_barrier.resource_state,
+                    });
                 }
 
-                // Set the initial layout for the attachment, but only if it's the first time we've seen it
-                //TODO: This is bad and does not properly handle an image being used in multiple ways requiring
-                // multiple layouts
+                image_state.resource_state = image_barrier.resource_state;
+            }
+
+            // Set the initial layout for the attachment, but only if it's the first time we've seen it
+            //TODO: This is bad and does not properly handle an image being used in multiple ways requiring
+            // multiple layouts
+            if let RenderGraphPass::Renderpass(pass) = pass {
+                for (attachment_index, attachment) in &mut pass.attachments.iter_mut().enumerate() {
+                    //log::trace!("      attachment {:?}", attachment.image);
+                    if attachment.image.unwrap() == *physical_image_id {
+                        if attachment_initial_state[attachment_index].is_none() {
+                            //log::trace!("        initial layout {:?}", image_barrier.layout);
+                            attachment_initial_state[attachment_index] =
+                                Some(image_state.resource_state.into());
+
+                            // Use an image barrier before the pass to transition the layout,
+                            // so we will already be in the correct layout before starting the
+                            // pass.
+                            attachment.initial_state = image_barrier.resource_state.into();
+                        }
+
+                        attachment.final_state = image_barrier.resource_state.into();
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Look at all the buffers we read and determine what invalidates we need
+        let mut buffer_transitions = Vec::default();
+        for (physical_buffer_id, buffer_barrier) in &node_barriers.buffer_barriers {
+            log::trace!("    buffer {:?}", physical_buffer_id);
+            let buffer_state = &mut buffer_states[physical_buffer_id.0];
+
+            let resource_state_change =
+                buffer_state.resource_state != buffer_barrier.resource_state;
+            if resource_state_change {
+                log::trace!(
+                    "      state change! {:?} -> {:?}",
+                    buffer_state.resource_state,
+                    buffer_barrier.resource_state
+                );
+
+                buffer_transitions.push(BufferTransition {
+                    physical_buffer_id: *physical_buffer_id,
+                    old_state: buffer_state.resource_state,
+                    new_state: buffer_barrier.resource_state,
+                });
+
+                buffer_state.resource_state = buffer_barrier.resource_state;
+            }
+        }
+
+        let image_barriers: Vec<_> = image_transitions
+            .into_iter()
+            .map(|image_transition| {
+                assert_ne!(image_transition.new_state, RafxResourceState::UNDEFINED);
+                PrepassImageBarrier {
+                    image: image_transition.physical_image_id,
+                    old_state: image_transition.old_state,
+                    new_state: image_transition.new_state,
+                }
+            })
+            .collect();
+
+        let buffer_barriers: Vec<_> = buffer_transitions
+            .into_iter()
+            .map(|buffer_transition| {
+                assert_ne!(buffer_transition.new_state, RafxResourceState::UNDEFINED);
+                PrepassBufferBarrier {
+                    buffer: buffer_transition.physical_buffer_id,
+                    old_state: buffer_transition.old_state,
+                    new_state: buffer_transition.new_state,
+                }
+            })
+            .collect();
+
+        if !image_barriers.is_empty() || !buffer_barriers.is_empty() {
+            let barrier = PrepassBarrier {
+                image_barriers,
+                buffer_barriers,
+            };
+
+            pass.set_pre_pass_barrier(barrier);
+        }
+
+        // TODO: Figure out how to handle output images
+        // TODO: This only works if no one else reads it?
+        log::trace!("Check for output images");
+        for (output_image_index, output_image) in graph.output_images.iter().enumerate() {
+            if graph.image_version_info(output_image.usage).creator_node == subpass_node_id {
+                let output_physical_image =
+                    physical_resources.image_usage_to_physical[&output_image.usage];
+                log::trace!(
+                    "Output image {} usage {:?} created by node {:?} physical image {:?}",
+                    output_image_index,
+                    output_image.usage,
+                    subpass_node_id,
+                    output_physical_image
+                );
+
                 if let RenderGraphPass::Renderpass(pass) = pass {
+                    let mut image_barriers = vec![];
+
                     for (attachment_index, attachment) in
                         &mut pass.attachments.iter_mut().enumerate()
                     {
-                        //log::trace!("      attachment {:?}", attachment.image);
-                        if attachment.image.unwrap() == *physical_image_id {
-                            if attachment_initial_state[attachment_index].is_none() {
-                                //log::trace!("        initial layout {:?}", image_barrier.layout);
-                                attachment_initial_state[attachment_index] =
-                                    Some(image_state.resource_state.into());
+                        if attachment.image.unwrap() == output_physical_image {
+                            log::trace!("  attachment {}", attachment_index);
 
-                                // Use an image barrier before the pass to transition the layout,
-                                // so we will already be in the correct layout before starting the
-                                // pass.
-                                attachment.initial_state = image_barrier.resource_state.into();
-                            }
-
-                            attachment.final_state = image_barrier.resource_state.into();
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Look at all the buffers we read and determine what invalidates we need
-            let mut buffer_transitions = Vec::default();
-            for (physical_buffer_id, buffer_barrier) in &node_barriers.buffer_barriers {
-                log::trace!("    buffer {:?}", physical_buffer_id);
-                let buffer_state = &mut buffer_states[physical_buffer_id.0];
-
-                let resource_state_change =
-                    buffer_state.resource_state != buffer_barrier.resource_state;
-                if resource_state_change {
-                    log::trace!(
-                        "      state change! {:?} -> {:?}",
-                        buffer_state.resource_state,
-                        buffer_barrier.resource_state
-                    );
-
-                    buffer_transitions.push(BufferTransition {
-                        physical_buffer_id: *physical_buffer_id,
-                        old_state: buffer_state.resource_state,
-                        new_state: buffer_barrier.resource_state,
-                    });
-
-                    buffer_state.resource_state = buffer_barrier.resource_state;
-                }
-            }
-
-            let image_barriers: Vec<_> = image_transitions
-                .into_iter()
-                .map(|image_transition| {
-                    assert_ne!(image_transition.new_state, RafxResourceState::UNDEFINED);
-                    PrepassImageBarrier {
-                        image: image_transition.physical_image_id,
-                        old_state: image_transition.old_state,
-                        new_state: image_transition.new_state,
-                    }
-                })
-                .collect();
-
-            let buffer_barriers: Vec<_> = buffer_transitions
-                .into_iter()
-                .map(|buffer_transition| {
-                    assert_ne!(buffer_transition.new_state, RafxResourceState::UNDEFINED);
-                    PrepassBufferBarrier {
-                        buffer: buffer_transition.physical_buffer_id,
-                        old_state: buffer_transition.old_state,
-                        new_state: buffer_transition.new_state,
-                    }
-                })
-                .collect();
-
-            if !image_barriers.is_empty() || !buffer_barriers.is_empty() {
-                let barrier = PrepassBarrier {
-                    image_barriers,
-                    buffer_barriers,
-                };
-
-                pass.set_pre_pass_barrier(barrier);
-            }
-
-            // TODO: Figure out how to handle output images
-            // TODO: This only works if no one else reads it?
-            log::trace!("Check for output images");
-            for (output_image_index, output_image) in graph.output_images.iter().enumerate() {
-                if graph.image_version_info(output_image.usage).creator_node == *subpass_node_id {
-                    let output_physical_image =
-                        physical_resources.image_usage_to_physical[&output_image.usage];
-                    log::trace!(
-                        "Output image {} usage {:?} created by node {:?} physical image {:?}",
-                        output_image_index,
-                        output_image.usage,
-                        subpass_node_id,
-                        output_physical_image
-                    );
-
-                    if let RenderGraphPass::Renderpass(pass) = pass {
-                        let mut image_barriers = vec![];
-
-                        for (attachment_index, attachment) in
-                            &mut pass.attachments.iter_mut().enumerate()
-                        {
-                            if attachment.image.unwrap() == output_physical_image {
-                                log::trace!("  attachment {}", attachment_index);
-
-                                if attachment.final_state != output_image.final_state {
-                                    image_barriers.push(PrepassImageBarrier {
-                                        image: attachment.image.unwrap(),
-                                        old_state: attachment.final_state.into(),
-                                        new_state: output_image.final_state.into(),
-                                    })
-                                }
+                            if attachment.final_state != output_image.final_state {
+                                image_barriers.push(PrepassImageBarrier {
+                                    image: attachment.image.unwrap(),
+                                    old_state: attachment.final_state.into(),
+                                    new_state: output_image.final_state.into(),
+                                })
                             }
                         }
-
-                        if !image_barriers.is_empty() {
-                            pass.post_pass_barrier = Some(PostpassBarrier {
-                                buffer_barriers: vec![],
-                                image_barriers,
-                            });
-                        }
                     }
-                    //TODO: Need a 0 -> EXTERNAL dependency here?
-                }
-            }
 
-            //TODO: Need to do a dependency? Maybe by adding a flush?
+                    if !image_barriers.is_empty() {
+                        pass.post_pass_barrier = Some(PostpassBarrier {
+                            buffer_barriers: vec![],
+                            image_barriers,
+                        });
+                    }
+                }
+                //TODO: Need a 0 -> EXTERNAL dependency here?
+            }
         }
+
+        //TODO: Need to do a dependency? Maybe by adding a flush?
     }
 }
 
@@ -2409,12 +2234,7 @@ fn create_output_passes(
     for pass in passes {
         match pass {
             RenderGraphPass::Renderpass(pass) => {
-                let mut subpass_nodes = Vec::with_capacity(pass.subpasses.len());
-
                 // renderpass_desc.attachments.reserve(pass.subpasses.len());
-                for subpass in &pass.subpasses {
-                    subpass_nodes.push(subpass.node);
-                }
 
                 let attachment_images = pass
                     .attachments
@@ -2422,11 +2242,11 @@ fn create_output_passes(
                     .map(|attachment| attachment.image_view.unwrap())
                     .collect();
 
-                let debug_name = subpass_nodes.first().map(|x| graph.node(*x).name).flatten();
+                let debug_name = graph.node(pass.node_id).name;
 
                 let mut color_formats = vec![];
                 let mut sample_count = None;
-                for color_attachment in &pass.subpasses[0].color_attachments {
+                for color_attachment in &pass.color_attachments {
                     if let Some(color_attachment) = color_attachment {
                         color_formats.push(pass.attachments[*color_attachment].format);
                         sample_count = Some(
@@ -2436,7 +2256,7 @@ fn create_output_passes(
                 }
 
                 let mut depth_format = None;
-                if let Some(depth_attachment) = pass.subpasses[0].depth_attachment {
+                if let Some(depth_attachment) = pass.depth_attachment {
                     depth_format = Some(pass.attachments[depth_attachment].format);
                     sample_count =
                         Some(sample_count.unwrap_or(pass.attachments[depth_attachment].samples));
@@ -2449,83 +2269,76 @@ fn create_output_passes(
                 };
 
                 let mut color_render_targets = Vec::with_capacity(MAX_COLOR_ATTACHMENTS);
-                if let Some(subpass) = pass.subpasses.first() {
-                    for (color_index, attachment_index) in
-                        subpass.color_attachments.iter().enumerate()
-                    {
-                        if let Some(attachment_index) = attachment_index {
-                            let attachment = &pass.attachments[*attachment_index]; //.image.unwrap();
-                            let attachment_usage = &graph.image_usages[attachment.usage.0];
-                            let array_slice = attachment_usage.view_options.array_slice;
-                            let mip_slice = attachment_usage.view_options.mip_slice;
 
-                            let mut resolve_image = None;
-                            let mut resolve_array_slice = None;
-                            let mut resolve_mip_slice = None;
-                            let mut resolve_store_op = RafxStoreOp::DontCare;
-                            if let Some(resolve_attachment_index) =
-                                subpass.resolve_attachments[color_index]
-                            {
-                                let resolve_attachment =
-                                    &pass.attachments[resolve_attachment_index]; //.image.unwrap();
-                                let resolve_attachment_usage =
-                                    &graph.image_usages[resolve_attachment.usage.0];
-                                resolve_image = Some(resolve_attachment.image.unwrap());
-                                resolve_array_slice =
-                                    resolve_attachment_usage.view_options.array_slice;
-                                resolve_mip_slice = resolve_attachment_usage.view_options.mip_slice;
-                                resolve_store_op = resolve_attachment.store_op;
-                            }
+                for (color_index, attachment_index) in pass.color_attachments.iter().enumerate() {
+                    if let Some(attachment_index) = attachment_index {
+                        let attachment = &pass.attachments[*attachment_index]; //.image.unwrap();
+                        let attachment_usage = &graph.image_usages[attachment.usage.0];
+                        let array_slice = attachment_usage.view_options.array_slice;
+                        let mip_slice = attachment_usage.view_options.mip_slice;
 
-                            color_render_targets.push(RenderGraphColorRenderTarget {
-                                image: attachment.image.unwrap(),
-                                load_op: attachment.load_op,
-                                store_op: attachment.store_op,
-                                clear_value: attachment
-                                    .clear_color
-                                    .clone()
-                                    .map(|x| x.to_color_clear_value())
-                                    .unwrap_or_default(),
-                                array_slice,
-                                mip_slice,
-                                resolve_image,
-                                resolve_store_op,
-                                resolve_array_slice,
-                                resolve_mip_slice,
-                            });
+                        let mut resolve_image = None;
+                        let mut resolve_array_slice = None;
+                        let mut resolve_mip_slice = None;
+                        let mut resolve_store_op = RafxStoreOp::DontCare;
+                        if let Some(resolve_attachment_index) =
+                            pass.resolve_attachments[color_index]
+                        {
+                            let resolve_attachment = &pass.attachments[resolve_attachment_index]; //.image.unwrap();
+                            let resolve_attachment_usage =
+                                &graph.image_usages[resolve_attachment.usage.0];
+                            resolve_image = Some(resolve_attachment.image.unwrap());
+                            resolve_array_slice = resolve_attachment_usage.view_options.array_slice;
+                            resolve_mip_slice = resolve_attachment_usage.view_options.mip_slice;
+                            resolve_store_op = resolve_attachment.store_op;
                         }
-                    }
-                }
 
-                let mut depth_stencil_render_target = None;
-                if let Some(subpass) = pass.subpasses.first() {
-                    if let Some(attachment_index) = subpass.depth_attachment {
-                        let attachment = &pass.attachments[attachment_index];
-                        let array_slice = graph.image_usages[attachment.usage.0]
-                            .view_options
-                            .array_slice;
-                        let mip_slice = graph.image_usages[attachment.usage.0]
-                            .view_options
-                            .mip_slice;
-                        depth_stencil_render_target = Some(RenderGraphDepthStencilRenderTarget {
+                        color_render_targets.push(RenderGraphColorRenderTarget {
                             image: attachment.image.unwrap(),
-                            depth_load_op: attachment.load_op,
-                            stencil_load_op: attachment.stencil_load_op,
-                            depth_store_op: attachment.store_op,
-                            stencil_store_op: attachment.stencil_store_op,
+                            load_op: attachment.load_op,
+                            store_op: attachment.store_op,
                             clear_value: attachment
                                 .clear_color
                                 .clone()
-                                .map(|x| x.to_depth_stencil_clear_value())
+                                .map(|x| x.to_color_clear_value())
                                 .unwrap_or_default(),
                             array_slice,
                             mip_slice,
+                            resolve_image,
+                            resolve_store_op,
+                            resolve_array_slice,
+                            resolve_mip_slice,
                         });
                     }
                 }
 
+                let mut depth_stencil_render_target = None;
+                if let Some(attachment_index) = pass.depth_attachment {
+                    let attachment = &pass.attachments[attachment_index];
+                    let array_slice = graph.image_usages[attachment.usage.0]
+                        .view_options
+                        .array_slice;
+                    let mip_slice = graph.image_usages[attachment.usage.0]
+                        .view_options
+                        .mip_slice;
+                    depth_stencil_render_target = Some(RenderGraphDepthStencilRenderTarget {
+                        image: attachment.image.unwrap(),
+                        depth_load_op: attachment.load_op,
+                        stencil_load_op: attachment.stencil_load_op,
+                        depth_store_op: attachment.store_op,
+                        stencil_store_op: attachment.stencil_store_op,
+                        clear_value: attachment
+                            .clear_color
+                            .clone()
+                            .map(|x| x.to_depth_stencil_clear_value())
+                            .unwrap_or_default(),
+                        array_slice,
+                        mip_slice,
+                    });
+                }
+
                 let output_pass = RenderGraphOutputRenderPass {
-                    subpass_nodes,
+                    node_id: pass.node_id,
                     attachment_images,
                     pre_pass_barrier: pass.pre_pass_barrier,
                     post_pass_barrier: pass.post_pass_barrier,
@@ -2718,81 +2531,79 @@ fn print_final_image_usage(
     log::debug!("-- IMAGE USAGE --");
     for (pass_index, pass) in renderpasses.iter().enumerate() {
         log::debug!("pass {}", pass_index);
-        for (subpass_index, &node_id) in pass.nodes().iter().enumerate() {
-            let node = graph.node(node_id);
-            log::debug!("  subpass {} {:?} {:?}", subpass_index, node_id, node.name);
 
-            for (color_attachment_index, color_attachment) in
-                node.color_attachments.iter().enumerate()
-            {
-                if let Some(color_attachment) = color_attachment {
-                    let read_or_write = color_attachment
-                        .read_image
-                        .or_else(|| color_attachment.write_image)
-                        .unwrap();
-                    let physical_image =
-                        assign_physical_resources_result.image_usage_to_physical[&read_or_write];
-                    let write_name = color_attachment
-                        .write_image
-                        .map(|x| graph.image_resource(x).name)
-                        .flatten();
-                    log::debug!(
-                        "    Color Attachment {}: {:?} Name: {:?} Constraints: {:?}",
-                        color_attachment_index,
-                        physical_image,
-                        write_name,
-                        constraint_results.images[&read_or_write]
-                    );
-                }
-            }
+        let node = graph.node(pass.node());
+        log::debug!("  subpass {:?} {:?}", pass.node(), node.name);
 
-            for (resolve_attachment_index, resolve_attachment) in
-                node.resolve_attachments.iter().enumerate()
-            {
-                if let Some(resolve_attachment) = resolve_attachment {
-                    let physical_image = assign_physical_resources_result.image_usage_to_physical
-                        [&resolve_attachment.write_image];
-                    let write_name = graph.image_resource(resolve_attachment.write_image).name;
-                    log::debug!(
-                        "    Resolve Attachment {}: {:?} Name: {:?} Constraints: {:?}",
-                        resolve_attachment_index,
-                        physical_image,
-                        write_name,
-                        constraint_results.images[&resolve_attachment.write_image]
-                    );
-                }
-            }
-
-            if let Some(depth_attachment) = &node.depth_attachment {
-                let read_or_write = depth_attachment
+        for (color_attachment_index, color_attachment) in node.color_attachments.iter().enumerate()
+        {
+            if let Some(color_attachment) = color_attachment {
+                let read_or_write = color_attachment
                     .read_image
-                    .or_else(|| depth_attachment.write_image)
+                    .or_else(|| color_attachment.write_image)
                     .unwrap();
                 let physical_image =
                     assign_physical_resources_result.image_usage_to_physical[&read_or_write];
-                let write_name = depth_attachment
+                let write_name = color_attachment
                     .write_image
                     .map(|x| graph.image_resource(x).name)
                     .flatten();
                 log::debug!(
-                    "    Depth Attachment: {:?} Name: {:?} Constraints: {:?}",
+                    "    Color Attachment {}: {:?} Name: {:?} Constraints: {:?}",
+                    color_attachment_index,
                     physical_image,
                     write_name,
                     constraint_results.images[&read_or_write]
                 );
             }
+        }
 
-            for sampled_image in &node.sampled_images {
-                let physical_image =
-                    assign_physical_resources_result.image_usage_to_physical[sampled_image];
-                let write_name = graph.image_resource(*sampled_image).name;
+        for (resolve_attachment_index, resolve_attachment) in
+            node.resolve_attachments.iter().enumerate()
+        {
+            if let Some(resolve_attachment) = resolve_attachment {
+                let physical_image = assign_physical_resources_result.image_usage_to_physical
+                    [&resolve_attachment.write_image];
+                let write_name = graph.image_resource(resolve_attachment.write_image).name;
                 log::debug!(
-                    "    Sampled: {:?} Name: {:?} Constraints: {:?}",
+                    "    Resolve Attachment {}: {:?} Name: {:?} Constraints: {:?}",
+                    resolve_attachment_index,
                     physical_image,
                     write_name,
-                    constraint_results.images[sampled_image]
+                    constraint_results.images[&resolve_attachment.write_image]
                 );
             }
+        }
+
+        if let Some(depth_attachment) = &node.depth_attachment {
+            let read_or_write = depth_attachment
+                .read_image
+                .or_else(|| depth_attachment.write_image)
+                .unwrap();
+            let physical_image =
+                assign_physical_resources_result.image_usage_to_physical[&read_or_write];
+            let write_name = depth_attachment
+                .write_image
+                .map(|x| graph.image_resource(x).name)
+                .flatten();
+            log::debug!(
+                "    Depth Attachment: {:?} Name: {:?} Constraints: {:?}",
+                physical_image,
+                write_name,
+                constraint_results.images[&read_or_write]
+            );
+        }
+
+        for sampled_image in &node.sampled_images {
+            let physical_image =
+                assign_physical_resources_result.image_usage_to_physical[sampled_image];
+            let write_name = graph.image_resource(*sampled_image).name;
+            log::debug!(
+                "    Sampled: {:?} Name: {:?} Constraints: {:?}",
+                physical_image,
+                write_name,
+                constraint_results.images[sampled_image]
+            );
         }
     }
     for output_image in &graph.output_images {
@@ -3080,9 +2891,7 @@ impl RenderGraphPlan {
         //
         let mut node_to_pass_index = FnvHashMap::default();
         for (pass_index, pass) in output_passes.iter().enumerate() {
-            for &node in pass.nodes() {
-                node_to_pass_index.insert(node, pass_index);
-            }
+            node_to_pass_index.insert(pass.node(), pass_index);
         }
 
         RenderGraphPlan {

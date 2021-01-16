@@ -142,10 +142,6 @@ pub struct RenderGraphImageSpecification {
     pub layer_count: u32,
     pub mip_count: u32,
     // image type - always 2D
-    // extents - always matches the render surface
-    // tiling - always optimal
-    // layout - controlled by graph
-    // sharing mode - always exclusive
 }
 
 impl RenderGraphImageSpecification {

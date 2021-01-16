@@ -56,7 +56,6 @@ pub struct RenderJobWriteContext {
     pub resource_context: ResourceContext,
     pub command_buffer: DynCommandBuffer,
     pub render_target_meta: GraphicsPipelineRenderTargetMeta,
-    pub subpass_index: usize,
 }
 
 impl RenderJobWriteContext {
@@ -65,14 +64,12 @@ impl RenderJobWriteContext {
         resource_context: ResourceContext,
         command_buffer: DynCommandBuffer,
         render_target_meta: GraphicsPipelineRenderTargetMeta,
-        subpass_index: usize,
     ) -> Self {
         RenderJobWriteContext {
             device_context,
             resource_context,
             command_buffer,
             render_target_meta,
-            subpass_index,
         }
     }
 
@@ -87,7 +84,6 @@ impl RenderJobWriteContext {
                 .clone(),
             visit_renderpass_args.command_buffer.clone(),
             visit_renderpass_args.render_target_meta.clone(),
-            visit_renderpass_args.subpass_index,
         )
     }
 }

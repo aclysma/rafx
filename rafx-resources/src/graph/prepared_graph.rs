@@ -61,7 +61,6 @@ pub struct VisitComputeNodeArgs<'a> {
 pub struct VisitRenderpassNodeArgs<'a> {
     pub command_buffer: DynCommandBuffer,
     pub render_target_meta: GraphicsPipelineRenderTargetMeta,
-    pub subpass_index: usize,
     pub graph_context: RenderGraphContext<'a>,
 }
 
@@ -243,9 +242,7 @@ impl PreparedRenderGraph {
             profiling::scope!("pass", pass.debug_name().unwrap_or("unnamed"));
             log::trace!("Execute pass name: {:?}", pass.debug_name());
 
-            assert_eq!(pass.nodes().len(), 1);
-            let subpass_index = 0;
-            let node_id = pass.nodes()[subpass_index];
+            let node_id = pass.node();
 
             if let Some(pre_pass_barrier) = pass.pre_pass_barrier() {
                 log::trace!(
@@ -262,8 +259,6 @@ impl PreparedRenderGraph {
 
             match pass {
                 RenderGraphOutputPass::Renderpass(pass) => {
-                    debug_assert_eq!(1, pass.subpass_nodes.len());
-
                     let color_images: Vec<_> = pass
                         .color_render_targets
                         .iter()
@@ -333,7 +328,6 @@ impl PreparedRenderGraph {
                     let args = VisitRenderpassNodeArgs {
                         render_target_meta: pass.render_target_meta.clone(),
                         graph_context: render_graph_context,
-                        subpass_index,
                         command_buffer: command_buffer.clone(),
                     };
 
