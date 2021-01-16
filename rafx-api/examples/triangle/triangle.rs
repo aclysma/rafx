@@ -14,11 +14,6 @@ fn main() {
     run().unwrap();
 }
 
-struct PositionColorVertex {
-    position: [f32; 3],
-    color: [f32; 2],
-}
-
 fn run() -> RafxResult<()> {
     //
     // Init SDL2
@@ -75,9 +70,9 @@ fn run() -> RafxResult<()> {
         //
         #[rustfmt::skip]
         let vertex_data = [
-            PositionColorVertex { position: [0.0, 0.5, 1.0], color: [0.0, 0.0] },
-            PositionColorVertex { position: [-0.5, -0.5, 0.0], color: [1.0, 0.0] },
-            PositionColorVertex { position: [0.5, 0.5, 0.0], color: [0.0, 1.0] },
+            0.0f32, 0.5, 1.0, 0.0, 0.0,
+            -0.5, -0.5, 0.0, 1.0, 0.0,
+            0.5, 0.5, 0.0, 0.0, 1.0,
         ];
 
         let uniform_data = [1.0f32, 0.0, 1.0, 1.0];
@@ -386,8 +381,7 @@ fn run() -> RafxResult<()> {
             presentable_frame.present(&graphics_queue, &[&cmd_buffer])?;
         }
 
-        // We are about to terminate, wait until all the submitted work gets flushed before
-        // continuing
+        // Wait until all the submitted work gets flushed before continuing
         graphics_queue.wait_for_queue_idle()?;
     }
 

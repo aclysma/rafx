@@ -8,7 +8,7 @@ use rafx_resources::graph::{
     SwapchainSurfaceInfo,
 };
 use rafx_resources::{
-    DescriptorSetLayout, DescriptorSetLayoutBinding, DescriptorSetWriteSet, FixedFunctionState,
+    DescriptorSetLayout, DescriptorSetLayoutBinding, FixedFunctionState,
     MaterialPassVertexInput, ShaderModuleHash, ShaderModuleResourceDef, VertexDataLayout,
 };
 use std::sync::Arc;
@@ -288,7 +288,7 @@ fn run() -> RafxResult<()> {
             // use to be dropped. It needs to go after the acquire image, because the acquire image
             // waits on the *gpu* to finish the frame.
             //
-            resource_manager.on_frame_complete();
+            resource_manager.on_frame_complete()?;
 
             //
             // Register the swapchain image as a resource - this allows us to treat it like any
@@ -330,19 +330,18 @@ fn run() -> RafxResult<()> {
             let captured_vertex_layout = vertex_layout.clone();
             let captured_material_pass = material_pass.clone();
 
-            graph_callbacks.set_renderpass_callback(node, move |args, user_context| {
+            graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
                 let vertex_layout = &captured_vertex_layout;
                 let material_pass = &captured_material_pass;
 
                 //
                 // Some data we will draw
                 //
-                let seconds = 0.0f32;
                 #[rustfmt::skip]
                 let vertex_data = [
                     PositionColorVertex { position: [0.0, 0.5], color: [1.0, 0.0, 0.0] },
                     PositionColorVertex { position: [-0.5 + (seconds.cos() / 2. + 0.5), -0.5], color: [0.0, 1.0, 0.0] },
-                    PositionColorVertex { position: [0.5 - (seconds.cos() / 2. + 0.5), 0.5], color: [0.0, 0.0, 1.0] },
+                    PositionColorVertex { position: [0.5 - (seconds.cos() / 2. + 0.5), -0.5], color: [0.0, 0.0, 1.0] },
                 ];
 
                 assert_eq!(20, std::mem::size_of::<PositionColorVertex>());
@@ -366,6 +365,8 @@ fn run() -> RafxResult<()> {
                     &RafxBufferDef::for_staging_vertex_buffer_data(&vertex_data)
                 )?;
 
+                vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
+
                 let vertex_buffer = resource_allocator.insert_buffer(vertex_buffer);
 
                 //
@@ -386,15 +387,15 @@ fn run() -> RafxResult<()> {
                     .descriptor_set_layouts[0]
                     .clone();
 
-                // let mut descriptor_set_allocator = args.graph_context.resource_context().create_descriptor_set_allocator();
-                // let mut dyn_descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&descriptor_set_layout)?;
-                // dyn_descriptor_set.set_buffer_data(0, &uniform_data);
-                // dyn_descriptor_set.flush(&mut descriptor_set_allocator)?;
-                // descriptor_set_allocator.flush_changes()?;
+                let mut descriptor_set_allocator = args.graph_context.resource_context().create_descriptor_set_allocator();
+                let mut dyn_descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&descriptor_set_layout)?;
+                dyn_descriptor_set.set_buffer_data(0, &uniform_data);
+                dyn_descriptor_set.flush(&mut descriptor_set_allocator)?;
+                descriptor_set_allocator.flush_changes()?;
 
                 // At this point if we don't intend to change the descriptor, we can grab the
                 // descriptor set inside and use it as a ref-counted resource.
-                //let descriptor_set = dyn_descriptor_set.descriptor_set();
+                let descriptor_set = dyn_descriptor_set.descriptor_set();
 
                 //
                 // Fetch the pipeline. If we have a pipeline for this material that's compatible with
@@ -424,7 +425,7 @@ fn run() -> RafxResult<()> {
                         offset: 0,
                     }],
                 )?;
-                //descriptor_set.bind(&cmd_buffer);
+                descriptor_set.bind(&cmd_buffer)?;
                 cmd_buffer.cmd_draw(3, 0)?;
 
                 Ok(())
