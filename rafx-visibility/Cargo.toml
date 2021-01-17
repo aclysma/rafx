@@ -1,6 +1,6 @@
 [package]
 name = "rafx-visibility"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -9,8 +9,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 log = "0.4"
-glam = "0.8.6"
-fnv = "1.0"
 
-rafx-base = { path = "../rafx-base" }
-rafx-nodes = { path = "../rafx-nodes" }
+rafx-base = { version = "0.0.1", path = "../rafx-base" }
+rafx-nodes = { version = "0.0.1", path = "../rafx-nodes" }

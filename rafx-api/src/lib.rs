@@ -191,6 +191,8 @@ pub use ash;
 #[cfg(feature = "rafx-vulkan")]
 pub use vk_mem;
 
+pub use raw_window_handle;
+
 //
 // API-agnostic API
 //

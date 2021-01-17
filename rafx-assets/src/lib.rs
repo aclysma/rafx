@@ -13,3 +13,5 @@ pub mod push_buffer;
 
 mod resource_loader;
 pub use resource_loader::ResourceLoader;
+
+pub use atelier_assets;

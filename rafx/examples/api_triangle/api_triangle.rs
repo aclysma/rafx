@@ -1,6 +1,6 @@
 use log::LevelFilter;
 
-use rafx_api::*;
+use rafx::api::*;
 
 const WINDOW_WIDTH: u32 = 900;
 const WINDOW_HEIGHT: u32 = 600;
@@ -131,9 +131,9 @@ fn run() -> RafxResult<()> {
         // shader. (They can be discarded once the graphics pipeline is built.)
         //
         let vert_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/triangle/shader.vert.spv");
+            .join("examples/api_triangle/shader.vert.spv");
         let frag_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/triangle/shader.frag.spv");
+            .join("examples/api_triangle/shader.frag.spv");
 
         let vert_bytes = std::fs::read(vert_source_path)?;
         let vert_shader_module = device_context

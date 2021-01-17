@@ -1,6 +1,6 @@
 [package]
 name = "rafx"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "High-level rendering framework built on an extensible asset pipeline"
@@ -11,37 +11,48 @@ homepage = "https://github.com/aclysma/rafx"
 keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-rafx-api = { path = "../rafx-api" }
-
-rafx-base = { path = "../rafx-base" }
-rafx-nodes = { path = "../rafx-nodes" }
-rafx-assets = { path = "../rafx-assets", optional = true }
-rafx-resources = { path = "../rafx-resources" }
-rafx-visibility = { path = "../rafx-visibility" }
-
-raw-window-handle = { version = "0.3" }
-
-#foreign-types-shared = { version = "0.1", optional = true }
-
-log = "0.4"
+rafx-base = { version = "0.0.1", path = "../rafx-base" }
+rafx-api = { version = "0.0.1", path = "../rafx-api" }
+rafx-nodes = { version = "0.0.1", path = "../rafx-nodes", optional = true }
+rafx-visibility = { version = "0.0.1", path = "../rafx-visibility", optional = true }
+rafx-resources = { version = "0.0.1", path = "../rafx-resources", optional = true }
+rafx-assets = { version = "0.0.1", path = "../rafx-assets", optional = true }
 
 [dev-dependencies]
+log = "0.4"
 env_logger = "0.6"
 legion = { version = "0.3.0", default-features = false }
-sdl2 = { version = ">=0.33", features = ["raw-window-handle"] }
+sdl2 = { version = ">=0.34", features = ["raw-window-handle", "bundled", "static-link"] }
 ash = ">=0.30"
 glam = "0.8.6"
+profiling = "0.1.4"
 
 [features]
 default = ["rafx-vulkan"]
+
+#
+# Backends
+#
 rafx-vulkan = []
 rafx-metal = []
-static-vulkan = ["rafx-api/static-vulkan"]
-assets = ["rafx-assets"]
 
+# Vulkan-specific feature, use statically-linked vulkan instead of dynamically loading it
+static-vulkan = ["rafx-api/static-vulkan"]
+
+# These control how much of the library (and dependencies) we include
+# API/Base: (Always included) Raw graphics API abstraction with multiple backends. Some data structures.
+# Nodes: A data structure and job system for gathering and drawing renderables. Includes the concepts of views and
+#        phases.
+# Resources: Object lifetime tracking and render graph
+# Assets: Integrates atelier-assets to provide a full asset pipeline
+nodes = ["rafx-nodes", "rafx-visibility"]
+resources = ["rafx-resources", "nodes"]
+assets = ["rafx-assets", "resources"]
+
+#
+# Profiling features - passes down features to crates contained within this one
+#
 profile-with-puffin = [
     "rafx-resources/profile-with-puffin",
     "rafx-assets/profile-with-puffin",
@@ -66,6 +77,21 @@ profile-with-tracing = [
     "rafx-api/profile-with-tracing"
 ]
 
+#
+# Examples
+#
+
 [[example]]
 name = "nodes_api_design"
-required-features = []
+path = "../rafx/examples/nodes_api_design/nodes_api_design.rs"
+required-features = ["resources"]
+
+[[example]]
+name = "api_triangle"
+path = "examples/api_triangle/api_triangle.rs"
+required-features = ["rafx-vulkan"]
+
+[[example]]
+name = "render_graph_triangle"
+path = "examples/render_graph_triangle/render_graph_triangle.rs"
+required-features = ["rafx-vulkan", "resources"]

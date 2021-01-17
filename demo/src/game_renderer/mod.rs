@@ -16,7 +16,7 @@ use rafx::nodes::{
     AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder,
     RenderRegistry, RenderView, RenderViewDepthRange, RenderViewSet, VisibilityResult,
 };
-use rafx::resources::DynResourceAllocatorSet;
+use rafx::resources::{DynResourceAllocatorSet, RenderResources};
 use rafx::resources::{ImageViewResource, ResourceArc};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use std::sync::{Arc, Mutex};
@@ -375,7 +375,7 @@ impl GameRenderer {
         let device_context = resources.get::<RafxDeviceContext>().unwrap().clone();
 
         let mut asset_manager_fetch = resources.get_mut::<AssetManager>().unwrap();
-        let mut render_resources = rafx::RenderResources::new();
+        let mut render_resources = RenderResources::new();
         let asset_manager = &mut *asset_manager_fetch;
 
         //

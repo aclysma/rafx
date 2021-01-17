@@ -68,3 +68,5 @@ pub use pool::PooledResourceImpl;
 
 mod cleanup;
 pub use cleanup::ResourceDropSink;
+
+pub use rafx_base::resource_map::ResourceMap as RenderResources;

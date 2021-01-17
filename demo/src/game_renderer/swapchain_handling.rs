@@ -1,13 +1,13 @@
 use crate::game_renderer::swapchain_resources::SwapchainResources;
 use crate::game_renderer::GameRenderer;
 use legion::Resources;
+use rafx::api::raw_window_handle::HasRawWindowHandle;
 use rafx::api::{
     RafxDeviceContext, RafxExtents2D, RafxPresentableFrame, RafxResult, RafxSwapchain,
     RafxSwapchainDef, RafxSwapchainEventListener, RafxSwapchainHelper,
 };
 use rafx::assets::AssetManager;
 use rafx::nodes::RenderRegistry;
-use rafx::raw_window_handle::HasRawWindowHandle;
 use rafx::resources::graph::SwapchainSurfaceInfo;
 
 pub struct SwapchainHandler<'a> {

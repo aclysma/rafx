@@ -1,6 +1,6 @@
 [package]
 name = "rafx-api"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-base = { path = "../rafx-base" }
+rafx-base = { version = "0.0.1", path = "../rafx-base" }
 
 log = "0.4"
 crossbeam-channel = "0.5"
@@ -33,13 +33,6 @@ objc = { version = "0.2.4", features = ["exception"], optional = true }
 raw-window-metal = { version = "0.1.1", optional = true }
 cocoa-foundation = { version = "0.1.0", optional = true }
 
-[dev-dependencies]
-env_logger = "0.6"
-#legion = { version = "0.3.0", default-features = false }
-sdl2 = { version = ">=0.33", features = ["raw-window-handle", "bundled", "static-link"] }
-#ash = ">=0.30"
-#glam = "0.8.6"
-
 [features]
 default = ["rafx-vulkan", "serde-support"]
 rafx-vulkan = ["ash", "vk-mem", "ash-window"]
@@ -52,13 +45,3 @@ profile-with-puffin = ["profiling/profile-with-puffin"]
 profile-with-optick = ["profiling/profile-with-optick"]
 profile-with-superluminal = ["profiling/profile-with-superluminal"]
 profile-with-tracing = ["profiling/profile-with-tracing"]
-
-[[example]]
-name = "triangle"
-path = "examples/triangle/triangle.rs"
-required-features = ["rafx-vulkan"]
-
-#[[example]]
-#name = "metal_triangle"
-#path = "examples/metal_triangle/metal_triangle.rs"
-#required-features = ["rafx-metal"]

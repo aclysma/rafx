@@ -6,8 +6,7 @@ use rafx::api::{RafxCommandBuffer, RafxDeviceContext, RafxQueue};
 use rafx::api::{RafxPresentableFrame, RafxResult};
 use rafx::graph::RenderGraphExecutor;
 use rafx::nodes::{FramePacket, PrepareJobSet, RenderRegistry, RenderView};
-use rafx::resources::{DynCommandBuffer, ResourceContext};
-use rafx::RenderResources;
+use rafx::resources::{DynCommandBuffer, RenderResources, ResourceContext};
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,

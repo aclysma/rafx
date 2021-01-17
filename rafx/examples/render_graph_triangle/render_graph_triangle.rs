@@ -1,13 +1,13 @@
 use log::LevelFilter;
 
-use rafx_api::*;
-use rafx_nodes::SubmitNode;
-use rafx_resources::graph::{
+use rafx::api::*;
+use rafx::graph::{
     RenderGraphBuilder, RenderGraphExecutor, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphNodeCallbacks, RenderGraphQueue,
     SwapchainSurfaceInfo,
 };
-use rafx_resources::{
+use rafx::nodes::SubmitNode;
+use rafx::resources::{
     DescriptorSetLayout, DescriptorSetLayoutBinding, FixedFunctionState, MaterialPassVertexInput,
     ShaderModuleHash, ShaderModuleResourceDef, VertexDataLayout,
 };
@@ -110,9 +110,9 @@ fn run() -> RafxResult<()> {
 
         // Load Vec<u8> from files
         let vert_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/triangle_graph/shader.vert.spv");
+            .join("examples/render_graph_triangle/shader.vert.spv");
         let frag_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/triangle_graph/shader.frag.spv");
+            .join("examples/render_graph_triangle/shader.frag.spv");
 
         let vert_bytes = std::fs::read(vert_source_path)?;
         let frag_bytes = std::fs::read(frag_source_path)?;
@@ -509,8 +509,8 @@ fn run() -> RafxResult<()> {
 // A phase combines renderables that may come from different features. This example doesnt't use
 // render nodes fully, but the pipeline cache uses it to define which renderpass/material pairs
 //
-use rafx_nodes::RenderPhase;
-use rafx_nodes::RenderPhaseIndex;
+use rafx::nodes::RenderPhase;
+use rafx::nodes::RenderPhaseIndex;
 
 rafx_nodes::declare_render_phase!(
     OpaqueRenderPhase,
