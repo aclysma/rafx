@@ -40,13 +40,7 @@ fn run() -> RafxResult<()> {
     //
     // Create the api
     //
-    let mut api = RafxApi::new_vulkan(
-        &sdl2_systems.window,
-        &RafxApiDef {
-            validation_mode: RafxValidationMode::EnabledIfAvailable,
-        },
-        &Default::default(),
-    )?;
+    let mut api = create_api(&sdl2_systems.window)?;
 
     // Wrap all of this so that it gets dropped
     {
@@ -107,32 +101,35 @@ fn run() -> RafxResult<()> {
         // The resulting shader modules represent a loaded shader blob that can be used to create the
         // shader. (They can be discarded once the graphics pipeline is built.)
         //
+        let processed_shaders_base_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("examples/render_graph_triangle/processed_shaders");
 
-        // Load Vec<u8> from files
-        let vert_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/render_graph_triangle/shader.vert.spv");
-        let frag_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/render_graph_triangle/shader.frag.spv");
+        let vert_shader_package = load_shader_packages(
+            &processed_shaders_base_path,
+            "shader.vert.metal",
+            "shader.vert.spv",
+        )?;
 
-        let vert_bytes = std::fs::read(vert_source_path)?;
-        let frag_bytes = std::fs::read(frag_source_path)?;
+        let frag_shader_package = load_shader_packages(
+            &processed_shaders_base_path,
+            "shader.frag.metal",
+            "shader.frag.spv",
+        )?;
 
+        //
         // Load the data as shader modules in the resource manager
-        let vert_shader_module_def =
-            RafxShaderModuleDef::Vk(RafxShaderModuleDefVulkan::SpvBytes(&vert_bytes));
-        let shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
-            shader_module_hash: ShaderModuleHash::new(&vert_shader_module_def),
-            code: vert_bytes,
+        //
+        let vert_shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
+            shader_module_hash: ShaderModuleHash::new(&vert_shader_package),
+            shader_package: vert_shader_package,
         });
         let vert_shader_module = resource_context
             .resources()
-            .get_or_create_shader_module(&shader_module_resource_def)?;
+            .get_or_create_shader_module(&vert_shader_module_resource_def)?;
 
-        let frag_shader_module_def =
-            RafxShaderModuleDef::Vk(RafxShaderModuleDefVulkan::SpvBytes(&frag_bytes));
         let frag_shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
-            shader_module_hash: ShaderModuleHash::new(&frag_shader_module_def),
-            code: frag_bytes,
+            shader_module_hash: ShaderModuleHash::new(&frag_shader_package),
+            shader_package: frag_shader_package,
         });
         let frag_shader_module = resource_context
             .resources()
@@ -509,8 +506,10 @@ fn run() -> RafxResult<()> {
 // A phase combines renderables that may come from different features. This example doesnt't use
 // render nodes fully, but the pipeline cache uses it to define which renderpass/material pairs
 //
+use rafx::api::raw_window_handle::HasRawWindowHandle;
 use rafx::nodes::RenderPhase;
 use rafx::nodes::RenderPhaseIndex;
+use std::path::Path;
 
 rafx_nodes::declare_render_phase!(
     OpaqueRenderPhase,
@@ -593,4 +592,68 @@ fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
     }
 
     true
+}
+
+#[cfg(feature = "rafx-metal")]
+fn create_metal_api(window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
+    RafxApi::new_metal(
+        window,
+        &RafxApiDef {
+            validation_mode: RafxValidationMode::EnabledIfAvailable,
+        },
+        &Default::default(),
+    )
+}
+
+#[cfg(feature = "rafx-vulkan")]
+fn create_vulkan_api(window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
+    RafxApi::new_vulkan(
+        window,
+        &RafxApiDef {
+            validation_mode: RafxValidationMode::EnabledIfAvailable,
+        },
+        &Default::default(),
+    )
+}
+
+#[allow(unreachable_code)]
+fn create_api(_window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
+    #[cfg(feature = "rafx-metal")]
+    {
+        return create_metal_api(_window);
+    }
+
+    #[cfg(feature = "rafx-vulkan")]
+    {
+        return create_vulkan_api(_window);
+    }
+
+    Err("Rafx was compiled with no backend enabled. Add feature rafx-vulkan, rafx-metal, etc. to enable at least one backend")?
+}
+
+// Shader packages are serializable. The shader processor tool uses spirv_cross to compile the
+// shaders for multiple platforms and package them in an easy to use opaque binary form. For this
+// example, we'll just hard-code constructing this package.
+fn load_shader_packages(
+    _base_path: &Path,
+    _metal_src_file: &str,
+    _vk_spv_file: &str,
+) -> RafxResult<RafxShaderPackage> {
+    let mut _package = RafxShaderPackage::default();
+
+    #[cfg(feature = "rafx-metal")]
+    {
+        let metal_path = _base_path.join(_metal_src_file);
+        let metal_src = std::fs::read_to_string(metal_path)?;
+        _package.metal = Some(RafxShaderPackageMetal::Src(metal_src));
+    }
+
+    #[cfg(feature = "rafx-vulkan")]
+    {
+        let vk_path = _base_path.join(_vk_spv_file);
+        let vk_bytes = std::fs::read(vk_path)?;
+        _package.vk = Some(RafxShaderPackageVulkan::SpvBytes(vk_bytes));
+    }
+
+    Ok(_package)
 }

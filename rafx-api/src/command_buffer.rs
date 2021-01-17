@@ -47,7 +47,7 @@ impl RafxCommandBuffer {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.begin(),
             #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => inner.begin(),
+            RafxCommandBuffer::Metal(_inner) => unimplemented!(),
         }
     }
 
@@ -58,7 +58,7 @@ impl RafxCommandBuffer {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.end(),
             #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => inner.end(),
+            RafxCommandBuffer::Metal(_inner) => unimplemented!(),
         }
     }
 

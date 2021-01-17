@@ -3,7 +3,7 @@ use crate::{
     RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext,
     RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxRenderTargetDef,
     RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef,
-    RafxShaderModule, RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
+    RafxShaderModuleDefVulkan, RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
 use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::vk;
@@ -475,21 +475,35 @@ impl RafxDeviceContextVulkan {
         RafxRenderpassVulkan::new(self, renderpass_def)
     }
 
-    // Just expects bytes with no particular alignment requirements, suitable for reading from a file
-    pub fn create_shader_module_from_bytes(
+    pub fn create_shader_module(
         &self,
-        data: &[u8],
+        data: RafxShaderModuleDefVulkan,
     ) -> RafxResult<RafxShaderModuleVulkan> {
-        RafxShaderModuleVulkan::new_from_bytes(self, data)
+        match data {
+            RafxShaderModuleDefVulkan::VkSpvBytes(bytes) => {
+                RafxShaderModuleVulkan::new_from_bytes(self, bytes)
+            }
+            RafxShaderModuleDefVulkan::VkSpvPrepared(spv) => {
+                RafxShaderModuleVulkan::new_from_spv(self, spv)
+            }
+        }
     }
 
-    // Expects properly aligned, correct endianness, valid SPV
-    pub fn create_shader_module_from_spv(
-        &self,
-        spv: &[u32],
-    ) -> RafxResult<RafxShaderModuleVulkan> {
-        RafxShaderModuleVulkan::new_from_spv(self, spv)
-    }
+    // // Just expects bytes with no particular alignment requirements, suitable for reading from a file
+    // pub fn create_shader_module_from_bytes(
+    //     &self,
+    //     data: &[u8],
+    // ) -> RafxResult<RafxShaderModuleVulkan> {
+    //     RafxShaderModuleVulkan::new_from_bytes(self, data)
+    // }
+    //
+    // // Expects properly aligned, correct endianness, valid SPV
+    // pub fn create_shader_module_from_spv(
+    //     &self,
+    //     spv: &[u32],
+    // ) -> RafxResult<RafxShaderModuleVulkan> {
+    //     RafxShaderModuleVulkan::new_from_spv(self, spv)
+    // }
 
     pub fn find_supported_format(
         &self,
@@ -876,10 +890,4 @@ fn create_logical_device(
         unsafe { instance.create_device(physical_device, &device_create_info, None)? };
 
     Ok(device)
-}
-
-impl Into<RafxShaderModule> for RafxShaderModuleVulkan {
-    fn into(self) -> RafxShaderModule {
-        RafxShaderModule::Vk(self)
-    }
 }

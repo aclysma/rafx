@@ -29,13 +29,13 @@ glam = "0.8.6"
 profiling = "0.1.4"
 
 [features]
-default = ["rafx-vulkan"]
+default = []
 
 #
 # Backends
 #
-rafx-vulkan = []
-rafx-metal = []
+rafx-vulkan = ["rafx-api/rafx-vulkan"]
+rafx-metal = ["rafx-api/rafx-metal"]
 
 # Vulkan-specific feature, use statically-linked vulkan instead of dynamically loading it
 static-vulkan = ["rafx-api/static-vulkan"]
@@ -89,9 +89,9 @@ required-features = ["resources"]
 [[example]]
 name = "api_triangle"
 path = "examples/api_triangle/api_triangle.rs"
-required-features = ["rafx-vulkan"]
+required-features = []
 
 [[example]]
 name = "render_graph_triangle"
 path = "examples/render_graph_triangle/render_graph_triangle.rs"
-required-features = ["rafx-vulkan", "resources"]
+required-features = ["resources"]

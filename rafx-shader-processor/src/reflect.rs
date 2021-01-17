@@ -460,7 +460,7 @@ where
                     .ok_or_else(|| format!("A resource named {} in spirv reflection data was not matched up to a resource scanned in source code.", resource.name))?;
 
                 let semantic = &parsed_binding.annotations.semantic.as_ref().map(|x| x.0.clone())
-                    .ok_or_else(|| format!("No semantic annotation for vertex input '{}'. All vertex inputs must have a semantic annotation.", name))?;
+                    .ok_or_else(|| format!("No semantic annotation for vertex input '{}'. All vertex inputs must have a semantic annotation if generating rust code and/or cooked shaders.", name))?;
 
                 dsc_vertex_inputs.push(ReflectedVertexInput {
                     name: name.clone(),

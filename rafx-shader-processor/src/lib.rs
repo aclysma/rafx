@@ -29,6 +29,8 @@ pub struct ShaderProcessorArgs {
     pub spv_file: Option<PathBuf>,
     #[structopt(name = "rs-file", long, parse(from_os_str))]
     pub rs_file: Option<PathBuf>,
+    #[structopt(name = "metal-generated-src-file", long, parse(from_os_str))]
+    pub metal_generated_src_file: Option<PathBuf>,
     #[structopt(name = "cooked-shader-file", long, parse(from_os_str))]
     pub cooked_shader_file: Option<PathBuf>,
 
@@ -41,6 +43,8 @@ pub struct ShaderProcessorArgs {
     pub spv_path: Option<PathBuf>,
     #[structopt(name = "rs-path", long, parse(from_os_str))]
     pub rs_path: Option<PathBuf>,
+    #[structopt(name = "metal-generated-src-path", long, parse(from_os_str))]
+    pub metal_generated_src_path: Option<PathBuf>,
     #[structopt(name = "cooked-shaders-path", long, parse(from_os_str))]
     pub cooked_shaders_path: Option<PathBuf>,
 
@@ -77,6 +81,7 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
             glsl_file,
             args.spv_file.as_ref(),
             args.rs_file.as_ref(),
+            args.metal_generated_src_file.as_ref(),
             args.cooked_shader_file.as_ref(),
             shader_kind,
             args.optimize_shaders,
@@ -114,6 +119,12 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                 let rs_name = format!("{}.rs", rs_module_name);
                 let rs_path = args.rs_path.as_ref().map(|x| x.join(rs_name));
 
+                let metal_src_name = format!("{}.metal", file_name);
+                let metal_generated_src_path = args
+                    .metal_generated_src_path
+                    .as_ref()
+                    .map(|x| x.join(metal_src_name));
+
                 let cooked_shader_name = format!("{}.shader", file_name);
                 let cooked_shader_path = args
                     .cooked_shaders_path
@@ -134,6 +145,7 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                     &glsl_file,
                     spv_path.as_ref(),
                     rs_path.as_ref(),
+                    metal_generated_src_path.as_ref(),
                     cooked_shader_path.as_ref(),
                     shader_kind,
                     args.optimize_shaders,
@@ -175,6 +187,7 @@ fn process_glsl_shader(
     glsl_file: &Path,
     spv_file: Option<&PathBuf>,
     rs_file: Option<&PathBuf>,
+    metal_generated_src_file: Option<&PathBuf>,
     cooked_shader_file: Option<&PathBuf>,
     shader_kind: shaderc::ShaderKind,
     optimize_shaders: bool,
@@ -183,6 +196,7 @@ fn process_glsl_shader(
     log::trace!("glsl: {:?}", glsl_file);
     log::trace!("spv: {:?}", spv_file);
     log::trace!("rs: {:?}", rs_file);
+    log::trace!("metal: {:?}", metal_generated_src_file);
     log::trace!("cooked: {:?}", cooked_shader_file);
     log::trace!("shader kind: {:?}", shader_kind);
 
@@ -246,27 +260,38 @@ fn process_glsl_shader(
     spirv_cross_glsl_options.vulkan_semantics = true;
     let mut ast = spirv_cross::spirv::Ast::<spirv_cross::glsl::Target>::parse(&spirv_cross_module)?;
     ast.set_compiler_options(&spirv_cross_glsl_options)?;
-    let reflected_data = reflect::reflect_data(&ast, &parsed_declarations)?;
 
-    let reflected_entry_point = reflected_data
-        .iter()
-        .find(|x| x.rafx_reflection.entry_point_name == entry_point_name)
-        .ok_or_else(|| {
-            format!(
-                "Could not find entry point {} in compiled shader file",
-                entry_point_name
-            )
-        })?;
+    let reflected_data = if rs_file.is_some() || cooked_shader_file.is_some() {
+        Some(reflect::reflect_data(&ast, &parsed_declarations)?)
+    } else {
+        None
+    };
 
-    //
-    // Generate rust code that matches up with the shader
-    //
-    log::trace!("{:?}: generate rust code", glsl_file);
-    let rust_code = codegen::generate_rust_code(
-        &parsed_declarations,
-        &spirv_reflect_module,
-        &reflected_entry_point,
-    )?;
+    let rust_code = if rs_file.is_some() {
+        let reflected_entry_point = reflected_data
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|x| x.rafx_reflection.entry_point_name == entry_point_name)
+            .ok_or_else(|| {
+                format!(
+                    "Could not find entry point {} in compiled shader file",
+                    entry_point_name
+                )
+            })?;
+
+        //
+        // Generate rust code that matches up with the shader
+        //
+        log::trace!("{:?}: generate rust code", glsl_file);
+        Some(codegen::generate_rust_code(
+            &parsed_declarations,
+            &spirv_reflect_module,
+            &reflected_entry_point,
+        )?)
+    } else {
+        None
+    };
 
     //TODO: spirv_reflect does not include sampler/textur ein some cases
     //TODO: spirv_cross is generating a spurious combined image/sampler
@@ -301,17 +326,25 @@ fn process_glsl_shader(
         unoptimized_compile_spirv_result.as_binary_u8().to_vec()
     };
 
-    //let mut msl_ast =
-    //    spirv_cross::spirv::Ast::<spirv_cross::msl::Target>::parse(&spirv_cross_module)?;
-    //let mut spirv_cross_msl_options = spirv_cross::msl::CompilerOptions::default();
-    //spirv_cross_msl_options.version = spirv_cross::msl::Version::V2_0;
-    //msl_ast.set_compiler_options(&spirv_cross_msl_options)?;
-    //let msl_compiled = msl_ast.compile()?;
-    //println!("{}", msl_compiled);
-
     // Don't worry about the return value
     log::trace!("{:?}: cook shader", glsl_file);
-    let cooked_shader = cook::cook_shader(&reflected_data, &output_spv)?;
+    let cooked_shader = if cooked_shader_file.is_some() {
+        Some(cook::cook_shader(
+            reflected_data.as_ref().unwrap(),
+            &output_spv,
+        )?)
+    } else {
+        None
+    };
+
+    log::trace!("{:?}: create msl", glsl_file);
+    let mut msl_ast =
+        spirv_cross::spirv::Ast::<spirv_cross::msl::Target>::parse(&spirv_cross_module)?;
+    let mut spirv_cross_msl_options = spirv_cross::msl::CompilerOptions::default();
+    spirv_cross_msl_options.version = spirv_cross::msl::Version::V2_0;
+    msl_ast.set_compiler_options(&spirv_cross_msl_options)?;
+    let metal_src = msl_ast.compile()?;
+    //println!("{}", metal_src);
 
     //
     // Write out the spv and rust files if desired
@@ -321,11 +354,15 @@ fn process_glsl_shader(
     }
 
     if let Some(rs_file) = &rs_file {
-        std::fs::write(rs_file, rust_code)?;
+        std::fs::write(rs_file, rust_code.unwrap())?;
+    }
+
+    if let Some(metal_generated_src_file) = &metal_generated_src_file {
+        std::fs::write(metal_generated_src_file, metal_src)?;
     }
 
     if let Some(cooked_shader_file) = &cooked_shader_file {
-        std::fs::write(cooked_shader_file, cooked_shader)?;
+        std::fs::write(cooked_shader_file, cooked_shader.unwrap())?;
     }
 
     Ok(())

@@ -309,19 +309,19 @@ pub struct ShaderModuleMeta {
     // Reference to shader is excluded
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct ShaderModuleResourceDef {
     // Precalculate a hash so we can avoid hashing this blob of bytes at runtime
     pub shader_module_hash: ShaderModuleHash,
-    pub code: Vec<u8>,
+    pub shader_package: RafxShaderPackage,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ShaderModuleHash(u64);
 impl ShaderModuleHash {
-    pub fn new(shader_module: &RafxShaderModuleDef) -> Self {
+    pub fn new(shader_package: &RafxShaderPackage) -> Self {
         let mut hasher = FnvHasher::default();
-        shader_module.hash_definition(&mut hasher);
+        shader_package.hash(&mut hasher);
         let hash = hasher.finish();
         ShaderModuleHash(hash)
     }
@@ -346,7 +346,7 @@ pub struct SamplerHash(u64);
 impl SamplerHash {
     pub fn new(sampler_def: &RafxSamplerDef) -> Self {
         let mut hasher = FnvHasher::default();
-        sampler_def.hash_definition(&mut hasher);
+        sampler_def.hash(&mut hasher);
         let hash = hasher.finish();
         SamplerHash(hash)
     }
@@ -756,18 +756,14 @@ impl ResourceLookupSet {
             .shader_modules
             .get_or_create(&shader_module_key, || {
                 log::trace!(
-                    "Creating shader module\n[hash: {:?} bytes: {}]",
+                    "Creating shader module\n[hash: {:?}]",
                     shader_module_key.hash,
-                    shader_module_resource_def.code.len()
                 );
 
                 let shader_module = self
                     .inner
                     .device_context
-                    .vk_device_context()
-                    .unwrap()
-                    .create_shader_module_from_bytes(&shader_module_resource_def.code)?
-                    .into();
+                    .create_shader_module(shader_module_resource_def.shader_package.module_def())?;
 
                 let resource = ShaderModuleResource {
                     shader_module,

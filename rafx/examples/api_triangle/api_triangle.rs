@@ -1,6 +1,8 @@
 use log::LevelFilter;
 
+use rafx::api::raw_window_handle::HasRawWindowHandle;
 use rafx::api::*;
+use std::path::Path;
 
 const WINDOW_WIDTH: u32 = 900;
 const WINDOW_HEIGHT: u32 = 600;
@@ -23,13 +25,7 @@ fn run() -> RafxResult<()> {
     //
     // Create the api
     //
-    let mut api = RafxApi::new_vulkan(
-        &sdl2_systems.window,
-        &RafxApiDef {
-            validation_mode: RafxValidationMode::EnabledIfAvailable,
-        },
-        &Default::default(),
-    )?;
+    let mut api = create_api(&sdl2_systems.window)?;
 
     // Wrap all of this so that it gets dropped
     {
@@ -117,37 +113,43 @@ fn run() -> RafxResult<()> {
 
         //
         // Load a shader from source - this part is API-specific. vulkan will want SPV, metal wants
-        // source code or even better a pre-compiled library. But their compile toolchain only works on
-        // mac/windows and is a command line tool without programmatic access. In an engine, it
-        // would be better to pack different formats depending on the platform being built. For this
-        // example, we'll just do it manually.
+        // source code or even better a pre-compiled library. But the metal compiler toolchain only
+        // works on mac/windows and is a command line tool without programmatic access.
         //
-        // Accessing the underlying API is straightforward - all Rafx objects (i.e. RafxTexture,
-        // RafxBuffer, RafxShaderModule) have an accessor for the API-specific implementation. For
-        // example, device_context.vk_device_context() returns an Option<&RafxDeviceContextVulkan>
-        // that can be unwrapped. This allows accessing API-specific details.
+        // In an engine, it would be better to pack different formats depending on the platform
+        // being built. Higher level rafx crates can help with this. But this is meant as a simple
+        // example without needing those crates.
         //
-        // The resulting shader modules represent a loaded shader blob that can be used to create the
-        // shader. (They can be discarded once the graphics pipeline is built.)
+        // RafxShaderPackage holds all the data needed to create a GPU shader module object. It is
+        // heavy-weight, fully owning the data. We create by loading files from disk. This object
+        // can be stored as an opaque, binary object and loaded directly if you prefer.
         //
-        let vert_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/api_triangle/shader.vert.spv");
-        let frag_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/api_triangle/shader.frag.spv");
+        // RafxShaderModuleDef is a lightweight reference to this data. Here we create it from the
+        // RafxShaderPackage, but you can create it yourself if you already loaded the data in some
+        // other way.
+        //
+        // The resulting shader modules represent a loaded shader GPU object that is used to create
+        // shaders. Shader modules can be discarded once the graphics pipeline is built.
+        //
+        let processed_shaders_base_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("examples/api_triangle/processed_shaders");
 
-        let vert_bytes = std::fs::read(vert_source_path)?;
-        let vert_shader_module = device_context
-            .vk_device_context()
-            .unwrap()
-            .create_shader_module_from_bytes(&vert_bytes)?;
-        let vert_shader_module = vert_shader_module.into();
+        let vert_shader_package = load_shader_packages(
+            &processed_shaders_base_path,
+            "shader.vert.metal",
+            "shader.vert.spv",
+        )?;
 
-        let frag_bytes = std::fs::read(frag_source_path)?;
-        let frag_shader_module = device_context
-            .vk_device_context()
-            .unwrap()
-            .create_shader_module_from_bytes(&frag_bytes)?;
-        let frag_shader_module = frag_shader_module.into();
+        let frag_shader_package = load_shader_packages(
+            &processed_shaders_base_path,
+            "shader.frag.metal",
+            "shader.frag.spv",
+        )?;
+
+        let vert_shader_module =
+            device_context.create_shader_module(vert_shader_package.module_def())?;
+        let frag_shader_module =
+            device_context.create_shader_module(frag_shader_package.module_def())?;
 
         //
         // Create the shader object by combining the stages
@@ -452,4 +454,68 @@ fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
     }
 
     true
+}
+
+#[cfg(feature = "rafx-metal")]
+fn create_metal_api(window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
+    RafxApi::new_metal(
+        window,
+        &RafxApiDef {
+            validation_mode: RafxValidationMode::EnabledIfAvailable,
+        },
+        &Default::default(),
+    )
+}
+
+#[cfg(feature = "rafx-vulkan")]
+fn create_vulkan_api(window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
+    RafxApi::new_vulkan(
+        window,
+        &RafxApiDef {
+            validation_mode: RafxValidationMode::EnabledIfAvailable,
+        },
+        &Default::default(),
+    )
+}
+
+#[allow(unreachable_code)]
+fn create_api(_window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
+    #[cfg(feature = "rafx-metal")]
+    {
+        return create_metal_api(_window);
+    }
+
+    #[cfg(feature = "rafx-vulkan")]
+    {
+        return create_vulkan_api(_window);
+    }
+
+    Err("Rafx was compiled with no backend enabled. Add feature rafx-vulkan, rafx-metal, etc. to enable at least one backend")?
+}
+
+// Shader packages are serializable. The shader processor tool uses spirv_cross to compile the
+// shaders for multiple platforms and package them in an easy to use opaque binary form. For this
+// example, we'll just hard-code constructing this package.
+fn load_shader_packages(
+    _base_path: &Path,
+    _metal_src_file: &str,
+    _vk_spv_file: &str,
+) -> RafxResult<RafxShaderPackage> {
+    let mut _package = RafxShaderPackage::default();
+
+    #[cfg(feature = "rafx-metal")]
+    {
+        let metal_path = _base_path.join(_metal_src_file);
+        let metal_src = std::fs::read_to_string(metal_path)?;
+        _package.metal = Some(RafxShaderPackageMetal::Src(metal_src));
+    }
+
+    #[cfg(feature = "rafx-vulkan")]
+    {
+        let vk_path = _base_path.join(_vk_spv_file);
+        let vk_bytes = std::fs::read(vk_path)?;
+        _package.vk = Some(RafxShaderPackageVulkan::SpvBytes(vk_bytes));
+    }
+
+    Ok(_package)
 }

@@ -1,4 +1,6 @@
 #[cfg(feature = "rafx-metal")]
+use crate::metal::RafxApiDefMetal;
+#[cfg(feature = "rafx-metal")]
 use crate::metal::RafxApiMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::{RafxApiDefVulkan, RafxApiVulkan};
@@ -32,6 +34,18 @@ impl RafxApi {
         vk_api_def: &RafxApiDefVulkan,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Vk(RafxApiVulkan::new(
+            window, api_def, vk_api_def,
+        )?))
+    }
+
+    /// Initialize a device using vulkan
+    #[cfg(feature = "rafx-metal")]
+    pub fn new_metal(
+        window: &dyn HasRawWindowHandle,
+        api_def: &RafxApiDef,
+        vk_api_def: &RafxApiDefMetal,
+    ) -> RafxResult<Self> {
+        Ok(RafxApi::Metal(RafxApiMetal::new(
             window, api_def, vk_api_def,
         )?))
     }

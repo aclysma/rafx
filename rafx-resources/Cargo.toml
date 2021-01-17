@@ -14,7 +14,7 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-api = { version = "0.0.2", path = "../rafx-api" }
+rafx-api = { version = "0.0.2", path = "../rafx-api", features = ["serde-support"] }
 rafx-base = { version = "0.0.2", path = "../rafx-base" }
 rafx-nodes = { version = "0.0.2", path = "../rafx-nodes" }
 
@@ -27,7 +27,7 @@ profiling = "0.1.4"
 serde = { version = "1", features = ["serde_derive"] }
 
 [features]
-default = ["rafx-vulkan"]
+default = []
 rafx-vulkan = []
 rafx-metal = []
 static-vulkan = ["rafx-api/static-vulkan"]

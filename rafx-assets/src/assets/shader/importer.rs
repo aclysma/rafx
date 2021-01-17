@@ -2,7 +2,7 @@ use crate::assets::shader::ShaderAssetData;
 use crate::CookedShader;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
-use rafx_api::{RafxShaderModuleDef, RafxShaderModuleDefVulkan};
+use rafx_api::{RafxShaderPackage, RafxShaderPackageVulkan};
 use rafx_resources::{ShaderModuleHash, ShaderModuleResourceDef};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -69,13 +69,16 @@ impl Importer for ShaderImporterSpv {
         );
 
         // The hash is used in some places identify the shader
-        let rafx_shader_module_def =
-            RafxShaderModuleDef::Vk(RafxShaderModuleDefVulkan::SpvBytes(&spv_bytes));
-        let shader_module_hash = ShaderModuleHash::new(&rafx_shader_module_def);
+        let shader_package = RafxShaderPackage {
+            metal: None,
+            vk: Some(RafxShaderPackageVulkan::SpvBytes(spv_bytes)),
+        };
+
+        let shader_module_hash = ShaderModuleHash::new(&shader_package);
 
         let shader_asset = ShaderAssetData {
             shader: ShaderModuleResourceDef {
-                code: spv_bytes,
+                shader_package,
                 shader_module_hash,
             },
             reflection_data: None,
@@ -146,14 +149,16 @@ impl Importer for ShaderImporterCooked {
             cooked_shader.spv.len()
         );
 
-        // The hash is used in some places identify the shader
-        let rafx_shader_module_def =
-            RafxShaderModuleDef::Vk(RafxShaderModuleDefVulkan::SpvBytes(&cooked_shader.spv));
-        let shader_module_hash = ShaderModuleHash::new(&rafx_shader_module_def);
+        let shader_package = RafxShaderPackage {
+            metal: None,
+            vk: Some(RafxShaderPackageVulkan::SpvBytes(cooked_shader.spv)),
+        };
+
+        let shader_module_hash = ShaderModuleHash::new(&shader_package);
 
         let shader_asset = ShaderAssetData {
             shader: ShaderModuleResourceDef {
-                code: cooked_shader.spv,
+                shader_package,
                 shader_module_hash,
             },
             reflection_data: Some(cooked_shader.entry_points),

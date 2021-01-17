@@ -1,4 +1,4 @@
-use crate::RafxResult;
+use crate::{RafxResult, RafxShaderModule};
 
 use crate::vulkan::RafxDeviceContextVulkan;
 use ash::version::DeviceV1_0;
@@ -58,5 +58,11 @@ impl RafxShaderModuleVulkan {
 
     pub fn vk_shader_module(&self) -> vk::ShaderModule {
         self.inner.shader_module
+    }
+}
+
+impl Into<RafxShaderModule> for RafxShaderModuleVulkan {
+    fn into(self) -> RafxShaderModule {
+        RafxShaderModule::Vk(self)
     }
 }

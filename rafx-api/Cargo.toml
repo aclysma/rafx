@@ -20,6 +20,7 @@ log = "0.4"
 crossbeam-channel = "0.5"
 fnv = "1.0"
 serde = { version = "1", features = ["serde_derive"], optional = true }
+serde_bytes = { version = "0.11", optional = true }
 bitflags = "1.2"
 profiling = "0.1.4"
 
@@ -40,11 +41,11 @@ raw-window-metal = { version = "0.1.1", optional = true }
 cocoa-foundation = { version = "0.1.0", optional = true }
 
 [features]
-default = ["rafx-vulkan", "serde-support"]
+default = []
 rafx-vulkan = ["ash", "vk-mem", "ash-window"]
 rafx-metal = ["metal", "objc", "raw-window-metal", "cocoa-foundation"]
 static-vulkan = []
-serde-support = ["serde"]
+serde-support = ["serde", "serde_bytes"]
 track-device-contexts = ["backtrace"]
 
 profile-with-puffin = ["profiling/profile-with-puffin"]

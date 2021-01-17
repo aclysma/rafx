@@ -171,6 +171,20 @@ impl RafxDeviceContext {
         })
     }
 
+    pub fn create_shader_module(
+        &self,
+        shader_module_def: RafxShaderModuleDef,
+    ) -> RafxResult<RafxShaderModule> {
+        Ok(match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxDeviceContext::Vk(inner) => {
+                RafxShaderModule::Vk(inner.create_shader_module(shader_module_def.vk.unwrap())?)
+            }
+            #[cfg(feature = "rafx-metal")]
+            RafxDeviceContext::Metal(_inner) => unimplemented!(),
+        })
+    }
+
     //TODO: Consider a struct with each kind of shader stage instead of a vec of stages
     /// Create a shader
     pub fn create_shader(
