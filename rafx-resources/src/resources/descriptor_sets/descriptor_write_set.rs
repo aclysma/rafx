@@ -116,14 +116,14 @@ pub fn create_uninitialized_write_set_for_layout(
 
         if what_to_bind.bind_images || what_to_bind.bind_samplers {
             element_write.image_info.resize(
-                binding.resource.element_count as usize,
+                binding.resource.element_count_normalized() as usize,
                 DescriptorSetWriteElementImage::default(),
             );
         }
 
         if what_to_bind.bind_buffers {
             element_write.buffer_info.resize(
-                binding.resource.element_count as usize,
+                binding.resource.element_count_normalized() as usize,
                 DescriptorSetWriteElementBuffer::default(),
             );
         }

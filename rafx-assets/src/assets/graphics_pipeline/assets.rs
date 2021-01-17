@@ -412,8 +412,8 @@ impl MaterialPass {
                                 return Err(error)?;
                             }
 
-                            if existing_binding.resource.element_count
-                                != binding.resource.element_count
+                            if existing_binding.resource.element_count_normalized()
+                                != binding.resource.element_count_normalized()
                             {
                                 let error = format!(
                                     "Load Material Failed - Pass is using shaders in different stages with different descriptor counts for set={} binding={}",

@@ -8,8 +8,8 @@ use rafx_resources::graph::{
     SwapchainSurfaceInfo,
 };
 use rafx_resources::{
-    DescriptorSetLayout, DescriptorSetLayoutBinding, FixedFunctionState,
-    MaterialPassVertexInput, ShaderModuleHash, ShaderModuleResourceDef, VertexDataLayout,
+    DescriptorSetLayout, DescriptorSetLayoutBinding, FixedFunctionState, MaterialPassVertexInput,
+    ShaderModuleHash, ShaderModuleResourceDef, VertexDataLayout,
 };
 use std::sync::Arc;
 
@@ -72,7 +72,11 @@ fn run() -> RafxResult<()> {
         // when the next image is acquired. The helper also ensures that the swapchain is rebuilt
         // as necessary.
         //
-        let mut swapchain_helper = RafxSwapchainHelper::new(&device_context, swapchain, None)?;
+        let mut swapchain_helper = RafxSwapchainHelper::new(
+            &device_context,
+            swapchain,
+            None
+        )?;
 
         //
         // Allocate a graphics queue. By default, there is just one graphics queue and it is shared.
@@ -107,6 +111,8 @@ fn run() -> RafxResult<()> {
         // The resulting shader modules represent a loaded shader blob that can be used to create the
         // shader. (They can be discarded once the graphics pipeline is built.)
         //
+
+        // Load Vec<u8> from files
         let vert_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("examples/triangle_graph/shader.vert.spv");
         let frag_source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -115,6 +121,7 @@ fn run() -> RafxResult<()> {
         let vert_bytes = std::fs::read(vert_source_path)?;
         let frag_bytes = std::fs::read(frag_source_path)?;
 
+        // Load the data as shader modules in the resource manager
         let vert_shader_module_def =
             RafxShaderModuleDef::Vk(RafxShaderModuleDefVulkan::SpvBytes(&vert_bytes));
         let shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
@@ -221,6 +228,7 @@ fn run() -> RafxResult<()> {
             blend_state: Default::default(),
         });
 
+        // These names will need to match the vertex layout below
         let vertex_inputs = Arc::new(vec![
             MaterialPassVertexInput {
                 semantic: "POSITION".to_string(),
@@ -232,6 +240,10 @@ fn run() -> RafxResult<()> {
             },
         ]);
 
+        //
+        // Create the material pass. A material pass encapsulates everything necessary to create a
+        // graphics pipeline to render a single pass for a material
+        //
         let material_pass = resource_context.resources().get_or_create_material_pass(
             shader,
             root_signature,
@@ -325,11 +337,12 @@ fn run() -> RafxResult<()> {
             graph_builder.set_image_name(color_attachment, "color");
 
             //
-            // The callback will be run when the graph is executed
+            // The callback will be run when the graph is executed. We clone a few things and
+            // capture them in this closure. We could alternatively create an arbitrary struct and
+            // pass it in as a "user context".
             //
             let captured_vertex_layout = vertex_layout.clone();
             let captured_material_pass = material_pass.clone();
-
             graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
                 let vertex_layout = &captured_vertex_layout;
                 let material_pass = &captured_material_pass;
@@ -416,6 +429,9 @@ fn run() -> RafxResult<()> {
                     &vertex_layout
                 )?;
 
+                //
+                // We have everything needed to draw now, write instruction to the command buffer
+                //
                 let cmd_buffer = args.command_buffer;
                 cmd_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
                 cmd_buffer.cmd_bind_vertex_buffers(
@@ -484,10 +500,6 @@ fn run() -> RafxResult<()> {
             let refs: Vec<&RafxCommandBuffer> = command_buffers.iter().map(|x| &**x).collect();
             presentable_frame.present(&graphics_queue, &refs)?;
         }
-
-        // We are about to terminate, wait until all the submitted work gets flushed before
-        // continuing
-        graphics_queue.wait_for_queue_idle()?;
     }
 
     // Optional, but calling this verifies that all rafx objects/device contexts have been

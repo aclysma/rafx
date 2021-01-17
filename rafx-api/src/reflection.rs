@@ -49,6 +49,9 @@ pub struct RafxShaderResource {
     pub set_index: u32,
     pub binding: u32,
     // Valid only for descriptors (resource_type != ROOT_CONSTANT)
+    // This must remain pub to init the struct as "normal" but in general,
+    // access it via element_count_normalized(). This ensures that if it
+    // is default-initialized to 0, it is treated as 1
     pub element_count: u32,
     // Valid only for push constants (resource_type != ROOT_CONSTANT)
     pub size_in_bytes: u32,
