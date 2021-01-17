@@ -14,8 +14,6 @@ This crate contains several layers:
  * Asset layer that integrates with `atelier-assets`
  * Tools for packing assets for a shipped build and **auto-generating shader binding code**
 
-NOTE: Some cr
-
 Supported Platforms:
  * Windows
  * macOS (via MoltenVK)

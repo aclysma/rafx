@@ -17,7 +17,7 @@ rafx-api = { version = "0.0.2", path = "../rafx-api" }
 rafx-nodes = { version = "0.0.2", path = "../rafx-nodes", optional = true }
 rafx-visibility = { version = "0.0.2", path = "../rafx-visibility", optional = true }
 rafx-resources = { version = "0.0.2", path = "../rafx-resources", optional = true }
-#rafx-assets = { version = "0.0.1", path = "../rafx-assets", optional = true }
+rafx-assets = { version = "0.0.2", path = "../rafx-assets", optional = true }
 
 [dev-dependencies]
 log = "0.4"
@@ -48,32 +48,32 @@ static-vulkan = ["rafx-api/static-vulkan"]
 # Assets: Integrates atelier-assets to provide a full asset pipeline
 nodes = ["rafx-nodes", "rafx-visibility"]
 resources = ["rafx-resources", "nodes"]
-#assets = ["rafx-assets", "resources"]
+assets = ["rafx-assets", "resources"]
 
 #
 # Profiling features - passes down features to crates contained within this one
 #
 profile-with-puffin = [
     "rafx-resources/profile-with-puffin",
-    #"rafx-assets/profile-with-puffin",
+    "rafx-assets/profile-with-puffin",
     "rafx-api/profile-with-puffin"
 ]
 
 profile-with-optick = [
     "rafx-resources/profile-with-optick",
-    #"rafx-assets/profile-with-optick",
+    "rafx-assets/profile-with-optick",
     "rafx-api/profile-with-optick"
 ]
 
 profile-with-superluminal = [
     "rafx-resources/profile-with-superluminal",
-    #"rafx-assets/profile-with-superluminal",
+    "rafx-assets/profile-with-superluminal",
     "rafx-api/profile-with-superluminal"
 ]
 
 profile-with-tracing = [
     "rafx-resources/profile-with-tracing",
-    #"rafx-assets/profile-with-tracing",
+    "rafx-assets/profile-with-tracing",
     "rafx-api/profile-with-tracing"
 ]
 
