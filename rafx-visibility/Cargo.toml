@@ -1,11 +1,11 @@
 [package]
 name = "rafx-visibility"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
 license = "MIT OR Apache-2.0"
-readme = "README.md"
+readme = "../README.md"
 repository = "https://github.com/aclysma/rafx"
 homepage = "https://github.com/aclysma/rafx"
 keywords = ["game", "rendering", "graphics"]
@@ -16,5 +16,5 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 [dependencies]
 log = "0.4"
 
-rafx-base = { version = "0.0.1", path = "../rafx-base" }
-rafx-nodes = { version = "0.0.1", path = "../rafx-nodes" }
+rafx-base = { version = "0.0.2", path = "../rafx-base" }
+rafx-nodes = { version = "0.0.2", path = "../rafx-nodes" }

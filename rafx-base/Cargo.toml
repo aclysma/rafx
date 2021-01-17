@@ -1,11 +1,11 @@
 [package]
 name = "rafx-base"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
 license = "MIT OR Apache-2.0"
-readme = "README.md"
+readme = "../README.md"
 repository = "https://github.com/aclysma/rafx"
 homepage = "https://github.com/aclysma/rafx"
 keywords = ["game", "rendering", "graphics"]
