@@ -72,11 +72,7 @@ fn run() -> RafxResult<()> {
         // when the next image is acquired. The helper also ensures that the swapchain is rebuilt
         // as necessary.
         //
-        let mut swapchain_helper = RafxSwapchainHelper::new(
-            &device_context,
-            swapchain,
-            None
-        )?;
+        let mut swapchain_helper = RafxSwapchainHelper::new(&device_context, swapchain, None)?;
 
         //
         // Allocate a graphics queue. By default, there is just one graphics queue and it is shared.

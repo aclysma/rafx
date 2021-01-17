@@ -705,24 +705,24 @@ fn create_binding_wrapper_binding_item(
         RafxResourceType::TEXTURE
         | RafxResourceType::TEXTURE_READ_WRITE
         | RafxResourceType::COMBINED_IMAGE_SAMPLER => {
-            if e.resource.element_count > 1 {
+            if e.resource.element_count_normalized() > 1 {
                 binding_wrapper_items.push(BindingWrapperItem {
                     binding_name,
                     setter_fn_name_single: "set_image_at_index".to_string(),
                     setter_fn_name_multi: "set_images".to_string(),
                     args_struct_member_type: format!(
                         "&'a [Option<&'a ResourceArc<ImageViewResource>>; {}]",
-                        e.resource.element_count
+                        e.resource.element_count_normalized()
                     )
                     .to_string(),
                     set_element_param_type_single: "&ResourceArc<ImageViewResource>".to_string(),
                     set_element_param_type_multi: format!(
                         "&[Option<& ResourceArc<ImageViewResource>>; {}]",
-                        e.resource.element_count
+                        e.resource.element_count_normalized()
                     )
                     .to_string(),
                     binding_index_string,
-                    descriptor_count: e.resource.element_count,
+                    descriptor_count: e.resource.element_count_normalized(),
                 });
             } else {
                 binding_wrapper_items.push(BindingWrapperItem {
@@ -733,13 +733,13 @@ fn create_binding_wrapper_binding_item(
                     set_element_param_type_single: "&ResourceArc<ImageViewResource>".to_string(),
                     set_element_param_type_multi: "&[& ResourceArc<ImageViewResource>]".to_string(),
                     binding_index_string,
-                    descriptor_count: e.resource.element_count,
+                    descriptor_count: e.resource.element_count_normalized(),
                 });
             }
             binding_wrapper_struct_lifetimes.push("'a".to_string());
         }
         RafxResourceType::UNIFORM_BUFFER | RafxResourceType::BUFFER => {
-            assert_eq!(e.resource.element_count, 1);
+            assert_eq!(e.resource.element_count_normalized(), 1);
             let type_name = get_rust_type_name_alias(
                 builtin_types,
                 user_types,
@@ -755,7 +755,7 @@ fn create_binding_wrapper_binding_item(
                 set_element_param_type_single: format!("&{}", type_name),
                 set_element_param_type_multi: format!("&'[{}]", type_name),
                 binding_index_string,
-                descriptor_count: e.resource.element_count,
+                descriptor_count: e.resource.element_count_normalized(),
             });
             binding_wrapper_struct_lifetimes.push("'a".to_string());
         }
