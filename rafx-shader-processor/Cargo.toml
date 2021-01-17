@@ -5,6 +5,9 @@ authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
+# Cannot publish rafx-assets until atelier-assets is published, and this crate depends on rafx-assets
+publish = false
+
 [dependencies]
 rafx-assets = { version = "0.0.1", path = "../rafx-assets" }
 rafx-resources = { version = "0.0.1", path = "../rafx-resources" }
