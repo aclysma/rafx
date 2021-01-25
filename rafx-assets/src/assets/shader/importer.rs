@@ -1,9 +1,8 @@
 use crate::assets::shader::ShaderAssetData;
-use crate::CookedShader;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
 use rafx_api::{RafxShaderPackage, RafxShaderPackageVulkan};
-use rafx_resources::{ShaderModuleHash, ShaderModuleResourceDef};
+use rafx_resources::{CookedShaderPackage, ShaderModuleHash, ShaderModuleResourceDef};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
@@ -138,28 +137,21 @@ impl Importer for ShaderImporterCooked {
         let mut bytes = Vec::new();
         source.read_to_end(&mut bytes)?;
 
-        let cooked_shader: CookedShader = coerce_result_string(
-            bincode::deserialize::<CookedShader>(&bytes)
+        let cooked_shader: CookedShaderPackage = coerce_result_string(
+            bincode::deserialize::<CookedShaderPackage>(&bytes)
                 .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x)),
         )?;
 
         log::trace!(
-            "Import shader asset {:?} with {} bytes of code",
+            "Import shader asset {:?} with hash {:?}",
             asset_id,
-            cooked_shader.spv.len()
+            cooked_shader.hash,
         );
-
-        let shader_package = RafxShaderPackage {
-            metal: None,
-            vk: Some(RafxShaderPackageVulkan::SpvBytes(cooked_shader.spv)),
-        };
-
-        let shader_module_hash = ShaderModuleHash::new(&shader_package);
 
         let shader_asset = ShaderAssetData {
             shader: ShaderModuleResourceDef {
-                shader_package,
-                shader_module_hash,
+                shader_package: cooked_shader.shader_package,
+                shader_module_hash: cooked_shader.hash,
             },
             reflection_data: Some(cooked_shader.entry_points),
         };

@@ -188,6 +188,10 @@
 //
 #[cfg(feature = "rafx-vulkan")]
 pub use ash;
+#[cfg(feature = "rafx-metal")]
+pub use foreign_types_shared;
+#[cfg(feature = "rafx-metal")]
+pub use metal_rs;
 #[cfg(feature = "rafx-vulkan")]
 pub use vk_mem;
 
@@ -250,6 +254,14 @@ pub use vulkan::RafxApiDefVulkan;
 //
 #[cfg(feature = "rafx-metal")]
 pub mod metal;
+#[cfg(feature = "rafx-metal")]
+pub use metal::RafxApiDefMetal;
 
 pub mod extra;
+mod internal_shared;
 mod types;
+
+// Vulkan only guarantees up to 4 are available
+pub const MAX_DESCRIPTOR_SET_LAYOUTS: usize = 4;
+// In sync with RafxBlendStateTargets
+pub const MAX_RENDER_TARGET_ATTACHMENTS: usize = 8;

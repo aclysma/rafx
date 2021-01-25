@@ -1,13 +1,17 @@
-use rafx_assets::assets::reflect::{
+use rafx_resources::cooked_shader::{
     ReflectedDescriptorSetLayout, ReflectedDescriptorSetLayoutBinding, ReflectedEntryPoint,
     ReflectedVertexInput,
 };
 
+use fnv::FnvHashMap;
 use rafx_api::{
-    RafxResourceType, RafxResult, RafxShaderResource, RafxShaderStageFlags,
-    RafxShaderStageReflection,
+    RafxAddressMode, RafxCompareOp, RafxFilterType, RafxMipMapMode, RafxResourceType, RafxResult,
+    RafxSamplerDef, RafxShaderResource, RafxShaderStageFlags, RafxShaderStageReflection,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use spirv_cross::spirv::Type;
+use spirv_cross::msl::{ResourceBinding, ResourceBindingLocation, SamplerData, SamplerLocation};
+use spirv_cross::spirv::{ExecutionModel, Type};
+use std::collections::BTreeMap;
 
 fn get_descriptor_count_from_type<TargetT>(
     ast: &spirv_cross::spirv::Ast<TargetT>,
@@ -377,10 +381,257 @@ where
     Ok(bindings)
 }
 
+//TODO: Exclude MSL constexpr samplers?
+pub(crate) fn msl_assign_argument_buffer_ids(
+    entry_points: &[ReflectedEntryPoint]
+) -> RafxResult<BTreeMap<ResourceBindingLocation, ResourceBinding>> {
+    let mut all_resources_lookup = FnvHashMap::<(u32, u32), RafxShaderResource>::default();
+    for entry_point in entry_points {
+        for resource in &entry_point.rafx_api_reflection.resources {
+            let key = (resource.set_index, resource.binding);
+            if let Some(old) = all_resources_lookup.get_mut(&key) {
+                if resource.resource_type != old.resource_type {
+                    Err(format!(
+                        "Shaders with same set and binding {:?} have mismatching resource types {:?} and {:?}",
+                        key,
+                        resource.resource_type,
+                        old.resource_type
+                    ))?;
+                }
+
+                if resource.element_count_normalized() != old.element_count_normalized() {
+                    Err(format!(
+                        "Shaders with same set and binding {:?} have mismatching element counts {:?} and {:?}",
+                        key,
+                        resource.element_count_normalized(),
+                        old.element_count_normalized()
+                    ))?;
+                }
+
+                old.used_in_shader_stages |= resource.used_in_shader_stages;
+            } else {
+                all_resources_lookup.insert(key, resource.clone());
+            }
+        }
+    }
+
+    let mut resources: Vec<_> = all_resources_lookup.values().collect();
+    resources.sort_by(|lhs, rhs| lhs.binding.cmp(&rhs.binding));
+
+    // If we update this constant, update the arrays in this function
+    assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
+
+    let mut next_msl_argument_buffer_id = [0, 0, 0, 0];
+
+    let mut argument_buffer_assignments =
+        BTreeMap::<ResourceBindingLocation, ResourceBinding>::default();
+
+    for resource in resources {
+        let msl_argument_buffer_id = next_msl_argument_buffer_id[resource.set_index as usize];
+
+        let location = ResourceBindingLocation {
+            // We'll overwrite the stage as needed when we insert into the map
+            stage: spirv_cross::spirv::ExecutionModel::TessellationEvaluation,
+            desc_set: resource.set_index,
+            binding: resource.binding,
+        };
+
+        let new_binding = ResourceBinding {
+            buffer_id: msl_argument_buffer_id,
+            texture_id: msl_argument_buffer_id,
+            sampler_id: msl_argument_buffer_id,
+        };
+
+        if resource
+            .used_in_shader_stages
+            .intersects(RafxShaderStageFlags::VERTEX)
+        {
+            let mut location = location.clone();
+            location.stage = ExecutionModel::Vertex;
+            argument_buffer_assignments.insert(location, new_binding.clone());
+        }
+
+        if resource
+            .used_in_shader_stages
+            .intersects(RafxShaderStageFlags::FRAGMENT)
+        {
+            let mut location = location.clone();
+            location.stage = ExecutionModel::Fragment;
+            argument_buffer_assignments.insert(location, new_binding.clone());
+        }
+
+        if resource
+            .used_in_shader_stages
+            .intersects(RafxShaderStageFlags::COMPUTE)
+        {
+            let mut location = location.clone();
+            location.stage = ExecutionModel::Kernel;
+            argument_buffer_assignments.insert(location, new_binding.clone());
+        }
+
+        if resource
+            .used_in_shader_stages
+            .intersects(RafxShaderStageFlags::TESSELLATION_CONTROL)
+        {
+            let mut location = location.clone();
+            location.stage = ExecutionModel::TessellationControl;
+            argument_buffer_assignments.insert(location, new_binding.clone());
+        }
+
+        if resource
+            .used_in_shader_stages
+            .intersects(RafxShaderStageFlags::TESSELLATION_EVALUATION)
+        {
+            let mut location = location.clone();
+            location.stage = ExecutionModel::TessellationEvaluation;
+            argument_buffer_assignments.insert(location, new_binding.clone());
+        }
+
+        next_msl_argument_buffer_id[resource.set_index as usize] +=
+            resource.element_count_normalized();
+    }
+
+    Ok(argument_buffer_assignments)
+}
+
+fn msl_create_sampler_data(
+    sampler_def: &RafxSamplerDef
+) -> RafxResult<spirv_cross::msl::SamplerData> {
+    let lod_clamp_min = LodBase16::from(sampler_def.mip_lod_bias);
+    let lod_clamp_max = if sampler_def.mip_map_mode == RafxMipMapMode::Linear {
+        LodBase16::MAX
+    } else {
+        LodBase16::ZERO
+    };
+
+    fn convert_filter(filter: RafxFilterType) -> SamplerFilter {
+        match filter {
+            RafxFilterType::Nearest => SamplerFilter::Nearest,
+            RafxFilterType::Linear => SamplerFilter::Linear,
+        }
+    }
+
+    fn convert_mip_map_mode(mip_map_mode: RafxMipMapMode) -> SamplerMipFilter {
+        match mip_map_mode {
+            RafxMipMapMode::Nearest => SamplerMipFilter::Nearest,
+            RafxMipMapMode::Linear => SamplerMipFilter::Linear,
+        }
+    }
+
+    fn convert_address_mode(address_mode: RafxAddressMode) -> SamplerAddress {
+        match address_mode {
+            RafxAddressMode::Mirror => SamplerAddress::MirroredRepeat,
+            RafxAddressMode::Repeat => SamplerAddress::Repeat,
+            RafxAddressMode::ClampToEdge => SamplerAddress::ClampToEdge,
+            RafxAddressMode::ClampToBorder => SamplerAddress::ClampToBorder,
+        }
+    }
+
+    fn convert_compare_op(compare_op: RafxCompareOp) -> SamplerCompareFunc {
+        match compare_op {
+            RafxCompareOp::Never => SamplerCompareFunc::Never,
+            RafxCompareOp::Less => SamplerCompareFunc::Less,
+            RafxCompareOp::Equal => SamplerCompareFunc::Equal,
+            RafxCompareOp::LessOrEqual => SamplerCompareFunc::LessEqual,
+            RafxCompareOp::Greater => SamplerCompareFunc::Greater,
+            RafxCompareOp::NotEqual => SamplerCompareFunc::NotEqual,
+            RafxCompareOp::GreaterOrEqual => SamplerCompareFunc::GreaterEqual,
+            RafxCompareOp::Always => SamplerCompareFunc::Always,
+        }
+    }
+
+    let max_anisotropy = if sampler_def.max_anisotropy == 0.0 {
+        1
+    } else {
+        sampler_def.max_anisotropy as i32
+    };
+
+    use spirv_cross::msl::*;
+    let sampler_data = SamplerData {
+        coord: SamplerCoord::Normalized,
+        min_filter: convert_filter(sampler_def.min_filter),
+        mag_filter: convert_filter(sampler_def.mag_filter),
+        mip_filter: convert_mip_map_mode(sampler_def.mip_map_mode),
+        s_address: convert_address_mode(sampler_def.address_mode_u),
+        t_address: convert_address_mode(sampler_def.address_mode_v),
+        r_address: convert_address_mode(sampler_def.address_mode_w),
+        compare_func: convert_compare_op(sampler_def.compare_op),
+        border_color: SamplerBorderColor::TransparentBlack,
+        lod_clamp_min,
+        lod_clamp_max,
+        max_anisotropy,
+
+        // Sampler YCbCr conversion parameters
+        planes: 0,
+        resolution: FormatResolution::_444,
+        chroma_filter: SamplerFilter::Nearest,
+        x_chroma_offset: ChromaLocation::CositedEven,
+        y_chroma_offset: ChromaLocation::CositedEven,
+        swizzle: [
+            ComponentSwizzle::Identity,
+            ComponentSwizzle::Identity,
+            ComponentSwizzle::Identity,
+            ComponentSwizzle::Identity,
+        ],
+        ycbcr_conversion_enable: false,
+        ycbcr_model: SamplerYCbCrModelConversion::RgbIdentity,
+        ycbcr_range: SamplerYCbCrRange::ItuFull,
+        bpc: 8,
+    };
+
+    Ok(sampler_data)
+}
+
+pub(crate) fn msl_const_samplers(
+    entry_points: &[ReflectedEntryPoint],
+    //msl_argument_buffer_assignments: &BTreeMap::<ResourceBindingLocation, ResourceBinding>,
+) -> RafxResult<BTreeMap<SamplerLocation, SamplerData>> {
+    let mut immutable_samplers = BTreeMap::<SamplerLocation, SamplerData>::default();
+
+    for entry_point in entry_points {
+        for layout in &entry_point.descriptor_set_layouts {
+            if let Some(layout) = layout {
+                for binding in &layout.bindings {
+                    if let Some(immutable_sampler) = &binding.immutable_samplers {
+                        let location = SamplerLocation {
+                            desc_set: binding.resource.set_index,
+                            binding: binding.resource.binding,
+                        };
+
+                        if immutable_sampler.len() > 1 {
+                            Err(format!("Multiple immutable samplers in a single binding ({:?}) not supported in MSL", location))?;
+                        }
+                        let immutable_sampler = immutable_sampler.first().unwrap();
+
+                        let sampler_data = msl_create_sampler_data(&immutable_sampler)?;
+
+                        if let Some(old) = immutable_samplers.get(&location) {
+                            if *old != sampler_data {
+                                Err(format!("Samplers in different entry points but same location ({:?}) do not match: \n{:#?}\n{:#?}", location, old, sampler_data))?;
+                            }
+                        } else {
+                            immutable_samplers.insert(location, sampler_data);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(immutable_samplers)
+}
+
+pub struct ShaderProcessorRefectionData {
+    pub reflection: Vec<ReflectedEntryPoint>,
+    pub msl_argument_buffer_assignments: BTreeMap<ResourceBindingLocation, ResourceBinding>,
+    pub msl_const_samplers: BTreeMap<SamplerLocation, SamplerData>,
+}
+
 pub(crate) fn reflect_data<TargetT>(
     ast: &spirv_cross::spirv::Ast<TargetT>,
     declarations: &super::parse_declarations::ParseDeclarationsResult,
-) -> RafxResult<Vec<ReflectedEntryPoint>>
+    require_semantics: bool,
+) -> RafxResult<ShaderProcessorRefectionData>
 where
     TargetT: spirv_cross::spirv::Target,
     spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Parse<TargetT>,
@@ -459,12 +710,21 @@ where
                     .or_else(|| declarations.bindings.iter().find(|x| x.parsed.instance_name == *name))
                     .ok_or_else(|| format!("A resource named {} in spirv reflection data was not matched up to a resource scanned in source code.", resource.name))?;
 
-                let semantic = &parsed_binding.annotations.semantic.as_ref().map(|x| x.0.clone())
-                    .ok_or_else(|| format!("No semantic annotation for vertex input '{}'. All vertex inputs must have a semantic annotation if generating rust code and/or cooked shaders.", name))?;
+                let semantic = &parsed_binding
+                    .annotations
+                    .semantic
+                    .as_ref()
+                    .map(|x| x.0.clone());
+
+                let semantic = if require_semantics {
+                    semantic.clone().ok_or_else(|| format!("No semantic annotation for vertex input '{}'. All vertex inputs must have a semantic annotation if generating rust code and/or cooked shaders.", name))?
+                } else {
+                    "".to_string()
+                };
 
                 dsc_vertex_inputs.push(ReflectedVertexInput {
                     name: name.clone(),
-                    semantic: semantic.clone(),
+                    semantic,
                     location,
                 });
             }
@@ -474,27 +734,34 @@ where
             shader_stage: stage_flags,
             resources: rafx_bindings,
             entry_point_name: entry_point_name.clone(),
-            thread_count: [
+            compute_threads_per_group: Some([
                 entry_point.work_group_size.x,
                 entry_point.work_group_size.y,
                 entry_point.work_group_size.z,
-            ],
+            ]),
         };
 
         reflected_entry_points.push(ReflectedEntryPoint {
             descriptor_set_layouts,
             vertex_inputs: dsc_vertex_inputs,
-            rafx_reflection,
+            rafx_api_reflection: rafx_reflection,
         });
     }
 
-    Ok(reflected_entry_points)
+    let msl_argument_buffer_assignments = msl_assign_argument_buffer_ids(&reflected_entry_points)?;
+
+    let msl_const_samplers = msl_const_samplers(&reflected_entry_points)?;
+
+    Ok(ShaderProcessorRefectionData {
+        reflection: reflected_entry_points,
+        msl_argument_buffer_assignments,
+        msl_const_samplers,
+    })
 }
 
 fn map_shader_stage_flags(
     shader_stage: spirv_cross::spirv::ExecutionModel
 ) -> RafxResult<RafxShaderStageFlags> {
-    use spirv_cross::spirv::ExecutionModel;
     Ok(match shader_stage {
         ExecutionModel::Vertex => RafxShaderStageFlags::VERTEX,
         ExecutionModel::TessellationControl => RafxShaderStageFlags::TESSELLATION_CONTROL,

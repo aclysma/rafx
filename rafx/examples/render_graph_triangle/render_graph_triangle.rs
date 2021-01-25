@@ -8,8 +8,8 @@ use rafx::graph::{
 };
 use rafx::nodes::SubmitNode;
 use rafx::resources::{
-    DescriptorSetLayout, DescriptorSetLayoutBinding, FixedFunctionState, MaterialPassVertexInput,
-    ShaderModuleHash, ShaderModuleResourceDef, VertexDataLayout,
+    CookedShaderPackage, FixedFunctionState, ReflectedShader, ShaderModuleResourceDef,
+    VertexDataLayout,
 };
 use std::sync::Arc;
 
@@ -19,7 +19,7 @@ const WINDOW_HEIGHT: u32 = 600;
 fn main() {
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
-        .filter_level(LevelFilter::Debug)
+        .filter_level(LevelFilter::Info)
         .init();
 
     run().unwrap();
@@ -42,8 +42,10 @@ fn run() -> RafxResult<()> {
     //
     let mut api = create_api(&sdl2_systems.window)?;
 
-    // Wrap all of this so that it gets dropped
+    // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
+    // clean shutdown.
     {
+        // A cloneable device handle, these are lightweight and can be passed across threads
         let device_context = api.device_context();
 
         //
@@ -61,9 +63,9 @@ fn run() -> RafxResult<()> {
 
         //
         // Wrap the swapchain in this helper to cut down on boilerplate. This helper is
-        // multithreaded-rendering friendly! The PresentableFrame it returns can be sent to another
+        // multithread friendly! The PresentableFrame it returns can be sent to another
         // thread and presented from there, and any errors are returned back to the main thread
-        // when the next image is acquired. The helper also ensures that the swapchain is rebuilt
+        // when it acquires the next image. The helper also ensures that the swapchain is rebuilt
         // as necessary.
         //
         let mut swapchain_helper = RafxSwapchainHelper::new(&device_context, swapchain, None)?;
@@ -77,7 +79,10 @@ fn run() -> RafxResult<()> {
         let graphics_queue = device_context.create_queue(RafxQueueType::Graphics)?;
 
         //
-        // Create a ResourceContext. The Resource
+        // Create a ResourceContext. The render registry is more useful when there's a variety of
+        // things to render, but since we just have a triangle we'll just set up a single phase.
+        // (Multiple "features" can render in a single "phase". Sorting behavior for draw calls
+        // across those features is defined by the phase)
         //
         let render_registry = rafx_nodes::RenderRegistryBuilder::default()
             .register_render_phase::<OpaqueRenderPhase>("Opaque")
@@ -87,98 +92,70 @@ fn run() -> RafxResult<()> {
         let resource_context = resource_manager.resource_context();
 
         //
-        // Load a shader from source - this part is API-specific. vulkan will want SPV, metal wants
-        // source code or even better a pre-compiled library. But their compile toolchain only works on
-        // mac/windows and is a command line tool without programmatic access. In an engine, it
-        // would be better to pack different formats depending on the platform being built. For this
-        // example, we'll just do it manually.
+        // Load a cooked shader. Handling shaders for multiple API can get messy because they don't
+        // accept the same shader language, and there are differences in the shader language that
+        // are not trivial to duplicate in all languages. Rafx handles this by using spirv_cross to
+        // cross-compile the shader from one language to other languages (currently just GLSL is
+        // accepted, but spirv_cross supports HLSL as well and support for this could likely be
+        // added without much difficulty)
         //
-        // Accessing the underlying API is straightforward - all Rafx objects (i.e. RafxTexture,
-        // RafxBuffer, RafxShaderModule) have an accessor for the API-specific implementation. For
-        // example, device_context.vk_device_context() returns an Option<&RafxDeviceContextVulkan>
-        // that can be unwrapped. This allows accessing API-specific details.
+        // In addition to porting shaders to other languages, the tool accepts shaders with custom
+        // rafx annotation which enables some convenient features. It also supports generating rust
+        // code (a sort of shader-bindgen).
         //
-        // The resulting shader modules represent a loaded shader blob that can be used to create the
-        // shader. (They can be discarded once the graphics pipeline is built.)
+        // (Since the shader in this example is simple we'll just show reflection data and not worry
+        // about generating corresponding rust code)
         //
-        let processed_shaders_base_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/render_graph_triangle/processed_shaders");
+        let cooked_shaders_base_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("examples/render_graph_triangle/cooked_shaders");
 
-        let vert_shader_package = load_shader_packages(
-            &processed_shaders_base_path,
-            "shader.vert.metal",
-            "shader.vert.spv",
-        )?;
-
-        let frag_shader_package = load_shader_packages(
-            &processed_shaders_base_path,
-            "shader.frag.metal",
-            "shader.frag.spv",
-        )?;
-
-        //
-        // Load the data as shader modules in the resource manager
-        //
-        let vert_shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
-            shader_module_hash: ShaderModuleHash::new(&vert_shader_package),
-            shader_package: vert_shader_package,
+        let cooked_vertex_shader_stage =
+            load_cooked_shader_stage(&cooked_shaders_base_path, "shader.vert.cookedshaderpackage")?;
+        let vertex_shader_reflection = cooked_vertex_shader_stage
+            .find_entry_point("main")
+            .unwrap()
+            .clone();
+        let vertex_shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
+            shader_module_hash: cooked_vertex_shader_stage.hash,
+            shader_package: cooked_vertex_shader_stage.shader_package,
         });
-        let vert_shader_module = resource_context
+        let vertex_shader_module = resource_context
             .resources()
-            .get_or_create_shader_module(&vert_shader_module_resource_def)?;
+            .get_or_create_shader_module(&vertex_shader_module_resource_def)?;
 
-        let frag_shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
-            shader_module_hash: ShaderModuleHash::new(&frag_shader_package),
-            shader_package: frag_shader_package,
+        let cooked_fragment_shader_stage =
+            load_cooked_shader_stage(&cooked_shaders_base_path, "shader.frag.cookedshaderpackage")?;
+        let fragment_shader_reflection = cooked_fragment_shader_stage
+            .find_entry_point("main")
+            .unwrap()
+            .clone();
+        let fragment_shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
+            shader_module_hash: cooked_fragment_shader_stage.hash,
+            shader_package: cooked_fragment_shader_stage.shader_package,
         });
-        let frag_shader_module = resource_context
+        let fragment_shader_module = resource_context
             .resources()
-            .get_or_create_shader_module(&frag_shader_module_resource_def)?;
+            .get_or_create_shader_module(&fragment_shader_module_resource_def)?;
 
         //
-        // Create the shader object by combining the stages
+        // Create the stage defs
         //
-        // Hardcode the reflecton data required to interact with the shaders. This can be generated
-        // offline and loaded with the shader but this is not currently provided in rafx-resources
-        // itself. (But see the shader pipeline in higher-level rafx crates for example usage,
-        // generated from spirv_cross)
-        //
-
-        // For this example we'll show exposing this to both the vertex and fragment shader
-        let shader_color_resource = RafxShaderResource {
-            name: Some("color".to_string()),
-            set_index: 0,
-            binding: 0,
-            resource_type: RafxResourceType::UNIFORM_BUFFER,
-            ..Default::default()
+        let vertex_shader_stage_def = RafxShaderStageDef {
+            shader_module: vertex_shader_module.get_raw().shader_module.clone(),
+            reflection: vertex_shader_reflection.rafx_api_reflection.clone(),
         };
 
-        let vert_shader_stage_def = RafxShaderStageDef {
-            shader_stage: RafxShaderStageFlags::VERTEX,
-            entry_point: "main".to_string(),
-            shader_module: vert_shader_module.get_raw().shader_module.clone(),
-            resources: vec![
-                // Example binding
-                shader_color_resource.clone(),
-            ],
-        };
-
-        let frag_shader_stage_def = RafxShaderStageDef {
-            shader_stage: RafxShaderStageFlags::FRAGMENT,
-            entry_point: "main".to_string(),
-            shader_module: frag_shader_module.get_raw().shader_module.clone(),
-            resources: vec![
-                // Example binding
-                shader_color_resource.clone(),
-            ],
+        let fragment_shader_stage_def = RafxShaderStageDef {
+            shader_module: fragment_shader_module.get_raw().shader_module.clone(),
+            reflection: fragment_shader_reflection.rafx_api_reflection.clone(),
         };
 
         //
         // Combine the shader stages into a single shader
         //
         let shader = resource_context.resources().get_or_create_shader(
-            &[vert_shader_stage_def, frag_shader_stage_def],
-            &[vert_shader_module, frag_shader_module],
+            &[vertex_shader_stage_def, fragment_shader_stage_def],
+            &[vertex_shader_module, fragment_shader_module],
         )?;
 
         //
@@ -193,22 +170,18 @@ fn run() -> RafxResult<()> {
 
         //
         // Rafx resources provides a high-level wrapper around a descriptor set layout that adds
-        // additional functionality. We can configure that here now (or generate it from reflection
-        // or custom annotation within shaders). For this example we'll just hardcode it. The demo
-        // reads annotations in shader data and produces reflection so that this is automatic.
+        // additional functionality. It is configured via extra reflection data exported by the
+        // rafx shader processor.
         //
+        let shader_reflection =
+            ReflectedShader::new(&[&vertex_shader_reflection, &fragment_shader_reflection])?;
+
         let descriptor_set_layout = resource_context
             .resources()
             .get_or_create_descriptor_set_layout(
                 &root_signature,
                 0,
-                &DescriptorSetLayout {
-                    bindings: vec![DescriptorSetLayoutBinding {
-                        resource: shader_color_resource.clone(),
-                        immutable_samplers: None,
-                        internal_buffer_per_descriptor_size: Some(16), // A single f32 vec4
-                    }],
-                },
+                &shader_reflection.descriptor_set_layout_defs[0],
             )?;
 
         //
@@ -221,28 +194,16 @@ fn run() -> RafxResult<()> {
             blend_state: Default::default(),
         });
 
-        // These names will need to match the vertex layout below
-        let vertex_inputs = Arc::new(vec![
-            MaterialPassVertexInput {
-                semantic: "POSITION".to_string(),
-                location: 0,
-            },
-            MaterialPassVertexInput {
-                semantic: "COLOR".to_string(),
-                location: 1,
-            },
-        ]);
-
         //
         // Create the material pass. A material pass encapsulates everything necessary to create a
         // graphics pipeline to render a single pass for a material
         //
         let material_pass = resource_context.resources().get_or_create_material_pass(
             shader,
-            root_signature,
+            root_signature.clone(),
             vec![descriptor_set_layout],
             fixed_function_state,
-            vertex_inputs,
+            shader_reflection.vertex_inputs.unwrap(),
         )?;
 
         //
@@ -321,7 +282,7 @@ fn run() -> RafxResult<()> {
                 0,
                 Some(RafxColorClearValue([0.0, 0.0, 0.0, 0.0])),
                 RenderGraphImageConstraint {
-                    samples: Some(RafxSampleCount::SampleCount1),
+                    samples: Some(RafxSampleCount::SampleCount4),
                     format: Some(swapchain_helper.format()),
                     ..Default::default()
                 },
@@ -434,6 +395,7 @@ fn run() -> RafxResult<()> {
                         offset: 0,
                     }],
                 )?;
+
                 descriptor_set.bind(&cmd_buffer)?;
                 cmd_buffer.cmd_draw(3, 0)?;
 
@@ -493,6 +455,9 @@ fn run() -> RafxResult<()> {
             let refs: Vec<&RafxCommandBuffer> = command_buffers.iter().map(|x| &**x).collect();
             presentable_frame.present(&graphics_queue, &refs)?;
         }
+
+        // Wait for all GPU work to complete before destroying resources it is using
+        graphics_queue.wait_for_queue_idle()?;
     }
 
     // Optional, but calling this verifies that all rafx objects/device contexts have been
@@ -634,26 +599,15 @@ fn create_api(_window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
 // Shader packages are serializable. The shader processor tool uses spirv_cross to compile the
 // shaders for multiple platforms and package them in an easy to use opaque binary form. For this
 // example, we'll just hard-code constructing this package.
-fn load_shader_packages(
-    _base_path: &Path,
-    _metal_src_file: &str,
-    _vk_spv_file: &str,
-) -> RafxResult<RafxShaderPackage> {
-    let mut _package = RafxShaderPackage::default();
+fn load_cooked_shader_stage(
+    base_path: &Path,
+    shader_file: &str,
+) -> RafxResult<CookedShaderPackage> {
+    let cooked_shader_path = base_path.join(shader_file);
+    let bytes = std::fs::read(cooked_shader_path)?;
 
-    #[cfg(feature = "rafx-metal")]
-    {
-        let metal_path = _base_path.join(_metal_src_file);
-        let metal_src = std::fs::read_to_string(metal_path)?;
-        _package.metal = Some(RafxShaderPackageMetal::Src(metal_src));
-    }
+    let cooked_shader = bincode::deserialize::<CookedShaderPackage>(&bytes)
+        .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
 
-    #[cfg(feature = "rafx-vulkan")]
-    {
-        let vk_path = _base_path.join(_vk_spv_file);
-        let vk_bytes = std::fs::read(vk_path)?;
-        _package.vk = Some(RafxShaderPackageVulkan::SpvBytes(vk_bytes));
-    }
-
-    Ok(_package)
+    Ok(cooked_shader)
 }

@@ -171,6 +171,7 @@ impl RafxDeviceContextVulkanInner {
             upload_buffer_texture_alignment: limits.optimal_buffer_copy_offset_alignment as u32,
             upload_buffer_texture_row_alignment: limits.optimal_buffer_copy_row_pitch_alignment
                 as u32,
+            supports_clamp_to_border_color: true,
         };
 
         let resource_cache = RafxDeviceVulkanResourceCache::default();
@@ -376,33 +377,7 @@ impl RafxDeviceContextVulkan {
         &self,
         fences: &[&RafxFenceVulkan],
     ) -> RafxResult<()> {
-        let mut fence_list = Vec::with_capacity(fences.len());
-        for fence in fences {
-            if fence.submitted() {
-                fence_list.push(fence.vk_fence());
-            }
-        }
-
-        if !fence_list.is_empty() {
-            let device = self.device();
-            unsafe {
-                device.wait_for_fences(&fence_list, true, std::u64::MAX)?;
-                device.reset_fences(&fence_list)?;
-            }
-        }
-
-        for fence in fences {
-            fence.set_submitted(false);
-        }
-
-        Ok(())
-    }
-
-    pub fn wait_for_device_idle(&self) -> RafxResult<()> {
-        unsafe {
-            self.device().device_wait_idle()?;
-            Ok(())
-        }
+        RafxFenceVulkan::wait_for_fences(self, fences)
     }
 
     pub fn create_sampler(
@@ -479,14 +454,7 @@ impl RafxDeviceContextVulkan {
         &self,
         data: RafxShaderModuleDefVulkan,
     ) -> RafxResult<RafxShaderModuleVulkan> {
-        match data {
-            RafxShaderModuleDefVulkan::VkSpvBytes(bytes) => {
-                RafxShaderModuleVulkan::new_from_bytes(self, bytes)
-            }
-            RafxShaderModuleDefVulkan::VkSpvPrepared(spv) => {
-                RafxShaderModuleVulkan::new_from_spv(self, spv)
-            }
-        }
+        RafxShaderModuleVulkan::new(self, data)
     }
 
     // // Just expects bytes with no particular alignment requirements, suitable for reading from a file

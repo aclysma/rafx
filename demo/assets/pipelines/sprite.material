@@ -1,0 +1,20 @@
+(
+    passes: [
+        (
+            phase: Some("Opaque"),
+            pipeline: "sprite.pipeline",
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/sprite.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/sprite.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)

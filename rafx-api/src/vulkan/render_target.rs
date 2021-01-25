@@ -1,11 +1,12 @@
 use crate::vulkan::{RafxDeviceContextVulkan, RafxRawImageVulkan, RafxTextureVulkan};
 use crate::{
     RafxRenderTarget, RafxRenderTargetDef, RafxResourceType, RafxResult, RafxTexture,
-    RafxTextureDef, RafxTextureDimensions,
+    RafxTextureDimensions,
 };
 use ash::version::DeviceV1_0;
 use ash::vk;
-use bitflags::_core::sync::atomic::AtomicBool;
+use std::hash::{Hash, Hasher};
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
@@ -40,6 +41,26 @@ impl Drop for RafxRenderTargetVulkanInner {
 #[derive(Clone, Debug)]
 pub struct RafxRenderTargetVulkan {
     inner: Arc<RafxRenderTargetVulkanInner>,
+}
+
+impl PartialEq for RafxRenderTargetVulkan {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.inner.render_target_id == other.inner.render_target_id
+    }
+}
+
+impl Eq for RafxRenderTargetVulkan {}
+
+impl Hash for RafxRenderTargetVulkan {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+    ) {
+        self.inner.render_target_id.hash(state);
+    }
 }
 
 impl RafxRenderTargetVulkan {
@@ -121,65 +142,20 @@ impl RafxRenderTargetVulkan {
         existing_image: Option<RafxRawImageVulkan>,
         render_target_def: &RafxRenderTargetDef,
     ) -> RafxResult<Self> {
-        assert!(render_target_def.extents.width > 0);
-        assert!(render_target_def.extents.height > 0);
-        assert!(render_target_def.extents.depth > 0);
-        assert!(render_target_def.array_length > 0);
-        assert!(render_target_def.mip_count > 0);
+        render_target_def.verify();
 
-        // we support only one or the other
-        assert!(
-            !(render_target_def.resource_type.contains(
-                RafxResourceType::RENDER_TARGET_ARRAY_SLICES
-                    | RafxResourceType::RENDER_TARGET_DEPTH_SLICES
-            ))
-        );
+        let texture_def = render_target_def.to_texture_def();
 
-        let has_depth = render_target_def.format.has_depth();
-
-        assert!(
-            !(has_depth
-                && render_target_def
-                    .resource_type
-                    .intersects(RafxResourceType::TEXTURE_READ_WRITE)),
-            "Cannot use depth stencil as UAV"
-        );
-
-        assert!(render_target_def.mip_count > 0);
-        let depth_array_size_multiple =
-            render_target_def.extents.depth * render_target_def.array_length;
-
-        let array_or_depth_slices = render_target_def.resource_type.intersects(
-            RafxResourceType::RENDER_TARGET_ARRAY_SLICES
-                | RafxResourceType::RENDER_TARGET_DEPTH_SLICES,
-        );
-
-        let mut texture_def = RafxTextureDef {
-            extents: render_target_def.extents.clone(),
-            array_length: render_target_def.array_length,
-            mip_count: render_target_def.mip_count,
-            sample_count: render_target_def.sample_count,
-            format: render_target_def.format,
-            resource_type: render_target_def.resource_type,
-            dimensions: render_target_def.dimensions,
-        };
-
-        if render_target_def.format.has_depth_or_stencil() {
-            texture_def.resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
-        } else {
-            texture_def.resource_type |= RafxResourceType::RENDER_TARGET_COLOR;
-        }
-
-        // By default make SRV views for render targets
-        texture_def.resource_type |= RafxResourceType::TEXTURE;
-
-        if has_depth {
-            //TODO: Check the format is supported with vkGetPhysicalDeviceImageFormatProperties or VkSwapchain::choose_supported_format()
-            // Either fail or default to something safe
-        }
+        //if has_depth {
+        //TODO: Check the format is supported with vkGetPhysicalDeviceImageFormatProperties or VkSwapchain::choose_supported_format()
+        // Either fail or default to something safe
+        //}
 
         let texture =
             RafxTextureVulkan::from_existing(device_context, existing_image, &texture_def)?;
+
+        let depth_array_size_multiple =
+            render_target_def.extents.depth * render_target_def.array_length;
 
         let image_view_type = if render_target_def.dimensions != RafxTextureDimensions::Dim1D {
             if depth_array_size_multiple > 1 {
@@ -217,6 +193,11 @@ impl RafxRenderTargetVulkan {
                 .device()
                 .create_image_view(&*image_view_create_info, None)?
         };
+
+        let array_or_depth_slices = render_target_def.resource_type.intersects(
+            RafxResourceType::RENDER_TARGET_ARRAY_SLICES
+                | RafxResourceType::RENDER_TARGET_DEPTH_SLICES,
+        );
 
         let mut view_slices = vec![];
         for i in 0..render_target_def.mip_count {

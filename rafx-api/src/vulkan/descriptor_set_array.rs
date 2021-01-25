@@ -256,7 +256,7 @@ impl RafxDescriptorSetArrayVulkan {
 
                 let samplers = update.elements.samplers.ok_or_else(||
                     format!(
-                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
+                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the samplers element list was None",
                         update.descriptor_key,
                         descriptor.set_index,
                         descriptor.binding,

@@ -1,6 +1,6 @@
 use crate::vulkan::RafxDeviceContextVulkan;
+use crate::RafxTextureDimensions;
 use crate::{RafxExtents3D, RafxResourceType, RafxResult, RafxTextureDef};
-use crate::{RafxSampleCount, RafxTextureDimensions};
 use ash::version::DeviceV1_0;
 use ash::vk;
 
@@ -138,14 +138,7 @@ impl RafxTextureVulkan {
         existing_image: Option<RafxRawImageVulkan>,
         texture_def: &RafxTextureDef,
     ) -> RafxResult<RafxTextureVulkan> {
-        assert!(texture_def.extents.width > 0);
-        assert!(texture_def.extents.height > 0);
-        assert!(texture_def.extents.depth > 0);
-        assert!(texture_def.array_length > 0);
-        assert!(texture_def.mip_count > 0);
-        assert!(
-            texture_def.mip_count < 2 || texture_def.sample_count == RafxSampleCount::SampleCount1
-        );
+        texture_def.verify();
 
         // if RW texture, create image viewsper mip, otherwise none?
 

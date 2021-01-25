@@ -28,7 +28,9 @@ impl RafxCommandPool {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandPool::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
             #[cfg(feature = "rafx-metal")]
-            RafxCommandPool::Metal(_inner) => unimplemented!(),
+            RafxCommandPool::Metal(inner) => {
+                RafxDeviceContext::Metal(inner.device_context().clone())
+            }
         }
     }
 
@@ -44,7 +46,9 @@ impl RafxCommandPool {
                 RafxCommandBuffer::Vk(inner.create_command_buffer(command_buffer_def)?)
             }
             #[cfg(feature = "rafx-metal")]
-            RafxCommandPool::Metal(_inner) => unimplemented!(),
+            RafxCommandPool::Metal(inner) => {
+                RafxCommandBuffer::Metal(inner.create_command_buffer(command_buffer_def)?)
+            }
         })
     }
 
@@ -58,7 +62,7 @@ impl RafxCommandPool {
             RafxCommandPool::Vk(inner) => inner.reset_command_pool(),
             // metal does not have the concept of command buffer pools in the API
             #[cfg(feature = "rafx-metal")]
-            RafxCommandPool::Metal(_) => Ok(()),
+            RafxCommandPool::Metal(inner) => inner.reset_command_pool(),
         }
     }
 

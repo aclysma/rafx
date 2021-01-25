@@ -23,7 +23,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-vulkan")]
             RafxSwapchain::Vk(inner) => inner.image_count(),
             #[cfg(feature = "rafx-metal")]
-            RafxSwapchain::Metal(_) => unimplemented!(),
+            RafxSwapchain::Metal(inner) => inner.image_count(),
         }
     }
 
@@ -33,7 +33,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-vulkan")]
             RafxSwapchain::Vk(inner) => inner.format(),
             #[cfg(feature = "rafx-metal")]
-            RafxSwapchain::Metal(_) => unimplemented!(),
+            RafxSwapchain::Metal(inner) => inner.format(),
         }
     }
 
@@ -43,7 +43,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-vulkan")]
             RafxSwapchain::Vk(inner) => inner.swapchain_def(),
             #[cfg(feature = "rafx-metal")]
-            RafxSwapchain::Metal(_) => unimplemented!(),
+            RafxSwapchain::Metal(inner) => inner.swapchain_def(),
         }
     }
 
@@ -58,7 +58,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-vulkan")]
             RafxSwapchain::Vk(inner) => inner.acquire_next_image_fence(fence.vk_fence().unwrap()),
             #[cfg(feature = "rafx-metal")]
-            RafxSwapchain::Metal(_) => unimplemented!(),
+            RafxSwapchain::Metal(inner) => inner.acquire_next_image(),
         }
     }
 
@@ -75,7 +75,7 @@ impl RafxSwapchain {
                 inner.acquire_next_image_semaphore(semaphore.vk_semaphore().unwrap())
             }
             #[cfg(feature = "rafx-metal")]
-            RafxSwapchain::Metal(_) => unimplemented!(),
+            RafxSwapchain::Metal(inner) => inner.acquire_next_image(),
         }
     }
 
@@ -88,7 +88,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-vulkan")]
             RafxSwapchain::Vk(inner) => inner.rebuild(swapchain_def),
             #[cfg(feature = "rafx-metal")]
-            RafxSwapchain::Metal(_) => unimplemented!(),
+            RafxSwapchain::Metal(inner) => inner.rebuild(swapchain_def),
         }
     }
 

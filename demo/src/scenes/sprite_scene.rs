@@ -19,12 +19,13 @@ impl SpriteScene {
             asset_resource.load_asset::<ImageAsset>("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38".into())
         };
 
-        for i in 0..1000 {
+        for i in 0..105 {
             let position = Vec3::new(
-                ((i / 10) * 25) as f32,
-                ((i % 10) * 25) as f32,
+                ((i / 7) * 50) as f32 - 350.0,
+                ((i % 7) * 50) as f32 - 200.0,
                 i as f32 * 1.0,
             );
+
             //let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
             let alpha = 1.0;
 

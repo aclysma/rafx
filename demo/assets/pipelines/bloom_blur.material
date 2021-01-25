@@ -1,0 +1,20 @@
+(
+    passes: [
+        (
+            phase: Some("PostProcess"),
+            pipeline: "bloom_blur.pipeline",
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/postprocess.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/bloom_blur.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)

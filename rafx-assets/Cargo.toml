@@ -46,6 +46,9 @@ profiling = "0.1.4"
 env_logger = "0.6"
 
 [features]
+rafx-vulkan = ["rafx-api/rafx-vulkan"]
+rafx-metal = ["rafx-api/rafx-metal"]
+
 profile-with-puffin = ["profiling/profile-with-puffin"]
 profile-with-optick = ["profiling/profile-with-optick"]
 profile-with-superluminal = ["profiling/profile-with-superluminal"]

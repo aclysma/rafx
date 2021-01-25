@@ -25,11 +25,12 @@ log = "0.4"
 fnv = "1.0"
 profiling = "0.1.4"
 serde = { version = "1", features = ["serde_derive"] }
+serde_bytes = "0.11"
 
 [features]
 default = []
-rafx-vulkan = []
-rafx-metal = []
+rafx-vulkan = ["rafx-api/rafx-vulkan"]
+rafx-metal = ["rafx-api/rafx-metal"]
 static-vulkan = ["rafx-api/static-vulkan"]
 
 profile-with-puffin = ["profiling/profile-with-puffin"]

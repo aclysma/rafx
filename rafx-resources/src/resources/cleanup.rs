@@ -1,4 +1,4 @@
-use rafx_api::{RafxDeviceContext, RafxResult};
+use rafx_api::RafxResult;
 use std::collections::VecDeque;
 use std::num::Wrapping;
 
@@ -80,12 +80,7 @@ impl<T> ResourceDropSink<T> {
 
     /// Immediately destroy everything. We assume the device is idle and nothing is in flight.
     /// Calling this function when the device is not idle could result in a deadlock
-    pub fn destroy(
-        &mut self,
-        device_context: &RafxDeviceContext,
-    ) -> RafxResult<()> {
-        device_context.wait_for_device_idle()?;
-
+    pub fn destroy(&mut self) -> RafxResult<()> {
         for resource in self.resources_in_flight.drain(..) {
             std::mem::drop(resource);
         }

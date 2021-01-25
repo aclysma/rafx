@@ -70,151 +70,7 @@ const float SHADOW_MAP_BIAS_MIN = 0.0005;
 
 //#define DEBUG_RENDER_PERCENT_LIT
 
-//
-// Per-Frame Pass
-//
-struct PointLight {
-    vec3 position_ws;
-    vec3 position_vs;
-    vec4 color;
-    float range;
-    float intensity;
-
-    // Index into shadow_map_images_cube and per_view_data.shadow_map_cube_data
-    int shadow_map;
-};
-
-struct DirectionalLight {
-    vec3 direction_ws;
-    vec3 direction_vs;
-    vec4 color;
-    float intensity;
-
-    // Index into shadow_map_images and per_view_data.shadow_map_2d_data
-    int shadow_map;
-};
-
-struct SpotLight {
-    vec3 position_ws;
-    vec3 direction_ws;
-    vec3 position_vs;
-    vec3 direction_vs;
-    vec4 color;
-    float spotlight_half_angle;
-    float range;
-    float intensity;
-
-    // Index into shadow_map_images and per_view_data.shadow_map_2d_data
-    int shadow_map;
-};
-
-struct ShadowMap2DData {
-    mat4 shadow_map_view_proj;
-    vec3 shadow_map_light_dir;
-};
-
-struct ShadowMapCubeData {
-    // We just need the cubemap's near/far z values, not the whole projection matrix
-    float cube_map_projection_near_z;
-    float cube_map_projection_far_z;
-};
-
-// @[export]
-// @[internal_buffer]
-layout (set = 0, binding = 0) uniform PerViewData {
-    vec4 ambient_light;
-    uint point_light_count;
-    uint directional_light_count;
-    uint spot_light_count;
-    PointLight point_lights[16];
-    DirectionalLight directional_lights[16];
-    SpotLight spot_lights[16];
-    ShadowMap2DData shadow_map_2d_data[32];
-    ShadowMapCubeData shadow_map_cube_data[16];
-} per_view_data;
-
-
-// @[immutable_samplers([
-//     (
-//         mag_filter: Linear,
-//         min_filter: Linear,
-//         mip_map_mode: Linear,
-//         address_mode_u: Repeat,
-//         address_mode_v: Repeat,
-//         address_mode_w: Repeat,
-//         max_anisotropy: 16.0,
-//     )
-// ])]
-layout (set = 0, binding = 1) uniform sampler smp;
-
-// @[immutable_samplers([
-//     (
-//         mag_filter: Linear,
-//         min_filter: Linear,
-//         mip_map_mode: Linear,
-//         address_mode_u: ClampToBorder,
-//         address_mode_v: ClampToBorder,
-//         address_mode_w: ClampToBorder,
-//         anisotropy_enable: true,
-//         max_anisotropy: 16.0,
-//         compare_op: Greater,
-//     )
-// ])]
-layout (set = 0, binding = 2) uniform sampler smp_depth;
-
-// @[export]
-layout (set = 0, binding = 3) uniform texture2D shadow_map_images[32];
-
-// @[export]
-layout (set = 0, binding = 4) uniform textureCube shadow_map_images_cube[16];
-
-//
-// Per-Material Bindings
-//
-struct MaterialData {
-    vec4 base_color_factor;
-    vec3 emissive_factor;
-    float metallic_factor;
-    float roughness_factor;
-    float normal_texture_scale;
-    float occlusion_texture_strength;
-    float alpha_cutoff;
-    bool has_base_color_texture;
-    bool has_metallic_roughness_texture;
-    bool has_normal_texture;
-    bool has_occlusion_texture;
-    bool has_emissive_texture;
-};
-
-// @[export]
-// @[internal_buffer]
-// @[slot_name("per_material_data")]
-layout (set = 1, binding = 0) uniform MaterialDataUbo {
-    MaterialData data;
-} per_material_data;
-
-// @[export]
-// @[slot_name("base_color_texture")]
-layout (set = 1, binding = 1) uniform texture2D base_color_texture;
-
-// @[export]
-// @[slot_name("metallic_roughness_texture")]
-layout (set = 1, binding = 2) uniform texture2D metallic_roughness_texture;
-
-// @[export]
-// @[slot_name("normal_texture")]
-layout (set = 1, binding = 3) uniform texture2D normal_texture;
-
-// @[export]
-// @[slot_name("occlusion_texture")]
-layout (set = 1, binding = 4) uniform texture2D occlusion_texture;
-
-// @[export]
-// @[slot_name("emissive_texture")]
-layout (set = 1, binding = 5) uniform texture2D emissive_texture;
-
-// set = 2, binding = 0
-#include "mesh_common_bindings.glsl"
+#include "mesh.glsl"
 
 layout (location = 0) in vec3 in_position_vs;
 layout (location = 1) in vec3 in_normal_vs;
@@ -422,11 +278,13 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     //  - [shadowmap view/proj matrix] * [surface position]
     //  - perspective divide
     //  - Convert XY's [-1, 1] range to [0, 1] UV coordinate range so we can sample the shadow map
+    //  - Flip the Y, UV is +y down and NDC is +y up
     //  - Use the Z which represents the depth of the surface from the shadow map's projection's point of view
     //    It is [0, 1] range already so no adjustment needed
     vec4 shadow_map_pos = per_view_data.shadow_map_2d_data[index].shadow_map_view_proj * in_position_ws;
     vec3 projected = shadow_map_pos.xyz / shadow_map_pos.w;
     vec2 sample_location_uv = projected.xy * 0.5 + 0.5;
+    sample_location_uv.y = 1.0 - sample_location_uv.y;
     float depth_of_surface = projected.z;
 
     // Determine the direction of the light so we can apply more bias when light is near orthogonal to the normal

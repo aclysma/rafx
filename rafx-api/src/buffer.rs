@@ -28,7 +28,7 @@ impl RafxBuffer {
             #[cfg(feature = "rafx-vulkan")]
             RafxBuffer::Vk(inner) => inner.copy_to_host_visible_buffer(data),
             #[cfg(feature = "rafx-metal")]
-            RafxBuffer::Metal(_inner) => unimplemented!(),
+            RafxBuffer::Metal(inner) => inner.copy_to_host_visible_buffer(data),
         }
     }
 
@@ -45,7 +45,9 @@ impl RafxBuffer {
                 inner.copy_to_host_visible_buffer_with_offset(data, buffer_byte_offset)
             }
             #[cfg(feature = "rafx-metal")]
-            RafxBuffer::Metal(_inner) => unimplemented!(),
+            RafxBuffer::Metal(inner) => {
+                inner.copy_to_host_visible_buffer_with_offset(data, buffer_byte_offset)
+            }
         }
     }
 
@@ -55,7 +57,7 @@ impl RafxBuffer {
             #[cfg(feature = "rafx-vulkan")]
             RafxBuffer::Vk(inner) => inner.buffer_def(),
             #[cfg(feature = "rafx-metal")]
-            RafxBuffer::Metal(_inner) => unimplemented!(),
+            RafxBuffer::Metal(inner) => inner.buffer_def(),
         }
     }
 
@@ -71,7 +73,7 @@ impl RafxBuffer {
             #[cfg(feature = "rafx-vulkan")]
             RafxBuffer::Vk(inner) => inner.map_buffer(),
             #[cfg(feature = "rafx-metal")]
-            RafxBuffer::Metal(_inner) => unimplemented!(),
+            RafxBuffer::Metal(inner) => inner.map_buffer(),
         }
     }
 
@@ -86,7 +88,7 @@ impl RafxBuffer {
             #[cfg(feature = "rafx-vulkan")]
             RafxBuffer::Vk(inner) => inner.unmap_buffer(),
             #[cfg(feature = "rafx-metal")]
-            RafxBuffer::Metal(_inner) => unimplemented!(),
+            RafxBuffer::Metal(inner) => inner.unmap_buffer(),
         }
     }
 
@@ -99,7 +101,7 @@ impl RafxBuffer {
     //         #[cfg(feature = "rafx-vulkan")]
     //         RafxBuffer::Vk(inner) => inner.mapped_memory(),
     //         #[cfg(feature = "rafx-metal")]
-    //         RafxBuffer::Metal(_inner) => unimplemented!(),
+    //         RafxBuffer::Metal(inner) => inner.mapped_memory(),
     //     }
     // }
 

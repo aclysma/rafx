@@ -3,7 +3,7 @@ use crate::parse_declarations::{
 };
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::RafxResourceType;
-use rafx_assets::assets::reflect::ReflectedEntryPoint;
+use rafx_resources::cooked_shader::ReflectedEntryPoint;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 

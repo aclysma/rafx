@@ -74,8 +74,11 @@ and run the demo.
 ```
 git clone https://github.com/aclysma/rafx.git
 cd rafx
-cargo run --bin demo --release
+cd demo
+cargo run --bin demo --release --features "[BACKEND_FEATURE]"
 ```
+
+BACKEND_FEATURE should either be "rafx-vulkan" or "rafx-metal"
 
 Running in release reduces logging and disables GPU validation. The first time it will load more slowly because it
 has to import the assets, including a GLTF mesh with large textures. **Using profile overrides to optimize upstream crates
@@ -154,7 +157,7 @@ The demo/fonts directory contains several fonts under their own licenses:
  * [FontAwesome 4.7.0](https://fontawesome.com/v4.7.0/license/), available under SIL OFL 1.1
  * [`mplus-1p-regular.ttf`](http://mplus-fonts.osdn.jp), available under its own license.
 
-The assets/blender contains some shaders from from https://freepbr.com, available under [its own license](assets/blender/pbr_texture_attribution.txt)
+The assets/blender contains some shaders from from https://freepbr.com, available under [its own license](demo/assets/blender/pbr_texture_attribution.txt)
 
 Some dependencies may be licensed under other terms. These licenses include "ISC", "CC0-1.0", "BSD-2-Clause",
 "BSD-3-Clause", and "Zlib". This is validated on a best-effort basis in every CI run using cargo-deny.

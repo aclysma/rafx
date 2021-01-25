@@ -73,21 +73,6 @@ pub fn perspective_rh(
     )
 }
 
-pub fn matrix_flip_y(proj: glam::Mat4) -> glam::Mat4 {
-    glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj
-}
-
-// Equivalent to flipping near/far values?
-pub fn matrix_reverse_z(proj: glam::Mat4) -> glam::Mat4 {
-    let reverse_mat = glam::Mat4::from_cols(
-        glam::Vec4::new(1.0, 0.0, 0.0, 0.0),
-        glam::Vec4::new(0.0, 1.0, 0.0, 0.0),
-        glam::Vec4::new(0.0, 0.0, -1.0, 0.0),
-        glam::Vec4::new(0.0, 0.0, 1.0, 1.0),
-    );
-    reverse_mat * proj
-}
-
 #[derive(Clone)]
 pub struct ImguiFontAtlas(pub ResourceArc<ImageViewResource>);
 #[derive(Clone)]
@@ -766,8 +751,6 @@ impl GameRenderer {
             aspect_ratio,
             near_plane,
         );
-        // Flip it on Y
-        let proj = glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, 1.0)) * proj;
 
         render_view_set.create_view(
             eye,
@@ -808,7 +791,6 @@ impl GameRenderer {
             let near_plane = 0.25;
             let far_plane = 100.0;
             let proj = perspective_rh(light.spotlight_half_angle * 2.0, 1.0, far_plane, near_plane);
-            let proj = matrix_flip_y(proj);
 
             let view = render_view_set.create_view(
                 eye_position,
@@ -841,8 +823,8 @@ impl GameRenderer {
             let proj = glam::Mat4::orthographic_rh(
                 -ortho_projection_size,
                 ortho_projection_size,
-                ortho_projection_size,
                 -ortho_projection_size,
+                ortho_projection_size,
                 far_plane,
                 near_plane,
             );
@@ -893,7 +875,6 @@ impl GameRenderer {
                 let near = 0.25;
                 let far = light.range;
                 let proj = glam::Mat4::perspective_lh(std::f32::consts::FRAC_PI_2, 1.0, far, near);
-                let proj = matrix_flip_y(proj);
 
                 render_view_set.create_view(
                     position,

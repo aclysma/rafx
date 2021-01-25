@@ -1,7 +1,5 @@
 use super::*;
 use crate::{RafxRootSignature, RafxSampler, RafxShader, RafxShaderModule};
-#[cfg(feature = "rafx-vulkan")]
-use ash::vk;
 use rafx_base::DecimalF32;
 use std::hash::{Hash, Hasher};
 
@@ -167,6 +165,17 @@ impl Default for RafxTextureDef {
     }
 }
 
+impl RafxTextureDef {
+    pub fn verify(&self) {
+        assert!(self.extents.width > 0);
+        assert!(self.extents.height > 0);
+        assert!(self.extents.depth > 0);
+        assert!(self.array_length > 0);
+        assert!(self.mip_count > 0);
+        assert!(self.mip_count < 2 || self.sample_count == RafxSampleCount::SampleCount1);
+    }
+}
+
 //TODO: Could just use RafxTextureDef
 #[derive(Clone, Debug)]
 pub struct RafxRenderTargetDef {
@@ -199,6 +208,57 @@ impl Default for RafxRenderTargetDef {
     }
 }
 
+impl RafxRenderTargetDef {
+    pub fn to_texture_def(&self) -> RafxTextureDef {
+        let mut texture_def = RafxTextureDef {
+            extents: self.extents.clone(),
+            array_length: self.array_length,
+            mip_count: self.mip_count,
+            sample_count: self.sample_count,
+            format: self.format,
+            resource_type: self.resource_type,
+            dimensions: self.dimensions,
+        };
+
+        if self.format.has_depth_or_stencil() {
+            texture_def.resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
+        } else {
+            texture_def.resource_type |= RafxResourceType::RENDER_TARGET_COLOR;
+        }
+
+        // By default make SRV views for render targets
+        texture_def.resource_type |= RafxResourceType::TEXTURE;
+
+        texture_def
+    }
+}
+
+impl RafxRenderTargetDef {
+    pub fn verify(&self) {
+        assert!(self.extents.width > 0);
+        assert!(self.extents.height > 0);
+        assert!(self.extents.depth > 0);
+        assert!(self.array_length > 0);
+        assert!(self.mip_count > 0);
+
+        // we support only one or the other
+        assert!(
+            !(self.resource_type.contains(
+                RafxResourceType::RENDER_TARGET_ARRAY_SLICES
+                    | RafxResourceType::RENDER_TARGET_DEPTH_SLICES
+            ))
+        );
+
+        assert!(
+            !(self.format.has_depth()
+                && self
+                    .resource_type
+                    .intersects(RafxResourceType::TEXTURE_READ_WRITE)),
+            "Cannot use depth stencil as UAV"
+        );
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RafxCommandPoolDef {
     /// Set to true if the command buffers allocated from the pool are expected to have very short
@@ -220,141 +280,10 @@ pub struct RafxSwapchainDef {
     // image count?
 }
 
-// Stage refers to shader modules, but the method for creating them is very API-specific right now
-// and we don't provide an abstraction
-
-/// Metal-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
-/// used to initialize a shader module GPU object
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-pub enum RafxShaderPackageMetal {
-    /// Raw uncompiled sorce code. Will be compiled at runtime.
-    Src(String),
-    /// Pre-built binary "metallib" file loaded into memory
-    #[cfg_attr(feature = "serde-support", serde(with = "serde_bytes"))]
-    LibBytes(Vec<u8>),
-}
-
-/// Vulkan-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
-/// used to initialize a shader module GPU object
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-pub enum RafxShaderPackageVulkan {
-    /// Raw SPV bytes, no alignment or endianness requirements.
-    #[cfg_attr(feature = "serde-support", serde(with = "serde_bytes"))]
-    SpvBytes(Vec<u8>),
-}
-
-/// Owns data necessary to create a shader module in (optionally) multiple APIs.
-///
-/// This struct can be serialized/deserialized and is intended to allow asset pipeline to store
-/// a shader module to be created at runtime. The package can optionally include data for multiple
-/// APIs allowing a single file to be used with whatever API is found at runtime.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-pub struct RafxShaderPackage {
-    pub metal: Option<RafxShaderPackageMetal>,
-    pub vk: Option<RafxShaderPackageVulkan>,
-}
-
-impl RafxShaderPackage {
-    /// Create a shader module def for use with a metal RafxDevice. Returns none if the package does
-    /// not contain data necessary for metal
-    #[cfg(feature = "rafx-metal")]
-    pub fn metal_module_def(&self) -> Option<RafxShaderModuleDefMetal> {
-        if let Some(metal) = self.metal.as_ref() {
-            Some(match metal {
-                RafxShaderPackageMetal::Src(src) => RafxShaderModuleDefMetal::MetalSrc(src),
-                RafxShaderPackageMetal::LibBytes(lib) => {
-                    RafxShaderModuleDefMetal::MetalLibBytes(lib)
-                }
-            })
-        } else {
-            None
-        }
-    }
-
-    /// Create a shader module def for use with a vulkan RafxDevice. Returns none if the package
-    /// does not contain data necessary for vulkan
-    #[cfg(feature = "rafx-vulkan")]
-    pub fn vulkan_module_def(&self) -> Option<RafxShaderModuleDefVulkan> {
-        if let Some(vk) = self.vk.as_ref() {
-            Some(match vk {
-                RafxShaderPackageVulkan::SpvBytes(bytes) => {
-                    RafxShaderModuleDefVulkan::VkSpvBytes(bytes)
-                }
-            })
-        } else {
-            None
-        }
-    }
-
-    pub fn module_def(&self) -> RafxShaderModuleDef {
-        RafxShaderModuleDef {
-            #[cfg(feature = "rafx-metal")]
-            metal: self.metal_module_def(),
-            #[cfg(feature = "rafx-vulkan")]
-            vk: self.vulkan_module_def(),
-        }
-    }
-}
-
-/// Used to create a RafxShaderModule
-///
-/// This enum may be populated manually or created from a RafxShaderPackage.
-#[derive(Copy, Clone, Hash)]
-#[cfg(feature = "rafx-metal")]
-pub enum RafxShaderModuleDefMetal<'a> {
-    /// Metal source code
-    MetalSrc(&'a str),
-    /// Pre-compiled library loaded as bytes
-    MetalLibBytes(&'a [u8]),
-}
-
-/// Used to create a RafxShaderModule
-///
-/// This enum may be populated manually or created from a RafxShaderPackage.
-#[derive(Copy, Clone, Hash)]
-#[cfg(feature = "rafx-vulkan")]
-pub enum RafxShaderModuleDefVulkan<'a> {
-    /// Raw SPV bytes, no alignment or endianness requirements.
-    VkSpvBytes(&'a [u8]),
-    /// Prepared SPV that's aligned and correct endian. No validation.
-    VkSpvPrepared(&'a [u32]),
-}
-
-/// Used to create a RafxShaderModule
-///
-/// This enum may be populated manually or created from a RafxShaderPackage.
-#[derive(Copy, Clone, Hash)]
-#[cfg(any(feature = "rafx-vulkan", feature = "rafx-metal"))]
-pub struct RafxShaderModuleDef<'a> {
-    #[cfg(feature = "rafx-metal")]
-    pub metal: Option<RafxShaderModuleDefMetal<'a>>,
-    #[cfg(feature = "rafx-vulkan")]
-    pub vk: Option<RafxShaderModuleDefVulkan<'a>>,
-}
-
-// #[derive(Hash)]
-// #[cfg(any(feature = "rafx-vulkan"))]
-// pub enum RafxShaderModuleDef<'a> {
-//     #[cfg(feature = "rafx-vulkan")]
-//     Vk(RafxShaderModuleDefVulkan<'a>),
-// }
-
-// RafxShaderModuleDef will have an unused lifetime if no features are enabled
-#[derive(Hash)]
-#[cfg(not(any(feature = "rafx-vulkan", feature = "rafx-metal")))]
-pub enum RafxShaderModuleDef {}
-
 #[derive(Clone, Debug)]
 pub struct RafxShaderStageDef {
-    pub shader_stage: RafxShaderStageFlags,
-    pub entry_point: String,
     pub shader_module: RafxShaderModule,
-
-    // This is essentially reflection data, it can be manually supplied or autogenerated from reflection
-    pub resources: Vec<RafxShaderResource>,
+    pub reflection: RafxShaderStageReflection,
 }
 
 impl RafxShaderStageDef {
@@ -371,10 +300,10 @@ impl RafxShaderStageDef {
             shader_module_hashes: &[ShaderModuleHashT],
         ) {
             for (stage, shader_module_hash) in stage_defs.iter().zip(shader_module_hashes) {
-                if stage.shader_stage.intersects(stage_flag) {
-                    stage.shader_stage.hash(hasher);
-                    stage.entry_point.hash(hasher);
-                    stage.resources.hash(hasher);
+                if stage.reflection.shader_stage.intersects(stage_flag) {
+                    stage.reflection.shader_stage.hash(hasher);
+                    stage.reflection.entry_point_name.hash(hasher);
+                    stage.reflection.resources.hash(hasher);
                     shader_module_hash.hash(hasher);
                     break;
                 }
@@ -581,41 +510,6 @@ impl Default for RafxDepthState {
     }
 }
 
-impl RafxDepthState {
-    #[cfg(feature = "rafx-vulkan")]
-    pub fn into_vk_create_info(&self) -> vk::PipelineDepthStencilStateCreateInfo {
-        let front = vk::StencilOpState::builder()
-            .fail_op(self.front_stencil_fail_op.into())
-            .pass_op(self.front_stencil_pass_op.into())
-            .depth_fail_op(self.front_depth_fail_op.into())
-            .compare_op(self.front_stencil_compare_op.into())
-            .compare_mask(self.stencil_read_mask as u32)
-            .write_mask(self.stencil_write_mask as u32)
-            .reference(0);
-
-        let back = vk::StencilOpState::builder()
-            .fail_op(self.back_stencil_fail_op.into())
-            .pass_op(self.back_stencil_pass_op.into())
-            .depth_fail_op(self.back_depth_fail_op.into())
-            .compare_op(self.back_stencil_compare_op.into())
-            .compare_mask(self.stencil_read_mask as u32)
-            .write_mask(self.stencil_write_mask as u32)
-            .reference(0);
-
-        vk::PipelineDepthStencilStateCreateInfo::builder()
-            .depth_test_enable(self.depth_test_enable)
-            .depth_write_enable(self.depth_write_enable)
-            .depth_compare_op(self.depth_compare_op.into())
-            .depth_bounds_test_enable(false)
-            .stencil_test_enable(self.stencil_test_enable)
-            .min_depth_bounds(0.0)
-            .max_depth_bounds(1.0)
-            .front(*front)
-            .back(*back)
-            .build()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxRasterizerState {
@@ -660,24 +554,6 @@ impl Default for RafxRasterizerState {
             multisample: false,
             scissor: false,
         }
-    }
-}
-
-impl RafxRasterizerState {
-    #[cfg(feature = "rafx-vulkan")]
-    pub fn into_vk_create_info(&self) -> vk::PipelineRasterizationStateCreateInfo {
-        vk::PipelineRasterizationStateCreateInfo::builder()
-            .depth_clamp_enable(self.depth_clamp_enable)
-            .rasterizer_discard_enable(false)
-            .polygon_mode(self.fill_mode.into())
-            .cull_mode(self.cull_mode.into())
-            .front_face(self.front_face.into())
-            .depth_bias_enable(self.depth_bias != 0)
-            .depth_bias_constant_factor(self.depth_bias as f32)
-            .depth_bias_clamp(0.0)
-            .depth_bias_slope_factor(self.depth_bias_slope_scaled)
-            .line_width(1.0)
-            .build()
     }
 }
 
@@ -726,23 +602,11 @@ impl RafxBlendStateRenderTarget {
 }
 
 impl RafxBlendStateRenderTarget {
-    #[cfg(feature = "rafx-vulkan")]
-    pub fn into_vk_create_info(&self) -> vk::PipelineColorBlendAttachmentState {
-        let blend_enable = self.src_factor != RafxBlendFactor::One
+    pub fn blend_enabled(&self) -> bool {
+        self.src_factor != RafxBlendFactor::One
             || self.src_factor_alpha != RafxBlendFactor::One
             || self.dst_factor != RafxBlendFactor::Zero
-            || self.dst_factor_alpha != RafxBlendFactor::Zero;
-
-        vk::PipelineColorBlendAttachmentState::builder()
-            .blend_enable(blend_enable)
-            .color_write_mask(self.masks.into())
-            .src_color_blend_factor(self.src_factor.into())
-            .src_alpha_blend_factor(self.src_factor_alpha.into())
-            .dst_color_blend_factor(self.dst_factor.into())
-            .dst_alpha_blend_factor(self.dst_factor_alpha.into())
-            .color_blend_op(self.blend_op.into())
-            .alpha_blend_op(self.blend_op_alpha.into())
-            .build()
+            || self.dst_factor_alpha != RafxBlendFactor::Zero
     }
 }
 
@@ -765,64 +629,15 @@ impl Default for RafxBlendState {
     }
 }
 
-//WARNING: This struct has pointers into the attachments vector. Don't mutate or drop the
-// attachments vector
-#[cfg(feature = "rafx-vulkan")]
-pub struct RafxBlendStateVkCreateInfo {
-    _attachments: Vec<vk::PipelineColorBlendAttachmentState>,
-    blend_state: vk::PipelineColorBlendStateCreateInfo,
-}
-
-#[cfg(feature = "rafx-vulkan")]
-impl RafxBlendStateVkCreateInfo {
-    pub fn blend_state(&self) -> &vk::PipelineColorBlendStateCreateInfo {
-        &self.blend_state
-    }
-}
-
 impl RafxBlendState {
-    #[cfg(feature = "rafx-vulkan")]
-    pub fn into_vk_create_info(
+    pub fn verify(
         &self,
         color_attachment_count: usize,
-    ) -> RafxBlendStateVkCreateInfo {
-        let mut blend_attachments_states = vec![];
-
+    ) {
         if !self.independent_blend {
             assert_eq!(self.render_target_blend_states.len(), 1, "If RafxBlendState::independent_blend is false, RafxBlendState::render_target_blend_states must be 1");
         } else {
             assert_eq!(self.render_target_blend_states.len(), color_attachment_count, "If RafxBlendState::independent_blend is true, RafxBlendState::render_target_blend_states length must match color attachment count");
-        }
-
-        if let Some(first_attachment) = self.render_target_blend_states.first() {
-            for attachment_index in 0..color_attachment_count {
-                let attachment_state = if self
-                    .render_target_mask
-                    .intersects(RafxBlendStateTargets::from_bits(1 << attachment_index).unwrap())
-                {
-                    if self.independent_blend {
-                        self.render_target_blend_states[attachment_index].into_vk_create_info()
-                    } else {
-                        first_attachment.into_vk_create_info()
-                    }
-                } else {
-                    vk::PipelineColorBlendAttachmentState::default()
-                };
-
-                blend_attachments_states.push(attachment_state)
-            }
-        }
-
-        let blend_state_create_info = vk::PipelineColorBlendStateCreateInfo::builder()
-            .logic_op_enable(false)
-            .logic_op(vk::LogicOp::CLEAR)
-            .attachments(&blend_attachments_states)
-            .blend_constants([0.0, 0.0, 0.0, 0.0])
-            .build();
-
-        RafxBlendStateVkCreateInfo {
-            _attachments: blend_attachments_states,
-            blend_state: blend_state_create_info,
         }
     }
 }

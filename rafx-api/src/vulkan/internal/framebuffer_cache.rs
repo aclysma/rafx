@@ -27,13 +27,19 @@ impl RafxFramebufferVulkanCache {
         for color_target in color_targets {
             color_target
                 .render_target
+                .vk_render_target()
+                .unwrap()
                 .render_target_id()
                 .hash(&mut hasher);
             color_target.mip_slice.hash(&mut hasher);
             color_target.array_slice.hash(&mut hasher);
 
             if let Some(resolve_target) = color_target.resolve_target {
-                resolve_target.render_target_id().hash(&mut hasher);
+                resolve_target
+                    .vk_render_target()
+                    .unwrap()
+                    .render_target_id()
+                    .hash(&mut hasher);
                 color_target.resolve_mip_slice.hash(&mut hasher);
                 color_target.resolve_array_slice.hash(&mut hasher);
             }
@@ -42,6 +48,8 @@ impl RafxFramebufferVulkanCache {
         if let Some(depth_target) = &depth_target {
             depth_target
                 .render_target
+                .vk_render_target()
+                .unwrap()
                 .render_target_id()
                 .hash(&mut hasher);
             depth_target.mip_slice.hash(&mut hasher);

@@ -92,7 +92,8 @@ impl RafxPipelineVulkan {
 
         let mut entry_point_names = vec![];
         for stage in pipeline_def.shader.vk_shader().unwrap().stages() {
-            entry_point_names.push(CString::new(stage.entry_point.clone()).unwrap());
+            entry_point_names
+                .push(CString::new(stage.reflection.entry_point_name.clone()).unwrap());
         }
 
         let mut stages = vec![];
@@ -114,7 +115,7 @@ impl RafxPipelineVulkan {
                             .unwrap()
                             .vk_shader_module(),
                     )
-                    .stage(stage.shader_stage.into())
+                    .stage(stage.reflection.shader_stage.into())
                     .build(),
             );
         }
@@ -167,11 +168,13 @@ impl RafxPipelineVulkan {
             .alpha_to_coverage_enable(false) // pipeline_def.blend_state.alpha_to_coverage_enable?
             .alpha_to_one_enable(false);
 
-        let rasterization_state = pipeline_def.rasterizer_state.into_vk_create_info();
-        let depth_state = pipeline_def.depth_state.into_vk_create_info();
-        let blend_state = pipeline_def
-            .blend_state
-            .into_vk_create_info(pipeline_def.color_formats.len());
+        let rasterization_state =
+            super::util::rasterizer_state_to_create_info(&pipeline_def.rasterizer_state);
+        let depth_state = super::util::depth_state_to_create_info(pipeline_def.depth_state);
+        let blend_state = super::util::blend_state_to_create_info(
+            pipeline_def.blend_state,
+            pipeline_def.color_formats.len(),
+        );
 
         let dynamic_states = [
             vk::DynamicState::VIEWPORT,
@@ -241,11 +244,13 @@ impl RafxPipelineVulkan {
 
         let mut entry_point_names = vec![];
         for stage in vk_shader.stages() {
-            entry_point_names.push(CString::new(stage.entry_point.clone()).unwrap());
+            entry_point_names
+                .push(CString::new(stage.reflection.entry_point_name.clone()).unwrap());
         }
 
         let compute_stage = &vk_shader.stages()[0];
-        let entry_point_name = CString::new(compute_stage.entry_point.clone()).unwrap();
+        let entry_point_name =
+            CString::new(compute_stage.reflection.entry_point_name.clone()).unwrap();
         let stage = vk::PipelineShaderStageCreateInfo::builder()
             .name(&entry_point_name)
             .module(

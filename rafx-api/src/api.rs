@@ -64,7 +64,7 @@ impl RafxApi {
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
             #[cfg(feature = "rafx-metal")]
-            RafxApi::Metal(_inner) => unimplemented!(),
+            RafxApi::Metal(inner) => RafxDeviceContext::Metal(inner.device_context().clone()),
         }
     }
 
@@ -78,7 +78,7 @@ impl RafxApi {
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(inner) => inner.destroy(),
             #[cfg(feature = "rafx-metal")]
-            RafxApi::Metal(_inner) => unimplemented!(),
+            RafxApi::Metal(inner) => inner.destroy(),
         }
     }
 

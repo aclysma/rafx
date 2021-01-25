@@ -112,6 +112,18 @@ impl Drop for RafxSwapchainVulkan {
 }
 
 impl RafxSwapchainVulkan {
+    pub fn swapchain_def(&self) -> &RafxSwapchainDef {
+        &self.swapchain_def
+    }
+
+    pub fn image_count(&self) -> usize {
+        self.swapchain.swapchain_images.len()
+    }
+
+    pub fn format(&self) -> RafxFormat {
+        self.swapchain.swapchain_info.surface_format.format.into()
+    }
+
     pub fn new(
         device_context: &RafxDeviceContextVulkan,
         raw_window_handle: &dyn HasRawWindowHandle,
@@ -193,30 +205,6 @@ impl RafxSwapchainVulkan {
         Ok(())
     }
 
-    pub fn swapchain_def(&self) -> &RafxSwapchainDef {
-        &self.swapchain_def
-    }
-
-    pub fn image_count(&self) -> usize {
-        self.swapchain.swapchain_images.len()
-    }
-
-    pub fn format(&self) -> RafxFormat {
-        self.swapchain.swapchain_info.surface_format.format.into()
-    }
-
-    pub(crate) fn dedicated_present_queue(&self) -> Option<vk::Queue> {
-        self.swapchain.dedicated_present_queue
-    }
-
-    pub(crate) fn vk_swapchain(&self) -> vk::SwapchainKHR {
-        self.swapchain.swapchain
-    }
-
-    pub(crate) fn vk_swapchain_loader(&self) -> &khr::Swapchain {
-        &*self.swapchain.swapchain_loader
-    }
-
     //TODO: Return something like PresentResult?
     pub fn acquire_next_image_fence(
         &mut self,
@@ -277,6 +265,18 @@ impl RafxSwapchainVulkan {
                 Err(RafxError::VkError(e))
             }
         }
+    }
+
+    pub(crate) fn dedicated_present_queue(&self) -> Option<vk::Queue> {
+        self.swapchain.dedicated_present_queue
+    }
+
+    pub(crate) fn vk_swapchain(&self) -> vk::SwapchainKHR {
+        self.swapchain.swapchain
+    }
+
+    pub(crate) fn vk_swapchain_loader(&self) -> &khr::Swapchain {
+        &*self.swapchain.swapchain_loader
     }
 
     fn setup_swapchain_images(

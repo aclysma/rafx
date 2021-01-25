@@ -7,15 +7,14 @@ use crate::assets::{
 use crate::assets::{GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData};
 use crate::{
     AssetLookup, AssetLookupSet, BufferAssetData, ComputePipelineAsset, ComputePipelineAssetData,
-    GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SamplerAssetData, SlotNameLookup,
-    UploadQueueConfig,
+    GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SamplerAssetData, UploadQueueConfig,
 };
 use atelier_assets::loader::handle::Handle;
 use rafx_resources::{
     ComputePipelineResource, DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider,
     DescriptorSetAllocatorRef, DescriptorSetLayout, DescriptorSetLayoutResource,
     DescriptorSetWriteSet, DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPassResource,
-    ResourceArc, ShaderModuleMeta,
+    ResourceArc, ShaderModuleMeta, SlotNameLookup,
 };
 
 use super::asset_lookup::LoadedAssetMetrics;
@@ -612,7 +611,7 @@ impl AssetManager {
         if let Some(reflection_data) = &shader_module.reflection_data {
             for entry_point in reflection_data {
                 let old = reflection_data_lookup.insert(
-                    entry_point.rafx_reflection.entry_point_name.clone(),
+                    entry_point.rafx_api_reflection.entry_point_name.clone(),
                     entry_point.clone(),
                 );
                 assert!(old.is_none());
@@ -681,9 +680,7 @@ impl AssetManager {
         let shader = self.resources().get_or_create_shader(
             &[RafxShaderStageDef {
                 shader_module: shader_module.shader_module.get_raw().shader_module.clone(),
-                entry_point: compute_pipeline_asset_data.entry_name,
-                shader_stage: RafxShaderStageFlags::COMPUTE,
-                resources: reflection_data.rafx_reflection.resources.clone(),
+                reflection: reflection_data.rafx_api_reflection.clone(),
             }],
             &[shader_module.shader_module.clone()],
         )?;
@@ -982,6 +979,10 @@ impl Drop for AssetManager {
     fn drop(&mut self) {
         log::info!("Cleaning up asset manager");
         log::trace!("Asset Manager Metrics:\n{:#?}", self.metrics());
+
+        // Wait for queues to be idle before destroying resources
+        self.transfer_queue.wait_for_queue_idle().unwrap();
+        self.graphics_queue.wait_for_queue_idle().unwrap();
 
         // Wipe out any loaded assets. This will potentially drop ref counts on resources
         self.loaded_assets.destroy();

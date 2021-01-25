@@ -1,4 +1,4 @@
-use crate::{RafxApiDef, RafxResult, RafxValidationMode};
+use crate::{RafxApiDef, RafxResult};
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
@@ -24,9 +24,9 @@ impl RafxApiMetal {
     }
 
     pub fn new(
-        window: &dyn HasRawWindowHandle,
-        api_def: &RafxApiDef,
-        vk_api_def: &RafxApiDefMetal,
+        _window: &dyn HasRawWindowHandle,
+        _api_def: &RafxApiDef,
+        _metal_api_def: &RafxApiDefMetal,
     ) -> RafxResult<Self> {
         let inner = Arc::new(RafxDeviceContextMetalInner::new()?);
         let device_context = RafxDeviceContextMetal::new(inner)?;

@@ -1,4 +1,4 @@
-use crate::{RafxResult, RafxShaderModule};
+use crate::{RafxResult, RafxShaderModule, RafxShaderModuleDefVulkan};
 
 use crate::vulkan::RafxDeviceContextVulkan;
 use ash::version::DeviceV1_0;
@@ -27,6 +27,20 @@ pub struct RafxShaderModuleVulkan {
 }
 
 impl RafxShaderModuleVulkan {
+    pub fn new(
+        device_context: &RafxDeviceContextVulkan,
+        data: RafxShaderModuleDefVulkan,
+    ) -> RafxResult<Self> {
+        match data {
+            RafxShaderModuleDefVulkan::VkSpvBytes(bytes) => {
+                RafxShaderModuleVulkan::new_from_bytes(device_context, bytes)
+            }
+            RafxShaderModuleDefVulkan::VkSpvPrepared(spv) => {
+                RafxShaderModuleVulkan::new_from_spv(device_context, spv)
+            }
+        }
+    }
+
     pub fn new_from_bytes(
         device_context: &RafxDeviceContextVulkan,
         data: &[u8],

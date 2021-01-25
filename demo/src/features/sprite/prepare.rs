@@ -15,31 +15,6 @@ use rafx::nodes::{
 };
 use rafx::resources::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
 
-// This is almost copy-pasted from glam. I wanted to avoid pulling in the entire library for a
-// single function
-pub fn orthographic_rh_gl(
-    left: f32,
-    right: f32,
-    bottom: f32,
-    top: f32,
-    near: f32,
-    far: f32,
-) -> [[f32; 4]; 4] {
-    let a = 2.0 / (right - left);
-    let b = 2.0 / (top - bottom);
-    let c = -2.0 / (far - near);
-    let tx = -(right + left) / (right - left);
-    let ty = -(top + bottom) / (top - bottom);
-    let tz = -(far + near) / (far - near);
-
-    [
-        [a, 0.0, 0.0, 0.0],
-        [0.0, b, 0.0, 0.0],
-        [0.0, 0.0, c, 0.0],
-        [tx, ty, tz, 1.0],
-    ]
-}
-
 pub struct SpritePrepareJob {
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
     sprite_material: ResourceArc<MaterialPassResource>,
@@ -149,7 +124,7 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
         let aspect_ratio = extents_width as f32 / extents_height as f32;
         let half_width = 400.0;
         let half_height = 400.0 / aspect_ratio;
-        let view_proj = orthographic_rh_gl(
+        let view_proj = glam::Mat4::orthographic_rh_gl(
             -half_width,
             half_width,
             -half_height,
@@ -201,7 +176,9 @@ impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepar
                 .create_descriptor_set(
                     &*layout,
                     shaders::sprite_vert::DescriptorSet0Args {
-                        uniform_buffer: &shaders::sprite_vert::ArgsUniform { mvp: view_proj },
+                        uniform_buffer: &shaders::sprite_vert::ArgsUniform {
+                            mvp: view_proj.to_cols_array_2d(),
+                        },
                     },
                 )
                 .unwrap();

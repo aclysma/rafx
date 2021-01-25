@@ -86,7 +86,9 @@ impl RafxDescriptorSetArray {
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => RafxDescriptorSetHandle::Vk(inner.handle(index)?),
             #[cfg(feature = "rafx-metal")]
-            RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
+            RafxDescriptorSetArray::Metal(inner) => {
+                RafxDescriptorSetHandle::Metal(inner.handle(index)?)
+            }
         })
     }
 
@@ -96,7 +98,7 @@ impl RafxDescriptorSetArray {
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => inner.root_signature(),
             #[cfg(feature = "rafx-metal")]
-            RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
+            RafxDescriptorSetArray::Metal(inner) => inner.root_signature(),
         }
     }
 
@@ -110,7 +112,7 @@ impl RafxDescriptorSetArray {
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => inner.update_descriptor_set(params),
             #[cfg(feature = "rafx-metal")]
-            RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
+            RafxDescriptorSetArray::Metal(inner) => inner.update_descriptor_set(params),
         }
     }
 
@@ -127,7 +129,7 @@ impl RafxDescriptorSetArray {
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => inner.queue_descriptor_set_update(update),
             #[cfg(feature = "rafx-metal")]
-            RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
+            RafxDescriptorSetArray::Metal(inner) => inner.queue_descriptor_set_update(update),
         }
     }
 
@@ -137,7 +139,7 @@ impl RafxDescriptorSetArray {
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => inner.flush_descriptor_set_updates(),
             #[cfg(feature = "rafx-metal")]
-            RafxDescriptorSetArray::Metal(_inner) => unimplemented!(),
+            RafxDescriptorSetArray::Metal(inner) => inner.flush_descriptor_set_updates(),
         }
     }
 

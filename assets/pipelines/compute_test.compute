@@ -1,4 +1,0 @@
-(
-    shader_module: "../shaders/compute_test.comp.shader",
-    entry_name: "main"
-)

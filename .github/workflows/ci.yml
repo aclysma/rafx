@@ -33,14 +33,21 @@ jobs:
           key: ${{ runner.os }}-cargo-check-test-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build
-        run: cargo check
+        run: cargo check --features "rafx-vulkan" --manifest-path demo/Cargo.toml
         env:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
-      - name: Run tests
-        run: cargo test --workspace
+      - name: Run tests (vulkan)
+        run: cargo test --workspace --features "rafx-vulkan" --manifest-path demo/Cargo.toml
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
+        env:
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
+
+      - name: Run tests (metal)
+        run: cargo test --workspace --features "rafx-metal" --manifest-path demo/Cargo.toml
+        if: ${{ runner.os == 'macOS' && matrix.toolchain == 'stable' }}
         env:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"

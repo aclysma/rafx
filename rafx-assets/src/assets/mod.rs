@@ -5,8 +5,6 @@ pub use self::image::ImageAssetData;
 pub use self::image::ImageImporter;
 
 mod shader;
-pub use shader::reflect;
-pub use shader::CookedShader;
 pub use shader::ShaderAsset;
 pub use shader::ShaderAssetData;
 pub use shader::ShaderImporterCooked;
@@ -28,8 +26,6 @@ pub use graphics_pipeline::PipelineImporter;
 pub use graphics_pipeline::SamplerAsset;
 pub use graphics_pipeline::SamplerAssetData;
 pub use graphics_pipeline::SamplerImporter;
-pub use graphics_pipeline::SlotLocation;
-pub use graphics_pipeline::SlotNameLookup;
 
 mod compute_pipeline;
 pub use compute_pipeline::ComputePipelineAsset;

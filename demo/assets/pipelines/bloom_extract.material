@@ -1,0 +1,20 @@
+(
+    passes: [
+        (
+            phase: Some("PostProcess"),
+            pipeline: "bloom_extract.pipeline",
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/postprocess.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/bloom_extract.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)

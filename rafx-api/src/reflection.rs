@@ -1,44 +1,13 @@
 use crate::types::{RafxResourceType, RafxShaderStageFlags};
-use crate::{RafxResult, RafxShaderStageDef};
+use crate::{RafxResult, RafxShaderStageDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 use fnv::FnvHashMap;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-// #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-// #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-// pub enum RafxShaderResourceTextureDimension {
-//     Dim1D,
-//     Dim2D,
-//     Dim2DMultiSample,
-//     Dim3D,
-//     DimCube,
-//     Dim1DArray,
-//     Dim2DArray,
-//     Dim2DMultiSampleArray,
-//     DimCubeArray,
-// }
-//
-// impl Default for RafxShaderResourceTextureDimension {
-//     fn default() -> Self {
-//         RafxShaderResourceTextureDimension::Dim2D
-//     }
-// }
-
-// Doesn't do anything, so commented out
-// #[derive(Debug, Clone, PartialEq)]
-// #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-// pub struct RafxVertexInput {
-//     pub semantic: String,
-//     pub location: u32,
-//     //pub location
-//     //pub location:
-//     //pub size: u32,
-// }
-
-#[derive(PartialEq, Eq, Hash)]
-struct RafxShaderResourceBindingKey {
-    set: u32,
-    binding: u32,
+#[derive(PartialEq, Eq, Hash, Default)]
+pub struct RafxShaderResourceBindingKey {
+    pub set: u32,
+    pub binding: u32,
 }
 
 //TODO: Consider separate type for bindings vs. push constants
@@ -112,6 +81,13 @@ impl RafxShaderResource {
                     )
                 )?;
             }
+
+            if self.set_index as usize >= MAX_DESCRIPTOR_SET_LAYOUTS {
+                Err(format!(
+                    "Descriptor (set={:?} binding={:?}) named {:?} has a set index >= 4. This is not supported",
+                    self.set_index, self.binding, self.name,
+                ))?;
+            }
         }
 
         Ok(())
@@ -152,54 +128,9 @@ impl RafxShaderResource {
             ))?;
         }
 
-        // if self.texture_dimensions != other.texture_dimensions {
-        //     Err(format!(
-        //         "Pass is using shaders in different stages with different texture_dimensions {:?} and {:?} (set={} binding={})",
-        //         self.texture_dimensions, other.texture_dimensions,
-        //         self.set_index,
-        //         self.binding
-        //     ))?;
-        // }
-
         Ok(())
     }
 }
-
-// pub struct RafxShaderVariable {
-//     parent_index: u32,
-//     offset: u32,
-//     size: u32,
-//     name: String,
-// }
-//
-// impl RafxShaderVariable {
-//     fn binding_key(&self) -> BindingKey {
-//         BindingKey {
-//             set: self.set,
-//             binding: self.binding,
-//         }
-//     }
-//
-//     fn verify_compatible(&self, other: &Self) -> RafxResult<()> {
-//         if self.parent_index != other.parent_index {
-//             return Err("Shader resource offset does not match").into();
-//         }
-//
-//         if self.offset != other.offset {
-//             return Err("Shader resource offset does not match").into();
-//         }
-//
-//         if self.size != other.size {
-//             return Err("Shader resource size does not match").into();
-//         }
-//
-//         if self.name != other.name {
-//             return Err("Shader resource name does not match").into();
-//         }
-//
-//         Ok(())
-//     }
-// }
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
@@ -208,51 +139,66 @@ pub struct RafxShaderStageReflection {
     //pub vertex_inputs: Vec<RafxVertexInput>,
     pub shader_stage: RafxShaderStageFlags,
     pub resources: Vec<RafxShaderResource>,
-    pub thread_count: [u32; 3],
+    pub compute_threads_per_group: Option<[u32; 3]>,
     pub entry_point_name: String,
+    // Right now we will infer mappings based on spirv_cross default behavior, but likely will want
+    // to allow providing them explicitly. This isn't implemented yet
+    //pub binding_arg_buffer_mappings: FnvHashMap<(u32, u32), u32>
 }
 
 #[derive(Debug)]
 pub struct RafxPipelineReflection {
     pub shader_stages: RafxShaderStageFlags,
     pub resources: Vec<RafxShaderResource>,
+    pub compute_threads_per_group: Option<[u32; 3]>,
 }
 
 impl RafxPipelineReflection {
     pub fn from_stages(stages: &[RafxShaderStageDef]) -> RafxResult<RafxPipelineReflection> {
         let mut unmerged_resources = Vec::default();
         for stage in stages {
-            assert!(!stage.shader_stage.is_empty());
-            for resource in &stage.resources {
+            assert!(!stage.reflection.shader_stage.is_empty());
+            for resource in &stage.reflection.resources {
                 // The provided resource MAY (but does not need to) have the shader stage flag set.
                 // (Leaving it default empty is fine). It will automatically be set here.
-                if !(resource.used_in_shader_stages - stage.shader_stage).is_empty() {
+                if !(resource.used_in_shader_stages - stage.reflection.shader_stage).is_empty() {
                     let message = format!(
                         "A resource in shader stage {:?} has other stages {:?} set",
-                        stage.shader_stage,
-                        resource.used_in_shader_stages - stage.shader_stage
+                        stage.reflection.shader_stage,
+                        resource.used_in_shader_stages - stage.reflection.shader_stage
                     );
                     log::error!("{}", message);
                     Err(message)?;
                 }
 
                 let mut resource = resource.clone();
-                resource.used_in_shader_stages |= stage.shader_stage;
+                resource.used_in_shader_stages |= stage.reflection.shader_stage;
                 unmerged_resources.push(resource);
+            }
+        }
+
+        let mut compute_threads_per_group = None;
+        for stage in stages {
+            if stage
+                .reflection
+                .shader_stage
+                .intersects(RafxShaderStageFlags::COMPUTE)
+            {
+                compute_threads_per_group = stage.reflection.compute_threads_per_group;
             }
         }
 
         log::trace!("Create RafxPipelineReflection from stages");
         let mut all_shader_stages = RafxShaderStageFlags::empty();
         for stage in stages {
-            if all_shader_stages.intersects(stage.shader_stage) {
+            if all_shader_stages.intersects(stage.reflection.shader_stage) {
                 Err(format!(
                     "Duplicate shader stage ({}) found when creating RafxPipelineReflection",
-                    (all_shader_stages & stage.shader_stage).bits()
+                    (all_shader_stages & stage.reflection.shader_stage).bits()
                 ))?;
             }
 
-            all_shader_stages |= stage.shader_stage;
+            all_shader_stages |= stage.reflection.shader_stage;
         }
 
         let mut merged_resources =
@@ -296,6 +242,7 @@ impl RafxPipelineReflection {
 
         Ok(RafxPipelineReflection {
             shader_stages: all_shader_stages,
+            compute_threads_per_group,
             resources,
         })
     }

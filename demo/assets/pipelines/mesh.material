@@ -1,0 +1,33 @@
+(
+    passes: [
+        (
+            name: Some("mesh opaque"),
+            phase: Some("Opaque"),
+            pipeline: "mesh.pipeline",
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/mesh.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/mesh.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+        (
+            phase: Some("ShadowMap"),
+            pipeline: "mesh_shadow_map.pipeline",
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/mesh_shadow_map.vert.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+                // No fragment shader required
+            ],
+        ),
+    ]
+)

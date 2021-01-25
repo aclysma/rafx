@@ -38,3 +38,6 @@ opt-level = 2
 #atelier-cli = { path = "atelier-assets/cli" }
 #atelier-assets = { git = "https://github.com/amethyst/atelier-assets.git" }
 #atelier-cli = { git = "https://github.com/amethyst/atelier-assets.git" }
+
+#[patch.crates-io]
+#metal = { path = "../metal-rs" }

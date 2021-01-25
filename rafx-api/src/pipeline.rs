@@ -32,7 +32,7 @@ impl RafxPipeline {
             #[cfg(feature = "rafx-vulkan")]
             RafxPipeline::Vk(inner) => inner.pipeline_type(),
             #[cfg(feature = "rafx-metal")]
-            RafxPipeline::Metal(_inner) => unimplemented!(),
+            RafxPipeline::Metal(inner) => inner.pipeline_type(),
         }
     }
 
@@ -42,7 +42,7 @@ impl RafxPipeline {
             #[cfg(feature = "rafx-vulkan")]
             RafxPipeline::Vk(inner) => inner.root_signature(),
             #[cfg(feature = "rafx-metal")]
-            RafxPipeline::Metal(_inner) => unimplemented!(),
+            RafxPipeline::Metal(inner) => inner.root_signature(),
         }
     }
 

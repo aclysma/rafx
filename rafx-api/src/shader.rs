@@ -2,6 +2,7 @@
 use crate::metal::RafxShaderMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxShaderVulkan;
+use crate::RafxPipelineReflection;
 
 /// Represents one or more shader stages, producing an entire "program" to execute on the GPU
 #[derive(Clone, Debug)]
@@ -13,6 +14,15 @@ pub enum RafxShader {
 }
 
 impl RafxShader {
+    pub fn pipeline_reflection(&self) -> &RafxPipelineReflection {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxShader::Vk(inner) => inner.pipeline_reflection(),
+            #[cfg(feature = "rafx-metal")]
+            RafxShader::Metal(inner) => inner.pipeline_reflection(),
+        }
+    }
+
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]

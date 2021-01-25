@@ -1,8 +1,7 @@
 use crate::vulkan::RafxDeviceContextVulkan;
 use crate::{
-    RafxDescriptorIndex, RafxImmutableSamplerKey, RafxImmutableSamplers, RafxPipelineType,
-    RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampler, RafxShaderResource,
-    RafxShaderStageFlags,
+    RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
+    RafxSampler, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use ash::version::DeviceV1_0;
 use ash::vk;
@@ -39,6 +38,8 @@ pub(crate) struct DescriptorInfo {
     // Index into DescriptorSetLayoutInfo::descriptors list
     // NOT THE BINDING INDEX!!!
     pub(crate) descriptor_index: RafxDescriptorIndex,
+
+    // --- vulkan-specific ---
     // Index into DescriptorSetLayoutInfo::dynamic_descriptor_indexes
     pub(crate) dynamic_descriptor_index: Option<DynamicDescriptorIndex>,
     // The index to the first descriptor in the flattened list of all descriptors in the layout
@@ -50,32 +51,34 @@ pub(crate) struct DescriptorInfo {
     pub(crate) vk_stages: vk::ShaderStageFlags,
 }
 
-const MAX_DESCRIPTOR_SETS: usize = 4;
-
 #[derive(Default, Debug)]
 pub(crate) struct DescriptorSetLayoutInfo {
     // Settable descriptors, immutable samplers are omitted
     pub(crate) descriptors: Vec<RafxDescriptorIndex>,
-    // This indexes into the descriptors list
-    pub(crate) dynamic_descriptor_indexes: Vec<RafxDescriptorIndex>,
     // Indexes binding index to the descriptors list
     pub(crate) binding_to_descriptor_index: FnvHashMap<u32, RafxDescriptorIndex>,
+
+    // --- vulkan-specific ---
     pub(crate) update_data_count_per_set: u32,
+    // This indexes into the descriptors list
+    pub(crate) dynamic_descriptor_indexes: Vec<RafxDescriptorIndex>,
 }
 
 #[derive(Debug)]
 pub(crate) struct RafxRootSignatureVulkanInner {
     pub(crate) device_context: RafxDeviceContextVulkan,
     pub(crate) pipeline_type: RafxPipelineType,
-    pub(crate) layouts: [DescriptorSetLayoutInfo; MAX_DESCRIPTOR_SETS],
+    pub(crate) layouts: [DescriptorSetLayoutInfo; MAX_DESCRIPTOR_SET_LAYOUTS],
     pub(crate) descriptors: Vec<DescriptorInfo>,
-    pub(crate) push_constants: Vec<PushConstantInfo>,
-    pub(crate) pipeline_layout: vk::PipelineLayout,
-    pub(crate) descriptor_set_layouts: [vk::DescriptorSetLayout; MAX_DESCRIPTOR_SETS],
     pub(crate) name_to_descriptor_index: FnvHashMap<String, RafxDescriptorIndex>,
-    pub(crate) name_to_push_constant_index: FnvHashMap<String, PushConstantIndex>,
     // Keeps them in scope so they don't drop
     immutable_samplers: Vec<RafxSampler>, //empty_descriptor_sets: [vk::DescriptorSet; MAX_DESCRIPTOR_SETS],
+
+    // --- vulkan-specific ---
+    pub(crate) name_to_push_constant_index: FnvHashMap<String, PushConstantIndex>,
+    pub(crate) push_constants: Vec<PushConstantInfo>,
+    pub(crate) pipeline_layout: vk::PipelineLayout,
+    pub(crate) descriptor_set_layouts: [vk::DescriptorSetLayout; MAX_DESCRIPTOR_SET_LAYOUTS],
 }
 
 impl Drop for RafxRootSignatureVulkanInner {
@@ -148,37 +151,14 @@ impl RafxRootSignatureVulkan {
         }
     }
 
-    pub fn find_immutable_sampler_index(
-        samplers: &[RafxImmutableSamplers],
-        name: &Option<String>,
-        set_index: u32,
-        binding: u32,
-    ) -> Option<usize> {
-        for (sampler_index, sampler) in samplers.iter().enumerate() {
-            match &sampler.key {
-                RafxImmutableSamplerKey::Name(sampler_name) => {
-                    if let Some(name) = name {
-                        if name == sampler_name {
-                            return Some(sampler_index);
-                        }
-                    }
-                }
-                RafxImmutableSamplerKey::Binding(sampler_set_index, sampler_binding) => {
-                    if set_index == *sampler_set_index && binding == *sampler_binding {
-                        return Some(sampler_index);
-                    }
-                }
-            }
-        }
-
-        None
-    }
-
     pub fn new(
         device_context: &RafxDeviceContextVulkan,
         root_signature_def: &RafxRootSignatureDef,
     ) -> RafxResult<Self> {
         log::trace!("Create RafxRootSignatureVulkan");
+
+        // If we update this constant, update the arrays in this function
+        assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
 
         let mut push_constants = vec![];
         let mut descriptors = vec![];
@@ -204,7 +184,7 @@ impl RafxRootSignatureVulkan {
 
         // Make sure all shaders are compatible/build lookup of shared data from them
         let (pipeline_type, merged_resources, _merged_resources_name_index_map) =
-            Self::merge_resources(root_signature_def)?;
+            crate::internal_shared::merge_resources(root_signature_def)?;
 
         let mut layouts = [
             DescriptorSetLayoutInfo::default(),
@@ -237,13 +217,6 @@ impl RafxRootSignatureVulkan {
                     .descriptor_type(vk_descriptor_type)
                     .stage_flags(vk_stage_flags);
 
-                if resource.set_index as usize >= MAX_DESCRIPTOR_SETS {
-                    Err(format!(
-                        "Descriptor (set={:?} binding={:?}) named {:?} has a set index >= 4. This is not supported",
-                        resource.set_index, resource.binding, resource.name,
-                    ))?;
-                }
-
                 // Determine if flagged as root constant buffer/dynamic uniform buffer. If so, update
                 // the type. This was being done by detecting a pattern in the name string. For now
                 // this is dead code. It should probably be done by checking the descriptor type.
@@ -257,13 +230,7 @@ impl RafxRootSignatureVulkan {
                 //     }
                 // }
 
-                let layout: &mut DescriptorSetLayoutInfo =
-                    &mut layouts[resource.set_index as usize];
-
-                let vk_bindings: &mut Vec<vk::DescriptorSetLayoutBinding> =
-                    &mut vk_set_bindings[resource.set_index as usize];
-
-                let immutable_sampler = Self::find_immutable_sampler_index(
+                let immutable_sampler = crate::internal_shared::find_immutable_sampler_index(
                     root_signature_def.immutable_samplers,
                     &resource.name,
                     resource.set_index,
@@ -288,6 +255,12 @@ impl RafxRootSignatureVulkan {
                     binding =
                         binding.immutable_samplers(&vk_immutable_samplers[immutable_sampler_index]);
                 }
+
+                let layout: &mut DescriptorSetLayoutInfo =
+                    &mut layouts[resource.set_index as usize];
+
+                let vk_bindings: &mut Vec<vk::DescriptorSetLayoutBinding> =
+                    &mut vk_set_bindings[resource.set_index as usize];
 
                 if immutable_sampler.is_some()
                     && !resource
@@ -329,8 +302,6 @@ impl RafxRootSignatureVulkan {
                             None
                         };
 
-                    layout.descriptors.push(descriptor_index);
-
                     let update_data_offset_in_set = Some(layout.update_data_count_per_set);
 
                     // Add it to the descriptor list
@@ -341,17 +312,19 @@ impl RafxRootSignatureVulkan {
                         set_index: resource.set_index,
                         binding: resource.binding,
                         element_count: resource.element_count_normalized(),
-                        vk_type: binding.descriptor_type,
-                        vk_stages: binding.stage_flags,
                         descriptor_index,
                         dynamic_descriptor_index,
                         update_data_offset_in_set,
                         has_immutable_sampler: immutable_sampler.is_some(),
+                        vk_type: binding.descriptor_type,
+                        vk_stages: binding.stage_flags,
                     });
 
                     if let Some(name) = resource.name.as_ref() {
                         name_to_descriptor_index.insert(name.clone(), descriptor_index);
                     }
+
+                    layout.descriptors.push(descriptor_index);
                     layout
                         .binding_to_descriptor_index
                         .insert(resource.binding, descriptor_index);
@@ -387,10 +360,11 @@ impl RafxRootSignatureVulkan {
         //
         // Create descriptor set layouts
         //
-        let mut descriptor_set_layouts = [vk::DescriptorSetLayout::null(); MAX_DESCRIPTOR_SETS];
+        let mut descriptor_set_layouts =
+            [vk::DescriptorSetLayout::null(); MAX_DESCRIPTOR_SET_LAYOUTS];
         let mut descriptor_set_layout_count = 0;
 
-        for layout_index in 0..MAX_DESCRIPTOR_SETS {
+        for layout_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
             let vk_bindings: &mut Vec<vk::DescriptorSetLayoutBinding> =
                 &mut vk_set_bindings[layout_index as usize];
 
@@ -450,214 +424,19 @@ impl RafxRootSignatureVulkan {
 
         let inner = RafxRootSignatureVulkanInner {
             device_context: device_context.clone(),
-            descriptors,
             pipeline_type,
             layouts,
+            descriptors,
+            name_to_descriptor_index,
+            immutable_samplers,
             push_constants,
             pipeline_layout,
             descriptor_set_layouts,
-            name_to_descriptor_index,
             name_to_push_constant_index,
-            immutable_samplers,
         };
 
         Ok(RafxRootSignatureVulkan {
             inner: Arc::new(inner),
         })
-    }
-
-    fn merge_resources<'a>(
-        root_signature_def: &RafxRootSignatureDef<'a>
-    ) -> RafxResult<(
-        RafxPipelineType,
-        Vec<RafxShaderResource>,
-        FnvHashMap<&'a String, usize>,
-    )> {
-        let mut merged_resources: Vec<RafxShaderResource> = vec![];
-        let mut merged_resources_name_index_map = FnvHashMap::default();
-        let mut pipeline_type = None;
-
-        // Make sure all shaders are compatible/build lookup of shared data from them
-        for shader in root_signature_def.shaders {
-            log::trace!(
-                "Merging resources from shader with reflection info: {:?}",
-                shader.vk_shader().unwrap().pipeline_reflection()
-            );
-            let shader = shader.vk_shader().unwrap();
-            let pipeline_reflection = shader.pipeline_reflection();
-
-            let shader_pipeline_type = if shader
-                .stage_flags()
-                .intersects(RafxShaderStageFlags::COMPUTE)
-            {
-                RafxPipelineType::Compute
-            } else {
-                RafxPipelineType::Graphics
-            };
-
-            if pipeline_type.is_none() {
-                pipeline_type = Some(shader_pipeline_type);
-            } else if pipeline_type != Some(shader_pipeline_type) {
-                log::error!("Shaders with different pipeline types are sharing a root signature");
-                Err("Shaders with different pipeline types are sharing a root signature")?;
-            }
-
-            for resource in &pipeline_reflection.resources {
-                log::trace!(
-                    "  Merge resource (set={:?} binding={:?} name={:?})",
-                    resource.set_index,
-                    resource.binding,
-                    resource.name
-                );
-
-                let existing_resource_index = resource
-                    .name
-                    .as_ref()
-                    .and_then(|x| merged_resources_name_index_map.get(x));
-
-                if let Some(&existing_resource_index) = existing_resource_index {
-                    log::trace!("    Resource with this name already exists");
-                    //
-                    // This binding name already exists, make sure they match up. Then merge
-                    // the shader stage flags.
-                    //
-                    let existing_resource: &mut RafxShaderResource =
-                        &mut merged_resources[existing_resource_index];
-                    if existing_resource.set_index != resource.set_index {
-                        let message = format!(
-                            "Shader resource (set={:?} binding={:?} name={:?}) has mismatching set {:?} and {:?} across shaders in same root signature",
-                            resource.set_index,
-                            resource.binding,
-                            resource.name,
-                            resource.set_index,
-                            existing_resource.set_index
-                        );
-                        log::error!("{}", message);
-                        Err(message)?;
-                    }
-
-                    if existing_resource.binding != resource.binding {
-                        let message = format!(
-                            "Shader resource (set={:?} binding={:?} name={:?}) has mismatching binding {:?} and {:?} across shaders in same root signature",
-                            resource.set_index,
-                            resource.binding,
-                            resource.name,
-                            resource.binding,
-                            existing_resource.binding
-                        );
-                        log::error!("{}", message);
-                        Err(message)?;
-                    }
-
-                    Self::verify_resources_can_overlap(resource, existing_resource)?;
-
-                    // for previous_resource in &mut resources {
-                    //     if previous_resource.name == resource.name {
-                    //         previous_resource.used_in_shader_stages |= resource.used_in_shader_stages;
-                    //     }
-                    // }
-
-                    existing_resource.used_in_shader_stages |= resource.used_in_shader_stages;
-                } else {
-                    //
-                    // We have not seen a resource by this name yet or the name is not set. See if
-                    // it overlaps an existing binding that doesn't share the same name.
-                    //
-                    let mut existing_index = None;
-                    for (index, x) in merged_resources.iter().enumerate() {
-                        if x.used_in_shader_stages
-                            .intersects(resource.used_in_shader_stages)
-                            && x.binding == resource.binding
-                            && x.set_index == resource.set_index
-                        {
-                            existing_index = Some(index)
-                        }
-                    }
-
-                    if let Some(existing_index) = existing_index {
-                        log::trace!("    No resource by this name exists yet, checking if it overlaps with a previous resource");
-
-                        //
-                        // It's a new binding name that overlaps an existing binding. Check that
-                        // they are compatible types. If they are, alias them.
-                        //
-                        let existing_resource = &mut merged_resources[existing_index];
-                        Self::verify_resources_can_overlap(resource, existing_resource)?;
-
-                        if let Some(name) = &resource.name {
-                            let old = merged_resources_name_index_map.insert(name, existing_index);
-                            assert!(old.is_none());
-                        }
-
-                        log::trace!(
-                            "Adding shader flags {:?} the existing resource",
-                            resource.used_in_shader_stages
-                        );
-                        existing_resource.used_in_shader_stages |= resource.used_in_shader_stages;
-                    } else {
-                        //
-                        // It's a new binding name and doesn't overlap with existing bindings
-                        //
-                        log::trace!("    Does not collide with existing bindings");
-                        if let Some(name) = &resource.name {
-                            merged_resources_name_index_map.insert(name, merged_resources.len());
-                        }
-                        merged_resources.push(resource.clone());
-                    }
-                }
-            }
-        }
-
-        Ok((
-            pipeline_type.unwrap(),
-            merged_resources,
-            merged_resources_name_index_map,
-        ))
-    }
-
-    fn verify_resources_can_overlap(
-        resource: &RafxShaderResource,
-        previous_resource: &RafxShaderResource,
-    ) -> RafxResult<()> {
-        if previous_resource.element_count_normalized() != resource.element_count_normalized() {
-            let message = format!(
-                "Shader resource (set={:?} binding={:?} name={:?}) has mismatching element_count {:?} and {:?} across shaders in same root signature",
-                resource.set_index,
-                resource.binding,
-                resource.name,
-                resource.element_count_normalized(),
-                previous_resource.element_count_normalized()
-            );
-            log::error!("{}", message);
-            Err(message)?;
-        }
-
-        if previous_resource.size_in_bytes != resource.size_in_bytes {
-            let message = format!(
-                "Shader resource (set={:?} binding={:?} name={:?}) has mismatching size_in_bytes {:?} and {:?} across shaders in same root signature",
-                resource.set_index,
-                resource.binding,
-                resource.name,
-                resource.size_in_bytes,
-                previous_resource.size_in_bytes
-            );
-            log::error!("{}", message);
-            Err(message)?;
-        }
-
-        if previous_resource.resource_type != resource.resource_type {
-            let message = format!(
-                "Shader resource (set={:?} binding={:?} name={:?}) has mismatching resource_type {:?} and {:?} across shaders in same root signature",
-                resource.set_index,
-                resource.binding,
-                resource.name,
-                resource.resource_type,
-                previous_resource.resource_type
-            );
-            log::error!("{}", message);
-            Err(message)?;
-        }
-
-        Ok(())
     }
 }

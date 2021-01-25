@@ -14,5 +14,10 @@ publish = false
 serde = { version = "1", features = ["derive"] }
 rafx-resources = { path = "../../rafx-resources" }
 
+[features]
+default = ["rafx-vulkan"]
+rafx-vulkan = ["rafx-resources/rafx-vulkan"]
+rafx-metal = ["rafx-resources/rafx-metal"]
+
 [dev-dependencies]
 memoffset = "0.6"

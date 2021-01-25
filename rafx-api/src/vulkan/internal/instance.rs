@@ -5,6 +5,7 @@ pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
 //use super::VkEntry;
+use crate::vulkan::VkCreateInstanceError::VkError;
 use crate::vulkan::{VkDebugReporter, VkEntry};
 use ash::extensions::ext::DebugReport;
 use raw_window_handle::HasRawWindowHandle;
@@ -68,18 +69,25 @@ impl VkInstance {
         // Determine the supported version of vulkan that's available
         let vulkan_version = match entry.try_enumerate_instance_version()? {
             // Vulkan 1.1+
-            Some(version) => {
-                let major = vk::version_major(version);
-                let minor = vk::version_minor(version);
-                let patch = vk::version_patch(version);
-
-                (major, minor, patch)
-            }
+            Some(version) => version,
             // Vulkan 1.0
-            None => (1, 0, 0),
+            None => vk::make_version(1, 0, 0),
         };
 
-        log::info!("Found Vulkan version: {:?}", vulkan_version);
+        let vulkan_version_tuple = (
+            vk::version_major(vulkan_version),
+            vk::version_minor(vulkan_version),
+            vk::version_patch(vulkan_version),
+        );
+
+        log::info!("Found Vulkan version: {:?}", vulkan_version_tuple);
+
+        // Only need 1.1 for negative y viewport support, which is also possible to get out of an
+        // extension, but at this point I think 1.1 is a reasonable minimum expectation
+        let minimum_version = vk::make_version(1, 1, 0);
+        if vulkan_version < minimum_version {
+            return Err(VkError(vk::Result::ERROR_INCOMPATIBLE_DRIVER));
+        }
 
         // Get the available layers/extensions
         let layers = entry.enumerate_instance_layer_properties()?;
@@ -89,7 +97,6 @@ impl VkInstance {
 
         // Expected to be 1.1.0 or 1.0.0 depeneding on what we found in try_enumerate_instance_version
         // https://vulkan.lunarg.com/doc/view/1.1.70.1/windows/tutorial/html/16-vulkan_1_1_changes.html
-        let api_version = vk::make_version(vulkan_version.0, vulkan_version.1, 0);
 
         // Info that's exposed to the driver. In a real shipped product, this data might be used by
         // the driver to make specific adjustments to improve performance
@@ -99,7 +106,7 @@ impl VkInstance {
             .application_version(0)
             .engine_name(app_name)
             .engine_version(0)
-            .api_version(api_version);
+            .api_version(vulkan_version);
 
         let mut layer_names = vec![];
         let mut extension_names = ash_window::enumerate_required_extensions(window)?;

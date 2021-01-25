@@ -304,8 +304,6 @@ impl RafxSwapchainHelper {
     pub fn wait_until_previous_frame_submitted(
         &mut self
     ) -> RafxResult<Option<RafxPresentSuccessResult>> {
-        log::trace!("wait_until_previous_frame_submitted");
-
         if self.expect_result_from_previous_frame {
             self.expect_result_from_previous_frame = false;
 

@@ -27,6 +27,10 @@ pub type ArgsUniform = ArgsStd140;
 
 pub const UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 1;
+pub const TEX_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const TEX_DESCRIPTOR_BINDING_INDEX: usize = 0;
 
 pub struct DescriptorSet0Args<'a> {
     pub uniform_buffer: &'a ArgsUniform,
@@ -83,6 +87,65 @@ impl DescriptorSet0 {
             UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX as u32,
             uniform_buffer,
         );
+    }
+
+    pub fn flush(
+        &mut self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+    ) -> RafxResult<()> {
+        self.0.flush(descriptor_set_allocator)
+    }
+}
+
+pub struct DescriptorSet1Args<'a> {
+    pub tex: &'a ResourceArc<ImageViewResource>,
+}
+
+impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
+    type Output = DescriptorSet1;
+
+    fn create_dyn_descriptor_set(
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> Self::Output {
+        let mut descriptor = DescriptorSet1(descriptor_set);
+        descriptor.set_args(args);
+        descriptor
+    }
+
+    fn create_descriptor_set(
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> RafxResult<DescriptorSetArc> {
+        let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
+        descriptor.0.flush(descriptor_set_allocator)?;
+        Ok(descriptor.0.descriptor_set().clone())
+    }
+}
+
+pub struct DescriptorSet1(pub DynDescriptorSet);
+
+impl DescriptorSet1 {
+    pub fn set_args_static(
+        descriptor_set: &mut DynDescriptorSet,
+        args: DescriptorSet1Args,
+    ) {
+        descriptor_set.set_image(TEX_DESCRIPTOR_BINDING_INDEX as u32, args.tex);
+    }
+
+    pub fn set_args(
+        &mut self,
+        args: DescriptorSet1Args,
+    ) {
+        self.set_tex(args.tex);
+    }
+
+    pub fn set_tex(
+        &mut self,
+        tex: &ResourceArc<ImageViewResource>,
+    ) {
+        self.0.set_image(TEX_DESCRIPTOR_BINDING_INDEX as u32, tex);
     }
 
     pub fn flush(

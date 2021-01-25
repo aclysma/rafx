@@ -1,18 +1,9 @@
-use super::ReflectedEntryPoint;
 use fnv::FnvHashMap;
-use rafx_resources::ShaderModuleResource;
+use rafx_resources::{ReflectedEntryPoint, ShaderModuleResource};
 use rafx_resources::{ResourceArc, ShaderModuleResourceDef};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
-
-// An import format that will get turned into ShaderAssetData
-#[derive(Serialize, Deserialize)]
-pub struct CookedShader {
-    #[serde(with = "serde_bytes")]
-    pub spv: Vec<u8>,
-    pub entry_points: Vec<ReflectedEntryPoint>,
-}
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "e0ae2222-1a44-4022-af95-03c9101ac89e"]

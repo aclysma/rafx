@@ -61,7 +61,6 @@ impl FeatureCommandWriter<RenderJobWriteContext> for Debug3dCommandWriter {
         // The prepare phase emits a single node which will draw everything. In the future it might
         // emit a node per draw call that uses transparency
         if index == 0 {
-            // //println!("render");
             let command_buffer = &write_context.command_buffer;
 
             for draw_call in &self.draw_calls {

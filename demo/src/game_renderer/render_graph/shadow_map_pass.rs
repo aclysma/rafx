@@ -48,14 +48,17 @@ pub(super) fn shadow_map_passes(
                 let cube_map_node = context
                     .graph
                     .add_node("create cube shadowmap", RenderGraphQueue::DefaultGraphics);
+
+                let cube_map_xy_size = 1024;
+
                 let mut cube_map_image = context.graph.create_unattached_image(
                     cube_map_node,
                     RenderGraphImageConstraint {
                         format: Some(context.graph_config.depth_format),
                         layer_count: Some(6),
                         extents: Some(RenderGraphImageExtents::Custom(
-                            render_view[0].extents_width(),
-                            render_view[0].extents_height(),
+                            cube_map_xy_size,
+                            cube_map_xy_size,
                             1,
                         )),
                         resource_type: RafxResourceType::TEXTURE_CUBE

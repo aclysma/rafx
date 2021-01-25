@@ -1,5 +1,9 @@
 use crate::vulkan::RafxDeviceContextVulkan;
-use crate::{RafxFormat, RafxPipelineType, RafxQueueType, RafxResourceState, RafxResourceType};
+use crate::{
+    RafxBlendFactor, RafxBlendState, RafxBlendStateRenderTarget, RafxBlendStateTargets,
+    RafxDepthState, RafxFormat, RafxPipelineType, RafxQueueType, RafxRasterizerState,
+    RafxResourceState, RafxResourceType,
+};
 use ash::vk;
 
 pub(crate) fn pipeline_type_pipeline_bind_point(
@@ -297,4 +301,132 @@ pub(crate) fn determine_pipeline_stage_flags(
     }
 
     flags
+}
+
+pub(crate) fn depth_state_to_create_info(
+    depth_state: &RafxDepthState
+) -> vk::PipelineDepthStencilStateCreateInfo {
+    let front = vk::StencilOpState::builder()
+        .fail_op(depth_state.front_stencil_fail_op.into())
+        .pass_op(depth_state.front_stencil_pass_op.into())
+        .depth_fail_op(depth_state.front_depth_fail_op.into())
+        .compare_op(depth_state.front_stencil_compare_op.into())
+        .compare_mask(depth_state.stencil_read_mask as u32)
+        .write_mask(depth_state.stencil_write_mask as u32)
+        .reference(0);
+
+    let back = vk::StencilOpState::builder()
+        .fail_op(depth_state.back_stencil_fail_op.into())
+        .pass_op(depth_state.back_stencil_pass_op.into())
+        .depth_fail_op(depth_state.back_depth_fail_op.into())
+        .compare_op(depth_state.back_stencil_compare_op.into())
+        .compare_mask(depth_state.stencil_read_mask as u32)
+        .write_mask(depth_state.stencil_write_mask as u32)
+        .reference(0);
+
+    vk::PipelineDepthStencilStateCreateInfo::builder()
+        .depth_test_enable(depth_state.depth_test_enable)
+        .depth_write_enable(depth_state.depth_write_enable)
+        .depth_compare_op(depth_state.depth_compare_op.into())
+        .depth_bounds_test_enable(false)
+        .stencil_test_enable(depth_state.stencil_test_enable)
+        .min_depth_bounds(0.0)
+        .max_depth_bounds(1.0)
+        .front(*front)
+        .back(*back)
+        .build()
+}
+
+pub(crate) fn rasterizer_state_to_create_info(
+    rasterizer_state: &RafxRasterizerState
+) -> vk::PipelineRasterizationStateCreateInfo {
+    vk::PipelineRasterizationStateCreateInfo::builder()
+        .depth_clamp_enable(rasterizer_state.depth_clamp_enable)
+        .rasterizer_discard_enable(false)
+        .polygon_mode(rasterizer_state.fill_mode.into())
+        .cull_mode(rasterizer_state.cull_mode.into())
+        .front_face(rasterizer_state.front_face.into())
+        .depth_bias_enable(rasterizer_state.depth_bias != 0)
+        .depth_bias_constant_factor(rasterizer_state.depth_bias as f32)
+        .depth_bias_clamp(0.0)
+        .depth_bias_slope_factor(rasterizer_state.depth_bias_slope_scaled)
+        .line_width(1.0)
+        .build()
+}
+
+//WARNING: This struct has pointers into the attachments vector. Don't mutate or drop the
+// attachments vector
+#[cfg(feature = "rafx-vulkan")]
+pub struct RafxBlendStateVkCreateInfo {
+    _attachments: Vec<vk::PipelineColorBlendAttachmentState>,
+    blend_state: vk::PipelineColorBlendStateCreateInfo,
+}
+
+#[cfg(feature = "rafx-vulkan")]
+impl RafxBlendStateVkCreateInfo {
+    pub fn blend_state(&self) -> &vk::PipelineColorBlendStateCreateInfo {
+        &self.blend_state
+    }
+}
+
+pub(crate) fn blend_state_render_target_to_create_info(
+    blend_state_rt: &RafxBlendStateRenderTarget
+) -> vk::PipelineColorBlendAttachmentState {
+    let blend_enable = blend_state_rt.src_factor != RafxBlendFactor::One
+        || blend_state_rt.src_factor_alpha != RafxBlendFactor::One
+        || blend_state_rt.dst_factor != RafxBlendFactor::Zero
+        || blend_state_rt.dst_factor_alpha != RafxBlendFactor::Zero;
+
+    vk::PipelineColorBlendAttachmentState::builder()
+        .blend_enable(blend_enable)
+        .color_write_mask(blend_state_rt.masks.into())
+        .src_color_blend_factor(blend_state_rt.src_factor.into())
+        .src_alpha_blend_factor(blend_state_rt.src_factor_alpha.into())
+        .dst_color_blend_factor(blend_state_rt.dst_factor.into())
+        .dst_alpha_blend_factor(blend_state_rt.dst_factor_alpha.into())
+        .color_blend_op(blend_state_rt.blend_op.into())
+        .alpha_blend_op(blend_state_rt.blend_op_alpha.into())
+        .build()
+}
+
+pub fn blend_state_to_create_info(
+    blend_state: &RafxBlendState,
+    color_attachment_count: usize,
+) -> RafxBlendStateVkCreateInfo {
+    let mut blend_attachments_states = vec![];
+
+    blend_state.verify(color_attachment_count);
+
+    if let Some(first_attachment) = blend_state.render_target_blend_states.first() {
+        for attachment_index in 0..color_attachment_count {
+            let attachment_state = if blend_state
+                .render_target_mask
+                .intersects(RafxBlendStateTargets::from_bits(1 << attachment_index).unwrap())
+            {
+                if blend_state.independent_blend {
+                    blend_state_render_target_to_create_info(
+                        &blend_state.render_target_blend_states[attachment_index],
+                    )
+                } else {
+                    blend_state_render_target_to_create_info(first_attachment)
+                }
+            } else {
+                vk::PipelineColorBlendAttachmentState::default()
+            };
+
+            blend_attachments_states.push(attachment_state)
+        }
+    }
+
+    let blend_state_create_info = vk::PipelineColorBlendStateCreateInfo::builder()
+        .logic_op_enable(false)
+        .logic_op(vk::LogicOp::CLEAR)
+        .attachments(&blend_attachments_states)
+        .blend_constants([0.0, 0.0, 0.0, 0.0])
+        .build();
+
+    RafxBlendStateVkCreateInfo {
+        _attachments: blend_attachments_states,
+        blend_state: blend_state_create_info,
+    }
 }

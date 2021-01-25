@@ -69,4 +69,7 @@ pub use pool::PooledResourceImpl;
 mod cleanup;
 pub use cleanup::ResourceDropSink;
 
+pub mod cooked_shader;
+pub use cooked_shader::*;
+
 pub use rafx_base::resource_map::ResourceMap as RenderResources;

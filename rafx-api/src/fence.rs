@@ -34,7 +34,7 @@ impl RafxFence {
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(inner) => inner.get_fence_status(),
             #[cfg(feature = "rafx-metal")]
-            RafxFence::Metal(_inner) => unimplemented!(),
+            RafxFence::Metal(inner) => inner.get_fence_status(),
         }
     }
 
@@ -44,7 +44,7 @@ impl RafxFence {
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(inner) => inner.wait(),
             #[cfg(feature = "rafx-metal")]
-            RafxFence::Metal(_inner) => unimplemented!(),
+            RafxFence::Metal(inner) => inner.wait(),
         }
     }
 

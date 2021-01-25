@@ -3,7 +3,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 // set = 2, binding = 0
-#include "mesh_common_bindings.glsl"
+#include "mesh.glsl"
 
 // @[semantic("POSITION")]
 layout (location = 0) in vec3 in_pos;

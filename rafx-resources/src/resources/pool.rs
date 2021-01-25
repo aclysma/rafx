@@ -122,8 +122,6 @@ impl<T: PooledResourceImpl> PooledResourceAllocator<T> {
     /// Immediately destroy everything. We assume the device is idle and nothing is in flight.
     /// Calling this function when the device is not idle could result in a deadlock
     pub fn destroy(&mut self) -> RafxResult<()> {
-        self.device_context.wait_for_device_idle()?;
-
         for pool in self.in_flight_pools.drain(..) {
             std::mem::drop(pool.pool);
         }

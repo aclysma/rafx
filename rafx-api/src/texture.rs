@@ -22,7 +22,7 @@ impl RafxTexture {
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(inner) => inner.texture_def(),
             #[cfg(feature = "rafx-metal")]
-            RafxTexture::Metal(_inner) => unimplemented!(),
+            RafxTexture::Metal(inner) => inner.texture_def(),
         }
     }
 

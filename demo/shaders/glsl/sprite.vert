@@ -2,11 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-// @[export]
-// @[internal_buffer]
-layout(set = 0, binding = 0) uniform Args {
-    mat4 mvp;
-} uniform_buffer;
+#include "sprite.glsl"
 
 // @[semantic("POSITION")]
 layout (location = 0) in vec4 pos;

@@ -193,4 +193,8 @@ unknown-git = "deny"
 # if not specified. If it is specified but empty, no registries are allowed.
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 # List of URLs for allowed Git repositories
-allow-git = ["https://github.com/aclysma/atelier-assets", "https://github.com/gltf-rs/gltf.git"]
+allow-git = [
+    "https://github.com/aclysma/atelier-assets",
+    "https://github.com/gltf-rs/gltf.git",
+    "https://github.com/aclysma/metal-rs.git"
+]

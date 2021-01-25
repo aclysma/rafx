@@ -68,7 +68,7 @@ impl DescriptorSetAllocator {
 
     pub fn destroy(&mut self) -> RafxResult<()> {
         for pool in self.pools.values_mut() {
-            pool.destroy(&self.device_context)?;
+            pool.destroy()?;
         }
 
         self.pools.clear();
@@ -97,8 +97,10 @@ impl DescriptorSetAllocator {
         write_set: DescriptorSetWriteSet,
     ) -> RafxResult<DescriptorSetArc> {
         // Get or create the pool for the layout
+
         let hash = descriptor_set_layout.get_hash().into();
         let device_context = self.device_context.clone();
+
         let pool = self.pools.entry(hash).or_insert_with(|| {
             ManagedDescriptorSetPool::new(&device_context, descriptor_set_layout.clone())
         });

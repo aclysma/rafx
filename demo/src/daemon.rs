@@ -70,7 +70,7 @@ pub fn run(opt: AssetDaemonOpt) {
         .with_importer("materialinstance", rafx::assets::MaterialInstanceImporter)
         .with_importer("compute", rafx::assets::ComputePipelineImporter)
         .with_importer("spv", rafx::assets::ShaderImporterSpv)
-        .with_importer("shader", rafx::assets::ShaderImporterCooked)
+        .with_importer("cookedshaderpackage", rafx::assets::ShaderImporterCooked)
         .with_importer("png", rafx::assets::ImageImporter)
         .with_importer("jpg", rafx::assets::ImageImporter)
         .with_importer("jpeg", rafx::assets::ImageImporter)

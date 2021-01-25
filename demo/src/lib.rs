@@ -367,7 +367,7 @@ fn process_input(
                     #[cfg(feature = "rafx-vulkan")]
                     if keycode == Keycode::D {
                         let stats = resources
-                            .get::<RafxDeviceContext>()
+                            .get::<rafx::api::RafxDeviceContext>()
                             .unwrap()
                             .vk_device_context()
                             .unwrap()

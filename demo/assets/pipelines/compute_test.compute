@@ -1,0 +1,4 @@
+(
+    shader_module: "../shaders/compute_test.comp.cookedshaderpackage",
+    entry_name: "main"
+)

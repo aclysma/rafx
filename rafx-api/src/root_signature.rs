@@ -2,6 +2,7 @@
 use crate::metal::RafxRootSignatureMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxRootSignatureVulkan;
+use crate::RafxPipelineType;
 
 /// Represents the full "layout" or "interface" of a shader (or set of shaders.)
 ///
@@ -16,6 +17,16 @@ pub enum RafxRootSignature {
 }
 
 impl RafxRootSignature {
+    /// Returns what kind of pipeline this is
+    pub fn pipeline_type(&self) -> RafxPipelineType {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxRootSignature::Vk(inner) => inner.pipeline_type(),
+            #[cfg(feature = "rafx-metal")]
+            RafxRootSignature::Metal(inner) => inner.pipeline_type(),
+        }
+    }
+
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]

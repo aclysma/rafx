@@ -35,7 +35,7 @@ impl RafxQueue {
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => inner.queue_id(),
             #[cfg(feature = "rafx-metal")]
-            RafxQueue::Metal(_inner) => unimplemented!(),
+            RafxQueue::Metal(inner) => inner.queue_id(),
         }
     }
 
@@ -45,7 +45,7 @@ impl RafxQueue {
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => inner.queue_type(),
             #[cfg(feature = "rafx-metal")]
-            RafxQueue::Metal(_inner) => unimplemented!(),
+            RafxQueue::Metal(inner) => inner.queue_type(),
         }
     }
 
@@ -60,7 +60,9 @@ impl RafxQueue {
                 RafxCommandPool::Vk(inner.create_command_pool(command_pool_def)?)
             }
             #[cfg(feature = "rafx-metal")]
-            RafxQueue::Metal(_inner) => unimplemented!(),
+            RafxQueue::Metal(inner) => {
+                RafxCommandPool::Metal(inner.create_command_pool(command_pool_def)?)
+            }
         })
     }
 
@@ -99,7 +101,26 @@ impl RafxQueue {
                 )
             }
             #[cfg(feature = "rafx-metal")]
-            RafxQueue::Metal(_inner) => unimplemented!(),
+            RafxQueue::Metal(inner) => {
+                let command_buffers: Vec<_> = command_buffers
+                    .iter()
+                    .map(|x| x.metal_command_buffer().unwrap())
+                    .collect();
+                let wait_semaphores: Vec<_> = wait_semaphores
+                    .iter()
+                    .map(|x| x.metal_semaphore().unwrap())
+                    .collect();
+                let signal_semaphores: Vec<_> = signal_semaphores
+                    .iter()
+                    .map(|x| x.metal_semaphore().unwrap())
+                    .collect();
+                inner.submit(
+                    &command_buffers,
+                    &wait_semaphores,
+                    &signal_semaphores,
+                    signal_fence.map(|x| x.metal_fence().unwrap()),
+                )
+            }
         }
     }
 
@@ -126,7 +147,17 @@ impl RafxQueue {
                 )
             }
             #[cfg(feature = "rafx-metal")]
-            RafxQueue::Metal(_inner) => unimplemented!(),
+            RafxQueue::Metal(inner) => {
+                let wait_semaphores: Vec<_> = wait_semaphores
+                    .iter()
+                    .map(|x| x.metal_semaphore().unwrap())
+                    .collect();
+                inner.present(
+                    swapchain.metal_swapchain().unwrap(),
+                    &wait_semaphores,
+                    image_index,
+                )
+            }
         }
     }
 
@@ -136,7 +167,7 @@ impl RafxQueue {
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => inner.wait_for_queue_idle(),
             #[cfg(feature = "rafx-metal")]
-            RafxQueue::Metal(_inner) => unimplemented!(),
+            RafxQueue::Metal(inner) => inner.wait_for_queue_idle(),
         }
     }
 

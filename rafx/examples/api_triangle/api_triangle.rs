@@ -168,23 +168,23 @@ fn run() -> RafxResult<()> {
         };
 
         let vert_shader_stage_def = RafxShaderStageDef {
-            shader_stage: RafxShaderStageFlags::VERTEX,
-            entry_point: "main".to_string(),
             shader_module: vert_shader_module,
-            resources: vec![
-                // Example binding
-                color_shader_resource.clone(),
-            ],
+            reflection: RafxShaderStageReflection {
+                entry_point_name: "main".to_string(),
+                shader_stage: RafxShaderStageFlags::VERTEX,
+                compute_threads_per_group: None,
+                resources: vec![color_shader_resource.clone()],
+            },
         };
 
         let frag_shader_stage_def = RafxShaderStageDef {
-            shader_stage: RafxShaderStageFlags::FRAGMENT,
-            entry_point: "main".to_string(),
             shader_module: frag_shader_module,
-            resources: vec![
-                // Example binding
-                color_shader_resource,
-            ],
+            reflection: RafxShaderStageReflection {
+                entry_point_name: "main".to_string(),
+                shader_stage: RafxShaderStageFlags::FRAGMENT,
+                compute_threads_per_group: None,
+                resources: vec![color_shader_resource],
+            },
         };
 
         //
@@ -287,8 +287,8 @@ fn run() -> RafxResult<()> {
             #[rustfmt::skip]
             let vertex_data = [
                 0.0f32, 0.5, 1.0, 0.0, 0.0,
-                -0.5 + (seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
-                0.5 - (seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
+                0.5 - (seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
+                -0.5 + (seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
             ];
 
             let color = (seconds.cos() + 1.0) / 2.0;
@@ -350,6 +350,7 @@ fn run() -> RafxResult<()> {
             )?;
 
             cmd_buffer.cmd_bind_pipeline(&pipeline)?;
+
             cmd_buffer.cmd_bind_vertex_buffers(
                 0,
                 &[RafxVertexBufferBinding {
@@ -364,6 +365,7 @@ fn run() -> RafxResult<()> {
             cmd_buffer.cmd_draw(3, 0)?;
 
             // Put it into a layout where we can present it
+
             cmd_buffer.cmd_unbind_render_targets()?;
 
             cmd_buffer.cmd_resource_barrier(

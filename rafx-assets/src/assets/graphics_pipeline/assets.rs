@@ -14,6 +14,7 @@ pub use rafx_resources::DescriptorSetLayoutResource;
 pub use rafx_resources::GraphicsPipelineResource;
 use rafx_resources::{
     DescriptorSetArc, DescriptorSetLayout, FixedFunctionState, ResourceArc, ShaderModuleMeta,
+    SlotLocation, SlotNameLookup,
 };
 use rafx_resources::{DescriptorSetWriteSet, MaterialPassResource, SamplerResource};
 use rafx_resources::{MaterialPassVertexInput, ShaderModuleResource};
@@ -232,15 +233,6 @@ pub struct MaterialAssetData {
     pub passes: Vec<MaterialPassData>,
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct SlotLocation {
-    pub layout_index: u32,
-    pub binding_index: u32,
-    //pub array_index: u32,
-}
-
-pub type SlotNameLookup = FnvHashMap<String, FnvHashSet<SlotLocation>>;
-
 pub struct MaterialPassInner {
     pub shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
 
@@ -332,17 +324,15 @@ impl MaterialPass {
 
             rafx_shader_stages.push(RafxShaderStageDef {
                 shader_module: shader_asset.shader_module.get_raw().shader_module.clone(),
-                entry_point: stage.entry_name.clone(),
-                shader_stage: stage.stage.into(),
-                resources: reflection_data.rafx_reflection.resources.clone(),
+                reflection: reflection_data.rafx_api_reflection.clone(),
             });
 
             // Check that the compiled shader supports the given stage
-            if (reflection_data.rafx_reflection.shader_stage & stage.stage.into()).is_empty() {
+            if (reflection_data.rafx_api_reflection.shader_stage & stage.stage.into()).is_empty() {
                 let error = format!(
                     "Load Material Failed - Pass is using a shader for stage {:?}, but this shader supports stages {:?}.",
                     stage.stage,
-                    reflection_data.rafx_reflection.shader_stage
+                    reflection_data.rafx_api_reflection.shader_stage
                 );
                 log::error!("{}", error);
                 return Err(error)?;

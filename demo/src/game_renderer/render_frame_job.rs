@@ -111,6 +111,7 @@ impl RenderFrameJob {
                 resource_context.clone(),
                 &render_resources,
             );
+
             prepare_job_set.prepare(
                 &prepare_context,
                 &frame_packet,
