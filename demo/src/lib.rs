@@ -156,7 +156,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
     #[cfg(feature = "profile-with-puffin")]
     let mut profiler_ui = puffin_imgui::ProfilerUi::default();
 
-    #[cfg(feature = "profile-with-tracy")]
+    #[cfg(feature = "profile-with-tracing")]
     {
         use tracing_subscriber::layer::SubscriberExt;
         tracing::subscriber::set_global_default(

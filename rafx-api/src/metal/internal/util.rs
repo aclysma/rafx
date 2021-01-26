@@ -103,7 +103,7 @@ pub(crate) fn blend_def_to_attachment(
     blend_state.verify(color_attachment_count);
 
     if !blend_state.render_target_blend_states.is_empty() {
-        for attachment_index in 0..MAX_RENDER_TARGET_ATTACHMENTS {
+        for attachment_index in 0..color_attachment_count {
             if blend_state
                 .render_target_mask
                 .intersects(RafxBlendStateTargets::from_bits(1 << attachment_index).unwrap())

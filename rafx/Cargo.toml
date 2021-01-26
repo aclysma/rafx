@@ -72,10 +72,10 @@ profile-with-superluminal = [
     "rafx-api/profile-with-superluminal"
 ]
 
-profile-with-tracing = [
-    "rafx-framework/profile-with-tracing",
-    "rafx-assets/profile-with-tracing",
-    "rafx-api/profile-with-tracing"
+profile-with-tracy = [
+    "rafx-framework/profile-with-tracy",
+    "rafx-assets/profile-with-tracy",
+    "rafx-api/profile-with-tracy"
 ]
 
 #

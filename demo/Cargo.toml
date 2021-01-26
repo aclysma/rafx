@@ -84,12 +84,12 @@ profile-with-superluminal = [
     "rafx/profile-with-superluminal",
 ]
 profile-with-tracy = [
-    "profiling/profile-with-tracing",
-    "rafx/profile-with-tracing",
+    "profiling/profile-with-tracy",
+    "rafx/profile-with-tracy",
     "tracing-subscriber",
     "tracing"
 ]
 profile-with-tracy-memory = [
-    "profiling/profile-with-tracing",
+    "profiling/profile-with-tracy",
     "profile-with-tracy"
 ]
