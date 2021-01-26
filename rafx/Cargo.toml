@@ -17,7 +17,7 @@ rafx-api = { version = "0.0.2", path = "../rafx-api" }
 rafx-nodes = { version = "0.0.2", path = "../rafx-nodes", optional = true }
 rafx-visibility = { version = "0.0.2", path = "../rafx-visibility", optional = true }
 rafx-framework = { version = "0.0.2", path = "../rafx-framework", optional = true }
-rafx-assets = { version = "0.0.2", path = "../rafx-assets", optional = true }
+#rafx-assets = { version = "0.0.2", path = "../rafx-assets", optional = true }
 
 [dev-dependencies]
 log = "0.4"
@@ -35,8 +35,14 @@ default = []
 #
 # Backends
 #
-rafx-vulkan = ["rafx-api/rafx-vulkan", "rafx-assets/rafx-vulkan"]
-rafx-metal = ["rafx-api/rafx-metal", "rafx-assets/rafx-metal"]
+rafx-vulkan = [
+    "rafx-api/rafx-vulkan",
+    #"rafx-assets/rafx-vulkan"
+]
+rafx-metal = [
+    "rafx-api/rafx-metal",
+    #"rafx-assets/rafx-metal"
+]
 
 # Vulkan-specific feature, use statically-linked vulkan instead of dynamically loading it
 static-vulkan = ["rafx-api/static-vulkan"]
@@ -49,32 +55,32 @@ static-vulkan = ["rafx-api/static-vulkan"]
 # Assets: Integrates atelier-assets to provide a full asset pipeline
 nodes = ["rafx-nodes", "rafx-visibility"]
 framework = ["rafx-framework", "nodes"]
-assets = ["rafx-assets", "framework"]
+#assets = ["rafx-assets", "framework"]
 
 #
 # Profiling features - passes down features to crates contained within this one
 #
 profile-with-puffin = [
     "rafx-framework/profile-with-puffin",
-    "rafx-assets/profile-with-puffin",
+    #"rafx-assets/profile-with-puffin",
     "rafx-api/profile-with-puffin"
 ]
 
 profile-with-optick = [
     "rafx-framework/profile-with-optick",
-    "rafx-assets/profile-with-optick",
+    #"rafx-assets/profile-with-optick",
     "rafx-api/profile-with-optick"
 ]
 
 profile-with-superluminal = [
     "rafx-framework/profile-with-superluminal",
-    "rafx-assets/profile-with-superluminal",
+    #"rafx-assets/profile-with-superluminal",
     "rafx-api/profile-with-superluminal"
 ]
 
 profile-with-tracing = [
     "rafx-framework/profile-with-tracing",
-    "rafx-assets/profile-with-tracing",
+    #"rafx-assets/profile-with-tracing",
     "rafx-api/profile-with-tracing"
 ]
 

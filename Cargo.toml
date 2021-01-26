@@ -7,10 +7,10 @@ members = [
     "rafx-visibility",
     "rafx-framework",
     "rafx-shader-processor",
-    "rafx-assets",
-    "demo",
-    "demo/shaders",
-    "demo/cli",
+    #"rafx-assets",
+    #"demo",
+    #"demo/shaders",
+    #"demo/cli",
 ]
 
 exclude = [
