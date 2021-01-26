@@ -1,6 +1,6 @@
 [package]
 name = "rafx-assets"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -17,10 +17,10 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-api = { version = "0.0.2", path = "../rafx-api", features = ["rafx-vulkan"] }
+rafx-api = { version = "0.0.3", path = "../rafx-api", features = ["rafx-vulkan"] }
 rafx-base = { version = "0.0.2", path = "../rafx-base" }
-rafx-nodes = { version = "0.0.2", path = "../rafx-nodes" }
-rafx-framework = { version = "0.0.2", path = "../rafx-framework" }
+rafx-nodes = { version = "0.0.3", path = "../rafx-nodes" }
+rafx-framework = { version = "0.0.3", path = "../rafx-framework" }
 
 atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "rafx", features = ["serde_importers"] }
 type-uuid = "0.1"

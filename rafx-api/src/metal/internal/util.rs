@@ -1,6 +1,6 @@
 use crate::{
     RafxAddressMode, RafxBlendState, RafxBlendStateTargets, RafxColorRenderTargetBinding,
-    RafxDepthState, RafxDeviceInfo, RafxResourceType, RafxStoreOp, MAX_RENDER_TARGET_ATTACHMENTS,
+    RafxDepthState, RafxDeviceInfo, RafxResourceType, RafxStoreOp,
 };
 use cocoa_foundation::foundation::NSUInteger;
 use metal_rs::{

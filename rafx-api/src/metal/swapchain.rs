@@ -1,4 +1,7 @@
-use crate::metal::{RafxDeviceContextMetal, RafxRawImageMetal, RafxRenderTargetMetal};
+use crate::metal::{
+    RafxDeviceContextMetal, RafxFenceMetal, RafxRawImageMetal, RafxRenderTargetMetal,
+    RafxSemaphoreMetal,
+};
 use crate::{
     RafxExtents3D, RafxFormat, RafxRenderTarget, RafxRenderTargetDef, RafxResourceType, RafxResult,
     RafxSampleCount, RafxSwapchainDef, RafxSwapchainImage, RafxTextureDimensions,
@@ -107,6 +110,20 @@ impl RafxSwapchainMetal {
 
         self.swapchain_def = swapchain_def.clone();
         Ok(())
+    }
+
+    pub fn acquire_next_image_fence(
+        &mut self,
+        _fence: &RafxFenceMetal,
+    ) -> RafxResult<RafxSwapchainImage> {
+        self.acquire_next_image()
+    }
+
+    pub fn acquire_next_image_semaphore(
+        &mut self,
+        _semaphore: &RafxSemaphoreMetal,
+    ) -> RafxResult<RafxSwapchainImage> {
+        self.acquire_next_image()
     }
 
     pub fn acquire_next_image(&mut self) -> RafxResult<RafxSwapchainImage> {

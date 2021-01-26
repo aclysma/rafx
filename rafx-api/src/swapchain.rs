@@ -58,7 +58,9 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-vulkan")]
             RafxSwapchain::Vk(inner) => inner.acquire_next_image_fence(fence.vk_fence().unwrap()),
             #[cfg(feature = "rafx-metal")]
-            RafxSwapchain::Metal(inner) => inner.acquire_next_image(),
+            RafxSwapchain::Metal(inner) => {
+                inner.acquire_next_image_fence(fence.metal_fence().unwrap())
+            }
         }
     }
 
@@ -75,7 +77,9 @@ impl RafxSwapchain {
                 inner.acquire_next_image_semaphore(semaphore.vk_semaphore().unwrap())
             }
             #[cfg(feature = "rafx-metal")]
-            RafxSwapchain::Metal(inner) => inner.acquire_next_image(),
+            RafxSwapchain::Metal(inner) => {
+                inner.acquire_next_image_semaphore(semaphore.metal_semaphore().unwrap())
+            }
         }
     }
 
