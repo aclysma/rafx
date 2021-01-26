@@ -1,6 +1,6 @@
 [package]
 name = "rafx-shader-processor"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -15,8 +15,8 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 publish = false
 
 [dependencies]
-rafx-framework = { version = "0.0.2", path = "../rafx-framework" }
-rafx-api = { version = "0.0.2", path = "../rafx-api", features = ["rafx-vulkan", "serde-support"] }
+rafx-framework = { version = "0.0.3", path = "../rafx-framework" }
+rafx-api = { version = "0.0.3", path = "../rafx-api", features = ["rafx-vulkan", "serde-support"] }
 
 fnv = "1.0"
 structopt = "0.3"

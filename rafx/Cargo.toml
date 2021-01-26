@@ -1,6 +1,6 @@
 [package]
 name = "rafx"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -12,12 +12,12 @@ keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
 [dependencies]
-rafx-base = { version = "0.0.2", path = "../rafx-base" }
-rafx-api = { version = "0.0.2", path = "../rafx-api" }
-rafx-nodes = { version = "0.0.2", path = "../rafx-nodes", optional = true }
-rafx-visibility = { version = "0.0.2", path = "../rafx-visibility", optional = true }
-rafx-framework = { version = "0.0.2", path = "../rafx-framework", optional = true }
-#rafx-assets = { version = "0.0.2", path = "../rafx-assets", optional = true }
+rafx-base = { version = "0.0.3", path = "../rafx-base" }
+rafx-api = { version = "0.0.3", path = "../rafx-api" }
+rafx-nodes = { version = "0.0.3", path = "../rafx-nodes", optional = true }
+rafx-visibility = { version = "0.0.3", path = "../rafx-visibility", optional = true }
+rafx-framework = { version = "0.0.3", path = "../rafx-framework", optional = true }
+#rafx-assets = { version = "0.0.3", path = "../rafx-assets", optional = true }
 
 [dev-dependencies]
 log = "0.4"
