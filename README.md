@@ -1,32 +1,18 @@
 # Rafx
 
-This is a multi-backend renderer built on top of the [`atelier-assets`](https://github.com/amethyst/atelier-assets) asset 
-pipeline. It's intended to be performant, flexible, workflow-friendly, and suitable for use in real-world projects in a 
-team environment.
-
-The asset pipeline is designed with user workflow in mind (including dedicated artists!), supporting workflow-friendly
-features like hot reloading assets, including on remote devices. The architecture of the renderer is intended to support
-advanced use-cases such as streaming, LODs, visibility systems, and multi-threaded draw call submission. 
+Rafx is a multi-backend renderer that prioritizes performance, flexibility, and productivity. It optionally integrates 
+with the [`distill`](https://github.com/amethyst/atelier-assets) asset pipeline to provide workflows and tools suitable
+for real-world projects with multidisciplinary teams.
 
 This crate contains several layers:
- * Low-level graphics API abstraction 
- * Higher-level resource management and lifetime handling (via **render graph** and other helpful utilities)
- * Asset layer that integrates with `atelier-assets`
- * Tools for packing assets for a shipped build and **auto-generating shader binding code**
+ * `rafx-api`: Low-level graphics API abstraction 
+ * `rafx-framework`: Mid-level framework that eases resource management, lifetime handling, and draw call dispatching
+ * `rafx-assets`: Asset layer that integrates with [`distill`](https://github.com/amethyst/atelier-assets)
+   
+Rafx also provides tools for building shaders and packing assets.
 
-Supported Platforms:
- * Windows
- * macOS (via MoltenVK)
- * iOS (via MoltenVK)
- * Linux
-
-Android might work but I don't have hardware to test with.
-
-References:
- * The job/phase rendering design is inspired by the 2015 GDC talk "[Destiny's Multithreaded Rendering Architecture](http://advances.realtimerendering.com/destiny/gdc_2015/Tatarchuk_GDC_2015__Destiny_Renderer_web.pdf)".
- * The render graph is inspired by the 2017 GDC talk "[FrameGraph: Extensible Rendering Architecture in Frostbite](https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in)"
-     * see also "[Render Graphs and Vulkan - a deep dive](http://themaister.net/blog/2017/08/15/render-graphs-and-vulkan-a-deep-dive/)"
- * The low-level API is somewhat similar to the API from "[The Forge](https://github.com/ConfettiFX/The-Forge)"
+Rafx supports most mainstream platforms via `vulkan` and `metal` backends. Proprietary platforms can be supported by
+adding an additional backend.
 
 [![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
 
@@ -38,33 +24,20 @@ References:
 
 ## Diagrams
 
- * [Diagram of key crate dependencies](docs/crate_dependencies.png)
+ * [Diagram of key crate dependencies](docs/crate-dependencies.png)
  * [Pipelining](docs/pipelining.png)
- * [Diagram of rendering process](docs/render_process.png)
+ * [Diagram of rendering process](docs/render-process.png)
+ * [Shader Processor](docs/shader-processor.png)
 
-## Status
+## Roadmap
 
-Not production ready!
-
-The demo includes:
- * Render thread decoupled from main thread [(diagram)](docs/pipelining.png)
- * Asynchronous asset loading
- * Assets can be streamed to remote hardware (i.e. a phone)
- * OR assets can be cooked into a binary blob for shipping
- * Hot-reloading assets (needs more work, some asset types do not work reliably)
- * Render graph can be used for efficient and flexible definition of a render pipeline, including rendering to textures
-   and multiple cameras.
- * Auto-generated shader bindings make working with descriptor sets convenient and less error prone.
- * Material System supporting multiple passes
- * Multi-camera support (to produce shadow maps, for example)
- * Demo game state stored in ECS (NOTE: demo uses legion but the renderer is ECS-agnostic)
- * PBR Meshes
- * Sprites
- * Debug Draw
- * imgui
- * HDR Pipeline with Bloom
- * Point, Spot, and Directional Lights
- * Multiple Spot/Directional/Point light soft shadows
+ * For the near-term future, the focus will be on:
+     * Adding more documentation
+     * Maturing the existing backends
+     * Extending the demo with more rendering techniques
+ * The API of `rafx-api` is unlikely to change drastically
+ * `rafx-framework` and `rafx-assets` may get some refactoring/improvements based on demo improvements and dogfooding in
+   other projects
 
 ## Running the Demo
 
@@ -87,19 +60,52 @@ is highly recommeneded. Asset processing is extremely slow in debug mode.** (i.e
 The demo uses SDL2 and in debug mode, vulkan validation. If you have trouble running the demo, please check that
 dependencies for both SDL2 and vulkan are available.
 
-### Tools
+### Demo Features
+
+* Render thread decoupled from main thread [(diagram)](docs/pipelining.png)
+* Shader build pipeline [(diagram)](docs/shader-processor.png)
+* Asynchronous asset loading
+* Assets can be streamed to remote hardware (i.e. a phone)
+* OR assets can be cooked into a binary blob for shipping
+* Hot-reloading assets (needs more work, some asset types do not work reliably)
+* Render graph can be used for efficient and flexible definition of a render pipeline, including rendering to textures
+  and multiple cameras.
+* Auto-generated shader bindings make working with descriptor sets convenient and less error prone.
+* Material System supporting multiple passes
+* Multi-camera support (to produce shadow maps, for example)
+* Demo game state stored in ECS (NOTE: demo uses legion but the renderer is ECS-agnostic)
+* PBR Meshes
+* Sprites
+* Debug Draw
+* imgui
+* HDR Pipeline with Bloom
+* Point, Spot, and Directional Lights
+* Multiple Spot/Directional/Point light soft shadows
+
+## Tools
 
 The renderer includes a few tools for processing shaders and packing data in a binary blob.
 
-#### Shader Compiler
+### Shader Processor
 
 This tool parses GLSL and produces matching rust code. This makes working with descriptor sets easier and safer!
  * The tool is located at [/shader-processor](rafx-shader-processor)
  * The demo includes a `shaders` crate to compile the generated rust code. It's located at [/demo/shaders](demo/shaders).
    Just the rust code is auto-generated, not the Cargo.toml.
  * The easiest way to "refresh shaders" in the demo is to hit compile.bat or compile.sh in that folder
+
+![Diagram illustrating that shaders are processed into .metal, .spirv, etc.](docs/shader-processor.png)
+
+The shader processor produces the following assets artifacts
+
+* API-specific such as compiled SPIR-V or metal source code
+* Metadata used by rafx at runtime
+* Rust code that makes working with the shader easier
+* Intermediate formats for debugging/inspection
+
+The shader package can be loaded as an asset and contains everything needed to load a compiled shader.
  
-#### CLI
+### Packaging Assets
 
 This tool currently is only useful for packing assets.
  * Pack files like this: `run --package cli -- --pack out.pack`
@@ -107,10 +113,15 @@ This tool currently is only useful for packing assets.
 
 ## Features
 
+ * `rafx-vulkan`: Use the vulkan backend
+ * `rafx-metal`: Use the metal backend
+
+## Crates
+
  * `rafx-base` - Shared helpers/data structures. Nothing exciting
  * `rafx-api` - Rendering API abstraction layer.
-   * Vulkan backend for windows/linux (native/direct, not through a translation layer)
-   * MoltenVK currently required for macOS but native metal backend coming soon!
+   * Vulkan backend for windows/linux
+   * Metal backend for macOS/iOS
  * `rafx-nodes` - Inspired by the 2015 GDC talk "Destiny's Multithreaded Rendering Architecture." (A low-budget
    version and jobs are not actually MT yet)
    * A job system with extract, prepare, and write phases
@@ -119,27 +130,18 @@ This tool currently is only useful for packing assets.
    * Flexible sorting mechanism for interleaving and batching write commands from multiple rendering features
  * `rafx-visibility` - Placeholder visibility system. Doesn't do anything yet (returns all things visible all the 
    time). See the GDC talk for more info on how this will work.
- * `rafx-resources` - Resource management for images, buffers, descriptor sets, etc.
+ * `rafx-framework` - Resource management for images, buffers, descriptor sets, etc.
    * Most things are hashed and reference counted
    * Provides a render graph
-   * Nearly all vulkan assets are data-driven from serializable and hashable structures rather than hard-coded.
+   * Nearly all assets are data-driven from serializable and hashable structures rather than hard-coded.
    * Buffers and images are asynchronously uploaded on dedicated transfer queue when available
+   * Multi-pass material abstraction with bindable parameters
  * `rafx-assets` - An asset loading and management system.
    * Assets can hot reload from files (but see [#14](rafx/issues/14))
-   * Because atelier-assets pre-processes and stores cached assets as they change, custom processing/packing can be
+   * Because distill pre-processes and stores cached assets as they change, custom processing/packing can be
      implemented while maintaining extremely fast load times. For example, texture compression could be implemented
      as an import step.  
    * Separate multi-thread friendly path for creating assets at runtime
-   * Multi-pass material abstraction with bindable parameters
-
-## Roadmap
-
- * Better shadows
- * More rendering techniques like SSAO
- * Support for more rendering backends (mainly metal and dx12)
-
-The demo shows a basic rendering pipeline with a GLTF importer, PBR, bloom, imgui, debug draw, sprites, and dynamic
-light/shadows. It also demonstrates how to pipeline rendering on a separate thread from simulation.
 
 ## License
 
@@ -161,6 +163,10 @@ The assets/blender contains some shaders from from https://freepbr.com, availabl
 
 Some dependencies may be licensed under other terms. These licenses include "ISC", "CC0-1.0", "BSD-2-Clause",
 "BSD-3-Clause", and "Zlib". This is validated on a best-effort basis in every CI run using cargo-deny.
+
+### Acknowledgements
+
+Rafx benefits from many [great ideas and projects](docs/acknowledgements.md)!
 
 ## Contribution
 
