@@ -3,7 +3,7 @@ use rafx::api::RafxPrimitiveTopology;
 use rafx::assets::BufferAsset;
 use rafx::assets::ImageAsset;
 use rafx::assets::MaterialInstanceAsset;
-use rafx::resources::{VertexDataLayout, VertexDataSetLayout};
+use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use serde::{Deserialize, Serialize};
 use shaders::mesh_frag::MaterialDataStd140;
 use type_uuid::*;

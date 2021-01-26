@@ -2,11 +2,11 @@ use crate::features::imgui::ImGuiRenderFeature;
 use crate::imgui_support::{ImGuiDrawCmd, ImGuiDrawData};
 use crate::render_contexts::RenderJobWriteContext;
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
+use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::nodes::{
     FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
     SubmitNodeId,
 };
-use rafx::resources::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 
 pub struct ImGuiCommandWriter {
     pub(super) vertex_buffers: Vec<ResourceArc<BufferResource>>,

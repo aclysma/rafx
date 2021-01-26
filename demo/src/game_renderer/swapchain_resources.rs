@@ -1,7 +1,7 @@
 use crate::game_renderer::GameRendererInner;
 use rafx::api::{RafxDeviceContext, RafxFormat, RafxResourceType, RafxResult, RafxSwapchain};
-use rafx::resources::graph::SwapchainSurfaceInfo;
-use rafx::resources::ResourceManager;
+use rafx::framework::graph::SwapchainSurfaceInfo;
+use rafx::framework::ResourceManager;
 
 pub struct SwapchainResources {
     // The images presented by the swapchain

@@ -1,4 +1,4 @@
-use rafx_resources::cooked_shader::{
+use rafx_framework::cooked_shader::{
     ReflectedDescriptorSetLayout, ReflectedDescriptorSetLayoutBinding, ReflectedEntryPoint,
     ReflectedVertexInput,
 };

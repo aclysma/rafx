@@ -17,7 +17,7 @@ mod prepare;
 
 mod write;
 use rafx::api::RafxPrimitiveTopology;
-use rafx::resources::{
+use rafx::framework::{
     DescriptorSetArc, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,
 };
 use write::SpriteCommandWriter;

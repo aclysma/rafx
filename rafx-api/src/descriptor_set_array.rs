@@ -52,7 +52,7 @@ impl RafxDescriptorSetHandle {
 /// a `RafxDescriptorSetArray` is intended to be allocated in blocks and pooled. This allows
 /// downstream code to provide more fine-grained allocation strategies appropriate to their needs.
 ///
-/// Higher level crates in rafx-resources provide ref-counted descriptor sets and pooling.
+/// Higher level crates in rafx-framework provide ref-counted descriptor sets and pooling.
 ///
 /// Once a RafxDescriptorSetArray is allocated, depending on the backend, it may remain allocated
 /// for the duration of the API object, even if the descriptor set array is dropped. So rather than

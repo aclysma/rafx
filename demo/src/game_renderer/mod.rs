@@ -12,12 +12,12 @@ use crate::time::TimeState;
 use legion::*;
 use rafx::assets::{image_upload, DecodedImage, DecodedImageColorSpace};
 use rafx::assets::{AssetManager, DecodedImageMips};
+use rafx::framework::{DynResourceAllocatorSet, RenderResources};
+use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::nodes::{
     AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder,
     RenderRegistry, RenderView, RenderViewDepthRange, RenderViewSet, VisibilityResult,
 };
-use rafx::resources::{DynResourceAllocatorSet, RenderResources};
-use rafx::resources::{ImageViewResource, ResourceArc};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use std::sync::{Arc, Mutex};
 

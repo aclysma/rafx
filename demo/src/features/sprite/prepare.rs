@@ -9,11 +9,11 @@ use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use fnv::FnvHashMap;
 use glam::Vec3;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
+use rafx::framework::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, ViewSubmitNodes,
 };
-use rafx::resources::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
 
 pub struct SpritePrepareJob {
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,

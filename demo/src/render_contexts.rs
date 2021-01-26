@@ -1,9 +1,9 @@
 use legion::*;
 use rafx::api::RafxDeviceContext;
 use rafx::assets::AssetManager;
+use rafx::framework::ResourceContext;
+use rafx::framework::{DynCommandBuffer, GraphicsPipelineRenderTargetMeta, RenderResources};
 use rafx::graph::VisitRenderpassNodeArgs;
-use rafx::resources::ResourceContext;
-use rafx::resources::{DynCommandBuffer, GraphicsPipelineRenderTargetMeta, RenderResources};
 
 pub struct RenderJobExtractContext {
     pub world: &'static World,

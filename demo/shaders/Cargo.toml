@@ -12,12 +12,12 @@ publish = false
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-rafx-resources = { path = "../../rafx-resources" }
+rafx-framework = { path = "../../rafx-framework" }
 
 [features]
 default = ["rafx-vulkan"]
-rafx-vulkan = ["rafx-resources/rafx-vulkan"]
-rafx-metal = ["rafx-resources/rafx-metal"]
+rafx-vulkan = ["rafx-framework/rafx-vulkan"]
+rafx-metal = ["rafx-framework/rafx-metal"]
 
 [dev-dependencies]
 memoffset = "0.6"

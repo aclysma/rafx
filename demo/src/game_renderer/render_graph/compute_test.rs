@@ -1,7 +1,7 @@
 use rafx::graph::*;
 
 use super::RenderGraphContext;
-use rafx::resources::{ComputePipelineResource, ResourceArc};
+use rafx::framework::{ComputePipelineResource, ResourceArc};
 
 pub(super) struct ComputeTestPass {
     pub(super) node: RenderGraphNodeId,

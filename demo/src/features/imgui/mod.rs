@@ -4,10 +4,10 @@ use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
 use rafx::api::RafxPrimitiveTopology;
+use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::nodes::ExtractJob;
 use rafx::nodes::RenderFeature;
 use rafx::nodes::RenderFeatureIndex;
-use rafx::resources::{VertexDataLayout, VertexDataSetLayout};
 use std::convert::TryInto;
 
 mod extract;

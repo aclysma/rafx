@@ -2,10 +2,10 @@ use crate::features::debug3d::extract::Debug3dExtractJob;
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
+use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::nodes::ExtractJob;
 use rafx::nodes::RenderFeature;
 use rafx::nodes::RenderFeatureIndex;
-use rafx::resources::{VertexDataLayout, VertexDataSetLayout};
 use std::convert::TryInto;
 
 mod debug3d_resource;

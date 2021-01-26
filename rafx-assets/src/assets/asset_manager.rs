@@ -10,7 +10,7 @@ use crate::{
     GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SamplerAssetData, UploadQueueConfig,
 };
 use atelier_assets::loader::handle::Handle;
-use rafx_resources::{
+use rafx_framework::{
     ComputePipelineResource, DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider,
     DescriptorSetAllocatorRef, DescriptorSetLayout, DescriptorSetLayoutResource,
     DescriptorSetWriteSet, DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPassResource,
@@ -29,16 +29,16 @@ use rafx_api::{
     RafxBuffer, RafxDeviceContext, RafxQueue, RafxResult, RafxShaderStageDef, RafxShaderStageFlags,
     RafxTexture,
 };
-use rafx_nodes::RenderRegistry;
-use rafx_resources::descriptor_sets::{
+use rafx_framework::descriptor_sets::{
     DescriptorSetElementKey, DescriptorSetWriteElementBuffer, DescriptorSetWriteElementBufferData,
     DescriptorSetWriteElementImage,
 };
-use rafx_resources::DescriptorSetAllocator;
-use rafx_resources::DynCommandPoolAllocator;
-use rafx_resources::DynResourceAllocatorSetProvider;
-use rafx_resources::ResourceLookupSet;
-use rafx_resources::{ResourceManager, ResourceManagerMetrics};
+use rafx_framework::DescriptorSetAllocator;
+use rafx_framework::DynCommandPoolAllocator;
+use rafx_framework::DynResourceAllocatorSetProvider;
+use rafx_framework::ResourceLookupSet;
+use rafx_framework::{ResourceManager, ResourceManagerMetrics};
+use rafx_nodes::RenderRegistry;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -901,7 +901,7 @@ impl AssetManager {
                     })
                     .unwrap();
 
-                let what_to_bind = rafx_resources::descriptor_sets::what_to_bind(write);
+                let what_to_bind = rafx_framework::descriptor_sets::what_to_bind(write);
 
                 if what_to_bind.bind_images || what_to_bind.bind_samplers {
                     let mut write_image = DescriptorSetWriteElementImage {
@@ -917,7 +917,7 @@ impl AssetManager {
                                 .get_latest(image.load_handle())
                                 .unwrap();
                             write_image.image_view =
-                                Some(rafx_resources::descriptor_sets::DescriptorSetWriteElementImageValue::Resource(
+                                Some(rafx_framework::descriptor_sets::DescriptorSetWriteElementImageValue::Resource(
                                     loaded_image.image_view.clone(),
                                 ));
                         }

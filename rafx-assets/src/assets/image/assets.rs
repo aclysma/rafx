@@ -1,4 +1,4 @@
-use rafx_resources::{ImageResource, ImageViewResource, ResourceArc};
+use rafx_framework::{ImageResource, ImageViewResource, ResourceArc};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 

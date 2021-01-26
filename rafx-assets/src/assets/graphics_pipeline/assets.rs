@@ -9,15 +9,15 @@ use rafx_api::{
     RafxFillMode, RafxFrontFace, RafxImmutableSamplerKey, RafxRasterizerState, RafxResult,
     RafxSamplerDef, RafxShaderStageDef, RafxShaderStageFlags,
 };
-use rafx_nodes::{RenderPhase, RenderPhaseIndex};
-pub use rafx_resources::DescriptorSetLayoutResource;
-pub use rafx_resources::GraphicsPipelineResource;
-use rafx_resources::{
+pub use rafx_framework::DescriptorSetLayoutResource;
+pub use rafx_framework::GraphicsPipelineResource;
+use rafx_framework::{
     DescriptorSetArc, DescriptorSetLayout, FixedFunctionState, ResourceArc, ShaderModuleMeta,
     SlotLocation, SlotNameLookup,
 };
-use rafx_resources::{DescriptorSetWriteSet, MaterialPassResource, SamplerResource};
-use rafx_resources::{MaterialPassVertexInput, ShaderModuleResource};
+use rafx_framework::{DescriptorSetWriteSet, MaterialPassResource, SamplerResource};
+use rafx_framework::{MaterialPassVertexInput, ShaderModuleResource};
+use rafx_nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -602,7 +602,7 @@ impl MaterialPass {
             .descriptor_set_layouts
             .iter()
             .map(|layout| {
-                rafx_resources::descriptor_sets::create_uninitialized_write_set_for_layout(
+                rafx_framework::descriptor_sets::create_uninitialized_write_set_for_layout(
                     &layout.get_raw().descriptor_set_layout_def,
                 )
             })

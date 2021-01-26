@@ -8,7 +8,7 @@
 //!
 //! The API does not track resource lifetimes or states (such as vulkan image layouts) or try to
 //! enforce safe usage at compile time or runtime. Safer abstractions are available in
-//! rafx-resources and rafx-assets.
+//! rafx-framework and rafx-assets.
 //!
 //! **Every API call is potentially unsafe.** However, the unsafe keyword is only placed on APIs
 //! that are particularly likely to cause undefined behavior if used incorrectly.

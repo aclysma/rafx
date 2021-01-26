@@ -1,5 +1,5 @@
-use rafx_resources::BufferResource;
-use rafx_resources::ResourceArc;
+use rafx_framework::BufferResource;
+use rafx_framework::ResourceArc;
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 

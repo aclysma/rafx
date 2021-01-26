@@ -1,6 +1,6 @@
 use fnv::FnvHashMap;
-use rafx_resources::{ReflectedEntryPoint, ShaderModuleResource};
-use rafx_resources::{ResourceArc, ShaderModuleResourceDef};
+use rafx_framework::{ReflectedEntryPoint, ShaderModuleResource};
+use rafx_framework::{ResourceArc, ShaderModuleResourceDef};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;

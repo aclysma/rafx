@@ -1,11 +1,11 @@
 use crate::features::debug3d::{Debug3dDrawCall, Debug3dRenderFeature};
 use crate::render_contexts::RenderJobWriteContext;
 use rafx::api::{RafxResult, RafxVertexBufferBinding};
+use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::nodes::{
     FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
     SubmitNodeId,
 };
-use rafx::resources::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 
 pub struct Debug3dCommandWriter {
     pub(super) vertex_buffer: Option<ResourceArc<BufferResource>>,

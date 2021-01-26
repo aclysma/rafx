@@ -1,5 +1,5 @@
 [package]
-name = "rafx-resources"
+name = "rafx-framework"
 version = "0.0.2"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"

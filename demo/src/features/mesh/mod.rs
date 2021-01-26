@@ -5,12 +5,12 @@ use crate::render_contexts::{
 use atelier_assets::loader::handle::Handle;
 use rafx::assets::assets::MaterialPass;
 use rafx::base::slab::{DropSlab, DropSlabKey};
+use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::nodes::RenderView;
 use rafx::nodes::{
     ExtractJob, FrameNodeIndex, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex,
     RenderNodeCount, RenderNodeSet,
 };
-use rafx::resources::{ImageViewResource, ResourceArc};
 use std::convert::TryInto;
 
 mod extract;
@@ -19,7 +19,7 @@ use extract::MeshExtractJob;
 mod prepare;
 
 mod write;
-use rafx::resources::DescriptorSetArc;
+use rafx::framework::DescriptorSetArc;
 use write::MeshCommandWriter;
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =

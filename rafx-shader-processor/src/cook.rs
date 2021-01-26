@@ -1,6 +1,6 @@
 use rafx_api::{RafxShaderPackage, RafxShaderPackageMetal, RafxShaderPackageVulkan};
-use rafx_resources::CookedShaderPackage;
-use rafx_resources::{ReflectedEntryPoint, ShaderModuleHash};
+use rafx_framework::CookedShaderPackage;
+use rafx_framework::{ReflectedEntryPoint, ShaderModuleHash};
 
 pub(crate) fn cook_shader(
     reflected_data: &[ReflectedEntryPoint],

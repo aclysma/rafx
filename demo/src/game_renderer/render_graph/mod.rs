@@ -4,11 +4,11 @@ use rafx::api::{
     RafxDeviceContext, RafxFormat, RafxPrimitiveTopology, RafxResourceState, RafxResourceType,
     RafxResult, RafxSampleCount,
 };
+use rafx::framework::VertexDataSetLayout;
+use rafx::framework::{ComputePipelineResource, ResourceContext};
+use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
 use rafx::graph::*;
 use rafx::nodes::{PreparedRenderData, RenderView};
-use rafx::resources::VertexDataSetLayout;
-use rafx::resources::{ComputePipelineResource, ResourceContext};
-use rafx::resources::{ImageViewResource, MaterialPassResource, ResourceArc};
 
 mod shadow_map_pass;
 use shadow_map_pass::ShadowMapImageResources;

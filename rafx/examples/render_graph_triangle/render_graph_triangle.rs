@@ -1,16 +1,16 @@
 use log::LevelFilter;
 
 use rafx::api::*;
+use rafx::framework::{
+    CookedShaderPackage, FixedFunctionState, ReflectedShader, ShaderModuleResourceDef,
+    VertexDataLayout,
+};
 use rafx::graph::{
     RenderGraphBuilder, RenderGraphExecutor, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphNodeCallbacks, RenderGraphQueue,
     SwapchainSurfaceInfo,
 };
 use rafx::nodes::SubmitNode;
-use rafx::resources::{
-    CookedShaderPackage, FixedFunctionState, ReflectedShader, ShaderModuleResourceDef,
-    VertexDataLayout,
-};
 use std::sync::Arc;
 
 const WINDOW_WIDTH: u32 = 900;
@@ -88,7 +88,7 @@ fn run() -> RafxResult<()> {
             .register_render_phase::<OpaqueRenderPhase>("Opaque")
             .build();
         let mut resource_manager =
-            rafx_resources::ResourceManager::new(&device_context, &render_registry);
+            rafx_framework::ResourceManager::new(&device_context, &render_registry);
         let resource_context = resource_manager.resource_context();
 
         //

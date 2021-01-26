@@ -14,12 +14,12 @@ use crate::{
 };
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx::assets::assets::MaterialPass;
+use rafx::framework::{
+    DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
+};
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderView, RenderViewIndex, ViewSubmitNodes,
-};
-use rafx::resources::{
-    DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
 };
 
 pub struct PreparedDirectionalLight<'a> {

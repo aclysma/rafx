@@ -24,8 +24,8 @@ pub fn logging_init() {
         .filter_module("rafx_nodes", log::LevelFilter::Info)
         .filter_module("rafx_visibility", log::LevelFilter::Info)
         .filter_module("rafx_assets::graph", log::LevelFilter::Trace)
-        .filter_module("rafx_resources::resources", log::LevelFilter::Debug)
-        .filter_module("rafx_resources::graph::graph_plan", log::LevelFilter::Info)
+        .filter_module("rafx_framework::resources", log::LevelFilter::Debug)
+        .filter_module("rafx_framework::graph::graph_plan", log::LevelFilter::Info)
         .filter_module("mio", log::LevelFilter::Debug)
         // .filter_module(
         //     "rafx_assets::resources::command_buffers",

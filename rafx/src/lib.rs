@@ -8,11 +8,11 @@ pub use rafx_assets as assets;
 #[cfg(feature = "rafx-nodes")]
 pub use rafx_nodes as nodes;
 
-#[cfg(feature = "resources")]
-pub use rafx_resources as resources;
+#[cfg(feature = "framework")]
+pub use rafx_framework as framework;
 
-#[cfg(feature = "resources")]
-pub use rafx_resources::graph;
+#[cfg(feature = "framework")]
+pub use rafx_framework::graph;
 
 #[cfg(feature = "rafx-visibility")]
 pub use rafx_visibility as visibility;

@@ -3,9 +3,9 @@ use type_uuid::*;
 
 use crate::ShaderAsset;
 use atelier_assets::loader::handle::Handle;
-pub use rafx_resources::DescriptorSetLayoutResource;
-pub use rafx_resources::GraphicsPipelineResource;
-use rafx_resources::{ComputePipelineResource, ResourceArc};
+pub use rafx_framework::DescriptorSetLayoutResource;
+pub use rafx_framework::GraphicsPipelineResource;
+use rafx_framework::{ComputePipelineResource, ResourceArc};
 use std::hash::Hash;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]

@@ -20,7 +20,7 @@ publish = false
 rafx-api = { version = "0.0.2", path = "../rafx-api", features = ["rafx-vulkan"] }
 rafx-base = { version = "0.0.2", path = "../rafx-base" }
 rafx-nodes = { version = "0.0.2", path = "../rafx-nodes" }
-rafx-resources = { version = "0.0.2", path = "../rafx-resources" }
+rafx-framework = { version = "0.0.2", path = "../rafx-framework" }
 
 atelier-assets = { git = "https://github.com/aclysma/atelier-assets", branch = "rafx", features = ["serde_importers"] }
 type-uuid = "0.1"

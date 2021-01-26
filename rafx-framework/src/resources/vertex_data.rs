@@ -181,7 +181,7 @@ impl VertexDataLayout {
     /// call makes it a single-buffer set
     ///
     /// ```
-    /// use rafx_resources::VertexDataLayout;
+    /// use rafx_framework::VertexDataLayout;
     /// use rafx_api::{RafxFormat, RafxPrimitiveTopology};
     ///
     /// #[derive(Default, Copy, Clone)]

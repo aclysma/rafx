@@ -2,7 +2,7 @@ use crate::assets::shader::ShaderAssetData;
 use atelier_assets::core::AssetUuid;
 use atelier_assets::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
 use rafx_api::{RafxShaderPackage, RafxShaderPackageVulkan};
-use rafx_resources::{CookedShaderPackage, ShaderModuleHash, ShaderModuleResourceDef};
+use rafx_framework::{CookedShaderPackage, ShaderModuleHash, ShaderModuleResourceDef};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;

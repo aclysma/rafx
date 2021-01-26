@@ -7,8 +7,8 @@ use rafx::api::{
     RafxSwapchainDef, RafxSwapchainEventListener, RafxSwapchainHelper,
 };
 use rafx::assets::AssetManager;
+use rafx::framework::graph::SwapchainSurfaceInfo;
 use rafx::nodes::RenderRegistry;
-use rafx::resources::graph::SwapchainSurfaceInfo;
 
 pub struct SwapchainHandler<'a> {
     pub resources: &'a Resources,

@@ -5,7 +5,7 @@ members = [
     "rafx-api",
     "rafx-nodes",
     "rafx-visibility",
-    "rafx-resources",
+    "rafx-framework",
     "rafx-shader-processor",
     "rafx-assets",
     "demo",
