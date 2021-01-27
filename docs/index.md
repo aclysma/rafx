@@ -2,11 +2,11 @@
 # Topics
 
 * API
+    * [Rendering Concepts](api/rendering_concepts.md)
     * [Safety](api/safety.md)
     * [Windowing and Swapchain Handling](api/windowing_and_swapchains.md)
     * [Resource Binding Model](api/resource_binding_model.md)
     * [Validation and Debugging](api/validation_and_debugging.md)
-    * Rendering Concepts
     * API Triangle Example
 * Framework
     * Adding Features
