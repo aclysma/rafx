@@ -138,20 +138,43 @@ A semantic annotation indicates the kind of input data that is expected. Rafx us
 data stored in `VertexDataSet`s to your shader. Common values include `"POSITION"`, `"NORMAL"`, `"TANGENT"` or
 `"TEXCOORD"`. However, rafx does not require any particular naming convention and arbitrary strings can be used.
 
-This annotations is **required** when generating rust code or cooked shader packages. This is because these outputs are
+**This annotations is required when generating rust code or cooked shader packages.** This is because these outputs are
 generally for use with `rafx-framework` and forgetting to define the semantic when using `rafx-framework` is almost
 certainly a mistake.
 
 The concept has its roots in HLSL. Many people follow the naming conventions defined here:
 https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics
 
+#### Example Usage
+
 ```c
 // @[semantic("POSITION")]
 layout (location = 0) in vec3 in_pos;
 // @[semantic("NORMAL")]
 layout (location = 1) in vec3 in_normal;
-// @[semantic("TANGENT")]
-layout (location = 2) in vec4 in_tangent;
 // @[semantic("TEXCOORD")]
-layout (location = 3) in vec2 in_uv;
+layout (location = 2) in vec2 in_uv;
+```
+
+A data set like this would be compatible:
+
+A `VertexDataSet` might have a layout that is defined like this. It is ok for the vertex data to have extra fields, or
+for the fields to be laid out in different order than the GLSL `location` value.
+
+```rust
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Default)]
+#[repr(C)]
+pub struct MeshVertex {
+    pub position: [f32; 3],
+    pub tex_coord: [f32; 2],
+    pub normal: [f32; 3],
+    pub tangent: [f32; 4],
+}
+
+VertexDataLayout::build_vertex_layout(&MeshVertex::default(), |builder, vertex| {
+    builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+    builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+    builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
+    builder.add_member(&vertex.tangent, "TANGENT", RafxFormat::R32G32B32A32_SFLOAT);
+}).into_set(RafxPrimitiveTopology::TriangleList);
 ```
