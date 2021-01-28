@@ -26,6 +26,24 @@ pub enum RafxApi {
 }
 
 impl RafxApi {
+    #[allow(unreachable_code)]
+    pub fn new(
+        window: &dyn HasRawWindowHandle,
+        api_def: &RafxApiDef,
+    ) -> RafxResult<Self> {
+        #[cfg(feature = "rafx-metal")]
+        {
+            return RafxApi::new_metal(window, api_def, &Default::default());
+        }
+
+        #[cfg(feature = "rafx-vulkan")]
+        {
+            return RafxApi::new_vulkan(window, api_def, &Default::default());
+        }
+
+        return Err("Rafx was compiled with no backend feature flag. Use feature rafx-metal or rafx-vulkan.")?;
+    }
+
     /// Initialize a device using vulkan
     #[cfg(feature = "rafx-vulkan")]
     pub fn new_vulkan(

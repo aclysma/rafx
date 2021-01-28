@@ -1,6 +1,5 @@
 use log::LevelFilter;
 
-use rafx::api::raw_window_handle::HasRawWindowHandle;
 use rafx::api::*;
 use std::path::Path;
 
@@ -25,7 +24,7 @@ fn run() -> RafxResult<()> {
     //
     // Create the api
     //
-    let mut api = create_api(&sdl2_systems.window)?;
+    let mut api = RafxApi::new(&sdl2_systems.window, &Default::default())?;
 
     // Wrap all of this so that it gets dropped
     {
@@ -456,43 +455,6 @@ fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
     }
 
     true
-}
-
-#[cfg(feature = "rafx-metal")]
-fn create_metal_api(window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
-    RafxApi::new_metal(
-        window,
-        &RafxApiDef {
-            validation_mode: RafxValidationMode::EnabledIfAvailable,
-        },
-        &Default::default(),
-    )
-}
-
-#[cfg(feature = "rafx-vulkan")]
-fn create_vulkan_api(window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
-    RafxApi::new_vulkan(
-        window,
-        &RafxApiDef {
-            validation_mode: RafxValidationMode::EnabledIfAvailable,
-        },
-        &Default::default(),
-    )
-}
-
-#[allow(unreachable_code)]
-fn create_api(_window: &dyn HasRawWindowHandle) -> RafxResult<RafxApi> {
-    #[cfg(feature = "rafx-metal")]
-    {
-        return create_metal_api(_window);
-    }
-
-    #[cfg(feature = "rafx-vulkan")]
-    {
-        return create_vulkan_api(_window);
-    }
-
-    Err("Rafx was compiled with no backend enabled. Add feature rafx-vulkan, rafx-metal, etc. to enable at least one backend")?
 }
 
 // Shader packages are serializable. The shader processor tool uses spirv_cross to compile the

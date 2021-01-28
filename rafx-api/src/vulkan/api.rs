@@ -20,25 +20,43 @@ pub enum VulkanLinkMethod {
 
 impl Default for VulkanLinkMethod {
     fn default() -> Self {
-        VulkanLinkMethod::Dynamic
+        #[cfg(not(feature = "static-vulkan"))]
+        let link_method = VulkanLinkMethod::Dynamic;
+        #[cfg(feature = "static-vulkan")]
+        let link_method = VulkanLinkMethod::Static;
+
+        link_method
     }
 }
 
 /// Vulkan-specific configuration
-#[derive(Default)]
 pub struct RafxApiDefVulkan {
     /// Used as a hint for drivers for what is being run. There are no special requirements for
     /// this. It is not visible to end-users.
-    pub app_name: Option<CString>,
+    pub app_name: CString,
 
     /// Defines whether to load vulkan dynamically or use a statically-linked implementation. A
     /// common case where static linking is useful is linking MoltenVK on iOS devices
-    pub link_method: Option<VulkanLinkMethod>,
+    pub link_method: VulkanLinkMethod,
+
+    /// Used to enable/disable validation at runtime. Not all APIs allow this. Validation is helpful
+    /// during development but very expensive. Applications should not ship with validation enabled.
+    pub validation_mode: RafxValidationMode,
     // The OS-specific layers/extensions are already included. Debug layers/extension are included
     // if enable_validation is true
     //TODO: Additional instance layer names
     //TODO: Additional instance extension names
     //TODO: Additional device extension names
+}
+
+impl Default for RafxApiDefVulkan {
+    fn default() -> Self {
+        RafxApiDefVulkan {
+            app_name: CString::new("Rafx Application").unwrap(),
+            link_method: Default::default(),
+            validation_mode: Default::default(),
+        }
+    }
 }
 
 pub struct RafxApiVulkan {
@@ -63,17 +81,14 @@ impl RafxApiVulkan {
 
     pub fn new(
         window: &dyn HasRawWindowHandle,
-        api_def: &RafxApiDef,
+        _api_def: &RafxApiDef,
         vk_api_def: &RafxApiDefVulkan,
     ) -> RafxResult<Self> {
-        let link_method = vk_api_def.link_method.clone().unwrap_or_default();
-        let app_name = vk_api_def
-            .app_name
-            .clone()
-            .unwrap_or_else(|| CString::new("Rafx Application").unwrap());
+        let link_method = vk_api_def.link_method;
+        let app_name = vk_api_def.app_name.clone();
 
         let (require_validation_layers_present, validation_layer_debug_report_flags) =
-            match api_def.validation_mode {
+            match vk_api_def.validation_mode {
                 RafxValidationMode::Disabled => (false, vk::DebugReportFlagsEXT::empty()),
                 RafxValidationMode::EnabledIfAvailable => (false, vk::DebugReportFlagsEXT::all()),
                 RafxValidationMode::Enabled => (true, vk::DebugReportFlagsEXT::all()),

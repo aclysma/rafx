@@ -24,7 +24,12 @@ pub enum RafxValidationMode {
 
 impl Default for RafxValidationMode {
     fn default() -> Self {
-        RafxValidationMode::Disabled
+        #[cfg(debug_assertions)]
+        let validation_mode = RafxValidationMode::EnabledIfAvailable;
+        #[cfg(not(debug_assertions))]
+        let validation_mode = RafxValidationMode::Disabled;
+
+        validation_mode
     }
 }
 

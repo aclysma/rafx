@@ -10,9 +10,7 @@ use serde::{Deserialize, Serialize};
 /// General configuration that all APIs will make best effort to respect
 #[derive(Default)]
 pub struct RafxApiDef {
-    /// Used to enable/disable validation at runtime. Not all APIs allow this. Validation is helpful
-    /// during development but very expensive. Applications should not ship with validation enabled.
-    pub validation_mode: RafxValidationMode,
+    // Don't have anything that's universal across APIs to add here yet
 }
 
 #[derive(Clone, Debug, Default)]

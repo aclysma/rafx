@@ -111,43 +111,7 @@ pub fn rendering_init(
         .register_render_phase::<UiRenderPhase>("Ui")
         .build();
 
-    #[cfg(feature = "rafx-vulkan")]
-    let rafx_api = {
-        use rafx::api::vulkan::VulkanLinkMethod;
-
-        #[cfg(debug_assertions)]
-        let validation_mode = rafx::api::RafxValidationMode::EnabledIfAvailable;
-        #[cfg(not(debug_assertions))]
-        let validation_mode = rafx::api::RafxValidationMode::Disabled;
-
-        #[cfg(not(feature = "static-vulkan"))]
-        let link_method = VulkanLinkMethod::Dynamic;
-        #[cfg(feature = "static-vulkan")]
-        let link_method = VulkanLinkMethod::Static;
-
-        rafx::api::RafxApi::new_vulkan(
-            sdl2_window,
-            &rafx::api::RafxApiDef { validation_mode },
-            &rafx::api::RafxApiDefVulkan {
-                link_method: Some(link_method),
-                app_name: None,
-            },
-        )
-    }?;
-
-    #[cfg(feature = "rafx-metal")]
-    let rafx_api = {
-        #[cfg(debug_assertions)]
-        let validation_mode = rafx::api::RafxValidationMode::EnabledIfAvailable;
-        #[cfg(not(debug_assertions))]
-        let validation_mode = rafx::api::RafxValidationMode::Disabled;
-
-        rafx::api::RafxApi::new_metal(
-            sdl2_window,
-            &rafx::api::RafxApiDef { validation_mode },
-            &rafx::api::RafxApiDefMetal {},
-        )
-    }?;
+    let rafx_api = rafx::api::RafxApi::new(sdl2_window, &Default::default())?;
 
     let device_context = rafx_api.device_context();
 

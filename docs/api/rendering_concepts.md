@@ -175,7 +175,13 @@ only represent on stage of a pipeline. Rafx uses the term "shader stage" in this
 Once a shader is loaded, like any other program, it will take input, process it, and write output.
 
 Some of this input comes in the form of bound objects (like vertex buffers and index buffers) and some
-of it comes in the form of descriptor sets. A descriptor set is like a pointer to a GPU resource.
+of it comes in the form of descriptor sets. A descriptor set is like a pointer to a list of GPU resource.
+Grouping multiple resources into a single set allows them to be bound in a single operation. This is
+both efficient and convenient. 
+
+Descriptor Sets may contain many resources. It's usually best to combine resources that change at the same "frequency"
+in the same set. So for example, if some resources are bound once per frame, and other resources are bound for each draw
+call, it would make sense to group those resources into two different sets by frequency.
 
 > See `RafxDescriptorSetArray`. More details here: [Resource Binding Model](resource_binding_model.md))
 
