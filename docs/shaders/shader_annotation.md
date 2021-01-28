@@ -36,38 +36,14 @@ layout (set = 0, binding = 1) uniform sampler smp;
 ```
 
 Annotations always affect the binding that comes after it.
-
-## Summary of All Annotations
-
-* **@[internal_buffer]**: Applied to UNIFORM data: Automatically binds space in a buffer, making it easy to quickly set these
-  values 
-* **@[export]**: Include bindings for this variable in the generated rust code
-* **@[slot_name(...)]**: Overrides the shader field name with a custom name. This affects generated rust code and the
-  name of the variable in the generated reflection data
-* **@[immutable_samplers(...)]**: Automatically binds sampler(s) to the variable
-* **@[semantic(...)]**: Used for vertex inputs, used to automatically generate pipelines to bind different `VertexDataSetLayout`s to
-  this variable
   
 ## Reference Documentation
 
-### @[internal_buffer]
-
-(**Requires using `DescriptorSetAllocatorManager` in `rafx-framework`!**)
-
-This annotation automatically binds a buffer to a uniform variable. `DescriptorSetAllocatorManager` allocates descriptor
-sets in pooled chunks. A single buffer is used for all descriptors for the same variable in the chunk.
-
-When combined with `@[export]` (which [generates rust code](generated_rust_code.md) to set the data and structs that 
-match the data format) this results in an easy-to-use, type-safe interface for setting uniform data in shaders.
-
-#### Example Usage
-
-```c
-// @[internal_buffer]
-layout (set = 0, binding = 0) uniform PerViewData {
-    vec4 uniform_color;
-} uniform_data;
-```
+* [@[export]](#export): Include bindings for the annotated field in the generated rust code
+* [@[immutable_samplers(...)]](#immutable_samplers): Creates and binds immutable sampler(s) to the annotated field
+* [@[internal_buffer]](#internal_buffer): Automatically bind space in a buffer, making the annotated field easy to set
+* [@[semantic(...)]](#semantic): Binds the annotated field to data in a `VertexDataSetLayout` with matching semantic
+* [@[slot_name(...)]](#slot_name): Overrides the annotated field name with a custom name.
 
 ### @[export]
 
@@ -84,19 +60,6 @@ interface for setting descriptor sets is type-safe and will only accept the corr
 ```c
 // @[export]
 layout (set = 0, binding = 0) uniform texture2D in_color;
-```
-
-### @[slot_name("...")]
-
-By default, reflection data and generated rust code will infer a name from shader code. However, a name can be specified
-manually. Overriding the name allows shader variables to be renamed without breaking dependent rust code or other
-references to the name that might be stored in asset data.
-
-#### Example Usage
-
-```c
-// @[slot_name("blur_texture")]
-layout (set = 0, binding = 1) uniform texture2D in_blur;
 ```
 
 ### @[immutable_samplers(...)]
@@ -130,6 +93,25 @@ this:
 //     )
 // ])]
 layout (set = 0, binding = 1) uniform sampler smp;
+```
+
+### @[internal_buffer]
+
+(**Requires using `DescriptorSetAllocatorManager` in `rafx-framework`!**)
+
+This annotation automatically binds a buffer to a uniform variable. `DescriptorSetAllocatorManager` allocates descriptor
+sets in pooled chunks. A single buffer is used for all descriptors for the same variable in the chunk.
+
+When combined with `@[export]` (which [generates rust code](generated_rust_code.md) to set the data and structs that 
+match the data format) this results in an easy-to-use, type-safe interface for setting uniform data in shaders.
+
+#### Example Usage
+
+```c
+// @[internal_buffer]
+layout (set = 0, binding = 0) uniform PerViewData {
+    vec4 uniform_color;
+} uniform_data;
 ```
 
 ### @[semantic("...")]
@@ -177,4 +159,18 @@ VertexDataLayout::build_vertex_layout(&MeshVertex::default(), |builder, vertex| 
     builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
     builder.add_member(&vertex.tangent, "TANGENT", RafxFormat::R32G32B32A32_SFLOAT);
 }).into_set(RafxPrimitiveTopology::TriangleList);
+```
+
+
+### @[slot_name("...")]
+
+By default, reflection data and generated rust code will infer a name from shader code. However, a name can be specified
+manually. Overriding the name allows shader variables to be renamed without breaking dependent rust code or other
+references to the name that might be stored in asset data.
+
+#### Example Usage
+
+```c
+// @[slot_name("blur_texture")]
+layout (set = 0, binding = 1) uniform texture2D in_blur;
 ```
