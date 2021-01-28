@@ -10,6 +10,7 @@
     * [Validation and Debugging](api/validation_and_debugging.md)
     * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
 * Framework
+    * [Framework Architecture](framework/framework_architecture.md)
     * Adding Features
     * Adding Phases
     * Render Graph
