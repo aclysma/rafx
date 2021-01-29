@@ -627,7 +627,6 @@ impl GameRenderer {
         //
         // Extract Jobs
         //
-        let frame_packet = frame_packet_builder.build();
         let extract_job_set = {
             let mut extract_job_set = ExtractJobSet::new();
 
@@ -648,6 +647,7 @@ impl GameRenderer {
             extract_job_set
         };
 
+        let frame_packet = frame_packet_builder.build();
         let prepare_job_set = {
             profiling::scope!("renderer extract");
             let extract_context =

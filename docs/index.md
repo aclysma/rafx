@@ -11,9 +11,9 @@
     * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
 * Framework
     * [Framework Architecture](framework/framework_architecture.md)
-    * Adding Features
-    * Adding Phases
-    * Render Graph
+    * [Adding Features](framework/adding_features.md)
+    * [Adding Phases](framework/adding_render_phases.md)
+    * [Render Graph](framework/render_graph.md)
     * [Render Graph Triangle Example](../rafx/examples/render_graph_triangle/render_graph_triangle.rs)
 * Assets
     * `distill` Architecture and Features

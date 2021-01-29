@@ -84,11 +84,11 @@ fn run() -> RafxResult<()> {
         // (Multiple "features" can render in a single "phase". Sorting behavior for draw calls
         // across those features is defined by the phase)
         //
-        let render_registry = rafx_nodes::RenderRegistryBuilder::default()
+        let render_registry = rafx::nodes::RenderRegistryBuilder::default()
             .register_render_phase::<OpaqueRenderPhase>("Opaque")
             .build();
         let mut resource_manager =
-            rafx_framework::ResourceManager::new(&device_context, &render_registry);
+            rafx::framework::ResourceManager::new(&device_context, &render_registry);
         let resource_context = resource_manager.resource_context();
 
         //
@@ -475,7 +475,7 @@ use rafx::nodes::RenderPhase;
 use rafx::nodes::RenderPhaseIndex;
 use std::path::Path;
 
-rafx_nodes::declare_render_phase!(
+rafx::nodes::declare_render_phase!(
     OpaqueRenderPhase,
     OPAQUE_RENDER_PHASE_INDEX,
     opaque_render_phase_sort_submit_nodes
