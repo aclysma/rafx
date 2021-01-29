@@ -1,21 +1,22 @@
 
 # Topics
 
-* API
-    * [Rendering Concepts](api/rendering_concepts.md)
+* [Why Rafx?](why_rafx.md)
+* [Rendering Concepts](api/rendering_concepts.md) (A gentle introduction to GPU rendering - not specific to rafx)
+* rafx-api
     * [API Design](api/api_design.md)
     * [Safety](api/safety.md)
     * [Windowing and Swapchain Handling](api/windowing_and_swapchains.md)
     * [Resource Binding Model](api/resource_binding_model.md)
     * [Validation and Debugging](api/validation_and_debugging.md)
     * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
-* Framework
+* rafx-framework
     * [Framework Architecture](framework/framework_architecture.md)
     * [Adding Features](framework/adding_features.md)
     * [Adding Phases](framework/adding_render_phases.md)
     * [Render Graph](framework/render_graph.md)
     * [Render Graph Triangle Example](../rafx/examples/render_graph_triangle/render_graph_triangle.rs)
-* Assets
+* rafx-assets
     * `distill` Architecture and Features
 * Shader Authoring with `rafx-shader-processor`
     * [Shader Processor](shaders/shader_processor.md)

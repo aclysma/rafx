@@ -45,7 +45,7 @@ system, and flexible handling for vertex data at runtime.
 
 Additionally, `rafx-framework` can use additional metadata extracted by `rafx-shader-processor` to implement time-saving
 features like automatically binding [immutable samplers](shaders/shader_annotation.md#immutable_samplers) and 
-[uniform buffers](shaders/shader_annotation.md#internal_buffer).
+[uniform buffers](shaders/shader_annotation.md#internal_buffer) to descriptor sets.
 
 ## rafx-assets
 
@@ -59,3 +59,6 @@ See [`Distill`](https://github.com/amethyst/atelier-assets/tree/master) for more
 Rafx includes a shader processor the pre-cooks shaders for multiple platforms. This avoids needing to do just-in-time
 shader translation/compilation on end-user devices. This permits many heavy non-rust dependencies to be excluded from
 the game itself.
+
+Additionally, the shader processor can [generate rust code](shaders/generated_rust_code.md) that provides a type-safe
+interface for working with descriptor sets compatible with a given shader. 
