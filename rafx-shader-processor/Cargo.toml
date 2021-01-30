@@ -15,8 +15,8 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 publish = false
 
 [dependencies]
-rafx-framework = { version = "0.0.3", path = "../rafx-framework" }
-rafx-api = { version = "0.0.3", path = "../rafx-api", features = ["serde-support"] }
+rafx-framework = { version = "0.0.4", path = "../rafx-framework" }
+rafx-api = { version = "0.0.4", path = "../rafx-api", features = ["serde-support"] }
 
 fnv = "1.0"
 structopt = "0.3"
