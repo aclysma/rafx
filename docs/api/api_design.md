@@ -14,11 +14,12 @@ necessary to create and use that shader on various platforms.
 
  * rafx-api/src
      * \[root\]: The high-level abstraction layer
+     * types: Many simple API-agnostic types. Things like `RafxFormat` or `RafxBufferDef`
+     * backends
+        * metal: The metal backend
+        * vulkan: The vulkan backend
      * extra: Some utilities that are helpful but optional when using rafx
      * internal_shared: Internal code that is shared between backends
-     * metal: The metal backend
-     * vulkan: The vulkan backend
-     * types: Many small types used as parameters. Things like `RafxFormat` or `RafxBufferDef`
    
 ## Safety
 

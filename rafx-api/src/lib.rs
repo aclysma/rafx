@@ -184,28 +184,38 @@
 //!
 
 //
-// Re-export upstream libraries
+// Re-export upstream metal crates
 //
 #[cfg(feature = "rafx-metal")]
 pub use foreign_types_shared;
 #[cfg(feature = "rafx-metal")]
 pub use metal_rs;
 
+//
+// Re-export upstream vulkan crates
+//
 #[cfg(feature = "rafx-vulkan")]
 pub use ash;
 #[cfg(feature = "rafx-vulkan")]
 pub use vk_mem;
 
+//
+// Re-export upstream API-agnostic crates
+//
 pub use raw_window_handle;
 
 //
 // Backends
 //
+#[cfg(feature = "rafx-metal")]
+pub use backends::metal;
+#[cfg(feature = "rafx-metal")]
+pub use backends::metal::RafxApiDefMetal;
+
 #[cfg(feature = "rafx-vulkan")]
 pub use backends::vulkan;
-
-#[cfg(feature = "rafx-metal")]
-pub mod metal;
+#[cfg(feature = "rafx-vulkan")]
+pub use backends::vulkan::RafxApiDefVulkan;
 
 //
 // Public modules
@@ -242,6 +252,10 @@ mod shader_module;
 mod swapchain;
 mod texture;
 
+//
+// Constants
+//
+
 // Vulkan only guarantees up to 4 are available
 pub const MAX_DESCRIPTOR_SET_LAYOUTS: usize = 4;
 // In sync with RafxBlendStateTargets
@@ -270,10 +284,3 @@ pub use shader_module::*;
 pub use swapchain::*;
 pub use texture::*;
 pub use types::*;
-
-#[cfg(feature = "rafx-metal")]
-//pub use backends::metal::RafxApiDefMetal;
-pub use metal::RafxApiDefMetal;
-
-#[cfg(feature = "rafx-vulkan")]
-pub use backends::vulkan::RafxApiDefVulkan;

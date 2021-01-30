@@ -1,7 +1,5 @@
 #[cfg(feature = "rafx-metal")]
-use crate::metal::RafxApiDefMetal;
-#[cfg(feature = "rafx-metal")]
-use crate::metal::RafxApiMetal;
+use crate::metal::{RafxApiDefMetal, RafxApiMetal};
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::{RafxApiDefVulkan, RafxApiVulkan};
 use crate::*;
