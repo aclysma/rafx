@@ -1,10 +1,18 @@
 
-# Topics
+# Documentation
+
+## Start Here
+
+ * [Why Rafx?](why_rafx.md)
+ * [API Design in Rust Pseudocode](api/api_design_in_rust_psuedocode.rs)
+
+## Topics
 
 * [Why Rafx?](why_rafx.md)
 * [Rendering Concepts](api/rendering_concepts.md) (A gentle introduction to GPU rendering - not specific to rafx)
 * rafx-api
     * [API Design](api/api_design.md)
+    * [API Design in Rust Pseudocode](api/api_design_in_rust_psuedocode.rs)  
     * [Safety](api/safety.md)
     * [Windowing and Swapchain Handling](api/windowing_and_swapchains.md)
     * [Resource Binding Model](api/resource_binding_model.md)
@@ -39,3 +47,18 @@
     * Metal
     * Vulkan
 * [Acknowledgements and Other Resources](acknowledgements.md)
+
+## Diagrams
+
+* [Key crate dependencies](crate-dependencies.png)
+* [Pipelining](pipelining.png)
+* [Shader Processor](shader-processor.png)
+
+## Other Resources
+
+More complete list here: [Acknowledgements and Other Resources](acknowledgements.md)
+
+* The job/phase rendering design is inspired by the 2015 GDC talk "[Destiny's Multithreaded Rendering Architecture](http://advances.realtimerendering.com/destiny/gdc_2015/Tatarchuk_GDC_2015__Destiny_Renderer_web.pdf)".
+* The render graph is inspired by the 2017 GDC talk "[FrameGraph: Extensible Rendering Architecture in Frostbite](https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in)"
+  * see also "[Render Graphs and Vulkan - a deep dive](http://themaister.net/blog/2017/08/15/render-graphs-and-vulkan-a-deep-dive/)" for an implementation of a render graph on vulkan
+* The low-level API is somewhat similar to the API from "[The Forge](https://github.com/ConfettiFX/The-Forge)"

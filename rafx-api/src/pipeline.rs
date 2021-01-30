@@ -9,7 +9,7 @@ use crate::metal::RafxPipelineMetal;
 use crate::vulkan::RafxPipelineVulkan;
 use crate::{RafxPipelineType, RafxRootSignature};
 
-/// Represents a complete GPU configuration executing work.
+/// Represents a complete GPU configuration for executing work.
 ///
 /// There are two kinds of pipelines: Graphics and Compute
 ///

@@ -2,6 +2,8 @@
 //! features in cargo when building the docs.** To generate complete documentation locally, run
 //! `cargo doc --no-deps --open` in the root of the crate.
 //!
+//! **Please see [additional documentation here](https://github.com/aclysma/rafx/blob/master/docs/index.md)**
+//!
 //! Rafx is a multi-backend renderer that prioritizes performance, flexibility, and productivity. It
 //! optionally integrates with the [`distill`](https://github.com/amethyst/atelier-assets) asset
 //! pipeline to provide workflows and tools suitable for real-world projects with multidisciplinary

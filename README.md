@@ -15,7 +15,9 @@ Rafx also provides tools for building shaders and packing assets.
 Rafx supports most mainstream platforms via `vulkan` and `metal` backends. Proprietary platforms can be supported by
 adding an additional backend.
 
-[**Documentation**](docs/index.md)
+### Documentation
+
+ * [**Documentation**](docs/index.md)
 
 [![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
 
@@ -24,13 +26,6 @@ adding an additional backend.
 [^ Video of this renderer running on iOS hardware](https://www.youtube.com/watch?v=Ks_HQbejHE4) 
 
 ![Screenshot demonstrating realtime shadows](docs/shadow-screenshot.png)
-
-## Diagrams
-
- * [Diagram of key crate dependencies](docs/crate-dependencies.png)
- * [Pipelining](docs/pipelining.png)
- * [Diagram of rendering process](docs/render-process.png)
- * [Shader Processor](docs/shader-processor.png)
 
 ## Roadmap
 
