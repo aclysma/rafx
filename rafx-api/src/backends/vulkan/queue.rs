@@ -3,9 +3,9 @@ use crate::vulkan::{
     RafxCommandBufferVulkan, RafxCommandPoolVulkan, RafxDeviceContextVulkan, RafxFenceVulkan,
     RafxSemaphoreVulkan, RafxSwapchainVulkan,
 };
+use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use crate::*;
 
 #[derive(Clone, Debug)]
 pub struct RafxQueueVulkan {

@@ -1,8 +1,8 @@
 use crate::vulkan::{RafxDeviceContextVulkan, RafxRenderTargetVulkan, RafxRenderpassVulkan};
+use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::Arc;
-use crate::*;
 
 pub(crate) struct RafxFramebufferVulkanAttachment {
     pub(crate) render_target: RafxRenderTargetVulkan,

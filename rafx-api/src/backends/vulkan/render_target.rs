@@ -1,11 +1,11 @@
 use crate::vulkan::{RafxDeviceContextVulkan, RafxRawImageVulkan, RafxTextureVulkan};
+use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
-use crate::*;
 
 static RENDER_TARGET_NEXT_ID: AtomicU32 = AtomicU32::new(1);
 

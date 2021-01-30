@@ -1,8 +1,8 @@
 use crate::vulkan::RafxDeviceContextVulkan;
+use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::Arc;
-use crate::*;
 
 pub struct RafxSamplerVulkanInner {
     device_context: RafxDeviceContextVulkan,

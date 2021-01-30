@@ -4,8 +4,8 @@ use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
 use crate::vulkan::{RafxDeviceContextVulkan, RafxDeviceContextVulkanInner};
-use std::ffi::CString;
 use crate::*;
+use std::ffi::CString;
 
 /// Determines the method of finding the vulkan loader
 #[derive(Copy, Clone, Debug)]

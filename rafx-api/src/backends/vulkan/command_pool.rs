@@ -1,7 +1,7 @@
 use crate::vulkan::{RafxCommandBufferVulkan, RafxDeviceContextVulkan, RafxQueueVulkan};
+use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use crate::*;
 
 pub struct RafxCommandPoolVulkan {
     device_context: RafxDeviceContextVulkan,

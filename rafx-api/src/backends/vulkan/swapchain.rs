@@ -10,9 +10,9 @@ use std::sync::Arc;
 use ash::extensions::khr;
 use ash::prelude::VkResult;
 
+use crate::*;
 use ash::vk::Extent2D;
 use std::mem::ManuallyDrop;
-use crate::*;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 

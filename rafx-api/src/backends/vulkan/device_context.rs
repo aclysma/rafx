@@ -1,9 +1,9 @@
 use super::internal::*;
+use crate::*;
 use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::{Arc, Mutex};
-use crate::*;
 
 use crate::vulkan::{
     RafxBufferVulkan, RafxDescriptorSetArrayVulkan, RafxFenceVulkan, RafxPipelineVulkan,

@@ -1,9 +1,9 @@
 use crate::vulkan::RafxDeviceContextVulkan;
+use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
 use fnv::FnvHashMap;
 use std::sync::Arc;
-use crate::*;
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

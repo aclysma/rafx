@@ -1,6 +1,6 @@
 use crate::vulkan::RafxDeviceContextVulkan;
-use std::sync::Arc;
 use crate::*;
+use std::sync::Arc;
 
 #[derive(Debug)]
 struct RafxShaderVulkanInner {

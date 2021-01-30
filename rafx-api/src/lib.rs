@@ -225,11 +225,11 @@ pub mod extra;
 //
 // Internal Modules
 //
-mod internal_shared;
-mod types;
 mod backends;
-mod reflection;
 mod error;
+mod internal_shared;
+mod reflection;
+mod types;
 
 //
 // API-agnostic API modules

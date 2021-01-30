@@ -1,8 +1,8 @@
-use crate::vulkan::RafxDeviceContextVulkan;
 use crate::types::RafxTextureDimensions;
+use crate::vulkan::RafxDeviceContextVulkan;
+use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use crate::*;
 
 // This is used to allow the underlying image/allocation to be removed from a RafxTextureVulkan,
 // or to init a RafxTextureVulkan with an existing image/allocation. If the allocation is none, we
