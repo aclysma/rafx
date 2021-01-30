@@ -18,7 +18,7 @@ Rafx intends to support multiple platform APIs, so as of this writing, `gfx-hal`
 
 `gfx-hal` is an unsafe API that closely follows the API design of vulkan. Like vulkan, it heavily favors flexibility
 and performance over ease of use. The API exposes concepts and features that do not always exist in other platform APIs
-or may difficult to emulate. When necessary, `gfx-hal` goes to great length to hide a platform API's lack of native
+or may be difficult to emulate. When necessary, `gfx-hal` goes to great length to hide a platform API's lack of native
 support for the exposed API.
 
 `rafx-api` is also unsafe, but has a reduced API footprint that is easily supported across modern platform APIs.
@@ -29,14 +29,15 @@ control and access to the very latest features in the underlying platform API.
 ### Compared with wgpu
 
 `wgpu` is a fully safe API that closely follows the webgpu standard. It pursues safety at any cost because the API is
-intended to be exposed in web browsers - where any form of undefined behavior is unacceptable. However this safety
+intended to be exposed in web browsers - where any form of undefined behavior is unacceptable. GPU resources are tracked
+so that they are not dropped while in use and can be placed in the correct state for the GPU to use them. This safety 
 combined with a less vulkan-centric API design makes it much easier to use than `gfx-hal` and it has become very popular
 in the rust community. It is under the MPL license which is more restrictive than licenses like MIT or Apache 2.0.
 
 `rafx-api` does not have these safety guarantees (or complexity/overhead required to support them). However,
 `rafx-framework` provides higher-level tools and abstractions that mitigate this unsafety. For example, the render graph
 automatically handles placing resources into the correct state. It can potentially do this in a more optimal way because
-it has full knowledge of what will happen during the entire frame. `rafx-api` is available under the very permissive
+it has a holistic view of what will happen during the entire frame. `rafx-api` is available under the very permissive
 Apache-2.0/MIT license.
 
 ## rafx-framework
