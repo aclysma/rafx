@@ -821,7 +821,7 @@ impl RafxCommandBufferVulkan {
         Ok(())
     }
 
-    pub fn cmd_blit(
+    pub fn cmd_blit_image(
         &self,
         src_texture: &RafxTextureVulkan,
         dst_texture: &RafxTextureVulkan,

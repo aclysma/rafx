@@ -4,11 +4,10 @@ use crate::metal::{
     RafxRenderTargetMetal, RafxRootSignatureMetal, RafxTextureMetal,
 };
 use crate::{
-    RafxBufferBarrier, RafxCmdBlitParams, RafxCmdCopyBufferToTextureParams,
-    RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthRenderTargetBinding,
-    RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType,
-    RafxRenderTargetBarrier, RafxResourceState, RafxResult, RafxTextureBarrier,
-    RafxVertexBufferBinding,
+    RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
+    RafxCommandBufferDef, RafxDepthRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding,
+    RafxIndexType, RafxLoadOp, RafxPipelineType, RafxRenderTargetBarrier, RafxResourceState,
+    RafxResult, RafxTextureBarrier, RafxVertexBufferBinding,
 };
 use fnv::FnvHashSet;
 use metal_rs::{
@@ -975,16 +974,5 @@ impl RafxCommandBufferMetal {
             MTLBlitOption::empty(),
         );
         Ok(())
-    }
-
-    pub fn cmd_blit(
-        &self,
-        _src_texture: &RafxTextureMetal,
-        _dst_texture: &RafxTextureMetal,
-        _params: &RafxCmdBlitParams,
-    ) -> RafxResult<()> {
-        //TODO: Implementing this requires having a custom shader/pipeline loaded and drawing
-        //triangles
-        unimplemented!();
     }
 }

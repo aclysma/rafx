@@ -8,10 +8,10 @@ use crate::metal::RafxCommandBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxCommandBufferVulkan;
 use crate::{
-    RafxBuffer, RafxBufferBarrier, RafxCmdBlitParams, RafxCmdCopyBufferToTextureParams,
-    RafxColorRenderTargetBinding, RafxDepthRenderTargetBinding, RafxDescriptorSetArray,
-    RafxDescriptorSetHandle, RafxIndexBufferBinding, RafxPipeline, RafxRenderTargetBarrier,
-    RafxResult, RafxRootSignature, RafxTexture, RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxBuffer, RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
+    RafxDepthRenderTargetBinding, RafxDescriptorSetArray, RafxDescriptorSetHandle,
+    RafxIndexBufferBinding, RafxPipeline, RafxRenderTargetBarrier, RafxResult, RafxRootSignature,
+    RafxTexture, RafxTextureBarrier, RafxVertexBufferBinding,
 };
 
 /// A command buffer contains a list of work for the GPU to do.
@@ -597,39 +597,6 @@ impl RafxCommandBuffer {
             ))]
             RafxCommandBuffer::Empty(inner) => inner.cmd_copy_buffer_to_texture(
                 src_buffer.empty_buffer().unwrap(),
-                dst_texture.empty_texture().unwrap(),
-                params,
-            ),
-        }
-    }
-
-    /// Copy a portion of one texture into another texture. This occurs on the GPU and allows
-    /// modifying resources that are not accessible to the CPU.
-    pub fn cmd_blit(
-        &self,
-        src_texture: &RafxTexture,
-        dst_texture: &RafxTexture,
-        params: &RafxCmdBlitParams,
-    ) -> RafxResult<()> {
-        match self {
-            #[cfg(feature = "rafx-vulkan")]
-            RafxCommandBuffer::Vk(inner) => inner.cmd_blit(
-                src_texture.vk_texture().unwrap(),
-                dst_texture.vk_texture().unwrap(),
-                params,
-            ),
-            #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => inner.cmd_blit(
-                src_texture.metal_texture().unwrap(),
-                dst_texture.metal_texture().unwrap(),
-                params,
-            ),
-            #[cfg(any(
-                feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
-            ))]
-            RafxCommandBuffer::Empty(inner) => inner.cmd_blit(
-                src_texture.empty_texture().unwrap(),
                 dst_texture.empty_texture().unwrap(),
                 params,
             ),
