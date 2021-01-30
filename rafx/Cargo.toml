@@ -12,7 +12,7 @@ keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
 [dependencies]
-rafx-base = { version = "0.0.2", path = "../rafx-base" }
+rafx-base = { version = "0.0.3", path = "../rafx-base" }
 rafx-api = { version = "0.0.3", path = "../rafx-api" }
 rafx-nodes = { version = "0.0.3", path = "../rafx-nodes", optional = true }
 rafx-visibility = { version = "0.0.3", path = "../rafx-visibility", optional = true }

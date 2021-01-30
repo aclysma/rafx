@@ -18,7 +18,7 @@ publish = false
 
 [dependencies]
 rafx-api = { version = "0.0.3", path = "../rafx-api" }
-rafx-base = { version = "0.0.2", path = "../rafx-base" }
+rafx-base = { version = "0.0.3", path = "../rafx-base" }
 rafx-nodes = { version = "0.0.3", path = "../rafx-nodes" }
 rafx-framework = { version = "0.0.3", path = "../rafx-framework" }
 
