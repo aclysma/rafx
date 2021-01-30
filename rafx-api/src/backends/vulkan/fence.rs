@@ -1,8 +1,8 @@
 use crate::vulkan::RafxDeviceContextVulkan;
-use crate::{RafxFenceStatus, RafxResult};
 use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::atomic::{AtomicBool, Ordering};
+use crate::{RafxFenceStatus, RafxResult};
 
 pub struct RafxFenceVulkan {
     device_context: RafxDeviceContextVulkan,

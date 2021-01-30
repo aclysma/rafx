@@ -1,11 +1,11 @@
 use super::internal::*;
-use crate::{RafxApiDef, RafxResult, RafxValidationMode};
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
 use crate::vulkan::{RafxDeviceContextVulkan, RafxDeviceContextVulkanInner};
 use std::ffi::CString;
+use crate::*;
 
 /// Determines the method of finding the vulkan loader
 #[derive(Copy, Clone, Debug)]

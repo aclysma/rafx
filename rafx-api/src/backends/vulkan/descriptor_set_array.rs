@@ -1,10 +1,7 @@
 use crate::vulkan::{DescriptorSetLayoutInfo, RafxDescriptorHeapVulkan, RafxDeviceContextVulkan};
-use crate::{
-    RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType,
-    RafxResult, RafxRootSignature, RafxTextureBindType,
-};
 use ash::version::DeviceV1_0;
 use ash::vk;
+use crate::*;
 
 struct DescriptorUpdateData {
     // one per set * elements in each descriptor

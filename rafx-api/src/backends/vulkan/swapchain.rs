@@ -2,11 +2,6 @@ use crate::vulkan::{
     RafxDeviceContextVulkan, RafxFenceVulkan, RafxRawImageVulkan, RafxRenderTargetVulkan,
     RafxSemaphoreVulkan, VkEntry,
 };
-use crate::{
-    RafxCommandBufferDef, RafxCommandPoolDef, RafxError, RafxExtents3D, RafxFormat, RafxQueueType,
-    RafxRenderTargetBarrier, RafxRenderTargetDef, RafxResourceState, RafxResourceType, RafxResult,
-    RafxSampleCount, RafxSwapchainDef, RafxSwapchainImage, RafxTextureDimensions,
-};
 use ash::version::DeviceV1_0;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
@@ -17,6 +12,7 @@ use ash::prelude::VkResult;
 
 use ash::vk::Extent2D;
 use std::mem::ManuallyDrop;
+use crate::*;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 

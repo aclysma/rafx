@@ -1,11 +1,5 @@
-use crate::{
-    RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxColorClearValue, RafxColorFlags,
-    RafxCompareOp, RafxCullMode, RafxDepthStencilClearValue, RafxFillMode, RafxFilterType,
-    RafxFrontFace, RafxIndexType, RafxLoadOp, RafxMemoryUsage, RafxMipMapMode,
-    RafxPrimitiveTopology, RafxSampleCount, RafxShaderStageFlags, RafxStencilOp, RafxStoreOp,
-    RafxVertexAttributeRate,
-};
 use ash::vk;
+use crate::{RafxSampleCount, RafxColorFlags, RafxMemoryUsage, RafxShaderStageFlags, RafxVertexAttributeRate, RafxLoadOp, RafxStoreOp, RafxPrimitiveTopology, RafxIndexType, RafxBlendFactor, RafxBlendOp, RafxCompareOp, RafxStencilOp, RafxCullMode, RafxFrontFace, RafxFillMode, RafxFilterType, RafxAddressMode, RafxMipMapMode, RafxColorClearValue, RafxDepthStencilClearValue};
 
 impl Into<vk::SampleCountFlags> for RafxSampleCount {
     fn into(self) -> vk::SampleCountFlags {

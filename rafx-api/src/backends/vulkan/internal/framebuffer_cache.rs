@@ -1,8 +1,8 @@
 use super::*;
 use crate::vulkan::{RafxDeviceContextVulkan, RafxRenderpassVulkan};
-use crate::*;
 use fnv::FnvHasher;
 use std::hash::{Hash, Hasher};
+use crate::*;
 
 pub(crate) struct RafxFramebufferVulkanCache {
     cache: LruCache<RafxFramebufferVulkan>,

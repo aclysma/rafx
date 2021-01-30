@@ -1,8 +1,8 @@
 use crate::vulkan::*;
-use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::atomic::{AtomicBool, Ordering};
+use crate::*;
 
 #[derive(Debug)]
 pub struct RafxCommandBufferVulkan {
