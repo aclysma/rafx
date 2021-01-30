@@ -5,6 +5,7 @@
 
  * [Why Rafx?](why_rafx.md)
  * [API Design in Rust Pseudocode](api/api_design_in_rust_psuedocode.rs)
+ * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
 
 ## Topics
 

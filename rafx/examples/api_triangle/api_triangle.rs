@@ -17,7 +17,7 @@ fn main() {
 
 fn run() -> RafxResult<()> {
     //
-    // Init SDL2
+    // Init SDL2 (winit and anything that uses raw-window-handle works too!)
     //
     let sdl2_systems = sdl2_init();
 

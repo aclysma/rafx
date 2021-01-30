@@ -15,9 +15,8 @@ Rafx also provides tools for building shaders and packing assets.
 Rafx supports most mainstream platforms via `vulkan` and `metal` backends. Proprietary platforms can be supported by
 adding an additional backend.
 
-### Documentation
-
  * [**Documentation**](docs/index.md)
+ * Run `cargo doc --no-deps --open` in the root of the crate (docs.rs is incomplete because it does not build with features)
 
 [![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
 
