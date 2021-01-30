@@ -8,6 +8,7 @@ This crate contains several layers:
  * `rafx-api`: Low-level graphics API abstraction 
  * `rafx-framework`: Mid-level framework that eases resource management, lifetime handling, and draw call dispatching
  * `rafx-assets`: Asset layer that integrates with [`distill`](https://github.com/amethyst/atelier-assets)
+     * NOTE: The published version in crates.io does not include rafx-assets as `distill` is not published yet
    
 Rafx also provides tools for building shaders and packing assets.
 

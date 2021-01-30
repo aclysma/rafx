@@ -14,16 +14,15 @@ use crate::{
 // Texture must be in COPY_SRC state
 // After this call, it will be in COPY_DST state
 // Vulkan requires this on a graphics queue. Metal allows this on any queue.
-#[cfg(any(feature = "rafx-vulkan", feature = "rafx-metal"))]
 pub fn generate_mipmaps(
     command_buffer: &RafxCommandBuffer,
-    texture: &RafxTexture,
+    _texture: &RafxTexture,
 ) -> RafxResult<()> {
     match command_buffer {
         #[cfg(feature = "rafx-vulkan")]
-        RafxCommandBuffer::Vk(inner) => generate_mipmaps_vk(inner, texture),
+        RafxCommandBuffer::Vk(inner) => generate_mipmaps_vk(inner, _texture),
         #[cfg(feature = "rafx-metal")]
-        RafxCommandBuffer::Metal(inner) => generate_mipmaps_metal(inner, texture),
+        RafxCommandBuffer::Metal(inner) => generate_mipmaps_metal(inner, _texture),
         #[cfg(any(
             feature = "rafx-empty",
             not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

@@ -1,3 +1,5 @@
+//! Part of `rafx-framework`. Handles extracting, preparing, and writing draw calls
+
 mod render_nodes;
 pub use render_nodes::AllRenderNodes;
 pub use render_nodes::GenericRenderNodeHandle;

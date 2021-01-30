@@ -1,3 +1,6 @@
+//! A mid-level framework for rendering that provides tools for resource lifetime management,
+//! descriptor set management, materials, renderpass management, and draw call dispatching
+
 mod resources;
 pub use resources::*;
 
