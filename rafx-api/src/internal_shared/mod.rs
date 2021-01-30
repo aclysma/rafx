@@ -1,9 +1,12 @@
+#[cfg(any(feature = "rafx-metal", feature = "rafx-vulkan"))]
 use crate::{
     RafxImmutableSamplerKey, RafxImmutableSamplers, RafxPipelineType, RafxResult,
     RafxRootSignatureDef, RafxShaderResource, RafxShaderStageFlags,
 };
+#[cfg(any(feature = "rafx-metal", feature = "rafx-vulkan"))]
 use fnv::FnvHashMap;
 
+#[cfg(any(feature = "rafx-metal", feature = "rafx-vulkan"))]
 pub(crate) fn find_immutable_sampler_index(
     samplers: &[RafxImmutableSamplers],
     name: &Option<String>,
@@ -30,6 +33,7 @@ pub(crate) fn find_immutable_sampler_index(
     None
 }
 
+#[cfg(any(feature = "rafx-metal", feature = "rafx-vulkan"))]
 pub(crate) fn merge_resources<'a>(
     root_signature_def: &RafxRootSignatureDef<'a>
 ) -> RafxResult<(
@@ -178,6 +182,7 @@ pub(crate) fn merge_resources<'a>(
     ))
 }
 
+#[cfg(any(feature = "rafx-metal", feature = "rafx-vulkan"))]
 fn verify_resources_can_overlap(
     resource: &RafxShaderResource,
     previous_resource: &RafxShaderResource,

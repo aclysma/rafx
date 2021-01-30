@@ -63,12 +63,12 @@ impl RafxShader {
             #[cfg(feature = "rafx-vulkan")]
             RafxShader::Vk(_inner) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxShader::Metal(inner) => None,
+            RafxShader::Metal(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxShader::Empty(_inner) => Some(inner),
+            RafxShader::Empty(_inner) => None,
         }
     }
 

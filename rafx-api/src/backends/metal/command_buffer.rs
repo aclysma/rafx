@@ -150,17 +150,17 @@ impl RafxCommandBufferMetal {
         Ok(())
     }
 
-    pub fn cmd_bind_render_targets(
+    pub fn cmd_begin_render_pass(
         &self,
         color_targets: &[RafxColorRenderTargetBinding],
         depth_target: Option<RafxDepthRenderTargetBinding>,
     ) -> RafxResult<()> {
         // if self.has_active_renderpass.load(Ordering::Relaxed) {
-        //     self.cmd_unbind_render_targets()?;
+        //     self.cmd_end_render_pass()?;
         // }
 
         if color_targets.is_empty() && depth_target.is_none() {
-            Err("No color or depth target supplied to cmd_bind_render_targets")?;
+            Err("No color or depth target supplied to cmd_begin_render_pass")?;
         }
 
         let mut extents = RafxExtents3D::default();
@@ -348,7 +348,7 @@ impl RafxCommandBufferMetal {
         Ok(())
     }
 
-    pub fn cmd_unbind_render_targets(&self) -> RafxResult<()> {
+    pub fn cmd_end_render_pass(&self) -> RafxResult<()> {
         // no action necessary
         Ok(())
     }

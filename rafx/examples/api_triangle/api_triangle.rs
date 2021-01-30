@@ -332,7 +332,7 @@ fn run() -> RafxResult<()> {
                 )],
             )?;
 
-            cmd_buffer.cmd_bind_render_targets(
+            cmd_buffer.cmd_begin_render_pass(
                 &[RafxColorRenderTargetBinding {
                     render_target: &render_target,
                     load_op: RafxLoadOp::Clear,
@@ -365,7 +365,7 @@ fn run() -> RafxResult<()> {
 
             // Put it into a layout where we can present it
 
-            cmd_buffer.cmd_unbind_render_targets()?;
+            cmd_buffer.cmd_end_render_pass()?;
 
             cmd_buffer.cmd_resource_barrier(
                 &[],

@@ -278,7 +278,10 @@ impl RafxQueue {
 
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
-    #[cfg(feature = "rafx-metal")]
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
     pub fn empty_queue(&self) -> Option<&RafxQueueEmpty> {
         match self {
             #[cfg(feature = "rafx-vulkan")]

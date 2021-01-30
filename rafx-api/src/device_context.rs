@@ -1,3 +1,7 @@
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
 use crate::backends::empty::RafxDeviceContextEmpty;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxDeviceContextMetal;

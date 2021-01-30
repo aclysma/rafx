@@ -2,7 +2,6 @@ use std::hash::Hash;
 
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
-use std::marker::PhantomData;
 
 /// Metal-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
 /// used to initialize a shader module GPU object
@@ -131,7 +130,7 @@ pub enum RafxShaderModuleDefVulkan<'a> {
 ))]
 #[derive(Copy, Clone, Hash)]
 pub enum RafxShaderModuleDefEmpty<'a> {
-    Empty(PhantomData<&'a u32>),
+    Empty(std::marker::PhantomData<&'a u32>),
 }
 
 /// Used to create a RafxShaderModule

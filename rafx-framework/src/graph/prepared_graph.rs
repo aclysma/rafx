@@ -323,7 +323,7 @@ impl PreparedRenderGraph {
                     //println!("depth binding:\n{:#?}", depth_target_binding);
 
                     command_buffer
-                        .cmd_bind_render_targets(&color_target_bindings, depth_target_binding)?;
+                        .cmd_begin_render_pass(&color_target_bindings, depth_target_binding)?;
 
                     let args = VisitRenderpassNodeArgs {
                         render_target_meta: pass.render_target_meta.clone(),
@@ -333,7 +333,7 @@ impl PreparedRenderGraph {
 
                     node_visitor.visit_renderpass_node(node_id, args)?;
 
-                    command_buffer.cmd_unbind_render_targets()?;
+                    command_buffer.cmd_end_render_pass()?;
                 }
                 RenderGraphOutputPass::Compute(_pass) => {
                     let args = VisitComputeNodeArgs {

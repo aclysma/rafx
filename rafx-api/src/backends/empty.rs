@@ -1,5 +1,7 @@
 // Don't use standard formatting in this file
 #![rustfmt::skip]
+#![allow(unused_attributes)]
+#![allow(unused_variables)]
 
 use crate::*;
 use raw_window_handle::HasRawWindowHandle;
@@ -10,6 +12,7 @@ use raw_window_handle::HasRawWindowHandle;
 pub struct RafxApiEmpty;
 impl RafxApiEmpty {
     pub fn device_context(&self) -> &RafxDeviceContextEmpty { unimplemented!() }
+
     pub fn destroy(&mut self) -> RafxResult<()> { unimplemented!() }
 }
 
@@ -17,11 +20,11 @@ impl RafxApiEmpty {
 pub struct RafxDeviceContextEmpty;
 impl RafxDeviceContextEmpty {
     pub fn device_info(&self) -> &RafxDeviceInfo { unimplemented!() }
+
     pub fn create_queue(&self, queue_type: RafxQueueType) -> RafxResult<RafxQueueEmpty> { unimplemented!(); }
     pub fn create_fence(&self) -> RafxResult<RafxFenceEmpty> { unimplemented!(); }
     pub fn create_semaphore(&self) -> RafxResult<RafxSemaphoreEmpty> { unimplemented!(); }
     pub fn create_swapchain(&self, raw_window_handle: &dyn HasRawWindowHandle, swapchain_def: &RafxSwapchainDef) -> RafxResult<RafxSwapchainEmpty> { unimplemented!(); }
-    pub fn wait_for_fences(&self, fences: &[&RafxFenceEmpty]) -> RafxResult<()> { unimplemented!(); }
     pub fn create_sampler(&self, sampler_def: &RafxSamplerDef) -> RafxResult<RafxSamplerEmpty> { unimplemented!(); }
     pub fn create_texture(&self, texture_def: &RafxTextureDef) -> RafxResult<RafxTextureEmpty> { unimplemented!(); }
     pub fn create_render_target(&self, render_target_def: &RafxRenderTargetDef) -> RafxResult<RafxRenderTargetEmpty> { unimplemented!(); }
@@ -32,6 +35,9 @@ impl RafxDeviceContextEmpty {
     pub fn create_graphics_pipeline(&self, graphics_pipeline_def: &RafxGraphicsPipelineDef) -> RafxResult<RafxPipelineEmpty> { unimplemented!(); }
     pub fn create_compute_pipeline(&self, compute_pipeline_def: &RafxComputePipelineDef) -> RafxResult<RafxPipelineEmpty> { unimplemented!(); }
     pub fn create_shader_module(&self, data: RafxShaderModuleDefEmpty) -> RafxResult<RafxShaderModuleEmpty> { unimplemented!(); }
+
+    pub fn wait_for_fences(&self, fences: &[&RafxFenceEmpty]) -> RafxResult<()> { unimplemented!(); }
+
     pub fn find_supported_format(&self, candidates: &[RafxFormat], resource_type: RafxResourceType) -> Option<RafxFormat> { unimplemented!(); }
     pub fn find_supported_sample_count(&self, candidates: &[RafxSampleCount]) -> Option<RafxSampleCount> { unimplemented!(); }
 }
@@ -134,26 +140,27 @@ impl RafxCommandBufferEmpty {
     pub fn begin(&self) -> RafxResult<()> { unimplemented!() }
     pub fn end(&self) -> RafxResult<()> { unimplemented!() }
     pub fn return_to_pool(&self) -> RafxResult<()> { unimplemented!() }
-    pub fn cmd_bind_render_targets(
-        &self,
-        color_targets: &[RafxColorRenderTargetBinding],
-        depth_target: Option<RafxDepthRenderTargetBinding>,
-    ) -> RafxResult<()> { unimplemented!() }
 
-    pub fn cmd_unbind_render_targets(&self) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_begin_render_pass(&self, color_targets: &[RafxColorRenderTargetBinding], depth_target: Option<RafxDepthRenderTargetBinding>) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_end_render_pass(&self) -> RafxResult<()> { unimplemented!() }
+
     pub fn cmd_set_viewport(&self, x: f32, y: f32, width: f32, height: f32, depth_min: f32, depth_max: f32) -> RafxResult<()> { unimplemented!() }
-    pub fn cmd_set_scissor(&self, mut x: u32, mut y: u32, mut width: u32, mut height: u32) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_set_scissor(&self, x: u32, y: u32, width: u32, height: u32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_set_stencil_reference_value(&self, value: u32) -> RafxResult<()> { unimplemented!() }
+
     pub fn cmd_bind_pipeline(&self, pipeline: &RafxPipelineEmpty) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_bind_vertex_buffers(&self, first_binding: u32, bindings: &[RafxVertexBufferBinding]) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_bind_index_buffer(&self, binding: &RafxIndexBufferBinding) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_bind_descriptor_set(&self, descriptor_set_array: &RafxDescriptorSetArrayEmpty, index: u32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_bind_descriptor_set_handle(&self, root_signature: &RafxRootSignatureEmpty, set_index: u32, descriptor_set_handle: &RafxDescriptorSetHandleEmpty) -> RafxResult<()> { unimplemented!() }
+
     pub fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_draw_instanced(&self, vertex_count: u32, first_vertex: u32, instance_count: u32, first_instance: u32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_draw_indexed(&self, index_count: u32, first_index: u32, vertex_offset: i32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_draw_indexed_instanced(&self, index_count: u32,  first_index: u32,  instance_count: u32,  first_instance: u32,vertex_offset: i32) -> RafxResult<()> { unimplemented!() }
+
     pub fn cmd_dispatch(&self, group_count_x: u32,  group_count_y: u32, group_count_z: u32) -> RafxResult<()> { unimplemented!() }
+
     pub fn cmd_resource_barrier(&self, buffer_barriers: &[RafxBufferBarrier], texture_barriers: &[RafxTextureBarrier], render_target_barriers: &[RafxRenderTargetBarrier]) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_copy_buffer_to_buffer(&self, src_buffer: &RafxBufferEmpty, dst_buffer: &RafxBufferEmpty, src_offset: u64, dst_offset: u64, size: u64) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_copy_buffer_to_texture(&self, src_buffer: &RafxBufferEmpty, dst_texture: &RafxTextureEmpty, params: &RafxCmdCopyBufferToTextureParams) -> RafxResult<()> { unimplemented!() }
@@ -185,11 +192,10 @@ pub struct RafxSemaphoreEmpty;
 //
 pub struct RafxSwapchainEmpty;
 impl RafxSwapchainEmpty {
+    pub fn swapchain_def(&self) -> &RafxSwapchainDef { unimplemented!() }
     pub fn image_count(&self) -> usize { unimplemented!() }
     pub fn format(&self) -> RafxFormat { unimplemented!() }
-    pub fn swapchain_def(&self) -> &RafxSwapchainDef { unimplemented!() }
     pub fn acquire_next_image_fence(&mut self, fence: &RafxFenceEmpty) -> RafxResult<RafxSwapchainImage> { unimplemented!() }
     pub fn acquire_next_image_semaphore(&mut self, semaphore: &RafxSemaphoreEmpty) -> RafxResult<RafxSwapchainImage> { unimplemented!() }
     pub fn rebuild(&mut self, swapchain_def: &RafxSwapchainDef) -> RafxResult<()> { unimplemented!() }
 }
-

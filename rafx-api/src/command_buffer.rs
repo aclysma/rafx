@@ -108,7 +108,7 @@ impl RafxCommandBuffer {
     ///
     /// Some command must be used within a renderpass and some may only be used outside of a
     /// renderpass.
-    pub fn cmd_bind_render_targets(
+    pub fn cmd_begin_render_pass(
         &self,
         color_targets: &[RafxColorRenderTargetBinding],
         depth_target: Option<RafxDepthRenderTargetBinding>,
@@ -116,34 +116,34 @@ impl RafxCommandBuffer {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => {
-                inner.cmd_bind_render_targets(color_targets, depth_target)
+                inner.cmd_begin_render_pass(color_targets, depth_target)
             }
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => {
-                inner.cmd_bind_render_targets(color_targets, depth_target)
+                inner.cmd_begin_render_pass(color_targets, depth_target)
             }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
             RafxCommandBuffer::Empty(inner) => {
-                inner.cmd_bind_render_targets(color_targets, depth_target)
+                inner.cmd_begin_render_pass(color_targets, depth_target)
             }
         }
     }
 
     /// Finish the renderpass.
-    pub fn cmd_unbind_render_targets(&self) -> RafxResult<()> {
+    pub fn cmd_end_render_pass(&self) -> RafxResult<()> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxCommandBuffer::Vk(inner) => inner.cmd_unbind_render_targets(),
+            RafxCommandBuffer::Vk(inner) => inner.cmd_end_render_pass(),
             #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => inner.cmd_unbind_render_targets(),
+            RafxCommandBuffer::Metal(inner) => inner.cmd_end_render_pass(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxCommandBuffer::Empty(inner) => inner.cmd_unbind_render_targets(),
+            RafxCommandBuffer::Empty(inner) => inner.cmd_end_render_pass(),
         }
     }
 
