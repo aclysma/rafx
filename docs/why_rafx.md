@@ -11,24 +11,33 @@ Rafx is a multi-backend rendering framework targeted specifically at games and t
 Rust already has an amazing selection of low-level rendering crates: `gfx-hal`, `wgpu`, `vulkano`, `glium`, lots of
 raw bindings to platform APIs like `ash` and `metal`, and more. So it's fair to ask, why make another one?
 
-Up to this point, graphics libraries in Rust have been very general. They can mostly be categorized as:
- * Very unsafe, fully general low-level APIs (i.e. `ash`, `gfx-hal`). These generally target the extreme end of maximum
-   performance and flexibility, making them difficult to use correctly.
- * Completely safe, fully general, low-level APIs (i.e. `glium`, `vulkano`, `wgpu`). These APIs are intended to be 
-   "safe at any cost." These safety guarantees have runtime cost.
+Rafx intends to support multiple platform APIs, so as of this writing, `gfx-hal` or other APIs built on top of it like
+`wgpu` are the only choices that meet this criteria.
 
-I think the tradeoffs for these libraries are well-chosen for their intended purposes. However, I think the ideal game
-development graphics abstraction for day-to-day use is is somewhere between these extremes.
-   
-Additionally, existing APIs tend to follow a native platform API (usually OpenGL or Vulkan) very closely, exposing 
-every concept that exists in that API. In some cases when multiple platform APIs are supported, complex
-solutions are employed to hide the platform's lack of native support for the exposed API.
+### Compared with gfx-hal
 
-`rafx-api` aims to be an unsafe API abstraction layer with a reduced API footprint that is easily supported across
-modern platform APIs. This keeps backends simpler to understand and debug, while hopefully improving ease of use.
+`gfx-hal` is an unsafe API that closely follows the API design of vulkan. Like vulkan, it heavily favors flexibility
+and performance over ease of use. The API exposes concepts and features that do not always exist in other platform APIs
+or may difficult to emulate. When necessary, `gfx-hal` goes to great length to hide a platform API's lack of native
+support for the exposed API.
 
-The API is roughly based on "[The Forge](https://github.com/ConfettiFX/The-Forge)", but it is a from-scratch, pure rust
-implementation with changes in both API design and implementation.
+`rafx-api` is also unsafe, but has a reduced API footprint that is easily supported across modern platform APIs.
+This keeps backends simple to read and debug, while hopefully improving ease of use. In some cases, the provided API
+will not be sufficient, so `rafx-api` fully exposes the underlying platform APIs and resources. This allows full, native
+control and access to the very latest features in the underlying platform API.
+
+### Compared with wgpu
+
+`wgpu` is a fully safe API that closely follows the webgpu standard. It pursues safety at any cost because the API is
+intended to be exposed in web browsers - where any form of undefined behavior is unacceptable. However this safety
+combined with a less vulkan-centric API design makes it much easier to use than `gfx-hal` and it has become very popular
+in the rust community. It is under the MPL license which is more restrictive than licenses like MIT or Apache 2.0.
+
+`rafx-api` does not have these safety guarantees (or complexity/overhead required to support them). However,
+`rafx-framework` provides higher-level tools and abstractions that mitigate this unsafety. For example, the render graph
+automatically handles placing resources into the correct state. It can potentially do this in a more optimal way because
+it has full knowledge of what will happen during the entire frame. `rafx-api` is available under the very permissive
+Apache-2.0/MIT license.
 
 ## rafx-framework
 
@@ -62,3 +71,16 @@ the game itself.
 
 Additionally, the shader processor can [generate rust code](shaders/generated_rust_code.md) that provides a type-safe
 interface for working with descriptor sets compatible with a given shader. 
+
+
+
+
+
+
+
+
+
+
+
+
+
