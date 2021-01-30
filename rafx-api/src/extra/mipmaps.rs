@@ -98,7 +98,6 @@ fn do_generate_mipmaps_vk(
                 mip_slice: Some(dst_level as u8),
                 array_slice: Some(layer as u16),
             }],
-            &[],
         )?;
 
         let src_extents = [
@@ -149,7 +148,6 @@ fn do_generate_mipmaps_vk(
                 mip_slice: Some(dst_level as u8),
                 array_slice: Some(layer as u16),
             }],
-            &[],
         )?;
     }
 

@@ -26,17 +26,17 @@ impl RafxRenderpassVulkanCache {
     ) -> u64 {
         let mut hasher = FnvHasher::default();
         for color_target in color_targets {
-            let rt_def = color_target.render_target.render_target_def();
-            rt_def.format.hash(&mut hasher);
-            rt_def.sample_count.hash(&mut hasher);
+            let texture_def = color_target.texture.texture_def();
+            texture_def.format.hash(&mut hasher);
+            texture_def.sample_count.hash(&mut hasher);
             color_target.clear_value.hash(&mut hasher);
             color_target.load_op.hash(&mut hasher);
         }
 
         if let Some(depth_target) = &depth_target {
-            let rt_def = depth_target.render_target.render_target_def();
-            rt_def.format.hash(&mut hasher);
-            rt_def.sample_count.hash(&mut hasher);
+            let texture_def = depth_target.texture.texture_def();
+            texture_def.format.hash(&mut hasher);
+            texture_def.sample_count.hash(&mut hasher);
             depth_target.clear_value.hash(&mut hasher);
             depth_target.stencil_load_op.hash(&mut hasher);
             depth_target.depth_load_op.hash(&mut hasher);
@@ -50,20 +50,20 @@ impl RafxRenderpassVulkanCache {
         depth_target: Option<&RafxDepthRenderTargetBinding>,
     ) -> RafxResult<RafxRenderpassVulkan> {
         let sample_count = if let Some(depth_target) = &depth_target {
-            depth_target.render_target.render_target_def().sample_count
+            depth_target.texture.texture_def().sample_count
         } else {
             color_targets
                 .first()
                 .unwrap()
-                .render_target
-                .render_target_def()
+                .texture
+                .texture_def()
                 .sample_count
         };
 
         let color_attachments: Vec<_> = color_targets
             .iter()
             .map(|x| RafxRenderpassVulkanColorAttachment {
-                format: x.render_target.render_target_def().format,
+                format: x.texture.texture_def().format,
                 load_op: x.load_op,
                 store_op: x.store_op,
             })
@@ -74,7 +74,7 @@ impl RafxRenderpassVulkanCache {
             .map(|x| {
                 x.resolve_target
                     .map(|x| RafxRenderpassVulkanResolveAttachment {
-                        format: x.render_target_def().format,
+                        format: x.texture_def().format,
                     })
             })
             .collect();
@@ -82,7 +82,7 @@ impl RafxRenderpassVulkanCache {
         let depth_attachment = depth_target
             .as_ref()
             .map(|x| RafxRenderpassVulkanDepthAttachment {
-                format: x.render_target.render_target_def().format,
+                format: x.texture.texture_def().format,
                 depth_load_op: x.depth_load_op,
                 stencil_load_op: x.stencil_load_op,
                 depth_store_op: x.depth_store_op,

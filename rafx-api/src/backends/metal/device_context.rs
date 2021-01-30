@@ -1,8 +1,8 @@
 use crate::{
     RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext,
-    RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxRenderTargetDef,
-    RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef,
-    RafxShaderModuleDefMetal, RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
+    RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxResourceType,
+    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDefMetal,
+    RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
@@ -10,9 +10,8 @@ use std::sync::Arc;
 use crate::metal::features::MetalFeatures;
 use crate::metal::{
     RafxBufferMetal, RafxDescriptorSetArrayMetal, RafxFenceMetal, RafxPipelineMetal,
-    RafxQueueMetal, RafxRenderTargetMetal, RafxRootSignatureMetal, RafxSamplerMetal,
-    RafxSemaphoreMetal, RafxShaderMetal, RafxShaderModuleMetal, RafxSwapchainMetal,
-    RafxTextureMetal,
+    RafxQueueMetal, RafxRootSignatureMetal, RafxSamplerMetal, RafxSemaphoreMetal, RafxShaderMetal,
+    RafxShaderModuleMetal, RafxSwapchainMetal, RafxTextureMetal,
 };
 
 #[cfg(debug_assertions)]
@@ -225,13 +224,6 @@ impl RafxDeviceContextMetal {
         texture_def: &RafxTextureDef,
     ) -> RafxResult<RafxTextureMetal> {
         RafxTextureMetal::new(self, texture_def)
-    }
-
-    pub fn create_render_target(
-        &self,
-        render_target_def: &RafxRenderTargetDef,
-    ) -> RafxResult<RafxRenderTargetMetal> {
-        RafxRenderTargetMetal::new(self, render_target_def)
     }
 
     pub fn create_buffer(

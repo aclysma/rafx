@@ -65,25 +65,23 @@ The API Triangle example shows a resource barrier from `PRESENT` -> `RENDER_TARG
 `PRESENT`.
 
 ```rust
-// Acquire a swapchain image
+// Acquire a swapchain image (as a RafxTexture)
 
 cmd_buffer.cmd_resource_barrier(
     &[],
-    &[],
-    &[RafxRenderTargetBarrier::state_transition(
-        &render_target,
+    &[RafxTextureBarrier::state_transition(
+        &swapchain_texture,
         RafxResourceState::PRESENT,
         RafxResourceState::RENDER_TARGET,
     )],
 )?;
 
-// Draw on the render_target
+// Draw on the image
 
 cmd_buffer.cmd_resource_barrier(
     &[],
-    &[],
-    &[RafxRenderTargetBarrier::state_transition(
-        &render_target,
+    &[RafxTextureBarrier::state_transition(
+        &swapchain_texture,
         RafxResourceState::RENDER_TARGET,
         RafxResourceState::PRESENT,
     )],

@@ -5,8 +5,8 @@ use crate::resources::ResourceArc;
 use crate::ResourceDropSink;
 use crate::{BufferResource, ImageViewResource};
 use crossbeam_channel::{Receiver, Sender};
-use rafx_api::extra::image::RafxImage;
-use rafx_api::{RafxBuffer, RafxDeviceContext, RafxResult, RafxTexture, RafxTextureBindType};
+use rafx_api::RafxTexture;
+use rafx_api::{RafxBuffer, RafxDeviceContext, RafxResult, RafxTextureBindType};
 use std::hash::Hash;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -222,13 +222,11 @@ pub struct DynResourceAllocatorSet {
 impl DynResourceAllocatorSet {
     pub fn insert_texture(
         &self,
-        texture: RafxTexture,
+        image: RafxTexture,
     ) -> ResourceArc<ImageResource> {
-        let image = RafxImage::Texture(texture);
-
         let image_resource = ImageResource {
             image_key: None,
-            image: Arc::new(image),
+            image,
         };
         self.images.insert(image_resource)
     }

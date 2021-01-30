@@ -190,7 +190,7 @@ impl ManagedDescriptorSetPoolChunk {
                                 array_index: descriptor_set_index,
                                 descriptor_key: RafxDescriptorKey::Binding(element_key.dst_binding),
                                 elements: RafxDescriptorElements {
-                                    textures: Some(&[image_view.get_image().texture()]),
+                                    textures: Some(&[&image_view.get_image()]),
                                     ..Default::default()
                                 },
                                 dst_element_offset: image_info_index as u32,

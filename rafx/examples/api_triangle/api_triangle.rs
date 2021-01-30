@@ -299,7 +299,7 @@ fn run() -> RafxResult<()> {
             let (window_width, window_height) = sdl2_systems.window.vulkan_drawable_size();
             let presentable_frame =
                 swapchain_helper.acquire_next_image(window_width, window_height, None)?;
-            let render_target = presentable_frame.render_target();
+            let swapchain_texture = presentable_frame.swapchain_texture();
 
             //
             // Use the command pool/buffer assigned to this frame
@@ -324,9 +324,8 @@ fn run() -> RafxResult<()> {
             // Put it into a layout where we can draw on it
             cmd_buffer.cmd_resource_barrier(
                 &[],
-                &[],
-                &[RafxRenderTargetBarrier::state_transition(
-                    &render_target,
+                &[RafxTextureBarrier::state_transition(
+                    &swapchain_texture,
                     RafxResourceState::PRESENT,
                     RafxResourceState::RENDER_TARGET,
                 )],
@@ -334,7 +333,7 @@ fn run() -> RafxResult<()> {
 
             cmd_buffer.cmd_begin_render_pass(
                 &[RafxColorRenderTargetBinding {
-                    render_target: &render_target,
+                    texture: &swapchain_texture,
                     load_op: RafxLoadOp::Clear,
                     store_op: RafxStoreOp::Store,
                     array_slice: None,
@@ -369,9 +368,8 @@ fn run() -> RafxResult<()> {
 
             cmd_buffer.cmd_resource_barrier(
                 &[],
-                &[],
-                &[RafxRenderTargetBarrier::state_transition(
-                    &render_target,
+                &[RafxTextureBarrier::state_transition(
+                    &swapchain_texture,
                     RafxResourceState::RENDER_TARGET,
                     RafxResourceState::PRESENT,
                 )],

@@ -1,10 +1,8 @@
-use crate::metal::{
-    RafxDeviceContextMetal, RafxFenceMetal, RafxRawImageMetal, RafxRenderTargetMetal,
-    RafxSemaphoreMetal,
-};
+use crate::backends::metal::RafxTextureMetal;
+use crate::metal::{RafxDeviceContextMetal, RafxFenceMetal, RafxRawImageMetal, RafxSemaphoreMetal};
 use crate::{
-    RafxExtents3D, RafxFormat, RafxRenderTarget, RafxRenderTargetDef, RafxResourceType, RafxResult,
-    RafxSampleCount, RafxSwapchainDef, RafxSwapchainImage, RafxTextureDimensions,
+    RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
+    RafxSwapchainImage, RafxTexture, RafxTextureDef, RafxTextureDimensions,
 };
 use rafx_base::trust_cell::TrustCell;
 use raw_window_handle::HasRawWindowHandle;
@@ -141,10 +139,10 @@ impl RafxSwapchainMetal {
 
             // This ends up being cheap because it doesn't allocate anything. We could cache it but it doesn't
             // seem worthwhile
-            let render_target = RafxRenderTargetMetal::from_existing(
+            let image = RafxTextureMetal::from_existing(
                 &self.device_context,
                 Some(raw_image),
-                &RafxRenderTargetDef {
+                &RafxTextureDef {
                     extents: RafxExtents3D {
                         width: self.swapchain_def.width,
                         height: self.swapchain_def.height,
@@ -166,7 +164,7 @@ impl RafxSwapchainMetal {
             }
 
             Ok(RafxSwapchainImage {
-                render_target: RafxRenderTarget::Metal(render_target),
+                texture: RafxTexture::Metal(image),
                 swapchain_image_index,
             })
         })

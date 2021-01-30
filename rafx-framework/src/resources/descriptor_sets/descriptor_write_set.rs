@@ -2,9 +2,8 @@ use crate::resources::resource_lookup::{ImageViewResource, SamplerResource};
 use crate::resources::ResourceArc;
 use crate::{BufferResource, DescriptorSetLayout};
 use fnv::FnvHashMap;
-use rafx_api::extra::image::RafxImage;
 use rafx_api::RafxResourceType;
-use std::sync::Arc;
+use rafx_api::RafxTexture;
 
 //
 // These represent descriptor updates that can be applied to a descriptor set in a pool
@@ -15,7 +14,7 @@ pub enum DescriptorSetWriteElementImageValue {
 }
 
 impl DescriptorSetWriteElementImageValue {
-    pub fn get_image(&self) -> Arc<RafxImage> {
+    pub fn get_image(&self) -> RafxTexture {
         match self {
             DescriptorSetWriteElementImageValue::Resource(resource) => {
                 resource.get_raw().image.get_raw().image.clone()

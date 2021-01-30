@@ -27,7 +27,7 @@ impl RafxDeviceContextEmpty {
     pub fn create_swapchain(&self, raw_window_handle: &dyn HasRawWindowHandle, swapchain_def: &RafxSwapchainDef) -> RafxResult<RafxSwapchainEmpty> { unimplemented!(); }
     pub fn create_sampler(&self, sampler_def: &RafxSamplerDef) -> RafxResult<RafxSamplerEmpty> { unimplemented!(); }
     pub fn create_texture(&self, texture_def: &RafxTextureDef) -> RafxResult<RafxTextureEmpty> { unimplemented!(); }
-    pub fn create_render_target(&self, render_target_def: &RafxRenderTargetDef) -> RafxResult<RafxRenderTargetEmpty> { unimplemented!(); }
+    pub fn create_render_target(&self, render_target_def: &RafxTextureDef) -> RafxResult<RafxRenderTargetEmpty> { unimplemented!(); }
     pub fn create_buffer(&self, buffer_def: &RafxBufferDef) -> RafxResult<RafxBufferEmpty> { unimplemented!(); }
     pub fn create_shader(&self, stages: Vec<RafxShaderStageDef>) -> RafxResult<RafxShaderEmpty> { unimplemented!(); }
     pub fn create_root_signature(&self, root_signature_def: &RafxRootSignatureDef) -> RafxResult<RafxRootSignatureEmpty> { unimplemented!(); }
@@ -60,13 +60,6 @@ impl RafxBufferEmpty {
 pub struct RafxTextureEmpty;
 impl RafxTextureEmpty {
     pub fn texture_def(&self) -> &RafxTextureDef { unimplemented!() }
-}
-
-#[derive(Clone, Debug)]
-pub struct RafxRenderTargetEmpty;
-impl RafxRenderTargetEmpty {
-    pub fn render_target_def(&self) -> &RafxRenderTargetDef { unimplemented!(); }
-    pub fn texture(&self) -> &RafxTexture { unimplemented!(); }
 }
 
 #[derive(Clone, Debug)]
@@ -161,7 +154,7 @@ impl RafxCommandBufferEmpty {
 
     pub fn cmd_dispatch(&self, group_count_x: u32,  group_count_y: u32, group_count_z: u32) -> RafxResult<()> { unimplemented!() }
 
-    pub fn cmd_resource_barrier(&self, buffer_barriers: &[RafxBufferBarrier], texture_barriers: &[RafxTextureBarrier], render_target_barriers: &[RafxRenderTargetBarrier]) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_resource_barrier(&self, buffer_barriers: &[RafxBufferBarrier], texture_barriers: &[RafxTextureBarrier]) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_copy_buffer_to_buffer(&self, src_buffer: &RafxBufferEmpty, dst_buffer: &RafxBufferEmpty, src_offset: u64, dst_offset: u64, size: u64) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_copy_buffer_to_texture(&self, src_buffer: &RafxBufferEmpty, dst_texture: &RafxTextureEmpty, params: &RafxCmdCopyBufferToTextureParams) -> RafxResult<()> { unimplemented!() }
 }

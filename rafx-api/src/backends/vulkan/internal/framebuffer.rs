@@ -1,11 +1,12 @@
-use crate::vulkan::{RafxDeviceContextVulkan, RafxRenderTargetVulkan, RafxRenderpassVulkan};
+use crate::backends::vulkan::RafxTextureVulkan;
+use crate::vulkan::{RafxDeviceContextVulkan, RafxRenderpassVulkan};
 use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::Arc;
 
 pub(crate) struct RafxFramebufferVulkanAttachment {
-    pub(crate) render_target: RafxRenderTargetVulkan,
+    pub(crate) texture: RafxTextureVulkan,
     pub(crate) array_slice: Option<u16>,
     pub(crate) mip_slice: Option<u8>,
 }
@@ -58,26 +59,26 @@ impl RafxFramebufferVulkan {
     ) -> RafxResult<Self> {
         let (extents, array_length) =
             if let Some(first_color_rt) = framebuffer_def.color_attachments.first() {
-                let rt_def = first_color_rt.render_target.render_target_def();
-                let extents = rt_def.extents.clone();
+                let texture_def = first_color_rt.texture.texture_def();
+                let extents = texture_def.extents.clone();
 
                 let array_length = if extents.depth > 1 {
                     extents.depth
                 } else if first_color_rt.array_slice.is_some() {
                     1u32
                 } else {
-                    rt_def.array_length
+                    texture_def.array_length
                 };
 
                 (extents, array_length)
             } else if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {
-                let rt_def = depth_rt.render_target.render_target_def();
-                let extents = rt_def.extents.clone();
+                let texture_def = depth_rt.texture.texture_def();
+                let extents = texture_def.extents.clone();
 
                 let array_length = if depth_rt.array_slice.is_some() {
                     1u32
                 } else {
-                    rt_def.array_length
+                    texture_def.array_length
                 };
 
                 (extents, array_length)
@@ -91,9 +92,9 @@ impl RafxFramebufferVulkan {
 
         for color_rt in &framebuffer_def.color_attachments {
             let image_view = if color_rt.array_slice.is_none() && color_rt.mip_slice.is_none() {
-                color_rt.render_target.render_target_vk_view()
+                color_rt.texture.render_target_vk_view().unwrap()
             } else {
-                color_rt.render_target.render_target_slice_vk_view(
+                color_rt.texture.render_target_slice_vk_view(
                     0,
                     color_rt.array_slice.unwrap_or(0),
                     color_rt.mip_slice.unwrap_or(0),
@@ -104,9 +105,9 @@ impl RafxFramebufferVulkan {
 
         for resolve_rt in &framebuffer_def.resolve_attachments {
             let image_view = if resolve_rt.array_slice.is_none() && resolve_rt.mip_slice.is_none() {
-                resolve_rt.render_target.render_target_vk_view()
+                resolve_rt.texture.render_target_vk_view().unwrap()
             } else {
-                resolve_rt.render_target.render_target_slice_vk_view(
+                resolve_rt.texture.render_target_slice_vk_view(
                     0,
                     resolve_rt.array_slice.unwrap_or(0),
                     resolve_rt.mip_slice.unwrap_or(0),
@@ -117,9 +118,9 @@ impl RafxFramebufferVulkan {
 
         if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {
             let image_view = if depth_rt.mip_slice.is_none() && depth_rt.array_slice.is_none() {
-                depth_rt.render_target.render_target_vk_view()
+                depth_rt.texture.render_target_vk_view().unwrap()
             } else {
-                depth_rt.render_target.render_target_slice_vk_view(
+                depth_rt.texture.render_target_slice_vk_view(
                     0,
                     depth_rt.array_slice.unwrap_or(0),
                     depth_rt.mip_slice.unwrap_or(0),

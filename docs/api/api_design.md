@@ -106,7 +106,7 @@ specify only the type flags that you need
 
 ### RafxResourceState
 
-Some operations require resources to be placed in the correct state. For example, a `RafxRenderTarget` may only be
+Some operations require resources to be placed in the correct state. For example, a `RafxTexture` may only be
 presented if it is in the PRESENT state. However, while it is being written to, it must be in the `RENDER_TARGET` state.
 
 States are required partially because underlying GPU APIs require them. (Like in vulkan, `VkImageLayout`).

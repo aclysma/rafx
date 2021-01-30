@@ -46,7 +46,6 @@ pub fn enqueue_load_buffer(
             ),
         }],
         &[],
-        &[],
     )?;
 
     upload.dst_command_buffer().cmd_resource_barrier(
@@ -59,7 +58,6 @@ pub fn enqueue_load_buffer(
                 upload.transfer_queue().queue_type(),
             ),
         }],
-        &[],
         &[],
     )?;
 

@@ -26,19 +26,19 @@ impl RafxFramebufferVulkanCache {
         let mut hasher = FnvHasher::default();
         for color_target in color_targets {
             color_target
-                .render_target
-                .vk_render_target()
+                .texture
+                .vk_texture()
                 .unwrap()
-                .render_target_id()
+                .texture_id()
                 .hash(&mut hasher);
             color_target.mip_slice.hash(&mut hasher);
             color_target.array_slice.hash(&mut hasher);
 
             if let Some(resolve_target) = color_target.resolve_target {
                 resolve_target
-                    .vk_render_target()
+                    .vk_texture()
                     .unwrap()
-                    .render_target_id()
+                    .texture_id()
                     .hash(&mut hasher);
                 color_target.resolve_mip_slice.hash(&mut hasher);
                 color_target.resolve_array_slice.hash(&mut hasher);
@@ -47,10 +47,10 @@ impl RafxFramebufferVulkanCache {
 
         if let Some(depth_target) = &depth_target {
             depth_target
-                .render_target
-                .vk_render_target()
+                .texture
+                .vk_texture()
                 .unwrap()
-                .render_target_id()
+                .texture_id()
                 .hash(&mut hasher);
             depth_target.mip_slice.hash(&mut hasher);
             depth_target.array_slice.hash(&mut hasher);
@@ -69,18 +69,14 @@ impl RafxFramebufferVulkanCache {
 
         for color_target in color_targets {
             color_attachments.push(RafxFramebufferVulkanAttachment {
-                render_target: color_target
-                    .render_target
-                    .vk_render_target()
-                    .unwrap()
-                    .clone(),
+                texture: color_target.texture.vk_texture().unwrap().clone(),
                 array_slice: color_target.array_slice,
                 mip_slice: color_target.mip_slice,
             });
 
             if let Some(resolve_target) = color_target.resolve_target {
                 resolve_attachments.push(RafxFramebufferVulkanAttachment {
-                    render_target: resolve_target.vk_render_target().unwrap().clone(),
+                    texture: resolve_target.vk_texture().unwrap().clone(),
                     array_slice: color_target.resolve_array_slice,
                     mip_slice: color_target.resolve_mip_slice,
                 })
@@ -95,7 +91,7 @@ impl RafxFramebufferVulkanCache {
                 resolve_attachments,
                 depth_stencil_attachment: depth_target.as_ref().map(|x| {
                     RafxFramebufferVulkanAttachment {
-                        render_target: x.render_target.vk_render_target().unwrap().clone(),
+                        texture: x.texture.vk_texture().unwrap().clone(),
                         array_slice: x.array_slice,
                         mip_slice: x.mip_slice,
                     }

@@ -7,9 +7,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::vulkan::{
     RafxBufferVulkan, RafxDescriptorSetArrayVulkan, RafxFenceVulkan, RafxPipelineVulkan,
-    RafxQueueVulkan, RafxRenderTargetVulkan, RafxRootSignatureVulkan, RafxSamplerVulkan,
-    RafxSemaphoreVulkan, RafxShaderModuleVulkan, RafxShaderVulkan, RafxSwapchainVulkan,
-    RafxTextureVulkan,
+    RafxQueueVulkan, RafxRootSignatureVulkan, RafxSamplerVulkan, RafxSemaphoreVulkan,
+    RafxShaderModuleVulkan, RafxShaderVulkan, RafxSwapchainVulkan, RafxTextureVulkan,
 };
 use ash::extensions::khr;
 use fnv::FnvHashMap;
@@ -387,13 +386,6 @@ impl RafxDeviceContextVulkan {
         texture_def: &RafxTextureDef,
     ) -> RafxResult<RafxTextureVulkan> {
         RafxTextureVulkan::new(self, texture_def)
-    }
-
-    pub fn create_render_target(
-        &self,
-        render_target_def: &RafxRenderTargetDef,
-    ) -> RafxResult<RafxRenderTargetVulkan> {
-        RafxRenderTargetVulkan::new(self, render_target_def)
     }
 
     pub fn create_buffer(

@@ -267,9 +267,11 @@ impl RenderGraphBuilder {
         node: RenderGraphNodeId,
         color_attachment_index: usize,
         clear_color_value: Option<RafxColorClearValue>,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_COLOR;
+
         // Add the read to the graph
         let create_image = self.add_image_create(node, constraint, view_options);
 
@@ -291,9 +293,11 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         clear_depth_stencil_value: Option<RafxDepthStencilClearValue>,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
+
         // Add the read to the graph
         let create_image = self.add_image_create(node, constraint, view_options);
 
@@ -316,9 +320,11 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         clear_depth_stencil_value: Option<RafxDepthStencilClearValue>,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
+
         // Add the read to the graph
         let create_image = self.add_image_create(node, constraint, view_options);
 
@@ -341,9 +347,11 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         resolve_attachment_index: usize,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_COLOR;
+
         let create_image = self.add_image_create(node, constraint, view_options);
 
         self.set_resolve_attachment(
@@ -363,9 +371,11 @@ impl RenderGraphBuilder {
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
         color_attachment_index: usize,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_COLOR;
+
         // Add the read to the graph
         let read_image = self.add_image_read(node, image, constraint, view_options);
 
@@ -385,9 +395,11 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
+
         // Add the read to the graph
         let read_image = self.add_image_read(node, image, constraint, view_options);
 
@@ -408,9 +420,11 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
+
         // Add the read to the graph
         let read_image = self.add_image_read(node, image, constraint, view_options);
 
@@ -433,9 +447,11 @@ impl RenderGraphBuilder {
         image: RenderGraphImageUsageId,
         color_attachment_index: usize,
         clear_color_value: Option<RafxColorClearValue>,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_COLOR;
+
         // Add the read to the graph
         let (read_image, write_image) =
             self.add_image_modify(node, image, constraint, view_options);
@@ -459,9 +475,11 @@ impl RenderGraphBuilder {
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
         clear_depth_stencil_value: Option<RafxDepthStencilClearValue>,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
+
         // Add the read to the graph
         let (read_image, write_image) =
             self.add_image_modify(node, image, constraint, view_options);
@@ -486,9 +504,11 @@ impl RenderGraphBuilder {
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
         clear_depth_stencil_value: Option<RafxDepthStencilClearValue>,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
+
         // Add the read to the graph
         let (read_image, write_image) =
             self.add_image_modify(node, image, constraint, view_options);
@@ -512,9 +532,11 @@ impl RenderGraphBuilder {
         &mut self,
         node: RenderGraphNodeId,
         image: RenderGraphImageUsageId,
-        constraint: RenderGraphImageConstraint,
+        mut constraint: RenderGraphImageConstraint,
         view_options: RenderGraphImageViewOptions,
     ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::TEXTURE;
+
         // Add the read to the graph
         let usage = self.add_image_read(node, image, constraint, view_options);
 

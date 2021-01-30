@@ -10,8 +10,8 @@ use crate::vulkan::RafxCommandBufferVulkan;
 use crate::{
     RafxBuffer, RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
     RafxDepthRenderTargetBinding, RafxDescriptorSetArray, RafxDescriptorSetHandle,
-    RafxIndexBufferBinding, RafxPipeline, RafxRenderTargetBarrier, RafxResult, RafxRootSignature,
-    RafxTexture, RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxIndexBufferBinding, RafxPipeline, RafxResult, RafxRootSignature, RafxTexture,
+    RafxTextureBarrier, RafxVertexBufferBinding,
 };
 
 /// A command buffer contains a list of work for the GPU to do.
@@ -502,30 +502,23 @@ impl RafxCommandBuffer {
         &self,
         buffer_barriers: &[RafxBufferBarrier],
         texture_barriers: &[RafxTextureBarrier],
-        render_target_barriers: &[RafxRenderTargetBarrier],
     ) -> RafxResult<()> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxCommandBuffer::Vk(inner) => inner.cmd_resource_barrier(
-                buffer_barriers,
-                texture_barriers,
-                render_target_barriers,
-            ),
+            RafxCommandBuffer::Vk(inner) => {
+                inner.cmd_resource_barrier(buffer_barriers, texture_barriers)
+            }
             #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => inner.cmd_resource_barrier(
-                buffer_barriers,
-                texture_barriers,
-                render_target_barriers,
-            ),
+            RafxCommandBuffer::Metal(inner) => {
+                inner.cmd_resource_barrier(buffer_barriers, texture_barriers)
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxCommandBuffer::Empty(inner) => inner.cmd_resource_barrier(
-                buffer_barriers,
-                texture_barriers,
-                render_target_barriers,
-            ),
+            RafxCommandBuffer::Empty(inner) => {
+                inner.cmd_resource_barrier(buffer_barriers, texture_barriers)
+            }
         }
     }
 

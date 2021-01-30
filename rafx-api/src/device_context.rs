@@ -210,30 +210,6 @@ impl RafxDeviceContext {
         })
     }
 
-    /// Create a render target
-    pub fn create_render_target(
-        &self,
-        render_target_def: &RafxRenderTargetDef,
-    ) -> RafxResult<RafxRenderTarget> {
-        Ok(match self {
-            #[cfg(feature = "rafx-vulkan")]
-            RafxDeviceContext::Vk(inner) => {
-                RafxRenderTarget::Vk(inner.create_render_target(render_target_def)?)
-            }
-            #[cfg(feature = "rafx-metal")]
-            RafxDeviceContext::Metal(inner) => {
-                RafxRenderTarget::Metal(inner.create_render_target(render_target_def)?)
-            }
-            #[cfg(any(
-                feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
-            ))]
-            RafxDeviceContext::Empty(inner) => {
-                RafxRenderTarget::Empty(inner.create_render_target(render_target_def)?)
-            }
-        })
-    }
-
     /// Create a buffer
     pub fn create_buffer(
         &self,

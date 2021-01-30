@@ -10,9 +10,6 @@ pub use swapchain::*;
 mod texture;
 pub use texture::*;
 
-mod render_target;
-pub use render_target::*;
-
 mod semaphore;
 pub use semaphore::*;
 

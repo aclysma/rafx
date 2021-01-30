@@ -6,9 +6,7 @@ use crate::graph::{
 };
 use crate::{BufferResource, ImageResource, ImageViewResource, ResourceArc, ResourceLookupSet};
 use fnv::FnvHashMap;
-use rafx_api::{
-    RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxRenderTargetDef, RafxResult,
-};
+use rafx_api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResult, RafxTextureDef};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -217,7 +215,7 @@ impl RenderGraphCacheInner {
                     .extents
                     .into_rafx_extents(&key.swapchain_surface_info);
 
-                let render_target = device_context.create_render_target(&RafxRenderTargetDef {
+                let image = device_context.create_texture(&RafxTextureDef {
                     extents,
                     array_length: specification.layer_count,
                     mip_count: specification.mip_count,
@@ -226,7 +224,7 @@ impl RenderGraphCacheInner {
                     resource_type: specification.resource_type,
                     dimensions: Default::default(),
                 })?;
-                let image = resources.insert_render_target(render_target);
+                let image = resources.insert_image(image);
 
                 log::trace!(
                     "  Image {:?} - CREATE {:?}  (key: {:?}, index: {})",

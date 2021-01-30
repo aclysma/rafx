@@ -31,9 +31,6 @@ pub use semaphore::*;
 mod texture;
 pub use texture::*;
 
-mod render_target;
-pub use render_target::*;
-
 mod buffer;
 pub use buffer::*;
 

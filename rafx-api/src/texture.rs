@@ -12,7 +12,7 @@ use crate::RafxTextureDef;
 /// An image that can be used by the GPU.
 ///
 /// Textures must not be dropped if they are in use by the GPU.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum RafxTexture {
     #[cfg(feature = "rafx-vulkan")]
     Vk(RafxTextureVulkan),

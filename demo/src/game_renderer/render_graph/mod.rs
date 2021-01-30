@@ -144,7 +144,7 @@ pub fn build_render_graph(
         RenderGraphImageSpecification {
             samples: RafxSampleCount::SampleCount1,
             format: graph_config.swapchain_format,
-            resource_type: RafxResourceType::TEXTURE,
+            resource_type: RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR,
             extents: RenderGraphImageExtents::MatchSurface,
             layer_count: 1,
             mip_count: 1,

@@ -124,17 +124,16 @@
 //! undefined behavior.
 //!
 //! `Barriers` are used to transition resources into the correct state and to avoid these hazards.
-//! Here is an example where we take a render target from the swapchain and prepare it for use.
+//! Here is an example where we take an image from the swapchain and prepare it for use.
 //! (We will also need a barrier after we modify it to transition it back to PRESENT!)
 //!
 //! ```ignore
 //! command_buffer.cmd_resource_barrier(
 //!     &[], // no buffers to transition
-//!     &[], // no textures to transition
 //!     &[
-//!         // Transition `render_target` from PRESENT state to RENDER_TARGET state
-//!         RafxRenderTargetBarrier::state_transition(
-//!             &render_target,
+//!         // Transition `texture` from PRESENT state to RENDER_TARGET state
+//!         RafxTextureBarrier::state_transition(
+//!             &texture,
 //!             RafxResourceState::PRESENT,
 //!             RafxResourceState::RENDER_TARGET,
 //!         )
@@ -249,7 +248,6 @@ mod device_context;
 mod fence;
 mod pipeline;
 mod queue;
-mod render_target;
 mod root_signature;
 mod sampler;
 mod semaphore;
@@ -281,7 +279,6 @@ pub use extra::swapchain_helper::*;
 pub use fence::*;
 pub use pipeline::*;
 pub use queue::*;
-pub use render_target::*;
 pub use root_signature::*;
 pub use sampler::*;
 pub use semaphore::*;

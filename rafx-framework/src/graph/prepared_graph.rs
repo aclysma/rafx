@@ -13,7 +13,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::{
     RafxBarrierQueueTransition, RafxBufferBarrier, RafxColorRenderTargetBinding, RafxCommandBuffer,
     RafxCommandBufferDef, RafxCommandPoolDef, RafxDepthRenderTargetBinding, RafxDeviceContext,
-    RafxExtents2D, RafxFormat, RafxQueue, RafxRenderTargetBarrier, RafxResult,
+    RafxExtents2D, RafxFormat, RafxQueue, RafxResult, RafxTextureBarrier,
 };
 use rafx_nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
@@ -174,7 +174,7 @@ impl PreparedRenderGraph {
             });
         }
 
-        let mut rt_barriers = Vec::with_capacity(pass_image_barriers.len());
+        let mut image_barriers = Vec::with_capacity(pass_image_barriers.len());
         let images: Vec<_> = pass_image_barriers
             .iter()
             .map(|x| self.image_resources[&x.image].get_raw().image.clone())
@@ -187,8 +187,8 @@ impl PreparedRenderGraph {
                 image_barrier.new_state
             );
 
-            rt_barriers.push(RafxRenderTargetBarrier {
-                render_target: image.render_target().unwrap(),
+            image_barriers.push(RafxTextureBarrier {
+                texture: image,
                 src_state: image_barrier.old_state,
                 dst_state: image_barrier.new_state,
                 array_slice: None,
@@ -205,7 +205,7 @@ impl PreparedRenderGraph {
         //     println!("{:?}", rt_barrier);
         // }
 
-        command_buffer.cmd_resource_barrier(&buffer_barriers, &[], &rt_barriers)
+        command_buffer.cmd_resource_barrier(&buffer_barriers, &image_barriers)
     }
 
     pub fn execute_graph(
@@ -281,17 +281,13 @@ impl PreparedRenderGraph {
                         .enumerate()
                         .map(
                             |(color_image_index, color_image)| RafxColorRenderTargetBinding {
-                                render_target: color_images[color_image_index]
-                                    .render_target()
-                                    .unwrap(),
+                                texture: &color_images[color_image_index],
                                 clear_value: color_image.clear_value.clone(),
                                 load_op: color_image.load_op,
                                 store_op: color_image.store_op,
                                 array_slice: color_image.array_slice,
                                 mip_slice: color_image.mip_slice,
-                                resolve_target: resolve_images[color_image_index]
-                                    .as_ref()
-                                    .map(|x| x.render_target().unwrap()),
+                                resolve_target: resolve_images[color_image_index].as_ref(),
                                 resolve_store_op: color_image.resolve_store_op.into(),
                                 resolve_array_slice: color_image.resolve_array_slice,
                                 resolve_mip_slice: color_image.resolve_mip_slice,
@@ -304,11 +300,7 @@ impl PreparedRenderGraph {
                         depth_stencil_image =
                             Some(self.image_resources[&x.image].get_raw().image.clone());
                         RafxDepthRenderTargetBinding {
-                            render_target: depth_stencil_image
-                                .as_ref()
-                                .unwrap()
-                                .render_target()
-                                .unwrap(),
+                            texture: depth_stencil_image.as_ref().unwrap(),
                             clear_value: x.clear_value.clone(),
                             depth_load_op: x.depth_load_op,
                             stencil_load_op: x.stencil_load_op,

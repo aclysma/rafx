@@ -1,7 +1,7 @@
 use crate::{
     RafxCommandBuffer, RafxDeviceContext, RafxError, RafxFence, RafxFormat,
-    RafxPresentSuccessResult, RafxQueue, RafxRenderTarget, RafxResult, RafxSemaphore,
-    RafxSwapchain, RafxSwapchainDef, RafxSwapchainImage,
+    RafxPresentSuccessResult, RafxQueue, RafxResult, RafxSemaphore, RafxSwapchain,
+    RafxSwapchainDef, RafxSwapchainImage, RafxTexture,
 };
 use crossbeam_channel::{Receiver, Sender};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -95,8 +95,8 @@ impl RafxPresentableFrame {
     }
 
     /// Returns the acquired swapchain image
-    pub fn render_target(&self) -> &RafxRenderTarget {
-        &self.swapchain_image.render_target
+    pub fn swapchain_texture(&self) -> &RafxTexture {
+        &self.swapchain_image.texture
     }
 
     /// Submits the given command buffers and schedules the swapchain image to be presented after

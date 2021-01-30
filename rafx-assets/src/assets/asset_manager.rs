@@ -583,7 +583,7 @@ impl AssetManager {
         &mut self,
         texture: RafxTexture,
     ) -> RafxResult<ImageAsset> {
-        let image = self.resources().insert_texture(texture);
+        let image = self.resources().insert_image(texture);
 
         let image_view = self.resources().get_or_create_image_view(&image, None)?;
 

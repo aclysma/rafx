@@ -28,7 +28,6 @@ impl RafxDeviceContext {
     pub fn create_swapchain(&self, raw_window_handle: &dyn HasRawWindowHandle, swapchain_def: &RafxSwapchainDef) -> RafxResult<RafxSwapchain>;
     pub fn create_sampler(&self, sampler_def: &RafxSamplerDef) -> RafxResult<RafxSampler>;
     pub fn create_texture(&self, texture_def: &RafxTextureDef) -> RafxResult<RafxTexture>;
-    pub fn create_render_target(&self, render_target_def: &RafxRenderTargetDef) -> RafxResult<RafxRenderTarget>;
     pub fn create_buffer(&self, buffer_def: &RafxBufferDef) -> RafxResult<RafxBuffer>;
     pub fn create_shader(&self, stages: Vec<RafxShaderStageDef>) -> RafxResult<RafxShader>;
     pub fn create_root_signature(&self, root_signature_def: &RafxRootSignatureDef) -> RafxResult<RafxRootSignature>;
@@ -64,14 +63,6 @@ impl RafxBuffer {
 pub struct RafxTexture;
 impl RafxTexture {
     pub fn texture_def(&self) -> &RafxTextureDef;
-}
-
-/// Render targets are writable textures that the GPU can render to.
-#[derive(Clone, Debug)]
-pub struct RafxRenderTarget;
-impl RafxRenderTarget {
-    pub fn render_target_def(&self) -> &RafxRenderTargetDef;
-    pub fn texture(&self) -> &RafxTexture;
 }
 
 /// Configures how images will be sampled by the GPU

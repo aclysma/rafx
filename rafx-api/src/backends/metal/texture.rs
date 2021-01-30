@@ -4,6 +4,9 @@ use crate::{
     RafxTextureDimensions,
 };
 use metal_rs::{MTLTextureType, MTLTextureUsage};
+use std::hash::{Hash, Hasher};
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum RafxRawImageMetal {
@@ -26,31 +29,57 @@ impl RafxRawImageMetal {
     }
 }
 
-/// Holds the vk::Image and allocation as well as a few vk::ImageViews depending on the
-/// provided RafxResourceType in the texture_def.
 #[derive(Debug)]
-pub struct RafxTextureMetal {
+pub struct RafxTextureMetalInner {
     device_context: RafxDeviceContextMetal,
     texture_def: RafxTextureDef,
     image: RafxRawImageMetal,
     mip_level_uav_views: Vec<metal_rs::Texture>,
+    texture_id: u32,
+}
+
+/// Holds the vk::Image and allocation as well as a few vk::ImageViews depending on the
+/// provided RafxResourceType in the texture_def.
+#[derive(Clone, Debug)]
+pub struct RafxTextureMetal {
+    inner: Arc<RafxTextureMetalInner>,
 }
 
 // for metal_rs::Texture
 unsafe impl Send for RafxTextureMetal {}
 unsafe impl Sync for RafxTextureMetal {}
 
+impl PartialEq for RafxTextureMetal {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.inner.texture_id == other.inner.texture_id
+    }
+}
+
+impl Eq for RafxTextureMetal {}
+
+impl Hash for RafxTextureMetal {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+    ) {
+        self.inner.texture_id.hash(state);
+    }
+}
+
 impl RafxTextureMetal {
     pub fn texture_def(&self) -> &RafxTextureDef {
-        &self.texture_def
+        &self.inner.texture_def
     }
 
     pub fn metal_texture(&self) -> &metal_rs::TextureRef {
-        self.image.metal_texture()
+        self.inner.image.metal_texture()
     }
 
     pub fn metal_mip_level_uav_views(&self) -> &[metal_rs::Texture] {
-        &self.mip_level_uav_views
+        &self.inner.mip_level_uav_views
     }
 
     pub fn new(
@@ -186,11 +215,18 @@ impl RafxTextureMetal {
             }
         }
 
-        Ok(RafxTextureMetal {
+        let texture_id = crate::internal_shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
+
+        let inner = RafxTextureMetalInner {
             texture_def: texture_def.clone(),
             device_context: device_context.clone(),
             image,
             mip_level_uav_views,
+            texture_id,
+        };
+
+        Ok(RafxTextureMetal {
+            inner: Arc::new(inner),
         })
     }
 }

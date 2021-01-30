@@ -142,8 +142,8 @@ impl RafxCommandBufferVulkan {
             let mut barriers = Vec::with_capacity(color_targets.len() + 1);
             for color_target in color_targets {
                 if color_target
-                    .render_target
-                    .vk_render_target()
+                    .texture
+                    .vk_texture()
                     .unwrap()
                     .take_is_undefined_layout()
                 {
@@ -153,8 +153,8 @@ impl RafxCommandBufferVulkan {
                         RafxResourceState::UNDEFINED,
                         RafxResourceState::RENDER_TARGET
                     );
-                    barriers.push(RafxRenderTargetBarrier::state_transition(
-                        &color_target.render_target,
+                    barriers.push(RafxTextureBarrier::state_transition(
+                        &color_target.texture,
                         RafxResourceState::UNDEFINED,
                         RafxResourceState::RENDER_TARGET,
                     ));
@@ -163,8 +163,8 @@ impl RafxCommandBufferVulkan {
 
             if let Some(depth_target) = &depth_target {
                 if depth_target
-                    .render_target
-                    .vk_render_target()
+                    .texture
+                    .vk_texture()
                     .unwrap()
                     .take_is_undefined_layout()
                 {
@@ -174,8 +174,8 @@ impl RafxCommandBufferVulkan {
                         RafxResourceState::UNDEFINED,
                         RafxResourceState::DEPTH_WRITE
                     );
-                    barriers.push(RafxRenderTargetBarrier::state_transition(
-                        &depth_target.render_target,
+                    barriers.push(RafxTextureBarrier::state_transition(
+                        &depth_target.texture,
                         RafxResourceState::UNDEFINED,
                         RafxResourceState::DEPTH_WRITE,
                     ));
@@ -216,7 +216,7 @@ impl RafxCommandBufferVulkan {
         }
 
         if !barriers.is_empty() {
-            self.cmd_resource_barrier(&[], &[], &barriers)?;
+            self.cmd_resource_barrier(&[], &barriers)?;
         }
 
         let begin_renderpass_create_info = vk::RenderPassBeginInfo::builder()
@@ -523,15 +523,13 @@ impl RafxCommandBufferVulkan {
         &self,
         buffer_barriers: &[RafxBufferBarrier],
         texture_barriers: &[RafxTextureBarrier],
-        render_target_barriers: &[RafxRenderTargetBarrier],
     ) -> RafxResult<()> {
         assert!(
             !self.has_active_renderpass.load(Ordering::Relaxed),
-            "cmd_resource_barrier may not be called if render targets are bound"
+            "cmd_resource_barrier may not be called if inside render pass"
         );
 
-        let mut vk_image_barriers =
-            Vec::with_capacity(texture_barriers.len() + render_target_barriers.len());
+        let mut vk_image_barriers = Vec::with_capacity(texture_barriers.len());
         let mut vk_buffer_barriers = Vec::with_capacity(buffer_barriers.len());
 
         let mut src_access_flags = vk::AccessFlags::empty();
@@ -642,8 +640,21 @@ impl RafxCommandBufferVulkan {
                 barrier.mip_slice,
             );
 
-            let old_layout =
-                super::util::resource_state_to_image_layout(barrier.src_state).unwrap();
+            // First transition is always from undefined. Doing it here can save downstream code
+            // from having to implement a "first time" path and a "normal" path
+            let old_layout = if barrier
+                .texture
+                .vk_texture()
+                .unwrap()
+                .take_is_undefined_layout()
+            {
+                vk::ImageLayout::UNDEFINED
+            } else {
+                super::util::resource_state_to_image_layout(barrier.src_state).unwrap()
+            };
+
+            // let old_layout =
+            //     super::util::resource_state_to_image_layout(barrier.src_state).unwrap();
             let new_layout =
                 super::util::resource_state_to_image_layout(barrier.dst_state).unwrap();
             log::trace!(
@@ -663,61 +674,6 @@ impl RafxCommandBufferVulkan {
                 .old_layout(old_layout)
                 .new_layout(new_layout)
                 .image(texture.vk_image())
-                .subresource_range(subresource_range)
-                .build();
-
-            set_queue_family_indices(
-                &mut vk_image_barrier,
-                &self.device_context,
-                self.queue_family_index,
-                &barrier.queue_transition,
-            );
-
-            src_access_flags |= vk_image_barrier.src_access_mask;
-            dst_access_flags |= vk_image_barrier.dst_access_mask;
-
-            vk_image_barriers.push(vk_image_barrier);
-        }
-
-        for barrier in render_target_barriers {
-            let render_target = barrier.render_target.vk_render_target().unwrap();
-
-            let subresource_range = image_subresource_range(
-                render_target.vk_aspect_mask(),
-                barrier.array_slice,
-                barrier.mip_slice,
-            );
-
-            let old_layout = if barrier
-                .render_target
-                .vk_render_target()
-                .unwrap()
-                .take_is_undefined_layout()
-            {
-                vk::ImageLayout::UNDEFINED
-            } else {
-                super::util::resource_state_to_image_layout(barrier.src_state).unwrap()
-            };
-
-            let new_layout =
-                super::util::resource_state_to_image_layout(barrier.dst_state).unwrap();
-            log::trace!(
-                "Transition RT {:?} from {:?} to {:?}",
-                render_target,
-                old_layout,
-                new_layout
-            );
-
-            let mut vk_image_barrier = vk::ImageMemoryBarrier::builder()
-                .src_access_mask(super::util::resource_state_to_access_flags(
-                    barrier.src_state,
-                ))
-                .dst_access_mask(super::util::resource_state_to_access_flags(
-                    barrier.dst_state,
-                ))
-                .old_layout(old_layout)
-                .new_layout(new_layout)
-                .image(render_target.vk_image())
                 .subresource_range(subresource_range)
                 .build();
 

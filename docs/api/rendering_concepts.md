@@ -40,8 +40,7 @@ Example uses of images:
 Working with GPUs can quickly become overwhelming and daunting, so I think it's helpful to know that ultimately,
 you're only dealing with two kinds of resources!
 
-> See `RafxBuffer`, `RafxTexture`, and `RafxRenderTarget`. `RafxRenderTarget` is just a texture with extra
-  setup so that it can be used as a render target.
+> See `RafxBuffer` and `RafxTexture`
 
 ## Memory
 
@@ -185,7 +184,7 @@ call, it would make sense to group those resources into two different sets by fr
 
 > See `RafxDescriptorSetArray`. More details here: [Resource Binding Model](resource_binding_model.md))
 
-## Render Targets
+## Render Passes
 
 Renderpasses ultimately draw to one or more images. There are a few types of images that may be used.
 These images may also be called "attachments" - i.e. they are "attached" to the render pass.
@@ -198,7 +197,7 @@ These images may also be called "attachments" - i.e. they are "attached" to the 
 
 Modern GPU APIs allow you to control how/if these images are loaded/stored at the begin/end of a render pass.
 
-> See `RafxRenderTarget` and `RafxCommandBuffer`
+> See `RafxCommandBuffer`
 
 ## Draw Calls
 

@@ -3,6 +3,9 @@ use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
+use std::hash::{Hash, Hasher};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 // This is used to allow the underlying image/allocation to be removed from a RafxTextureVulkan,
 // or to init a RafxTextureVulkan with an existing image/allocation. If the allocation is none, we
@@ -42,10 +45,8 @@ impl Drop for RafxRawImageVulkan {
     }
 }
 
-/// Holds the vk::Image and allocation as well as a few vk::ImageViews depending on the
-/// provided RafxResourceType in the texture_def.
 #[derive(Debug)]
-pub struct RafxTextureVulkan {
+pub struct RafxTextureVulkanInner {
     device_context: RafxDeviceContextVulkan,
     texture_def: RafxTextureDef,
     image: RafxRawImageVulkan,
@@ -57,9 +58,15 @@ pub struct RafxTextureVulkan {
 
     // For writing
     uav_views: Vec<vk::ImageView>,
+
+    // RT
+    is_undefined_layout: AtomicBool,
+    texture_id: u32,
+    render_target_view: Option<vk::ImageView>,
+    render_target_view_slices: Vec<vk::ImageView>,
 }
 
-impl Drop for RafxTextureVulkan {
+impl Drop for RafxTextureVulkanInner {
     fn drop(&mut self) {
         let device = self.device_context.device();
 
@@ -75,54 +82,135 @@ impl Drop for RafxTextureVulkan {
             for uav_view in &self.uav_views {
                 device.destroy_image_view(*uav_view, None);
             }
+
+            if let Some(render_target_view) = self.render_target_view {
+                device.destroy_image_view(render_target_view, None);
+            }
+
+            for view_slice in &self.render_target_view_slices {
+                device.destroy_image_view(*view_slice, None);
+            }
         }
 
-        self.image.destroy_image(&self.device_context().clone());
+        self.image.destroy_image(&self.device_context);
+    }
+}
+
+/// Holds the vk::Image and allocation as well as a few vk::ImageViews depending on the
+/// provided RafxResourceType in the texture_def.
+#[derive(Clone, Debug)]
+pub struct RafxTextureVulkan {
+    inner: Arc<RafxTextureVulkanInner>,
+}
+
+impl PartialEq for RafxTextureVulkan {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.inner.texture_id == other.inner.texture_id
+    }
+}
+
+impl Eq for RafxTextureVulkan {}
+
+impl Hash for RafxTextureVulkan {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+    ) {
+        self.inner.texture_id.hash(state);
     }
 }
 
 impl RafxTextureVulkan {
     pub fn texture_def(&self) -> &RafxTextureDef {
-        &self.texture_def
+        &self.inner.texture_def
     }
 
     pub fn extents(&self) -> &RafxExtents3D {
-        &self.texture_def.extents
+        &self.inner.texture_def.extents
     }
 
     pub fn array_length(&self) -> u32 {
-        self.texture_def.array_length
+        self.inner.texture_def.array_length
     }
 
     pub fn vk_aspect_mask(&self) -> vk::ImageAspectFlags {
-        self.aspect_mask
+        self.inner.aspect_mask
     }
 
     pub fn vk_image(&self) -> vk::Image {
-        self.image.image
+        self.inner.image.image
     }
 
     pub fn vk_allocation(&self) -> Option<vk_mem::Allocation> {
-        self.image.allocation
+        self.inner.image.allocation
     }
 
     pub fn device_context(&self) -> &RafxDeviceContextVulkan {
-        &self.device_context
+        &self.inner.device_context
     }
 
     // Color/Depth
     pub fn vk_srv_view(&self) -> Option<vk::ImageView> {
-        self.srv_view
+        self.inner.srv_view
     }
 
     // Stencil-only
     pub fn vk_srv_view_stencil(&self) -> Option<vk::ImageView> {
-        self.srv_view_stencil
+        self.inner.srv_view_stencil
     }
 
     // Mip chain
     pub fn vk_uav_views(&self) -> &[vk::ImageView] {
-        &self.uav_views
+        &self.inner.uav_views
+    }
+
+    pub fn render_target_vk_view(&self) -> Option<vk::ImageView> {
+        self.inner.render_target_view
+    }
+
+    pub fn render_target_slice_vk_view(
+        &self,
+        depth: u32,
+        array_index: u16,
+        mip_level: u8,
+    ) -> vk::ImageView {
+        assert!(
+            depth == 0
+                || self
+                    .inner
+                    .texture_def
+                    .resource_type
+                    .intersects(RafxResourceType::RENDER_TARGET_DEPTH_SLICES)
+        );
+        assert!(
+            array_index == 0
+                || self
+                    .inner
+                    .texture_def
+                    .resource_type
+                    .intersects(RafxResourceType::RENDER_TARGET_ARRAY_SLICES)
+        );
+
+        let def = &self.inner.texture_def;
+        let index = (mip_level as usize * def.array_length as usize * def.extents.depth as usize)
+            + (array_index as usize * def.extents.depth as usize)
+            + depth as usize;
+        self.inner.render_target_view_slices[index]
+    }
+
+    // Used internally as part of the hash for creating/reusing framebuffers
+    pub(crate) fn texture_id(&self) -> u32 {
+        self.inner.texture_id
+    }
+
+    // Command buffers check this to see if an image needs to be transitioned from UNDEFINED
+    pub(crate) fn take_is_undefined_layout(&self) -> bool {
+        self.inner
+            .is_undefined_layout
+            .swap(false, Ordering::Relaxed)
     }
 
     pub fn new(
@@ -352,7 +440,83 @@ impl RafxTextureVulkan {
             vec![]
         };
 
-        Ok(RafxTextureVulkan {
+        let mut render_target_view = None;
+        let mut render_target_view_slices = vec![];
+        if texture_def.resource_type.is_render_target() {
+            // Render Target
+            let depth_array_size_multiple = texture_def.extents.depth * texture_def.array_length;
+
+            let rt_image_view_type = if texture_def.dimensions != RafxTextureDimensions::Dim1D {
+                if depth_array_size_multiple > 1 {
+                    vk::ImageViewType::TYPE_2D_ARRAY
+                } else {
+                    vk::ImageViewType::TYPE_2D
+                }
+            } else {
+                if depth_array_size_multiple > 1 {
+                    vk::ImageViewType::TYPE_1D_ARRAY
+                } else {
+                    vk::ImageViewType::TYPE_1D
+                }
+            };
+
+            //SRV
+            let aspect_mask = super::util::image_format_to_aspect_mask(texture_def.format);
+            let format_vk = texture_def.format.into();
+            let subresource_range = vk::ImageSubresourceRange::builder()
+                .aspect_mask(aspect_mask)
+                .base_array_layer(0)
+                .layer_count(depth_array_size_multiple)
+                .base_mip_level(0)
+                .level_count(1);
+
+            let mut image_view_create_info = vk::ImageViewCreateInfo::builder()
+                .image(image.image)
+                .view_type(rt_image_view_type)
+                .format(format_vk)
+                .components(vk::ComponentMapping::default())
+                .subresource_range(*subresource_range);
+
+            render_target_view = Some(unsafe {
+                device_context
+                    .device()
+                    .create_image_view(&*image_view_create_info, None)?
+            });
+
+            let array_or_depth_slices = texture_def.resource_type.intersects(
+                RafxResourceType::RENDER_TARGET_ARRAY_SLICES
+                    | RafxResourceType::RENDER_TARGET_DEPTH_SLICES,
+            );
+
+            for i in 0..texture_def.mip_count {
+                image_view_create_info.subresource_range.base_mip_level = i;
+
+                if array_or_depth_slices {
+                    for j in 0..depth_array_size_multiple {
+                        image_view_create_info.subresource_range.layer_count = 1;
+                        image_view_create_info.subresource_range.base_array_layer = j;
+                        let view = unsafe {
+                            device_context
+                                .device()
+                                .create_image_view(&*image_view_create_info, None)?
+                        };
+                        render_target_view_slices.push(view);
+                    }
+                } else {
+                    let view = unsafe {
+                        device_context
+                            .device()
+                            .create_image_view(&*image_view_create_info, None)?
+                    };
+                    render_target_view_slices.push(view);
+                }
+            }
+        }
+
+        // Used for hashing framebuffers
+        let texture_id = crate::internal_shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
+
+        let inner = RafxTextureVulkanInner {
             texture_def: texture_def.clone(),
             device_context: device_context.clone(),
             image,
@@ -360,6 +524,20 @@ impl RafxTextureVulkan {
             srv_view,
             srv_view_stencil,
             uav_views,
+            texture_id,
+            render_target_view,
+            render_target_view_slices,
+            is_undefined_layout: AtomicBool::new(true),
+        };
+
+        Ok(RafxTextureVulkan {
+            inner: Arc::new(inner),
         })
+    }
+}
+
+impl Into<RafxTexture> for RafxTextureVulkan {
+    fn into(self) -> RafxTexture {
+        RafxTexture::Vk(self)
     }
 }

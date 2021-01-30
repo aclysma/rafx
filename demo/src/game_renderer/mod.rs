@@ -384,14 +384,12 @@ impl GameRenderer {
         let swapchain_resources = game_renderer_inner.swapchain_resources.as_mut().unwrap();
 
         let swapchain_image = {
-            // Temporary hack to jam a RafxRenderTarget into the existing resource lookups.. may want
+            // Temporary hack to jam a swapchain image into the existing resource lookups.. may want
             // to reconsider this later since the ResourceArc can be held past the lifetime of the
             // swapchain image
-            let swapchain_image = presentable_frame.render_target().clone();
+            let swapchain_image = presentable_frame.swapchain_texture().clone();
 
-            let swapchain_image = resource_context
-                .resources()
-                .insert_render_target(swapchain_image);
+            let swapchain_image = resource_context.resources().insert_image(swapchain_image);
 
             resource_context
                 .resources()

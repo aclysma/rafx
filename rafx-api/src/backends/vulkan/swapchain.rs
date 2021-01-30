@@ -1,6 +1,5 @@
 use crate::vulkan::{
-    RafxDeviceContextVulkan, RafxFenceVulkan, RafxRawImageVulkan, RafxRenderTargetVulkan,
-    RafxSemaphoreVulkan, VkEntry,
+    RafxDeviceContextVulkan, RafxFenceVulkan, RafxRawImageVulkan, RafxSemaphoreVulkan, VkEntry,
 };
 use ash::version::DeviceV1_0;
 use ash::vk;
@@ -10,6 +9,7 @@ use std::sync::Arc;
 use ash::extensions::khr;
 use ash::prelude::VkResult;
 
+use crate::backends::vulkan::RafxTextureVulkan;
 use crate::*;
 use ash::vk::Extent2D;
 use std::mem::ManuallyDrop;
@@ -288,18 +288,18 @@ impl RafxSwapchainVulkan {
 
         let swapchain_images = swapchain.rafx_images()?;
 
-        let rt_barriers: Vec<_> = swapchain_images
+        let image_barriers: Vec<_> = swapchain_images
             .iter()
             .map(|image| {
-                RafxRenderTargetBarrier::state_transition(
-                    &image.render_target,
+                RafxTextureBarrier::state_transition(
+                    &image.texture,
                     RafxResourceState::UNDEFINED,
                     RafxResourceState::PRESENT,
                 )
             })
             .collect();
 
-        command_buffer.cmd_resource_barrier(&[], &[], &rt_barriers)?;
+        command_buffer.cmd_resource_barrier(&[], &image_barriers)?;
 
         command_buffer.end()?;
         queue.submit(&[&command_buffer], &[], &[], None)?;
@@ -408,10 +408,19 @@ impl RafxSwapchainVulkanInstance {
                 allocation: None,
             };
 
-            let render_target = RafxRenderTargetVulkan::from_existing(
+            let format: RafxFormat = self.swapchain_info.surface_format.format.into();
+
+            let mut resource_type = RafxResourceType::TEXTURE;
+            if format.has_depth_or_stencil() {
+                resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
+            } else {
+                resource_type |= RafxResourceType::RENDER_TARGET_COLOR;
+            }
+
+            let texture = RafxTextureVulkan::from_existing(
                 &self.device_context,
                 Some(raw_image),
-                &RafxRenderTargetDef {
+                &RafxTextureDef {
                     extents: RafxExtents3D {
                         width: self.swapchain_info.extents.width,
                         height: self.swapchain_info.extents.height,
@@ -419,8 +428,8 @@ impl RafxSwapchainVulkanInstance {
                     },
                     array_length: 1,
                     mip_count: 1,
-                    format: self.swapchain_info.surface_format.format.into(),
-                    resource_type: RafxResourceType::UNDEFINED,
+                    format,
+                    resource_type: resource_type,
                     //clear_value,
                     sample_count: RafxSampleCount::SampleCount1,
                     //sample_quality
@@ -429,7 +438,7 @@ impl RafxSwapchainVulkanInstance {
             )?;
 
             swapchain_images.push(RafxSwapchainImage {
-                render_target: render_target.into(),
+                texture: texture.into(),
                 swapchain_image_index: image_index as u32,
             });
         }

@@ -5,7 +5,7 @@ use crate::resources::ResourceArc;
 use crate::ResourceDropSink;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHasher};
-use rafx_api::extra::image::RafxImage;
+use rafx_api::RafxTexture;
 use rafx_api::*;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -593,7 +593,7 @@ pub struct ComputePipelineResource {
 
 #[derive(Debug, Clone)]
 pub struct ImageResource {
-    pub image: Arc<RafxImage>,
+    pub image: RafxTexture,
     // Dynamic resources have no key
     pub image_key: Option<ImageKey>,
 }
@@ -1055,38 +1055,16 @@ impl ResourceLookupSet {
             })
     }
 
-    //
-    // A key difference between these insert_image and the insert_image in a DynResourceAllocator
-    // is that these can be retrieved. However, a mutable reference is required. This one is
-    // more appropriate to use with descriptors loaded from assets, and DynResourceAllocator with runtime-created
-    // descriptors
-    //
-    pub fn insert_texture(
-        &self,
-        texture: RafxTexture,
-    ) -> ResourceArc<ImageResource> {
-        let image = RafxImage::Texture(texture);
-        self.insert_image(image)
-    }
-
-    pub fn insert_render_target(
-        &self,
-        render_target: RafxRenderTarget,
-    ) -> ResourceArc<ImageResource> {
-        let image = RafxImage::RenderTarget(render_target);
-        self.insert_image(image)
-    }
-
     pub fn insert_image(
         &self,
-        image: RafxImage,
+        image: RafxTexture,
     ) -> ResourceArc<ImageResource> {
         let image_id = self.inner.next_image_id.fetch_add(1, Ordering::Relaxed);
 
         let image_key = ImageKey { id: image_id };
 
         let resource = ImageResource {
-            image: Arc::new(image),
+            image,
             image_key: Some(image_key),
         };
 

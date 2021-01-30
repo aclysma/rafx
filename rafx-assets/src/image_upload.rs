@@ -96,7 +96,6 @@ pub fn enqueue_load_layered_image_2d(
                 array_slice: None,
                 mip_slice: None,
             }],
-            &[],
         )
         .unwrap();
 
@@ -149,7 +148,6 @@ pub fn enqueue_load_layered_image_2d(
                 array_slice: None,
                 mip_slice: Some(0),
             }],
-            &[],
         )?;
 
         //
@@ -167,7 +165,6 @@ pub fn enqueue_load_layered_image_2d(
                 array_slice: None,
                 mip_slice: Some(0),
             }],
-            &[],
         )?;
 
         rafx_api::extra::mipmaps::generate_mipmaps(upload.dst_command_buffer(), &texture)?;
@@ -185,7 +182,6 @@ pub fn enqueue_load_layered_image_2d(
                 array_slice: None,
                 mip_slice: None,
             }],
-            &[],
         )?;
     } else {
         upload.transfer_command_buffer().cmd_resource_barrier(
@@ -200,7 +196,6 @@ pub fn enqueue_load_layered_image_2d(
                 array_slice: None,
                 mip_slice: None,
             }],
-            &[],
         )?;
 
         upload.dst_command_buffer().cmd_resource_barrier(
@@ -215,7 +210,6 @@ pub fn enqueue_load_layered_image_2d(
                 array_slice: None,
                 mip_slice: None,
             }],
-            &[],
         )?;
     }
 

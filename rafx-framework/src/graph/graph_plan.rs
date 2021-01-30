@@ -977,6 +977,8 @@ fn assign_virtual_resources(
 
                     //TODO: One issue (aside from not doing any blits right now) is that images created in this way
                     // aren't included in the assign_physical_images logic
+                    println!("      written: {:?}", written_spec);
+                    println!("      usage  : {:?}", usage_spec);
                     panic!("Render graph does not currently support blit from one image to another to fix image compatibility");
                 }
             }

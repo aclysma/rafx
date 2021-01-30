@@ -263,7 +263,7 @@ fn run() -> RafxResult<()> {
             //
             let swapchain_image = resource_context
                 .resources()
-                .insert_render_target(presentable_frame.render_target().clone());
+                .insert_image(presentable_frame.swapchain_texture().clone());
 
             let swapchain_image_view = resource_context
                 .resources()
@@ -414,7 +414,8 @@ fn run() -> RafxResult<()> {
                 RenderGraphImageSpecification {
                     samples: RafxSampleCount::SampleCount1,
                     format: swapchain_helper.format(),
-                    resource_type: RafxResourceType::TEXTURE,
+                    resource_type: RafxResourceType::TEXTURE
+                        | RafxResourceType::RENDER_TARGET_COLOR,
                     extents: RenderGraphImageExtents::MatchSurface,
                     layer_count: 1,
                     mip_count: 1,

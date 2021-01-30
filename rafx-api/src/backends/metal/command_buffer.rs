@@ -1,13 +1,13 @@
 use crate::metal::{
     ArgumentBufferData, BarrierFlagsMetal, RafxBufferMetal, RafxCommandPoolMetal,
     RafxDescriptorSetArrayMetal, RafxDescriptorSetHandleMetal, RafxPipelineMetal, RafxQueueMetal,
-    RafxRenderTargetMetal, RafxRootSignatureMetal, RafxTextureMetal,
+    RafxRootSignatureMetal, RafxTextureMetal,
 };
 use crate::{
     RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
     RafxCommandBufferDef, RafxDepthRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding,
-    RafxIndexType, RafxLoadOp, RafxPipelineType, RafxRenderTargetBarrier, RafxResourceState,
-    RafxResult, RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState, RafxResult, RafxTextureBarrier,
+    RafxVertexBufferBinding,
 };
 use fnv::FnvHashSet;
 use metal_rs::{
@@ -19,7 +19,7 @@ use rafx_base::trust_cell::TrustCell;
 // Mutable state stored in a lock. (Hopefully we can optimize away the lock later)
 #[derive(Debug)]
 pub struct RafxCommandBufferMetalInner {
-    render_targets_to_make_readable: FnvHashSet<RafxRenderTargetMetal>,
+    render_targets_to_make_readable: FnvHashSet<RafxTextureMetal>,
     command_buffer: Option<metal_rs::CommandBuffer>,
     render_encoder: Option<metal_rs::RenderCommandEncoder>,
     compute_encoder: Option<metal_rs::ComputeCommandEncoder>,
@@ -170,11 +170,7 @@ impl RafxCommandBufferMetal {
             let mut inner = self.inner.borrow_mut();
             for (i, color_target) in color_targets.iter().enumerate() {
                 let color_descriptor = descriptor.color_attachments().object_at(i as _).unwrap();
-                let texture = color_target
-                    .render_target
-                    .texture()
-                    .metal_texture()
-                    .unwrap();
+                let texture = color_target.texture.metal_texture().unwrap();
 
                 // Ensure current_render_targets_width/current_render_targets_depth are set
                 extents = texture.texture_def().extents;
@@ -202,11 +198,7 @@ impl RafxCommandBufferMetal {
 
                 if let Some(resolve_target) = color_target.resolve_target {
                     color_descriptor.set_resolve_texture(Some(
-                        resolve_target
-                            .texture()
-                            .metal_texture()
-                            .unwrap()
-                            .metal_texture(),
+                        resolve_target.metal_texture().unwrap().metal_texture(),
                     ));
                     color_descriptor
                         .set_resolve_level(color_target.resolve_mip_slice.unwrap_or(0) as _);
@@ -216,14 +208,10 @@ impl RafxCommandBufferMetal {
 
             if let Some(depth_target) = depth_target {
                 let depth_descriptor = descriptor.depth_attachment().unwrap();
-                let texture = depth_target
-                    .render_target
-                    .texture()
-                    .metal_texture()
-                    .unwrap();
+                let texture = depth_target.texture.metal_texture().unwrap();
 
                 // Ensure current_render_targets_width/current_render_targets_depth are set
-                extents = depth_target.render_target.texture().texture_def().extents;
+                extents = depth_target.texture.texture_def().extents;
                 inner.current_render_targets_width = extents.width;
                 inner.current_render_targets_height = extents.height;
 
@@ -495,27 +483,13 @@ impl RafxCommandBufferMetal {
     ) {
         if let Some(render_encoder) = &inner.render_encoder {
             for attachment in &inner.render_targets_to_make_readable {
-                render_encoder.use_resource(
-                    attachment
-                        .texture()
-                        .metal_texture()
-                        .unwrap()
-                        .metal_texture(),
-                    MTLResourceUsage::Read,
-                );
+                render_encoder.use_resource(attachment.metal_texture(), MTLResourceUsage::Read);
             }
 
             inner.render_targets_to_make_readable.clear();
         } else if let Some(compute_encoder) = &inner.compute_encoder {
             for attachment in &inner.render_targets_to_make_readable {
-                compute_encoder.use_resource(
-                    attachment
-                        .texture()
-                        .metal_texture()
-                        .unwrap()
-                        .metal_texture(),
-                    MTLResourceUsage::Read,
-                );
+                compute_encoder.use_resource(attachment.metal_texture(), MTLResourceUsage::Read);
             }
 
             inner.render_targets_to_make_readable.clear();
@@ -623,7 +597,7 @@ impl RafxCommandBufferMetal {
                 let render_encoder = inner
                     .render_encoder
                     .as_ref()
-                    .ok_or("Must bind render targets before binding graphics descriptor sets")?;
+                    .ok_or("Must begin render pass before binding graphics descriptor sets")?;
                 render_encoder.set_vertex_buffer(
                     set_index as _,
                     Some(argument_buffer),
@@ -836,7 +810,6 @@ impl RafxCommandBufferMetal {
         &self,
         buffer_barriers: &[RafxBufferBarrier],
         texture_barriers: &[RafxTextureBarrier],
-        render_target_barriers: &[RafxRenderTargetBarrier],
     ) -> RafxResult<()> {
         if !buffer_barriers.is_empty() {
             self.queue.add_barrier_flags(BarrierFlagsMetal::BUFFERS);
@@ -844,22 +817,19 @@ impl RafxCommandBufferMetal {
 
         if !texture_barriers.is_empty() {
             self.queue.add_barrier_flags(BarrierFlagsMetal::TEXTURES);
-        }
-
-        if !render_target_barriers.is_empty() {
-            self.queue
-                .add_barrier_flags(BarrierFlagsMetal::RENDER_TARGETS);
 
             let mut inner = self.inner.borrow_mut();
-            for rt in render_target_barriers {
-                if rt.src_state.intersects(RafxResourceState::RENDER_TARGET)
-                    && rt.dst_state.intersects(
+            for texture_barrier in texture_barriers {
+                if texture_barrier
+                    .src_state
+                    .intersects(RafxResourceState::RENDER_TARGET)
+                    && texture_barrier.dst_state.intersects(
                         RafxResourceState::UNORDERED_ACCESS | RafxResourceState::SHADER_RESOURCE,
                     )
                 {
                     inner
                         .render_targets_to_make_readable
-                        .insert(rt.render_target.metal_render_target().unwrap().clone());
+                        .insert(texture_barrier.texture.metal_texture().unwrap().clone());
                 }
             }
         }

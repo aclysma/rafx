@@ -1,7 +1,7 @@
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-use crate::{RafxBuffer, RafxRenderTarget, RafxSampler, RafxTexture};
+use crate::{RafxBuffer, RafxSampler, RafxTexture};
 use rafx_base::DecimalF32;
 use std::hash::{Hash, Hasher};
 
@@ -182,6 +182,12 @@ impl RafxResourceType {
     pub fn is_storage_buffer(self) -> bool {
         self.intersects(RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE)
     }
+
+    pub fn is_render_target(self) -> bool {
+        self.intersects(
+            RafxResourceType::RENDER_TARGET_COLOR | RafxResourceType::RENDER_TARGET_DEPTH_STENCIL,
+        )
+    }
 }
 
 bitflags::bitflags! {
@@ -306,10 +312,10 @@ impl Default for RafxLoadOp {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq)]
 pub enum RafxStoreOp {
-    /// Do not store the render target, leaving the contents of it undefined
+    /// Do not store the image, leaving the contents of it undefined
     DontCare,
 
-    /// Persist the render targets content after a render pass completes
+    /// Persist the image's content after a render pass completes
     Store,
 }
 
@@ -592,25 +598,14 @@ pub struct RafxTextureBarrier<'a> {
     pub mip_slice: Option<u8>,
 }
 
-pub struct RafxRenderTargetBarrier<'a> {
-    pub render_target: &'a RafxRenderTarget,
-    pub src_state: RafxResourceState,
-    pub dst_state: RafxResourceState,
-    //pub barrier_split: RafxBarrierSplit,
-    pub queue_transition: RafxBarrierQueueTransition,
-    //pub subresource: Option<RafxBarrierSubresource>,
-    pub array_slice: Option<u16>,
-    pub mip_slice: Option<u8>,
-}
-
-impl<'a> RafxRenderTargetBarrier<'a> {
+impl<'a> RafxTextureBarrier<'a> {
     pub fn state_transition(
-        render_target: &'a RafxRenderTarget,
+        texture: &'a RafxTexture,
         src_state: RafxResourceState,
         dst_state: RafxResourceState,
-    ) -> RafxRenderTargetBarrier {
-        RafxRenderTargetBarrier {
-            render_target,
+    ) -> RafxTextureBarrier {
+        RafxTextureBarrier {
+            texture,
             src_state,
             dst_state,
             //barrier_split: RafxBarrierSplit::None,
@@ -623,19 +618,19 @@ impl<'a> RafxRenderTargetBarrier<'a> {
 
 #[derive(Clone)]
 pub struct RafxSwapchainImage {
-    pub render_target: RafxRenderTarget,
+    pub texture: RafxTexture,
     pub swapchain_image_index: u32,
 }
 
 #[derive(Debug)]
 pub struct RafxColorRenderTargetBinding<'a> {
-    pub render_target: &'a RafxRenderTarget,
+    pub texture: &'a RafxTexture,
     pub load_op: RafxLoadOp,
     pub store_op: RafxStoreOp,
     pub mip_slice: Option<u8>,
     pub array_slice: Option<u16>,
     pub clear_value: RafxColorClearValue,
-    pub resolve_target: Option<&'a RafxRenderTarget>,
+    pub resolve_target: Option<&'a RafxTexture>,
     pub resolve_store_op: RafxStoreOp,
     pub resolve_mip_slice: Option<u8>,
     pub resolve_array_slice: Option<u16>,
@@ -643,7 +638,7 @@ pub struct RafxColorRenderTargetBinding<'a> {
 
 #[derive(Debug)]
 pub struct RafxDepthRenderTargetBinding<'a> {
-    pub render_target: &'a RafxRenderTarget,
+    pub texture: &'a RafxTexture,
     pub depth_load_op: RafxLoadOp,
     pub stencil_load_op: RafxLoadOp,
     pub depth_store_op: RafxStoreOp,
