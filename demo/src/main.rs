@@ -3,8 +3,8 @@
 
 #[cfg(feature = "profile-with-tracy-memory")]
 #[global_allocator]
-static GLOBAL: tracy_client::ProfiledAllocator<std::alloc::System> =
-    tracy_client::ProfiledAllocator::new(std::alloc::System, 100);
+static GLOBAL: profiling::tracy_client::ProfiledAllocator<std::alloc::System> =
+    profiling::tracy_client::ProfiledAllocator::new(std::alloc::System, 100);
 
 use structopt::StructOpt;
 

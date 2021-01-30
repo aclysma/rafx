@@ -60,6 +60,7 @@ default = [
     "profile-with-puffin",
     #"profile-with-optick",
     #"profile-with-tracy",
+    #"profile-with-tracy-memory",
     #"profile-with-superluminal"
 ]
 rafx-empty = ["rafx/rafx-empty"]
