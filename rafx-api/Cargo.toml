@@ -45,6 +45,7 @@ block = { version = "0.1.6", optional = true }
 
 [features]
 default = []
+rafx-empty = []
 rafx-vulkan = ["ash", "vk-mem", "ash-window"]
 rafx-metal = ["metal_rs", "objc", "raw-window-metal", "cocoa-foundation", "dispatch", "foreign-types-shared", "block"]
 static-vulkan = []

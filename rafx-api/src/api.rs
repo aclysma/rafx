@@ -1,3 +1,8 @@
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
+use crate::empty::RafxApiEmpty;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxApiDefMetal, RafxApiMetal};
 #[cfg(feature = "rafx-vulkan")]
@@ -21,6 +26,11 @@ pub enum RafxApi {
     Vk(RafxApiVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxApiMetal),
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    Empty(RafxApiEmpty),
 }
 
 impl RafxApi {
@@ -81,6 +91,11 @@ impl RafxApi {
             RafxApi::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => RafxDeviceContext::Metal(inner.device_context().clone()),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxApi::Empty(inner) => RafxDeviceContext::Empty(inner.device_context().clone()),
         }
     }
 
@@ -95,6 +110,11 @@ impl RafxApi {
             RafxApi::Vk(inner) => inner.destroy(),
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => inner.destroy(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxApi::Empty(inner) => inner.destroy(),
         }
     }
 
@@ -107,6 +127,11 @@ impl RafxApi {
             RafxApi::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxApi::Empty(_) => None,
         }
     }
 
@@ -119,6 +144,31 @@ impl RafxApi {
             RafxApi::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxApi::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub fn empty_api(&self) -> Option<&RafxApiEmpty> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxApi::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxApi::Metal(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxApi::Empty(inner) => Some(inner),
         }
     }
 }

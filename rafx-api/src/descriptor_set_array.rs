@@ -1,3 +1,8 @@
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
+use crate::empty::{RafxDescriptorSetArrayEmpty, RafxDescriptorSetHandleEmpty};
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxDescriptorSetArrayMetal, RafxDescriptorSetHandleMetal};
 #[cfg(feature = "rafx-vulkan")]
@@ -22,6 +27,11 @@ pub enum RafxDescriptorSetHandle {
     Vk(RafxDescriptorSetHandleVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxDescriptorSetHandleMetal),
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    Empty(RafxDescriptorSetHandleEmpty),
 }
 
 impl RafxDescriptorSetHandle {
@@ -32,6 +42,11 @@ impl RafxDescriptorSetHandle {
             RafxDescriptorSetHandle::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetHandle::Metal(_inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetHandle::Empty(_inner) => None,
         }
     }
 
@@ -42,6 +57,29 @@ impl RafxDescriptorSetHandle {
             RafxDescriptorSetHandle::Vk(_inner) => None,
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetHandle::Metal(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetHandle::Empty(_inner) => None,
+        }
+    }
+
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub fn empty_descriptor_set_handle(&self) -> Option<&RafxDescriptorSetHandleEmpty> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxDescriptorSetHandle::Vk(_inner) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxDescriptorSetHandle::Metal(_inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetHandle::Empty(inner) => Some(inner),
         }
     }
 }
@@ -73,6 +111,11 @@ pub enum RafxDescriptorSetArray {
     Vk(RafxDescriptorSetArrayVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxDescriptorSetArrayMetal),
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    Empty(RafxDescriptorSetArrayEmpty),
 }
 
 impl RafxDescriptorSetArray {
@@ -89,6 +132,13 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Metal(inner) => {
                 RafxDescriptorSetHandle::Metal(inner.handle(index)?)
             }
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetArray::Empty(inner) => {
+                RafxDescriptorSetHandle::Empty(inner.handle(index)?)
+            }
         })
     }
 
@@ -99,6 +149,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Vk(inner) => inner.root_signature(),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(inner) => inner.root_signature(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetArray::Empty(inner) => inner.root_signature(),
         }
     }
 
@@ -113,6 +168,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Vk(inner) => inner.update_descriptor_set(params),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(inner) => inner.update_descriptor_set(params),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetArray::Empty(inner) => inner.update_descriptor_set(params),
         }
     }
 
@@ -130,6 +190,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Vk(inner) => inner.queue_descriptor_set_update(update),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(inner) => inner.queue_descriptor_set_update(update),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetArray::Empty(inner) => inner.queue_descriptor_set_update(update),
         }
     }
 
@@ -140,6 +205,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Vk(inner) => inner.flush_descriptor_set_updates(),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(inner) => inner.flush_descriptor_set_updates(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetArray::Empty(inner) => inner.flush_descriptor_set_updates(),
         }
     }
 
@@ -152,6 +222,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(_inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetArray::Empty(_inner) => None,
         }
     }
 
@@ -164,6 +239,31 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Vk(_inner) => None,
             #[cfg(feature = "rafx-metal")]
             RafxDescriptorSetArray::Metal(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetArray::Empty(_inner) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub fn empty_descriptor_set_array(&self) -> Option<&RafxDescriptorSetArrayEmpty> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxDescriptorSetArray::Vk(_inner) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxDescriptorSetArray::Metal(_inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDescriptorSetArray::Empty(inner) => Some(inner),
         }
     }
 }

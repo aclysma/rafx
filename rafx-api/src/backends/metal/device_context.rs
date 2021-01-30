@@ -275,14 +275,7 @@ impl RafxDeviceContextMetal {
     ) -> RafxResult<RafxPipelineMetal> {
         RafxPipelineMetal::new_compute_pipeline(self, compute_pipeline_def)
     }
-    //
-    // pub(crate) fn create_renderpass(
-    //     &self,
-    //     renderpass_def: &RafxRenderpassMetalDef,
-    // ) -> RafxResult<RafxRenderpassMetal> {
-    //     RafxRenderpassMetal::new(self, renderpass_def)
-    // }
-    //
+
     pub fn create_shader_module(
         &self,
         data: RafxShaderModuleDefMetal,

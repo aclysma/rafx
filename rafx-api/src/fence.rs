@@ -1,3 +1,8 @@
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
+use crate::empty::RafxFenceEmpty;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxFenceMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -21,6 +26,11 @@ pub enum RafxFence {
     Vk(RafxFenceVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxFenceMetal),
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    Empty(RafxFenceEmpty),
 }
 
 impl RafxFence {
@@ -35,6 +45,11 @@ impl RafxFence {
             RafxFence::Vk(inner) => inner.get_fence_status(),
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(inner) => inner.get_fence_status(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxFence::Empty(inner) => inner.get_fence_status(),
         }
     }
 
@@ -45,6 +60,11 @@ impl RafxFence {
             RafxFence::Vk(inner) => inner.wait(),
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(inner) => inner.wait(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxFence::Empty(inner) => inner.wait(),
         }
     }
 
@@ -57,6 +77,11 @@ impl RafxFence {
             RafxFence::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxFence::Empty(_) => None,
         }
     }
 
@@ -69,6 +94,31 @@ impl RafxFence {
             RafxFence::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxFence::Empty(inner) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub fn empty_fence(&self) -> Option<&RafxFenceEmpty> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxFence::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxFence::Metal(inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxFence::Empty(inner) => Some(inner),
         }
     }
 }

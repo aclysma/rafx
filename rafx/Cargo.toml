@@ -35,6 +35,7 @@ default = []
 #
 # Backends
 #
+rafx-empty = ["rafx-api/rafx-empty"]
 rafx-vulkan = ["rafx-api/rafx-vulkan", "rafx-assets/rafx-vulkan"]
 rafx-metal = ["rafx-api/rafx-metal", "rafx-assets/rafx-metal"]
 

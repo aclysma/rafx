@@ -1,3 +1,8 @@
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
+use crate::empty::RafxShaderModuleEmpty;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxShaderModuleMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -14,6 +19,11 @@ pub enum RafxShaderModule {
     Vk(RafxShaderModuleVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxShaderModuleMetal),
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    Empty(RafxShaderModuleEmpty),
 }
 
 impl RafxShaderModule {
@@ -26,6 +36,11 @@ impl RafxShaderModule {
             RafxShaderModule::Vk(shader_module) => Some(shader_module),
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(_shader_module) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxShaderModule::Empty(_shader_module) => None,
         }
     }
 
@@ -38,6 +53,31 @@ impl RafxShaderModule {
             RafxShaderModule::Vk(_shader_module) => None,
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(shader_module) => Some(shader_module),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxShaderModule::Empty(_shader_module) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub fn empty_shader_module(&self) -> Option<&RafxShaderModuleEmpty> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxShaderModule::Vk(_shader_module) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxShaderModule::Metal(_shader_module) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxShaderModule::Empty(shader_module) => Some(shader_module),
         }
     }
 }

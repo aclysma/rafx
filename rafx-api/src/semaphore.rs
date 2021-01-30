@@ -1,3 +1,8 @@
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
+use crate::empty::RafxSemaphoreEmpty;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSemaphoreMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -16,6 +21,11 @@ pub enum RafxSemaphore {
     Vk(RafxSemaphoreVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSemaphoreMetal),
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    Empty(RafxSemaphoreEmpty),
 }
 
 impl RafxSemaphore {
@@ -28,6 +38,11 @@ impl RafxSemaphore {
             RafxSemaphore::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxSemaphore::Metal(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxSemaphore::Empty(_) => None,
         }
     }
 
@@ -40,6 +55,31 @@ impl RafxSemaphore {
             RafxSemaphore::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxSemaphore::Metal(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxSemaphore::Empty(inner) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub fn empty_semaphore(&self) -> Option<&RafxSemaphoreEmpty> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxSemaphore::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxSemaphore::Metal(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxSemaphore::Empty(inner) => Some(inner),
         }
     }
 }

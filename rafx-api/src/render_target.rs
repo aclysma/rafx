@@ -1,3 +1,8 @@
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
+use crate::empty::RafxRenderTargetEmpty;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxRenderTargetMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -25,6 +30,11 @@ pub enum RafxRenderTarget {
     Vk(RafxRenderTargetVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxRenderTargetMetal),
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    Empty(RafxRenderTargetEmpty),
 }
 
 impl RafxRenderTarget {
@@ -35,6 +45,11 @@ impl RafxRenderTarget {
             RafxRenderTarget::Vk(inner) => inner.render_target_def(),
             #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(inner) => inner.render_target_def(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxRenderTarget::Empty(inner) => inner.render_target_def(),
         }
     }
 
@@ -45,6 +60,11 @@ impl RafxRenderTarget {
             RafxRenderTarget::Vk(inner) => inner.texture(),
             #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(inner) => inner.texture(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxRenderTarget::Empty(inner) => inner.texture(),
         }
     }
 
@@ -57,6 +77,11 @@ impl RafxRenderTarget {
             RafxRenderTarget::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(_inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxRenderTarget::Empty(_inner) => None,
         }
     }
 
@@ -69,6 +94,31 @@ impl RafxRenderTarget {
             RafxRenderTarget::Vk(_inner) => None,
             #[cfg(feature = "rafx-metal")]
             RafxRenderTarget::Metal(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxRenderTarget::Empty(_inner) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub fn empty_render_target(&self) -> Option<&RafxRenderTargetEmpty> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxRenderTarget::Vk(_inner) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxRenderTarget::Metal(_inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxRenderTarget::Empty(inner) => Some(inner),
         }
     }
 }

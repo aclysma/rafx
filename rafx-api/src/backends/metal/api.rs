@@ -36,7 +36,7 @@ impl RafxApiMetal {
         })
     }
 
-    pub(crate) fn destroy(&mut self) -> RafxResult<()> {
+    pub fn destroy(&mut self) -> RafxResult<()> {
         if let Some(device_context) = self.device_context.take() {
             // Clear any internal caches that may hold references to the device
             let inner = device_context.inner.clone();

@@ -1,3 +1,8 @@
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
+use crate::empty::RafxCommandPoolEmpty;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxCommandPoolMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -20,6 +25,11 @@ pub enum RafxCommandPool {
     Vk(RafxCommandPoolVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxCommandPoolMetal),
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    Empty(RafxCommandPoolEmpty),
 }
 
 impl RafxCommandPool {
@@ -30,6 +40,13 @@ impl RafxCommandPool {
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(inner) => {
                 RafxDeviceContext::Metal(inner.device_context().clone())
+            }
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxCommandPool::Empty(inner) => {
+                RafxDeviceContext::Empty(inner.device_context().clone())
             }
         }
     }
@@ -49,6 +66,13 @@ impl RafxCommandPool {
             RafxCommandPool::Metal(inner) => {
                 RafxCommandBuffer::Metal(inner.create_command_buffer(command_buffer_def)?)
             }
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxCommandPool::Empty(inner) => {
+                RafxCommandBuffer::Empty(inner.create_command_buffer(command_buffer_def)?)
+            }
         })
     }
 
@@ -63,6 +87,11 @@ impl RafxCommandPool {
             // metal does not have the concept of command buffer pools in the API
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(inner) => inner.reset_command_pool(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxCommandPool::Empty(inner) => inner.reset_command_pool(),
         }
     }
 
@@ -75,6 +104,11 @@ impl RafxCommandPool {
             RafxCommandPool::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(_inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxCommandPool::Empty(_inner) => None,
         }
     }
 
@@ -87,6 +121,29 @@ impl RafxCommandPool {
             RafxCommandPool::Vk(_inner) => None,
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxCommandPool::Empty(_inner) => None,
+        }
+    }
+
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub fn empty_command_pool(&self) -> Option<&RafxCommandPoolEmpty> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandPool::Vk(_inner) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandPool::Metal(_inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxCommandPool::Empty(inner) => Some(inner),
         }
     }
 }

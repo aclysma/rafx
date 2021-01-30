@@ -2,6 +2,7 @@ use std::hash::Hash;
 
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
 
 /// Metal-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
 /// used to initialize a shader module GPU object
@@ -23,6 +24,12 @@ pub enum RafxShaderPackageVulkan {
     /// Raw SPV bytes, no alignment or endianness requirements.
     #[cfg_attr(feature = "serde-support", serde(with = "serde_bytes"))]
     SpvBytes(Vec<u8>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub enum RafxShaderPackageEmpty {
+    Empty,
 }
 
 /// Owns data necessary to create a shader module in (optionally) multiple APIs.
@@ -69,12 +76,27 @@ impl RafxShaderPackage {
         }
     }
 
+    /// Create a shader module def for use with a vulkan RafxDevice. Returns none if the package
+    /// does not contain data necessary for vulkan
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub fn empty_module_def(&self) -> Option<RafxShaderModuleDefEmpty> {
+        Some(RafxShaderModuleDefEmpty::Empty(Default::default()))
+    }
+
     pub fn module_def(&self) -> RafxShaderModuleDef {
         RafxShaderModuleDef {
             #[cfg(feature = "rafx-metal")]
             metal: self.metal_module_def(),
             #[cfg(feature = "rafx-vulkan")]
             vk: self.vulkan_module_def(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            empty: self.empty_module_def(),
         }
     }
 }
@@ -103,19 +125,27 @@ pub enum RafxShaderModuleDefVulkan<'a> {
     VkSpvPrepared(&'a [u32]),
 }
 
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
+#[derive(Copy, Clone, Hash)]
+pub enum RafxShaderModuleDefEmpty<'a> {
+    Empty(PhantomData<&'a u32>),
+}
+
 /// Used to create a RafxShaderModule
 ///
 /// This enum may be populated manually or created from a RafxShaderPackage.
 #[derive(Copy, Clone, Hash)]
-#[cfg(any(feature = "rafx-vulkan", feature = "rafx-metal"))]
 pub struct RafxShaderModuleDef<'a> {
     #[cfg(feature = "rafx-metal")]
     pub metal: Option<RafxShaderModuleDefMetal<'a>>,
     #[cfg(feature = "rafx-vulkan")]
     pub vk: Option<RafxShaderModuleDefVulkan<'a>>,
+    #[cfg(any(
+        feature = "rafx-empty",
+        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    ))]
+    pub empty: Option<RafxShaderModuleDefEmpty<'a>>,
 }
-
-// RafxShaderModuleDef will have an unused lifetime if no features are enabled
-#[derive(Hash)]
-#[cfg(not(any(feature = "rafx-vulkan", feature = "rafx-metal")))]
-pub struct RafxShaderModuleDef {}

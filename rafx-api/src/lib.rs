@@ -217,6 +217,12 @@ pub use backends::vulkan;
 #[cfg(feature = "rafx-vulkan")]
 pub use backends::vulkan::RafxApiDefVulkan;
 
+#[cfg(any(
+    feature = "rafx-empty",
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+))]
+pub use backends::empty;
+
 //
 // Public modules
 //

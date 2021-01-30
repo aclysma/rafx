@@ -15,7 +15,7 @@ serde = { version = "1", features = ["derive"] }
 rafx-framework = { path = "../../rafx-framework" }
 
 [features]
-default = ["rafx-vulkan"]
+default = []
 rafx-vulkan = ["rafx-framework/rafx-vulkan"]
 rafx-metal = ["rafx-framework/rafx-metal"]
 
