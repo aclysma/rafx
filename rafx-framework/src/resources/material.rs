@@ -5,7 +5,6 @@ use crate::{
 };
 use fnv::FnvHashSet;
 use rafx_api::{RafxImmutableSamplerKey, RafxShaderStageFlags};
-use rafx_nodes::RenderPhaseIndex;
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -47,10 +46,9 @@ pub struct MaterialPassInner {
     //TODO: Use hash instead of string. Probably want to have a "hashed string" type that keeps the
     // string around only in debug mode. Maybe this could be generalized to a HashOfThing<T>.
     pub pass_slot_name_lookup: Arc<SlotNameLookup>,
-
     // This is a hint of what render phase we should register a material with in the pipeline cache
     // It is optional and the pipeline cache can handle materials used in any render phase
-    pub render_phase_index: Option<RenderPhaseIndex>,
+    //pub render_phase_index: Option<RenderPhaseIndex>,
 }
 
 #[derive(Clone)]
@@ -61,8 +59,6 @@ pub struct MaterialPass {
 impl MaterialPass {
     pub fn new(
         resource_context: &ResourceContext,
-        pass_name: Option<&str>,
-        phase_name: Option<&str>,
         fixed_function_state: Arc<FixedFunctionState>,
         shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
         entry_points: &[&ReflectedEntryPoint],
@@ -70,14 +66,9 @@ impl MaterialPass {
         // Combine reflection data from all stages in the shader
         let reflected_shader = ReflectedShader::new(entry_points)?;
 
-        let vertex_inputs = reflected_shader.vertex_inputs.ok_or_else(|| {
-            let message = format!(
-                "The material pass named '{:?}' does not specify a vertex shader",
-                pass_name
-            );
-            log::error!("{}", message);
-            message
-        })?;
+        let vertex_inputs = reflected_shader
+            .vertex_inputs
+            .ok_or_else(|| "The material pass does not specify a vertex shader")?;
 
         //
         // Shader
@@ -161,40 +152,11 @@ impl MaterialPass {
             vertex_inputs.clone(),
         )?;
 
-        //
-        // If a phase name is specified, register the pass with the pipeline cache. The pipeline
-        // cache is responsible for ensuring pipelines are created for renderpasses that execute
-        // within the pipeline's phase
-        //
-        let render_phase_index = if let Some(phase_name) = phase_name {
-            let render_phase_index = resource_context
-                .graphics_pipeline_cache()
-                .get_render_phase_by_name(phase_name);
-            match render_phase_index {
-                Some(render_phase_index) => resource_context
-                    .graphics_pipeline_cache()
-                    .register_material_to_phase_index(&material_pass, render_phase_index),
-                None => {
-                    let error = format!(
-                        "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
-                        phase_name
-                    );
-                    log::error!("{}", error);
-                    return Err(error)?;
-                }
-            }
-
-            render_phase_index
-        } else {
-            None
-        };
-
         let inner = MaterialPassInner {
             shader_modules,
             material_pass_resource: material_pass.clone(),
             pass_slot_name_lookup: Arc::new(reflected_shader.slot_name_lookup),
             vertex_inputs,
-            render_phase_index,
         };
 
         Ok(MaterialPass {

@@ -46,8 +46,8 @@ pub use dyn_commands::DynCommandPool;
 pub use dyn_commands::DynCommandPoolAllocator;
 
 mod material;
-pub use material::MaterialShaderStage;
 pub use material::MaterialPass;
+pub use material::MaterialShaderStage;
 
 mod pipeline_cache;
 pub use pipeline_cache::GraphicsPipelineCache;

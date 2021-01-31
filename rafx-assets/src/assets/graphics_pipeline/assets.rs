@@ -3,15 +3,16 @@ use type_uuid::*;
 
 use crate::{AssetManager, ImageAsset, ShaderAsset};
 use distill::loader::handle::Handle;
-use fnv::{FnvHashMap};
+use fnv::FnvHashMap;
 use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
-    RafxFillMode, RafxFrontFace, RafxRasterizerState, RafxResult,
-    RafxSamplerDef,
+    RafxError, RafxFillMode, RafxFrontFace, RafxRasterizerState, RafxResult, RafxSamplerDef,
 };
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
-use rafx_framework::{DescriptorSetArc, FixedFunctionState, ResourceArc, MaterialShaderStage, MaterialPass};
+use rafx_framework::{
+    DescriptorSetArc, FixedFunctionState, MaterialPass, MaterialShaderStage, ResourceArc,
+};
 use rafx_framework::{DescriptorSetWriteSet, SamplerResource};
 use rafx_nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
@@ -242,14 +243,55 @@ impl MaterialPassData {
 
         let fixed_function_state = Arc::new(self.fixed_function_state.clone().prepare()?);
 
-        MaterialPass::new(
-            &asset_manager.resource_manager().resource_context(),
-            self.name.as_deref(),
-            self.phase.as_deref(),
+        //
+        // We now have everything needed to create the framework-level material pass
+        //
+        let resource_context = asset_manager.resource_manager().resource_context();
+        let material_pass = MaterialPass::new(
+            &resource_context,
             fixed_function_state,
             shader_modules,
-            &entry_points
+            &entry_points,
         )
+        .map_err(|x| {
+            RafxError::StringError(format!(
+                "While loading pass '{:?}' for phase '{:?}': {:?}",
+                self.name, self.phase, x
+            ))
+        })?;
+
+        //
+        // If a phase name is specified, register the pass with the pipeline cache. The pipeline
+        // cache is responsible for ensuring pipelines are created for renderpasses that execute
+        // within the pipeline's phase
+        //
+        if let Some(phase_name) = &self.phase {
+            let render_phase_index = resource_context
+                .graphics_pipeline_cache()
+                .get_render_phase_by_name(phase_name);
+            match render_phase_index {
+                Some(render_phase_index) => resource_context
+                    .graphics_pipeline_cache()
+                    .register_material_to_phase_index(
+                        &material_pass.material_pass_resource,
+                        render_phase_index,
+                    ),
+                None => {
+                    let error = format!(
+                        "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
+                        phase_name
+                    );
+                    log::error!("{}", error);
+                    return Err(error)?;
+                }
+            }
+
+            render_phase_index
+        } else {
+            None
+        };
+
+        Ok(material_pass)
     }
 }
 

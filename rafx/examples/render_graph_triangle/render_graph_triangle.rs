@@ -1,7 +1,7 @@
 use log::LevelFilter;
 
 use rafx::api::*;
-use rafx::framework::{CookedShaderPackage, FixedFunctionState, ReflectedShader, VertexDataLayout};
+use rafx::framework::{CookedShaderPackage, FixedFunctionState, VertexDataLayout};
 use rafx::graph::{
     RenderGraphBuilder, RenderGraphExecutor, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphNodeCallbacks, RenderGraphQueue,
@@ -131,40 +131,6 @@ fn run() -> RafxResult<()> {
             .clone();
 
         //
-        // Combine the shader stages into a single shader
-        //
-        let shader = resource_context.resources().get_or_create_shader(
-            &[vertex_shader_module, fragment_shader_module],
-            &[&vertex_entry_point, &fragment_entry_point],
-        )?;
-
-        //
-        // Create the root signature object - it represents the pipeline layout and can be shared
-        // among shaders. But one per shader is fine.
-        //
-        let root_signature = resource_context.resources().get_or_create_root_signature(
-            &[shader.clone()],
-            &[],
-            &[],
-        )?;
-
-        //
-        // Rafx resources provides a high-level wrapper around a descriptor set layout that adds
-        // additional functionality. It is configured via extra reflection data exported by the
-        // rafx shader processor. We need to combine the reflection data
-        //
-        let shader_reflection =
-            ReflectedShader::new(&[&vertex_entry_point, &fragment_entry_point])?;
-
-        let descriptor_set_layout = resource_context
-            .resources()
-            .get_or_create_descriptor_set_layout(
-                &root_signature,
-                0,
-                &shader_reflection.descriptor_set_layout_defs[0],
-            )?;
-
-        //
         // Now set up the fixed function and vertex input state. LOTS of things can be configured
         // here, but aside from the vertex layout most of it can be left as default.
         //
@@ -174,17 +140,26 @@ fn run() -> RafxResult<()> {
             blend_state: Default::default(),
         });
 
-        //
-        // Create the material pass. A material pass encapsulates everything necessary to create a
-        // graphics pipeline to render a single pass for a material
-        //
-        let material_pass = resource_context.resources().get_or_create_material_pass(
-            shader,
-            root_signature.clone(),
-            vec![descriptor_set_layout],
+        // Creating a material automatically registers the necessary resources in the resource
+        // manager and caches references to them. (This is almost the same as loading a material
+        // asset, although a material asset can have multiple passes).
+        let material_pass = MaterialPass::new(
+            &resource_context,
             fixed_function_state,
-            shader_reflection.vertex_inputs.unwrap(),
+            vec![vertex_shader_module, fragment_shader_module],
+            &[&vertex_entry_point, &fragment_entry_point],
         )?;
+
+        // It's good practice to register materials with the render phase they will be used in. This
+        // way we can build pipelines for material/renderpass combinations ahead of time. (Although
+        // it's not that useful in this example because we will immediately try to load the
+        // pipeline)
+        resource_manager
+            .graphics_pipeline_cache()
+            .register_material_to_phase_index(
+                &material_pass.material_pass_resource,
+                OpaqueRenderPhase::render_phase_index(),
+            );
 
         //
         // The vertex format does not need to be specified up-front to create the material pass.
@@ -329,7 +304,7 @@ fn run() -> RafxResult<()> {
                 // The allocator should be used and dropped, not kept around. It is pooled/re-used.
                 // flush_changes is automatically called on drop.
                 //
-                let descriptor_set_layout = material_pass
+                let descriptor_set_layout = material_pass.material_pass_resource
                     .get_raw()
                     .descriptor_set_layouts[0]
                     .clone();
@@ -358,7 +333,7 @@ fn run() -> RafxResult<()> {
                     .graphics_pipeline_cache()
                     .get_or_create_graphics_pipeline(
                     OpaqueRenderPhase::render_phase_index(),
-                    &material_pass,
+                    &material_pass.material_pass_resource,
                     &args.render_target_meta,
                     &vertex_layout
                 )?;
@@ -454,6 +429,7 @@ fn run() -> RafxResult<()> {
 //
 use rafx::nodes::RenderPhase;
 use rafx::nodes::RenderPhaseIndex;
+use rafx_framework::MaterialPass;
 use std::path::Path;
 
 rafx::nodes::declare_render_phase!(

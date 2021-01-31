@@ -1,8 +1,7 @@
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, SamplerAsset,
-    ShaderAsset,
+    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, SamplerAsset, ShaderAsset,
 };
 use crate::assets::{MaterialAssetData, MaterialInstanceAssetData};
 use crate::{
@@ -13,8 +12,8 @@ use distill::loader::handle::Handle;
 use rafx_framework::{
     ComputePipelineResource, DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider,
     DescriptorSetAllocatorRef, DescriptorSetLayout, DescriptorSetLayoutResource,
-    DescriptorSetWriteSet, DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPassResource,
-    MaterialPass, ResourceArc, SlotNameLookup,
+    DescriptorSetWriteSet, DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPass,
+    MaterialPassResource, ResourceArc, SlotNameLookup,
 };
 
 use super::asset_lookup::LoadedAssetMetrics;
