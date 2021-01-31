@@ -13,7 +13,7 @@ use crate::{
     game_renderer::InvalidResources,
 };
 use fnv::{FnvHashMap, FnvHashSet};
-use rafx::assets::assets::MaterialPass;
+use rafx::framework::MaterialPass;
 use rafx::framework::{
     DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
 };

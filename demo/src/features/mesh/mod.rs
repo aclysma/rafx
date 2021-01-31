@@ -3,8 +3,8 @@ use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
 use distill::loader::handle::Handle;
-use rafx::assets::assets::MaterialPass;
 use rafx::base::slab::{DropSlab, DropSlabKey};
+use rafx::framework::MaterialPass;
 use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::nodes::RenderView;
 use rafx::nodes::{
