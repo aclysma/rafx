@@ -1,7 +1,7 @@
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, SamplerAsset,
+    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, SamplerAsset,
     ShaderAsset,
 };
 use crate::assets::{MaterialAssetData, MaterialInstanceAssetData};
@@ -14,7 +14,7 @@ use rafx_framework::{
     ComputePipelineResource, DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider,
     DescriptorSetAllocatorRef, DescriptorSetLayout, DescriptorSetLayoutResource,
     DescriptorSetWriteSet, DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPassResource,
-    ResourceArc, SlotNameLookup,
+    MaterialPass, ResourceArc, SlotNameLookup,
 };
 
 use super::asset_lookup::LoadedAssetMetrics;
@@ -711,7 +711,7 @@ impl AssetManager {
         let mut pass_phase_to_index = FnvHashMap::default();
 
         for pass_data in &material_asset.passes {
-            let pass = MaterialPass::new(self, pass_data)?;
+            let pass = pass_data.create_material_pass(self)?;
 
             let pass_index = passes.len();
             passes.push(pass);

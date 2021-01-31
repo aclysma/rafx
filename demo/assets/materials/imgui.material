@@ -2,7 +2,7 @@
     passes: [
         (
             phase: Some("Ui"),
-            pipeline: (
+            fixed_function_state: (
                 alpha_blending: Enabled,
             ),
             shaders: [

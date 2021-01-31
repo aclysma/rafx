@@ -3,19 +3,16 @@ use type_uuid::*;
 
 use crate::{AssetManager, ImageAsset, ShaderAsset};
 use distill::loader::handle::Handle;
-use fnv::{FnvHashMap, FnvHashSet};
+use fnv::{FnvHashMap};
 use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
-    RafxFillMode, RafxFrontFace, RafxImmutableSamplerKey, RafxRasterizerState, RafxResult,
-    RafxSamplerDef, RafxShaderStageFlags,
+    RafxFillMode, RafxFrontFace, RafxRasterizerState, RafxResult,
+    RafxSamplerDef,
 };
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
-use rafx_framework::{
-    DescriptorSetArc, FixedFunctionState, ReflectedShader, ResourceArc, SlotNameLookup,
-};
-use rafx_framework::{DescriptorSetWriteSet, MaterialPassResource, SamplerResource};
-use rafx_framework::{MaterialPassVertexInput, ShaderModuleResource};
+use rafx_framework::{DescriptorSetArc, FixedFunctionState, ResourceArc, MaterialShaderStage, MaterialPass};
+use rafx_framework::{DescriptorSetWriteSet, SamplerResource};
 use rafx_nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
 use std::ops::Deref;
@@ -95,7 +92,7 @@ impl Default for DepthBufferPreset {
 // }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
-pub struct GraphicsPipelineData {
+pub struct FixedFunctionStateData {
     #[serde(default)]
     blend_state: RafxBlendState,
     #[serde(default)]
@@ -116,14 +113,8 @@ pub struct GraphicsPipelineData {
     fill_mode: Option<RafxFillMode>,
 }
 
-pub struct PreparedGraphicsPipelineData {
-    blend_state: RafxBlendState,
-    depth_state: RafxDepthState,
-    rasterizer_state: RafxRasterizerState,
-}
-
-impl GraphicsPipelineData {
-    pub fn prepare(self) -> RafxResult<PreparedGraphicsPipelineData> {
+impl FixedFunctionStateData {
+    pub fn prepare(self) -> RafxResult<FixedFunctionState> {
         let mut blend_state = self.blend_state.clone();
         let mut depth_state = self.depth_state.clone();
         let mut rasterizer_state = self.rasterizer_state.clone();
@@ -170,7 +161,7 @@ impl GraphicsPipelineData {
             rasterizer_state.front_face = front_face;
         }
 
-        Ok(PreparedGraphicsPipelineData {
+        Ok(FixedFunctionState {
             blend_state,
             depth_state,
             rasterizer_state,
@@ -178,32 +169,9 @@ impl GraphicsPipelineData {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ShaderStage {
-    Vertex,
-    TessellationControl,
-    TessellationEvaluation,
-    Geometry,
-    Fragment,
-    Compute,
-}
-
-impl Into<RafxShaderStageFlags> for ShaderStage {
-    fn into(self) -> RafxShaderStageFlags {
-        match self {
-            ShaderStage::Vertex => RafxShaderStageFlags::VERTEX,
-            ShaderStage::TessellationControl => RafxShaderStageFlags::TESSELLATION_CONTROL,
-            ShaderStage::TessellationEvaluation => RafxShaderStageFlags::TESSELLATION_EVALUATION,
-            ShaderStage::Geometry => RafxShaderStageFlags::GEOMETRY,
-            ShaderStage::Fragment => RafxShaderStageFlags::FRAGMENT,
-            ShaderStage::Compute => RafxShaderStageFlags::COMPUTE,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct GraphicsPipelineShaderStage {
-    pub stage: ShaderStage,
+    pub stage: MaterialShaderStage,
     pub shader_module: Handle<ShaderAsset>,
     pub entry_name: String,
 }
@@ -212,70 +180,31 @@ pub struct GraphicsPipelineShaderStage {
 pub struct MaterialPassData {
     pub name: Option<String>,
     pub phase: Option<String>,
-    pub pipeline: GraphicsPipelineData,
+    pub fixed_function_state: FixedFunctionStateData,
     pub shaders: Vec<GraphicsPipelineShaderStage>,
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[uuid = "ad94bca2-1f02-4e5f-9117-1a7b03456a11"]
-pub struct MaterialAssetData {
-    pub passes: Vec<MaterialPassData>,
-}
-
-pub struct MaterialPassInner {
-    pub shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
-
-    // Info required to recreate the pipeline for new swapchains
-    pub material_pass_resource: ResourceArc<MaterialPassResource>,
-
-    //descriptor_set_factory: DescriptorSetFactory,
-    pub vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
-
-    //TODO: Use hash instead of string. Probably want to have a "hashed string" type that keeps the
-    // string around only in debug mode. Maybe this could be generalized to a HashOfThing<T>.
-    pub pass_slot_name_lookup: Arc<SlotNameLookup>,
-
-    // This is a hint of what render phase we should register a material with in the pipeline cache
-    // It is optional and the pipeline cache can handle materials used in any render phase
-    pub render_phase_index: Option<RenderPhaseIndex>,
-}
-
-#[derive(Clone)]
-pub struct MaterialPass {
-    inner: Arc<MaterialPassInner>,
-}
-
-impl MaterialPass {
+impl MaterialPassData {
     #[profiling::function]
-    pub fn new(
+    pub fn create_material_pass(
+        &self,
         asset_manager: &AssetManager,
-        material_pass_data: &MaterialPassData,
     ) -> RafxResult<MaterialPass> {
         use distill::loader::handle::AssetHandle;
-        //
-        // Pipeline asset (represents fixed function state)
-        //
-        let pipeline_data = material_pass_data.pipeline.clone().prepare()?;
-
-        let fixed_function_state = Arc::new(FixedFunctionState {
-            depth_state: pipeline_data.depth_state.clone(),
-            blend_state: pipeline_data.blend_state.clone(),
-            rasterizer_state: pipeline_data.rasterizer_state.clone(),
-        });
 
         //
         // Gather shader stage info
         //
-        let mut shader_modules = Vec::with_capacity(material_pass_data.shaders.len());
-        let mut entry_points = Vec::with_capacity(material_pass_data.shaders.len());
+        let mut shader_modules = Vec::with_capacity(self.shaders.len());
+        let mut entry_points = Vec::with_capacity(self.shaders.len());
 
         // We iterate through the entry points we will hit for each stage. Each stage may define
         // slightly different reflection data/bindings in use.
-        for stage in &material_pass_data.shaders {
+        for stage in &self.shaders {
             log::trace!(
                 "Set up material pass stage: {:?} material pass name: {:?}",
                 stage,
-                material_pass_data.name
+                self.name
             );
 
             let shader_asset = asset_manager
@@ -311,162 +240,23 @@ impl MaterialPass {
             log::trace!("  Reflection data:\n{:#?}", reflection_data);
         }
 
-        // Combine reflection data from all stages in the shader
-        let reflected_shader = ReflectedShader::new(&entry_points)?;
+        let fixed_function_state = Arc::new(self.fixed_function_state.clone().prepare()?);
 
-        let vertex_inputs = reflected_shader.vertex_inputs.ok_or_else(|| {
-            let message = format!(
-                "The material pass named '{:?}' does not specify a vertex shader",
-                material_pass_data.name
-            );
-            log::error!("{}", message);
-            message
-        })?;
-
-        //
-        // Shader
-        //
-        let shader = asset_manager
-            .resources()
-            .get_or_create_shader(&shader_modules, &entry_points)?;
-
-        //
-        // Root Signature
-        //
-        // Put all samplers into a hashmap so that we avoid collecting duplicates, and keep them
-        // around to prevent the ResourceArcs from dropping out of scope and being destroyed
-        let mut immutable_samplers = FnvHashSet::default();
-
-        // We also need to save vecs of samplers that
-        let mut immutable_rafx_sampler_lists = Vec::default();
-        let mut immutable_rafx_sampler_keys = Vec::default();
-
-        for (set_index, descriptor_set_layout_def) in reflected_shader
-            .descriptor_set_layout_defs
-            .iter()
-            .enumerate()
-        {
-            // Get or create samplers and add them to the two above structures
-            for binding in &descriptor_set_layout_def.bindings {
-                if let Some(sampler_defs) = &binding.immutable_samplers {
-                    let mut samplers = Vec::with_capacity(sampler_defs.len());
-                    for sampler_def in sampler_defs {
-                        let sampler = asset_manager
-                            .resources()
-                            .get_or_create_sampler(sampler_def)?;
-                        samplers.push(sampler.clone());
-                        immutable_samplers.insert(sampler);
-                    }
-
-                    immutable_rafx_sampler_keys.push(RafxImmutableSamplerKey::Binding(
-                        set_index as u32,
-                        binding.resource.binding,
-                    ));
-                    immutable_rafx_sampler_lists.push(samplers);
-                }
-            }
-        }
-
-        let root_signature = asset_manager.resources().get_or_create_root_signature(
-            &[shader.clone()],
-            &immutable_rafx_sampler_keys,
-            &immutable_rafx_sampler_lists,
-        )?;
-
-        //
-        // Descriptor set layout
-        //
-        let mut descriptor_set_layouts =
-            Vec::with_capacity(reflected_shader.descriptor_set_layout_defs.len());
-
-        for (set_index, descriptor_set_layout_def) in reflected_shader
-            .descriptor_set_layout_defs
-            .iter()
-            .enumerate()
-        {
-            let descriptor_set_layout = asset_manager
-                .resources()
-                .get_or_create_descriptor_set_layout(
-                    &root_signature,
-                    set_index as u32,
-                    &descriptor_set_layout_def,
-                )?;
-            descriptor_set_layouts.push(descriptor_set_layout);
-        }
-
-        let material_pass = asset_manager.resources().get_or_create_material_pass(
-            shader,
-            root_signature,
-            descriptor_set_layouts,
+        MaterialPass::new(
+            &asset_manager.resource_manager().resource_context(),
+            self.name.as_deref(),
+            self.phase.as_deref(),
             fixed_function_state,
-            vertex_inputs.clone(),
-        )?;
-
-        //
-        // If a phase name is specified, register the pass with the pipeline cache. The pipeline
-        // cache is responsible for ensuring pipelines are created for renderpasses that execute
-        // within the pipeline's phase
-        //
-        let render_phase_index = if let Some(phase_name) = &material_pass_data.phase {
-            let render_phase_index = asset_manager
-                .graphics_pipeline_cache()
-                .get_render_phase_by_name(phase_name);
-            match render_phase_index {
-                Some(render_phase_index) => asset_manager
-                    .graphics_pipeline_cache()
-                    .register_material_to_phase_index(&material_pass, render_phase_index),
-                None => {
-                    let error = format!(
-                        "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
-                        phase_name
-                    );
-                    log::error!("{}", error);
-                    return Err(error)?;
-                }
-            }
-
-            render_phase_index
-        } else {
-            None
-        };
-
-        let inner = MaterialPassInner {
             shader_modules,
-            material_pass_resource: material_pass.clone(),
-            pass_slot_name_lookup: Arc::new(reflected_shader.slot_name_lookup),
-            vertex_inputs,
-            render_phase_index,
-        };
-
-        Ok(MaterialPass {
-            inner: Arc::new(inner),
-        })
-    }
-
-    pub fn create_uninitialized_write_sets_for_material_pass(&self) -> Vec<DescriptorSetWriteSet> {
-        // The metadata for the descriptor sets within this pass, one for each set within the pass
-        let pass_descriptor_set_writes: Vec<_> = self
-            .material_pass_resource
-            .get_raw()
-            .descriptor_set_layouts
-            .iter()
-            .map(|layout| {
-                rafx_framework::descriptor_sets::create_uninitialized_write_set_for_layout(
-                    &layout.get_raw().descriptor_set_layout_def,
-                )
-            })
-            .collect();
-
-        pass_descriptor_set_writes
+            &entry_points
+        )
     }
 }
 
-impl Deref for MaterialPass {
-    type Target = MaterialPassInner;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.inner
-    }
+#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[uuid = "ad94bca2-1f02-4e5f-9117-1a7b03456a11"]
+pub struct MaterialAssetData {
+    pub passes: Vec<MaterialPassData>,
 }
 
 pub struct MaterialAssetInner {

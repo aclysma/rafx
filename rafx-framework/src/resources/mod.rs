@@ -45,6 +45,10 @@ pub use dyn_commands::DynCommandBuffer;
 pub use dyn_commands::DynCommandPool;
 pub use dyn_commands::DynCommandPoolAllocator;
 
+mod material;
+pub use material::MaterialShaderStage;
+pub use material::MaterialPass;
+
 mod pipeline_cache;
 pub use pipeline_cache::GraphicsPipelineCache;
 pub use pipeline_cache::GraphicsPipelineRenderTargetMeta;

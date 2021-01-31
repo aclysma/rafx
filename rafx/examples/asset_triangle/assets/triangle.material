@@ -3,7 +3,7 @@
         (
             name: Some("triangle"),
             phase: Some("Opaque"),
-            pipeline: (),
+            fixed_function_state: (),
             shaders: [
                 (
                     stage: Vertex,

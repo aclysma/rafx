@@ -2,7 +2,7 @@
     passes: [
         (
             phase: Some("Opaque"),
-            pipeline: (
+            fixed_function_state: (
                 alpha_blending: Enabled
             ),
             shaders: [

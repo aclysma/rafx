@@ -4,6 +4,7 @@
 pub mod assets;
 pub use assets::*;
 
+/// Contains some distill-related helpers. They are optional and end-users can provide their own.
 pub mod distill_impl;
 
 pub mod buffer_upload;

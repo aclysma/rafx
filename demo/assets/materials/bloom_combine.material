@@ -2,7 +2,7 @@
     passes: [
         (
             phase: Some("PostProcess"),
-            pipeline: (),
+            fixed_function_state: (),
             shaders: [
                 (
                     stage: Vertex,

@@ -11,7 +11,7 @@ pub use shader::ShaderImporterCooked;
 pub use shader::ShaderImporterSpv;
 
 mod graphics_pipeline;
-pub use graphics_pipeline::GraphicsPipelineData;
+pub use graphics_pipeline::FixedFunctionStateData;
 pub use graphics_pipeline::MaterialAsset;
 pub use graphics_pipeline::MaterialAssetData;
 pub use graphics_pipeline::MaterialImporter;
@@ -19,7 +19,6 @@ pub use graphics_pipeline::MaterialInstanceAsset;
 pub use graphics_pipeline::MaterialInstanceAssetData;
 pub use graphics_pipeline::MaterialInstanceImporter;
 pub use graphics_pipeline::MaterialInstanceSlotAssignment;
-pub use graphics_pipeline::MaterialPass;
 pub use graphics_pipeline::MaterialPassData;
 pub use graphics_pipeline::SamplerAsset;
 pub use graphics_pipeline::SamplerAssetData;
