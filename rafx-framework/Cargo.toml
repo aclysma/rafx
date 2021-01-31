@@ -1,6 +1,6 @@
 [package]
 name = "rafx-framework"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -14,9 +14,9 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-api = { version = "0.0.3", path = "../rafx-api", features = ["serde-support"] }
-rafx-base = { version = "0.0.2", path = "../rafx-base" }
-rafx-nodes = { version = "0.0.3", path = "../rafx-nodes" }
+rafx-api = { version = "0.0.4", path = "../rafx-api", features = ["serde-support"] }
+rafx-base = { version = "0.0.4", path = "../rafx-base" }
+rafx-nodes = { version = "0.0.4", path = "../rafx-nodes" }
 
 arrayvec = "0.5"
 bitflags = "1.2"
