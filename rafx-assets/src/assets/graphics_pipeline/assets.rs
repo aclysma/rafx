@@ -12,8 +12,7 @@ use rafx_api::{
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{
-    DescriptorSetArc, DescriptorSetLayout, FixedFunctionState, ResourceArc, SlotLocation,
-    SlotNameLookup,
+    DescriptorSetArc, FixedFunctionState, ReflectedShader, ResourceArc, SlotNameLookup,
 };
 use rafx_framework::{DescriptorSetWriteSet, MaterialPassResource, SamplerResource};
 use rafx_framework::{MaterialPassVertexInput, ShaderModuleResource};
@@ -280,12 +279,8 @@ impl MaterialPass {
         });
 
         //
-        // Shaders
+        // Gather shader stage info
         //
-        let mut descriptor_set_layout_defs = Vec::default();
-        let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
-        let mut vertex_inputs = None;
-
         let mut shader_modules = Vec::with_capacity(material_pass_data.shaders.len());
         let mut entry_points = Vec::with_capacity(material_pass_data.shaders.len());
 
@@ -329,142 +324,12 @@ impl MaterialPass {
             }
 
             log::trace!("  Reflection data:\n{:#?}", reflection_data);
-
-            if stage.stage == ShaderStage::Vertex {
-                let inputs: Vec<_> = reflection_data
-                    .vertex_inputs
-                    .iter()
-                    .map(|x| MaterialPassVertexInput {
-                        semantic: x.semantic.clone(),
-                        location: x.location,
-                    })
-                    .collect();
-
-                assert!(vertex_inputs.is_none());
-                vertex_inputs = Some(Arc::new(inputs));
-            }
-
-            // Currently not using push constants and it will be handled in the rafx api layer
-            // for (range_index, range) in reflection_data.push_constants.iter().enumerate() {
-            //     if let Some(existing_range) = push_constant_ranges.get(range_index) {
-            //         if range.push_constant != *existing_range {
-            //             let error = format!(
-            //                 "Load Material Failed - Pass has shaders with conflicting push constants",
-            //             );
-            //             log::error!("{}", error);
-            //             return Err(error)?;
-            //         } else {
-            //             log::trace!("    Range index {} already exists and matches", range_index);
-            //         }
-            //     } else {
-            //         log::trace!("    Add range index {} {:?}", range_index, range);
-            //         push_constant_ranges.push(range.push_constant.clone());
-            //     }
-            // }
-
-            for (set_index, layout) in reflection_data.descriptor_set_layouts.iter().enumerate() {
-                // Expand the layout def to include the given set index
-                while descriptor_set_layout_defs.len() <= set_index {
-                    descriptor_set_layout_defs.push(DescriptorSetLayout::default());
-                }
-
-                if let Some(layout) = layout.as_ref() {
-                    for binding in &layout.bindings {
-                        let existing_binding = descriptor_set_layout_defs[set_index]
-                            .bindings
-                            .iter_mut()
-                            .find(|x| x.resource.binding == binding.resource.binding);
-
-                        if let Some(existing_binding) = existing_binding {
-                            //
-                            // Binding already exists, just make sure this shader's definition for this binding matches
-                            // the shader that added it originally
-                            //
-                            if existing_binding.resource.resource_type
-                                != binding.resource.resource_type
-                            {
-                                let error = format!(
-                                    "Load Material Failed - Pass is using shaders in different stages with different descriptor types for set={} binding={}",
-                                    set_index,
-                                    binding.resource.binding
-                                );
-                                log::error!("{}", error);
-                                return Err(error)?;
-                            }
-
-                            if existing_binding.resource.element_count_normalized()
-                                != binding.resource.element_count_normalized()
-                            {
-                                let error = format!(
-                                    "Load Material Failed - Pass is using shaders in different stages with different descriptor counts for set={} binding={}",
-                                    set_index,
-                                    binding.resource.binding
-                                );
-                                log::error!("{}", error);
-                                return Err(error)?;
-                            }
-
-                            if existing_binding.immutable_samplers != binding.immutable_samplers {
-                                let error = format!(
-                                    "Load Material Failed - Pass is using shaders in different stages with different immutable samplers for set={} binding={}",
-                                    set_index,
-                                    binding.resource.binding
-                                );
-                                log::error!("{}", error);
-                                return Err(error)?;
-                            }
-
-                            if existing_binding.internal_buffer_per_descriptor_size
-                                != binding.internal_buffer_per_descriptor_size
-                            {
-                                let error = format!(
-                                    "Load Material Failed - Pass is using shaders in different stages with different internal buffer configuration for set={} binding={}",
-                                    set_index,
-                                    binding.resource.binding
-                                );
-                                log::error!("{}", error);
-                                return Err(error)?;
-                            }
-
-                            log::trace!("    Descriptor for binding set={} binding={} already exists, adding stage {:?}", set_index, binding.resource.binding, binding.resource.used_in_shader_stages);
-                            existing_binding.resource.used_in_shader_stages |=
-                                binding.resource.used_in_shader_stages;
-                        } else {
-                            //
-                            // This binding was not bound by a previous shader stage, set it up and apply any configuration from this material
-                            //
-                            log::trace!(
-                                "    Add descriptor binding set={} binding={} for stage {:?}",
-                                set_index,
-                                binding.resource.binding,
-                                binding.resource.used_in_shader_stages
-                            );
-                            let def = binding.clone().into();
-
-                            descriptor_set_layout_defs[set_index].bindings.push(def);
-                        }
-
-                        if let Some(slot_name) = &binding.resource.name {
-                            log::trace!(
-                                "  Assign slot name '{}' to binding set={} binding={}",
-                                slot_name,
-                                set_index,
-                                binding.resource.binding
-                            );
-                            pass_slot_name_lookup
-                                .entry(slot_name.clone())
-                                .or_default()
-                                .insert(SlotLocation {
-                                    layout_index: set_index as u32,
-                                    binding_index: binding.resource.binding,
-                                });
-                        }
-                    }
-                }
-            }
         }
 
-        let vertex_inputs = vertex_inputs.ok_or_else(|| {
+        // Combine reflection data from all stages in the shader
+        let reflected_shader = ReflectedShader::new(&entry_points)?;
+
+        let vertex_inputs = reflected_shader.vertex_inputs.ok_or_else(|| {
             let message = format!(
                 "The material pass named '{:?}' does not specify a vertex shader",
                 material_pass_data.name
@@ -474,13 +339,15 @@ impl MaterialPass {
         })?;
 
         //
-        // Shader and Root signature
+        // Shader
         //
-
         let shader = asset_manager
             .resources()
             .get_or_create_shader(&shader_modules, &entry_points)?;
 
+        //
+        // Root Signature
+        //
         // Put all samplers into a hashmap so that we avoid collecting duplicates, and keep them
         // around to prevent the ResourceArcs from dropping out of scope and being destroyed
         let mut immutable_samplers = FnvHashSet::default();
@@ -489,7 +356,10 @@ impl MaterialPass {
         let mut immutable_rafx_sampler_lists = Vec::default();
         let mut immutable_rafx_sampler_keys = Vec::default();
 
-        for (set_index, descriptor_set_layout_def) in descriptor_set_layout_defs.iter().enumerate()
+        for (set_index, descriptor_set_layout_def) in reflected_shader
+            .descriptor_set_layout_defs
+            .iter()
+            .enumerate()
         {
             // Get or create samplers and add them to the two above structures
             for binding in &descriptor_set_layout_def.bindings {
@@ -521,9 +391,13 @@ impl MaterialPass {
         //
         // Descriptor set layout
         //
-        let mut descriptor_set_layouts = Vec::with_capacity(descriptor_set_layout_defs.len());
+        let mut descriptor_set_layouts =
+            Vec::with_capacity(reflected_shader.descriptor_set_layout_defs.len());
 
-        for (set_index, descriptor_set_layout_def) in descriptor_set_layout_defs.iter().enumerate()
+        for (set_index, descriptor_set_layout_def) in reflected_shader
+            .descriptor_set_layout_defs
+            .iter()
+            .enumerate()
         {
             let descriptor_set_layout = asset_manager
                 .resources()
@@ -574,7 +448,7 @@ impl MaterialPass {
         let inner = MaterialPassInner {
             shader_modules,
             material_pass_resource: material_pass.clone(),
-            pass_slot_name_lookup: Arc::new(pass_slot_name_lookup),
+            pass_slot_name_lookup: Arc::new(reflected_shader.slot_name_lookup),
             vertex_inputs,
             render_phase_index,
         };

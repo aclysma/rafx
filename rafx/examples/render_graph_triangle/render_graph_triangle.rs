@@ -84,8 +84,10 @@ fn run() -> RafxResult<()> {
         let render_registry = rafx::nodes::RenderRegistryBuilder::default()
             .register_render_phase::<OpaqueRenderPhase>("Opaque")
             .build();
+
         let mut resource_manager =
             rafx::framework::ResourceManager::new(&device_context, &render_registry);
+
         let resource_context = resource_manager.resource_context();
 
         //
@@ -149,7 +151,7 @@ fn run() -> RafxResult<()> {
         //
         // Rafx resources provides a high-level wrapper around a descriptor set layout that adds
         // additional functionality. It is configured via extra reflection data exported by the
-        // rafx shader processor.
+        // rafx shader processor. We need to combine the reflection data
         //
         let shader_reflection =
             ReflectedShader::new(&[&vertex_entry_point, &fragment_entry_point])?;
@@ -269,7 +271,7 @@ fn run() -> RafxResult<()> {
             graph_builder.set_image_name(color_attachment, "color");
 
             //
-            // The callback will be run when the graph is executed. We clone a few things and
+            // Set a callback to be run when the graph is executed. We clone a few things and
             // capture them in this closure. We could alternatively create an arbitrary struct and
             // pass it in as a "user context".
             //
