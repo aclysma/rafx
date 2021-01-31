@@ -1,6 +1,6 @@
 use crate::assets::compute_pipeline::ComputePipelineAssetData;
-use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
+use distill::core::AssetUuid;
+use distill::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
@@ -36,7 +36,7 @@ impl Importer for ComputePipelineImporter {
         source: &mut dyn Read,
         _options: &Self::Options,
         state: &mut Self::State,
-    ) -> atelier_assets::importer::Result<ImporterValue> {
+    ) -> distill::importer::Result<ImporterValue> {
         let id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));

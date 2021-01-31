@@ -2,9 +2,9 @@ use crate::{
     BufferAsset, ComputePipelineAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset,
     MaterialInstanceAsset, SamplerAsset, ShaderAsset,
 };
-use atelier_assets::loader::storage::IndirectionTable;
-use atelier_assets::loader::LoadHandle;
-use atelier_assets::loader::Loader;
+use distill::loader::storage::IndirectionTable;
+use distill::loader::LoadHandle;
+use distill::loader::Loader;
 use fnv::FnvHashMap;
 
 //

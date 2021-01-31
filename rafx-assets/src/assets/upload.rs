@@ -3,8 +3,8 @@ use super::BufferAssetData;
 use super::ImageAssetData;
 use super::{BufferAsset, ImageAsset};
 use crate::{buffer_upload, image_upload, DecodedImage};
-use atelier_assets::loader::{storage::AssetLoadOp, LoadHandle};
 use crossbeam_channel::{Receiver, Sender};
+use distill::loader::{storage::AssetLoadOp, LoadHandle};
 use rafx_api::{
     extra::upload::*, RafxBuffer, RafxDeviceContext, RafxError, RafxQueue, RafxResourceType,
     RafxResult, RafxTexture,

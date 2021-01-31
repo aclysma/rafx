@@ -1,6 +1,6 @@
 use crate::assets::image::{ImageAssetColorSpace, ImageAssetData};
-use atelier_assets::importer::{Error, ImportedAsset, Importer, ImporterValue};
-use atelier_assets::{core::AssetUuid, importer::ImportOp};
+use distill::importer::{Error, ImportedAsset, Importer, ImporterValue};
+use distill::{core::AssetUuid, importer::ImportOp};
 use image2::Image;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -37,7 +37,7 @@ impl Importer for ImageImporter {
         source: &mut dyn Read,
         _options: &Self::Options,
         state: &mut Self::State,
-    ) -> atelier_assets::importer::Result<ImporterValue> {
+    ) -> distill::importer::Result<ImporterValue> {
         let id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));

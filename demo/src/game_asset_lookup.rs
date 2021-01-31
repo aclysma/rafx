@@ -1,5 +1,5 @@
 use crate::assets::gltf::MeshAssetData;
-use atelier_assets::loader::Loader;
+use distill::loader::Loader;
 use rafx::assets::AssetLookup;
 use rafx::assets::MaterialPass;
 use rafx::framework::{BufferResource, DescriptorSetArc, ResourceArc};

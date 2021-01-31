@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
 };
 
-use atelier_assets::daemon::AssetDaemon;
+use distill::daemon::AssetDaemon;
 use structopt::StructOpt;
 
 /// Parameters to the asset daemon.

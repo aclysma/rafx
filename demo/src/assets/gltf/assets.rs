@@ -1,4 +1,4 @@
-use atelier_assets::loader::handle::Handle;
+use distill::loader::handle::Handle;
 use rafx::api::RafxPrimitiveTopology;
 use rafx::assets::BufferAsset;
 use rafx::assets::ImageAsset;

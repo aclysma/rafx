@@ -10,9 +10,9 @@ use crate::assets::{
 };
 use crate::resource_loader::ResourceLoadResult;
 use crate::{ComputePipelineAsset, ComputePipelineAssetData, ResourceLoader};
-use atelier_assets::loader::storage::AssetLoadOp;
-use atelier_assets::loader::LoadHandle;
 use crossbeam_channel::{Receiver, Sender};
+use distill::loader::storage::AssetLoadOp;
+use distill::loader::LoadHandle;
 use std::marker::PhantomData;
 use type_uuid::TypeUuid;
 

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
 use crate::ShaderAsset;
-use atelier_assets::loader::handle::Handle;
+use distill::loader::handle::Handle;
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{ComputePipelineResource, ResourceArc};

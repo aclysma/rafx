@@ -1,10 +1,10 @@
 use crate::asset_storage::{DynAssetLoader, UpdateAssetResult};
-use atelier_assets::loader::handle::RefOp;
-use atelier_assets::loader::handle::SerdeContext;
-use atelier_assets::loader::storage::AssetLoadOp;
-use atelier_assets::loader::storage::LoaderInfoProvider;
-use atelier_assets::loader::LoadHandle;
 use crossbeam_channel::Sender;
+use distill::loader::handle::RefOp;
+use distill::loader::handle::SerdeContext;
+use distill::loader::storage::AssetLoadOp;
+use distill::loader::storage::LoaderInfoProvider;
+use distill::loader::LoadHandle;
 use rafx::assets::GenericLoader;
 use rafx::assets::ResourceLoader;
 use std::error::Error;

@@ -45,7 +45,7 @@ use crate::components::{
 use crate::features::imgui::create_imgui_extract_job;
 use crate::RenderOptions;
 use arrayvec::ArrayVec;
-use atelier_assets::loader::handle::AssetHandle;
+use distill::loader::handle::AssetHandle;
 use fnv::FnvHashMap;
 use rafx::api::extra::upload::{RafxTransferUpload, RafxUploadError};
 use rafx::api::{

@@ -1,4 +1,4 @@
-use atelier_assets::loader::{storage::AssetLoadOp, LoadHandle};
+use distill::loader::{storage::AssetLoadOp, LoadHandle};
 
 use crossbeam_channel::Receiver;
 

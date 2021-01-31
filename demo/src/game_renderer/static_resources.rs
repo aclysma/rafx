@@ -1,12 +1,12 @@
 use crate::asset_resource::AssetResource;
-use atelier_assets::loader::handle::Handle;
-use atelier_assets::loader::storage::LoadStatus;
+use distill::loader::handle::Handle;
+use distill::loader::storage::LoadStatus;
 use rafx::api::RafxResult;
 use rafx::assets::MaterialAsset;
 use rafx::assets::{AssetManager, ComputePipelineAsset};
 
 fn wait_for_asset_to_load<T>(
-    asset_handle: &atelier_assets::loader::handle::Handle<T>,
+    asset_handle: &distill::loader::handle::Handle<T>,
     asset_resource: &mut AssetResource,
     asset_manager: &mut AssetManager,
     asset_name: &str,

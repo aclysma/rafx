@@ -1,7 +1,7 @@
 use crate::render_contexts::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
 };
-use atelier_assets::loader::handle::Handle;
+use distill::loader::handle::Handle;
 use rafx::assets::ImageAsset;
 use rafx::base::slab::{DropSlab, DropSlabKey};
 use rafx::nodes::{

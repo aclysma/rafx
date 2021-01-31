@@ -11,7 +11,7 @@ use crate::game_renderer::{GameRenderer, SwapchainHandler};
 use crate::phases::PostProcessRenderPhase;
 use crate::phases::TransparentRenderPhase;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
-use atelier_assets::loader::{
+use distill::loader::{
     packfile_io::PackfileReader, storage::DefaultIndirectionResolver, Loader, RpcIO,
 };
 use legion::Resources;

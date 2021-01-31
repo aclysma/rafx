@@ -1,6 +1,6 @@
 use crate::assets::shader::ShaderAssetData;
-use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
+use distill::core::AssetUuid;
+use distill::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
 use rafx_api::{RafxShaderPackage, RafxShaderPackageVulkan};
 use rafx_framework::{CookedShaderPackage, ShaderModuleHash, ShaderModuleResourceDef};
 use serde::{Deserialize, Serialize};
@@ -8,12 +8,12 @@ use std::io::Read;
 use type_uuid::*;
 
 // There may be a better way to do this type coercing
-// fn coerce_result_str<T>(result: Result<T, &str>) -> atelier_assets::importer::Result<T> {
+// fn coerce_result_str<T>(result: Result<T, &str>) -> distill::importer::Result<T> {
 //     let ok = result.map_err(|x| -> Box<dyn std::error::Error + Send> { Box::<dyn std::error::Error + Send + Sync>::from(x) })?;
 //     Ok(ok)
 // }
 
-fn coerce_result_string<T>(result: Result<T, String>) -> atelier_assets::importer::Result<T> {
+fn coerce_result_string<T>(result: Result<T, String>) -> distill::importer::Result<T> {
     let ok = result.map_err(|x| -> Box<dyn std::error::Error + Send> {
         Box::<dyn std::error::Error + Send + Sync>::from(x)
     })?;
@@ -51,7 +51,7 @@ impl Importer for ShaderImporterSpv {
         source: &mut dyn Read,
         _options: &Self::Options,
         state: &mut Self::State,
-    ) -> atelier_assets::importer::Result<ImporterValue> {
+    ) -> distill::importer::Result<ImporterValue> {
         let asset_id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
@@ -127,7 +127,7 @@ impl Importer for ShaderImporterCooked {
         source: &mut dyn Read,
         _options: &Self::Options,
         state: &mut Self::State,
-    ) -> atelier_assets::importer::Result<ImporterValue> {
+    ) -> distill::importer::Result<ImporterValue> {
         let asset_id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));

@@ -3,11 +3,11 @@ use crate::game_asset_lookup::{
     GameLoadedAssetLookupSet, GameLoadedAssetMetrics, MeshAsset, MeshAssetInner, MeshAssetPart,
 };
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
-use atelier_assets::loader::handle::AssetHandle;
-use atelier_assets::loader::handle::Handle;
-use atelier_assets::loader::storage::AssetLoadOp;
-use atelier_assets::loader::Loader;
 use crossbeam_channel::Sender;
+use distill::loader::handle::AssetHandle;
+use distill::loader::handle::Handle;
+use distill::loader::storage::AssetLoadOp;
+use distill::loader::Loader;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetLookup, AssetManager, GenericLoader, LoadQueues};
 use std::sync::Arc;

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
 use crate::{AssetManager, ImageAsset, ShaderAsset};
-use atelier_assets::loader::handle::Handle;
+use distill::loader::handle::Handle;
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
@@ -262,7 +262,7 @@ impl MaterialPass {
         asset_manager: &AssetManager,
         material_pass_data: &MaterialPassData,
     ) -> RafxResult<MaterialPass> {
-        use atelier_assets::loader::handle::AssetHandle;
+        use distill::loader::handle::AssetHandle;
         //
         // Pipeline asset (represents fixed function state)
         //

@@ -1,19 +1,19 @@
-use atelier_assets::loader::{handle::RefOp, Loader};
+use distill::loader::{handle::RefOp, Loader};
 
 use crate::asset_storage::AssetStorageSet;
 use crate::asset_storage::DynAssetLoader;
 
 use type_uuid::TypeUuid;
 
-use atelier_assets::core::AssetUuid;
-use atelier_assets::loader as atelier_loader;
-use atelier_assets::loader::handle::AssetHandle;
-use atelier_assets::loader::handle::Handle;
-use atelier_assets::loader::storage::IndirectIdentifier;
-use atelier_assets::loader::storage::IndirectionResolver;
-use atelier_assets::loader::storage::LoadInfo;
-use atelier_assets::loader::storage::LoadStatus;
 use crossbeam_channel::{Receiver, Sender};
+use distill::core::AssetUuid;
+use distill::loader as atelier_loader;
+use distill::loader::handle::AssetHandle;
+use distill::loader::handle::Handle;
+use distill::loader::storage::IndirectIdentifier;
+use distill::loader::storage::IndirectionResolver;
+use distill::loader::storage::LoadInfo;
+use distill::loader::storage::LoadStatus;
 
 /// A user-friendly interface to fetching/storing/loading assets. Meant to be a resource in an ECS
 /// system

@@ -9,7 +9,7 @@ use crate::{
     AssetLookup, AssetLookupSet, BufferAssetData, ComputePipelineAsset, ComputePipelineAssetData,
     GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SamplerAssetData, UploadQueueConfig,
 };
-use atelier_assets::loader::handle::Handle;
+use distill::loader::handle::Handle;
 use rafx_framework::{
     ComputePipelineResource, DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider,
     DescriptorSetAllocatorRef, DescriptorSetLayout, DescriptorSetLayoutResource,
@@ -20,10 +20,10 @@ use rafx_framework::{
 use super::asset_lookup::LoadedAssetMetrics;
 use super::load_queue::LoadQueueSet;
 use super::upload::{BufferUploadOpResult, ImageUploadOpResult, UploadManager};
-use atelier_assets::loader::handle::AssetHandle;
-use atelier_assets::loader::storage::AssetLoadOp;
-use atelier_assets::loader::Loader;
 use crossbeam_channel::Sender;
+use distill::loader::handle::AssetHandle;
+use distill::loader::storage::AssetLoadOp;
+use distill::loader::Loader;
 use fnv::FnvHashMap;
 use rafx_api::{
     RafxBuffer, RafxDeviceContext, RafxQueue, RafxResult, RafxShaderStageDef, RafxShaderStageFlags,

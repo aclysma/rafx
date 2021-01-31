@@ -1,4 +1,4 @@
-use atelier_assets::loader::{
+use distill::loader::{
     crossbeam_channel::Sender,
     handle::{AssetHandle, RefOp, TypedAssetStorage},
     storage::{AssetLoadOp, AssetStorage, IndirectionTable, LoaderInfoProvider},
@@ -7,9 +7,9 @@ use atelier_assets::loader::{
 use mopa::{mopafy, Any};
 use std::{collections::HashMap, error::Error, sync::Mutex};
 
-use atelier_assets::core::{type_uuid::TypeUuid, AssetUuid};
-use atelier_assets::loader::handle::SerdeContext;
 use crossbeam_channel::Receiver;
+use distill::core::{type_uuid::TypeUuid, AssetUuid};
+use distill::loader::handle::SerdeContext;
 use std::marker::PhantomData;
 
 // Used to dynamic dispatch into a storage, supports checked downcasting

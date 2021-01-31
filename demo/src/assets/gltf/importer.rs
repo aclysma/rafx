@@ -1,10 +1,10 @@
 use crate::assets::gltf::{
     GltfMaterialAsset, GltfMaterialDataShaderParam, MeshAssetData, MeshPartAssetData, MeshVertex,
 };
-use atelier_assets::core::AssetUuid;
-use atelier_assets::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
-use atelier_assets::loader::handle::Handle;
-use atelier_assets::{make_handle, make_handle_from_str};
+use distill::core::AssetUuid;
+use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
+use distill::loader::handle::Handle;
+use distill::{make_handle, make_handle_from_str};
 use fnv::FnvHashMap;
 use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
@@ -173,7 +173,7 @@ impl Importer for GltfImporter {
         source: &mut dyn Read,
         _options: &Self::Options,
         stable_state: &mut Self::State,
-    ) -> atelier_assets::importer::Result<ImporterValue> {
+    ) -> distill::importer::Result<ImporterValue> {
         let mut unstable_state: GltfImporterStateUnstable = stable_state.clone().into();
 
         //
@@ -759,7 +759,7 @@ fn extract_meshes_to_import(
     //images: &Vec<GltfImageData>,
     material_index_to_handle: &[Handle<GltfMaterialAsset>],
     material_instance_index_to_handle: &[Handle<MaterialInstanceAsset>],
-) -> atelier_assets::importer::Result<(Vec<MeshToImport>, Vec<BufferToImport>)> {
+) -> distill::importer::Result<(Vec<MeshToImport>, Vec<BufferToImport>)> {
     let mut meshes_to_import = Vec::with_capacity(doc.meshes().len());
     let mut buffers_to_import = Vec::with_capacity(doc.meshes().len() * 2);
 
@@ -829,7 +829,7 @@ fn extract_meshes_to_import(
                                 material_instance_index_to_handle[material_index].clone(),
                             )
                         } else {
-                            return Err(atelier_assets::importer::Error::Boxed(Box::new(
+                            return Err(distill::importer::Error::Boxed(Box::new(
                                 GltfImportError::new("A mesh primitive did not have a material"),
                             )));
                         };
@@ -844,7 +844,7 @@ fn extract_meshes_to_import(
                         })
                     } else {
                         log::error!("indices must fit in u16");
-                        return Err(atelier_assets::importer::Error::Boxed(Box::new(
+                        return Err(distill::importer::Error::Boxed(Box::new(
                             GltfImportError::new("indices must fit in u16"),
                         )));
                     }
@@ -853,7 +853,7 @@ fn extract_meshes_to_import(
                         "Mesh primitives must specify indices, positions, normals, tangents, and tex_coords"
                     );
 
-                    return Err(atelier_assets::importer::Error::Boxed(Box::new(
+                    return Err(distill::importer::Error::Boxed(Box::new(
                         GltfImportError::new("Mesh primitives must specify indices, positions, normals, tangents, and tex_coords"),
                     )));
                 }
