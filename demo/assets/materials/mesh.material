@@ -3,7 +3,11 @@
         (
             name: Some("mesh opaque"),
             phase: Some("Opaque"),
-            pipeline: "mesh.pipeline",
+            pipeline: (
+                depth_testing: EnabledReverseZ,
+                cull_mode: Some(Back),
+                front_face: Some(CounterClockwise),
+            ),
             shaders: [
                 (
                     stage: Vertex,
@@ -19,7 +23,10 @@
         ),
         (
             phase: Some("ShadowMap"),
-            pipeline: "mesh_shadow_map.pipeline",
+            pipeline: (
+                depth_testing: EnabledReverseZ,
+                cull_mode: Some(None),
+            ),
             shaders: [
                 (
                     stage: Vertex,

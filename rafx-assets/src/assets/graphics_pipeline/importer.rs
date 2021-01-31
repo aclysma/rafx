@@ -1,5 +1,5 @@
 use crate::assets::graphics_pipeline::{
-    GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, SamplerAssetData,
+    MaterialAssetData, MaterialInstanceAssetData, SamplerAssetData,
 };
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
@@ -55,59 +55,6 @@ impl Importer for SamplerImporter {
                 load_deps: vec![],
                 build_pipeline: None,
                 asset_data: Box::new(sampler_asset),
-            }],
-        })
-    }
-}
-
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "25c8b7df-e3a4-4436-b41c-ce32eed76e18"]
-pub struct PipelineImporterState(Option<AssetUuid>);
-
-#[derive(TypeUuid)]
-#[uuid = "3906ac10-8782-446d-aee4-e94611c6d61e"]
-pub struct PipelineImporter;
-impl Importer for PipelineImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        3
-    }
-
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ();
-
-    type State = PipelineImporterState;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
-        &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let id = state
-            .0
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = PipelineImporterState(Some(id));
-
-        let pipeline_asset = ron::de::from_reader::<_, GraphicsPipelineAssetData>(source)?;
-        log::trace!("IMPORTED PIPELINE:\n{:#?}", pipeline_asset);
-
-        Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(pipeline_asset),
             }],
         })
     }

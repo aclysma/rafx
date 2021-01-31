@@ -2,7 +2,9 @@
     passes: [
         (
             phase: Some("Opaque"),
-            pipeline: "sprite.pipeline",
+            pipeline: (
+                alpha_blending: Enabled
+            ),
             shaders: [
                 (
                     stage: Vertex,

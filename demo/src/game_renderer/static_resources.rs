@@ -68,13 +68,13 @@ impl GameRendererStaticResources {
         // Sprite resources
         //
         let sprite_material =
-            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/sprite.material");
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/sprite.material");
 
         //
         // Debug resources
         //
         let debug3d_material =
-            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/debug.material");
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/debug.material");
 
         //
         // Bloom extract resources
@@ -82,32 +82,32 @@ impl GameRendererStaticResources {
         // let bloom_extract_material = asset_resource
         //     .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
         let bloom_extract_material =
-            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/bloom_extract.material");
         //.load_asset::<MaterialAsset>(asset_uuid!("4c5509e3-4a9f-45c2-a6dc-862a925d2341"));
 
         //
         // Bloom blur resources
         //
         let bloom_blur_material =
-            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/bloom_blur.material");
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/bloom_blur.material");
 
         //
         // Bloom combine resources
         //
         let bloom_combine_material =
-            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/bloom_combine.material");
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/bloom_combine.material");
 
         //
         // ImGui resources
         //
         let imgui_material =
-            asset_resource.load_asset_path::<MaterialAsset, _>("pipelines/imgui.material");
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/imgui.material");
 
         //
         // Compute pipeline
         //
         let compute_test = asset_resource
-            .load_asset_path::<ComputePipelineAsset, _>("pipelines/compute_test.compute");
+            .load_asset_path::<ComputePipelineAsset, _>("compute_pipelines/compute_test.compute");
 
         wait_for_asset_to_load(
             &sprite_material,

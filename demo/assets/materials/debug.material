@@ -1,0 +1,24 @@
+(
+    passes: [
+        (
+            phase: Some("Opaque"),
+            pipeline: (
+                alpha_blending: Enabled,
+                depth_testing: EnabledReverseZ,
+                polygon_mode: Some(Line)
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/debug.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/debug.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)

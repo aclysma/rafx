@@ -1,17 +1,17 @@
 (
     passes: [
         (
-            phase: Some("Opaque"),
-            pipeline: "debug.pipeline",
+            phase: Some("PostProcess"),
+            pipeline: (),
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/debug.vert.cookedshaderpackage",
+                    shader_module: "../shaders/postprocess.vert.cookedshaderpackage",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/debug.frag.cookedshaderpackage",
+                    shader_module: "../shaders/bloom_blur.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],

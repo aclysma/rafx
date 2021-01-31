@@ -94,9 +94,8 @@ impl Default for DepthBufferPreset {
 //     }
 // }
 
-#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
-#[uuid = "0dfa5d9a-89cd-40a1-adac-baf801db61db"]
-pub struct GraphicsPipelineAssetData {
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
+pub struct GraphicsPipelineData {
     #[serde(default)]
     blend_state: RafxBlendState,
     #[serde(default)]
@@ -117,14 +116,14 @@ pub struct GraphicsPipelineAssetData {
     fill_mode: Option<RafxFillMode>,
 }
 
-pub struct PreparedGraphicsPipelineAssetData {
+pub struct PreparedGraphicsPipelineData {
     blend_state: RafxBlendState,
     depth_state: RafxDepthState,
     rasterizer_state: RafxRasterizerState,
 }
 
-impl GraphicsPipelineAssetData {
-    pub fn prepare(self) -> RafxResult<PreparedGraphicsPipelineAssetData> {
+impl GraphicsPipelineData {
+    pub fn prepare(self) -> RafxResult<PreparedGraphicsPipelineData> {
         let mut blend_state = self.blend_state.clone();
         let mut depth_state = self.depth_state.clone();
         let mut rasterizer_state = self.rasterizer_state.clone();
@@ -171,21 +170,12 @@ impl GraphicsPipelineAssetData {
             rasterizer_state.front_face = front_face;
         }
 
-        Ok(PreparedGraphicsPipelineAssetData {
+        Ok(PreparedGraphicsPipelineData {
             blend_state,
             depth_state,
             rasterizer_state,
         })
     }
-}
-
-// The actual GPU resources are held in Material because the pipeline does not specify everything
-// needed to create the pipeline
-#[derive(TypeUuid, Clone)]
-#[uuid = "7a6a7ba8-a3ca-41eb-94f4-5d3723cd8b44"]
-pub struct GraphicsPipelineAsset {
-    // We need to keep a copy of the asset so that we can recreate the pipeline for new swapchains
-    pub pipeline_asset: Arc<PreparedGraphicsPipelineAssetData>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -222,7 +212,7 @@ pub struct GraphicsPipelineShaderStage {
 pub struct MaterialPassData {
     pub name: Option<String>,
     pub phase: Option<String>,
-    pub pipeline: Handle<GraphicsPipelineAsset>,
+    pub pipeline: GraphicsPipelineData,
     pub shaders: Vec<GraphicsPipelineShaderStage>,
 }
 
@@ -265,17 +255,12 @@ impl MaterialPass {
         //
         // Pipeline asset (represents fixed function state)
         //
-        let loaded_pipeline_asset = asset_manager
-            .loaded_assets()
-            .graphics_pipelines
-            .get_latest(material_pass_data.pipeline.load_handle())
-            .unwrap();
-        let pipeline_asset = loaded_pipeline_asset.pipeline_asset.clone();
+        let pipeline_data = material_pass_data.pipeline.clone().prepare()?;
 
         let fixed_function_state = Arc::new(FixedFunctionState {
-            depth_state: pipeline_asset.depth_state.clone(),
-            blend_state: pipeline_asset.blend_state.clone(),
-            rasterizer_state: pipeline_asset.rasterizer_state.clone(),
+            depth_state: pipeline_data.depth_state.clone(),
+            blend_state: pipeline_data.blend_state.clone(),
+            rasterizer_state: pipeline_data.rasterizer_state.clone(),
         });
 
         //

@@ -2,12 +2,9 @@ use crate::assets::BufferAssetData;
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    BufferAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
-    SamplerAsset, ShaderAsset,
+    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, SamplerAsset, ShaderAsset,
 };
-use crate::assets::{
-    GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData, SamplerAssetData,
-};
+use crate::assets::{MaterialAssetData, MaterialInstanceAssetData, SamplerAssetData};
 use crate::resource_loader::ResourceLoadResult;
 use crate::{ComputePipelineAsset, ComputePipelineAssetData, ResourceLoader};
 use crossbeam_channel::{Receiver, Sender};
@@ -190,7 +187,6 @@ where
 #[derive(Default)]
 pub struct LoadQueueSet {
     pub shader_modules: LoadQueues<ShaderAssetData, ShaderAsset>,
-    pub graphics_pipelines: LoadQueues<GraphicsPipelineAssetData, GraphicsPipelineAsset>,
     pub compute_pipelines: LoadQueues<ComputePipelineAssetData, ComputePipelineAsset>,
     pub materials: LoadQueues<MaterialAssetData, MaterialAsset>,
     pub material_instances: LoadQueues<MaterialInstanceAssetData, MaterialInstanceAsset>,

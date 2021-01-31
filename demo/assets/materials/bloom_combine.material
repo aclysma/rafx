@@ -2,7 +2,7 @@
     passes: [
         (
             phase: Some("PostProcess"),
-            pipeline: "bloom_blur.pipeline",
+            pipeline: (),
             shaders: [
                 (
                     stage: Vertex,
@@ -11,7 +11,7 @@
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/bloom_blur.frag.cookedshaderpackage",
+                    shader_module: "../shaders/bloom_combine.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],

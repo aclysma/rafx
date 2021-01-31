@@ -1,5 +1,0 @@
-(
-    alpha_blending: Enabled,
-    depth_testing: EnabledReverseZ,
-    polygon_mode: Some(Line)
-)

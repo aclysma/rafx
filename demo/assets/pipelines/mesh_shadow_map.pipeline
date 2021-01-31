@@ -1,4 +1,0 @@
-(
-    depth_testing: EnabledReverseZ,
-    cull_mode: Some(None),
-)

@@ -1,10 +1,10 @@
 use crate::assets::ImageAssetData;
 use crate::assets::ShaderAssetData;
 use crate::assets::{
-    BufferAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
-    MaterialPass, SamplerAsset, ShaderAsset,
+    BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, MaterialPass, SamplerAsset,
+    ShaderAsset,
 };
-use crate::assets::{GraphicsPipelineAssetData, MaterialAssetData, MaterialInstanceAssetData};
+use crate::assets::{MaterialAssetData, MaterialInstanceAssetData};
 use crate::{
     AssetLookup, AssetLookupSet, BufferAssetData, ComputePipelineAsset, ComputePipelineAssetData,
     GenericLoader, LoadQueues, MaterialInstanceSlotAssignment, SamplerAssetData, UploadQueueConfig,
@@ -47,7 +47,6 @@ pub struct AssetManagerMetrics {
 
 pub struct AssetManagerLoaders {
     pub shader_loader: GenericLoader<ShaderAssetData, ShaderAsset>,
-    pub graphics_pipeline_loader: GenericLoader<GraphicsPipelineAssetData, GraphicsPipelineAsset>,
     pub compute_pipeline_loader: GenericLoader<ComputePipelineAssetData, ComputePipelineAsset>,
     pub material_loader: GenericLoader<MaterialAssetData, MaterialAsset>,
     pub material_instance_loader: GenericLoader<MaterialInstanceAssetData, MaterialInstanceAsset>,
@@ -169,12 +168,6 @@ impl AssetManager {
         self.load_queues.shader_modules.create_loader()
     }
 
-    fn create_graphics_pipeline_loader(
-        &self
-    ) -> GenericLoader<GraphicsPipelineAssetData, GraphicsPipelineAsset> {
-        self.load_queues.graphics_pipelines.create_loader()
-    }
-
     fn create_compute_pipeline_loader(
         &self
     ) -> GenericLoader<ComputePipelineAssetData, ComputePipelineAsset> {
@@ -206,7 +199,6 @@ impl AssetManager {
     pub fn create_loaders(&self) -> AssetManagerLoaders {
         AssetManagerLoaders {
             shader_loader: self.create_shader_loader(),
-            graphics_pipeline_loader: self.create_graphics_pipeline_loader(),
             compute_pipeline_loader: self.create_compute_pipeline_loader(),
             material_loader: self.create_material_loader(),
             material_instance_loader: self.create_material_instance_loader(),
@@ -269,7 +261,6 @@ impl AssetManager {
     #[profiling::function]
     pub fn update_asset_loaders(&mut self) -> RafxResult<()> {
         self.process_shader_load_requests();
-        self.process_graphics_pipeline_load_requests();
         self.process_compute_pipeline_load_requests();
         self.process_material_load_requests();
         self.process_material_instance_load_requests();
@@ -327,29 +318,6 @@ impl AssetManager {
         Self::handle_free_requests(
             &mut self.load_queues.shader_modules,
             &mut self.loaded_assets.shader_modules,
-        );
-    }
-
-    #[profiling::function]
-    fn process_graphics_pipeline_load_requests(&mut self) {
-        for request in self.load_queues.graphics_pipelines.take_load_requests() {
-            log::trace!("Create graphics pipeline {:?}", request.load_handle);
-            let loaded_asset = self.load_graphics_pipeline(request.asset);
-            Self::handle_load_result(
-                request.load_op,
-                loaded_asset,
-                &mut self.loaded_assets.graphics_pipelines,
-                request.result_tx,
-            );
-        }
-
-        Self::handle_commit_requests(
-            &mut self.load_queues.graphics_pipelines,
-            &mut self.loaded_assets.graphics_pipelines,
-        );
-        Self::handle_free_requests(
-            &mut self.load_queues.graphics_pipelines,
-            &mut self.loaded_assets.graphics_pipelines,
         );
     }
 
@@ -631,16 +599,6 @@ impl AssetManager {
     ) -> RafxResult<SamplerAsset> {
         let sampler = self.resources().get_or_create_sampler(&sampler.sampler)?;
         Ok(SamplerAsset { sampler })
-    }
-
-    #[profiling::function]
-    fn load_graphics_pipeline(
-        &mut self,
-        graphics_pipeline_asset_data: GraphicsPipelineAssetData,
-    ) -> RafxResult<GraphicsPipelineAsset> {
-        Ok(GraphicsPipelineAsset {
-            pipeline_asset: Arc::new(graphics_pipeline_asset_data.prepare()?),
-        })
     }
 
     #[profiling::function]

@@ -17,13 +17,9 @@ use distill::loader::{
 use legion::Resources;
 use rafx::api::{RafxApi, RafxDeviceContext, RafxQueueType, RafxResult};
 use rafx::assets::{AssetManager, ComputePipelineAsset, ComputePipelineAssetData};
+use rafx::assets::{BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, ShaderAsset};
 use rafx::assets::{
-    BufferAsset, GraphicsPipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
-    ShaderAsset,
-};
-use rafx::assets::{
-    BufferAssetData, GraphicsPipelineAssetData, ImageAssetData, MaterialAssetData,
-    MaterialInstanceAssetData, ShaderAssetData,
+    BufferAssetData, ImageAssetData, MaterialAssetData, MaterialInstanceAssetData, ShaderAssetData,
 };
 use rafx::nodes::RenderRegistry;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
@@ -138,10 +134,6 @@ pub fn rendering_init(
         asset_resource.add_storage_with_loader::<ShaderAssetData, ShaderAsset, _>(Box::new(
             ResourceAssetLoader(loaders.shader_loader),
         ));
-        asset_resource
-            .add_storage_with_loader::<GraphicsPipelineAssetData, GraphicsPipelineAsset, _>(
-                Box::new(ResourceAssetLoader(loaders.graphics_pipeline_loader)),
-            );
         asset_resource
             .add_storage_with_loader::<ComputePipelineAssetData, ComputePipelineAsset, _>(
                 Box::new(ResourceAssetLoader(loaders.compute_pipeline_loader)),

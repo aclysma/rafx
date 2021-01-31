@@ -1,5 +1,0 @@
-(
-    depth_testing: EnabledReverseZ,
-    cull_mode: Some(Back),
-    front_face: Some(CounterClockwise),
-)
