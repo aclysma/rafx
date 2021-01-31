@@ -1,6 +1,6 @@
 [package]
 name = "rafx-shader-processor"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -11,11 +11,9 @@ homepage = "https://github.com/aclysma/rafx"
 keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
-publish = false
-
 [dependencies]
-rafx-framework = { version = "0.0.4", path = "../rafx-framework" }
-rafx-api = { version = "0.0.4", path = "../rafx-api", features = ["serde-support"] }
+rafx-framework = { version = "0.0.5", path = "../rafx-framework" }
+rafx-api = { version = "0.0.5", path = "../rafx-api", features = ["serde-support"] }
 
 fnv = "1.0"
 structopt = "0.3"
