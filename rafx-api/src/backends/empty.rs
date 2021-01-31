@@ -27,7 +27,6 @@ impl RafxDeviceContextEmpty {
     pub fn create_swapchain(&self, raw_window_handle: &dyn HasRawWindowHandle, swapchain_def: &RafxSwapchainDef) -> RafxResult<RafxSwapchainEmpty> { unimplemented!(); }
     pub fn create_sampler(&self, sampler_def: &RafxSamplerDef) -> RafxResult<RafxSamplerEmpty> { unimplemented!(); }
     pub fn create_texture(&self, texture_def: &RafxTextureDef) -> RafxResult<RafxTextureEmpty> { unimplemented!(); }
-    pub fn create_render_target(&self, render_target_def: &RafxTextureDef) -> RafxResult<RafxRenderTargetEmpty> { unimplemented!(); }
     pub fn create_buffer(&self, buffer_def: &RafxBufferDef) -> RafxResult<RafxBufferEmpty> { unimplemented!(); }
     pub fn create_shader(&self, stages: Vec<RafxShaderStageDef>) -> RafxResult<RafxShaderEmpty> { unimplemented!(); }
     pub fn create_root_signature(&self, root_signature_def: &RafxRootSignatureDef) -> RafxResult<RafxRootSignatureEmpty> { unimplemented!(); }
@@ -56,7 +55,7 @@ impl RafxBufferEmpty {
         &self, data: &[T], buffer_byte_offset: u64) -> RafxResult<()> { unimplemented!() }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct RafxTextureEmpty;
 impl RafxTextureEmpty {
     pub fn texture_def(&self) -> &RafxTextureDef { unimplemented!() }
