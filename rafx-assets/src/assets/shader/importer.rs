@@ -2,7 +2,7 @@ use crate::assets::shader::ShaderAssetData;
 use distill::core::AssetUuid;
 use distill::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
 use rafx_api::{RafxShaderPackage, RafxShaderPackageVulkan};
-use rafx_framework::{CookedShaderPackage, ShaderModuleHash, ShaderModuleResourceDef};
+use rafx_framework::{CookedShaderPackage, ShaderModuleHash};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
@@ -76,10 +76,8 @@ impl Importer for ShaderImporterSpv {
         let shader_module_hash = ShaderModuleHash::new(&shader_package);
 
         let shader_asset = ShaderAssetData {
-            shader: ShaderModuleResourceDef {
-                shader_package,
-                shader_module_hash,
-            },
+            shader_module_hash,
+            shader_package,
             reflection_data: None,
         };
 
@@ -149,10 +147,8 @@ impl Importer for ShaderImporterCooked {
         );
 
         let shader_asset = ShaderAssetData {
-            shader: ShaderModuleResourceDef {
-                shader_package: cooked_shader.shader_package,
-                shader_module_hash: cooked_shader.hash,
-            },
+            shader_module_hash: cooked_shader.hash,
+            shader_package: cooked_shader.shader_package,
             reflection_data: Some(cooked_shader.entry_points),
         };
 

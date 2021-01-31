@@ -1,6 +1,7 @@
 use fnv::FnvHashMap;
-use rafx_framework::{ReflectedEntryPoint, ShaderModuleResource};
-use rafx_framework::{ResourceArc, ShaderModuleResourceDef};
+use rafx_api::RafxShaderPackage;
+use rafx_framework::ResourceArc;
+use rafx_framework::{ReflectedEntryPoint, ShaderModuleHash, ShaderModuleResource};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
@@ -8,7 +9,8 @@ use type_uuid::*;
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "e0ae2222-1a44-4022-af95-03c9101ac89e"]
 pub struct ShaderAssetData {
-    pub shader: ShaderModuleResourceDef,
+    pub shader_module_hash: ShaderModuleHash,
+    pub shader_package: RafxShaderPackage,
     pub reflection_data: Option<Vec<ReflectedEntryPoint>>,
 }
 

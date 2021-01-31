@@ -2,7 +2,7 @@ use crate::resources::pipeline_cache::GraphicsPipelineRenderTargetMeta;
 use crate::resources::resource_arc::{ResourceId, ResourceWithHash, WeakResourceArc};
 use crate::resources::DescriptorSetLayout;
 use crate::resources::ResourceArc;
-use crate::ResourceDropSink;
+use crate::{CookedShaderPackage, ReflectedEntryPoint, ResourceDropSink};
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHasher};
 use rafx_api::RafxTexture;
@@ -299,20 +299,6 @@ pub struct FixedFunctionState {
     pub rasterizer_state: RafxRasterizerState,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct ShaderModuleMeta {
-    pub stage: RafxShaderStageFlags,
-    pub entry_name: String,
-    // Reference to shader is excluded
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
-pub struct ShaderModuleResourceDef {
-    // Precalculate a hash so we can avoid hashing this blob of bytes at runtime
-    pub shader_module_hash: ShaderModuleHash,
-    pub shader_package: RafxShaderPackage,
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ShaderModuleHash(u64);
 impl ShaderModuleHash {
@@ -328,11 +314,15 @@ impl ShaderModuleHash {
 pub struct ShaderHash(u64);
 impl ShaderHash {
     pub fn new(
-        stage_defs: &[RafxShaderStageDef],
+        entry_points: &[&ReflectedEntryPoint],
         shader_module_hashes: &[ShaderModuleHash],
     ) -> Self {
+        let reflection_data: Vec<_> = entry_points
+            .iter()
+            .map(|x| &x.rafx_api_reflection)
+            .collect();
         let mut hasher = FnvHasher::default();
-        RafxShaderStageDef::hash_definition(&mut hasher, stage_defs, shader_module_hashes);
+        RafxShaderStageDef::hash_definition(&mut hasher, &reflection_data, shader_module_hashes);
         let hash = hasher.finish();
         ShaderHash(hash)
     }
@@ -536,7 +526,7 @@ pub struct ResourceMetrics {
 #[derive(Debug, Clone)]
 pub struct ShaderModuleResource {
     pub shader_module_key: ShaderModuleKey,
-    pub shader_module_resource_def: Arc<ShaderModuleResourceDef>,
+    pub shader_package: Arc<RafxShaderPackage>,
     pub shader_module: RafxShaderModule,
 }
 
@@ -731,12 +721,23 @@ impl ResourceLookupSet {
         }
     }
 
+    pub fn get_or_create_shader_module_from_cooked_package(
+        &self,
+        package: &CookedShaderPackage,
+    ) -> RafxResult<ResourceArc<ShaderModuleResource>> {
+        self.get_or_create_shader_module(&package.shader_package, Some(package.hash))
+    }
+
     pub fn get_or_create_shader_module(
         &self,
-        shader_module_resource_def: &Arc<ShaderModuleResourceDef>,
+        shader_package: &RafxShaderPackage,
+        shader_module_hash: Option<ShaderModuleHash>,
     ) -> RafxResult<ResourceArc<ShaderModuleResource>> {
+        let shader_module_hash =
+            shader_module_hash.unwrap_or_else(|| ShaderModuleHash::new(shader_package));
+
         let shader_module_key = ShaderModuleKey {
-            hash: shader_module_resource_def.shader_module_hash,
+            hash: shader_module_hash,
         };
 
         self.inner
@@ -750,11 +751,11 @@ impl ResourceLookupSet {
                 let shader_module = self
                     .inner
                     .device_context
-                    .create_shader_module(shader_module_resource_def.shader_package.module_def())?;
+                    .create_shader_module(shader_package.module_def())?;
 
                 let resource = ShaderModuleResource {
                     shader_module,
-                    shader_module_resource_def: shader_module_resource_def.clone(),
+                    shader_package: Arc::new(shader_package.clone()),
                     shader_module_key: shader_module_key.clone(),
                 };
                 log::trace!("Created shader module {:?}", resource);
@@ -786,23 +787,29 @@ impl ResourceLookupSet {
 
     pub fn get_or_create_shader(
         &self,
-        shader_stage_defs: &[RafxShaderStageDef],
         shader_modules: &[ResourceArc<ShaderModuleResource>],
+        entry_points: &[&ReflectedEntryPoint],
     ) -> RafxResult<ResourceArc<ShaderResource>> {
         let shader_module_hashes: Vec<_> = shader_modules
             .iter()
             .map(|x| x.get_raw().shader_module_key.hash)
             .collect();
-        let hash = ShaderHash::new(shader_stage_defs, &shader_module_hashes);
+
+        let hash = ShaderHash::new(entry_points, &shader_module_hashes);
         let key = ShaderKey { hash };
 
         self.inner.shaders.get_or_create(&key, || {
-            log::trace!("Creating sampler\n{:#?}", shader_stage_defs);
+            log::trace!("Creating shader\n");
 
-            let shader = self
-                .inner
-                .device_context
-                .create_shader(shader_stage_defs.iter().cloned().collect())?;
+            let mut shader_defs = Vec::with_capacity(entry_points.len());
+            for (entry_point, module) in entry_points.iter().zip(shader_modules) {
+                shader_defs.push(RafxShaderStageDef {
+                    shader_module: module.get_raw().shader_module.clone(),
+                    reflection: entry_point.rafx_api_reflection.clone(),
+                });
+            }
+
+            let shader = self.inner.device_context.create_shader(shader_defs)?;
 
             let resource = ShaderResource {
                 key,
@@ -810,7 +817,7 @@ impl ResourceLookupSet {
                 shader_modules: shader_modules.iter().cloned().collect(),
             };
 
-            log::trace!("Created sampler {:?}", resource);
+            log::trace!("Created shader {:?}", resource);
             Ok(resource)
         })
     }

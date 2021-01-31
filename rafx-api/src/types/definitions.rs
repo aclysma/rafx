@@ -220,21 +220,22 @@ pub struct RafxShaderStageDef {
 impl RafxShaderStageDef {
     pub fn hash_definition<HasherT: std::hash::Hasher, ShaderModuleHashT: Hash>(
         hasher: &mut HasherT,
-        stage_defs: &[RafxShaderStageDef],
+        reflection_data: &[&RafxShaderStageReflection],
         shader_module_hashes: &[ShaderModuleHashT],
     ) {
-        assert_eq!(stage_defs.len(), shader_module_hashes.len());
+        assert_eq!(reflection_data.len(), shader_module_hashes.len());
         fn hash_stage<HasherT: std::hash::Hasher, ShaderModuleHashT: Hash>(
             hasher: &mut HasherT,
             stage_flag: RafxShaderStageFlags,
-            stage_defs: &[RafxShaderStageDef],
+            reflection_data: &[&RafxShaderStageReflection],
             shader_module_hashes: &[ShaderModuleHashT],
         ) {
-            for (stage, shader_module_hash) in stage_defs.iter().zip(shader_module_hashes) {
-                if stage.reflection.shader_stage.intersects(stage_flag) {
-                    stage.reflection.shader_stage.hash(hasher);
-                    stage.reflection.entry_point_name.hash(hasher);
-                    stage.reflection.resources.hash(hasher);
+            for (reflection, shader_module_hash) in reflection_data.iter().zip(shader_module_hashes)
+            {
+                if reflection.shader_stage.intersects(stage_flag) {
+                    reflection.shader_stage.hash(hasher);
+                    reflection.entry_point_name.hash(hasher);
+                    reflection.resources.hash(hasher);
                     shader_module_hash.hash(hasher);
                     break;
                 }
@@ -243,7 +244,7 @@ impl RafxShaderStageDef {
 
         // Hash stages in a deterministic order
         for stage_flag in &crate::ALL_SHADER_STAGE_FLAGS {
-            hash_stage(hasher, *stage_flag, stage_defs, shader_module_hashes);
+            hash_stage(hasher, *stage_flag, reflection_data, shader_module_hashes);
         }
     }
 }

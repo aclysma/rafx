@@ -7,13 +7,13 @@ use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
     RafxFillMode, RafxFrontFace, RafxImmutableSamplerKey, RafxRasterizerState, RafxResult,
-    RafxSamplerDef, RafxShaderStageDef, RafxShaderStageFlags,
+    RafxSamplerDef, RafxShaderStageFlags,
 };
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{
-    DescriptorSetArc, DescriptorSetLayout, FixedFunctionState, ResourceArc, ShaderModuleMeta,
-    SlotLocation, SlotNameLookup,
+    DescriptorSetArc, DescriptorSetLayout, FixedFunctionState, ResourceArc, SlotLocation,
+    SlotNameLookup,
 };
 use rafx_framework::{DescriptorSetWriteSet, MaterialPassResource, SamplerResource};
 use rafx_framework::{MaterialPassVertexInput, ShaderModuleResource};
@@ -282,14 +282,12 @@ impl MaterialPass {
         //
         // Shaders
         //
-        let mut shader_module_metas = Vec::with_capacity(material_pass_data.shaders.len());
-        let mut shader_modules = Vec::with_capacity(material_pass_data.shaders.len());
-
         let mut descriptor_set_layout_defs = Vec::default();
         let mut pass_slot_name_lookup: SlotNameLookup = Default::default();
         let mut vertex_inputs = None;
 
-        let mut rafx_shader_stages = Vec::with_capacity(material_pass_data.shaders.len());
+        let mut shader_modules = Vec::with_capacity(material_pass_data.shaders.len());
+        let mut entry_points = Vec::with_capacity(material_pass_data.shaders.len());
 
         // We iterate through the entry points we will hit for each stage. Each stage may define
         // slightly different reflection data/bindings in use.
@@ -299,11 +297,6 @@ impl MaterialPass {
                 stage,
                 material_pass_data.name
             );
-            let shader_module_meta = ShaderModuleMeta {
-                stage: stage.stage.into(),
-                entry_name: stage.entry_name.clone(),
-            };
-            shader_module_metas.push(shader_module_meta);
 
             let shader_asset = asset_manager
                 .loaded_assets()
@@ -322,10 +315,7 @@ impl MaterialPass {
                 error_message
             })?;
 
-            rafx_shader_stages.push(RafxShaderStageDef {
-                shader_module: shader_asset.shader_module.get_raw().shader_module.clone(),
-                reflection: reflection_data.rafx_api_reflection.clone(),
-            });
+            entry_points.push(reflection_data);
 
             // Check that the compiled shader supports the given stage
             if (reflection_data.rafx_api_reflection.shader_stage & stage.stage.into()).is_empty() {
@@ -489,7 +479,7 @@ impl MaterialPass {
 
         let shader = asset_manager
             .resources()
-            .get_or_create_shader(&rafx_shader_stages, &shader_modules)?;
+            .get_or_create_shader(&shader_modules, &entry_points)?;
 
         // Put all samplers into a hashmap so that we avoid collecting duplicates, and keep them
         // around to prevent the ResourceArcs from dropping out of scope and being destroyed

@@ -19,9 +19,7 @@ pub use resource_lookup::ResourceHash;
 pub use resource_lookup::ResourceLookupSet;
 pub use resource_lookup::SamplerResource;
 pub use resource_lookup::ShaderModuleHash;
-pub use resource_lookup::ShaderModuleMeta;
 pub use resource_lookup::ShaderModuleResource;
-pub use resource_lookup::ShaderModuleResourceDef;
 
 mod dyn_resources;
 pub use dyn_resources::DynResourceAllocatorSet;

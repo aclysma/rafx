@@ -14,7 +14,7 @@ use rafx_framework::{
     ComputePipelineResource, DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider,
     DescriptorSetAllocatorRef, DescriptorSetLayout, DescriptorSetLayoutResource,
     DescriptorSetWriteSet, DynResourceAllocatorSet, GraphicsPipelineCache, MaterialPassResource,
-    ResourceArc, ShaderModuleMeta, SlotNameLookup,
+    ResourceArc, SlotNameLookup,
 };
 
 use super::asset_lookup::LoadedAssetMetrics;
@@ -25,10 +25,7 @@ use distill::loader::handle::AssetHandle;
 use distill::loader::storage::AssetLoadOp;
 use distill::loader::Loader;
 use fnv::FnvHashMap;
-use rafx_api::{
-    RafxBuffer, RafxDeviceContext, RafxQueue, RafxResult, RafxShaderStageDef, RafxShaderStageFlags,
-    RafxTexture,
-};
+use rafx_api::{RafxBuffer, RafxDeviceContext, RafxQueue, RafxResult, RafxTexture};
 use rafx_framework::descriptor_sets::{
     DescriptorSetElementKey, DescriptorSetWriteElementBuffer, DescriptorSetWriteElementBufferData,
     DescriptorSetWriteElementImage,
@@ -605,8 +602,6 @@ impl AssetManager {
         &mut self,
         shader_module: &ShaderAssetData,
     ) -> RafxResult<ShaderAsset> {
-        let shader = Arc::new(shader_module.shader.clone());
-
         let mut reflection_data_lookup = FnvHashMap::default();
         if let Some(reflection_data) = &shader_module.reflection_data {
             for entry_point in reflection_data {
@@ -618,7 +613,11 @@ impl AssetManager {
             }
         }
 
-        let shader_module = self.resources().get_or_create_shader_module(&shader)?;
+        let shader_module = self.resources().get_or_create_shader_module(
+            &shader_module.shader_package,
+            Some(shader_module.shader_module_hash),
+        )?;
+
         Ok(ShaderAsset {
             shader_module,
             reflection_data: Arc::new(reflection_data_lookup),
@@ -657,33 +656,25 @@ impl AssetManager {
             .shader_modules
             .get_latest(compute_pipeline_asset_data.shader_module.load_handle())
             .unwrap();
-        let shader_module_meta = ShaderModuleMeta {
-            entry_name: compute_pipeline_asset_data.entry_name.clone(),
-            stage: RafxShaderStageFlags::COMPUTE,
-        };
 
         //
         // Find the reflection data in the shader module for the given entry point
         //
         let reflection_data = shader_module
             .reflection_data
-            .get(&shader_module_meta.entry_name);
+            .get(&compute_pipeline_asset_data.entry_name);
         let reflection_data = reflection_data.ok_or_else(|| {
             let error_message = format!(
                 "Load Compute Shader Failed - Pass refers to entry point named {}, but no matching reflection data was found",
-                shader_module_meta.entry_name
+                compute_pipeline_asset_data.entry_name
             );
             log::error!("{}", error_message);
             error_message
         })?;
 
-        let shader = self.resources().get_or_create_shader(
-            &[RafxShaderStageDef {
-                shader_module: shader_module.shader_module.get_raw().shader_module.clone(),
-                reflection: reflection_data.rafx_api_reflection.clone(),
-            }],
-            &[shader_module.shader_module.clone()],
-        )?;
+        let shader = self
+            .resources()
+            .get_or_create_shader(&[shader_module.shader_module.clone()], &[&reflection_data])?;
 
         let root_signature =
             self.resources()

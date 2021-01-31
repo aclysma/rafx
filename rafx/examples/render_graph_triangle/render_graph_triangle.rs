@@ -1,10 +1,7 @@
 use log::LevelFilter;
 
 use rafx::api::*;
-use rafx::framework::{
-    CookedShaderPackage, FixedFunctionState, ReflectedShader, ShaderModuleResourceDef,
-    VertexDataLayout,
-};
+use rafx::framework::{CookedShaderPackage, FixedFunctionState, ReflectedShader, VertexDataLayout};
 use rafx::graph::{
     RenderGraphBuilder, RenderGraphExecutor, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphNodeCallbacks, RenderGraphQueue,
@@ -109,53 +106,34 @@ fn run() -> RafxResult<()> {
         let cooked_shaders_base_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("examples/render_graph_triangle/cooked_shaders");
 
+        // Create the vertex shader module and find the entry point
         let cooked_vertex_shader_stage =
             load_cooked_shader_stage(&cooked_shaders_base_path, "shader.vert.cookedshaderpackage")?;
-        let vertex_shader_reflection = cooked_vertex_shader_stage
-            .find_entry_point("main")
-            .unwrap()
-            .clone();
-        let vertex_shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
-            shader_module_hash: cooked_vertex_shader_stage.hash,
-            shader_package: cooked_vertex_shader_stage.shader_package,
-        });
         let vertex_shader_module = resource_context
             .resources()
-            .get_or_create_shader_module(&vertex_shader_module_resource_def)?;
-
-        let cooked_fragment_shader_stage =
-            load_cooked_shader_stage(&cooked_shaders_base_path, "shader.frag.cookedshaderpackage")?;
-        let fragment_shader_reflection = cooked_fragment_shader_stage
+            .get_or_create_shader_module_from_cooked_package(&cooked_vertex_shader_stage)?;
+        let vertex_entry_point = cooked_vertex_shader_stage
             .find_entry_point("main")
             .unwrap()
             .clone();
-        let fragment_shader_module_resource_def = Arc::new(ShaderModuleResourceDef {
-            shader_module_hash: cooked_fragment_shader_stage.hash,
-            shader_package: cooked_fragment_shader_stage.shader_package,
-        });
+
+        // Create the fragment shader module and find the entry point
+        let cooked_fragment_shader_stage =
+            load_cooked_shader_stage(&cooked_shaders_base_path, "shader.frag.cookedshaderpackage")?;
         let fragment_shader_module = resource_context
             .resources()
-            .get_or_create_shader_module(&fragment_shader_module_resource_def)?;
-
-        //
-        // Create the stage defs
-        //
-        let vertex_shader_stage_def = RafxShaderStageDef {
-            shader_module: vertex_shader_module.get_raw().shader_module.clone(),
-            reflection: vertex_shader_reflection.rafx_api_reflection.clone(),
-        };
-
-        let fragment_shader_stage_def = RafxShaderStageDef {
-            shader_module: fragment_shader_module.get_raw().shader_module.clone(),
-            reflection: fragment_shader_reflection.rafx_api_reflection.clone(),
-        };
+            .get_or_create_shader_module_from_cooked_package(&cooked_fragment_shader_stage)?;
+        let fragment_entry_point = cooked_fragment_shader_stage
+            .find_entry_point("main")
+            .unwrap()
+            .clone();
 
         //
         // Combine the shader stages into a single shader
         //
         let shader = resource_context.resources().get_or_create_shader(
-            &[vertex_shader_stage_def, fragment_shader_stage_def],
             &[vertex_shader_module, fragment_shader_module],
+            &[&vertex_entry_point, &fragment_entry_point],
         )?;
 
         //
@@ -174,7 +152,7 @@ fn run() -> RafxResult<()> {
         // rafx shader processor.
         //
         let shader_reflection =
-            ReflectedShader::new(&[&vertex_shader_reflection, &fragment_shader_reflection])?;
+            ReflectedShader::new(&[&vertex_entry_point, &fragment_entry_point])?;
 
         let descriptor_set_layout = resource_context
             .resources()

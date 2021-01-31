@@ -6,10 +6,10 @@ use ash::extensions::ext::DebugReport;
 pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
-const ERRORS_TO_IGNORE: [&'static str; 2] = [
+const ERRORS_TO_IGNORE: [&'static str; 0] = [
     // Temporary - I suspect locally built validation on M1 mac has a bug
-    "VUID-VkWriteDescriptorSet-descriptorType-00332",
-    "VUID-VkWriteDescriptorSet-descriptorType-00333",
+    //"VUID-VkWriteDescriptorSet-descriptorType-00332",
+    //"VUID-VkWriteDescriptorSet-descriptorType-00333",
     // windows/5700xt can return 0 max surface size when window is resized to (0, 0). Spec
     // states swapchain size must be > 0
     //"VUID-VkSwapchainCreateInfoKHR-imageExtent-01274",
