@@ -7,6 +7,19 @@ vulkan SPV, and a custom "package" format that can be used to create a shader at
 
 ![Diagram showing input and outputs of the shader processor](../shader-processor.png)
 
+## Installation
+
+The easiest way to get the tool is to use cargo install.
+
+```
+cargo install rafx-shader-processor --version x.y.z
+```
+
+**Be sure to install the same version as you include in your project.** Don't forget to update it if you update your
+project's dependencies!
+
+You can also [build from source](../../rafx-shader-processor) if you are modifying rafx or working from latest.
+
 ## Usage
 
 ```

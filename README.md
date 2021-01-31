@@ -89,6 +89,8 @@ This tool parses GLSL and produces matching rust code. This makes working with d
  * The demo includes a `shaders` crate to compile the generated rust code. It's located at [/demo/shaders](demo/shaders).
    Just the rust code is auto-generated, not the Cargo.toml.
  * The easiest way to "refresh shaders" in the demo is to hit compile.bat or compile.sh in that folder
+ * You can `cargo install rafx-shader-processor`. Be sure to install the same version as you include in your project.
+   Also, don't forget to update it if you update your project's dependencies!
 
 ![Diagram illustrating that shaders are processed into .metal, .spirv, etc.](docs/shader-processor.png)
 
@@ -106,6 +108,8 @@ The shader package can be loaded as an asset and contains everything needed to l
 This tool currently is only useful for packing assets.
  * Pack files like this: `run --package cli -- --pack out.pack`
  * Run the demo like this: `run --package demo -- --packfile out.pack`
+ * You'll likely want to create a binary from your own main.rs for this tool. That way you can add your own resource
+   types.
 
 ## Features
 
