@@ -28,7 +28,7 @@ use rafx::assets::{
 use rafx::nodes::RenderRegistry;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
-pub fn atelier_init_daemon(
+pub fn init_distill_daemon(
     resources: &mut Resources,
     connect_string: String,
 ) {
@@ -38,7 +38,7 @@ pub fn atelier_init_daemon(
     resources.insert(AssetResource::new(loader, resolver));
 }
 
-pub fn atelier_init_packfile(
+pub fn init_distill_packfile(
     resources: &mut Resources,
     pack_file: &std::path::Path,
 ) {

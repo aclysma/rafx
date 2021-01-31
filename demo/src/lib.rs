@@ -121,7 +121,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         log::info!("Reading from packfile {:?}", packfile);
 
         // Initialize the packfile loader with the packfile path
-        init::atelier_init_packfile(&mut resources, &packfile);
+        init::init_distill_packfile(&mut resources, &packfile);
     } else {
         if !args.external_daemon {
             log::info!("Hosting local daemon at {:?}", args.daemon_args.address);
@@ -137,7 +137,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         }
 
         // Connect to the daemon we just launched
-        init::atelier_init_daemon(&mut resources, args.daemon_args.address.to_string());
+        init::init_distill_daemon(&mut resources, args.daemon_args.address.to_string());
     }
 
     let sdl2_systems = init::sdl2_init();

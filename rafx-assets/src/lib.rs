@@ -1,4 +1,4 @@
-//! Provides integration with the [`distill`](https://github.com/amethyst/atelier-assets) asset
+//! Provides integration with the [`distill`](https://github.com/amethyst/distill) asset
 //! pipeline
 
 pub mod assets;

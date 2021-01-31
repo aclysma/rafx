@@ -62,7 +62,7 @@ features like automatically binding [immutable samplers](shaders/shader_annotati
 Rafx includes full integration with the `distill` asset pipeline. It supports many advanced features such as streaming
 assets to remote devices and hot reloading of data.
 
-See [`Distill`](https://github.com/amethyst/atelier-assets/tree/master) for more info.
+See [`Distill`](https://github.com/amethyst/distill) for more info.
 
 ## rafx-shader-processor
 

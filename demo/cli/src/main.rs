@@ -1,6 +1,6 @@
-use atelier_cli::Command;
 use demo::daemon;
 use demo::daemon::AssetDaemonArgs;
+use distill_cli::Command;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -68,8 +68,8 @@ async fn async_main(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     match args.cmd {
         CliCommandArgs::HostDaemon => unreachable!(),
         CliCommandArgs::Pack { path } => {
-            let context = atelier_cli::create_context().await?;
-            let cmd_pack = atelier_cli::CmdPack;
+            let context = distill_cli::create_context().await?;
+            let cmd_pack = distill_cli::CmdPack;
             cmd_pack
                 .run(&context, vec![&path.to_string_lossy()])
                 .await?;

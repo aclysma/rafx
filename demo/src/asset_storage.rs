@@ -135,7 +135,7 @@ impl AssetStorageSet {
     }
 }
 
-// Implement atelier's AssetStorage - an untyped trait that finds the asset_type's storage and
+// Implement distill's AssetStorage - an untyped trait that finds the asset_type's storage and
 // forwards the call
 impl AssetStorage for AssetStorageSet {
     fn update_asset(
@@ -202,7 +202,7 @@ impl AssetStorage for AssetStorageSet {
     }
 }
 
-// Implement atelier's TypedAssetStorage - a typed trait that finds the asset_type's storage and
+// Implement distill's TypedAssetStorage - a typed trait that finds the asset_type's storage and
 // forwards the call
 impl<A: TypeUuid + 'static + Send> TypedAssetStorage<A> for AssetStorageSet {
     fn get<T: AssetHandle>(

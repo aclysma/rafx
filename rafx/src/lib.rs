@@ -5,7 +5,7 @@
 //! **Please see [additional documentation here](https://github.com/aclysma/rafx/blob/master/docs/index.md)**
 //!
 //! Rafx is a multi-backend renderer that prioritizes performance, flexibility, and productivity. It
-//! optionally integrates with the [`distill`](https://github.com/amethyst/atelier-assets) asset
+//! optionally integrates with the [`distill`](https://github.com/amethyst/distill) asset
 //! pipeline to provide workflows and tools suitable for real-world projects with multidisciplinary
 //! teams.
 //!
@@ -14,7 +14,7 @@
 //!  * [`rafx_framework`]: Mid-level framework that eases resource management, lifetime handling, and
 //!     draw call dispatching
 //!  * [`rafx_assets`]: Asset layer that integrates with the
-//!     [`distill`](https://github.com/amethyst/atelier-assets) asset pipeline
+//!     [`distill`](https://github.com/amethyst/distill) asset pipeline
 //!      * NOTE: The published version in crates.io does not include rafx-assets as `distill` is not
 //!        published yet
 //!

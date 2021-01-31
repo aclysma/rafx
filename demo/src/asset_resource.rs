@@ -7,7 +7,6 @@ use type_uuid::TypeUuid;
 
 use crossbeam_channel::{Receiver, Sender};
 use distill::core::AssetUuid;
-use distill::loader as atelier_loader;
 use distill::loader::handle::AssetHandle;
 use distill::loader::handle::Handle;
 use distill::loader::storage::IndirectIdentifier;
@@ -30,7 +29,7 @@ impl AssetResource {
         loader: Loader,
         resolver: Box<dyn IndirectionResolver + Send + Sync + 'static>,
     ) -> Self {
-        let (tx, rx) = atelier_loader::crossbeam_channel::unbounded();
+        let (tx, rx) = distill::loader::crossbeam_channel::unbounded();
         let storage = AssetStorageSet::new(tx.clone(), loader.indirection_table());
 
         AssetResource {
@@ -70,14 +69,14 @@ impl AssetResource {
 
     /// Call this frequently to update the asset loading system.
     pub fn update(&mut self) {
-        atelier_loader::handle::process_ref_ops(&self.loader, &self.rx);
+        distill::loader::handle::process_ref_ops(&self.loader, &self.rx);
         self.loader
             .process(&self.storage, &*self.resolver)
             .expect("failed to process loader");
     }
 
     //
-    // These functions map to atelier-assets APIs
+    // These functions map to distill APIs
     //
     pub fn load_asset<T>(
         &self,

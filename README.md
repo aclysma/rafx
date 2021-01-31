@@ -1,14 +1,13 @@
 # Rafx
 
 Rafx is a multi-backend renderer that prioritizes performance, flexibility, and productivity. It optionally integrates 
-with the [`distill`](https://github.com/amethyst/atelier-assets) asset pipeline to provide workflows and tools suitable
+with the [`distill`](https://github.com/amethyst/distill) asset pipeline to provide workflows and tools suitable
 for real-world projects with multidisciplinary teams.
 
 This crate contains several layers:
  * `rafx-api`: Low-level graphics API abstraction 
  * `rafx-framework`: Mid-level framework that eases resource management, lifetime handling, and draw call dispatching
- * `rafx-assets`: Asset layer that integrates with [`distill`](https://github.com/amethyst/atelier-assets)
-     * NOTE: The published version in crates.io does not include rafx-assets as `distill` is not published yet
+ * `rafx-assets`: Asset layer that integrates with [`distill`](https://github.com/amethyst/distill)
    
 Rafx also provides tools for building shaders and packing assets.
 
