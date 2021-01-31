@@ -97,3 +97,8 @@ required-features = []
 name = "render_graph_triangle"
 path = "examples/render_graph_triangle/render_graph_triangle.rs"
 required-features = ["framework"]
+
+[[example]]
+name = "asset_triangle"
+path = "examples/asset_triangle/asset_triangle.rs"
+required-features = ["assets"]

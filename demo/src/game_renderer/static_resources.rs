@@ -1,7 +1,7 @@
-use crate::asset_resource::AssetResource;
 use distill::loader::handle::Handle;
 use distill::loader::storage::LoadStatus;
 use rafx::api::RafxResult;
+use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::MaterialAsset;
 use rafx::assets::{AssetManager, ComputePipelineAsset};
 

@@ -29,6 +29,8 @@ pub use rafx_api as api;
 
 #[cfg(feature = "assets")]
 pub use rafx_assets as assets;
+#[cfg(feature = "assets")]
+pub use rafx_assets::distill;
 
 #[cfg(feature = "rafx-nodes")]
 pub use rafx_nodes as nodes;

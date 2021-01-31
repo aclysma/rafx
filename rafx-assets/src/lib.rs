@@ -4,6 +4,8 @@
 pub mod assets;
 pub use assets::*;
 
+pub mod distill_impl;
+
 pub mod buffer_upload;
 pub mod image_upload;
 

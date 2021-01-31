@@ -1,4 +1,3 @@
-use crate::asset_resource::AssetResource;
 use crate::features::debug3d::create_debug3d_extract_job;
 use crate::features::mesh::{
     create_mesh_extract_job, LightId, MeshRenderNodeSet, ShadowMapData, ShadowMapRenderView,
@@ -10,6 +9,7 @@ use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use crate::render_contexts::RenderJobExtractContext;
 use crate::time::TimeState;
 use legion::*;
+use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{image_upload, DecodedImage, DecodedImageColorSpace};
 use rafx::assets::{AssetManager, DecodedImageMips};
 use rafx::framework::{DynResourceAllocatorSet, RenderResources};

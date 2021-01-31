@@ -1,8 +1,8 @@
-use crate::asset_resource::AssetResource;
 use crate::components::{PositionComponent, SpriteComponent};
 use crate::features::sprite::{SpriteRenderNode, SpriteRenderNodeSet};
 use glam::f32::Vec3;
 use legion::{Resources, World};
+use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 

@@ -4,16 +4,16 @@ use distill::loader::{
     storage::{AssetLoadOp, AssetStorage, IndirectionTable, LoaderInfoProvider},
     AssetTypeId, LoadHandle,
 };
-use mopa::{mopafy, Any};
 use std::{collections::HashMap, error::Error, sync::Mutex};
 
 use crossbeam_channel::Receiver;
 use distill::core::{type_uuid::TypeUuid, AssetUuid};
 use distill::loader::handle::SerdeContext;
+use downcast_rs::Downcast;
 use std::marker::PhantomData;
 
 // Used to dynamic dispatch into a storage, supports checked downcasting
-pub trait DynAssetStorage: Any + Send {
+pub trait DynAssetStorage: Downcast + Send {
     fn update_asset(
         &mut self,
         loader_info: &dyn LoaderInfoProvider,
@@ -36,7 +36,7 @@ pub trait DynAssetStorage: Any + Send {
     fn type_name(&self) -> &'static str;
 }
 
-mopafy!(DynAssetStorage);
+downcast_rs::impl_downcast!(DynAssetStorage);
 
 pub struct AssetStorageSetInner {
     storage: HashMap<AssetTypeId, Box<dyn DynAssetStorage>>,

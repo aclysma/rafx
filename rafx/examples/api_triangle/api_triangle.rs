@@ -26,8 +26,10 @@ fn run() -> RafxResult<()> {
     //
     let mut api = RafxApi::new(&sdl2_systems.window, &Default::default())?;
 
-    // Wrap all of this so that it gets dropped
+    // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
+    // clean shutdown.
     {
+        // A cloneable device handle, these are lightweight and can be passed across threads
         let device_context = api.device_context();
 
         //
@@ -382,7 +384,7 @@ fn run() -> RafxResult<()> {
             presentable_frame.present(&graphics_queue, &[&cmd_buffer])?;
         }
 
-        // Wait until all the submitted work gets flushed before continuing
+        // Wait for all GPU work to complete before destroying resources it is using
         graphics_queue.wait_for_queue_idle()?;
     }
 

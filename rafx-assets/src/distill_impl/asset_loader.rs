@@ -1,12 +1,12 @@
-use crate::asset_storage::{DynAssetLoader, UpdateAssetResult};
+use super::asset_storage::{DynAssetLoader, UpdateAssetResult};
+use crate::GenericLoader;
+use crate::ResourceLoader;
 use crossbeam_channel::Sender;
 use distill::loader::handle::RefOp;
 use distill::loader::handle::SerdeContext;
 use distill::loader::storage::AssetLoadOp;
 use distill::loader::storage::LoaderInfoProvider;
 use distill::loader::LoadHandle;
-use rafx::assets::GenericLoader;
-use rafx::assets::ResourceLoader;
 use std::error::Error;
 use type_uuid::TypeUuid;
 

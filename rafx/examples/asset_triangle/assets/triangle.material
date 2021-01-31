@@ -1,0 +1,21 @@
+(
+    passes: [
+        (
+            name: Some("triangle"),
+            phase: Some("Opaque"),
+            pipeline: (),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "shader.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "shader.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)

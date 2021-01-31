@@ -1,25 +1,23 @@
 // There's a decent amount of code that's just for example and isn't called
 #![allow(dead_code)]
 
-use crate::imgui_support::Sdl2ImguiManager;
 use legion::*;
-use rafx::api::RafxResult;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseState;
+use structopt::StructOpt;
 
-use crate::asset_resource::AssetResource;
+use rafx::api::RafxResult;
+use rafx::assets::AssetManager;
+
 use crate::daemon::AssetDaemonArgs;
 use crate::game_asset_manager::GameAssetManager;
 use crate::game_renderer::GameRenderer;
+use crate::imgui_support::Sdl2ImguiManager;
 use crate::scenes::SceneManager;
 use crate::time::TimeState;
-use rafx::assets::AssetManager;
-use structopt::StructOpt;
+use rafx::assets::distill_impl::AssetResource;
 
-mod asset_loader;
-mod asset_resource;
-mod asset_storage;
 mod assets;
 mod components;
 pub mod daemon;

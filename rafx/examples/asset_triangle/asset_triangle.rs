@@ -1,12 +1,17 @@
 use log::LevelFilter;
 
 use rafx::api::*;
-use rafx::framework::{CookedShaderPackage, FixedFunctionState, ReflectedShader, VertexDataLayout};
+use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::MaterialAsset;
+use rafx::distill::loader::{storage::DefaultIndirectionResolver, Loader, RpcIO};
+use rafx::framework::VertexDataLayout;
 use rafx::graph::{
     RenderGraphBuilder, RenderGraphExecutor, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphNodeCallbacks, RenderGraphQueue,
     SwapchainSurfaceInfo,
 };
+use rafx::nodes::RenderPhase;
+use rafx::nodes::RenderPhaseIndex;
 use rafx::nodes::SubmitNode;
 use std::sync::Arc;
 
@@ -29,6 +34,25 @@ struct PositionColorVertex {
 }
 
 fn run() -> RafxResult<()> {
+    //
+    // For this example, we'll run the `distill` daemon in-process. This is the most convenient
+    // method during development. (You could also build a packfile ahead of time and run from that)
+    //
+    let db_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("examples/asset_triangle/.assets_db");
+    let asset_dir =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/asset_triangle/assets");
+    let connect_string = "127.0.0.1:9999";
+
+    // Daemon will runs in a background thread for the life of the process
+    std::thread::spawn(move || {
+        rafx::assets::distill_impl::default_daemon()
+            .with_db_path(db_dir)
+            .with_address(connect_string.parse().unwrap())
+            .with_asset_dirs(vec![asset_dir])
+            .run();
+    });
+
     //
     // Init SDL2 (winit and anything that uses raw-window-handle works too!)
     //
@@ -73,7 +97,10 @@ fn run() -> RafxResult<()> {
         // differently. Most recommendations I've seen are to just use one graphics queue. (The
         // rendering hardware is shared among them)
         //
+        // Also create a transfer queue, it's used by the asset manager for async GPU upload
+        //
         let graphics_queue = device_context.create_queue(RafxQueueType::Graphics)?;
+        let transfer_queue = device_context.create_queue(RafxQueueType::Transfer)?;
 
         //
         // Create a ResourceContext. The render registry is more useful when there's a variety of
@@ -85,106 +112,58 @@ fn run() -> RafxResult<()> {
             .register_render_phase::<OpaqueRenderPhase>("Opaque")
             .build();
 
-        let mut resource_manager =
-            rafx::framework::ResourceManager::new(&device_context, &render_registry);
-
-        let resource_context = resource_manager.resource_context();
-
         //
-        // Load a cooked shader. Handling shaders for multiple API can get messy because they don't
-        // accept the same shader language, and there are differences in the shader language that
-        // are not trivial to duplicate in all languages. Rafx handles this by using spirv_cross to
-        // cross-compile the shader from one language to other languages (currently just GLSL is
-        // accepted, but spirv_cross supports HLSL as well and support for this could likely be
-        // added without much difficulty)
+        // Set up the client that connects to the distill daemon. The AssetResource is a utility
+        // struct that encapsulates most of the distill-related parts of the asset pipeline
+        // system and is something you can insert into an ECS.
         //
-        // In addition to porting shaders to other languages, the tool accepts shaders with custom
-        // rafx annotation which enables some convenient features. It also supports generating rust
-        // code (a sort of shader-bindgen).
-        //
-        // (Since the shader in this example is simple we'll just show reflection data and not worry
-        // about generating corresponding rust code)
-        //
-        let cooked_shaders_base_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/render_graph_triangle/cooked_shaders");
-
-        // Create the vertex shader module and find the entry point
-        let cooked_vertex_shader_stage =
-            load_cooked_shader_stage(&cooked_shaders_base_path, "shader.vert.cookedshaderpackage")?;
-        let vertex_shader_module = resource_context
-            .resources()
-            .get_or_create_shader_module_from_cooked_package(&cooked_vertex_shader_stage)?;
-        let vertex_entry_point = cooked_vertex_shader_stage
-            .find_entry_point("main")
-            .unwrap()
-            .clone();
-
-        // Create the fragment shader module and find the entry point
-        let cooked_fragment_shader_stage =
-            load_cooked_shader_stage(&cooked_shaders_base_path, "shader.frag.cookedshaderpackage")?;
-        let fragment_shader_module = resource_context
-            .resources()
-            .get_or_create_shader_module_from_cooked_package(&cooked_fragment_shader_stage)?;
-        let fragment_entry_point = cooked_fragment_shader_stage
-            .find_entry_point("main")
-            .unwrap()
-            .clone();
+        let mut asset_resource = {
+            let rpc_loader = RpcIO::new(connect_string.to_string()).unwrap();
+            let loader = Loader::new(Box::new(rpc_loader));
+            let resolver = Box::new(DefaultIndirectionResolver);
+            AssetResource::new(loader, resolver)
+        };
 
         //
-        // Combine the shader stages into a single shader
+        // Create the asset manager which encapsulates most of the rafx-related parts of the asset
+        // pipeline. It creates a ResourceManager internally.
         //
-        let shader = resource_context.resources().get_or_create_shader(
-            &[vertex_shader_module, fragment_shader_module],
-            &[&vertex_entry_point, &fragment_entry_point],
-        )?;
+        let mut asset_manager = rafx::assets::AssetManager::new(
+            &device_context,
+            &render_registry,
+            asset_resource.loader(),
+            rafx::assets::UploadQueueConfig {
+                max_concurrent_uploads: 4,
+                max_new_uploads_in_single_frame: 4,
+                max_bytes_per_upload: 32 * 1024 * 1024,
+            },
+            &graphics_queue,
+            &transfer_queue,
+        );
+
+        // The asset resource by default is not set up to handle any asset types. You can use
+        // `add_default_asset_storage` to populate it with all the loaders implemented in rafx.
+        // Then use `add_storage_with_loader` to set up any additional types you have.
+        asset_resource.add_default_asset_storage(&asset_manager);
+
+        // Grab a resource context for use later
+        let resource_context = asset_manager.resource_manager().resource_context();
 
         //
-        // Create the root signature object - it represents the pipeline layout and can be shared
-        // among shaders. But one per shader is fine.
+        // Load the triangle material. Materials can contain multiple passes (but this one only has
+        // one.) A material pass specifies shaders and fixed function state. Generally a material
+        // is 1:1 with a GPU pipeline object with the material specifying *most* of the necessary
+        // parameters to create the pipeline. (Some things like the size of the window are not
+        // known until runtime.)
         //
-        let root_signature = resource_context.resources().get_or_create_root_signature(
-            &[shader.clone()],
-            &[],
-            &[],
-        )?;
-
+        // When a material asset is loaded, rafx automatically creates shader modules, shaders,
+        // descriptor set layouts, root signatures, and the material passes in it for you. They are
+        // registered in the resource manager. We can use the handle to get the MaterialAsset which
+        // has a reference to those resources. The resources will remain loaded until the handle
+        // is dropped and there are no more references to those resources.
         //
-        // Rafx resources provides a high-level wrapper around a descriptor set layout that adds
-        // additional functionality. It is configured via extra reflection data exported by the
-        // rafx shader processor. We need to combine the reflection data
-        //
-        let shader_reflection =
-            ReflectedShader::new(&[&vertex_entry_point, &fragment_entry_point])?;
-
-        let descriptor_set_layout = resource_context
-            .resources()
-            .get_or_create_descriptor_set_layout(
-                &root_signature,
-                0,
-                &shader_reflection.descriptor_set_layout_defs[0],
-            )?;
-
-        //
-        // Now set up the fixed function and vertex input state. LOTS of things can be configured
-        // here, but aside from the vertex layout most of it can be left as default.
-        //
-        let fixed_function_state = Arc::new(FixedFunctionState {
-            rasterizer_state: Default::default(),
-            depth_state: Default::default(),
-            blend_state: Default::default(),
-        });
-
-        //
-        // Create the material pass. A material pass encapsulates everything necessary to create a
-        // graphics pipeline to render a single pass for a material
-        //
-        let material_pass = resource_context.resources().get_or_create_material_pass(
-            shader,
-            root_signature.clone(),
-            vec![descriptor_set_layout],
-            fixed_function_state,
-            shader_reflection.vertex_inputs.unwrap(),
-        )?;
+        let triangle_material_handle =
+            asset_resource.load_asset_path::<MaterialAsset, _>("triangle.material");
 
         //
         // The vertex format does not need to be specified up-front to create the material pass.
@@ -219,6 +198,9 @@ fn run() -> RafxResult<()> {
                 break 'running;
             }
 
+            asset_resource.update();
+            asset_manager.update_asset_loaders()?;
+
             let current_time = std::time::Instant::now();
             let seconds = (current_time - start_time).as_secs_f32();
 
@@ -234,7 +216,10 @@ fn run() -> RafxResult<()> {
             // use to be dropped. It needs to go after the acquire image, because the acquire image
             // waits on the *gpu* to finish the frame.
             //
-            resource_manager.on_frame_complete()?;
+            asset_manager.on_frame_complete()?;
+
+            // Try to do this as late as possible, but before rendering anything
+            asset_manager.on_begin_frame()?;
 
             //
             // Register the swapchain image as a resource - this allows us to treat it like any
@@ -275,112 +260,117 @@ fn run() -> RafxResult<()> {
             // capture them in this closure. We could alternatively create an arbitrary struct and
             // pass it in as a "user context".
             //
-            let captured_vertex_layout = vertex_layout.clone();
-            let captured_material_pass = material_pass.clone();
-            graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
-                let vertex_layout = &captured_vertex_layout;
-                let material_pass = &captured_material_pass;
+            // Only run it if the triangle material is loaded.
+            //
+            if let Some(triangle_material) =
+                asset_manager.get_material_pass_by_index(&triangle_material_handle, 0)
+            {
+                let captured_vertex_layout = vertex_layout.clone();
+                graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
+                    let vertex_layout = &captured_vertex_layout;
+                    let material_pass = &triangle_material;
 
-                //
-                // Some data we will draw
-                //
-                #[rustfmt::skip]
-                let vertex_data = [
-                    PositionColorVertex { position: [0.0, 0.5], color: [1.0, 0.0, 0.0] },
-                    PositionColorVertex { position: [-0.5 + (seconds.cos() / 2. + 0.5), -0.5], color: [0.0, 1.0, 0.0] },
-                    PositionColorVertex { position: [0.5 - (seconds.cos() / 2. + 0.5), -0.5], color: [0.0, 0.0, 1.0] },
-                ];
+                    //
+                    // Some data we will draw
+                    //
+                    #[rustfmt::skip]
+                        let vertex_data = [
+                        PositionColorVertex { position: [0.0, 0.5], color: [1.0, 0.0, 0.0] },
+                        PositionColorVertex { position: [-0.5 + (seconds.cos() / 2. + 0.5), -0.5], color: [0.0, 1.0, 0.0] },
+                        PositionColorVertex { position: [0.5 - (seconds.cos() / 2. + 0.5), -0.5], color: [0.0, 0.0, 1.0] },
+                    ];
 
-                assert_eq!(20, std::mem::size_of::<PositionColorVertex>());
+                    assert_eq!(20, std::mem::size_of::<PositionColorVertex>());
 
-                let color = (seconds.cos() + 1.0) / 2.0;
-                let uniform_data = [color, 0.0, 1.0 - color, 1.0];
+                    let color = (seconds.cos() + 1.0) / 2.0;
+                    let uniform_data = [color, 0.0, 1.0 - color, 1.0];
 
-                //
-                // Here we create a vertex buffer. Since we only use it once we won't bother putting
-                // it into dedicated GPU memory.
-                //
-                // The vertex_buffer is ref-counted and can be kept around as long as you like. The
-                // resource manager will ensure it stays allocated until enough frames are presented
-                // that it's safe to delete.
-                //
-                // The resource allocators should be used and dropped, not kept around. They are
-                // pooled/re-used.
-                //
-                let resource_allocator = args.graph_context.resource_context().create_dyn_resource_allocator_set();
-                let vertex_buffer = args.graph_context.device_context().create_buffer(
-                    &RafxBufferDef::for_staging_vertex_buffer_data(&vertex_data)
-                )?;
+                    //
+                    // Here we create a vertex buffer. Since we only use it once we won't bother putting
+                    // it into dedicated GPU memory.
+                    //
+                    // The vertex_buffer is ref-counted and can be kept around as long as you like. The
+                    // resource manager will ensure it stays allocated until enough frames are presented
+                    // that it's safe to delete.
+                    //
+                    // The resource allocators should be used and dropped, not kept around. They are
+                    // pooled/re-used.
+                    //
+                    let resource_allocator = args.graph_context.resource_context().create_dyn_resource_allocator_set();
+                    let vertex_buffer = args.graph_context.device_context().create_buffer(
+                        &RafxBufferDef::for_staging_vertex_buffer_data(&vertex_data)
+                    )?;
 
-                vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
+                    vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
 
-                let vertex_buffer = resource_allocator.insert_buffer(vertex_buffer);
+                    let vertex_buffer = resource_allocator.insert_buffer(vertex_buffer);
 
-                //
-                // Create a descriptor set. USUALLY - you can use the autogenerated code from the shader pipeline
-                // in higher level rafx crates to make this more straightforward - this is shown in the demo.
-                // Also, flush_changes is automatically called when dropped, we only have to call it
-                // here because we immediately use the descriptor set.
-                //
-                // Once the descriptor set is created, it's ref-counted and you can keep it around
-                // as long as you like. The resource manager will ensure it stays allocated
-                // until enough frames are presented that it's safe to delete.
-                //
-                // The allocator should be used and dropped, not kept around. It is pooled/re-used.
-                // flush_changes is automatically called on drop.
-                //
-                let descriptor_set_layout = material_pass
-                    .get_raw()
-                    .descriptor_set_layouts[0]
-                    .clone();
+                    //
+                    // Create a descriptor set. USUALLY - you can use the autogenerated code from the shader pipeline
+                    // in higher level rafx crates to make this more straightforward - this is shown in the demo.
+                    // Also, flush_changes is automatically called when dropped, we only have to call it
+                    // here because we immediately use the descriptor set.
+                    //
+                    // Once the descriptor set is created, it's ref-counted and you can keep it around
+                    // as long as you like. The resource manager will ensure it stays allocated
+                    // until enough frames are presented that it's safe to delete.
+                    //
+                    // The allocator should be used and dropped, not kept around. It is pooled/re-used.
+                    // flush_changes is automatically called on drop.
+                    //
+                    let descriptor_set_layout = material_pass
+                        .get_raw()
+                        .descriptor_set_layouts[0]
+                        .clone();
 
-                let mut descriptor_set_allocator = args.graph_context.resource_context().create_descriptor_set_allocator();
-                let mut dyn_descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&descriptor_set_layout)?;
-                dyn_descriptor_set.set_buffer_data(0, &uniform_data);
-                dyn_descriptor_set.flush(&mut descriptor_set_allocator)?;
-                descriptor_set_allocator.flush_changes()?;
+                    let mut descriptor_set_allocator = args.graph_context.resource_context().create_descriptor_set_allocator();
+                    let mut dyn_descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(&descriptor_set_layout)?;
+                    dyn_descriptor_set.set_buffer_data(0, &uniform_data);
+                    dyn_descriptor_set.flush(&mut descriptor_set_allocator)?;
+                    descriptor_set_allocator.flush_changes()?;
 
-                // At this point if we don't intend to change the descriptor, we can grab the
-                // descriptor set inside and use it as a ref-counted resource.
-                let descriptor_set = dyn_descriptor_set.descriptor_set();
+                    // At this point if we don't intend to change the descriptor, we can grab the
+                    // descriptor set inside and use it as a ref-counted resource.
+                    let descriptor_set = dyn_descriptor_set.descriptor_set();
 
-                //
-                // Fetch the pipeline. If we have a pipeline for this material that's compatible with
-                // the render target and vertex layout, we'll use it. Otherwise, we create it.
-                //
-                // The render phase is not really utilized to the full extent in this demo, but it
-                // would normally help pair materials with render targets, ensuring newly loaded
-                // materials can create pipelines ahead-of-time, off the render codepath.
-                //
-                let pipeline = args
-                    .graph_context
-                    .resource_context()
-                    .graphics_pipeline_cache()
-                    .get_or_create_graphics_pipeline(
-                    OpaqueRenderPhase::render_phase_index(),
-                    &material_pass,
-                    &args.render_target_meta,
-                    &vertex_layout
-                )?;
+                    //
+                    // Fetch the pipeline. If we have a pipeline for this material that's compatible with
+                    // the render target and vertex layout, we'll use it. Otherwise, we create it.
+                    //
+                    // The render phase is not really utilized to the full extent in this demo, but it
+                    // would normally help pair materials with render targets, ensuring newly loaded
+                    // materials can create pipelines ahead-of-time, off the render codepath.
+                    //
+                    let pipeline = args
+                        .graph_context
+                        .resource_context()
+                        .graphics_pipeline_cache()
+                        .get_or_create_graphics_pipeline(
+                            OpaqueRenderPhase::render_phase_index(),
+                            &material_pass,
+                            &args.render_target_meta,
+                            &vertex_layout
+                        )?;
 
-                //
-                // We have everything needed to draw now, write instruction to the command buffer
-                //
-                let cmd_buffer = args.command_buffer;
-                cmd_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
-                cmd_buffer.cmd_bind_vertex_buffers(
-                    0,
-                    &[RafxVertexBufferBinding {
-                        buffer: &vertex_buffer.get_raw().buffer,
-                        offset: 0,
-                    }],
-                )?;
+                    //
+                    // We have everything needed to draw now, write instruction to the command buffer
+                    //
+                    let cmd_buffer = args.command_buffer;
+                    cmd_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
+                    cmd_buffer.cmd_bind_vertex_buffers(
+                        0,
+                        &[RafxVertexBufferBinding {
+                            buffer: &vertex_buffer.get_raw().buffer,
+                            offset: 0,
+                        }],
+                    )?;
 
-                descriptor_set.bind(&cmd_buffer)?;
-                cmd_buffer.cmd_draw(3, 0)?;
+                    descriptor_set.bind(&cmd_buffer)?;
+                    cmd_buffer.cmd_draw(3, 0)?;
 
-                Ok(())
-            });
+                    Ok(())
+                });
+            }
 
             //
             // Flag the color attachment as needing to output to the swapchain image. This is not a
@@ -439,6 +429,11 @@ fn run() -> RafxResult<()> {
 
         // Wait for all GPU work to complete before destroying resources it is using
         graphics_queue.wait_for_queue_idle()?;
+        transfer_queue.wait_for_queue_idle()?;
+
+        // Drop resources before the asset manager. This ensures there are no remaining references
+        // to resources that need to be cleaned up
+        std::mem::drop(asset_resource);
     }
 
     // Optional, but calling this verifies that all rafx objects/device contexts have been
@@ -452,9 +447,6 @@ fn run() -> RafxResult<()> {
 // A phase combines renderables that may come from different features. This example doesnt't use
 // render nodes fully, but the pipeline cache uses it to define which renderpass/material pairs
 //
-use rafx::nodes::RenderPhase;
-use rafx::nodes::RenderPhaseIndex;
-use std::path::Path;
 
 rafx::nodes::declare_render_phase!(
     OpaqueRenderPhase,
@@ -537,20 +529,4 @@ fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
     }
 
     true
-}
-
-// Shader packages are serializable. The shader processor tool uses spirv_cross to compile the
-// shaders for multiple platforms and package them in an easy to use opaque binary form. For this
-// example, we'll just hard-code constructing this package.
-fn load_cooked_shader_stage(
-    base_path: &Path,
-    shader_file: &str,
-) -> RafxResult<CookedShaderPackage> {
-    let cooked_shader_path = base_path.join(shader_file);
-    let bytes = std::fs::read(cooked_shader_path)?;
-
-    let cooked_shader = bincode::deserialize::<CookedShaderPackage>(&bytes)
-        .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
-
-    Ok(cooked_shader)
 }

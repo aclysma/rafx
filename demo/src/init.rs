@@ -1,5 +1,3 @@
-use crate::asset_loader::ResourceAssetLoader;
-use crate::asset_resource::AssetResource;
 use crate::assets::gltf::{GltfMaterialAsset, MeshAssetData};
 use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource};
 use crate::features::imgui::ImGuiRenderFeature;
@@ -16,6 +14,8 @@ use distill::loader::{
 };
 use legion::Resources;
 use rafx::api::{RafxApi, RafxDeviceContext, RafxQueueType, RafxResult};
+use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::distill_impl::ResourceAssetLoader;
 use rafx::assets::{AssetManager, ComputePipelineAsset, ComputePipelineAssetData};
 use rafx::assets::{BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, ShaderAsset};
 use rafx::assets::{

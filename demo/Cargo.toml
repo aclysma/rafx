@@ -17,7 +17,6 @@ shaders = { path = "shaders" }
 distill = { version = "=0.0.2", features = ["serde_importers"] }
 uuid = "0.8"
 type-uuid = "0.1"
-futures-lite = "1.3.0"
 
 sdl2 = { version = "0.34", features = ["raw-window-handle", "bundled", "static-link"] }
 imgui = "0.4"

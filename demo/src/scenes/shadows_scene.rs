@@ -1,4 +1,3 @@
-use crate::asset_resource::AssetResource;
 use crate::components::{DirectionalLightComponent, PointLightComponent, PositionComponent};
 use crate::components::{MeshComponent, SpotLightComponent};
 use crate::features::mesh::{MeshRenderNode, MeshRenderNodeSet};
@@ -7,6 +6,7 @@ use crate::time::TimeState;
 use glam::f32::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
+use rafx::assets::distill_impl::AssetResource;
 use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
 pub(super) struct ShadowsScene {}
