@@ -2,6 +2,7 @@ use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
+use rafx_base::trust_cell::TrustCell;
 
 #[derive(Copy, Clone, Debug)]
 pub struct RafxBufferRaw {
@@ -12,7 +13,7 @@ pub struct RafxBufferRaw {
 #[derive(Debug)]
 pub struct RafxBufferVulkan {
     device_context: RafxDeviceContextVulkan,
-    allocation_info: vk_mem::AllocationInfo,
+    allocation_info: TrustCell<vk_mem::AllocationInfo>,
     buffer_raw: Option<RafxBufferRaw>,
 
     buffer_def: RafxBufferDef,
@@ -44,30 +45,36 @@ impl RafxBufferVulkan {
     }
 
     pub fn map_buffer(&self) -> RafxResult<*mut u8> {
-        Ok(self
+        let ptr = self
             .device_context
             .allocator()
-            .map_memory(&self.buffer_raw.unwrap().allocation)?)
+            .map_memory(&self.buffer_raw.unwrap().allocation)?;
+        *self.allocation_info.borrow_mut() = self
+            .device_context
+            .allocator()
+            .get_allocation_info(&self.buffer_raw.unwrap().allocation)?;
+        Ok(ptr)
     }
 
     pub fn unmap_buffer(&self) -> RafxResult<()> {
-        Ok(self
+        self.device_context
+            .allocator()
+            .unmap_memory(&self.buffer_raw.unwrap().allocation)?;
+        *self.allocation_info.borrow_mut() = self
             .device_context
             .allocator()
-            .unmap_memory(&self.buffer_raw.unwrap().allocation)?)
+            .get_allocation_info(&self.buffer_raw.unwrap().allocation)?;
+        Ok(())
     }
 
-    // This API call is currently disabled due to a bug in vk_mem. For now, call map_buffer() and
-    // unmap_buffer() and use the returned pointer from map_buffer()
-    // https://github.com/gwihlidal/vk-mem-rs/issues/43
-    // pub fn mapped_memory(&self) -> Option<*mut u8> {
-    //     let ptr = self.inner.buffer.allocation_info().get_mapped_data();
-    //     if ptr.is_null() {
-    //         None
-    //     } else {
-    //         Some(ptr)
-    //     }
-    // }
+    pub fn mapped_memory(&self) -> Option<*mut u8> {
+        let ptr = self.allocation_info.borrow().get_mapped_data();
+        if ptr.is_null() {
+            None
+        } else {
+            Some(ptr)
+        }
+    }
 
     pub fn copy_to_host_visible_buffer<T: Copy>(
         &self,
@@ -221,7 +228,7 @@ impl RafxBufferVulkan {
 
         Ok(RafxBufferVulkan {
             device_context: device_context.clone(),
-            allocation_info,
+            allocation_info: TrustCell::new(allocation_info),
             buffer_raw: Some(buffer_raw),
             buffer_def: buffer_def.clone(),
             uniform_texel_view,

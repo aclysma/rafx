@@ -38,7 +38,7 @@ pub extern "system" fn vulkan_debug_callback(
 
         if !ignored {
             log::error!("{:?}", msg);
-            panic!();
+            //panic!();
         }
     } else if flags.intersects(vk::DebugReportFlagsEXT::WARNING) {
         log::warn!("{:?}", msg);

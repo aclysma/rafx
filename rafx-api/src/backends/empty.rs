@@ -50,6 +50,7 @@ impl RafxBufferEmpty {
     pub fn buffer_def(&self) -> &RafxBufferDef { unimplemented!() }
     pub fn map_buffer(&self) -> RafxResult<*mut u8> { unimplemented!() }
     pub fn unmap_buffer(&self) -> RafxResult<()> { unimplemented!() }
+    pub fn mapped_memory(&self) -> Option<*mut u8> { unimplemented!() }
     pub fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> RafxResult<()> { unimplemented!() }
     pub fn copy_to_host_visible_buffer_with_offset<T: Copy>(
         &self, data: &[T], buffer_byte_offset: u64) -> RafxResult<()> { unimplemented!() }

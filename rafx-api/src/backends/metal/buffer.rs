@@ -34,6 +34,10 @@ impl RafxBufferMetal {
         Ok(())
     }
 
+    pub fn mapped_memory(&self) -> Option<*mut u8> {
+        Some(self.buffer.contents() as *mut u8)
+    }
+
     pub fn copy_to_host_visible_buffer<T: Copy>(
         &self,
         data: &[T],

@@ -128,18 +128,20 @@ impl RafxBuffer {
         }
     }
 
-    // This API call is currently disabled due to a bug in vk_mem. For now, call map_buffer() and
-    // unmap_buffer() and use the returned pointer from map_buffer()
-    // https://github.com/gwihlidal/vk-mem-rs/issues/43
-    // /// Obtain a pointer to the mapped memory. If the buffer is not mapped, None is returned.
-    // pub fn mapped_memory(&self) -> Option<*mut u8> {
-    //     match self {
-    //         #[cfg(feature = "rafx-vulkan")]
-    //         RafxBuffer::Vk(inner) => inner.mapped_memory(),
-    //         #[cfg(feature = "rafx-metal")]
-    //         RafxBuffer::Metal(inner) => inner.mapped_memory(),
-    //     }
-    // }
+    /// Obtain a pointer to the mapped memory. If the buffer is not mapped, None is returned.
+    pub fn mapped_memory(&self) -> Option<*mut u8> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxBuffer::Vk(inner) => inner.mapped_memory(),
+            #[cfg(feature = "rafx-metal")]
+            RafxBuffer::Metal(inner) => inner.mapped_memory(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxBuffer::Empty(inner) => inner.mapped_memory(),
+        }
+    }
 
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
