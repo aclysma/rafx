@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 //TODO: Try using Some/None instead of UNDEFINED format
 
+/// Describes the encoding of an image or buffer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 #[allow(non_camel_case_types)]

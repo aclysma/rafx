@@ -27,6 +27,7 @@ pub enum RafxShaderPackageVulkan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+#[doc(hidden)]
 pub enum RafxShaderPackageEmpty {
     Empty,
 }
@@ -81,6 +82,7 @@ impl RafxShaderPackage {
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
     ))]
+    #[doc(hidden)]
     pub fn empty_module_def(&self) -> Option<RafxShaderModuleDefEmpty> {
         Some(RafxShaderModuleDefEmpty::Empty(Default::default()))
     }
@@ -95,6 +97,7 @@ impl RafxShaderPackage {
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
+            #[doc(hidden)]
             empty: self.empty_module_def(),
         }
     }
@@ -129,6 +132,7 @@ pub enum RafxShaderModuleDefVulkan<'a> {
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 #[derive(Copy, Clone, Hash)]
+#[doc(hidden)]
 pub enum RafxShaderModuleDefEmpty<'a> {
     Empty(std::marker::PhantomData<&'a u32>),
 }
@@ -146,5 +150,6 @@ pub struct RafxShaderModuleDef<'a> {
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
     ))]
+    #[doc(hidden)]
     pub empty: Option<RafxShaderModuleDefEmpty<'a>>,
 }

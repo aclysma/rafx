@@ -33,6 +33,8 @@ impl Default for RafxValidationMode {
     }
 }
 
+/// Information about the device, mostly limits, requirements (like memory alignment), and flags to
+/// indicate whether certain features are supported
 pub struct RafxDeviceInfo {
     pub min_uniform_buffer_offset_alignment: u32,
     pub min_storage_buffer_offset_alignment: u32,
@@ -52,13 +54,22 @@ pub struct RafxDeviceInfo {
     // metal_draw_index_vertex_offset_supported: bool,
 }
 
+/// Used to indicate which type of queue to use. Some operations require certain types of queues.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RafxQueueType {
+    /// Graphics queues generally supports all operations and are a safe default choice
     Graphics,
+
+    /// Compute queues can be used for compute-based work.
     Compute,
+
+    /// Transfer queues are generally limited to basic operations like copying data from buffers
+    /// to images.
     Transfer,
 }
 
+/// The color space an image data is in. The correct color space often varies between texture types
+/// (like normal maps vs. albedo maps).
 #[derive(Copy, Clone, Debug)]
 pub enum RafxColorType {
     Linear,
@@ -79,33 +90,44 @@ pub enum RafxColorType {
 // TEXTURE_CREATION_FLAG_SRGB = 0x400,
 
 bitflags::bitflags! {
+    /// The current state of a resource. When an operation is performed that references a resource,
+    /// it must be in the correct state. Resources are moved between state using barriers.
     pub struct RafxResourceState: u32 {
         const UNDEFINED = 0;
         const VERTEX_AND_CONSTANT_BUFFER = 0x1;
         const INDEX_BUFFER = 0x2;
+        /// Similar to vulkan's COLOR_ATTACHMENT_OPTIMAL image layout
         const RENDER_TARGET = 0x4;
         const UNORDERED_ACCESS = 0x8;
+        /// Similar to vulkan's DEPTH_STENCIL_ATTACHMENT_OPTIMAL image layout
         const DEPTH_WRITE = 0x10;
         const DEPTH_READ = 0x20;
         const NON_PIXEL_SHADER_RESOURCE = 0x40;
         const PIXEL_SHADER_RESOURCE = 0x80;
+        /// Similar to vulkan's SHADER_READ_ONLY_OPTIMAL image layout
         const SHADER_RESOURCE = 0x40 | 0x80;
         const STREAM_OUT = 0x100;
         const INDIRECT_ARGUMENT = 0x200;
+        /// Similar to vulkan's TRANSFER_DST_OPTIMAL image layout
         const COPY_DST = 0x400;
+        /// Similar to vulkan's TRANSFER_SRC_OPTIMAL image layout
         const COPY_SRC = 0x800;
         const GENERIC_READ = (((((0x1 | 0x2) | 0x40) | 0x80) | 0x200) | 0x800);
+        /// Similar to vulkan's PRESENT_SRC_KHR image layout
         const PRESENT = 0x1000;
+        /// Similar to vulkan's COMMON image layout
         const COMMON = 0x2000;
     }
 }
 
+/// A 2d size for windows, textures, etc.
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RafxExtents2D {
     pub width: u32,
     pub height: u32,
 }
 
+/// A 3d size for windows, textures, etc.
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RafxExtents3D {
     pub width: u32,
@@ -113,6 +135,7 @@ pub struct RafxExtents3D {
     pub depth: u32,
 }
 
+/// Number of MSAA samples to use. 1xMSAA and 4xMSAA are most broadly supported
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxSampleCount {
@@ -130,30 +153,34 @@ impl Default for RafxSampleCount {
 }
 
 bitflags::bitflags! {
+    /// Indicates how a resource will be used. In some cases, multiple flags are allowed.
     #[derive(Default)]
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct RafxResourceType: u32 {
         const UNDEFINED = 0;
         const SAMPLER = 1<<0;
-        // SRV
+        /// Similar to DX12 SRV and vulkan SAMPLED image usage flag and SAMPLED_IMAGE descriptor type
         const TEXTURE = 1<<1;
-        // UAV
+        /// Similar to DX12 UAV and vulkan STORAGE image usage flag and STORAGE_IMAGE descriptor type
         const TEXTURE_READ_WRITE = 1<<2;
-        // SRV
+        /// Similar to DX12 SRV and vulkan STORAGE_BUFFER descriptor type
         const BUFFER = 1<<3;
-        //const BUFFER_RAW = 1<<4 | RafxResourceType::BUFFER.bits();
-        // UAV
+        /// Similar to DX12 UAV and vulkan STORAGE_BUFFER descriptor type
         const BUFFER_READ_WRITE = 1<<5;
-        //const BUFFER_READ_WRITE_RAW = 1<<6 | RafxResourceType::BUFFER_READ_WRITE.bits();
-        // Uniform
+        /// Similar to vulkan UNIFORM_BUFFER descriptor type
         const UNIFORM_BUFFER = 1<<7;
         // Push constant / Root constant
+        /// Similar to DX12 root constants and vulkan push constants
         const ROOT_CONSTANT = 1<<8;
         // Input assembler
+        /// Similar to vulkan VERTEX_BUFFER buffer usage flag
         const VERTEX_BUFFER = 1<<9;
+        /// Similar to vulkan INDEX_BUFFER buffer usage flag
         const INDEX_BUFFER = 1<<10;
+        /// Similar to vulkan INDIRECT_BUFFER buffer usage flag
         const INDIRECT_BUFFER = 1<<11;
         // Cubemap SRV
+        /// Similar to vulkan's CUBE_COMPATIBLE image create flag and metal's Cube texture type
         const TEXTURE_CUBE = 1<<12 | RafxResourceType::TEXTURE.bits();
         // RTV
         const RENDER_TARGET_MIP_SLICES = 1<<13;
@@ -169,7 +196,9 @@ bitflags::bitflags! {
         const INDIRECT_COMMAND_BUFFER = 1<<21;
         const RENDER_PIPELINE_STATE = 1<<22;
         // Render target types
+        /// A color attachment in a renderpass
         const RENDER_TARGET_COLOR = 1<<23;
+        /// A depth/stencil attachment in a renderpass
         const RENDER_TARGET_DEPTH_STENCIL = 1<<24;
     }
 }
@@ -191,6 +220,7 @@ impl RafxResourceType {
 }
 
 bitflags::bitflags! {
+    /// Flags for enabling/disabling color channels, used with `RafxBlendState`
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct RafxColorFlags: u8 {
         const RED = 1;
@@ -207,27 +237,45 @@ impl Default for RafxColorFlags {
     }
 }
 
+/// Indicates how the memory will be accessed and affects where in memory it needs to be allocated.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RafxMemoryUsage {
     Unknown,
+
+    /// The memory is only accessed by the GPU
     GpuOnly,
+
+    /// The memory is only accessed by the CPU
     CpuOnly,
+
+    /// The memory is written by the CPU and read by the GPU
     CpuToGpu,
+
+    /// The memory is written by the GPU and read by the CPU
     GpuToCpu,
 }
 
+/// Indicates the result of presenting a swapchain image
 #[derive(Clone, Debug)]
 pub enum RafxPresentSuccessResult {
+    /// The image was shown and the swapchain can continue to be used.
     Success,
+
+    /// The image was shown and the swapchain can continue to be used. However, this result also
+    /// hints that there is a more optimal configuration for the swapchain to be in. This is vague
+    /// because the precise meaning varies between platform. For example, windows may return this
+    /// when the application is minimized.
     SuccessSuboptimal,
 
     // While this is an "error" being returned as success, it is expected and recoverable while
     // other errors usually aren't. This way the ? operator can still be used to bail out the
     // unrecoverable errors and the different flavors of "success" should be explicitly handled
     // in a match
+    /// Indicates that the swapchain can no longer be used
     DeviceReset,
 }
 
+/// Indicates the current state of a fence.
 #[derive(PartialEq)]
 pub enum RafxFenceStatus {
     /// The fence was submitted to the command buffer and signaled as completed by the GPU
@@ -240,6 +288,7 @@ pub enum RafxFenceStatus {
 }
 
 bitflags::bitflags! {
+    /// Indicates what render targets are affected by a blend state
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct RafxBlendStateTargets : u8 {
         const BLEND_STATE_TARGET_0 = 0x01;
@@ -255,6 +304,8 @@ bitflags::bitflags! {
 }
 
 bitflags::bitflags! {
+    /// Indicates a particular stage of a shader, or set of stages in a shader. Similar to
+    /// VkShaderStageFlagBits
     #[derive(Default)]
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct RafxShaderStageFlags : u32 {
@@ -270,6 +321,7 @@ bitflags::bitflags! {
     }
 }
 
+/// Contains all the individual stages
 pub const ALL_SHADER_STAGE_FLAGS: [RafxShaderStageFlags; 6] = [
     RafxShaderStageFlags::VERTEX,
     RafxShaderStageFlags::TESSELLATION_CONTROL,
@@ -279,12 +331,14 @@ pub const ALL_SHADER_STAGE_FLAGS: [RafxShaderStageFlags; 6] = [
     RafxShaderStageFlags::COMPUTE,
 ];
 
+/// Indicates the type of pipeline, roughly corresponds with RafxQueueType
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RafxPipelineType {
     Graphics = 0,
     Compute = 1,
 }
 
+/// Affects how quickly vertex attributes are consumed from buffers, similar to VkVertexInputRate
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RafxVertexAttributeRate {
     Vertex,
@@ -297,6 +351,8 @@ impl Default for RafxVertexAttributeRate {
     }
 }
 
+/// Determines if the contents of an image attachment in a renderpass begins with its previous
+/// contents, a clear value, or undefined data. Similar to VkAttachmentLoadOp
 #[derive(Copy, Clone, Debug, Hash, PartialEq)]
 pub enum RafxLoadOp {
     DontCare,
@@ -310,6 +366,8 @@ impl Default for RafxLoadOp {
     }
 }
 
+/// Determines if the contents of an image attachment in a rander pass will store the resulting
+/// state for use after the render pass
 #[derive(Copy, Clone, Debug, Hash, PartialEq)]
 pub enum RafxStoreOp {
     /// Do not store the image, leaving the contents of it undefined
@@ -325,6 +383,7 @@ impl Default for RafxStoreOp {
     }
 }
 
+/// How to intepret vertex data into a form of geometry. Similar to VkPrimitiveTopology
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxPrimitiveTopology {
@@ -336,6 +395,7 @@ pub enum RafxPrimitiveTopology {
     PatchList,
 }
 
+/// The size of index buffer elements
 #[derive(Copy, Clone)]
 pub enum RafxIndexType {
     Uint32,
@@ -348,6 +408,7 @@ impl Default for RafxIndexType {
     }
 }
 
+/// Affects blending. Similar to VkBlendFactor
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxBlendFactor {
@@ -372,6 +433,7 @@ impl Default for RafxBlendFactor {
     }
 }
 
+/// Affects blending. Similar to VkBlendOp
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxBlendOp {
@@ -388,6 +450,7 @@ impl Default for RafxBlendOp {
     }
 }
 
+/// Affects depth testing and sampling. Similar to VkCompareOp
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxCompareOp {
@@ -407,6 +470,7 @@ impl Default for RafxCompareOp {
     }
 }
 
+/// Similar to VkStencilOp
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxStencilOp {
@@ -426,6 +490,8 @@ impl Default for RafxStencilOp {
     }
 }
 
+/// Determines if we cull polygons that are front-facing or back-facing. Facing direction is
+/// determined by RafxFrontFace, sometimes called "winding order". Similar to VkCullModeFlags
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxCullMode {
@@ -440,6 +506,8 @@ impl Default for RafxCullMode {
     }
 }
 
+/// Determines what winding order is considerered the front face of a polygon. Similar to
+/// VkFrontFace
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxFrontFace {
@@ -453,6 +521,7 @@ impl Default for RafxFrontFace {
     }
 }
 
+/// Whether to fill in polygons or not. Similar to VkPolygonMode
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxFillMode {
@@ -466,10 +535,16 @@ impl Default for RafxFillMode {
     }
 }
 
+/// Filtering method when sampling. Similar to VkFilter
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxFilterType {
+    /// Finds the closest value in the texture and uses it. Commonly used for "pixel-perfect"
+    /// assets.
     Nearest,
+
+    /// "Averages" color values of the texture. A common choice for most cases but may make some
+    /// "pixel-perfect" assets appear blurry
     Linear,
 }
 
@@ -479,6 +554,8 @@ impl Default for RafxFilterType {
     }
 }
 
+/// Affects image sampling, particularly for UV coordinates outside the [0, 1] range. Similar to
+/// VkSamplerAddressMode
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxAddressMode {
@@ -494,6 +571,7 @@ impl Default for RafxAddressMode {
     }
 }
 
+/// Similar to VkSamplerMipmapMode
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxMipMapMode {
@@ -507,6 +585,7 @@ impl Default for RafxMipMapMode {
     }
 }
 
+/// A clear value for color attachments
 #[derive(Copy, Clone, Debug, Default)]
 pub struct RafxColorClearValue(pub [f32; 4]);
 
@@ -521,6 +600,8 @@ impl Hash for RafxColorClearValue {
     }
 }
 
+/// A clear values for depth/stencil attachments. One or both values may be used depending on the
+/// format of the attached image
 #[derive(Clone, Copy, Debug)]
 pub struct RafxDepthStencilClearValue {
     pub depth: f32,
@@ -546,25 +627,17 @@ impl Hash for RafxDepthStencilClearValue {
     }
 }
 
-// pub enum RafxBarrierSplit {
-//     None,
-//     BeginOnly,
-//     EndOnly,
-// }
-//
-// impl Default for RafxBarrierSplit {
-//     fn default() -> Self {
-//         RafxBarrierSplit::None
-//     }
-// }
-
+/// Determines if a barrier is transferring a resource from one queue to another.
 pub enum RafxBarrierQueueTransition {
+    /// No queue transition will take place
     None,
-    // Use this on the SRC queue, but supply the DST queue type (the src queue is inferred by the
-    // queue on which the barrier is submitted)
+
+    /// A barrier for the "sending" queue. Contains the "receiving" queue. (the "sending" queue is
+    /// inferred by the queue on which the barrier is submitted)
     ReleaseTo(RafxQueueType),
-    // Use this on the DST queue, but supply the SRC queue type (the dst queue is inferred by the
-    // queue on which the barrier is submitted)
+
+    /// A barrier for the "receiving" queue. Contains the "sending" queue. (the "receiving" queue is
+    /// inferred by the queue on which the barrier is submitted)
     AcquireFrom(RafxQueueType),
 }
 
@@ -574,31 +647,30 @@ impl Default for RafxBarrierQueueTransition {
     }
 }
 
+/// A memory barrier for buffers. This is used to transition buffers between resource states and
+/// possibly from one queue to another
 pub struct RafxBufferBarrier<'a> {
     pub buffer: &'a RafxBuffer,
     pub src_state: RafxResourceState,
     pub dst_state: RafxResourceState,
-    //pub barrier_split: RafxBarrierSplit,
     pub queue_transition: RafxBarrierQueueTransition,
 }
 
-pub struct RafxBarrierSubresource {
-    pub mip_level: u8,
-    pub array_layer: u16,
-}
-
+/// A memory barrier for textures. This is used to transition textures between resource states and
+/// possibly from one queue to another.
 pub struct RafxTextureBarrier<'a> {
     pub texture: &'a RafxTexture,
     pub src_state: RafxResourceState,
     pub dst_state: RafxResourceState,
-    //pub barrier_split: RafxBarrierSplit,
     pub queue_transition: RafxBarrierQueueTransition,
-    //pub subresource: Option<RafxBarrierSubresource>,
+    /// If set, only the specified array element is included
     pub array_slice: Option<u16>,
+    /// If set, only the specified mip level is included
     pub mip_slice: Option<u8>,
 }
 
 impl<'a> RafxTextureBarrier<'a> {
+    /// Creates a simple state transition
     pub fn state_transition(
         texture: &'a RafxTexture,
         src_state: RafxResourceState,
@@ -608,7 +680,6 @@ impl<'a> RafxTextureBarrier<'a> {
             texture,
             src_state,
             dst_state,
-            //barrier_split: RafxBarrierSplit::None,
             queue_transition: RafxBarrierQueueTransition::None,
             array_slice: None,
             mip_slice: None,
@@ -616,12 +687,14 @@ impl<'a> RafxTextureBarrier<'a> {
     }
 }
 
+/// Represents an image owned by the swapchain
 #[derive(Clone)]
 pub struct RafxSwapchainImage {
     pub texture: RafxTexture,
     pub swapchain_image_index: u32,
 }
 
+/// A color render target bound during a renderpass
 #[derive(Debug)]
 pub struct RafxColorRenderTargetBinding<'a> {
     pub texture: &'a RafxTexture,
@@ -636,8 +709,9 @@ pub struct RafxColorRenderTargetBinding<'a> {
     pub resolve_array_slice: Option<u16>,
 }
 
+/// A depth/stencil render target to be bound during a renderpass
 #[derive(Debug)]
-pub struct RafxDepthRenderTargetBinding<'a> {
+pub struct RafxDepthStencilRenderTargetBinding<'a> {
     pub texture: &'a RafxTexture,
     pub depth_load_op: RafxLoadOp,
     pub stencil_load_op: RafxLoadOp,
@@ -648,23 +722,27 @@ pub struct RafxDepthRenderTargetBinding<'a> {
     pub clear_value: RafxDepthStencilClearValue,
 }
 
+/// A vertex buffer to be bound during a renderpass
 pub struct RafxVertexBufferBinding<'a> {
     pub buffer: &'a RafxBuffer,
     pub offset: u64,
 }
 
+/// An index buffer to be bound during a renderpass
 pub struct RafxIndexBufferBinding<'a> {
     pub buffer: &'a RafxBuffer,
     pub offset: u64,
     pub index_type: RafxIndexType,
 }
 
+/// Parameters for copying a buffer to a texture
 pub struct RafxCmdCopyBufferToTextureParams {
     pub buffer_offset: u64,
     pub array_layer: u16,
     pub mip_level: u8,
 }
 
+/// Parameters for blitting one image to another (vulkan backend only)
 pub struct RafxCmdBlitParams {
     pub src_state: RafxResourceState,
     pub dst_state: RafxResourceState,
@@ -675,9 +753,13 @@ pub struct RafxCmdBlitParams {
     pub array_slices: Option<[u16; 2]>,
 }
 
+/// A rafx-specific index that refers to a particular binding. Instead of doing name/binding lookups
+/// every frame, query the descriptor index during startup and use it instead. This is a more
+/// efficient way to address descriptors.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct RafxDescriptorIndex(pub(crate) u32);
 
+/// Selects a particular descriptor in a descriptor set
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RafxDescriptorKey<'a> {
     Undefined,
@@ -692,12 +774,14 @@ impl<'a> Default for RafxDescriptorKey<'a> {
     }
 }
 
+/// Used when binding buffers to descriptor sets
 #[derive(Default, Clone, Copy, Debug)]
 pub struct RafxOffsetSize {
     pub offset: u64,
     pub size: u64,
 }
 
+/// Specifies what value to assign to a descriptor set
 #[derive(Default, Debug)]
 pub struct RafxDescriptorElements<'a> {
     pub textures: Option<&'a [&'a RafxTexture]>,
@@ -706,11 +790,12 @@ pub struct RafxDescriptorElements<'a> {
     pub buffer_offset_sizes: Option<&'a [RafxOffsetSize]>,
 }
 
+/// Used when binding a texture to select between different ways to bind the texture
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum RafxTextureBindType {
     // Color or depth only
     Srv,
-    // stencial?
+    // stencil?
     SrvStencil,
     // Bind all mip levels of the 0th provided texture
     UavMipChain,
@@ -718,6 +803,7 @@ pub enum RafxTextureBindType {
     UavMipSlice(u32),
 }
 
+/// Describes how to update a single descriptor
 #[derive(Debug)]
 pub struct RafxDescriptorUpdate<'a> {
     pub array_index: u32,

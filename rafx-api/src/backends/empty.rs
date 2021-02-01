@@ -133,7 +133,7 @@ impl RafxCommandBufferEmpty {
     pub fn end(&self) -> RafxResult<()> { unimplemented!() }
     pub fn return_to_pool(&self) -> RafxResult<()> { unimplemented!() }
 
-    pub fn cmd_begin_render_pass(&self, color_targets: &[RafxColorRenderTargetBinding], depth_target: Option<RafxDepthRenderTargetBinding>) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_begin_render_pass(&self, color_targets: &[RafxColorRenderTargetBinding], depth_target: Option<RafxDepthStencilRenderTargetBinding>) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_end_render_pass(&self) -> RafxResult<()> { unimplemented!() }
 
     pub fn cmd_set_viewport(&self, x: f32, y: f32, width: f32, height: f32, depth_min: f32, depth_max: f32) -> RafxResult<()> { unimplemented!() }

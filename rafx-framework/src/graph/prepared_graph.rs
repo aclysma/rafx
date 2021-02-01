@@ -12,8 +12,8 @@ use crate::{ImageViewResource, ResourceArc, ResourceContext};
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::{
     RafxBarrierQueueTransition, RafxBufferBarrier, RafxColorRenderTargetBinding, RafxCommandBuffer,
-    RafxCommandBufferDef, RafxCommandPoolDef, RafxDepthRenderTargetBinding, RafxDeviceContext,
-    RafxExtents2D, RafxFormat, RafxQueue, RafxResult, RafxTextureBarrier,
+    RafxCommandBufferDef, RafxCommandPoolDef, RafxDepthStencilRenderTargetBinding,
+    RafxDeviceContext, RafxExtents2D, RafxFormat, RafxQueue, RafxResult, RafxTextureBarrier,
 };
 use rafx_nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
@@ -299,7 +299,7 @@ impl PreparedRenderGraph {
                     let depth_target_binding = pass.depth_stencil_render_target.as_ref().map(|x| {
                         depth_stencil_image =
                             Some(self.image_resources[&x.image].get_raw().image.clone());
-                        RafxDepthRenderTargetBinding {
+                        RafxDepthStencilRenderTargetBinding {
                             texture: depth_stencil_image.as_ref().unwrap(),
                             clear_value: x.clear_value.clone(),
                             depth_load_op: x.depth_load_op,

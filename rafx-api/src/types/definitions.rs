@@ -21,6 +21,7 @@ pub struct RafxBufferElementData {
     pub element_stride: u64,
 }
 
+/// Used to create a `RafxBuffer`
 #[derive(Clone, Debug)]
 pub struct RafxBufferDef {
     pub size: u64,
@@ -88,9 +89,10 @@ impl RafxBufferDef {
     }
 }
 
+/// Determines how many dimensions the texture will have.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RafxTextureDimensions {
-    // Assume 2D if depth = 1, otherwise 3d
+    /// Assume 2D if depth = 1, otherwise 3d
     Auto,
     Dim1D,
     Dim2D,
@@ -130,6 +132,7 @@ impl RafxTextureDimensions {
     }
 }
 
+/// Used to create a `RafxTexture`
 #[derive(Clone, Debug)]
 pub struct RafxTextureDef {
     pub extents: RafxExtents3D,
@@ -190,6 +193,7 @@ impl RafxTextureDef {
     }
 }
 
+/// Used to create a `RafxCommandPool`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RafxCommandPoolDef {
     /// Set to true if the command buffers allocated from the pool are expected to have very short
@@ -197,12 +201,14 @@ pub struct RafxCommandPoolDef {
     pub transient: bool,
 }
 
+/// Used to create a `RafxCommandBuffer`
 #[derive(Debug, Clone, PartialEq)]
 pub struct RafxCommandBufferDef {
     /// Secondary command buffers are used to encode a single pass on multiple threads
     pub is_secondary: bool,
 }
 
+/// Used to create a `RafxSwapchain`
 #[derive(Clone, Debug)]
 pub struct RafxSwapchainDef {
     pub width: u32,
@@ -211,6 +217,7 @@ pub struct RafxSwapchainDef {
     // image count?
 }
 
+/// Describes a single stage within a shader
 #[derive(Clone, Debug)]
 pub struct RafxShaderStageDef {
     pub shader_module: RafxShaderModule,
@@ -249,6 +256,7 @@ impl RafxShaderStageDef {
     }
 }
 
+/// Indicates which immutable sampler is being set
 #[derive(Clone, Hash)]
 pub enum RafxImmutableSamplerKey<'a> {
     Name(&'a str),
@@ -268,6 +276,7 @@ impl<'a> RafxImmutableSamplerKey<'a> {
     }
 }
 
+/// Describes an immutable sampler key/value pair
 pub struct RafxImmutableSamplers<'a> {
     pub key: RafxImmutableSamplerKey<'a>,
     pub samplers: &'a [RafxSampler],
@@ -296,6 +305,7 @@ impl<'a> RafxImmutableSamplers<'a> {
     }
 }
 
+/// Used to create a `RafxRootSignature`
 pub struct RafxRootSignatureDef<'a> {
     pub shaders: &'a [RafxShader],
     pub immutable_samplers: &'a [RafxImmutableSamplers<'a>],
@@ -338,6 +348,7 @@ impl<'a> RafxRootSignatureDef<'a> {
     }
 }
 
+/// Used to create a `RafxSampler`
 #[derive(Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxSamplerDef {
@@ -381,27 +392,34 @@ impl Hash for RafxSamplerDef {
     }
 }
 
+/// Describes an attribute within a RafxVertexLayout
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RafxVertexLayoutAttribute {
-    //pub semantic: String,
+    /// Format of the attribute
     pub format: RafxFormat,
+    /// Which buffer the attribute is contained in
     pub buffer_index: u32,
+    /// Affects what input variable within the shader the attribute is assigned
     pub location: u32,
+    /// The byte offset of the attribute within the buffer
     pub offset: u32,
 }
 
+/// Describes a buffer that provides vertex attribute data (See RafxVertexLayout)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RafxVertexLayoutBuffer {
     pub stride: u32,
     pub rate: RafxVertexAttributeRate,
 }
 
+/// Describes how vertex attributes are laid out within one or more buffers
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RafxVertexLayout {
     pub attributes: Vec<RafxVertexLayoutAttribute>,
     pub buffers: Vec<RafxVertexLayoutBuffer>,
 }
 
+/// Affects depth testing and stencil usage. Commonly used to enable "Z-buffering".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxDepthState {
@@ -442,6 +460,7 @@ impl Default for RafxDepthState {
     }
 }
 
+/// Affects rasterization, commonly used to enable backface culling or wireframe rendering
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxRasterizerState {
@@ -489,6 +508,7 @@ impl Default for RafxRasterizerState {
     }
 }
 
+/// Configures blend state for a particular render target
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxBlendStateRenderTarget {
@@ -542,12 +562,21 @@ impl RafxBlendStateRenderTarget {
     }
 }
 
+/// Affects the way the result of a pixel shader is blended with a value it will overwrite. Commonly
+/// used to enable "alpha-blending".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxBlendState {
+    /// Individual blend states for blend targets
     pub render_target_blend_states: Vec<RafxBlendStateRenderTarget>,
+
+    /// Indicates which blend targets to affect. Blend targets with unset bits are left in default
+    /// state.
     pub render_target_mask: RafxBlendStateTargets,
-    //pub alpha_to_coverage_enable: bool,
+
+    /// If false, `render_target_blend_states[0]` will apply to all render targets indicated by
+    /// `render_target_mask`. If true, we index into `render_target_blend_states` based on the
+    /// render target's index.
     pub independent_blend: bool,
 }
 
@@ -574,6 +603,7 @@ impl RafxBlendState {
     }
 }
 
+/// Used to create a `RafxPipeline` for graphics operations
 #[derive(Debug)]
 pub struct RafxGraphicsPipelineDef<'a> {
     pub shader: &'a RafxShader,
@@ -589,14 +619,19 @@ pub struct RafxGraphicsPipelineDef<'a> {
     //indirect_commands_enable: bool
 }
 
+/// Used to create a `RafxPipeline` for compute operations
 #[derive(Debug)]
 pub struct RafxComputePipelineDef<'a> {
     pub shader: &'a RafxShader,
     pub root_signature: &'a RafxRootSignature,
 }
 
+/// Used to create a `RafxDescriptorSetArray`
 pub struct RafxDescriptorSetArrayDef<'a> {
+    /// The root signature the descriptor set will be based on
     pub root_signature: &'a RafxRootSignature,
+    /// Which descriptor set to create the descriptor set array for
     pub set_index: u32,
+    /// The number of descriptor sets in the array
     pub array_length: usize,
 }

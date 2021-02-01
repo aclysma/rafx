@@ -109,7 +109,7 @@ impl RafxCommandBufferVulkan {
     pub fn cmd_begin_render_pass(
         &self,
         color_targets: &[RafxColorRenderTargetBinding],
-        depth_target: Option<RafxDepthRenderTargetBinding>,
+        depth_target: Option<RafxDepthStencilRenderTargetBinding>,
     ) -> RafxResult<()> {
         if self.has_active_renderpass.load(Ordering::Relaxed) {
             self.cmd_end_render_pass()?;

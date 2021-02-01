@@ -9,12 +9,12 @@ use crate::metal::RafxCommandBufferMetal;
 use crate::vulkan::RafxCommandBufferVulkan;
 use crate::{
     RafxBuffer, RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
-    RafxDepthRenderTargetBinding, RafxDescriptorSetArray, RafxDescriptorSetHandle,
+    RafxDepthStencilRenderTargetBinding, RafxDescriptorSetArray, RafxDescriptorSetHandle,
     RafxIndexBufferBinding, RafxPipeline, RafxResult, RafxRootSignature, RafxTexture,
     RafxTextureBarrier, RafxVertexBufferBinding,
 };
 
-/// A command buffer contains a list of work for the GPU to do.
+/// A list of commands recorded by the CPU and submitted to the GPU.
 ///
 /// It cannot be created directly. It must be allocated out of a pool.
 ///
@@ -111,7 +111,7 @@ impl RafxCommandBuffer {
     pub fn cmd_begin_render_pass(
         &self,
         color_targets: &[RafxColorRenderTargetBinding],
-        depth_target: Option<RafxDepthRenderTargetBinding>,
+        depth_target: Option<RafxDepthStencilRenderTargetBinding>,
     ) -> RafxResult<()> {
         match self {
             #[cfg(feature = "rafx-vulkan")]

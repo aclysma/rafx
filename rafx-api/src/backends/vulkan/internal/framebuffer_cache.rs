@@ -21,7 +21,7 @@ impl RafxFramebufferVulkanCache {
 
     pub(crate) fn framebuffer_hash(
         color_targets: &[RafxColorRenderTargetBinding],
-        depth_target: Option<&RafxDepthRenderTargetBinding>,
+        depth_target: Option<&RafxDepthStencilRenderTargetBinding>,
     ) -> u64 {
         let mut hasher = FnvHasher::default();
         for color_target in color_targets {
@@ -62,7 +62,7 @@ impl RafxFramebufferVulkanCache {
         device_context: &RafxDeviceContextVulkan,
         renderpass: &RafxRenderpassVulkan,
         color_targets: &[RafxColorRenderTargetBinding],
-        depth_target: Option<&RafxDepthRenderTargetBinding>,
+        depth_target: Option<&RafxDepthStencilRenderTargetBinding>,
     ) -> RafxResult<RafxFramebufferVulkan> {
         let mut color_attachments = Vec::with_capacity(color_targets.len());
         let mut resolve_attachments = Vec::with_capacity(color_targets.len());
@@ -105,7 +105,7 @@ impl RafxFramebufferVulkanCache {
         device_context: &RafxDeviceContextVulkan,
         renderpass: &RafxRenderpassVulkan,
         color_targets: &[RafxColorRenderTargetBinding],
-        depth_target: Option<&RafxDepthRenderTargetBinding>,
+        depth_target: Option<&RafxDepthStencilRenderTargetBinding>,
     ) -> RafxResult<RafxFramebufferVulkan> {
         //
         // Hash it

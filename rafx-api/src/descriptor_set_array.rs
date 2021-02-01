@@ -84,7 +84,7 @@ impl RafxDescriptorSetHandle {
     }
 }
 
-/// Represents an array of descriptor sets.
+/// An array of descriptor sets. These are expected to be pooled and reused.
 ///
 /// Managing descriptor sets can be challenging and there are many strategies that may be used. So
 /// a `RafxDescriptorSetArray` is intended to be allocated in blocks and pooled. This allows

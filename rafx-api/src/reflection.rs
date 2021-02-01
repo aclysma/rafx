@@ -4,12 +4,14 @@ use fnv::FnvHashMap;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
+/// Indicates where a resource is bound
 #[derive(PartialEq, Eq, Hash, Default)]
 pub struct RafxShaderResourceBindingKey {
     pub set: u32,
     pub binding: u32,
 }
 
+/// A data source within a shader. Often a descriptor or push constant.
 //TODO: Consider separate type for bindings vs. push constants
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
@@ -132,6 +134,7 @@ impl RafxShaderResource {
     }
 }
 
+/// Reflection data for a single shader stage
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxShaderStageReflection {
@@ -146,6 +149,7 @@ pub struct RafxShaderStageReflection {
     //pub binding_arg_buffer_mappings: FnvHashMap<(u32, u32), u32>
 }
 
+/// Reflection data for a pipeline, created by merging shader stage reflection data
 #[derive(Debug)]
 pub struct RafxPipelineReflection {
     pub shader_stages: RafxShaderStageFlags,

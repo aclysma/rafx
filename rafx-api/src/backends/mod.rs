@@ -8,4 +8,5 @@ pub mod vulkan;
     feature = "rafx-empty",
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
+#[doc(hidden)]
 pub mod empty;

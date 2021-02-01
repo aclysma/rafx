@@ -9,8 +9,7 @@ use crate::metal::RafxBufferMetal;
 use crate::vulkan::RafxBufferVulkan;
 use crate::{RafxBufferDef, RafxResult};
 
-/// A buffer is a piece of memory that can be accessed by the GPU. It may reside in CPU or GPU
-/// memory depending on how it is created.
+/// Memory that can be accessed by the rendering API. It may reside in CPU or GPU memory.
 ///
 /// Buffers must not be dropped if they are in use by the GPU.
 #[derive(Debug)]

@@ -46,7 +46,7 @@ impl RafxDeviceContext {
 // Resources (Buffers, Textures, Samplers)
 //
 
-/// A buffer is a piece of memory that can be accessed by the GPU. It may reside in CPU or GPU memory.
+/// Memory that can be accessed by the rendering API. It may reside in CPU or GPU memory.
 #[derive(Debug)]
 pub struct RafxBuffer;
 impl RafxBuffer {
@@ -103,7 +103,7 @@ impl RafxPipeline {
 // Descriptor Sets
 //
 
-/// Represents an array of descriptor sets.
+/// An array of descriptor sets. These are expected to be pooled and reused.
 #[derive(Debug)]
 pub struct RafxDescriptorSetArray;
 impl RafxDescriptorSetArray {
@@ -142,7 +142,7 @@ impl RafxCommandPool {
     pub fn reset_command_pool(&self) -> RafxResult<()>;
 }
 
-/// A command buffer contains a list of work for the GPU to do.
+/// A list of commands recorded by the CPU and submitted to the GPU.
 #[derive(Debug)]
 pub struct RafxCommandBuffer;
 impl RafxCommandBuffer {

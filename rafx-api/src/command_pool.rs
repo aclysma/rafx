@@ -9,7 +9,7 @@ use crate::metal::RafxCommandPoolMetal;
 use crate::vulkan::RafxCommandPoolVulkan;
 use crate::{RafxCommandBuffer, RafxCommandBufferDef, RafxDeviceContext, RafxResult};
 
-/// Creates a pool of command buffers. A command pool is necessary to create a command buffer.
+/// A pool of command buffers. A command pool is necessary to create a command buffer.
 ///
 /// A command pool cannot be modified (including allocating from it) if one of its command buffers
 /// is being modified or in-use by the GPU.

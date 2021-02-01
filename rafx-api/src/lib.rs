@@ -1,10 +1,11 @@
 //! Rafx API is an `unsafe` graphics API abstraction layer designed specifically for games and tools
 //! for games. The goal is to achieve near-native performance with reduced complexity. It may be
-//! used directly, or indirectly through other crates in rafx (such as Rafx Resources and Rafx
-//! Assets).
+//! used directly, or indirectly through other crates in rafx (such as [rafx-resources] and
+//! [rafx-assets]).
 //!
-//! It is an **opinionated** API. It does not expose every possible operation a graphics API might
-//! provide. However, the wrapped API-specific objects are exposed in an easily accessible manner.
+//! `rafx-api` is an **opinionated** API. It does not expose every possible operation a graphics API
+//! might provide. However, the wrapped API-specific objects are exposed in an easily accessible
+//! manner.
 //!
 //! The API does not track resource lifetimes or states (such as vulkan image layouts) or try to
 //! enforce safe usage at compile time or runtime. Safer abstractions are available in
@@ -17,6 +18,27 @@
 //! [The Forge](https://github.com/ConfettiFX/The-Forge). It was chosen for its modern design,
 //! multiple working backends, open development model, and track record of shipped games. However,
 //! there are some changes in API design, feature set, and implementation details.
+//!
+//! [Additional high-level documentation is available in the github repo](https://github.com/aclysma/rafx/blob/master/docs/index.md)
+//!
+//! # Main API Objects
+//!
+//! * [RafxApi] - Primary entry point to using the API. Use the new_* functions to initialize the desired backend.
+//! * [RafxBuffer] - Memory that can be accessed by the rendering API. It may reside in CPU or GPU memory.
+//! * [RafxCommandBuffer] - A list of commands recorded by the CPU and submitted to the GPU.
+//! * [RafxCommandPool] - A pool of command buffers. A command pool is necessary to create a command buffer.
+//! * [RafxDescriptorSetArray] - An array of descriptor sets. These are expected to be pooled and reused.
+//! * [RafxDeviceContext] - A cloneable, thread-safe handle used to create graphics resources.
+//! * [RafxFence] - A GPU -> CPU synchronization mechanism.
+//! * [RafxPipeline] - Represents a complete GPU configuration for executing work.
+//! * [RafxQueue] - A queue allows work to be submitted to the GPU
+//! * [RafxRootSignature] - Represents the full "layout" or "interface" of a shader (or set of shaders.)
+//! * [RafxSampler] - Configures how images will be sampled by the GPU
+//! * [RafxSemaphore] - A GPU -> GPU synchronization mechanism.
+//! * [RafxShader] - Represents one or more shader stages, producing an entire "program" to execute on the GPU
+//! * [RafxShaderModule] - Rrepresents loaded shader code that can be used to create a pipeline.
+//! * [RafxSwapchain] - A set of images that act as a "backbuffer" of a window.
+//! * [RafxTexture] - An image that can be used by the GPU.
 //!
 //! # Usage Summary
 //!
@@ -260,8 +282,9 @@ mod texture;
 // Constants
 //
 
-// Vulkan only guarantees up to 4 are available
+/// The maximum descriptor set layout index allowed. Vulkan only guarantees up to 4 are available
 pub const MAX_DESCRIPTOR_SET_LAYOUTS: usize = 4;
+/// The maximum number of simultaneously attached render targets
 // In sync with RafxBlendStateTargets
 pub const MAX_RENDER_TARGET_ATTACHMENTS: usize = 8;
 

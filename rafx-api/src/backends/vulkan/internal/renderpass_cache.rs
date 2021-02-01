@@ -22,7 +22,7 @@ impl RafxRenderpassVulkanCache {
 
     pub(crate) fn renderpass_hash(
         color_targets: &[RafxColorRenderTargetBinding],
-        depth_target: Option<&RafxDepthRenderTargetBinding>,
+        depth_target: Option<&RafxDepthStencilRenderTargetBinding>,
     ) -> u64 {
         let mut hasher = FnvHasher::default();
         for color_target in color_targets {
@@ -47,7 +47,7 @@ impl RafxRenderpassVulkanCache {
     pub(crate) fn create_renderpass(
         device_context: &RafxDeviceContextVulkan,
         color_targets: &[RafxColorRenderTargetBinding],
-        depth_target: Option<&RafxDepthRenderTargetBinding>,
+        depth_target: Option<&RafxDepthStencilRenderTargetBinding>,
     ) -> RafxResult<RafxRenderpassVulkan> {
         let sample_count = if let Some(depth_target) = &depth_target {
             depth_target.texture.texture_def().sample_count
@@ -105,7 +105,7 @@ impl RafxRenderpassVulkanCache {
         &mut self,
         device_context: &RafxDeviceContextVulkan,
         color_targets: &[RafxColorRenderTargetBinding],
-        depth_target: Option<&RafxDepthRenderTargetBinding>,
+        depth_target: Option<&RafxDepthStencilRenderTargetBinding>,
     ) -> RafxResult<RafxRenderpassVulkan> {
         //
         // Hash it

@@ -34,6 +34,7 @@ pub enum RafxApi {
 }
 
 impl RafxApi {
+    /// Create a device using the "default" backend for the platform.
     #[allow(unreachable_code)]
     pub fn new(
         _window: &dyn HasRawWindowHandle,
