@@ -471,7 +471,7 @@ float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& bas
 fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]], constant spvDescriptorSetBuffer2& spvDescriptorSet2 [[buffer(2)]])
 {
     constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
-    constexpr sampler smp_depth(filter::linear, mip_filter::linear, address::clamp_to_border, compare_func::greater, border_color::transparent_black, max_anisotropy(16));
+    constexpr sampler smp_depth(filter::linear, mip_filter::linear, compare_func::greater, max_anisotropy(16));
     main0_out out = {};
     float4 base_color = (*spvDescriptorSet1.per_material_data).data.base_color_factor;
     if ((*spvDescriptorSet1.per_material_data).data.has_base_color_texture != 0u)

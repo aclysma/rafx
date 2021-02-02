@@ -3,7 +3,6 @@ use crate::features::mesh::{
     create_mesh_extract_job, LightId, MeshRenderNodeSet, ShadowMapData, ShadowMapRenderView,
 };
 use crate::features::sprite::{create_sprite_extract_job, SpriteRenderNodeSet};
-use crate::imgui_support::Sdl2ImguiManager;
 use crate::phases::TransparentRenderPhase;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use crate::render_contexts::RenderJobExtractContext;
@@ -11,7 +10,7 @@ use crate::time::TimeState;
 use legion::*;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{image_upload, DecodedImage, DecodedImageColorSpace};
-use rafx::assets::{AssetManager, DecodedImageMips};
+use rafx::assets::AssetManager;
 use rafx::framework::{DynResourceAllocatorSet, RenderResources};
 use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::nodes::{
@@ -42,7 +41,6 @@ pub use swapchain_handling::SwapchainHandler;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use crate::features::imgui::create_imgui_extract_job;
 use crate::RenderOptions;
 use arrayvec::ArrayVec;
 use distill::loader::handle::AssetHandle;
@@ -73,8 +71,10 @@ pub fn perspective_rh(
     )
 }
 
+#[cfg(feature = "use-imgui")]
 #[derive(Clone)]
 pub struct ImguiFontAtlas(pub ResourceArc<ImageViewResource>);
+
 #[derive(Clone)]
 pub struct InvalidResources {
     pub invalid_image: ResourceArc<ImageViewResource>,
@@ -82,6 +82,7 @@ pub struct InvalidResources {
 }
 
 pub struct GameRendererInner {
+    #[cfg(feature = "use-imgui")]
     imgui_font_atlas_image_view: ImguiFontAtlas,
     invalid_resources: InvalidResources,
 
@@ -125,6 +126,7 @@ impl GameRenderer {
             16 * 1024 * 1024,
         )?;
 
+        #[cfg(feature = "use-imgui")]
         let imgui_font_atlas_image_view = GameRenderer::create_font_atlas_image_view(
             resources,
             &device_context,
@@ -168,6 +170,7 @@ impl GameRenderer {
         let render_thread = RenderThread::start();
 
         let renderer = GameRendererInner {
+            #[cfg(feature = "use-imgui")]
             imgui_font_atlas_image_view: ImguiFontAtlas(imgui_font_atlas_image_view),
             invalid_resources: InvalidResources {
                 invalid_image,
@@ -233,18 +236,22 @@ impl GameRenderer {
         .map_err(|x| x.into())
     }
 
+    #[cfg(feature = "use-imgui")]
     fn create_font_atlas_image_view(
         resources: &Resources,
         device_context: &RafxDeviceContext,
         upload: &mut RafxTransferUpload,
         dyn_resource_allocator: &DynResourceAllocatorSet,
     ) -> RafxResult<ResourceArc<ImageViewResource>> {
+        use crate::imgui_support::Sdl2ImguiManager;
+
         //TODO: Simplify this setup code for the imgui font atlas
         let imgui_font_atlas = resources
             .get::<Sdl2ImguiManager>()
             .unwrap()
             .build_font_atlas();
 
+        use rafx::assets::DecodedImageMips;
         let imgui_font_atlas = DecodedImage {
             width: imgui_font_atlas.width,
             height: imgui_font_atlas.height,
@@ -376,6 +383,7 @@ impl GameRenderer {
         let static_resources = &game_renderer_inner.static_resources;
         render_resources.insert(static_resources.clone());
         render_resources.insert(game_renderer_inner.invalid_resources.clone());
+        #[cfg(feature = "use-imgui")]
         render_resources.insert(game_renderer_inner.imgui_font_atlas_image_view.clone());
 
         //
@@ -640,7 +648,11 @@ impl GameRenderer {
             // Debug 3D
             extract_job_set.add_job(create_debug3d_extract_job());
 
-            extract_job_set.add_job(create_imgui_extract_job());
+            #[cfg(feature = "use-imgui")]
+            {
+                use crate::features::imgui::create_imgui_extract_job;
+                extract_job_set.add_job(create_imgui_extract_job());
+            }
 
             extract_job_set
         };

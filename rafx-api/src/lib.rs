@@ -211,6 +211,8 @@
 pub use foreign_types_shared;
 #[cfg(feature = "rafx-metal")]
 pub use metal_rs;
+#[cfg(feature = "rafx-metal")]
+pub use objc;
 
 //
 // Re-export upstream vulkan crates

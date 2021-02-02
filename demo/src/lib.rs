@@ -4,7 +4,6 @@
 use legion::*;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::mouse::MouseState;
 use structopt::StructOpt;
 
 use rafx::api::RafxResult;
@@ -13,7 +12,6 @@ use rafx::assets::AssetManager;
 use crate::daemon::AssetDaemonArgs;
 use crate::game_asset_manager::GameAssetManager;
 use crate::game_renderer::GameRenderer;
-use crate::imgui_support::Sdl2ImguiManager;
 use crate::scenes::SceneManager;
 use crate::time::TimeState;
 use rafx::assets::distill_impl::AssetResource;
@@ -25,6 +23,7 @@ mod features;
 mod game_asset_lookup;
 mod game_asset_manager;
 mod game_renderer;
+#[cfg(feature = "use-imgui")]
 mod imgui_support;
 mod init;
 mod phases;
@@ -52,6 +51,7 @@ impl Default for RenderOptions {
 }
 
 impl RenderOptions {
+    #[cfg(feature = "use-imgui")]
     pub fn window(
         &mut self,
         ui: &imgui::Ui<'_>,
@@ -66,6 +66,7 @@ impl RenderOptions {
         open
     }
 
+    #[cfg(feature = "use-imgui")]
     pub fn ui(
         &mut self,
         ui: &imgui::Ui<'_>,
@@ -139,6 +140,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
     }
 
     let sdl2_systems = init::sdl2_init();
+    #[cfg(feature = "use-imgui")]
     init::imgui_init(&mut resources, &sdl2_systems.window);
     init::rendering_init(&mut resources, &sdl2_systems.window)?;
 
@@ -190,7 +192,10 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         // Notify imgui of frame begin
         //
+        #[cfg(feature = "use-imgui")]
         {
+            use sdl2::mouse::MouseState;
+            use crate::imgui_support::Sdl2ImguiManager;
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
         }
@@ -235,7 +240,9 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         // imgui debug draw,
         //
+        #[cfg(feature = "use-imgui")]
         {
+            use crate::imgui_support::Sdl2ImguiManager;
             profiling::scope!("imgui");
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             let time_state = resources.get::<TimeState>().unwrap();
@@ -287,7 +294,9 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         // Close imgui input for this frame and render the results to memory
         //
+        #[cfg(feature = "use-imgui")]
         {
+            use crate::imgui_support::Sdl2ImguiManager;
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             imgui_manager.render(&sdl2_systems.window);
         }
@@ -328,11 +337,21 @@ fn process_input(
     resources: &Resources,
     event_pump: &mut sdl2::EventPump,
 ) -> bool {
-    let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
+    #[cfg(feature = "use-imgui")]
+    let imgui_manager = resources.get::<crate::imgui_support::Sdl2ImguiManager>().unwrap();
     let mut scene_manager = resources.get_mut::<SceneManager>().unwrap();
     for event in event_pump.poll_iter() {
-        imgui_manager.handle_event(&event);
-        if !imgui_manager.ignore_event(&event) {
+
+        #[cfg(feature = "use-imgui")]
+        let ignore_event = {
+            imgui_manager.handle_event(&event);
+            imgui_manager.ignore_event(&event)
+        };
+
+        #[cfg(not(feature = "use-imgui"))]
+        let ignore_event = false;
+
+        if !ignore_event {
             //log::trace!("{:?}", event);
             match event {
                 //

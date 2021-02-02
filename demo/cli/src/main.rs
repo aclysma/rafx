@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         daemon::run(args.daemon_args.into());
         Ok(())
     } else {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let runtime = tokio::runtime::Runtime::new().unwrap();
         let local = tokio::task::LocalSet::new();
         runtime.block_on(local.run_until(async_main(args)))
     }
@@ -62,7 +62,7 @@ async fn async_main(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
         });
 
         // Give the daemon some time to open the socket
-        tokio::time::delay_for(tokio::time::Duration::from_secs(1)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 
     match args.cmd {

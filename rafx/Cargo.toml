@@ -23,7 +23,7 @@ rafx-assets = { version = "0.0.5", path = "../rafx-assets", optional = true }
 log = "0.4"
 env_logger = "0.6"
 legion = { version = "0.3.0", default-features = false }
-sdl2 = { version = ">=0.34", features = ["raw-window-handle", "bundled", "static-link"] }
+sdl2 = { version = ">=0.34", features = ["raw-window-handle"] }
 ash = ">=0.30"
 glam = "0.8.6"
 profiling = "0.1.4"

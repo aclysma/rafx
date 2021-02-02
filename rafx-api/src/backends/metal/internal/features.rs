@@ -239,7 +239,6 @@ impl MetalFeatures {
     pub fn from_device(device: &metal_rs::DeviceRef) -> Self {
         let device_name = device.name().to_string();
         let unified_memory = device.has_unified_memory();
-        let is_low_power = device.is_low_power();
         let argument_buffers_tier = device.argument_buffers_support();
         let gpu_family_apple = find_supported_family(device, &GPU_FAMILIES_APPLE);
         let gpu_family_mac = find_supported_family(device, &GPU_FAMILIES_MAC);
@@ -256,6 +255,9 @@ impl MetalFeatures {
         let mut supports_cube_map_texture_arrays = false;
         let mut supports_resource_heaps = false;
 
+        // is_low_power() is only available on macOS
+        let mut is_low_power = false;
+
         if let Some(feature_set_ios) = feature_set_ios {
             supports_argument_buffers = feature_set_ios.supports_argument_buffers();
             supports_array_of_samplers = feature_set_ios.supports_array_of_samplers();
@@ -266,6 +268,9 @@ impl MetalFeatures {
                 feature_set_ios.supports_combined_msaa_store_and_resolve_action();
             supports_cube_map_texture_arrays = feature_set_ios.supports_cube_map_texture_arrays();
             supports_resource_heaps = feature_set_ios.supports_resource_heaps();
+
+            // assume iOS devices are low power
+            is_low_power = true;
         }
 
         if let Some(feature_set_macos) = feature_set_macos {
@@ -278,6 +283,8 @@ impl MetalFeatures {
                 feature_set_macos.supports_combined_msaa_store_and_resolve_action();
             supports_cube_map_texture_arrays = feature_set_macos.supports_cube_map_texture_arrays();
             supports_resource_heaps = feature_set_macos.supports_resource_heaps();
+
+            is_low_power = device.is_low_power();
         }
 
         if let Some(feature_set_tvos) = feature_set_tvos {
@@ -290,6 +297,9 @@ impl MetalFeatures {
                 feature_set_tvos.supports_combined_msaa_store_and_resolve_action();
             supports_cube_map_texture_arrays = feature_set_tvos.supports_cube_map_texture_arrays();
             supports_resource_heaps = feature_set_tvos.supports_resource_heaps();
+
+            // assume tvOS devices are low power
+            is_low_power = true;
         }
 
         MetalFeatures {

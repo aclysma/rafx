@@ -27,6 +27,7 @@
     * [Render Graph Triangle Example](../rafx/examples/render_graph_triangle/render_graph_triangle.rs)
 * rafx-assets
     * `distill` Architecture and Features
+    * [Asset Triangle Example](../rafx/examples/asset_triangle/asset_triangle.rs)
 * Shader Authoring with `rafx-shader-processor`
     * [Shader Processor](shaders/shader_processor.md)
     * [Custom Shader Markup](shaders/shader_annotation.md)

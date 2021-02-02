@@ -1,5 +1,6 @@
 use crate::assets::gltf::{GltfMaterialAsset, MeshAssetData};
 use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource};
+#[cfg(feature = "use-imgui")]
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::features::mesh::{MeshRenderFeature, MeshRenderNodeSet};
 use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNodeSet};
@@ -75,6 +76,7 @@ pub fn sdl2_init() -> Sdl2Systems {
 }
 
 // Should occur *before* the renderer starts
+#[cfg(feature = "use-imgui")]
 pub fn imgui_init(
     resources: &mut Resources,
     sdl2_window: &sdl2::video::Window,
@@ -95,17 +97,23 @@ pub fn rendering_init(
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(DebugDraw3DResource::new());
 
-    let render_registry = rafx::nodes::RenderRegistryBuilder::default()
+    #[allow(unused_mut)]
+    let mut render_registry = rafx::nodes::RenderRegistryBuilder::default()
         .register_feature::<SpriteRenderFeature>()
         .register_feature::<MeshRenderFeature>()
         .register_feature::<Debug3dRenderFeature>()
-        .register_feature::<ImGuiRenderFeature>()
         .register_render_phase::<OpaqueRenderPhase>("Opaque")
         .register_render_phase::<ShadowMapRenderPhase>("ShadowMap")
         .register_render_phase::<TransparentRenderPhase>("Transparent")
         .register_render_phase::<PostProcessRenderPhase>("PostProcess")
-        .register_render_phase::<UiRenderPhase>("Ui")
-        .build();
+        .register_render_phase::<UiRenderPhase>("Ui");
+
+    #[cfg(feature = "use-imgui")]
+    {
+        render_registry = render_registry.register_feature::<ImGuiRenderFeature>();
+    }
+
+    let render_registry = render_registry.build();
 
     let rafx_api = rafx::api::RafxApi::new(sdl2_window, &Default::default())?;
 
