@@ -9,8 +9,8 @@ use crate::render_contexts::RenderJobExtractContext;
 use crate::time::TimeState;
 use legion::*;
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{image_upload, DecodedImage, DecodedImageColorSpace};
 use rafx::assets::AssetManager;
+use rafx::assets::{image_upload, DecodedImage, DecodedImageColorSpace};
 use rafx::framework::{DynResourceAllocatorSet, RenderResources};
 use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::nodes::{

@@ -45,9 +45,11 @@
 * Examples
     * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
     * [Render Graph Triangle Example](../rafx/examples/render_graph_triangle/render_graph_triangle.rs)
+    * [Asset Triangle Example](../rafx/examples/asset_triangle/asset_triangle.rs)
 * Backend Implementation Details
     * Metal
     * Vulkan
+* [Building for iOS](building_for_ios.md)
 * [Acknowledgements and Other Resources](acknowledgements.md)
 
 ## Diagrams

@@ -194,8 +194,8 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         #[cfg(feature = "use-imgui")]
         {
-            use sdl2::mouse::MouseState;
             use crate::imgui_support::Sdl2ImguiManager;
+            use sdl2::mouse::MouseState;
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
         }
@@ -338,10 +338,11 @@ fn process_input(
     event_pump: &mut sdl2::EventPump,
 ) -> bool {
     #[cfg(feature = "use-imgui")]
-    let imgui_manager = resources.get::<crate::imgui_support::Sdl2ImguiManager>().unwrap();
+    let imgui_manager = resources
+        .get::<crate::imgui_support::Sdl2ImguiManager>()
+        .unwrap();
     let mut scene_manager = resources.get_mut::<SceneManager>().unwrap();
     for event in event_pump.poll_iter() {
-
         #[cfg(feature = "use-imgui")]
         let ignore_event = {
             imgui_manager.handle_event(&event);
