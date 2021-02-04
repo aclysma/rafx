@@ -17,7 +17,7 @@ See these external resources for more info:
 ## Example Usage
 
 This feature is probably best explained by example. See the 
-[Render Graph Triangle example](../../rafx/examples/render_graph_triangle/render_graph_triangle.rs) or demo code.
+[Render Graph Triangle example](../../rafx/examples/framework_triangle/framework_triangle.rs) or demo code.
 
 ## Graph Nodes
 

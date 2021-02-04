@@ -24,7 +24,7 @@
     * [Adding Features](framework/adding_features.md)
     * [Adding Phases](framework/adding_render_phases.md)
     * [Render Graph](framework/render_graph.md)
-    * [Render Graph Triangle Example](../rafx/examples/render_graph_triangle/render_graph_triangle.rs)
+    * [Render Graph Triangle Example](../rafx/examples/framework_triangle/framework_triangle.rs)
 * rafx-assets
     * `distill` Architecture and Features
     * [Asset Triangle Example](../rafx/examples/asset_triangle/asset_triangle.rs)
@@ -44,7 +44,7 @@
     * Profiling
 * Examples
     * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
-    * [Render Graph Triangle Example](../rafx/examples/render_graph_triangle/render_graph_triangle.rs)
+    * [Render Graph Triangle Example](../rafx/examples/framework_triangle/framework_triangle.rs)
     * [Asset Triangle Example](../rafx/examples/asset_triangle/asset_triangle.rs)
 * Backend Implementation Details
     * Metal

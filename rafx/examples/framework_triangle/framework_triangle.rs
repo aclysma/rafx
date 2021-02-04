@@ -106,7 +106,7 @@ fn run() -> RafxResult<()> {
         // about generating corresponding rust code)
         //
         let cooked_shaders_base_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/render_graph_triangle/cooked_shaders");
+            .join("examples/framework_triangle/cooked_shaders");
 
         // Create the vertex shader module and find the entry point
         let cooked_vertex_shader_stage =

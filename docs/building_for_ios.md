@@ -14,6 +14,12 @@ This doc also includes instructions for using assets on-device.
 cargo new --lib ios-rust-sdl2
 ```
 
+Also if you haven't ever built rust for ios before, be sure to add the aarch64-apple-ios target
+
+```shell
+rustup target add aarch64-apple-ios
+```
+
 ### Make it produce a static C library instead of an executable
 
 Add this to the Cargo.toml
@@ -33,8 +39,10 @@ You can use path = "../rafx/rafx" instead of version if you prefer
 # use the metal backend of rafx
 rafx = { version = "0.1", features = ["rafx-metal", "assets"] }
 
-# use SDL2, raw-window-handle is required to use rafx
-sdl2 = { version = "0.34", features = ["static-link", "raw-window-handle"] }
+# use SDL2.. however we need an unpublished iOS raw-window-handle support which as of this writing isn't in a published build
+# https://github.com/Rust-SDL2/rust-sdl2/commit/fc05a35896df8b9aa62e61f9fe672ddd6c685def
+# NOTE: DONT use static-link feature, we will static link SDL2 ourselves in xcode later
+sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2.git", rev = "fc05a35896df8b9aa62e61f9fe672ddd6c685def", features = ["raw-window-handle"] }
 
 # Interop with iOS
 objc = { version = "0.2.4", features = ["exception"] }
@@ -46,32 +54,6 @@ libc = "0.2"
 # Logging
 env_logger = "0.6"
 log="0.4"
-```
-
-### Patch sdl2-rs crate to not link static libraries
-
-We are going to manually build/link SDL2 ourselves, but I didn't see a way to get sdl2-rs to NOT try to link its own
-SDL2. So unfortunately we need to modify sdl2-rs.
-
- * Clone the rust sdl2 crate (https://github.com/Rust-SDL2/rust-sdl2)
- * In sdl2-sys/build.rs, make this edit:
-
-```rust
-if cfg!(feature = "bundled")
-    || (cfg!(feature = "use-pkgconfig") == false && cfg!(feature = "use-vcpkg") == false)
-{
-    // COMMENT THESE LINES OUT
-    // println!("cargo:rustc-link-lib=static=SDL2main");
-    // println!("cargo:rustc-link-lib=static=SDL2");
-}
-```
-
- * Update your Cargo.toml to use this local version instead of crates-io
-
-```
-[patch.crates-io]
-sdl2-sys = { path = "../rust-sdl2/sdl2-sys" }
-sdl2 = { path = "../rust-sdl2" }
 ```
 
 ## Get SDL2

@@ -94,8 +94,8 @@ path = "examples/api_triangle/api_triangle.rs"
 required-features = []
 
 [[example]]
-name = "render_graph_triangle"
-path = "examples/render_graph_triangle/render_graph_triangle.rs"
+name = "framework_triangle"
+path = "examples/framework_triangle/framework_triangle.rs"
 required-features = ["framework"]
 
 [[example]]
