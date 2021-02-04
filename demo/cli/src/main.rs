@@ -44,6 +44,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err("external-daemon and host-daemon args are incompatible".into())
     } else if args.cmd == CliCommandArgs::HostDaemon {
         daemon::run(args.daemon_args.into());
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
         Ok(())
     } else {
         let runtime = tokio::runtime::Runtime::new().unwrap();

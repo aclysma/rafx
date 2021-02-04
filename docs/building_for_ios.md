@@ -291,10 +291,11 @@ run --bin cli -- host-daemon
 Set up distill to stream assets over the network like this:
 
 ```rust
-let connect_string = "192.168.0.X:9999"; // This should be your asset daemon host
 let mut asset_resource = {
+    let connect_string = "192.168.0.X:9999"; // This should be your asset daemon host
     let rpc_loader = RpcIO::new(connect_string.to_string()).unwrap();
     let loader = Loader::new(Box::new(rpc_loader));
     let resolver = Box::new(DefaultIndirectionResolver);
+    AssetResource::new(loader, resolver)
 };
 ```
