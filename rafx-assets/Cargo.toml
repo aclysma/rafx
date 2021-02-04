@@ -1,6 +1,6 @@
 [package]
 name = "rafx-assets"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -14,10 +14,10 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-api = { version = "0.0.5", path = "../rafx-api" }
-rafx-base = { version = "0.0.5", path = "../rafx-base" }
-rafx-nodes = { version = "0.0.5", path = "../rafx-nodes" }
-rafx-framework = { version = "0.0.5", path = "../rafx-framework" }
+rafx-api = { version = "0.0.6", path = "../rafx-api" }
+rafx-base = { version = "0.0.6", path = "../rafx-base" }
+rafx-nodes = { version = "0.0.6", path = "../rafx-nodes" }
+rafx-framework = { version = "0.0.6", path = "../rafx-framework" }
 
 distill = { version = "=0.0.2", features = ["serde_importers"] }
 type-uuid = "0.1"

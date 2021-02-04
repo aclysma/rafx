@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
