@@ -1,6 +1,6 @@
 [package]
 name = "rafx-nodes"
-version = "0.0.6"
+version = "0.0.7"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -18,5 +18,5 @@ log = "0.4"
 glam = "0.8.6"
 fnv = "1.0"
 
-rafx-base = { version = "0.0.6", path = "../rafx-base" }
-rafx-api = { version = "0.0.6", path = "../rafx-api" }
+rafx-base = { version = "=0.0.7", path = "../rafx-base" }
+rafx-api = { version = "=0.0.7", path = "../rafx-api" }
