@@ -43,6 +43,10 @@ pub struct ResourceContext {
 }
 
 impl ResourceContext {
+    pub fn device_context(&self) -> &RafxDeviceContext {
+        self.inner.resources.device_context()
+    }
+
     pub fn resources(&self) -> &ResourceLookupSet {
         &self.inner.resources
     }
@@ -97,6 +101,10 @@ impl ResourceManager {
             descriptor_set_allocator: DescriptorSetAllocatorManager::new(device_context),
             graphics_pipeline_cache: GraphicsPipelineCache::new(render_registry, resources),
         }
+    }
+
+    pub fn device_context(&self) -> &RafxDeviceContext {
+        self.resources.device_context()
     }
 
     pub fn resource_context(&self) -> ResourceContext {

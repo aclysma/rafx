@@ -670,6 +670,10 @@ impl ResourceLookupSet {
         }
     }
 
+    pub fn device_context(&self) -> &RafxDeviceContext {
+        &self.inner.device_context
+    }
+
     #[profiling::function]
     pub fn on_frame_complete(&self) -> RafxResult<()> {
         self.inner.images.on_frame_complete()?;

@@ -736,6 +736,7 @@ pub struct RafxIndexBufferBinding<'a> {
 }
 
 /// Parameters for copying a buffer to a texture
+#[derive(Default)]
 pub struct RafxCmdCopyBufferToTextureParams {
     pub buffer_offset: u64,
     pub array_layer: u16,

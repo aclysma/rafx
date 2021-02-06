@@ -156,8 +156,8 @@ impl Default for RafxTextureDef {
                 height: 0,
                 depth: 0,
             },
-            array_length: 0,
-            mip_count: 0,
+            array_length: 1,
+            mip_count: 1,
             sample_count: RafxSampleCount::SampleCount1,
             format: RafxFormat::UNDEFINED,
             resource_type: RafxResourceType::TEXTURE,
@@ -580,13 +580,27 @@ pub struct RafxBlendState {
     pub independent_blend: bool,
 }
 
-impl Default for RafxBlendState {
-    fn default() -> Self {
+impl RafxBlendState {
+    pub fn default_alpha_disabled() -> Self {
         RafxBlendState {
-            render_target_blend_states: vec![RafxBlendStateRenderTarget::default()],
+            render_target_blend_states: vec![RafxBlendStateRenderTarget::default_alpha_disabled()],
             render_target_mask: RafxBlendStateTargets::BLEND_STATE_TARGET_ALL,
             independent_blend: false,
         }
+    }
+
+    pub fn default_alpha_enabled() -> Self {
+        RafxBlendState {
+            render_target_blend_states: vec![RafxBlendStateRenderTarget::default_alpha_enabled()],
+            render_target_mask: RafxBlendStateTargets::BLEND_STATE_TARGET_ALL,
+            independent_blend: false,
+        }
+    }
+}
+
+impl Default for RafxBlendState {
+    fn default() -> Self {
+        Self::default_alpha_disabled()
     }
 }
 
