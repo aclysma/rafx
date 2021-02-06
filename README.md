@@ -27,13 +27,16 @@ adding an additional backend.
 
 ## Roadmap
 
+ * The API of `rafx-api` is unlikely to change significantly
+ * `rafx-framework` and `rafx-assets` may get some refactoring/improvements based on demo improvements and dogfooding in
+   other projects
  * For the near-term future, the focus will be on:
      * Adding more documentation
      * Maturing the existing backends
      * Extending the demo with more rendering techniques
- * The API of `rafx-api` is unlikely to change drastically
- * `rafx-framework` and `rafx-assets` may get some refactoring/improvements based on demo improvements and dogfooding in
-   other projects
+   
+**This crate will use semantic versioning rules after 0.1.0 of this project has been published. The
+0.0.x versions do not follow semantic versioning rules.**
 
 ## Running the Demo
 
