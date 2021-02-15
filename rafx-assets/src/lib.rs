@@ -10,10 +10,11 @@ pub mod distill_impl;
 pub mod buffer_upload;
 pub mod image_upload;
 
-pub mod decoded_image;
-pub use decoded_image::DecodedImage;
-pub use decoded_image::DecodedImageColorSpace;
-pub use decoded_image::DecodedImageMips;
+pub mod gpu_image_data;
+pub use gpu_image_data::GpuImageData;
+pub use gpu_image_data::GpuImageDataColorSpace;
+pub use gpu_image_data::GpuImageDataLayer;
+pub use gpu_image_data::GpuImageDataMipLevel;
 
 pub mod push_buffer;
 

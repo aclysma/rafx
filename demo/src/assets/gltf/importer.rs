@@ -10,10 +10,10 @@ use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
 use itertools::Itertools;
 use rafx::assets::push_buffer::PushBuffer;
-use rafx::assets::BufferAssetData;
 use rafx::assets::ImageAsset;
 use rafx::assets::MaterialInstanceAsset;
-use rafx::assets::{ImageAssetColorSpace, ImageAssetData};
+use rafx::assets::{BufferAssetData, ImageAssetBasisCompressionSettings, ImageAssetMipGeneration};
+use rafx::assets::{ImageAssetColorSpace, ImageAssetData, ImageAssetDataFormat};
 use rafx::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -561,18 +561,26 @@ fn extract_images_to_import(
             image.index()
         );
 
-        let asset = ImageAssetData {
-            data: converted_image.to_vec(),
-            width: image_data.width,
-            height: image_data.height,
+        let basis_settings = ImageAssetBasisCompressionSettings::default_uastc();
+        let asset_data = ImageAssetData::from_raw_rgba32(
+            image_data.width,
+            image_data.height,
             color_space,
-        };
+            ImageAssetDataFormat::BasisCompressed(basis_settings),
+            ImageAssetMipGeneration::Precomupted,
+            converted_image.as_raw().as_slice(),
+        )
+        .unwrap();
+
         let id = image
             .name()
             .map(|s| GltfObjectId::Name(s.to_string()))
             .unwrap_or_else(|| GltfObjectId::Index(image.index()));
 
-        let image_to_import = ImageToImport { id, asset };
+        let image_to_import = ImageToImport {
+            id,
+            asset: asset_data,
+        };
 
         // Verify that we iterate images in order so that our resulting assets are in order
         assert!(image.index() == images_to_import.len());

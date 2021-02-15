@@ -86,11 +86,9 @@ impl VertexMember {
         assert!((member_addr + rust_member_size) <= (vertex_addr + std::mem::size_of::<VertexT>()));
 
         // Check that the provided format is size-compatible with the rust type
-        let format_size = format.size_of_format_in_bytes().expect(
-            "The provided format {:?} has an unknown size. Is it valid to use as vertex data?",
-        );
+        let format_size = format.block_or_pixel_size_in_bytes();
         assert_eq!(
-            rust_member_size,
+            rust_member_size as u32,
             format_size,
             "The provided format {:?} is {} bytes but the rust type {} is {} bytes",
             format,
@@ -219,7 +217,7 @@ impl VertexDataLayout {
         map: &mut FnvHashMap<String, VertexDataMemberMeta>,
         member: &VertexMember,
     ) {
-        let size = member.format.size_of_format_in_bytes().unwrap();
+        let size = member.format.block_or_pixel_size_in_bytes() as usize;
         assert!(member.offset + size <= vertex_stride);
         let old = map.insert(
             member.semantic.clone(),

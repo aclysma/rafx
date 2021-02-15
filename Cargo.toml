@@ -36,3 +36,6 @@ opt-level = 2
 #[patch."https://github.com/amethyst/distill"]
 #distill = { path = "distill" }
 
+#[patch.crates-io]
+#basis-universal = { path = "../basis-universal-rs/basis-universal" }
+#basis-universal-sys = { path = "../basis-universal-rs/basis-universal-sys" }

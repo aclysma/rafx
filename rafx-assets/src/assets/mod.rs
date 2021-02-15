@@ -1,7 +1,11 @@
 mod image;
 pub use self::image::ImageAsset;
+pub use self::image::ImageAssetBasisCompressionSettings;
+pub use self::image::ImageAssetBasisCompressionType;
 pub use self::image::ImageAssetColorSpace;
 pub use self::image::ImageAssetData;
+pub use self::image::ImageAssetDataFormat;
+pub use self::image::ImageAssetMipGeneration;
 pub use self::image::ImageImporter;
 
 mod shader;

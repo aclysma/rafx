@@ -2,7 +2,13 @@ use super::load_queue::LoadRequest;
 use super::BufferAssetData;
 use super::ImageAssetData;
 use super::{BufferAsset, ImageAsset};
-use crate::{buffer_upload, image_upload, DecodedImage};
+use crate::assets::image::ImageAssetDataFormat;
+use crate::image_upload::{ImageUploadParams, IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT};
+use crate::{
+    buffer_upload, image_upload, GpuImageData, GpuImageDataColorSpace, GpuImageDataLayer,
+    GpuImageDataMipLevel,
+};
+use basis_universal::{TranscodeParameters, TranscoderTextureFormat};
 use crossbeam_channel::{Receiver, Sender};
 use distill::loader::{storage::AssetLoadOp, LoadHandle};
 use rafx_api::{
@@ -86,7 +92,8 @@ pub type BufferUploadOp = UploadOp<RafxBuffer, BufferAsset>;
 pub struct PendingImageUpload {
     pub load_op: AssetLoadOp,
     pub upload_op: ImageUploadOp,
-    pub texture: DecodedImage,
+    pub image_data: GpuImageData,
+    pub generate_mips: bool,
 }
 
 pub struct PendingBufferUpload {
@@ -335,8 +342,12 @@ impl UploadQueue {
             upload,
             // self.transfer_queue.queue_family_index(),
             // self.graphics_queue.queue_family_index(),
-            &pending_image.texture,
-            RafxResourceType::TEXTURE,
+            &pending_image.image_data,
+            ImageUploadParams {
+                resource_type: RafxResourceType::TEXTURE,
+                generate_mips: pending_image.generate_mips,
+                ..Default::default()
+            },
         );
 
         match result {
@@ -370,7 +381,7 @@ impl UploadQueue {
         if let Some(next_image_upload) = &self.next_image_upload {
             log::error!(
                 "Image of {} bytes has repeatedly exceeded the available room in the upload buffer. ({} of {} bytes free)",
-                next_image_upload.texture.data.len(),
+                next_image_upload.image_data.total_size(IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT as u64),
                 upload.bytes_free(),
                 upload.buffer_size()
             );
@@ -385,7 +396,7 @@ impl UploadQueue {
             if let Some(next_image_upload) = &self.next_image_upload {
                 log::debug!(
                     "Image of {} bytes exceeds the available room in the upload buffer. ({} of {} bytes free)",
-                    next_image_upload.texture.data.len(),
+                    next_image_upload.image_data.total_size(IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT as u64),
                     upload.bytes_free(),
                     upload.buffer_size(),
                 );
@@ -602,6 +613,9 @@ pub struct UploadManager {
 
     pub buffer_upload_result_tx: Sender<BufferUploadOpResult>,
     pub buffer_upload_result_rx: Receiver<BufferUploadOpResult>,
+
+    pub astc4x4_supported: bool,
+    pub bc7_supported: bool,
 }
 
 impl UploadManager {
@@ -625,8 +639,8 @@ impl UploadManager {
             image_upload_result_tx,
             buffer_upload_result_rx,
             buffer_upload_result_tx,
-            //transfer_queue,
-            //graphics_queue
+            astc4x4_supported: false,
+            bc7_supported: true,
         }
     }
 
@@ -638,20 +652,118 @@ impl UploadManager {
         &self,
         request: LoadRequest<ImageAssetData, ImageAsset>,
     ) -> RafxResult<()> {
-        let mips = DecodedImage::default_mip_settings_for_image_size(
-            request.asset.width,
-            request.asset.height,
-        );
+        let color_space: GpuImageDataColorSpace = request.asset.color_space.into();
 
-        let color_space = request.asset.color_space.into();
+        let generate_mips = request.asset.generate_mips_at_runtime;
 
-        let decoded_image = DecodedImage {
-            width: request.asset.width,
-            height: request.asset.height,
-            mips,
-            color_space,
-            data: request.asset.data,
+        let t0 = std::time::Instant::now();
+        let image_data = match request.asset.format {
+            ImageAssetDataFormat::RawRGBA32 => GpuImageData::new_simple(
+                request.asset.width,
+                request.asset.height,
+                color_space.rgba8(),
+                request.asset.data,
+            ),
+            ImageAssetDataFormat::BasisCompressed(_settings) => {
+                let data = request.asset.data;
+                let mut transcoder = basis_universal::Transcoder::new();
+                transcoder.prepare_transcoding(&data).unwrap();
+
+                let (rafx_format, transcode_format) = if generate_mips {
+                    // We can't do runtime mip generation with compresed formats, fall back to uncompressed data
+                    (color_space.rgba8(), TranscoderTextureFormat::RGBA32)
+                } else if self.astc4x4_supported {
+                    (
+                        color_space.astc4x4(),
+                        TranscoderTextureFormat::ASTC_4x4_RGBA,
+                    )
+                } else if self.bc7_supported {
+                    (color_space.bc7(), TranscoderTextureFormat::BC7_RGBA)
+                } else {
+                    (color_space.rgba8(), TranscoderTextureFormat::RGBA32)
+                };
+
+                let layer_count = transcoder.image_count(&data);
+                if layer_count == 0 {
+                    Err("BasisCompressed image asset has no images")?;
+                }
+
+                let level_count = transcoder.image_level_count(&data, 0);
+                if level_count == 0 {
+                    Err("BasisCompressed image asset has image with no mip levels")?;
+                }
+
+                if level_count > 1 && generate_mips {
+                    Err("BasisCompressed image asset configured to generate mips at runtime but has more than one mip layer stored")?;
+                }
+
+                log::trace!(
+                    "Decompressing basis format: {:?} transcode format: {:?} layers: {} levels {}",
+                    rafx_format,
+                    transcode_format,
+                    layer_count,
+                    level_count
+                );
+
+                let mut layers = Vec::with_capacity(layer_count as usize);
+                for layer_index in 0..layer_count {
+                    let image_level_count = transcoder.image_level_count(&data, layer_index);
+                    if image_level_count != level_count {
+                        Err(format!("Two images in a BasisCompressed image asset has different mip level counts ({} and {})", level_count, image_level_count))?;
+                    }
+
+                    let mut levels = Vec::with_capacity(level_count as usize);
+                    for level_index in 0..level_count {
+                        let level_description = transcoder
+                            .image_level_description(&data, layer_index, level_index)
+                            .unwrap();
+
+                        log::trace!(
+                            "transcoding layer {} level {} size: {}x{}",
+                            layer_index,
+                            level_index,
+                            level_description.original_width,
+                            level_description.original_height
+                        );
+
+                        let level_data = transcoder
+                            .transcode_image_level(
+                                &data,
+                                transcode_format,
+                                TranscodeParameters {
+                                    image_index: layer_index,
+                                    level_index,
+                                    ..Default::default()
+                                },
+                            )
+                            .unwrap();
+
+                        levels.push(GpuImageDataMipLevel {
+                            width: level_description.original_width,
+                            height: level_description.original_height,
+                            data: level_data,
+                        });
+                    }
+
+                    layers.push(GpuImageDataLayer::new(levels));
+                }
+
+                GpuImageData::new(layers, rafx_format)
+            }
         };
+        let t1 = std::time::Instant::now();
+
+        #[cfg(debug_assertions)]
+        image_data.verify_state();
+
+        log::info!(
+            "GpuImageData {}x{} format {:?} total bytes {} prepared in {}ms",
+            image_data.width,
+            image_data.height,
+            image_data.format,
+            image_data.total_size(IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT),
+            (t1 - t0).as_secs_f64() * 1000.0
+        );
 
         self.upload_queue
             .pending_image_tx()
@@ -662,7 +774,8 @@ impl UploadManager {
                     request.result_tx,
                     self.image_upload_result_tx.clone(),
                 ),
-                texture: decoded_image,
+                image_data,
+                generate_mips,
             })
             .map_err(|_err| {
                 let error = format!("Could not enqueue image upload");

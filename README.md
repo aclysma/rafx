@@ -63,6 +63,8 @@ dependencies for both SDL2 and vulkan are available.
 
 * Render thread decoupled from main thread [(diagram)](docs/pipelining.png)
 * Shader build pipeline [(diagram)](docs/shader-processor.png)
+* Offline texture compression and mipmap generations (via 
+  [basis-universal](https://github.com/BinomialLLC/basis_universal) format)
 * Asynchronous asset loading
 * Assets can be streamed to remote hardware (i.e. a phone)
 * OR assets can be cooked into a binary blob for shipping

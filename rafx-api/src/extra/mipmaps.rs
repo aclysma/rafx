@@ -11,6 +11,15 @@ use crate::{
     RafxTextureBarrier,
 };
 
+/// The max number of mip levels an image can have given its size
+pub fn mip_level_max_count_for_image_size(
+    width: u32,
+    height: u32,
+) -> u32 {
+    let max_dimension = std::cmp::max(width, height);
+    (max_dimension as f32).log2().floor() as u32 + 1
+}
+
 // Texture must be in COPY_SRC state
 // After this call, it will be in COPY_DST state
 // Vulkan requires this on a graphics queue. Metal allows this on any queue.
@@ -54,9 +63,7 @@ fn generate_mipmaps_vk(
     command_buffer: &RafxCommandBufferVulkan,
     texture: &RafxTexture,
 ) -> RafxResult<()> {
-    let extents = &texture.texture_def().extents;
-    let max_dimension = std::cmp::max(extents.width, extents.height);
-    let mip_level_count = (max_dimension as f32).log2().floor() as u32 + 1;
+    let mip_level_count = texture.texture_def().mip_count;
 
     for layer in 0..texture.texture_def().array_length {
         do_generate_mipmaps_vk(command_buffer, texture, layer, mip_level_count)?;

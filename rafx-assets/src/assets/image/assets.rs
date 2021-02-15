@@ -1,3 +1,4 @@
+use rafx_api::RafxResult;
 use rafx_framework::{ImageResource, ImageViewResource, ResourceArc};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
@@ -8,13 +9,63 @@ pub enum ImageAssetColorSpace {
     Linear,
 }
 
-impl Into<crate::DecodedImageColorSpace> for ImageAssetColorSpace {
-    fn into(self) -> crate::DecodedImageColorSpace {
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum ImageAssetMipGeneration {
+    NoMips,
+    Precomupted,
+    Runtime,
+}
+
+impl Into<crate::GpuImageDataColorSpace> for ImageAssetColorSpace {
+    fn into(self) -> crate::GpuImageDataColorSpace {
         match self {
-            ImageAssetColorSpace::Srgb => crate::DecodedImageColorSpace::Srgb,
-            ImageAssetColorSpace::Linear => crate::DecodedImageColorSpace::Linear,
+            ImageAssetColorSpace::Srgb => crate::GpuImageDataColorSpace::Srgb,
+            ImageAssetColorSpace::Linear => crate::GpuImageDataColorSpace::Linear,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub enum ImageAssetBasisCompressionType {
+    Etc1S,
+    Uastc,
+}
+
+impl Into<basis_universal::BasisTextureFormat> for ImageAssetBasisCompressionType {
+    fn into(self) -> basis_universal::BasisTextureFormat {
+        match self {
+            ImageAssetBasisCompressionType::Etc1S => basis_universal::BasisTextureFormat::ETC1S,
+            ImageAssetBasisCompressionType::Uastc => basis_universal::BasisTextureFormat::UASTC4x4,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub struct ImageAssetBasisCompressionSettings {
+    compression_type: ImageAssetBasisCompressionType,
+    quality: u32,
+}
+
+impl ImageAssetBasisCompressionSettings {
+    pub fn default_uastc() -> Self {
+        ImageAssetBasisCompressionSettings {
+            compression_type: ImageAssetBasisCompressionType::Uastc,
+            quality: basis_universal::UASTC_QUALITY_DEFAULT,
+        }
+    }
+
+    pub fn default_etc1s() -> Self {
+        ImageAssetBasisCompressionSettings {
+            compression_type: ImageAssetBasisCompressionType::Etc1S,
+            quality: basis_universal::ETC1S_QUALITY_DEFAULT,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub enum ImageAssetDataFormat {
+    RawRGBA32,
+    BasisCompressed(ImageAssetBasisCompressionSettings),
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
@@ -23,7 +74,8 @@ pub struct ImageAssetData {
     pub width: u32,
     pub height: u32,
     pub color_space: ImageAssetColorSpace,
-
+    pub format: ImageAssetDataFormat,
+    pub generate_mips_at_runtime: bool,
     #[serde(with = "serde_bytes")]
     pub data: Vec<u8>,
 }
@@ -37,7 +89,89 @@ impl std::fmt::Debug for ImageAssetData {
             .field("width", &self.width)
             .field("width", &self.height)
             .field("byte_count", &self.data.len())
+            .field("color_space", &self.color_space)
+            .field("format", &self.format)
             .finish()
+    }
+}
+
+impl ImageAssetData {
+    pub fn from_raw_rgba32(
+        width: u32,
+        height: u32,
+        color_space: ImageAssetColorSpace,
+        format: ImageAssetDataFormat,
+        mip_generation: ImageAssetMipGeneration,
+        raw_rgba32: &[u8],
+    ) -> RafxResult<ImageAssetData> {
+        match format {
+            ImageAssetDataFormat::RawRGBA32 => {
+                let generate_mips_at_runtime = match mip_generation {
+                    ImageAssetMipGeneration::NoMips => false,
+                    ImageAssetMipGeneration::Precomupted => {
+                        Err("RawRGBA32 cannot store precomputed mipmaps")?
+                    }
+                    ImageAssetMipGeneration::Runtime => true,
+                };
+
+                Ok(ImageAssetData {
+                    width,
+                    height,
+                    color_space,
+                    format,
+                    generate_mips_at_runtime,
+                    data: raw_rgba32.to_vec(),
+                })
+            }
+            ImageAssetDataFormat::BasisCompressed(settings) => {
+                let generate_mips_at_runtime = match mip_generation {
+                    ImageAssetMipGeneration::NoMips => false,
+                    ImageAssetMipGeneration::Precomupted => false,
+                    ImageAssetMipGeneration::Runtime => true,
+                };
+
+                let basis_color_space = match color_space {
+                    ImageAssetColorSpace::Srgb => basis_universal::ColorSpace::Srgb,
+                    ImageAssetColorSpace::Linear => basis_universal::ColorSpace::Linear,
+                };
+
+                let mut compressor_params = basis_universal::CompressorParams::new();
+                compressor_params.set_basis_format(settings.compression_type.into());
+                compressor_params
+                    .set_generate_mipmaps(mip_generation == ImageAssetMipGeneration::Precomupted);
+                compressor_params.set_color_space(basis_color_space);
+
+                match settings.compression_type {
+                    ImageAssetBasisCompressionType::Etc1S => {
+                        compressor_params.set_etc1s_quality_level(settings.quality)
+                    }
+                    ImageAssetBasisCompressionType::Uastc => {
+                        compressor_params.set_uastc_quality_level(settings.quality)
+                    }
+                }
+
+                let mut source_image = compressor_params.source_image_mut(0);
+                source_image.init(raw_rgba32, width, height, 4);
+
+                let mut compressor = basis_universal::Compressor::new(4);
+                unsafe {
+                    compressor.init(&compressor_params);
+                    println!("compressing");
+                    compressor.process().unwrap();
+                    println!("compressed");
+                }
+                let compressed_basis_data = compressor.basis_file();
+
+                Ok(ImageAssetData {
+                    width,
+                    height,
+                    color_space,
+                    format,
+                    generate_mips_at_runtime,
+                    data: compressed_basis_data.to_vec(),
+                })
+            }
+        }
     }
 }
 

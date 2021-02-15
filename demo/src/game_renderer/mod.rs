@@ -9,8 +9,8 @@ use crate::render_contexts::RenderJobExtractContext;
 use crate::time::TimeState;
 use legion::*;
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::AssetManager;
-use rafx::assets::{image_upload, DecodedImage, DecodedImageColorSpace};
+use rafx::assets::{image_upload, GpuImageDataColorSpace};
+use rafx::assets::{AssetManager, GpuImageData};
 use rafx::framework::{DynResourceAllocatorSet, RenderResources};
 use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::nodes::{
@@ -50,6 +50,7 @@ use rafx::api::{
     RafxApi, RafxDeviceContext, RafxError, RafxPresentableFrame, RafxQueue, RafxResourceType,
     RafxResult, RafxSampleCount,
 };
+use rafx::assets::image_upload::ImageUploadParams;
 
 /// Creates a right-handed perspective projection matrix with [0,1] depth range.
 pub fn perspective_rh(
@@ -134,32 +135,27 @@ impl GameRenderer {
             &dyn_resource_allocator,
         )?;
 
-        let invalid_image = Self::upload_single_image(
+        let invalid_image = Self::upload_image_data(
             &device_context,
             &mut upload,
             &dyn_resource_allocator,
-            &DecodedImage::new_1x1(255, 0, 255, 255, DecodedImageColorSpace::Linear),
-            RafxResourceType::TEXTURE,
-        )?;
-
-        let invalid_cube_map_image = Self::upload_single_layered_image_2d(
-            &device_context,
-            &mut upload,
-            &dyn_resource_allocator,
-            &[DecodedImage::new_1x1(
-                255,
-                0,
-                255,
-                255,
-                DecodedImageColorSpace::Linear,
-            )],
-            &[0, 0, 0, 0, 0, 0],
-            RafxResourceType::TEXTURE_CUBE,
+            &GpuImageData::new_1x1_rgba8(255, 0, 255, 255, GpuImageDataColorSpace::Linear),
+            ImageUploadParams::default(),
         )
-        .map_err(|x: RafxUploadError| {
-            let error: RafxError = x.into();
-            error
-        })?;
+        .map_err(|x| Into::<RafxError>::into(x))?;
+
+        let invalid_cube_map_image = Self::upload_image_data(
+            &device_context,
+            &mut upload,
+            &dyn_resource_allocator,
+            &GpuImageData::new_1x1_rgba8(255, 0, 255, 255, GpuImageDataColorSpace::Linear),
+            ImageUploadParams {
+                generate_mips: false,
+                resource_type: RafxResourceType::TEXTURE_CUBE,
+                layer_swizzle: Some(&[0, 0, 0, 0, 0, 0]),
+            },
+        )
+        .map_err(|x| Into::<RafxError>::into(x))?;
 
         upload.block_until_upload_complete()?;
 
@@ -197,43 +193,18 @@ impl GameRenderer {
         &self.transfer_queue
     }
 
-    fn upload_single_layered_image_2d(
+    fn upload_image_data(
         device_context: &RafxDeviceContext,
         upload: &mut RafxTransferUpload,
         dyn_resource_allocator: &DynResourceAllocatorSet,
-        decoded_images: &[DecodedImage],
-        layer_texture_assignments: &[usize],
-        resource_type: RafxResourceType,
+        image_data: &GpuImageData,
+        params: ImageUploadParams,
     ) -> Result<ResourceArc<ImageViewResource>, RafxUploadError> {
-        let texture = image_upload::enqueue_load_layered_image_2d(
-            device_context,
-            upload,
-            decoded_images,
-            layer_texture_assignments,
-            resource_type,
-        )?;
+        let texture = image_upload::enqueue_load_image(device_context, upload, image_data, params)?;
 
         let image = dyn_resource_allocator.insert_texture(texture);
 
         Ok(dyn_resource_allocator.insert_image_view(&image, None)?)
-    }
-
-    fn upload_single_image(
-        device_context: &RafxDeviceContext,
-        upload: &mut RafxTransferUpload,
-        dyn_resource_allocator: &DynResourceAllocatorSet,
-        decoded_image: &DecodedImage,
-        resource_type: RafxResourceType,
-    ) -> RafxResult<ResourceArc<ImageViewResource>> {
-        Self::upload_single_layered_image_2d(
-            device_context,
-            upload,
-            dyn_resource_allocator,
-            std::slice::from_ref(decoded_image),
-            &[0],
-            resource_type,
-        )
-        .map_err(|x| x.into())
     }
 
     #[cfg(feature = "use-imgui")]
@@ -251,22 +222,24 @@ impl GameRenderer {
             .unwrap()
             .build_font_atlas();
 
-        use rafx::assets::DecodedImageMips;
-        let imgui_font_atlas = DecodedImage {
-            width: imgui_font_atlas.width,
-            height: imgui_font_atlas.height,
-            data: imgui_font_atlas.data,
-            color_space: DecodedImageColorSpace::Linear,
-            mips: DecodedImageMips::None,
-        };
+        let imgui_font_atlas = GpuImageData::new_simple(
+            imgui_font_atlas.width,
+            imgui_font_atlas.height,
+            GpuImageDataColorSpace::Linear.rgba8(),
+            imgui_font_atlas.data,
+        );
 
-        Self::upload_single_image(
+        Self::upload_image_data(
             device_context,
             upload,
             dyn_resource_allocator,
             &imgui_font_atlas,
-            RafxResourceType::TEXTURE,
+            ImageUploadParams {
+                generate_mips: false,
+                ..Default::default()
+            },
         )
+        .map_err(|x| Into::<RafxError>::into(x))
     }
 
     // This is externally exposed, it checks result of the previous frame (which implicitly also

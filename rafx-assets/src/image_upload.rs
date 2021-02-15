@@ -1,79 +1,109 @@
-use crate::DecodedImage;
-use crate::DecodedImageColorSpace;
-use crate::DecodedImageMips;
+use crate::GpuImageData;
 use rafx_api::extra::upload::{RafxTransferUpload, RafxUploadError};
 use rafx_api::{
     RafxBarrierQueueTransition, RafxCmdCopyBufferToTextureParams, RafxDeviceContext, RafxExtents3D,
-    RafxFormat, RafxQueue, RafxResourceState, RafxResourceType, RafxSampleCount, RafxTexture,
+    RafxQueue, RafxResourceState, RafxResourceType, RafxSampleCount, RafxTexture,
     RafxTextureBarrier, RafxTextureDef, RafxTextureDimensions,
 };
+
+// Arbitrary, not sure if there is any real requirement
+pub const IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT: u64 = 16;
+
+pub struct ImageUploadParams<'a> {
+    pub resource_type: RafxResourceType,
+    pub generate_mips: bool,
+    pub layer_swizzle: Option<&'a [u32]>,
+}
+
+impl<'a> Default for ImageUploadParams<'a> {
+    fn default() -> Self {
+        ImageUploadParams {
+            resource_type: RafxResourceType::TEXTURE,
+            generate_mips: false,
+            layer_swizzle: None,
+        }
+    }
+}
 
 // This function is a little more complex to use than enqueue_load_images but can support cubemaps
 // We create a layer for each layer_image_assignment, and copy from the decoded_image
 // at the index matching the assignment
-pub fn enqueue_load_layered_image_2d(
+pub fn enqueue_load_image(
     device_context: &RafxDeviceContext,
     upload: &mut RafxTransferUpload,
-    // transfer_queue_family_index: u32,
-    // dst_queue_family_index: u32,
-    decoded_images: &[DecodedImage],
-    layer_image_assignments: &[usize],
-    resource_type: RafxResourceType,
+    image_data: &GpuImageData,
+    params: ImageUploadParams,
 ) -> Result<RafxTexture, RafxUploadError> {
-    // All images must have identical mip level count
+    // All images must have identical mip level count, sizes, etc.
     #[cfg(debug_assertions)]
-    {
-        let first = &decoded_images[0];
-        for decoded_image in decoded_images {
-            assert_eq!(first.mips, decoded_image.mips);
-            assert_eq!(first.width, decoded_image.width);
-            assert_eq!(first.height, decoded_image.height);
-            assert_eq!(first.color_space, decoded_image.color_space);
-            assert_eq!(first.data.len(), decoded_image.data.len());
-        }
-    }
+    image_data.verify_state();
 
-    // Arbitrary, not sure if there is any requirement
-    const REQUIRED_ALIGNMENT: usize = 16;
+    //
+    // Determine the total amount of data we need to upload and verify there is enough space
+    //
+    let bytes_required = image_data.total_size(IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT as u64);
 
-    // Check ahead of time if there is space since we are uploading multiple images
     let has_space_available = upload.has_space_available(
-        decoded_images[0].data.len(),
-        REQUIRED_ALIGNMENT,
-        decoded_images.len(),
+        bytes_required as usize,
+        IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT as usize,
+        1,
     );
+
     if !has_space_available {
         Err(RafxUploadError::BufferFull)?;
     }
 
-    let (mip_level_count, generate_mips) = match decoded_images[0].mips {
-        DecodedImageMips::None => (1, false),
-        DecodedImageMips::Precomputed(_mip_count) => unimplemented!(), //(info.mip_level_count, false),
-        DecodedImageMips::Runtime(mip_count) => (mip_count, mip_count > 1),
+    //
+    // Determine mip count
+    //
+    let mip_count = if params.generate_mips {
+        rafx_api::extra::mipmaps::mip_level_max_count_for_image_size(
+            image_data.width,
+            image_data.height,
+        )
+    } else {
+        image_data.layers[0].mip_levels.len() as u32
     };
 
-    // Push all images into the staging buffer
+    //
+    // Push all image layers/levels into the staging buffer, keeping note of offsets within the
+    // buffer where each resource is stored
+    //
     let mut layer_offsets = Vec::default();
-    for decoded_image in decoded_images {
-        layer_offsets.push(upload.push(&decoded_image.data, REQUIRED_ALIGNMENT)?);
+    for layer in &image_data.layers {
+        let mut level_offsets = Vec::default();
+        for level in &layer.mip_levels {
+            let offset = upload.push(
+                &level.data,
+                IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT as usize,
+            )?;
+            level_offsets.push(offset);
+        }
+        layer_offsets.push(level_offsets);
     }
 
-    let format = match decoded_images[0].color_space {
-        DecodedImageColorSpace::Linear => RafxFormat::R8G8B8A8_UNORM,
-        DecodedImageColorSpace::Srgb => RafxFormat::R8G8B8A8_SRGB,
-    };
+    // If we are swizzling layers, we create a layer per layer_swizzle entry. Otherwise, we use
+    // the number of layers in the image data
+    let layer_count = params
+        .layer_swizzle
+        .map(|x| x.len())
+        .unwrap_or_else(|| image_data.layers.len()) as u32;
 
+    //
+    // Create the texture
+    //
+    assert!(mip_count > 0);
     let texture = device_context.create_texture(&RafxTextureDef {
         extents: RafxExtents3D {
-            width: decoded_images[0].width,
-            height: decoded_images[0].height,
+            width: image_data.width,
+            height: image_data.height,
             depth: 1,
         },
-        array_length: layer_image_assignments.len() as u32,
-        mip_count: mip_level_count,
+        array_length: layer_count,
+        mip_count,
         sample_count: RafxSampleCount::SampleCount1,
-        format,
-        resource_type,
+        format: image_data.format,
+        resource_type: params.resource_type,
         dimensions: RafxTextureDimensions::Dim2D,
     })?;
 
@@ -99,40 +129,41 @@ pub fn enqueue_load_layered_image_2d(
         )
         .unwrap();
 
-    for (layer_index, image_index) in layer_image_assignments.iter().enumerate() {
-        upload
-            .transfer_command_buffer()
-            .cmd_copy_buffer_to_texture(
-                upload.staging_buffer(),
-                &texture,
-                &RafxCmdCopyBufferToTextureParams {
-                    buffer_offset: layer_offsets[*image_index],
-                    array_layer: layer_index as u16,
-                    mip_level: 0,
-                },
-            )
-            .unwrap();
-    }
+    for dst_layer_index in 0..layer_count {
+        let src_layer_index = if let Some(layer_swizzle) = params.layer_swizzle {
+            layer_swizzle[dst_layer_index as usize] as usize
+        } else {
+            dst_layer_index as usize
+        };
 
-    if generate_mips {
-        //
-        // Copy mip level 0 into the image
-        //
-        for (layer_index, image_index) in layer_image_assignments.iter().enumerate() {
+        for level_index in 0..image_data.layers[src_layer_index].mip_levels.len() {
             upload
                 .transfer_command_buffer()
                 .cmd_copy_buffer_to_texture(
                     upload.staging_buffer(),
                     &texture,
                     &RafxCmdCopyBufferToTextureParams {
-                        buffer_offset: layer_offsets[*image_index],
-                        array_layer: layer_index as u16,
-                        mip_level: 0,
+                        buffer_offset: layer_offsets[src_layer_index][level_index],
+                        array_layer: dst_layer_index as u16,
+                        mip_level: level_index as u8,
                     },
                 )
                 .unwrap();
         }
+    }
 
+    log::debug!(
+        "upload image {}x{} format {:?} layers: {} levels: {} generate mips: {} resource type: {:?}",
+        image_data.width,
+        image_data.height,
+        image_data.format,
+        layer_count,
+        mip_count,
+        params.generate_mips,
+        params.resource_type
+    );
+
+    if params.generate_mips && mip_count > 1 {
         //
         // Transition the first mip range to COPY_SRC on graphics queue (release)
         //
@@ -216,58 +247,19 @@ pub fn enqueue_load_layered_image_2d(
     Ok(texture)
 }
 
-pub fn enqueue_load_image(
-    device_context: &RafxDeviceContext,
-    upload: &mut RafxTransferUpload,
-    decoded_image: &DecodedImage,
-    resource_type: RafxResourceType,
-) -> Result<RafxTexture, RafxUploadError> {
-    enqueue_load_layered_image_2d(
-        device_context,
-        upload,
-        std::slice::from_ref(decoded_image),
-        &[0],
-        resource_type,
-    )
-}
-
-pub fn load_layered_image_2d_blocking(
-    device_context: &RafxDeviceContext,
-    transfer_queue: &RafxQueue,
-    dst_queue: &RafxQueue,
-    decoded_images: &[DecodedImage],
-    layer_image_assignments: &[usize],
-    upload_buffer_max_size: u64,
-    resource_type: RafxResourceType,
-) -> Result<RafxTexture, RafxUploadError> {
-    let mut upload = RafxTransferUpload::new(
-        device_context,
-        transfer_queue,
-        dst_queue,
-        upload_buffer_max_size,
-    )?;
-
-    let texture = enqueue_load_layered_image_2d(
-        device_context,
-        &mut upload,
-        decoded_images,
-        layer_image_assignments,
-        resource_type,
-    )?;
-
-    upload.block_until_upload_complete()?;
-
-    Ok(texture)
-}
-
 pub fn load_image_blocking(
     device_context: &RafxDeviceContext,
     transfer_queue: &RafxQueue,
     dst_queue: &RafxQueue,
-    decoded_image: &DecodedImage,
     upload_buffer_max_size: u64,
-    resource_type: RafxResourceType,
+    image_data: &GpuImageData,
+    params: ImageUploadParams,
 ) -> Result<RafxTexture, RafxUploadError> {
+    let total_size = image_data.total_size(IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT);
+    if upload_buffer_max_size < total_size {
+        Err(RafxUploadError::BufferFull)?;
+    }
+
     let mut upload = RafxTransferUpload::new(
         device_context,
         transfer_queue,
@@ -275,7 +267,7 @@ pub fn load_image_blocking(
         upload_buffer_max_size,
     )?;
 
-    let texture = enqueue_load_image(device_context, &mut upload, decoded_image, resource_type)?;
+    let texture = enqueue_load_image(device_context, &mut upload, image_data, params)?;
 
     upload.block_until_upload_complete()?;
 

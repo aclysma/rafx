@@ -906,18 +906,20 @@ impl RafxCommandBufferMetal {
         let height = 1.max(texture_def.extents.height >> params.mip_level);
         let depth = 1.max(texture_def.extents.depth >> params.mip_level);
 
-        let format_size_in_bytes = dst_texture
-            .texture_def()
-            .format
-            .size_of_format_in_bytes()
-            .unwrap();
+        // For a compressed format, sourceBytesPerRow is the number of bytes from the start of one row of blocks to the start of the next row of blocks.
+        let format = texture_def.format;
+        let block_size_in_bytes = format.block_or_pixel_size_in_bytes();
+        let block_width_in_pixels = format.block_width_in_pixels();
+        let texture_width_in_blocks =
+            rafx_base::memory::round_size_up_to_alignment_u32(width, block_width_in_pixels)
+                / block_width_in_pixels;
 
         let device_info = self.queue.device_context().device_info();
         let texture_alignment = device_info.upload_buffer_texture_alignment;
         let row_alignment = device_info.upload_buffer_texture_row_alignment;
 
         let source_bytes_per_row = rafx_base::memory::round_size_up_to_alignment_u32(
-            width as u32 * format_size_in_bytes as u32,
+            texture_width_in_blocks * block_size_in_bytes,
             row_alignment,
         );
         let source_bytes_per_image = rafx_base::memory::round_size_up_to_alignment_u32(

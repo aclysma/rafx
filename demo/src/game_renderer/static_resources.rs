@@ -24,6 +24,7 @@ fn wait_for_asset_to_load<T>(
                     asset_name,
                     asset_handle
                 );
+                std::thread::sleep(std::time::Duration::from_millis(10));
             }
             LoadStatus::Loading => {
                 log::info!(
