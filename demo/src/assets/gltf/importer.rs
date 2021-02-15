@@ -10,10 +10,10 @@ use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
 use itertools::Itertools;
 use rafx::assets::push_buffer::PushBuffer;
+use rafx::assets::BufferAssetData;
 use rafx::assets::ImageAsset;
 use rafx::assets::MaterialInstanceAsset;
-use rafx::assets::{BufferAssetData, ImageAssetBasisCompressionSettings, ImageAssetMipGeneration};
-use rafx::assets::{ImageAssetColorSpace, ImageAssetData, ImageAssetDataFormat};
+use rafx::assets::{ImageAssetColorSpace, ImageAssetData};
 use rafx::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -561,13 +561,13 @@ fn extract_images_to_import(
             image.index()
         );
 
-        let basis_settings = ImageAssetBasisCompressionSettings::default_uastc();
+        let (format, mip_generation) = ImageAssetData::default_format_and_mip_generation();
         let asset_data = ImageAssetData::from_raw_rgba32(
             image_data.width,
             image_data.height,
             color_space,
-            ImageAssetDataFormat::BasisCompressed(basis_settings),
-            ImageAssetMipGeneration::Precomupted,
+            format,
+            mip_generation,
             converted_image.as_raw().as_slice(),
         )
         .unwrap();

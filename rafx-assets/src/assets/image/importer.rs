@@ -1,5 +1,4 @@
-use crate::assets::image::{ImageAssetColorSpace, ImageAssetData, ImageAssetDataFormat};
-use crate::{ImageAssetBasisCompressionSettings, ImageAssetMipGeneration};
+use crate::assets::image::{ImageAssetColorSpace, ImageAssetData};
 use distill::importer::{Error, ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use image2::Image;
@@ -49,14 +48,13 @@ impl Importer for ImageImporter {
         let decoded_image = image2::io::decode::<_, _, image2::Rgba>(&bytes)
             .map_err(|e| Error::Boxed(Box::new(e)))?;
 
-        let basis_settings = ImageAssetBasisCompressionSettings::default_uastc();
-
+        let (format, mip_generation) = ImageAssetData::default_format_and_mip_generation();
         let asset_data = ImageAssetData::from_raw_rgba32(
             decoded_image.width() as u32,
             decoded_image.height() as u32,
             ImageAssetColorSpace::Srgb,
-            ImageAssetDataFormat::BasisCompressed(basis_settings),
-            ImageAssetMipGeneration::Precomupted,
+            format,
+            mip_generation,
             decoded_image.data(),
         )
         .unwrap();

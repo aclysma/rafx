@@ -96,6 +96,21 @@ impl std::fmt::Debug for ImageAssetData {
 }
 
 impl ImageAssetData {
+    // Temporary - off by default because encoding textures is very slow
+    pub fn default_format_and_mip_generation() -> (ImageAssetDataFormat, ImageAssetMipGeneration) {
+        let compress_textures = true;
+        if compress_textures {
+            let basis_settings = ImageAssetBasisCompressionSettings::default_uastc();
+            let format = ImageAssetDataFormat::BasisCompressed(basis_settings);
+            let mipmap_generation = ImageAssetMipGeneration::Precomupted;
+            (format, mipmap_generation)
+        } else {
+            let format = ImageAssetDataFormat::RawRGBA32;
+            let mipmap_generation = ImageAssetMipGeneration::Runtime;
+            (format, mipmap_generation)
+        }
+    }
+
     pub fn from_raw_rgba32(
         width: u32,
         height: u32,
