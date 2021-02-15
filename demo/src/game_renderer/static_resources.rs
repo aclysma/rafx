@@ -11,6 +11,22 @@ fn wait_for_asset_to_load<T>(
     asset_manager: &mut AssetManager,
     asset_name: &str,
 ) -> RafxResult<()> {
+    const PRINT_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1000);
+    let mut last_print_time = None;
+
+    fn on_interval<F: Fn()>(
+        interval: std::time::Duration,
+        last_time: &mut Option<std::time::Instant>,
+        f: F,
+    ) {
+        let now = std::time::Instant::now();
+
+        if last_time.is_none() || now - last_time.unwrap() >= interval {
+            (f)();
+            *last_time = Some(now);
+        }
+    }
+
     loop {
         asset_resource.update();
         asset_manager.update_asset_loaders()?;
@@ -19,20 +35,24 @@ fn wait_for_asset_to_load<T>(
                 unreachable!();
             }
             LoadStatus::Unresolved => {
-                log::info!(
-                    "blocked waiting for asset to resolve {} {:?}",
-                    asset_name,
-                    asset_handle
-                );
-                std::thread::sleep(std::time::Duration::from_millis(10));
+                on_interval(PRINT_INTERVAL, &mut last_print_time, || {
+                    log::info!(
+                        "blocked waiting for asset to resolve {} {:?}",
+                        asset_name,
+                        asset_handle
+                    );
+                });
+                std::thread::sleep(std::time::Duration::from_millis(1));
             }
             LoadStatus::Loading => {
-                log::info!(
-                    "blocked waiting for asset to load {} {:?}",
-                    asset_name,
-                    asset_handle
-                );
-                std::thread::sleep(std::time::Duration::from_millis(10));
+                on_interval(PRINT_INTERVAL, &mut last_print_time, || {
+                    log::info!(
+                        "blocked waiting for asset to load {} {:?}",
+                        asset_name,
+                        asset_handle
+                    );
+                });
+                std::thread::sleep(std::time::Duration::from_millis(1));
                 // keep waiting
             }
             LoadStatus::Loaded => {
