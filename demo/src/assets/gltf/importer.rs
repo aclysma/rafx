@@ -9,6 +9,7 @@ use fnv::FnvHashMap;
 use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
 use itertools::Itertools;
+use rafx::api::RafxResourceType;
 use rafx::assets::push_buffer::PushBuffer;
 use rafx::assets::BufferAssetData;
 use rafx::assets::ImageAsset;
@@ -568,6 +569,7 @@ fn extract_images_to_import(
             color_space,
             format,
             mip_generation,
+            RafxResourceType::TEXTURE,
             converted_image.as_raw().as_slice(),
         )
         .unwrap();

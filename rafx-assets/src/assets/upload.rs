@@ -93,6 +93,7 @@ pub struct PendingImageUpload {
     pub load_op: AssetLoadOp,
     pub upload_op: ImageUploadOp,
     pub image_data: GpuImageData,
+    pub resource_type: RafxResourceType,
     pub generate_mips: bool,
 }
 
@@ -344,7 +345,7 @@ impl UploadQueue {
             // self.graphics_queue.queue_family_index(),
             &pending_image.image_data,
             ImageUploadParams {
-                resource_type: RafxResourceType::TEXTURE,
+                resource_type: pending_image.resource_type,
                 generate_mips: pending_image.generate_mips,
                 ..Default::default()
             },
@@ -664,7 +665,7 @@ impl UploadManager {
                 color_space.rgba8(),
                 request.asset.data,
             ),
-            ImageAssetDataFormat::BasisCompressed(_settings) => {
+            ImageAssetDataFormat::BasisCompressed => {
                 let data = request.asset.data;
                 let mut transcoder = basis_universal::Transcoder::new();
                 transcoder.prepare_transcoding(&data).unwrap();
@@ -775,6 +776,7 @@ impl UploadManager {
                     self.image_upload_result_tx.clone(),
                 ),
                 image_data,
+                resource_type: request.asset.resource_type,
                 generate_mips,
             })
             .map_err(|_err| {

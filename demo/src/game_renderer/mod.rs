@@ -43,7 +43,6 @@ use crate::components::{
 };
 use crate::RenderOptions;
 use arrayvec::ArrayVec;
-use distill::loader::handle::AssetHandle;
 use fnv::FnvHashMap;
 use rafx::api::extra::upload::{RafxTransferUpload, RafxUploadError};
 use rafx::api::{
@@ -554,30 +553,6 @@ impl GameRenderer {
         //
         asset_manager.on_begin_frame()?;
 
-        //
-        // Render Graph, this is needed now as some of the outputs from the graph may be used in
-        // the extract phase
-        //
-        let bloom_extract_material_pass = asset_manager
-            .get_material_pass_by_index(&static_resources.bloom_extract_material, 0)
-            .unwrap();
-
-        let bloom_blur_material_pass = asset_manager
-            .get_material_pass_by_index(&static_resources.bloom_blur_material, 0)
-            .unwrap();
-
-        let bloom_combine_material_pass = asset_manager
-            .get_material_pass_by_index(&static_resources.bloom_combine_material, 0)
-            .unwrap();
-
-        let compute_test_pipeline = asset_manager
-            .loaded_assets()
-            .compute_pipelines
-            .get_committed(static_resources.compute_test.load_handle())
-            .unwrap()
-            .compute_pipeline
-            .clone();
-
         let graph_config = {
             let swapchain_format = swapchain_surface_info.format;
             let sample_count = if render_options.enable_msaa {
@@ -658,15 +633,13 @@ impl GameRenderer {
         let render_graph = render_graph::build_render_graph(
             &device_context,
             &resource_context,
+            asset_manager,
             &graph_config,
-            &swapchain_surface_info,
             swapchain_image,
             main_view.clone(),
             &shadow_map_render_views,
-            bloom_extract_material_pass,
-            bloom_blur_material_pass,
-            bloom_combine_material_pass,
-            &compute_test_pipeline,
+            swapchain_resources,
+            static_resources,
         )?;
 
         assert_eq!(

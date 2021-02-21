@@ -1,4 +1,4 @@
-use rafx_api::RafxResult;
+use rafx_api::{RafxResourceType, RafxResult};
 use rafx_framework::{ImageResource, ImageViewResource, ResourceArc};
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
@@ -65,6 +65,12 @@ impl ImageAssetBasisCompressionSettings {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum ImageAssetDataFormat {
     RawRGBA32,
+    BasisCompressed,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub enum ImageAssetDataFormatConfig {
+    RawRGBA32,
     BasisCompressed(ImageAssetBasisCompressionSettings),
 }
 
@@ -75,6 +81,7 @@ pub struct ImageAssetData {
     pub height: u32,
     pub color_space: ImageAssetColorSpace,
     pub format: ImageAssetDataFormat,
+    pub resource_type: RafxResourceType,
     pub generate_mips_at_runtime: bool,
     #[serde(with = "serde_bytes")]
     pub data: Vec<u8>,
@@ -97,17 +104,18 @@ impl std::fmt::Debug for ImageAssetData {
 
 impl ImageAssetData {
     // Temporary - off by default because encoding textures is very slow
-    pub fn default_format_and_mip_generation() -> (ImageAssetDataFormat, ImageAssetMipGeneration) {
-        let compress_textures = true;
+    pub fn default_format_and_mip_generation(
+    ) -> (ImageAssetDataFormatConfig, ImageAssetMipGeneration) {
+        let compress_textures = false;
         if compress_textures {
             let basis_settings = ImageAssetBasisCompressionSettings::default_uastc();
-            let format = ImageAssetDataFormat::BasisCompressed(basis_settings);
+            let format_config = ImageAssetDataFormatConfig::BasisCompressed(basis_settings);
             let mipmap_generation = ImageAssetMipGeneration::Precomupted;
-            (format, mipmap_generation)
+            (format_config, mipmap_generation)
         } else {
-            let format = ImageAssetDataFormat::RawRGBA32;
+            let format_config = ImageAssetDataFormatConfig::RawRGBA32;
             let mipmap_generation = ImageAssetMipGeneration::Runtime;
-            (format, mipmap_generation)
+            (format_config, mipmap_generation)
         }
     }
 
@@ -115,12 +123,13 @@ impl ImageAssetData {
         width: u32,
         height: u32,
         color_space: ImageAssetColorSpace,
-        format: ImageAssetDataFormat,
+        format_config: ImageAssetDataFormatConfig,
         mip_generation: ImageAssetMipGeneration,
+        resource_type: RafxResourceType,
         raw_rgba32: &[u8],
     ) -> RafxResult<ImageAssetData> {
-        match format {
-            ImageAssetDataFormat::RawRGBA32 => {
+        match format_config {
+            ImageAssetDataFormatConfig::RawRGBA32 => {
                 let generate_mips_at_runtime = match mip_generation {
                     ImageAssetMipGeneration::NoMips => false,
                     ImageAssetMipGeneration::Precomupted => {
@@ -133,12 +142,13 @@ impl ImageAssetData {
                     width,
                     height,
                     color_space,
-                    format,
+                    format: ImageAssetDataFormat::RawRGBA32,
                     generate_mips_at_runtime,
+                    resource_type,
                     data: raw_rgba32.to_vec(),
                 })
             }
-            ImageAssetDataFormat::BasisCompressed(settings) => {
+            ImageAssetDataFormatConfig::BasisCompressed(settings) => {
                 let generate_mips_at_runtime = match mip_generation {
                     ImageAssetMipGeneration::NoMips => false,
                     ImageAssetMipGeneration::Precomupted => false,
@@ -181,8 +191,9 @@ impl ImageAssetData {
                     width,
                     height,
                     color_space,
-                    format,
+                    format: ImageAssetDataFormat::BasisCompressed,
                     generate_mips_at_runtime,
+                    resource_type,
                     data: compressed_basis_data.to_vec(),
                 })
             }

@@ -2,8 +2,8 @@ use distill::loader::handle::Handle;
 use distill::loader::storage::LoadStatus;
 use rafx::api::RafxResult;
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::MaterialAsset;
 use rafx::assets::{AssetManager, ComputePipelineAsset};
+use rafx::assets::{ImageAsset, MaterialAsset};
 
 fn wait_for_asset_to_load<T>(
     asset_handle: &distill::loader::handle::Handle<T>,
@@ -77,6 +77,8 @@ pub struct GameRendererStaticResources {
     pub bloom_blur_material: Handle<MaterialAsset>,
     pub bloom_combine_material: Handle<MaterialAsset>,
     pub imgui_material: Handle<MaterialAsset>,
+    pub skybox_material: Handle<MaterialAsset>,
+    pub skybox_texture: Handle<ImageAsset>,
     pub compute_test: Handle<ComputePipelineAsset>,
 }
 
@@ -123,6 +125,14 @@ impl GameRendererStaticResources {
         //
         let imgui_material =
             asset_resource.load_asset_path::<MaterialAsset, _>("materials/imgui.material");
+
+        //
+        // Skybox resources
+        //
+        let skybox_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/skybox.material");
+        let skybox_texture =
+            asset_resource.load_asset_path::<ImageAsset, _>("textures/skybox.basis");
 
         //
         // Compute pipeline
@@ -173,6 +183,20 @@ impl GameRendererStaticResources {
         )?;
 
         wait_for_asset_to_load(
+            &skybox_material,
+            asset_resource,
+            asset_manager,
+            "skybox material",
+        )?;
+
+        wait_for_asset_to_load(
+            &skybox_texture,
+            asset_resource,
+            asset_manager,
+            "skybox texture",
+        )?;
+
+        wait_for_asset_to_load(
             &compute_test,
             asset_resource,
             asset_manager,
@@ -186,6 +210,8 @@ impl GameRendererStaticResources {
             bloom_blur_material,
             bloom_combine_material,
             imgui_material,
+            skybox_material,
+            skybox_texture,
             compute_test,
         })
     }

@@ -166,6 +166,10 @@ The demo/fonts directory contains several fonts under their own licenses:
 
 The assets/blender contains some shaders from from https://freepbr.com, available under [its own license](demo/assets/blender/pbr_texture_attribution.txt)
 
+The skyboxes are from:
+ * https://opengameart.org/content/space-skyboxes-0 (CC0)
+ * http://www.humus.name/index.php?page=Textures (CC BY 3.0)
+
 Some dependencies may be licensed under other terms. These licenses include "ISC", "CC0-1.0", "BSD-2-Clause",
 "BSD-3-Clause", and "Zlib". This is validated on a best-effort basis in every CI run using cargo-deny.
 

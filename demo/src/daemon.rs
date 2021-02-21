@@ -75,6 +75,7 @@ pub fn run(opt: AssetDaemonOpt) {
         .with_importer("jpeg", rafx::assets::ImageImporter)
         .with_importer("tga", rafx::assets::ImageImporter)
         .with_importer("bmp", rafx::assets::ImageImporter)
+        .with_importer("basis", rafx::assets::BasisImageImporter)
         .with_importer("gltf", crate::assets::gltf::GltfImporter)
         .with_importer("glb", crate::assets::gltf::GltfImporter)
         .with_db_path(opt.db_dir)

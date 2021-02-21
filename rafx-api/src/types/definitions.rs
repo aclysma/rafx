@@ -54,38 +54,51 @@ impl Default for RafxBufferDef {
 }
 
 impl RafxBufferDef {
-    pub fn for_staging_vertex_buffer(size: usize) -> RafxBufferDef {
+    pub fn for_staging_buffer(
+        size: usize,
+        resource_type: RafxResourceType,
+    ) -> RafxBufferDef {
         RafxBufferDef {
             size: size as u64,
             alignment: 0,
             memory_usage: RafxMemoryUsage::CpuToGpu,
             queue_type: RafxQueueType::Graphics,
-            resource_type: RafxResourceType::VERTEX_BUFFER,
+            resource_type,
             elements: Default::default(),
             format: RafxFormat::UNDEFINED,
             always_mapped: false,
         }
+    }
+
+    pub fn for_staging_buffer_data<T: Copy>(
+        data: &[T],
+        resource_type: RafxResourceType,
+    ) -> RafxBufferDef {
+        Self::for_staging_buffer(rafx_base::memory::slice_size_in_bytes(data), resource_type)
+    }
+
+    pub fn for_staging_vertex_buffer(size: usize) -> RafxBufferDef {
+        Self::for_staging_buffer(size, RafxResourceType::VERTEX_BUFFER)
     }
 
     pub fn for_staging_vertex_buffer_data<T: Copy>(data: &[T]) -> RafxBufferDef {
-        Self::for_staging_vertex_buffer(rafx_base::memory::slice_size_in_bytes(data))
+        Self::for_staging_buffer_data(data, RafxResourceType::VERTEX_BUFFER)
     }
 
-    pub fn for_staging_uniform(size: usize) -> RafxBufferDef {
-        RafxBufferDef {
-            size: size as u64,
-            alignment: 0,
-            memory_usage: RafxMemoryUsage::CpuToGpu,
-            queue_type: RafxQueueType::Graphics,
-            resource_type: RafxResourceType::UNIFORM_BUFFER,
-            elements: Default::default(),
-            format: RafxFormat::UNDEFINED,
-            always_mapped: false,
-        }
+    pub fn for_staging_index_buffer(size: usize) -> RafxBufferDef {
+        Self::for_staging_buffer(size, RafxResourceType::INDEX_BUFFER)
     }
 
-    pub fn for_staging_uniform_data<T: Copy>(data: &[T]) -> RafxBufferDef {
-        Self::for_staging_uniform(rafx_base::memory::slice_size_in_bytes(data))
+    pub fn for_staging_index_buffer_data<T: Copy>(data: &[T]) -> RafxBufferDef {
+        Self::for_staging_buffer_data(data, RafxResourceType::INDEX_BUFFER)
+    }
+
+    pub fn for_staging_uniform_buffer(size: usize) -> RafxBufferDef {
+        Self::for_staging_buffer(size, RafxResourceType::UNIFORM_BUFFER)
+    }
+
+    pub fn for_staging_uniform_buffer_data<T: Copy>(data: &[T]) -> RafxBufferDef {
+        Self::for_staging_buffer_data(data, RafxResourceType::UNIFORM_BUFFER)
     }
 }
 

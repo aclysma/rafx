@@ -12,5 +12,7 @@ pub mod mesh_frag;
 pub mod mesh_shadow_map_vert;
 pub mod mesh_vert;
 pub mod postprocess_vert;
+pub mod skybox_frag;
+pub mod skybox_vert;
 pub mod sprite_frag;
 pub mod sprite_vert;

@@ -1,4 +1,5 @@
 mod image;
+pub use self::image::BasisImageImporter;
 pub use self::image::ImageAsset;
 pub use self::image::ImageAssetBasisCompressionSettings;
 pub use self::image::ImageAssetBasisCompressionType;
