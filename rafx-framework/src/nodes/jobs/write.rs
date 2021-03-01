@@ -1,4 +1,7 @@
-use crate::nodes::{MergedFrameSubmitNodes, RenderFeatureIndex, RenderPhase, RenderPhaseIndex, RenderRegistry, RenderView, SubmitNodeId, RenderJobWriteContext, RenderJobBeginExecuteGraphContext};
+use crate::nodes::{
+    MergedFrameSubmitNodes, RenderFeatureIndex, RenderJobBeginExecuteGraphContext,
+    RenderJobWriteContext, RenderPhase, RenderPhaseIndex, RenderRegistry, RenderView, SubmitNodeId,
+};
 use rafx_api::RafxResult;
 
 pub trait FeatureCommandWriter {

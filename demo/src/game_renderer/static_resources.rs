@@ -1,11 +1,11 @@
+use crate::assets::font::FontAsset;
+use crate::game_asset_manager::GameAssetManager;
 use distill::loader::handle::Handle;
 use distill::loader::storage::LoadStatus;
 use rafx::api::RafxResult;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ComputePipelineAsset};
 use rafx::assets::{ImageAsset, MaterialAsset};
-use crate::assets::font::FontAsset;
-use crate::game_asset_manager::GameAssetManager;
 
 fn wait_for_asset_to_load<T>(
     asset_handle: &distill::loader::handle::Handle<T>,
@@ -152,8 +152,8 @@ impl GameRendererStaticResources {
         //
         let text_material =
             asset_resource.load_asset_path::<MaterialAsset, _>("materials/text.material");
-        let default_font = asset_resource
-            .load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf");
+        let default_font =
+            asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf");
 
         wait_for_asset_to_load(
             &sprite_material,

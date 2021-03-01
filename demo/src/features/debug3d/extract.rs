@@ -1,9 +1,12 @@
 use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
 use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource, ExtractedDebug3dData};
 use crate::game_renderer::GameRendererStaticResources;
-use rafx::nodes::{ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderJobExtractContext};
 use crate::legion_support::LegionResources;
 use rafx::assets::AssetManagerRenderResource;
+use rafx::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
+    RenderJobExtractContext, RenderView,
+};
 
 pub struct Debug3dExtractJob {}
 
@@ -13,9 +16,7 @@ impl Debug3dExtractJob {
     }
 }
 
-impl ExtractJob
-    for Debug3dExtractJob
-{
+impl ExtractJob for Debug3dExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -24,7 +25,9 @@ impl ExtractJob
     ) -> Box<dyn PrepareJob> {
         profiling::scope!("Debug3d Extract");
         let legion_resources = extract_context.render_resources.fetch::<LegionResources>();
-        let asset_manager = extract_context.render_resources.fetch::<AssetManagerRenderResource>();
+        let asset_manager = extract_context
+            .render_resources
+            .fetch::<AssetManagerRenderResource>();
 
         let line_lists = legion_resources
             .get_mut::<DebugDraw3DResource>()

@@ -1,13 +1,16 @@
 use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
 use crate::imgui_support::Sdl2ImguiManager;
+use crate::legion_support::LegionResources;
 use crate::{
     features::imgui::prepare::ImGuiPrepareJobImpl,
     game_renderer::{GameRendererStaticResources, ImguiFontAtlas},
 };
-use rafx::graph::SwapchainSurfaceInfo;
-use rafx::nodes::{ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderJobExtractContext};
-use crate::legion_support::LegionResources;
 use rafx::assets::AssetManagerRenderResource;
+use rafx::graph::SwapchainSurfaceInfo;
+use rafx::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
+    RenderJobExtractContext, RenderView,
+};
 
 pub struct ImGuiExtractJobImpl {}
 
@@ -17,9 +20,7 @@ impl ImGuiExtractJobImpl {
     }
 }
 
-impl ExtractJob
-    for ImGuiExtractJobImpl
-{
+impl ExtractJob for ImGuiExtractJobImpl {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -28,7 +29,9 @@ impl ExtractJob
     ) -> Box<dyn PrepareJob> {
         profiling::scope!("ImGui Extract");
         let legion_resources = extract_context.render_resources.fetch::<LegionResources>();
-        let asset_manager = extract_context.render_resources.fetch::<AssetManagerRenderResource>();
+        let asset_manager = extract_context
+            .render_resources
+            .fetch::<AssetManagerRenderResource>();
         let imgui_draw_data = legion_resources
             .get::<Sdl2ImguiManager>()
             .unwrap()

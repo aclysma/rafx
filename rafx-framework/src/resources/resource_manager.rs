@@ -7,6 +7,7 @@ use crate::{
 };
 
 use crate::graph::RenderGraphCache;
+use crate::nodes::RenderRegistry;
 use crate::resources::descriptor_sets::DescriptorSetAllocatorManager;
 use crate::resources::dyn_commands::DynCommandPoolAllocator;
 use crate::resources::dyn_resources::{
@@ -14,7 +15,6 @@ use crate::resources::dyn_resources::{
 };
 use crate::resources::resource_lookup::ResourceLookupSet;
 use rafx_api::{RafxDeviceContext, RafxResult};
-use crate::nodes::RenderRegistry;
 use std::sync::Arc;
 
 //TODO: Support descriptors that can be different per-view

@@ -13,8 +13,7 @@ mod write;
 pub use debug3d_resource::*;
 use rafx::api::RafxPrimitiveTopology;
 
-pub fn create_debug3d_extract_job(
-) -> Box<dyn ExtractJob> {
+pub fn create_debug3d_extract_job() -> Box<dyn ExtractJob> {
     Box::new(Debug3dExtractJob::new())
 }
 

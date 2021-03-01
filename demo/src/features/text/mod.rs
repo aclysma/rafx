@@ -1,23 +1,24 @@
 use crate::features::text::extract::TextExtractJob;
-use rafx::framework::{VertexDataLayout, VertexDataSetLayout, ImageViewResource, ResourceArc, BufferResource};
+use rafx::framework::{
+    BufferResource, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,
+};
 use rafx::nodes::ExtractJob;
 use rafx::nodes::RenderFeature;
 use rafx::nodes::RenderFeatureIndex;
 use std::convert::TryInto;
 
-mod text_resource;
 mod extract;
 mod prepare;
+mod text_resource;
 mod write;
 
-pub use text_resource::*;
-use rafx::api::RafxPrimitiveTopology;
-use fnv::FnvHashMap;
-use rafx::distill::loader::LoadHandle;
 use crate::assets::font::FontAsset;
+use fnv::FnvHashMap;
+use rafx::api::RafxPrimitiveTopology;
+use rafx::distill::loader::LoadHandle;
+pub use text_resource::*;
 
-pub fn create_text_extract_job(
-) -> Box<dyn ExtractJob> {
+pub fn create_text_extract_job() -> Box<dyn ExtractJob> {
     Box::new(TextExtractJob::new())
 }
 
@@ -55,5 +56,3 @@ pub(self) struct ExtractedTextData {
     text_draw_commands: Vec<TextDrawCommand>,
     font_assets: FnvHashMap<LoadHandle, FontAsset>,
 }
-
-

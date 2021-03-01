@@ -3,7 +3,10 @@ use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUnifor
 use crate::phases::UiRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::nodes::{FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, ViewSubmitNodes, RenderJobPrepareContext};
+use rafx::nodes::{
+    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
+    RenderFeatureIndex, RenderJobPrepareContext, RenderView, ViewSubmitNodes,
+};
 
 pub struct ImGuiPrepareJobImpl {
     extracted_imgui_data: ExtractedImGuiData,
@@ -34,10 +37,7 @@ impl PrepareJob for ImGuiPrepareJobImpl {
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> (
-        Box<dyn FeatureCommandWriter>,
-        FeatureSubmitNodes,
-    ) {
+    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("ImGui Prepare");
 
         let mut descriptor_set_allocator = prepare_context

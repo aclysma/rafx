@@ -1,7 +1,10 @@
 use crate::features::sprite::{SpriteDrawCall, SpriteRenderFeature};
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView, SubmitNodeId, RenderJobWriteContext};
+use rafx::nodes::{
+    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
+    RenderPhaseIndex, RenderView, SubmitNodeId,
+};
 
 pub struct SpriteCommandWriter {
     pub vertex_buffers: Vec<ResourceArc<BufferResource>>,

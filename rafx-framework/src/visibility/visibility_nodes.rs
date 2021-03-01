@@ -1,5 +1,5 @@
-use rafx_base::slab::DropSlabKey;
 use crate::nodes::GenericRenderNodeHandle;
+use rafx_base::slab::DropSlabKey;
 
 ////////////////// StaticAabb VisibilityNode //////////////////
 pub struct StaticAabbVisibilityNode {

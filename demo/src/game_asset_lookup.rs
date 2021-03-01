@@ -1,3 +1,4 @@
+use crate::assets::font::FontAsset;
 use crate::assets::gltf::MeshAssetData;
 use distill::loader::Loader;
 use rafx::assets::AssetLookup;
@@ -5,7 +6,6 @@ use rafx::framework::MaterialPass;
 use rafx::framework::{BufferResource, DescriptorSetArc, ResourceArc};
 use std::sync::Arc;
 use type_uuid::*;
-use crate::assets::font::FontAsset;
 
 pub struct MeshAssetPart {
     pub opaque_pass: MaterialPass,

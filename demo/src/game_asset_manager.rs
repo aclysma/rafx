@@ -1,3 +1,4 @@
+use crate::assets::font::{FontAsset, FontAssetData, FontAssetInner};
 use crate::assets::gltf::MeshAssetData;
 use crate::game_asset_lookup::{
     GameLoadedAssetLookupSet, GameLoadedAssetMetrics, MeshAsset, MeshAssetInner, MeshAssetPart,
@@ -8,11 +9,10 @@ use distill::loader::handle::AssetHandle;
 use distill::loader::handle::Handle;
 use distill::loader::storage::AssetLoadOp;
 use distill::loader::Loader;
+use fontdue::FontSettings;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetLookup, AssetManager, GenericLoader, LoadQueues};
 use std::sync::Arc;
-use crate::assets::font::{FontAssetData, FontAsset, FontAssetInner};
-use fontdue::FontSettings;
 
 #[derive(Debug)]
 pub struct GameAssetManagerMetrics {
@@ -59,9 +59,7 @@ impl GameAssetManager {
         &self,
         handle: &Handle<FontAsset>,
     ) -> Option<&FontAsset> {
-        self.loaded_assets
-            .fonts
-            .get_committed(handle.load_handle())
+        self.loaded_assets.fonts.get_committed(handle.load_handle())
     }
 
     // Call whenever you want to handle assets loading/unloading
@@ -258,12 +256,13 @@ impl GameAssetManager {
         font_asset: FontAssetData,
     ) -> RafxResult<FontAsset> {
         let settings = FontSettings::default();
-        let font = fontdue::Font::from_bytes(font_asset.data.as_slice(), settings).map_err(|x| x.to_string())?;
+        let font = fontdue::Font::from_bytes(font_asset.data.as_slice(), settings)
+            .map_err(|x| x.to_string())?;
 
         let inner = FontAssetInner {
             font,
             data_hash: font_asset.data_hash,
-            scale: font_asset.scale
+            scale: font_asset.scale,
         };
 
         Ok(FontAsset {

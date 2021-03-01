@@ -69,8 +69,7 @@ pub struct ExtractedSpotLight {
     entity: legion::Entity,
 }
 
-pub fn create_mesh_extract_job(
-) -> Box<dyn ExtractJob> {
+pub fn create_mesh_extract_job() -> Box<dyn ExtractJob> {
     Box::new(MeshExtractJob {})
 }
 

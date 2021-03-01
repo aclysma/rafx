@@ -2,7 +2,10 @@ use crate::features::mesh::{
     ExtractedFrameNodeMeshData, MeshRenderFeature, PreparedSubmitNodeMeshData,
 };
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
-use rafx::nodes::{FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView, SubmitNodeId, RenderJobWriteContext};
+use rafx::nodes::{
+    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
+    RenderPhaseIndex, RenderView, SubmitNodeId,
+};
 
 pub struct MeshCommandWriter {
     pub(super) extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,

@@ -16,7 +16,10 @@ use rafx::framework::MaterialPass;
 use rafx::framework::{
     DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
 };
-use rafx::nodes::{FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderViewIndex, ViewSubmitNodes, RenderJobPrepareContext};
+use rafx::nodes::{
+    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
+    RenderFeatureIndex, RenderJobPrepareContext, RenderView, RenderViewIndex, ViewSubmitNodes,
+};
 
 pub struct PreparedDirectionalLight<'a> {
     light: &'a DirectionalLightComponent,
@@ -48,10 +51,7 @@ impl PrepareJob for MeshPrepareJob {
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> (
-        Box<dyn FeatureCommandWriter>,
-        FeatureSubmitNodes,
-    ) {
+    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("Mesh Prepare");
         let invalid_resources = prepare_context.render_resources.fetch::<InvalidResources>();
         let shadow_map_data = prepare_context.render_resources.fetch::<ShadowMapData>();

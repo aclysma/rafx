@@ -1,4 +1,7 @@
-use crate::nodes::{FeatureCommandWriter, FeatureSubmitNodes, FramePacket, MergedFrameSubmitNodes, PreparedRenderData, RenderFeatureIndex, RenderRegistry, RenderView, RenderJobPrepareContext};
+use crate::nodes::{
+    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, MergedFrameSubmitNodes,
+    PreparedRenderData, RenderFeatureIndex, RenderJobPrepareContext, RenderRegistry, RenderView,
+};
 
 pub trait PrepareJob: Send {
     fn prepare(
@@ -6,10 +9,7 @@ pub trait PrepareJob: Send {
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> (
-        Box<dyn FeatureCommandWriter>,
-        FeatureSubmitNodes,
-    );
+    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes);
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;

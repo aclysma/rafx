@@ -35,13 +35,12 @@ pub use rafx_assets::distill;
 #[cfg(feature = "framework")]
 pub use rafx_framework as framework;
 #[cfg(feature = "framework")]
-pub use rafx_framework::graph;
-#[cfg(feature = "framework")]
-pub use rafx_framework::nodes;
-#[cfg(feature = "framework")]
 pub use rafx_framework::declare_render_feature;
 #[cfg(feature = "framework")]
 pub use rafx_framework::declare_render_phase;
 #[cfg(feature = "framework")]
+pub use rafx_framework::graph;
+#[cfg(feature = "framework")]
+pub use rafx_framework::nodes;
+#[cfg(feature = "framework")]
 pub use rafx_framework::visibility;
-

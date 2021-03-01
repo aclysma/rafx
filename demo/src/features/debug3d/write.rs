@@ -2,8 +2,8 @@ use crate::features::debug3d::{Debug3dDrawCall, Debug3dRenderFeature};
 use rafx::api::{RafxResult, RafxVertexBufferBinding};
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
-    SubmitNodeId, RenderJobWriteContext
+    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
+    RenderPhaseIndex, RenderView, SubmitNodeId,
 };
 
 pub struct Debug3dCommandWriter {

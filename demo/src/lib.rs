@@ -26,10 +26,10 @@ mod game_renderer;
 #[cfg(feature = "use-imgui")]
 mod imgui_support;
 mod init;
+mod legion_support;
 mod phases;
 mod scenes;
 mod time;
-mod legion_support;
 
 #[derive(Clone)]
 pub struct RenderOptions {

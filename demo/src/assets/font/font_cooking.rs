@@ -1,12 +1,12 @@
-use std::collections::BTreeMap;
 use fnv::FnvHashMap;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::hash::BuildHasherDefault;
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct FontTextureCharacterMeta {
     pub character: char,
-    pub rect: FontTextureCharacterRect
+    pub rect: FontTextureCharacterRect,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -14,7 +14,7 @@ pub struct FontTextureCharacterRect {
     pub x: u16,
     pub y: u16,
     pub w: u16,
-    pub h: u16
+    pub h: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,32 +28,36 @@ pub struct FontTexture {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FontTextureWithMeta {
     pub font_texture: FontTexture,
-    pub characters: Vec<FontTextureCharacterMeta>
+    pub characters: Vec<FontTextureCharacterMeta>,
 }
 
 pub struct FontTextureWithLookup {
     pub font_texture: FontTexture,
-    pub character_lookup: FnvHashMap<char, FontTextureCharacterRect>
+    pub character_lookup: FnvHashMap<char, FontTextureCharacterRect>,
 }
 
 impl FontTextureWithLookup {
     pub fn to_font_texture_with_meta(self) -> FontTextureWithMeta {
-        let mut characters : Vec<_> = self.character_lookup.iter().map(|(&c, &r)| FontTextureCharacterMeta {
-            character: c,
-            rect: r
-        }).collect();
+        let mut characters: Vec<_> = self
+            .character_lookup
+            .iter()
+            .map(|(&c, &r)| FontTextureCharacterMeta {
+                character: c,
+                rect: r,
+            })
+            .collect();
         characters.sort_by_key(|x| x.character);
 
         FontTextureWithMeta {
             font_texture: self.font_texture,
-            characters
+            characters,
         }
     }
 
     pub fn from_font_texture_with_meta(font_texture_with_meta: FontTextureWithMeta) -> Self {
         let mut character_lookup = FnvHashMap::with_capacity_and_hasher(
             font_texture_with_meta.characters.len(),
-            BuildHasherDefault::default()
+            BuildHasherDefault::default(),
         );
 
         for c in font_texture_with_meta.characters {
@@ -62,12 +66,17 @@ impl FontTextureWithLookup {
 
         FontTextureWithLookup {
             character_lookup,
-            font_texture: font_texture_with_meta.font_texture
+            font_texture: font_texture_with_meta.font_texture,
         }
     }
 }
 
-pub fn create_font_texture_with_ranges(font_data: &[u8], character_ranges_to_include: &[(u32, u32)], size: f32, margin: u32) -> Option<FontTextureWithMeta> {
+pub fn create_font_texture_with_ranges(
+    font_data: &[u8],
+    character_ranges_to_include: &[(u32, u32)],
+    size: f32,
+    margin: u32,
+) -> Option<FontTextureWithMeta> {
     // let character_ranges_to_include = vec![
     //     (32, 128),
     //     //(0x4e00, 0x5FCC)
@@ -109,7 +118,7 @@ pub fn create_font_texture_with_characters<'a, IterT: Iterator<Item = &'a char>>
     font: &fontdue::Font,
     characters: IterT,
     size: f32,
-    margin: u32
+    margin: u32,
 ) -> Option<FontTextureWithMeta> {
     let mut rasterized_data = FnvHashMap::default();
     let mut rects_to_place = rectangle_pack::GroupedRectsToPlace::<char, ()>::new();
@@ -122,8 +131,8 @@ pub fn create_font_texture_with_characters<'a, IterT: Iterator<Item = &'a char>>
             rectangle_pack::RectToInsert::new(
                 metrics.width as u32 + (margin * 2),
                 metrics.height as u32 + (margin * 2),
-                1
-            )
+                1,
+            ),
         );
         rasterized_data.insert(c, (metrics, data));
     }
@@ -134,17 +143,20 @@ pub fn create_font_texture_with_characters<'a, IterT: Iterator<Item = &'a char>>
     let mut texture_dimensions = 128;
     let result = loop {
         let mut target_bins = BTreeMap::new();
-        target_bins.insert(0, rectangle_pack::TargetBin::new(texture_dimensions, texture_dimensions, 1));
+        target_bins.insert(
+            0,
+            rectangle_pack::TargetBin::new(texture_dimensions, texture_dimensions, 1),
+        );
 
         let pack_result = rectangle_pack::pack_rects(
             &rects_to_place,
             target_bins,
             &rectangle_pack::volume_heuristic,
-            &rectangle_pack::contains_smallest_box
+            &rectangle_pack::contains_smallest_box,
         );
 
         if let Ok(rectangle_placements) = pack_result {
-            break Some((texture_dimensions, rectangle_placements))
+            break Some((texture_dimensions, rectangle_placements));
         }
 
         texture_dimensions *= 2;
@@ -188,8 +200,8 @@ pub fn create_font_texture_with_characters<'a, IterT: Iterator<Item = &'a char>>
                 x: (location.x() + margin) as u16,
                 y: (location.y() + margin) as u16,
                 w: metrics.width as u16,
-                h: metrics.height as u16
-            }
+                h: metrics.height as u16,
+            },
         });
     }
 
@@ -199,6 +211,6 @@ pub fn create_font_texture_with_characters<'a, IterT: Iterator<Item = &'a char>>
             image_width: texture_dimensions,
             image_height: texture_dimensions,
         },
-        characters: character_meta
+        characters: character_meta,
     })
 }

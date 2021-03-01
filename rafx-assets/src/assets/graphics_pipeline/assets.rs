@@ -8,13 +8,13 @@ use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
     RafxError, RafxFillMode, RafxFrontFace, RafxRasterizerState, RafxResult, RafxSamplerDef,
 };
+use rafx_framework::nodes::{RenderPhase, RenderPhaseIndex};
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{
     DescriptorSetArc, FixedFunctionState, MaterialPass, MaterialShaderStage, ResourceArc,
 };
 use rafx_framework::{DescriptorSetWriteSet, SamplerResource};
-use rafx_framework::nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::Arc;

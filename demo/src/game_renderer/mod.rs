@@ -8,11 +8,15 @@ use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
 use crate::time::TimeState;
 use legion::*;
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{image_upload, GpuImageDataColorSpace, AssetManagerRenderResource};
+use rafx::assets::{image_upload, AssetManagerRenderResource, GpuImageDataColorSpace};
 use rafx::assets::{AssetManager, GpuImageData};
 use rafx::framework::{DynResourceAllocatorSet, RenderResources};
 use rafx::framework::{ImageViewResource, ResourceArc};
-use rafx::nodes::{AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder, RenderRegistry, RenderView, RenderViewDepthRange, RenderViewSet, VisibilityResult, RenderJobExtractContext};
+use rafx::nodes::{
+    AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderJobExtractContext, RenderPhaseMask,
+    RenderPhaseMaskBuilder, RenderRegistry, RenderView, RenderViewDepthRange, RenderViewSet,
+    VisibilityResult,
+};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use std::sync::{Arc, Mutex};
 
@@ -37,6 +41,9 @@ pub use swapchain_handling::SwapchainHandler;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
+use crate::features::text::{create_text_extract_job, FontAtlasCache};
+use crate::game_asset_manager::GameAssetManager;
+use crate::legion_support::{LegionResources, LegionWorld};
 use crate::RenderOptions;
 use arrayvec::ArrayVec;
 use fnv::FnvHashMap;
@@ -46,9 +53,6 @@ use rafx::api::{
     RafxResult, RafxSampleCount,
 };
 use rafx::assets::image_upload::ImageUploadParams;
-use crate::features::text::{create_text_extract_job, FontAtlasCache};
-use crate::game_asset_manager::GameAssetManager;
-use crate::legion_support::{LegionWorld, LegionResources};
 
 /// Creates a right-handed perspective projection matrix with [0,1] depth range.
 pub fn perspective_rh(
@@ -167,8 +171,6 @@ impl GameRenderer {
         //let font = game_asset_manager.font(&static_resources.default_font).unwrap();
         //resources.get_mut::<TextResource>().unwrap().add_font(font);
 
-
-
         let render_resources = Self::initialize_persistent_render_resources();
         let render_thread = RenderThread::start(render_resources);
 
@@ -277,7 +279,11 @@ impl GameRenderer {
         let presentable_frame =
             SwapchainHandler::acquire_next_image(resources, window_width, window_height, self)?;
 
-        self.inner.lock().unwrap().render_thread.wait_for_render_finish(std::time::Duration::from_secs(30));
+        self.inner
+            .lock()
+            .unwrap()
+            .render_thread
+            .wait_for_render_finish(std::time::Duration::from_secs(30));
 
         let t1 = std::time::Instant::now();
         log::trace!(
@@ -317,11 +323,9 @@ impl GameRenderer {
         let mut guard = game_renderer.inner.lock().unwrap();
         let game_renderer_inner = &mut *guard;
         match result {
-            Ok(prepared_frame) => {
-                game_renderer_inner
-                    .render_thread
-                    .render(prepared_frame, presentable_frame)
-            }
+            Ok(prepared_frame) => game_renderer_inner
+                .render_thread
+                .render(prepared_frame, presentable_frame),
             Err(e) => {
                 let graphics_queue = game_renderer.graphics_queue();
                 presentable_frame.present_with_error(graphics_queue, e)
@@ -368,7 +372,11 @@ impl GameRenderer {
 
         let mut guard = game_renderer.inner.lock().unwrap();
         let game_renderer_inner = &mut *guard;
-        let render_resources = &mut game_renderer_inner.render_thread.render_resources().lock().unwrap();
+        let render_resources = &mut game_renderer_inner
+            .render_thread
+            .render_resources()
+            .lock()
+            .unwrap();
 
         let static_resources = &game_renderer_inner.static_resources;
         render_resources.insert(static_resources.clone());
@@ -635,8 +643,7 @@ impl GameRenderer {
         let prepare_job_set = {
             profiling::scope!("renderer extract");
 
-            let extract_context =
-                RenderJobExtractContext::new(&render_resources);
+            let extract_context = RenderJobExtractContext::new(&render_resources);
 
             let mut extract_views = Vec::default();
             extract_views.push(&main_view);
@@ -655,7 +662,6 @@ impl GameRenderer {
 
             extract_job_set.extract(&extract_context, &frame_packet, &extract_views)
         };
-
 
         render_resources.remove::<LegionWorld>();
         render_resources.remove::<LegionResources>();

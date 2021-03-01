@@ -1,14 +1,16 @@
-use crate::features::text::{TextVertex, TextImageUpdate};
-use rafx::framework::{ResourceArc, ImageViewResource, DynResourceAllocatorSet};
+use crate::assets::font::font_cooking;
 use crate::assets::font::FontAsset;
-use rafx::api::{RafxResult, RafxTextureDef, RafxFormat, RafxExtents3D, RafxBufferDef, RafxResourceType};
-use fnv::{FnvHashMap, FnvHashSet, FnvBuildHasher};
+use crate::features::text::write::TextDrawCallMeta;
+use crate::features::text::{TextImageUpdate, TextVertex};
+use fnv::{FnvBuildHasher, FnvHashMap, FnvHashSet};
+use fontdue::layout::{GlyphPosition, LayoutSettings, TextStyle};
+use rafx::api::{
+    RafxBufferDef, RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxTextureDef,
+};
+use rafx::distill::loader::handle::AssetHandle;
 use rafx::distill::loader::handle::Handle;
 use rafx::distill::loader::LoadHandle;
-use rafx::distill::loader::handle::AssetHandle;
-use crate::assets::font::font_cooking;
-use fontdue::layout::{LayoutSettings, TextStyle, GlyphPosition};
-use crate::features::text::write::TextDrawCallMeta;
+use rafx::framework::{DynResourceAllocatorSet, ImageViewResource, ResourceArc};
 
 pub struct TextDrawData {
     pub fonts: FnvHashMap<LoadHandle, Handle<FontAsset>>,
@@ -22,7 +24,7 @@ pub struct TextDrawCommand {
     pub font: LoadHandle,
     pub size: f32,
     pub color: glam::Vec4,
-    pub is_append: bool
+    pub is_append: bool,
 }
 
 pub struct AppendText<'a>(&'a mut TextResource, glam::Vec3);
@@ -33,7 +35,7 @@ impl<'a> AppendText<'a> {
         text: String,
         font: &Handle<FontAsset>,
         size: f32,
-        color: glam::Vec4
+        color: glam::Vec4,
     ) -> AppendText<'a> {
         self.0.do_add_text(text, self.1, font, size, color, true)
     }
@@ -58,7 +60,7 @@ impl TextResource {
         position: glam::Vec3,
         font: &Handle<FontAsset>,
         size: f32,
-        color: glam::Vec4
+        color: glam::Vec4,
     ) -> AppendText {
         self.do_add_text(text, position, font, size, color, false)
     }
@@ -70,7 +72,7 @@ impl TextResource {
         font: &Handle<FontAsset>,
         size: f32,
         color: glam::Vec4,
-        is_append: bool
+        is_append: bool,
     ) -> AppendText {
         let font = self.fonts.entry(font.load_handle()).or_insert(font.clone());
 
@@ -80,7 +82,7 @@ impl TextResource {
             font: font.load_handle(),
             size,
             color,
-            is_append
+            is_append,
         });
 
         AppendText(self, position)
@@ -90,7 +92,7 @@ impl TextResource {
     pub fn take_text_draw_data(&mut self) -> TextDrawData {
         TextDrawData {
             fonts: std::mem::take(&mut self.fonts),
-            text_draw_commands: std::mem::take(&mut self.text_draw_commands)
+            text_draw_commands: std::mem::take(&mut self.text_draw_commands),
         }
     }
 
@@ -105,7 +107,7 @@ pub struct FontTextureCharacterRectUv {
     pub left: f32,
     pub top: f32,
     pub right: f32,
-    pub bottom: f32
+    pub bottom: f32,
 }
 
 pub struct FontAtlas {
@@ -139,9 +141,11 @@ impl FontAtlasCache {
         font_assets: &FnvHashMap<LoadHandle, FontAsset>,
         dyn_resource_allocator: &DynResourceAllocatorSet,
     ) -> RafxResult<TextDrawVerticesResult> {
-        let image_updates = self.update_cache(text_draw_commands, font_assets, dyn_resource_allocator)?;
+        let image_updates =
+            self.update_cache(text_draw_commands, font_assets, dyn_resource_allocator)?;
 
-        let mut font_index_lookup = FnvHashMap::with_capacity_and_hasher(self.fonts.len(), FnvBuildHasher::default());
+        let mut font_index_lookup =
+            FnvHashMap::with_capacity_and_hasher(self.fonts.len(), FnvBuildHasher::default());
         let mut fonts = Vec::with_capacity(self.fonts.len());
         let mut font_atlas_images = Vec::with_capacity(self.fonts.len());
         let mut font_atlases = Vec::with_capacity(self.fonts.len());
@@ -167,7 +171,10 @@ impl FontAtlasCache {
             }
 
             let required_vertices = 4 * glyphs.len();
-            if draw_call_buffer_data.is_empty() || draw_call_buffer_data.last().unwrap().vertices.len() >= (std::u16::MAX as usize - required_vertices) {
+            if draw_call_buffer_data.is_empty()
+                || draw_call_buffer_data.last().unwrap().vertices.len()
+                    >= (std::u16::MAX as usize - required_vertices)
+            {
                 draw_call_buffer_data.push(TextDrawCallBufferData::default());
             }
 
@@ -179,7 +186,7 @@ impl FontAtlasCache {
                 index_offset: draw_call_buffers.indices.len() as u32,
                 font_descriptor_index: 0,
                 index_count: 0,
-                z_position
+                z_position,
             };
 
             for glyph in glyphs {
@@ -197,7 +204,7 @@ impl FontAtlasCache {
                         index_offset: draw_call_buffers.indices.len() as u32,
                         font_descriptor_index: 0,
                         index_count: 0,
-                        z_position
+                        z_position,
                     };
                 }
 
@@ -205,24 +212,28 @@ impl FontAtlasCache {
 
                 let base_index = draw_call_buffers.vertices.len() as u16;
                 draw_call_buffers.vertices.push(TextVertex {
-                    position: [glyph.x + glyph.width as f32, glyph.y + glyph.height as f32, z_position],
+                    position: [
+                        glyph.x + glyph.width as f32,
+                        glyph.y + glyph.height as f32,
+                        z_position,
+                    ],
                     uv: [texture_rect.right, texture_rect.bottom],
-                    color
+                    color,
                 });
                 draw_call_buffers.vertices.push(TextVertex {
                     position: [glyph.x, glyph.y + glyph.height as f32, z_position],
                     uv: [texture_rect.left, texture_rect.bottom],
-                    color
+                    color,
                 });
                 draw_call_buffers.vertices.push(TextVertex {
                     position: [glyph.x + glyph.width as f32, glyph.y, z_position],
                     uv: [texture_rect.right, texture_rect.top],
-                    color
+                    color,
                 });
                 draw_call_buffers.vertices.push(TextVertex {
-                    position: [glyph.x, glyph.y , z_position],
+                    position: [glyph.x, glyph.y, z_position],
                     uv: [texture_rect.left, texture_rect.top],
-                    color
+                    color,
                 });
 
                 draw_call_buffers.indices.push(base_index + 0);
@@ -238,11 +249,19 @@ impl FontAtlasCache {
             }
         }
 
-        let mut layout = fontdue::layout::Layout::<glam::Vec4>::new(fontdue::layout::CoordinateSystem::PositiveYDown);
+        let mut layout = fontdue::layout::Layout::<glam::Vec4>::new(
+            fontdue::layout::CoordinateSystem::PositiveYDown,
+        );
 
         for draw in text_draw_commands {
             if !draw.is_append {
-                append_glyphs(&mut draw_call_metas, &mut draw_call_buffer_data, layout.glyphs(), &font_atlases, draw.position.z());
+                append_glyphs(
+                    &mut draw_call_metas,
+                    &mut draw_call_buffer_data,
+                    layout.glyphs(),
+                    &font_atlases,
+                    draw.position.z(),
+                );
                 // do something with them
 
                 layout.reset(&LayoutSettings {
@@ -255,20 +274,26 @@ impl FontAtlasCache {
             let font_index = font_index_lookup[&draw.font];
             layout.append(
                 &fonts,
-                &TextStyle::with_user_data(&draw.text, draw.size, font_index, draw.color)
+                &TextStyle::with_user_data(&draw.text, draw.size, font_index, draw.color),
             );
         }
 
         // may push a list of no glyphs, not really a problem
         if let Some(draw) = text_draw_commands.last() {
-            append_glyphs(&mut draw_call_metas, &mut draw_call_buffer_data, layout.glyphs(), &font_atlases, draw.position.z());
+            append_glyphs(
+                &mut draw_call_metas,
+                &mut draw_call_buffer_data,
+                layout.glyphs(),
+                &font_atlases,
+                draw.position.z(),
+            );
         }
 
         Ok(TextDrawVerticesResult {
             draw_call_metas,
             draw_call_buffer_data,
             font_atlas_images,
-            image_updates
+            image_updates,
         })
     }
 
@@ -326,55 +351,76 @@ impl FontAtlasCache {
                 &font_asset.inner.font,
                 missing_chars.iter(),
                 font_asset.inner.scale,
-                2
-            ).unwrap();
+                2,
+            )
+            .unwrap();
 
             let extents = RafxExtents3D {
                 width: font_texture.font_texture.image_width,
                 height: font_texture.font_texture.image_height,
-                depth: 1
+                depth: 1,
             };
 
-            let buffer = dyn_resource_allocator.device_context.create_buffer(&RafxBufferDef::for_staging_buffer_data(
-                &font_texture.font_texture.image_data,
-                RafxResourceType::BUFFER
-            ))?;
-            buffer.copy_to_host_visible_buffer(&font_texture.font_texture.image_data).unwrap();
+            let buffer = dyn_resource_allocator.device_context.create_buffer(
+                &RafxBufferDef::for_staging_buffer_data(
+                    &font_texture.font_texture.image_data,
+                    RafxResourceType::BUFFER,
+                ),
+            )?;
+            buffer
+                .copy_to_host_visible_buffer(&font_texture.font_texture.image_data)
+                .unwrap();
             let buffer = dyn_resource_allocator.insert_buffer(buffer);
 
-            let mip_count = rafx::api::extra::mipmaps::mip_level_max_count_for_image_size(extents.width, extents.height);
+            let mip_count = rafx::api::extra::mipmaps::mip_level_max_count_for_image_size(
+                extents.width,
+                extents.height,
+            );
             //let mip_count = 1;
-            let texture = dyn_resource_allocator.device_context.create_texture(&RafxTextureDef {
-                extents,
-                format: RafxFormat::R8_UNORM,
-                mip_count,
-                ..Default::default()
-            })?;
+            let texture =
+                dyn_resource_allocator
+                    .device_context
+                    .create_texture(&RafxTextureDef {
+                        extents,
+                        format: RafxFormat::R8_UNORM,
+                        mip_count,
+                        ..Default::default()
+                    })?;
 
             let image = dyn_resource_allocator.insert_texture(texture);
             let image_view = dyn_resource_allocator.insert_image_view(&image, None)?;
 
             image_updates.push(TextImageUpdate {
                 upload_buffer: buffer,
-                upload_image: image_view.clone()
+                upload_image: image_view.clone(),
             });
 
-            let mut character_lookup = FnvHashMap::with_capacity_and_hasher(font_texture.characters.len(), FnvBuildHasher::default());
+            let mut character_lookup = FnvHashMap::with_capacity_and_hasher(
+                font_texture.characters.len(),
+                FnvBuildHasher::default(),
+            );
             for character in font_texture.characters {
-                let old = character_lookup.insert(character.character, FontTextureCharacterRectUv {
-                    left: character.rect.x as f32 / extents.width as f32,
-                    right: (character.rect.x + character.rect.w) as f32 / extents.width as f32,
-                    top: character.rect.y as f32 / extents.height as f32,
-                    bottom: (character.rect.y + character.rect.h) as f32 / extents.height as f32,
-                });
+                let old = character_lookup.insert(
+                    character.character,
+                    FontTextureCharacterRectUv {
+                        left: character.rect.x as f32 / extents.width as f32,
+                        right: (character.rect.x + character.rect.w) as f32 / extents.width as f32,
+                        top: character.rect.y as f32 / extents.height as f32,
+                        bottom: (character.rect.y + character.rect.h) as f32
+                            / extents.height as f32,
+                    },
+                );
                 assert!(old.is_none());
             }
 
-            self.fonts.insert(font, FontAtlas {
-                character_lookup,
-                image: image_view,
-                font_asset: font_asset.clone()
-            });
+            self.fonts.insert(
+                font,
+                FontAtlas {
+                    character_lookup,
+                    image: image_view,
+                    font_asset: font_asset.clone(),
+                },
+            );
         }
 
         Ok(image_updates)

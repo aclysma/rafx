@@ -1,11 +1,14 @@
 use crate::features::text::prepare::TextPrepareJobImpl;
-use crate::features::text::{TextRenderFeature, ExtractedTextData, TextResource};
-use crate::game_renderer::GameRendererStaticResources;
-use rafx::nodes::{ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderJobExtractContext};
-use crate::legion_support::LegionResources;
-use rafx::assets::AssetManagerRenderResource;
-use fnv::FnvHashMap;
+use crate::features::text::{ExtractedTextData, TextRenderFeature, TextResource};
 use crate::game_asset_manager::GameAssetManager;
+use crate::game_renderer::GameRendererStaticResources;
+use crate::legion_support::LegionResources;
+use fnv::FnvHashMap;
+use rafx::assets::AssetManagerRenderResource;
+use rafx::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
+    RenderJobExtractContext, RenderView,
+};
 
 pub struct TextExtractJob {}
 
@@ -15,9 +18,7 @@ impl TextExtractJob {
     }
 }
 
-impl ExtractJob
-    for TextExtractJob
-{
+impl ExtractJob for TextExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -26,7 +27,9 @@ impl ExtractJob
     ) -> Box<dyn PrepareJob> {
         profiling::scope!("Text Extract");
         let legion_resources = extract_context.render_resources.fetch::<LegionResources>();
-        let asset_manager = extract_context.render_resources.fetch::<AssetManagerRenderResource>();
+        let asset_manager = extract_context
+            .render_resources
+            .fetch::<AssetManagerRenderResource>();
 
         let game_asset_manager = legion_resources.get::<GameAssetManager>().unwrap();
         let mut text_resource = legion_resources.get_mut::<TextResource>().unwrap();

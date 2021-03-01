@@ -9,7 +9,10 @@ use fnv::FnvHashMap;
 use glam::Vec3;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::nodes::{FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, ViewSubmitNodes, RenderJobPrepareContext};
+use rafx::nodes::{
+    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
+    RenderFeatureIndex, RenderJobPrepareContext, RenderView, ViewSubmitNodes,
+};
 
 pub struct SpritePrepareJob {
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
@@ -34,10 +37,7 @@ impl PrepareJob for SpritePrepareJob {
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> (
-        Box<dyn FeatureCommandWriter>,
-        FeatureSubmitNodes,
-    ) {
+    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("Sprite Prepare");
 
         let mut draw_calls = Vec::<SpriteDrawCall>::default();

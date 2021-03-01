@@ -232,7 +232,10 @@ fn init_imgui(window: &Window) -> imgui::Context {
         font_config.glyph_ranges = imgui::FontGlyphRanges::from_slice(&ICON_GLYPH_RANGE_FEATHER);
 
         imgui::FontSource::TtfData {
-            data: include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/fonts/feather.ttf")),
+            data: include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/assets/fonts/feather.ttf"
+            )),
             size_pixels: font_size,
             config: Some(font_config),
         }

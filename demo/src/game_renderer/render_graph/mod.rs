@@ -7,7 +7,7 @@ use rafx::framework::ResourceContext;
 use rafx::framework::VertexDataSetLayout;
 use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::graph::*;
-use rafx::nodes::{PreparedRenderData, RenderView, RenderJobBeginExecuteGraphContext};
+use rafx::nodes::{PreparedRenderData, RenderJobBeginExecuteGraphContext, RenderView};
 
 mod shadow_map_pass;
 use shadow_map_pass::ShadowMapImageResources;
@@ -193,7 +193,8 @@ pub fn build_render_graph(
     );
 
     graph_callbacks.set_begin_execute_graph_callback(move |args, user_context| {
-        let mut write_context = RenderJobBeginExecuteGraphContext::from_on_begin_execute_graph_args(&args);
+        let mut write_context =
+            RenderJobBeginExecuteGraphContext::from_on_begin_execute_graph_args(&args);
         user_context
             .prepared_render_data
             .on_begin_execute_graph(&mut write_context)

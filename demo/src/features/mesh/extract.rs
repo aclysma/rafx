@@ -8,16 +8,17 @@ use crate::features::mesh::{
     MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet,
 };
 use crate::game_asset_manager::GameAssetManager;
+use crate::legion_support::{LegionResources, LegionWorld};
 use legion::*;
 use rafx::base::slab::RawSlabKey;
-use rafx::nodes::{ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderJobExtractContext};
-use crate::legion_support::{LegionResources, LegionWorld};
+use rafx::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
+    RenderJobExtractContext, RenderView,
+};
 
 pub struct MeshExtractJob {}
 
-impl ExtractJob
-    for MeshExtractJob
-{
+impl ExtractJob for MeshExtractJob {
     fn feature_debug_name(&self) -> &'static str {
         MeshRenderFeature::feature_debug_name()
     }
@@ -40,9 +41,7 @@ impl ExtractJob
         //
         // Update the mesh render nodes. This could be done earlier as part of a system
         //
-        let mut mesh_render_nodes = legion_resources
-            .get_mut::<MeshRenderNodeSet>()
-            .unwrap();
+        let mut mesh_render_nodes = legion_resources.get_mut::<MeshRenderNodeSet>().unwrap();
 
         let mut query = <(Read<PositionComponent>, Read<MeshComponent>)>::query();
         for (position_component, mesh_component) in query.iter(world) {

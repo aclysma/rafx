@@ -11,8 +11,7 @@ mod extract;
 mod prepare;
 mod write;
 
-pub fn create_imgui_extract_job(
-) -> Box<dyn ExtractJob> {
+pub fn create_imgui_extract_job() -> Box<dyn ExtractJob> {
     Box::new(ImGuiExtractJobImpl::new())
 }
 

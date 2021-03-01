@@ -2,15 +2,18 @@ use crate::features::sprite::prepare::SpritePrepareJob;
 use crate::features::sprite::{
     ExtractedSpriteData, SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet,
 };
+use crate::legion_support::{LegionResources, LegionWorld};
 use crate::{
     components::{PositionComponent, SpriteComponent},
     game_renderer::GameRendererStaticResources,
 };
 use legion::*;
-use rafx::base::slab::RawSlabKey;
-use rafx::nodes::{ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderJobExtractContext};
-use crate::legion_support::{LegionResources, LegionWorld};
 use rafx::assets::AssetManagerRenderResource;
+use rafx::base::slab::RawSlabKey;
+use rafx::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
+    RenderJobExtractContext, RenderView,
+};
 
 pub struct SpriteExtractJob {}
 
@@ -20,9 +23,7 @@ impl SpriteExtractJob {
     }
 }
 
-impl ExtractJob
-    for SpriteExtractJob
-{
+impl ExtractJob for SpriteExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -35,12 +36,12 @@ impl ExtractJob
 
         let legion_resources = extract_context.render_resources.fetch::<LegionResources>();
 
-        let asset_manager = extract_context.render_resources.fetch::<AssetManagerRenderResource>();
+        let asset_manager = extract_context
+            .render_resources
+            .fetch::<AssetManagerRenderResource>();
 
         // Update the mesh render nodes. This could be done earlier as part of a system
-        let mut sprite_render_nodes = legion_resources
-            .get_mut::<SpriteRenderNodeSet>()
-            .unwrap();
+        let mut sprite_render_nodes = legion_resources.get_mut::<SpriteRenderNodeSet>().unwrap();
 
         let mut query = <(Read<PositionComponent>, Read<SpriteComponent>)>::query();
         for (position_component, sprite_component) in query.iter(world) {
@@ -65,8 +66,7 @@ impl ExtractJob
                 .get_raw(render_node_handle)
                 .unwrap();
 
-            let image_asset = asset_manager
-                .get_image_asset(&sprite_render_node.image);
+            let image_asset = asset_manager.get_image_asset(&sprite_render_node.image);
 
             let extracted_frame_node = image_asset.and_then(|image_asset| {
                 Some(ExtractedSpriteData {

@@ -76,8 +76,7 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 /// Draw order of QUAD_VERTEX_LIST
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 1, 3];
 
-pub fn create_sprite_extract_job(
-) -> Box<dyn ExtractJob> {
+pub fn create_sprite_extract_job() -> Box<dyn ExtractJob> {
     Box::new(SpriteExtractJob::new())
 }
 

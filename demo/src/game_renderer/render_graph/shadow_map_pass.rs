@@ -3,7 +3,7 @@ use crate::features::mesh::ShadowMapRenderView;
 use crate::phases::ShadowMapRenderPhase;
 use rafx::api::{RafxDepthStencilClearValue, RafxResourceType};
 use rafx::graph::*;
-use rafx::nodes::{RenderView, RenderJobWriteContext};
+use rafx::nodes::{RenderJobWriteContext, RenderView};
 
 pub(super) struct ShadowMapPass {
     pub(super) node: RenderGraphNodeId,

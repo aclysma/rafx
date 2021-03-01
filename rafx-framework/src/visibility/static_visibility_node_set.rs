@@ -1,7 +1,7 @@
 use super::*;
-use rafx_base::slab::DropSlab;
 use crate::nodes::RenderView;
 use crate::nodes::VisibilityResult;
+use rafx_base::slab::DropSlab;
 
 #[derive(Default)]
 pub struct StaticVisibilityNodeSet {

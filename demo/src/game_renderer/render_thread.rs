@@ -1,10 +1,10 @@
-use crate::game_renderer::RenderFrameJob;
-use crossbeam_channel::{Receiver, Sender, RecvTimeoutError};
-use rafx::api::RafxPresentableFrame;
-use std::thread::JoinHandle;
 use crate::game_renderer::render_frame_job::RenderFrameJobResult;
+use crate::game_renderer::RenderFrameJob;
+use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
+use rafx::api::RafxPresentableFrame;
 use rafx::framework::RenderResources;
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
 
 enum RenderThreadMessage {
     Render(RenderFrameJob, RafxPresentableFrame),
@@ -37,12 +37,13 @@ impl RenderThread {
 
         let thread_builder = std::thread::Builder::new().name("Render Thread".to_string());
         let join_handle = thread_builder
-            .spawn(|| match Self::render_thread(job_rx, result_tx, render_resources) {
-                Ok(_) => log::info!("Render thread ended without error"),
-                Err(err) => log::info!("Render thread ended with error: {:?}", err),
-            })
+            .spawn(
+                || match Self::render_thread(job_rx, result_tx, render_resources) {
+                    Ok(_) => log::info!("Render thread ended without error"),
+                    Err(err) => log::info!("Render thread ended with error: {:?}", err),
+                },
+            )
             .unwrap();
-
 
         RenderThread {
             render_resources: render_resources_clone,
@@ -90,7 +91,7 @@ impl RenderThread {
     fn render_thread(
         job_rx: Receiver<RenderThreadMessage>,
         result_tx: Sender<RenderFrameJobResult>,
-        render_resources: Arc<Mutex<RenderResources>>
+        render_resources: Arc<Mutex<RenderResources>>,
     ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         loop {
             profiling::register_thread!();

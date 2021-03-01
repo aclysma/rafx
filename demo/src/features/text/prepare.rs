@@ -1,10 +1,15 @@
 use super::write::TextCommandWriter;
-use crate::features::text::{TextRenderFeature, TextUniformBufferObject, ExtractedTextData, FontAtlasCache};
+use crate::features::text::write::TextDrawCallBuffers;
+use crate::features::text::{
+    ExtractedTextData, FontAtlasCache, TextRenderFeature, TextUniformBufferObject,
+};
 use crate::phases::UiRenderPhase;
 use rafx::api::RafxBufferDef;
 use rafx::framework::{MaterialPassResource, ResourceArc};
-use rafx::nodes::{FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, ViewSubmitNodes, RenderJobPrepareContext};
-use crate::features::text::write::TextDrawCallBuffers;
+use rafx::nodes::{
+    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
+    RenderFeatureIndex, RenderJobPrepareContext, RenderView, ViewSubmitNodes,
+};
 
 pub struct TextPrepareJobImpl {
     text_material_pass: ResourceArc<MaterialPassResource>,
@@ -29,22 +34,23 @@ impl<'a> PrepareJob for TextPrepareJobImpl {
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> (
-        Box<dyn FeatureCommandWriter>,
-        FeatureSubmitNodes,
-    ) {
+    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("Text Prepare");
 
         let dyn_resource_allocator = prepare_context
             .resource_context
             .create_dyn_resource_allocator_set();
 
-        let mut font_atlas_cache = prepare_context.render_resources.fetch_mut::<FontAtlasCache>();
-        let draw_vertices_result = font_atlas_cache.generate_vertices(
-            &self.extracted_text_data.text_draw_commands,
-            &self.extracted_text_data.font_assets,
-            &dyn_resource_allocator
-        ).unwrap();
+        let mut font_atlas_cache = prepare_context
+            .render_resources
+            .fetch_mut::<FontAtlasCache>();
+        let draw_vertices_result = font_atlas_cache
+            .generate_vertices(
+                &self.extracted_text_data.text_draw_commands,
+                &self.extracted_text_data.font_assets,
+                &dyn_resource_allocator,
+            )
+            .unwrap();
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
@@ -71,9 +77,7 @@ impl<'a> PrepareJob for TextPrepareJobImpl {
                 let per_font_descriptor_set = descriptor_set_allocator
                     .create_descriptor_set(
                         per_font_descriptor_set_layout,
-                        shaders::text_frag::DescriptorSet0Args {
-                            tex: &image
-                        },
+                        shaders::text_frag::DescriptorSet0Args { tex: &image },
                     )
                     .unwrap();
 
@@ -118,18 +122,22 @@ impl<'a> PrepareJob for TextPrepareJobImpl {
                     None,
                 );
 
-                per_view_descriptor_sets[view.view_index() as usize] = Some(per_view_descriptor_set.clone());
+                per_view_descriptor_sets[view.view_index() as usize] =
+                    Some(per_view_descriptor_set.clone());
             }
         }
 
         //
         // Update the vertex buffers
         //
-        let mut draw_call_buffers = Vec::with_capacity(draw_vertices_result.draw_call_buffer_data.len());
+        let mut draw_call_buffers =
+            Vec::with_capacity(draw_vertices_result.draw_call_buffer_data.len());
         for draw_call in draw_vertices_result.draw_call_buffer_data {
             let vertex_buffer = prepare_context
                 .device_context
-                .create_buffer(&RafxBufferDef::for_staging_vertex_buffer_data(&draw_call.vertices))
+                .create_buffer(&RafxBufferDef::for_staging_vertex_buffer_data(
+                    &draw_call.vertices,
+                ))
                 .unwrap();
 
             vertex_buffer
@@ -140,7 +148,9 @@ impl<'a> PrepareJob for TextPrepareJobImpl {
 
             let index_buffer = prepare_context
                 .device_context
-                .create_buffer(&RafxBufferDef::for_staging_index_buffer_data(&draw_call.indices))
+                .create_buffer(&RafxBufferDef::for_staging_index_buffer_data(
+                    &draw_call.indices,
+                ))
                 .unwrap();
 
             index_buffer
@@ -163,7 +173,11 @@ impl<'a> PrepareJob for TextPrepareJobImpl {
             for (i, draw_call) in draw_vertices_result.draw_call_metas.iter().enumerate() {
                 let mut view_submit_nodes =
                     ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
-                view_submit_nodes.add_submit_node::<UiRenderPhase>(i as u32, 0, draw_call.z_position);
+                view_submit_nodes.add_submit_node::<UiRenderPhase>(
+                    i as u32,
+                    0,
+                    draw_call.z_position,
+                );
                 submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
             }
         }

@@ -1,10 +1,11 @@
+use crate::assets::font::{FontAsset, FontAssetData};
 use crate::assets::gltf::{GltfMaterialAsset, MeshAssetData};
 use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource};
-use crate::features::text::{TextRenderFeature, TextResource};
 #[cfg(feature = "use-imgui")]
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::features::mesh::{MeshRenderFeature, MeshRenderNodeSet};
 use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNodeSet};
+use crate::features::text::{TextRenderFeature, TextResource};
 use crate::game_asset_lookup::MeshAsset;
 use crate::game_asset_manager::GameAssetManager;
 use crate::game_renderer::{GameRenderer, SwapchainHandler};
@@ -25,7 +26,6 @@ use rafx::assets::{
 };
 use rafx::nodes::RenderRegistry;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use crate::assets::font::{FontAssetData, FontAsset};
 
 pub fn init_distill_daemon(
     resources: &mut Resources,

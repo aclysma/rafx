@@ -1,4 +1,6 @@
-use crate::nodes::{FramePacket, PrepareJob, PrepareJobSet, RenderFeatureIndex, RenderView, RenderJobExtractContext};
+use crate::nodes::{
+    FramePacket, PrepareJob, PrepareJobSet, RenderFeatureIndex, RenderJobExtractContext, RenderView,
+};
 
 pub trait ExtractJob {
     fn extract(
@@ -16,9 +18,7 @@ pub struct ExtractJobSet {
     extract_jobs: Vec<Box<dyn ExtractJob>>,
 }
 
-impl Default
-    for ExtractJobSet
-{
+impl Default for ExtractJobSet {
     fn default() -> Self {
         ExtractJobSet {
             extract_jobs: Default::default(),
@@ -26,8 +26,7 @@ impl Default
     }
 }
 
-impl ExtractJobSet
-{
+impl ExtractJobSet {
     pub fn new() -> Self {
         Default::default()
     }

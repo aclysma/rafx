@@ -5,7 +5,7 @@ use super::RenderGraphContext;
 use super::ShadowMapImageResources;
 use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::nodes::{RenderPhase, RenderJobWriteContext};
+use rafx::nodes::{RenderJobWriteContext, RenderPhase};
 
 pub(super) struct OpaquePass {
     pub(super) node: RenderGraphNodeId,

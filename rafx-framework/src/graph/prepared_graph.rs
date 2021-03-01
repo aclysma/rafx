@@ -5,6 +5,7 @@ use crate::graph::graph_node::{RenderGraphNodeId, RenderGraphNodeName};
 use crate::graph::graph_pass::{PrepassBufferBarrier, PrepassImageBarrier, RenderGraphOutputPass};
 use crate::graph::graph_plan::RenderGraphPlan;
 use crate::graph::{RenderGraphBufferUsageId, RenderGraphBuilder, RenderGraphImageUsageId};
+use crate::nodes::{RenderPhase, RenderPhaseIndex};
 use crate::resources::DynCommandBuffer;
 use crate::resources::ResourceLookupSet;
 use crate::{BufferResource, GraphicsPipelineRenderTargetMeta, ImageResource};
@@ -15,7 +16,6 @@ use rafx_api::{
     RafxCommandBufferDef, RafxCommandPoolDef, RafxDepthStencilRenderTargetBinding,
     RafxDeviceContext, RafxExtents2D, RafxFormat, RafxQueue, RafxResult, RafxTextureBarrier,
 };
-use crate::nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -406,7 +406,8 @@ enum RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT> {
 /// forwards the call, adding the user context as a parameter.
 struct RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT> {
     context: &'b RenderGraphUserContextT,
-    begin_execute_graph_callback: &'b Option<Box<RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT>>>,
+    begin_execute_graph_callback:
+        &'b Option<Box<RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT>>>,
     callbacks: &'b FnvHashMap<
         RenderGraphNodeId,
         RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT>,
@@ -473,18 +474,19 @@ impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
 pub struct RenderGraphNodeCallbacks<RenderGraphUserContextT> {
     callbacks:
         FnvHashMap<RenderGraphNodeId, RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT>>,
-    begin_execute_graph_callback: Option<Box<RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT>>>,
+    begin_execute_graph_callback:
+        Option<Box<RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT>>>,
     render_phase_dependencies: FnvHashMap<RenderGraphNodeId, FnvHashSet<RenderPhaseIndex>>,
 }
 
 impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> {
     pub fn set_begin_execute_graph_callback<CallbackFnT>(
         &mut self,
-        f: CallbackFnT
+        f: CallbackFnT,
     ) where
         CallbackFnT: Fn(OnBeginExecuteGraphArgs, &RenderGraphUserContextT) -> RafxResult<()>
-        + 'static
-        + Send,
+            + 'static
+            + Send,
     {
         self.begin_execute_graph_callback = Some(Box::new(f));
     }

@@ -1,5 +1,5 @@
-use legion::World;
 use legion::Resources;
+use legion::World;
 use std::ops::Deref;
 
 //TODO: Add a render resource builder or something that lets someone add extract-only things by

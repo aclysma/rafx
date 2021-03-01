@@ -1,3 +1,4 @@
+use crate::nodes::{RenderPhase, RenderPhaseIndex, RenderRegistry, MAX_RENDER_PHASE_COUNT};
 use crate::resources::resource_arc::{ResourceId, WeakResourceArc};
 use crate::resources::vertex_data::{VertexDataSetLayout, VertexDataSetLayoutHash};
 use crate::{GraphicsPipelineResource, MaterialPassResource, ResourceArc, ResourceLookupSet};
@@ -6,7 +7,6 @@ use rafx_api::{
     RafxFormat, RafxResult, RafxSampleCount, RafxVertexAttributeRate, RafxVertexLayout,
     RafxVertexLayoutAttribute, RafxVertexLayoutBuffer,
 };
-use crate::nodes::{RenderPhase, RenderPhaseIndex, RenderRegistry, MAX_RENDER_PHASE_COUNT};
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 

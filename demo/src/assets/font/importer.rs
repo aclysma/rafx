@@ -1,11 +1,11 @@
+use crate::assets::font::FontAssetData;
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
+use fnv::FnvHasher;
 use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
 use std::io::Read;
 use type_uuid::*;
-use crate::assets::font::FontAssetData;
-use fnv::FnvHasher;
-use std::hash::{Hash, Hasher};
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "c0228ccb-c3d6-40c1-aa19-458f93b5aff9"]
@@ -16,8 +16,8 @@ pub struct FontImporterState(Option<AssetUuid>);
 pub struct FontImporter;
 impl Importer for FontImporter {
     fn version_static() -> u32
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         3
     }

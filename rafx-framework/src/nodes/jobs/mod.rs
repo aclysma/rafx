@@ -7,18 +7,16 @@ pub use prepare::*;
 mod write;
 pub use write::*;
 
-use crate::{RenderResources, ResourceContext, DynCommandBuffer, GraphicsPipelineRenderTargetMeta};
-use rafx_api::RafxDeviceContext;
 use crate::graph::{OnBeginExecuteGraphArgs, VisitRenderpassNodeArgs};
+use crate::{DynCommandBuffer, GraphicsPipelineRenderTargetMeta, RenderResources, ResourceContext};
+use rafx_api::RafxDeviceContext;
 
 pub struct RenderJobExtractContext {
     pub render_resources: &'static RenderResources,
 }
 
 impl RenderJobExtractContext {
-    pub fn new<'a>(
-        render_resources: &'a RenderResources,
-    ) -> Self {
+    pub fn new<'a>(render_resources: &'a RenderResources) -> Self {
         unsafe {
             RenderJobExtractContext {
                 render_resources: force_to_static_lifetime(render_resources),
@@ -71,10 +69,7 @@ impl RenderJobBeginExecuteGraphContext {
     ) -> RenderJobBeginExecuteGraphContext {
         RenderJobBeginExecuteGraphContext::new(
             args.graph_context.device_context().clone(),
-            args
-                .graph_context
-                .resource_context()
-                .clone(),
+            args.graph_context.resource_context().clone(),
             args.command_buffer.clone(),
         )
     }
@@ -107,10 +102,7 @@ impl RenderJobWriteContext {
     ) -> RenderJobWriteContext {
         RenderJobWriteContext::new(
             args.graph_context.device_context().clone(),
-            args
-                .graph_context
-                .resource_context()
-                .clone(),
+            args.graph_context.resource_context().clone(),
             args.command_buffer.clone(),
             args.render_target_meta.clone(),
         )

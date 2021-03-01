@@ -5,7 +5,9 @@ use rafx::api::{RafxCommandBuffer, RafxDeviceContext, RafxQueue};
 use rafx::api::{RafxPresentableFrame, RafxResult};
 use rafx::framework::{DynCommandBuffer, RenderResources, ResourceContext};
 use rafx::graph::RenderGraphExecutor;
-use rafx::nodes::{FramePacket, PrepareJobSet, RenderRegistry, RenderView, RenderJobPrepareContext};
+use rafx::nodes::{
+    FramePacket, PrepareJobSet, RenderJobPrepareContext, RenderRegistry, RenderView,
+};
 
 pub struct RenderFrameJobResult;
 
@@ -70,9 +72,7 @@ impl RenderFrameJob {
             (t2 - t1).as_secs_f32() * 1000.0
         );
 
-        RenderFrameJobResult {
-
-        }
+        RenderFrameJobResult {}
     }
 
     #[allow(clippy::too_many_arguments)]
