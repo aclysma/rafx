@@ -239,13 +239,13 @@ fn run() -> RafxResult<()> {
                     format: RafxFormat::R32G32_SFLOAT,
                     buffer_index: 0,
                     location: 0,
-                    offset: 0,
+                    byte_offset: 0,
                 },
                 RafxVertexLayoutAttribute {
                     format: RafxFormat::R32G32B32_SFLOAT,
                     buffer_index: 0,
                     location: 1,
-                    offset: 8,
+                    byte_offset: 8,
                 },
             ],
             buffers: vec![RafxVertexLayoutBuffer {
@@ -356,7 +356,7 @@ fn run() -> RafxResult<()> {
                 0,
                 &[RafxVertexBufferBinding {
                     buffer: &vertex_buffer,
-                    offset: 0,
+                    byte_offset: 0,
                 }],
             )?;
             cmd_buffer.cmd_bind_descriptor_set(

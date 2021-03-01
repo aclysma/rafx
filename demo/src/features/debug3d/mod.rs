@@ -1,7 +1,4 @@
 use crate::features::debug3d::extract::Debug3dExtractJob;
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
-};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::nodes::ExtractJob;
 use rafx::nodes::RenderFeature;
@@ -17,7 +14,7 @@ pub use debug3d_resource::*;
 use rafx::api::RafxPrimitiveTopology;
 
 pub fn create_debug3d_extract_job(
-) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
+) -> Box<dyn ExtractJob> {
     Box::new(Debug3dExtractJob::new())
 }
 

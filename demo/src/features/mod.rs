@@ -4,3 +4,4 @@ pub mod imgui;
 pub mod mesh;
 pub mod skybox;
 pub mod sprite;
+pub mod text;

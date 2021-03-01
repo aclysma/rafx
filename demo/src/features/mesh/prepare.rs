@@ -5,7 +5,6 @@ use crate::features::mesh::{
     PreparedSubmitNodeMeshData, ShadowMapData, ShadowMapRenderView,
 };
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
-use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use crate::{
     components::{
         DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
@@ -17,10 +16,7 @@ use rafx::framework::MaterialPass;
 use rafx::framework::{
     DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
 };
-use rafx::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderView, RenderViewIndex, ViewSubmitNodes,
-};
+use rafx::nodes::{FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderViewIndex, ViewSubmitNodes, RenderJobPrepareContext};
 
 pub struct PreparedDirectionalLight<'a> {
     light: &'a DirectionalLightComponent,
@@ -46,14 +42,14 @@ pub struct MeshPrepareJob {
     pub(super) spot_lights: Vec<ExtractedSpotLight>,
 }
 
-impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for MeshPrepareJob {
+impl PrepareJob for MeshPrepareJob {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> (
-        Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
+        Box<dyn FeatureCommandWriter>,
         FeatureSubmitNodes,
     ) {
         profiling::scope!("Mesh Prepare");

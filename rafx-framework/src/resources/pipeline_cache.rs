@@ -6,7 +6,7 @@ use rafx_api::{
     RafxFormat, RafxResult, RafxSampleCount, RafxVertexAttributeRate, RafxVertexLayout,
     RafxVertexLayoutAttribute, RafxVertexLayoutBuffer,
 };
-use rafx_nodes::{RenderPhase, RenderPhaseIndex, RenderRegistry, MAX_RENDER_PHASE_COUNT};
+use crate::nodes::{RenderPhase, RenderPhaseIndex, RenderRegistry, MAX_RENDER_PHASE_COUNT};
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 
@@ -473,7 +473,7 @@ impl GraphicsPipelineCache {
 
                         vertex_layout_attributes.push(RafxVertexLayoutAttribute {
                             location: vertex_input.location,
-                            offset: member.offset as u32,
+                            byte_offset: member.byte_offset as u32,
                             buffer_index: member.binding as u32,
                             format: member.format,
                         });

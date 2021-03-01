@@ -5,18 +5,14 @@ use crate::features::mesh::{
 use crate::features::sprite::{create_sprite_extract_job, SpriteRenderNodeSet};
 use crate::phases::TransparentRenderPhase;
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
-use crate::render_contexts::RenderJobExtractContext;
 use crate::time::TimeState;
 use legion::*;
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{image_upload, GpuImageDataColorSpace};
+use rafx::assets::{image_upload, GpuImageDataColorSpace, AssetManagerRenderResource};
 use rafx::assets::{AssetManager, GpuImageData};
 use rafx::framework::{DynResourceAllocatorSet, RenderResources};
 use rafx::framework::{ImageViewResource, ResourceArc};
-use rafx::nodes::{
-    AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder,
-    RenderRegistry, RenderView, RenderViewDepthRange, RenderViewSet, VisibilityResult,
-};
+use rafx::nodes::{AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder, RenderRegistry, RenderView, RenderViewDepthRange, RenderViewSet, VisibilityResult, RenderJobExtractContext};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use std::sync::{Arc, Mutex};
 
@@ -50,6 +46,9 @@ use rafx::api::{
     RafxResult, RafxSampleCount,
 };
 use rafx::assets::image_upload::ImageUploadParams;
+use crate::features::text::{create_text_extract_job, FontAtlasCache};
+use crate::game_asset_manager::GameAssetManager;
+use crate::legion_support::{LegionWorld, LegionResources};
 
 /// Creates a right-handed perspective projection matrix with [0,1] depth range.
 pub fn perspective_rh(
@@ -114,6 +113,9 @@ impl GameRenderer {
         let mut asset_manager_fetch = resources.get_mut::<AssetManager>().unwrap();
         let asset_manager = &mut *asset_manager_fetch;
 
+        let mut game_asset_manager_fetch = resources.get_mut::<GameAssetManager>().unwrap();
+        let game_asset_manager = &mut *game_asset_manager_fetch;
+
         let rafx_api = resources.get_mut::<RafxApi>().unwrap();
         let device_context = rafx_api.device_context();
 
@@ -159,10 +161,16 @@ impl GameRenderer {
         upload.block_until_upload_complete()?;
 
         log::info!("all waits complete");
-        let game_renderer_resources =
-            GameRendererStaticResources::new(asset_resource, asset_manager)?;
+        let static_resources =
+            GameRendererStaticResources::new(asset_resource, asset_manager, game_asset_manager)?;
 
-        let render_thread = RenderThread::start();
+        //let font = game_asset_manager.font(&static_resources.default_font).unwrap();
+        //resources.get_mut::<TextResource>().unwrap().add_font(font);
+
+
+
+        let render_resources = Self::initialize_persistent_render_resources();
+        let render_thread = RenderThread::start(render_resources);
 
         let renderer = GameRendererInner {
             #[cfg(feature = "use-imgui")]
@@ -171,7 +179,7 @@ impl GameRenderer {
                 invalid_image,
                 invalid_cube_map_image,
             },
-            static_resources: game_renderer_resources,
+            static_resources,
             swapchain_resources: None,
 
             render_thread,
@@ -241,6 +249,15 @@ impl GameRenderer {
         .map_err(|x| Into::<RafxError>::into(x))
     }
 
+    // This is called once at start. Create a render resources object and put anything in it that
+    // should get passed back and forth between the render thread, or be retained by the render
+    // thread across frames. These resources will be available to render jobs.
+    fn initialize_persistent_render_resources() -> RenderResources {
+        let mut render_resources = RenderResources::default();
+        render_resources.insert(FontAtlasCache::default());
+        render_resources
+    }
+
     // This is externally exposed, it checks result of the previous frame (which implicitly also
     // waits for the previous frame to complete if it hasn't already)
     #[profiling::function]
@@ -260,7 +277,8 @@ impl GameRenderer {
         let presentable_frame =
             SwapchainHandler::acquire_next_image(resources, window_width, window_height, self)?;
 
-        //let presentable_frame = swapchain_helper.acquire_next_image(window, window_width, window_height, )?;
+        self.inner.lock().unwrap().render_thread.wait_for_render_finish(std::time::Duration::from_secs(30));
+
         let t1 = std::time::Instant::now();
         log::trace!(
             "[main] wait for previous frame present {} ms",
@@ -296,10 +314,10 @@ impl GameRenderer {
             &presentable_frame,
         );
 
+        let mut guard = game_renderer.inner.lock().unwrap();
+        let game_renderer_inner = &mut *guard;
         match result {
             Ok(prepared_frame) => {
-                let mut guard = game_renderer.inner.lock().unwrap();
-                let game_renderer_inner = &mut *guard;
                 game_renderer_inner
                     .render_thread
                     .render(prepared_frame, presentable_frame)
@@ -339,7 +357,6 @@ impl GameRenderer {
         let device_context = resources.get::<RafxDeviceContext>().unwrap().clone();
 
         let mut asset_manager_fetch = resources.get_mut::<AssetManager>().unwrap();
-        let mut render_resources = RenderResources::new();
         let asset_manager = &mut *asset_manager_fetch;
 
         //
@@ -351,6 +368,7 @@ impl GameRenderer {
 
         let mut guard = game_renderer.inner.lock().unwrap();
         let game_renderer_inner = &mut *guard;
+        let render_resources = &mut game_renderer_inner.render_thread.render_resources().lock().unwrap();
 
         let static_resources = &game_renderer_inner.static_resources;
         render_resources.insert(static_resources.clone());
@@ -377,7 +395,6 @@ impl GameRenderer {
         };
 
         let swapchain_surface_info = swapchain_resources.swapchain_surface_info.clone();
-        render_resources.insert(swapchain_surface_info.clone());
 
         let render_view_set = RenderViewSet::default();
 
@@ -602,14 +619,24 @@ impl GameRenderer {
                 extract_job_set.add_job(create_imgui_extract_job());
             }
 
+            extract_job_set.add_job(create_text_extract_job());
+
             extract_job_set
         };
+
+        render_resources.insert(swapchain_surface_info.clone());
+        unsafe {
+            render_resources.insert(LegionWorld::new(world));
+            render_resources.insert(LegionResources::new(resources));
+            render_resources.insert(AssetManagerRenderResource::new(asset_manager));
+        }
 
         let frame_packet = frame_packet_builder.build();
         let prepare_job_set = {
             profiling::scope!("renderer extract");
+
             let extract_context =
-                RenderJobExtractContext::new(&world, &resources, &render_resources, asset_manager);
+                RenderJobExtractContext::new(&render_resources);
 
             let mut extract_views = Vec::default();
             extract_views.push(&main_view);
@@ -628,6 +655,11 @@ impl GameRenderer {
 
             extract_job_set.extract(&extract_context, &frame_packet, &extract_views)
         };
+
+
+        render_resources.remove::<LegionWorld>();
+        render_resources.remove::<LegionResources>();
+        render_resources.remove::<AssetManagerRenderResource>();
 
         //TODO: This is now possible to run on the render thread
         let render_graph = render_graph::build_render_graph(
@@ -666,7 +698,6 @@ impl GameRenderer {
             shadow_map_render_views,
             render_registry,
             device_context,
-            render_resources,
             graphics_queue,
         };
 

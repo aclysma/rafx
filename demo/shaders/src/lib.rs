@@ -16,3 +16,5 @@ pub mod skybox_frag;
 pub mod skybox_vert;
 pub mod sprite_frag;
 pub mod sprite_vert;
+pub mod text_frag;
+pub mod text_vert;

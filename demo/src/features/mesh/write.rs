@@ -1,28 +1,15 @@
 use crate::features::mesh::{
     ExtractedFrameNodeMeshData, MeshRenderFeature, PreparedSubmitNodeMeshData,
 };
-use crate::render_contexts::RenderJobWriteContext;
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
-use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
-    SubmitNodeId,
-};
+use rafx::nodes::{FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView, SubmitNodeId, RenderJobWriteContext};
 
 pub struct MeshCommandWriter {
     pub(super) extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
     pub(super) prepared_submit_node_mesh_data: Vec<PreparedSubmitNodeMeshData>,
 }
 
-impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
-    fn apply_setup(
-        &self,
-        _write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
-    ) -> RafxResult<()> {
-        Ok(())
-    }
-
+impl FeatureCommandWriter for MeshCommandWriter {
     fn render_element(
         &self,
         write_context: &mut RenderJobWriteContext,
@@ -79,7 +66,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
                     .vertex_buffer
                     .get_raw()
                     .buffer,
-                offset: mesh_part.vertex_buffer_offset_in_bytes as u64,
+                byte_offset: mesh_part.vertex_buffer_offset_in_bytes as u64,
             }],
         )?;
 
@@ -90,7 +77,7 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
                 .index_buffer
                 .get_raw()
                 .buffer,
-            offset: mesh_part.index_buffer_offset_in_bytes as u64,
+            byte_offset: mesh_part.index_buffer_offset_in_bytes as u64,
             index_type: RafxIndexType::Uint16,
         })?;
 
@@ -99,15 +86,6 @@ impl FeatureCommandWriter<RenderJobWriteContext> for MeshCommandWriter {
             0,
             0,
         )?;
-        Ok(())
-    }
-
-    fn revert_setup(
-        &self,
-        _write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
-    ) -> RafxResult<()> {
         Ok(())
     }
 

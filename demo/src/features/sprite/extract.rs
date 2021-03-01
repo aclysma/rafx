@@ -2,18 +2,15 @@ use crate::features::sprite::prepare::SpritePrepareJob;
 use crate::features::sprite::{
     ExtractedSpriteData, SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet,
 };
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
-};
 use crate::{
     components::{PositionComponent, SpriteComponent},
     game_renderer::GameRendererStaticResources,
 };
 use legion::*;
 use rafx::base::slab::RawSlabKey;
-use rafx::nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
-};
+use rafx::nodes::{ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderJobExtractContext};
+use crate::legion_support::{LegionResources, LegionWorld};
+use rafx::assets::AssetManagerRenderResource;
 
 pub struct SpriteExtractJob {}
 
@@ -23,7 +20,7 @@ impl SpriteExtractJob {
     }
 }
 
-impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
+impl ExtractJob
     for SpriteExtractJob
 {
     fn extract(
@@ -31,17 +28,22 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
         _views: &[&RenderView],
-    ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
+    ) -> Box<dyn PrepareJob> {
         profiling::scope!("Sprite Extract");
+        let legion_world = extract_context.render_resources.fetch::<LegionWorld>();
+        let world = &**legion_world;
+
+        let legion_resources = extract_context.render_resources.fetch::<LegionResources>();
+
+        let asset_manager = extract_context.render_resources.fetch::<AssetManagerRenderResource>();
 
         // Update the mesh render nodes. This could be done earlier as part of a system
-        let mut sprite_render_nodes = extract_context
-            .resources
+        let mut sprite_render_nodes = legion_resources
             .get_mut::<SpriteRenderNodeSet>()
             .unwrap();
 
         let mut query = <(Read<PositionComponent>, Read<SpriteComponent>)>::query();
-        for (position_component, sprite_component) in query.iter(extract_context.world) {
+        for (position_component, sprite_component) in query.iter(world) {
             let render_node = sprite_render_nodes
                 .get_mut(&sprite_component.render_node)
                 .unwrap();
@@ -63,8 +65,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
                 .get_raw(render_node_handle)
                 .unwrap();
 
-            let image_asset = extract_context
-                .asset_manager
+            let image_asset = asset_manager
                 .get_image_asset(&sprite_render_node.image);
 
             let extracted_frame_node = image_asset.and_then(|image_asset| {
@@ -85,8 +86,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .render_resources
             .fetch::<GameRendererStaticResources>();
         // For now just grab pass 0
-        let sprite_material = extract_context
-            .asset_manager
+        let sprite_material = asset_manager
             .get_material_pass_by_index(&static_resources.sprite_material, 0)
             .unwrap();
 

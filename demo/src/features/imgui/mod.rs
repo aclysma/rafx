@@ -1,8 +1,5 @@
 use crate::features::imgui::extract::ImGuiExtractJobImpl;
 use crate::imgui_support::ImGuiDrawData;
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
-};
 use rafx::api::RafxPrimitiveTopology;
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::nodes::ExtractJob;
@@ -15,7 +12,7 @@ mod prepare;
 mod write;
 
 pub fn create_imgui_extract_job(
-) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
+) -> Box<dyn ExtractJob> {
     Box::new(ImGuiExtractJobImpl::new())
 }
 

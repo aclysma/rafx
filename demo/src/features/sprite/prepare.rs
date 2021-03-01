@@ -5,15 +5,11 @@ use crate::features::sprite::{
 };
 use crate::phases::OpaqueRenderPhase;
 use crate::phases::TransparentRenderPhase;
-use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use fnv::FnvHashMap;
 use glam::Vec3;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderView, ViewSubmitNodes,
-};
+use rafx::nodes::{FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, ViewSubmitNodes, RenderJobPrepareContext};
 
 pub struct SpritePrepareJob {
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
@@ -32,14 +28,14 @@ impl SpritePrepareJob {
     }
 }
 
-impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for SpritePrepareJob {
+impl PrepareJob for SpritePrepareJob {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> (
-        Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
+        Box<dyn FeatureCommandWriter>,
         FeatureSubmitNodes,
     ) {
         profiling::scope!("Sprite Prepare");

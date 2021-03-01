@@ -1,8 +1,8 @@
 use crate::phases::UiRenderPhase;
-use crate::render_contexts::RenderJobWriteContext;
 use rafx::graph::*;
 
 use super::RenderGraphContext;
+use rafx::nodes::RenderJobWriteContext;
 
 pub(super) struct UiPass {
     pub(super) node: RenderGraphNodeId,

@@ -353,7 +353,7 @@ impl RafxCommandBufferVulkan {
         let mut offsets = Vec::with_capacity(bindings.len());
         for binding in bindings {
             buffers.push(binding.buffer.vk_buffer().unwrap().vk_buffer());
-            offsets.push(binding.offset);
+            offsets.push(binding.byte_offset);
         }
 
         unsafe {
@@ -376,7 +376,7 @@ impl RafxCommandBufferVulkan {
             self.device_context.device().cmd_bind_index_buffer(
                 self.vk_command_buffer,
                 binding.buffer.vk_buffer().unwrap().vk_buffer(),
-                binding.offset,
+                binding.byte_offset,
                 binding.index_type.into(),
             )
         }

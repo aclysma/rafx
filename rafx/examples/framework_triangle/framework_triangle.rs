@@ -347,7 +347,7 @@ fn run() -> RafxResult<()> {
                     0,
                     &[RafxVertexBufferBinding {
                         buffer: &vertex_buffer.get_raw().buffer,
-                        offset: 0,
+                        byte_offset: 0,
                     }],
                 )?;
 

@@ -16,7 +16,7 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 [dependencies]
 rafx-api = { version = "=0.0.7", path = "../rafx-api" }
 rafx-base = { version = "=0.0.7", path = "../rafx-base" }
-rafx-nodes = { version = "=0.0.7", path = "../rafx-nodes" }
+#rafx-nodes = { version = "=0.0.7", path = "../rafx-nodes" }
 rafx-framework = { version = "=0.0.7", path = "../rafx-framework" }
 
 distill = { version = "=0.0.2", features = ["serde_importers"] }

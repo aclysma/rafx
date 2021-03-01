@@ -56,6 +56,7 @@ impl std::fmt::Debug for RafxDescriptorSetArrayVulkan {
 // For *const c_void in vk::WriteDescriptorSet, which always point at contents of vectors in
 // update_data that never get resized
 unsafe impl Send for RafxDescriptorSetArrayVulkan {}
+unsafe impl Sync for RafxDescriptorSetArrayVulkan {}
 
 impl RafxDescriptorSetArrayVulkan {
     pub fn root_signature(&self) -> &RafxRootSignature {
@@ -546,8 +547,8 @@ impl RafxDescriptorSetArrayVulkan {
                     buffer_info.range = vk::WHOLE_SIZE;
 
                     if let Some(offset_size) = update.elements.buffer_offset_sizes {
-                        if offset_size[buffer_index].offset != 0 {
-                            buffer_info.offset = offset_size[buffer_index].offset;
+                        if offset_size[buffer_index].byte_offset != 0 {
+                            buffer_info.offset = offset_size[buffer_index].byte_offset;
                         }
 
                         if offset_size[buffer_index].size != 0 {

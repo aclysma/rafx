@@ -63,7 +63,7 @@ pub enum VertexCopyError {
 pub struct VertexMember {
     pub semantic: String,
     pub format: RafxFormat,
-    pub offset: usize,
+    pub byte_offset: usize,
 }
 
 // Copy/'static constraints ensure we only pass simple value types. Anything else is almost certainly a mistake
@@ -101,7 +101,7 @@ impl VertexMember {
         VertexMember {
             semantic,
             format,
-            offset,
+            byte_offset: offset,
         }
     }
 }
@@ -131,7 +131,7 @@ impl<'a, VertexT: Copy + 'static> VertexMemberAccumulator<'a, VertexT> {
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub struct VertexDataMemberMeta {
     pub format: RafxFormat,
-    pub offset: usize,
+    pub byte_offset: usize,
     pub size: usize,
 }
 
@@ -218,12 +218,12 @@ impl VertexDataLayout {
         member: &VertexMember,
     ) {
         let size = member.format.block_or_pixel_size_in_bytes() as usize;
-        assert!(member.offset + size <= vertex_stride);
+        assert!(member.byte_offset + size <= vertex_stride);
         let old = map.insert(
             member.semantic.clone(),
             VertexDataMemberMeta {
                 format: member.format,
-                offset: member.offset,
+                byte_offset: member.byte_offset,
                 size,
             },
         );
@@ -309,7 +309,7 @@ impl VertexDataLayout {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VertexDataSetMemberMeta {
     pub format: RafxFormat,
-    pub offset: usize,
+    pub byte_offset: usize,
     pub size: usize,
     pub binding: usize,
 }
@@ -342,7 +342,7 @@ impl VertexDataSetLayout {
                     VertexDataSetMemberMeta {
                         format: meta.format,
                         size: meta.size,
-                        offset: meta.offset,
+                        byte_offset: meta.byte_offset,
                         binding,
                     },
                 );
@@ -607,9 +607,9 @@ impl VertexData {
             if let Some(dst_member) = dst_layout.members().get(member_name) {
                 for i in 0..vertex_count {
                     let src_ptr =
-                        src_data.add((src_layout.vertex_stride() * i) + src_member.offset);
+                        src_data.add((src_layout.vertex_stride() * i) + src_member.byte_offset);
                     let dst_ptr =
-                        dst_data.add((dst_layout.vertex_stride() * i) + dst_member.offset);
+                        dst_data.add((dst_layout.vertex_stride() * i) + dst_member.byte_offset);
 
                     std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_member.size);
                 }

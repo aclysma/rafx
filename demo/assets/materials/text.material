@@ -1,0 +1,23 @@
+(
+    passes: [
+        (
+            phase: Some("Opaque"),
+            fixed_function_state: (
+                alpha_blending: Enabled,
+                depth_testing: EnabledReverseZ,
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/text.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/text.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)

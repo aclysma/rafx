@@ -11,6 +11,8 @@ use distill::loader::Loader;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetLookup, AssetManager, GenericLoader, LoadQueues};
 use std::sync::Arc;
+use crate::assets::font::{FontAssetData, FontAsset, FontAssetInner};
+use fontdue::FontSettings;
 
 #[derive(Debug)]
 pub struct GameAssetManagerMetrics {
@@ -20,6 +22,7 @@ pub struct GameAssetManagerMetrics {
 #[derive(Default)]
 pub struct GameLoadQueueSet {
     pub meshes: LoadQueues<MeshAssetData, MeshAsset>,
+    pub fonts: LoadQueues<FontAssetData, FontAsset>,
 }
 
 pub struct GameAssetManager {
@@ -39,12 +42,25 @@ impl GameAssetManager {
         self.load_queues.meshes.create_loader()
     }
 
+    pub fn create_font_loader(&self) -> GenericLoader<FontAssetData, FontAsset> {
+        self.load_queues.fonts.create_loader()
+    }
+
     pub fn mesh(
         &self,
         handle: &Handle<MeshAsset>,
     ) -> Option<&MeshAsset> {
         self.loaded_assets
             .meshes
+            .get_committed(handle.load_handle())
+    }
+
+    pub fn font(
+        &self,
+        handle: &Handle<FontAsset>,
+    ) -> Option<&FontAsset> {
+        self.loaded_assets
+            .fonts
             .get_committed(handle.load_handle())
     }
 
@@ -55,6 +71,7 @@ impl GameAssetManager {
         asset_manager: &AssetManager,
     ) -> RafxResult<()> {
         self.process_mesh_load_requests(asset_manager);
+        self.process_font_load_requests(asset_manager);
         Ok(())
     }
 
@@ -73,7 +90,7 @@ impl GameAssetManager {
     ) {
         for request in self.load_queues.meshes.take_load_requests() {
             log::trace!("Create mesh {:?}", request.load_handle);
-            let loaded_asset = self.load_mesh(asset_manager, &request.asset);
+            let loaded_asset = self.load_mesh(asset_manager, request.asset);
             Self::handle_load_result(
                 request.load_op,
                 loaded_asset,
@@ -84,6 +101,26 @@ impl GameAssetManager {
 
         Self::handle_commit_requests(&mut self.load_queues.meshes, &mut self.loaded_assets.meshes);
         Self::handle_free_requests(&mut self.load_queues.meshes, &mut self.loaded_assets.meshes);
+    }
+
+    #[profiling::function]
+    fn process_font_load_requests(
+        &mut self,
+        asset_manager: &AssetManager,
+    ) {
+        for request in self.load_queues.fonts.take_load_requests() {
+            log::trace!("Create font {:?}", request.load_handle);
+            let loaded_asset = self.load_font(asset_manager, request.asset);
+            Self::handle_load_result(
+                request.load_op,
+                loaded_asset,
+                &mut self.loaded_assets.fonts,
+                request.result_tx,
+            );
+        }
+
+        Self::handle_commit_requests(&mut self.load_queues.fonts, &mut self.loaded_assets.fonts);
+        Self::handle_free_requests(&mut self.load_queues.fonts, &mut self.loaded_assets.fonts);
     }
 
     fn handle_load_result<AssetT: Clone>(
@@ -131,7 +168,7 @@ impl GameAssetManager {
     fn load_mesh(
         &mut self,
         asset_manager: &AssetManager,
-        mesh_asset: &MeshAssetData,
+        mesh_asset: MeshAssetData,
     ) -> RafxResult<MeshAsset> {
         let vertex_buffer = asset_manager
             .loaded_assets()
@@ -205,11 +242,31 @@ impl GameAssetManager {
         let inner = MeshAssetInner {
             vertex_buffer,
             index_buffer,
-            asset_data: mesh_asset.clone(),
+            asset_data: mesh_asset,
             mesh_parts,
         };
 
         Ok(MeshAsset {
+            inner: Arc::new(inner),
+        })
+    }
+
+    #[profiling::function]
+    fn load_font(
+        &mut self,
+        _asset_manager: &AssetManager,
+        font_asset: FontAssetData,
+    ) -> RafxResult<FontAsset> {
+        let settings = FontSettings::default();
+        let font = fontdue::Font::from_bytes(font_asset.data.as_slice(), settings).map_err(|x| x.to_string())?;
+
+        let inner = FontAssetInner {
+            font,
+            data_hash: font_asset.data_hash,
+            scale: font_asset.scale
+        };
+
+        Ok(FontAsset {
             inner: Arc::new(inner),
         })
     }

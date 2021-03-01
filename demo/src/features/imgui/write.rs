@@ -1,12 +1,8 @@
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::imgui_support::{ImGuiDrawCmd, ImGuiDrawData};
-use crate::render_contexts::RenderJobWriteContext;
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
-    SubmitNodeId,
-};
+use rafx::nodes::{FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView, SubmitNodeId, RenderJobWriteContext};
 
 pub struct ImGuiCommandWriter {
     pub(super) vertex_buffers: Vec<ResourceArc<BufferResource>>,
@@ -17,7 +13,7 @@ pub struct ImGuiCommandWriter {
     pub(super) imgui_material_pass: ResourceArc<MaterialPassResource>,
 }
 
-impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
+impl FeatureCommandWriter for ImGuiCommandWriter {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
@@ -64,13 +60,13 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
                         0, // first binding
                         &[RafxVertexBufferBinding {
                             buffer: &self.vertex_buffers[draw_list_index].get_raw().buffer,
-                            offset: 0,
+                            byte_offset: 0,
                         }],
                     )?;
 
                     command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
                         buffer: &self.index_buffers[draw_list_index].get_raw().buffer,
-                        offset: 0,
+                        byte_offset: 0,
                         index_type: RafxIndexType::Uint16,
                     })?;
 
@@ -129,15 +125,6 @@ impl FeatureCommandWriter<RenderJobWriteContext> for ImGuiCommandWriter {
                 }
             }
         }
-        Ok(())
-    }
-
-    fn revert_setup(
-        &self,
-        _write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
-    ) -> RafxResult<()> {
         Ok(())
     }
 

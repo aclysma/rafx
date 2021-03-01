@@ -458,7 +458,7 @@ impl RafxDescriptorSetArrayMetal {
                     let offset = update
                         .elements
                         .buffer_offset_sizes
-                        .map(|x| x[buffer_index].offset)
+                        .map(|x| x[buffer_index].byte_offset)
                         .unwrap_or(0);
                     //println!("arg buffer index: {} offset {} buffer {:?}", next_index, offset, buffer.metal_buffer().unwrap().metal_buffer());
 

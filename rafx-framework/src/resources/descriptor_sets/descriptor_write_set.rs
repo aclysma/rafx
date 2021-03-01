@@ -34,7 +34,7 @@ pub struct DescriptorSetWriteElementImage {
 #[derive(Debug, Clone)]
 pub struct DescriptorSetWriteElementBufferDataBufferRef {
     pub buffer: ResourceArc<BufferResource>,
-    pub offset: Option<u64>,
+    pub byte_offset: Option<u64>,
     pub size: Option<u64>,
 }
 

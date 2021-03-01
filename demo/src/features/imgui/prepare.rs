@@ -1,13 +1,9 @@
 use super::write::ImGuiCommandWriter;
 use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
 use crate::phases::UiRenderPhase;
-use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderView, ViewSubmitNodes,
-};
+use rafx::nodes::{FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, ViewSubmitNodes, RenderJobPrepareContext};
 
 pub struct ImGuiPrepareJobImpl {
     extracted_imgui_data: ExtractedImGuiData,
@@ -32,14 +28,14 @@ impl ImGuiPrepareJobImpl {
     }
 }
 
-impl PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for ImGuiPrepareJobImpl {
+impl PrepareJob for ImGuiPrepareJobImpl {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> (
-        Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
+        Box<dyn FeatureCommandWriter>,
         FeatureSubmitNodes,
     ) {
         profiling::scope!("ImGui Prepare");

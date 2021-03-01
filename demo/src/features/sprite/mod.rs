@@ -1,6 +1,3 @@
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
-};
 use distill::loader::handle::Handle;
 use rafx::assets::ImageAsset;
 use rafx::base::slab::{DropSlab, DropSlabKey};
@@ -80,7 +77,7 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 1, 3];
 
 pub fn create_sprite_extract_job(
-) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
+) -> Box<dyn ExtractJob> {
     Box::new(SpriteExtractJob::new())
 }
 

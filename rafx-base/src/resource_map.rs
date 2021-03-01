@@ -150,8 +150,6 @@ impl ResourceMap {
             .map(|x| *x)
     }
 
-    // Use optional nightly support for access to std::intrinsics::type_name
-    #[cfg(feature = "nightly")]
     fn unwrap_resource<R>(resource: Option<R>) -> R {
         if resource.is_none() {
             let name = core::any::type_name::<R>();
@@ -159,12 +157,6 @@ impl ResourceMap {
             panic!("Resource not found: {}", name);
         }
 
-        resource.unwrap()
-    }
-
-    #[cfg(not(feature = "nightly"))]
-    fn unwrap_resource<R>(resource: Option<R>) -> R {
-        // Tried to fetch or fetch_mut on a resource that is not registered. (Nightly will give better error message)
         resource.unwrap()
     }
 

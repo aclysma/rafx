@@ -3,7 +3,6 @@ use std::{
     path::PathBuf,
 };
 
-use distill::daemon::AssetDaemon;
 use structopt::StructOpt;
 
 /// Parameters to the asset daemon.
@@ -63,21 +62,11 @@ fn parse_socket_addr(s: &str) -> std::result::Result<SocketAddr, AddrParseError>
 }
 
 pub fn run(opt: AssetDaemonOpt) {
-    AssetDaemon::default()
-        .with_importer("sampler", rafx::assets::SamplerImporter)
-        .with_importer("material", rafx::assets::MaterialImporter)
-        .with_importer("materialinstance", rafx::assets::MaterialInstanceImporter)
-        .with_importer("compute", rafx::assets::ComputePipelineImporter)
-        .with_importer("spv", rafx::assets::ShaderImporterSpv)
-        .with_importer("cookedshaderpackage", rafx::assets::ShaderImporterCooked)
-        .with_importer("png", rafx::assets::ImageImporter)
-        .with_importer("jpg", rafx::assets::ImageImporter)
-        .with_importer("jpeg", rafx::assets::ImageImporter)
-        .with_importer("tga", rafx::assets::ImageImporter)
-        .with_importer("bmp", rafx::assets::ImageImporter)
+    rafx::assets::distill_impl::default_daemon()
         .with_importer("basis", rafx::assets::BasisImageImporter)
         .with_importer("gltf", crate::assets::gltf::GltfImporter)
         .with_importer("glb", crate::assets::gltf::GltfImporter)
+        .with_importer("ttf", crate::assets::font::FontImporter)
         .with_db_path(opt.db_dir)
         .with_address(opt.address)
         .with_asset_dirs(opt.asset_dirs)

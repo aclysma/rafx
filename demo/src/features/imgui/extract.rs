@@ -1,16 +1,13 @@
 use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
 use crate::imgui_support::Sdl2ImguiManager;
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
-};
 use crate::{
     features::imgui::prepare::ImGuiPrepareJobImpl,
     game_renderer::{GameRendererStaticResources, ImguiFontAtlas},
 };
 use rafx::graph::SwapchainSurfaceInfo;
-use rafx::nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
-};
+use rafx::nodes::{ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderJobExtractContext};
+use crate::legion_support::LegionResources;
+use rafx::assets::AssetManagerRenderResource;
 
 pub struct ImGuiExtractJobImpl {}
 
@@ -20,7 +17,7 @@ impl ImGuiExtractJobImpl {
     }
 }
 
-impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
+impl ExtractJob
     for ImGuiExtractJobImpl
 {
     fn extract(
@@ -28,10 +25,11 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         extract_context: &RenderJobExtractContext,
         _frame_packet: &FramePacket,
         _views: &[&RenderView],
-    ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
+    ) -> Box<dyn PrepareJob> {
         profiling::scope!("ImGui Extract");
-        let imgui_draw_data = extract_context
-            .resources
+        let legion_resources = extract_context.render_resources.fetch::<LegionResources>();
+        let asset_manager = extract_context.render_resources.fetch::<AssetManagerRenderResource>();
+        let imgui_draw_data = legion_resources
             .get::<Sdl2ImguiManager>()
             .unwrap()
             .copy_draw_data();
@@ -61,8 +59,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
             .render_resources
             .fetch::<GameRendererStaticResources>()
             .imgui_material;
-        let imgui_material_pass = extract_context
-            .asset_manager
+        let imgui_material_pass = asset_manager
             .get_material_pass_by_index(imgui_material, 0)
             .unwrap();
 

@@ -16,7 +16,7 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 [dependencies]
 rafx-api = { version = "=0.0.7", path = "../rafx-api", features = ["serde-support"] }
 rafx-base = { version = "=0.0.7", path = "../rafx-base" }
-rafx-nodes = { version = "=0.0.7", path = "../rafx-nodes" }
+#rafx-nodes = { version = "=0.0.7", path = "../rafx-nodes" }
 
 arrayvec = "0.5"
 bitflags = "1.2"
@@ -26,6 +26,7 @@ fnv = "1.0"
 profiling = "0.1.4"
 serde = { version = "1", features = ["serde_derive"] }
 serde_bytes = "0.11"
+glam = { version = "0.8.6", features = [ "serde" ] }
 
 [features]
 default = []

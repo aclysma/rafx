@@ -28,6 +28,9 @@ image2 = { version = "0.11", features = [ "ser" ] }
 # for https://github.com/gltf-rs/gltf/pull/288
 #gltf = "0.15"
 gltf = { git = "https://github.com/gltf-rs/gltf.git", rev = "e49aef5ee7b40c2c8f8a50efaed36b97bbb52bd4" }
+fontdue = "0.4"
+ttf-parser = "0.8.3"
+rectangle-pack = "0.2.0"
 
 log = "0.4"
 env_logger = "0.6"
@@ -45,6 +48,7 @@ lazy_static = "1"
 structopt = "0.3"
 
 serde = "1"
+serde_bytes = "0.11"
 bincode = "1.3.1"
 ron = "0.6"
 

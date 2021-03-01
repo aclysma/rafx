@@ -1,16 +1,17 @@
 use crate::features::mesh::ShadowMapRenderView;
 use crate::game_renderer::render_graph::RenderGraphUserContext;
 use crate::game_renderer::GameRenderer;
-use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use rafx::api::{RafxCommandBuffer, RafxDeviceContext, RafxQueue};
 use rafx::api::{RafxPresentableFrame, RafxResult};
 use rafx::framework::{DynCommandBuffer, RenderResources, ResourceContext};
 use rafx::graph::RenderGraphExecutor;
-use rafx::nodes::{FramePacket, PrepareJobSet, RenderRegistry, RenderView};
+use rafx::nodes::{FramePacket, PrepareJobSet, RenderRegistry, RenderView, RenderJobPrepareContext};
+
+pub struct RenderFrameJobResult;
 
 pub struct RenderFrameJob {
     pub game_renderer: GameRenderer,
-    pub prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
+    pub prepare_job_set: PrepareJobSet,
     pub render_graph: RenderGraphExecutor<RenderGraphUserContext>,
     pub resource_context: ResourceContext,
     pub frame_packet: FramePacket,
@@ -18,7 +19,6 @@ pub struct RenderFrameJob {
     pub shadow_map_render_views: Vec<ShadowMapRenderView>,
     pub render_registry: RenderRegistry,
     pub device_context: RafxDeviceContext,
-    pub render_resources: RenderResources,
     pub graphics_queue: RafxQueue,
 }
 
@@ -26,7 +26,8 @@ impl RenderFrameJob {
     pub fn render_async(
         self,
         presentable_frame: RafxPresentableFrame,
-    ) {
+        render_resources: &RenderResources,
+    ) -> RenderFrameJobResult {
         let t0 = std::time::Instant::now();
         let result = Self::do_render_async(
             self.prepare_job_set,
@@ -37,7 +38,7 @@ impl RenderFrameJob {
             self.shadow_map_render_views,
             self.render_registry,
             self.device_context,
-            self.render_resources,
+            render_resources,
             self.graphics_queue,
         );
 
@@ -68,11 +69,15 @@ impl RenderFrameJob {
             "[render thread] present took {} ms",
             (t2 - t1).as_secs_f32() * 1000.0
         );
+
+        RenderFrameJobResult {
+
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
     fn do_render_async(
-        prepare_job_set: PrepareJobSet<RenderJobPrepareContext, RenderJobWriteContext>,
+        prepare_job_set: PrepareJobSet,
         render_graph: RenderGraphExecutor<RenderGraphUserContext>,
         resource_context: ResourceContext,
         frame_packet: FramePacket,
@@ -80,7 +85,7 @@ impl RenderFrameJob {
         shadow_map_render_views: Vec<ShadowMapRenderView>,
         render_registry: RenderRegistry,
         device_context: RafxDeviceContext,
-        render_resources: RenderResources,
+        render_resources: &RenderResources,
         graphics_queue: RafxQueue,
     ) -> RafxResult<Vec<DynCommandBuffer>> {
         let t0 = std::time::Instant::now();

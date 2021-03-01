@@ -509,7 +509,7 @@ impl RafxCommandBufferMetal {
             render_encoder.set_vertex_buffer(
                 super::util::vertex_buffer_adjusted_buffer_index(binding_index),
                 Some(binding.buffer.metal_buffer().unwrap().metal_buffer()),
-                binding.offset as _,
+                binding.byte_offset as _,
             );
 
             binding_index += 1;
@@ -531,7 +531,7 @@ impl RafxCommandBufferMetal {
                 .metal_buffer()
                 .to_owned(),
         );
-        inner.current_index_buffer_offset = binding.offset;
+        inner.current_index_buffer_offset = binding.byte_offset;
         inner.current_index_buffer_type = binding.index_type.into();
         inner.current_index_buffer_stride = match binding.index_type {
             RafxIndexType::Uint32 => std::mem::size_of::<u32>() as _,

@@ -3,8 +3,6 @@ members = [
     "rafx",
     "rafx-base",
     "rafx-api",
-    "rafx-nodes",
-    "rafx-visibility",
     "rafx-framework",
     "rafx-shader-processor",
     "rafx-assets",

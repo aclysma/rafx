@@ -415,7 +415,7 @@ pub struct RafxVertexLayoutAttribute {
     /// Affects what input variable within the shader the attribute is assigned
     pub location: u32,
     /// The byte offset of the attribute within the buffer
-    pub offset: u32,
+    pub byte_offset: u32,
 }
 
 /// Describes a buffer that provides vertex attribute data (See RafxVertexLayout)

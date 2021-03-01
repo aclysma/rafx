@@ -23,7 +23,9 @@ adding an additional backend.
 
 [^ Video of this renderer running on iOS hardware](https://www.youtube.com/watch?v=Ks_HQbejHE4) 
 
-![Screenshot demonstrating realtime shadows](docs/shadow-screenshot.png)
+![Screenshot of render with real-world assets](docs/screenshots/render_adventure1.png)
+
+![Screenshot demonstrating realtime shadows](docs/screenshots/shadows_multicolor_lights.png)
 
 ## Roadmap
 
@@ -127,20 +129,18 @@ This tool currently is only useful for packing assets.
  * `rafx-api` - Rendering API abstraction layer.
    * Vulkan backend for windows/linux
    * Metal backend for macOS/iOS
- * `rafx-nodes` - Inspired by the 2015 GDC talk "Destiny's Multithreaded Rendering Architecture." (A low-budget
-   version and jobs are not actually MT yet)
-   * A job system with extract, prepare, and write phases
-   * Rendering is pipelined with simulation thread, and the job structure is intended to be highly parallel
-   * Handles multiple views and phases allowing advanced features like shadow maps
-   * Flexible sorting mechanism for interleaving and batching write commands from multiple rendering features
- * `rafx-visibility` - Placeholder visibility system. Doesn't do anything yet (returns all things visible all the 
-   time). See the GDC talk for more info on how this will work.
  * `rafx-framework` - Resource management for images, buffers, descriptor sets, etc.
    * Most things are hashed and reference counted
    * Provides a render graph
    * Nearly all assets are data-driven from serializable and hashable structures rather than hard-coded.
    * Buffers and images are asynchronously uploaded on dedicated transfer queue when available
    * Multi-pass material abstraction with bindable parameters
+   * Nodes/Render Jobs system - Inspired by the 2015 GDC talk "Destiny's Multithreaded Rendering Architecture."
+      * A job system with extract, prepare, and write phases
+      * Rendering is pipelined with simulation thread, and the job structure is intended to be highly parallel (not
+        actually executed parallel yet)
+      * Handles multiple views and phases allowing advanced features like shadow mapping
+      * Flexible sorting mechanism for interleaving and batching write commands from multiple rendering features
  * `rafx-assets` - An asset loading and management system.
    * Assets can hot reload from files (but see [#14](rafx/issues/14))
    * Because distill pre-processes and stores cached assets as they change, custom processing/packing can be

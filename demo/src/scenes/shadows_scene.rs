@@ -1,15 +1,20 @@
-use crate::components::{DirectionalLightComponent, PointLightComponent, PositionComponent};
-use crate::components::{MeshComponent, SpotLightComponent};
-use crate::features::mesh::{MeshRenderNode, MeshRenderNodeSet};
-use crate::game_asset_lookup::MeshAsset;
+use crate::components::{DirectionalLightComponent, PointLightComponent, PositionComponent, MeshComponent};
+use crate::components::SpotLightComponent;
+use crate::features::mesh::{MeshRenderNodeSet, MeshRenderNode};
 use crate::time::TimeState;
-use glam::f32::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
-use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
+use rafx::visibility::{DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
+use crate::features::text::TextResource;
+use crate::assets::font::FontAsset;
+use distill::loader::handle::Handle;
+use crate::game_asset_lookup::MeshAsset;
+use glam::Vec3;
 
-pub(super) struct ShadowsScene {}
+pub(super) struct ShadowsScene {
+    font: Handle<FontAsset>
+}
 
 impl ShadowsScene {
     pub(super) fn new(
@@ -19,6 +24,11 @@ impl ShadowsScene {
         let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
         let mut dynamic_visibility_node_set =
             resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
+
+        let font = {
+            let asset_resource = resources.get::<AssetResource>().unwrap();
+            asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf")
+        };
 
         //
         // Add a floor
@@ -161,7 +171,9 @@ impl ShadowsScene {
             },
         );
 
-        ShadowsScene {}
+        ShadowsScene {
+            font
+        }
     }
 }
 
@@ -172,6 +184,23 @@ impl super::TestScene for ShadowsScene {
         resources: &Resources,
     ) {
         super::add_light_debug_draw(&resources, &world);
+
+        {
+            let mut text_resource = resources.get_mut::<TextResource>().unwrap();
+
+            text_resource.add_text(
+                "Some text for testing\n".to_string(),
+                glam::Vec3::new(100.0, 400.0, 0.0),
+                &self.font,
+                20.0,
+                glam::Vec4::new(1.0, 1.0, 1.0, 1.0)
+            ).append(
+                "This text is positioned at (100, 400)".to_string(),
+                &self.font,
+                20.0,
+                glam::Vec4::new(0.0, 1.0, 0.0, 1.0)
+            );
+        }
 
         {
             let time_state = resources.get::<TimeState>().unwrap();

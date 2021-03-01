@@ -8,18 +8,14 @@ use crate::features::mesh::{
     MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet,
 };
 use crate::game_asset_manager::GameAssetManager;
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
-};
 use legion::*;
 use rafx::base::slab::RawSlabKey;
-use rafx::nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
-};
+use rafx::nodes::{ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, RenderJobExtractContext};
+use crate::legion_support::{LegionResources, LegionWorld};
 
 pub struct MeshExtractJob {}
 
-impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>
+impl ExtractJob
     for MeshExtractJob
 {
     fn feature_debug_name(&self) -> &'static str {
@@ -35,19 +31,21 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
         _views: &[&RenderView],
-    ) -> Box<dyn PrepareJob<RenderJobPrepareContext, RenderJobWriteContext>> {
+    ) -> Box<dyn PrepareJob> {
         profiling::scope!("Mesh Extract");
+        let legion_resources = extract_context.render_resources.fetch::<LegionResources>();
+        let legion_world = extract_context.render_resources.fetch::<LegionWorld>();
+        let world = &**legion_world;
 
         //
         // Update the mesh render nodes. This could be done earlier as part of a system
         //
-        let mut mesh_render_nodes = extract_context
-            .resources
+        let mut mesh_render_nodes = legion_resources
             .get_mut::<MeshRenderNodeSet>()
             .unwrap();
 
         let mut query = <(Read<PositionComponent>, Read<MeshComponent>)>::query();
-        for (position_component, mesh_component) in query.iter(extract_context.world) {
+        for (position_component, mesh_component) in query.iter(world) {
             let render_node = mesh_render_nodes
                 .get_mut(&mesh_component.render_node)
                 .unwrap();
@@ -58,7 +56,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         //
         // Get the position/mesh asset pairs we will draw
         //
-        let game_resource_manager = extract_context.resources.get::<GameAssetManager>().unwrap();
+        let game_resource_manager = legion_resources.get::<GameAssetManager>().unwrap();
 
         let mut extracted_frame_node_mesh_data =
             Vec::<Option<ExtractedFrameNodeMeshData>>::with_capacity(
@@ -96,7 +94,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
         //
         let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
         let directional_lights = query
-            .iter(extract_context.world)
+            .iter(world)
             .map(|(e, l)| ExtractedDirectionalLight {
                 entity: *e,
                 light: l.clone(),
@@ -105,7 +103,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
 
         let mut query = <(Entity, Read<PositionComponent>, Read<PointLightComponent>)>::query();
         let point_lights = query
-            .iter(extract_context.world)
+            .iter(world)
             .map(|(e, p, l)| ExtractedPointLight {
                 entity: *e,
                 light: l.clone(),
@@ -115,7 +113,7 @@ impl ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWrite
 
         let mut query = <(Entity, Read<PositionComponent>, Read<SpotLightComponent>)>::query();
         let spot_lights = query
-            .iter(extract_context.world)
+            .iter(world)
             .map(|(e, p, l)| ExtractedSpotLight {
                 entity: *e,
                 light: l.clone(),

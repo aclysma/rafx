@@ -14,7 +14,7 @@ use crate::resources::dyn_resources::{
 };
 use crate::resources::resource_lookup::ResourceLookupSet;
 use rafx_api::{RafxDeviceContext, RafxResult};
-use rafx_nodes::RenderRegistry;
+use crate::nodes::RenderRegistry;
 use std::sync::Arc;
 
 //TODO: Support descriptors that can be different per-view

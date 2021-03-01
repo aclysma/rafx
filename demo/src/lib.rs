@@ -27,9 +27,9 @@ mod game_renderer;
 mod imgui_support;
 mod init;
 mod phases;
-mod render_contexts;
 mod scenes;
 mod time;
+mod legion_support;
 
 #[derive(Clone)]
 pub struct RenderOptions {

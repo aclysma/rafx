@@ -39,7 +39,12 @@ pub use buffer::BufferAsset;
 pub use buffer::BufferAssetData;
 
 mod asset_manager;
-pub use asset_manager::*;
+pub use asset_manager::AssetManager;
+pub use asset_manager::AssetManagerLoaders;
+pub use asset_manager::AssetManagerMetrics;
+
+mod asset_manager_render_resource;
+pub use asset_manager_render_resource::AssetManagerRenderResource;
 
 mod upload;
 pub use upload::UploadQueueConfig;

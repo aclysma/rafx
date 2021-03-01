@@ -141,7 +141,7 @@ impl RafxPipelineMetal {
                 .unwrap();
             attribute_descriptor.set_buffer_index(buffer_index);
             attribute_descriptor.set_format(attribute.format.into());
-            attribute_descriptor.set_offset(attribute.offset as _);
+            attribute_descriptor.set_offset(attribute.byte_offset as _);
         }
 
         for (index, binding) in pipeline_def.vertex_layout.buffers.iter().enumerate() {

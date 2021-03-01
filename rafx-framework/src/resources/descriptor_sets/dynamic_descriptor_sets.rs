@@ -215,7 +215,7 @@ impl DynDescriptorSet {
                     element_buffer.buffer = Some(DescriptorSetWriteElementBufferData::BufferRef(
                         DescriptorSetWriteElementBufferDataBufferRef {
                             buffer: buffer.clone(),
-                            offset: None,
+                            byte_offset: None,
                             size: None,
                         },
                     ));

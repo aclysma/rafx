@@ -1,7 +1,4 @@
 use crate::game_asset_lookup::MeshAsset;
-use crate::render_contexts::{
-    RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext,
-};
 use distill::loader::handle::Handle;
 use rafx::base::slab::{DropSlab, DropSlabKey};
 use rafx::framework::MaterialPass;
@@ -73,7 +70,7 @@ pub struct ExtractedSpotLight {
 }
 
 pub fn create_mesh_extract_job(
-) -> Box<dyn ExtractJob<RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext>> {
+) -> Box<dyn ExtractJob> {
     Box::new(MeshExtractJob {})
 }
 

@@ -34,7 +34,7 @@ use rafx_framework::DynCommandPoolAllocator;
 use rafx_framework::DynResourceAllocatorSetProvider;
 use rafx_framework::ResourceLookupSet;
 use rafx_framework::{ResourceManager, ResourceManagerMetrics};
-use rafx_nodes::RenderRegistry;
+use rafx_framework::nodes::RenderRegistry;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -301,7 +301,7 @@ impl AssetManager {
     fn process_shader_load_requests(&mut self) {
         for request in self.load_queues.shader_modules.take_load_requests() {
             log::trace!("Create shader module {:?}", request.load_handle);
-            let loaded_asset = self.load_shader_module(&request.asset);
+            let loaded_asset = self.load_shader_module(request.asset);
             Self::handle_load_result(
                 request.load_op,
                 loaded_asset,
@@ -347,7 +347,7 @@ impl AssetManager {
     fn process_material_load_requests(&mut self) {
         for request in self.load_queues.materials.take_load_requests() {
             log::trace!("Create material {:?}", request.load_handle);
-            let loaded_asset = self.load_material(&request.asset);
+            let loaded_asset = self.load_material(request.asset);
             Self::handle_load_result(
                 request.load_op,
                 loaded_asset,
@@ -370,7 +370,7 @@ impl AssetManager {
     fn process_material_instance_load_requests(&mut self) {
         for request in self.load_queues.material_instances.take_load_requests() {
             log::trace!("Create material instance {:?}", request.load_handle);
-            let loaded_asset = self.load_material_instance(&request.asset);
+            let loaded_asset = self.load_material_instance(request.asset);
             Self::handle_load_result(
                 request.load_op,
                 loaded_asset,
@@ -393,7 +393,7 @@ impl AssetManager {
     fn process_sampler_load_requests(&mut self) {
         for request in self.load_queues.samplers.take_load_requests() {
             log::trace!("Create sampler {:?}", request.load_handle);
-            let loaded_asset = self.load_sampler(&request.asset);
+            let loaded_asset = self.load_sampler(request.asset);
             Self::handle_load_result(
                 request.load_op,
                 loaded_asset,
@@ -567,7 +567,7 @@ impl AssetManager {
     #[profiling::function]
     fn load_shader_module(
         &mut self,
-        shader_module: &ShaderAssetData,
+        shader_module: ShaderAssetData,
     ) -> RafxResult<ShaderAsset> {
         let mut reflection_data_lookup = FnvHashMap::default();
         if let Some(reflection_data) = &shader_module.reflection_data {
@@ -594,7 +594,7 @@ impl AssetManager {
     #[profiling::function]
     fn load_sampler(
         &mut self,
-        sampler: &SamplerAssetData,
+        sampler: SamplerAssetData,
     ) -> RafxResult<SamplerAsset> {
         let sampler = self.resources().get_or_create_sampler(&sampler.sampler)?;
         Ok(SamplerAsset { sampler })
@@ -703,7 +703,7 @@ impl AssetManager {
     #[profiling::function]
     fn load_material(
         &mut self,
-        material_asset: &MaterialAssetData,
+        material_asset: MaterialAssetData,
     ) -> RafxResult<MaterialAsset> {
         let mut passes = Vec::with_capacity(material_asset.passes.len());
         let mut pass_name_to_index = FnvHashMap::default();
@@ -749,7 +749,7 @@ impl AssetManager {
     #[profiling::function]
     fn load_material_instance(
         &mut self,
-        material_instance_asset: &MaterialInstanceAssetData,
+        material_instance_asset: MaterialInstanceAssetData,
     ) -> RafxResult<MaterialInstanceAsset> {
         // Find the material we will bind over, we need the metadata from it
         let material_asset = self
@@ -817,10 +817,10 @@ impl AssetManager {
         // Put these in an arc to avoid cloning the underlying data repeatedly
         let material_descriptor_sets = Arc::new(material_descriptor_sets);
         Ok(MaterialInstanceAsset::new(
-            material_instance_asset.material.clone(),
+            material_instance_asset.material,
             material_asset.clone(),
             material_descriptor_sets,
-            material_instance_asset.slot_assignments.clone(),
+            material_instance_asset.slot_assignments,
             material_instance_descriptor_set_writes,
         ))
     }

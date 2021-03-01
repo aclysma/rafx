@@ -15,7 +15,7 @@ use rafx_api::{
     RafxCommandBufferDef, RafxCommandPoolDef, RafxDepthStencilRenderTargetBinding,
     RafxDeviceContext, RafxExtents2D, RafxFormat, RafxQueue, RafxResult, RafxTextureBarrier,
 };
-use rafx_nodes::{RenderPhase, RenderPhaseIndex};
+use crate::nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -51,6 +51,11 @@ impl<'a> RenderGraphContext<'a> {
     pub fn resource_context(&self) -> &ResourceContext {
         &self.prepared_graph.resource_context
     }
+}
+
+pub struct OnBeginExecuteGraphArgs<'a> {
+    pub command_buffer: DynCommandBuffer,
+    pub graph_context: RenderGraphContext<'a>,
 }
 
 pub struct VisitComputeNodeArgs<'a> {
@@ -232,6 +237,13 @@ impl PreparedRenderGraph {
             prepared_graph: &self,
         };
 
+        let args = OnBeginExecuteGraphArgs {
+            graph_context: render_graph_context,
+            command_buffer: command_buffer.clone(),
+        };
+
+        node_visitor.execute_graph_begin(args)?;
+
         //
         // Iterate through all passes
         //
@@ -358,6 +370,11 @@ impl PreparedRenderGraph {
 }
 
 pub trait RenderGraphNodeVisitor {
+    fn execute_graph_begin(
+        &self,
+        args: OnBeginExecuteGraphArgs,
+    ) -> RafxResult<()>;
+
     fn visit_renderpass_node(
         &self,
         node_id: RenderGraphNodeId,
@@ -370,6 +387,9 @@ pub trait RenderGraphNodeVisitor {
         args: VisitComputeNodeArgs,
     ) -> RafxResult<()>;
 }
+
+type RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT> =
+    dyn Fn(OnBeginExecuteGraphArgs, &RenderGraphUserContextT) -> RafxResult<()> + Send;
 
 type RenderGraphNodeVisitRenderpassNodeCallback<RenderGraphUserContextT> =
     dyn Fn(VisitRenderpassNodeArgs, &RenderGraphUserContextT) -> RafxResult<()> + Send;
@@ -386,6 +406,7 @@ enum RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT> {
 /// forwards the call, adding the user context as a parameter.
 struct RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT> {
     context: &'b RenderGraphUserContextT,
+    begin_execute_graph_callback: &'b Option<Box<RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT>>>,
     callbacks: &'b FnvHashMap<
         RenderGraphNodeId,
         RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT>,
@@ -395,6 +416,17 @@ struct RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT> {
 impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
     for RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT>
 {
+    fn execute_graph_begin(
+        &self,
+        args: OnBeginExecuteGraphArgs,
+    ) -> RafxResult<()> {
+        if let Some(callback) = self.begin_execute_graph_callback {
+            (callback)(args, self.context)?;
+        }
+
+        Ok(())
+    }
+
     fn visit_renderpass_node(
         &self,
         node_id: RenderGraphNodeId,
@@ -441,10 +473,22 @@ impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
 pub struct RenderGraphNodeCallbacks<RenderGraphUserContextT> {
     callbacks:
         FnvHashMap<RenderGraphNodeId, RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT>>,
+    begin_execute_graph_callback: Option<Box<RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT>>>,
     render_phase_dependencies: FnvHashMap<RenderGraphNodeId, FnvHashSet<RenderPhaseIndex>>,
 }
 
 impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> {
+    pub fn set_begin_execute_graph_callback<CallbackFnT>(
+        &mut self,
+        f: CallbackFnT
+    ) where
+        CallbackFnT: Fn(OnBeginExecuteGraphArgs, &RenderGraphUserContextT) -> RafxResult<()>
+        + 'static
+        + Send,
+    {
+        self.begin_execute_graph_callback = Some(Box::new(f));
+    }
+
     /// Adds a callback that receives the renderpass associated with the node
     pub fn set_renderpass_callback<CallbackFnT>(
         &mut self,
@@ -498,6 +542,7 @@ impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> 
     ) -> Box<dyn RenderGraphNodeVisitor + 'a> {
         Box::new(RenderGraphNodeVisitorImpl::<'a, RenderGraphUserContextT> {
             context,
+            begin_execute_graph_callback: &self.begin_execute_graph_callback,
             callbacks: &self.callbacks,
         })
     }
@@ -507,6 +552,7 @@ impl<T> Default for RenderGraphNodeCallbacks<T> {
     fn default() -> Self {
         RenderGraphNodeCallbacks {
             callbacks: Default::default(),
+            begin_execute_graph_callback: Default::default(),
             render_phase_dependencies: Default::default(),
         }
     }

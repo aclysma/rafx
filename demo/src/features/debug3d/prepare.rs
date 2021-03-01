@@ -4,13 +4,9 @@ use crate::features::debug3d::{
     ExtractedDebug3dData,
 };
 use crate::phases::OpaqueRenderPhase;
-use crate::render_contexts::{RenderJobPrepareContext, RenderJobWriteContext};
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderView, ViewSubmitNodes,
-};
+use rafx::nodes::{FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView, ViewSubmitNodes, RenderJobPrepareContext};
 
 pub struct Debug3dPrepareJobImpl {
     debug3d_material_pass: ResourceArc<MaterialPassResource>,
@@ -29,14 +25,14 @@ impl Debug3dPrepareJobImpl {
     }
 }
 
-impl<'a> PrepareJob<RenderJobPrepareContext, RenderJobWriteContext> for Debug3dPrepareJobImpl {
+impl<'a> PrepareJob for Debug3dPrepareJobImpl {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[&RenderView],
     ) -> (
-        Box<dyn FeatureCommandWriter<RenderJobWriteContext>>,
+        Box<dyn FeatureCommandWriter>,
         FeatureSubmitNodes,
     ) {
         profiling::scope!("Debug3d Prepare");

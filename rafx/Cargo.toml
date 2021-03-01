@@ -14,8 +14,8 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 [dependencies]
 rafx-base = { version = "=0.0.7", path = "../rafx-base" }
 rafx-api = { version = "=0.0.7", path = "../rafx-api" }
-rafx-nodes = { version = "=0.0.7", path = "../rafx-nodes", optional = true }
-rafx-visibility = { version = "=0.0.7", path = "../rafx-visibility", optional = true }
+#rafx-nodes = { version = "=0.0.7", path = "../rafx-nodes", optional = true }
+#rafx-visibility = { version = "=0.0.7", path = "../rafx-visibility", optional = true }
 rafx-framework = { version = "=0.0.7", path = "../rafx-framework", optional = true }
 rafx-assets = { version = "=0.0.7", path = "../rafx-assets", optional = true }
 
@@ -48,8 +48,8 @@ static-vulkan = ["rafx-api/static-vulkan"]
 #        phases.
 # Resources: Object lifetime tracking and render graph
 # Assets: Integrates distill to provide a full asset pipeline
-nodes = ["rafx-nodes", "rafx-visibility"]
-framework = ["rafx-framework", "nodes"]
+#nodes = ["rafx-nodes", "rafx-visibility"]
+framework = ["rafx-framework"]
 assets = ["rafx-assets", "framework"]
 
 #

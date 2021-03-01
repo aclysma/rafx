@@ -725,13 +725,13 @@ pub struct RafxDepthStencilRenderTargetBinding<'a> {
 /// A vertex buffer to be bound during a renderpass
 pub struct RafxVertexBufferBinding<'a> {
     pub buffer: &'a RafxBuffer,
-    pub offset: u64,
+    pub byte_offset: u64,
 }
 
 /// An index buffer to be bound during a renderpass
 pub struct RafxIndexBufferBinding<'a> {
     pub buffer: &'a RafxBuffer,
-    pub offset: u64,
+    pub byte_offset: u64,
     pub index_type: RafxIndexType,
 }
 
@@ -778,7 +778,7 @@ impl<'a> Default for RafxDescriptorKey<'a> {
 /// Used when binding buffers to descriptor sets
 #[derive(Default, Clone, Copy, Debug)]
 pub struct RafxOffsetSize {
-    pub offset: u64,
+    pub byte_offset: u64,
     pub size: u64,
 }
 

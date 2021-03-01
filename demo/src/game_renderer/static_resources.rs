@@ -4,11 +4,14 @@ use rafx::api::RafxResult;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ComputePipelineAsset};
 use rafx::assets::{ImageAsset, MaterialAsset};
+use crate::assets::font::FontAsset;
+use crate::game_asset_manager::GameAssetManager;
 
 fn wait_for_asset_to_load<T>(
     asset_handle: &distill::loader::handle::Handle<T>,
     asset_resource: &mut AssetResource,
     asset_manager: &mut AssetManager,
+    game_asset_manager: &mut GameAssetManager,
     asset_name: &str,
 ) -> RafxResult<()> {
     const PRINT_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1000);
@@ -30,6 +33,7 @@ fn wait_for_asset_to_load<T>(
     loop {
         asset_resource.update();
         asset_manager.update_asset_loaders()?;
+        game_asset_manager.update_asset_loaders(asset_manager)?;
         match asset_resource.load_status(&asset_handle) {
             LoadStatus::NotRequested => {
                 unreachable!();
@@ -80,12 +84,15 @@ pub struct GameRendererStaticResources {
     pub skybox_material: Handle<MaterialAsset>,
     pub skybox_texture: Handle<ImageAsset>,
     pub compute_test: Handle<ComputePipelineAsset>,
+    pub text_material: Handle<MaterialAsset>,
+    pub default_font: Handle<FontAsset>,
 }
 
 impl GameRendererStaticResources {
     pub fn new(
         asset_resource: &mut AssetResource,
         asset_manager: &mut AssetManager,
+        game_asset_manager: &mut GameAssetManager,
     ) -> RafxResult<Self> {
         //
         // Sprite resources
@@ -140,10 +147,19 @@ impl GameRendererStaticResources {
         let compute_test = asset_resource
             .load_asset_path::<ComputePipelineAsset, _>("compute_pipelines/compute_test.compute");
 
+        //
+        // Text rendering resources
+        //
+        let text_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/text.material");
+        let default_font = asset_resource
+            .load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf");
+
         wait_for_asset_to_load(
             &sprite_material,
             asset_resource,
             asset_manager,
+            game_asset_manager,
             "sprite_material",
         )?;
 
@@ -151,6 +167,7 @@ impl GameRendererStaticResources {
             &debug3d_material,
             asset_resource,
             asset_manager,
+            game_asset_manager,
             "debug material",
         )?;
 
@@ -158,6 +175,7 @@ impl GameRendererStaticResources {
             &bloom_extract_material,
             asset_resource,
             asset_manager,
+            game_asset_manager,
             "bloom extract material",
         )?;
 
@@ -165,6 +183,7 @@ impl GameRendererStaticResources {
             &bloom_blur_material,
             asset_resource,
             asset_manager,
+            game_asset_manager,
             "bloom blur material",
         )?;
 
@@ -172,6 +191,7 @@ impl GameRendererStaticResources {
             &bloom_combine_material,
             asset_resource,
             asset_manager,
+            game_asset_manager,
             "bloom combine material",
         )?;
 
@@ -179,6 +199,7 @@ impl GameRendererStaticResources {
             &imgui_material,
             asset_resource,
             asset_manager,
+            game_asset_manager,
             "imgui material",
         )?;
 
@@ -186,6 +207,7 @@ impl GameRendererStaticResources {
             &skybox_material,
             asset_resource,
             asset_manager,
+            game_asset_manager,
             "skybox material",
         )?;
 
@@ -193,6 +215,7 @@ impl GameRendererStaticResources {
             &skybox_texture,
             asset_resource,
             asset_manager,
+            game_asset_manager,
             "skybox texture",
         )?;
 
@@ -200,7 +223,24 @@ impl GameRendererStaticResources {
             &compute_test,
             asset_resource,
             asset_manager,
+            game_asset_manager,
             "compute pipeline",
+        )?;
+
+        wait_for_asset_to_load(
+            &text_material,
+            asset_resource,
+            asset_manager,
+            game_asset_manager,
+            "text material",
+        )?;
+
+        wait_for_asset_to_load(
+            &default_font,
+            asset_resource,
+            asset_manager,
+            game_asset_manager,
+            "default font",
         )?;
 
         Ok(GameRendererStaticResources {
@@ -213,6 +253,8 @@ impl GameRendererStaticResources {
             skybox_material,
             skybox_texture,
             compute_test,
+            text_material,
+            default_font,
         })
     }
 }

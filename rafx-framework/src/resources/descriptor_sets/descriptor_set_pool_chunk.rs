@@ -68,7 +68,7 @@ impl ManagedDescriptorSetPoolChunk {
                     elements: RafxDescriptorElements {
                         buffers: Some(&[&binding_buffers.buffer]),
                         buffer_offset_sizes: Some(&[RafxOffsetSize {
-                            offset: offset,
+                            byte_offset: offset,
                             size: binding_buffers.buffer_info.per_descriptor_size as u64,
                         }]),
                         ..Default::default()
@@ -228,9 +228,9 @@ impl ManagedDescriptorSetPoolChunk {
                         match buffer_info {
                             DescriptorSetWriteElementBufferData::BufferRef(buffer) => {
                                 let mut offset_sizes = None;
-                                if buffer.offset.is_some() || buffer.size.is_some() {
+                                if buffer.byte_offset.is_some() || buffer.size.is_some() {
                                     offset_sizes = Some([RafxOffsetSize {
-                                        offset: buffer.offset.unwrap_or(0),
+                                        byte_offset: buffer.byte_offset.unwrap_or(0),
                                         size: buffer.size.unwrap_or(0),
                                     }])
                                 }

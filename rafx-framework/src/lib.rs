@@ -6,6 +6,10 @@ pub use resources::*;
 
 pub mod graph;
 
+pub mod nodes;
+
+pub mod visibility;
+
 pub use rafx_api::RafxResult;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;

@@ -1,11 +1,7 @@
 use crate::features::sprite::{SpriteDrawCall, SpriteRenderFeature};
-use crate::render_contexts::RenderJobWriteContext;
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
-    SubmitNodeId,
-};
+use rafx::nodes::{FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView, SubmitNodeId, RenderJobWriteContext};
 
 pub struct SpriteCommandWriter {
     pub vertex_buffers: Vec<ResourceArc<BufferResource>>,
@@ -15,7 +11,7 @@ pub struct SpriteCommandWriter {
     pub sprite_material: ResourceArc<MaterialPassResource>,
 }
 
-impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
+impl FeatureCommandWriter for SpriteCommandWriter {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
@@ -47,13 +43,13 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
             0,
             &[RafxVertexBufferBinding {
                 buffer: &self.vertex_buffers[0].get_raw().buffer,
-                offset: 0,
+                byte_offset: 0,
             }],
         )?;
 
         command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
             buffer: &self.index_buffers[0].get_raw().buffer,
-            offset: 0,
+            byte_offset: 0,
             index_type: RafxIndexType::Uint16,
         })?;
 
@@ -79,15 +75,6 @@ impl FeatureCommandWriter<RenderJobWriteContext> for SpriteCommandWriter {
             0,
         )?;
 
-        Ok(())
-    }
-
-    fn revert_setup(
-        &self,
-        _write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
-    ) -> RafxResult<()> {
         Ok(())
     }
 

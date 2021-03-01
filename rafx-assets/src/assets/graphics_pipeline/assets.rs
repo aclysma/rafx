@@ -14,7 +14,7 @@ use rafx_framework::{
     DescriptorSetArc, FixedFunctionState, MaterialPass, MaterialShaderStage, ResourceArc,
 };
 use rafx_framework::{DescriptorSetWriteSet, SamplerResource};
-use rafx_nodes::{RenderPhase, RenderPhaseIndex};
+use rafx_framework::nodes::{RenderPhase, RenderPhaseIndex};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::Arc;

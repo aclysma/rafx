@@ -5,6 +5,7 @@ use rafx::framework::MaterialPass;
 use rafx::framework::{BufferResource, DescriptorSetArc, ResourceArc};
 use std::sync::Arc;
 use type_uuid::*;
+use crate::assets::font::FontAsset;
 
 pub struct MeshAssetPart {
     pub opaque_pass: MaterialPass,
@@ -33,6 +34,7 @@ pub struct MeshAsset {
 #[derive(Debug)]
 pub struct GameLoadedAssetMetrics {
     pub mesh_count: usize,
+    pub font_count: usize,
 }
 
 //
@@ -40,22 +42,26 @@ pub struct GameLoadedAssetMetrics {
 //
 pub struct GameLoadedAssetLookupSet {
     pub meshes: AssetLookup<MeshAsset>,
+    pub fonts: AssetLookup<FontAsset>,
 }
 
 impl GameLoadedAssetLookupSet {
     pub fn new(loader: &Loader) -> Self {
         GameLoadedAssetLookupSet {
             meshes: AssetLookup::new(loader),
+            fonts: AssetLookup::new(loader),
         }
     }
 
     pub fn metrics(&self) -> GameLoadedAssetMetrics {
         GameLoadedAssetMetrics {
             mesh_count: self.meshes.len(),
+            font_count: self.fonts.len(),
         }
     }
 
     pub fn destroy(&mut self) {
         self.meshes.destroy();
+        self.fonts.destroy();
     }
 }

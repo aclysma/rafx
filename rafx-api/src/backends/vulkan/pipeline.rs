@@ -138,7 +138,7 @@ impl RafxPipelineVulkan {
                     .format(vertex_attribute.format.into())
                     .location(vertex_attribute.location)
                     .binding(vertex_attribute.buffer_index)
-                    .offset(vertex_attribute.offset)
+                    .offset(vertex_attribute.byte_offset)
                     .build(),
             );
         }

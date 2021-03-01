@@ -70,7 +70,7 @@ impl Into<MTLPrimitiveType> for RafxPrimitiveTopology {
             RafxPrimitiveTopology::LineList => MTLPrimitiveType::Line,
             RafxPrimitiveTopology::LineStrip => MTLPrimitiveType::LineStrip,
             RafxPrimitiveTopology::TriangleList => MTLPrimitiveType::Triangle,
-            RafxPrimitiveTopology::TriangleStrip => MTLPrimitiveType::LineStrip,
+            RafxPrimitiveTopology::TriangleStrip => MTLPrimitiveType::TriangleStrip,
             RafxPrimitiveTopology::PatchList => MTLPrimitiveType::Triangle,
         }
     }

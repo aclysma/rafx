@@ -1,5 +1,6 @@
 use crate::assets::gltf::{GltfMaterialAsset, MeshAssetData};
 use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource};
+use crate::features::text::{TextRenderFeature, TextResource};
 #[cfg(feature = "use-imgui")]
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::features::mesh::{MeshRenderFeature, MeshRenderNodeSet};
@@ -24,6 +25,7 @@ use rafx::assets::{
 };
 use rafx::nodes::RenderRegistry;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use crate::assets::font::{FontAssetData, FontAsset};
 
 pub fn init_distill_daemon(
     resources: &mut Resources,
@@ -96,12 +98,14 @@ pub fn rendering_init(
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(DebugDraw3DResource::new());
+    resources.insert(TextResource::new());
 
     #[allow(unused_mut)]
     let mut render_registry = rafx::nodes::RenderRegistryBuilder::default()
         .register_feature::<SpriteRenderFeature>()
         .register_feature::<MeshRenderFeature>()
         .register_feature::<Debug3dRenderFeature>()
+        .register_feature::<TextRenderFeature>()
         .register_render_phase::<OpaqueRenderPhase>("Opaque")
         .register_render_phase::<ShadowMapRenderPhase>("ShadowMap")
         .register_render_phase::<TransparentRenderPhase>("Transparent")
@@ -181,6 +185,10 @@ pub fn rendering_init(
         ));
 
         asset_resource.add_storage::<GltfMaterialAsset>();
+
+        asset_resource.add_storage_with_loader::<FontAssetData, FontAsset, _>(Box::new(
+            ResourceAssetLoader(game_resource_manager.create_font_loader()),
+        ));
         game_resource_manager
     };
 
@@ -205,6 +213,7 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
         resources.remove::<DebugDraw3DResource>();
+        resources.remove::<TextResource>();
         resources.remove::<GameAssetManager>();
         resources.remove::<RenderRegistry>();
 

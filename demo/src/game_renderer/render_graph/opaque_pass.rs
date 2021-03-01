@@ -1,12 +1,11 @@
 use crate::phases::OpaqueRenderPhase;
-use crate::render_contexts::RenderJobWriteContext;
 use rafx::graph::*;
 
 use super::RenderGraphContext;
 use super::ShadowMapImageResources;
 use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::nodes::RenderPhase;
+use rafx::nodes::{RenderPhase, RenderJobWriteContext};
 
 pub(super) struct OpaquePass {
     pub(super) node: RenderGraphNodeId,
