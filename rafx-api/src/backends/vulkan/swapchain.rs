@@ -88,6 +88,7 @@ pub struct RafxSwapchainVulkan {
     device_context: RafxDeviceContextVulkan,
     swapchain: ManuallyDrop<RafxSwapchainVulkanInstance>,
     swapchain_def: RafxSwapchainDef,
+    #[allow(dead_code)]
     last_image_suboptimal: bool,
     swapchain_images: Vec<RafxSwapchainImage>,
     surface: vk::SurfaceKHR,
