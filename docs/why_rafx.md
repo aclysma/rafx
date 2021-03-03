@@ -6,6 +6,10 @@ Rafx is a multi-backend rendering framework targeted specifically at games and t
  * Integration with the `distill` asset pipeline (`rafx-assets`)
  * A shader authoring workflow `rafx-shader-processor` and other tools
 
+While there are many crates similar in scope to `rafx-api` there are fewer high-level options in the rust ecosystem.
+The full stack of Rafx crates aims to be similar in scope to Ogre3D or Horde3D, but modernized and following
+industry practices where possible.
+
 ## rafx-api
 
 Rust already has an amazing selection of low-level rendering crates: `gfx-hal`, `wgpu`, `vulkano`, `glium`, lots of
