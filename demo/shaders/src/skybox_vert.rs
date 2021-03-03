@@ -31,11 +31,12 @@ pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 0;
 pub const SKYBOX_TEX_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const SKYBOX_TEX_DESCRIPTOR_BINDING_INDEX: usize = 1;
-pub const UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX: usize = 1;
-pub const UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX: usize = 2;
 
 pub struct DescriptorSet0Args<'a> {
     pub skybox_tex: &'a ResourceArc<ImageViewResource>,
+    pub uniform_buffer: &'a ArgsUniform,
 }
 
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
@@ -69,65 +70,6 @@ impl DescriptorSet0 {
         args: DescriptorSet0Args,
     ) {
         descriptor_set.set_image(SKYBOX_TEX_DESCRIPTOR_BINDING_INDEX as u32, args.skybox_tex);
-    }
-
-    pub fn set_args(
-        &mut self,
-        args: DescriptorSet0Args,
-    ) {
-        self.set_skybox_tex(args.skybox_tex);
-    }
-
-    pub fn set_skybox_tex(
-        &mut self,
-        skybox_tex: &ResourceArc<ImageViewResource>,
-    ) {
-        self.0
-            .set_image(SKYBOX_TEX_DESCRIPTOR_BINDING_INDEX as u32, skybox_tex);
-    }
-
-    pub fn flush(
-        &mut self,
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-    ) -> RafxResult<()> {
-        self.0.flush(descriptor_set_allocator)
-    }
-}
-
-pub struct DescriptorSet1Args<'a> {
-    pub uniform_buffer: &'a ArgsUniform,
-}
-
-impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
-    type Output = DescriptorSet1;
-
-    fn create_dyn_descriptor_set(
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> Self::Output {
-        let mut descriptor = DescriptorSet1(descriptor_set);
-        descriptor.set_args(args);
-        descriptor
-    }
-
-    fn create_descriptor_set(
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> RafxResult<DescriptorSetArc> {
-        let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
-        descriptor.0.flush(descriptor_set_allocator)?;
-        Ok(descriptor.0.descriptor_set().clone())
-    }
-}
-
-pub struct DescriptorSet1(pub DynDescriptorSet);
-
-impl DescriptorSet1 {
-    pub fn set_args_static(
-        descriptor_set: &mut DynDescriptorSet,
-        args: DescriptorSet1Args,
-    ) {
         descriptor_set.set_buffer_data(
             UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX as u32,
             args.uniform_buffer,
@@ -136,9 +78,18 @@ impl DescriptorSet1 {
 
     pub fn set_args(
         &mut self,
-        args: DescriptorSet1Args,
+        args: DescriptorSet0Args,
     ) {
+        self.set_skybox_tex(args.skybox_tex);
         self.set_uniform_buffer(args.uniform_buffer);
+    }
+
+    pub fn set_skybox_tex(
+        &mut self,
+        skybox_tex: &ResourceArc<ImageViewResource>,
+    ) {
+        self.0
+            .set_image(SKYBOX_TEX_DESCRIPTOR_BINDING_INDEX as u32, skybox_tex);
     }
 
     pub fn set_uniform_buffer(

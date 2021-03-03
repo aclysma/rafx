@@ -12,6 +12,7 @@ struct Args
 struct spvDescriptorSetBuffer0
 {
     texturecube<float> skybox_tex [[id(1)]];
+    constant Args* uniform_buffer [[id(2)]];
 };
 
 struct main0_out

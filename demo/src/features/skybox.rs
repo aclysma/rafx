@@ -35,23 +35,16 @@ pub fn draw_skybox(
     // Set up a descriptor set pointing at the image so we can sample from it
     let mut descriptor_set_allocator = resource_context.create_descriptor_set_allocator();
 
+    // Skyboxes assume Y up and we're Z up, so "fix" it by adding a rotation about X axis.
+    // This effectively applies a rotation to the skybox
+    let skybox_rotation = glam::Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2);
+
     let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
     let skybox_material_dyn_set0 = descriptor_set_allocator
         .create_descriptor_set(
             &descriptor_set_layouts[shaders::skybox_frag::SKYBOX_TEX_DESCRIPTOR_SET_INDEX],
             shaders::skybox_frag::DescriptorSet0Args {
                 skybox_tex: &skybox_texture,
-            },
-        )
-        .unwrap();
-
-    // Skyboxes assume Y up and we're Z up, so "fix" it by adding a rotation about X axis.
-    // This effectively applies a rotation to the skybox
-    let skybox_rotation = glam::Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2);
-    let skybox_material_dyn_set1 = descriptor_set_allocator
-        .create_descriptor_set(
-            &descriptor_set_layouts[shaders::skybox_frag::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX],
-            shaders::skybox_frag::DescriptorSet1Args {
                 uniform_buffer: &shaders::skybox_frag::ArgsUniform {
                     inverse_view: (main_view.view_matrix() * skybox_rotation)
                         .inverse()
@@ -67,7 +60,6 @@ pub fn draw_skybox(
     // Draw calls
     command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
     skybox_material_dyn_set0.bind(command_buffer)?;
-    skybox_material_dyn_set1.bind(command_buffer)?;
 
     command_buffer.cmd_draw(3, 0)
 }

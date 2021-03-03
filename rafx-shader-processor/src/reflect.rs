@@ -59,6 +59,7 @@ where
             Type::ControlPointArray => 1,
             Type::AccelerationStructure => 1,
             Type::RayQuery => 0,
+            _ => unimplemented!()
         },
     )
 }
@@ -440,6 +441,7 @@ pub(crate) fn msl_assign_argument_buffer_ids(
             buffer_id: msl_argument_buffer_id,
             texture_id: msl_argument_buffer_id,
             sampler_id: msl_argument_buffer_id,
+            count: resource.element_count_normalized(),
         };
 
         if resource

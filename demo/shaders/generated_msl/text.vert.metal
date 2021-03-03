@@ -8,6 +8,11 @@ struct PerViewUbo
     float4x4 view_proj;
 };
 
+struct spvDescriptorSetBuffer0
+{
+    texture2d<float> tex [[id(0)]];
+};
+
 struct spvDescriptorSetBuffer1
 {
     constant PerViewUbo* per_view_data [[id(0)]];
@@ -27,8 +32,9 @@ struct main0_in
     float4 in_color [[attribute(2)]];
 };
 
-vertex main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]])
+vertex main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]])
 {
+    constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
     main0_out out = {};
     out.uv = in.in_uv;
     out.color = in.in_color;

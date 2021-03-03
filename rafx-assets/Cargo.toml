@@ -16,7 +16,6 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 [dependencies]
 rafx-api = { version = "=0.0.7", path = "../rafx-api" }
 rafx-base = { version = "=0.0.7", path = "../rafx-base" }
-#rafx-nodes = { version = "=0.0.7", path = "../rafx-nodes" }
 rafx-framework = { version = "=0.0.7", path = "../rafx-framework" }
 
 distill = { version = "=0.0.2", features = ["serde_importers"] }
@@ -32,7 +31,6 @@ arrayvec = "0.5"
 crossbeam-channel = "0.5"
 fnv = "1.0"
 log = "0.4"
-#mopa = "0.2"
 downcast-rs = "1.2.0"
 futures-lite = "1.3.0"
 

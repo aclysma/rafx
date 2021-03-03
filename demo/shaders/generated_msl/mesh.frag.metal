@@ -138,6 +138,7 @@ struct spvDescriptorSetBuffer1
     texture2d<float> base_color_texture [[id(1)]];
     texture2d<float> metallic_roughness_texture [[id(2)]];
     texture2d<float> normal_texture [[id(3)]];
+    texture2d<float> occlusion_texture [[id(4)]];
     texture2d<float> emissive_texture [[id(5)]];
 };
 

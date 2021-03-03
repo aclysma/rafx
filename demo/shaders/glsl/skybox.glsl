@@ -13,10 +13,9 @@ layout (set = 0, binding = 0) uniform sampler smp;
 // @[export]
 layout (set = 0, binding = 1) uniform textureCube skybox_tex;
 
-// Separate set to temporarily workaround bug that occurs when using metal backend
 // @[export]
 // @[internal_buffer]
-layout(set = 1, binding = 0) uniform Args {
+layout(set = 0, binding = 2) uniform Args {
     mat4 inverse_projection;
     mat4 inverse_view;
 } uniform_buffer;

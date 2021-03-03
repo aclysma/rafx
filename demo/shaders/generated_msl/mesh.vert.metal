@@ -18,6 +18,7 @@ struct PointLight
     float range;
     float intensity;
     int shadow_map;
+    char _m0_final_padding[4];
 };
 
 struct DirectionalLight
@@ -27,6 +28,7 @@ struct DirectionalLight
     float4 color;
     float intensity;
     int shadow_map;
+    char _m0_final_padding[8];
 };
 
 struct SpotLight
@@ -52,6 +54,7 @@ struct ShadowMapCubeData
 {
     float cube_map_projection_near_z;
     float cube_map_projection_far_z;
+    char _m0_final_padding[8];
 };
 
 struct PerViewData
@@ -70,7 +73,7 @@ struct PerViewData
 struct MaterialData
 {
     float4 base_color_factor;
-    float3 emissive_factor;
+    packed_float3 emissive_factor;
     float metallic_factor;
     float roughness_factor;
     float normal_texture_scale;
@@ -86,6 +89,23 @@ struct MaterialData
 struct MaterialDataUbo
 {
     MaterialData data;
+};
+
+struct spvDescriptorSetBuffer0
+{
+    constant PerViewData* per_view_data [[id(0)]];
+    array<texture2d<float>, 32> shadow_map_images [[id(3)]];
+    array<texturecube<float>, 16> shadow_map_images_cube [[id(35)]];
+};
+
+struct spvDescriptorSetBuffer1
+{
+    constant MaterialDataUbo* per_material_data [[id(0)]];
+    texture2d<float> base_color_texture [[id(1)]];
+    texture2d<float> metallic_roughness_texture [[id(2)]];
+    texture2d<float> normal_texture [[id(3)]];
+    texture2d<float> occlusion_texture [[id(4)]];
+    texture2d<float> emissive_texture [[id(5)]];
 };
 
 struct spvDescriptorSetBuffer2
@@ -112,8 +132,10 @@ struct main0_in
     float2 in_uv [[attribute(3)]];
 };
 
-vertex main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer2& spvDescriptorSet2 [[buffer(2)]])
+vertex main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]], constant spvDescriptorSetBuffer2& spvDescriptorSet2 [[buffer(2)]])
 {
+    constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
+    constexpr sampler smp_depth(filter::linear, mip_filter::linear, compare_func::greater, max_anisotropy(16));
     main0_out out = {};
     out.gl_Position = (*spvDescriptorSet2.per_object_data).model_view_proj * float4(in.in_pos, 1.0);
     out.out_position_vs = ((*spvDescriptorSet2.per_object_data).model_view * float4(in.in_pos, 1.0)).xyz;
