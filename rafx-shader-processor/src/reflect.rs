@@ -59,7 +59,7 @@ where
             Type::ControlPointArray => 1,
             Type::AccelerationStructure => 1,
             Type::RayQuery => 0,
-            _ => unimplemented!()
+            _ => unimplemented!(),
         },
     )
 }
