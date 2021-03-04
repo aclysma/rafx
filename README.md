@@ -40,6 +40,11 @@ adding an additional backend.
 **This crate will use semantic versioning rules after 0.1.0 of this project has been published. The
 0.0.x versions do not follow semantic versioning rules.**
 
+## Prerequisites
+
+CMake must be available on your path. It is used by SDL2 in the demo and by upstream crates used within the shader
+pipeline.
+
 ## Running the Demo
 
 The demo should be run from the root of the repository. These commands should clone the repo
