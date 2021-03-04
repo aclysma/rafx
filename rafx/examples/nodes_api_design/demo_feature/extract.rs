@@ -3,18 +3,20 @@ use crate::demo_feature::{
     DemoRenderFeature, DemoRenderNode, DemoRenderNodeSet, ExtractedPerFrameNodeDemoData,
     ExtractedPerViewNodeDemoData,
 };
+use crate::legion_support::{LegionResources, LegionWorld};
+use crate::DemoComponent;
 use crate::PositionComponent;
-use crate::{DemoComponent, DemoExtractContext, DemoPrepareContext, DemoWriteContext};
 use legion::*;
-use rafx_base::slab::RawSlabKey;
-use rafx_nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex, RenderView,
+use rafx::nodes::{
+    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
+    RenderJobExtractContext, RenderView,
 };
+use rafx_base::slab::RawSlabKey;
 
 #[derive(Default)]
 pub struct DemoExtractJob {}
 
-impl ExtractJob<DemoExtractContext, DemoPrepareContext, DemoWriteContext> for DemoExtractJob {
+impl ExtractJob for DemoExtractJob {
     //
     // This function is given the framepacket. This allows iterating across all visible objects.
     // Frame nodes will exist once per visible object, regardless of how many views it is visible in
@@ -24,24 +26,24 @@ impl ExtractJob<DemoExtractContext, DemoPrepareContext, DemoWriteContext> for De
     //
     fn extract(
         self: Box<Self>,
-        extract_context: &DemoExtractContext,
+        extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> Box<dyn PrepareJob<DemoPrepareContext, DemoWriteContext>> {
+    ) -> Box<dyn PrepareJob> {
         log::debug!("extract_begin {}", self.feature_debug_name());
+
+        let resources = extract_context.render_resources.fetch::<LegionResources>();
+        let world = extract_context.render_resources.fetch::<LegionWorld>();
 
         //
         // Update the mesh render nodes. This could be done earlier as part of a system. (Could be
         // pulled from an ECS as in this example). The intent is that the extract process can use
         // visibility info to index directly into the render nodes.
         //
-        let mut demo_render_nodes = extract_context
-            .resources
-            .get_mut::<DemoRenderNodeSet>()
-            .unwrap();
+        let mut demo_render_nodes = resources.get_mut::<DemoRenderNodeSet>().unwrap();
         let mut query = <(Read<PositionComponent>, Read<DemoComponent>)>::query();
 
-        for (position_component, demo_component) in query.iter(extract_context.world) {
+        for (position_component, demo_component) in query.iter(&**world) {
             let render_node = demo_render_nodes
                 .get_mut(&demo_component.render_node)
                 .unwrap();

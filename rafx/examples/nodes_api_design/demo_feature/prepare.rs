@@ -4,11 +4,11 @@ use crate::demo_feature::{
     PreparedPerSubmitNodeDemoData,
 };
 use crate::demo_phases::*;
-use crate::{DemoPrepareContext, DemoWriteContext};
 use glam::Vec3;
-use rafx_nodes::{
+use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderView, SubmitNodeId, ViewNodeIndex, ViewSubmitNodes,
+    RenderFeatureIndex, RenderJobPrepareContext, RenderView, SubmitNodeId, ViewNodeIndex,
+    ViewSubmitNodes,
 };
 
 pub struct DemoPrepareJob {
@@ -16,16 +16,13 @@ pub struct DemoPrepareJob {
     pub(super) per_view_data: Vec<Vec<ExtractedPerViewNodeDemoData>>,
 }
 
-impl PrepareJob<DemoPrepareContext, DemoWriteContext> for DemoPrepareJob {
+impl PrepareJob for DemoPrepareJob {
     fn prepare(
         self: Box<Self>,
-        _prepare_context: &DemoPrepareContext,
+        _prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[&RenderView],
-    ) -> (
-        Box<dyn FeatureCommandWriter<DemoWriteContext>>,
-        FeatureSubmitNodes,
-    ) {
+    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         //
         // The submit node struct will combine all submit nodes across all views for this feature.
         // It later gets merged with render nodes from other features and sorted. This is useful

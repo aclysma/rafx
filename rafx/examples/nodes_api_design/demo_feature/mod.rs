@@ -1,9 +1,9 @@
 use glam::f32::Vec3;
-use rafx_base::slab::{DropSlab, DropSlabKey};
-use rafx_nodes::{
+use rafx::nodes::{
     ExtractJob, FrameNodeIndex, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex,
     RenderNodeCount, RenderNodeSet, ViewNodeIndex,
 };
+use rafx_base::slab::{DropSlab, DropSlabKey};
 use std::convert::TryInto;
 
 mod extract;
@@ -12,10 +12,7 @@ use extract::DemoExtractJob;
 mod prepare;
 mod write;
 
-use crate::{DemoExtractContext, DemoPrepareContext, DemoWriteContext};
-
-pub fn create_demo_extract_job(
-) -> Box<dyn ExtractJob<DemoExtractContext, DemoPrepareContext, DemoWriteContext>> {
+pub fn create_demo_extract_job() -> Box<dyn ExtractJob> {
     Box::new(DemoExtractJob::default())
 }
 

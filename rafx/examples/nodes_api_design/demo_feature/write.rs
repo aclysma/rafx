@@ -2,12 +2,11 @@ use crate::demo_feature::{
     DemoRenderFeature, ExtractedPerFrameNodeDemoData, ExtractedPerViewNodeDemoData,
     PreparedPerSubmitNodeDemoData,
 };
-use crate::DemoWriteContext;
-use rafx_api::RafxResult;
-use rafx_nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderPhaseIndex, RenderView,
-    SubmitNodeId,
+use rafx::nodes::{
+    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
+    RenderPhaseIndex, RenderView, SubmitNodeId,
 };
+use rafx_api::RafxResult;
 
 pub struct DemoCommandWriter {
     pub(super) per_frame_data: Vec<ExtractedPerFrameNodeDemoData>,
@@ -15,10 +14,10 @@ pub struct DemoCommandWriter {
     pub(super) per_submit_node_data: Vec<PreparedPerSubmitNodeDemoData>,
 }
 
-impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
+impl FeatureCommandWriter for DemoCommandWriter {
     fn apply_setup(
         &self,
-        _write_context: &mut DemoWriteContext,
+        _write_context: &mut RenderJobWriteContext,
         view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
@@ -33,7 +32,7 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
 
     fn render_element(
         &self,
-        _write_context: &mut DemoWriteContext,
+        _write_context: &mut RenderJobWriteContext,
         view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
@@ -55,7 +54,7 @@ impl FeatureCommandWriter<DemoWriteContext> for DemoCommandWriter {
 
     fn revert_setup(
         &self,
-        _write_context: &mut DemoWriteContext,
+        _write_context: &mut RenderJobWriteContext,
         view: &RenderView,
         _render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {

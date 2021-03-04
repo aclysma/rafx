@@ -432,7 +432,7 @@ use rafx::nodes::RenderPhaseIndex;
 use rafx_framework::MaterialPass;
 use std::path::Path;
 
-rafx::nodes::declare_render_phase!(
+rafx::declare_render_phase!(
     OpaqueRenderPhase,
     OPAQUE_RENDER_PHASE_INDEX,
     opaque_render_phase_sort_submit_nodes

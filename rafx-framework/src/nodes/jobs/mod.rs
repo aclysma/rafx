@@ -33,12 +33,11 @@ pub struct RenderJobPrepareContext {
 
 impl RenderJobPrepareContext {
     pub fn new<'a>(
-        device_context: RafxDeviceContext,
         resource_context: ResourceContext,
         render_resources: &'a RenderResources,
     ) -> Self {
         RenderJobPrepareContext {
-            device_context,
+            device_context: resource_context.device_context().clone(),
             resource_context,
             render_resources: unsafe { force_to_static_lifetime(render_resources) },
         }
@@ -53,12 +52,11 @@ pub struct RenderJobBeginExecuteGraphContext {
 
 impl RenderJobBeginExecuteGraphContext {
     pub fn new(
-        device_context: RafxDeviceContext,
         resource_context: ResourceContext,
         command_buffer: DynCommandBuffer,
     ) -> Self {
         RenderJobBeginExecuteGraphContext {
-            device_context,
+            device_context: resource_context.device_context().clone(),
             resource_context,
             command_buffer,
         }
@@ -68,7 +66,6 @@ impl RenderJobBeginExecuteGraphContext {
         args: &OnBeginExecuteGraphArgs
     ) -> RenderJobBeginExecuteGraphContext {
         RenderJobBeginExecuteGraphContext::new(
-            args.graph_context.device_context().clone(),
             args.graph_context.resource_context().clone(),
             args.command_buffer.clone(),
         )
@@ -84,13 +81,12 @@ pub struct RenderJobWriteContext {
 
 impl RenderJobWriteContext {
     pub fn new(
-        device_context: RafxDeviceContext,
         resource_context: ResourceContext,
         command_buffer: DynCommandBuffer,
         render_target_meta: GraphicsPipelineRenderTargetMeta,
     ) -> Self {
         RenderJobWriteContext {
-            device_context,
+            device_context: resource_context.device_context().clone(),
             resource_context,
             command_buffer,
             render_target_meta,
@@ -101,7 +97,6 @@ impl RenderJobWriteContext {
         args: &VisitRenderpassNodeArgs
     ) -> RenderJobWriteContext {
         RenderJobWriteContext::new(
-            args.graph_context.device_context().clone(),
             args.graph_context.resource_context().clone(),
             args.command_buffer.clone(),
             args.render_target_meta.clone(),

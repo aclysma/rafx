@@ -39,7 +39,6 @@ impl RenderFrameJob {
             self.main_view,
             self.shadow_map_render_views,
             self.render_registry,
-            self.device_context,
             render_resources,
             self.graphics_queue,
         );
@@ -84,7 +83,6 @@ impl RenderFrameJob {
         main_view: RenderView,
         shadow_map_render_views: Vec<ShadowMapRenderView>,
         render_registry: RenderRegistry,
-        device_context: RafxDeviceContext,
         render_resources: &RenderResources,
         graphics_queue: RafxQueue,
     ) -> RafxResult<Vec<DynCommandBuffer>> {
@@ -111,11 +109,8 @@ impl RenderFrameJob {
                 }
             }
 
-            let prepare_context = RenderJobPrepareContext::new(
-                device_context.clone(),
-                resource_context.clone(),
-                &render_resources,
-            );
+            let prepare_context =
+                RenderJobPrepareContext::new(resource_context.clone(), &render_resources);
 
             prepare_job_set.prepare(
                 &prepare_context,

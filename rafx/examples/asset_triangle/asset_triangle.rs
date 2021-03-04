@@ -448,7 +448,7 @@ fn run() -> RafxResult<()> {
 // render nodes fully, but the pipeline cache uses it to define which renderpass/material pairs
 //
 
-rafx::nodes::declare_render_phase!(
+rafx::declare_render_phase!(
     OpaqueRenderPhase,
     OPAQUE_RENDER_PHASE_INDEX,
     opaque_render_phase_sort_submit_nodes
