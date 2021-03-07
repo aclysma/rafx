@@ -12,6 +12,7 @@ publish = false
 
 [dependencies]
 demo = { path = ".."}
+rafx = { path = "../../rafx", features = ["renderer"] }
 log = "0.4"
 env_logger = "0.6"
 distill = { version = "=0.0.2", features = ["serde_importers"] }

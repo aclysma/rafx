@@ -17,7 +17,7 @@ use rafx::nodes::ExtractResources;
 use rafx::renderer::ViewportsResource;
 use rafx::renderer::{AssetSource, Renderer};
 
-mod assets;
+pub mod assets;
 mod components;
 pub mod daemon_args;
 mod features;

@@ -1,15 +1,14 @@
 use crate::demo_phases::*;
 use glam::Vec3;
 use legion::*;
-use rafx::nodes::RenderViewSet;
 use rafx::nodes::{
     ExtractJobSet, FramePacketBuilder, RenderNodeReservations, RenderPhaseMaskBuilder,
 };
+use rafx::nodes::{ExtractResources, RenderViewSet};
 use rafx::nodes::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext, RenderRegistryBuilder,
 };
 use rafx::visibility::*;
-mod legion_support;
 
 #[derive(Copy, Clone)]
 pub struct PositionComponent {
@@ -17,7 +16,6 @@ pub struct PositionComponent {
 }
 
 mod demo_feature;
-use crate::legion_support::{LegionResources, LegionWorld};
 use demo_feature::*;
 use rafx::api::{
     RafxApi, RafxCommandBufferDef, RafxCommandPoolDef, RafxQueueType, RafxSampleCount,
@@ -61,7 +59,7 @@ fn main() {
             .create_queue(RafxQueueType::Graphics)
             .unwrap();
 
-        let mut render_resources = RenderResources::default();
+        let render_resources = RenderResources::default();
 
         //
         // Set up render phase masks for each view. This is used to enable/disable phases for particular
@@ -257,7 +255,7 @@ fn main() {
                 let mut demo_render_nodes = resources.get_mut::<DemoRenderNodeSet>().unwrap();
                 demo_render_nodes.update();
                 let mut all_render_nodes = RenderNodeReservations::default();
-                all_render_nodes.add_render_nodes(&*demo_render_nodes);
+                all_render_nodes.add_reservation(&*demo_render_nodes);
 
                 FramePacketBuilder::new(&all_render_nodes)
             };
@@ -279,6 +277,8 @@ fn main() {
                 ],
             );
 
+            let render_views = vec![main_view.clone(), minimap_view.clone()];
+
             //
             // Run extraction jobs for all views/features
             //
@@ -293,27 +293,20 @@ fn main() {
             let frame_packet = frame_packet_builder.build();
             //println!("frame packet:\n{:#?}", frame_packet);
 
-            // These references will be transmuted to 'static.
-            // This can hopefully be addressed in the future
-            unsafe {
-                render_resources.insert(LegionWorld::new(&world));
-                render_resources.insert(LegionResources::new(&resources));
-            }
-
             let prepare_job_set = {
-                let mut extract_job_set = ExtractJobSet::new();
+                let mut extract_resources = ExtractResources::default();
+                extract_resources.insert(&mut world);
+                let mut demo_node_set = resources.get_mut::<DemoRenderNodeSet>().unwrap();
+                extract_resources.insert(&mut *demo_node_set);
+
+                let mut extract_job_set = ExtractJobSet::default();
                 extract_job_set.add_job(create_demo_extract_job());
                 // Other features can be added here
 
-                let mut extract_context = RenderJobExtractContext::new(&render_resources);
-                extract_job_set.extract(
-                    &mut extract_context,
-                    &frame_packet,
-                    &[&main_view, &minimap_view],
-                )
+                let mut extract_context =
+                    RenderJobExtractContext::new(&extract_resources, &render_resources);
+                extract_job_set.extract(&mut extract_context, &frame_packet, &render_views)
             };
-            render_resources.remove::<LegionWorld>();
-            render_resources.remove::<LegionResources>();
 
             //
             // At this point, we can start the next simulation loop. The renderer has everything it needs
@@ -330,10 +323,11 @@ fn main() {
                 resource_manager.resource_context(),
                 &render_resources,
             );
+
             let prepared_render_data = prepare_job_set.prepare(
                 &prepare_context,
                 &frame_packet,
-                &[&main_view, &minimap_view],
+                &render_views,
                 &render_registry,
             );
 

@@ -1,5 +1,7 @@
-use demo::daemon_args;
+use demo::assets::font::FontImporter;
+use demo::assets::gltf::GltfImporter;
 use demo::daemon_args::AssetDaemonArgs;
+use distill::daemon::AssetDaemon;
 use distill_cli::Command;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -32,6 +34,16 @@ pub struct CliArgs {
     pub daemon_args: AssetDaemonArgs,
 }
 
+fn create_daemon(args: &CliArgs) -> AssetDaemon {
+    rafx::assets::distill_impl::default_daemon()
+        .with_db_path(&args.daemon_args.db_dir)
+        .with_address(args.daemon_args.address)
+        .with_asset_dirs(args.daemon_args.asset_dirs.clone())
+        .with_importer("ttf", FontImporter)
+        .with_importer("gltf", GltfImporter)
+        .with_importer("glb", GltfImporter)
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Setup logging
     env_logger::Builder::from_default_env()
@@ -43,7 +55,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.external_daemon && args.cmd == CliCommandArgs::HostDaemon {
         Err("external-daemon and host-daemon args are incompatible".into())
     } else if args.cmd == CliCommandArgs::HostDaemon {
-        daemon_args::run(args.daemon_args.into());
+        let asset_daemon = create_daemon(&args);
+
+        // Spawn the daemon in a background thread.
+        std::thread::spawn(move || {
+            asset_daemon.run();
+        });
+
         // Spin indefinitely
         log::info!("Daemon started, used ctrl-C to terminate");
         loop {
@@ -60,9 +78,9 @@ async fn async_main(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     // Spawn the daemon in a background thread. This could be a different process, but
     // for simplicity we'll launch it here.
     if !args.external_daemon {
-        let daemon_args = args.daemon_args.clone().into();
+        let asset_daemon = create_daemon(&args);
         std::thread::spawn(move || {
-            daemon_args::run(daemon_args);
+            asset_daemon.run();
         });
 
         // Give the daemon some time to open the socket

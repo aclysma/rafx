@@ -21,7 +21,7 @@ impl PrepareJob for DemoPrepareJob {
         self: Box<Self>,
         _prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
-        views: &[&RenderView],
+        views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         //
         // The submit node struct will combine all submit nodes across all views for this feature.
@@ -32,7 +32,7 @@ impl PrepareJob for DemoPrepareJob {
         let mut submit_nodes = FeatureSubmitNodes::default();
         let mut per_submit_node_data = Vec::default();
 
-        for (view_index, &view) in views.iter().enumerate() {
+        for (view_index, view) in views.iter().enumerate() {
             // The submit nodes for this view
             let mut view_submit_nodes =
                 ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());

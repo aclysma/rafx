@@ -10,7 +10,6 @@ use crate::graph::{
 };
 use crate::nodes::{PreparedRenderData, RenderJobBeginExecuteGraphContext};
 use crate::resources::DynCommandBuffer;
-use crate::resources::ResourceLookupSet;
 use crate::{BufferResource, GraphicsPipelineRenderTargetMeta, ImageResource};
 use crate::{ImageViewResource, ResourceArc, ResourceContext};
 use fnv::FnvHashMap;
@@ -99,7 +98,6 @@ impl PreparedRenderGraph {
     pub fn new(
         device_context: &RafxDeviceContext,
         resource_context: &ResourceContext,
-        resources: &ResourceLookupSet,
         graph: RenderGraphBuilder,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> RafxResult<Self> {
@@ -108,17 +106,21 @@ impl PreparedRenderGraph {
         let cache = &mut *cache_guard;
 
         profiling::scope!("allocate resources");
-        let buffer_resources = cache.allocate_buffers(device_context, &graph_plan, resources)?;
+        let buffer_resources =
+            cache.allocate_buffers(device_context, &graph_plan, resource_context.resources())?;
 
         let image_resources = cache.allocate_images(
             device_context,
             &graph_plan,
-            resources,
+            resource_context.resources(),
             swapchain_surface_info,
         )?;
 
-        let image_view_resources =
-            cache.allocate_image_views(&graph_plan, resources, &image_resources)?;
+        let image_view_resources = cache.allocate_image_views(
+            &graph_plan,
+            resource_context.resources(),
+            &image_resources,
+        )?;
 
         Ok(PreparedRenderGraph {
             device_context: device_context.clone(),

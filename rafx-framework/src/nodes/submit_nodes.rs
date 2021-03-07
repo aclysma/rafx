@@ -109,6 +109,12 @@ pub struct MergedFrameSubmitNodes {
 }
 
 impl MergedFrameSubmitNodes {
+    pub fn empty() -> Self {
+        MergedFrameSubmitNodes {
+            merged_submit_nodes: Default::default(),
+        }
+    }
+
     pub fn new(
         feature_submit_nodes: Vec<FeatureSubmitNodes>, // index by feature, then view
         registry: &RenderRegistry,

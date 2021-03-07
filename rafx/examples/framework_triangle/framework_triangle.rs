@@ -3,11 +3,10 @@ use log::LevelFilter;
 use rafx::api::*;
 use rafx::framework::{CookedShaderPackage, FixedFunctionState, VertexDataLayout};
 use rafx::graph::{
-    RenderGraphBuilder, RenderGraphExecutor, RenderGraphImageConstraint, RenderGraphImageExtents,
-    RenderGraphImageSpecification, RenderGraphNodeCallbacks, RenderGraphQueue,
-    SwapchainSurfaceInfo,
+    PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageExtents,
+    RenderGraphImageSpecification, RenderGraphQueue, SwapchainSurfaceInfo,
 };
-use rafx::nodes::SubmitNode;
+use rafx::nodes::{PreparedRenderData, SubmitNode};
 use std::sync::Arc;
 
 const WINDOW_WIDTH: u32 = 900;
@@ -229,7 +228,6 @@ fn run() -> RafxResult<()> {
             // renderpass with a color attachment. See the demo for more complex example usage.
             //
             let mut graph_builder = RenderGraphBuilder::default();
-            let mut graph_callbacks = RenderGraphNodeCallbacks::<()>::default();
 
             let node = graph_builder.add_node("opaque", RenderGraphQueue::DefaultGraphics);
             let color_attachment = graph_builder.create_color_attachment(
@@ -252,7 +250,7 @@ fn run() -> RafxResult<()> {
             //
             let captured_vertex_layout = vertex_layout.clone();
             let captured_material_pass = material_pass.clone();
-            graph_callbacks.set_renderpass_callback(node, move |args| {
+            graph_builder.set_renderpass_callback(node, move |args| {
                 let vertex_layout = &captured_vertex_layout;
                 let material_pass = &captured_material_pass;
 
@@ -392,18 +390,18 @@ fn run() -> RafxResult<()> {
                 },
             };
 
-            let executor = RenderGraphExecutor::new(
+            let executor = PreparedRenderGraph::new(
                 &device_context,
                 &resource_context,
                 graph_builder,
                 &swapchain_surface_info,
-                graph_callbacks,
             )?;
 
             //
             // Execute the graph. This will write out command buffer(s)
             //
-            let command_buffers = executor.execute_graph(&(), &graphics_queue)?;
+            let command_buffers =
+                executor.execute_graph(PreparedRenderData::empty(), &graphics_queue)?;
 
             //
             // Submit the command buffers to the GPU

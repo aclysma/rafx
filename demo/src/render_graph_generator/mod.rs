@@ -213,7 +213,6 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
         let prepared_render_graph = PreparedRenderGraph::new(
             &device_context,
             &resource_context,
-            resource_context.resources(),
             graph,
             &swapchain_resources.swapchain_surface_info,
         )?;

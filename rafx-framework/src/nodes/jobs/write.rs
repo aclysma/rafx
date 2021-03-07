@@ -49,6 +49,13 @@ pub struct PreparedRenderData {
 }
 
 impl PreparedRenderData {
+    pub fn empty() -> Self {
+        PreparedRenderData {
+            feature_writers: Default::default(),
+            submit_nodes: MergedFrameSubmitNodes::empty(),
+        }
+    }
+
     pub fn new(
         feature_writers: Vec<Box<dyn FeatureCommandWriter>>,
         submit_nodes: MergedFrameSubmitNodes,
