@@ -1,6 +1,6 @@
 [package]
 name = "rafx-api"
-version = "0.0.7"
+version = "0.0.8"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -14,7 +14,7 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-base = { version = "=0.0.7", path = "../rafx-base" }
+rafx-base = { version = "=0.0.8", path = "../rafx-base" }
 
 log = "0.4"
 crossbeam-channel = "0.5"
