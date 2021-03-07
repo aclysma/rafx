@@ -8,6 +8,7 @@ This crate contains several layers:
  * `rafx-api`: Low-level graphics API abstraction 
  * `rafx-framework`: Mid-level framework that eases resource management, lifetime handling, and draw call dispatching
  * `rafx-assets`: Asset layer that integrates with [`distill`](https://github.com/amethyst/distill)
+ * `rafx-renderer`: A pipelined renderer with a plugin system for customizing it
    
 Rafx also provides tools for building shaders and packing assets.
 
@@ -152,6 +153,7 @@ This tool currently is only useful for packing assets.
      implemented while maintaining extremely fast load times. For example, texture compression could be implemented
      as an import step.  
    * Separate multi-thread friendly path for creating assets at runtime
+ * `rafx-renderer` - A pipelined renderer with a plugin system for customizing it
 
 ## License
 
