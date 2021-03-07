@@ -36,32 +36,32 @@ pub trait RenderNodeSet {
     fn max_render_node_count(&self) -> RenderNodeCount;
 }
 
-pub struct AllRenderNodes<'a> {
-    nodes: Vec<Option<&'a dyn RenderNodeSet>>,
+pub struct RenderNodeReservations {
+    max_render_nodes_by_feature: Vec<u32>,
 }
 
-impl<'a> AllRenderNodes<'a> {
-    pub fn add_render_nodes(
-        &mut self,
-        render_nodes: &'a dyn RenderNodeSet,
-    ) {
-        // A panic here means a feature was not registered
-        self.nodes[render_nodes.feature_index() as usize] = Some(render_nodes);
-    }
-
-    pub fn max_render_node_count_by_type(&self) -> Vec<RenderNodeCount> {
-        self.nodes
-            .iter()
-            .map(|node_set| node_set.map_or(0, |node_set| node_set.max_render_node_count()))
-            .collect()
-    }
-}
-
-impl<'a> Default for AllRenderNodes<'a> {
+impl Default for RenderNodeReservations {
     fn default() -> Self {
         let feature_count = RenderRegistry::registered_feature_count();
-        let nodes = vec![None; feature_count as usize];
+        let max_render_nodes_by_feature = vec![0; feature_count as usize];
 
-        AllRenderNodes { nodes }
+        RenderNodeReservations {
+            max_render_nodes_by_feature,
+        }
+    }
+}
+
+impl RenderNodeReservations {
+    pub fn add_reservation(
+        &mut self,
+        render_nodes: &dyn RenderNodeSet,
+    ) {
+        // A panic here means a feature was not registered
+        self.max_render_nodes_by_feature[render_nodes.feature_index() as usize] +=
+            render_nodes.max_render_node_count();
+    }
+
+    pub fn max_render_nodes_by_feature(&self) -> &[u32] {
+        &self.max_render_nodes_by_feature
     }
 }

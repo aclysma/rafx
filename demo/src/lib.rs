@@ -6,30 +6,29 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use structopt::StructOpt;
 
-use rafx::api::RafxResult;
+use rafx::api::{RafxExtents2D, RafxResult, RafxSwapchainHelper};
 use rafx::assets::AssetManager;
 
-use crate::daemon::AssetDaemonArgs;
-use crate::game_asset_manager::GameAssetManager;
-use crate::game_renderer::GameRenderer;
+use crate::daemon_args::AssetDaemonArgs;
 use crate::scenes::SceneManager;
 use crate::time::TimeState;
 use rafx::assets::distill_impl::AssetResource;
+use rafx::nodes::ExtractResources;
+use rafx::renderer::ViewportsResource;
+use rafx::renderer::{AssetSource, Renderer};
 
 mod assets;
 mod components;
-pub mod daemon;
+pub mod daemon_args;
 mod features;
-mod game_asset_lookup;
-mod game_asset_manager;
-mod game_renderer;
-#[cfg(feature = "use-imgui")]
-mod imgui_support;
 mod init;
-mod legion_support;
 mod phases;
+mod render_graph_generator;
 mod scenes;
 mod time;
+
+mod demo_plugin;
+pub use demo_plugin::DemoRendererPlugin;
 
 #[derive(Clone)]
 pub struct RenderOptions {
@@ -116,33 +115,17 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
     resources.insert(DebugUiState::default());
     resources.insert(SceneManager::default());
 
-    if let Some(packfile) = &args.packfile {
-        log::info!("Reading from packfile {:?}", packfile);
-
-        // Initialize the packfile loader with the packfile path
-        init::init_distill_packfile(&mut resources, &packfile);
+    let asset_source = if let Some(packfile) = &args.packfile {
+        AssetSource::Packfile(packfile.to_path_buf())
     } else {
-        if !args.external_daemon {
-            log::info!("Hosting local daemon at {:?}", args.daemon_args.address);
-
-            // Spawn the daemon in a background thread. This could be a different process, but
-            // for simplicity we'll launch it here.
-            let daemon_args = args.daemon_args.clone().into();
-            std::thread::spawn(move || {
-                daemon::run(daemon_args);
-            });
-        } else {
-            log::info!("Connecting to daemon at {:?}", args.daemon_args.address);
+        AssetSource::Daemon {
+            external_daemon: args.external_daemon,
+            daemon_args: args.daemon_args.clone().into(),
         }
-
-        // Connect to the daemon we just launched
-        init::init_distill_daemon(&mut resources, args.daemon_args.address.to_string());
-    }
+    };
 
     let sdl2_systems = init::sdl2_init();
-    #[cfg(feature = "use-imgui")]
-    init::imgui_init(&mut resources, &sdl2_systems.window);
-    init::rendering_init(&mut resources, &sdl2_systems.window)?;
+    init::rendering_init(&mut resources, &sdl2_systems.window, asset_source)?;
 
     log::info!("Starting window event loop");
     let mut event_pump = sdl2_systems
@@ -158,6 +141,12 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
 
     'running: loop {
         profiling::scope!("Main Loop");
+
+        {
+            let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
+            let (width, height) = sdl2_systems.window.vulkan_drawable_size();
+            viewports_resource.main_window_size = RafxExtents2D { width, height }
+        }
 
         {
             resources
@@ -194,7 +183,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         #[cfg(feature = "use-imgui")]
         {
-            use crate::imgui_support::Sdl2ImguiManager;
+            use crate::features::imgui::Sdl2ImguiManager;
             use sdl2::mouse::MouseState;
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
@@ -215,12 +204,8 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         {
             profiling::scope!("update asset loaders");
             let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
-            let mut game_resource_manager = resources.get_mut::<GameAssetManager>().unwrap();
 
             asset_manager.update_asset_loaders().unwrap();
-            game_resource_manager
-                .update_asset_loaders(&*asset_manager)
-                .unwrap();
         }
 
         //
@@ -242,7 +227,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         #[cfg(feature = "use-imgui")]
         {
-            use crate::imgui_support::Sdl2ImguiManager;
+            use crate::features::imgui::Sdl2ImguiManager;
             profiling::scope!("imgui");
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             let time_state = resources.get::<TimeState>().unwrap();
@@ -296,7 +281,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         #[cfg(feature = "use-imgui")]
         {
-            use crate::imgui_support::Sdl2ImguiManager;
+            use crate::features::imgui::Sdl2ImguiManager;
             let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
             imgui_manager.render(&sdl2_systems.window);
         }
@@ -312,12 +297,54 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         {
             profiling::scope!("Start Next Frame Render");
-            let game_renderer = resources.get::<GameRenderer>().unwrap();
+            let game_renderer = resources.get::<Renderer>().unwrap();
 
-            let (window_width, window_height) = sdl2_systems.window.vulkan_drawable_size();
+            let mut extract_resources = ExtractResources::default();
+
+            macro_rules! add_to_extract_resources {
+                ($ty: ident) => {
+                    #[allow(non_snake_case)]
+                    let mut $ty = resources.get_mut::<$ty>().unwrap();
+                    extract_resources.insert(&mut *$ty);
+                };
+                ($ty: path, $name: ident) => {
+                    let mut $name = resources.get_mut::<$ty>().unwrap();
+                    extract_resources.insert(&mut *$name);
+                };
+            }
+
+            add_to_extract_resources!(RafxSwapchainHelper);
+            add_to_extract_resources!(ViewportsResource);
+            add_to_extract_resources!(AssetManager);
+            add_to_extract_resources!(TimeState);
+            add_to_extract_resources!(RenderOptions);
+            add_to_extract_resources!(
+                rafx::visibility::DynamicVisibilityNodeSet,
+                dynamic_visibility_node_set
+            );
+            add_to_extract_resources!(
+                rafx::visibility::StaticVisibilityNodeSet,
+                static_visibility_node_set
+            );
+            add_to_extract_resources!(
+                crate::features::sprite::SpriteRenderNodeSet,
+                sprite_render_node_set
+            );
+            add_to_extract_resources!(
+                crate::features::mesh::MeshRenderNodeSet,
+                mesh_render_node_set
+            );
+            add_to_extract_resources!(
+                crate::features::debug3d::DebugDraw3DResource,
+                debug_draw_3d_resource
+            );
+            add_to_extract_resources!(crate::features::text::TextResource, text_resource);
+            add_to_extract_resources!(crate::features::imgui::Sdl2ImguiManager, sdl2_imgui_manager);
+
+            extract_resources.insert(&mut world);
 
             game_renderer
-                .start_rendering_next_frame(&resources, &world, window_width, window_height)
+                .start_rendering_next_frame(&mut extract_resources)
                 .unwrap();
         }
 
@@ -339,7 +366,7 @@ fn process_input(
 ) -> bool {
     #[cfg(feature = "use-imgui")]
     let imgui_manager = resources
-        .get::<crate::imgui_support::Sdl2ImguiManager>()
+        .get::<crate::features::imgui::Sdl2ImguiManager>()
         .unwrap();
     let mut scene_manager = resources.get_mut::<SceneManager>().unwrap();
     for event in event_pump.poll_iter() {

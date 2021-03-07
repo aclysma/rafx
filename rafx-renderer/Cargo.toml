@@ -1,0 +1,29 @@
+[package]
+name = "rafx-renderer"
+version = "0.0.7"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+edition = "2018"
+description = "Rendering framework built on an extensible asset pipeline"
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+repository = "https://github.com/aclysma/rafx"
+homepage = "https://github.com/aclysma/rafx"
+keywords = ["game", "rendering", "graphics"]
+categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
+
+[dependencies]
+rafx-api = { version = "=0.0.7", path = "../rafx-api" }
+rafx-base = { version = "=0.0.7", path = "../rafx-base" }
+rafx-framework = { version = "=0.0.7", path = "../rafx-framework" }
+rafx-assets = { version = "=0.0.7", path = "../rafx-assets" }
+
+glam = { version = "0.8.6", features = [ "serde" ] }
+crossbeam-channel = "0.5"
+log = "0.4"
+profiling = "0.1.4"
+
+[features]
+profile-with-puffin = ["profiling/profile-with-puffin"]
+profile-with-optick = ["profiling/profile-with-optick"]
+profile-with-superluminal = ["profiling/profile-with-superluminal"]
+profile-with-tracy = ["profiling/profile-with-tracy"]

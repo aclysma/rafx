@@ -33,7 +33,7 @@ impl<'a> PrepareJob for Debug3dPrepareJobImpl {
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
-        views: &[&RenderView],
+        views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("Debug3d Prepare");
 

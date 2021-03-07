@@ -7,8 +7,10 @@ use std::convert::TryInto;
 
 mod debug3d_resource;
 mod extract;
+mod plugin;
 mod prepare;
 mod write;
+pub use plugin::Debug3DRendererPlugin;
 
 pub use debug3d_resource::*;
 use rafx::api::RafxPrimitiveTopology;

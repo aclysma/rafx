@@ -1,8 +1,11 @@
 use super::*;
+use crate::nodes::{RenderPhase, RenderPhaseIndex};
 use crate::resources::{ImageViewResource, ResourceArc};
 use crate::BufferResource;
+use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::{
     RafxColorClearValue, RafxDepthStencilClearValue, RafxResourceState, RafxResourceType,
+    RafxResult,
 };
 
 #[derive(Copy, Clone)]
@@ -48,7 +51,7 @@ pub struct RenderGraphOutputBuffer {
 /// A collection of nodes and resources. Nodes represent an event or process that will occur at
 /// a certain time. (For now, they just represent subpasses that may be merged with each other.)
 /// Resources represent images and buffers that may be read/written by nodes.
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct RenderGraphBuilder {
     /// Nodes that have been registered in the graph
     pub(super) nodes: Vec<RenderGraphNode>,
@@ -73,6 +76,14 @@ pub struct RenderGraphBuilder {
     /// Images that are passed into the graph to be written to.
     pub(super) output_images: Vec<RenderGraphOutputImage>,
     pub(super) output_buffers: Vec<RenderGraphOutputBuffer>,
+
+    //
+    // Callbacks
+    //
+    pub(super) visit_node_callbacks:
+        FnvHashMap<RenderGraphNodeId, RenderGraphNodeVisitNodeCallback>,
+    pub(super) render_phase_dependencies:
+        FnvHashMap<RenderGraphNodeId, FnvHashSet<RenderPhaseIndex>>,
 }
 
 impl RenderGraphBuilder {
@@ -871,6 +882,52 @@ impl RenderGraphBuilder {
         name: RenderGraphResourceName,
     ) {
         self.buffer_resource_mut(buffer_id).name = Some(name);
+    }
+
+    //
+    // Callbacks
+    //
+
+    /// Adds a callback that receives the renderpass associated with the node
+    pub fn set_renderpass_callback<CallbackFnT>(
+        &mut self,
+        node_id: RenderGraphNodeId,
+        f: CallbackFnT,
+    ) where
+        CallbackFnT: Fn(VisitRenderpassNodeArgs) -> RafxResult<()> + 'static + Send,
+    {
+        let old = self.visit_node_callbacks.insert(
+            node_id,
+            RenderGraphNodeVisitNodeCallback::Renderpass(Box::new(f)),
+        );
+        // If this trips, multiple callbacks were set on the node
+        assert!(old.is_none());
+    }
+
+    /// Adds a callback for compute based nodes
+    pub fn set_compute_callback<CallbackFnT>(
+        &mut self,
+        node_id: RenderGraphNodeId,
+        f: CallbackFnT,
+    ) where
+        CallbackFnT: Fn(VisitComputeNodeArgs) -> RafxResult<()> + 'static + Send,
+    {
+        let old = self.visit_node_callbacks.insert(
+            node_id,
+            RenderGraphNodeVisitNodeCallback::Compute(Box::new(f)),
+        );
+        // If this trips, multiple callbacks were set on the node
+        assert!(old.is_none());
+    }
+
+    pub fn add_render_phase_dependency<PhaseT: RenderPhase>(
+        &mut self,
+        node_id: RenderGraphNodeId,
+    ) {
+        self.render_phase_dependencies
+            .entry(node_id)
+            .or_default()
+            .insert(PhaseT::render_phase_index());
     }
 
     //

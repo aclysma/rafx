@@ -1,52 +1,19 @@
-use crate::assets::font::{FontAsset, FontAssetData};
-use crate::assets::gltf::{GltfMaterialAsset, MeshAssetData};
-use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource};
-#[cfg(feature = "use-imgui")]
-use crate::features::imgui::ImGuiRenderFeature;
-use crate::features::mesh::{MeshRenderFeature, MeshRenderNodeSet};
-use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNodeSet};
-use crate::features::text::{TextRenderFeature, TextResource};
-use crate::game_asset_lookup::MeshAsset;
-use crate::game_asset_manager::GameAssetManager;
-use crate::game_renderer::{GameRenderer, SwapchainHandler};
-use crate::phases::PostProcessRenderPhase;
-use crate::phases::TransparentRenderPhase;
-use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase, UiRenderPhase};
-use distill::loader::{
-    packfile_io::PackfileReader, storage::DefaultIndirectionResolver, Loader, RpcIO,
-};
+use crate::assets::font::FontAssetTypeRendererPlugin;
+use crate::assets::gltf::GltfAssetTypeRendererPlugin;
+use crate::features::debug3d::{Debug3DRendererPlugin, DebugDraw3DResource};
+use crate::features::mesh::{MeshRenderNodeSet, MeshRendererPlugin};
+use crate::features::sprite::{SpriteRenderNodeSet, SpriteRendererPlugin};
+use crate::features::text::{TextRendererPlugin, TextResource};
+use crate::render_graph_generator::DemoRenderGraphGenerator;
+use crate::DemoRendererPlugin;
 use legion::Resources;
-use rafx::api::{RafxApi, RafxDeviceContext, RafxQueueType, RafxResult};
+use rafx::api::{RafxApi, RafxDeviceContext, RafxResult, RafxSwapchainHelper};
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::distill_impl::ResourceAssetLoader;
-use rafx::assets::{AssetManager, ComputePipelineAsset, ComputePipelineAssetData};
-use rafx::assets::{BufferAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset, ShaderAsset};
-use rafx::assets::{
-    BufferAssetData, ImageAssetData, MaterialAssetData, MaterialInstanceAssetData, ShaderAssetData,
-};
-use rafx::nodes::RenderRegistry;
+use rafx::assets::AssetManager;
+use rafx::nodes::{ExtractResources, RenderRegistry};
+use rafx::renderer::ViewportsResource;
+use rafx::renderer::{AssetSource, Renderer, RendererBuilder, SwapchainHandler};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-
-pub fn init_distill_daemon(
-    resources: &mut Resources,
-    connect_string: String,
-) {
-    let rpc_loader = RpcIO::new(connect_string).unwrap();
-    let loader = Loader::new(Box::new(rpc_loader));
-    let resolver = Box::new(DefaultIndirectionResolver);
-    resources.insert(AssetResource::new(loader, resolver));
-}
-
-pub fn init_distill_packfile(
-    resources: &mut Resources,
-    pack_file: &std::path::Path,
-) {
-    let packfile = std::fs::File::open(pack_file).unwrap();
-    let packfile_loader = PackfileReader::new(packfile).unwrap();
-    let loader = Loader::new(Box::new(packfile_loader));
-    let resolver = Box::new(DefaultIndirectionResolver);
-    resources.insert(AssetResource::new(loader, resolver));
-}
 
 pub struct Sdl2Systems {
     pub context: sdl2::Sdl,
@@ -77,21 +44,10 @@ pub fn sdl2_init() -> Sdl2Systems {
     }
 }
 
-// Should occur *before* the renderer starts
-#[cfg(feature = "use-imgui")]
-pub fn imgui_init(
-    resources: &mut Resources,
-    sdl2_window: &sdl2::video::Window,
-) {
-    // Load imgui, we do it a little early because it wants to have the actual SDL2 window and
-    // doesn't work with the thin window wrapper
-    let imgui_manager = crate::imgui_support::init_imgui_manager(sdl2_window);
-    resources.insert(imgui_manager);
-}
-
 pub fn rendering_init(
     resources: &mut Resources,
     sdl2_window: &sdl2::video::Window,
+    asset_source: AssetSource,
 ) -> RafxResult<()> {
     resources.insert(SpriteRenderNodeSet::default());
     resources.insert(MeshRenderNodeSet::default());
@@ -99,106 +55,70 @@ pub fn rendering_init(
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(DebugDraw3DResource::new());
     resources.insert(TextResource::new());
-
-    #[allow(unused_mut)]
-    let mut render_registry = rafx::nodes::RenderRegistryBuilder::default()
-        .register_feature::<SpriteRenderFeature>()
-        .register_feature::<MeshRenderFeature>()
-        .register_feature::<Debug3dRenderFeature>()
-        .register_feature::<TextRenderFeature>()
-        .register_render_phase::<OpaqueRenderPhase>("Opaque")
-        .register_render_phase::<ShadowMapRenderPhase>("ShadowMap")
-        .register_render_phase::<TransparentRenderPhase>("Transparent")
-        .register_render_phase::<PostProcessRenderPhase>("PostProcess")
-        .register_render_phase::<UiRenderPhase>("Ui");
-
-    #[cfg(feature = "use-imgui")]
-    {
-        render_registry = render_registry.register_feature::<ImGuiRenderFeature>();
-    }
-
-    let render_registry = render_registry.build();
+    resources.insert(ViewportsResource::default());
 
     let rafx_api = rafx::api::RafxApi::new(sdl2_window, &Default::default())?;
 
-    let device_context = rafx_api.device_context();
+    let mut renderer_builder = RendererBuilder::default();
+    renderer_builder = renderer_builder
+        .add_plugin(Box::new(FontAssetTypeRendererPlugin))
+        .add_plugin(Box::new(GltfAssetTypeRendererPlugin))
+        .add_plugin(Box::new(Debug3DRendererPlugin))
+        .add_plugin(Box::new(TextRendererPlugin))
+        .add_plugin(Box::new(SpriteRendererPlugin))
+        .add_plugin(Box::new(MeshRendererPlugin))
+        .add_plugin(Box::new(DemoRendererPlugin));
 
-    let graphics_queue = device_context.create_queue(RafxQueueType::Graphics)?;
-    let transfer_queue = device_context.create_queue(RafxQueueType::Transfer)?;
+    #[cfg(feature = "use-imgui")]
+    {
+        use crate::features::imgui::ImguiRendererPlugin;
+        let imgui_manager = crate::features::imgui::init_sdl2_imgui_manager(sdl2_window);
+        resources.insert(imgui_manager);
+        renderer_builder = renderer_builder.add_plugin(Box::new(ImguiRendererPlugin::default()));
+    }
 
-    let resource_manager = {
-        let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
+    let mut renderer_builder_result = {
+        let mut extract_resources = ExtractResources::default();
 
-        let asset_manager = rafx::assets::AssetManager::new(
-            &device_context,
-            &render_registry,
-            asset_resource.loader(),
-            rafx::assets::UploadQueueConfig {
-                max_concurrent_uploads: 4,
-                max_new_uploads_in_single_frame: 4,
-                max_bytes_per_upload: 64 * 1024 * 1024,
-            },
-            &graphics_queue,
-            &transfer_queue,
-        );
-        let loaders = asset_manager.create_loaders();
+        #[cfg(feature = "use-imgui")]
+        let mut imgui_manager = resources
+            .get_mut::<crate::features::imgui::Sdl2ImguiManager>()
+            .unwrap();
+        #[cfg(feature = "use-imgui")]
+        extract_resources.insert(&mut *imgui_manager);
 
-        asset_resource.add_storage_with_loader::<ShaderAssetData, ShaderAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.shader_loader),
-        ));
-        asset_resource
-            .add_storage_with_loader::<ComputePipelineAssetData, ComputePipelineAsset, _>(
-                Box::new(ResourceAssetLoader(loaders.compute_pipeline_loader)),
-            );
-        asset_resource.add_storage_with_loader::<MaterialAssetData, MaterialAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.material_loader),
-        ));
-        asset_resource
-            .add_storage_with_loader::<MaterialInstanceAssetData, MaterialInstanceAsset, _>(
-                Box::new(ResourceAssetLoader(loaders.material_instance_loader)),
-            );
-        asset_resource.add_storage_with_loader::<ImageAssetData, ImageAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.image_loader),
-        ));
-        asset_resource.add_storage_with_loader::<BufferAssetData, BufferAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.buffer_loader),
-        ));
+        let render_graph_generator = Box::new(DemoRenderGraphGenerator);
 
-        asset_manager
-    };
-
-    resources.insert(rafx_api);
-    resources.insert(device_context);
-    resources.insert(resource_manager);
-    resources.insert(render_registry);
-
-    let game_resource_manager = {
-        //
-        // Create the game resource manager
-        //
-        let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-
-        let game_resource_manager = GameAssetManager::new(asset_resource.loader());
-
-        asset_resource.add_storage_with_loader::<MeshAssetData, MeshAsset, _>(Box::new(
-            ResourceAssetLoader(game_resource_manager.create_mesh_loader()),
-        ));
-
-        asset_resource.add_storage::<GltfMaterialAsset>();
-
-        asset_resource.add_storage_with_loader::<FontAssetData, FontAsset, _>(Box::new(
-            ResourceAssetLoader(game_resource_manager.create_font_loader()),
-        ));
-        game_resource_manager
-    };
-
-    resources.insert(game_resource_manager);
-
-    let game_renderer = GameRenderer::new(&resources, &graphics_queue, &transfer_queue).unwrap();
-    resources.insert(game_renderer);
+        renderer_builder.build(
+            extract_resources,
+            &rafx_api,
+            asset_source,
+            render_graph_generator,
+        )
+    }?;
 
     let (width, height) = sdl2_window.vulkan_drawable_size();
-    SwapchainHandler::create_swapchain(resources, sdl2_window, width, height)?;
+    let swapchain_helper = SwapchainHandler::create_swapchain(
+        &mut renderer_builder_result.asset_manager,
+        &mut renderer_builder_result.renderer,
+        sdl2_window,
+        width,
+        height,
+    )?;
+
+    resources.insert(rafx_api.device_context());
+    resources.insert(rafx_api);
+    resources.insert(swapchain_helper);
+    resources.insert(renderer_builder_result.asset_resource);
+    resources.insert(
+        renderer_builder_result
+            .asset_manager
+            .resource_manager()
+            .render_registry()
+            .clone(),
+    );
+    resources.insert(renderer_builder_result.asset_manager);
+    resources.insert(renderer_builder_result.renderer);
 
     Ok(())
 }
@@ -206,15 +126,24 @@ pub fn rendering_init(
 pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
     // Destroy these first
     {
-        SwapchainHandler::destroy_swapchain(resources)?;
-        resources.remove::<GameRenderer>();
+        {
+            let swapchain_helper = resources.remove::<RafxSwapchainHelper>().unwrap();
+            let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
+            let game_renderer = resources.get::<Renderer>().unwrap();
+            SwapchainHandler::destroy_swapchain(
+                swapchain_helper,
+                &mut *asset_manager,
+                &*game_renderer,
+            )?;
+        }
+
+        resources.remove::<Renderer>();
         resources.remove::<SpriteRenderNodeSet>();
         resources.remove::<MeshRenderNodeSet>();
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
         resources.remove::<DebugDraw3DResource>();
         resources.remove::<TextResource>();
-        resources.remove::<GameAssetManager>();
         resources.remove::<RenderRegistry>();
 
         // Remove the asset resource because we have asset storages that reference resources

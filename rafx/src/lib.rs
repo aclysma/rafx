@@ -44,3 +44,6 @@ pub use rafx_framework::graph;
 pub use rafx_framework::nodes;
 #[cfg(feature = "framework")]
 pub use rafx_framework::visibility;
+
+#[cfg(feature = "renderer")]
+pub use rafx_renderer as renderer;

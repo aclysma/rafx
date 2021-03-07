@@ -1,5 +1,5 @@
 use super::registry::RenderFeatureCount;
-use super::render_nodes::{AllRenderNodes, RenderNodeIndex};
+use super::render_nodes::{RenderNodeIndex, RenderNodeReservations};
 use super::VisibilityResult;
 use super::{GenericRenderNodeHandle, RenderFeatureIndex, RenderRegistry, RenderView};
 use std::sync::Mutex;
@@ -158,9 +158,9 @@ pub struct FramePacketBuilder {
 }
 
 impl FramePacketBuilder {
-    pub fn new(render_node_set: &AllRenderNodes) -> Self {
+    pub fn new(render_node_set: &RenderNodeReservations) -> Self {
         let feature_count = RenderRegistry::registered_feature_count();
-        let max_render_node_count_by_type = render_node_set.max_render_node_count_by_type();
+        let max_render_node_count_by_type = render_node_set.max_render_nodes_by_feature();
 
         debug_assert_eq!(feature_count as usize, max_render_node_count_by_type.len());
 

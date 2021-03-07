@@ -38,33 +38,30 @@ pub(super) fn compute_test_pass(
 
     let test_compute_pipeline = test_compute_pipeline.clone();
 
-    context
-        .graph_callbacks
-        .set_compute_callback(node, move |args, _user_context| {
-            let mut descriptor_set_allocator = args
-                .graph_context
-                .resource_context()
-                .create_descriptor_set_allocator();
-            let mut descriptor_set = descriptor_set_allocator
-                .create_dyn_descriptor_set_uninitialized(
-                    &test_compute_pipeline.get_raw().descriptor_set_layouts[0],
-                )?;
+    context.graph.set_compute_callback(node, move |args| {
+        let mut descriptor_set_allocator = args
+            .graph_context
+            .resource_context()
+            .create_descriptor_set_allocator();
+        let mut descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
+            &test_compute_pipeline.get_raw().descriptor_set_layouts[0],
+        )?;
 
-            let positions = args.graph_context.buffer(position_buffer).unwrap();
-            let velocities = args.graph_context.buffer(velocity_buffer).unwrap();
+        let positions = args.graph_context.buffer(position_buffer).unwrap();
+        let velocities = args.graph_context.buffer(velocity_buffer).unwrap();
 
-            descriptor_set.set_buffer(0, &positions);
-            descriptor_set.set_buffer(1, &velocities);
-            descriptor_set.flush(&mut descriptor_set_allocator)?;
-            descriptor_set_allocator.flush_changes()?;
+        descriptor_set.set_buffer(0, &positions);
+        descriptor_set.set_buffer(1, &velocities);
+        descriptor_set.flush(&mut descriptor_set_allocator)?;
+        descriptor_set_allocator.flush_changes()?;
 
-            // Draw calls
-            let command_buffer = &args.command_buffer;
-            command_buffer.cmd_bind_pipeline(&*test_compute_pipeline.get_raw().pipeline)?;
-            descriptor_set.bind(command_buffer)?;
-            command_buffer.cmd_dispatch(100, 1, 1)?;
-            Ok(())
-        });
+        // Draw calls
+        let command_buffer = &args.command_buffer;
+        command_buffer.cmd_bind_pipeline(&*test_compute_pipeline.get_raw().pipeline)?;
+        descriptor_set.bind(command_buffer)?;
+        command_buffer.cmd_dispatch(100, 1, 1)?;
+        Ok(())
+    });
 
     ComputeTestPass {
         node,

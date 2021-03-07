@@ -8,7 +8,7 @@ pub trait PrepareJob: Send {
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
-        views: &[&RenderView],
+        views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes);
 
     fn feature_debug_name(&self) -> &'static str;
@@ -28,9 +28,9 @@ impl PrepareJobSet {
         self,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
-        views: &[&RenderView],
+        views: &[RenderView],
         registry: &RenderRegistry,
-    ) -> Box<PreparedRenderData> {
+    ) -> PreparedRenderData {
         let mut feature_command_writers = Vec::with_capacity(self.prepare_jobs.len());
         let mut all_submit_nodes = Vec::with_capacity(self.prepare_jobs.len());
 
@@ -45,9 +45,6 @@ impl PrepareJobSet {
         // Merge all submit nodes
         let merged_submit_nodes = MergedFrameSubmitNodes::new(all_submit_nodes, registry);
 
-        Box::new(PreparedRenderData::new(
-            feature_command_writers,
-            merged_submit_nodes,
-        ))
+        PreparedRenderData::new(feature_command_writers, merged_submit_nodes)
     }
 }

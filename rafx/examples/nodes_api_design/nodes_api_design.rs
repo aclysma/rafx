@@ -2,7 +2,9 @@ use crate::demo_phases::*;
 use glam::Vec3;
 use legion::*;
 use rafx::nodes::RenderViewSet;
-use rafx::nodes::{AllRenderNodes, ExtractJobSet, FramePacketBuilder, RenderPhaseMaskBuilder};
+use rafx::nodes::{
+    ExtractJobSet, FramePacketBuilder, RenderNodeReservations, RenderPhaseMaskBuilder,
+};
 use rafx::nodes::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext, RenderRegistryBuilder,
 };
@@ -254,7 +256,7 @@ fn main() {
             let frame_packet_builder = {
                 let mut demo_render_nodes = resources.get_mut::<DemoRenderNodeSet>().unwrap();
                 demo_render_nodes.update();
-                let mut all_render_nodes = AllRenderNodes::default();
+                let mut all_render_nodes = RenderNodeReservations::default();
                 all_render_nodes.add_render_nodes(&*demo_render_nodes);
 
                 FramePacketBuilder::new(&all_render_nodes)

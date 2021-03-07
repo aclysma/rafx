@@ -51,7 +51,14 @@ pub use upload::UploadQueueConfig;
 
 mod asset_lookup;
 pub use asset_lookup::AssetLookup;
-pub use asset_lookup::AssetLookupSet;
+pub use asset_lookup::DynAssetLookup;
+
+mod asset_type_handler;
+pub use asset_type_handler::AssetTypeHandler;
+pub use asset_type_handler::AssetTypeHandlerFactory;
+pub use asset_type_handler::DefaultAssetTypeHandler;
+pub use asset_type_handler::DefaultAssetTypeLoadHandler;
+pub use asset_type_handler::StorageOnlyAssetTypeHandler;
 
 mod load_queue;
 pub use load_queue::GenericLoader;

@@ -40,6 +40,10 @@ impl RenderPhaseMask {
         assert!(index < MAX_RENDER_PHASE_COUNT);
         (self.0 & 1 << index) != 0
     }
+
+    pub fn empty() -> Self {
+        RenderPhaseMask(0)
+    }
 }
 
 #[derive(Default)]
@@ -91,6 +95,7 @@ pub struct RenderViewInner {
     debug_name: String,
 }
 
+#[derive(Clone)]
 pub struct RenderViewDepthRange {
     pub near: f32,
     pub far: Option<f32>, // If none, it's an infinite projection

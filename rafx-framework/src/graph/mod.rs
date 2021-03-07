@@ -32,10 +32,21 @@ pub use graph_resource_cache::RenderGraphCache;
 mod prepared_graph;
 pub use prepared_graph::OnBeginExecuteGraphArgs;
 pub use prepared_graph::PreparedRenderGraph;
-pub use prepared_graph::RenderGraphExecutor;
-pub use prepared_graph::RenderGraphNodeCallbacks;
 pub use prepared_graph::SwapchainSurfaceInfo;
 pub use prepared_graph::VisitComputeNodeArgs;
 pub use prepared_graph::VisitRenderpassNodeArgs;
 
+use rafx_api::RafxResult;
+
 pub type RenderGraphResourceName = &'static str;
+
+enum RenderGraphNodeVisitNodeCallback {
+    Renderpass(Box<RenderGraphNodeVisitRenderpassNodeCallback>),
+    Compute(Box<RenderGraphNodeVisitComputeNodeCallback>),
+}
+
+type RenderGraphNodeVisitRenderpassNodeCallback =
+    dyn Fn(VisitRenderpassNodeArgs) -> RafxResult<()> + Send;
+
+type RenderGraphNodeVisitComputeNodeCallback =
+    dyn Fn(VisitComputeNodeArgs) -> RafxResult<()> + Send;

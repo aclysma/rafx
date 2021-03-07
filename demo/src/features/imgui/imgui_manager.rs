@@ -1,4 +1,4 @@
-use crate::imgui_support::{ImGuiDrawData, ImGuiFontAtlas};
+use super::{ImGuiDrawData, ImguiFontAtlasData};
 use imgui::sys as imgui_sys;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -166,13 +166,13 @@ impl ImguiManager {
     }
 
     #[profiling::function]
-    pub fn copy_font_atlas_texture(&self) -> Option<ImGuiFontAtlas> {
+    pub fn copy_font_atlas_texture(&self) -> Option<ImguiFontAtlasData> {
         let inner = self.inner.lock().unwrap();
 
         if inner.font_atlas_texture.is_null() {
             None
         } else {
-            unsafe { Some(ImGuiFontAtlas::new(&*inner.font_atlas_texture)) }
+            unsafe { Some(ImguiFontAtlasData::new(&*inner.font_atlas_texture)) }
         }
     }
 

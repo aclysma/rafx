@@ -5,12 +5,6 @@ use super::asset_storage::DynAssetLoader;
 
 use type_uuid::TypeUuid;
 
-use crate::distill_impl::ResourceAssetLoader;
-use crate::{
-    AssetManager, BufferAsset, BufferAssetData, ComputePipelineAsset, ComputePipelineAssetData,
-    ImageAsset, ImageAssetData, MaterialAsset, MaterialAssetData, MaterialInstanceAsset,
-    MaterialInstanceAssetData, ShaderAsset, ShaderAssetData,
-};
 use crossbeam_channel::{Receiver, Sender};
 use distill::core::AssetUuid;
 use distill::loader::handle::AssetHandle;
@@ -49,32 +43,6 @@ impl AssetResource {
 }
 
 impl AssetResource {
-    pub fn add_default_asset_storage(
-        &mut self,
-        asset_manager: &AssetManager,
-    ) {
-        let loaders = asset_manager.create_loaders();
-
-        self.add_storage_with_loader::<ShaderAssetData, ShaderAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.shader_loader),
-        ));
-        self.add_storage_with_loader::<ComputePipelineAssetData, ComputePipelineAsset, _>(
-            Box::new(ResourceAssetLoader(loaders.compute_pipeline_loader)),
-        );
-        self.add_storage_with_loader::<MaterialAssetData, MaterialAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.material_loader),
-        ));
-        self.add_storage_with_loader::<MaterialInstanceAssetData, MaterialInstanceAsset, _>(
-            Box::new(ResourceAssetLoader(loaders.material_instance_loader)),
-        );
-        self.add_storage_with_loader::<ImageAssetData, ImageAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.image_loader),
-        ));
-        self.add_storage_with_loader::<BufferAssetData, BufferAsset, _>(Box::new(
-            ResourceAssetLoader(loaders.buffer_loader),
-        ));
-    }
-
     /// Adds a default storage object for assets of type T
     pub fn add_storage<T: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send>(&mut self) {
         self.storage.add_storage::<T>();

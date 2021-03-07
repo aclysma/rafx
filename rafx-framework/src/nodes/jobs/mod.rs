@@ -10,17 +10,23 @@ pub use write::*;
 use crate::graph::{OnBeginExecuteGraphArgs, VisitRenderpassNodeArgs};
 use crate::{DynCommandBuffer, GraphicsPipelineRenderTargetMeta, RenderResources, ResourceContext};
 use rafx_api::RafxDeviceContext;
+use rafx_base::memory::force_to_static_lifetime;
 
-pub struct RenderJobExtractContext {
-    pub render_resources: &'static RenderResources,
+pub type ExtractResources<'a> = rafx_base::resource_ref_map::ResourceRefMap<'a>;
+
+pub struct RenderJobExtractContext<'a> {
+    pub extract_resources: &'a ExtractResources<'a>,
+    pub render_resources: &'a RenderResources,
 }
 
-impl RenderJobExtractContext {
-    pub fn new<'a>(render_resources: &'a RenderResources) -> Self {
-        unsafe {
-            RenderJobExtractContext {
-                render_resources: force_to_static_lifetime(render_resources),
-            }
+impl<'a> RenderJobExtractContext<'a> {
+    pub fn new(
+        extract_resources: &'a ExtractResources<'a>,
+        render_resources: &'a RenderResources,
+    ) -> Self {
+        RenderJobExtractContext {
+            extract_resources,
+            render_resources,
         }
     }
 }
@@ -102,8 +108,4 @@ impl RenderJobWriteContext {
             args.render_target_meta.clone(),
         )
     }
-}
-
-unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
-    std::mem::transmute(value)
 }

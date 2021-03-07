@@ -36,7 +36,7 @@ impl PrepareJob for SpritePrepareJob {
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
-        views: &[&RenderView],
+        views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("Sprite Prepare");
 
@@ -133,7 +133,7 @@ impl PrepareJob for SpritePrepareJob {
         // Add submit nodes per view
         //
         let mut submit_nodes = FeatureSubmitNodes::default();
-        for &view in views {
+        for view in views {
             if let Some(view_nodes) = frame_packet.view_nodes(view, self.feature_index()) {
                 let mut view_submit_nodes =
                     ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
@@ -160,7 +160,7 @@ impl PrepareJob for SpritePrepareJob {
                     }
                 }
 
-                submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
+                submit_nodes.add_submit_nodes_for_view(&view, view_submit_nodes);
             }
 
             //TODO: Multi-view support for sprites. Not clear on if we want to do a screen-space view specifically

@@ -1,17 +1,18 @@
 use crate::assets::font::FontAsset;
+use crate::assets::gltf::MeshAsset;
 use crate::components::SpotLightComponent;
 use crate::components::{
     DirectionalLightComponent, MeshComponent, PointLightComponent, PositionComponent,
 };
 use crate::features::mesh::{MeshRenderNode, MeshRenderNodeSet};
 use crate::features::text::TextResource;
-use crate::game_asset_lookup::MeshAsset;
 use crate::time::TimeState;
 use distill::loader::handle::Handle;
 use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
+use rafx::renderer::ViewportsResource;
 use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
 pub(super) struct ShadowsScene {
@@ -184,6 +185,13 @@ impl super::TestScene for ShadowsScene {
         resources: &Resources,
     ) {
         super::add_light_debug_draw(&resources, &world);
+
+        {
+            let time_state = resources.get::<TimeState>().unwrap();
+            let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
+
+            super::update_main_view(&*time_state, &mut *viewports_resource);
+        }
 
         {
             let mut text_resource = resources.get_mut::<TextResource>().unwrap();

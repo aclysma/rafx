@@ -4,13 +4,16 @@ use crate::graph::graph_image::PhysicalImageViewId;
 use crate::graph::graph_node::{RenderGraphNodeId, RenderGraphNodeName};
 use crate::graph::graph_pass::{PrepassBufferBarrier, PrepassImageBarrier, RenderGraphOutputPass};
 use crate::graph::graph_plan::RenderGraphPlan;
-use crate::graph::{RenderGraphBufferUsageId, RenderGraphBuilder, RenderGraphImageUsageId};
-use crate::nodes::{RenderPhase, RenderPhaseIndex};
+use crate::graph::{
+    RenderGraphBufferUsageId, RenderGraphBuilder, RenderGraphImageUsageId,
+    RenderGraphNodeVisitNodeCallback,
+};
+use crate::nodes::{PreparedRenderData, RenderJobBeginExecuteGraphContext};
 use crate::resources::DynCommandBuffer;
 use crate::resources::ResourceLookupSet;
 use crate::{BufferResource, GraphicsPipelineRenderTargetMeta, ImageResource};
 use crate::{ImageViewResource, ResourceArc, ResourceContext};
-use fnv::{FnvHashMap, FnvHashSet};
+use fnv::FnvHashMap;
 use rafx_api::{
     RafxBarrierQueueTransition, RafxBufferBarrier, RafxColorRenderTargetBinding, RafxCommandBuffer,
     RafxCommandBufferDef, RafxCommandPoolDef, RafxDepthStencilRenderTargetBinding,
@@ -26,7 +29,8 @@ pub struct SwapchainSurfaceInfo {
 
 #[derive(Copy, Clone)]
 pub struct RenderGraphContext<'a> {
-    prepared_graph: &'a PreparedRenderGraph,
+    prepared_render_graph: &'a PreparedRenderGraph,
+    prepared_render_data: &'a PreparedRenderData,
 }
 
 impl<'a> RenderGraphContext<'a> {
@@ -34,22 +38,26 @@ impl<'a> RenderGraphContext<'a> {
         &self,
         buffer: RenderGraphBufferUsageId,
     ) -> Option<ResourceArc<BufferResource>> {
-        self.prepared_graph.buffer(buffer)
+        self.prepared_render_graph.buffer(buffer)
     }
 
     pub fn image_view(
         &self,
         image: RenderGraphImageUsageId,
     ) -> Option<ResourceArc<ImageViewResource>> {
-        self.prepared_graph.image_view(image)
+        self.prepared_render_graph.image_view(image)
     }
 
     pub fn device_context(&self) -> &RafxDeviceContext {
-        &self.prepared_graph.device_context
+        &self.prepared_render_graph.device_context
     }
 
     pub fn resource_context(&self) -> &ResourceContext {
-        &self.prepared_graph.resource_context
+        &self.prepared_render_graph.resource_context
+    }
+
+    pub fn prepared_render_data(&self) -> &PreparedRenderData {
+        &self.prepared_render_data
     }
 }
 
@@ -112,29 +120,17 @@ impl PreparedRenderGraph {
         let image_view_resources =
             cache.allocate_image_views(&graph_plan, resources, &image_resources)?;
 
-        // let render_pass_resources =
-        //     cache.allocate_render_passes(&graph_plan, resources, swapchain_surface_info)?;
-        //
-        // let framebuffer_resources = cache.allocate_framebuffers(
-        //     &graph_plan,
-        //     resources,
-        //     &image_view_resources,
-        //     &render_pass_resources,
-        // )?;
-
         Ok(PreparedRenderGraph {
             device_context: device_context.clone(),
             resource_context: resource_context.clone(),
             buffer_resources,
             image_resources,
             image_view_resources,
-            //renderpass_resources: render_pass_resources,
-            //framebuffer_resources,
             graph_plan,
         })
     }
 
-    fn buffer(
+    pub fn buffer(
         &self,
         buffer: RenderGraphBufferUsageId,
     ) -> Option<ResourceArc<BufferResource>> {
@@ -142,7 +138,15 @@ impl PreparedRenderGraph {
         self.buffer_resources.get(physical_buffer).cloned()
     }
 
-    fn image_view(
+    // pub fn image(
+    //     &self,
+    //     image_usage: RenderGraphImageUsageId,
+    // ) -> Option<ResourceArc<ImageResource>> {
+    //     let image = self.graph_plan.image_usage_to_physical.get(&image_usage)?;
+    //     self.image_resources.get(image).cloned()
+    // }
+
+    pub fn image_view(
         &self,
         image: RenderGraphImageUsageId,
     ) -> Option<ResourceArc<ImageViewResource>> {
@@ -213,9 +217,55 @@ impl PreparedRenderGraph {
         command_buffer.cmd_resource_barrier(&buffer_barriers, &image_barriers)
     }
 
+    fn visit_renderpass_node(
+        &self,
+        node_id: RenderGraphNodeId,
+        args: VisitRenderpassNodeArgs,
+    ) -> RafxResult<()> {
+        if let Some(callback) = self.graph_plan.visit_node_callbacks.get(&node_id) {
+            if let RenderGraphNodeVisitNodeCallback::Renderpass(render_callback) = callback {
+                (render_callback)(args)?
+            } else {
+                let debug_name = args
+                    .graph_context
+                    .prepared_render_graph
+                    .node_debug_name(node_id);
+                log::error!("Tried to call a render node callback but a compute callback was registered for node {:?} ({:?})", node_id, debug_name);
+            }
+        } else {
+            //let debug_name = args.graph_context.prepared_render_graph.node_debug_name(node_id);
+            //log::error!("No callback found for node {:?} ({:?})", node_id, debug_name);
+        }
+
+        Ok(())
+    }
+
+    fn visit_compute_node(
+        &self,
+        node_id: RenderGraphNodeId,
+        args: VisitComputeNodeArgs,
+    ) -> RafxResult<()> {
+        if let Some(callback) = self.graph_plan.visit_node_callbacks.get(&node_id) {
+            if let RenderGraphNodeVisitNodeCallback::Compute(compute_callback) = callback {
+                (compute_callback)(args)?
+            } else {
+                let debug_name = args
+                    .graph_context
+                    .prepared_render_graph
+                    .node_debug_name(node_id);
+                log::error!("Tried to call a compute node callback but a render node callback was registered for node {:?} ({:?})", node_id, debug_name);
+            }
+        } else {
+            //let debug_name = args.graph_context.prepared_render_graph.node_debug_name(node_id);
+            //log::error!("No callback found for node {:?} {:?}", node_id, debug_name);
+        }
+
+        Ok(())
+    }
+
     pub fn execute_graph(
         &self,
-        node_visitor: &dyn RenderGraphNodeVisitor,
+        prepared_render_data: PreparedRenderData,
         queue: &RafxQueue,
     ) -> RafxResult<Vec<DynCommandBuffer>> {
         profiling::scope!("Execute Graph");
@@ -234,7 +284,8 @@ impl PreparedRenderGraph {
         command_buffer.begin()?;
 
         let render_graph_context = RenderGraphContext {
-            prepared_graph: &self,
+            prepared_render_graph: &self,
+            prepared_render_data: &prepared_render_data,
         };
 
         let args = OnBeginExecuteGraphArgs {
@@ -242,7 +293,11 @@ impl PreparedRenderGraph {
             command_buffer: command_buffer.clone(),
         };
 
-        node_visitor.execute_graph_begin(args)?;
+        let mut write_context =
+            RenderJobBeginExecuteGraphContext::from_on_begin_execute_graph_args(&args);
+        args.graph_context
+            .prepared_render_data()
+            .on_begin_execute_graph(&mut write_context)?;
 
         //
         // Iterate through all passes
@@ -335,7 +390,7 @@ impl PreparedRenderGraph {
                         command_buffer: command_buffer.clone(),
                     };
 
-                    node_visitor.visit_renderpass_node(node_id, args)?;
+                    self.visit_renderpass_node(node_id, args)?;
 
                     command_buffer.cmd_end_render_pass()?;
                 }
@@ -345,7 +400,7 @@ impl PreparedRenderGraph {
                         command_buffer: command_buffer.clone(),
                     };
 
-                    node_visitor.visit_compute_node(node_id, args)?;
+                    self.visit_compute_node(node_id, args)?;
                 }
             }
 
@@ -366,307 +421,5 @@ impl PreparedRenderGraph {
         command_buffer.end()?;
 
         Ok(vec![command_buffer])
-    }
-}
-
-pub trait RenderGraphNodeVisitor {
-    fn execute_graph_begin(
-        &self,
-        args: OnBeginExecuteGraphArgs,
-    ) -> RafxResult<()>;
-
-    fn visit_renderpass_node(
-        &self,
-        node_id: RenderGraphNodeId,
-        args: VisitRenderpassNodeArgs,
-    ) -> RafxResult<()>;
-
-    fn visit_compute_node(
-        &self,
-        node_id: RenderGraphNodeId,
-        args: VisitComputeNodeArgs,
-    ) -> RafxResult<()>;
-}
-
-type RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT> =
-    dyn Fn(OnBeginExecuteGraphArgs, &RenderGraphUserContextT) -> RafxResult<()> + Send;
-
-type RenderGraphNodeVisitRenderpassNodeCallback<RenderGraphUserContextT> =
-    dyn Fn(VisitRenderpassNodeArgs, &RenderGraphUserContextT) -> RafxResult<()> + Send;
-
-type RenderGraphNodeVisitComputeNodeCallback<RenderGraphUserContextT> =
-    dyn Fn(VisitComputeNodeArgs, &RenderGraphUserContextT) -> RafxResult<()> + Send;
-
-enum RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT> {
-    Renderpass(Box<RenderGraphNodeVisitRenderpassNodeCallback<RenderGraphUserContextT>>),
-    Compute(Box<RenderGraphNodeVisitComputeNodeCallback<RenderGraphUserContextT>>),
-}
-
-/// Created by RenderGraphNodeCallbacks::create_visitor(). Implements RenderGraphNodeVisitor and
-/// forwards the call, adding the user context as a parameter.
-struct RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT> {
-    context: &'b RenderGraphUserContextT,
-    begin_execute_graph_callback:
-        &'b Option<Box<RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT>>>,
-    callbacks: &'b FnvHashMap<
-        RenderGraphNodeId,
-        RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT>,
-    >,
-}
-
-impl<'b, RenderGraphUserContextT> RenderGraphNodeVisitor
-    for RenderGraphNodeVisitorImpl<'b, RenderGraphUserContextT>
-{
-    fn execute_graph_begin(
-        &self,
-        args: OnBeginExecuteGraphArgs,
-    ) -> RafxResult<()> {
-        if let Some(callback) = self.begin_execute_graph_callback {
-            (callback)(args, self.context)?;
-        }
-
-        Ok(())
-    }
-
-    fn visit_renderpass_node(
-        &self,
-        node_id: RenderGraphNodeId,
-        args: VisitRenderpassNodeArgs,
-    ) -> RafxResult<()> {
-        if let Some(callback) = self.callbacks.get(&node_id) {
-            if let RenderGraphNodeVisitNodeCallback::Renderpass(render_callback) = callback {
-                (render_callback)(args, self.context)?
-            } else {
-                let debug_name = args.graph_context.prepared_graph.node_debug_name(node_id);
-                log::error!("Tried to call a render node callback but a compute callback was registered for node {:?} ({:?})", node_id, debug_name);
-            }
-        } else {
-            //let debug_name = args.graph_context.prepared_graph.node_debug_name(node_id);
-            //log::error!("No callback found for node {:?} ({:?})", node_id, debug_name);
-        }
-
-        Ok(())
-    }
-
-    fn visit_compute_node(
-        &self,
-        node_id: RenderGraphNodeId,
-        args: VisitComputeNodeArgs,
-    ) -> RafxResult<()> {
-        if let Some(callback) = self.callbacks.get(&node_id) {
-            if let RenderGraphNodeVisitNodeCallback::Compute(compute_callback) = callback {
-                (compute_callback)(args, self.context)?
-            } else {
-                let debug_name = args.graph_context.prepared_graph.node_debug_name(node_id);
-                log::error!("Tried to call a compute node callback but a render node callback was registered for node {:?} ({:?})", node_id, debug_name);
-            }
-        } else {
-            //let debug_name = args.graph_context.prepared_graph.node_debug_name(node_id);
-            //log::error!("No callback found for node {:?} {:?}", node_id, debug_name);
-        }
-
-        Ok(())
-    }
-}
-
-/// All the callbacks associated with rendergraph nodes. We keep them separate from the nodes so
-/// that we can avoid propagating generic parameters throughout the rest of the rendergraph code
-pub struct RenderGraphNodeCallbacks<RenderGraphUserContextT> {
-    callbacks:
-        FnvHashMap<RenderGraphNodeId, RenderGraphNodeVisitNodeCallback<RenderGraphUserContextT>>,
-    begin_execute_graph_callback:
-        Option<Box<RenderGraphNodeBeginExecuteGraphCallback<RenderGraphUserContextT>>>,
-    render_phase_dependencies: FnvHashMap<RenderGraphNodeId, FnvHashSet<RenderPhaseIndex>>,
-}
-
-impl<RenderGraphUserContextT> RenderGraphNodeCallbacks<RenderGraphUserContextT> {
-    pub fn set_begin_execute_graph_callback<CallbackFnT>(
-        &mut self,
-        f: CallbackFnT,
-    ) where
-        CallbackFnT: Fn(OnBeginExecuteGraphArgs, &RenderGraphUserContextT) -> RafxResult<()>
-            + 'static
-            + Send,
-    {
-        self.begin_execute_graph_callback = Some(Box::new(f));
-    }
-
-    /// Adds a callback that receives the renderpass associated with the node
-    pub fn set_renderpass_callback<CallbackFnT>(
-        &mut self,
-        node_id: RenderGraphNodeId,
-        f: CallbackFnT,
-    ) where
-        CallbackFnT: Fn(VisitRenderpassNodeArgs, &RenderGraphUserContextT) -> RafxResult<()>
-            + 'static
-            + Send,
-    {
-        let old = self.callbacks.insert(
-            node_id,
-            RenderGraphNodeVisitNodeCallback::Renderpass(Box::new(f)),
-        );
-        // If this trips, multiple callbacks were set on the node
-        assert!(old.is_none());
-    }
-
-    /// Adds a callback for compute based nodes
-    pub fn set_compute_callback<CallbackFnT>(
-        &mut self,
-        node_id: RenderGraphNodeId,
-        f: CallbackFnT,
-    ) where
-        CallbackFnT:
-            Fn(VisitComputeNodeArgs, &RenderGraphUserContextT) -> RafxResult<()> + 'static + Send,
-    {
-        let old = self.callbacks.insert(
-            node_id,
-            RenderGraphNodeVisitNodeCallback::Compute(Box::new(f)),
-        );
-        // If this trips, multiple callbacks were set on the node
-        assert!(old.is_none());
-    }
-
-    pub fn add_render_phase_dependency<PhaseT: RenderPhase>(
-        &mut self,
-        node_id: RenderGraphNodeId,
-    ) {
-        self.render_phase_dependencies
-            .entry(node_id)
-            .or_default()
-            .insert(PhaseT::render_phase_index());
-    }
-
-    /// Pass to PreparedRenderGraph::execute_graph, this will cause the graph to be executed,
-    /// triggering any registered callbacks
-    pub fn create_visitor<'a>(
-        &'a self,
-        context: &'a RenderGraphUserContextT,
-    ) -> Box<dyn RenderGraphNodeVisitor + 'a> {
-        Box::new(RenderGraphNodeVisitorImpl::<'a, RenderGraphUserContextT> {
-            context,
-            begin_execute_graph_callback: &self.begin_execute_graph_callback,
-            callbacks: &self.callbacks,
-        })
-    }
-}
-
-impl<T> Default for RenderGraphNodeCallbacks<T> {
-    fn default() -> Self {
-        RenderGraphNodeCallbacks {
-            callbacks: Default::default(),
-            begin_execute_graph_callback: Default::default(),
-            render_phase_dependencies: Default::default(),
-        }
-    }
-}
-
-/// A wrapper around a prepared render graph and callbacks that will be hit when executing the graph
-pub struct RenderGraphExecutor<T> {
-    prepared_graph: PreparedRenderGraph,
-    callbacks: RenderGraphNodeCallbacks<T>,
-}
-
-impl<T> RenderGraphExecutor<T> {
-    /// Create the executor. This allows the prepared graph, resources required to execute it, and
-    /// callbacks that will be triggered while executing it to be passed around and executed later.
-    pub fn new(
-        device_context: &RafxDeviceContext,
-        resource_context: &ResourceContext,
-        graph: RenderGraphBuilder,
-        swapchain_surface_info: &SwapchainSurfaceInfo,
-        callbacks: RenderGraphNodeCallbacks<T>,
-    ) -> RafxResult<Self> {
-        //
-        // Allocate the resources for the graph
-        //
-        let prepared_graph = PreparedRenderGraph::new(
-            device_context,
-            resource_context,
-            resource_context.resources(),
-            graph,
-            swapchain_surface_info,
-        )?;
-
-        //
-        // Pre-warm caches for pipelines that we may need
-        //
-        // for (node_id, render_phase_indices) in &callbacks.render_phase_dependencies {
-        //     // Passes may get culled if the images are not used. This means the renderpass would
-        //     // not be created so pipelines are also not needed
-        //     if let Some(&renderpass_index) =
-        //         prepared_graph.graph_plan.node_to_pass_index.get(node_id)
-        //     {
-        //         let renderpass = &prepared_graph.renderpass_resources[renderpass_index];
-        //         if let Some(renderpass) = renderpass {
-        //             for &render_phase_index in render_phase_indices {
-        //                 resource_context
-        //                     .graphics_pipeline_cache()
-        //                     .register_renderpass_to_phase_index_per_frame(
-        //                         renderpass,
-        //                         render_phase_index,
-        //                     )
-        //             }
-        //         } else {
-        //             log::error!("add_render_phase_dependency was called on node {:?} ({:?}) that is not a renderpass", node_id, prepared_graph.graph_plan.passes[renderpass_index].debug_name());
-        //         }
-        //     }
-        // }
-        // resource_context
-        //     .graphics_pipeline_cache()
-        //     .precache_pipelines_for_all_phases()?;
-
-        //
-        // Return the executor which can be triggered later
-        //
-        Ok(RenderGraphExecutor {
-            prepared_graph,
-            callbacks,
-        })
-    }
-
-    pub fn buffer_resource(
-        &self,
-        buffer_usage: RenderGraphBufferUsageId,
-    ) -> Option<ResourceArc<BufferResource>> {
-        let buffer = self
-            .prepared_graph
-            .graph_plan
-            .buffer_usage_to_physical
-            .get(&buffer_usage)?;
-        Some(self.prepared_graph.buffer_resources[buffer].clone())
-    }
-
-    pub fn image_resource(
-        &self,
-        image_usage: RenderGraphImageUsageId,
-    ) -> Option<ResourceArc<ImageResource>> {
-        let image = self
-            .prepared_graph
-            .graph_plan
-            .image_usage_to_physical
-            .get(&image_usage)?;
-        Some(self.prepared_graph.image_resources[image].clone())
-    }
-
-    pub fn image_view_resource(
-        &self,
-        image_usage: RenderGraphImageUsageId,
-    ) -> Option<ResourceArc<ImageViewResource>> {
-        let image = self
-            .prepared_graph
-            .graph_plan
-            .image_usage_to_view
-            .get(&image_usage)?;
-        Some(self.prepared_graph.image_view_resources[image].clone())
-    }
-
-    /// Executes the graph, passing through the given context parameter
-    pub fn execute_graph(
-        self,
-        context: &T,
-        queue: &RafxQueue,
-    ) -> RafxResult<Vec<DynCommandBuffer>> {
-        let visitor = self.callbacks.create_visitor(context);
-        self.prepared_graph.execute_graph(&*visitor, queue)
     }
 }

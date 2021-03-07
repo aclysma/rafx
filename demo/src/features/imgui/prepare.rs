@@ -36,7 +36,7 @@ impl PrepareJob for ImGuiPrepareJobImpl {
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
-        views: &[&RenderView],
+        views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("ImGui Prepare");
 

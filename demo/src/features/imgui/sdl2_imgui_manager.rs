@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use super::ImguiManager;
-use crate::imgui_support::{ImGuiDrawData, ImGuiFontAtlas};
+use super::{ImGuiDrawData, ImguiFontAtlasData};
 use imgui_sdl2::ImguiSdl2;
 use sdl2::mouse::MouseState;
 use sdl2::video::Window;
@@ -46,19 +46,19 @@ impl Sdl2ImguiManager {
     }
 
     #[profiling::function]
-    pub fn build_font_atlas(&self) -> ImGuiFontAtlas {
+    pub fn build_font_atlas(&self) -> ImguiFontAtlasData {
         let mut font_atlas = None;
         self.with_context(|context| {
             let mut fonts = context.fonts();
             let font_atlas_texture = fonts.build_rgba32_texture();
-            font_atlas = Some(ImGuiFontAtlas::new(&font_atlas_texture))
+            font_atlas = Some(ImguiFontAtlasData::new(&font_atlas_texture))
         });
 
         font_atlas.unwrap()
     }
 
     // This is a full copy from ffi memory
-    pub fn copy_font_atlas(&self) -> Option<ImGuiFontAtlas> {
+    pub fn copy_font_atlas(&self) -> Option<ImguiFontAtlasData> {
         self.imgui_manager.copy_font_atlas_texture()
     }
 
@@ -277,7 +277,7 @@ fn init_imgui(window: &Window) -> imgui::Context {
     imgui
 }
 
-pub fn init_imgui_manager(window: &Window) -> Sdl2ImguiManager {
+pub fn init_sdl2_imgui_manager(window: &Window) -> Sdl2ImguiManager {
     let imgui_context = init_imgui(&window);
     Sdl2ImguiManager::new(imgui_context, window)
 }

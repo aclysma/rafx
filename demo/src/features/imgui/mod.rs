@@ -1,5 +1,4 @@
 use crate::features::imgui::extract::ImGuiExtractJobImpl;
-use crate::imgui_support::ImGuiDrawData;
 use rafx::api::RafxPrimitiveTopology;
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::nodes::ExtractJob;
@@ -10,6 +9,22 @@ use std::convert::TryInto;
 mod extract;
 mod prepare;
 mod write;
+
+mod sdl2_imgui_manager;
+pub use sdl2_imgui_manager::init_sdl2_imgui_manager;
+pub use sdl2_imgui_manager::Sdl2ImguiManager;
+
+mod imgui_manager;
+pub use imgui_manager::ImguiManager;
+
+mod imgui_draw_data;
+use imgui_draw_data::*;
+
+mod imgui_font_atlas;
+use imgui_font_atlas::*;
+
+mod plugin;
+pub use plugin::ImguiRendererPlugin;
 
 pub fn create_imgui_extract_job() -> Box<dyn ExtractJob> {
     Box::new(ImGuiExtractJobImpl::new())

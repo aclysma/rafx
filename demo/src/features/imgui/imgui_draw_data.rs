@@ -1,40 +1,14 @@
-mod sdl2_imgui_manager;
-pub use sdl2_imgui_manager::init_imgui_manager;
-pub use sdl2_imgui_manager::Sdl2ImguiManager;
-
-mod imgui_manager;
-pub use imgui_manager::ImguiManager;
-
-pub use imgui;
-use imgui::{DrawCmd, DrawCmdParams};
-
-pub struct ImGuiFontAtlas {
-    pub width: u32,
-    pub height: u32,
-    pub data: Vec<u8>,
-}
-
-impl ImGuiFontAtlas {
-    pub fn new(texture: &imgui::FontAtlasTexture) -> Self {
-        ImGuiFontAtlas {
-            width: texture.width,
-            height: texture.height,
-            data: texture.data.to_vec(),
-        }
-    }
-}
-
 pub enum ImGuiDrawCmd {
     Elements {
         count: usize,
-        cmd_params: DrawCmdParams,
+        cmd_params: imgui::DrawCmdParams,
     },
     ResetRenderState,
     //RawCallback is not supported
 }
 
 impl From<imgui::DrawCmd> for ImGuiDrawCmd {
-    fn from(draw_cmd: DrawCmd) -> Self {
+    fn from(draw_cmd: imgui::DrawCmd) -> Self {
         match draw_cmd {
             imgui::DrawCmd::Elements { count, cmd_params } => {
                 ImGuiDrawCmd::Elements { count, cmd_params }

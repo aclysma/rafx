@@ -26,3 +26,11 @@ pub fn slice_size_in_bytes<T>(slice: &[T]) -> usize {
     let range = slice.as_ptr_range();
     (range.end as *const u8 as usize) - (range.start as *const u8 as usize)
 }
+
+pub unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
+    std::mem::transmute(value)
+}
+
+pub unsafe fn force_to_static_lifetime_mut<T>(value: &mut T) -> &'static mut T {
+    std::mem::transmute(value)
+}

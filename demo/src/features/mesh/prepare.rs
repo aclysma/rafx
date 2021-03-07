@@ -1,16 +1,14 @@
 use super::MeshCommandWriter;
+use crate::components::{
+    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+};
+use crate::features::mesh::shadow_map_resource::ShadowMapResource;
 use crate::features::mesh::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
     LightId, MeshPerObjectFragmentShaderParam, MeshPerViewFragmentShaderParam, MeshRenderFeature,
-    PreparedSubmitNodeMeshData, ShadowMapData, ShadowMapRenderView,
+    PreparedSubmitNodeMeshData, ShadowMapRenderView,
 };
 use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
-use crate::{
-    components::{
-        DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
-    },
-    game_renderer::InvalidResources,
-};
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx::framework::MaterialPass;
 use rafx::framework::{
@@ -20,6 +18,7 @@ use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderJobPrepareContext, RenderView, RenderViewIndex, ViewSubmitNodes,
 };
+use rafx::renderer::InvalidResources;
 
 pub struct PreparedDirectionalLight<'a> {
     light: &'a DirectionalLightComponent,
@@ -50,11 +49,13 @@ impl PrepareJob for MeshPrepareJob {
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
-        views: &[&RenderView],
+        views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("Mesh Prepare");
         let invalid_resources = prepare_context.render_resources.fetch::<InvalidResources>();
-        let shadow_map_data = prepare_context.render_resources.fetch::<ShadowMapData>();
+        let shadow_map_data = prepare_context
+            .render_resources
+            .fetch::<ShadowMapResource>();
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
@@ -226,7 +227,7 @@ impl PrepareJob for MeshPrepareJob {
         //
         // Create per-view descriptors for all per-view descriptor layouts that are in our materials
         //
-        for &view in views {
+        for view in views {
             let mut per_view_frag_data = self.create_per_view_frag_data(
                 view,
                 &prepared_directional_lights,

@@ -1,10 +1,7 @@
-use crate::{
-    BufferAsset, ComputePipelineAsset, ImageAsset, MaterialAsset, MaterialInstanceAsset,
-    SamplerAsset, ShaderAsset,
-};
 use distill::loader::storage::IndirectionTable;
 use distill::loader::LoadHandle;
 use distill::loader::Loader;
+use downcast_rs::Downcast;
 use fnv::FnvHashMap;
 
 //
@@ -35,11 +32,17 @@ fn resolve_load_handle(
     }
 }
 
+pub trait DynAssetLookup: Downcast {}
+
+downcast_rs::impl_downcast!(DynAssetLookup);
+
 pub struct AssetLookup<AssetT> {
     //TODO: Slab these for faster lookup?
     pub loaded_assets: FnvHashMap<LoadHandle, LoadedAssetState<AssetT>>,
     pub indirection_table: IndirectionTable,
 }
+
+impl<AssetT> DynAssetLookup for AssetLookup<AssetT> where AssetT: 'static {}
 
 impl<AssetT> AssetLookup<AssetT> {
     pub fn new(loader: &Loader) -> Self {
@@ -130,65 +133,5 @@ impl<AssetT> AssetLookup<AssetT> {
 
     pub fn destroy(&mut self) {
         self.loaded_assets.clear();
-    }
-}
-
-#[derive(Debug)]
-pub struct LoadedAssetMetrics {
-    pub shader_module_count: usize,
-    pub compute_pipeline_count: usize,
-    pub material_count: usize,
-    pub material_instance_count: usize,
-    pub sampler_count: usize,
-    pub image_count: usize,
-    pub buffer_count: usize,
-}
-
-//
-// Lookups by asset for loaded asset state
-//
-pub struct AssetLookupSet {
-    pub shader_modules: AssetLookup<ShaderAsset>,
-    pub compute_pipelines: AssetLookup<ComputePipelineAsset>,
-    pub materials: AssetLookup<MaterialAsset>,
-    pub material_instances: AssetLookup<MaterialInstanceAsset>,
-    pub samplers: AssetLookup<SamplerAsset>,
-    pub images: AssetLookup<ImageAsset>,
-    pub buffers: AssetLookup<BufferAsset>,
-}
-
-impl AssetLookupSet {
-    pub fn new(loader: &Loader) -> AssetLookupSet {
-        AssetLookupSet {
-            shader_modules: AssetLookup::new(loader),
-            compute_pipelines: AssetLookup::new(loader),
-            materials: AssetLookup::new(loader),
-            material_instances: AssetLookup::new(loader),
-            samplers: AssetLookup::new(loader),
-            images: AssetLookup::new(loader),
-            buffers: AssetLookup::new(loader),
-        }
-    }
-
-    pub fn metrics(&self) -> LoadedAssetMetrics {
-        LoadedAssetMetrics {
-            shader_module_count: self.shader_modules.len(),
-            compute_pipeline_count: self.compute_pipelines.len(),
-            material_count: self.materials.len(),
-            material_instance_count: self.material_instances.len(),
-            sampler_count: self.samplers.len(),
-            image_count: self.images.len(),
-            buffer_count: self.buffers.len(),
-        }
-    }
-
-    pub fn destroy(&mut self) {
-        self.shader_modules.destroy();
-        self.compute_pipelines.destroy();
-        self.materials.destroy();
-        self.material_instances.destroy();
-        self.samplers.destroy();
-        self.images.destroy();
-        self.buffers.destroy();
     }
 }

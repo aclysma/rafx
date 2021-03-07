@@ -13,6 +13,10 @@ use extract::SpriteExtractJob;
 mod prepare;
 
 mod write;
+
+mod plugin;
+pub use plugin::SpriteRendererPlugin;
+
 use rafx::api::RafxPrimitiveTopology;
 use rafx::framework::{
     DescriptorSetArc, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,

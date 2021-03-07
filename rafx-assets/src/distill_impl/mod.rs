@@ -21,4 +21,5 @@ pub fn default_daemon() -> distill::daemon::AssetDaemon {
         .with_importer("jpeg", ImageImporter)
         .with_importer("tga", ImageImporter)
         .with_importer("bmp", ImageImporter)
+        .with_importer("basis", BasisImageImporter)
 }

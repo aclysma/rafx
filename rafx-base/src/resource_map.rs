@@ -132,7 +132,9 @@ impl ResourceMap {
     ) where
         R: Resource,
     {
-        self.resources.insert(id, TrustCell::new(Box::new(r)));
+        //TODO: Do not allow silent overwrite
+        let _old = self.resources.insert(id, TrustCell::new(Box::new(r)));
+        //assert!(old.is_none());
     }
 
     fn remove_by_id<R>(

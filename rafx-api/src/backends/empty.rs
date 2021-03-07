@@ -112,6 +112,7 @@ impl RafxDescriptorSetArrayEmpty {
 #[derive(Clone, Debug)]
 pub struct RafxQueueEmpty;
 impl RafxQueueEmpty {
+    pub fn device_context(&self) -> &RafxDeviceContextEmpty { unimplemented!() }
     pub fn queue_id(&self) -> u32 { unimplemented!(); }
     pub fn queue_type(&self) -> RafxQueueType { unimplemented!(); }
     pub fn create_command_pool(&self, command_pool_def: &RafxCommandPoolDef) -> RafxResult<RafxCommandPoolEmpty> { unimplemented!(); }

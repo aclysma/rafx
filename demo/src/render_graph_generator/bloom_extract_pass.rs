@@ -58,49 +58,47 @@ pub(super) fn bloom_extract_pass(
         Default::default(),
     );
 
-    context
-        .graph_callbacks
-        .set_renderpass_callback(node, move |args, _user_context| {
-            // Get the color image from before
-            let sample_image = args.graph_context.image_view(sample_image);
+    context.graph.set_renderpass_callback(node, move |args| {
+        // Get the color image from before
+        let sample_image = args.graph_context.image_view(sample_image);
 
-            // Get the pipeline
-            let pipeline = args
-                .graph_context
-                .resource_context()
-                .graphics_pipeline_cache()
-                .get_or_create_graphics_pipeline(
-                    PostProcessRenderPhase::render_phase_index(),
-                    &bloom_extract_material_pass,
-                    &args.render_target_meta,
-                    &EMPTY_VERTEX_LAYOUT,
-                )?;
-
-            // Set up a descriptor set pointing at the image so we can sample from it
-            let mut descriptor_set_allocator = args
-                .graph_context
-                .resource_context()
-                .create_descriptor_set_allocator();
-
-            let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
-            let bloom_extract_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
-                &descriptor_set_layouts[shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
-                shaders::bloom_extract_frag::DescriptorSet0Args {
-                    tex: sample_image.as_ref().unwrap(),
-                },
+        // Get the pipeline
+        let pipeline = args
+            .graph_context
+            .resource_context()
+            .graphics_pipeline_cache()
+            .get_or_create_graphics_pipeline(
+                PostProcessRenderPhase::render_phase_index(),
+                &bloom_extract_material_pass,
+                &args.render_target_meta,
+                &EMPTY_VERTEX_LAYOUT,
             )?;
 
-            // Explicit flush since we're going to use the descriptors immediately
-            descriptor_set_allocator.flush_changes()?;
+        // Set up a descriptor set pointing at the image so we can sample from it
+        let mut descriptor_set_allocator = args
+            .graph_context
+            .resource_context()
+            .create_descriptor_set_allocator();
 
-            // Draw calls
-            let command_buffer = &args.command_buffer;
-            command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
-            bloom_extract_material_dyn_set.bind(command_buffer)?;
-            command_buffer.cmd_draw(3, 0)?;
+        let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
+        let bloom_extract_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
+            &descriptor_set_layouts[shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
+            shaders::bloom_extract_frag::DescriptorSet0Args {
+                tex: sample_image.as_ref().unwrap(),
+            },
+        )?;
 
-            Ok(())
-        });
+        // Explicit flush since we're going to use the descriptors immediately
+        descriptor_set_allocator.flush_changes()?;
+
+        // Draw calls
+        let command_buffer = &args.command_buffer;
+        command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
+        bloom_extract_material_dyn_set.bind(command_buffer)?;
+        command_buffer.cmd_draw(3, 0)?;
+
+        Ok(())
+    });
 
     BloomExtractPass {
         node,

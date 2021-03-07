@@ -3,6 +3,7 @@ use super::{RenderGraphImageSpecification, RenderGraphOutputImageId};
 use crate::graph::graph_image::{PhysicalImageId, RenderGraphImageUser, VirtualImageId};
 use crate::graph::graph_node::RenderGraphNodeId;
 use crate::graph::{RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageUsageId};
+use crate::nodes::RenderPhaseIndex;
 use crate::{BufferResource, GraphicsPipelineRenderTargetMeta};
 use crate::{ImageViewResource, ResourceArc};
 use fnv::{FnvHashMap, FnvHashSet};
@@ -2635,18 +2636,23 @@ pub struct RenderGraphPlanOutputBuffer {
 
 /// The final output of a render graph, which will be consumed by PreparedRenderGraph. This just
 /// includes the computed metadata and does not allocate resources.
-#[derive(Debug)]
 pub struct RenderGraphPlan {
-    pub passes: Vec<RenderGraphOutputPass>,
-    pub output_images: FnvHashMap<PhysicalImageViewId, RenderGraphPlanOutputImage>,
-    pub output_buffers: FnvHashMap<PhysicalBufferId, RenderGraphPlanOutputBuffer>,
-    pub intermediate_images: FnvHashMap<PhysicalImageId, RenderGraphImageSpecification>,
-    pub intermediate_buffers: FnvHashMap<PhysicalBufferId, RenderGraphBufferSpecification>,
-    pub image_views: Vec<RenderGraphImageView>, // index by physical image view id
-    pub node_to_pass_index: FnvHashMap<RenderGraphNodeId, usize>,
-    pub image_usage_to_physical: FnvHashMap<RenderGraphImageUsageId, PhysicalImageId>,
-    pub image_usage_to_view: FnvHashMap<RenderGraphImageUsageId, PhysicalImageViewId>,
-    pub buffer_usage_to_physical: FnvHashMap<RenderGraphBufferUsageId, PhysicalBufferId>,
+    pub(super) passes: Vec<RenderGraphOutputPass>,
+    pub(super) output_images: FnvHashMap<PhysicalImageViewId, RenderGraphPlanOutputImage>,
+    pub(super) output_buffers: FnvHashMap<PhysicalBufferId, RenderGraphPlanOutputBuffer>,
+    pub(super) intermediate_images: FnvHashMap<PhysicalImageId, RenderGraphImageSpecification>,
+    pub(super) intermediate_buffers: FnvHashMap<PhysicalBufferId, RenderGraphBufferSpecification>,
+    pub(super) image_views: Vec<RenderGraphImageView>, // index by physical image view id
+    pub(super) node_to_pass_index: FnvHashMap<RenderGraphNodeId, usize>,
+    pub(super) _image_usage_to_physical: FnvHashMap<RenderGraphImageUsageId, PhysicalImageId>,
+    pub(super) image_usage_to_view: FnvHashMap<RenderGraphImageUsageId, PhysicalImageViewId>,
+    pub(super) buffer_usage_to_physical: FnvHashMap<RenderGraphBufferUsageId, PhysicalBufferId>,
+
+    // callbacks
+    pub(super) visit_node_callbacks:
+        FnvHashMap<RenderGraphNodeId, RenderGraphNodeVisitNodeCallback>,
+    pub(super) _render_phase_dependencies:
+        FnvHashMap<RenderGraphNodeId, FnvHashSet<RenderPhaseIndex>>,
 }
 
 impl RenderGraphPlan {
@@ -2904,9 +2910,12 @@ impl RenderGraphPlan {
             intermediate_buffers,
             image_views: assign_physical_resources_result.image_views,
             node_to_pass_index,
-            image_usage_to_physical: assign_physical_resources_result.image_usage_to_physical,
+            _image_usage_to_physical: assign_physical_resources_result.image_usage_to_physical,
             image_usage_to_view: assign_physical_resources_result.image_usage_to_image_view,
             buffer_usage_to_physical: assign_physical_resources_result.buffer_usage_to_physical,
+
+            visit_node_callbacks: graph.visit_node_callbacks,
+            _render_phase_dependencies: graph.render_phase_dependencies,
         }
     }
 }

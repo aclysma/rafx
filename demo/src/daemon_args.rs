@@ -3,6 +3,7 @@ use std::{
     path::PathBuf,
 };
 
+use rafx::renderer::daemon::AssetDaemonOpt;
 use structopt::StructOpt;
 
 /// Parameters to the asset daemon.
@@ -40,35 +41,7 @@ impl Into<AssetDaemonOpt> for AssetDaemonArgs {
     }
 }
 
-pub struct AssetDaemonOpt {
-    pub db_dir: PathBuf,
-    pub address: SocketAddr,
-    pub asset_dirs: Vec<PathBuf>,
-}
-
-impl Default for AssetDaemonOpt {
-    fn default() -> Self {
-        AssetDaemonOpt {
-            db_dir: ".assets_db".into(),
-            address: "127.0.0.1:9999".parse().unwrap(),
-            asset_dirs: vec!["assets".into()],
-        }
-    }
-}
-
 /// Parses a string as a socket address.
 fn parse_socket_addr(s: &str) -> std::result::Result<SocketAddr, AddrParseError> {
     s.parse()
-}
-
-pub fn run(opt: AssetDaemonOpt) {
-    rafx::assets::distill_impl::default_daemon()
-        .with_importer("basis", rafx::assets::BasisImageImporter)
-        .with_importer("gltf", crate::assets::gltf::GltfImporter)
-        .with_importer("glb", crate::assets::gltf::GltfImporter)
-        .with_importer("ttf", crate::assets::font::FontImporter)
-        .with_db_path(opt.db_dir)
-        .with_address(opt.address)
-        .with_asset_dirs(opt.asset_dirs)
-        .run();
 }

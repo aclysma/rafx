@@ -1,10 +1,7 @@
+use super::Sdl2ImguiManager;
+use crate::features::imgui::plugin::ImguiStaticResources;
+use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
 use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
-use crate::imgui_support::Sdl2ImguiManager;
-use crate::legion_support::LegionResources;
-use crate::{
-    features::imgui::prepare::ImGuiPrepareJobImpl,
-    game_renderer::{GameRendererStaticResources, ImguiFontAtlas},
-};
 use rafx::assets::AssetManagerRenderResource;
 use rafx::graph::SwapchainSurfaceInfo;
 use rafx::nodes::{
@@ -25,16 +22,15 @@ impl ExtractJob for ImGuiExtractJobImpl {
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
         _frame_packet: &FramePacket,
-        _views: &[&RenderView],
+        _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
         profiling::scope!("ImGui Extract");
-        let legion_resources = extract_context.render_resources.fetch::<LegionResources>();
         let asset_manager = extract_context
             .render_resources
             .fetch::<AssetManagerRenderResource>();
-        let imgui_draw_data = legion_resources
-            .get::<Sdl2ImguiManager>()
-            .unwrap()
+        let imgui_draw_data = extract_context
+            .extract_resources
+            .fetch::<Sdl2ImguiManager>()
             .copy_draw_data();
 
         let framebuffer_scale = match &imgui_draw_data {
@@ -60,13 +56,15 @@ impl ExtractJob for ImGuiExtractJobImpl {
 
         let imgui_material = &extract_context
             .render_resources
-            .fetch::<GameRendererStaticResources>()
+            .fetch::<ImguiStaticResources>()
             .imgui_material;
         let imgui_material_pass = asset_manager
             .get_material_pass_by_index(imgui_material, 0)
             .unwrap();
 
-        let font_atlas = &extract_context.render_resources.fetch::<ImguiFontAtlas>().0;
+        let static_resources = &extract_context
+            .render_resources
+            .fetch::<ImguiStaticResources>();
         let view_ubo = ImGuiUniformBufferObject {
             mvp: view_proj.to_cols_array_2d(),
         };
@@ -75,7 +73,7 @@ impl ExtractJob for ImGuiExtractJobImpl {
             ExtractedImGuiData { imgui_draw_data },
             imgui_material_pass,
             view_ubo,
-            font_atlas.clone(),
+            static_resources.imgui_font_atlas_image_view.clone(),
         ))
     }
 

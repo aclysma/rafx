@@ -7,7 +7,7 @@ pub trait ExtractJob {
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
-        views: &[&RenderView],
+        views: &[RenderView],
     ) -> Box<dyn PrepareJob>;
 
     fn feature_debug_name(&self) -> &'static str;
@@ -27,8 +27,8 @@ impl Default for ExtractJobSet {
 }
 
 impl ExtractJobSet {
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(extract_jobs: Vec<Box<dyn ExtractJob>>) -> Self {
+        ExtractJobSet { extract_jobs }
     }
 
     pub fn add_job(
@@ -42,7 +42,7 @@ impl ExtractJobSet {
         self,
         extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
-        views: &[&RenderView],
+        views: &[RenderView],
     ) -> PrepareJobSet {
         log::trace!("Start extract job set");
 

@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
-use crate::{AssetManager, ImageAsset, ShaderAsset};
+use crate::{
+    AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset, ShaderAsset,
+};
 use distill::loader::handle::Handle;
 use fnv::FnvHashMap;
 use rafx_api::{
@@ -191,8 +193,6 @@ impl MaterialPassData {
         &self,
         asset_manager: &AssetManager,
     ) -> RafxResult<MaterialPass> {
-        use distill::loader::handle::AssetHandle;
-
         //
         // Gather shader stage info
         //
@@ -208,11 +208,7 @@ impl MaterialPassData {
                 self.name
             );
 
-            let shader_asset = asset_manager
-                .loaded_assets()
-                .shader_modules
-                .get_latest(stage.shader_module.load_handle())
-                .unwrap();
+            let shader_asset = asset_manager.latest_asset(&stage.shader_module).unwrap();
             shader_modules.push(shader_asset.shader_module.clone());
 
             let reflection_data = shader_asset.reflection_data.get(&stage.entry_name);
@@ -426,3 +422,165 @@ impl Deref for MaterialInstanceAsset {
         &*self.inner
     }
 }
+
+pub struct MaterialLoadHandler;
+
+impl DefaultAssetTypeLoadHandler<MaterialAssetData, MaterialAsset> for MaterialLoadHandler {
+    #[profiling::function]
+    fn load(
+        asset_manager: &mut AssetManager,
+        asset_data: MaterialAssetData,
+    ) -> RafxResult<MaterialAsset> {
+        let mut passes = Vec::with_capacity(asset_data.passes.len());
+        let mut pass_name_to_index = FnvHashMap::default();
+        let mut pass_phase_to_index = FnvHashMap::default();
+
+        for pass_data in &asset_data.passes {
+            let pass = pass_data.create_material_pass(asset_manager)?;
+
+            let pass_index = passes.len();
+            passes.push(pass);
+
+            if let Some(name) = &pass_data.name {
+                let old = pass_name_to_index.insert(name.clone(), pass_index);
+                assert!(old.is_none());
+            }
+
+            if let Some(phase_name) = &pass_data.phase {
+                if let Some(phase_index) = asset_manager
+                    .resource_manager()
+                    .render_registry()
+                    .render_phase_index_from_name(phase_name)
+                {
+                    let old = pass_phase_to_index.insert(phase_index, pass_index);
+                    assert!(old.is_none());
+                } else {
+                    let error = format!(
+                        "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
+                        phase_name
+                    );
+                    log::error!("{}", error);
+                    return Err(error)?;
+                }
+            }
+        }
+
+        Ok(MaterialAsset::new(
+            passes,
+            pass_name_to_index,
+            pass_phase_to_index,
+        ))
+    }
+}
+
+pub type MaterialAssetTypeHandler =
+    DefaultAssetTypeHandler<MaterialAssetData, MaterialAsset, MaterialLoadHandler>;
+
+pub struct MaterialInstanceLoadHandler;
+
+impl DefaultAssetTypeLoadHandler<MaterialInstanceAssetData, MaterialInstanceAsset>
+    for MaterialInstanceLoadHandler
+{
+    #[profiling::function]
+    fn load(
+        asset_manager: &mut AssetManager,
+        asset_data: MaterialInstanceAssetData,
+    ) -> RafxResult<MaterialInstanceAsset> {
+        // Find the material we will bind over, we need the metadata from it
+        let material_asset = asset_manager
+            .latest_asset(&asset_data.material)
+            .unwrap()
+            .clone();
+
+        let mut material_instance_descriptor_set_writes =
+            Vec::with_capacity(material_asset.passes.len());
+
+        log::trace!(
+            "load_material_instance slot assignments\n{:#?}",
+            asset_data.slot_assignments
+        );
+
+        // This will be references to descriptor sets. Indexed by pass, and then by set within the pass.
+        let mut material_descriptor_sets = Vec::with_capacity(material_asset.passes.len());
+        for pass in &*material_asset.passes {
+            let pass_descriptor_set_writes = asset_manager
+                .create_write_sets_for_material_instance_pass(
+                    pass,
+                    &asset_data.slot_assignments,
+                    asset_manager.resources(),
+                )?;
+
+            log::trace!(
+                "load_material_instance descriptor set write\n{:#?}",
+                pass_descriptor_set_writes
+            );
+
+            material_instance_descriptor_set_writes.push(pass_descriptor_set_writes.clone());
+
+            // This will contain the descriptor sets created for this pass, one for each set within the pass
+            let mut pass_descriptor_sets = Vec::with_capacity(pass_descriptor_set_writes.len());
+
+            let material_pass_descriptor_set_layouts =
+                &pass.material_pass_resource.get_raw().descriptor_set_layouts;
+
+            //
+            // Register the writes into the correct descriptor set pools
+            //
+            for (layout_index, layout_writes) in pass_descriptor_set_writes.into_iter().enumerate()
+            {
+                if !layout_writes.elements.is_empty() {
+                    let descriptor_set = asset_manager
+                        .material_instance_descriptor_sets_mut()
+                        .create_descriptor_set_with_writes(
+                            &material_pass_descriptor_set_layouts[layout_index],
+                            layout_writes,
+                        )?;
+
+                    pass_descriptor_sets.push(Some(descriptor_set));
+                } else {
+                    // If there are no descriptors in this layout index, assume the layout does not
+                    // exist
+                    pass_descriptor_sets.push(None);
+                }
+            }
+
+            material_descriptor_sets.push(pass_descriptor_sets);
+        }
+
+        log::trace!("Loaded material\n{:#?}", material_descriptor_sets);
+
+        // Put these in an arc to avoid cloning the underlying data repeatedly
+        let material_descriptor_sets = Arc::new(material_descriptor_sets);
+        Ok(MaterialInstanceAsset::new(
+            asset_data.material,
+            material_asset.clone(),
+            material_descriptor_sets,
+            asset_data.slot_assignments,
+            material_instance_descriptor_set_writes,
+        ))
+    }
+}
+
+pub type MaterialInstanceAssetTypeHandler = DefaultAssetTypeHandler<
+    MaterialInstanceAssetData,
+    MaterialInstanceAsset,
+    MaterialInstanceLoadHandler,
+>;
+
+pub struct SamplerLoadHandler;
+
+impl DefaultAssetTypeLoadHandler<SamplerAssetData, SamplerAsset> for SamplerLoadHandler {
+    #[profiling::function]
+    fn load(
+        asset_manager: &mut AssetManager,
+        asset_data: SamplerAssetData,
+    ) -> RafxResult<SamplerAsset> {
+        let sampler = asset_manager
+            .resources()
+            .get_or_create_sampler(&asset_data.sampler)?;
+        Ok(SamplerAsset { sampler })
+    }
+}
+
+pub type SamplerAssetTypeHandler =
+    DefaultAssetTypeHandler<SamplerAssetData, SamplerAsset, SamplerLoadHandler>;

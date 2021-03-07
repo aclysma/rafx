@@ -8,9 +8,11 @@ use rafx::nodes::RenderFeatureIndex;
 use std::convert::TryInto;
 
 mod extract;
+mod plugin;
 mod prepare;
 mod text_resource;
 mod write;
+pub use plugin::TextRendererPlugin;
 
 use crate::assets::font::FontAsset;
 use fnv::FnvHashMap;

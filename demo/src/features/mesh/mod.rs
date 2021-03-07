@@ -1,8 +1,6 @@
-use crate::game_asset_lookup::MeshAsset;
 use distill::loader::handle::Handle;
 use rafx::base::slab::{DropSlab, DropSlabKey};
 use rafx::framework::MaterialPass;
-use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::nodes::RenderView;
 use rafx::nodes::{
     ExtractJob, FrameNodeIndex, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex,
@@ -16,6 +14,12 @@ use extract::MeshExtractJob;
 mod prepare;
 
 mod write;
+
+mod plugin;
+pub use plugin::MeshRendererPlugin;
+
+pub mod shadow_map_resource;
+
 use rafx::framework::DescriptorSetArc;
 use write::MeshCommandWriter;
 
@@ -26,10 +30,10 @@ const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 =
 const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 =
     shaders::mesh_frag::PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX as u32;
 
+use crate::assets::gltf::MeshAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use fnv::FnvHashMap;
 pub use shaders::mesh_frag::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
 pub use shaders::mesh_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
 
@@ -44,12 +48,6 @@ pub enum LightId {
 pub enum ShadowMapRenderView {
     Single(RenderView), // width, height of texture
     Cube([RenderView; 6]),
-}
-
-pub struct ShadowMapData {
-    pub shadow_map_lookup: FnvHashMap<LightId, usize>,
-    pub shadow_map_render_views: Vec<ShadowMapRenderView>,
-    pub shadow_map_image_views: Vec<ResourceArc<ImageViewResource>>,
 }
 
 pub struct ExtractedDirectionalLight {

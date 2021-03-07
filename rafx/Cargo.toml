@@ -14,15 +14,14 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 [dependencies]
 rafx-base = { version = "=0.0.7", path = "../rafx-base" }
 rafx-api = { version = "=0.0.7", path = "../rafx-api" }
-#rafx-nodes = { version = "=0.0.7", path = "../rafx-nodes", optional = true }
-#rafx-visibility = { version = "=0.0.7", path = "../rafx-visibility", optional = true }
 rafx-framework = { version = "=0.0.7", path = "../rafx-framework", optional = true }
 rafx-assets = { version = "=0.0.7", path = "../rafx-assets", optional = true }
+rafx-renderer = { version = "=0.0.7", path = "../rafx-renderer", optional = true }
 
 [dev-dependencies]
 log = "0.4"
 env_logger = "0.6"
-legion = { version = "0.3.0", default-features = false }
+legion = { version = "0.4.0", default-features = false }
 sdl2 = { version = ">=0.34", features = ["raw-window-handle"] }
 ash = ">=0.30"
 glam = "0.8.6"
@@ -51,6 +50,7 @@ static-vulkan = ["rafx-api/static-vulkan"]
 #nodes = ["rafx-nodes", "rafx-visibility"]
 framework = ["rafx-framework"]
 assets = ["rafx-assets", "framework"]
+renderer = ["rafx-renderer", "assets"]
 
 #
 # Profiling features - passes down features to crates contained within this one
@@ -58,25 +58,29 @@ assets = ["rafx-assets", "framework"]
 profile-with-puffin = [
     "rafx-framework/profile-with-puffin",
     "rafx-assets/profile-with-puffin",
-    "rafx-api/profile-with-puffin"
+    "rafx-api/profile-with-puffin",
+    "rafx-renderer/profile-with-puffin"
 ]
 
 profile-with-optick = [
     "rafx-framework/profile-with-optick",
     "rafx-assets/profile-with-optick",
-    "rafx-api/profile-with-optick"
+    "rafx-api/profile-with-optick",
+    "rafx-renderer/profile-with-optick"
 ]
 
 profile-with-superluminal = [
     "rafx-framework/profile-with-superluminal",
     "rafx-assets/profile-with-superluminal",
-    "rafx-api/profile-with-superluminal"
+    "rafx-api/profile-with-superluminal",
+    "rafx-renderer/profile-with-superluminal"
 ]
 
 profile-with-tracy = [
     "rafx-framework/profile-with-tracy",
     "rafx-assets/profile-with-tracy",
-    "rafx-api/profile-with-tracy"
+    "rafx-api/profile-with-tracy",
+    "rafx-renderer/profile-with-tracy"
 ]
 
 #

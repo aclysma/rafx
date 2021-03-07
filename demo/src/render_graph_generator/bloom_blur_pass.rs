@@ -71,60 +71,58 @@ fn bloom_blur_internal_pass(
     context.graph.set_image_name(blur_src, "blur_src");
 
     let bloom_blur_material_pass = bloom_blur_material_pass.clone();
-    context
-        .graph_callbacks
-        .set_renderpass_callback(node, move |args, _user_context| {
-            // Get the color image from before
-            let sample_image = args.graph_context.image_view(sample_image);
+    context.graph.set_renderpass_callback(node, move |args| {
+        // Get the color image from before
+        let sample_image = args.graph_context.image_view(sample_image);
 
-            // Get the pipeline
-            let pipeline = args
-                .graph_context
-                .resource_context()
-                .graphics_pipeline_cache()
-                .get_or_create_graphics_pipeline(
-                    PostProcessRenderPhase::render_phase_index(),
-                    &bloom_blur_material_pass,
-                    &args.render_target_meta,
-                    &EMPTY_VERTEX_LAYOUT,
-                )?;
-
-            let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
-
-            // Set up a descriptor set pointing at the image so we can sample from it
-            let mut descriptor_set_allocator = args
-                .graph_context
-                .resource_context()
-                .create_descriptor_set_allocator();
-
-            let horizontal = if blur_direction == BlurDirection::Horizontal {
-                1
-            } else {
-                0
-            };
-
-            let bloom_blur_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
-                &descriptor_set_layouts[shaders::bloom_blur_frag::TEX_DESCRIPTOR_SET_INDEX],
-                shaders::bloom_blur_frag::DescriptorSet0Args {
-                    tex: sample_image.as_ref().unwrap(),
-                    config: &shaders::bloom_blur_frag::ConfigUniform {
-                        horizontal,
-                        ..Default::default()
-                    },
-                },
+        // Get the pipeline
+        let pipeline = args
+            .graph_context
+            .resource_context()
+            .graphics_pipeline_cache()
+            .get_or_create_graphics_pipeline(
+                PostProcessRenderPhase::render_phase_index(),
+                &bloom_blur_material_pass,
+                &args.render_target_meta,
+                &EMPTY_VERTEX_LAYOUT,
             )?;
 
-            // Explicit flush since we're going to use the descriptors immediately
-            descriptor_set_allocator.flush_changes()?;
+        let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
 
-            // Draw calls
-            let command_buffer = &args.command_buffer;
-            command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
-            bloom_blur_material_dyn_set.bind(command_buffer)?;
-            command_buffer.cmd_draw(3, 0)?;
+        // Set up a descriptor set pointing at the image so we can sample from it
+        let mut descriptor_set_allocator = args
+            .graph_context
+            .resource_context()
+            .create_descriptor_set_allocator();
 
-            Ok(())
-        });
+        let horizontal = if blur_direction == BlurDirection::Horizontal {
+            1
+        } else {
+            0
+        };
+
+        let bloom_blur_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
+            &descriptor_set_layouts[shaders::bloom_blur_frag::TEX_DESCRIPTOR_SET_INDEX],
+            shaders::bloom_blur_frag::DescriptorSet0Args {
+                tex: sample_image.as_ref().unwrap(),
+                config: &shaders::bloom_blur_frag::ConfigUniform {
+                    horizontal,
+                    ..Default::default()
+                },
+            },
+        )?;
+
+        // Explicit flush since we're going to use the descriptors immediately
+        descriptor_set_allocator.flush_changes()?;
+
+        // Draw calls
+        let command_buffer = &args.command_buffer;
+        command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
+        bloom_blur_material_dyn_set.bind(command_buffer)?;
+        command_buffer.cmd_draw(3, 0)?;
+
+        Ok(())
+    });
 
     blur_dst
 }

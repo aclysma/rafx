@@ -1,8 +1,8 @@
-use crate::game_renderer::render_frame_job::RenderFrameJobResult;
-use crate::game_renderer::RenderFrameJob;
+use super::render_frame_job::RenderFrameJobResult;
+use super::RenderFrameJob;
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
-use rafx::api::RafxPresentableFrame;
-use rafx::framework::RenderResources;
+use rafx_api::RafxPresentableFrame;
+use rafx_framework::RenderResources;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
@@ -16,7 +16,6 @@ pub struct RenderThread {
     job_tx: Sender<RenderThreadMessage>,
 
     result_rx: Receiver<RenderFrameJobResult>,
-    result_tx: Sender<RenderFrameJobResult>,
     expecting_result: bool,
 
     render_resources: Arc<Mutex<RenderResources>>,
@@ -30,7 +29,6 @@ impl RenderThread {
     pub fn start(render_resources: RenderResources) -> Self {
         let (job_tx, job_rx) = crossbeam_channel::bounded(1);
         let (result_tx, result_rx) = crossbeam_channel::bounded(1);
-        let result_tx_clone = result_tx.clone();
 
         let render_resources = Arc::new(Mutex::new(render_resources));
         let render_resources_clone = render_resources.clone();
@@ -49,7 +47,6 @@ impl RenderThread {
             render_resources: render_resources_clone,
             join_handle: Some(join_handle),
             job_tx,
-            result_tx: result_tx_clone,
             result_rx,
             expecting_result: false,
         }

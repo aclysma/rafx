@@ -1,5 +1,5 @@
 use crate::assets::gltf::{
-    GltfMaterialAsset, GltfMaterialDataShaderParam, MeshAssetData, MeshPartAssetData, MeshVertex,
+    GltfMaterialData, GltfMaterialDataShaderParam, MeshAssetData, MeshPartAssetData, MeshVertex,
 };
 use distill::core::AssetUuid;
 use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
@@ -56,9 +56,26 @@ struct ImageToImport {
     asset: ImageAssetData,
 }
 
+#[derive(Default, Clone)]
+pub struct GltfMaterialImportData {
+    //pub name: Option<String>,
+    pub material_data: GltfMaterialData,
+
+    pub base_color_texture: Option<Handle<ImageAsset>>,
+    // metalness in B, roughness in G
+    pub metallic_roughness_texture: Option<Handle<ImageAsset>>,
+    pub normal_texture: Option<Handle<ImageAsset>>,
+    pub occlusion_texture: Option<Handle<ImageAsset>>,
+    pub emissive_texture: Option<Handle<ImageAsset>>,
+    // We would need to change the pipeline for these
+    // double_sided: bool, // defult false
+    // alpha_mode: String, // OPAQUE, MASK, BLEND
+    // support for points/lines?
+}
+
 struct MaterialToImport {
     id: GltfObjectId,
-    asset: GltfMaterialAsset,
+    asset: GltfMaterialImportData,
 }
 
 struct MeshToImport {
@@ -236,46 +253,6 @@ impl Importer for GltfImporter {
         //
         let materials_to_import =
             extract_materials_to_import(&doc, &buffers, &images, &image_index_to_handle);
-        let mut material_index_to_handle = vec![];
-        for material_to_import in &materials_to_import {
-            // Find the UUID associated with this image or create a new one
-            let material_uuid = *unstable_state
-                .material_asset_uuids
-                .entry(material_to_import.id.clone())
-                .or_insert_with(|| op.new_asset_uuid());
-
-            let material_handle = make_handle(material_uuid);
-
-            // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
-            material_index_to_handle.push(material_handle);
-
-            let mut search_tags: Vec<(String, Option<String>)> = vec![];
-            if let GltfObjectId::Name(name) = &material_to_import.id {
-                search_tags.push(("material_name".to_string(), Some(name.clone())));
-            }
-
-            // let mut load_deps = vec![];
-            // if let Some(image) = &material_to_import.asset.base_color_texture {
-            //     let image_uuid = SerdeContext::with_active(|x, _| {
-            //         x.get_asset_id(image.load_handle())
-            //     }).unwrap();
-            //
-            //     load_deps.push(AssetRef::Uuid(image_uuid));
-            // }
-
-            log::debug!("Importing material uuid {:?}", material_uuid);
-
-            // Create the asset
-            imported_assets.push(ImportedAsset {
-                id: material_uuid,
-                search_tags,
-                build_deps: vec![],
-                //load_deps,
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(material_to_import.asset.clone()),
-            });
-        }
 
         let material_handle = make_handle_from_str("92a98639-de0d-40cf-a222-354f616346c3")?;
 
@@ -380,9 +357,6 @@ impl Importer for GltfImporter {
             });
         }
 
-        // let mut vertices = PushBuffer::new(16384);
-        // let mut indices = PushBuffer::new(16384);
-
         //
         // Meshes
         //
@@ -391,8 +365,6 @@ impl Importer for GltfImporter {
             &mut unstable_state,
             &doc,
             &buffers,
-            //&images,
-            &material_index_to_handle,
             &material_instance_index_to_handle,
         )?;
 
@@ -678,7 +650,7 @@ fn extract_materials_to_import(
                     emissive_texture: None,
                 };
         */
-        let mut material_asset = GltfMaterialAsset::default();
+        let mut material_asset = GltfMaterialImportData::default();
 
         let pbr_metallic_roughness = &material.pbr_metallic_roughness();
         material_asset.material_data.base_color_factor = pbr_metallic_roughness.base_color_factor();
@@ -766,8 +738,6 @@ fn extract_meshes_to_import(
     state: &mut GltfImporterStateUnstable,
     doc: &gltf::Document,
     buffers: &[GltfBufferData],
-    //images: &Vec<GltfImageData>,
-    material_index_to_handle: &[Handle<GltfMaterialAsset>],
     material_instance_index_to_handle: &[Handle<MaterialInstanceAsset>],
 ) -> distill::importer::Result<(Vec<MeshToImport>, Vec<BufferToImport>)> {
     let mut meshes_to_import = Vec::with_capacity(doc.meshes().len());
@@ -831,13 +801,10 @@ fn extract_meshes_to_import(
                         let vertex_size = all_vertices.len() - vertex_offset;
                         let indices_size = all_indices.len() - indices_offset;
 
-                        let (material, material_instance) = if let Some(material_index) =
+                        let material_instance = if let Some(material_index) =
                             primitive.material().index()
                         {
-                            (
-                                material_index_to_handle[material_index].clone(),
-                                material_instance_index_to_handle[material_index].clone(),
-                            )
+                            material_instance_index_to_handle[material_index].clone()
                         } else {
                             return Err(distill::importer::Error::Boxed(Box::new(
                                 GltfImportError::new("A mesh primitive did not have a material"),
@@ -845,7 +812,7 @@ fn extract_meshes_to_import(
                         };
 
                         Some(MeshPartAssetData {
-                            material,
+                            //material,
                             material_instance,
                             vertex_buffer_offset_in_bytes: vertex_offset as u32,
                             vertex_buffer_size_in_bytes: vertex_size as u32,

@@ -141,10 +141,11 @@ fn run() -> RafxResult<()> {
             &transfer_queue,
         );
 
-        // The asset resource by default is not set up to handle any asset types. You can use
-        // `add_default_asset_storage` to populate it with all the loaders implemented in rafx.
-        // Then use `add_storage_with_loader` to set up any additional types you have.
-        asset_resource.add_default_asset_storage(&asset_manager);
+        // // The asset resource by default is not set up to handle any asset types. You can use
+        // // `add_default_asset_storage` to populate it with all the loaders implemented in rafx.
+        // // Then use `add_storage_with_loader` to set up any additional types you have.
+        // asset_resource.add_default_asset_storage(&asset_manager);
+        asset_manager.register_default_asset_types(&mut asset_resource);
 
         // Grab a resource context for use later
         let resource_context = asset_manager.resource_manager().resource_context();
@@ -266,7 +267,7 @@ fn run() -> RafxResult<()> {
                 asset_manager.get_material_pass_by_index(&triangle_material_handle, 0)
             {
                 let captured_vertex_layout = vertex_layout.clone();
-                graph_callbacks.set_renderpass_callback(node, move |args, _user_context| {
+                graph_callbacks.set_renderpass_callback(node, move |args| {
                     let vertex_layout = &captured_vertex_layout;
                     let material_pass = &triangle_material;
 

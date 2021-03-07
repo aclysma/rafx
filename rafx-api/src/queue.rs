@@ -8,8 +8,8 @@ use crate::metal::RafxQueueMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxQueueVulkan;
 use crate::{
-    RafxCommandBuffer, RafxCommandPool, RafxCommandPoolDef, RafxFence, RafxPresentSuccessResult,
-    RafxQueueType, RafxResult, RafxSemaphore, RafxSwapchain,
+    RafxCommandBuffer, RafxCommandPool, RafxCommandPoolDef, RafxDeviceContext, RafxFence,
+    RafxPresentSuccessResult, RafxQueueType, RafxResult, RafxSemaphore, RafxSwapchain,
 };
 
 /// A queue allows work to be submitted to the GPU
@@ -38,6 +38,20 @@ pub enum RafxQueue {
 }
 
 impl RafxQueue {
+    pub fn device_context(&self) -> RafxDeviceContext {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxQueue::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
+            #[cfg(feature = "rafx-metal")]
+            RafxQueue::Metal(inner) => RafxDeviceContext::Metal(inner.device_context().clone()),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxQueue::Empty(inner) => RafxDeviceContext::Empty(inner.device_context().clone()),
+        }
+    }
+
     /// Returns an opaque ID associated with this queue. It may be used to hash which queue a
     /// command pool is associated with
     pub fn queue_id(&self) -> u32 {

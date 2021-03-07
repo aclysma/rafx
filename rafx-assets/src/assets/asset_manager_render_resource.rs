@@ -2,6 +2,7 @@
 // ref and resources available to all jobs by passing ownership
 
 use super::AssetManager;
+use rafx_base::memory::force_to_static_lifetime;
 use std::ops::Deref;
 
 // static reference is dangerous, must only be used when extracting
@@ -19,8 +20,4 @@ impl Deref for AssetManagerRenderResource {
     fn deref(&self) -> &Self::Target {
         self.0
     }
-}
-
-unsafe fn force_to_static_lifetime<T>(value: &T) -> &'static T {
-    std::mem::transmute(value)
 }

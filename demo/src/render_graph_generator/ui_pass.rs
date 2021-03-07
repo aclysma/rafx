@@ -31,21 +31,19 @@ pub(super) fn ui_pass(
     // associated with the phase. This controls how long we keep the pipelines allocated and
     // allows us to precache pipelines for materials as they are loaded
     context
-        .graph_callbacks
+        .graph
         .add_render_phase_dependency::<UiRenderPhase>(node);
 
     // When the node is executed, we automatically set up the renderpass/framebuffer/command
     // buffer. Just add the draw calls.
     let main_view = context.main_view.clone();
-    context
-        .graph_callbacks
-        .set_renderpass_callback(node, move |args, user_context| {
-            // Kick the material system to emit all draw calls for the UiRenderPhase for the view
-            let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
-            user_context
-                .prepared_render_data
-                .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context)
-        });
+    context.graph.set_renderpass_callback(node, move |args| {
+        // Kick the material system to emit all draw calls for the UiRenderPhase for the view
+        let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+        args.graph_context
+            .prepared_render_data()
+            .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context)
+    });
 
     UiPass { node, color }
 }

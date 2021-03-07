@@ -71,32 +71,30 @@ pub(super) fn opaque_pass(
     }
 
     context
-        .graph_callbacks
+        .graph
         .add_render_phase_dependency::<OpaqueRenderPhase>(node);
 
     let main_view = context.main_view.clone();
 
-    context
-        .graph_callbacks
-        .set_renderpass_callback(node, move |args, user_context| {
-            let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
-            user_context
-                .prepared_render_data
-                .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context)?;
+    context.graph.set_renderpass_callback(node, move |args| {
+        let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+        args.graph_context
+            .prepared_render_data()
+            .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context)?;
 
-            //
-            // render the skybox last
-            //
-            crate::features::skybox::draw_skybox(
-                args.graph_context.resource_context(),
-                &skybox_material,
-                &skybox_texture,
-                &main_view,
-                &args.render_target_meta,
-                &args.command_buffer,
-                OpaqueRenderPhase::render_phase_index(),
-            )
-        });
+        //
+        // render the skybox last
+        //
+        crate::features::skybox::draw_skybox(
+            args.graph_context.resource_context(),
+            &skybox_material,
+            &skybox_texture,
+            &main_view,
+            &args.render_target_meta,
+            &args.command_buffer,
+            OpaqueRenderPhase::render_phase_index(),
+        )
+    });
 
     OpaquePass {
         node,

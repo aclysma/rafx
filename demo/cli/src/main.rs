@@ -1,5 +1,5 @@
-use demo::daemon;
-use demo::daemon::AssetDaemonArgs;
+use demo::daemon_args;
+use demo::daemon_args::AssetDaemonArgs;
 use distill_cli::Command;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.external_daemon && args.cmd == CliCommandArgs::HostDaemon {
         Err("external-daemon and host-daemon args are incompatible".into())
     } else if args.cmd == CliCommandArgs::HostDaemon {
-        daemon::run(args.daemon_args.into());
+        daemon_args::run(args.daemon_args.into());
         // Spin indefinitely
         log::info!("Daemon started, used ctrl-C to terminate");
         loop {
@@ -62,7 +62,7 @@ async fn async_main(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     if !args.external_daemon {
         let daemon_args = args.daemon_args.clone().into();
         std::thread::spawn(move || {
-            daemon::run(daemon_args);
+            daemon_args::run(daemon_args);
         });
 
         // Give the daemon some time to open the socket

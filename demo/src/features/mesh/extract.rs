@@ -7,9 +7,8 @@ use crate::features::mesh::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
     MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet,
 };
-use crate::game_asset_manager::GameAssetManager;
-use crate::legion_support::{LegionResources, LegionWorld};
 use legion::*;
+use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
 use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
@@ -31,17 +30,22 @@ impl ExtractJob for MeshExtractJob {
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
-        _views: &[&RenderView],
+        _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
         profiling::scope!("Mesh Extract");
-        let legion_resources = extract_context.render_resources.fetch::<LegionResources>();
-        let legion_world = extract_context.render_resources.fetch::<LegionWorld>();
-        let world = &**legion_world;
+        let legion_world = extract_context.extract_resources.fetch::<World>();
+        let world = &*legion_world;
+
+        let asset_manager = extract_context
+            .render_resources
+            .fetch::<AssetManagerRenderResource>();
 
         //
         // Update the mesh render nodes. This could be done earlier as part of a system
         //
-        let mut mesh_render_nodes = legion_resources.get_mut::<MeshRenderNodeSet>().unwrap();
+        let mut mesh_render_nodes = extract_context
+            .extract_resources
+            .fetch_mut::<MeshRenderNodeSet>();
 
         let mut query = <(Read<PositionComponent>, Read<MeshComponent>)>::query();
         for (position_component, mesh_component) in query.iter(world) {
@@ -55,8 +59,6 @@ impl ExtractJob for MeshExtractJob {
         //
         // Get the position/mesh asset pairs we will draw
         //
-        let game_resource_manager = legion_resources.get::<GameAssetManager>().unwrap();
-
         let mut extracted_frame_node_mesh_data =
             Vec::<Option<ExtractedFrameNodeMeshData>>::with_capacity(
                 frame_packet.frame_node_count(self.feature_index()) as usize,
@@ -76,7 +78,7 @@ impl ExtractJob for MeshExtractJob {
             let mesh_asset = mesh_render_node
                 .mesh
                 .as_ref()
-                .and_then(|mesh_asset_handle| game_resource_manager.mesh(mesh_asset_handle));
+                .and_then(|mesh_asset_handle| asset_manager.committed_asset(mesh_asset_handle));
 
             let extracted_frame_node = mesh_asset.and_then(|mesh_asset| {
                 Some(ExtractedFrameNodeMeshData {
