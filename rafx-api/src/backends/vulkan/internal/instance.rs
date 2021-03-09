@@ -7,7 +7,7 @@ use ash::vk;
 //use super::VkEntry;
 use crate::vulkan::VkCreateInstanceError::VkError;
 use crate::vulkan::{VkDebugReporter, VkEntry};
-use ash::extensions::ext::DebugReport;
+use ash::extensions::ext::DebugUtils;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
@@ -64,7 +64,7 @@ impl VkInstance {
         window: &dyn HasRawWindowHandle,
         app_name: &CString,
         require_validation_layers_present: bool,
-        validation_layer_debug_report_flags: vk::DebugReportFlagsEXT,
+        validation_layer_debug_report_flags: vk::DebugUtilsMessengerCreateFlagsEXT,
     ) -> Result<VkInstance, VkCreateInstanceError> {
         // Determine the supported version of vulkan that's available
         let vulkan_version = match entry.try_enumerate_instance_version()? {
@@ -122,7 +122,7 @@ impl VkInstance {
                 }
             }
 
-            let debug_extension = DebugReport::name();
+            let debug_extension = DebugUtils::name();
             let has_debug_extension = extensions.iter().any(|extension| unsafe {
                 debug_extension == CStr::from_ptr(extension.extension_name.as_ptr())
             });
@@ -139,7 +139,7 @@ impl VkInstance {
             if let Some(best_validation_layer) = best_validation_layer {
                 if has_debug_extension {
                     layer_names.push(best_validation_layer);
-                    extension_names.push(DebugReport::name());
+                    extension_names.push(DebugUtils::name());
                 }
             }
         }
@@ -215,16 +215,16 @@ impl VkInstance {
     fn setup_vulkan_debug_callback<E: EntryV1_0, I: InstanceV1_0>(
         entry: &E,
         instance: &I,
-        debug_report_flags: vk::DebugReportFlagsEXT,
+        debug_report_flags: vk::DebugUtilsMessengerCreateFlagsEXT,
     ) -> VkResult<VkDebugReporter> {
         log::info!("Seting up vulkan debug callback");
-        let debug_info = vk::DebugReportCallbackCreateInfoEXT::builder()
+        let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
             .flags(debug_report_flags)
-            .pfn_callback(Some(super::debug_reporter::vulkan_debug_callback));
+            .pfn_user_callback(Some(super::debug_reporter::vulkan_debug_callback));
 
-        let debug_report_loader = ash::extensions::ext::DebugReport::new(entry, instance);
+        let debug_report_loader = ash::extensions::ext::DebugUtils::new(entry, instance);
         let debug_callback =
-            unsafe { debug_report_loader.create_debug_report_callback(&debug_info, None)? };
+            unsafe { debug_report_loader.create_debug_utils_messenger(&debug_info, None)? };
 
         Ok(VkDebugReporter {
             debug_report_loader,

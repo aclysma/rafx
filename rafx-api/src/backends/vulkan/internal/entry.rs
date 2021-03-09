@@ -17,8 +17,10 @@ impl VkEntry {
     }
 
     pub fn new_dynamic() -> Result<Self, ash::LoadingError> {
-        let entry = ash::Entry::new()?;
-        Ok(VkEntry::Dynamic(entry))
+        unsafe {
+            let entry = ash::Entry::new()?;
+            Ok(VkEntry::Dynamic(entry))
+        }
     }
 
     pub fn try_enumerate_instance_version(&self) -> VkResult<Option<u32>> {
