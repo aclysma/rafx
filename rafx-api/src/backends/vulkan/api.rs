@@ -89,8 +89,12 @@ impl RafxApiVulkan {
 
         let (require_validation_layers_present, validation_layer_debug_report_flags) =
             match vk_api_def.validation_mode {
-                RafxValidationMode::Disabled => (false, vk::DebugUtilsMessengerCreateFlagsEXT::empty()),
-                RafxValidationMode::EnabledIfAvailable => (false, vk::DebugUtilsMessengerCreateFlagsEXT::all()),
+                RafxValidationMode::Disabled => {
+                    (false, vk::DebugUtilsMessengerCreateFlagsEXT::empty())
+                }
+                RafxValidationMode::EnabledIfAvailable => {
+                    (false, vk::DebugUtilsMessengerCreateFlagsEXT::all())
+                }
                 RafxValidationMode::Enabled => (true, vk::DebugUtilsMessengerCreateFlagsEXT::all()),
             };
 
