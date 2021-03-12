@@ -128,6 +128,9 @@ This tool currently is only useful for packing assets.
 
  * `rafx-vulkan`: Use the vulkan backend
  * `rafx-metal`: Use the metal backend
+ * `framework`: Include and re-export rafx-framework from the rafx crate
+ * `assets`: Include and re-export rafx-assets from the rafx crate
+ * `renderer`: Include and re-export rafx-renderer from the rafx crate
 
 ## Crates
 
@@ -154,6 +157,15 @@ This tool currently is only useful for packing assets.
      as an import step.  
    * Separate multi-thread friendly path for creating assets at runtime
  * `rafx-renderer` - A pipelined renderer with a plugin system for customizing it
+
+## FAQ
+
+**Q: Why am I getting mysterious panics from a bincode serializer**
+
+A: Assets are imported and serialized via serde to bincode. If any of these structs are modified, the asset needs to be
+reimported. The "proper" fix is to bump the importer's version, which will force re-importing affected assets. However,
+deleting .assets_db is an easy fix. In general to avoid this, we should not commit modifications to these structs
+without also bumping the importer version numbers.
 
 ## License
 
