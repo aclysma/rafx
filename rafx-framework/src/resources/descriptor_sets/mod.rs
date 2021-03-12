@@ -22,8 +22,8 @@ use descriptor_set_buffers::DescriptorSetPoolRequiredBufferInfo;
 
 mod descriptor_write_set;
 pub use descriptor_write_set::create_uninitialized_write_set_for_layout;
-pub use descriptor_write_set::DescriptorSetElementKey;
 pub use descriptor_write_set::DescriptorSetBindingKey;
+pub use descriptor_write_set::DescriptorSetElementKey;
 pub use descriptor_write_set::DescriptorSetElementWrite;
 pub use descriptor_write_set::DescriptorSetWriteElementBuffer;
 pub use descriptor_write_set::DescriptorSetWriteElementBufferData;

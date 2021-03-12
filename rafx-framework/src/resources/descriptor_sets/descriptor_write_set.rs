@@ -76,13 +76,13 @@ pub struct DescriptorSetElementWrite {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DescriptorSetElementKey {
     pub dst_binding: u32,
-    pub array_index: usize
+    pub array_index: usize,
 }
 
 // Represents an "index" of a binding within a layout.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DescriptorSetBindingKey {
-    pub dst_binding: u32
+    pub dst_binding: u32,
 }
 
 // A set of writes to descriptors within a descriptor set
@@ -117,7 +117,7 @@ pub fn create_uninitialized_write_set_for_layout(
 
             let key = DescriptorSetElementKey {
                 dst_binding: binding.resource.binding as u32,
-                array_index: array_index as usize
+                array_index: array_index as usize,
             };
 
             write_set.elements.insert(key, element_write);
