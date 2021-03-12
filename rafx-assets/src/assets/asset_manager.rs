@@ -347,12 +347,15 @@ impl AssetManager {
                     location,
                     slot_assignment.slot_name
                 );
+
                 let layout_descriptor_set_writes =
                     &mut material_pass_write_set[location.layout_index as usize];
+
                 let write = layout_descriptor_set_writes
                     .elements
                     .get_mut(&DescriptorSetElementKey {
                         dst_binding: location.binding_index,
+                        array_index: slot_assignment.array_index,
                     })
                     .unwrap();
 
@@ -381,7 +384,7 @@ impl AssetManager {
                         }
                     }
 
-                    write.image_info = vec![write_image];
+                    write.image_info = write_image;
                 }
 
                 if what_to_bind.bind_buffers {
@@ -393,7 +396,7 @@ impl AssetManager {
                         ));
                     }
 
-                    write.buffer_info = vec![write_buffer];
+                    write.buffer_info = write_buffer;
                 }
             }
         }

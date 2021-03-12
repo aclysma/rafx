@@ -157,20 +157,15 @@ impl DynDescriptorSet {
     ) {
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
+            array_index
         };
 
         if let Some(element) = self.write_set.elements.get_mut(&key) {
             let what_to_bind = super::what_to_bind(element);
             if what_to_bind.bind_images {
-                if let Some(element_image) = element.image_info.get_mut(array_index) {
-                    element_image.image_view = Some(image_view);
+                element.image_info.image_view = Some(image_view);
 
-                    self.pending_write_set.elements.insert(key, element.clone());
-
-                //self.dirty.insert(key);
-                } else {
-                    log::warn!("Tried to set image index {} but it did not exist. The image array is {} elements long.", array_index, element.image_info.len());
-                }
+                self.pending_write_set.elements.insert(key, element.clone());
             } else {
                 // This is not necessarily an error if the user is binding with a slot name (although not sure
                 // if that's the right approach long term)
@@ -206,26 +201,21 @@ impl DynDescriptorSet {
     ) {
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
+            array_index
         };
 
         if let Some(element) = self.write_set.elements.get_mut(&key) {
             let what_to_bind = super::what_to_bind(element);
             if what_to_bind.bind_buffers {
-                if let Some(element_buffer) = element.buffer_info.get_mut(array_index) {
-                    element_buffer.buffer = Some(DescriptorSetWriteElementBufferData::BufferRef(
-                        DescriptorSetWriteElementBufferDataBufferRef {
-                            buffer: buffer.clone(),
-                            byte_offset: None,
-                            size: None,
-                        },
-                    ));
+                element.buffer_info.buffer = Some(DescriptorSetWriteElementBufferData::BufferRef(
+                    DescriptorSetWriteElementBufferDataBufferRef {
+                        buffer: buffer.clone(),
+                        byte_offset: None,
+                        size: None,
+                    },
+                ));
 
-                    self.pending_write_set.elements.insert(key, element.clone());
-
-                //self.dirty.insert(key);
-                } else {
-                    log::warn!("Tried to set buffer index {} but it did not exist. The image array is {} elements long.", array_index, element.buffer_info.len());
-                }
+                self.pending_write_set.elements.insert(key, element.clone());
             } else {
                 // This is not necessarily an error if the user is binding with a slot name (although not sure
                 // if that's the right approach long term)
@@ -265,18 +255,17 @@ impl DynDescriptorSet {
         //TODO: Verify that T's size matches the buffer
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
+            array_index
         };
 
         if let Some(element) = self.write_set.elements.get_mut(&key) {
             let what_to_bind = super::what_to_bind(element);
             if what_to_bind.bind_buffers {
                 let data = rafx_base::memory::any_as_bytes(data).into();
-                if let Some(element_buffer) = element.buffer_info.get_mut(array_index) {
-                    element_buffer.buffer = Some(DescriptorSetWriteElementBufferData::Data(data));
-                    self.pending_write_set.elements.insert(key, element.clone());
-                } else {
-                    log::warn!("Tried to set buffer data for index {} but it did not exist. The buffer array is {} elements long.", array_index, element.buffer_info.len());
-                }
+
+                element.buffer_info.buffer = Some(DescriptorSetWriteElementBufferData::Data(data));
+                
+                self.pending_write_set.elements.insert(key, element.clone());
             } else {
                 // This is not necessarily an error if the user is binding with a slot name (although not sure
                 // if that's the right approach long term)

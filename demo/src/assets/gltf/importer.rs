@@ -284,6 +284,7 @@ impl Importer for GltfImporter {
                 material_to_import.asset.material_data.clone().into();
             slot_assignments.push(MaterialInstanceSlotAssignment {
                 slot_name: "per_material_data".to_string(),
+                array_index: 0,
                 image: None,
                 sampler: None,
                 buffer_data: Some(
@@ -299,6 +300,7 @@ impl Importer for GltfImporter {
             ) {
                 slot_assignments.push(MaterialInstanceSlotAssignment {
                     slot_name: slot_name.to_string(),
+                    array_index: 0,
                     image: Some(image.as_ref().map_or(default_image, |x| x).clone()),
                     sampler: None,
                     buffer_data: None,
