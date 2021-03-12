@@ -57,9 +57,9 @@ pub struct DescriptorSetElementWrite {
     // This is a complete spec for
     pub descriptor_type: RafxResourceType,
 
-    //TODO: Should these be Option<Vec>?
-    pub image_info: Vec<DescriptorSetWriteElementImage>,
-    pub buffer_info: Vec<DescriptorSetWriteElementBuffer>,
+    pub image_info: DescriptorSetWriteElementImage,
+    pub buffer_info: DescriptorSetWriteElementBuffer,
+
     //TODO: texel buffer view support
     //pub p_texel_buffer_view: *const BufferView,
 
@@ -76,6 +76,13 @@ pub struct DescriptorSetElementWrite {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DescriptorSetElementKey {
     pub dst_binding: u32,
+    pub array_index: usize
+}
+
+// Represents an "index" of a binding within a layout.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct DescriptorSetBindingKey {
+    pub dst_binding: u32
 }
 
 // A set of writes to descriptors within a descriptor set
@@ -100,34 +107,21 @@ pub fn create_uninitialized_write_set_for_layout(
 ) -> DescriptorSetWriteSet {
     let mut write_set = DescriptorSetWriteSet::default();
     for binding in &layout.bindings {
-        let key = DescriptorSetElementKey {
-            dst_binding: binding.resource.binding as u32,
-        };
+        for array_index in 0..binding.resource.element_count_normalized() {
+            let element_write = DescriptorSetElementWrite {
+                has_immutable_sampler: binding.immutable_samplers.is_some(),
+                descriptor_type: binding.resource.resource_type,
+                image_info: DescriptorSetWriteElementImage::default(),
+                buffer_info: DescriptorSetWriteElementBuffer::default(),
+            };
 
-        let mut element_write = DescriptorSetElementWrite {
-            has_immutable_sampler: binding.immutable_samplers.is_some(),
-            descriptor_type: binding.resource.resource_type,
-            image_info: Default::default(),
-            buffer_info: Default::default(),
-        };
+            let key = DescriptorSetElementKey {
+                dst_binding: binding.resource.binding as u32,
+                array_index: array_index as usize
+            };
 
-        let what_to_bind = super::what_to_bind(&element_write);
-
-        if what_to_bind.bind_images || what_to_bind.bind_samplers {
-            element_write.image_info.resize(
-                binding.resource.element_count_normalized() as usize,
-                DescriptorSetWriteElementImage::default(),
-            );
+            write_set.elements.insert(key, element_write);
         }
-
-        if what_to_bind.bind_buffers {
-            element_write.buffer_info.resize(
-                binding.resource.element_count_normalized() as usize,
-                DescriptorSetWriteElementBuffer::default(),
-            );
-        }
-
-        write_set.elements.insert(key, element_write);
     }
 
     write_set

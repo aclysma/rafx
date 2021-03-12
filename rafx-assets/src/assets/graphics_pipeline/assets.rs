@@ -362,6 +362,8 @@ impl Deref for MaterialAsset {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialInstanceSlotAssignment {
     pub slot_name: String,
+    pub array_index: usize,
+
     pub image: Option<Handle<ImageAsset>>,
     pub sampler: Option<RafxSamplerDef>,
 

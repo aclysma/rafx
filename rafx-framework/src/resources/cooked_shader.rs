@@ -13,7 +13,6 @@ use std::sync::Arc;
 pub struct SlotLocation {
     pub layout_index: u32,
     pub binding_index: u32,
-    //pub array_index: u32,
 }
 
 pub type SlotNameLookup = FnvHashMap<String, FnvHashSet<SlotLocation>>;

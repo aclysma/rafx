@@ -1,7 +1,7 @@
 use super::ManagedDescriptorSet;
 use super::ManagedDescriptorSetPoolChunk;
 use super::{
-    DescriptorSetArc, DescriptorSetElementKey, DescriptorSetPoolRequiredBufferInfo,
+    DescriptorSetArc, DescriptorSetBindingKey, DescriptorSetPoolRequiredBufferInfo,
     DescriptorSetWriteSet, FrameInFlightIndex, MAX_DESCRIPTOR_SETS_PER_POOL, MAX_FRAMES_IN_FLIGHT,
 };
 use crate::resources::resource_lookup::DescriptorSetLayoutResource;
@@ -103,7 +103,7 @@ impl ManagedDescriptorSetPool {
                     per_descriptor_size,
                     per_descriptor_stride,
                     descriptor_type: binding.resource.resource_type,
-                    dst_element: DescriptorSetElementKey {
+                    dst_element: DescriptorSetBindingKey {
                         dst_binding: binding.resource.binding,
                     },
                 })
