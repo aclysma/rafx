@@ -157,7 +157,7 @@ impl DynDescriptorSet {
     ) {
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
-            array_index
+            array_index,
         };
 
         if let Some(element) = self.write_set.elements.get_mut(&key) {
@@ -201,7 +201,7 @@ impl DynDescriptorSet {
     ) {
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
-            array_index
+            array_index,
         };
 
         if let Some(element) = self.write_set.elements.get_mut(&key) {
@@ -255,7 +255,7 @@ impl DynDescriptorSet {
         //TODO: Verify that T's size matches the buffer
         let key = DescriptorSetElementKey {
             dst_binding: binding_index,
-            array_index
+            array_index,
         };
 
         if let Some(element) = self.write_set.elements.get_mut(&key) {
@@ -264,7 +264,7 @@ impl DynDescriptorSet {
                 let data = rafx_base::memory::any_as_bytes(data).into();
 
                 element.buffer_info.buffer = Some(DescriptorSetWriteElementBufferData::Data(data));
-                
+
                 self.pending_write_set.elements.insert(key, element.clone());
             } else {
                 // This is not necessarily an error if the user is binding with a slot name (although not sure

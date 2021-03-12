@@ -3,7 +3,11 @@ use super::{
     DescriptorLayoutBufferSet, DescriptorSetElementKey, DescriptorSetPoolRequiredBufferInfo,
     DescriptorSetWriteSet, ManagedDescriptorSet, MAX_DESCRIPTOR_SETS_PER_POOL,
 };
-use crate::{DescriptorSetArrayPoolAllocator, DescriptorSetLayoutResource, ResourceArc, ResourceDropSink};
+use crate::descriptor_sets::DescriptorSetElementWrite;
+use crate::resources::descriptor_sets::DescriptorSetBindingKey;
+use crate::{
+    DescriptorSetArrayPoolAllocator, DescriptorSetLayoutResource, ResourceArc, ResourceDropSink,
+};
 use fnv::FnvHashMap;
 use rafx_api::{
     RafxBuffer, RafxDescriptorElements, RafxDescriptorKey, RafxDescriptorSetArray,
@@ -12,8 +16,6 @@ use rafx_api::{
 };
 use rafx_base::slab::RawSlabKey;
 use std::collections::VecDeque;
-use crate::resources::descriptor_sets::DescriptorSetBindingKey;
-use crate::descriptor_sets::DescriptorSetElementWrite;
 
 // A write to the descriptors within a single descriptor set that has been scheduled (i.e. will occur
 // over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames
@@ -150,9 +152,7 @@ impl ManagedDescriptorSetPoolChunk {
             }
         }
 
-        let descriptor_set_array = {
-            self.descriptor_set_array.as_mut().unwrap()
-        };
+        let descriptor_set_array = { self.descriptor_set_array.as_mut().unwrap() };
 
         for (key, element) in all_set_writes {
             let slab_key = key.0;
@@ -173,7 +173,7 @@ impl ManagedDescriptorSetPoolChunk {
                 descriptor_set_array,
                 descriptor_set_index,
                 element_key,
-                element
+                element,
             )?;
 
             ManagedDescriptorSetPoolChunk::try_queue_descriptor_set_buffer_update(
@@ -182,7 +182,7 @@ impl ManagedDescriptorSetPoolChunk {
                 descriptor_set_array,
                 descriptor_set_index,
                 element_key,
-                element
+                element,
             )?;
         }
 
@@ -196,12 +196,12 @@ impl ManagedDescriptorSetPoolChunk {
         descriptor_set_array: &mut RafxDescriptorSetArray,
         descriptor_set_index: u32,
         element_key: DescriptorSetElementKey,
-        element: &DescriptorSetElementWrite
+        element: &DescriptorSetElementWrite,
     ) -> RafxResult<()> {
         if element.has_immutable_sampler
-            && element.descriptor_type.intersects(
-            RafxResourceType::SAMPLER | RafxResourceType::COMBINED_IMAGE_SAMPLER,
-        )
+            && element
+                .descriptor_type
+                .intersects(RafxResourceType::SAMPLER | RafxResourceType::COMBINED_IMAGE_SAMPLER)
         {
             // Skip any sampler bindings if the binding is populated with an immutable sampler
             return Ok(());
@@ -217,38 +217,32 @@ impl ManagedDescriptorSetPoolChunk {
         }
 
         if let Some(image_view) = &image_info.image_view {
-            descriptor_set_array.queue_descriptor_set_update(
-                &RafxDescriptorUpdate {
-                    array_index: descriptor_set_index,
-                    descriptor_key: RafxDescriptorKey::Binding(element_key.dst_binding),
-                    elements: RafxDescriptorElements {
-                        textures: Some(&[&image_view.get_image()]),
-                        ..Default::default()
-                    },
-                    dst_element_offset: image_info_index as u32,
-                    texture_bind_type: Default::default(),
+            descriptor_set_array.queue_descriptor_set_update(&RafxDescriptorUpdate {
+                array_index: descriptor_set_index,
+                descriptor_key: RafxDescriptorKey::Binding(element_key.dst_binding),
+                elements: RafxDescriptorElements {
+                    textures: Some(&[&image_view.get_image()]),
+                    ..Default::default()
                 },
-            )?;
+                dst_element_offset: image_info_index as u32,
+                texture_bind_type: Default::default(),
+            })?;
         }
 
         // Skip adding samplers if the binding is populated with an immutable sampler
         // (this case is hit when using CombinedImageSampler)
         if !element.has_immutable_sampler {
             if let Some(sampler) = &image_info.sampler {
-                descriptor_set_array.queue_descriptor_set_update(
-                    &RafxDescriptorUpdate {
-                        array_index: descriptor_set_index,
-                        descriptor_key: RafxDescriptorKey::Binding(
-                            element_key.dst_binding,
-                        ),
-                        elements: RafxDescriptorElements {
-                            samplers: Some(&[&sampler.get_raw().sampler]),
-                            ..Default::default()
-                        },
-                        dst_element_offset: image_info_index as u32,
-                        texture_bind_type: Default::default(),
+                descriptor_set_array.queue_descriptor_set_update(&RafxDescriptorUpdate {
+                    array_index: descriptor_set_index,
+                    descriptor_key: RafxDescriptorKey::Binding(element_key.dst_binding),
+                    elements: RafxDescriptorElements {
+                        samplers: Some(&[&sampler.get_raw().sampler]),
+                        ..Default::default()
                     },
-                )?;
+                    dst_element_offset: image_info_index as u32,
+                    texture_bind_type: Default::default(),
+                })?;
             }
         }
 
@@ -261,7 +255,7 @@ impl ManagedDescriptorSetPoolChunk {
         descriptor_set_array: &mut RafxDescriptorSetArray,
         descriptor_set_index: u32,
         element_key: DescriptorSetElementKey,
-        element: &DescriptorSetElementWrite
+        element: &DescriptorSetElementWrite,
     ) -> RafxResult<()> {
         let buffer_info = &element.buffer_info;
         let buffer_info_index = element_key.array_index;
@@ -277,33 +271,29 @@ impl ManagedDescriptorSetPoolChunk {
                         }])
                     }
 
-                    descriptor_set_array.queue_descriptor_set_update(
-                        &RafxDescriptorUpdate {
-                            array_index: descriptor_set_index,
-                            descriptor_key: RafxDescriptorKey::Binding(
-                                element_key.dst_binding,
-                            ),
-                            elements: RafxDescriptorElements {
-                                buffers: Some(&[&*buffer.buffer.get_raw().buffer]),
-                                buffer_offset_sizes: offset_sizes
-                                    .as_ref()
-                                    .map(|x| &x[..]),
-                                ..Default::default()
-                            },
-                            dst_element_offset: buffer_info_index as u32,
-                            texture_bind_type: Default::default(),
+                    descriptor_set_array.queue_descriptor_set_update(&RafxDescriptorUpdate {
+                        array_index: descriptor_set_index,
+                        descriptor_key: RafxDescriptorKey::Binding(element_key.dst_binding),
+                        elements: RafxDescriptorElements {
+                            buffers: Some(&[&*buffer.buffer.get_raw().buffer]),
+                            buffer_offset_sizes: offset_sizes.as_ref().map(|x| &x[..]),
+                            ..Default::default()
                         },
-                    )?;
+                        dst_element_offset: buffer_info_index as u32,
+                        texture_bind_type: Default::default(),
+                    })?;
                 }
                 DescriptorSetWriteElementBufferData::Data(data) => {
                     //TODO: Rebind the buffer if we are no longer bound to the internal buffer, or at
                     // least fail
                     // Failing here means that we're trying to write to a descriptor's internal buffer
                     // but the binding was not configured to enabled internal buffering
-                    let buffer =
-                        buffers.buffer_sets.get_mut(&DescriptorSetBindingKey {
-                            dst_binding: element_key.dst_binding
-                        }).unwrap();
+                    let buffer = buffers
+                        .buffer_sets
+                        .get_mut(&DescriptorSetBindingKey {
+                            dst_binding: element_key.dst_binding,
+                        })
+                        .unwrap();
 
                     //assert!(data.len() as u32 <= buffer.buffer_info.per_descriptor_size);
                     if data.len() as u32 > buffer.buffer_info.per_descriptor_size {
@@ -324,8 +314,7 @@ impl ManagedDescriptorSetPoolChunk {
                         );
                     }
 
-                    let offset =
-                        buffer.buffer_info.per_descriptor_stride * descriptor_set_index;
+                    let offset = buffer.buffer_info.per_descriptor_stride * descriptor_set_index;
 
                     log::trace!(
                         "Writing {} bytes to internal buffer to set {} at offset {}",
