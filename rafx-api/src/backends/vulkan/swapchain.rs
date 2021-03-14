@@ -68,10 +68,11 @@ struct SwapchainInfo {
 }
 
 //TODO: Allow these to be overridden when setting up vulkan?
-const VSYNC_ON_PRESENT_MODES: [VkPresentMode; 2] = [VkPresentMode::Mailbox, VkPresentMode::Fifo];
-const VSYNC_OFF_PRESENT_MODES: [VkPresentMode; 3] = [
-    VkPresentMode::FifoRelaxed,
+const VSYNC_ON_PRESENT_MODES: [VkPresentMode; 1] = [VkPresentMode::Fifo];
+const VSYNC_OFF_PRESENT_MODES: [VkPresentMode; 4] = [
     VkPresentMode::Mailbox,
+    VkPresentMode::FifoRelaxed,
+    VkPresentMode::Immediate,
     VkPresentMode::Fifo,
 ];
 
