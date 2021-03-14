@@ -19,7 +19,7 @@ rafx-base = { version = "=0.0.9", path = "../rafx-base" }
 rafx-framework = { version = "=0.0.9", path = "../rafx-framework" }
 
 distill = { version = "=0.0.2", features = ["serde_importers"] }
-basis-universal = "=0.0.3"
+basis-universal = "0.1.1"
 type-uuid = "0.1"
 uuid = "0.8"
 
