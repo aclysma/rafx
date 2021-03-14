@@ -1,5 +1,7 @@
 # Rafx
 
+[**Documentation**](docs/index.md)
+
 Rafx is a multi-backend renderer that prioritizes performance, flexibility, and productivity. It optionally integrates 
 with the [`distill`](https://github.com/amethyst/distill) asset pipeline to provide workflows and tools suitable
 for real-world projects with multidisciplinary teams.
@@ -15,8 +17,10 @@ Rafx also provides tools for building shaders and packing assets.
 Rafx supports most mainstream platforms via `vulkan` and `metal` backends. Proprietary platforms can be supported by
 adding an additional backend.
 
+Please keep in mind, this crate is still in pre-0.1.0 status!
+
  * [**Documentation**](docs/index.md)
- * Run `cargo doc --no-deps --open` in the root of the crate (docs.rs is incomplete because it does not build with features)
+ * For rustdoc: run `cargo doc --no-deps --open` in the root of the crate (docs.rs is incomplete because it does not build with features)
 
 [![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
 
