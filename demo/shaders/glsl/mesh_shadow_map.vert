@@ -9,5 +9,6 @@
 layout (location = 0) in vec3 in_pos;
 
 void main() {
-    gl_Position = per_object_data.model_view_proj * vec4(in_pos, 1.0);
+    mat4 model_view_proj = per_view_data.view_proj * per_object_data.model;
+    gl_Position = model_view_proj * vec4(in_pos, 1.0);
 }

@@ -12,7 +12,7 @@ use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx::framework::MaterialPass;
 use rafx::framework::{
-    DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
+    DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc,
 };
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
@@ -77,19 +77,22 @@ impl PrepareJob for MeshPrepareJob {
         // like this just avoids hardcoding to find the first mesh's first opaque pass
         //
         let mut submit_nodes = FeatureSubmitNodes::default();
-        for mesh in &self.extracted_frame_node_mesh_data {
-            if let Some(mesh) = mesh {
-                for mesh_part in &*mesh.mesh_asset.inner.mesh_parts {
-                    if let Some(mesh_part) = mesh_part {
-                        opaque_per_view_descriptor_set_layouts.insert(
-                            mesh_part
-                                .opaque_pass
-                                .material_pass_resource
-                                .get_raw()
-                                .descriptor_set_layouts
-                                [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
-                                .clone(),
-                        );
+        {
+            profiling::scope!("lookup per view descriptor set layouts");
+            for mesh in &self.extracted_frame_node_mesh_data {
+                if let Some(mesh) = mesh {
+                    for mesh_part in &*mesh.mesh_asset.inner.mesh_parts {
+                        if let Some(mesh_part) = mesh_part {
+                            opaque_per_view_descriptor_set_layouts.insert(
+                                mesh_part
+                                    .opaque_pass
+                                    .material_pass_resource
+                                    .get_raw()
+                                    .descriptor_set_layouts
+                                    [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
+                                    .clone(),
+                            );
+                        }
                     }
                 }
             }
@@ -121,61 +124,67 @@ impl PrepareJob for MeshPrepareJob {
             shadow_map_data.shadow_map_render_views.len(),
             shadow_map_data.shadow_map_image_views.len()
         );
-        for (index, shadow_map_render_view) in
-            shadow_map_data.shadow_map_render_views.iter().enumerate()
+
         {
-            match shadow_map_render_view {
-                ShadowMapRenderView::Single(view) => {
-                    if shadow_map_2d_count >= MAX_SHADOW_MAPS_2D {
-                        log::warn!("More 2D shadow maps than the mesh shader can support");
-                        continue;
+            profiling::scope!("gather shadow data");
+
+            for (index, shadow_map_render_view) in
+            shadow_map_data.shadow_map_render_views.iter().enumerate()
+            {
+                match shadow_map_render_view {
+                    ShadowMapRenderView::Single(view) => {
+                        if shadow_map_2d_count >= MAX_SHADOW_MAPS_2D {
+                            log::warn!("More 2D shadow maps than the mesh shader can support");
+                            continue;
+                        }
+
+                        shadow_map_2d_data[shadow_map_2d_count] =
+                            shaders::mesh_frag::ShadowMap2DDataStd140 {
+                                shadow_map_view_proj: view.view_proj().to_cols_array_2d(),
+                                shadow_map_light_dir: view.view_dir().into(),
+                                ..Default::default()
+                            };
+
+                        shadow_map_2d_image_views[shadow_map_2d_count] =
+                            Some(&shadow_map_data.shadow_map_image_views[index]);
+                        image_index_remap[index] = Some(shadow_map_2d_count);
+                        shadow_map_2d_count += 1;
                     }
+                    ShadowMapRenderView::Cube(views) => {
+                        if shadow_map_cube_count >= MAX_SHADOW_MAPS_CUBE {
+                            log::warn!("More cube shadow maps than the mesh shader can support");
+                            continue;
+                        }
 
-                    shadow_map_2d_data[shadow_map_2d_count] =
-                        shaders::mesh_frag::ShadowMap2DDataStd140 {
-                            shadow_map_view_proj: view.view_proj().to_cols_array_2d(),
-                            shadow_map_light_dir: view.view_dir().into(),
-                            ..Default::default()
-                        };
+                        // Shader not set up for infinite far plane
+                        let (near, far) = views[0]
+                            .depth_range()
+                            .finite_planes_after_reverse()
+                            .unwrap();
+                        shadow_map_cube_data[shadow_map_cube_count] =
+                            shaders::mesh_frag::ShadowMapCubeDataStd140 {
+                                cube_map_projection_near_z: near,
+                                cube_map_projection_far_z: far,
+                                ..Default::default()
+                            };
 
-                    shadow_map_2d_image_views[shadow_map_2d_count] =
-                        Some(&shadow_map_data.shadow_map_image_views[index]);
-                    image_index_remap[index] = Some(shadow_map_2d_count);
-                    shadow_map_2d_count += 1;
-                }
-                ShadowMapRenderView::Cube(views) => {
-                    if shadow_map_cube_count >= MAX_SHADOW_MAPS_CUBE {
-                        log::warn!("More cube shadow maps than the mesh shader can support");
-                        continue;
+                        shadow_map_cube_image_views[shadow_map_cube_count] =
+                            Some(&shadow_map_data.shadow_map_image_views[index]);
+                        image_index_remap[index] = Some(shadow_map_cube_count);
+                        shadow_map_cube_count += 1;
                     }
-
-                    // Shader not set up for infinite far plane
-                    let (near, far) = views[0]
-                        .depth_range()
-                        .finite_planes_after_reverse()
-                        .unwrap();
-                    shadow_map_cube_data[shadow_map_cube_count] =
-                        shaders::mesh_frag::ShadowMapCubeDataStd140 {
-                            cube_map_projection_near_z: near,
-                            cube_map_projection_far_z: far,
-                            ..Default::default()
-                        };
-
-                    shadow_map_cube_image_views[shadow_map_cube_count] =
-                        Some(&shadow_map_data.shadow_map_image_views[index]);
-                    image_index_remap[index] = Some(shadow_map_cube_count);
-                    shadow_map_cube_count += 1;
                 }
+            }
+
+            for index in shadow_map_2d_count..MAX_SHADOW_MAPS_2D {
+                shadow_map_2d_image_views[index] = Some(&invalid_resources.invalid_image);
+            }
+
+            for index in shadow_map_cube_count..MAX_SHADOW_MAPS_CUBE {
+                shadow_map_cube_image_views[index] = Some(&invalid_resources.invalid_cube_map_image);
             }
         }
 
-        for index in shadow_map_2d_count..MAX_SHADOW_MAPS_2D {
-            shadow_map_2d_image_views[index] = Some(&invalid_resources.invalid_image);
-        }
-
-        for index in shadow_map_cube_count..MAX_SHADOW_MAPS_CUBE {
-            shadow_map_cube_image_views[index] = Some(&invalid_resources.invalid_cube_map_image);
-        }
 
         //
         // Assign all direction lights a shadow map slot
@@ -227,37 +236,92 @@ impl PrepareJob for MeshPrepareJob {
         //
         // Create per-view descriptors for all per-view descriptor layouts that are in our materials
         //
-        for view in views {
-            let mut per_view_frag_data = self.create_per_view_frag_data(
-                view,
-                &prepared_directional_lights,
-                &prepared_spot_lights,
-                &prepared_point_lights,
-            );
+        {
+            profiling::scope!("create per view descriptor sets");
+            for view in views {
+                let mut per_view_frag_data = self.create_per_view_frag_data(
+                    view,
+                    &prepared_directional_lights,
+                    &prepared_spot_lights,
+                    &prepared_point_lights,
+                );
 
-            per_view_frag_data.shadow_map_2d_data = shadow_map_2d_data;
-            per_view_frag_data.shadow_map_cube_data = shadow_map_cube_data;
+                per_view_frag_data.shadow_map_2d_data = shadow_map_2d_data;
+                per_view_frag_data.shadow_map_cube_data = shadow_map_cube_data;
 
-            if view.phase_is_relevant::<OpaqueRenderPhase>()
-                || view.phase_is_relevant::<ShadowMapRenderPhase>()
-            {
-                for per_view_descriptor_set_layout in &opaque_per_view_descriptor_set_layouts {
-                    let descriptor_set = descriptor_set_allocator
-                        .create_descriptor_set(
-                            &per_view_descriptor_set_layout,
-                            shaders::mesh_frag::DescriptorSet0Args {
-                                shadow_map_images: &shadow_map_2d_image_views,
-                                shadow_map_images_cube: &shadow_map_cube_image_views,
-                                per_view_data: &per_view_frag_data,
-                            },
-                        )
-                        .unwrap();
+                if view.phase_is_relevant::<OpaqueRenderPhase>()
+                    || view.phase_is_relevant::<ShadowMapRenderPhase>()
+                {
+                    for per_view_descriptor_set_layout in &opaque_per_view_descriptor_set_layouts {
+                        let descriptor_set = descriptor_set_allocator
+                            .create_descriptor_set(
+                                &per_view_descriptor_set_layout,
+                                shaders::mesh_frag::DescriptorSet0Args {
+                                    shadow_map_images: &shadow_map_2d_image_views,
+                                    shadow_map_images_cube: &shadow_map_cube_image_views,
+                                    per_view_data: &per_view_frag_data,
+                                },
+                            )
+                            .unwrap();
 
-                    let old = per_view_descriptor_sets.insert(
-                        (view.view_index(), per_view_descriptor_set_layout.clone()),
-                        descriptor_set,
-                    );
-                    assert!(old.is_none());
+                        let old = per_view_descriptor_sets.insert(
+                            (view.view_index(), per_view_descriptor_set_layout.clone()),
+                            descriptor_set,
+                        );
+                        assert!(old.is_none());
+                    }
+                }
+            }
+        }
+
+        let mut opaque_frame_node_per_instance_descriptor_sets = vec![None; self.extracted_frame_node_mesh_data.len()];
+        let mut shadow_map_frame_node_per_instance_descriptor_sets = vec![None; self.extracted_frame_node_mesh_data.len()];
+        {
+            profiling::scope!("create per instance descriptor sets");
+
+            for (frame_node_index, frame_node_data) in self.extracted_frame_node_mesh_data.iter().enumerate() {
+                if let Some(frame_node_data) = frame_node_data {
+                    let per_object_data = MeshPerObjectFragmentShaderParam {
+                        model: frame_node_data.world_transform.to_cols_array_2d(),
+                    };
+
+                    for mesh_part in frame_node_data
+                        .mesh_asset
+                        .inner
+                        .mesh_parts
+                        .iter()
+                    {
+                        if let Some(mesh_part) = mesh_part {
+                            let per_instance_descriptor_set_layout = &mesh_part
+                                .opaque_pass
+                                .material_pass_resource
+                                .get_raw()
+                                .descriptor_set_layouts[super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
+
+                            opaque_frame_node_per_instance_descriptor_sets[frame_node_index] = Some(descriptor_set_allocator
+                                .create_descriptor_set(
+                                    per_instance_descriptor_set_layout,
+                                    shaders::mesh_frag::DescriptorSet2Args {
+                                        per_object_data: &per_object_data
+                                    },
+                                ).unwrap());
+
+                            if let Some(shadow_map_pass) = &mesh_part.shadow_map_pass {
+                                let per_instance_descriptor_set_layout = &shadow_map_pass
+                                    .material_pass_resource
+                                    .get_raw()
+                                    .descriptor_set_layouts[super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
+
+                                shadow_map_frame_node_per_instance_descriptor_sets[frame_node_index] = Some(descriptor_set_allocator
+                                    .create_descriptor_set(
+                                        per_instance_descriptor_set_layout,
+                                        shaders::mesh_frag::DescriptorSet2Args {
+                                            per_object_data: &per_object_data
+                                        },
+                                    ).unwrap());
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -266,6 +330,7 @@ impl PrepareJob for MeshPrepareJob {
         // Produce render nodes for every mesh
         //
         for view in views {
+            profiling::scope!("create render nodes for view");
             let mut view_submit_nodes =
                 ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
 
@@ -274,15 +339,9 @@ impl PrepareJob for MeshPrepareJob {
                 for view_node in view_nodes {
                     let extracted_data =
                         &self.extracted_frame_node_mesh_data[view_node.frame_node_index() as usize];
-                    if let Some(extracted_data) = extracted_data {
-                        let model_view = view.view_matrix() * extracted_data.world_transform;
-                        let model_view_proj = view.projection_matrix() * model_view;
 
-                        let per_object_param = MeshPerObjectFragmentShaderParam {
-                            model: extracted_data.world_transform.to_cols_array_2d(),
-                            model_view: model_view.to_cols_array_2d(),
-                            model_view_proj: model_view_proj.to_cols_array_2d(),
-                        };
+                    if let Some(extracted_data) = extracted_data {
+                        //let per_object_descriptor = frame_node_descriptor_sets[view_node.frame_node_index() as usize].as_ref().unwrap().clone();
 
                         for (mesh_part_index, mesh_part) in extracted_data
                             .mesh_asset
@@ -296,13 +355,13 @@ impl PrepareJob for MeshPrepareJob {
                                 // Write opaque render node, if it's relevant
                                 //
                                 if view.phase_is_relevant::<OpaqueRenderPhase>() {
+                                    let per_object_descriptor = opaque_frame_node_per_instance_descriptor_sets[view_node.frame_node_index() as usize].as_ref().unwrap();
                                     let submit_node_index = MeshPrepareJob::add_render_node(
-                                        &mut descriptor_set_allocator,
                                         &mut prepared_submit_node_mesh_data,
                                         &per_view_descriptor_sets,
                                         &view,
                                         view_node,
-                                        &per_object_param,
+                                        per_object_descriptor,
                                         mesh_part_index,
                                         &mesh_part.opaque_pass,
                                         Some(mesh_part.opaque_material_descriptor_set.clone()),
@@ -321,13 +380,13 @@ impl PrepareJob for MeshPrepareJob {
                                 //
                                 if let Some(shadow_map_pass) = &mesh_part.shadow_map_pass {
                                     if view.phase_is_relevant::<ShadowMapRenderPhase>() {
+                                        let per_object_descriptor = shadow_map_frame_node_per_instance_descriptor_sets[view_node.frame_node_index() as usize].as_ref().unwrap();
                                         let submit_node_index = MeshPrepareJob::add_render_node(
-                                            &mut descriptor_set_allocator,
                                             &mut prepared_submit_node_mesh_data,
                                             &per_view_descriptor_sets,
                                             &view,
                                             view_node,
-                                            &per_object_param,
+                                            per_object_descriptor,
                                             mesh_part_index,
                                             shadow_map_pass,
                                             None,
@@ -376,6 +435,9 @@ impl MeshPrepareJob {
         point_lights: &[PreparedPointLight],
     ) -> MeshPerViewFragmentShaderParam {
         let mut per_view_data = MeshPerViewFragmentShaderParam::default();
+
+        per_view_data.view = view.view_matrix().to_cols_array_2d();
+        per_view_data.view_proj = view.view_proj().to_cols_array_2d();
 
         per_view_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0).into();
 
@@ -454,7 +516,6 @@ impl MeshPrepareJob {
     }
 
     fn add_render_node(
-        descriptor_set_allocator: &mut DescriptorSetAllocatorRef,
         prepared_submit_node_mesh_data: &mut Vec<PreparedSubmitNodeMeshData>,
         per_view_descriptor_sets: &FnvHashMap<
             (u32, ResourceArc<DescriptorSetLayoutResource>),
@@ -462,7 +523,7 @@ impl MeshPrepareJob {
         >,
         view: &RenderView,
         view_node: &PerViewNode,
-        per_object_param: &MeshPerObjectFragmentShaderParam,
+        per_object_descriptor: &DescriptorSetArc,
         mesh_part_index: usize,
         material_pass: &MaterialPass,
         per_material_descriptor_set: Option<DescriptorSetArc>,
@@ -484,24 +545,6 @@ impl MeshPrepareJob {
         };
 
         //
-        // Create the per-instance descriptor set
-        // TODO: Common case is that parts in the same mesh use same material, so only create new descriptor set if the material is
-        // different between parts.
-        //
-        let per_instance_descriptor_set_layout = &material_pass
-            .material_pass_resource
-            .get_raw()
-            .descriptor_set_layouts[super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
-
-        let per_instance_descriptor_set = descriptor_set_allocator
-            .create_descriptor_set(
-                per_instance_descriptor_set_layout,
-                shaders::mesh_frag::DescriptorSet2Args {
-                    per_object_data: &per_object_param,
-                },
-            )
-            .unwrap();
-        //
         // Create the submit node
         //
         let submit_node_index = prepared_submit_node_mesh_data.len();
@@ -509,7 +552,7 @@ impl MeshPrepareJob {
             material_pass: material_pass.clone(),
             per_view_descriptor_set,
             per_material_descriptor_set: per_material_descriptor_set.clone(),
-            per_instance_descriptor_set,
+            per_instance_descriptor_set: per_object_descriptor.clone(),
             frame_node_index: view_node.frame_node_index(),
             mesh_part_index,
         });

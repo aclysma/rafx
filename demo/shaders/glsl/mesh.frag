@@ -80,6 +80,7 @@ layout (location = 2) in vec3 in_tangent_vs;
 layout (location = 3) in vec3 in_binormal_vs;
 layout (location = 4) in vec2 in_uv;
 layout (location = 5) in vec4 in_position_ws;
+layout (location = 6) in mat3 in_model_view;
 
 layout (location = 0) out vec4 out_color;
 
@@ -289,7 +290,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
 
     // Determine the direction of the light so we can apply more bias when light is near orthogonal to the normal
     // TODO: This is broken for spot lights. And is this mixing vs and ws data? Also we shouldn't consider normal maps here
-    vec3 light_dir_vs = mat3(per_object_data.model_view) * per_view_data.shadow_map_2d_data[index].shadow_map_light_dir;
+    vec3 light_dir_vs = in_model_view * per_view_data.shadow_map_2d_data[index].shadow_map_light_dir;
     vec3 surface_to_light_dir_vs = -light_dir_vs;
 
     // Tune with single-PCF

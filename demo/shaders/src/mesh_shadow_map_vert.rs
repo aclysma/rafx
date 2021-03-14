@@ -72,21 +72,25 @@ pub type MaterialDataUniform = MaterialDataStd140;
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct PerViewDataStd140 {
-    pub ambient_light: [f32; 4],                             // +0 (size: 16)
-    pub point_light_count: u32,                              // +16 (size: 4)
-    pub directional_light_count: u32,                        // +20 (size: 4)
-    pub spot_light_count: u32,                               // +24 (size: 4)
-    pub _padding0: [u8; 4],                                  // +28 (size: 4)
-    pub point_lights: [PointLightStd140; 16],                // +32 (size: 1024)
-    pub directional_lights: [DirectionalLightStd140; 16],    // +1056 (size: 1024)
-    pub spot_lights: [SpotLightStd140; 16],                  // +2080 (size: 1536)
-    pub shadow_map_2d_data: [ShadowMap2DDataStd140; 32],     // +3616 (size: 2560)
-    pub shadow_map_cube_data: [ShadowMapCubeDataStd140; 16], // +6176 (size: 256)
-} // 6432 bytes
+    pub view: [[f32; 4]; 4],                                 // +0 (size: 64)
+    pub view_proj: [[f32; 4]; 4],                            // +64 (size: 64)
+    pub ambient_light: [f32; 4],                             // +128 (size: 16)
+    pub point_light_count: u32,                              // +144 (size: 4)
+    pub directional_light_count: u32,                        // +148 (size: 4)
+    pub spot_light_count: u32,                               // +152 (size: 4)
+    pub _padding0: [u8; 4],                                  // +156 (size: 4)
+    pub point_lights: [PointLightStd140; 16],                // +160 (size: 1024)
+    pub directional_lights: [DirectionalLightStd140; 16],    // +1184 (size: 1024)
+    pub spot_lights: [SpotLightStd140; 16],                  // +2208 (size: 1536)
+    pub shadow_map_2d_data: [ShadowMap2DDataStd140; 32],     // +3744 (size: 2560)
+    pub shadow_map_cube_data: [ShadowMapCubeDataStd140; 16], // +6304 (size: 256)
+} // 6560 bytes
 
 impl Default for PerViewDataStd140 {
     fn default() -> Self {
         PerViewDataStd140 {
+            view: <[[f32; 4]; 4]>::default(),
+            view_proj: <[[f32; 4]; 4]>::default(),
             ambient_light: <[f32; 4]>::default(),
             point_light_count: <u32>::default(),
             directional_light_count: <u32>::default(),
@@ -244,17 +248,13 @@ pub type MaterialDataUboUniform = MaterialDataUboStd140;
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct PerObjectDataStd140 {
-    pub model: [[f32; 4]; 4],           // +0 (size: 64)
-    pub model_view: [[f32; 4]; 4],      // +64 (size: 64)
-    pub model_view_proj: [[f32; 4]; 4], // +128 (size: 64)
-} // 192 bytes
+    pub model: [[f32; 4]; 4], // +0 (size: 64)
+} // 64 bytes
 
 impl Default for PerObjectDataStd140 {
     fn default() -> Self {
         PerObjectDataStd140 {
             model: <[[f32; 4]; 4]>::default(),
-            model_view: <[[f32; 4]; 4]>::default(),
-            model_view_proj: <[[f32; 4]; 4]>::default(),
         }
     }
 }
@@ -718,54 +718,60 @@ mod test {
 
     #[test]
     fn test_struct_per_view_data_std140() {
-        assert_eq!(std::mem::size_of::<PerViewDataStd140>(), 6432);
+        assert_eq!(std::mem::size_of::<PerViewDataStd140>(), 6560);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, view), 0);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, view_proj), 64);
         assert_eq!(std::mem::size_of::<[f32; 4]>(), 16);
         assert_eq!(std::mem::align_of::<[f32; 4]>(), 4);
-        assert_eq!(memoffset::offset_of!(PerViewDataStd140, ambient_light), 0);
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, ambient_light), 128);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, point_light_count),
-            16
+            144
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, directional_light_count),
-            20
+            148
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, spot_light_count),
-            24
+            152
         );
         assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
         assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
-        assert_eq!(memoffset::offset_of!(PerViewDataStd140, _padding0), 28);
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, _padding0), 156);
         assert_eq!(std::mem::size_of::<[PointLightStd140; 16]>(), 1024);
         assert_eq!(std::mem::align_of::<[PointLightStd140; 16]>(), 4);
-        assert_eq!(memoffset::offset_of!(PerViewDataStd140, point_lights), 32);
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, point_lights), 160);
         assert_eq!(std::mem::size_of::<[DirectionalLightStd140; 16]>(), 1024);
         assert_eq!(std::mem::align_of::<[DirectionalLightStd140; 16]>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, directional_lights),
-            1056
+            1184
         );
         assert_eq!(std::mem::size_of::<[SpotLightStd140; 16]>(), 1536);
         assert_eq!(std::mem::align_of::<[SpotLightStd140; 16]>(), 4);
-        assert_eq!(memoffset::offset_of!(PerViewDataStd140, spot_lights), 2080);
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, spot_lights), 2208);
         assert_eq!(std::mem::size_of::<[ShadowMap2DDataStd140; 32]>(), 2560);
         assert_eq!(std::mem::align_of::<[ShadowMap2DDataStd140; 32]>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, shadow_map_2d_data),
-            3616
+            3744
         );
         assert_eq!(std::mem::size_of::<[ShadowMapCubeDataStd140; 16]>(), 256);
         assert_eq!(std::mem::align_of::<[ShadowMapCubeDataStd140; 16]>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, shadow_map_cube_data),
-            6176
+            6304
         );
     }
 
@@ -916,18 +922,9 @@ mod test {
 
     #[test]
     fn test_struct_per_object_data_std140() {
-        assert_eq!(std::mem::size_of::<PerObjectDataStd140>(), 192);
+        assert_eq!(std::mem::size_of::<PerObjectDataStd140>(), 64);
         assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
         assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
         assert_eq!(memoffset::offset_of!(PerObjectDataStd140, model), 0);
-        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
-        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
-        assert_eq!(memoffset::offset_of!(PerObjectDataStd140, model_view), 64);
-        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
-        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(PerObjectDataStd140, model_view_proj),
-            128
-        );
     }
 }

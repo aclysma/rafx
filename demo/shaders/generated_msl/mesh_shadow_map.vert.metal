@@ -3,13 +3,6 @@
 
 using namespace metal;
 
-struct PerObjectData
-{
-    float4x4 model;
-    float4x4 model_view;
-    float4x4 model_view_proj;
-};
-
 struct PointLight
 {
     float3 position_ws;
@@ -59,6 +52,8 @@ struct ShadowMapCubeData
 
 struct PerViewData
 {
+    float4x4 view;
+    float4x4 view_proj;
     float4 ambient_light;
     uint point_light_count;
     uint directional_light_count;
@@ -68,6 +63,11 @@ struct PerViewData
     SpotLight spot_lights[16];
     ShadowMap2DData shadow_map_2d_data[32];
     ShadowMapCubeData shadow_map_cube_data[16];
+};
+
+struct PerObjectData
+{
+    float4x4 model;
 };
 
 struct MaterialData
@@ -128,7 +128,8 @@ vertex main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer
     constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
     constexpr sampler smp_depth(filter::linear, mip_filter::linear, compare_func::greater, max_anisotropy(16));
     main0_out out = {};
-    out.gl_Position = (*spvDescriptorSet2.per_object_data).model_view_proj * float4(in.in_pos, 1.0);
+    float4x4 model_view_proj = (*spvDescriptorSet0.per_view_data).view_proj * (*spvDescriptorSet2.per_object_data).model;
+    out.gl_Position = model_view_proj * float4(in.in_pos, 1.0);
     return out;
 }
 

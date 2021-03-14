@@ -86,6 +86,8 @@ struct ShadowMapCubeData
 
 struct PerViewData
 {
+    float4x4 view;
+    float4x4 view_proj;
     float4 ambient_light;
     uint point_light_count;
     uint directional_light_count;
@@ -95,13 +97,6 @@ struct PerViewData
     SpotLight_1 spot_lights[16];
     ShadowMap2DData shadow_map_2d_data[32];
     ShadowMapCubeData shadow_map_cube_data[16];
-};
-
-struct PerObjectData
-{
-    float4x4 model;
-    float4x4 model_view;
-    float4x4 model_view_proj;
 };
 
 struct MaterialData
@@ -123,6 +118,11 @@ struct MaterialData
 struct MaterialDataUbo
 {
     MaterialData data;
+};
+
+struct PerObjectData
+{
+    float4x4 model;
 };
 
 struct spvDescriptorSetBuffer0
@@ -160,6 +160,9 @@ struct main0_in
     float3 in_binormal_vs [[user(locn3)]];
     float2 in_uv [[user(locn4)]];
     float4 in_position_ws [[user(locn5)]];
+    float3 in_model_view_0 [[user(locn6)]];
+    float3 in_model_view_1 [[user(locn7)]];
+    float3 in_model_view_2 [[user(locn8)]];
 };
 
 static inline __attribute__((always_inline))
@@ -301,14 +304,14 @@ float3 point_light_pbr(thread const PointLight& light, thread const float3& surf
 }
 
 static inline __attribute__((always_inline))
-float do_calculate_percent_lit(thread const float3& normal_vs, thread const int& index, thread const float& bias_multiplier, constant PerViewData& per_view_data, thread float4& in_position_ws, thread sampler smp_depth, constant PerObjectData& per_object_data, thread const array<depth2d<float>, 32> shadow_map_images)
+float do_calculate_percent_lit(thread const float3& normal_vs, thread const int& index, thread const float& bias_multiplier, constant PerViewData& per_view_data, thread float4& in_position_ws, thread sampler smp_depth, thread float3x3& in_model_view, thread const array<depth2d<float>, 32> shadow_map_images)
 {
     float4 shadow_map_pos = per_view_data.shadow_map_2d_data[index].shadow_map_view_proj * in_position_ws;
     float3 projected = shadow_map_pos.xyz / float3(shadow_map_pos.w);
     float2 sample_location_uv = (projected.xy * 0.5) + float2(0.5);
     sample_location_uv.y = 1.0 - sample_location_uv.y;
     float depth_of_surface = projected.z;
-    float3 light_dir_vs = float3x3(per_object_data.model_view[0].xyz, per_object_data.model_view[1].xyz, per_object_data.model_view[2].xyz) * per_view_data.shadow_map_2d_data[index].shadow_map_light_dir;
+    float3 light_dir_vs = in_model_view * per_view_data.shadow_map_2d_data[index].shadow_map_light_dir;
     float3 surface_to_light_dir_vs = -light_dir_vs;
     float bias_angle_factor = 1.0 - dot(normal_vs, surface_to_light_dir_vs);
     float bias0 = fast::max(((0.00999999977648258209228515625 * bias_angle_factor) * bias_angle_factor) * bias_angle_factor, 0.0005000000237487256526947021484375) * bias_multiplier;
@@ -318,8 +321,8 @@ float do_calculate_percent_lit(thread const float3& normal_vs, thread const int&
     {
         for (int y = -2; y <= 2; y++)
         {
-            float3 _451 = float3(sample_location_uv + (float2(float(x), float(y)) * texelSize), depth_of_surface + bias0);
-            shadow += shadow_map_images[index].sample_compare(smp_depth, _451.xy, _451.z);
+            float3 _442 = float3(sample_location_uv + (float2(float(x), float(y)) * texelSize), depth_of_surface + bias0);
+            shadow += shadow_map_images[index].sample_compare(smp_depth, _442.xy, _442.z);
         }
     }
     shadow /= 25.0;
@@ -327,7 +330,7 @@ float do_calculate_percent_lit(thread const float3& normal_vs, thread const int&
 }
 
 static inline __attribute__((always_inline))
-float calculate_percent_lit(thread const float3& normal, thread const int& index, thread const float& bias_multiplier, constant PerViewData& per_view_data, thread float4& in_position_ws, thread sampler smp_depth, constant PerObjectData& per_object_data, thread const array<depth2d<float>, 32> shadow_map_images)
+float calculate_percent_lit(thread const float3& normal, thread const int& index, thread const float& bias_multiplier, constant PerViewData& per_view_data, thread float4& in_position_ws, thread sampler smp_depth, thread float3x3& in_model_view, thread const array<depth2d<float>, 32> shadow_map_images)
 {
     if (index == (-1))
     {
@@ -336,7 +339,7 @@ float calculate_percent_lit(thread const float3& normal, thread const int& index
     float3 param = normal;
     int param_1 = index;
     float param_2 = bias_multiplier;
-    return do_calculate_percent_lit(param, param_1, param_2, per_view_data, in_position_ws, smp_depth, per_object_data, shadow_map_images);
+    return do_calculate_percent_lit(param, param_1, param_2, per_view_data, in_position_ws, smp_depth, in_model_view, shadow_map_images);
 }
 
 static inline __attribute__((always_inline))
@@ -389,7 +392,7 @@ float3 directional_light_pbr(thread const DirectionalLight& light, thread const 
 }
 
 static inline __attribute__((always_inline))
-float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& base_color, thread const float4& emissive_color, thread const float& metalness, thread const float& roughness, thread const float3& normal_vs, constant PerViewData& per_view_data, thread float4& in_position_ws, thread float3& in_position_vs, thread float3& in_normal_vs, thread const array<depthcube<float>, 16> shadow_map_images_cube, thread sampler smp_depth, constant PerObjectData& per_object_data, thread const array<depth2d<float>, 32> shadow_map_images)
+float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& base_color, thread const float4& emissive_color, thread const float& metalness, thread const float& roughness, thread const float3& normal_vs, constant PerViewData& per_view_data, thread float4& in_position_ws, thread float3& in_position_vs, thread float3& in_normal_vs, thread const array<depthcube<float>, 16> shadow_map_images_cube, thread sampler smp_depth, thread float3x3& in_model_view, thread const array<depth2d<float>, 32> shadow_map_images)
 {
     float3 fresnel_base = float3(0.039999999105930328369140625);
     fresnel_base = mix(fresnel_base, base_color.xyz, float3(metalness));
@@ -424,7 +427,7 @@ float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& bas
         float3 param_13 = normal_vs;
         int param_14 = per_view_data.spot_lights[i_1].shadow_map;
         float param_15 = 0.4000000059604644775390625;
-        float percent_lit_1 = calculate_percent_lit(param_13, param_14, param_15, per_view_data, in_position_ws, smp_depth, per_object_data, shadow_map_images);
+        float percent_lit_1 = calculate_percent_lit(param_13, param_14, param_15, per_view_data, in_position_ws, smp_depth, in_model_view, shadow_map_images);
         param_16.position_ws = per_view_data.spot_lights[i_1].position_ws;
         param_16.direction_ws = per_view_data.spot_lights[i_1].direction_ws;
         param_16.position_vs = per_view_data.spot_lights[i_1].position_vs;
@@ -449,7 +452,7 @@ float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& bas
         float3 param_24 = normal_vs;
         int param_25 = per_view_data.directional_lights[i_2].shadow_map;
         float param_26 = 1.0;
-        float percent_lit_2 = calculate_percent_lit(param_24, param_25, param_26, per_view_data, in_position_ws, smp_depth, per_object_data, shadow_map_images);
+        float percent_lit_2 = calculate_percent_lit(param_24, param_25, param_26, per_view_data, in_position_ws, smp_depth, in_model_view, shadow_map_images);
         param_27.direction_ws = per_view_data.directional_lights[i_2].direction_ws;
         param_27.direction_vs = per_view_data.directional_lights[i_2].direction_vs;
         param_27.color = per_view_data.directional_lights[i_2].color;
@@ -474,6 +477,10 @@ fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuff
     constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
     constexpr sampler smp_depth(filter::linear, mip_filter::linear, compare_func::greater, max_anisotropy(16));
     main0_out out = {};
+    float3x3 in_model_view = {};
+    in_model_view[0] = in.in_model_view_0;
+    in_model_view[1] = in.in_model_view_1;
+    in_model_view[2] = in.in_model_view_2;
     float4 base_color = (*spvDescriptorSet1.per_material_data).data.base_color_factor;
     if ((*spvDescriptorSet1.per_material_data).data.has_base_color_texture != 0u)
     {
@@ -514,7 +521,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuff
     float param_5 = metalness;
     float param_6 = roughness;
     float3 param_7 = normal_vs;
-    out.out_color = pbr_path(param_2, param_3, param_4, param_5, param_6, param_7, (*spvDescriptorSet0.per_view_data), in.in_position_ws, in.in_position_vs, in.in_normal_vs, spvDescriptorSet0.shadow_map_images_cube, smp_depth, (*spvDescriptorSet2.per_object_data), spvDescriptorSet0.shadow_map_images);
+    out.out_color = pbr_path(param_2, param_3, param_4, param_5, param_6, param_7, (*spvDescriptorSet0.per_view_data), in.in_position_ws, in.in_position_vs, in.in_normal_vs, spvDescriptorSet0.shadow_map_images_cube, smp_depth, in_model_view, spvDescriptorSet0.shadow_map_images);
     return out;
 }
 

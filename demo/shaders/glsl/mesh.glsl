@@ -50,6 +50,8 @@ struct ShadowMapCubeData {
 // @[export]
 // @[internal_buffer]
 layout (set = 0, binding = 0) uniform PerViewData {
+    mat4 view;
+    mat4 view_proj;
     vec4 ambient_light;
     uint point_light_count;
     uint directional_light_count;
@@ -145,6 +147,4 @@ layout (set = 1, binding = 5) uniform texture2D emissive_texture;
 // @[internal_buffer]
 layout(set = 2, binding = 0) uniform PerObjectData {
     mat4 model;
-    mat4 model_view;
-    mat4 model_view_proj;
 } per_object_data;

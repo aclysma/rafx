@@ -96,8 +96,8 @@ impl ShadowsScene {
                 meshes
             };
 
-            for i in 0..6 {
-                let position = Vec3::new(((i / 3) * 3) as f32, ((i % 3) * 3) as f32, 0.0);
+            for i in 0..200 {
+                let position = Vec3::new(((i / 9) * 3) as f32, ((i % 9) * 3) as f32, 0.0);
                 let cube_mesh = cube_meshes[i % cube_meshes.len()].clone();
 
                 let render_node = mesh_render_nodes.register_mesh(MeshRenderNode {
