@@ -46,10 +46,9 @@ impl FeatureCommandWriter for MeshCommandWriter {
 
         command_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
 
-        // frag shader per-view data, not present during shadow pass
-        if let Some(per_view_descriptor_set) = &render_node_data.per_view_descriptor_set {
-            per_view_descriptor_set.bind(command_buffer).unwrap();
-        };
+        render_node_data
+            .per_view_descriptor_set
+            .bind(command_buffer)?;
 
         // frag shader material data, not present during shadow pass
         if let Some(per_material_descriptor_set) = &render_node_data.per_material_descriptor_set {

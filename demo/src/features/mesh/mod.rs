@@ -36,6 +36,7 @@ use crate::components::{
 };
 pub use shaders::mesh_frag::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
 pub use shaders::mesh_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
+pub use shaders::mesh_shadow_map_vert::PerViewDataUniform as ShadowPerViewShaderParam;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum LightId {
@@ -152,7 +153,7 @@ impl std::fmt::Debug for ExtractedFrameNodeMeshData {
 
 pub struct PreparedSubmitNodeMeshData {
     material_pass: MaterialPass,
-    per_view_descriptor_set: Option<DescriptorSetArc>,
+    per_view_descriptor_set: DescriptorSetArc,
     per_material_descriptor_set: Option<DescriptorSetArc>,
     per_instance_descriptor_set: DescriptorSetArc,
     // we can get the mesh via the frame node index
