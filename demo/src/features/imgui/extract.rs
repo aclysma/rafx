@@ -59,7 +59,8 @@ impl ExtractJob for ImGuiExtractJobImpl {
             .fetch::<ImguiStaticResources>()
             .imgui_material;
         let imgui_material_pass = asset_manager
-            .get_material_pass_by_index(imgui_material, 0)
+            .committed_asset(imgui_material)
+            .map(|x| x.get_single_material_pass().unwrap())
             .unwrap();
 
         let static_resources = &extract_context

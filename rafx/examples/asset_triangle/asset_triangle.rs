@@ -260,8 +260,9 @@ fn run() -> RafxResult<()> {
             //
             // Only run it if the triangle material is loaded.
             //
-            if let Some(triangle_material) =
-                asset_manager.get_material_pass_by_index(&triangle_material_handle, 0)
+            if let Some(triangle_material) = asset_manager
+                .committed_asset(&triangle_material_handle)
+                .and_then(|x| x.get_single_material_pass().ok())
             {
                 let captured_vertex_layout = vertex_layout.clone();
                 graph_builder.set_renderpass_callback(node, move |args| {

@@ -37,7 +37,8 @@ impl ExtractJob for TextExtractJob {
             .fetch::<TextStaticResources>()
             .text_material;
         let text_material_pass = asset_manager
-            .get_material_pass_by_index(&text_material, 0)
+            .committed_asset(&text_material)
+            .map(|x| x.get_single_material_pass().unwrap())
             .unwrap();
 
         let text_draw_data = text_resource.take_text_draw_data();
