@@ -1,10 +1,10 @@
 use crate::components::{PositionComponent, SpriteComponent};
-use crate::features::sprite::{SpriteRenderNode, SpriteRenderNodeSet};
 use glam::f32::Vec3;
 use legion::{Resources, World};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
-use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
+use crate::time::TimeState;
+use rafx::renderer::ViewportsResource;
 
 pub(super) struct SpriteScene {}
 
@@ -26,32 +26,12 @@ impl SpriteScene {
                 i as f32 * 1.0,
             );
 
-            //let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
             let alpha = 1.0;
-
-            let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
-            let mut dynamic_visibility_node_set =
-                resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
-
-            let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
-                position,
-                alpha,
-                image: sprite_image.clone(),
-            });
-
-            let aabb_info = DynamicAabbVisibilityNode {
-                handle: render_node.as_raw_generic_handle(),
-                // aabb bounds
-            };
-
-            // User calls functions to register visibility objects
-            // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-            let visibility_node = dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
 
             let position_component = PositionComponent { position };
             let sprite_component = SpriteComponent {
-                render_node,
-                visibility_node,
+                render_node: None,
+                visibility_node: None,
                 alpha,
                 image: sprite_image.clone(),
             };
@@ -67,7 +47,13 @@ impl super::TestScene for SpriteScene {
     fn update(
         &mut self,
         _world: &mut World,
-        _resources: &Resources,
+        resources: &Resources,
     ) {
+        {
+            let time_state = resources.get::<TimeState>().unwrap();
+            let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
+
+            super::update_main_view(&*time_state, &mut *viewports_resource);
+        }
     }
 }

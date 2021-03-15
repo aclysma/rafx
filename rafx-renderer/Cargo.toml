@@ -20,7 +20,7 @@ rafx-assets = { version = "=0.0.10", path = "../rafx-assets" }
 glam = { version = "0.8.6", features = [ "serde" ] }
 crossbeam-channel = "0.5"
 log = "0.4"
-profiling = "0.1.4"
+profiling = "0.1.9"
 
 [features]
 profile-with-puffin = ["profiling/profile-with-puffin"]

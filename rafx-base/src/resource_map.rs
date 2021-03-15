@@ -107,6 +107,15 @@ impl ResourceMap {
         }
     }
 
+    pub fn ensure_exists_or_add_default<R>(&mut self)
+        where
+            R: Resource + Default,
+    {
+        if !self.has_value::<R>() {
+            self.insert(R::default());
+        }
+    }
+
     /// Add a type/resource instance to the map
     pub fn insert<R>(
         &mut self,

@@ -74,10 +74,11 @@ impl RenderOptions {
         ui.checkbox(imgui::im_str!("enable_hdr"), &mut self.enable_hdr);
         ui.checkbox(imgui::im_str!("enable_bloom"), &mut self.enable_bloom);
         let mut blur_pass_count = self.blur_pass_count as i32;
-        ui.drag_int(imgui::im_str!("blur_pass_count"), &mut blur_pass_count)
-            .min(0)
-            .max(10)
-            .build();
+
+        imgui::Drag::new(imgui::im_str!("blur_pass_count"))
+            .range(0..=10)
+            .build(ui, &mut blur_pass_count);
+
         self.blur_pass_count = blur_pass_count as usize;
     }
 }
@@ -318,22 +319,6 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             add_to_extract_resources!(AssetManager);
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
-            add_to_extract_resources!(
-                rafx::visibility::DynamicVisibilityNodeSet,
-                dynamic_visibility_node_set
-            );
-            add_to_extract_resources!(
-                rafx::visibility::StaticVisibilityNodeSet,
-                static_visibility_node_set
-            );
-            add_to_extract_resources!(
-                crate::features::sprite::SpriteRenderNodeSet,
-                sprite_render_node_set
-            );
-            add_to_extract_resources!(
-                crate::features::mesh::MeshRenderNodeSet,
-                mesh_render_node_set
-            );
             add_to_extract_resources!(
                 crate::features::debug3d::DebugDraw3DResource,
                 debug_draw_3d_resource

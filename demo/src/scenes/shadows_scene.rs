@@ -4,7 +4,6 @@ use crate::components::SpotLightComponent;
 use crate::components::{
     DirectionalLightComponent, MeshComponent, PointLightComponent, PositionComponent,
 };
-use crate::features::mesh::{MeshRenderNode, MeshRenderNodeSet};
 use crate::features::text::TextResource;
 use crate::time::TimeState;
 use distill::loader::handle::Handle;
@@ -13,7 +12,6 @@ use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::renderer::ViewportsResource;
-use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
 pub(super) struct ShadowsScene {
     font: Handle<FontAsset>,
@@ -24,9 +22,8 @@ impl ShadowsScene {
         world: &mut World,
         resources: &Resources,
     ) -> Self {
-        let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
-        let mut dynamic_visibility_node_set =
-            resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
+        // let mut dynamic_visibility_node_set =
+        //     resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
 
         let font = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
@@ -44,23 +41,10 @@ impl ShadowsScene {
 
             let position = Vec3::new(0.0, 0.0, -1.0);
 
-            let render_node = mesh_render_nodes.register_mesh(MeshRenderNode {
-                transform: glam::Mat4::from_translation(position),
-                mesh: Some(floor_mesh.clone()),
-            });
-
-            // User calls functions to register visibility objects
-            // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-            let visibility_node =
-                dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
-                    handle: render_node.as_raw_generic_handle(),
-                    // aabb bounds
-                });
-
             let position_component = PositionComponent { position };
             let mesh_component = MeshComponent {
-                render_node,
-                visibility_node,
+                render_node: None,
+                visibility_node: None,
                 mesh: Some(floor_mesh.clone()),
             };
 
@@ -100,23 +84,10 @@ impl ShadowsScene {
                 let position = Vec3::new(((i / 9) * 3) as f32, ((i % 9) * 3) as f32, 0.0);
                 let cube_mesh = cube_meshes[i % cube_meshes.len()].clone();
 
-                let render_node = mesh_render_nodes.register_mesh(MeshRenderNode {
-                    transform: glam::Mat4::from_translation(position),
-                    mesh: Some(cube_mesh.clone()),
-                });
-
-                // User calls functions to register visibility objects
-                // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-                let visibility_node =
-                    dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
-                        handle: render_node.as_raw_generic_handle(),
-                        // aabb bounds
-                    });
-
                 let position_component = PositionComponent { position };
                 let mesh_component = MeshComponent {
-                    render_node,
-                    visibility_node,
+                    render_node: None,
+                    visibility_node: None,
                     mesh: Some(cube_mesh.clone()),
                 };
 

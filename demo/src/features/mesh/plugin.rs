@@ -32,6 +32,10 @@ impl RendererPlugin for MeshRendererPlugin {
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         render_resources.insert(ShadowMapResource::default());
+        render_resources.insert(MeshRenderNodeSet::default());
+
+        render_resources.ensure_exists_or_add_default::<StaticVisibilityNodeSet>();
+        render_resources.ensure_exists_or_add_default::<DynamicVisibilityNodeSet>();
 
         Ok(())
     }
@@ -39,9 +43,10 @@ impl RendererPlugin for MeshRendererPlugin {
     fn add_render_node_reservations(
         &self,
         render_node_reservations: &mut RenderNodeReservations,
-        extract_resources: &ExtractResources,
+        _extract_resources: &ExtractResources,
+        render_resources: &RenderResources,
     ) {
-        let mut mesh_render_nodes = extract_resources.fetch_mut::<MeshRenderNodeSet>();
+        let mut mesh_render_nodes = render_resources.fetch_mut::<MeshRenderNodeSet>();
         mesh_render_nodes.update();
         render_node_reservations.add_reservation(&*mesh_render_nodes);
     }

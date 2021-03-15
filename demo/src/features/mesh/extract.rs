@@ -14,6 +14,7 @@ use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
     RenderJobExtractContext, RenderView,
 };
+use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
 pub struct MeshExtractJob {}
 
@@ -33,8 +34,8 @@ impl ExtractJob for MeshExtractJob {
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
         profiling::scope!("Mesh Extract");
-        let legion_world = extract_context.extract_resources.fetch::<World>();
-        let world = &*legion_world;
+        let mut legion_world = extract_context.extract_resources.fetch_mut::<World>();
+        let world = &mut *legion_world;
 
         let asset_manager = extract_context
             .render_resources
@@ -44,16 +45,36 @@ impl ExtractJob for MeshExtractJob {
         // Update the mesh render nodes. This could be done earlier as part of a system
         //
         let mut mesh_render_nodes = extract_context
-            .extract_resources
+            .render_resources
             .fetch_mut::<MeshRenderNodeSet>();
 
-        let mut query = <(Read<PositionComponent>, Read<MeshComponent>)>::query();
-        for (position_component, mesh_component) in query.iter(world) {
-            let render_node = mesh_render_nodes
-                .get_mut(&mesh_component.render_node)
-                .unwrap();
-            render_node.mesh = mesh_component.mesh.clone();
-            render_node.transform = glam::Mat4::from_translation(position_component.position);
+        let mut dynamic_visibility_node_set = extract_context
+            .render_resources
+            .fetch_mut::<DynamicVisibilityNodeSet>();
+
+        let mut query = <(Read<PositionComponent>, Write<MeshComponent>)>::query();
+        for (position_component, mut mesh_component) in query.iter_mut(world) {
+            if let Some(mesh_handle) = &mesh_component.render_node {
+                let render_node = mesh_render_nodes
+                    .get_mut(mesh_handle)
+                    .unwrap();
+                render_node.mesh = mesh_component.mesh.clone();
+                render_node.transform = glam::Mat4::from_translation(position_component.position);
+            } else {
+                let render_node = mesh_render_nodes.register_mesh(MeshRenderNode {
+                    transform: glam::Mat4::from_translation(position_component.position),
+                    mesh: mesh_component.mesh.clone(),
+                });
+
+                let visibility_node =
+                    dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
+                        handle: render_node.as_raw_generic_handle(),
+                        // aabb bounds
+                    });
+
+                mesh_component.render_node = Some(render_node);
+                mesh_component.visibility_node = Some(visibility_node);
+            }
         }
 
         //
