@@ -132,8 +132,7 @@ impl ExtractJob for MeshExtractJob {
             .fetch::<AssetManagerRenderResource>();
 
         let depth_material = asset_manager
-            .committed_asset(&static_resources.depth_material)
-            .map(|x| x.get_single_material_pass().unwrap())
+            .get_material_pass_by_name(&static_resources.depth_material, "Depth")
             .unwrap();
 
         Box::new(MeshPrepareJob {

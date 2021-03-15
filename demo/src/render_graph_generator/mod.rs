@@ -14,6 +14,8 @@ use shadow_map_pass::ShadowMapImageResources;
 mod opaque_pass;
 use opaque_pass::OpaquePass;
 
+mod depth_prepass;
+
 mod bloom_extract_pass;
 use crate::demo_plugin::DemoStaticResources;
 use crate::features::mesh::shadow_map_resource::ShadowMapResource;
@@ -150,8 +152,11 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             .image_view
             .clone();
 
+        let depth_prepass = depth_prepass::depth_prepass(&mut graph_context);
+
         let opaque_pass = opaque_pass::opaque_pass(
             &mut graph_context,
+            depth_prepass.depth,
             skybox_material_pass,
             skybox_texture,
             &shadow_maps,

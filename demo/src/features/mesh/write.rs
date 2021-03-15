@@ -39,7 +39,7 @@ impl FeatureCommandWriter for MeshCommandWriter {
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
                 render_phase_index,
-                &render_node_data.material_pass.material_pass_resource,
+                &render_node_data.material_pass_resource,
                 &write_context.render_target_meta,
                 &*crate::assets::gltf::MESH_VERTEX_LAYOUT,
             )?;

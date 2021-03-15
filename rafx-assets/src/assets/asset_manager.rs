@@ -8,7 +8,7 @@ use distill::loader::handle::Handle;
 use rafx_framework::{
     DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider, DescriptorSetAllocatorRef,
     DescriptorSetLayoutResource, DescriptorSetWriteSet, DynResourceAllocatorSet,
-    GraphicsPipelineCache, MaterialPass, ResourceArc, SlotNameLookup,
+    GraphicsPipelineCache, MaterialPass, MaterialPassResource, ResourceArc, SlotNameLookup,
 };
 
 use super::upload::UploadManager;
@@ -28,7 +28,7 @@ use rafx_framework::descriptor_sets::{
     DescriptorSetElementKey, DescriptorSetWriteElementBuffer, DescriptorSetWriteElementBufferData,
     DescriptorSetWriteElementImage,
 };
-use rafx_framework::nodes::RenderRegistry;
+use rafx_framework::nodes::{RenderPhase, RenderRegistry};
 use rafx_framework::DescriptorSetAllocator;
 use rafx_framework::DynCommandPoolAllocator;
 use rafx_framework::DynResourceAllocatorSetProvider;
@@ -268,6 +268,35 @@ impl AssetManager {
     //
     // Loaders
     //
+
+    pub fn get_material_pass_by_index(
+        &self,
+        handle: &Handle<MaterialAsset>,
+        index: usize,
+    ) -> Option<ResourceArc<MaterialPassResource>> {
+        self.committed_asset(handle)
+            .and_then(|x| x.passes.get(index))
+            .map(|x| x.material_pass_resource.clone())
+    }
+
+    pub fn get_material_pass_by_name(
+        &self,
+        handle: &Handle<MaterialAsset>,
+        name: &str,
+    ) -> Option<ResourceArc<MaterialPassResource>> {
+        self.committed_asset(handle)
+            .and_then(|x| x.passes.get(x.find_pass_by_name(name)? as usize))
+            .map(|x| x.material_pass_resource.clone())
+    }
+
+    pub fn get_material_pass_by_phase<T: RenderPhase>(
+        &self,
+        handle: &Handle<MaterialAsset>,
+    ) -> Option<ResourceArc<MaterialPassResource>> {
+        self.committed_asset(handle)
+            .and_then(|x| x.passes.get(x.find_pass_by_phase::<T>()? as usize))
+            .map(|x| x.material_pass_resource.clone())
+    }
 
     pub fn get_descriptor_set_layout_for_pass(
         &self,

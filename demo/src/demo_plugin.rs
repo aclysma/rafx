@@ -1,6 +1,6 @@
 use crate::phases::{
-    OpaqueRenderPhase, PostProcessRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
-    UiRenderPhase,
+    DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase, ShadowMapRenderPhase,
+    TransparentRenderPhase, UiRenderPhase,
 };
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::RafxResult;
@@ -30,6 +30,7 @@ impl RendererPlugin for DemoRendererPlugin {
         render_registry_builder: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
         render_registry_builder
+            .register_render_phase::<DepthPrepassRenderPhase>("DepthPrepass")
             .register_render_phase::<OpaqueRenderPhase>("Opaque")
             .register_render_phase::<ShadowMapRenderPhase>("ShadowMap")
             .register_render_phase::<TransparentRenderPhase>("Transparent")

@@ -9,7 +9,9 @@ mod shadows_scene;
 use shadows_scene::ShadowsScene;
 
 mod sprite_scene;
-use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase};
+use crate::phases::{
+    DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
+};
 use crate::time::TimeState;
 use rafx::nodes::{RenderPhaseMaskBuilder, RenderViewDepthRange};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
@@ -172,6 +174,7 @@ fn update_main_view(
     viewports_resource: &mut ViewportsResource,
 ) {
     let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
+        .add_render_phase::<DepthPrepassRenderPhase>()
         .add_render_phase::<OpaqueRenderPhase>()
         .add_render_phase::<TransparentRenderPhase>()
         .add_render_phase::<UiRenderPhase>()
