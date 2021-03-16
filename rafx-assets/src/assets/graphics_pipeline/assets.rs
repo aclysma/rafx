@@ -50,7 +50,9 @@ impl Default for AlphaBlendingPreset {
 pub enum DepthBufferPreset {
     Disabled,
     Enabled,
+    ReadOnly,
     EnabledReverseZ,
+    ReadOnlyReverseZ,
 }
 
 impl Default for DepthBufferPreset {
@@ -146,9 +148,19 @@ impl FixedFunctionStateData {
                 depth_state.depth_write_enable = true;
                 depth_state.depth_compare_op = RafxCompareOp::LessOrEqual;
             }
+            DepthBufferPreset::ReadOnly => {
+                depth_state.depth_test_enable = true;
+                depth_state.depth_write_enable = false;
+                depth_state.depth_compare_op = RafxCompareOp::LessOrEqual;
+            }
             DepthBufferPreset::EnabledReverseZ => {
                 depth_state.depth_test_enable = true;
                 depth_state.depth_write_enable = true;
+                depth_state.depth_compare_op = RafxCompareOp::GreaterOrEqual;
+            }
+            DepthBufferPreset::ReadOnlyReverseZ => {
+                depth_state.depth_test_enable = true;
+                depth_state.depth_write_enable = false;
                 depth_state.depth_compare_op = RafxCompareOp::GreaterOrEqual;
             }
         }

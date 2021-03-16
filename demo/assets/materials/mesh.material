@@ -4,7 +4,7 @@
             name: Some("mesh opaque"),
             phase: Some("Opaque"),
             fixed_function_state: (
-                depth_testing: EnabledReverseZ,
+                depth_testing: ReadOnlyReverseZ,
                 cull_mode: Some(Back),
                 front_face: Some(CounterClockwise),
             ),
