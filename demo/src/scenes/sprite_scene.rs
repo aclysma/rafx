@@ -1,9 +1,9 @@
 use crate::components::{PositionComponent, SpriteComponent};
+use crate::time::TimeState;
 use glam::f32::Vec3;
 use legion::{Resources, World};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
-use crate::time::TimeState;
 use rafx::renderer::ViewportsResource;
 
 pub(super) struct SpriteScene {}

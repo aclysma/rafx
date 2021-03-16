@@ -55,9 +55,7 @@ impl ExtractJob for MeshExtractJob {
         let mut query = <(Read<PositionComponent>, Write<MeshComponent>)>::query();
         for (position_component, mut mesh_component) in query.iter_mut(world) {
             if let Some(mesh_handle) = &mesh_component.render_node {
-                let render_node = mesh_render_nodes
-                    .get_mut(mesh_handle)
-                    .unwrap();
+                let render_node = mesh_render_nodes.get_mut(mesh_handle).unwrap();
                 render_node.mesh = mesh_component.mesh.clone();
                 render_node.transform = glam::Mat4::from_translation(position_component.position);
             } else {

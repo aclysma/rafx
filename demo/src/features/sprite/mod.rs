@@ -30,7 +30,7 @@ pub type SpriteUniformBufferObject = shaders::sprite_vert::ArgsUniform;
 #[derive(Clone, Debug, Copy, Default)]
 #[repr(C)]
 pub struct SpriteVertex {
-    pub pos: [f32; 2],
+    pub pos: [f32; 3],
     pub tex_coord: [f32; 2],
     //color: [u8; 4],
 }
@@ -40,7 +40,7 @@ lazy_static::lazy_static! {
         use rafx::api::RafxFormat;
 
         VertexDataLayout::build_vertex_layout(&SpriteVertex::default(), |builder, vertex| {
-            builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32_SFLOAT);
+            builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32B32_SFLOAT);
             builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
         }).into_set(RafxPrimitiveTopology::TriangleList)
     };

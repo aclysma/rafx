@@ -8,7 +8,7 @@ use rafx::distill::loader::handle::Handle;
 use rafx::framework::RenderResources;
 use rafx::nodes::{ExtractJob, ExtractResources, RenderNodeReservations, RenderRegistryBuilder};
 use rafx::renderer::RendererPlugin;
-use rafx::visibility::{StaticVisibilityNodeSet, DynamicVisibilityNodeSet};
+use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
 pub struct SpriteStaticResources {
     pub sprite_material: Handle<MaterialAsset>,

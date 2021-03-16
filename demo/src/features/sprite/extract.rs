@@ -11,7 +11,7 @@ use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
     RenderJobExtractContext, RenderView,
 };
-use rafx::visibility::{DynamicVisibilityNodeSet, DynamicAabbVisibilityNode};
+use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
 pub struct SpriteExtractJob {}
 
@@ -48,9 +48,7 @@ impl ExtractJob for SpriteExtractJob {
         let mut query = <(Read<PositionComponent>, Write<SpriteComponent>)>::query();
         for (position_component, mut sprite_component) in query.iter_mut(world) {
             if let Some(sprite_handle) = &sprite_component.render_node {
-                let render_node = sprite_render_nodes
-                    .get_mut(sprite_handle)
-                    .unwrap();
+                let render_node = sprite_render_nodes.get_mut(sprite_handle).unwrap();
                 render_node.image = sprite_component.image.clone();
                 render_node.alpha = sprite_component.alpha;
                 render_node.position = position_component.position;
