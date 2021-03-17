@@ -101,8 +101,8 @@ impl Renderer {
 
         render_resources.insert(invalid_resources.clone());
 
-        render_resources.ensure_exists_or_add_default::<DynamicVisibilityNodeSet>();
-        render_resources.ensure_exists_or_add_default::<StaticVisibilityNodeSet>();
+        render_resources.try_insert_default::<DynamicVisibilityNodeSet>();
+        render_resources.try_insert_default::<StaticVisibilityNodeSet>();
 
         upload.block_until_upload_complete()?;
 

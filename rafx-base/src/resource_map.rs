@@ -107,7 +107,7 @@ impl ResourceMap {
         }
     }
 
-    pub fn ensure_exists_or_add_default<R>(&mut self)
+    pub fn try_insert_default<R>(&mut self)
     where
         R: Resource + Default,
     {

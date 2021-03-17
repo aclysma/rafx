@@ -34,8 +34,8 @@ impl RendererPlugin for MeshRendererPlugin {
         render_resources.insert(ShadowMapResource::default());
         render_resources.insert(MeshRenderNodeSet::default());
 
-        render_resources.ensure_exists_or_add_default::<StaticVisibilityNodeSet>();
-        render_resources.ensure_exists_or_add_default::<DynamicVisibilityNodeSet>();
+        render_resources.try_insert_default::<StaticVisibilityNodeSet>();
+        render_resources.try_insert_default::<DynamicVisibilityNodeSet>();
 
         Ok(())
     }

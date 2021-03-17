@@ -44,8 +44,8 @@ impl RendererPlugin for SpriteRendererPlugin {
         render_resources.insert(SpriteStaticResources { sprite_material });
 
         render_resources.insert(SpriteRenderNodeSet::default());
-        render_resources.ensure_exists_or_add_default::<StaticVisibilityNodeSet>();
-        render_resources.ensure_exists_or_add_default::<DynamicVisibilityNodeSet>();
+        render_resources.try_insert_default::<StaticVisibilityNodeSet>();
+        render_resources.try_insert_default::<DynamicVisibilityNodeSet>();
 
         Ok(())
     }
