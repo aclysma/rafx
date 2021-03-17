@@ -363,19 +363,13 @@ impl MaterialAsset {
         self.inner.pass_phase_to_index.get(&index).copied()
     }
 
-    pub fn get_single_material_pass(&self) -> RafxResult<ResourceArc<MaterialPassResource>> {
+    pub fn get_single_material_pass(
+        &self
+    ) -> Result<ResourceArc<MaterialPassResource>, &'static str> {
         if self.inner.passes.len() == 1 {
-            Ok(self
-                .inner
-                .passes
-                .get(0)
-                .unwrap()
-                .material_pass_resource
-                .clone())
+            Ok(self.inner.passes[0].material_pass_resource.clone())
         } else {
-            Err(RafxError::StringError(
-                "Found more than one MaterialPass in MaterialAsset.".to_string(),
-            ))
+            Err("Found more than one MaterialPass in MaterialAsset in call to get_single_material_pass.")
         }
     }
 

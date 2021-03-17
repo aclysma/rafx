@@ -38,7 +38,8 @@ impl ExtractJob for TextExtractJob {
             .text_material;
         let text_material_pass = asset_manager
             .committed_asset(&text_material)
-            .map(|x| x.get_single_material_pass().unwrap())
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let text_draw_data = text_resource.take_text_draw_data();

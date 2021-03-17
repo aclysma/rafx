@@ -128,22 +128,26 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
 
         let bloom_extract_material_pass = asset_manager
             .committed_asset(&static_resources.bloom_extract_material)
-            .map(|x| x.get_single_material_pass().unwrap())
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let bloom_blur_material_pass = asset_manager
             .committed_asset(&static_resources.bloom_blur_material)
-            .map(|x| x.get_single_material_pass().unwrap())
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let bloom_combine_material_pass = asset_manager
             .committed_asset(&static_resources.bloom_combine_material)
-            .map(|x| x.get_single_material_pass().unwrap())
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let skybox_material_pass = asset_manager
             .committed_asset(&static_resources.skybox_material)
-            .map(|x| x.get_single_material_pass().unwrap())
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let skybox_texture = asset_manager

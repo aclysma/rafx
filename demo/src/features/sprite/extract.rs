@@ -85,7 +85,8 @@ impl ExtractJob for SpriteExtractJob {
 
         let sprite_material = asset_manager
             .committed_asset(&static_resources.sprite_material)
-            .map(|x| x.get_single_material_pass().unwrap())
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let prepare_impl = SpritePrepareJob::new(extracted_frame_node_sprite_data, sprite_material);

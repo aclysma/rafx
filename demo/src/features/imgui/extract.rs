@@ -60,7 +60,8 @@ impl ExtractJob for ImGuiExtractJobImpl {
             .imgui_material;
         let imgui_material_pass = asset_manager
             .committed_asset(imgui_material)
-            .map(|x| x.get_single_material_pass().unwrap())
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let static_resources = &extract_context

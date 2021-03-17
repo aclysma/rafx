@@ -127,12 +127,10 @@ impl ExtractJob for MeshExtractJob {
             .render_resources
             .fetch::<MeshStaticResources>();
 
-        let asset_manager = extract_context
-            .render_resources
-            .fetch::<AssetManagerRenderResource>();
-
         let depth_material = asset_manager
-            .get_material_pass_by_name(&static_resources.depth_material, "Depth")
+            .committed_asset(&static_resources.depth_material)
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         Box::new(MeshPrepareJob {

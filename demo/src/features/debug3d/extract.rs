@@ -39,7 +39,8 @@ impl ExtractJob for Debug3dExtractJob {
 
         let debug3d_material_pass = asset_manager
             .committed_asset(&debug3d_material)
-            .map(|x| x.get_single_material_pass().unwrap())
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         Box::new(Debug3dPrepareJobImpl::new(
