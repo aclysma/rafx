@@ -11,6 +11,7 @@ use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
     RenderJobExtractContext, RenderView,
 };
+use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
 pub struct SpriteExtractJob {}
 
@@ -28,8 +29,8 @@ impl ExtractJob for SpriteExtractJob {
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
         profiling::scope!("Sprite Extract");
-        let legion_world = extract_context.extract_resources.fetch::<World>();
-        let world = &*legion_world;
+        let mut legion_world = extract_context.extract_resources.fetch_mut::<World>();
+        let world = &mut *legion_world;
 
         let asset_manager = extract_context
             .render_resources
@@ -37,17 +38,36 @@ impl ExtractJob for SpriteExtractJob {
 
         // Update the mesh render nodes. This could be done earlier as part of a system
         let mut sprite_render_nodes = extract_context
-            .extract_resources
+            .render_resources
             .fetch_mut::<SpriteRenderNodeSet>();
 
-        let mut query = <(Read<PositionComponent>, Read<SpriteComponent>)>::query();
-        for (position_component, sprite_component) in query.iter(world) {
-            let render_node = sprite_render_nodes
-                .get_mut(&sprite_component.render_node)
-                .unwrap();
-            render_node.image = sprite_component.image.clone();
-            render_node.alpha = sprite_component.alpha;
-            render_node.position = position_component.position;
+        let mut dynamic_visibility_node_set = extract_context
+            .render_resources
+            .fetch_mut::<DynamicVisibilityNodeSet>();
+
+        let mut query = <(Read<PositionComponent>, Write<SpriteComponent>)>::query();
+        for (position_component, mut sprite_component) in query.iter_mut(world) {
+            if let Some(sprite_handle) = &sprite_component.render_node {
+                let render_node = sprite_render_nodes.get_mut(sprite_handle).unwrap();
+                render_node.image = sprite_component.image.clone();
+                render_node.alpha = sprite_component.alpha;
+                render_node.position = position_component.position;
+            } else {
+                let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
+                    position: position_component.position,
+                    alpha: sprite_component.alpha,
+                    image: sprite_component.image.clone(),
+                });
+
+                let visibility_node =
+                    dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
+                        handle: render_node.as_raw_generic_handle(),
+                        // aabb bounds
+                    });
+
+                sprite_component.render_node = Some(render_node);
+                sprite_component.visibility_node = Some(visibility_node);
+            }
         }
 
         let mut extracted_frame_node_sprite_data =

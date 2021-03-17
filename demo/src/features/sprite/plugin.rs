@@ -8,6 +8,7 @@ use rafx::distill::loader::handle::Handle;
 use rafx::framework::RenderResources;
 use rafx::nodes::{ExtractJob, ExtractResources, RenderNodeReservations, RenderRegistryBuilder};
 use rafx::renderer::RendererPlugin;
+use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
 pub struct SpriteStaticResources {
     pub sprite_material: Handle<MaterialAsset>,
@@ -42,15 +43,20 @@ impl RendererPlugin for SpriteRendererPlugin {
 
         render_resources.insert(SpriteStaticResources { sprite_material });
 
+        render_resources.insert(SpriteRenderNodeSet::default());
+        render_resources.try_insert_default::<StaticVisibilityNodeSet>();
+        render_resources.try_insert_default::<DynamicVisibilityNodeSet>();
+
         Ok(())
     }
 
     fn add_render_node_reservations(
         &self,
         render_node_reservations: &mut RenderNodeReservations,
-        extract_resources: &ExtractResources,
+        _extract_resources: &ExtractResources,
+        render_resources: &RenderResources,
     ) {
-        let mut sprite_render_nodes = extract_resources.fetch_mut::<SpriteRenderNodeSet>();
+        let mut sprite_render_nodes = render_resources.fetch_mut::<SpriteRenderNodeSet>();
         sprite_render_nodes.update();
         render_node_reservations.add_reservation(&*sprite_render_nodes);
     }

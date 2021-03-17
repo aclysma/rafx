@@ -9,9 +9,9 @@ layout(set = 0, binding = 0) uniform Args {
 //             mag_filter: Linear,
 //             min_filter: Linear,
 //             mip_map_mode: Linear,
-//             address_mode_u: Repeat,
-//             address_mode_v: Repeat,
-//             address_mode_w: Repeat,
+//             address_mode_u: Mirror,
+//             address_mode_v: Mirror,
+//             address_mode_w: Mirror,
 //         )
 // ])]
 layout (set = 0, binding = 1) uniform sampler smp;

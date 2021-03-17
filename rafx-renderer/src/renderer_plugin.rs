@@ -63,6 +63,7 @@ pub trait RendererPlugin: Send + Sync {
         &self,
         _render_node_reservations: &mut RenderNodeReservations,
         _extract_resources: &ExtractResources,
+        _render_resources: &RenderResources,
     ) {
     }
 

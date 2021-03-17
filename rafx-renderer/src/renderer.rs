@@ -101,6 +101,9 @@ impl Renderer {
 
         render_resources.insert(invalid_resources.clone());
 
+        render_resources.try_insert_default::<DynamicVisibilityNodeSet>();
+        render_resources.try_insert_default::<StaticVisibilityNodeSet>();
+
         upload.block_until_upload_complete()?;
 
         let render_thread = RenderThread::start(render_resources);
@@ -207,17 +210,17 @@ impl Renderer {
         extract_resources: &mut ExtractResources,
         presentable_frame: &RafxPresentableFrame,
     ) -> RafxResult<RenderFrameJob> {
+        let mut guard = renderer.inner.lock().unwrap();
+        let renderer_inner = &mut *guard;
+        let render_resources = &mut renderer_inner
+            .render_thread
+            .render_resources()
+            .lock()
+            .unwrap();
+
         //
         // Fetch resources
         //
-        let mut static_visibility_node_set_fetch =
-            extract_resources.fetch_mut::<StaticVisibilityNodeSet>();
-        let static_visibility_node_set = &mut *static_visibility_node_set_fetch;
-
-        let mut dynamic_visibility_node_set_fetch =
-            extract_resources.fetch_mut::<DynamicVisibilityNodeSet>();
-        let dynamic_visibility_node_set = &mut *dynamic_visibility_node_set_fetch;
-
         let mut asset_manager_fetch = extract_resources.fetch_mut::<AssetManager>();
         let asset_manager = &mut *asset_manager_fetch;
 
@@ -230,14 +233,6 @@ impl Renderer {
         asset_manager.on_frame_complete()?;
 
         let resource_context = asset_manager.resource_manager().resource_context();
-
-        let mut guard = renderer.inner.lock().unwrap();
-        let renderer_inner = &mut *guard;
-        let render_resources = &mut renderer_inner
-            .render_thread
-            .render_resources()
-            .lock()
-            .unwrap();
 
         //
         // Swapchain Status
@@ -267,8 +262,11 @@ impl Renderer {
         let frame_packet_builder = {
             let mut render_node_reservations = RenderNodeReservations::default();
             for plugin in &*renderer_inner.plugins {
-                plugin
-                    .add_render_node_reservations(&mut render_node_reservations, extract_resources);
+                plugin.add_render_node_reservations(
+                    &mut render_node_reservations,
+                    extract_resources,
+                    render_resources,
+                );
             }
 
             FramePacketBuilder::new(&render_node_reservations)
@@ -299,43 +297,55 @@ impl Renderer {
         //
         // Visibility
         //
-        let main_view_static_visibility_result =
-            static_visibility_node_set.calculate_static_visibility(&main_view);
-        let main_view_dynamic_visibility_result =
-            dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
-
-        log::trace!(
-            "main view static node count: {}",
-            main_view_static_visibility_result.handles.len()
-        );
-
-        log::trace!(
-            "main view dynamic node count: {}",
-            main_view_dynamic_visibility_result.handles.len()
-        );
-
-        // After these jobs end, user calls functions to start jobs that extract data
-        frame_packet_builder.add_view(
-            &main_view,
-            &[
-                main_view_static_visibility_result,
-                main_view_dynamic_visibility_result,
-            ],
-        );
-
         let mut render_views = Vec::default();
-        render_views.push(main_view.clone());
+        {
+            profiling::scope!("Update visibility");
 
-        for plugin in &*renderer_inner.plugins {
-            plugin.add_render_views(
-                extract_resources,
-                render_resources,
-                &render_view_set,
-                &frame_packet_builder,
-                static_visibility_node_set,
-                dynamic_visibility_node_set,
-                &mut render_views,
+            let mut static_visibility_node_set_fetch =
+                render_resources.fetch_mut::<StaticVisibilityNodeSet>();
+            let static_visibility_node_set = &mut *static_visibility_node_set_fetch;
+
+            let mut dynamic_visibility_node_set_fetch =
+                render_resources.fetch_mut::<DynamicVisibilityNodeSet>();
+            let dynamic_visibility_node_set = &mut *dynamic_visibility_node_set_fetch;
+
+            let main_view_static_visibility_result =
+                static_visibility_node_set.calculate_static_visibility(&main_view);
+            let main_view_dynamic_visibility_result =
+                dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
+
+            log::trace!(
+                "main view static node count: {}",
+                main_view_static_visibility_result.handles.len()
             );
+
+            log::trace!(
+                "main view dynamic node count: {}",
+                main_view_dynamic_visibility_result.handles.len()
+            );
+
+            // After these jobs end, user calls functions to start jobs that extract data
+            frame_packet_builder.add_view(
+                &main_view,
+                &[
+                    main_view_static_visibility_result,
+                    main_view_dynamic_visibility_result,
+                ],
+            );
+
+            render_views.push(main_view.clone());
+
+            for plugin in &*renderer_inner.plugins {
+                plugin.add_render_views(
+                    extract_resources,
+                    render_resources,
+                    &render_view_set,
+                    &frame_packet_builder,
+                    static_visibility_node_set,
+                    dynamic_visibility_node_set,
+                    &mut render_views,
+                );
+            }
         }
 
         let frame_packet = frame_packet_builder.build();

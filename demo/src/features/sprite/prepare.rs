@@ -75,7 +75,7 @@ impl PrepareJob for SpritePrepareJob {
                     let transformed_pos = matrix.transform_point3(vertex.pos.into());
 
                     vertex_list.push(SpriteVertex {
-                        pos: transformed_pos.truncate().into(),
+                        pos: transformed_pos.into(),
                         tex_coord: vertex.tex_coord,
                         //color: [255, 255, 255, 255]
                     });
@@ -120,13 +120,13 @@ impl PrepareJob for SpritePrepareJob {
         let aspect_ratio = extents_width as f32 / extents_height as f32;
         let half_width = 400.0;
         let half_height = 400.0 / aspect_ratio;
-        let view_proj = glam::Mat4::orthographic_rh_gl(
+        let view_proj = glam::Mat4::orthographic_rh(
             -half_width,
             half_width,
             -half_height,
             half_height,
-            -100.0,
-            100.0,
+            1000.0,
+            -1000.0,
         );
 
         //

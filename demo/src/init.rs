@@ -49,10 +49,6 @@ pub fn rendering_init(
     sdl2_window: &sdl2::video::Window,
     asset_source: AssetSource,
 ) -> RafxResult<()> {
-    resources.insert(SpriteRenderNodeSet::default());
-    resources.insert(MeshRenderNodeSet::default());
-    resources.insert(StaticVisibilityNodeSet::default());
-    resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(DebugDraw3DResource::new());
     resources.insert(TextResource::new());
     resources.insert(ViewportsResource::default());
