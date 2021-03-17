@@ -1,9 +1,10 @@
 use crate::features::mesh::shadow_map_resource::ShadowMapResource;
 use crate::features::mesh::{MeshRenderFeature, MeshRenderNodeSet};
+use distill::loader::handle::Handle;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::RafxResult;
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::AssetManager;
+use rafx::assets::{AssetManager, MaterialAsset};
 use rafx::base::resource_map::ResourceMap;
 use rafx::framework::RenderResources;
 use rafx::nodes::{
@@ -15,6 +16,10 @@ use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
 pub struct MeshRendererPlugin;
 
+pub struct MeshStaticResources {
+    pub depth_material: Handle<MaterialAsset>,
+}
+
 impl RendererPlugin for MeshRendererPlugin {
     fn configure_render_registry(
         &self,
@@ -25,12 +30,19 @@ impl RendererPlugin for MeshRendererPlugin {
 
     fn initialize_static_resources(
         &self,
-        _asset_manager: &mut AssetManager,
-        _asset_resource: &mut AssetResource,
+        asset_manager: &mut AssetManager,
+        asset_resource: &mut AssetResource,
         _extract_resources: &ExtractResources,
         render_resources: &mut ResourceMap,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
+        let depth_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/depth.material");
+
+        asset_manager.wait_for_asset_to_load(&depth_material, asset_resource, "depth")?;
+
+        render_resources.insert(MeshStaticResources { depth_material });
+
         render_resources.insert(ShadowMapResource::default());
 
         Ok(())

@@ -1,4 +1,4 @@
-use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
+use crate::phases::OpaqueRenderPhase;
 use distill::loader::handle::Handle;
 use rafx::api::{RafxPrimitiveTopology, RafxResult};
 use rafx::assets::MaterialInstanceAsset;
@@ -138,8 +138,6 @@ pub struct MeshAssetData {
 pub struct MeshAssetPart {
     pub opaque_pass: MaterialPass,
     pub opaque_material_descriptor_set: DescriptorSetArc,
-    // These are optional because we might want to disable casting shadows
-    pub shadow_map_pass: Option<MaterialPass>,
     pub vertex_buffer_offset_in_bytes: u32,
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
@@ -189,6 +187,7 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
                 let opaque_pass_index = material_instance
                     .material
                     .find_pass_by_phase::<OpaqueRenderPhase>();
+
                 if opaque_pass_index.is_none() {
                     log::error!(
                         "A mesh part with material {:?} has no opaque phase",
@@ -196,20 +195,8 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
                     );
                     return None;
                 }
-                let opaque_pass_index = opaque_pass_index.unwrap();
 
-                //NOTE: For now require this, but we might want to disable shadow casting, in which
-                // case no material is necessary
-                let shadow_map_pass_index = material_instance
-                    .material
-                    .find_pass_by_phase::<ShadowMapRenderPhase>();
-                if shadow_map_pass_index.is_none() {
-                    log::error!(
-                        "A mesh part with material {:?} has no shadow map phase",
-                        material_instance.material_handle
-                    );
-                    return None;
-                }
+                let opaque_pass_index = opaque_pass_index.unwrap();
 
                 const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
 
@@ -220,8 +207,6 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
                         .as_ref()
                         .unwrap()
                         .clone(),
-                    shadow_map_pass: shadow_map_pass_index
-                        .map(|pass_index| material_instance.material.passes[pass_index].clone()),
                     vertex_buffer_offset_in_bytes: mesh_part.vertex_buffer_offset_in_bytes,
                     vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
                     index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,

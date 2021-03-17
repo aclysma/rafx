@@ -6,11 +6,12 @@ use crate::features::mesh::shadow_map_resource::ShadowMapResource;
 use crate::features::mesh::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
     LightId, MeshPerObjectFragmentShaderParam, MeshPerViewFragmentShaderParam, MeshRenderFeature,
-    PreparedSubmitNodeMeshData, ShadowMapRenderView, ShadowPerViewShaderParam,
+    PreparedSubmitNodeMeshData, ShadowMapRenderView, ShadowPerObjectShaderParam,
+    ShadowPerViewShaderParam,
 };
-use crate::phases::{OpaqueRenderPhase, ShadowMapRenderPhase};
+use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase};
 use fnv::{FnvHashMap, FnvHashSet};
-use rafx::framework::MaterialPass;
+use rafx::framework::MaterialPassResource;
 use rafx::framework::{DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc};
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
@@ -36,6 +37,7 @@ pub struct PreparedSpotLight<'a> {
 }
 
 pub struct MeshPrepareJob {
+    pub(super) depth_material: ResourceArc<MaterialPassResource>,
     pub(super) extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
     pub(super) directional_lights: Vec<ExtractedDirectionalLight>,
     pub(super) point_lights: Vec<ExtractedPointLight>,
@@ -51,9 +53,12 @@ impl PrepareJob for MeshPrepareJob {
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("Mesh Prepare");
         let invalid_resources = prepare_context.render_resources.fetch::<InvalidResources>();
+
         let shadow_map_data = prepare_context
             .render_resources
             .fetch::<ShadowMapResource>();
+
+        let depth_material = &self.depth_material;
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
@@ -62,13 +67,19 @@ impl PrepareJob for MeshPrepareJob {
         //TODO: reserve sizes
         let mut opaque_per_view_descriptor_set_layouts =
             FnvHashSet::<ResourceArc<DescriptorSetLayoutResource>>::default();
-        let mut shadow_per_view_descriptor_set_layouts =
+        let mut depth_per_view_descriptor_set_layouts =
             FnvHashSet::<ResourceArc<DescriptorSetLayoutResource>>::default();
         let mut prepared_submit_node_mesh_data = Vec::<PreparedSubmitNodeMeshData>::default();
         let mut per_view_descriptor_sets = FnvHashMap::<
             (RenderViewIndex, ResourceArc<DescriptorSetLayoutResource>),
             DescriptorSetArc,
         >::default();
+
+        depth_per_view_descriptor_set_layouts.insert(
+            depth_material.get_raw().descriptor_set_layouts
+                [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
+                .clone(),
+        );
 
         //
         // Iterate every mesh part to find all the per-view descriptor sets layouts
@@ -92,17 +103,6 @@ impl PrepareJob for MeshPrepareJob {
                                     [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
                                     .clone(),
                             );
-
-                            if let Some(shadow_map_pass) = &mesh_part.shadow_map_pass {
-                                shadow_per_view_descriptor_set_layouts.insert(
-                                    shadow_map_pass
-                                        .material_pass_resource
-                                        .get_raw()
-                                        .descriptor_set_layouts
-                                        [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
-                                        .clone(),
-                                );
-                            }
                         }
                     }
                 }
@@ -250,6 +250,32 @@ impl PrepareJob for MeshPrepareJob {
         {
             profiling::scope!("create per view descriptor sets");
             for view in views {
+                if view.phase_is_relevant::<DepthPrepassRenderPhase>()
+                    || view.phase_is_relevant::<ShadowMapRenderPhase>()
+                {
+                    let mut per_view_data = ShadowPerViewShaderParam::default();
+
+                    per_view_data.view = view.view_matrix().to_cols_array_2d();
+                    per_view_data.view_proj = view.view_proj().to_cols_array_2d();
+
+                    for per_view_descriptor_set_layout in &depth_per_view_descriptor_set_layouts {
+                        let descriptor_set = descriptor_set_allocator
+                            .create_descriptor_set(
+                                &per_view_descriptor_set_layout,
+                                shaders::depth_vert::DescriptorSet0Args {
+                                    per_view_data: &per_view_data,
+                                },
+                            )
+                            .unwrap();
+
+                        let old = per_view_descriptor_sets.insert(
+                            (view.view_index(), per_view_descriptor_set_layout.clone()),
+                            descriptor_set,
+                        );
+                        assert!(old.is_none());
+                    }
+                }
+
                 if view.phase_is_relevant::<OpaqueRenderPhase>() {
                     let mut per_view_frag_data = self.create_per_view_frag_data(
                         view,
@@ -279,28 +305,6 @@ impl PrepareJob for MeshPrepareJob {
                         );
                         assert!(old.is_none());
                     }
-                } else if view.phase_is_relevant::<ShadowMapRenderPhase>() {
-                    let mut per_view_data = ShadowPerViewShaderParam::default();
-
-                    per_view_data.view = view.view_matrix().to_cols_array_2d();
-                    per_view_data.view_proj = view.view_proj().to_cols_array_2d();
-
-                    for per_view_descriptor_set_layout in &shadow_per_view_descriptor_set_layouts {
-                        let descriptor_set = descriptor_set_allocator
-                            .create_descriptor_set(
-                                &per_view_descriptor_set_layout,
-                                shaders::mesh_shadow_map_vert::DescriptorSet0Args {
-                                    per_view_data: &per_view_data,
-                                },
-                            )
-                            .unwrap();
-
-                        let old = per_view_descriptor_sets.insert(
-                            (view.view_index(), per_view_descriptor_set_layout.clone()),
-                            descriptor_set,
-                        );
-                        assert!(old.is_none());
-                    }
                 }
             }
         }
@@ -316,43 +320,46 @@ impl PrepareJob for MeshPrepareJob {
                 self.extracted_frame_node_mesh_data.iter().enumerate()
             {
                 if let Some(frame_node_data) = frame_node_data {
-                    let per_object_data = MeshPerObjectFragmentShaderParam {
-                        model: frame_node_data.world_transform.to_cols_array_2d(),
-                    };
+                    let model = frame_node_data.world_transform.to_cols_array_2d();
 
                     for mesh_part in frame_node_data.mesh_asset.inner.mesh_parts.iter() {
                         if let Some(mesh_part) = mesh_part {
-                            let per_instance_descriptor_set_layout = &mesh_part
-                                .opaque_pass
-                                .material_pass_resource
-                                .get_raw()
-                                .descriptor_set_layouts
-                                [super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
+                            {
+                                let per_object_data = MeshPerObjectFragmentShaderParam { model };
 
-                            opaque_frame_node_per_instance_descriptor_sets[frame_node_index] = Some(
-                                descriptor_set_allocator
-                                    .create_descriptor_set(
-                                        per_instance_descriptor_set_layout,
-                                        shaders::mesh_frag::DescriptorSet2Args {
-                                            per_object_data: &per_object_data,
-                                        },
-                                    )
-                                    .unwrap(),
-                            );
-
-                            if let Some(shadow_map_pass) = &mesh_part.shadow_map_pass {
-                                let per_instance_descriptor_set_layout = &shadow_map_pass
+                                let per_instance_descriptor_set_layout = &mesh_part
+                                    .opaque_pass
                                     .material_pass_resource
                                     .get_raw()
                                     .descriptor_set_layouts
                                     [super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
+
+                                opaque_frame_node_per_instance_descriptor_sets[frame_node_index] =
+                                    Some(
+                                        descriptor_set_allocator
+                                            .create_descriptor_set(
+                                                per_instance_descriptor_set_layout,
+                                                shaders::mesh_frag::DescriptorSet2Args {
+                                                    per_object_data: &per_object_data,
+                                                },
+                                            )
+                                            .unwrap(),
+                                    );
+                            }
+
+                            {
+                                let per_object_data = ShadowPerObjectShaderParam { model };
+
+                                let per_instance_descriptor_set_layout =
+                                    &depth_material.get_raw().descriptor_set_layouts
+                                        [super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
 
                                 shadow_map_frame_node_per_instance_descriptor_sets
                                     [frame_node_index] = Some(
                                     descriptor_set_allocator
                                         .create_descriptor_set(
                                             per_instance_descriptor_set_layout,
-                                            shaders::mesh_frag::DescriptorSet2Args {
+                                            shaders::depth_vert::DescriptorSet2Args {
                                                 per_object_data: &per_object_data,
                                             },
                                         )
@@ -382,6 +389,9 @@ impl PrepareJob for MeshPrepareJob {
                     if let Some(extracted_data) = extracted_data {
                         //let per_object_descriptor = frame_node_descriptor_sets[view_node.frame_node_index() as usize].as_ref().unwrap().clone();
 
+                        let world_position = extracted_data.world_transform.w_axis().truncate();
+                        let distance = (view.eye_position() - world_position).length_squared();
+
                         for (mesh_part_index, mesh_part) in extracted_data
                             .mesh_asset
                             .inner
@@ -391,6 +401,35 @@ impl PrepareJob for MeshPrepareJob {
                         {
                             if let Some(mesh_part) = mesh_part {
                                 //
+                                // Depth prepass for opaque objects
+                                //
+                                if view.phase_is_relevant::<DepthPrepassRenderPhase>() {
+                                    let per_object_descriptor =
+                                        shadow_map_frame_node_per_instance_descriptor_sets
+                                            [view_node.frame_node_index() as usize]
+                                            .as_ref()
+                                            .unwrap();
+
+                                    let depth_prepass_submit_node_index =
+                                        MeshPrepareJob::add_render_node(
+                                            &mut prepared_submit_node_mesh_data,
+                                            &per_view_descriptor_sets,
+                                            &view,
+                                            view_node,
+                                            per_object_descriptor,
+                                            mesh_part_index,
+                                            depth_material.clone(),
+                                            None,
+                                        );
+
+                                    view_submit_nodes.add_submit_node::<DepthPrepassRenderPhase>(
+                                        depth_prepass_submit_node_index as u32,
+                                        0,
+                                        distance,
+                                    );
+                                }
+
+                                //
                                 // Write opaque render node, if it's relevant
                                 //
                                 if view.phase_is_relevant::<OpaqueRenderPhase>() {
@@ -399,34 +438,37 @@ impl PrepareJob for MeshPrepareJob {
                                             [view_node.frame_node_index() as usize]
                                             .as_ref()
                                             .unwrap();
-                                    let submit_node_index = MeshPrepareJob::add_render_node(
+
+                                    let opaque_submit_node_index = MeshPrepareJob::add_render_node(
                                         &mut prepared_submit_node_mesh_data,
                                         &per_view_descriptor_sets,
                                         &view,
                                         view_node,
                                         per_object_descriptor,
                                         mesh_part_index,
-                                        &mesh_part.opaque_pass,
+                                        mesh_part.opaque_pass.material_pass_resource.clone(),
                                         Some(mesh_part.opaque_material_descriptor_set.clone()),
                                     );
 
                                     view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(
-                                        submit_node_index as u32,
+                                        opaque_submit_node_index as u32,
                                         0,
-                                        0.0,
+                                        distance,
                                     );
                                 }
 
                                 //
                                 // Write shadow map render node, if it's relevant
                                 //
-                                if let Some(shadow_map_pass) = &mesh_part.shadow_map_pass {
+                                let casts_shadows = true; // TODO(dvd): Make this configurable somehow.
+                                if casts_shadows {
                                     if view.phase_is_relevant::<ShadowMapRenderPhase>() {
                                         let per_object_descriptor =
                                             shadow_map_frame_node_per_instance_descriptor_sets
                                                 [view_node.frame_node_index() as usize]
                                                 .as_ref()
                                                 .unwrap();
+
                                         let submit_node_index = MeshPrepareJob::add_render_node(
                                             &mut prepared_submit_node_mesh_data,
                                             &per_view_descriptor_sets,
@@ -434,14 +476,14 @@ impl PrepareJob for MeshPrepareJob {
                                             view_node,
                                             per_object_descriptor,
                                             mesh_part_index,
-                                            shadow_map_pass,
+                                            depth_material.clone(),
                                             None,
                                         );
 
                                         view_submit_nodes.add_submit_node::<ShadowMapRenderPhase>(
                                             submit_node_index as u32,
                                             0,
-                                            0.0,
+                                            distance,
                                         );
                                     }
                                 }
@@ -570,12 +612,11 @@ impl MeshPrepareJob {
         view_node: &PerViewNode,
         per_object_descriptor: &DescriptorSetArc,
         mesh_part_index: usize,
-        material_pass: &MaterialPass,
+        material_pass_resource: ResourceArc<MaterialPassResource>,
         per_material_descriptor_set: Option<DescriptorSetArc>,
     ) -> usize {
         let per_view_descriptor_set = {
-            let per_view_descriptor_set_layout = material_pass
-                .material_pass_resource
+            let per_view_descriptor_set_layout = material_pass_resource
                 .get_raw()
                 .descriptor_set_layouts[super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
                 .clone();
@@ -588,7 +629,7 @@ impl MeshPrepareJob {
         //
         let submit_node_index = prepared_submit_node_mesh_data.len();
         prepared_submit_node_mesh_data.push(PreparedSubmitNodeMeshData {
-            material_pass: material_pass.clone(),
+            material_pass_resource: material_pass_resource.clone(),
             per_view_descriptor_set,
             per_material_descriptor_set: per_material_descriptor_set.clone(),
             per_instance_descriptor_set: per_object_descriptor.clone(),

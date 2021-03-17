@@ -3,19 +3,19 @@ use rafx::graph::*;
 
 use super::RenderGraphContext;
 use super::ShadowMapImageResources;
-use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
+use rafx::api::RafxColorClearValue;
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
 use rafx::nodes::{RenderJobWriteContext, RenderPhase};
 
 pub(super) struct OpaquePass {
     pub(super) node: RenderGraphNodeId,
     pub(super) color: RenderGraphImageUsageId,
-    pub(super) depth: RenderGraphImageUsageId,
     pub(super) shadow_maps: Vec<RenderGraphImageUsageId>,
 }
 
 pub(super) fn opaque_pass(
     context: &mut RenderGraphContext,
+    depth_prepass: RenderGraphImageUsageId,
     skybox_material: ResourceArc<MaterialPassResource>,
     skybox_texture: ResourceArc<ImageViewResource>,
     shadow_map_passes: &[ShadowMapImageResources],
@@ -37,12 +37,9 @@ pub(super) fn opaque_pass(
     );
     context.graph.set_image_name(color, "color");
 
-    let depth = context.graph.create_depth_attachment(
+    context.graph.read_depth_attachment(
         node,
-        Some(RafxDepthStencilClearValue {
-            depth: 0.0,
-            stencil: 0,
-        }),
+        depth_prepass,
         RenderGraphImageConstraint {
             samples: Some(context.graph_config.samples),
             format: Some(context.graph_config.depth_format),
@@ -50,7 +47,6 @@ pub(super) fn opaque_pass(
         },
         Default::default(),
     );
-    context.graph.set_image_name(depth, "depth");
 
     let mut shadow_maps = Vec::with_capacity(shadow_map_passes.len());
     for shadow_map_pass in shadow_map_passes {
@@ -99,7 +95,6 @@ pub(super) fn opaque_pass(
     OpaquePass {
         node,
         color,
-        depth,
         shadow_maps,
     }
 }

@@ -14,6 +14,8 @@ use shadow_map_pass::ShadowMapImageResources;
 mod opaque_pass;
 use opaque_pass::OpaquePass;
 
+mod depth_prepass;
+
 mod bloom_extract_pass;
 use crate::demo_plugin::DemoStaticResources;
 use crate::features::mesh::shadow_map_resource::ShadowMapResource;
@@ -125,19 +127,27 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             compute_test::compute_test_pass(&mut graph_context, &compute_test_pipeline);
 
         let bloom_extract_material_pass = asset_manager
-            .get_material_pass_by_index(&static_resources.bloom_extract_material, 0)
+            .committed_asset(&static_resources.bloom_extract_material)
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let bloom_blur_material_pass = asset_manager
-            .get_material_pass_by_index(&static_resources.bloom_blur_material, 0)
+            .committed_asset(&static_resources.bloom_blur_material)
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let bloom_combine_material_pass = asset_manager
-            .get_material_pass_by_index(&static_resources.bloom_combine_material, 0)
+            .committed_asset(&static_resources.bloom_combine_material)
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let skybox_material_pass = asset_manager
-            .get_material_pass_by_index(&static_resources.skybox_material, 0)
+            .committed_asset(&static_resources.skybox_material)
+            .unwrap()
+            .get_single_material_pass()
             .unwrap();
 
         let skybox_texture = asset_manager
@@ -146,8 +156,11 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             .image_view
             .clone();
 
+        let depth_prepass = depth_prepass::depth_prepass(&mut graph_context);
+
         let opaque_pass = opaque_pass::opaque_pass(
             &mut graph_context,
+            depth_prepass.depth,
             skybox_material_pass,
             skybox_texture,
             &shadow_maps,

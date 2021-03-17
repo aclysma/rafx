@@ -2,6 +2,7 @@ use crate::components::MeshComponent;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
+use crate::features::mesh::plugin::MeshStaticResources;
 use crate::features::mesh::prepare::MeshPrepareJob;
 use crate::features::mesh::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
@@ -122,7 +123,18 @@ impl ExtractJob for MeshExtractJob {
             })
             .collect();
 
+        let static_resources = extract_context
+            .render_resources
+            .fetch::<MeshStaticResources>();
+
+        let depth_material = asset_manager
+            .committed_asset(&static_resources.depth_material)
+            .unwrap()
+            .get_single_material_pass()
+            .unwrap();
+
         Box::new(MeshPrepareJob {
+            depth_material,
             extracted_frame_node_mesh_data,
             directional_lights,
             point_lights,

@@ -14,7 +14,8 @@ use rafx_framework::nodes::{RenderPhase, RenderPhaseIndex};
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{
-    DescriptorSetArc, FixedFunctionState, MaterialPass, MaterialShaderStage, ResourceArc,
+    DescriptorSetArc, FixedFunctionState, MaterialPass, MaterialPassResource, MaterialShaderStage,
+    ResourceArc,
 };
 use rafx_framework::{DescriptorSetWriteSet, SamplerResource};
 use std::hash::Hash;
@@ -49,7 +50,9 @@ impl Default for AlphaBlendingPreset {
 pub enum DepthBufferPreset {
     Disabled,
     Enabled,
+    ReadOnly,
     EnabledReverseZ,
+    ReadOnlyReverseZ,
 }
 
 impl Default for DepthBufferPreset {
@@ -145,9 +148,19 @@ impl FixedFunctionStateData {
                 depth_state.depth_write_enable = true;
                 depth_state.depth_compare_op = RafxCompareOp::LessOrEqual;
             }
+            DepthBufferPreset::ReadOnly => {
+                depth_state.depth_test_enable = true;
+                depth_state.depth_write_enable = false;
+                depth_state.depth_compare_op = RafxCompareOp::LessOrEqual;
+            }
             DepthBufferPreset::EnabledReverseZ => {
                 depth_state.depth_test_enable = true;
                 depth_state.depth_write_enable = true;
+                depth_state.depth_compare_op = RafxCompareOp::GreaterOrEqual;
+            }
+            DepthBufferPreset::ReadOnlyReverseZ => {
+                depth_state.depth_test_enable = true;
+                depth_state.depth_write_enable = false;
                 depth_state.depth_compare_op = RafxCompareOp::GreaterOrEqual;
             }
         }
@@ -348,6 +361,45 @@ impl MaterialAsset {
         index: RenderPhaseIndex,
     ) -> Option<usize> {
         self.inner.pass_phase_to_index.get(&index).copied()
+    }
+
+    pub fn get_single_material_pass(
+        &self
+    ) -> Result<ResourceArc<MaterialPassResource>, &'static str> {
+        if self.inner.passes.len() == 1 {
+            Ok(self.inner.passes[0].material_pass_resource.clone())
+        } else {
+            Err("Found more than one MaterialPass in MaterialAsset in call to get_single_material_pass.")
+        }
+    }
+
+    pub fn get_material_pass_by_index(
+        &self,
+        index: usize,
+    ) -> Option<ResourceArc<MaterialPassResource>> {
+        self.inner
+            .passes
+            .get(index)
+            .map(|x| x.material_pass_resource.clone())
+    }
+
+    pub fn get_material_pass_by_name(
+        &self,
+        name: &str,
+    ) -> Option<ResourceArc<MaterialPassResource>> {
+        self.inner
+            .passes
+            .get(self.find_pass_by_name(name)? as usize)
+            .map(|x| x.material_pass_resource.clone())
+    }
+
+    pub fn get_material_pass_by_phase<T: RenderPhase>(
+        &self
+    ) -> Option<ResourceArc<MaterialPassResource>> {
+        self.inner
+            .passes
+            .get(self.find_pass_by_phase::<T>()? as usize)
+            .map(|x| x.material_pass_resource.clone())
     }
 }
 

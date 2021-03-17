@@ -4,7 +4,7 @@
             name: Some("mesh opaque"),
             phase: Some("Opaque"),
             fixed_function_state: (
-                depth_testing: EnabledReverseZ,
+                depth_testing: ReadOnlyReverseZ,
                 cull_mode: Some(Back),
                 front_face: Some(CounterClockwise),
             ),
@@ -20,21 +20,6 @@
                     entry_name: "main"
                 ),
             ],
-        ),
-        (
-            phase: Some("ShadowMap"),
-            fixed_function_state: (
-                depth_testing: EnabledReverseZ,
-                cull_mode: Some(None),
-            ),
-            shaders: [
-                (
-                    stage: Vertex,
-                    shader_module: "../shaders/mesh_shadow_map.vert.cookedshaderpackage",
-                    entry_name: "main"
-                ),
-                // No fragment shader required
-            ],
-        ),
+        )
     ]
 )

@@ -8,7 +8,7 @@ use distill::loader::handle::Handle;
 use rafx_framework::{
     DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider, DescriptorSetAllocatorRef,
     DescriptorSetLayoutResource, DescriptorSetWriteSet, DynResourceAllocatorSet,
-    GraphicsPipelineCache, MaterialPass, MaterialPassResource, ResourceArc, SlotNameLookup,
+    GraphicsPipelineCache, MaterialPass, ResourceArc, SlotNameLookup,
 };
 
 use super::upload::UploadManager;
@@ -268,16 +268,6 @@ impl AssetManager {
     //
     // Loaders
     //
-
-    pub fn get_material_pass_by_index(
-        &self,
-        handle: &Handle<MaterialAsset>,
-        index: usize,
-    ) -> Option<ResourceArc<MaterialPassResource>> {
-        self.committed_asset(handle)
-            .and_then(|x| x.passes.get(index))
-            .map(|x| x.material_pass_resource.clone())
-    }
 
     pub fn get_descriptor_set_layout_for_pass(
         &self,

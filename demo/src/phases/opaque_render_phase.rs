@@ -8,13 +8,7 @@ rafx::declare_render_phase!(
 );
 
 #[profiling::function]
-fn opaque_render_phase_sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
-    // Sort by feature
-    log::trace!(
-        "Sort phase {}",
-        OpaqueRenderPhase::render_phase_debug_name()
-    );
-    submit_nodes.sort_unstable_by(|a, b| a.feature_index().cmp(&b.feature_index()));
-
+fn opaque_render_phase_sort_submit_nodes(submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
+    // Sorting is unnecessary because of the depth pre-pass.
     submit_nodes
 }
