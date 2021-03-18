@@ -333,10 +333,12 @@ impl RafxSwapchainHelper {
         window_height: u32,
         event_listener: Option<&mut dyn RafxSwapchainEventListener>,
     ) -> RafxResult<RafxPresentableFrame> {
+        log::trace!("acquire_next_image AAAAA");
         //
         // Block until the previous frame completes being submitted to GPU
         //
         let previous_frame_result = self.wait_until_previous_frame_submitted();
+        log::trace!("acquire_next_image BBBBB");
 
         //
         // Block until the next sync frame index finishes submitting. It's not safe to modify
@@ -348,7 +350,9 @@ impl RafxSwapchainHelper {
             .unwrap()
             .sync_frame_index
             .load(Ordering::Relaxed);
+        log::trace!("acquire_next_image CCCCC");
         self.wait_until_sync_frame_idle(next_sync_frame)?;
+        log::trace!("acquire_next_image DDDDD");
 
         //
         // Check the result of the previous frame. Possible outcomes:
@@ -392,12 +396,15 @@ impl RafxSwapchainHelper {
             Err(e) => return Err(e.clone()),
         };
 
+        log::trace!("acquire_next_image EEEEE");
         //
         // If we don't have any reason yet to rebuild the swapchain, try to render
         //
         if !rebuild_swapchain {
             // This case is taken if we have never rendered a frame or if the previous render was successful
+            log::trace!("acquire_next_image FFFFF");
             let result = self.try_acquire_next_image(window_width, window_height)?;
+            log::trace!("acquire_next_image GGGGG");
             if let TryAcquireNextImageResult::Success(presentable_frame) = result {
                 return Ok(presentable_frame);
             }
@@ -406,8 +413,10 @@ impl RafxSwapchainHelper {
         //
         // Rebuild the swapchain and try again. Any failure after a rebuild will be fatal
         //
+        log::trace!("acquire_next_image HHHHH");
         self.rebuild_swapchain(window_width, window_height, event_listener)?;
 
+        log::trace!("acquire_next_image IIIII");
         let result = self.try_acquire_next_image(window_width, window_height)?;
         if let TryAcquireNextImageResult::Success(presentable_frame) = result {
             Ok(presentable_frame)
@@ -428,7 +437,9 @@ impl RafxSwapchainHelper {
         // This allows us to handle errors from the render thread in the main thread. This wait is
         // only blocking on getting the previous frame submitted. It's possible the GPU is still
         // processing it, and even the frame before it.
+        log::trace!("try_acquire_next_image AAAAA");
         self.wait_until_previous_frame_submitted()?;
+        log::trace!("try_acquire_next_image BBBBB");
 
         // check if window size changed and we are out of date
         let shared_state = self.shared_state.as_ref().unwrap();
@@ -446,11 +457,14 @@ impl RafxSwapchainHelper {
 
         // If this swapchain image is still being process on the GPU, block until it is flushed
         let frame_fence = &shared_state.in_flight_fences[sync_frame_index];
+        log::trace!("try_acquire_next_image CCCCC");
         self.device_context.wait_for_fences(&[frame_fence]).unwrap();
+        log::trace!("try_acquire_next_image DDDDD");
 
         // Acquire the next image and signal the image available semaphore when it's ready to use
         let image_available_semaphore = &shared_state.image_available_semaphores[sync_frame_index];
         let swapchain_image = swapchain.acquire_next_image_semaphore(image_available_semaphore)?;
+        log::trace!("try_acquire_next_image EEEEE");
 
         self.expect_result_from_previous_frame = true;
         return Ok(TryAcquireNextImageResult::Success(RafxPresentableFrame {

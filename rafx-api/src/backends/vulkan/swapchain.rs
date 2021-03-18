@@ -178,6 +178,7 @@ impl RafxSwapchainVulkan {
         &mut self,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<()> {
+        log::trace!("vulkan swapchain rebuild");
         let present_mode_priority = present_mode_priority(swapchain_def);
 
         let new_swapchain = RafxSwapchainVulkanInstance::new(
@@ -209,6 +210,7 @@ impl RafxSwapchainVulkan {
         fence: &RafxFenceVulkan,
     ) -> RafxResult<RafxSwapchainImage> {
         let result = unsafe {
+            log::trace!("vulkan swapchain loader acquire_next_image AAAAA");
             self.swapchain.swapchain_loader.acquire_next_image(
                 self.swapchain.swapchain,
                 std::u64::MAX,
@@ -243,6 +245,7 @@ impl RafxSwapchainVulkan {
         semaphore: &RafxSemaphoreVulkan,
     ) -> RafxResult<RafxSwapchainImage> {
         let result = unsafe {
+            log::trace!("vulkan swapchain loader acquire_next_image BBBBB");
             self.swapchain.swapchain_loader.acquire_next_image(
                 self.swapchain.swapchain,
                 std::u64::MAX,

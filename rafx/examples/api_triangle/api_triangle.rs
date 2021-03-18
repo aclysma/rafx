@@ -9,7 +9,7 @@ const WINDOW_HEIGHT: u32 = 600;
 fn main() {
     env_logger::Builder::from_default_env()
         .default_format_timestamp_nanos(true)
-        .filter_level(LevelFilter::Debug)
+        .filter_level(LevelFilter::Trace)
         .init();
 
     run().unwrap();
@@ -279,10 +279,13 @@ fn run() -> RafxResult<()> {
             .expect("Could not create sdl event pump");
 
         'running: loop {
+            log::trace!("Frame loop AAAAA");
+
             if !process_input(&mut event_pump) {
                 break 'running;
             }
 
+            log::trace!("Frame loop BBBBB");
             let current_time = std::time::Instant::now();
             let seconds = (current_time - start_time).as_secs_f32();
 
@@ -296,13 +299,18 @@ fn run() -> RafxResult<()> {
             let color = (seconds.cos() + 1.0) / 2.0;
             let uniform_data = [color, 0.0, 1.0 - color, 1.0];
 
+            log::trace!("Frame loop CCCCC");
+
             //
             // Acquire swapchain image
             //
             let (window_width, window_height) = sdl2_systems.window.vulkan_drawable_size();
+            log::trace!("Frame loop DDDDD");
             let presentable_frame =
                 swapchain_helper.acquire_next_image(window_width, window_height, None)?;
+            log::trace!("Frame loop EEEEE");
             let swapchain_texture = presentable_frame.swapchain_texture();
+            log::trace!("Frame loop FFFFF");
 
             //
             // Use the command pool/buffer assigned to this frame
@@ -315,9 +323,11 @@ fn run() -> RafxResult<()> {
             //
             // Update the buffers
             //
+            log::trace!("Frame loop GGGGG");
             vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
+            log::trace!("Frame loop HHHHH");
             //
             // Record the command buffer. For now just transition it between layouts
             //
@@ -363,10 +373,12 @@ fn run() -> RafxResult<()> {
                 &descriptor_set_array,
                 presentable_frame.rotating_frame_index() as u32,
             )?;
+            log::trace!("Frame loop IIIII");
             cmd_buffer.cmd_draw(3, 0)?;
 
             // Put it into a layout where we can present it
 
+            log::trace!("Frame loop JJJJJ");
             cmd_buffer.cmd_end_render_pass()?;
 
             cmd_buffer.cmd_resource_barrier(
@@ -377,12 +389,15 @@ fn run() -> RafxResult<()> {
                     RafxResourceState::PRESENT,
                 )],
             )?;
+            log::trace!("Frame loop LLLLL");
             cmd_buffer.end()?;
 
             //
             // Present the image
             //
+            log::trace!("Frame loop MMMMM");
             presentable_frame.present(&graphics_queue, &[&cmd_buffer])?;
+            log::trace!("Frame loop NNNNN");
         }
 
         // Wait for all GPU work to complete before destroying resources it is using
@@ -429,8 +444,9 @@ fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
     use sdl2::event::Event;
     use sdl2::keyboard::Keycode;
 
+    log::trace!("process_input");
     for event in event_pump.poll_iter() {
-        //log::trace!("{:?}", event);
+        log::trace!("  {:?}", event);
         match event {
             //
             // Halt if the user requests to close the window
@@ -442,10 +458,10 @@ fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
             //
             Event::KeyDown {
                 keycode: Some(keycode),
-                keymod: _modifiers,
+                keymod: modifiers,
                 ..
             } => {
-                //log::trace!("Key Down {:?} {:?}", keycode, modifiers);
+                log::trace!("Key Down {:?} {:?}", keycode, modifiers);
                 if keycode == Keycode::Escape {
                     return false;
                 }
