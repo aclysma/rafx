@@ -158,21 +158,25 @@ impl RafxPresentableFrame {
         let wait_semaphores = [&shared_state.image_available_semaphores[sync_frame_index]];
         let signal_semaphores = [&shared_state.render_finished_semaphores[sync_frame_index]];
 
+        log::trace!("do_present about to call submit");
         queue.submit(
             command_buffers,
             &wait_semaphores,
             &signal_semaphores,
             Some(frame_fence),
         )?;
+        log::trace!("do_present finished calling submit");
 
         let wait_semaphores = [&shared_state.image_available_semaphores[sync_frame_index]];
         let swapchain = shared_state.swapchain.lock().unwrap();
 
+        log::trace!("do_present about to call present");
         let result = queue.present(
             &*swapchain,
             &wait_semaphores,
             self.swapchain_image.swapchain_image_index,
         )?;
+        log::trace!("do_present finished calling present");
 
         shared_state.sync_frame_index.store(
             (sync_frame_index + 1) % shared_state.in_flight_fences.len(),

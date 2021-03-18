@@ -144,6 +144,7 @@ impl RafxQueueVulkan {
         wait_semaphores: &[&RafxSemaphoreVulkan],
         image_index: u32,
     ) -> RafxResult<RafxPresentSuccessResult> {
+        log::trace!("RafxQueueVulkan::present()");
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
         for wait_semaphore in wait_semaphores {
             if wait_semaphore.signal_available() {
@@ -202,18 +203,22 @@ impl RafxQueueVulkan {
                         "present to dedicated present queue {:?}",
                         dedicated_present_queue
                     );
-                    swapchain
+                    let return_value = swapchain
                         .vk_swapchain_loader()
-                        .queue_present(dedicated_present_queue, present_info)?
+                        .queue_present(dedicated_present_queue, present_info);
+                    log::trace!("queue_present() returned {:?}", return_value);
+                    return_value?
                 }
             } else {
                 let queue = self.queue.queue().lock().unwrap();
-                log::trace!("present to dedicated present queue {:?}", *queue);
-                unsafe {
+                log::trace!("present to queue {:?}", *queue);
+                let return_value = unsafe {
                     swapchain
                         .vk_swapchain_loader()
-                        .queue_present(*queue, &present_info)?
-                }
+                        .queue_present(*queue, &present_info)
+                };
+                log::trace!("queue_present() returned {:?}", return_value);
+                return_value?
             };
 
         Ok(is_suboptimal)

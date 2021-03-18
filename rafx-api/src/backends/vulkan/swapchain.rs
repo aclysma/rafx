@@ -604,7 +604,6 @@ impl RafxSwapchainVulkanInstance {
         graphics_queue_family_index: u32,
     ) -> VkResult<u32> {
         let graphics_queue_family_supports_present = unsafe {
-            log::debug!("Use the graphics queue family to present");
             surface_loader.get_physical_device_surface_support(
                 physical_device,
                 graphics_queue_family_index,
@@ -614,13 +613,13 @@ impl RafxSwapchainVulkanInstance {
 
         if graphics_queue_family_supports_present {
             // The graphics queue family will work
+            log::debug!("Use the graphics queue family {} to present", graphics_queue_family_index);
             Ok(graphics_queue_family_index)
         } else {
             // Try to find any queue family that can present
             for (queue_family_index, _) in all_queue_families.iter().enumerate() {
                 let queue_family_index = queue_family_index as u32;
 
-                log::debug!("Use dedicated present queue family");
                 let supports_present = unsafe {
                     surface_loader.get_physical_device_surface_support(
                         physical_device,
@@ -631,6 +630,7 @@ impl RafxSwapchainVulkanInstance {
 
                 if supports_present {
                     // Present queue family found, return it
+                    log::debug!("Use dedicated present queue family {} to present", queue_family_index);
                     return Ok(queue_family_index);
                 }
             }
@@ -702,6 +702,11 @@ impl RafxSwapchainVulkanInstance {
             .graphics_queue_family_index
             != present_queue_family_index
         {
+            log::info!(
+                "Graphics queue family {} does not match present queue family {}. Using concurrent image sharing mode",
+                device_context.queue_family_indices().graphics_queue_family_index,
+                present_queue_family_index
+            );
             swapchain_create_info = swapchain_create_info
                 .image_sharing_mode(vk::SharingMode::CONCURRENT)
                 .queue_family_indices(&queue_families);

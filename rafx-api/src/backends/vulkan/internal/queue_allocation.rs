@@ -106,6 +106,12 @@ impl VkUnallocatedQueue {
         queue_index: u32,
     ) -> Self {
         let raw_queue = unsafe { device.get_device_queue(queue_family_index, queue_index) };
+        log::debug!(
+            "get_device_queue() queue family index: {} queue_index: {} queue: {:?}",
+            queue_family_index,
+            queue_index,
+            raw_queue
+        );
         let inner = UnallocatedQueueInner {
             queue_family_index,
             queue_index,
