@@ -5,8 +5,8 @@ use rafx_assets::distill_impl::AssetResource;
 use rafx_assets::AssetManager;
 use rafx_base::resource_map::ResourceMap;
 use rafx_framework::nodes::{
-    ExtractJob, ExtractResources, FramePacketBuilder, RenderNodeReservations,
-    RenderRegistryBuilder, RenderView, RenderViewSet,
+    ExtractJob, ExtractResources, FramePacketBuilder, RenderRegistryBuilder, RenderView,
+    RenderViewSet,
 };
 use rafx_framework::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use rafx_framework::RenderResources;
@@ -58,14 +58,6 @@ pub trait RendererPlugin: Send + Sync {
     // ) -> RafxResult<()> {
     //     Ok(())
     // }
-
-    fn add_render_node_reservations(
-        &self,
-        _render_node_reservations: &mut RenderNodeReservations,
-        _extract_resources: &ExtractResources,
-        _render_resources: &RenderResources,
-    ) {
-    }
 
     fn add_render_views(
         &self,

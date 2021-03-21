@@ -47,6 +47,7 @@ impl ExtractJob for MeshExtractJob {
         let mut mesh_render_nodes = extract_context
             .extract_resources
             .fetch_mut::<MeshRenderNodeSet>();
+        mesh_render_nodes.update();
 
         let mut query = <(Read<PositionComponent>, Read<MeshComponent>)>::query();
         for (position_component, mesh_component) in query.iter(world) {

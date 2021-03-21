@@ -1,5 +1,5 @@
 use crate::features::mesh::shadow_map_resource::ShadowMapResource;
-use crate::features::mesh::{MeshRenderFeature, MeshRenderNodeSet};
+use crate::features::mesh::MeshRenderFeature;
 use distill::loader::handle::Handle;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::RafxResult;
@@ -8,8 +8,8 @@ use rafx::assets::{AssetManager, MaterialAsset};
 use rafx::base::resource_map::ResourceMap;
 use rafx::framework::RenderResources;
 use rafx::nodes::{
-    ExtractJob, ExtractResources, FramePacketBuilder, RenderNodeReservations,
-    RenderRegistryBuilder, RenderView, RenderViewSet,
+    ExtractJob, ExtractResources, FramePacketBuilder, RenderRegistryBuilder, RenderView,
+    RenderViewSet,
 };
 use rafx::renderer::RendererPlugin;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
@@ -46,17 +46,6 @@ impl RendererPlugin for MeshRendererPlugin {
         render_resources.insert(ShadowMapResource::default());
 
         Ok(())
-    }
-
-    fn add_render_node_reservations(
-        &self,
-        render_node_reservations: &mut RenderNodeReservations,
-        extract_resources: &ExtractResources,
-        _render_resources: &RenderResources,
-    ) {
-        let mut mesh_render_nodes = extract_resources.fetch_mut::<MeshRenderNodeSet>();
-        mesh_render_nodes.update();
-        render_node_reservations.add_reservation(&*mesh_render_nodes);
     }
 
     fn add_extract_jobs(

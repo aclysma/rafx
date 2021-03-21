@@ -1,5 +1,5 @@
 use super::registry::RenderFeatureCount;
-use super::render_nodes::{RenderNodeIndex, RenderNodeReservations};
+use super::render_nodes::RenderNodeIndex;
 use super::VisibilityResult;
 use super::{GenericRenderNodeHandle, RenderFeatureIndex, RenderRegistry, RenderView};
 use std::sync::Mutex;
@@ -158,26 +158,10 @@ pub struct FramePacketBuilder {
 }
 
 impl FramePacketBuilder {
-    pub fn new(render_node_set: &RenderNodeReservations) -> Self {
+    pub fn new() -> Self {
         let feature_count = RenderRegistry::registered_feature_count();
-        let max_render_node_count_by_type = render_node_set.max_render_nodes_by_feature();
 
-        debug_assert_eq!(feature_count as usize, max_render_node_count_by_type.len());
-
-        for (feature_index, max_render_node_count) in
-            max_render_node_count_by_type.iter().enumerate()
-        {
-            log::trace!(
-                "node count for feature {}: {}",
-                feature_index,
-                max_render_node_count
-            );
-        }
-
-        let frame_node_assignments = max_render_node_count_by_type
-            .iter()
-            .map(|max_render_node_count| vec![-1; *max_render_node_count as usize])
-            .collect();
+        let frame_node_assignments = (0..feature_count).map(|_| Vec::default()).collect();
 
         let frame_nodes = (0..feature_count).map(|_| Default::default()).collect();
 
@@ -202,14 +186,14 @@ impl FramePacketBuilder {
         log::trace!("Allocate frame packet nodes for {}", view.debug_name());
         let view_packet_builder = ViewPacketBuilder::new(feature_count);
 
+        let mut guard = self.inner.lock().unwrap();
         for visibility_result in visibility_results {
             for handle in &visibility_result.handles {
-                let frame_node_index = self.append_frame_node(*handle);
+                let frame_node_index = Self::append_frame_node(&mut *guard, *handle);
                 view_packet_builder.append_view_node(*handle, frame_node_index);
             }
         }
 
-        let mut guard = self.inner.lock().unwrap();
         guard
             .view_packet_builders
             .resize_with(view.view_index() as usize + 1, || None);
@@ -217,26 +201,34 @@ impl FramePacketBuilder {
     }
 
     fn append_frame_node(
-        &self,
+        guard: &mut FramePacketBuilderInner,
         handle: GenericRenderNodeHandle,
     ) -> FrameNodeIndex {
-        let mut guard = self.inner.lock().unwrap();
+        let frame_node_assignments =
+            &mut guard.frame_node_assignments[handle.render_feature_index() as usize];
+
+        let render_node_index_usize = handle.render_node_index() as usize;
 
         // A crash here likely means render nodes for this feature weren't registered
-        let index = guard.frame_node_assignments[handle.render_feature_index() as usize]
-            [handle.render_node_index() as usize];
+        let index = frame_node_assignments
+            .get(render_node_index_usize)
+            .map(|x| *x);
 
-        if index == -1 {
+        if index == None || index == Some(-1) {
             let index = guard.frame_nodes[handle.render_feature_index() as usize].len();
             guard.frame_nodes[handle.render_feature_index() as usize].push(PerFrameNode {
                 render_node_index: handle.render_node_index(),
             });
             log::trace!("push frame node");
-            guard.frame_node_assignments[handle.render_feature_index() as usize]
-                [handle.render_node_index() as usize] = index as i32;
+
+            if frame_node_assignments.len() <= render_node_index_usize {
+                frame_node_assignments.resize(render_node_index_usize + 1, -1);
+            }
+
+            frame_node_assignments[render_node_index_usize] = index as i32;
             index as u32
         } else {
-            index as u32
+            index.unwrap() as u32
         }
     }
 
