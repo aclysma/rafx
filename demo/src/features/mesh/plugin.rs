@@ -44,10 +44,6 @@ impl RendererPlugin for MeshRendererPlugin {
         render_resources.insert(MeshStaticResources { depth_material });
 
         render_resources.insert(ShadowMapResource::default());
-        render_resources.insert(MeshRenderNodeSet::default());
-
-        render_resources.try_insert_default::<StaticVisibilityNodeSet>();
-        render_resources.try_insert_default::<DynamicVisibilityNodeSet>();
 
         Ok(())
     }
@@ -55,10 +51,10 @@ impl RendererPlugin for MeshRendererPlugin {
     fn add_render_node_reservations(
         &self,
         render_node_reservations: &mut RenderNodeReservations,
-        _extract_resources: &ExtractResources,
-        render_resources: &RenderResources,
+        extract_resources: &ExtractResources,
+        _render_resources: &RenderResources,
     ) {
-        let mut mesh_render_nodes = render_resources.fetch_mut::<MeshRenderNodeSet>();
+        let mut mesh_render_nodes = extract_resources.fetch_mut::<MeshRenderNodeSet>();
         mesh_render_nodes.update();
         render_node_reservations.add_reservation(&*mesh_render_nodes);
     }

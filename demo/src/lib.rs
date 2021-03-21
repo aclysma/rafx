@@ -320,6 +320,22 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
             add_to_extract_resources!(
+                rafx::visibility::DynamicVisibilityNodeSet,
+                dynamic_visibility_node_set
+            );
+            add_to_extract_resources!(
+                rafx::visibility::StaticVisibilityNodeSet,
+                static_visibility_node_set
+            );
+            add_to_extract_resources!(
+                crate::features::sprite::SpriteRenderNodeSet,
+                sprite_render_node_set
+            );
+            add_to_extract_resources!(
+                crate::features::mesh::MeshRenderNodeSet,
+                mesh_render_node_set
+            );
+            add_to_extract_resources!(
                 crate::features::debug3d::DebugDraw3DResource,
                 debug_draw_3d_resource
             );
