@@ -267,8 +267,11 @@ impl Renderer {
         let frame_packet_builder = {
             let mut render_node_reservations = RenderNodeReservations::default();
             for plugin in &*renderer_inner.plugins {
-                plugin
-                    .add_render_node_reservations(&mut render_node_reservations, extract_resources, render_resources);
+                plugin.add_render_node_reservations(
+                    &mut render_node_reservations,
+                    extract_resources,
+                    render_resources,
+                );
             }
 
             FramePacketBuilder::new(&render_node_reservations)

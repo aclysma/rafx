@@ -1,12 +1,12 @@
 use crate::components::{PositionComponent, SpriteComponent};
 use crate::features::sprite::{SpriteRenderNode, SpriteRenderNodeSet};
+use crate::time::TimeState;
 use glam::f32::Vec3;
 use legion::{Resources, World};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
-use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
-use crate::time::TimeState;
 use rafx::renderer::ViewportsResource;
+use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
 pub(super) struct SpriteScene {}
 
