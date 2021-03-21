@@ -8,8 +8,8 @@ use rafx::visibility::DynamicAabbVisibilityNodeHandle;
 
 #[derive(Clone)]
 pub struct MeshComponent {
-    pub render_node: Option<MeshRenderNodeHandle>,
-    pub visibility_node: Option<DynamicAabbVisibilityNodeHandle>,
+    pub render_node: MeshRenderNodeHandle,
+    pub visibility_node: DynamicAabbVisibilityNodeHandle,
     pub mesh: Option<Handle<MeshAsset>>,
 }
 
@@ -43,8 +43,8 @@ pub struct SpotLightComponent {
 
 #[derive(Clone)]
 pub struct SpriteComponent {
-    pub render_node: Option<SpriteRenderNodeHandle>,
-    pub visibility_node: Option<DynamicAabbVisibilityNodeHandle>,
+    pub render_node: SpriteRenderNodeHandle,
+    pub visibility_node: DynamicAabbVisibilityNodeHandle,
     pub alpha: f32,
     pub image: Handle<ImageAsset>,
     //pub texture_material: ResourceArc<>

@@ -101,9 +101,6 @@ impl Renderer {
 
         render_resources.insert(invalid_resources.clone());
 
-        render_resources.try_insert_default::<DynamicVisibilityNodeSet>();
-        render_resources.try_insert_default::<StaticVisibilityNodeSet>();
-
         upload.block_until_upload_complete()?;
 
         let render_thread = RenderThread::start(render_resources);
@@ -210,17 +207,17 @@ impl Renderer {
         extract_resources: &mut ExtractResources,
         presentable_frame: &RafxPresentableFrame,
     ) -> RafxResult<RenderFrameJob> {
-        let mut guard = renderer.inner.lock().unwrap();
-        let renderer_inner = &mut *guard;
-        let render_resources = &mut renderer_inner
-            .render_thread
-            .render_resources()
-            .lock()
-            .unwrap();
-
         //
         // Fetch resources
         //
+        let mut static_visibility_node_set_fetch =
+            extract_resources.fetch_mut::<StaticVisibilityNodeSet>();
+        let static_visibility_node_set = &mut *static_visibility_node_set_fetch;
+
+        let mut dynamic_visibility_node_set_fetch =
+            extract_resources.fetch_mut::<DynamicVisibilityNodeSet>();
+        let dynamic_visibility_node_set = &mut *dynamic_visibility_node_set_fetch;
+
         let mut asset_manager_fetch = extract_resources.fetch_mut::<AssetManager>();
         let asset_manager = &mut *asset_manager_fetch;
 
@@ -233,6 +230,14 @@ impl Renderer {
         asset_manager.on_frame_complete()?;
 
         let resource_context = asset_manager.resource_manager().resource_context();
+
+        let mut guard = renderer.inner.lock().unwrap();
+        let renderer_inner = &mut *guard;
+        let render_resources = &mut renderer_inner
+            .render_thread
+            .render_resources()
+            .lock()
+            .unwrap();
 
         //
         // Swapchain Status
@@ -300,15 +305,6 @@ impl Renderer {
         let mut render_views = Vec::default();
         {
             profiling::scope!("Update visibility");
-
-            let mut static_visibility_node_set_fetch =
-                render_resources.fetch_mut::<StaticVisibilityNodeSet>();
-            let static_visibility_node_set = &mut *static_visibility_node_set_fetch;
-
-            let mut dynamic_visibility_node_set_fetch =
-                render_resources.fetch_mut::<DynamicVisibilityNodeSet>();
-            let dynamic_visibility_node_set = &mut *dynamic_visibility_node_set_fetch;
-
             let main_view_static_visibility_result =
                 static_visibility_node_set.calculate_static_visibility(&main_view);
             let main_view_dynamic_visibility_result =
