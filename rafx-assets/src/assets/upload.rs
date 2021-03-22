@@ -653,6 +653,8 @@ impl UploadManager {
         &self,
         request: LoadRequest<ImageAssetData, ImageAsset>,
     ) -> RafxResult<()> {
+        assert_ne!(request.asset.width, 0);
+        assert_ne!(request.asset.height, 0);
         let color_space: GpuImageDataColorSpace = request.asset.color_space.into();
 
         let generate_mips = request.asset.generate_mips_at_runtime;
@@ -790,6 +792,7 @@ impl UploadManager {
         &self,
         request: LoadRequest<BufferAssetData, BufferAsset>,
     ) -> RafxResult<()> {
+        assert!(!request.asset.data.is_empty());
         self.upload_queue
             .pending_buffer_tx()
             .send(PendingBufferUpload {

@@ -54,6 +54,10 @@ impl Default for RafxBufferDef {
 }
 
 impl RafxBufferDef {
+    pub fn verify(&self) {
+        assert_ne!(self.size, 0);
+    }
+
     pub fn for_staging_buffer(
         size: usize,
         resource_type: RafxResourceType,

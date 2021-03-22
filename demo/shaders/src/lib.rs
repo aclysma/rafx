@@ -18,3 +18,5 @@ pub mod sprite_frag;
 pub mod sprite_vert;
 pub mod text_frag;
 pub mod text_vert;
+pub mod tile_layer_frag;
+pub mod tile_layer_vert;

@@ -14,6 +14,8 @@ use rafx::nodes::{ExtractResources, RenderRegistry};
 use rafx::renderer::ViewportsResource;
 use rafx::renderer::{AssetSource, Renderer, RendererBuilder, SwapchainHandler};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
+use crate::features::tile_layer::{TileLayerRendererPlugin, TileLayerResource, TileLayerRenderNodeSet};
 
 pub struct Sdl2Systems {
     pub context: sdl2::Sdl,
@@ -51,11 +53,13 @@ pub fn rendering_init(
 ) -> RafxResult<()> {
     resources.insert(SpriteRenderNodeSet::default());
     resources.insert(MeshRenderNodeSet::default());
+    resources.insert(TileLayerRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(DebugDraw3DResource::new());
     resources.insert(TextResource::new());
     resources.insert(ViewportsResource::default());
+    resources.insert(TileLayerResource::default());
 
     let rafx_api = rafx::api::RafxApi::new(sdl2_window, &Default::default())?;
 
@@ -63,9 +67,11 @@ pub fn rendering_init(
     renderer_builder = renderer_builder
         .add_plugin(Box::new(FontAssetTypeRendererPlugin))
         .add_plugin(Box::new(GltfAssetTypeRendererPlugin))
+        .add_plugin(Box::new(LdtkAssetTypeRendererPlugin))
         .add_plugin(Box::new(Debug3DRendererPlugin))
         .add_plugin(Box::new(TextRendererPlugin))
         .add_plugin(Box::new(SpriteRendererPlugin))
+        .add_plugin(Box::new(TileLayerRendererPlugin))
         .add_plugin(Box::new(MeshRendererPlugin))
         .add_plugin(Box::new(DemoRendererPlugin));
 
@@ -140,6 +146,7 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         resources.remove::<Renderer>();
         resources.remove::<SpriteRenderNodeSet>();
         resources.remove::<MeshRenderNodeSet>();
+        resources.remove::<TileLayerRenderNodeSet>();
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
         resources.remove::<DebugDraw3DResource>();

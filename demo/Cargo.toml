@@ -22,12 +22,19 @@ legion = { version = "0.4.0", default-features = false, features = [
 ] }
 image = "0.23.12"
 image2 = { version = "0.11", features = ["ser"] }
+
+# GLTF asset type
 # for https://github.com/gltf-rs/gltf/pull/288
 #gltf = "0.15"
 gltf = { git = "https://github.com/gltf-rs/gltf.git", rev = "e49aef5ee7b40c2c8f8a50efaed36b97bbb52bd4" }
 fontdue = "0.4"
 ttf-parser = "0.8.3"
 rectangle-pack = "0.2.0"
+
+# LDTK asset type
+ldtk_rust = "0.4"
+serde_json = "1.0"
+
 log = "0.4"
 env_logger = "0.6"
 glam = { version = "0.8.6", features = ["serde"] }

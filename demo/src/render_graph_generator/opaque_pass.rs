@@ -1,4 +1,4 @@
-use crate::phases::OpaqueRenderPhase;
+use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase};
 use rafx::graph::*;
 
 use super::RenderGraphContext;
@@ -78,9 +78,6 @@ pub(super) fn opaque_pass(
             .prepared_render_data()
             .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context)?;
 
-        //
-        // render the skybox last
-        //
         crate::features::skybox::draw_skybox(
             args.graph_context.resource_context(),
             &skybox_material,
@@ -89,7 +86,11 @@ pub(super) fn opaque_pass(
             &args.render_target_meta,
             &args.command_buffer,
             OpaqueRenderPhase::render_phase_index(),
-        )
+        )?;
+
+        args.graph_context
+            .prepared_render_data()
+            .write_view_phase::<TransparentRenderPhase>(&main_view, &mut write_context)
     });
 
     OpaquePass {

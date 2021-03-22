@@ -8,14 +8,14 @@ use type_uuid::*;
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "197bfd7a-3df9-4440-86f0-8e10756c714e"]
 pub struct FontAssetData {
-    pub data_hash: u64,
+    //pub data_hash: u64,
     #[serde(with = "serde_bytes")]
     pub data: Vec<u8>,
     pub scale: f32,
 }
 
 pub struct FontAssetInner {
-    pub data_hash: u64,
+    //pub data_hash: u64,
     pub font: fontdue::Font,
     pub scale: f32,
 }
@@ -40,7 +40,7 @@ impl DefaultAssetTypeLoadHandler<FontAssetData, FontAsset> for FontLoadHandler {
 
         let inner = FontAssetInner {
             font,
-            data_hash: font_asset.data_hash,
+            //data_hash: font_asset.data_hash,
             scale: font_asset.scale,
         };
 

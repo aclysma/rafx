@@ -29,6 +29,7 @@ mod time;
 
 mod demo_plugin;
 pub use demo_plugin::DemoRendererPlugin;
+use crate::features::tile_layer::TileLayerResource;
 
 // Should be kept in sync with the constants in tonemapper.glsl
 #[derive(Debug, Clone, Copy)]
@@ -416,6 +417,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             add_to_extract_resources!(AssetManager);
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
+            add_to_extract_resources!(TileLayerResource);
             add_to_extract_resources!(
                 rafx::visibility::DynamicVisibilityNodeSet,
                 dynamic_visibility_node_set
@@ -431,6 +433,10 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             add_to_extract_resources!(
                 crate::features::mesh::MeshRenderNodeSet,
                 mesh_render_node_set
+            );
+            add_to_extract_resources!(
+                crate::features::tile_layer::TileLayerRenderNodeSet,
+                tile_layer_render_node_set
             );
             add_to_extract_resources!(
                 crate::features::debug3d::DebugDraw3DResource,

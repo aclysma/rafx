@@ -406,6 +406,9 @@ impl RafxCommandBuffer {
     }
 
     /// Draw primitives using the currently bound pipeline, vertex, and index buffer
+    /// index_count: Number of vertices to draw
+    /// first_index: Base index within the index buffer
+    /// vertex_offset: Value added to the vertex index before indexing into the vertex buffer
     pub fn cmd_draw_indexed(
         &self,
         index_count: u32,

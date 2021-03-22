@@ -75,6 +75,8 @@ impl RafxBufferMetal {
         device_context: &RafxDeviceContextMetal,
         buffer_def: &RafxBufferDef,
     ) -> RafxResult<Self> {
+        buffer_def.verify();
+
         let mut allocation_size = buffer_def.size;
         if buffer_def
             .resource_type
@@ -88,6 +90,7 @@ impl RafxBufferMetal {
             )
         }
 
+        assert_ne!(0, allocation_size);
         let buffer = device_context.device().new_buffer(
             allocation_size,
             buffer_def.memory_usage.mtl_resource_options(),
