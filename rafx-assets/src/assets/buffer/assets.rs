@@ -11,6 +11,7 @@ use rafx_framework::{BufferResource, RafxResult};
 use serde::{Deserialize, Serialize};
 use std::any::TypeId;
 use type_uuid::*;
+use crate::push_buffer::PushBuffer;
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "2d6653ce-5f77-40a2-b050-f2d148699d78"]

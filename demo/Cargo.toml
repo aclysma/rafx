@@ -27,6 +27,8 @@ image2 = { version = "0.11", features = ["ser"] }
 # for https://github.com/gltf-rs/gltf/pull/288
 #gltf = "0.15"
 gltf = { git = "https://github.com/gltf-rs/gltf.git", rev = "e49aef5ee7b40c2c8f8a50efaed36b97bbb52bd4" }
+
+# Font asset type
 fontdue = "0.4"
 ttf-parser = "0.8.3"
 rectangle-pack = "0.2.0"

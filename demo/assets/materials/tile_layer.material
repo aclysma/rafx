@@ -3,7 +3,7 @@
         (
             phase: Some("Opaque"),
             fixed_function_state: (
-                depth_testing: Disabled,
+                depth_testing: EnabledReverseZ,
                 alpha_blending: Enabled,
             ),
             shaders: [

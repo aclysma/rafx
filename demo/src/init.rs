@@ -18,6 +18,8 @@ use rafx::nodes::{ExtractResources, RenderRegistry};
 use rafx::renderer::ViewportsResource;
 use rafx::renderer::{AssetSource, Renderer, RendererBuilder, SwapchainHandler};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
+use crate::features::tile_layer::{TileLayerRendererPlugin, TileLayerResource, TileLayerRenderNodeSet};
 
 pub struct Sdl2Systems {
     pub context: sdl2::Sdl,
