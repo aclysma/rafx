@@ -23,7 +23,7 @@ pub enum Scene {
     Sprite,
 }
 
-pub const ALL_SCENES: [Scene; 2] = [Scene::Shadows, Scene::Sprite];
+pub const ALL_SCENES: [Scene; 2] = [Scene::Sprite, Scene::Shadows];
 
 fn create_scene(
     scene: Scene,

@@ -45,16 +45,16 @@ impl PrepareJob for TileLayerPrepareJob {
         let mut descriptor_set_allocator = prepare_context.resource_context.create_descriptor_set_allocator();
         let mut per_view_descriptor_sets = Vec::default();
 
-        let extents_width = 900;
-        let extents_height = 600;
-        let aspect_ratio = extents_width as f32 / extents_height as f32;
-        let half_width = 400.0;
-        let half_height = 400.0 / aspect_ratio;
+        // let extents_width = 900;
+        // let extents_height = 600;
+        // let aspect_ratio = extents_width as f32 / extents_height as f32;
+        // let half_width = 450.0;
+        // let half_height = 450.0 / aspect_ratio;
         let view_proj = glam::Mat4::orthographic_rh(
-            -half_width,
-            half_width,
-            -half_height,
-            half_height,
+            0.0,
+            900.0,
+            256.0 - 600.0,
+            256.0,
             1000.0,
             -1000.0,
         );

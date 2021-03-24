@@ -15,7 +15,7 @@ struct spvDescriptorSetBuffer0
 
 struct spvDescriptorSetBuffer1
 {
-    texture2d<float> tex [[id(0)]];
+    texture2d<float> tex [[id(1)]];
 };
 
 struct main0_out

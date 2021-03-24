@@ -2,7 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-#include "sprite.glsl"
+#include "tile_layer.glsl"
 
 layout (location = 0) in vec2 o_uv;
 

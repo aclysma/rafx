@@ -15,7 +15,7 @@ use rafx::distill::{make_handle, make_handle_from_str};
 use crate::features::tile_layer::TileLayerVertex;
 use rafx::assets::push_buffer::PushBuffer;
 use rafx::assets::distill_impl::AssetResource;
-use ldtk_rust::{TileInstance, LayerInstance};
+use ldtk_rust::{TileInstance, LayerInstance, Level};
 
 // The asset state is stored in this format using Vecs
 #[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
@@ -79,7 +79,7 @@ impl Importer for LdtkImporter {
     where
         Self: Sized,
     {
-        3
+        4
     }
 
     fn version(&self) -> u32 {
@@ -197,8 +197,8 @@ impl Importer for LdtkImporter {
         let mut levels = FnvHashMap::<LevelUid, LdtkLevelData>::default();
 
         for level in &project.levels {
-            let mut vertex_data = Vec::default();
-            let mut index_data = Vec::default();
+            let mut vertex_data = Vec::<TileLayerVertex>::default();
+            let mut index_data = Vec::<u16>::default();
 
             let mut layer_data = Vec::default();
 
@@ -217,8 +217,8 @@ impl Importer for LdtkImporter {
 
                     let mut layer_draw_call_data : Vec<LdtkLayerDrawCallData> = Vec::default();
 
-                    LdtkImporter::generate_draw_data(&layer, &layer.grid_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
-                    LdtkImporter::generate_draw_data(&layer, &layer.auto_layer_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
+                    LdtkImporter::generate_draw_data(level, layer, &layer.grid_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
+                    LdtkImporter::generate_draw_data(level, layer, &layer.auto_layer_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
 
                     layer_data.push(LdtkLayerData {
                         material_instance: tileset.material_instance.clone(),
@@ -315,11 +315,12 @@ impl Importer for LdtkImporter {
 
 impl LdtkImporter {
     fn generate_draw_data(
+        level: &Level,
         layer: &LayerInstance,
         tile_instances: &[TileInstance],
         tileset: &LdtkTileSet,
         mut vertex_data: &mut Vec<TileLayerVertex>,
-        mut index_data: &mut Vec<u32>,
+        mut index_data: &mut Vec<u16>,
         layer_draw_call_data: &mut Vec<LdtkLayerDrawCallData>
     ) {
         for tile in tile_instances {
@@ -340,8 +341,8 @@ impl LdtkImporter {
 
             //let tile_id = tile.t;
             let flip_bits = tile.f;
-            let x_pos = (tile.px[0] + layer.px_total_offset_x) as f32;
-            let y_pos = (tile.px[1] + layer.px_total_offset_y) as f32;
+            let x_pos = (tile.px[0] + layer.px_total_offset_x + level.world_x) as f32;
+            let y_pos = -1.0 * (tile.px[1] + layer.px_total_offset_y + level.world_y) as f32;
             let tileset_src_x_pos = tile.src[0];
             let tileset_src_y_pos = tile.src[1];
             let tile_width = layer.grid_size as f32;
@@ -349,8 +350,8 @@ impl LdtkImporter {
 
             let mut texture_rect_left = tileset_src_x_pos as f32 / tileset.image_width as f32;
             let mut texture_rect_right = (tileset_src_x_pos as f32 + tile_width) / tileset.image_width as f32;
-            let mut texture_rect_top = tileset_src_y_pos as f32 / tileset.image_height as f32;
-            let mut texture_rect_bottom = (tileset_src_y_pos as f32 + tile_height) / tileset.image_height as f32;
+            let mut texture_rect_top = (tileset_src_y_pos as f32 + tile_height) / tileset.image_height as f32;
+            let mut texture_rect_bottom = (tileset_src_y_pos as f32) / tileset.image_height as f32;
 
             //
             // Handle flipping the image
@@ -390,12 +391,12 @@ impl LdtkImporter {
             //
             // Insert index data
             //
-            index_data.push(vertex_count + 0);
-            index_data.push(vertex_count + 1);
-            index_data.push(vertex_count + 2);
-            index_data.push(vertex_count + 2);
-            index_data.push(vertex_count + 1);
-            index_data.push(vertex_count + 3);
+            index_data.push(vertex_count as u16 + 0);
+            index_data.push(vertex_count as u16 + 1);
+            index_data.push(vertex_count as u16 + 2);
+            index_data.push(vertex_count as u16 + 2);
+            index_data.push(vertex_count as u16 + 1);
+            index_data.push(vertex_count as u16 + 3);
 
             //
             // Update the draw call to include the new data

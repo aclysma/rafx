@@ -27,10 +27,10 @@ pub type ArgsUniform = ArgsStd140;
 
 pub const UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const UNIFORM_BUFFER_DESCRIPTOR_BINDING_INDEX: usize = 0;
-pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
-pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 1;
+pub const SMP_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 0;
 pub const TEX_DESCRIPTOR_SET_INDEX: usize = 1;
-pub const TEX_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const TEX_DESCRIPTOR_BINDING_INDEX: usize = 1;
 
 pub struct DescriptorSet0Args<'a> {
     pub uniform_buffer: &'a ArgsUniform,
