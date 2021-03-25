@@ -6,9 +6,9 @@ layout(set = 0, binding = 0) uniform Args {
 
 // @[immutable_samplers([
 //         (
-//             mag_filter: Linear,
-//             min_filter: Linear,
-//             mip_map_mode: Linear,
+//             mag_filter: Nearest,
+//             min_filter: Nearest,
+//             mip_map_mode: Nearest,
 //             address_mode_u: Mirror,
 //             address_mode_v: Mirror,
 //             address_mode_w: Mirror,

@@ -1,6 +1,6 @@
 use crate::features::tile_layer::{TileLayerRenderFeature, TileLayerRenderNode};
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
-use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
+use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::nodes::{
     FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
     RenderPhaseIndex, RenderView, SubmitNodeId,
@@ -20,7 +20,7 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        _view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
         let command_buffer = &write_context.command_buffer;

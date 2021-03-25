@@ -1,12 +1,12 @@
-use crate::features::tile_layer::{TileLayerRenderFeature, TileLayerRenderNodeSet, TileLayerResource};
+use crate::features::tile_layer::{TileLayerRenderFeature, TileLayerRenderNodeSet};
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::RafxResult;
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, MaterialAsset, AssetManagerRenderResource};
+use rafx::assets::{AssetManager, MaterialAsset};
 use rafx::base::resource_map::ResourceMap;
 use rafx::distill::loader::handle::Handle;
 use rafx::framework::RenderResources;
-use rafx::nodes::{ExtractJob, ExtractResources, RenderRegistryBuilder, RenderFeature};
+use rafx::nodes::{ExtractJob, ExtractResources, RenderRegistryBuilder};
 use rafx::renderer::RendererPlugin;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 

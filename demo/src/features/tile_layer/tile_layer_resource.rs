@@ -1,8 +1,6 @@
-use std::sync::Arc;
 use crate::assets::ldtk::LdtkProjectAsset;
 use rafx::distill::loader::handle::Handle;
 use rafx::assets::AssetManager;
-use fnv::FnvHashMap;
 use crate::features::tile_layer::{TileLayerRenderNodeHandle, TileLayerRenderNodeSet, TileLayerRenderNode};
 use rafx::visibility::{StaticVisibilityNodeSet, StaticAabbVisibilityNode, StaticAabbVisibilityNodeHandle};
 

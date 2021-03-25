@@ -1,5 +1,3 @@
-use distill::loader::handle::Handle;
-use rafx::assets::ImageAsset;
 use rafx::base::slab::{DropSlab, DropSlabKey};
 use rafx::nodes::{
     ExtractJob, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex, RenderNodeCount,
@@ -21,9 +19,9 @@ mod tile_layer_resource;
 pub use tile_layer_resource::TileLayerResource;
 
 use rafx::api::RafxPrimitiveTopology;
-use rafx::framework::{DescriptorSetArc, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout, BufferResource};
+use rafx::framework::{DescriptorSetArc, ResourceArc, VertexDataLayout, VertexDataSetLayout, BufferResource};
 use write::TileLayerCommandWriter;
-use crate::assets::ldtk::{LdtkLayer, LdtkLayerDrawCallData};
+use crate::assets::ldtk::LdtkLayerDrawCallData;
 
 /// Per-pass "global" data
 pub type TileLayerUniformBufferObject = shaders::tile_layer_vert::ArgsUniform;

@@ -190,7 +190,7 @@ impl super::TestScene for ShadowsScene {
             let time_state = resources.get::<TimeState>().unwrap();
             let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
 
-            super::update_main_view(&*time_state, &mut *viewports_resource);
+            super::update_main_view_3d(&*time_state, &mut *viewports_resource);
         }
 
         {

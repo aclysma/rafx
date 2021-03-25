@@ -169,7 +169,7 @@ fn add_point_light(
 }
 
 #[profiling::function]
-fn update_main_view(
+fn update_main_view_3d(
     time_state: &TimeState,
     viewports_resource: &mut ViewportsResource,
 ) {
@@ -211,14 +211,54 @@ fn update_main_view(
         render_phase_mask: main_camera_render_phase_mask,
         debug_name: "main".to_string(),
     });
+}
 
-    // render_view_set.create_view(
-    //     eye,
-    //     view,
-    //     proj,
-    //     (window_width, window_height),
-    //     RenderViewDepthRange::new_infinite_reverse(near_plane),
-    //     main_camera_render_phase_mask,
-    //     "main".to_string(),
-    // )
+#[profiling::function]
+fn update_main_view_2d(
+    time_state: &TimeState,
+    viewports_resource: &mut ViewportsResource,
+) {
+    let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
+        .add_render_phase::<DepthPrepassRenderPhase>()
+        .add_render_phase::<OpaqueRenderPhase>()
+        .add_render_phase::<TransparentRenderPhase>()
+        .add_render_phase::<UiRenderPhase>()
+        .build();
+
+    const CAMERA_XY_DISTANCE: f32 = 400.0;
+    const CAMERA_Z: f32 = 0.0;
+    const CAMERA_ROTATE_SPEED: f32 = -0.10;
+    const CAMERA_LOOP_OFFSET: f32 = -0.3;
+    let loop_time = time_state.total_time().as_secs_f32();
+    let eye = glam::Vec3::new(
+        CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
+        CAMERA_XY_DISTANCE * f32::sin(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
+        CAMERA_Z,
+    );
+
+    let aspect_ratio = viewports_resource.main_window_size.width as f32
+        / viewports_resource.main_window_size.height.max(1) as f32;
+
+    let view = glam::Mat4::look_at_rh(eye, eye.truncate().extend(1000.0), glam::Vec3::new(0.0, 1.0, 0.0));
+
+    let half_width = viewports_resource.main_window_size.width as f32 / 2.0;
+    let half_height = viewports_resource.main_window_size.height as f32 / 2.0;
+
+    let proj = glam::Mat4::orthographic_rh(
+        -half_width,
+        half_width,
+        -half_height,
+        half_height,
+        2000.0,
+        0.0
+    );
+
+    viewports_resource.main_view_meta = Some(RenderViewMeta {
+        eye_position: eye,
+        view,
+        proj,
+        depth_range: RenderViewDepthRange::new_infinite_reverse(0.0),
+        render_phase_mask: main_camera_render_phase_mask,
+        debug_name: "main".to_string(),
+    });
 }

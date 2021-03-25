@@ -1,20 +1,17 @@
 use crate::assets::ldtk::{LdtkAssetData, LdtkTileSet, LdtkLevelData, LdtkLayerDrawCallData, LdtkLayerData, LevelUid, TileSetUid};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
-use fnv::{FnvHasher, FnvHashMap};
+use fnv::FnvHashMap;
 use serde::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
 use std::io::Read;
 use type_uuid::*;
 use rafx::distill::importer::Error;
 use rafx::distill::loader::handle::{SerdeContext, Handle};
 use rafx::distill::loader::AssetRef;
-use rafx::assets::{ImageAsset, MaterialInstanceSlotAssignment, MaterialInstanceAssetData, BufferAssetData, BufferAsset, MaterialInstanceAsset};
+use rafx::assets::{ImageAsset, MaterialInstanceSlotAssignment, MaterialInstanceAssetData, BufferAssetData};
 use itertools::Itertools;
 use rafx::distill::{make_handle, make_handle_from_str};
 use crate::features::tile_layer::TileLayerVertex;
-use rafx::assets::push_buffer::PushBuffer;
-use rafx::assets::distill_impl::AssetResource;
 use ldtk_rust::{TileInstance, LayerInstance, Level};
 
 // The asset state is stored in this format using Vecs
@@ -234,7 +231,7 @@ impl Importer for LdtkImporter {
                 //
                 // Create a vertex buffer for the level
                 //
-                let mut vertex_buffer_asset_data = BufferAssetData::from_vec(&vertex_data);
+                let vertex_buffer_asset_data = BufferAssetData::from_vec(&vertex_data);
                 let vertex_buffer_uuid = *unstable_state
                     .level_vertex_buffer_uuids
                     .entry(level.uid)
@@ -254,7 +251,7 @@ impl Importer for LdtkImporter {
                 //
                 // Create an index buffer for the level
                 //
-                let mut index_buffer_asset_data = BufferAssetData::from_vec(&index_data);
+                let index_buffer_asset_data = BufferAssetData::from_vec(&index_data);
                 let index_buffer_uuid = *unstable_state
                     .level_index_buffer_uuids
                     .entry(level.uid)
@@ -319,8 +316,8 @@ impl LdtkImporter {
         layer: &LayerInstance,
         tile_instances: &[TileInstance],
         tileset: &LdtkTileSet,
-        mut vertex_data: &mut Vec<TileLayerVertex>,
-        mut index_data: &mut Vec<u16>,
+        vertex_data: &mut Vec<TileLayerVertex>,
+        index_data: &mut Vec<u16>,
         layer_draw_call_data: &mut Vec<LdtkLayerDrawCallData>
     ) {
         for tile in tile_instances {

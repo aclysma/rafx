@@ -1,16 +1,12 @@
 use crate::features::tile_layer::plugin::TileLayerStaticResources;
 use crate::features::tile_layer::prepare::TileLayerPrepareJob;
-use crate::features::tile_layer::{TileLayerRenderFeature, TileLayerResource, TileLayerRenderNodeSet, TileLayerRenderNode, TileLayerRenderNodeHandle};
-use legion::*;
+use crate::features::tile_layer::{TileLayerRenderFeature, TileLayerRenderNodeSet, TileLayerRenderNode};
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
 use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
     RenderJobExtractContext, RenderView,
 };
-use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
-use crate::phases::TransparentRenderPhase;
-use crate::assets::ldtk::LdtkProjectAsset;
 
 pub struct TileLayerExtractJob {}
 
@@ -25,7 +21,7 @@ impl ExtractJob for TileLayerExtractJob {
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
-        views: &[RenderView],
+        _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
         profiling::scope!("TileLayer Extract");
 
