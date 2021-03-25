@@ -10,6 +10,7 @@ use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet, Stat
 use crate::assets::ldtk::LdtkProjectAsset;
 use rafx::distill::loader::handle::Handle;
 use crate::features::tile_layer::{TileLayerResource, TileLayerRenderNodeSet};
+use crate::RenderOptions;
 
 pub(super) struct SpriteScene {
     ldtk_handle: Handle<LdtkProjectAsset>,
@@ -20,6 +21,10 @@ impl SpriteScene {
         world: &mut World,
         resources: &Resources,
     ) -> Self {
+        let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
+        *render_options = RenderOptions::default_2d();
+
+
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             //asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
@@ -112,5 +117,14 @@ impl super::TestScene for SpriteScene {
                 }
             }
         }
+    }
+
+    fn cleanup(
+        &mut self,
+        _world: &mut World,
+        resources: &Resources,
+    ) {
+        let mut tile_layer_resource = resources.get_mut::<TileLayerResource>().unwrap();
+        tile_layer_resource.clear_project();
     }
 }

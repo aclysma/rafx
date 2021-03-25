@@ -114,7 +114,7 @@ impl RenderNodeSet for TileLayerRenderNodeSet {
     }
 }
 
-rafx::declare_render_feature!(TileLayerRenderFeature, SPRITE_FEATURE_INDEX);
+rafx::declare_render_feature!(TileLayerRenderFeature, TILE_LAYER_FEATURE_INDEX);
 
 // #[derive(Debug)]
 // pub(self) struct ExtractedTileLayerData {

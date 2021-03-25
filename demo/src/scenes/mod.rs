@@ -45,6 +45,14 @@ pub trait TestScene {
         world: &mut World,
         resources: &Resources,
     );
+
+    fn cleanup(
+        &mut self,
+        world: &mut World,
+        resources: &Resources,
+    ) {
+
+    }
 }
 
 pub struct SceneManager {
@@ -82,6 +90,10 @@ impl SceneManager {
         resources: &Resources,
     ) {
         if let Some(next_scene_index) = self.next_scene.take() {
+            if let Some(current_scene) = &mut self.current_scene {
+                current_scene.cleanup(world, resources);
+            }
+
             world.clear();
 
             let next_scene = ALL_SCENES[next_scene_index];
@@ -231,13 +243,10 @@ fn update_main_view_2d(
     const CAMERA_LOOP_OFFSET: f32 = -0.3;
     let loop_time = time_state.total_time().as_secs_f32();
     let eye = glam::Vec3::new(
-        CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
-        CAMERA_XY_DISTANCE * f32::sin(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
+        (CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET)).round(),
+        (CAMERA_XY_DISTANCE * f32::sin(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET)).round(),
         CAMERA_Z,
     );
-
-    let aspect_ratio = viewports_resource.main_window_size.width as f32
-        / viewports_resource.main_window_size.height.max(1) as f32;
 
     let view = glam::Mat4::look_at_rh(eye, eye.truncate().extend(1000.0), glam::Vec3::new(0.0, 1.0, 0.0));
 

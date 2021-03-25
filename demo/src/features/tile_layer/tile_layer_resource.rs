@@ -58,6 +58,7 @@ impl TileLayerResource {
     pub fn clear_project(&mut self) {
         self.project = None;
         self.render_nodes.clear();
+        self.visibiility_nodes.clear();
         //self.total_layer_count = 0;
     }
 

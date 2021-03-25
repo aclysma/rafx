@@ -14,6 +14,7 @@ use legion::{Read, Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::renderer::ViewportsResource;
 use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
+use crate::RenderOptions;
 
 pub(super) struct ShadowsScene {
     font: Handle<FontAsset>,
@@ -24,6 +25,9 @@ impl ShadowsScene {
         world: &mut World,
         resources: &Resources,
     ) -> Self {
+        let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
+        *render_options = RenderOptions::default_3d();
+
         let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
         let mut dynamic_visibility_node_set =
             resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();

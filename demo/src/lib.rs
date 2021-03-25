@@ -80,8 +80,17 @@ pub struct RenderOptions {
     pub tonemapper_type: TonemapperType,
 }
 
-impl Default for RenderOptions {
-    fn default() -> Self {
+impl RenderOptions {
+    fn default_2d() -> Self {
+        RenderOptions {
+            enable_msaa: false,
+            enable_hdr: false,
+            enable_bloom: false,
+            blur_pass_count: 0,
+        }
+    }
+
+    fn default_3d() -> Self {
         RenderOptions {
             enable_msaa: true,
             enable_hdr: true,
@@ -174,7 +183,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
 
     let mut resources = Resources::default();
     resources.insert(TimeState::new());
-    resources.insert(RenderOptions::default());
+    resources.insert(RenderOptions::default_2d());
     resources.insert(DebugUiState::default());
     resources.insert(SceneManager::default());
 
