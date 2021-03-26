@@ -238,17 +238,17 @@ fn update_main_view_2d(
         .build();
 
     const CAMERA_XY_DISTANCE: f32 = 400.0;
-    const CAMERA_Z: f32 = 0.0;
-    const CAMERA_ROTATE_SPEED: f32 = -0.10;
-    const CAMERA_LOOP_OFFSET: f32 = -0.3;
+    const CAMERA_Z: f32 = 1000.0;
+    const CAMERA_ROTATE_SPEED: f32 = -0.20;
+    const CAMERA_LOOP_OFFSET: f32 = 0.7;
     let loop_time = time_state.total_time().as_secs_f32();
     let eye = glam::Vec3::new(
-        (CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET)).round(),
-        (CAMERA_XY_DISTANCE * f32::sin(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET)).round(),
+        (CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET)).round() + 1000.0,
+        (CAMERA_XY_DISTANCE * f32::sin(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET)).round() - 200.0,
         CAMERA_Z,
     );
 
-    let view = glam::Mat4::look_at_rh(eye, eye.truncate().extend(1000.0), glam::Vec3::new(0.0, 1.0, 0.0));
+    let view = glam::Mat4::look_at_rh(eye, eye.truncate().extend(0.0), glam::Vec3::new(0.0, 1.0, 0.0));
 
     let half_width = viewports_resource.main_window_size.width as f32 / 2.0;
     let half_height = viewports_resource.main_window_size.height as f32 / 2.0;

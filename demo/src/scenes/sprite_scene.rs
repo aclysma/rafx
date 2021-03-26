@@ -112,7 +112,7 @@ impl super::TestScene for SpriteScene {
                         &self.ldtk_handle,
                         &*asset_manager,
                         &mut *tile_layer_render_nodes,
-                        &mut *static_visibility_nodes
+                        &mut *static_visibility_nodes,
                     );
                 }
             }

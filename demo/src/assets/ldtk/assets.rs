@@ -16,12 +16,14 @@ pub struct LdtkLayerDrawCallData {
     pub vertex_data_offset_in_bytes: u32,
     pub index_data_offset_in_bytes: u32,
     pub index_count: u32,
+    pub z_pos: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LdtkLayerData {
     pub material_instance: Handle<MaterialInstanceAsset>,
-    pub draw_call_data: Vec<LdtkLayerDrawCallData>
+    pub draw_call_data: Vec<LdtkLayerDrawCallData>,
+    pub z_pos: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

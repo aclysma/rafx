@@ -41,28 +41,18 @@ impl PrepareJob for TileLayerPrepareJob {
         //
         let mut submit_nodes = FeatureSubmitNodes::default();
         for view in views {
-
             if let Some(view_nodes) = frame_packet.view_nodes(view, self.feature_index()) {
                 let mut view_submit_nodes =
                     ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
                 for view_node in view_nodes {
                     let frame_node_index = view_node.frame_node_index();
-
-                    //let render_node = &self.visible_render_nodes[frame_node_index as usize];
-
-                    //if let Some(extracted_data) =
-                    //    &self.visible_render_nodes[frame_node_index as usize]
-
-                    let layer_z_position = 0.0;//frame_node_index as f32;
-                    //{
-                        let distance = (layer_z_position - view.eye_position().z()).abs();
-
-                        view_submit_nodes.add_submit_node::<TransparentRenderPhase>(
-                            frame_node_index,
-                            0,
-                            distance,
-                        );
-                    //}
+                    let layer_z_position = self.visible_render_nodes[frame_node_index as usize].z_position;
+                    let distance = (layer_z_position - view.eye_position().z()).abs();
+                    view_submit_nodes.add_submit_node::<TransparentRenderPhase>(
+                        frame_node_index,
+                        0,
+                        distance,
+                    );
                 }
 
                 submit_nodes.add_submit_nodes_for_view(&view, view_submit_nodes);

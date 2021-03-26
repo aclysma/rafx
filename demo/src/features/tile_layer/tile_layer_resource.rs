@@ -9,7 +9,6 @@ pub struct TileLayerResource {
     project: Option<Handle<LdtkProjectAsset>>,
     render_nodes: Vec<TileLayerRenderNodeHandle>,
     visibiility_nodes: Vec<StaticAabbVisibilityNodeHandle>,
-    //layer_count: u32,
 }
 
 impl TileLayerResource {
@@ -29,7 +28,6 @@ impl TileLayerResource {
         static_visibility: &mut StaticVisibilityNodeSet,
     ) {
         self.project = Some(project.clone());
-        //self.layer_count = Self::total_layer_count(&project, asset_manager);
 
         let project_asset = asset_manager.committed_asset(project).unwrap();
 
@@ -42,6 +40,7 @@ impl TileLayerResource {
                         draw_call_data: layer_data.draw_call_data.clone(),
                         vertex_buffer: vertex_buffer.clone(),
                         index_buffer: index_buffer.clone(),
+                        z_position: layer_data.z_pos,
                     });
 
                     let visibility_node = static_visibility.register_static_aabb(StaticAabbVisibilityNode {
@@ -59,20 +58,5 @@ impl TileLayerResource {
         self.project = None;
         self.render_nodes.clear();
         self.visibiility_nodes.clear();
-        //self.total_layer_count = 0;
     }
-
-    // // Need this to reserve appropriate number of frame nodes, one per each layer/level/assets
-    // pub fn total_layer_count(project: &Handle<LdtkProjectAsset>, asset_manager: &AssetManager) -> u32 {
-    //     let mut total_layer_count = 0;
-    //     let asset = asset_manager.committed_asset(&project);
-    //
-    //     if let Some(asset) = asset {
-    //         for (level_uid, level) in &asset.inner.levels {
-    //             total_layer_count += level.layers.len();
-    //         }
-    //     }
-    //
-    //     total_layer_count
-    // }
 }

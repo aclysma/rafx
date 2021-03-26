@@ -1,6 +1,12 @@
 (
     version: 2,
-    importer_options: (),
+    importer_options: (
+        layer_z_positions: [
+            20,
+            10,
+            0,
+        ],
+    ),
     importer_state: (
         material_instance_uuids: [
             (6, "82534f4d-fef7-41f8-9179-1f1ca7e2a8e2"),

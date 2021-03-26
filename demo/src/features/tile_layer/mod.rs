@@ -59,6 +59,7 @@ pub struct TileLayerRenderNode {
     draw_call_data: Vec<LdtkLayerDrawCallData>,
     vertex_buffer: ResourceArc<BufferResource>,
     index_buffer: ResourceArc<BufferResource>,
+    z_position: f32,
 }
 
 #[derive(Clone)]

@@ -14,6 +14,12 @@ use rafx::distill::{make_handle, make_handle_from_str};
 use crate::features::tile_layer::TileLayerVertex;
 use ldtk_rust::{TileInstance, LayerInstance, Level};
 
+#[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
+#[uuid = "84510429-7e8f-403a-ae51-4defcffe00fb"]
+pub struct LdtkImporterOptions {
+    layer_z_positions: Vec<f32>
+}
+
 // The asset state is stored in this format using Vecs
 #[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
 #[uuid = "74c12ab4-c836-48ab-b6e8-3e483be60dcf"]
@@ -83,7 +89,7 @@ impl Importer for LdtkImporter {
         Self::version_static()
     }
 
-    type Options = ();
+    type Options = LdtkImporterOptions;
 
     type State = LdtkImporterStateStable;
 
@@ -93,7 +99,7 @@ impl Importer for LdtkImporter {
         &self,
         op: &mut ImportOp,
         source: &mut dyn Read,
-        _options: &Self::Options,
+        options: &Self::Options,
         stable_state: &mut Self::State,
     ) -> distill::importer::Result<ImporterValue> {
         let mut unstable_state: LdtkImporterStateUnstable = stable_state.clone().into();
@@ -200,7 +206,7 @@ impl Importer for LdtkImporter {
             let mut layer_data = Vec::default();
 
             //TODO: Support for levels in separate files
-            for layer in level.layer_instances.as_ref().unwrap() {
+            for (layer_index, layer) in level.layer_instances.as_ref().unwrap().iter().enumerate() {
                 let tileset_uid = if let Some(tileset_uid) = layer.override_tileset_uid {
                     Some(tileset_uid)
                 } else if let Some(tileset_uid) = layer.tileset_def_uid {
@@ -214,12 +220,14 @@ impl Importer for LdtkImporter {
 
                     let mut layer_draw_call_data : Vec<LdtkLayerDrawCallData> = Vec::default();
 
-                    LdtkImporter::generate_draw_data(level, layer, &layer.grid_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
-                    LdtkImporter::generate_draw_data(level, layer, &layer.auto_layer_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
+                    let z_pos = options.layer_z_positions.get(layer_index).copied().unwrap_or(layer_index as f32);
+                    LdtkImporter::generate_draw_data(level, layer, z_pos, &layer.grid_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
+                    LdtkImporter::generate_draw_data(level, layer, z_pos, &layer.auto_layer_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
 
                     layer_data.push(LdtkLayerData {
                         material_instance: tileset.material_instance.clone(),
-                        draw_call_data: layer_draw_call_data
+                        draw_call_data: layer_draw_call_data,
+                        z_pos
                     })
                 }
             }
@@ -314,6 +322,7 @@ impl LdtkImporter {
     fn generate_draw_data(
         level: &Level,
         layer: &LayerInstance,
+        z_pos: f32,
         tile_instances: &[TileInstance],
         tileset: &LdtkTileSet,
         vertex_data: &mut Vec<TileLayerVertex>,
@@ -331,6 +340,7 @@ impl LdtkImporter {
                     vertex_data_offset_in_bytes: (vertex_data.len() * std::mem::size_of::<TileLayerVertex>()) as u32,
                     index_data_offset_in_bytes: (index_data.len() * std::mem::size_of::<u16>()) as u32,
                     index_count: 0,
+                    z_pos,
                 });
             }
 
@@ -368,20 +378,20 @@ impl LdtkImporter {
                 position: [
                     x_pos + tile_width,
                     y_pos + tile_height,
-                    0.0,
+                    z_pos,
                 ],
                 uv: [texture_rect_right, texture_rect_bottom],
             });
             vertex_data.push(TileLayerVertex {
-                position: [x_pos, y_pos + tile_height, 0.0],
+                position: [x_pos, y_pos + tile_height, z_pos],
                 uv: [texture_rect_left, texture_rect_bottom],
             });
             vertex_data.push(TileLayerVertex {
-                position: [x_pos + tile_width, y_pos, 0.0],
+                position: [x_pos + tile_width, y_pos, z_pos],
                 uv: [texture_rect_right, texture_rect_top],
             });
             vertex_data.push(TileLayerVertex {
-                position: [x_pos, y_pos, 0.0],
+                position: [x_pos, y_pos, z_pos],
                 uv: [texture_rect_left, texture_rect_top],
             });
 
