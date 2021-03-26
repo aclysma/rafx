@@ -25,7 +25,7 @@ pub struct RafxCommandBufferMetalInner {
     compute_encoder: Option<metal_rs::ComputeCommandEncoder>,
     blit_encoder: Option<metal_rs::BlitCommandEncoder>,
     current_index_buffer: Option<metal_rs::Buffer>,
-    current_index_buffer_offset: u64,
+    current_index_buffer_byte_offset: u64,
     current_index_buffer_type: MTLIndexType,
     current_index_buffer_stride: u32,
     last_pipeline_type: Option<RafxPipelineType>,
@@ -117,7 +117,7 @@ impl RafxCommandBufferMetal {
             compute_threads_per_group_y: 0,
             compute_threads_per_group_z: 0,
             current_index_buffer: None,
-            current_index_buffer_offset: 0,
+            current_index_buffer_byte_offset: 0,
             current_index_buffer_type: MTLIndexType::UInt16,
             current_index_buffer_stride: 0,
         };
@@ -531,7 +531,7 @@ impl RafxCommandBufferMetal {
                 .metal_buffer()
                 .to_owned(),
         );
-        inner.current_index_buffer_offset = binding.byte_offset;
+        inner.current_index_buffer_byte_offset = binding.byte_offset;
         inner.current_index_buffer_type = binding.index_type.into();
         inner.current_index_buffer_stride = match binding.index_type {
             RafxIndexType::Uint32 => std::mem::size_of::<u32>() as _,
@@ -707,7 +707,7 @@ impl RafxCommandBufferMetal {
                     index_count as _,
                     inner.current_index_buffer_type,
                     inner.current_index_buffer.as_ref().unwrap(),
-                    (stride * first_index) as _,
+                    ((stride * first_index) as u64 + inner.current_index_buffer_byte_offset) as _,
                 );
         } else {
             inner
@@ -719,7 +719,7 @@ impl RafxCommandBufferMetal {
                     index_count as _,
                     inner.current_index_buffer_type,
                     inner.current_index_buffer.as_ref().unwrap(),
-                    (stride * first_index) as _,
+                    ((stride * first_index) as u64 + inner.current_index_buffer_byte_offset) as _,
                     1,
                     vertex_offset as _,
                     0,
@@ -755,7 +755,7 @@ impl RafxCommandBufferMetal {
                     index_count as _,
                     inner.current_index_buffer_type,
                     inner.current_index_buffer.as_ref().unwrap(),
-                    (stride * first_index) as _,
+                    ((stride * first_index) as u64 + inner.current_index_buffer_byte_offset) as _,
                     instance_count as _,
                 );
         } else {
@@ -768,7 +768,7 @@ impl RafxCommandBufferMetal {
                     index_count as _,
                     inner.current_index_buffer_type,
                     inner.current_index_buffer.as_ref().unwrap(),
-                    (stride * first_index) as _,
+                    ((stride * first_index) as u64 + inner.current_index_buffer_byte_offset) as _,
                     instance_count as _,
                     vertex_offset as _,
                     first_instance as _,
