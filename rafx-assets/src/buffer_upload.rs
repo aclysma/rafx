@@ -61,10 +61,7 @@ pub fn enqueue_load_buffer(
         &[],
     )?;
 
-    log::debug!(
-        "upload buffer bytes: {}",
-        size
-    );
+    log::debug!("upload buffer bytes: {}", size);
 
     Ok(dst_buffer)
 }

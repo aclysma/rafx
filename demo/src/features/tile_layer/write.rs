@@ -10,7 +10,6 @@ pub struct TileLayerCommandWriter {
     // pub vertex_buffers: Vec<ResourceArc<BufferResource>>,
     // pub index_buffers: Vec<ResourceArc<BufferResource>>,
     // pub draw_calls: Vec<TileLayerDrawCall>,
-
     pub visible_render_nodes: Vec<TileLayerRenderNode>,
     pub per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
     pub tile_layer_material: ResourceArc<MaterialPassResource>,
@@ -76,30 +75,33 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
             .unwrap()
             .bind(command_buffer)?;
 
-        self.visible_render_nodes[index as usize].per_layer_descriptor_set.bind(command_buffer)?;
+        self.visible_render_nodes[index as usize]
+            .per_layer_descriptor_set
+            .bind(command_buffer)?;
 
         for draw_call in &self.visible_render_nodes[index as usize].draw_call_data {
             command_buffer.cmd_bind_vertex_buffers(
                 0,
                 &[RafxVertexBufferBinding {
-                    buffer: &self.visible_render_nodes[index as usize].vertex_buffer.get_raw().buffer,
+                    buffer: &self.visible_render_nodes[index as usize]
+                        .vertex_buffer
+                        .get_raw()
+                        .buffer,
                     byte_offset: draw_call.vertex_data_offset_in_bytes as u64,
                 }],
             )?;
 
             command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
-                buffer: &self.visible_render_nodes[index as usize].index_buffer.get_raw().buffer,
+                buffer: &self.visible_render_nodes[index as usize]
+                    .index_buffer
+                    .get_raw()
+                    .buffer,
                 byte_offset: draw_call.index_data_offset_in_bytes as u64,
                 index_type: RafxIndexType::Uint16,
             })?;
 
-            command_buffer.cmd_draw_indexed(
-                draw_call.index_count,
-                0,
-                0,
-            )?;
+            command_buffer.cmd_draw_indexed(draw_call.index_count, 0, 0)?;
         }
-
 
         // let draw_call = &self.draw_calls[index as usize];
         //

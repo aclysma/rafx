@@ -33,7 +33,9 @@ impl PrepareJob for TileLayerPrepareJob {
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
         profiling::scope!("TileLayer Prepare");
 
-        let mut descriptor_set_allocator = prepare_context.resource_context.create_descriptor_set_allocator();
+        let mut descriptor_set_allocator = prepare_context
+            .resource_context
+            .create_descriptor_set_allocator();
         let mut per_view_descriptor_sets = Vec::default();
 
         //
@@ -46,7 +48,8 @@ impl PrepareJob for TileLayerPrepareJob {
                     ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
                 for view_node in view_nodes {
                     let frame_node_index = view_node.frame_node_index();
-                    let layer_z_position = self.visible_render_nodes[frame_node_index as usize].z_position;
+                    let layer_z_position =
+                        self.visible_render_nodes[frame_node_index as usize].z_position;
                     let distance = (layer_z_position - view.eye_position().z()).abs();
                     view_submit_nodes.add_submit_node::<TransparentRenderPhase>(
                         frame_node_index,

@@ -1,8 +1,12 @@
 use crate::assets::ldtk::LdtkProjectAsset;
-use rafx::distill::loader::handle::Handle;
+use crate::features::tile_layer::{
+    TileLayerRenderNode, TileLayerRenderNodeHandle, TileLayerRenderNodeSet,
+};
 use rafx::assets::AssetManager;
-use crate::features::tile_layer::{TileLayerRenderNodeHandle, TileLayerRenderNodeSet, TileLayerRenderNode};
-use rafx::visibility::{StaticVisibilityNodeSet, StaticAabbVisibilityNode, StaticAabbVisibilityNodeHandle};
+use rafx::distill::loader::handle::Handle;
+use rafx::visibility::{
+    StaticAabbVisibilityNode, StaticAabbVisibilityNodeHandle, StaticVisibilityNodeSet,
+};
 
 #[derive(Default)]
 pub struct TileLayerResource {
@@ -33,19 +37,24 @@ impl TileLayerResource {
 
         for (level_uid, level) in &project_asset.inner.levels {
             for (layer_index, layer) in level.layers.iter().enumerate() {
-                if let (Some(vertex_buffer), Some(index_buffer)) = (&level.vertex_buffer, &level.index_buffer) {
-                    let layer_data = &project_asset.inner.data.levels[level_uid].layer_data[layer_index];
-                    let render_node = tile_layer_render_nodes.register_tile_layer(TileLayerRenderNode {
-                        per_layer_descriptor_set: layer.per_layer_descriptor_set.clone(),
-                        draw_call_data: layer_data.draw_call_data.clone(),
-                        vertex_buffer: vertex_buffer.clone(),
-                        index_buffer: index_buffer.clone(),
-                        z_position: layer_data.z_pos,
-                    });
+                if let (Some(vertex_buffer), Some(index_buffer)) =
+                    (&level.vertex_buffer, &level.index_buffer)
+                {
+                    let layer_data =
+                        &project_asset.inner.data.levels[level_uid].layer_data[layer_index];
+                    let render_node =
+                        tile_layer_render_nodes.register_tile_layer(TileLayerRenderNode {
+                            per_layer_descriptor_set: layer.per_layer_descriptor_set.clone(),
+                            draw_call_data: layer_data.draw_call_data.clone(),
+                            vertex_buffer: vertex_buffer.clone(),
+                            index_buffer: index_buffer.clone(),
+                            z_position: layer_data.z_pos,
+                        });
 
-                    let visibility_node = static_visibility.register_static_aabb(StaticAabbVisibilityNode {
-                        handle: render_node.as_raw_generic_handle()
-                    });
+                    let visibility_node =
+                        static_visibility.register_static_aabb(StaticAabbVisibilityNode {
+                            handle: render_node.as_raw_generic_handle(),
+                        });
 
                     self.render_nodes.push(render_node);
                     self.visibiility_nodes.push(visibility_node);

@@ -18,10 +18,12 @@ pub use plugin::TileLayerRendererPlugin;
 mod tile_layer_resource;
 pub use tile_layer_resource::TileLayerResource;
 
-use rafx::api::RafxPrimitiveTopology;
-use rafx::framework::{DescriptorSetArc, ResourceArc, VertexDataLayout, VertexDataSetLayout, BufferResource};
-use write::TileLayerCommandWriter;
 use crate::assets::ldtk::LdtkLayerDrawCallData;
+use rafx::api::RafxPrimitiveTopology;
+use rafx::framework::{
+    BufferResource, DescriptorSetArc, ResourceArc, VertexDataLayout, VertexDataSetLayout,
+};
+use write::TileLayerCommandWriter;
 
 /// Per-pass "global" data
 pub type TileLayerUniformBufferObject = shaders::tile_layer_vert::ArgsUniform;

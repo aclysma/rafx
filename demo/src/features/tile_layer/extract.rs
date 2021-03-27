@@ -1,6 +1,8 @@
 use crate::features::tile_layer::plugin::TileLayerStaticResources;
 use crate::features::tile_layer::prepare::TileLayerPrepareJob;
-use crate::features::tile_layer::{TileLayerRenderFeature, TileLayerRenderNodeSet, TileLayerRenderNode};
+use crate::features::tile_layer::{
+    TileLayerRenderFeature, TileLayerRenderNode, TileLayerRenderNodeSet,
+};
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
 use rafx::nodes::{
@@ -44,17 +46,20 @@ impl ExtractJob for TileLayerExtractJob {
             .fetch_mut::<TileLayerRenderNodeSet>();
         tile_layer_render_nodes.update();
 
-        let mut visible_render_nodes = Vec::with_capacity(frame_packet.frame_node_count(TileLayerRenderFeature::feature_index()) as usize);
+        let mut visible_render_nodes = Vec::with_capacity(
+            frame_packet.frame_node_count(TileLayerRenderFeature::feature_index()) as usize,
+        );
         for frame_node in frame_packet.frame_nodes(TileLayerRenderFeature::feature_index()) {
-            let render_node_handle = RawSlabKey::<TileLayerRenderNode>::new(frame_node.render_node_index());
-            let render_node = tile_layer_render_nodes.tile_layers.get_raw(render_node_handle).unwrap();
+            let render_node_handle =
+                RawSlabKey::<TileLayerRenderNode>::new(frame_node.render_node_index());
+            let render_node = tile_layer_render_nodes
+                .tile_layers
+                .get_raw(render_node_handle)
+                .unwrap();
             visible_render_nodes.push(render_node.clone());
         }
 
-        let prepare_impl = TileLayerPrepareJob::new(
-            visible_render_nodes,
-            tile_layer_material
-        );
+        let prepare_impl = TileLayerPrepareJob::new(visible_render_nodes, tile_layer_material);
 
         Box::new(prepare_impl)
     }

@@ -1,12 +1,15 @@
+use crate::phases::OpaqueRenderPhase;
+use fnv::FnvHashMap;
 use rafx::api::RafxResult;
-use rafx::assets::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset, MaterialInstanceAsset, BufferAsset};
+use rafx::assets::{
+    AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset,
+    MaterialInstanceAsset,
+};
+use rafx::distill::loader::handle::Handle;
+use rafx::framework::{BufferResource, DescriptorSetArc, ResourceArc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
-use rafx::distill::loader::handle::Handle;
-use fnv::FnvHashMap;
-use rafx::framework::{ResourceArc, DescriptorSetArc, BufferResource};
-use crate::phases::OpaqueRenderPhase;
 
 pub type LevelUid = i64;
 pub type TileSetUid = i64;
@@ -64,7 +67,7 @@ pub struct LdtkLevel {
 #[derive(Debug)]
 pub struct LdtkProjectAssetInner {
     pub data: LdtkAssetData,
-    pub levels: FnvHashMap<LevelUid, LdtkLevel>
+    pub levels: FnvHashMap<LevelUid, LdtkLevel>,
 }
 
 #[derive(TypeUuid, Clone, Debug)]
@@ -85,10 +88,18 @@ impl DefaultAssetTypeLoadHandler<LdtkAssetData, LdtkProjectAsset> for LdtkLoadHa
         for (&level_uid, level_data) in &ldtk_asset.levels {
             let mut layers = Vec::default();
             for layer_data in &level_data.layer_data {
-                let material_instance = asset_manager.latest_asset(&layer_data.material_instance).unwrap();
-                let opaque_phase_pass_index = material_instance.material.find_pass_by_phase::<OpaqueRenderPhase>().expect("tileset material must have pass for opaque phase");
+                let material_instance = asset_manager
+                    .latest_asset(&layer_data.material_instance)
+                    .unwrap();
+                let opaque_phase_pass_index = material_instance
+                    .material
+                    .find_pass_by_phase::<OpaqueRenderPhase>()
+                    .expect("tileset material must have pass for opaque phase");
                 let tileset_image_set_index = shaders::tile_layer_frag::TEX_DESCRIPTOR_SET_INDEX;
-                let descriptor_set = material_instance.material_descriptor_sets[opaque_phase_pass_index][tileset_image_set_index].clone().unwrap();
+                let descriptor_set = material_instance.material_descriptor_sets
+                    [opaque_phase_pass_index][tileset_image_set_index]
+                    .clone()
+                    .unwrap();
 
                 layers.push(LdtkLayer {
                     per_layer_descriptor_set: descriptor_set,
@@ -99,21 +110,38 @@ impl DefaultAssetTypeLoadHandler<LdtkAssetData, LdtkProjectAsset> for LdtkLoadHa
             let mut vertex_buffer = None;
             let mut index_buffer = None;
 
-            if let (Some(vertex_data_handle), Some(index_data_handle)) = (&level_data.vertex_data, &level_data.index_data) {
-                vertex_buffer = Some(asset_manager.latest_asset(&vertex_data_handle).unwrap().buffer.clone());
-                index_buffer = Some(asset_manager.latest_asset(&index_data_handle).unwrap().buffer.clone());
+            if let (Some(vertex_data_handle), Some(index_data_handle)) =
+                (&level_data.vertex_data, &level_data.index_data)
+            {
+                vertex_buffer = Some(
+                    asset_manager
+                        .latest_asset(&vertex_data_handle)
+                        .unwrap()
+                        .buffer
+                        .clone(),
+                );
+                index_buffer = Some(
+                    asset_manager
+                        .latest_asset(&index_data_handle)
+                        .unwrap()
+                        .buffer
+                        .clone(),
+                );
             }
 
-            levels.insert(level_uid, LdtkLevel {
-                layers,
-                vertex_buffer,
-                index_buffer
-            });
+            levels.insert(
+                level_uid,
+                LdtkLevel {
+                    layers,
+                    vertex_buffer,
+                    index_buffer,
+                },
+            );
         }
 
         let inner = LdtkProjectAssetInner {
             data: ldtk_asset,
-            levels
+            levels,
         };
 
         Ok(LdtkProjectAsset {

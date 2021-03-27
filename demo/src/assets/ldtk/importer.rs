@@ -1,23 +1,28 @@
-use crate::assets::ldtk::{LdtkAssetData, LdtkTileSet, LdtkLevelData, LdtkLayerDrawCallData, LdtkLayerData, LevelUid, TileSetUid};
+use crate::assets::ldtk::{
+    LdtkAssetData, LdtkLayerData, LdtkLayerDrawCallData, LdtkLevelData, LdtkTileSet, LevelUid,
+    TileSetUid,
+};
+use crate::features::tile_layer::TileLayerVertex;
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use fnv::FnvHashMap;
+use itertools::Itertools;
+use ldtk_rust::{LayerInstance, Level, TileInstance};
+use rafx::assets::{
+    BufferAssetData, ImageAsset, MaterialInstanceAssetData, MaterialInstanceSlotAssignment,
+};
+use rafx::distill::importer::Error;
+use rafx::distill::loader::handle::{Handle, SerdeContext};
+use rafx::distill::loader::AssetRef;
+use rafx::distill::{make_handle, make_handle_from_str};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
-use rafx::distill::importer::Error;
-use rafx::distill::loader::handle::{SerdeContext, Handle};
-use rafx::distill::loader::AssetRef;
-use rafx::assets::{ImageAsset, MaterialInstanceSlotAssignment, MaterialInstanceAssetData, BufferAssetData};
-use itertools::Itertools;
-use rafx::distill::{make_handle, make_handle_from_str};
-use crate::features::tile_layer::TileLayerVertex;
-use ldtk_rust::{TileInstance, LayerInstance, Level};
 
 #[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
 #[uuid = "84510429-7e8f-403a-ae51-4defcffe00fb"]
 pub struct LdtkImporterOptions {
-    layer_z_positions: Vec<f32>
+    layer_z_positions: Vec<f32>,
 }
 
 // The asset state is stored in this format using Vecs
@@ -107,9 +112,11 @@ impl Importer for LdtkImporter {
         //
         // Assign an ID to this ldtk file if not already assigned
         //
-        unstable_state.ldtk_asset_uuid = Some(unstable_state
-            .ldtk_asset_uuid
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes())));
+        unstable_state.ldtk_asset_uuid = Some(
+            unstable_state
+                .ldtk_asset_uuid
+                .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes())),
+        );
 
         // Read in the LDTK file
         let project: serde_json::Result<ldtk_rust::Project> = serde_json::from_reader(source);
@@ -141,9 +148,7 @@ impl Importer for LdtkImporter {
             //
             let asset_path = AssetRef::Path(tileset.rel_path.clone().into());
             let image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider
-                    .get_load_handle(&asset_path)
-                    .unwrap();
+                let load_handle = loader_info_provider.get_load_handle(&asset_path).unwrap();
                 Handle::<ImageAsset>::new(ref_op_sender.clone(), load_handle)
             });
 
@@ -168,7 +173,7 @@ impl Importer for LdtkImporter {
 
             let material_instance = MaterialInstanceAssetData {
                 material: material_handle.clone(),
-                slot_assignments
+                slot_assignments,
             };
 
             //
@@ -188,12 +193,15 @@ impl Importer for LdtkImporter {
             let image_width = tileset.px_wid as _;
             let image_height = tileset.px_hei as _;
 
-            tilesets.insert(tileset.uid, LdtkTileSet {
-                image: image_handle,
-                material_instance: material_instance_handle,
-                image_width,
-                image_height
-            });
+            tilesets.insert(
+                tileset.uid,
+                LdtkTileSet {
+                    image: image_handle,
+                    material_instance: material_instance_handle,
+                    image_width,
+                    image_height,
+                },
+            );
             //load_deps.push(asset_path);
         }
 
@@ -218,16 +226,38 @@ impl Importer for LdtkImporter {
                 if let Some(tileset_uid) = tileset_uid {
                     let tileset = &tilesets[&tileset_uid];
 
-                    let mut layer_draw_call_data : Vec<LdtkLayerDrawCallData> = Vec::default();
+                    let mut layer_draw_call_data: Vec<LdtkLayerDrawCallData> = Vec::default();
 
-                    let z_pos = options.layer_z_positions.get(layer_index).copied().unwrap_or(layer_index as f32);
-                    LdtkImporter::generate_draw_data(level, layer, z_pos, &layer.grid_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
-                    LdtkImporter::generate_draw_data(level, layer, z_pos, &layer.auto_layer_tiles, tileset, &mut vertex_data, &mut index_data, &mut layer_draw_call_data);
+                    let z_pos = options
+                        .layer_z_positions
+                        .get(layer_index)
+                        .copied()
+                        .unwrap_or(layer_index as f32);
+                    LdtkImporter::generate_draw_data(
+                        level,
+                        layer,
+                        z_pos,
+                        &layer.grid_tiles,
+                        tileset,
+                        &mut vertex_data,
+                        &mut index_data,
+                        &mut layer_draw_call_data,
+                    );
+                    LdtkImporter::generate_draw_data(
+                        level,
+                        layer,
+                        z_pos,
+                        &layer.auto_layer_tiles,
+                        tileset,
+                        &mut vertex_data,
+                        &mut index_data,
+                        &mut layer_draw_call_data,
+                    );
 
                     layer_data.push(LdtkLayerData {
                         material_instance: tileset.material_instance.clone(),
                         draw_call_data: layer_draw_call_data,
-                        z_pos
+                        z_pos,
                     })
                 }
             }
@@ -280,11 +310,14 @@ impl Importer for LdtkImporter {
                 index_buffer_handle = Some(make_handle(index_buffer_uuid));
             }
 
-            let old = levels.insert(level.uid, LdtkLevelData {
-                layer_data,
-                vertex_data: vertex_buffer_handle,
-                index_data: index_buffer_handle
-            });
+            let old = levels.insert(
+                level.uid,
+                LdtkLevelData {
+                    layer_data,
+                    vertex_data: vertex_buffer_handle,
+                    index_data: index_buffer_handle,
+                },
+            );
             assert!(old.is_none());
         }
 
@@ -327,18 +360,26 @@ impl LdtkImporter {
         tileset: &LdtkTileSet,
         vertex_data: &mut Vec<TileLayerVertex>,
         index_data: &mut Vec<u16>,
-        layer_draw_call_data: &mut Vec<LdtkLayerDrawCallData>
+        layer_draw_call_data: &mut Vec<LdtkLayerDrawCallData>,
     ) {
         for tile in tile_instances {
             //
             // If the vertex count exceeds what a u16 index buffer support, start a new draw call
             //
 
-            let vertex_count = (layer_draw_call_data.last().map(|x| x.index_count).unwrap_or(0) / 6) * 4;
+            let vertex_count = (layer_draw_call_data
+                .last()
+                .map(|x| x.index_count)
+                .unwrap_or(0)
+                / 6)
+                * 4;
             if layer_draw_call_data.is_empty() || vertex_count + 4 > std::u16::MAX as u32 {
                 layer_draw_call_data.push(LdtkLayerDrawCallData {
-                    vertex_data_offset_in_bytes: (vertex_data.len() * std::mem::size_of::<TileLayerVertex>()) as u32,
-                    index_data_offset_in_bytes: (index_data.len() * std::mem::size_of::<u16>()) as u32,
+                    vertex_data_offset_in_bytes: (vertex_data.len()
+                        * std::mem::size_of::<TileLayerVertex>())
+                        as u32,
+                    index_data_offset_in_bytes: (index_data.len() * std::mem::size_of::<u16>())
+                        as u32,
                     index_count: 0,
                     z_pos,
                 });
@@ -356,8 +397,10 @@ impl LdtkImporter {
             let tile_height = layer.grid_size as f32;
 
             let mut texture_rect_left = tileset_src_x_pos as f32 / tileset.image_width as f32;
-            let mut texture_rect_right = (tileset_src_x_pos as f32 + tile_width) / tileset.image_width as f32;
-            let mut texture_rect_top = (tileset_src_y_pos as f32 + tile_height) / tileset.image_height as f32;
+            let mut texture_rect_right =
+                (tileset_src_x_pos as f32 + tile_width) / tileset.image_width as f32;
+            let mut texture_rect_top =
+                (tileset_src_y_pos as f32 + tile_height) / tileset.image_height as f32;
             let mut texture_rect_bottom = (tileset_src_y_pos as f32) / tileset.image_height as f32;
 
             //
@@ -375,11 +418,7 @@ impl LdtkImporter {
             // Insert vertex data
             //
             vertex_data.push(TileLayerVertex {
-                position: [
-                    x_pos + tile_width,
-                    y_pos + tile_height,
-                    z_pos,
-                ],
+                position: [x_pos + tile_width, y_pos + tile_height, z_pos],
                 uv: [texture_rect_right, texture_rect_bottom],
             });
             vertex_data.push(TileLayerVertex {

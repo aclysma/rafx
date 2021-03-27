@@ -41,7 +41,9 @@ impl RendererPlugin for TileLayerRendererPlugin {
             "tile_layer_material",
         )?;
 
-        render_resources.insert(TileLayerStaticResources { tile_layer_material });
+        render_resources.insert(TileLayerStaticResources {
+            tile_layer_material,
+        });
 
         render_resources.insert(TileLayerRenderNodeSet::default());
         render_resources.try_insert_default::<StaticVisibilityNodeSet>();

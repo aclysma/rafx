@@ -1,9 +1,13 @@
 use crate::assets::font::FontAssetTypeRendererPlugin;
 use crate::assets::gltf::GltfAssetTypeRendererPlugin;
+use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use crate::features::debug3d::{Debug3DRendererPlugin, DebugDraw3DResource};
 use crate::features::mesh::{MeshRenderNodeSet, MeshRendererPlugin};
 use crate::features::sprite::{SpriteRenderNodeSet, SpriteRendererPlugin};
 use crate::features::text::{TextRendererPlugin, TextResource};
+use crate::features::tile_layer::{
+    TileLayerRenderNodeSet, TileLayerRendererPlugin, TileLayerResource,
+};
 use crate::render_graph_generator::DemoRenderGraphGenerator;
 use crate::DemoRendererPlugin;
 use legion::Resources;
@@ -14,8 +18,6 @@ use rafx::nodes::{ExtractResources, RenderRegistry};
 use rafx::renderer::ViewportsResource;
 use rafx::renderer::{AssetSource, Renderer, RendererBuilder, SwapchainHandler};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
-use crate::features::tile_layer::{TileLayerRendererPlugin, TileLayerResource, TileLayerRenderNodeSet};
 
 pub struct Sdl2Systems {
     pub context: sdl2::Sdl,
