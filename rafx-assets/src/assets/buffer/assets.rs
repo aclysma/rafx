@@ -101,7 +101,6 @@ impl AssetTypeHandler for BufferAssetTypeHandler {
             &mut self.load_queues,
             &mut self.asset_lookup,
         );
-
         Ok(())
     }
 

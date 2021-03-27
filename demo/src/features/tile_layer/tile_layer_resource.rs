@@ -31,6 +31,7 @@ impl TileLayerResource {
         tile_layer_render_nodes: &mut TileLayerRenderNodeSet,
         static_visibility: &mut StaticVisibilityNodeSet,
     ) {
+        self.clear_project();
         self.project = Some(project.clone());
 
         let project_asset = asset_manager.committed_asset(project).unwrap();

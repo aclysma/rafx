@@ -168,7 +168,12 @@ pub fn handle_free_requests<AssetDataT, AssetT>(
     load_queues: &mut LoadQueues<AssetDataT, AssetT>,
     asset_lookup: &mut AssetLookup<AssetT>,
 ) {
-    for request in load_queues.take_commit_requests() {
-        asset_lookup.commit(request.load_handle);
+    for request in load_queues.take_free_requests() {
+        log::trace!(
+            "free asset {:?} {}",
+            request.load_handle,
+            core::any::type_name::<AssetDataT>()
+        );
+        asset_lookup.free(request.load_handle);
     }
 }

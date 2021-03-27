@@ -54,7 +54,6 @@ pub struct LdtkAssetData {
 #[derive(Clone, Debug)]
 pub struct LdtkLayer {
     pub per_layer_descriptor_set: DescriptorSetArc,
-    //pub draw_call_data: Vec<LdtkLayerDrawCallData>
 }
 
 #[derive(Clone, Debug)]
@@ -103,7 +102,6 @@ impl DefaultAssetTypeLoadHandler<LdtkAssetData, LdtkProjectAsset> for LdtkLoadHa
 
                 layers.push(LdtkLayer {
                     per_layer_descriptor_set: descriptor_set,
-                    //draw_call_data: layer_data.draw_call_data.clone()
                 });
             }
 
