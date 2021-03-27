@@ -16,7 +16,6 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::nodes::{RenderPhaseMaskBuilder, RenderViewDepthRange};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
-use crate::RenderOptions;
 
 pub(super) struct ShadowsScene {}
 
