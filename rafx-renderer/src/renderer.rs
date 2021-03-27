@@ -2,8 +2,7 @@ use rafx_assets::distill_impl::AssetResource;
 use rafx_assets::{image_upload, AssetManagerRenderResource, GpuImageDataColorSpace};
 use rafx_assets::{AssetManager, GpuImageData};
 use rafx_framework::nodes::{
-    ExtractJobSet, ExtractResources, FramePacketBuilder, RenderJobExtractContext,
-    RenderNodeReservations, RenderViewSet,
+    ExtractJobSet, ExtractResources, FramePacketBuilder, RenderJobExtractContext, RenderViewSet,
 };
 use rafx_framework::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use rafx_framework::{DynResourceAllocatorSet, RenderResources};
@@ -260,23 +259,6 @@ impl Renderer {
             .swapchain_surface_info
             .clone();
 
-        //
-        // Build the frame packet - this takes the views and visibility results and creates a
-        // structure that's used during the extract/prepare/write phases
-        //
-        let frame_packet_builder = {
-            let mut render_node_reservations = RenderNodeReservations::default();
-            for plugin in &*renderer_inner.plugins {
-                plugin.add_render_node_reservations(
-                    &mut render_node_reservations,
-                    extract_resources,
-                    render_resources,
-                );
-            }
-
-            FramePacketBuilder::new(&render_node_reservations)
-        };
-
         let render_view_set = RenderViewSet::default();
 
         //
@@ -302,7 +284,13 @@ impl Renderer {
         //
         // Visibility
         //
+
+        //
+        // Build the frame packet - this takes the views and visibility results and creates a
+        // structure that's used during the extract/prepare/write phases
+        //
         let mut render_views = Vec::default();
+        let frame_packet_builder = FramePacketBuilder::new();
         {
             profiling::scope!("Update visibility");
             let main_view_static_visibility_result =

@@ -39,6 +39,7 @@ impl ExtractJob for SpriteExtractJob {
         let mut sprite_render_nodes = extract_context
             .extract_resources
             .fetch_mut::<SpriteRenderNodeSet>();
+        sprite_render_nodes.update();
 
         let mut query = <(Read<PositionComponent>, Read<SpriteComponent>)>::query();
         for (position_component, sprite_component) in query.iter(world) {
