@@ -127,20 +127,13 @@ impl Importer for LdtkImporter {
 
         let project = project.unwrap();
 
-        // for entity_def in &project.defs.entities {
-        //     println!("entity def {:?}", entity_def.identifier);
-        // }
-
         // All imported assets
         let mut imported_assets = Vec::<ImportedAsset>::default();
-        // Assets that must be loaded before us
-        //let mut load_deps = Vec::default();
         // CPU-form of tileset data
         let mut tilesets = FnvHashMap::default();
 
         // The one material we always use for tile layers
         let material_handle = make_handle_from_str("ae8320e2-9d84-432d-879b-e34ebef90a82")?;
-        //load_deps.push(AssetRef::Uuid("ae8320e2-9d84-432d-879b-e34ebef90a82".into()));
 
         for tileset in &project.defs.tilesets {
             //
@@ -188,8 +181,6 @@ impl Importer for LdtkImporter {
                 asset_data: Box::new(material_instance),
             });
 
-            //load_deps.push(AssetRef::Uuid(material_instance_uuid));
-
             let image_width = tileset.px_wid as _;
             let image_height = tileset.px_hei as _;
 
@@ -202,7 +193,6 @@ impl Importer for LdtkImporter {
                     image_height,
                 },
             );
-            //load_deps.push(asset_path);
         }
 
         let mut levels = FnvHashMap::<LevelUid, LdtkLevelData>::default();
@@ -284,8 +274,6 @@ impl Importer for LdtkImporter {
                     asset_data: Box::new(vertex_buffer_asset_data),
                 });
 
-                //load_deps.push(AssetRef::Uuid(vertex_buffer_uuid));
-
                 //
                 // Create an index buffer for the level
                 //
@@ -304,8 +292,6 @@ impl Importer for LdtkImporter {
                     asset_data: Box::new(index_buffer_asset_data),
                 });
 
-                //load_deps.push(AssetRef::Uuid(index_buffer_uuid));
-
                 vertex_buffer_handle = Some(make_handle(vertex_buffer_uuid));
                 index_buffer_handle = Some(make_handle(index_buffer_uuid));
             }
@@ -321,13 +307,7 @@ impl Importer for LdtkImporter {
             assert!(old.is_none());
         }
 
-        let asset_data = LdtkAssetData {
-            tilesets,
-            levels,
-            //data_hash,
-            //data: bytes,
-            //scale: scale as f32,
-        };
+        let asset_data = LdtkAssetData { tilesets, levels };
 
         imported_assets.push(ImportedAsset {
             id: unstable_state.ldtk_asset_uuid.unwrap(),
@@ -337,8 +317,6 @@ impl Importer for LdtkImporter {
             build_pipeline: None,
             asset_data: Box::new(asset_data),
         });
-
-        //println!("load deps: {:?}", load_deps);
 
         *stable_state = unstable_state.into();
 
@@ -387,7 +365,6 @@ impl LdtkImporter {
 
             let current_draw_call_data = layer_draw_call_data.last_mut().unwrap();
 
-            //let tile_id = tile.t;
             let flip_bits = tile.f;
             let x_pos = (tile.px[0] + layer.px_total_offset_x + level.world_x) as f32;
             let y_pos = -1.0 * (tile.px[1] + layer.px_total_offset_y + level.world_y) as f32;

@@ -89,11 +89,6 @@ impl PrepareJob for TileLayerPrepareJob {
             per_view_descriptor_sets,
             visible_render_nodes: self.visible_render_nodes,
             tile_layer_material: self.tile_layer_material,
-            // draw_calls,
-            // vertex_buffers,
-            // index_buffers,
-            // per_view_descriptor_sets,
-            // tile_layer_material: self.tile_layer_material,
         });
 
         (writer, submit_nodes)

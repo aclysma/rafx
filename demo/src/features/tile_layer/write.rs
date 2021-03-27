@@ -7,9 +7,6 @@ use rafx::nodes::{
 };
 
 pub struct TileLayerCommandWriter {
-    // pub vertex_buffers: Vec<ResourceArc<BufferResource>>,
-    // pub index_buffers: Vec<ResourceArc<BufferResource>>,
-    // pub draw_calls: Vec<TileLayerDrawCall>,
     pub visible_render_nodes: Vec<TileLayerRenderNode>,
     pub per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
     pub tile_layer_material: ResourceArc<MaterialPassResource>,
@@ -36,26 +33,6 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
             .unwrap();
 
         command_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
-        //
-        // // Bind per-pass data (UBO with view/proj matrix, sampler)
-        // self.per_view_descriptor_sets[view.view_index() as usize]
-        //     .as_ref()
-        //     .unwrap()
-        //     .bind(command_buffer)?;
-        //
-        // command_buffer.cmd_bind_vertex_buffers(
-        //     0,
-        //     &[RafxVertexBufferBinding {
-        //         buffer: &self.vertex_buffers[0].get_raw().buffer,
-        //         byte_offset: 0,
-        //     }],
-        // )?;
-        //
-        // command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
-        //     buffer: &self.index_buffers[0].get_raw().buffer,
-        //     byte_offset: 0,
-        //     index_type: RafxIndexType::Uint16,
-        // })?;
 
         Ok(())
     }
@@ -102,17 +79,6 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
 
             command_buffer.cmd_draw_indexed(draw_call.index_count, 0, 0)?;
         }
-
-        // let draw_call = &self.draw_calls[index as usize];
-        //
-        // // Bind per-draw-call data (i.e. texture)
-        // draw_call.texture_descriptor_set.bind(command_buffer)?;
-        //
-        // command_buffer.cmd_draw_indexed(
-        //     draw_call.index_buffer_count as u32,
-        //     draw_call.index_buffer_first_element as u32,
-        //     0,
-        // )?;
 
         Ok(())
     }

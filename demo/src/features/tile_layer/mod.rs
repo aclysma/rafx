@@ -34,7 +34,6 @@ pub type TileLayerUniformBufferObject = shaders::tile_layer_vert::ArgsUniform;
 pub struct TileLayerVertex {
     pub position: [f32; 3],
     pub uv: [f32; 2],
-    //color: [u8; 4],
 }
 
 lazy_static::lazy_static! {
@@ -118,20 +117,3 @@ impl RenderNodeSet for TileLayerRenderNodeSet {
 }
 
 rafx::declare_render_feature!(TileLayerRenderFeature, TILE_LAYER_FEATURE_INDEX);
-
-// #[derive(Debug)]
-// pub(self) struct ExtractedTileLayerData {
-//     position: glam::Vec3,
-//     texture_size: glam::Vec2,
-//     scale: f32,
-//     rotation: f32,
-//     alpha: f32,
-//     image_view: ResourceArc<ImageViewResource>,
-// }
-//
-// #[derive(Debug)]
-// pub struct TileLayerDrawCall {
-//     index_buffer_first_element: u16,
-//     index_buffer_count: u16,
-//     texture_descriptor_set: DescriptorSetArc,
-// }
