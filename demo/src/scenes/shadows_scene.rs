@@ -1,17 +1,14 @@
-use crate::assets::font::FontAsset;
 use crate::assets::gltf::MeshAsset;
 use crate::components::SpotLightComponent;
 use crate::components::{
     DirectionalLightComponent, MeshComponent, PointLightComponent, PositionComponent,
 };
 use crate::features::mesh::{MeshRenderNode, MeshRenderNodeSet};
-use crate::features::text::TextResource;
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
 };
 use crate::time::TimeState;
 use crate::RenderOptions;
-use distill::loader::handle::Handle;
 use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
@@ -20,9 +17,7 @@ use rafx::nodes::{RenderPhaseMaskBuilder, RenderViewDepthRange};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
-pub(super) struct ShadowsScene {
-    font: Handle<FontAsset>,
-}
+pub(super) struct ShadowsScene {}
 
 impl ShadowsScene {
     pub(super) fn new(
@@ -35,11 +30,6 @@ impl ShadowsScene {
         let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
         let mut dynamic_visibility_node_set =
             resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
-
-        let font = {
-            let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf")
-        };
 
         //
         // Add a floor
@@ -182,7 +172,7 @@ impl ShadowsScene {
             },
         );
 
-        ShadowsScene { font }
+        ShadowsScene {}
     }
 }
 
@@ -199,25 +189,6 @@ impl super::TestScene for ShadowsScene {
             let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
 
             update_main_view_3d(&*time_state, &mut *viewports_resource);
-        }
-
-        {
-            let mut text_resource = resources.get_mut::<TextResource>().unwrap();
-
-            text_resource
-                .add_text(
-                    "Some text for testing\n".to_string(),
-                    glam::Vec3::new(100.0, 400.0, 0.0),
-                    &self.font,
-                    20.0,
-                    glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
-                )
-                .append(
-                    "This text is positioned at (100, 400)".to_string(),
-                    &self.font,
-                    20.0,
-                    glam::Vec4::new(0.0, 1.0, 0.0, 1.0),
-                );
         }
 
         {

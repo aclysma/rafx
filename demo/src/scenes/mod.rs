@@ -17,7 +17,7 @@ pub enum Scene {
     Sprite,
 }
 
-pub const ALL_SCENES: [Scene; 2] = [Scene::Sprite, Scene::Shadows];
+pub const ALL_SCENES: [Scene; 2] = [Scene::Shadows, Scene::Sprite];
 
 fn create_scene(
     scene: Scene,
@@ -42,8 +42,8 @@ pub trait TestScene {
 
     fn cleanup(
         &mut self,
-        world: &mut World,
-        resources: &Resources,
+        _world: &mut World,
+        _resources: &Resources,
     ) {
     }
 }

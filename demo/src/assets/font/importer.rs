@@ -54,7 +54,7 @@ impl Importer for FontImporter {
         let data_hash = hasher.finish();
 
         let asset_data = FontAssetData {
-            //data_hash,
+            data_hash,
             data: bytes,
             scale: scale as f32,
         };

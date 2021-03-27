@@ -28,6 +28,8 @@ mod scenes;
 mod time;
 
 mod demo_plugin;
+use crate::assets::font::FontAsset;
+use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
 pub use demo_plugin::DemoRendererPlugin;
 
@@ -211,6 +213,11 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
     #[cfg(feature = "profile-with-puffin")]
     let mut profiler_ui = puffin_imgui::ProfilerUi::default();
 
+    let font = {
+        let asset_resource = resources.get::<AssetResource>().unwrap();
+        asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf")
+    };
+
     'running: loop {
         profiling::scope!("Main Loop");
 
@@ -291,6 +298,18 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                 .get_mut::<SceneManager>()
                 .unwrap()
                 .update_scene(&mut world, &resources);
+        }
+
+        {
+            let mut text_resource = resources.get_mut::<TextResource>().unwrap();
+
+            text_resource.add_text(
+                "Use Left/Right arrow keys to switch demos".to_string(),
+                glam::Vec3::new(100.0, 400.0, 0.0),
+                &font,
+                20.0,
+                glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
+            );
         }
 
         //

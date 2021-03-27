@@ -67,11 +67,16 @@ impl ExtractJob for SpriteExtractJob {
             let image_asset = asset_manager.committed_asset(&sprite_render_node.image);
 
             let extracted_frame_node = image_asset.and_then(|image_asset| {
+                let texture_extents = image_asset.image.get_raw().image.texture_def().extents;
+
                 Some(ExtractedSpriteData {
                     position: sprite_render_node.position,
-                    texture_size: glam::Vec2::new(50.0, 50.0),
-                    scale: 1.0,
-                    rotation: 0.0,
+                    texture_size: glam::Vec2::new(
+                        texture_extents.width as f32,
+                        texture_extents.height as f32,
+                    ),
+                    scale: sprite_render_node.scale,
+                    rotation: sprite_render_node.rotation,
                     alpha: sprite_render_node.alpha,
                     image_view: image_asset.image_view.clone(),
                 })
