@@ -18,9 +18,7 @@ mod plugin;
 pub use plugin::SpriteRendererPlugin;
 
 use rafx::api::RafxPrimitiveTopology;
-use rafx::framework::{
-    DescriptorSetArc, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,
-};
+use rafx::framework::{ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout, DescriptorSetArc};
 use write::SpriteCommandWriter;
 
 /// Per-pass "global" data
@@ -162,7 +160,8 @@ pub(self) struct ExtractedSpriteData {
 
 #[derive(Debug)]
 pub struct SpriteDrawCall {
-    index_buffer_first_element: u16,
-    index_buffer_count: u16,
     texture_descriptor_set: DescriptorSetArc,
+    vertex_data_offset_index: u32,
+    index_data_offset_index: u32,
+    index_count: u32,
 }

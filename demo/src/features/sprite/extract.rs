@@ -1,10 +1,8 @@
-use crate::components::{PositionComponent, SpriteComponent};
 use crate::features::sprite::plugin::SpriteStaticResources;
 use crate::features::sprite::prepare::SpritePrepareJob;
 use crate::features::sprite::{
     ExtractedSpriteData, SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet,
 };
-use legion::*;
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
 use rafx::nodes::{
@@ -28,9 +26,6 @@ impl ExtractJob for SpriteExtractJob {
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
         profiling::scope!("Sprite Extract");
-        let legion_world = extract_context.extract_resources.fetch::<World>();
-        let world = &*legion_world;
-
         let asset_manager = extract_context
             .render_resources
             .fetch::<AssetManagerRenderResource>();
@@ -40,16 +35,6 @@ impl ExtractJob for SpriteExtractJob {
             .extract_resources
             .fetch_mut::<SpriteRenderNodeSet>();
         sprite_render_nodes.update();
-
-        let mut query = <(Read<PositionComponent>, Read<SpriteComponent>)>::query();
-        for (position_component, sprite_component) in query.iter(world) {
-            let render_node = sprite_render_nodes
-                .get_mut(&sprite_component.render_node)
-                .unwrap();
-            render_node.image = sprite_component.image.clone();
-            render_node.alpha = sprite_component.alpha;
-            render_node.position = position_component.position;
-        }
 
         let mut extracted_frame_node_sprite_data =
             Vec::<Option<ExtractedSpriteData>>::with_capacity(
