@@ -86,7 +86,7 @@ impl Default for RenderOptions {
             enable_hdr: true,
             enable_bloom: true,
             blur_pass_count: 5,
-            tonemapper_type: TonemapperType::StephenHillACES,
+            tonemapper_type: TonemapperType::LogDerivative,
         }
     }
 }
