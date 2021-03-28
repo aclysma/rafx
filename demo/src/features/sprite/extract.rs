@@ -64,7 +64,7 @@ impl ExtractJob for SpriteExtractJob {
                         ),
                         scale: sprite_render_node.scale,
                         rotation: sprite_render_node.rotation,
-                        alpha: sprite_render_node.alpha,
+                        color: sprite_render_node.tint.extend(sprite_render_node.alpha),
                         image_view: image_asset.image_view.clone(),
                     })
                 });

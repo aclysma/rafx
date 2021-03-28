@@ -143,7 +143,7 @@ impl PrepareJob for SpritePrepareJob {
                     // within a batch contiguously in vertex/index buffers. This way they can be
                     // rendered with a single draw call
                     //
-                    if sprite.alpha >= 1.0 {
+                    if sprite.color.w() >= 1.0 {
                         // Opaque sprites batch by material index alone
                         batch_indices.push(Some(material_index));
                     } else {
@@ -210,7 +210,7 @@ impl PrepareJob for SpritePrepareJob {
                             if draw_calls.is_empty() || vertex_count + 4 > std::u16::MAX as u32 {
                                 let submit_node_id = draw_calls.len() as u32;
 
-                                if sprite.alpha >= 1.0 {
+                                if sprite.color.w() >= 1.0 {
                                     // non-transparent can just batch by material
                                     view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(
                                         submit_node_id,
@@ -253,10 +253,17 @@ impl PrepareJob for SpritePrepareJob {
                             for vertex in &QUAD_VERTEX_LIST {
                                 let transformed_pos = matrix.transform_point3(vertex.pos.into());
 
+                                let color : [f32; 4] = sprite.color.into();
+
                                 vertex_data.push(SpriteVertex {
                                     pos: transformed_pos.into(),
                                     tex_coord: vertex.tex_coord,
-                                    //color: [255, 255, 255, 255]
+                                    color: [
+                                        ((color[0] + 0.5) * 255.0) as u8,
+                                        ((color[1] + 0.5) * 255.0) as u8,
+                                        ((color[2] + 0.5) * 255.0) as u8,
+                                        ((color[3] + 0.5) * 255.0) as u8,
+                                    ]
                                 });
                             }
 

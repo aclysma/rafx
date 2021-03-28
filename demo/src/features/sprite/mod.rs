@@ -32,7 +32,7 @@ pub type SpriteUniformBufferObject = shaders::sprite_vert::ArgsUniform;
 pub struct SpriteVertex {
     pub pos: [f32; 3],
     pub tex_coord: [f32; 2],
-    //color: [u8; 4],
+    pub color: [u8; 4],
 }
 
 lazy_static::lazy_static! {
@@ -42,6 +42,7 @@ lazy_static::lazy_static! {
         VertexDataLayout::build_vertex_layout(&SpriteVertex::default(), |builder, vertex| {
             builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32B32_SFLOAT);
             builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+            builder.add_member(&vertex.color, "COLOR", RafxFormat::R8G8B8A8_UINT);
         }).into_set(RafxPrimitiveTopology::TriangleList)
     };
 }
@@ -89,6 +90,7 @@ pub fn create_sprite_extract_job() -> Box<dyn ExtractJob> {
 //
 pub struct SpriteRenderNode {
     pub position: glam::Vec3,
+    pub tint: glam::Vec3,
     pub scale: f32,
     pub alpha: f32,
     pub rotation: f32,
@@ -156,7 +158,7 @@ pub(self) struct ExtractedSpriteData {
     texture_size: glam::Vec2,
     scale: f32,
     rotation: f32,
-    alpha: f32,
+    color: glam::Vec4,
     image_view: ResourceArc<ImageViewResource>,
 }
 
