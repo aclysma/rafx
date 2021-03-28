@@ -1,0 +1,8 @@
+*.rs text eol=lf
+*.cookedshaderpackage text eol=lf
+*.glsl text eol=lf
+*.frag text eol=lf
+*.vert text eol=lf
+*.comp text eol=lf
+*.txt text eol=lf
+
