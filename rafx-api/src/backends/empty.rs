@@ -1,5 +1,4 @@
 // Don't use standard formatting in this file
-#![rustfmt::skip]
 #![allow(unused_attributes)]
 #![allow(unused_variables)]
 
@@ -15,7 +14,7 @@ impl RafxApiEmpty {
 
     pub fn destroy(&mut self) -> RafxResult<()> { unimplemented!() }
 }
-
+ 
 #[derive(Clone)]
 pub struct RafxDeviceContextEmpty;
 impl RafxDeviceContextEmpty {

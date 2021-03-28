@@ -9,4 +9,5 @@ pub mod vulkan;
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 #[doc(hidden)]
+#[rustfmt::skip]
 pub mod empty;
