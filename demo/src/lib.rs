@@ -30,12 +30,53 @@ mod time;
 mod demo_plugin;
 pub use demo_plugin::DemoRendererPlugin;
 
+// Should be kept in sync with the constants in tonemapper.glsl
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub enum TonemapperType {
+    None,
+    StephenHillACES,
+    SimplifiedLumaACES,
+    LogDerivative,
+    VisualizeRGBMax,
+    VisualizeLuma,
+    MAX,
+}
+impl TonemapperType {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            TonemapperType::None => "None",
+            TonemapperType::StephenHillACES => "Stephen Hill ACES",
+            TonemapperType::SimplifiedLumaACES => "SimplifiedLumaACES",
+            TonemapperType::LogDerivative => "LogDerivative",
+            TonemapperType::VisualizeRGBMax => "Visualize RGB Max",
+            TonemapperType::VisualizeLuma => "Visualize RGB Luma",
+            TonemapperType::MAX => "MAX_TONEMAPPER_VALUE",
+        }
+    }
+}
+impl From<i32> for TonemapperType {
+    fn from(v: i32) -> Self {
+        assert!(v <= Self::MAX as i32);
+        unsafe { std::mem::transmute(v) }
+    }
+}
+
+impl std::fmt::Display for TonemapperType {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        write!(f, "{}", self.display_name())
+    }
+}
 #[derive(Clone)]
 pub struct RenderOptions {
     pub enable_msaa: bool,
     pub enable_hdr: bool,
     pub enable_bloom: bool,
     pub blur_pass_count: usize,
+    pub tonemapper_type: TonemapperType,
 }
 
 impl Default for RenderOptions {
@@ -45,6 +86,7 @@ impl Default for RenderOptions {
             enable_hdr: true,
             enable_bloom: true,
             blur_pass_count: 5,
+            tonemapper_type: TonemapperType::LogDerivative,
         }
     }
 }
@@ -80,6 +122,24 @@ impl RenderOptions {
             .build(ui, &mut blur_pass_count);
 
         self.blur_pass_count = blur_pass_count as usize;
+        // iterate over the valid tonemapper values and convert them into their names
+        let tonemapper_names: Vec<imgui::ImString> = (0..(TonemapperType::MAX as i32))
+            .map(|t| imgui::ImString::new(TonemapperType::from(t).display_name()))
+            .collect();
+        let mut current_tonemapper_type = self.tonemapper_type as i32;
+        if let Some(combo) = imgui::ComboBox::new(imgui::im_str!("tonemapper_type"))
+            .preview_value(&tonemapper_names[current_tonemapper_type as usize])
+            .begin(ui)
+        {
+            ui.list_box(
+                imgui::im_str!(""),
+                &mut current_tonemapper_type,
+                &tonemapper_names.iter().collect::<Vec<_>>(),
+                tonemapper_names.len() as i32,
+            );
+            combo.end(ui);
+            self.tonemapper_type = current_tonemapper_type.into();
+        }
     }
 }
 
@@ -180,17 +240,6 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         }
 
         //
-        // Notify imgui of frame begin
-        //
-        #[cfg(feature = "use-imgui")]
-        {
-            use crate::features::imgui::Sdl2ImguiManager;
-            use sdl2::mouse::MouseState;
-            let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
-            imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
-        }
-
-        //
         // Update assets
         //
         {
@@ -214,6 +263,16 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         if !process_input(&resources, &mut event_pump) {
             break 'running;
+        }
+        //
+        // Notify imgui of frame begin
+        //
+        #[cfg(feature = "use-imgui")]
+        {
+            use crate::features::imgui::Sdl2ImguiManager;
+            use sdl2::mouse::MouseState;
+            let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
+            imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
         }
 
         {

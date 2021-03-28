@@ -885,16 +885,6 @@ vec4 pbr_path(
     vec3 color = ambient + total_light + emissive_color.rgb;
 #endif
     return vec4(color, base_color.a);
-
-    // tonemapping
-    //vec3 mapped = color.rgb / (color.rgb + vec3(1.0));
-
-    // gamma correction
-    //const float gamma = 2.2;
-    //mapped = pow(mapped, vec3(1.0 / gamma));
-
-    // output
-    //return vec4(mapped, base_color.a);
 }
 
 

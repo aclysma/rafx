@@ -9,16 +9,37 @@ use rafx_framework::{
     ImageViewResource, ResourceArc,
 };
 
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct ConfigStd140 {
+    pub tonemapper_type: i32, // +0 (size: 4)
+    pub _padding0: [u8; 12],  // +4 (size: 12)
+} // 16 bytes
+
+impl Default for ConfigStd140 {
+    fn default() -> Self {
+        ConfigStd140 {
+            tonemapper_type: <i32>::default(),
+            _padding0: [u8::default(); 12],
+        }
+    }
+}
+
+pub type ConfigUniform = ConfigStd140;
+
 pub const IN_COLOR_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const IN_COLOR_DESCRIPTOR_BINDING_INDEX: usize = 0;
 pub const IN_BLUR_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const IN_BLUR_DESCRIPTOR_BINDING_INDEX: usize = 1;
 pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 2;
+pub const CONFIG_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const CONFIG_DESCRIPTOR_BINDING_INDEX: usize = 3;
 
 pub struct DescriptorSet0Args<'a> {
     pub in_color: &'a ResourceArc<ImageViewResource>,
     pub in_blur: &'a ResourceArc<ImageViewResource>,
+    pub config: &'a ConfigUniform,
 }
 
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
@@ -53,6 +74,7 @@ impl DescriptorSet0 {
     ) {
         descriptor_set.set_image(IN_COLOR_DESCRIPTOR_BINDING_INDEX as u32, args.in_color);
         descriptor_set.set_image(IN_BLUR_DESCRIPTOR_BINDING_INDEX as u32, args.in_blur);
+        descriptor_set.set_buffer_data(CONFIG_DESCRIPTOR_BINDING_INDEX as u32, args.config);
     }
 
     pub fn set_args(
@@ -61,6 +83,7 @@ impl DescriptorSet0 {
     ) {
         self.set_in_color(args.in_color);
         self.set_in_blur(args.in_blur);
+        self.set_config(args.config);
     }
 
     pub fn set_in_color(
@@ -79,10 +102,34 @@ impl DescriptorSet0 {
             .set_image(IN_BLUR_DESCRIPTOR_BINDING_INDEX as u32, in_blur);
     }
 
+    pub fn set_config(
+        &mut self,
+        config: &ConfigUniform,
+    ) {
+        self.0
+            .set_buffer_data(CONFIG_DESCRIPTOR_BINDING_INDEX as u32, config);
+    }
+
     pub fn flush(
         &mut self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
     ) -> RafxResult<()> {
         self.0.flush(descriptor_set_allocator)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_struct_config_std140() {
+        assert_eq!(std::mem::size_of::<ConfigStd140>(), 16);
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
+        assert_eq!(memoffset::offset_of!(ConfigStd140, tonemapper_type), 0);
+        assert_eq!(std::mem::size_of::<[u8; 12]>(), 12);
+        assert_eq!(std::mem::align_of::<[u8; 12]>(), 1);
+        assert_eq!(memoffset::offset_of!(ConfigStd140, _padding0), 4);
     }
 }
