@@ -42,7 +42,7 @@ lazy_static::lazy_static! {
         VertexDataLayout::build_vertex_layout(&SpriteVertex::default(), |builder, vertex| {
             builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32B32_SFLOAT);
             builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
-            builder.add_member(&vertex.color, "COLOR", RafxFormat::R8G8B8A8_UINT);
+            builder.add_member(&vertex.color, "COLOR", RafxFormat::R8G8B8A8_UNORM);
         }).into_set(RafxPrimitiveTopology::TriangleList)
     };
 }

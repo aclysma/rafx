@@ -254,16 +254,18 @@ impl PrepareJob for SpritePrepareJob {
                                 let transformed_pos = matrix.transform_point3(vertex.pos.into());
 
                                 let color : [f32; 4] = sprite.color.into();
+                                let color_u8 = [
+                                    (color[0].clamp(0.0, 254.9) * 255.0 + 0.5) as u8,
+                                    (color[1].clamp(0.0, 254.9) * 255.0 + 0.5) as u8,
+                                    (color[2].clamp(0.0, 254.9) * 255.0 + 0.5) as u8,
+                                    (color[3].clamp(0.0, 254.9) * 255.0 + 0.5) as u8,
+                                ];
+                                println!("{:?} {:?}", color, color_u8);
 
                                 vertex_data.push(SpriteVertex {
                                     pos: transformed_pos.into(),
                                     tex_coord: vertex.tex_coord,
-                                    color: [
-                                        ((color[0] + 0.5) * 255.0) as u8,
-                                        ((color[1] + 0.5) * 255.0) as u8,
-                                        ((color[2] + 0.5) * 255.0) as u8,
-                                        ((color[3] + 0.5) * 255.0) as u8,
-                                    ]
+                                    color: color_u8
                                 });
                             }
 
