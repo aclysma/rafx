@@ -42,10 +42,10 @@ impl SpriteScene {
             //asset_resource.load_asset::<LdtkProjectAsset>("e01f536b-0a05-4d14-81cd-f010d4a45e81".into())
         };
 
-        for i in 0..9 {
+        for i in 0..1000000 {
             let position = Vec3::new(
-                ((i / 3) * 200) as f32 + 700.0,
-                ((i % 3) * 100) as f32 - 300.0,
+                ((i / 1000) * 4) as f32 + 700.0,
+                ((i % 1000) * 4) as f32 - 300.0,
                 100.0,
             );
 

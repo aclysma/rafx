@@ -41,33 +41,36 @@ impl ExtractJob for SpriteExtractJob {
                 frame_packet.frame_node_count(self.feature_index()) as usize,
             );
 
-        for frame_node in frame_packet.frame_nodes(self.feature_index()) {
-            let render_node_index = frame_node.render_node_index();
-            let render_node_handle = RawSlabKey::<SpriteRenderNode>::new(render_node_index);
-            let sprite_render_node = sprite_render_nodes
-                .sprites
-                .get_raw(render_node_handle)
-                .unwrap();
+        {
+            profiling::scope!("per frame node");
+            for frame_node in frame_packet.frame_nodes(self.feature_index()) {
+                let render_node_index = frame_node.render_node_index();
+                let render_node_handle = RawSlabKey::<SpriteRenderNode>::new(render_node_index);
+                let sprite_render_node = sprite_render_nodes
+                    .sprites
+                    .get_raw(render_node_handle)
+                    .unwrap();
 
-            let image_asset = asset_manager.committed_asset(&sprite_render_node.image);
+                let image_asset = asset_manager.committed_asset(&sprite_render_node.image);
 
-            let extracted_frame_node = image_asset.and_then(|image_asset| {
-                let texture_extents = image_asset.image.get_raw().image.texture_def().extents;
+                let extracted_frame_node = image_asset.and_then(|image_asset| {
+                    let texture_extents = image_asset.image.get_raw().image.texture_def().extents;
 
-                Some(ExtractedSpriteData {
-                    position: sprite_render_node.position,
-                    texture_size: glam::Vec2::new(
-                        texture_extents.width as f32,
-                        texture_extents.height as f32,
-                    ),
-                    scale: sprite_render_node.scale,
-                    rotation: sprite_render_node.rotation,
-                    alpha: sprite_render_node.alpha,
-                    image_view: image_asset.image_view.clone(),
-                })
-            });
+                    Some(ExtractedSpriteData {
+                        position: sprite_render_node.position,
+                        texture_size: glam::Vec2::new(
+                            texture_extents.width as f32,
+                            texture_extents.height as f32,
+                        ),
+                        scale: sprite_render_node.scale,
+                        rotation: sprite_render_node.rotation,
+                        alpha: sprite_render_node.alpha,
+                        image_view: image_asset.image_view.clone(),
+                    })
+                });
 
-            extracted_frame_node_sprite_data.push(extracted_frame_node);
+                extracted_frame_node_sprite_data.push(extracted_frame_node);
+            }
         }
 
         let static_resources = extract_context

@@ -18,7 +18,9 @@ mod plugin;
 pub use plugin::SpriteRendererPlugin;
 
 use rafx::api::RafxPrimitiveTopology;
-use rafx::framework::{ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout, DescriptorSetArc};
+use rafx::framework::{
+    DescriptorSetArc, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,
+};
 use write::SpriteCommandWriter;
 
 /// Per-pass "global" data

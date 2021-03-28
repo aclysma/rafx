@@ -7,12 +7,12 @@ use crate::phases::OpaqueRenderPhase;
 use crate::phases::TransparentRenderPhase;
 use fnv::FnvHashMap;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
+use rafx::base::DecimalF32;
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
 use rafx::nodes::{
     FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
     RenderFeatureIndex, RenderJobPrepareContext, RenderView, ViewSubmitNodes,
 };
-use rafx::base::DecimalF32;
 
 pub struct SpritePrepareJob {
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
@@ -101,67 +101,71 @@ impl PrepareJob for SpritePrepareJob {
         let mut transparent_batch_count = 0;
 
         // Batch index for every sprite frame node
-        let mut batch_indices = Vec::<Option<u32>>::with_capacity(self.extracted_frame_node_sprite_data.len());
+        let mut batch_indices =
+            Vec::<Option<u32>>::with_capacity(self.extracted_frame_node_sprite_data.len());
 
-        for sprite in &self.extracted_frame_node_sprite_data {
-            if let Some(sprite) = sprite {
-                //
-                // First, get or create the descriptor set for the material
-                //
-                //TODO: Cache and reuse where image/material is the same
-                let material_index = *material_lookup
-                    .entry(sprite.image_view.clone())
-                    .or_insert_with(|| {
-                        let descriptor_set = descriptor_set_allocator
-                            .create_descriptor_set(
-                                &descriptor_set_layouts
-                                    [shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX],
-                                shaders::sprite_frag::DescriptorSet1Args {
-                                    tex: &sprite.image_view,
-                                },
-                            )
-                            .unwrap();
+        {
+            profiling::scope!("batch assignment");
 
-                        let material_index = per_material_descriptor_sets.len() as u32;
-
-                        per_material_descriptor_sets.push(descriptor_set);
-
-                        material_index
-                    });
-
-                //
-                // Assign a batch index for this draw.
-                //  - Opaque sprites can be batched by material alone
-                //  - Transparent sprites can be batched by material + z depth
-                //
-                // We defer creating render nodes to later when we walk through every view. We will
-                // sort all the view nodes by batch index, allowing us to place the vertex data
-                // within a batch contiguously in vertex/index buffers. This way they can be
-                // rendered with a single draw call
-                //
-                if sprite.alpha >= 1.0 {
-                    // Opaque sprites batch by material index alone
-                    batch_indices.push(Some(material_index));
-                } else {
-                    // Transparent sprites batch by material index and depth
-                    let batch_key = TransparentBatchKey {
-                        material_index,
-                        depth: DecimalF32(sprite.position.z())
-                    };
-
-                    let batch_index = *transparent_batches
-                        .entry(batch_key)
+            for sprite in &self.extracted_frame_node_sprite_data {
+                if let Some(sprite) = sprite {
+                    //
+                    // First, get or create the descriptor set for the material
+                    //
+                    //TODO: Cache and reuse where image/material is the same
+                    let material_index = *material_lookup
+                        .entry(sprite.image_view.clone())
                         .or_insert_with(|| {
-                            let batch_index = transparent_batch_count;
-                            transparent_batch_count += 1;
-                            batch_index
+                            let descriptor_set = descriptor_set_allocator
+                                .create_descriptor_set(
+                                    &descriptor_set_layouts
+                                        [shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX],
+                                    shaders::sprite_frag::DescriptorSet1Args {
+                                        tex: &sprite.image_view,
+                                    },
+                                )
+                                .unwrap();
+
+                            let material_index = per_material_descriptor_sets.len() as u32;
+
+                            per_material_descriptor_sets.push(descriptor_set);
+
+                            material_index
                         });
 
-                    batch_indices.push(Some(batch_index))
+                    //
+                    // Assign a batch index for this draw.
+                    //  - Opaque sprites can be batched by material alone
+                    //  - Transparent sprites can be batched by material + z depth
+                    //
+                    // We defer creating render nodes to later when we walk through every view. We will
+                    // sort all the view nodes by batch index, allowing us to place the vertex data
+                    // within a batch contiguously in vertex/index buffers. This way they can be
+                    // rendered with a single draw call
+                    //
+                    if sprite.alpha >= 1.0 {
+                        // Opaque sprites batch by material index alone
+                        batch_indices.push(Some(material_index));
+                    } else {
+                        // Transparent sprites batch by material index and depth
+                        let batch_key = TransparentBatchKey {
+                            material_index,
+                            depth: DecimalF32(sprite.position.z()),
+                        };
+
+                        let batch_index =
+                            *transparent_batches.entry(batch_key).or_insert_with(|| {
+                                let batch_index = transparent_batch_count;
+                                transparent_batch_count += 1;
+                                batch_index
+                            });
+
+                        batch_indices.push(Some(batch_index))
+                    }
+                } else {
+                    // sprite node that was not extracted, can occur if the asset was not loaded
+                    batch_indices.push(None);
                 }
-            } else {
-                // sprite node that was not extracted, can occur if the asset was not loaded
-                batch_indices.push(None);
             }
         }
 
@@ -171,81 +175,100 @@ impl PrepareJob for SpritePrepareJob {
         let mut index_data = Vec::<u16>::default();
 
         for view in views {
+            profiling::scope!("process view");
             if let Some(view_nodes) = frame_packet.view_nodes(view, self.feature_index()) {
-                let mut sorted_view_nodes = Vec::with_capacity(frame_packet.view_node_count(view, self.feature_index()) as usize);
+                let mut sorted_view_nodes = Vec::with_capacity(
+                    frame_packet.view_node_count(view, self.feature_index()) as usize,
+                );
                 for view_node in view_nodes {
-                    if let Some(batch_index) = batch_indices[view_node.frame_node_index() as usize] {
+                    if let Some(batch_index) = batch_indices[view_node.frame_node_index() as usize]
+                    {
                         sorted_view_nodes.push((batch_index, view_node.frame_node_index()));
                     }
                 }
 
-                sorted_view_nodes.sort_by_key(|x| x.0);
+                {
+                    sorted_view_nodes.sort_by_key(|x| x.0);
+                }
 
                 let mut view_submit_nodes =
                     ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
 
-                for (batch_index, frame_node_index) in sorted_view_nodes {
-                    const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
-                    let sprite = &self.extracted_frame_node_sprite_data[frame_node_index as usize];
-                    if let Some(sprite) = sprite {
-                        //
-                        // If the vertex count exceeds what a u16 index buffer support, start a new draw call
-                        //
-                        let vertex_count = (draw_calls
-                            .last()
-                            .map(|x| x.index_count)
-                            .unwrap_or(0)
-                            / 6)
-                            * 4;
+                {
+                    profiling::scope!("write buffer data");
+                    for (batch_index, frame_node_index) in sorted_view_nodes {
+                        const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
+                        let sprite =
+                            &self.extracted_frame_node_sprite_data[frame_node_index as usize];
+                        if let Some(sprite) = sprite {
+                            //
+                            // If the vertex count exceeds what a u16 index buffer support, start a new draw call
+                            //
+                            let vertex_count =
+                                (draw_calls.last().map(|x| x.index_count).unwrap_or(0) / 6) * 4;
 
-                        if draw_calls.is_empty() || vertex_count + 4 > std::u16::MAX as u32 {
-                            let submit_node_id = draw_calls.len() as u32;
+                            if draw_calls.is_empty() || vertex_count + 4 > std::u16::MAX as u32 {
+                                let submit_node_id = draw_calls.len() as u32;
 
-                            if sprite.alpha >= 1.0 {
-                                // non-transparent can just batch by material
-                                view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(submit_node_id, batch_index, 0.0);
-                            } else {
-                                // transparent must be ordered by distance
-                                let distance = (view.eye_position().z() - sprite.position.z()).abs();
-                                view_submit_nodes.add_submit_node::<TransparentRenderPhase>(submit_node_id, batch_index, distance);
+                                if sprite.alpha >= 1.0 {
+                                    // non-transparent can just batch by material
+                                    view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(
+                                        submit_node_id,
+                                        batch_index,
+                                        0.0,
+                                    );
+                                } else {
+                                    // transparent must be ordered by distance
+                                    let distance =
+                                        (view.eye_position().z() - sprite.position.z()).abs();
+                                    view_submit_nodes.add_submit_node::<TransparentRenderPhase>(
+                                        submit_node_id,
+                                        batch_index,
+                                        distance,
+                                    );
+                                }
+
+                                draw_calls.push(SpriteDrawCall {
+                                    vertex_data_offset_index: vertex_data.len() as u32,
+                                    index_data_offset_index: index_data.len() as u32,
+                                    index_count: 0,
+                                    texture_descriptor_set: per_material_descriptor_sets
+                                        [batch_index as usize]
+                                        .clone(),
+                                });
                             }
 
-                            draw_calls.push(SpriteDrawCall {
-                                vertex_data_offset_index: vertex_data.len() as u32,
-                                index_data_offset_index: index_data.len() as u32,
-                                index_count: 0,
-                                texture_descriptor_set: per_material_descriptor_sets[batch_index as usize].clone()
-                            });
+                            let current_draw_call_data = draw_calls.last_mut().unwrap();
+
+                            let matrix = glam::Mat4::from_scale_rotation_translation(
+                                glam::Vec3::new(
+                                    sprite.texture_size.x() * sprite.scale,
+                                    sprite.texture_size.y() * sprite.scale,
+                                    1.0,
+                                ),
+                                glam::Quat::from_rotation_z(sprite.rotation),
+                                sprite.position,
+                            );
+
+                            for vertex in &QUAD_VERTEX_LIST {
+                                let transformed_pos = matrix.transform_point3(vertex.pos.into());
+
+                                vertex_data.push(SpriteVertex {
+                                    pos: transformed_pos.into(),
+                                    tex_coord: vertex.tex_coord,
+                                    //color: [255, 255, 255, 255]
+                                });
+                            }
+
+                            for &index in &QUAD_INDEX_LIST {
+                                index_data.push(index + vertex_count as u16);
+                            }
+
+                            //
+                            // Update the draw call to include the new data
+                            //
+                            current_draw_call_data.index_count += 6;
                         }
-
-                        let current_draw_call_data = draw_calls.last_mut().unwrap();
-
-                        let matrix = glam::Mat4::from_translation(sprite.position)
-                            * glam::Mat4::from_rotation_z(sprite.rotation * DEG_TO_RAD)
-                            * glam::Mat4::from_scale(glam::Vec3::new(
-                            sprite.texture_size.x() * sprite.scale,
-                            sprite.texture_size.y() * sprite.scale,
-                            1.0,
-                        ));
-
-                        for vertex in &QUAD_VERTEX_LIST {
-                            let transformed_pos = matrix.transform_point3(vertex.pos.into());
-
-                            vertex_data.push(SpriteVertex {
-                                pos: transformed_pos.into(),
-                                tex_coord: vertex.tex_coord,
-                                //color: [255, 255, 255, 255]
-                            });
-                        }
-
-                        for &index in &QUAD_INDEX_LIST {
-                            index_data.push(index + vertex_count as u16);
-                        }
-
-                        //
-                        // Update the draw call to include the new data
-                        //
-                        current_draw_call_data.index_count += 6;
                     }
                 }
 
@@ -307,6 +330,8 @@ impl PrepareJob for SpritePrepareJob {
         } else {
             None
         };
+
+        log::trace!("sprite draw calls: {}", draw_calls.len());
 
         let writer = Box::new(SpriteCommandWriter {
             draw_calls,

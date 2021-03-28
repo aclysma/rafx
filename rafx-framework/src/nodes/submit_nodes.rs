@@ -93,7 +93,8 @@ impl FeatureSubmitNodes {
         view: &RenderView,
         submit_nodes: ViewSubmitNodes,
     ) {
-        self.submit_nodes.insert(view.view_index(), submit_nodes);
+        let old = self.submit_nodes.insert(view.view_index(), submit_nodes);
+        assert!(old.is_none());
     }
 }
 
