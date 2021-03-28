@@ -1,4 +1,4 @@
-use crate::{phases::PostProcessRenderPhase, RenderOptions, TonemapperType};
+use crate::{phases::PostProcessRenderPhase, RenderOptions};
 use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::graph::*;
 use rafx::nodes::RenderPhase;
