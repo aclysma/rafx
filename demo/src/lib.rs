@@ -30,12 +30,23 @@ mod time;
 mod demo_plugin;
 pub use demo_plugin::DemoRendererPlugin;
 
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub enum TonemapperType {
+    None,
+    StephenHillACES,
+    SimplifiedLumaACES,
+    LogDerivative,
+    VisualizeRGBMax,
+    VisualizeLuma,
+}
 #[derive(Clone)]
 pub struct RenderOptions {
     pub enable_msaa: bool,
     pub enable_hdr: bool,
     pub enable_bloom: bool,
     pub blur_pass_count: usize,
+    pub tonemapper_type: TonemapperType,
 }
 
 impl Default for RenderOptions {
@@ -45,6 +56,7 @@ impl Default for RenderOptions {
             enable_hdr: true,
             enable_bloom: true,
             blur_pass_count: 5,
+            tonemapper_type: TonemapperType::StephenHillACES,
         }
     }
 }
@@ -80,6 +92,28 @@ impl RenderOptions {
             .build(ui, &mut blur_pass_count);
 
         self.blur_pass_count = blur_pass_count as usize;
+        let tonemapper_names = [
+            imgui::im_str!("None"),
+            imgui::im_str!("Stephen Hill ACES"),
+            imgui::im_str!("SimplifiedLumaACES"),
+            imgui::im_str!("LogDerivative"),
+            imgui::im_str!("Visualize RGB Max"),
+            imgui::im_str!("Visualize RGB Luma"),
+        ];
+        let mut current_tonemapper_type = self.tonemapper_type.clone() as i32;
+        if let Some(combo) = imgui::ComboBox::new(imgui::im_str!("tonemapper_type"))
+            .preview_value(tonemapper_names[current_tonemapper_type as usize])
+            .begin(ui)
+        {
+            ui.list_box(
+                imgui::im_str!(""),
+                &mut current_tonemapper_type,
+                &tonemapper_names,
+                tonemapper_names.len() as i32,
+            );
+            combo.end(ui);
+            self.tonemapper_type = unsafe { std::mem::transmute(current_tonemapper_type) };
+        }
     }
 }
 
@@ -180,17 +214,6 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         }
 
         //
-        // Notify imgui of frame begin
-        //
-        #[cfg(feature = "use-imgui")]
-        {
-            use crate::features::imgui::Sdl2ImguiManager;
-            use sdl2::mouse::MouseState;
-            let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
-            imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
-        }
-
-        //
         // Update assets
         //
         {
@@ -214,6 +237,16 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         if !process_input(&resources, &mut event_pump) {
             break 'running;
+        }
+        //
+        // Notify imgui of frame begin
+        //
+        #[cfg(feature = "use-imgui")]
+        {
+            use crate::features::imgui::Sdl2ImguiManager;
+            use sdl2::mouse::MouseState;
+            let imgui_manager = resources.get::<Sdl2ImguiManager>().unwrap();
+            imgui_manager.begin_frame(&sdl2_systems.window, &MouseState::new(&event_pump));
         }
 
         {

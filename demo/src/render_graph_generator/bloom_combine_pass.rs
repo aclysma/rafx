@@ -1,4 +1,4 @@
-use crate::phases::PostProcessRenderPhase;
+use crate::{phases::PostProcessRenderPhase, RenderOptions, TonemapperType};
 use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::graph::*;
 use rafx::nodes::RenderPhase;
@@ -18,6 +18,7 @@ pub(super) fn bloom_combine_pass(
     bloom_extract_pass: &BloomExtractPass,
     blurred_color: RenderGraphImageUsageId,
 ) -> BloomCombinePass {
+    let render_options = context.extract_resources.fetch::<RenderOptions>().clone();
     let node = context
         .graph
         .add_node("BloomCombine", RenderGraphQueue::DefaultGraphics);
@@ -77,6 +78,17 @@ pub(super) fn bloom_combine_pass(
             shaders::bloom_combine_frag::DescriptorSet0Args {
                 in_color: &sdr_image,
                 in_blur: &hdr_image,
+                config: &shaders::bloom_combine_frag::ConfigStd140 {
+                    tonemapper_type: match render_options.tonemapper_type {
+                        TonemapperType::None => 0,
+                        TonemapperType::StephenHillACES => 1,
+                        TonemapperType::SimplifiedLumaACES => 2,
+                        TonemapperType::LogDerivative => 3,
+                        TonemapperType::VisualizeRGBMax => 4,
+                        TonemapperType::VisualizeLuma => 5,
+                    },
+                    ..Default::default()
+                },
             },
         )?;
 
