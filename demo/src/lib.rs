@@ -30,7 +30,8 @@ mod time;
 mod demo_plugin;
 pub use demo_plugin::DemoRendererPlugin;
 
-#[derive(Debug, Clone)]
+// Should be kept in sync with the constants in tonemapper.glsl
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum TonemapperType {
     None,
@@ -39,6 +40,35 @@ pub enum TonemapperType {
     LogDerivative,
     VisualizeRGBMax,
     VisualizeLuma,
+    MAX,
+}
+impl TonemapperType {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            TonemapperType::None => "None",
+            TonemapperType::StephenHillACES => "Stephen Hill ACES",
+            TonemapperType::SimplifiedLumaACES => "SimplifiedLumaACES",
+            TonemapperType::LogDerivative => "LogDerivative",
+            TonemapperType::VisualizeRGBMax => "Visualize RGB Max",
+            TonemapperType::VisualizeLuma => "Visualize RGB Luma",
+            TonemapperType::MAX => "MAX_TONEMAPPER_VALUE",
+        }
+    }
+}
+impl From<i32> for TonemapperType {
+    fn from(v: i32) -> Self {
+        assert!(v <= Self::MAX as i32);
+        unsafe { std::mem::transmute(v) }
+    }
+}
+
+impl std::fmt::Display for TonemapperType {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        write!(f, "{}", self.display_name())
+    }
 }
 #[derive(Clone)]
 pub struct RenderOptions {
@@ -92,27 +122,23 @@ impl RenderOptions {
             .build(ui, &mut blur_pass_count);
 
         self.blur_pass_count = blur_pass_count as usize;
-        let tonemapper_names = [
-            imgui::im_str!("None"),
-            imgui::im_str!("Stephen Hill ACES"),
-            imgui::im_str!("SimplifiedLumaACES"),
-            imgui::im_str!("LogDerivative"),
-            imgui::im_str!("Visualize RGB Max"),
-            imgui::im_str!("Visualize RGB Luma"),
-        ];
-        let mut current_tonemapper_type = self.tonemapper_type.clone() as i32;
+        // iterate over the valid tonemapper values and convert them into their names
+        let tonemapper_names: Vec<imgui::ImString> = (0..(TonemapperType::MAX as i32))
+            .map(|t| imgui::ImString::new(TonemapperType::from(t).display_name()))
+            .collect();
+        let mut current_tonemapper_type = self.tonemapper_type as i32;
         if let Some(combo) = imgui::ComboBox::new(imgui::im_str!("tonemapper_type"))
-            .preview_value(tonemapper_names[current_tonemapper_type as usize])
+            .preview_value(&tonemapper_names[current_tonemapper_type as usize])
             .begin(ui)
         {
             ui.list_box(
                 imgui::im_str!(""),
                 &mut current_tonemapper_type,
-                &tonemapper_names,
+                &tonemapper_names.iter().collect::<Vec<_>>(),
                 tonemapper_names.len() as i32,
             );
             combo.end(ui);
-            self.tonemapper_type = unsafe { std::mem::transmute(current_tonemapper_type) };
+            self.tonemapper_type = current_tonemapper_type.into();
         }
     }
 }

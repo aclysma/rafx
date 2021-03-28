@@ -61,7 +61,7 @@ static inline __attribute__((always_inline))
 float3 visualize_value(thread const float& val)
 {
     float g = 1.0 - ((0.20000000298023223876953125 * (val - 3.2360498905181884765625)) * (val - 3.2360498905181884765625));
-    float b = 1.0 - ((1.0 * (val - 1.0)) * (val - 1.0));
+    float b = val;
     float r = 1.0 - (1.0 / ((0.5 * val) - 0.5));
     if (val > 1.0)
     {
@@ -80,55 +80,54 @@ float luma(thread const float3& color)
     return dot(color, float3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));
 }
 
+static inline __attribute__((always_inline))
+float3 tonemap(thread const float3& color, thread const int& tonemapper_type)
+{
+    switch (tonemapper_type)
+    {
+        case 1:
+        {
+            float3 param = color;
+            float3 _196 = tonemap_aces_fitted(param);
+            return _196;
+        }
+        case 2:
+        {
+            float3 param_1 = color;
+            return tonemap_aces_film_simple(param_1);
+        }
+        case 3:
+        {
+            return color / (color + float3(1.0));
+        }
+        case 4:
+        {
+            float max_val = fast::max(color.x, fast::max(color.y, color.z));
+            float param_2 = max_val;
+            return visualize_value(param_2);
+        }
+        case 5:
+        {
+            float3 param_3 = color;
+            float l = luma(param_3);
+            float param_4 = l;
+            return visualize_value(param_4);
+        }
+        default:
+        {
+            return color;
+        }
+    }
+}
+
 fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]])
 {
     constexpr sampler smp(mip_filter::linear, compare_func::never, max_anisotropy(1));
     main0_out out = {};
     float4 color = spvDescriptorSet0.in_color.sample(smp, in.inUV) + spvDescriptorSet0.in_blur.sample(smp, in.inUV);
-    if ((*spvDescriptorSet0.config).tonemapper_type == 1)
-    {
-        float3 param = color.xyz;
-        float3 _227 = tonemap_aces_fitted(param);
-        out.out_sdr = float4(_227, color.w);
-    }
-    else
-    {
-        if ((*spvDescriptorSet0.config).tonemapper_type == 2)
-        {
-            float3 param_1 = color.xyz;
-            out.out_sdr = float4(tonemap_aces_film_simple(param_1), color.w);
-        }
-        else
-        {
-            if ((*spvDescriptorSet0.config).tonemapper_type == 3)
-            {
-                out.out_sdr = float4(color.xyz / (color.xyz + float3(1.0)), color.w);
-            }
-            else
-            {
-                if ((*spvDescriptorSet0.config).tonemapper_type == 4)
-                {
-                    float max_val = fast::max(color.x, fast::max(color.y, color.z));
-                    float param_2 = max_val;
-                    out.out_sdr = float4(visualize_value(param_2), color.w);
-                }
-                else
-                {
-                    if ((*spvDescriptorSet0.config).tonemapper_type == 5)
-                    {
-                        float3 param_3 = color.xyz;
-                        float l = luma(param_3);
-                        float param_4 = l;
-                        out.out_sdr = float4(visualize_value(param_4), color.w);
-                    }
-                    else
-                    {
-                        out.out_sdr = color;
-                    }
-                }
-            }
-        }
-    }
+    float3 param = color.xyz;
+    int param_1 = (*spvDescriptorSet0.config).tonemapper_type;
+    out.out_sdr = float4(tonemap(param, param_1), color.w);
     return out;
 }
 

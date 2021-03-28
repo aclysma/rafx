@@ -79,14 +79,7 @@ pub(super) fn bloom_combine_pass(
                 in_color: &sdr_image,
                 in_blur: &hdr_image,
                 config: &shaders::bloom_combine_frag::ConfigStd140 {
-                    tonemapper_type: match render_options.tonemapper_type {
-                        TonemapperType::None => 0,
-                        TonemapperType::StephenHillACES => 1,
-                        TonemapperType::SimplifiedLumaACES => 2,
-                        TonemapperType::LogDerivative => 3,
-                        TonemapperType::VisualizeRGBMax => 4,
-                        TonemapperType::VisualizeLuma => 5,
-                    },
+                    tonemapper_type: render_options.tonemapper_type as i32,
                     ..Default::default()
                 },
             },
