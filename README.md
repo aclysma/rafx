@@ -32,6 +32,10 @@ Please keep in mind, this crate is still in pre-0.1.0 status!
 
 ![Screenshot demonstrating realtime shadows](docs/screenshots/shadows_multicolor_lights.png)
 
+![Screenshot of LDTK tilemap integration](docs/screenshots/tilemap_demo.png)
+
+(Tilemap screenshot is an imported ldtk project file)
+
 ## Roadmap
 
  * The API of `rafx-api` is unlikely to change significantly
@@ -94,6 +98,8 @@ dependencies for both SDL2 and vulkan are available.
 * HDR Pipeline with Bloom
 * Point, Spot, and Directional Lights
 * Multiple Spot/Directional/Point light soft shadows
+* Font Rendering
+* LDTK tilemap import
 
 ## Tools
 

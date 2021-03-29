@@ -42,15 +42,14 @@ impl SpriteScene {
             //asset_resource.load_asset::<LdtkProjectAsset>("e01f536b-0a05-4d14-81cd-f010d4a45e81".into())
         };
 
-        for i in 0..9 {
+        for i in 0..100 {
             let position = Vec3::new(
-                ((i / 3) * 200) as f32 + 700.0,
-                ((i % 3) * 100) as f32 - 300.0,
-                100.0,
+                ((i / 5) * 100) as f32 + 900.0,
+                ((i % 5) * 50) as f32 - 100.0,
+                100.0 + (i % 10) as f32,
             );
 
-            //let alpha = if i % 7 == 0 { 0.50 } else { 1.0 };
-            let alpha = 0.5;
+            let alpha = ((i / 5) as f32 * 0.1).min(1.0);
 
             let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
             let mut dynamic_visibility_node_set =
@@ -58,9 +57,10 @@ impl SpriteScene {
 
             let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
                 position,
-                alpha,
                 scale: 0.125,
                 rotation: 0.0,
+                tint: glam::Vec3::new(1.0, 1.0, 1.0),
+                alpha,
                 image: sprite_image.clone(),
             });
 
@@ -152,7 +152,7 @@ fn update_main_view_2d(
 
     const CAMERA_XY_DISTANCE: f32 = 400.0;
     const CAMERA_Z: f32 = 1000.0;
-    const CAMERA_ROTATE_SPEED: f32 = -0.20;
+    const CAMERA_ROTATE_SPEED: f32 = -0.15;
     const CAMERA_LOOP_OFFSET: f32 = 0.7;
     let loop_time = time_state.total_time().as_secs_f32();
 

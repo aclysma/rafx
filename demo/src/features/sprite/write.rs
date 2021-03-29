@@ -7,8 +7,8 @@ use rafx::nodes::{
 };
 
 pub struct SpriteCommandWriter {
-    pub vertex_buffers: Vec<ResourceArc<BufferResource>>,
-    pub index_buffers: Vec<ResourceArc<BufferResource>>,
+    pub vertex_buffer: Option<ResourceArc<BufferResource>>,
+    pub index_buffer: Option<ResourceArc<BufferResource>>,
     pub draw_calls: Vec<SpriteDrawCall>,
     pub per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
     pub sprite_material: ResourceArc<MaterialPassResource>,
@@ -45,13 +45,13 @@ impl FeatureCommandWriter for SpriteCommandWriter {
         command_buffer.cmd_bind_vertex_buffers(
             0,
             &[RafxVertexBufferBinding {
-                buffer: &self.vertex_buffers[0].get_raw().buffer,
+                buffer: &self.vertex_buffer.as_ref().unwrap().get_raw().buffer,
                 byte_offset: 0,
             }],
         )?;
 
         command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
-            buffer: &self.index_buffers[0].get_raw().buffer,
+            buffer: &self.index_buffer.as_ref().unwrap().get_raw().buffer,
             byte_offset: 0,
             index_type: RafxIndexType::Uint16,
         })?;
@@ -73,9 +73,9 @@ impl FeatureCommandWriter for SpriteCommandWriter {
         draw_call.texture_descriptor_set.bind(command_buffer)?;
 
         command_buffer.cmd_draw_indexed(
-            draw_call.index_buffer_count as u32,
-            draw_call.index_buffer_first_element as u32,
-            0,
+            draw_call.index_count,
+            draw_call.index_data_offset_index,
+            draw_call.vertex_data_offset_index as i32,
         )?;
 
         Ok(())
