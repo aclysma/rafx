@@ -55,6 +55,10 @@ renderer = ["rafx-renderer", "assets"]
 #
 # Profiling features - passes down features to crates contained within this one
 #
+no-render-thread = [
+    "rafx-renderer/no-render-thread"
+]
+
 profile-with-puffin = [
     "rafx-framework/profile-with-puffin",
     "rafx-assets/profile-with-puffin",
