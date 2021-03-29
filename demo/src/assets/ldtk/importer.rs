@@ -351,7 +351,7 @@ impl LdtkImporter {
             // If the vertex count exceeds what a u16 index buffer support, start a new draw call
             //
 
-            let vertex_count = (layer_draw_call_data
+            let mut vertex_count = (layer_draw_call_data
                 .last()
                 .map(|x| x.index_count)
                 .unwrap_or(0)
@@ -367,6 +367,8 @@ impl LdtkImporter {
                     index_count: 0,
                     z_pos,
                 });
+
+                vertex_count = 0;
             }
 
             let current_draw_call_data = layer_draw_call_data.last_mut().unwrap();

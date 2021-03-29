@@ -85,24 +85,29 @@ impl PrepareJob for SpritePrepareJob {
         // List of all per material descriptor sets, indexed by material index
         let mut per_material_descriptor_sets = Vec::default();
 
-        // Used to batch transparent sprites by depth and material
-        #[derive(PartialEq, Eq, Hash)]
-        struct TransparentBatchKey {
+        // Used to batch sprites by depth and material (depth is None unless the sprite is transparent)
+        #[derive(PartialEq, Eq, Hash, Debug)]
+        struct BatchKey {
             // f32 is not friendly to use in a map. This wrapper makes it hash bit-wise, which is
             // fine given that inconsistent hashes with the "same" f32 value just mean sprites
             // won't get batched. In practice this is likely to be rare and will not result in
             // "wrong" behavior. Just less effective batching.
-            depth: DecimalF32,
+            depth: Option<DecimalF32>,
             material_index: u32,
         }
 
-        // Lookup for finding the batch index for transparent sprites
-        let mut transparent_batches = FnvHashMap::<TransparentBatchKey, u32>::default();
-        let mut transparent_batch_count = 0;
+        // Lookup for finding the batch index for by key
+        let mut batch_key_lookup = FnvHashMap::<BatchKey, u32>::default();
+        let mut batch_count = 0;
+
+        struct PerNodeData {
+            batch_index: u32,
+            material_index: u32,
+        }
 
         // Batch index for every sprite frame node
         let mut batch_indices =
-            Vec::<Option<u32>>::with_capacity(self.extracted_frame_node_sprite_data.len());
+            Vec::<Option<PerNodeData>>::with_capacity(self.extracted_frame_node_sprite_data.len());
 
         {
             profiling::scope!("batch assignment");
@@ -143,25 +148,31 @@ impl PrepareJob for SpritePrepareJob {
                     // within a batch contiguously in vertex/index buffers. This way they can be
                     // rendered with a single draw call
                     //
-                    if sprite.color.w() >= 1.0 {
-                        // Opaque sprites batch by material index alone
-                        batch_indices.push(Some(material_index));
+                    let batch_key = if sprite.color.w() >= 1.0 {
+                        // Transparent sprites batch by material index and depth
+                        BatchKey {
+                            material_index,
+                            depth: None,
+                        }
                     } else {
                         // Transparent sprites batch by material index and depth
-                        let batch_key = TransparentBatchKey {
+                        BatchKey {
                             material_index,
-                            depth: DecimalF32(sprite.position.z()),
-                        };
+                            depth: Some(DecimalF32(sprite.position.z())),
+                        }
+                    };
 
-                        let batch_index =
-                            *transparent_batches.entry(batch_key).or_insert_with(|| {
-                                let batch_index = transparent_batch_count;
-                                transparent_batch_count += 1;
-                                batch_index
-                            });
+                    let batch_index =
+                        *batch_key_lookup.entry(batch_key).or_insert_with(|| {
+                            let batch_index = batch_count;
+                            batch_count += 1;
+                            batch_index
+                        });
 
-                        batch_indices.push(Some(batch_index))
-                    }
+                    batch_indices.push(Some(PerNodeData {
+                        batch_index,
+                        material_index
+                    }));
                 } else {
                     // sprite node that was not extracted, can occur if the asset was not loaded
                     batch_indices.push(None);
@@ -181,13 +192,14 @@ impl PrepareJob for SpritePrepareJob {
                     frame_packet.view_node_count(view, self.feature_index()) as usize,
                 );
                 for view_node in view_nodes {
-                    if let Some(batch_index) = batch_indices[view_node.frame_node_index() as usize]
+                    if let Some(batch_index) = &batch_indices[view_node.frame_node_index() as usize]
                     {
-                        sorted_view_nodes.push((batch_index, view_node.frame_node_index()));
+                        sorted_view_nodes.push((batch_index.batch_index, view_node.frame_node_index()));
                     }
                 }
 
                 {
+                    profiling::scope!("sort view nodes");
                     sorted_view_nodes.sort_by_key(|x| x.0);
                 }
 
@@ -200,14 +212,16 @@ impl PrepareJob for SpritePrepareJob {
                         const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
                         let sprite =
                             &self.extracted_frame_node_sprite_data[frame_node_index as usize];
+
+                        let mut previous_batch_index = 0;
                         if let Some(sprite) = sprite {
                             //
                             // If the vertex count exceeds what a u16 index buffer support, start a new draw call
                             //
-                            let vertex_count =
+                            let mut vertex_count =
                                 (draw_calls.last().map(|x| x.index_count).unwrap_or(0) / 6) * 4;
 
-                            if draw_calls.is_empty() || vertex_count + 4 > std::u16::MAX as u32 {
+                            if draw_calls.is_empty() || vertex_count + 4 > std::u16::MAX as u32 || batch_index != previous_batch_index {
                                 let submit_node_id = draw_calls.len() as u32;
 
                                 if sprite.color.w() >= 1.0 {
@@ -228,14 +242,19 @@ impl PrepareJob for SpritePrepareJob {
                                     );
                                 }
 
+                                let material_index = batch_indices[frame_node_index as usize].as_ref().unwrap().material_index;
+
                                 draw_calls.push(SpriteDrawCall {
                                     vertex_data_offset_index: vertex_data.len() as u32,
                                     index_data_offset_index: index_data.len() as u32,
                                     index_count: 0,
                                     texture_descriptor_set: per_material_descriptor_sets
-                                        [batch_index as usize]
+                                        [material_index as usize]
                                         .clone(),
                                 });
+
+                                previous_batch_index = batch_index;
+                                vertex_count = 0;
                             }
 
                             let current_draw_call_data = draw_calls.last_mut().unwrap();
@@ -250,18 +269,16 @@ impl PrepareJob for SpritePrepareJob {
                                 sprite.position,
                             );
 
+                            let color : [f32; 4] = sprite.color.into();
+                            let color_u8 = [
+                                (color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                                (color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                                (color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                                (color[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                            ];
+
                             for vertex in &QUAD_VERTEX_LIST {
                                 let transformed_pos = matrix.transform_point3(vertex.pos.into());
-
-                                let color : [f32; 4] = sprite.color.into();
-                                let color_u8 = [
-                                    (color[0].clamp(0.0, 254.9) * 255.0 + 0.5) as u8,
-                                    (color[1].clamp(0.0, 254.9) * 255.0 + 0.5) as u8,
-                                    (color[2].clamp(0.0, 254.9) * 255.0 + 0.5) as u8,
-                                    (color[3].clamp(0.0, 254.9) * 255.0 + 0.5) as u8,
-                                ];
-                                println!("{:?} {:?}", color, color_u8);
-
                                 vertex_data.push(SpriteVertex {
                                     pos: transformed_pos.into(),
                                     tex_coord: vertex.tex_coord,
