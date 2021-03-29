@@ -25,12 +25,6 @@ pub struct LdtkImporterOptions {
     layer_z_positions: Vec<f32>,
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
-#[uuid = "84510429-7e8f-403a-ae51-4defcffe00fb"]
-pub struct LdtkImporterOptions {
-    layer_z_positions: Vec<f32>,
-}
-
 // The asset state is stored in this format using Vecs
 #[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
 #[uuid = "74c12ab4-c836-48ab-b6e8-3e483be60dcf"]

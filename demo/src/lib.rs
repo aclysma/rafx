@@ -32,8 +32,6 @@ use crate::assets::font::FontAsset;
 use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
 pub use demo_plugin::DemoRendererPlugin;
-use crate::features::tile_layer::TileLayerResource;
-pub use demo_plugin::DemoRendererPlugin;
 
 // Should be kept in sync with the constants in tonemapper.glsl
 #[derive(Debug, Clone, Copy)]
