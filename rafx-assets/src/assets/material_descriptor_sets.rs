@@ -1,6 +1,6 @@
-use rafx_framework::ImageViewResource;
 use rafx_framework::ResourceArc;
 use rafx_framework::{DescriptorSetAllocator, RafxResult};
+use rafx_framework::{DescriptorSetBindings, ImageViewResource};
 use rafx_framework::{DynDescriptorSet, SlotNameLookup};
 use std::sync::Arc;
 

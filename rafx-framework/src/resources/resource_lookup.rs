@@ -552,7 +552,7 @@ pub struct DescriptorSetLayoutResource {
     pub root_signature: RafxRootSignature,
     pub set_index: u32,
 
-    pub descriptor_set_layout_def: DescriptorSetLayout,
+    pub descriptor_set_layout_def: Arc<DescriptorSetLayout>,
     pub key: DescriptorSetLayoutKey,
 }
 
@@ -561,7 +561,7 @@ pub struct MaterialPassResource {
     pub material_pass_key: MaterialPassKey,
     pub shader: ResourceArc<ShaderResource>,
     pub root_signature: ResourceArc<RootSignatureResource>,
-    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
+    pub descriptor_set_layouts: Arc<Vec<ResourceArc<DescriptorSetLayoutResource>>>,
 
     pub fixed_function_state: Arc<FixedFunctionState>,
     pub vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
@@ -571,14 +571,14 @@ pub struct MaterialPassResource {
 pub struct GraphicsPipelineResource {
     pub render_target_meta: GraphicsPipelineRenderTargetMeta,
     pub pipeline: Arc<RafxPipeline>,
-    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
+    pub descriptor_set_layouts: Arc<Vec<ResourceArc<DescriptorSetLayoutResource>>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ComputePipelineResource {
     pub root_signature: ResourceArc<RootSignatureResource>,
     pub pipeline: Arc<RafxPipeline>,
-    pub descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
+    pub descriptor_set_layouts: Arc<Vec<ResourceArc<DescriptorSetLayoutResource>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -927,7 +927,7 @@ impl ResourceLookupSet {
                 root_signature_arc: root_signature.clone(),
                 root_signature: root_signature.get_raw().root_signature.clone(),
                 set_index,
-                descriptor_set_layout_def: descriptor_set_layout_def.clone(),
+                descriptor_set_layout_def: Arc::new(descriptor_set_layout_def.clone()),
                 key: key.clone(),
             };
 
@@ -964,7 +964,7 @@ impl ResourceLookupSet {
                 let resource = MaterialPassResource {
                     material_pass_key: material_pass_key.clone(),
                     root_signature,
-                    descriptor_set_layouts: descriptor_sets,
+                    descriptor_set_layouts: Arc::new(descriptor_sets),
                     shader,
                     fixed_function_state,
                     vertex_inputs,
@@ -1060,7 +1060,7 @@ impl ResourceLookupSet {
                 let resource = ComputePipelineResource {
                     root_signature: root_signature.clone(),
                     pipeline: Arc::new(rafx_pipeline),
-                    descriptor_set_layouts,
+                    descriptor_set_layouts: Arc::new(descriptor_set_layouts),
                 };
                 Ok(resource)
             })

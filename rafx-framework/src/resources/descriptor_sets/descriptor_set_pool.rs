@@ -4,11 +4,14 @@ use super::{
     DescriptorSetArc, DescriptorSetBindingKey, DescriptorSetPoolRequiredBufferInfo,
     DescriptorSetWriteSet, FrameInFlightIndex, MAX_DESCRIPTOR_SETS_PER_POOL, MAX_FRAMES_IN_FLIGHT,
 };
+use crate::resources::descriptor_sets::descriptor_set_pool_chunk::DescriptorSetWriter;
 use crate::resources::resource_lookup::DescriptorSetLayoutResource;
 use crate::resources::ResourceArc;
 use crate::{DescriptorSetArrayPoolAllocator, ResourceDropSink};
 use crossbeam_channel::{Receiver, Sender};
-use rafx_api::{RafxBuffer, RafxDescriptorSetArrayDef, RafxDeviceContext, RafxResult};
+use rafx_api::{
+    RafxBuffer, RafxDescriptorSetArrayDef, RafxDescriptorSetHandle, RafxDeviceContext, RafxResult,
+};
 use rafx_base::slab::{RawSlab, RawSlabKey};
 use std::collections::VecDeque;
 
@@ -123,11 +126,14 @@ impl ManagedDescriptorSetPool {
         }
     }
 
-    pub fn insert(
+    fn get_chunk_index(slab_key: &RawSlabKey<ManagedDescriptorSet>) -> usize {
+        (slab_key.index() / MAX_DESCRIPTOR_SETS_PER_POOL) as usize
+    }
+
+    fn get_next_unused_slab_key(
         &mut self,
         device_context: &RafxDeviceContext,
-        write_set: DescriptorSetWriteSet,
-    ) -> RafxResult<DescriptorSetArc> {
+    ) -> RafxResult<RawSlabKey<ManagedDescriptorSet>> {
         let registered_set = ManagedDescriptorSet {
             // Don't have anything to store yet
             //write_set: write_set.clone()
@@ -135,7 +141,7 @@ impl ManagedDescriptorSetPool {
 
         // Use the slab allocator to find an unused index, determine the chunk index from that
         let slab_key = self.slab.allocate(registered_set);
-        let chunk_index = (slab_key.index() / MAX_DESCRIPTOR_SETS_PER_POOL) as usize;
+        let chunk_index = Self::get_chunk_index(&slab_key);
 
         // Add more chunks if necessary
         while chunk_index as usize >= self.chunks.len() {
@@ -147,19 +153,54 @@ impl ManagedDescriptorSetPool {
             )?);
         }
 
+        Ok(slab_key)
+    }
+
+    fn get_descriptor_arc(
+        &self,
+        slab_key: RawSlabKey<ManagedDescriptorSet>,
+        descriptor_set_handle: RafxDescriptorSetHandle,
+    ) -> DescriptorSetArc {
+        DescriptorSetArc::new(
+            slab_key,
+            self.drop_tx.clone(),
+            &self.descriptor_set_layout,
+            descriptor_set_handle,
+        )
+    }
+
+    pub fn insert_with_writer<'a, T: DescriptorSetWriter<'a>>(
+        &mut self,
+        device_context: &RafxDeviceContext,
+        args: T,
+    ) -> RafxResult<DescriptorSetArc> {
+        let slab_key = self.get_next_unused_slab_key(device_context)?;
+        let chunk_index = Self::get_chunk_index(&slab_key);
+
+        let descriptor_set_handle = {
+            let mut writer_context = self.chunks[chunk_index].get_writer(slab_key)?;
+            T::write_to(&mut writer_context, args);
+            writer_context.handle()
+        };
+
+        // Return the ref-counted descriptor set
+        Ok(self.get_descriptor_arc(slab_key, descriptor_set_handle))
+    }
+
+    pub fn insert_with_write_set(
+        &mut self,
+        device_context: &RafxDeviceContext,
+        write_set: DescriptorSetWriteSet,
+    ) -> RafxResult<DescriptorSetArc> {
+        let slab_key = self.get_next_unused_slab_key(device_context)?;
+        let chunk_index = Self::get_chunk_index(&slab_key);
+
         // Insert the write into the chunk, it will be applied when update() is next called on it
         let descriptor_set_handle =
             self.chunks[chunk_index].schedule_write_set(slab_key, write_set);
 
         // Return the ref-counted descriptor set
-        let descriptor_set_arc = DescriptorSetArc::new(
-            slab_key,
-            self.drop_tx.clone(),
-            &self.descriptor_set_layout,
-            descriptor_set_handle,
-        );
-
-        Ok(descriptor_set_arc)
+        Ok(self.get_descriptor_arc(slab_key, descriptor_set_handle))
     }
 
     #[profiling::function]

@@ -53,6 +53,54 @@ impl Drop for DynDescriptorSet {
     }
 }
 
+pub trait DescriptorSetBindings {
+    fn set_image(
+        &mut self,
+        binding_index: u32,
+        image_view: &ResourceArc<ImageViewResource>,
+    );
+
+    fn set_images(
+        &mut self,
+        binding_index: u32,
+        image_views: &[Option<&ResourceArc<ImageViewResource>>],
+    );
+
+    fn set_image_at_index(
+        &mut self,
+        binding_index: u32,
+        array_index: usize,
+        image_view: &ResourceArc<ImageViewResource>,
+    );
+
+    fn set_buffer(
+        &mut self,
+        binding_index: u32,
+        data: &ResourceArc<BufferResource>,
+    );
+
+    fn set_buffer_at_index(
+        &mut self,
+        binding_index: u32,
+        array_index: usize,
+        data: &ResourceArc<BufferResource>,
+    );
+
+    fn set_buffer_data<T: Copy + 'static>(
+        &mut self,
+        binding_index: u32,
+        data: &T,
+    );
+
+    // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
+    fn set_buffer_data_at_index<T: Copy + 'static>(
+        &mut self,
+        binding_index: u32,
+        array_index: usize,
+        data: &T,
+    );
+}
+
 impl DynDescriptorSet {
     pub(super) fn new(
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
@@ -108,47 +156,6 @@ impl DynDescriptorSet {
         Ok(())
     }
 
-    pub fn set_image(
-        &mut self,
-        binding_index: u32,
-        image_view: &ResourceArc<ImageViewResource>,
-    ) {
-        self.set_image_array_element(
-            binding_index,
-            0,
-            DescriptorSetWriteElementImageValue::Resource(image_view.clone()),
-        )
-    }
-
-    pub fn set_images(
-        &mut self,
-        binding_index: u32,
-        image_views: &[Option<&ResourceArc<ImageViewResource>>],
-    ) {
-        for (index, image_view) in image_views.iter().enumerate() {
-            if let Some(image_view) = image_view.as_ref() {
-                self.set_image_array_element(
-                    binding_index,
-                    index,
-                    DescriptorSetWriteElementImageValue::Resource((*image_view).clone()),
-                )
-            }
-        }
-    }
-
-    pub fn set_image_at_index(
-        &mut self,
-        binding_index: u32,
-        array_index: usize,
-        image_view: &ResourceArc<ImageViewResource>,
-    ) {
-        self.set_image_array_element(
-            binding_index,
-            array_index,
-            DescriptorSetWriteElementImageValue::Resource(image_view.clone()),
-        )
-    }
-
     fn set_image_array_element(
         &mut self,
         binding_index: u32,
@@ -174,23 +181,6 @@ impl DynDescriptorSet {
         } else {
             log::warn!("Tried to set image on a binding index that does not exist");
         }
-    }
-
-    pub fn set_buffer(
-        &mut self,
-        binding_index: u32,
-        data: &ResourceArc<BufferResource>,
-    ) {
-        self.set_buffer_array_element(binding_index, 0, data)
-    }
-
-    pub fn set_buffer_at_index(
-        &mut self,
-        binding_index: u32,
-        array_index: usize,
-        data: &ResourceArc<BufferResource>,
-    ) {
-        self.set_buffer_array_element(binding_index, array_index, data)
     }
 
     fn set_buffer_array_element(
@@ -227,25 +217,6 @@ impl DynDescriptorSet {
     }
 
     // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
-    pub fn set_buffer_data<T: Copy + 'static>(
-        &mut self,
-        binding_index: u32,
-        data: &T,
-    ) {
-        self.set_buffer_data_array_element(binding_index, 0, data)
-    }
-
-    // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
-    pub fn set_buffer_data_at_index<T: Copy + 'static>(
-        &mut self,
-        binding_index: u32,
-        array_index: usize,
-        data: &T,
-    ) {
-        self.set_buffer_data_array_element(binding_index, array_index, data)
-    }
-
-    // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
     fn set_buffer_data_array_element<T: Copy + 'static>(
         &mut self,
         binding_index: u32,
@@ -274,5 +245,84 @@ impl DynDescriptorSet {
         } else {
             log::warn!("Tried to set buffer data on a binding index that does not exist");
         }
+    }
+}
+
+impl DescriptorSetBindings for DynDescriptorSet {
+    fn set_image(
+        &mut self,
+        binding_index: u32,
+        image_view: &ResourceArc<ImageViewResource>,
+    ) {
+        self.set_image_array_element(
+            binding_index,
+            0,
+            DescriptorSetWriteElementImageValue::Resource(image_view.clone()),
+        )
+    }
+
+    fn set_images(
+        &mut self,
+        binding_index: u32,
+        image_views: &[Option<&ResourceArc<ImageViewResource>>],
+    ) {
+        for (index, image_view) in image_views.iter().enumerate() {
+            if let Some(image_view) = image_view.as_ref() {
+                self.set_image_array_element(
+                    binding_index,
+                    index,
+                    DescriptorSetWriteElementImageValue::Resource((*image_view).clone()),
+                )
+            }
+        }
+    }
+
+    fn set_image_at_index(
+        &mut self,
+        binding_index: u32,
+        array_index: usize,
+        image_view: &ResourceArc<ImageViewResource>,
+    ) {
+        self.set_image_array_element(
+            binding_index,
+            array_index,
+            DescriptorSetWriteElementImageValue::Resource(image_view.clone()),
+        )
+    }
+
+    fn set_buffer(
+        &mut self,
+        binding_index: u32,
+        data: &ResourceArc<BufferResource>,
+    ) {
+        self.set_buffer_array_element(binding_index, 0, data)
+    }
+
+    fn set_buffer_at_index(
+        &mut self,
+        binding_index: u32,
+        array_index: usize,
+        data: &ResourceArc<BufferResource>,
+    ) {
+        self.set_buffer_array_element(binding_index, array_index, data)
+    }
+
+    // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
+    fn set_buffer_data<T: Copy + 'static>(
+        &mut self,
+        binding_index: u32,
+        data: &T,
+    ) {
+        self.set_buffer_data_array_element(binding_index, 0, data)
+    }
+
+    // Requiring 'static helps us catch accidentally trying to store a reference in the buffer
+    fn set_buffer_data_at_index<T: Copy + 'static>(
+        &mut self,
+        binding_index: u32,
+        array_index: usize,
+        data: &T,
+    ) {
+        self.set_buffer_data_array_element(binding_index, array_index, data)
     }
 }

@@ -3,6 +3,7 @@
 #[allow(unused_imports)]
 use rafx_framework::RafxResult;
 
+use rafx_framework::descriptor_sets::{DescriptorSetWriter, DescriptorSetWriterContext};
 #[allow(unused_imports)]
 use rafx_framework::{
     DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
@@ -315,6 +316,27 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
     }
 }
 
+impl<'a> DescriptorSetWriter<'a> for DescriptorSet0Args<'a> {
+    fn write_to(
+        descriptor_set: &mut DescriptorSetWriterContext,
+        args: Self,
+    ) -> RafxResult<()> {
+        descriptor_set.set_buffer_data(
+            PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            args.per_view_data,
+        )?;
+        descriptor_set.set_images(
+            SHADOW_MAP_IMAGES_DESCRIPTOR_BINDING_INDEX as u32,
+            args.shadow_map_images,
+        )?;
+        descriptor_set.set_images(
+            SHADOW_MAP_IMAGES_CUBE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.shadow_map_images_cube,
+        )?;
+        Ok(())
+    }
+}
+
 pub struct DescriptorSet0(pub DynDescriptorSet);
 
 impl DescriptorSet0 {
@@ -434,6 +456,39 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
         let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
         descriptor.0.flush(descriptor_set_allocator)?;
         Ok(descriptor.0.descriptor_set().clone())
+    }
+}
+
+impl<'a> DescriptorSetWriter<'a> for DescriptorSet1Args<'a> {
+    fn write_to(
+        descriptor_set: &mut DescriptorSetWriterContext,
+        args: Self,
+    ) -> RafxResult<()> {
+        descriptor_set.set_buffer_data(
+            PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            args.per_material_data,
+        )?;
+        descriptor_set.set_image(
+            BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.base_color_texture,
+        )?;
+        descriptor_set.set_image(
+            METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.metallic_roughness_texture,
+        )?;
+        descriptor_set.set_image(
+            NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.normal_texture,
+        )?;
+        descriptor_set.set_image(
+            OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.occlusion_texture,
+        )?;
+        descriptor_set.set_image(
+            EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.emissive_texture,
+        )?;
+        Ok(())
     }
 }
 
@@ -574,6 +629,19 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet2Args<'a> {
         let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
         descriptor.0.flush(descriptor_set_allocator)?;
         Ok(descriptor.0.descriptor_set().clone())
+    }
+}
+
+impl<'a> DescriptorSetWriter<'a> for DescriptorSet2Args<'a> {
+    fn write_to(
+        descriptor_set: &mut DescriptorSetWriterContext,
+        args: Self,
+    ) -> RafxResult<()> {
+        descriptor_set.set_buffer_data(
+            PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            args.per_object_data,
+        )?;
+        Ok(())
     }
 }
 

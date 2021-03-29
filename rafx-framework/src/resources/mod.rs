@@ -31,10 +31,13 @@ pub use descriptor_sets::DescriptorSetAllocatorMetrics;
 pub use descriptor_sets::DescriptorSetAllocatorProvider;
 pub use descriptor_sets::DescriptorSetAllocatorRef;
 pub use descriptor_sets::DescriptorSetArc;
+pub use descriptor_sets::DescriptorSetBindings;
 pub use descriptor_sets::DescriptorSetInitializer;
 pub use descriptor_sets::DescriptorSetLayout;
 pub use descriptor_sets::DescriptorSetLayoutBinding;
 pub use descriptor_sets::DescriptorSetWriteSet;
+pub use descriptor_sets::DescriptorSetWriter;
+pub use descriptor_sets::DescriptorSetWriterContext;
 pub use descriptor_sets::DynDescriptorSet;
 
 mod resource_manager;

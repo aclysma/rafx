@@ -3,6 +3,7 @@
 #[allow(unused_imports)]
 use rafx_framework::RafxResult;
 
+use rafx_framework::descriptor_sets::{DescriptorSetWriter, DescriptorSetWriterContext};
 #[allow(unused_imports)]
 use rafx_framework::{
     DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
@@ -75,6 +76,19 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
     }
 }
 
+impl<'a> DescriptorSetWriter<'a> for DescriptorSet0Args<'a> {
+    fn write_to(
+        descriptor_set: &mut DescriptorSetWriterContext,
+        args: Self,
+    ) -> RafxResult<()> {
+        descriptor_set.set_buffer_data(
+            PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            args.per_view_data,
+        )?;
+        Ok(())
+    }
+}
+
 pub struct DescriptorSet0(pub DynDescriptorSet);
 
 impl DescriptorSet0 {
@@ -135,6 +149,19 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet2Args<'a> {
         let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
         descriptor.0.flush(descriptor_set_allocator)?;
         Ok(descriptor.0.descriptor_set().clone())
+    }
+}
+
+impl<'a> DescriptorSetWriter<'a> for DescriptorSet2Args<'a> {
+    fn write_to(
+        descriptor_set: &mut DescriptorSetWriterContext,
+        args: Self,
+    ) -> RafxResult<()> {
+        descriptor_set.set_buffer_data(
+            PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+            args.per_object_data,
+        )?;
+        Ok(())
     }
 }
 
