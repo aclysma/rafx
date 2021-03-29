@@ -173,7 +173,7 @@ impl Importer for GltfImporter {
     where
         Self: Sized,
     {
-        24
+        25
     }
 
     fn version(&self) -> u32 {
@@ -232,7 +232,7 @@ impl Importer for GltfImporter {
 
             let mut search_tags: Vec<(String, Option<String>)> = vec![];
             if let GltfObjectId::Name(name) = &image_to_import.id {
-                search_tags.push(("image_name".to_string(), Some(name.clone())));
+                search_tags.push(("name".to_string(), Some(name.clone())));
             }
 
             log::debug!("Importing image uuid {:?}", image_uuid);
@@ -275,7 +275,7 @@ impl Importer for GltfImporter {
 
             let mut search_tags: Vec<(String, Option<String>)> = vec![];
             if let GltfObjectId::Name(name) = &material_to_import.id {
-                search_tags.push(("material_name".to_string(), Some(name.clone())));
+                search_tags.push(("name".to_string(), Some(name.clone())));
             }
 
             let mut slot_assignments = vec![];
@@ -409,7 +409,7 @@ impl Importer for GltfImporter {
 
             let mut search_tags: Vec<(String, Option<String>)> = vec![];
             if let GltfObjectId::Name(name) = &mesh_to_import.id {
-                search_tags.push(("mesh_name".to_string(), Some(name.clone())));
+                search_tags.push(("name".to_string(), Some(name.clone())));
             }
 
             // let mut load_deps = vec![];

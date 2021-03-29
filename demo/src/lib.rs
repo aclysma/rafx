@@ -146,6 +146,7 @@ impl RenderOptions {
 #[derive(Default)]
 pub struct DebugUiState {
     show_render_options: bool,
+    show_asset_list: bool,
 
     #[cfg(feature = "profile-with-puffin")]
     show_profiler: bool,
@@ -293,6 +294,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             let time_state = resources.get::<TimeState>().unwrap();
             let mut debug_ui_state = resources.get_mut::<DebugUiState>().unwrap();
             let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
+            let asset_manager = resources.get::<AssetResource>().unwrap();
             imgui_manager.with_ui(|ui| {
                 profiling::scope!("main menu bar");
                 ui.main_menu_bar(|| {
@@ -300,6 +302,11 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                         ui.checkbox(
                             imgui::im_str!("Render Options"),
                             &mut debug_ui_state.show_render_options,
+                        );
+
+                        ui.checkbox(
+                            imgui::im_str!("Asset List"),
+                            &mut debug_ui_state.show_asset_list,
                         );
 
                         #[cfg(feature = "profile-with-puffin")]
@@ -326,6 +333,37 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                     imgui::Window::new(imgui::im_str!("Render Options")).build(ui, || {
                         render_options.window(ui);
                     });
+                }
+
+                if debug_ui_state.show_asset_list {
+                    imgui::Window::new(imgui::im_str!("Asset List"))
+                        .opened(&mut debug_ui_state.show_asset_list)
+                        .build(ui, || {
+                            let loader = asset_manager.loader();
+                            let mut asset_info = loader
+                                .get_active_loads()
+                                .into_iter()
+                                .map(|item| loader.get_load_info(item))
+                                .collect::<Vec<_>>();
+                            asset_info.sort_by(|x, y| {
+                                x.as_ref()
+                                    .map(|x| &x.path)
+                                    .cmp(&y.as_ref().map(|y| &y.path))
+                            });
+                            for info in asset_info {
+                                if let Some(info) = info {
+                                    let id = info.asset_id;
+                                    ui.text(format!(
+                                        "{}:{} .. {}",
+                                        info.file_name.unwrap_or_else(|| "???".to_string()),
+                                        info.asset_name.unwrap_or_else(|| format!("{}", id)),
+                                        info.refs
+                                    ));
+                                } else {
+                                    ui.text("NO INFO");
+                                }
+                            }
+                        });
                 }
 
                 #[cfg(feature = "profile-with-puffin")]
