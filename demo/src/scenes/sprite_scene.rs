@@ -152,7 +152,7 @@ fn update_main_view_2d(
 
     const CAMERA_XY_DISTANCE: f32 = 400.0;
     const CAMERA_Z: f32 = 1000.0;
-    const CAMERA_ROTATE_SPEED: f32 = -0.0;
+    const CAMERA_ROTATE_SPEED: f32 = -0.15;
     const CAMERA_LOOP_OFFSET: f32 = 0.7;
     let loop_time = time_state.total_time().as_secs_f32();
 
