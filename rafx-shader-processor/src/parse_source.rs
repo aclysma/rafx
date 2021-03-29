@@ -582,7 +582,7 @@ fn find_annotations_in_comments(comments: &[CommentText]) -> Vec<AnnotationText>
     annotations
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileToProcess {
     pub path: PathBuf,
     pub include_type: IncludeType,
@@ -662,8 +662,10 @@ pub fn parse_shader_source_recursive(
 
     included_files.insert(resolved_include.resolved_path.clone());
 
+    let mut resolved_file_paths = file_to_process.clone();
+    resolved_file_paths.path = resolved_include.resolved_path;
     let code: Vec<char> = resolved_include.content.chars().collect();
-    parse_shader_source_text(file_to_process, declarations, included_files, &code)
+    parse_shader_source_text(&resolved_file_paths, declarations, included_files, &code)
 }
 
 pub(crate) fn parse_shader_source_text(
