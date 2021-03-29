@@ -6,7 +6,6 @@ use crate::features::sprite::{
 use crate::phases::OpaqueRenderPhase;
 use crate::phases::TransparentRenderPhase;
 use fnv::FnvHashMap;
-use glam::Vec3;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
 use rafx::nodes::{
@@ -115,20 +114,6 @@ impl PrepareJob for SpritePrepareJob {
 
         let mut per_view_descriptor_sets = Vec::default();
 
-        let extents_width = 900;
-        let extents_height = 600;
-        let aspect_ratio = extents_width as f32 / extents_height as f32;
-        let half_width = 400.0;
-        let half_height = 400.0 / aspect_ratio;
-        let view_proj = glam::Mat4::orthographic_rh(
-            -half_width,
-            half_width,
-            -half_height,
-            half_height,
-            1000.0,
-            -1000.0,
-        );
-
         //
         // Add submit nodes per view
         //
@@ -142,15 +127,15 @@ impl PrepareJob for SpritePrepareJob {
                     if let Some(extracted_data) =
                         &self.extracted_frame_node_sprite_data[frame_node_index as usize]
                     {
+                        let distance =
+                            (extracted_data.position.z() - view.eye_position().z()).abs();
                         if extracted_data.alpha >= 1.0 {
                             view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(
                                 frame_node_index,
                                 0,
-                                0.0,
+                                distance,
                             );
                         } else {
-                            let distance =
-                                Vec3::length(extracted_data.position - view.eye_position());
                             view_submit_nodes.add_submit_node::<TransparentRenderPhase>(
                                 frame_node_index,
                                 0,
@@ -173,7 +158,7 @@ impl PrepareJob for SpritePrepareJob {
                     &*layout,
                     shaders::sprite_vert::DescriptorSet0Args {
                         uniform_buffer: &shaders::sprite_vert::ArgsUniform {
-                            mvp: view_proj.to_cols_array_2d(),
+                            mvp: view.view_proj().to_cols_array_2d(),
                         },
                     },
                 )

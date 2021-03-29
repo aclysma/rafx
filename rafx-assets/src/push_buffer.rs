@@ -62,6 +62,12 @@ impl PushBuffer {
         }
     }
 
+    pub fn from_vec<T: 'static>(data: &Vec<T>) -> Self {
+        let mut push_buffer = PushBuffer::new(std::mem::size_of::<T>() * data.len());
+        push_buffer.push(&data, 1);
+        push_buffer
+    }
+
     pub fn push_bytes(
         &mut self,
         data: &[u8],
@@ -83,7 +89,7 @@ impl PushBuffer {
         }
     }
 
-    pub fn push<T>(
+    pub fn push<T: 'static>(
         &mut self,
         data: &[T],
         required_alignment: usize,

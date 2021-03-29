@@ -111,6 +111,7 @@ impl RafxBufferVulkan {
         device_context: &RafxDeviceContextVulkan,
         buffer_def: &RafxBufferDef,
     ) -> RafxResult<Self> {
+        buffer_def.verify();
         let mut allocation_size = buffer_def.size;
         if buffer_def
             .resource_type
@@ -147,6 +148,8 @@ impl RafxBufferVulkan {
             pool: None,
             user_data: None,
         };
+
+        assert_ne!(allocation_size, 0);
 
         let buffer_info = vk::BufferCreateInfo::builder()
             .size(allocation_size)

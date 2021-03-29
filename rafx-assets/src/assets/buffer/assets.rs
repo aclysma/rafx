@@ -1,5 +1,6 @@
 use crate::assets::upload::BufferUploadOpResult;
 use crate::distill_impl::{AssetResource, ResourceAssetLoader};
+use crate::push_buffer::PushBuffer;
 use crate::{
     AssetLookup, AssetManager, AssetTypeHandler, AssetTypeHandlerFactory, DynAssetLookup,
     LoadQueues,
@@ -16,6 +17,15 @@ use type_uuid::*;
 pub struct BufferAssetData {
     #[serde(with = "serde_bytes")]
     pub data: Vec<u8>,
+}
+
+impl BufferAssetData {
+    pub fn from_vec<T: 'static>(data: &Vec<T>) -> Self {
+        let push_buffer = PushBuffer::from_vec(data);
+        BufferAssetData {
+            data: push_buffer.into_data(),
+        }
+    }
 }
 
 #[derive(TypeUuid, Clone)]
@@ -91,7 +101,6 @@ impl AssetTypeHandler for BufferAssetTypeHandler {
             &mut self.load_queues,
             &mut self.asset_lookup,
         );
-
         Ok(())
     }
 

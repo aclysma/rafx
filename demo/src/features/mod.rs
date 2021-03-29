@@ -5,3 +5,4 @@ pub mod mesh;
 pub mod skybox;
 pub mod sprite;
 pub mod text;
+pub mod tile_layer;

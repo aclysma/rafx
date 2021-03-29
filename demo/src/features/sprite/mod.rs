@@ -89,7 +89,9 @@ pub fn create_sprite_extract_job() -> Box<dyn ExtractJob> {
 //
 pub struct SpriteRenderNode {
     pub position: glam::Vec3,
+    pub scale: f32,
     pub alpha: f32,
+    pub rotation: f32,
     pub image: Handle<ImageAsset>,
 }
 

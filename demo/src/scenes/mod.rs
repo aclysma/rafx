@@ -9,12 +9,6 @@ mod shadows_scene;
 use shadows_scene::ShadowsScene;
 
 mod sprite_scene;
-use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
-};
-use crate::time::TimeState;
-use rafx::nodes::{RenderPhaseMaskBuilder, RenderViewDepthRange};
-use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use sprite_scene::SpriteScene;
 
 #[derive(Copy, Clone, Debug)]
@@ -45,6 +39,13 @@ pub trait TestScene {
         world: &mut World,
         resources: &Resources,
     );
+
+    fn cleanup(
+        &mut self,
+        _world: &mut World,
+        _resources: &Resources,
+    ) {
+    }
 }
 
 pub struct SceneManager {
@@ -82,6 +83,10 @@ impl SceneManager {
         resources: &Resources,
     ) {
         if let Some(next_scene_index) = self.next_scene.take() {
+            if let Some(current_scene) = &mut self.current_scene {
+                current_scene.cleanup(world, resources);
+            }
+
             world.clear();
 
             let next_scene = ALL_SCENES[next_scene_index];
@@ -166,59 +171,4 @@ fn add_point_light(
     let position_component = PositionComponent { position };
 
     world.extend(vec![(position_component, light_component)]);
-}
-
-#[profiling::function]
-fn update_main_view(
-    time_state: &TimeState,
-    viewports_resource: &mut ViewportsResource,
-) {
-    let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
-        .add_render_phase::<DepthPrepassRenderPhase>()
-        .add_render_phase::<OpaqueRenderPhase>()
-        .add_render_phase::<TransparentRenderPhase>()
-        .add_render_phase::<UiRenderPhase>()
-        .build();
-
-    const CAMERA_XY_DISTANCE: f32 = 12.0;
-    const CAMERA_Z: f32 = 6.0;
-    const CAMERA_ROTATE_SPEED: f32 = -0.10;
-    const CAMERA_LOOP_OFFSET: f32 = -0.3;
-    let loop_time = time_state.total_time().as_secs_f32();
-    let eye = glam::Vec3::new(
-        CAMERA_XY_DISTANCE * f32::cos(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
-        CAMERA_XY_DISTANCE * f32::sin(CAMERA_ROTATE_SPEED * loop_time + CAMERA_LOOP_OFFSET),
-        CAMERA_Z,
-    );
-
-    let aspect_ratio = viewports_resource.main_window_size.width as f32
-        / viewports_resource.main_window_size.height.max(1) as f32;
-
-    let view = glam::Mat4::look_at_rh(eye, glam::Vec3::zero(), glam::Vec3::new(0.0, 0.0, 1.0));
-
-    let near_plane = 0.01;
-    let proj = glam::Mat4::perspective_infinite_reverse_rh(
-        std::f32::consts::FRAC_PI_4,
-        aspect_ratio,
-        near_plane,
-    );
-
-    viewports_resource.main_view_meta = Some(RenderViewMeta {
-        eye_position: eye,
-        view,
-        proj,
-        depth_range: RenderViewDepthRange::new_infinite_reverse(near_plane),
-        render_phase_mask: main_camera_render_phase_mask,
-        debug_name: "main".to_string(),
-    });
-
-    // render_view_set.create_view(
-    //     eye,
-    //     view,
-    //     proj,
-    //     (window_width, window_height),
-    //     RenderViewDepthRange::new_infinite_reverse(near_plane),
-    //     main_camera_render_phase_mask,
-    //     "main".to_string(),
-    // )
 }

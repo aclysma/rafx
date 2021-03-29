@@ -28,6 +28,9 @@ mod scenes;
 mod time;
 
 mod demo_plugin;
+use crate::assets::font::FontAsset;
+use crate::features::text::TextResource;
+use crate::features::tile_layer::TileLayerResource;
 pub use demo_plugin::DemoRendererPlugin;
 
 // Should be kept in sync with the constants in tonemapper.glsl
@@ -79,8 +82,18 @@ pub struct RenderOptions {
     pub tonemapper_type: TonemapperType,
 }
 
-impl Default for RenderOptions {
-    fn default() -> Self {
+impl RenderOptions {
+    fn default_2d() -> Self {
+        RenderOptions {
+            enable_msaa: false,
+            enable_hdr: false,
+            enable_bloom: false,
+            blur_pass_count: 0,
+            tonemapper_type: TonemapperType::None,
+        }
+    }
+
+    fn default_3d() -> Self {
         RenderOptions {
             enable_msaa: true,
             enable_hdr: true,
@@ -173,7 +186,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
 
     let mut resources = Resources::default();
     resources.insert(TimeState::new());
-    resources.insert(RenderOptions::default());
+    resources.insert(RenderOptions::default_2d());
     resources.insert(DebugUiState::default());
     resources.insert(SceneManager::default());
 
@@ -200,6 +213,11 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
 
     #[cfg(feature = "profile-with-puffin")]
     let mut profiler_ui = puffin_imgui::ProfilerUi::default();
+
+    let font = {
+        let asset_resource = resources.get::<AssetResource>().unwrap();
+        asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf")
+    };
 
     'running: loop {
         profiling::scope!("Main Loop");
@@ -281,6 +299,18 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                 .get_mut::<SceneManager>()
                 .unwrap()
                 .update_scene(&mut world, &resources);
+        }
+
+        {
+            let mut text_resource = resources.get_mut::<TextResource>().unwrap();
+
+            text_resource.add_text(
+                "Use Left/Right arrow keys to switch demos".to_string(),
+                glam::Vec3::new(100.0, 400.0, 0.0),
+                &font,
+                20.0,
+                glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
+            );
         }
 
         //
@@ -416,6 +446,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             add_to_extract_resources!(AssetManager);
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
+            add_to_extract_resources!(TileLayerResource);
             add_to_extract_resources!(
                 rafx::visibility::DynamicVisibilityNodeSet,
                 dynamic_visibility_node_set
@@ -431,6 +462,10 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             add_to_extract_resources!(
                 crate::features::mesh::MeshRenderNodeSet,
                 mesh_render_node_set
+            );
+            add_to_extract_resources!(
+                crate::features::tile_layer::TileLayerRenderNodeSet,
+                tile_layer_render_node_set
             );
             add_to_extract_resources!(
                 crate::features::debug3d::DebugDraw3DResource,

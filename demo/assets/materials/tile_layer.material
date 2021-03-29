@@ -1,0 +1,23 @@
+(
+    passes: [
+        (
+            phase: Some("Opaque"),
+            fixed_function_state: (
+                depth_testing: Disabled,
+                alpha_blending: Enabled,
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/tile_layer.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/tile_layer.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)
