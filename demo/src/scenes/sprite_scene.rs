@@ -42,15 +42,14 @@ impl SpriteScene {
             //asset_resource.load_asset::<LdtkProjectAsset>("e01f536b-0a05-4d14-81cd-f010d4a45e81".into())
         };
 
-        for i in 0..100000 {
+        for i in 0..100 {
             let position = Vec3::new(
-                ((i / 100) * 10) as f32 + 1200.0,
-                ((i % 100) * 10) as f32 - 100.0,
+                ((i / 5) * 100) as f32 + 900.0,
+                ((i % 5) * 50) as f32 - 100.0,
                 100.0 + (i % 10) as f32,
             );
 
-            let alpha = if i % 3 != 0 { 0.50 } else { 1.0 };
-            //let alpha = 0.5;
+            let alpha = ((i / 5) as f32 * 0.1).min(1.0);
 
             let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
             let mut dynamic_visibility_node_set =

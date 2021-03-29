@@ -162,16 +162,15 @@ impl PrepareJob for SpritePrepareJob {
                         }
                     };
 
-                    let batch_index =
-                        *batch_key_lookup.entry(batch_key).or_insert_with(|| {
-                            let batch_index = batch_count;
-                            batch_count += 1;
-                            batch_index
-                        });
+                    let batch_index = *batch_key_lookup.entry(batch_key).or_insert_with(|| {
+                        let batch_index = batch_count;
+                        batch_count += 1;
+                        batch_index
+                    });
 
                     batch_indices.push(Some(PerNodeData {
                         batch_index,
-                        material_index
+                        material_index,
                     }));
                 } else {
                     // sprite node that was not extracted, can occur if the asset was not loaded
@@ -194,7 +193,8 @@ impl PrepareJob for SpritePrepareJob {
                 for view_node in view_nodes {
                     if let Some(batch_index) = &batch_indices[view_node.frame_node_index() as usize]
                     {
-                        sorted_view_nodes.push((batch_index.batch_index, view_node.frame_node_index()));
+                        sorted_view_nodes
+                            .push((batch_index.batch_index, view_node.frame_node_index()));
                     }
                 }
 
@@ -207,13 +207,14 @@ impl PrepareJob for SpritePrepareJob {
                     ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
 
                 {
+                    let mut previous_batch_index = 0;
+
                     profiling::scope!("write buffer data");
                     for (batch_index, frame_node_index) in sorted_view_nodes {
                         const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
                         let sprite =
                             &self.extracted_frame_node_sprite_data[frame_node_index as usize];
 
-                        let mut previous_batch_index = 0;
                         if let Some(sprite) = sprite {
                             //
                             // If the vertex count exceeds what a u16 index buffer support, start a new draw call
@@ -221,7 +222,10 @@ impl PrepareJob for SpritePrepareJob {
                             let mut vertex_count =
                                 (draw_calls.last().map(|x| x.index_count).unwrap_or(0) / 6) * 4;
 
-                            if draw_calls.is_empty() || vertex_count + 4 > std::u16::MAX as u32 || batch_index != previous_batch_index {
+                            if draw_calls.is_empty()
+                                || vertex_count + 4 > u16::MAX as u32
+                                || batch_index != previous_batch_index
+                            {
                                 let submit_node_id = draw_calls.len() as u32;
 
                                 if sprite.color.w() >= 1.0 {
@@ -242,7 +246,10 @@ impl PrepareJob for SpritePrepareJob {
                                     );
                                 }
 
-                                let material_index = batch_indices[frame_node_index as usize].as_ref().unwrap().material_index;
+                                let material_index = batch_indices[frame_node_index as usize]
+                                    .as_ref()
+                                    .unwrap()
+                                    .material_index;
 
                                 draw_calls.push(SpriteDrawCall {
                                     vertex_data_offset_index: vertex_data.len() as u32,
@@ -269,7 +276,7 @@ impl PrepareJob for SpritePrepareJob {
                                 sprite.position,
                             );
 
-                            let color : [f32; 4] = sprite.color.into();
+                            let color: [f32; 4] = sprite.color.into();
                             let color_u8 = [
                                 (color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
                                 (color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -282,7 +289,7 @@ impl PrepareJob for SpritePrepareJob {
                                 vertex_data.push(SpriteVertex {
                                     pos: transformed_pos.into(),
                                     tex_coord: vertex.tex_coord,
-                                    color: color_u8
+                                    color: color_u8,
                                 });
                             }
 
