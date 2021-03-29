@@ -339,7 +339,7 @@ impl PrepareJob for MeshPrepareJob {
                                 opaque_frame_node_per_instance_descriptor_sets[frame_node_index] =
                                     Some(
                                         descriptor_set_allocator
-                                            .create_descriptor_set(
+                                            .create_descriptor_set_with_writer(
                                                 per_instance_descriptor_set_layout,
                                                 shaders::mesh_frag::DescriptorSet2Args {
                                                     per_object_data: &per_object_data,
@@ -359,7 +359,7 @@ impl PrepareJob for MeshPrepareJob {
                                 shadow_map_frame_node_per_instance_descriptor_sets
                                     [frame_node_index] = Some(
                                     descriptor_set_allocator
-                                        .create_descriptor_set(
+                                        .create_descriptor_set_with_writer(
                                             per_instance_descriptor_set_layout,
                                             shaders::depth_vert::DescriptorSet2Args {
                                                 per_object_data: &per_object_data,
