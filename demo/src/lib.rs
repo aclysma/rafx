@@ -89,6 +89,7 @@ impl RenderOptions {
             enable_hdr: false,
             enable_bloom: false,
             blur_pass_count: 0,
+            tonemapper_type: TonemapperType::None,
         }
     }
 
