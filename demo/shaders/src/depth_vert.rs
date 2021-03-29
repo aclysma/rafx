@@ -3,11 +3,11 @@
 #[allow(unused_imports)]
 use rafx_framework::RafxResult;
 
-use rafx_framework::descriptor_sets::{DescriptorSetWriter, DescriptorSetWriterContext};
 #[allow(unused_imports)]
 use rafx_framework::{
-    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
-    ImageViewResource, ResourceArc,
+    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetBindings, DescriptorSetInitializer,
+    DescriptorSetWriter, DescriptorSetWriterContext, DynDescriptorSet, ImageViewResource,
+    ResourceArc,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -80,12 +80,11 @@ impl<'a> DescriptorSetWriter<'a> for DescriptorSet0Args<'a> {
     fn write_to(
         descriptor_set: &mut DescriptorSetWriterContext,
         args: Self,
-    ) -> RafxResult<()> {
+    ) {
         descriptor_set.set_buffer_data(
             PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
             args.per_view_data,
-        )?;
-        Ok(())
+        );
     }
 }
 
@@ -156,12 +155,11 @@ impl<'a> DescriptorSetWriter<'a> for DescriptorSet2Args<'a> {
     fn write_to(
         descriptor_set: &mut DescriptorSetWriterContext,
         args: Self,
-    ) -> RafxResult<()> {
+    ) {
         descriptor_set.set_buffer_data(
             PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX as u32,
             args.per_object_data,
-        )?;
-        Ok(())
+        );
     }
 }
 

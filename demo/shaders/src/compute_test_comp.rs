@@ -5,8 +5,9 @@ use rafx_framework::RafxResult;
 
 #[allow(unused_imports)]
 use rafx_framework::{
-    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
-    ImageViewResource, ResourceArc,
+    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetBindings, DescriptorSetInitializer,
+    DescriptorSetWriter, DescriptorSetWriterContext, DynDescriptorSet, ImageViewResource,
+    ResourceArc,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -55,6 +56,16 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
         let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
         descriptor.0.flush(descriptor_set_allocator)?;
         Ok(descriptor.0.descriptor_set().clone())
+    }
+}
+
+impl<'a> DescriptorSetWriter<'a> for DescriptorSet0Args<'a> {
+    fn write_to(
+        descriptor_set: &mut DescriptorSetWriterContext,
+        args: Self,
+    ) {
+        descriptor_set.set_buffer_data(POSITIONS_DESCRIPTOR_BINDING_INDEX as u32, args.positions);
+        descriptor_set.set_buffer_data(VELOCITIES_DESCRIPTOR_BINDING_INDEX as u32, args.velocities);
     }
 }
 

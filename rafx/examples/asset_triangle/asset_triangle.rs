@@ -4,7 +4,7 @@ use rafx::api::*;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::MaterialAsset;
 use rafx::distill::loader::{storage::DefaultIndirectionResolver, Loader, RpcIO};
-use rafx::framework::VertexDataLayout;
+use rafx::framework::{DescriptorSetBindings, VertexDataLayout};
 use rafx::graph::{
     PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphQueue, SwapchainSurfaceInfo,

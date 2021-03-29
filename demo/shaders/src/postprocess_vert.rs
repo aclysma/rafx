@@ -5,6 +5,7 @@ use rafx_framework::RafxResult;
 
 #[allow(unused_imports)]
 use rafx_framework::{
-    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetInitializer, DynDescriptorSet,
-    ImageViewResource, ResourceArc,
+    DescriptorSetAllocator, DescriptorSetArc, DescriptorSetBindings, DescriptorSetInitializer,
+    DescriptorSetWriter, DescriptorSetWriterContext, DynDescriptorSet, ImageViewResource,
+    ResourceArc,
 };

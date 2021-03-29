@@ -1,7 +1,9 @@
 use log::LevelFilter;
 
 use rafx::api::*;
-use rafx::framework::{CookedShaderPackage, FixedFunctionState, VertexDataLayout};
+use rafx::framework::{
+    CookedShaderPackage, DescriptorSetBindings, FixedFunctionState, VertexDataLayout,
+};
 use rafx::graph::{
     PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphQueue, SwapchainSurfaceInfo,
