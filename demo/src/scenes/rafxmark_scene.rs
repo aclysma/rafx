@@ -1,3 +1,5 @@
+// NOTE(dvd): Inspired by Bevy `bevymark` example (MIT licensed) https://github.com/bevyengine/bevy/blob/81b53d15d4e038261182b8d7c8f65f9a3641fd2d/examples/tools/bevymark.rs
+
 use crate::assets::font::FontAsset;
 use crate::components::{PositionComponent, SpriteComponent};
 use crate::features::sprite::{SpriteRenderNode, SpriteRenderNodeSet};

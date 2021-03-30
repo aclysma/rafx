@@ -1,3 +1,5 @@
+// NOTE(dvd): Inspired by Bevy `many_sprites` example (MIT licensed) https://github.com/bevyengine/bevy/blob/621cba4864fd5d2c0962151b126769eff45797fd/examples/2d/many_sprites.rs
+
 use crate::assets::font::FontAsset;
 use crate::components::{PositionComponent, SpriteComponent};
 use crate::features::sprite::{SpriteRenderNode, SpriteRenderNodeSet};
@@ -9,7 +11,7 @@ use crate::time::TimeState;
 use crate::RenderOptions;
 use glam::{Quat, Vec2, Vec3};
 use legion;
-use legion::{SystemBuilder, IntoQuery, Read, Resources, Schedule, World};
+use legion::{IntoQuery, Read, Resources, Schedule, SystemBuilder, World};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
@@ -61,10 +63,10 @@ impl ManySpritesScene {
             .build(move |_, world, (time, sprite_render_node_set), queries| {
                 profiling::scope!("update_render_node_system");
                 for sprite in queries.iter_mut(world) {
-                    let render_node : &mut SpriteRenderNode = sprite_render_node_set
-                        .get_mut(&sprite.render_node)
-                        .unwrap();
-                    render_node.rotation *= Quat::from_rotation_z(time.previous_update_dt() * rand::random::<f32>());
+                    let render_node: &mut SpriteRenderNode =
+                        sprite_render_node_set.get_mut(&sprite.render_node).unwrap();
+                    render_node.rotation *=
+                        Quat::from_rotation_z(time.previous_update_dt() * rand::random::<f32>());
                 }
             });
 
