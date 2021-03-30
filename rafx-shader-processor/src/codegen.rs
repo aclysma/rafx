@@ -322,7 +322,7 @@ fn rust_header(rust_code: &mut Vec<String>) {
     rust_code.push("#[allow(unused_imports)]\n".to_string());
     rust_code.push("use rafx_framework::RafxResult;\n\n".to_string());
     rust_code.push("#[allow(unused_imports)]\n".to_string());
-    rust_code.push("use rafx_framework::{ResourceArc, ImageViewResource, DynDescriptorSet, DescriptorSetAllocator, DescriptorSetInitializer, DescriptorSetArc};\n\n".to_string());
+    rust_code.push("use rafx_framework::{ResourceArc, ImageViewResource, DynDescriptorSet, DescriptorSetAllocator, DescriptorSetInitializer, DescriptorSetArc, DescriptorSetWriter, DescriptorSetWriterContext, DescriptorSetBindings};\n\n".to_string());
 }
 
 fn rust_structs(
@@ -523,6 +523,36 @@ fn rust_binding_wrappers(
         rust_code.push("        Ok(descriptor.0.descriptor_set().clone())\n".to_string());
         rust_code.push("    }\n".to_string());
 
+        rust_code.push("}\n\n".to_string());
+
+        //
+        // DescriptorSetWriter trait impl
+        //
+
+        rust_code.push(format!(
+            "impl<'a> DescriptorSetWriter<'a> for {}{} {{\n",
+            args_struct_name, wrapper_args_generic_params
+        ));
+
+        // write_to
+        rust_code.push(
+            "    fn write_to(descriptor_set: &mut DescriptorSetWriterContext, args: Self) {\n"
+                .to_string(),
+        );
+        for item in &binding_wrapper_items {
+            if item.descriptor_count == 1 {
+                rust_code.push(format!(
+                    "        descriptor_set.{}({}, args.{});\n",
+                    item.setter_fn_name_single, item.binding_index_string, item.binding_name
+                ));
+            } else {
+                rust_code.push(format!(
+                    "        descriptor_set.{}({}, args.{});\n",
+                    item.setter_fn_name_multi, item.binding_index_string, item.binding_name
+                ));
+            }
+        }
+        rust_code.push("    }\n".to_string());
         rust_code.push("}\n\n".to_string());
 
         //

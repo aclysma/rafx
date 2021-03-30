@@ -8,12 +8,15 @@ mod descriptor_set_arc;
 pub use descriptor_set_arc::DescriptorSetArc;
 
 mod dynamic_descriptor_sets;
+pub use dynamic_descriptor_sets::DescriptorSetBindings;
 pub use dynamic_descriptor_sets::DynDescriptorSet;
 
 mod descriptor_set_pool;
 use descriptor_set_pool::ManagedDescriptorSetPool;
 
 mod descriptor_set_pool_chunk;
+pub use descriptor_set_pool_chunk::DescriptorSetWriter;
+pub use descriptor_set_pool_chunk::DescriptorSetWriterContext;
 use descriptor_set_pool_chunk::ManagedDescriptorSetPoolChunk;
 
 mod descriptor_set_buffers;
@@ -39,6 +42,7 @@ pub use descriptor_set_allocator::DescriptorSetInitializer;
 pub use descriptor_set_allocator::DescriptorSetPoolMetrics;
 
 mod descriptor_set_allocator_manager;
+use crate::{DescriptorSetLayoutResource, ResourceArc};
 pub(super) use descriptor_set_allocator_manager::DescriptorSetAllocatorManager;
 pub use descriptor_set_allocator_manager::DescriptorSetAllocatorProvider;
 pub use descriptor_set_allocator_manager::DescriptorSetAllocatorRef;
@@ -109,4 +113,29 @@ pub fn what_to_bind(element_write: &DescriptorSetElementWrite) -> WhatToBind {
     }
 
     what
+}
+
+pub fn get_descriptor_set_element_write(
+    descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
+    key: &DescriptorSetElementKey,
+) -> Option<DescriptorSetElementWrite> {
+    for binding in &descriptor_set_layout
+        .get_raw()
+        .descriptor_set_layout_def
+        .bindings
+    {
+        let element_count = binding.resource.element_count_normalized() as usize;
+        if key.dst_binding != binding.resource.binding || key.array_index >= element_count {
+            continue;
+        }
+
+        return Some(DescriptorSetElementWrite {
+            has_immutable_sampler: binding.immutable_samplers.is_some(),
+            descriptor_type: binding.resource.resource_type,
+            image_info: DescriptorSetWriteElementImage::default(),
+            buffer_info: DescriptorSetWriteElementBuffer::default(),
+        });
+    }
+
+    None
 }

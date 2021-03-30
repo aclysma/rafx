@@ -33,6 +33,58 @@ use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
 pub use demo_plugin::DemoRendererPlugin;
 
+#[cfg(all(
+    feature = "profile-with-tracy-memory",
+    not(feature = "profile-with-stats-alloc")
+))]
+#[global_allocator]
+static GLOBAL: profiling::tracy_client::ProfiledAllocator<std::alloc::System> =
+    profiling::tracy_client::ProfiledAllocator::new(std::alloc::System, 100);
+
+#[cfg(all(
+    feature = "profile-with-stats-alloc",
+    not(feature = "profile-with-tracy-memory")
+))]
+#[global_allocator]
+pub static STATS_ALLOC: &stats_alloc::StatsAlloc<std::alloc::System> =
+    &stats_alloc::INSTRUMENTED_SYSTEM;
+
+struct StatsAllocMemoryRegion<'a> {
+    region_name: &'a str,
+    #[cfg(all(
+        feature = "profile-with-stats-alloc",
+        not(feature = "profile-with-tracy-memory")
+    ))]
+    region: stats_alloc::Region<'a, std::alloc::System>,
+}
+
+impl<'a> StatsAllocMemoryRegion<'a> {
+    pub fn new(region_name: &'a str) -> Self {
+        StatsAllocMemoryRegion {
+            region_name,
+            #[cfg(all(
+                feature = "profile-with-stats-alloc",
+                not(feature = "profile-with-tracy-memory")
+            ))]
+            region: stats_alloc::Region::new(STATS_ALLOC),
+        }
+    }
+}
+
+#[cfg(all(
+    feature = "profile-with-stats-alloc",
+    not(feature = "profile-with-tracy-memory")
+))]
+impl Drop for StatsAllocMemoryRegion<'_> {
+    fn drop(&mut self) {
+        log::info!(
+            "({}) | {:?}",
+            self.region_name,
+            self.region.change_and_reset()
+        );
+    }
+}
+
 // Should be kept in sync with the constants in tonemapper.glsl
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]

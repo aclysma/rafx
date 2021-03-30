@@ -1,6 +1,7 @@
 use super::DescriptorSetWriteSet;
 use super::ManagedDescriptorSetPool;
 use super::{DescriptorSetArc, FrameInFlightIndex};
+use crate::descriptor_sets::descriptor_set_pool_chunk::DescriptorSetWriter;
 use crate::resources::resource_lookup::{DescriptorSetLayoutResource, ResourceHash};
 use crate::resources::{DynDescriptorSet, ResourceArc};
 use fnv::FnvHashMap;
@@ -91,22 +92,41 @@ impl DescriptorSetAllocator {
         Ok(dyn_descriptor_set)
     }
 
+    fn get_or_create_pool_for_layout<'a>(
+        pools: &'a mut FnvHashMap<ResourceHash, ManagedDescriptorSetPool>,
+        device_context: &RafxDeviceContext,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
+    ) -> &'a mut ManagedDescriptorSetPool {
+        let hash = descriptor_set_layout.get_hash().into();
+        pools.entry(hash).or_insert_with(|| {
+            ManagedDescriptorSetPool::new(device_context, descriptor_set_layout.clone())
+        })
+    }
+
     pub fn create_descriptor_set_with_writes(
         &mut self,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         write_set: DescriptorSetWriteSet,
     ) -> RafxResult<DescriptorSetArc> {
-        // Get or create the pool for the layout
+        Self::get_or_create_pool_for_layout(
+            &mut self.pools,
+            &self.device_context,
+            descriptor_set_layout,
+        )
+        .insert_with_write_set(&self.device_context, write_set)
+    }
 
-        let hash = descriptor_set_layout.get_hash().into();
-        let device_context = self.device_context.clone();
-
-        let pool = self.pools.entry(hash).or_insert_with(|| {
-            ManagedDescriptorSetPool::new(&device_context, descriptor_set_layout.clone())
-        });
-
-        // Allocate a descriptor set
-        pool.insert(&self.device_context, write_set)
+    pub fn create_descriptor_set_with_writer<'a, T: DescriptorSetWriter<'a>>(
+        &mut self,
+        descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
+        args: T,
+    ) -> RafxResult<DescriptorSetArc> {
+        Self::get_or_create_pool_for_layout(
+            &mut self.pools,
+            &self.device_context,
+            descriptor_set_layout,
+        )
+        .insert_with_writer(&self.device_context, args)
     }
 
     pub fn create_descriptor_set<'a, T: DescriptorSetInitializer<'a>>(
