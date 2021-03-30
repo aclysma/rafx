@@ -180,7 +180,7 @@ impl super::TestScene for ShadowsScene {
     fn update(
         &mut self,
         world: &mut World,
-        resources: &Resources,
+        resources: &mut Resources,
     ) {
         super::add_light_debug_draw(&resources, &world);
 

@@ -170,16 +170,16 @@ impl<'a> PrepareJob for TextPrepareJobImpl {
         // TODO: Submit separate nodes for transparency/text positioned in 3d
         //
         for view in views {
+            let mut view_submit_nodes =
+                ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
             for (i, draw_call) in draw_vertices_result.draw_call_metas.iter().enumerate() {
-                let mut view_submit_nodes =
-                    ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
                 view_submit_nodes.add_submit_node::<UiRenderPhase>(
                     i as u32,
                     0,
                     draw_call.z_position,
                 );
-                submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
             }
+            submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
         }
 
         let writer = Box::new(TextCommandWriter {

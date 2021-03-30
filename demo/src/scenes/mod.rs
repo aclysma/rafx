@@ -4,6 +4,7 @@ use crate::components::{
 use crate::features::debug3d::DebugDraw3DResource;
 use legion::IntoQuery;
 use legion::{Read, Resources, World};
+use sdl2::event::Event;
 
 mod shadows_scene;
 use shadows_scene::ShadowsScene;
@@ -11,13 +12,17 @@ use shadows_scene::ShadowsScene;
 mod sprite_scene;
 use sprite_scene::SpriteScene;
 
+mod rafxmark_scene;
+use rafxmark_scene::RafxmarkScene;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Scene {
     Shadows,
     Sprite,
+    Rafxmark,
 }
 
-pub const ALL_SCENES: [Scene; 2] = [Scene::Shadows, Scene::Sprite];
+pub const ALL_SCENES: [Scene; 3] = [Scene::Shadows, Scene::Sprite, Scene::Rafxmark];
 
 fn create_scene(
     scene: Scene,
@@ -27,6 +32,7 @@ fn create_scene(
     match scene {
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
         Scene::Sprite => Box::new(SpriteScene::new(world, resources)),
+        Scene::Rafxmark => Box::new(RafxmarkScene::new(world, resources)),
     }
 }
 
@@ -37,8 +43,16 @@ pub trait TestScene {
     fn update(
         &mut self,
         world: &mut World,
-        resources: &Resources,
+        resources: &mut Resources,
     );
+
+    fn process_input(
+        &mut self,
+        _world: &mut World,
+        _resources: &Resources,
+        _event: Event,
+    ) {
+    }
 
     fn cleanup(
         &mut self,
@@ -77,6 +91,17 @@ impl SceneManager {
         self.next_scene = Some((self.current_scene_index + 1) % ALL_SCENES.len());
     }
 
+    pub fn process_input(
+        &mut self,
+        world: &mut World,
+        resources: &Resources,
+        event: Event,
+    ) {
+        if let Some(current_scene) = &mut self.current_scene {
+            current_scene.process_input(world, resources, event);
+        }
+    }
+
     pub fn try_create_next_scene(
         &mut self,
         world: &mut World,
@@ -99,7 +124,7 @@ impl SceneManager {
     pub fn update_scene(
         &mut self,
         world: &mut World,
-        resources: &Resources,
+        resources: &mut Resources,
     ) {
         self.current_scene
             .as_mut()
