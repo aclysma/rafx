@@ -7,7 +7,7 @@ use crate::phases::{
 };
 use crate::time::TimeState;
 use crate::RenderOptions;
-use glam::f32::Vec3;
+use glam::{Quat, Vec2, Vec3};
 use legion;
 use legion::{IntoQuery, Read, Resources, Schedule, SystemBuilder, World, Write};
 use rafx::assets::distill_impl::AssetResource;
@@ -16,7 +16,6 @@ use rafx::distill::loader::handle::Handle;
 use rafx::nodes::{RenderPhaseMaskBuilder, RenderViewDepthRange};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
-use rand::Rng;
 use sdl2::event::Event;
 use sdl2::mouse::MouseButton;
 
@@ -39,7 +38,6 @@ struct BodyComponent {
 pub(super) struct RafxmarkScene {
     is_left_button_down: bool,
     sprite_count: usize,
-    average_fps: f32,
     font: Handle<FontAsset>,
     sprite_image: Handle<ImageAsset>,
     schedule: Schedule,
@@ -126,19 +124,10 @@ impl RafxmarkScene {
         RafxmarkScene {
             is_left_button_down: false,
             sprite_count: 0,
-            average_fps: 0.0,
             schedule,
             sprite_image,
             font,
         }
-    }
-
-    fn random_color(rng: &mut impl Rng) -> Vec3 {
-        let r = rng.gen_range(0.2, 1.0);
-        let g = rng.gen_range(0.2, 1.0);
-        let b = rng.gen_range(0.2, 1.0);
-        let v = Vec3::new(r, g, b);
-        v.normalize()
     }
 
     fn add_sprites(
@@ -150,8 +139,8 @@ impl RafxmarkScene {
 
         let spawn_count = (SPRITES_PER_SECOND as f32 * time.previous_update_dt()) as usize;
 
-        let mut rnd = rand::thread_rng();
-        let tint = Self::random_color(&mut rnd);
+        let mut rng = rand::thread_rng();
+        let tint = super::random_color(&mut rng);
 
         let sprite_x = LEFT + HALF_SPRITE_SIZE;
         let sprite_y = TOP - HALF_SPRITE_SIZE;
@@ -175,8 +164,8 @@ impl RafxmarkScene {
 
             let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
                 position,
-                scale: SPRITE_SCALE,
-                rotation: 0.0,
+                scale: Vec2::splat(SPRITE_SCALE),
+                rotation: Quat::from_rotation_z(0.0),
                 tint,
                 alpha,
                 image: self.sprite_image.clone(),

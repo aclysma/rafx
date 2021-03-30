@@ -2,8 +2,10 @@ use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
 use crate::features::debug3d::DebugDraw3DResource;
+use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World};
+use rand::Rng;
 use sdl2::event::Event;
 
 mod shadows_scene;
@@ -15,14 +17,31 @@ use sprite_scene::SpriteScene;
 mod rafxmark_scene;
 use rafxmark_scene::RafxmarkScene;
 
+mod many_sprites_scene;
+use many_sprites_scene::ManySpritesScene;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Scene {
     Shadows,
     Sprite,
     Rafxmark,
+    ManySprites,
 }
 
-pub const ALL_SCENES: [Scene; 3] = [Scene::Shadows, Scene::Sprite, Scene::Rafxmark];
+pub const ALL_SCENES: [Scene; 4] = [
+    Scene::Shadows,
+    Scene::Sprite,
+    Scene::Rafxmark,
+    Scene::ManySprites,
+];
+
+fn random_color(rng: &mut impl Rng) -> Vec3 {
+    let r = rng.gen_range(0.2, 1.0);
+    let g = rng.gen_range(0.2, 1.0);
+    let b = rng.gen_range(0.2, 1.0);
+    let v = Vec3::new(r, g, b);
+    v.normalize()
+}
 
 fn create_scene(
     scene: Scene,
@@ -33,6 +52,7 @@ fn create_scene(
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
         Scene::Sprite => Box::new(SpriteScene::new(world, resources)),
         Scene::Rafxmark => Box::new(RafxmarkScene::new(world, resources)),
+        Scene::ManySprites => Box::new(ManySpritesScene::new(world, resources)),
     }
 }
 

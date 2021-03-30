@@ -57,8 +57,8 @@ impl SpriteScene {
 
             let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
                 position,
-                scale: 0.125,
-                rotation: 0.0,
+                scale: glam::Vec2::splat(0.125),
+                rotation: glam::Quat::from_rotation_z(0.0),
                 tint: glam::Vec3::new(1.0, 1.0, 1.0),
                 alpha,
                 image: sprite_image.clone(),
