@@ -65,6 +65,7 @@ impl RafxmarkScene {
             .read_resource::<TimeState>()
             .with_query(<Write<BodyComponent>>::query())
             .build(move |_, world, time, queries| {
+                profiling::scope!("gravity_system");
                 for body in queries.iter_mut(world) {
                     body.velocity
                         .set_y(body.velocity.y() + GRAVITY * time.previous_update_dt());
@@ -75,6 +76,7 @@ impl RafxmarkScene {
             .read_resource::<TimeState>()
             .with_query(<(Write<PositionComponent>, Write<BodyComponent>)>::query())
             .build(move |_, world, time, queries| {
+                profiling::scope!("velocity_system");
                 for (pos, body) in queries.iter_mut(world) {
                     pos.position += body.velocity * time.previous_update_dt();
                 }
@@ -83,6 +85,7 @@ impl RafxmarkScene {
         let collision_system = SystemBuilder::new("collision")
             .with_query(<(Write<PositionComponent>, Write<BodyComponent>)>::query())
             .build(move |_, world, (), queries| {
+                profiling::scope!("collision_system");
                 for (pos, body) in queries.iter_mut(world) {
                     if pos.position.x() < LEFT {
                         pos.position.set_x(LEFT);
@@ -106,6 +109,7 @@ impl RafxmarkScene {
             .write_resource::<SpriteRenderNodeSet>()
             .with_query(<(Write<PositionComponent>, Read<SpriteComponent>)>::query())
             .build(move |_, world, sprite_render_node_set, queries| {
+                profiling::scope!("update_render_node_system");
                 for (pos, sprite) in queries.iter_mut(world) {
                     sprite_render_node_set
                         .get_mut(&sprite.render_node)

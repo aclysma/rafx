@@ -9,7 +9,7 @@ use crate::time::TimeState;
 use crate::RenderOptions;
 use glam::{Quat, Vec2, Vec3};
 use legion;
-use legion::{Resources, Schedule, World};
+use legion::{SystemBuilder, IntoQuery, Read, Resources, Schedule, World};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
@@ -54,7 +54,23 @@ impl ManySpritesScene {
         let half_x = (map_size.x() / 2.0) as i32;
         let half_y = (map_size.y() / 2.0) as i32;
 
-        let schedule = Schedule::builder().build();
+        let update_render_node_system = SystemBuilder::new("update_render_node")
+            .read_resource::<TimeState>()
+            .write_resource::<SpriteRenderNodeSet>()
+            .with_query(<Read<SpriteComponent>>::query())
+            .build(move |_, world, (time, sprite_render_node_set), queries| {
+                profiling::scope!("update_render_node_system");
+                for sprite in queries.iter_mut(world) {
+                    let render_node : &mut SpriteRenderNode = sprite_render_node_set
+                        .get_mut(&sprite.render_node)
+                        .unwrap();
+                    render_node.rotation *= Quat::from_rotation_z(time.previous_update_dt() * rand::random::<f32>());
+                }
+            });
+
+        let schedule = Schedule::builder()
+            .add_system(update_render_node_system)
+            .build();
 
         let mut sprite_count = 0 as usize;
 
