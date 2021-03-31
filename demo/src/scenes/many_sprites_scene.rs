@@ -11,7 +11,7 @@ use crate::time::TimeState;
 use crate::RenderOptions;
 use glam::{Quat, Vec2, Vec3};
 use legion;
-use legion::{IntoQuery, Read, Resources, Schedule, SystemBuilder, World};
+use legion::{IntoQuery, Read, Resources, Schedule, SystemBuilder, World, Write};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
@@ -22,12 +22,60 @@ use rand::Rng;
 
 const CAMERA_SPEED: f32 = 1000.0;
 
-pub(super) struct ManySpritesScene {
-    sprite_count: usize,
-    font: Handle<FontAsset>,
-    schedule: Schedule,
-    position: Transform,
+#[derive(Clone, Copy)]
+struct CameraComponent {
+    position: TransformComponent,
     up: Vec3,
+}
+
+#[derive(Clone)]
+struct TextComponent {
+    text: String,
+    font: Handle<FontAsset>,
+}
+
+#[derive(Clone, Copy)]
+struct TransformComponent {
+    pub translation: Vec3,
+    pub rotation: Quat,
+    pub scale: Vec3,
+}
+
+impl TransformComponent {
+    pub fn rotate(
+        &mut self,
+        rotation: Quat,
+    ) {
+        self.rotation *= rotation;
+    }
+
+    pub fn mul_transform(
+        &self,
+        transform: TransformComponent,
+    ) -> Self {
+        let translation = self.mul_vec3(transform.translation);
+        let rotation = self.rotation * transform.rotation;
+        let scale = self.scale * transform.scale;
+        TransformComponent {
+            translation,
+            rotation,
+            scale,
+        }
+    }
+
+    pub fn mul_vec3(
+        &self,
+        mut value: Vec3,
+    ) -> Vec3 {
+        value = self.rotation * value;
+        value = self.scale * value;
+        value += self.translation;
+        value
+    }
+}
+
+pub(super) struct ManySpritesScene {
+    schedule: Schedule,
 }
 
 impl ManySpritesScene {
@@ -56,6 +104,17 @@ impl ManySpritesScene {
         let half_x = (map_size.x() / 2.0) as i32;
         let half_y = (map_size.y() / 2.0) as i32;
 
+        let update_camera_system = SystemBuilder::new("update_camera")
+            .read_resource::<TimeState>()
+            .write_resource::<ViewportsResource>()
+            .with_query(<Write<CameraComponent>>::query())
+            .build(move |_, world, (time_state, viewports_resource), queries| {
+                profiling::scope!("update_camera_system");
+                for camera in queries.iter_mut(world) {
+                    update_main_view_2d(camera, time_state, viewports_resource);
+                }
+            });
+
         let update_render_node_system = SystemBuilder::new("update_render_node")
             .read_resource::<TimeState>()
             .write_resource::<SpriteRenderNodeSet>()
@@ -70,8 +129,26 @@ impl ManySpritesScene {
                 }
             });
 
+        let print_text_system = SystemBuilder::new("print_text")
+            .write_resource::<TextResource>()
+            .with_query(<Read<TextComponent>>::query())
+            .build(move |_, world, text_resource, queries| {
+                profiling::scope!("print_text_system");
+                for text in queries.iter_mut(world) {
+                    text_resource.add_text(
+                        text.text.clone(),
+                        glam::Vec3::new(25.0, 25.0, 0.0),
+                        &text.font,
+                        40.0,
+                        glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
+                    );
+                }
+            });
+
         let schedule = Schedule::builder()
+            .add_system(update_camera_system)
             .add_system(update_render_node_system)
+            .add_system(print_text_system)
             .build();
 
         let mut sprite_count = 0 as usize;
@@ -126,136 +203,21 @@ impl ManySpritesScene {
 
         const CAMERA_Z: f32 = 1000.0;
 
-        let position = Transform {
-            translation: Vec3::new(0., 0., CAMERA_Z),
-            rotation: Quat::from_rotation_x(0.),
-            scale: Vec3::new(1., 1., 1.),
-        };
+        world.push((CameraComponent {
+            position: TransformComponent {
+                translation: Vec3::new(0., 0., CAMERA_Z),
+                rotation: Quat::from_rotation_x(0.),
+                scale: Vec3::new(1., 1., 1.),
+            },
+            up: Vec3::new(0., 1., 0.),
+        },));
 
-        let up = Vec3::new(0., 1., 0.);
-
-        ManySpritesScene {
-            sprite_count,
-            schedule,
+        world.push((TextComponent {
+            text: format!("Sprite Count: {}", sprite_count),
             font,
-            position,
-            up,
-        }
-    }
+        },));
 
-    #[profiling::function]
-    fn update_main_view_2d(
-        &mut self,
-        time: &TimeState,
-        viewports_resource: &mut ViewportsResource,
-    ) {
-        let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
-            .add_render_phase::<DepthPrepassRenderPhase>()
-            .add_render_phase::<OpaqueRenderPhase>()
-            .add_render_phase::<TransparentRenderPhase>()
-            .add_render_phase::<UiRenderPhase>()
-            .build();
-
-        // Round to a whole number
-
-        self.position
-            .rotate(Quat::from_rotation_z(time.previous_update_dt() * 0.75));
-        self.position = self.position.mul_transform(Transform {
-            translation: Vec3::new(1., 0., 0.) * CAMERA_SPEED * time.previous_update_dt(),
-            rotation: Quat::from_rotation_x(0.),
-            scale: Vec3::new(1., 1., 1.),
-        });
-
-        let mut eye = self.position.translation;
-
-        let mut transform = Transform {
-            translation: eye,
-            rotation: Quat::from_rotation_x(0.),
-            scale: Vec3::new(1., 1., 1.),
-        };
-
-        transform.rotate(Quat::from_rotation_z(time.previous_update_dt() / 2.0));
-
-        self.up = transform.mul_vec3(self.up);
-
-        let half_width = viewports_resource.main_window_size.width as f32 / 2.0;
-        let half_height = viewports_resource.main_window_size.height as f32 / 2.0;
-
-        //
-        // This logic ensures pixel-perfect rendering when we have odd-sized width/height dimensions.
-        // We also need to round x/y to whole numbers to render pixel-perfect
-        //
-        if viewports_resource.main_window_size.width % 2 != 0 {
-            eye.set_x(eye.x().round() + 0.5);
-        } else {
-            eye.set_x(eye.x().round());
-        }
-
-        if viewports_resource.main_window_size.height % 2 != 0 {
-            eye.set_y(eye.y().round() + 0.5);
-        } else {
-            eye.set_y(eye.y().round());
-        }
-
-        let view = glam::Mat4::look_at_rh(eye, Vec3::new(0., 0., 0.), self.up);
-
-        let proj = glam::Mat4::orthographic_rh(
-            -half_width,
-            half_width,
-            -half_height,
-            half_height,
-            2000.0,
-            0.0,
-        );
-
-        viewports_resource.main_view_meta = Some(RenderViewMeta {
-            eye_position: eye,
-            view,
-            proj,
-            depth_range: RenderViewDepthRange::new_infinite_reverse(0.0),
-            render_phase_mask: main_camera_render_phase_mask,
-            debug_name: "main".to_string(),
-        });
-    }
-}
-
-#[derive(Clone, Copy)]
-struct Transform {
-    pub translation: Vec3,
-    pub rotation: Quat,
-    pub scale: Vec3,
-}
-
-impl Transform {
-    pub fn rotate(
-        &mut self,
-        rotation: Quat,
-    ) {
-        self.rotation *= rotation;
-    }
-
-    pub fn mul_transform(
-        &self,
-        transform: Transform,
-    ) -> Self {
-        let translation = self.mul_vec3(transform.translation);
-        let rotation = self.rotation * transform.rotation;
-        let scale = self.scale * transform.scale;
-        Transform {
-            translation,
-            rotation,
-            scale,
-        }
-    }
-
-    pub fn mul_vec3(
-        &self,
-        mut value: Vec3,
-    ) -> Vec3 {
-        value = self.rotation * value;
-        value = self.scale * value;
-        value += self.translation;
-        value
+        ManySpritesScene { schedule }
     }
 }
 
@@ -265,23 +227,82 @@ impl super::TestScene for ManySpritesScene {
         world: &mut World,
         resources: &mut Resources,
     ) {
-        {
-            let time_state = resources.get::<TimeState>().unwrap();
-            let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
-            self.update_main_view_2d(&time_state, &mut *viewports_resource);
-        }
-
         self.schedule.execute(world, resources);
-
-        {
-            let mut text_resource = resources.get_mut::<TextResource>().unwrap();
-            text_resource.add_text(
-                format!("Sprite Count: {}", self.sprite_count),
-                glam::Vec3::new(25.0, 25.0, 0.0),
-                &self.font,
-                40.0,
-                glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
-            );
-        }
     }
+}
+
+#[profiling::function]
+fn update_main_view_2d(
+    camera: &mut CameraComponent,
+    time: &TimeState,
+    viewports_resource: &mut ViewportsResource,
+) {
+    let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
+        .add_render_phase::<DepthPrepassRenderPhase>()
+        .add_render_phase::<OpaqueRenderPhase>()
+        .add_render_phase::<TransparentRenderPhase>()
+        .add_render_phase::<UiRenderPhase>()
+        .build();
+
+    // Round to a whole number
+
+    camera
+        .position
+        .rotate(Quat::from_rotation_z(time.previous_update_dt() * 0.75));
+    camera.position = camera.position.mul_transform(TransformComponent {
+        translation: Vec3::new(1., 0., 0.) * CAMERA_SPEED * time.previous_update_dt(),
+        rotation: Quat::from_rotation_x(0.),
+        scale: Vec3::new(1., 1., 1.),
+    });
+
+    let mut eye = camera.position.translation;
+
+    let mut transform = TransformComponent {
+        translation: eye,
+        rotation: Quat::from_rotation_x(0.),
+        scale: Vec3::new(1., 1., 1.),
+    };
+
+    transform.rotate(Quat::from_rotation_z(time.previous_update_dt() / 2.0));
+
+    camera.up = transform.mul_vec3(camera.up);
+
+    let half_width = viewports_resource.main_window_size.width as f32 / 2.0;
+    let half_height = viewports_resource.main_window_size.height as f32 / 2.0;
+
+    //
+    // This logic ensures pixel-perfect rendering when we have odd-sized width/height dimensions.
+    // We also need to round x/y to whole numbers to render pixel-perfect
+    //
+    if viewports_resource.main_window_size.width % 2 != 0 {
+        eye.set_x(eye.x().round() + 0.5);
+    } else {
+        eye.set_x(eye.x().round());
+    }
+
+    if viewports_resource.main_window_size.height % 2 != 0 {
+        eye.set_y(eye.y().round() + 0.5);
+    } else {
+        eye.set_y(eye.y().round());
+    }
+
+    let view = glam::Mat4::look_at_rh(eye, Vec3::new(0., 0., 0.), camera.up);
+
+    let proj = glam::Mat4::orthographic_rh(
+        -half_width,
+        half_width,
+        -half_height,
+        half_height,
+        2000.0,
+        0.0,
+    );
+
+    viewports_resource.main_view_meta = Some(RenderViewMeta {
+        eye_position: eye,
+        view,
+        proj,
+        depth_range: RenderViewDepthRange::new_infinite_reverse(0.0),
+        render_phase_mask: main_camera_render_phase_mask,
+        debug_name: "main".to_string(),
+    });
 }
