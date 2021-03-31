@@ -32,8 +32,8 @@ impl SpriteScene {
 
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            //asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
-            asset_resource.load_asset::<ImageAsset>("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38".into())
+            asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
+            //asset_resource.load_asset::<ImageAsset>("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38".into())
         };
 
         let ldtk_handle = {
@@ -57,8 +57,8 @@ impl SpriteScene {
 
             let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
                 position,
-                scale: 0.125,
-                rotation: 0.0,
+                scale: glam::Vec2::splat(0.125),
+                rotation: glam::Quat::from_rotation_z(0.0),
                 tint: glam::Vec3::new(1.0, 1.0, 1.0),
                 alpha,
                 image: sprite_image.clone(),
@@ -92,7 +92,7 @@ impl super::TestScene for SpriteScene {
     fn update(
         &mut self,
         _world: &mut World,
-        resources: &Resources,
+        resources: &mut Resources,
     ) {
         {
             let time_state = resources.get::<TimeState>().unwrap();

@@ -242,11 +242,12 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
     #[cfg(feature = "profile-with-optick")]
     profiling::optick::register_thread("Main Thread");
 
+    let mut scene_manager = SceneManager::default();
+
     let mut resources = Resources::default();
     resources.insert(TimeState::new());
     resources.insert(RenderOptions::default_2d());
     resources.insert(DebugUiState::default());
-    resources.insert(SceneManager::default());
 
     let asset_source = if let Some(packfile) = &args.packfile {
         AssetSource::Packfile(packfile.to_path_buf())
@@ -287,10 +288,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         }
 
         {
-            resources
-                .get_mut::<SceneManager>()
-                .unwrap()
-                .try_create_next_scene(&mut world, &resources);
+            scene_manager.try_create_next_scene(&mut world, &resources);
         }
 
         let t0 = std::time::Instant::now();
@@ -338,7 +336,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         // Process input
         //
-        if !process_input(&resources, &mut event_pump) {
+        if !process_input(&mut scene_manager, &mut world, &resources, &mut event_pump) {
             break 'running;
         }
         //
@@ -353,13 +351,6 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         }
 
         {
-            resources
-                .get_mut::<SceneManager>()
-                .unwrap()
-                .update_scene(&mut world, &resources);
-        }
-
-        {
             let mut text_resource = resources.get_mut::<TextResource>().unwrap();
 
             text_resource.add_text(
@@ -369,6 +360,10 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                 20.0,
                 glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
             );
+        }
+
+        {
+            scene_manager.update_scene(&mut world, &mut resources);
         }
 
         //
@@ -552,6 +547,8 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
 }
 
 fn process_input(
+    scene_manager: &mut SceneManager,
+    world: &mut World,
     resources: &Resources,
     event_pump: &mut sdl2::EventPump,
 ) -> bool {
@@ -559,7 +556,6 @@ fn process_input(
     let imgui_manager = resources
         .get::<crate::features::imgui::Sdl2ImguiManager>()
         .unwrap();
-    let mut scene_manager = resources.get_mut::<SceneManager>().unwrap();
     for event in event_pump.poll_iter() {
         #[cfg(feature = "use-imgui")]
         let ignore_event = {
@@ -572,6 +568,7 @@ fn process_input(
 
         if !ignore_event {
             //log::trace!("{:?}", event);
+            let mut was_handled = false;
             match event {
                 //
                 // Halt if the user requests to close the window
@@ -602,23 +599,30 @@ fn process_input(
                             .calculate_stats()
                             .unwrap();
                         println!("{:#?}", stats);
+                        was_handled = true;
                     }
 
                     if keycode == Keycode::Left {
                         scene_manager.queue_load_previous_scene();
+                        was_handled = true;
                     }
 
                     if keycode == Keycode::Right {
                         scene_manager.queue_load_next_scene();
+                        was_handled = true;
                     }
 
                     if keycode == Keycode::M {
                         let metrics = resources.get::<AssetManager>().unwrap().metrics();
                         println!("{:#?}", metrics);
+                        was_handled = true;
                     }
                 }
-
                 _ => {}
+            }
+
+            if !was_handled {
+                scene_manager.process_input(world, resources, event);
             }
         }
     }

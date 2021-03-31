@@ -91,9 +91,9 @@ pub fn create_sprite_extract_job() -> Box<dyn ExtractJob> {
 pub struct SpriteRenderNode {
     pub position: glam::Vec3,
     pub tint: glam::Vec3,
-    pub scale: f32,
+    pub scale: glam::Vec2,
     pub alpha: f32,
-    pub rotation: f32,
+    pub rotation: glam::Quat,
     pub image: Handle<ImageAsset>,
 }
 
@@ -156,8 +156,8 @@ rafx::declare_render_feature!(SpriteRenderFeature, SPRITE_FEATURE_INDEX);
 pub(self) struct ExtractedSpriteData {
     position: glam::Vec3,
     texture_size: glam::Vec2,
-    scale: f32,
-    rotation: f32,
+    scale: glam::Vec2,
+    rotation: glam::Quat,
     color: glam::Vec4,
     image_view: ResourceArc<ImageViewResource>,
 }

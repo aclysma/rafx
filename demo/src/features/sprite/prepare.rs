@@ -54,7 +54,7 @@ impl PrepareJob for SpritePrepareJob {
             let layout = &self.sprite_material.get_raw().descriptor_set_layouts
                 [shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
             let descriptor_set = descriptor_set_allocator
-                .create_descriptor_set(
+                .create_descriptor_set_with_writer(
                     &*layout,
                     shaders::sprite_vert::DescriptorSet0Args {
                         uniform_buffer: &shaders::sprite_vert::ArgsUniform {
@@ -122,7 +122,7 @@ impl PrepareJob for SpritePrepareJob {
                         .entry(sprite.image_view.clone())
                         .or_insert_with(|| {
                             let descriptor_set = descriptor_set_allocator
-                                .create_descriptor_set(
+                                .create_descriptor_set_with_writer(
                                     &descriptor_set_layouts
                                         [shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX],
                                     shaders::sprite_frag::DescriptorSet1Args {
@@ -268,11 +268,11 @@ impl PrepareJob for SpritePrepareJob {
 
                             let matrix = glam::Mat4::from_scale_rotation_translation(
                                 glam::Vec3::new(
-                                    sprite.texture_size.x() * sprite.scale,
-                                    sprite.texture_size.y() * sprite.scale,
+                                    sprite.texture_size.x() * sprite.scale.x(),
+                                    sprite.texture_size.y() * sprite.scale.y(),
                                     1.0,
                                 ),
-                                glam::Quat::from_rotation_z(sprite.rotation),
+                                sprite.rotation,
                                 sprite.position,
                             );
 
