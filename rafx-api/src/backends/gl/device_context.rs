@@ -14,6 +14,8 @@ use std::sync::Arc;
 //     RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl,
 // };
 
+use crate::gl::RafxSwapchainGl;
+
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
 use std::sync::atomic::AtomicU64;
@@ -197,13 +199,13 @@ impl RafxDeviceContextGl {
     //     RafxSemaphoreGl::new(self)
     // }
     //
-    // pub fn create_swapchain(
-    //     &self,
-    //     raw_window_handle: &dyn HasRawWindowHandle,
-    //     swapchain_def: &RafxSwapchainDef,
-    // ) -> RafxResult<RafxSwapchainGl> {
-    //     RafxSwapchainGl::new(self, raw_window_handle, swapchain_def)
-    // }
+    pub fn create_swapchain(
+        &self,
+        raw_window_handle: &dyn HasRawWindowHandle,
+        swapchain_def: &RafxSwapchainDef,
+    ) -> RafxResult<RafxSwapchainGl> {
+        RafxSwapchainGl::new(self, raw_window_handle, swapchain_def)
+    }
     //
     // pub fn wait_for_fences(
     //     &self,

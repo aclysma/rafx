@@ -7,6 +7,8 @@ use crate::empty::RafxFenceEmpty;
 use crate::metal::RafxFenceMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxFenceVulkan;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxFenceGl;
 use crate::{RafxFenceStatus, RafxResult};
 
 /// A GPU -> CPU synchronization mechanism.
@@ -26,6 +28,8 @@ pub enum RafxFence {
     Vk(RafxFenceVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxFenceMetal),
+    #[cfg(feature = "rafx-gl")]
+    Gl(RafxFenceGl),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -45,6 +49,8 @@ impl RafxFence {
             RafxFence::Vk(inner) => inner.get_fence_status(),
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(inner) => inner.get_fence_status(),
+            #[cfg(feature = "rafx-gl")]
+            RafxFence::Gl(inner) => inner.get_fence_status(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -60,6 +66,8 @@ impl RafxFence {
             RafxFence::Vk(inner) => inner.wait(),
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(inner) => inner.wait(),
+            #[cfg(feature = "rafx-gl")]
+            RafxFence::Gl(inner) => inner.wait(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -77,6 +85,8 @@ impl RafxFence {
             RafxFence::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxFence::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -94,6 +104,27 @@ impl RafxFence {
             RafxFence::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(inner) => Some(inner),
+            #[cfg(feature = "rafx-gl")]
+            RafxFence::Gl(inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxFence::Empty(inner) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_fence(&self) -> Option<&RafxFenceGl> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxFence::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxFence::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxFence::Gl(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -114,6 +145,8 @@ impl RafxFence {
             RafxFence::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(inner) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxFence::Gl(inner) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

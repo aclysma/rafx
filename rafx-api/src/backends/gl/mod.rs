@@ -3,9 +3,9 @@ pub use api::*;
 
 mod device_context;
 pub use device_context::*;
-//
-// mod swapchain;
-// pub use swapchain::*;
+
+mod swapchain;
+pub use swapchain::*;
 //
 // mod shader_module;
 // pub use shader_module::*;
@@ -22,11 +22,11 @@ pub use device_context::*;
 // mod command_buffer;
 // pub use command_buffer::*;
 //
-// mod fence;
-// pub use fence::*;
-//
-// mod semaphore;
-// pub use semaphore::*;
+mod fence;
+pub use fence::*;
+
+mod semaphore;
+pub use semaphore::*;
 //
 // mod texture;
 // pub use texture::*;

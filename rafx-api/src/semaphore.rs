@@ -7,6 +7,8 @@ use crate::empty::RafxSemaphoreEmpty;
 use crate::metal::RafxSemaphoreMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxSemaphoreVulkan;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxSemaphoreGl;
 
 /// A GPU -> GPU synchronization mechanism.
 ///
@@ -21,6 +23,8 @@ pub enum RafxSemaphore {
     Vk(RafxSemaphoreVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSemaphoreMetal),
+    #[cfg(feature = "rafx-gl")]
+    Gl(RafxSemaphoreGl),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -38,6 +42,8 @@ impl RafxSemaphore {
             RafxSemaphore::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxSemaphore::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxSemaphore::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -55,6 +61,27 @@ impl RafxSemaphore {
             RafxSemaphore::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxSemaphore::Metal(inner) => Some(inner),
+            #[cfg(feature = "rafx-gl")]
+            RafxSemaphore::Gl(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxSemaphore::Empty(inner) => None,
+        }
+    }
+
+    /// Get the underlying gl API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_semaphore(&self) -> Option<&RafxSemaphoreGl> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxSemaphore::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxSemaphore::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxSemaphore::Gl(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -75,6 +102,8 @@ impl RafxSemaphore {
             RafxSemaphore::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxSemaphore::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxSemaphore::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

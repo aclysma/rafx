@@ -143,7 +143,9 @@ impl RafxDeviceContext {
                 RafxSwapchain::Metal(inner.create_swapchain(raw_window_handle, swapchain_def)?)
             }
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => {
+                RafxSwapchain::Gl(inner.create_swapchain(raw_window_handle, swapchain_def)?)
+            },
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
