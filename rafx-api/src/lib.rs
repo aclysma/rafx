@@ -240,6 +240,11 @@ pub use backends::vulkan;
 #[cfg(feature = "rafx-vulkan")]
 pub use backends::vulkan::RafxApiDefVulkan;
 
+#[cfg(feature = "rafx-gl")]
+pub use backends::gl;
+#[cfg(feature = "rafx-gl")]
+pub use backends::gl::RafxApiDefGl;
+
 #[cfg(any(
     feature = "rafx-empty",
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

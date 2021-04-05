@@ -43,11 +43,15 @@ dispatch = { version = "0.2", optional = true }
 foreign-types-shared = { version = "0.1", optional = true }
 block = { version = "0.1.6", optional = true }
 
+# gl
+raw-gl-context = { version = "0.1.2", optional = true }
+
 [features]
 default = []
 rafx-empty = []
 rafx-vulkan = ["ash", "vk-mem", "ash-window"]
 rafx-metal = ["metal_rs", "objc", "raw-window-metal", "cocoa-foundation", "dispatch", "foreign-types-shared", "block"]
+rafx-gl = ["raw-gl-context"]
 static-vulkan = []
 serde-support = ["serde", "serde_bytes"]
 track-device-contexts = ["backtrace"]

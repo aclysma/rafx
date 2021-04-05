@@ -18,6 +18,7 @@ rafx-framework = { path = "../../rafx-framework" }
 default = []
 rafx-vulkan = ["rafx-framework/rafx-vulkan"]
 rafx-metal = ["rafx-framework/rafx-metal"]
+rafx-gl = ["rafx-framework/rafx-gl"]
 
 [dev-dependencies]
 memoffset = "0.6"
