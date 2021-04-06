@@ -1,5 +1,6 @@
 use crate::gl::{
-    RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl, RafxSwapchainGl,
+    RafxCommandBufferGl, RafxCommandPoolGl, RafxDeviceContextGl,
+    RafxFenceGl, RafxSemaphoreGl, RafxSwapchainGl,
 };
 use crate::{RafxCommandPoolDef, RafxPresentSuccessResult, RafxQueueType, RafxResult};
 use std::sync::atomic::AtomicUsize;
@@ -32,17 +33,17 @@ impl RafxQueueGl {
         self.inner.queue_id
     }
 
-    // //
-    // // These barrier flag helpers are not meant to be threadsafe, the Rafx API assumes command
-    // // buffers and the queues they come from are not concurrently accessed. (Even if we were careful
-    // // about thread-safety here, underlying GPU APIs will often produce undefined behavior if this
-    // // occurs.)
-    // //
+    //
+    // These barrier flag helpers are not meant to be threadsafe, the Rafx API assumes command
+    // buffers and the queues they come from are not concurrently accessed. (Even if we were careful
+    // about thread-safety here, underlying GPU APIs will often produce undefined behavior if this
+    // occurs.)
+    //
     // pub fn barrier_flags(&self) -> BarrierFlagsGl {
     //     BarrierFlagsGl::from_bits(self.inner.barrier_flags.load(Ordering::Relaxed)).unwrap()
     // }
-    //
-    // // Get the fence used internally by the currently recording command buffer
+
+    // Get the fence used internally by the currently recording command buffer
     // pub fn gl_fence(&self) -> &gl_rs::FenceRef {
     //     self.inner.fence.as_ref()
     // }
@@ -72,44 +73,45 @@ impl RafxQueueGl {
     //     self.inner.queue.as_ref()
     // }
 
-    // pub fn create_command_pool(
-    //     &self,
-    //     command_pool_def: &RafxCommandPoolDef,
-    // ) -> RafxResult<RafxCommandPoolGl> {
-    //     RafxCommandPoolGl::new(&self, command_pool_def)
-    // }
+    pub fn create_command_pool(
+        &self,
+        command_pool_def: &RafxCommandPoolDef,
+    ) -> RafxResult<RafxCommandPoolGl> {
+        RafxCommandPoolGl::new(&self, command_pool_def)
+    }
 
     pub fn new(
         device_context: &RafxDeviceContextGl,
         queue_type: RafxQueueType,
     ) -> RafxResult<RafxQueueGl> {
-        //let queue = device_context.device().new_command_queue();
-        //let fence = device_context.device().new_fence();
-
-        let queue_id = NEXT_QUEUE_ID.fetch_add(1, Ordering::Relaxed);
-        let inner = RafxQueueGlInner {
-            device_context: device_context.clone(),
-            queue_type,
-            //queue,
-            queue_id,
-            //barrier_flags: AtomicU8::default(),
-            //fence,
-        };
-
-        Ok(RafxQueueGl {
-            inner: Arc::new(inner),
-        })
+        unimplemented!();
+        // let queue = device_context.device().new_command_queue();
+        // let fence = device_context.device().new_fence();
+        //
+        // let queue_id = NEXT_QUEUE_ID.fetch_add(1, Ordering::Relaxed);
+        // let inner = RafxQueueGlInner {
+        //     device_context: device_context.clone(),
+        //     queue_type,
+        //     queue,
+        //     queue_id,
+        //     barrier_flags: AtomicU8::default(),
+        //     fence,
+        // };
+        //
+        // Ok(RafxQueueGl {
+        //     inner: Arc::new(inner),
+        // })
     }
 
     pub fn wait_for_queue_idle(&self) -> RafxResult<()> {
-        let wait = self
-            .inner
-            .queue
-            .new_command_buffer_with_unretained_references();
         unimplemented!();
+        // let wait = self
+        //     .inner
+        //     .queue
+        //     .new_command_buffer_with_unretained_references();
         // wait.commit();
         // wait.wait_until_completed();
-        Ok(())
+        // Ok(())
     }
 
     fn submit_semaphore_wait(
@@ -142,6 +144,7 @@ impl RafxQueueGl {
         signal_semaphores: &[&RafxSemaphoreGl],
         signal_fence: Option<&RafxFenceGl>,
     ) -> RafxResult<()> {
+        unimplemented!();
         // objc::rc::autoreleasepool(|| {
         //     assert!(!command_buffers.is_empty());
         //
@@ -193,7 +196,6 @@ impl RafxQueueGl {
         //
         //     Ok(())
         // })
-        unimplemented!()
     }
 
     pub fn present(
@@ -202,7 +204,7 @@ impl RafxQueueGl {
         wait_semaphores: &[&RafxSemaphoreGl],
         _image_index: u32,
     ) -> RafxResult<RafxPresentSuccessResult> {
-        unimplemented!()
+        unimplemented!();
         // objc::rc::autoreleasepool(|| {
         //     self.submit_semaphore_wait(wait_semaphores);
         //

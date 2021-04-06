@@ -4,6 +4,8 @@ use crate::{RafxCommandBuffer, RafxResult, RafxTexture};
 use crate::metal::RafxCommandBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxCommandBufferVulkan;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxCommandBufferGl;
 
 #[cfg(feature = "rafx-vulkan")]
 use crate::{
@@ -32,6 +34,8 @@ pub fn generate_mipmaps(
         RafxCommandBuffer::Vk(inner) => generate_mipmaps_vk(inner, _texture),
         #[cfg(feature = "rafx-metal")]
         RafxCommandBuffer::Metal(inner) => generate_mipmaps_metal(inner, _texture),
+        #[cfg(feature = "rafx-gl")]
+        RafxCommandBuffer::Gl(inner) => generate_mipmaps_gl(inner, _texture),
         #[cfg(any(
             feature = "rafx-empty",
             not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -40,7 +44,6 @@ pub fn generate_mipmaps(
     }
 }
 
-// This custom path for metal can be removed after I implement cmd_blit
 #[cfg(feature = "rafx-metal")]
 fn generate_mipmaps_metal(
     command_buffer: &RafxCommandBufferMetal,
@@ -56,6 +59,15 @@ fn generate_mipmaps_metal(
     blit_encoder.end_encoding();
 
     return Ok(());
+}
+
+// This custom path for metal can be removed after I implement cmd_blit
+#[cfg(feature = "rafx-gl")]
+fn generate_mipmaps_gl(
+    command_buffer: &RafxCommandBufferGl,
+    texture: &RafxTexture,
+) -> RafxResult<()> {
+    unimplemented!();
 }
 
 #[cfg(feature = "rafx-vulkan")]

@@ -3,6 +3,15 @@ use std::hash::Hash;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
+/// GL-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
+/// used to initialize a shader module GPU object
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub enum RafxShaderPackageGl {
+    /// Raw uncompiled sorce code. Will be compiled at runtime.
+    Src(String),
+}
+
 /// Metal-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
 /// used to initialize a shader module GPU object
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -40,11 +49,25 @@ pub enum RafxShaderPackageEmpty {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxShaderPackage {
+    pub gl: Option<RafxShaderPackageGl>,
     pub metal: Option<RafxShaderPackageMetal>,
     pub vk: Option<RafxShaderPackageVulkan>,
 }
 
 impl RafxShaderPackage {
+    /// Create a shader module def for use with a GL RafxDevice. Returns none if the package does
+    /// not contain data necessary for GL
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_module_def(&self) -> Option<RafxShaderModuleDefGl> {
+        if let Some(gl) = self.gl.as_ref() {
+            Some(match gl {
+                RafxShaderPackageGl::Src(src) => RafxShaderModuleDefGl::GlSrc(src),
+            })
+        } else {
+            None
+        }
+    }
+
     /// Create a shader module def for use with a metal RafxDevice. Returns none if the package does
     /// not contain data necessary for metal
     #[cfg(feature = "rafx-metal")]
@@ -89,6 +112,8 @@ impl RafxShaderPackage {
 
     pub fn module_def(&self) -> RafxShaderModuleDef {
         RafxShaderModuleDef {
+            #[cfg(feature = "rafx-gl")]
+            gl: self.gl_module_def(),
             #[cfg(feature = "rafx-metal")]
             metal: self.metal_module_def(),
             #[cfg(feature = "rafx-vulkan")]
@@ -101,6 +126,16 @@ impl RafxShaderPackage {
             empty: self.empty_module_def(),
         }
     }
+}
+
+/// Used to create a RafxShaderModule
+///
+/// This enum may be populated manually or created from a RafxShaderPackage.
+#[derive(Copy, Clone, Hash)]
+#[cfg(feature = "rafx-gl")]
+pub enum RafxShaderModuleDefGl<'a> {
+    /// GL source code
+    GlSrc(&'a str),
 }
 
 /// Used to create a RafxShaderModule
@@ -142,6 +177,8 @@ pub enum RafxShaderModuleDefEmpty<'a> {
 /// This enum may be populated manually or created from a RafxShaderPackage.
 #[derive(Copy, Clone, Hash)]
 pub struct RafxShaderModuleDef<'a> {
+    #[cfg(feature = "rafx-gl")]
+    pub gl: Option<RafxShaderModuleDefGl<'a>>,
     #[cfg(feature = "rafx-metal")]
     pub metal: Option<RafxShaderModuleDefMetal<'a>>,
     #[cfg(feature = "rafx-vulkan")]

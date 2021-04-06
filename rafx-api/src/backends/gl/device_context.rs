@@ -1,20 +1,18 @@
 use crate::{
     RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext,
     RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxResourceType,
-    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, //RafxShaderModuleDefGl,
+    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDefGl,
     RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
-// use crate::gl::features::GlFeatures;
-// use crate::gl::{
-//     RafxBufferGl, RafxDescriptorSetArrayGl, RafxFenceGl, RafxPipelineGl,
-//     RafxQueueGl, RafxRootSignatureGl, RafxSamplerGl, RafxSemaphoreGl, RafxShaderGl,
-//     RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl,
-// };
-
-use crate::gl::{RafxSwapchainGl, RafxFenceGl, RafxSemaphoreGl};
+//use crate::gl::features::GlFeatures;
+use crate::gl::{
+    RafxBufferGl, RafxDescriptorSetArrayGl, RafxFenceGl, RafxPipelineGl,
+    RafxQueueGl, RafxRootSignatureGl, RafxSamplerGl, RafxSemaphoreGl, RafxShaderGl,
+    RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl,
+};
 
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
@@ -50,43 +48,44 @@ impl Drop for RafxDeviceContextGlInner {
 
 impl RafxDeviceContextGlInner {
     pub fn new() -> RafxResult<Self> {
-        let device_info = RafxDeviceInfo {
-            // pretty sure this is consistent across macOS device (maybe not M1, not sure)
-            min_uniform_buffer_offset_alignment: 256,
-            // based on one of the loosest vulkan limits (intel iGPU), can't find official value
-            min_storage_buffer_offset_alignment: 64,
-            upload_buffer_texture_alignment: 16,
-            upload_buffer_texture_row_alignment: 1,
-            supports_clamp_to_border_color: true, //TODO: Check for iOS support
-        };
-
-        #[cfg(debug_assertions)]
-        #[cfg(feature = "track-device-contexts")]
-        let all_contexts = {
-            let create_backtrace = backtrace::Backtrace::new_unresolved();
-            let mut all_contexts = fnv::FnvHashMap::<u64, backtrace::Backtrace>::default();
-            all_contexts.insert(0, create_backtrace);
-            all_contexts
-        };
-
-        //let device = gl_rs::Device::system_default().expect("no device found");
-
-        //let gl_features = GlFeatures::from_device(device.as_ref());
-
-        Ok(RafxDeviceContextGlInner {
-            device_info,
-            //device,
-            //gl_features,
-            destroyed: AtomicBool::new(false),
-
-            #[cfg(debug_assertions)]
-            #[cfg(feature = "track-device-contexts")]
-            all_contexts: Mutex::new(all_contexts),
-
-            #[cfg(debug_assertions)]
-            #[cfg(feature = "track-device-contexts")]
-            next_create_index: AtomicU64::new(1),
-        })
+        unimplemented!();
+        // let device_info = RafxDeviceInfo {
+        //     // pretty sure this is consistent across macOS device (maybe not M1, not sure)
+        //     min_uniform_buffer_offset_alignment: 256,
+        //     // based on one of the loosest vulkan limits (intel iGPU), can't find official value
+        //     min_storage_buffer_offset_alignment: 64,
+        //     upload_buffer_texture_alignment: 16,
+        //     upload_buffer_texture_row_alignment: 1,
+        //     supports_clamp_to_border_color: true, //TODO: Check for iOS support
+        // };
+        //
+        // #[cfg(debug_assertions)]
+        // #[cfg(feature = "track-device-contexts")]
+        // let all_contexts = {
+        //     let create_backtrace = backtrace::Backtrace::new_unresolved();
+        //     let mut all_contexts = fnv::FnvHashMap::<u64, backtrace::Backtrace>::default();
+        //     all_contexts.insert(0, create_backtrace);
+        //     all_contexts
+        // };
+        //
+        // let device = gl_rs::Device::system_default().expect("no device found");
+        //
+        // let gl_features = GlFeatures::from_device(device.as_ref());
+        //
+        // Ok(RafxDeviceContextGlInner {
+        //     device_info,
+        //     device,
+        //     gl_features,
+        //     destroyed: AtomicBool::new(false),
+        //
+        //     #[cfg(debug_assertions)]
+        //     #[cfg(feature = "track-device-contexts")]
+        //     all_contexts: Mutex::new(all_contexts),
+        //
+        //     #[cfg(debug_assertions)]
+        //     #[cfg(feature = "track-device-contexts")]
+        //     next_create_index: AtomicU64::new(1),
+        // })
     }
 }
 
@@ -170,7 +169,7 @@ impl RafxDeviceContextGl {
     // pub fn device(&self) -> &gl_rs::Device {
     //     &self.inner.device
     // }
-    //
+
     // pub fn gl_features(&self) -> &GlFeatures {
     //     &self.inner.gl_features
     // }
@@ -183,14 +182,14 @@ impl RafxDeviceContextGl {
             create_index: 0,
         })
     }
-    //
-    // pub fn create_queue(
-    //     &self,
-    //     queue_type: RafxQueueType,
-    // ) -> RafxResult<RafxQueueGl> {
-    //     RafxQueueGl::new(self, queue_type)
-    // }
-    //
+
+    pub fn create_queue(
+        &self,
+        queue_type: RafxQueueType,
+    ) -> RafxResult<RafxQueueGl> {
+        RafxQueueGl::new(self, queue_type)
+    }
+
     pub fn create_fence(&self) -> RafxResult<RafxFenceGl> {
         RafxFenceGl::new(self)
     }
@@ -213,123 +212,125 @@ impl RafxDeviceContextGl {
     ) -> RafxResult<()> {
         RafxFenceGl::wait_for_fences(self, fences)
     }
-    //
-    // pub fn create_sampler(
-    //     &self,
-    //     sampler_def: &RafxSamplerDef,
-    // ) -> RafxResult<RafxSamplerGl> {
-    //     RafxSamplerGl::new(self, sampler_def)
-    // }
-    //
-    // pub fn create_texture(
-    //     &self,
-    //     texture_def: &RafxTextureDef,
-    // ) -> RafxResult<RafxTextureGl> {
-    //     RafxTextureGl::new(self, texture_def)
-    // }
-    //
-    // pub fn create_buffer(
-    //     &self,
-    //     buffer_def: &RafxBufferDef,
-    // ) -> RafxResult<RafxBufferGl> {
-    //     RafxBufferGl::new(self, buffer_def)
-    // }
-    //
-    // pub fn create_shader(
-    //     &self,
-    //     stages: Vec<RafxShaderStageDef>,
-    // ) -> RafxResult<RafxShaderGl> {
-    //     RafxShaderGl::new(self, stages)
-    // }
-    //
-    // pub fn create_root_signature(
-    //     &self,
-    //     root_signature_def: &RafxRootSignatureDef,
-    // ) -> RafxResult<RafxRootSignatureGl> {
-    //     RafxRootSignatureGl::new(self, root_signature_def)
-    // }
-    //
-    // pub fn create_descriptor_set_array(
-    //     &self,
-    //     descriptor_set_array_def: &RafxDescriptorSetArrayDef,
-    // ) -> RafxResult<RafxDescriptorSetArrayGl> {
-    //     RafxDescriptorSetArrayGl::new(self, descriptor_set_array_def)
-    // }
-    //
-    // pub fn create_graphics_pipeline(
-    //     &self,
-    //     graphics_pipeline_def: &RafxGraphicsPipelineDef,
-    // ) -> RafxResult<RafxPipelineGl> {
-    //     RafxPipelineGl::new_graphics_pipeline(self, graphics_pipeline_def)
-    // }
-    //
-    // pub fn create_compute_pipeline(
-    //     &self,
-    //     compute_pipeline_def: &RafxComputePipelineDef,
-    // ) -> RafxResult<RafxPipelineGl> {
-    //     RafxPipelineGl::new_compute_pipeline(self, compute_pipeline_def)
-    // }
-    //
-    // pub fn create_shader_module(
-    //     &self,
-    //     data: RafxShaderModuleDefGl,
-    // ) -> RafxResult<RafxShaderModuleGl> {
-    //     RafxShaderModuleGl::new(self, data)
-    // }
-    //
-    // pub fn find_supported_format(
-    //     &self,
-    //     candidates: &[RafxFormat],
-    //     resource_type: RafxResourceType,
-    // ) -> Option<RafxFormat> {
-    //     // https://developer.apple.com/gl/Gl-Feature-Set-Tables.pdf
-    //     use gl_rs::PixelFormatCapabilities;
-    //
-    //     let mut required_capabilities = PixelFormatCapabilities::empty();
-    //
-    //     // Some formats include color and not write, so I think it's not necessary to have write
-    //     // capability for color attachments
-    //     if resource_type.intersects(RafxResourceType::RENDER_TARGET_COLOR) {
-    //         required_capabilities |= PixelFormatCapabilities::Color;
-    //     }
-    //
-    //     // Depth formats don't include write, so presumably it's implied that a depth format can
-    //     // be a depth attachment
-    //     // if resource_type.intersects(RafxResourceType::RENDER_TARGET_DEPTH_STENCIL) {
-    //     //     required_capabilities |= PixelFormatCapabilities::Write;
-    //     // }
-    //
-    //     if resource_type.intersects(RafxResourceType::TEXTURE_READ_WRITE) {
-    //         required_capabilities |= PixelFormatCapabilities::Write;
-    //     }
-    //
-    //     for &candidate in candidates {
-    //         let capabilities = self
-    //             .inner
-    //             .gl_features
-    //             .pixel_format_capabilities(candidate.into());
-    //         if capabilities.contains(required_capabilities) {
-    //             return Some(candidate);
-    //         }
-    //     }
-    //
-    //     None
-    // }
-    //
-    // pub fn find_supported_sample_count(
-    //     &self,
-    //     candidates: &[RafxSampleCount],
-    // ) -> Option<RafxSampleCount> {
-    //     for &candidate in candidates {
-    //         if self
-    //             .inner
-    //             .device
-    //             .supports_texture_sample_count(candidate.into())
-    //         {
-    //             return Some(candidate);
-    //         }
-    //     }
-    //
-    //     None
-    // }
+
+    pub fn create_sampler(
+        &self,
+        sampler_def: &RafxSamplerDef,
+    ) -> RafxResult<RafxSamplerGl> {
+        RafxSamplerGl::new(self, sampler_def)
+    }
+
+    pub fn create_texture(
+        &self,
+        texture_def: &RafxTextureDef,
+    ) -> RafxResult<RafxTextureGl> {
+        RafxTextureGl::new(self, texture_def)
+    }
+
+    pub fn create_buffer(
+        &self,
+        buffer_def: &RafxBufferDef,
+    ) -> RafxResult<RafxBufferGl> {
+        RafxBufferGl::new(self, buffer_def)
+    }
+
+    pub fn create_shader(
+        &self,
+        stages: Vec<RafxShaderStageDef>,
+    ) -> RafxResult<RafxShaderGl> {
+        RafxShaderGl::new(self, stages)
+    }
+
+    pub fn create_root_signature(
+        &self,
+        root_signature_def: &RafxRootSignatureDef,
+    ) -> RafxResult<RafxRootSignatureGl> {
+        RafxRootSignatureGl::new(self, root_signature_def)
+    }
+
+    pub fn create_descriptor_set_array(
+        &self,
+        descriptor_set_array_def: &RafxDescriptorSetArrayDef,
+    ) -> RafxResult<RafxDescriptorSetArrayGl> {
+        RafxDescriptorSetArrayGl::new(self, descriptor_set_array_def)
+    }
+
+    pub fn create_graphics_pipeline(
+        &self,
+        graphics_pipeline_def: &RafxGraphicsPipelineDef,
+    ) -> RafxResult<RafxPipelineGl> {
+        RafxPipelineGl::new_graphics_pipeline(self, graphics_pipeline_def)
+    }
+
+    pub fn create_compute_pipeline(
+        &self,
+        compute_pipeline_def: &RafxComputePipelineDef,
+    ) -> RafxResult<RafxPipelineGl> {
+        RafxPipelineGl::new_compute_pipeline(self, compute_pipeline_def)
+    }
+
+    pub fn create_shader_module(
+        &self,
+        data: RafxShaderModuleDefGl,
+    ) -> RafxResult<RafxShaderModuleGl> {
+        RafxShaderModuleGl::new(self, data)
+    }
+
+    pub fn find_supported_format(
+        &self,
+        candidates: &[RafxFormat],
+        resource_type: RafxResourceType,
+    ) -> Option<RafxFormat> {
+        unimplemented!();
+        // // https://developer.apple.com/gl/Gl-Feature-Set-Tables.pdf
+        // use gl_rs::PixelFormatCapabilities;
+        //
+        // let mut required_capabilities = PixelFormatCapabilities::empty();
+        //
+        // // Some formats include color and not write, so I think it's not necessary to have write
+        // // capability for color attachments
+        // if resource_type.intersects(RafxResourceType::RENDER_TARGET_COLOR) {
+        //     required_capabilities |= PixelFormatCapabilities::Color;
+        // }
+        //
+        // // Depth formats don't include write, so presumably it's implied that a depth format can
+        // // be a depth attachment
+        // // if resource_type.intersects(RafxResourceType::RENDER_TARGET_DEPTH_STENCIL) {
+        // //     required_capabilities |= PixelFormatCapabilities::Write;
+        // // }
+        //
+        // if resource_type.intersects(RafxResourceType::TEXTURE_READ_WRITE) {
+        //     required_capabilities |= PixelFormatCapabilities::Write;
+        // }
+        //
+        // for &candidate in candidates {
+        //     let capabilities = self
+        //         .inner
+        //         .gl_features
+        //         .pixel_format_capabilities(candidate.into());
+        //     if capabilities.contains(required_capabilities) {
+        //         return Some(candidate);
+        //     }
+        // }
+        //
+        // None
+    }
+
+    pub fn find_supported_sample_count(
+        &self,
+        candidates: &[RafxSampleCount],
+    ) -> Option<RafxSampleCount> {
+        unimplemented!();
+        // for &candidate in candidates {
+        //     if self
+        //         .inner
+        //         .device
+        //         .supports_texture_sample_count(candidate.into())
+        //     {
+        //         return Some(candidate);
+        //     }
+        // }
+
+        //None
+    }
 }

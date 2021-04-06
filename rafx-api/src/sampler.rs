@@ -7,6 +7,8 @@ use crate::empty::RafxSamplerEmpty;
 use crate::metal::RafxSamplerMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxSamplerVulkan;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxSamplerGl;
 
 /// Configures how images will be sampled by the GPU
 ///
@@ -17,6 +19,8 @@ pub enum RafxSampler {
     Vk(RafxSamplerVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSamplerMetal),
+    #[cfg(feature = "rafx-gl")]
+    Gl(RafxSamplerGl),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -33,12 +37,14 @@ impl RafxSampler {
             #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
-            RafxSampler::Metal(_inner) => None,
+            RafxSampler::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxSampler::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxSampler::Empty(_inner) => None,
+            RafxSampler::Empty(_) => None,
         }
     }
 
@@ -48,14 +54,35 @@ impl RafxSampler {
     pub fn metal_sampler(&self) -> Option<&RafxSamplerMetal> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxSampler::Vk(_inner) => None,
+            RafxSampler::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxSampler::Metal(inner) => Some(inner),
+            #[cfg(feature = "rafx-gl")]
+            RafxSampler::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxSampler::Empty(_inner) => None,
+            RafxSampler::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_sampler(&self) -> Option<&RafxSamplerGl> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxSampler::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxSampler::Metal(inner) => Some(inner),
+            #[cfg(feature = "rafx-gl")]
+            RafxSampler::Gl(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxSampler::Empty(_) => None,
         }
     }
 
@@ -68,9 +95,11 @@ impl RafxSampler {
     pub fn empty_sampler(&self) -> Option<&RafxSamplerEmpty> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxSampler::Vk(_inner) => None,
+            RafxSampler::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxSampler::Metal(_inner) => None,
+            RafxSampler::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxSampler::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

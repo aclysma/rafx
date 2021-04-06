@@ -7,6 +7,8 @@ use crate::empty::RafxRootSignatureEmpty;
 use crate::metal::RafxRootSignatureMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxRootSignatureVulkan;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxRootSignatureGl;
 use crate::RafxPipelineType;
 
 /// Represents the full "layout" or "interface" of a shader (or set of shaders.)
@@ -19,6 +21,8 @@ pub enum RafxRootSignature {
     Vk(RafxRootSignatureVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxRootSignatureMetal),
+    #[cfg(feature = "rafx-gl")]
+    Gl(RafxRootSignatureGl),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -34,6 +38,8 @@ impl RafxRootSignature {
             RafxRootSignature::Vk(inner) => inner.pipeline_type(),
             #[cfg(feature = "rafx-metal")]
             RafxRootSignature::Metal(inner) => inner.pipeline_type(),
+            #[cfg(feature = "rafx-gl")]
+            RafxRootSignature::Gl(inner) => inner.pipeline_type(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -50,12 +56,14 @@ impl RafxRootSignature {
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
-            RafxRootSignature::Metal(_inner) => None,
+            RafxRootSignature::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxRootSignature::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxRootSignature::Empty(_inner) => None,
+            RafxRootSignature::Empty(_) => None,
         }
     }
 
@@ -65,14 +73,35 @@ impl RafxRootSignature {
     pub fn metal_root_signature(&self) -> Option<&RafxRootSignatureMetal> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxRootSignature::Vk(_inner) => None,
+            RafxRootSignature::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxRootSignature::Metal(inner) => Some(inner),
+            #[cfg(feature = "rafx-gl")]
+            RafxRootSignature::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxRootSignature::Empty(_inner) => None,
+            RafxRootSignature::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_root_signature(&self) -> Option<&RafxRootSignatureGl> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxRootSignature::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxRootSignature::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxRootSignature::Gl(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxRootSignature::Empty(_) => None,
         }
     }
 
@@ -85,9 +114,11 @@ impl RafxRootSignature {
     pub fn empty_root_signature(&self) -> Option<&RafxRootSignatureEmpty> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxRootSignature::Vk(_inner) => None,
+            RafxRootSignature::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxRootSignature::Metal(_inner) => None,
+            RafxRootSignature::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxRootSignature::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

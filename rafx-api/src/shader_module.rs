@@ -7,6 +7,8 @@ use crate::empty::RafxShaderModuleEmpty;
 use crate::metal::RafxShaderModuleMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxShaderModuleVulkan;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxShaderModuleGl;
 
 /// Rrepresents loaded shader code that can be used to create a pipeline.
 ///
@@ -19,6 +21,8 @@ pub enum RafxShaderModule {
     Vk(RafxShaderModuleVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxShaderModuleMetal),
+    #[cfg(feature = "rafx-gl")]
+    Gl(RafxShaderModuleGl),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -33,14 +37,16 @@ impl RafxShaderModule {
     pub fn vk_shader_module(&self) -> Option<&RafxShaderModuleVulkan> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxShaderModule::Vk(shader_module) => Some(shader_module),
+            RafxShaderModule::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
-            RafxShaderModule::Metal(_shader_module) => None,
+            RafxShaderModule::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxShaderModule::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxShaderModule::Empty(_shader_module) => None,
+            RafxShaderModule::Empty(_) => None,
         }
     }
 
@@ -50,14 +56,35 @@ impl RafxShaderModule {
     pub fn metal_shader_module(&self) -> Option<&RafxShaderModuleMetal> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxShaderModule::Vk(_shader_module) => None,
+            RafxShaderModule::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxShaderModule::Metal(shader_module) => Some(shader_module),
+            RafxShaderModule::Metal(inner) => Some(inner),
+            #[cfg(feature = "rafx-gl")]
+            RafxShaderModule::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxShaderModule::Empty(_shader_module) => None,
+            RafxShaderModule::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_shader_module(&self) -> Option<&RafxShaderModuleGl> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxShaderModule::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxShaderModule::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxShaderModule::Gl(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxShaderModule::Empty(_) => None,
         }
     }
 
@@ -70,14 +97,16 @@ impl RafxShaderModule {
     pub fn empty_shader_module(&self) -> Option<&RafxShaderModuleEmpty> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxShaderModule::Vk(_shader_module) => None,
+            RafxShaderModule::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxShaderModule::Metal(_shader_module) => None,
+            RafxShaderModule::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxShaderModule::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxShaderModule::Empty(shader_module) => Some(shader_module),
+            RafxShaderModule::Empty(inner) => Some(inner),
         }
     }
 }

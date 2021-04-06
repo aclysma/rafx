@@ -144,9 +144,9 @@ impl RafxFence {
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxFence::Metal(inner) => None,
+            RafxFence::Metal(_) => None,
             #[cfg(feature = "rafx-gl")]
-            RafxFence::Gl(inner) => None,
+            RafxFence::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

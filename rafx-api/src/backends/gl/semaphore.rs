@@ -18,15 +18,16 @@ unsafe impl Sync for RafxSemaphoreGl {}
 
 impl RafxSemaphoreGl {
     pub fn new(device_context: &RafxDeviceContextGl) -> RafxResult<RafxSemaphoreGl> {
-        //TODO: Need to add support for new_event() in gl crate
-
-        //let gl_event = device_context.device().new_event();
-
-        Ok(RafxSemaphoreGl {
-            _device_context: device_context.clone(),
-            //gl_event,
-            signal_available: AtomicBool::new(false),
-        })
+        unimplemented!();
+        // //TODO: Need to add support for new_event() in gl crate
+        //
+        // let gl_event = device_context.device().new_event();
+        //
+        // Ok(RafxSemaphoreGl {
+        //     _device_context: device_context.clone(),
+        //     gl_event,
+        //     signal_available: AtomicBool::new(false),
+        // })
     }
 
     // pub fn gl_event(&self) -> &gl_rs::EventRef {
@@ -34,6 +35,7 @@ impl RafxSemaphoreGl {
     // }
 
     pub(crate) fn signal_available(&self) -> bool {
+        unimplemented!();
         self.signal_available.load(Ordering::Relaxed)
     }
 
@@ -41,6 +43,7 @@ impl RafxSemaphoreGl {
         &self,
         available: bool,
     ) {
+        unimplemented!();
         self.signal_available.store(available, Ordering::Relaxed);
     }
 }

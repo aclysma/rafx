@@ -7,6 +7,8 @@ use crate::empty::RafxCommandBufferEmpty;
 use crate::metal::RafxCommandBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxCommandBufferVulkan;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxCommandBufferGl;
 use crate::{
     RafxBuffer, RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
     RafxDepthStencilRenderTargetBinding, RafxDescriptorSetArray, RafxDescriptorSetHandle,
@@ -43,6 +45,9 @@ pub enum RafxCommandBuffer {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxCommandBufferMetal),
 
+    #[cfg(feature = "rafx-gl")]
+    Gl(RafxCommandBufferGl),
+
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -59,6 +64,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.begin(),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.begin(),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.begin(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -75,6 +82,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.end(),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.end(),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.end(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -95,6 +104,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.return_to_pool(),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.return_to_pool(),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.return_to_pool(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -122,6 +133,10 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Metal(inner) => {
                 inner.cmd_begin_render_pass(color_targets, depth_target)
             }
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => {
+                inner.cmd_begin_render_pass(color_targets, depth_target)
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -139,6 +154,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.cmd_end_render_pass(),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_end_render_pass(),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_end_render_pass(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -168,6 +185,10 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Metal(inner) => {
                 inner.cmd_set_viewport(x, y, width, height, depth_min, depth_max)
             }
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => {
+                inner.cmd_set_viewport(x, y, width, height, depth_min, depth_max)
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -193,6 +214,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.cmd_set_scissor(x, y, width, height),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_set_scissor(x, y, width, height),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_set_scissor(x, y, width, height),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -214,6 +237,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.cmd_set_stencil_reference_value(value),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_set_stencil_reference_value(value),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_set_stencil_reference_value(value),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -236,6 +261,10 @@ impl RafxCommandBuffer {
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => {
                 inner.cmd_bind_pipeline(pipeline.metal_pipeline().unwrap())
+            }
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => {
+                inner.cmd_bind_pipeline(pipeline.gl_pipeline().unwrap())
             }
             #[cfg(any(
                 feature = "rafx-empty",
@@ -263,6 +292,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Metal(inner) => {
                 inner.cmd_bind_vertex_buffers(first_binding, bindings)
             }
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_bind_vertex_buffers(first_binding, bindings),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -286,6 +317,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.cmd_bind_index_buffer(binding),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_bind_index_buffer(binding),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_bind_index_buffer(binding),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -311,6 +344,11 @@ impl RafxCommandBuffer {
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_bind_descriptor_set(
                 descriptor_set_array.metal_descriptor_set_array().unwrap(),
+                index,
+            ),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_bind_descriptor_set(
+                descriptor_set_array.gl_descriptor_set_array().unwrap(),
                 index,
             ),
             #[cfg(any(
@@ -347,6 +385,12 @@ impl RafxCommandBuffer {
                 set_index,
                 descriptor_set_handle.metal_descriptor_set_handle().unwrap(),
             ),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_bind_descriptor_set_handle(
+                root_signature.gl_root_signature().unwrap(),
+                set_index,
+                descriptor_set_handle.gl_descriptor_set_handle().unwrap(),
+            ),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -370,6 +414,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.cmd_draw(vertex_count, first_vertex),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_draw(vertex_count, first_vertex),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_draw(vertex_count, first_vertex),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -393,6 +439,10 @@ impl RafxCommandBuffer {
             }
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => {
+                inner.cmd_draw_instanced(vertex_count, first_vertex, instance_count, first_instance)
+            }
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => {
                 inner.cmd_draw_instanced(vertex_count, first_vertex, instance_count, first_instance)
             }
             #[cfg(any(
@@ -422,6 +472,10 @@ impl RafxCommandBuffer {
             }
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => {
+                inner.cmd_draw_indexed(index_count, first_index, vertex_offset)
+            }
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => {
                 inner.cmd_draw_indexed(index_count, first_index, vertex_offset)
             }
             #[cfg(any(
@@ -460,6 +514,14 @@ impl RafxCommandBuffer {
                 first_instance,
                 vertex_offset,
             ),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_draw_indexed_instanced(
+                index_count,
+                first_index,
+                instance_count,
+                first_instance,
+                vertex_offset,
+            ),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -490,6 +552,10 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Metal(inner) => {
                 inner.cmd_dispatch(group_count_x, group_count_y, group_count_z)
             }
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => {
+                inner.cmd_dispatch(group_count_x, group_count_y, group_count_z)
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -513,6 +579,10 @@ impl RafxCommandBuffer {
             }
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => {
+                inner.cmd_resource_barrier(buffer_barriers, texture_barriers)
+            }
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => {
                 inner.cmd_resource_barrier(buffer_barriers, texture_barriers)
             }
             #[cfg(any(
@@ -552,6 +622,14 @@ impl RafxCommandBuffer {
                 dst_offset,
                 size,
             ),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_copy_buffer_to_buffer(
+                src_buffer.gl_buffer().unwrap(),
+                dst_buffer.gl_buffer().unwrap(),
+                src_offset,
+                dst_offset,
+                size,
+            ),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -587,6 +665,12 @@ impl RafxCommandBuffer {
                 dst_texture.metal_texture().unwrap(),
                 params,
             ),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => inner.cmd_copy_buffer_to_texture(
+                src_buffer.gl_buffer().unwrap(),
+                dst_texture.gl_texture().unwrap(),
+                params,
+            ),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -608,6 +692,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -625,6 +711,27 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => Some(inner),
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxCommandBuffer::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying gl API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_command_buffer(&self) -> Option<&RafxCommandBufferGl> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -645,6 +752,8 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxCommandBuffer::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

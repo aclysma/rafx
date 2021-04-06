@@ -86,7 +86,7 @@ impl RafxSemaphore {
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxSemaphore::Empty(inner) => None,
+            RafxSemaphore::Empty(_) => None,
         }
     }
 

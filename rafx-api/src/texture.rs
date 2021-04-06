@@ -7,6 +7,8 @@ use crate::empty::RafxTextureEmpty;
 use crate::metal::RafxTextureMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxTextureVulkan;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxTextureGl;
 use crate::RafxTextureDef;
 
 /// An image that can be used by the GPU.
@@ -18,6 +20,8 @@ pub enum RafxTexture {
     Vk(RafxTextureVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxTextureMetal),
+    #[cfg(feature = "rafx-gl")]
+    Gl(RafxTextureGl),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -33,6 +37,8 @@ impl RafxTexture {
             RafxTexture::Vk(inner) => inner.texture_def(),
             #[cfg(feature = "rafx-metal")]
             RafxTexture::Metal(inner) => inner.texture_def(),
+            #[cfg(feature = "rafx-gl")]
+            RafxTexture::Gl(inner) => inner.texture_def(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -49,12 +55,14 @@ impl RafxTexture {
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
-            RafxTexture::Metal(_inner) => None,
+            RafxTexture::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxTexture::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxTexture::Empty(_inner) => None,
+            RafxTexture::Empty(_) => None,
         }
     }
 
@@ -64,14 +72,35 @@ impl RafxTexture {
     pub fn metal_texture(&self) -> Option<&RafxTextureMetal> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxTexture::Vk(_inner) => None,
+            RafxTexture::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxTexture::Metal(inner) => Some(inner),
+            #[cfg(feature = "rafx-gl")]
+            RafxTexture::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxTexture::Empty(_inner) => None,
+            RafxTexture::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_texture(&self) -> Option<&RafxTextureGl> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxTexture::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxTexture::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxTexture::Gl(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxTexture::Empty(_) => None,
         }
     }
 
@@ -84,9 +113,11 @@ impl RafxTexture {
     pub fn empty_texture(&self) -> Option<&RafxTextureEmpty> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxTexture::Vk(_inner) => None,
+            RafxTexture::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxTexture::Metal(_inner) => None,
+            RafxTexture::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxTexture::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
