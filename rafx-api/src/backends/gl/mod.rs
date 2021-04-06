@@ -13,8 +13,8 @@ pub use swapchain::*;
 // mod shader;
 // pub use shader::*;
 //
-// mod queue;
-// pub use queue::*;
+mod queue;
+pub use queue::*;
 //
 // mod command_pool;
 // pub use command_pool::*;

@@ -14,7 +14,7 @@ use std::sync::Arc;
 //     RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl,
 // };
 
-use crate::gl::RafxSwapchainGl;
+use crate::gl::{RafxSwapchainGl, RafxFenceGl, RafxSemaphoreGl};
 
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
@@ -191,14 +191,14 @@ impl RafxDeviceContextGl {
     //     RafxQueueGl::new(self, queue_type)
     // }
     //
-    // pub fn create_fence(&self) -> RafxResult<RafxFenceGl> {
-    //     RafxFenceGl::new(self)
-    // }
-    //
-    // pub fn create_semaphore(&self) -> RafxResult<RafxSemaphoreGl> {
-    //     RafxSemaphoreGl::new(self)
-    // }
-    //
+    pub fn create_fence(&self) -> RafxResult<RafxFenceGl> {
+        RafxFenceGl::new(self)
+    }
+
+    pub fn create_semaphore(&self) -> RafxResult<RafxSemaphoreGl> {
+        RafxSemaphoreGl::new(self)
+    }
+
     pub fn create_swapchain(
         &self,
         raw_window_handle: &dyn HasRawWindowHandle,
@@ -206,13 +206,13 @@ impl RafxDeviceContextGl {
     ) -> RafxResult<RafxSwapchainGl> {
         RafxSwapchainGl::new(self, raw_window_handle, swapchain_def)
     }
-    //
-    // pub fn wait_for_fences(
-    //     &self,
-    //     fences: &[&RafxFenceGl],
-    // ) -> RafxResult<()> {
-    //     RafxFenceGl::wait_for_fences(self, fences)
-    // }
+
+    pub fn wait_for_fences(
+        &self,
+        fences: &[&RafxFenceGl],
+    ) -> RafxResult<()> {
+        RafxFenceGl::wait_for_fences(self, fences)
+    }
     //
     // pub fn create_sampler(
     //     &self,
