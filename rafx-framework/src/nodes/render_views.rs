@@ -180,8 +180,7 @@ impl RenderView {
         render_phase_mask: RenderPhaseMask,
         debug_name: String,
     ) -> RenderView {
-        let view_dir =
-            glam::Vec3::new(view.x_axis().z(), view.y_axis().z(), view.z_axis().z()) * -1.0;
+        let view_dir = glam::Vec3::new(view.x_axis.z, view.y_axis.z, view.z_axis.z) * -1.0;
 
         log::trace!("Allocate view {} {}", debug_name, view_index);
         let inner = RenderViewInner {

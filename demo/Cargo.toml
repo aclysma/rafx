@@ -37,7 +37,7 @@ serde_json = "1.0"
 
 log = "0.4"
 env_logger = "0.6"
-glam = { version = "0.8.6", features = ["serde"] }
+glam = { version = "0.13.1", features = [ "serde" ] }
 arrayvec = "0.5"
 crossbeam-channel = "0.5"
 fnv = "1.0"

@@ -162,7 +162,7 @@ fn add_light_debug_draw(
     let mut query = <Read<DirectionalLightComponent>>::query();
     for light in query.iter(world) {
         let light_from = light.direction * -10.0;
-        let light_to = glam::Vec3::zero();
+        let light_to = glam::Vec3::ZERO;
 
         debug_draw.add_line(light_from, light_to, light.color);
     }

@@ -391,7 +391,7 @@ impl PrepareJob for MeshPrepareJob {
                     if let Some(extracted_data) = extracted_data {
                         //let per_object_descriptor = frame_node_descriptor_sets[view_node.frame_node_index() as usize].as_ref().unwrap().clone();
 
-                        let world_position = extracted_data.world_transform.w_axis().truncate();
+                        let world_position = extracted_data.world_transform.w_axis.truncate();
                         let distance = (view.eye_position() - world_position).length_squared();
 
                         for (mesh_part_index, mesh_part) in extracted_data
@@ -536,7 +536,7 @@ impl MeshPrepareJob {
                 break;
             }
 
-            let light_from = glam::Vec3::zero();
+            let light_from = glam::Vec3::ZERO;
             let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
             let light_to = light.light.direction;
             let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();

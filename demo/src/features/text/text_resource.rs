@@ -260,13 +260,13 @@ impl FontAtlasCache {
                     &mut draw_call_buffer_data,
                     layout.glyphs(),
                     &font_atlases,
-                    draw.position.z(),
+                    draw.position.z,
                 );
                 // do something with them
 
                 layout.reset(&LayoutSettings {
-                    x: draw.position.x(),
-                    y: draw.position.y(),
+                    x: draw.position.x,
+                    y: draw.position.y,
                     ..Default::default()
                 });
             }
@@ -285,7 +285,7 @@ impl FontAtlasCache {
                 &mut draw_call_buffer_data,
                 layout.glyphs(),
                 &font_atlases,
-                draw.position.z(),
+                draw.position.z,
             );
         }
 

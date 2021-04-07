@@ -122,8 +122,7 @@ impl RafxmarkScene {
             .build(move |_, world, time, queries| {
                 profiling::scope!("gravity_system");
                 for body in queries.iter_mut(world) {
-                    body.velocity
-                        .set_y(body.velocity.y() + GRAVITY * time.previous_update_dt());
+                    body.velocity.y = body.velocity.y + GRAVITY * time.previous_update_dt();
                 }
             });
 
@@ -142,20 +141,20 @@ impl RafxmarkScene {
             .build(move |_, world, (), queries| {
                 profiling::scope!("collision_system");
                 for (pos, body) in queries.iter_mut(world) {
-                    if pos.position.x() < LEFT {
-                        pos.position.set_x(LEFT);
-                        body.velocity.set_x(-body.velocity.x());
-                    } else if pos.position.x() > RIGHT {
-                        pos.position.set_x(RIGHT);
-                        body.velocity.set_x(-body.velocity.x());
+                    if pos.position.x < LEFT {
+                        pos.position.x = LEFT;
+                        body.velocity.x = -body.velocity.x;
+                    } else if pos.position.x > RIGHT {
+                        pos.position.x = RIGHT;
+                        body.velocity.x = -body.velocity.x;
                     }
 
-                    if pos.position.y() > TOP {
-                        pos.position.set_y(TOP);
-                        body.velocity.set_y(-body.velocity.y());
-                    } else if pos.position.y() < BOTTOM {
-                        pos.position.set_y(BOTTOM);
-                        body.velocity.set_y(-body.velocity.y());
+                    if pos.position.y > TOP {
+                        pos.position.y = TOP;
+                        body.velocity.y = -body.velocity.y;
+                    } else if pos.position.y < BOTTOM {
+                        pos.position.y = BOTTOM;
+                        body.velocity.y = -body.velocity.y;
                     }
                 }
             });
@@ -332,15 +331,15 @@ fn update_main_view_2d(viewports_resource: &mut ViewportsResource) {
     // We also need to round x/y to whole numbers to render pixel-perfect
     //
     if viewports_resource.main_window_size.width % 2 != 0 {
-        eye.set_x(eye.x().round() + 0.5);
+        eye.x = eye.x.round() + 0.5;
     } else {
-        eye.set_x(eye.x().round());
+        eye.x = eye.x.round();
     }
 
     if viewports_resource.main_window_size.height % 2 != 0 {
-        eye.set_y(eye.y().round() + 0.5);
+        eye.y = eye.y.round() + 0.5;
     } else {
-        eye.set_y(eye.y().round());
+        eye.y = eye.y.round();
     }
 
     let view = glam::Mat4::look_at_rh(eye, Vec3::new(0., 0., 0.), Vec3::new(0.0, 1.0, 0.0));

@@ -81,11 +81,11 @@ impl DebugDraw3DResource {
     }
 
     pub fn normal_to_xy(normal: glam::Vec3) -> (glam::Vec3, glam::Vec3) {
-        if normal.dot(glam::Vec3::unit_z()).abs() > 0.9999 {
+        if normal.dot(glam::Vec3::Z).abs() > 0.9999 {
             // Can't cross the Z axis with the up vector, so special case that here
-            (glam::Vec3::unit_x(), glam::Vec3::unit_y())
+            (glam::Vec3::X, glam::Vec3::Y)
         } else {
-            let x_dir = normal.cross(glam::Vec3::unit_z());
+            let x_dir = normal.cross(glam::Vec3::Z);
             let y_dir = x_dir.cross(normal);
             (x_dir, y_dir)
         }
@@ -116,7 +116,7 @@ impl DebugDraw3DResource {
             // Rotate around whole sphere (2pi)
             let fraction = (index as f32 / segments as f32) * std::f32::consts::PI * 2.0;
             let x_dir = glam::Vec3::new(fraction.cos(), fraction.sin(), 0.0);
-            let y_dir = glam::Vec3::unit_z();
+            let y_dir = glam::Vec3::Z;
 
             self.add_circle_xy(center, x_dir, y_dir, radius, color, segments);
         }
@@ -124,8 +124,8 @@ impl DebugDraw3DResource {
         // Draw the center horizontal ring
         self.add_circle_xy(
             center,
-            glam::Vec3::unit_x(),
-            glam::Vec3::unit_y(),
+            glam::Vec3::X,
+            glam::Vec3::Y,
             radius,
             color,
             segments,
@@ -136,13 +136,13 @@ impl DebugDraw3DResource {
             let fraction = (index as f32 / segments as f32) * std::f32::consts::PI * 2.0;
 
             let r = radius * fraction.cos();
-            let z_offset = radius * fraction.sin() * glam::Vec3::unit_z();
+            let z_offset = radius * fraction.sin() * glam::Vec3::Z;
 
             //let transform = glam::Mat4::from_translation(center + glam::Vec3::new(0.0, 0.0, z_offset));
             self.add_circle_xy(
                 center + z_offset,
-                glam::Vec3::unit_x(),
-                glam::Vec3::unit_y(),
+                glam::Vec3::X,
+                glam::Vec3::Y,
                 r,
                 color,
                 segments,
@@ -150,8 +150,8 @@ impl DebugDraw3DResource {
 
             self.add_circle_xy(
                 center - z_offset,
-                glam::Vec3::unit_x(),
-                glam::Vec3::unit_y(),
+                glam::Vec3::X,
+                glam::Vec3::Y,
                 r,
                 color,
                 segments,

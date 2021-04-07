@@ -17,12 +17,12 @@ pub struct RenderViewMeta {
 
 impl Default for RenderViewMeta {
     fn default() -> Self {
-        let eye = glam::Vec3::zero();
-        let up = glam::Vec3::unit_z();
-        let target = glam::Vec3::unit_y();
+        let eye = glam::Vec3::ZERO;
+        let up = glam::Vec3::Z;
+        let target = glam::Vec3::Y;
 
         let view = glam::Mat4::look_at_rh(eye, target, up);
-        let proj = glam::Mat4::identity();
+        let proj = glam::Mat4::IDENTITY;
 
         RenderViewMeta {
             eye_position: eye,

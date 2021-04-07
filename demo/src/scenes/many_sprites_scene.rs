@@ -101,8 +101,8 @@ impl ManySpritesScene {
         let tile_size = Vec2::splat(64.0);
         let map_size = Vec2::splat(320.0);
 
-        let half_x = (map_size.x() / 2.0) as i32;
-        let half_y = (map_size.y() / 2.0) as i32;
+        let half_x = (map_size.x / 2.0) as i32;
+        let half_y = (map_size.y / 2.0) as i32;
 
         let update_camera_system = SystemBuilder::new("update_camera")
             .read_resource::<TimeState>()
@@ -275,15 +275,15 @@ fn update_main_view_2d(
     // We also need to round x/y to whole numbers to render pixel-perfect
     //
     if viewports_resource.main_window_size.width % 2 != 0 {
-        eye.set_x(eye.x().round() + 0.5);
+        eye.x = eye.x.round() + 0.5;
     } else {
-        eye.set_x(eye.x().round());
+        eye.x = eye.x.round();
     }
 
     if viewports_resource.main_window_size.height % 2 != 0 {
-        eye.set_y(eye.y().round() + 0.5);
+        eye.y = eye.y.round() + 0.5;
     } else {
-        eye.set_y(eye.y().round());
+        eye.y = eye.y.round();
     }
 
     let view = glam::Mat4::look_at_rh(eye, Vec3::new(0., 0., 0.), camera.up);
