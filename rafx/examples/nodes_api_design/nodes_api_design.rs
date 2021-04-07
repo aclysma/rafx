@@ -178,7 +178,7 @@ fn main() {
             let main_view = render_view_set.create_view(
                 eye_position,
                 view_proj,
-                glam::Mat4::identity(),
+                glam::Mat4::IDENTITY,
                 (frustum_width, frustum_height),
                 RenderViewDepthRange::new(near, far),
                 main_camera_render_phase_mask,
@@ -208,7 +208,7 @@ fn main() {
             let minimap_view = render_view_set.create_view(
                 eye_position,
                 view_proj,
-                glam::Mat4::identity(),
+                glam::Mat4::IDENTITY,
                 (frustum_width, frustum_height),
                 RenderViewDepthRange::new(near, far),
                 minimap_render_phase_mask,

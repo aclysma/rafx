@@ -173,15 +173,15 @@ fn update_main_view_2d(
     // We also need to round x/y to whole numbers to render pixel-perfect
     //
     if viewports_resource.main_window_size.width % 2 != 0 {
-        eye.set_x(eye.x().round() + 0.5);
+        eye.x = eye.x.round() + 0.5;
     } else {
-        eye.set_x(eye.x().round());
+        eye.x = eye.x.round();
     }
 
     if viewports_resource.main_window_size.height % 2 != 0 {
-        eye.set_y(eye.y().round() + 0.5);
+        eye.y = eye.y.round() + 0.5;
     } else {
-        eye.set_y(eye.y().round());
+        eye.y = eye.y.round();
     }
 
     let view = glam::Mat4::look_at_rh(

@@ -286,7 +286,7 @@ fn calculate_shadow_map_views(
         let eye_position = light.direction * -40.0;
         let view = glam::Mat4::look_at_rh(
             eye_position,
-            glam::Vec3::zero(),
+            glam::Vec3::ZERO,
             glam::Vec3::new(0.0, 0.0, 1.0),
         );
 
@@ -321,12 +321,12 @@ fn calculate_shadow_map_views(
     #[rustfmt::skip]
         // The eye offset and up vector. The directions are per the specification of cubemaps
         let cube_map_view_directions = [
-        (glam::Vec3::unit_x(), glam::Vec3::unit_y()),
-        (glam::Vec3::unit_x() * -1.0, glam::Vec3::unit_y()),
-        (glam::Vec3::unit_y(), glam::Vec3::unit_z() * -1.0),
-        (glam::Vec3::unit_y() * -1.0, glam::Vec3::unit_z()),
-        (glam::Vec3::unit_z(), glam::Vec3::unit_y()),
-        (glam::Vec3::unit_z() * -1.0, glam::Vec3::unit_y()),
+        (glam::Vec3::X, glam::Vec3::Y),
+        (glam::Vec3::X * -1.0, glam::Vec3::Y),
+        (glam::Vec3::Y, glam::Vec3::Z * -1.0),
+        (glam::Vec3::Y * -1.0, glam::Vec3::Z),
+        (glam::Vec3::Z, glam::Vec3::Y),
+        (glam::Vec3::Z * -1.0, glam::Vec3::Y),
     ];
 
     let mut query = <(Entity, Read<PointLightComponent>, Read<PositionComponent>)>::query();

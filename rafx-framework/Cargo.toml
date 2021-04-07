@@ -26,7 +26,7 @@ fnv = "1.0"
 profiling = "0.1.9"
 serde = { version = "1", features = ["serde_derive"] }
 serde_bytes = "0.11"
-glam = { version = "0.8.6", features = [ "serde" ] }
+glam = { version = "0.13.1", features = [ "serde" ] }
 
 [features]
 default = []

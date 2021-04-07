@@ -141,7 +141,7 @@ impl ShadowsScene {
         // DIRECTIONAL LIGHT
         //
         let light_from = glam::Vec3::new(-5.0, 5.0, 5.0);
-        let light_to = glam::Vec3::zero();
+        let light_to = glam::Vec3::ZERO;
         let light_direction = (light_to - light_from).normalize();
         super::add_directional_light(
             resources,
@@ -157,7 +157,7 @@ impl ShadowsScene {
         // SPOT LIGHT
         //
         let light_from = glam::Vec3::new(-3.0, -3.0, 5.0);
-        let light_to = glam::Vec3::zero();
+        let light_to = glam::Vec3::ZERO;
         let light_direction = (light_to - light_from).normalize();
         super::add_spot_light(
             resources,
@@ -267,7 +267,7 @@ fn update_main_view_3d(
     let aspect_ratio = viewports_resource.main_window_size.width as f32
         / viewports_resource.main_window_size.height.max(1) as f32;
 
-    let view = glam::Mat4::look_at_rh(eye, glam::Vec3::zero(), glam::Vec3::new(0.0, 0.0, 1.0));
+    let view = glam::Mat4::look_at_rh(eye, glam::Vec3::ZERO, glam::Vec3::new(0.0, 0.0, 1.0));
 
     let near_plane = 0.01;
     let proj = glam::Mat4::perspective_infinite_reverse_rh(

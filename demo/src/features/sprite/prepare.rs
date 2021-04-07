@@ -148,7 +148,7 @@ impl PrepareJob for SpritePrepareJob {
                     // within a batch contiguously in vertex/index buffers. This way they can be
                     // rendered with a single draw call
                     //
-                    let batch_key = if sprite.color.w() >= 1.0 {
+                    let batch_key = if sprite.color.w >= 1.0 {
                         // Transparent sprites batch by material index and depth
                         BatchKey {
                             material_index,
@@ -158,7 +158,7 @@ impl PrepareJob for SpritePrepareJob {
                         // Transparent sprites batch by material index and depth
                         BatchKey {
                             material_index,
-                            depth: Some(DecimalF32(sprite.position.z())),
+                            depth: Some(DecimalF32(sprite.position.z)),
                         }
                     };
 
@@ -228,7 +228,7 @@ impl PrepareJob for SpritePrepareJob {
                             {
                                 let submit_node_id = draw_calls.len() as u32;
 
-                                if sprite.color.w() >= 1.0 {
+                                if sprite.color.w >= 1.0 {
                                     // non-transparent can just batch by material
                                     view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(
                                         submit_node_id,
@@ -238,7 +238,7 @@ impl PrepareJob for SpritePrepareJob {
                                 } else {
                                     // transparent must be ordered by distance
                                     let distance =
-                                        (view.eye_position().z() - sprite.position.z()).abs();
+                                        (view.eye_position().z - sprite.position.z).abs();
                                     view_submit_nodes.add_submit_node::<TransparentRenderPhase>(
                                         submit_node_id,
                                         batch_index,
@@ -268,8 +268,8 @@ impl PrepareJob for SpritePrepareJob {
 
                             let matrix = glam::Mat4::from_scale_rotation_translation(
                                 glam::Vec3::new(
-                                    sprite.texture_size.x() * sprite.scale.x(),
-                                    sprite.texture_size.y() * sprite.scale.y(),
+                                    sprite.texture_size.x * sprite.scale.x,
+                                    sprite.texture_size.y * sprite.scale.y,
                                     1.0,
                                 ),
                                 sprite.rotation,
