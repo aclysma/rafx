@@ -24,11 +24,11 @@ impl RafxApiGl {
     }
 
     pub fn new(
-        _window: &dyn HasRawWindowHandle,
+        window: &dyn HasRawWindowHandle,
         _api_def: &RafxApiDef,
         _gl_api_def: &RafxApiDefGl,
     ) -> RafxResult<Self> {
-        let inner = Arc::new(RafxDeviceContextGlInner::new()?);
+        let inner = Arc::new(RafxDeviceContextGlInner::new(window)?);
         let device_context = RafxDeviceContextGl::new(inner)?;
 
         Ok(RafxApiGl {

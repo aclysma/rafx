@@ -7,12 +7,14 @@ use crate::{
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
-//use crate::gl::features::GlFeatures;
 use crate::gl::{
     RafxBufferGl, RafxDescriptorSetArrayGl, RafxFenceGl, RafxPipelineGl,
     RafxQueueGl, RafxRootSignatureGl, RafxSamplerGl, RafxSemaphoreGl, RafxShaderGl,
     RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl,
 };
+
+use crate::gl::GlContext;
+use crate::gl::gles20;
 
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
@@ -22,6 +24,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 pub struct RafxDeviceContextGlInner {
     pub(crate) device_info: RafxDeviceInfo,
 
+    gl_context: GlContext,
     //device: gl_rs::Device,
     destroyed: AtomicBool,
 
@@ -47,8 +50,49 @@ impl Drop for RafxDeviceContextGlInner {
 }
 
 impl RafxDeviceContextGlInner {
-    pub fn new() -> RafxResult<Self> {
-        unimplemented!();
+    pub fn new(window: &dyn HasRawWindowHandle) -> RafxResult<Self> {
+        // GL requires a window for initialization
+        let gl_context = GlContext::new(window);
+
+        let pack_alignment = gl_context.gl_get_integerv(gles20::PACK_ALIGNMENT) as u32;
+
+        let device_info = RafxDeviceInfo {
+            min_uniform_buffer_offset_alignment: pack_alignment,
+            min_storage_buffer_offset_alignment: pack_alignment,
+            upload_buffer_texture_alignment: pack_alignment,
+            upload_buffer_texture_row_alignment: pack_alignment,
+            supports_clamp_to_border_color: false, // requires GLES 3.2 or an extension
+        };
+
+        let renderer = gl_context.gl_get_string(gles20::RENDERER);
+        log::debug!("Renderer: {}", renderer);
+        let version = gl_context.gl_get_string(gles20::VERSION);
+        log::debug!("Version: {}", renderer);
+        let vendor = gl_context.gl_get_string(gles20::VENDOR);
+        log::debug!("Vendor: {}", renderer);
+        let shading_language_version = gl_context.gl_get_string(gles20::SHADING_LANGUAGE_VERSION);
+        log::debug!("Shading Language Version: {}", renderer);
+
+        //TODO: Support extensions
+
+        Ok(RafxDeviceContextGlInner {
+            device_info,
+            gl_context,
+            //device,
+            //gl_features,
+            destroyed: AtomicBool::new(false),
+
+            #[cfg(debug_assertions)]
+            #[cfg(feature = "track-device-contexts")]
+            all_contexts: Mutex::new(all_contexts),
+
+            #[cfg(debug_assertions)]
+            #[cfg(feature = "track-device-contexts")]
+            next_create_index: AtomicU64::new(1),
+        })
+
+
+        //unimplemented!();
         // let device_info = RafxDeviceInfo {
         //     // pretty sure this is consistent across macOS device (maybe not M1, not sure)
         //     min_uniform_buffer_offset_alignment: 256,

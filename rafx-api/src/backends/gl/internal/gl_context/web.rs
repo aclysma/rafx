@@ -62,4 +62,14 @@ impl GlContext {
     pub fn gl_clear(&self, mask: u32) {
         self.context.clear(mask);
     }
+
+    pub fn gl_get_integerv(&self, pname: u32) -> i32 {
+        let value = self.context.get_parameter(pname).unwrap();
+        value.as_f64() as i32
+    }
+
+    pub fn gl_get_string(&self, pname: u32) -> String {
+        let value = self.context.get_parameter(pname).unwrap();
+        value.as_string()
+    }
 }

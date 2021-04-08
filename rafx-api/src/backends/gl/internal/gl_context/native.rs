@@ -59,4 +59,23 @@ impl GlContext {
             self.gles2.Clear(mask);
         }
     }
+
+    pub fn gl_get_integerv(&self, pname: u32) -> i32 {
+        unsafe {
+            let mut value = 0;
+            self.gles2.GetIntegerv(pname, &mut value);
+            value
+        }
+    }
+
+    pub fn gl_get_string(&self, pname: u32) -> String {
+        unsafe {
+            let str = self.gles2.GetString(pname);
+            if str.is_null() {
+                return "".to_string();
+            }
+
+            std::ffi::CString::from_raw(str as _).into_string().unwrap()
+        }
+    }
 }
