@@ -1,4 +1,4 @@
-use super::{ImGuiDrawData, ImguiFontAtlasData};
+use crate::features::imgui::internal::{ImGuiDrawData, ImguiFontAtlasData};
 use imgui::sys as imgui_sys;
 use std::sync::Arc;
 use std::sync::Mutex;

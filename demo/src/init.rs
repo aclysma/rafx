@@ -79,10 +79,10 @@ pub fn rendering_init(
 
     #[cfg(feature = "use-imgui")]
     {
-        use crate::features::imgui::ImguiRendererPlugin;
-        let imgui_manager = crate::features::imgui::init_sdl2_imgui_manager(sdl2_window);
-        resources.insert(imgui_manager);
-        renderer_builder = renderer_builder.add_plugin(Box::new(ImguiRendererPlugin::default()));
+        use crate::features::imgui;
+        imgui::legion_init(resources, sdl2_window);
+        renderer_builder =
+            renderer_builder.add_plugin(Box::new(imgui::RendererPluginImpl::default()));
     }
 
     let mut renderer_builder_result = {
@@ -149,6 +149,12 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         resources.remove::<MeshRenderNodeSet>();
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
+
+        #[cfg(feature = "use-imgui")]
+        {
+            use crate::features::imgui;
+            imgui::legion_destroy(resources);
+        }
 
         sprite::legion_destroy(resources);
         tile_layer::legion_destroy(resources);

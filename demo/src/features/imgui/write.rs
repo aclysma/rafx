@@ -1,28 +1,82 @@
-use super::imgui_draw_data::{ImGuiDrawCmd, ImGuiDrawData};
-use crate::features::imgui::ImGuiRenderFeature;
-use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
-use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
-    RenderPhaseIndex, RenderView, SubmitNodeId,
-};
+rafx::declare_render_feature_write_job!();
 
-pub struct ImGuiCommandWriter {
-    pub(super) vertex_buffers: Vec<ResourceArc<BufferResource>>,
-    pub(super) index_buffers: Vec<ResourceArc<BufferResource>>,
-    pub(super) imgui_draw_data: Option<ImGuiDrawData>,
-    pub(super) per_pass_descriptor_set: DescriptorSetArc,
-    pub(super) per_image_descriptor_sets: Vec<DescriptorSetArc>,
-    pub(super) imgui_material_pass: ResourceArc<MaterialPassResource>,
+use rafx::api::RafxPrimitiveTopology;
+use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+
+lazy_static::lazy_static! {
+    pub static ref IMGUI_VERTEX_LAYOUT : VertexDataSetLayout = {
+        use rafx::api::RafxFormat;
+
+        let vertex = imgui::DrawVert {
+            pos: Default::default(),
+            col: Default::default(),
+            uv: Default::default()
+        };
+
+        VertexDataLayout::build_vertex_layout(&vertex, |builder, vertex| {
+            builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32_SFLOAT);
+            builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+            builder.add_member(&vertex.col, "COLOR", RafxFormat::R8G8B8A8_UNORM);
+        }).into_set(RafxPrimitiveTopology::TriangleList)
+    };
 }
 
-impl FeatureCommandWriter for ImGuiCommandWriter {
+use super::internal::{ImGuiDrawCmd, ImGuiDrawData};
+use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
+use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
+
+pub struct FeatureCommandWriterImpl {
+    vertex_buffers: Vec<ResourceArc<BufferResource>>,
+    index_buffers: Vec<ResourceArc<BufferResource>>,
+    per_view_descriptor_set: DescriptorSetArc,
+    per_font_descriptor_set: DescriptorSetArc,
+    imgui_material_pass: ResourceArc<MaterialPassResource>,
+    imgui_draw_data: Option<ImGuiDrawData>,
+}
+
+impl FeatureCommandWriterImpl {
+    pub fn new(
+        imgui_material_pass: ResourceArc<MaterialPassResource>,
+        per_view_descriptor_set: DescriptorSetArc,
+        per_font_descriptor_set: DescriptorSetArc,
+        num_draw_lists: usize,
+    ) -> Self {
+        FeatureCommandWriterImpl {
+            vertex_buffers: Vec::with_capacity(num_draw_lists),
+            index_buffers: Vec::with_capacity(num_draw_lists),
+            per_view_descriptor_set,
+            per_font_descriptor_set,
+            imgui_material_pass,
+            imgui_draw_data: Default::default(),
+        }
+    }
+
+    pub fn push_buffers(
+        &mut self,
+        vertex_buffer: ResourceArc<BufferResource>,
+        index_buffer: ResourceArc<BufferResource>,
+    ) {
+        self.vertex_buffers.push(vertex_buffer);
+        self.index_buffers.push(index_buffer);
+    }
+
+    pub fn set_imgui_draw_data(
+        &mut self,
+        imgui_draw_data: Option<ImGuiDrawData>,
+    ) {
+        self.imgui_draw_data = imgui_draw_data;
+    }
+}
+
+impl FeatureCommandWriter for FeatureCommandWriterImpl {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
+        profiling::scope!(apply_setup_scope);
+
         if self.imgui_draw_data.is_some() {
             let pipeline = write_context
                 .resource_context
@@ -31,14 +85,14 @@ impl FeatureCommandWriter for ImGuiCommandWriter {
                     render_phase_index,
                     &self.imgui_material_pass,
                     &write_context.render_target_meta,
-                    &*super::IMGUI_VERTEX_LAYOUT,
+                    &*IMGUI_VERTEX_LAYOUT,
                 )?;
 
             let command_buffer = &write_context.command_buffer;
             command_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
 
-            self.per_pass_descriptor_set.bind(command_buffer)?; // view/projection
-            self.per_image_descriptor_sets[0].bind(command_buffer)?; // font atlas
+            self.per_view_descriptor_set.bind(command_buffer)?; // view/projection
+            self.per_font_descriptor_set.bind(command_buffer)?; // font atlas
         }
 
         Ok(())
@@ -51,6 +105,8 @@ impl FeatureCommandWriter for ImGuiCommandWriter {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
+        profiling::scope!(render_element_scope);
+
         // The prepare phase emits a single node which will draw everything. In the future it might
         // emit a node per draw call that uses transparency
         if index == 0 {
@@ -132,10 +188,10 @@ impl FeatureCommandWriter for ImGuiCommandWriter {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        ImGuiRenderFeature::feature_debug_name()
+        render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        ImGuiRenderFeature::feature_index()
+        render_feature_index()
     }
 }

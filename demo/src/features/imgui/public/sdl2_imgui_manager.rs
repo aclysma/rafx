@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use super::ImguiManager;
-use super::{ImGuiDrawData, ImguiFontAtlasData};
+use crate::features::imgui::internal::{ImGuiDrawData, ImguiFontAtlasData, ImguiManager};
 use imgui_sdl2::ImguiSdl2;
 use sdl2::mouse::MouseState;
 use sdl2::video::Window;
