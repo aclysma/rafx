@@ -23,14 +23,28 @@ struct StaticResources {
 }
 
 #[derive(Default)]
-pub struct RendererPluginImpl;
+pub struct ImGuiRendererPlugin;
 
-impl RendererPlugin for RendererPluginImpl {
+impl ImGuiRendererPlugin {
+    pub fn legion_init(
+        resources: &mut legion::Resources,
+        window: &sdl2::video::Window,
+    ) {
+        let imgui_manager = public::init_sdl2_imgui_manager(window);
+        resources.insert(imgui_manager);
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<Sdl2ImguiManager>();
+    }
+}
+
+impl RendererPlugin for ImGuiRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<ImGuiRenderFeature>()
+        render_registry.register_feature::<RenderFeatureType>()
     }
 
     fn initialize_static_resources(
@@ -74,21 +88,4 @@ impl RendererPlugin for RendererPluginImpl {
     ) {
         extract_jobs.push(Box::new(ExtractJobImpl::new()));
     }
-}
-
-// Legion-specific
-
-use legion::Resources;
-use sdl2::video::Window;
-
-pub fn legion_init(
-    resources: &mut Resources,
-    window: &Window,
-) {
-    let imgui_manager = public::init_sdl2_imgui_manager(window);
-    resources.insert(imgui_manager);
-}
-
-pub fn legion_destroy(resources: &mut Resources) {
-    resources.remove::<Sdl2ImguiManager>();
 }

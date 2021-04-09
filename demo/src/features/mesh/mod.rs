@@ -3,7 +3,6 @@ use rafx::render_feature_renderer_prelude::*;
 
 use distill::loader::handle::Handle;
 use extract::ExtractJobImpl;
-use legion::Resources;
 use rafx::assets::MaterialAsset;
 use rafx::nodes::{FramePacketBuilder, RenderView, RenderViewSet};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
@@ -17,18 +16,28 @@ mod write;
 mod public;
 pub use public::*;
 
-pub struct RendererPluginImpl;
-
 struct StaticResources {
     pub depth_material: Handle<MaterialAsset>,
 }
 
-impl RendererPlugin for RendererPluginImpl {
+pub struct MeshRendererPlugin;
+
+impl MeshRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(MeshRenderNodeSet::default());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<MeshRenderNodeSet>();
+    }
+}
+
+impl RendererPlugin for MeshRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<MeshRenderFeature>()
+        render_registry.register_feature::<RenderFeatureType>()
     }
 
     fn initialize_static_resources(
@@ -81,14 +90,4 @@ impl RendererPlugin for RendererPluginImpl {
     ) {
         extract_jobs.push(Box::new(ExtractJobImpl::new()));
     }
-}
-
-// Legion-specific
-
-pub fn legion_init(resources: &mut Resources) {
-    resources.insert(MeshRenderNodeSet::default());
-}
-
-pub fn legion_destroy(resources: &mut Resources) {
-    resources.remove::<MeshRenderNodeSet>();
 }

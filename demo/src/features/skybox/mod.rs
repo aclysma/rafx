@@ -16,9 +16,15 @@ struct StaticResources {
     pub skybox_texture: Handle<ImageAsset>,
 }
 
-pub struct RendererPluginImpl;
+pub struct SkyboxRendererPlugin;
 
-impl RendererPlugin for RendererPluginImpl {
+impl SkyboxRendererPlugin {
+    pub fn legion_init(_resources: &mut legion::Resources) {}
+
+    pub fn legion_destroy(_resources: &mut legion::Resources) {}
+}
+
+impl RendererPlugin for SkyboxRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry: RenderRegistryBuilder,

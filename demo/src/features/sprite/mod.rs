@@ -18,14 +18,24 @@ struct StaticResources {
     pub sprite_material: Handle<MaterialAsset>,
 }
 
-pub struct RendererPluginImpl;
+pub struct SpriteRendererPlugin;
 
-impl RendererPlugin for RendererPluginImpl {
+impl SpriteRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(SpriteRenderNodeSet::default());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<SpriteRenderNodeSet>();
+    }
+}
+
+impl RendererPlugin for SpriteRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<SpriteRenderFeature>()
+        render_registry.register_feature::<RenderFeatureType>()
     }
 
     fn initialize_static_resources(
@@ -58,16 +68,4 @@ impl RendererPlugin for RendererPluginImpl {
     ) {
         extract_jobs.push(Box::new(ExtractJobImpl::new()));
     }
-}
-
-// Legion-specific
-
-use legion::Resources;
-
-pub fn legion_init(resources: &mut Resources) {
-    resources.insert(SpriteRenderNodeSet::default());
-}
-
-pub fn legion_destroy(resources: &mut Resources) {
-    resources.remove::<SpriteRenderNodeSet>();
 }

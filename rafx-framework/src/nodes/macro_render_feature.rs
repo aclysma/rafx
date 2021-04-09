@@ -1,11 +1,18 @@
-// Use to declare a new render feature that can be registered. Registration allows easy global
-// access to the render feature index from anywhere in the binary
-//
-// Use like this:
-//      rafx::declare_render_feature!(Debug3DRenderFeature, DEBUG_3D_RENDER_FEATURE);
-//
-// The first name is all that really matters, the second name just needs to be a constant that is
-// exposed via the first name (i.e. Debug3DRenderFeature::feature_index())
+/// Use to declare a new render feature that can be registered. Registration allows easy global
+/// access to the render feature index from anywhere in the binary
+///
+/// Use like this:
+///      rafx::declare_render_feature!(Debug3DRenderFeature, DEBUG_3D_RENDER_FEATURE);
+///
+/// The first name is all that really matters, the second name just needs to be a constant that is
+/// exposed via the first name (i.e. Debug3DRenderFeature::feature_index())
+///
+/// This macro will also define the following helper functions in the same scope.
+/// - `render_feature_index()`: Syntactic sugar for Debug3DRenderFeature::feature_index().
+/// - `render_feature_debug_name()`: Syntactic sugar for Debug3DRenderFeature::feature_debug_name().
+/// - `RenderFeatureType`: Syntactic sugar for Debug3DRenderFeature.
+/// - `extract_scope`: Syntactic sugar for `&'static str` in the form `Debug3DRenderFeature extract`.
+/// - `[...]_scope`: The same as `extract_scope` for other supported job entry points.
 #[macro_export]
 macro_rules! declare_render_feature {
     ($struct_name:ident, $atomic_constant_name:ident) => {

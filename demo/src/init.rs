@@ -1,12 +1,12 @@
 use crate::assets::font::FontAssetTypeRendererPlugin;
 use crate::assets::gltf::GltfAssetTypeRendererPlugin;
 use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
-use crate::features::debug3d;
-use crate::features::mesh;
-use crate::features::skybox;
-use crate::features::sprite;
-use crate::features::text;
-use crate::features::tile_layer;
+use crate::features::debug3d::Debug3DRendererPlugin;
+use crate::features::mesh::MeshRendererPlugin;
+use crate::features::skybox::SkyboxRendererPlugin;
+use crate::features::sprite::SpriteRendererPlugin;
+use crate::features::text::TextRendererPlugin;
+use crate::features::tile_layer::TileLayerRendererPlugin;
 use crate::render_graph_generator::DemoRenderGraphGenerator;
 use crate::DemoRendererPlugin;
 use legion::Resources;
@@ -56,11 +56,12 @@ pub fn rendering_init(
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(ViewportsResource::default());
 
-    mesh::legion_init(resources);
-    sprite::legion_init(resources);
-    tile_layer::legion_init(resources);
-    debug3d::legion_init(resources);
-    text::legion_init(resources);
+    MeshRendererPlugin::legion_init(resources);
+    SpriteRendererPlugin::legion_init(resources);
+    SkyboxRendererPlugin::legion_init(resources);
+    TileLayerRendererPlugin::legion_init(resources);
+    Debug3DRendererPlugin::legion_init(resources);
+    TextRendererPlugin::legion_init(resources);
 
     let rafx_api = rafx::api::RafxApi::new(sdl2_window, &Default::default())?;
 
@@ -69,20 +70,19 @@ pub fn rendering_init(
         .add_plugin(Box::new(FontAssetTypeRendererPlugin))
         .add_plugin(Box::new(GltfAssetTypeRendererPlugin))
         .add_plugin(Box::new(LdtkAssetTypeRendererPlugin))
-        .add_plugin(Box::new(debug3d::RendererPluginImpl))
-        .add_plugin(Box::new(text::RendererPluginImpl))
-        .add_plugin(Box::new(sprite::RendererPluginImpl))
-        .add_plugin(Box::new(tile_layer::RendererPluginImpl))
-        .add_plugin(Box::new(mesh::RendererPluginImpl))
-        .add_plugin(Box::new(skybox::RendererPluginImpl))
+        .add_plugin(Box::new(Debug3DRendererPlugin))
+        .add_plugin(Box::new(TextRendererPlugin))
+        .add_plugin(Box::new(SpriteRendererPlugin))
+        .add_plugin(Box::new(TileLayerRendererPlugin))
+        .add_plugin(Box::new(MeshRendererPlugin))
+        .add_plugin(Box::new(SkyboxRendererPlugin))
         .add_plugin(Box::new(DemoRendererPlugin));
 
     #[cfg(feature = "use-imgui")]
     {
-        use crate::features::imgui;
-        imgui::legion_init(resources, sdl2_window);
-        renderer_builder =
-            renderer_builder.add_plugin(Box::new(imgui::RendererPluginImpl::default()));
+        use crate::features::imgui::ImGuiRendererPlugin;
+        ImGuiRendererPlugin::legion_init(resources, sdl2_window);
+        renderer_builder = renderer_builder.add_plugin(Box::new(ImGuiRendererPlugin::default()));
     }
 
     let mut renderer_builder_result = {
@@ -149,15 +149,16 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
 
         #[cfg(feature = "use-imgui")]
         {
-            use crate::features::imgui;
-            imgui::legion_destroy(resources);
+            use crate::features::imgui::ImGuiRendererPlugin;
+            ImGuiRendererPlugin::legion_destroy(resources);
         }
 
-        mesh::legion_destroy(resources);
-        sprite::legion_destroy(resources);
-        tile_layer::legion_destroy(resources);
-        debug3d::legion_destroy(resources);
-        text::legion_destroy(resources);
+        MeshRendererPlugin::legion_destroy(resources);
+        SpriteRendererPlugin::legion_destroy(resources);
+        SkyboxRendererPlugin::legion_destroy(resources);
+        TileLayerRendererPlugin::legion_destroy(resources);
+        Debug3DRendererPlugin::legion_destroy(resources);
+        TextRendererPlugin::legion_destroy(resources);
 
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();

@@ -23,14 +23,24 @@ struct StaticResources {
     pub default_font: Handle<FontAsset>,
 }
 
-pub struct RendererPluginImpl;
+pub struct TextRendererPlugin;
 
-impl RendererPlugin for RendererPluginImpl {
+impl TextRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(TextResource::new());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<TextResource>();
+    }
+}
+
+impl RendererPlugin for TextRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<TextRenderFeature>()
+        render_registry.register_feature::<RenderFeatureType>()
     }
 
     fn initialize_static_resources(
@@ -68,16 +78,4 @@ impl RendererPlugin for RendererPluginImpl {
     ) {
         extract_jobs.push(Box::new(ExtractJobImpl::new()));
     }
-}
-
-// Legion-specific
-
-use legion::Resources;
-
-pub fn legion_init(resources: &mut Resources) {
-    resources.insert(TextResource::new());
-}
-
-pub fn legion_destroy(resources: &mut Resources) {
-    resources.remove::<TextResource>();
 }

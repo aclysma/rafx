@@ -18,14 +18,24 @@ struct StaticResources {
     pub debug3d_material: Handle<MaterialAsset>,
 }
 
-pub struct RendererPluginImpl;
+pub struct Debug3DRendererPlugin;
 
-impl RendererPlugin for RendererPluginImpl {
+impl Debug3DRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(DebugDraw3DResource::new());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<DebugDraw3DResource>();
+    }
+}
+
+impl RendererPlugin for Debug3DRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<Debug3DRenderFeature>()
+        render_registry.register_feature::<RenderFeatureType>()
     }
 
     fn initialize_static_resources(
@@ -56,16 +66,4 @@ impl RendererPlugin for RendererPluginImpl {
     ) {
         extract_jobs.push(Box::new(ExtractJobImpl::new()));
     }
-}
-
-// Legion-specific
-
-use legion::Resources;
-
-pub fn legion_init(resources: &mut Resources) {
-    resources.insert(DebugDraw3DResource::new());
-}
-
-pub fn legion_destroy(resources: &mut Resources) {
-    resources.remove::<DebugDraw3DResource>();
 }

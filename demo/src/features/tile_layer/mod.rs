@@ -19,14 +19,26 @@ struct StaticResources {
     pub tile_layer_material: Handle<MaterialAsset>,
 }
 
-pub struct RendererPluginImpl;
+pub struct TileLayerRendererPlugin;
 
-impl RendererPlugin for RendererPluginImpl {
+impl TileLayerRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(TileLayerRenderNodeSet::default());
+        resources.insert(TileLayerResource::default());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<TileLayerRenderNodeSet>();
+        resources.remove::<TileLayerResource>();
+    }
+}
+
+impl RendererPlugin for TileLayerRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<TileLayerRenderFeature>()
+        render_registry.register_feature::<RenderFeatureType>()
     }
 
     fn initialize_static_resources(
@@ -65,18 +77,4 @@ impl RendererPlugin for RendererPluginImpl {
     ) {
         extract_jobs.push(Box::new(ExtractJobImpl::new()));
     }
-}
-
-// Legion-specific
-
-use legion::Resources;
-
-pub fn legion_init(resources: &mut Resources) {
-    resources.insert(TileLayerRenderNodeSet::default());
-    resources.insert(TileLayerResource::default());
-}
-
-pub fn legion_destroy(resources: &mut Resources) {
-    resources.remove::<TileLayerRenderNodeSet>();
-    resources.remove::<TileLayerResource>();
 }
