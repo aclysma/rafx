@@ -2,14 +2,9 @@ use distill::loader::handle::Handle;
 use rafx::base::slab::{DropSlab, DropSlabKey};
 use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::nodes::RenderView;
-use rafx::nodes::{
-    ExtractJob, FrameNodeIndex, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex,
-    RenderNodeCount, RenderNodeSet,
-};
-use std::convert::TryInto;
+use rafx::nodes::{FrameNodeIndex, GenericRenderNodeHandle, RenderNodeCount, RenderNodeSet};
 
 mod extract;
-use extract::MeshExtractJob;
 
 mod prepare;
 
@@ -70,7 +65,7 @@ pub struct ExtractedSpotLight {
 }
 
 pub fn create_mesh_extract_job() -> Box<dyn ExtractJob> {
-    Box::new(MeshExtractJob {})
+    Box::new(ExtractJobImpl {})
 }
 
 //
@@ -134,6 +129,8 @@ impl RenderNodeSet for MeshRenderNodeSet {
     }
 }
 
+rafx::declare_render_feature_mod!();
+rafx::declare_render_feature_renderer_plugin!();
 rafx::declare_render_feature!(MeshRenderFeature, MESH_FEATURE_INDEX);
 
 pub struct ExtractedFrameNodeMeshData {

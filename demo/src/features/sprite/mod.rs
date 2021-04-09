@@ -1,14 +1,9 @@
 use distill::loader::handle::Handle;
 use rafx::assets::ImageAsset;
 use rafx::base::slab::{DropSlab, DropSlabKey};
-use rafx::nodes::{
-    ExtractJob, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex, RenderNodeCount,
-    RenderNodeSet,
-};
-use std::convert::TryInto;
+use rafx::nodes::{GenericRenderNodeHandle, RenderNodeCount, RenderNodeSet};
 
 mod extract;
-use extract::SpriteExtractJob;
 
 mod prepare;
 
@@ -82,7 +77,7 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 1, 3];
 
 pub fn create_sprite_extract_job() -> Box<dyn ExtractJob> {
-    Box::new(SpriteExtractJob::new())
+    Box::new(ExtractJobImpl::new())
 }
 
 //
@@ -150,6 +145,8 @@ impl RenderNodeSet for SpriteRenderNodeSet {
     }
 }
 
+rafx::declare_render_feature_mod!();
+rafx::declare_render_feature_renderer_plugin!();
 rafx::declare_render_feature!(SpriteRenderFeature, SPRITE_FEATURE_INDEX);
 
 #[derive(Debug)]

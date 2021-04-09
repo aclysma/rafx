@@ -1,12 +1,7 @@
 use rafx::base::slab::{DropSlab, DropSlabKey};
-use rafx::nodes::{
-    ExtractJob, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex, RenderNodeCount,
-    RenderNodeSet,
-};
-use std::convert::TryInto;
+use rafx::nodes::{GenericRenderNodeHandle, RenderNodeCount, RenderNodeSet};
 
 mod extract;
-use extract::TileLayerExtractJob;
 
 mod prepare;
 
@@ -48,7 +43,7 @@ lazy_static::lazy_static! {
 }
 
 pub fn create_tile_layer_extract_job() -> Box<dyn ExtractJob> {
-    Box::new(TileLayerExtractJob::new())
+    Box::new(ExtractJobImpl::new())
 }
 
 //
@@ -116,4 +111,6 @@ impl RenderNodeSet for TileLayerRenderNodeSet {
     }
 }
 
+rafx::declare_render_feature_mod!();
+rafx::declare_render_feature_renderer_plugin!();
 rafx::declare_render_feature!(TileLayerRenderFeature, TILE_LAYER_FEATURE_INDEX);

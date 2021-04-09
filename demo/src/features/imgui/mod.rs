@@ -1,10 +1,5 @@
-use crate::features::imgui::extract::ImGuiExtractJobImpl;
 use rafx::api::RafxPrimitiveTopology;
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
-use rafx::nodes::ExtractJob;
-use rafx::nodes::RenderFeature;
-use rafx::nodes::RenderFeatureIndex;
-use std::convert::TryInto;
 
 mod extract;
 mod prepare;
@@ -27,7 +22,7 @@ mod plugin;
 pub use plugin::ImguiRendererPlugin;
 
 pub fn create_imgui_extract_job() -> Box<dyn ExtractJob> {
-    Box::new(ImGuiExtractJobImpl::new())
+    Box::new(ExtractJobImpl::new())
 }
 
 /// Per-pass "global" data
@@ -51,6 +46,8 @@ lazy_static::lazy_static! {
     };
 }
 
+rafx::declare_render_feature_mod!();
+rafx::declare_render_feature_renderer_plugin!();
 rafx::declare_render_feature!(ImGuiRenderFeature, DEBUG_3D_FEATURE_INDEX);
 
 pub(self) struct ExtractedImGuiData {

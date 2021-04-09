@@ -319,8 +319,8 @@ fn calculate_shadow_map_views(
     }
 
     #[rustfmt::skip]
-        // The eye offset and up vector. The directions are per the specification of cubemaps
-        let cube_map_view_directions = [
+    // The eye offset and up vector. The directions are per the specification of cubemaps
+    let cube_map_view_directions = [
         (glam::Vec3::X, glam::Vec3::Y),
         (glam::Vec3::X * -1.0, glam::Vec3::Y),
         (glam::Vec3::Y, glam::Vec3::Z * -1.0),
@@ -361,7 +361,7 @@ fn calculate_shadow_map_views(
         }
 
         #[rustfmt::skip]
-            let cube_map_views = [
+        let cube_map_views = [
             cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[0]),
             cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[1]),
             cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[2]),

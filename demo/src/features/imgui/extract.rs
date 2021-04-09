@@ -9,15 +9,15 @@ use rafx::nodes::{
     RenderJobExtractContext, RenderView,
 };
 
-pub struct ImGuiExtractJobImpl {}
+pub struct ExtractJobImpl {}
 
-impl ImGuiExtractJobImpl {
+impl ExtractJobImpl {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl ExtractJob for ImGuiExtractJobImpl {
+impl ExtractJob for ExtractJobImpl {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,

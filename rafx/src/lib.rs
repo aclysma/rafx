@@ -36,6 +36,11 @@ pub use rafx_assets::distill;
 pub use rafx_framework as framework;
 #[cfg(feature = "framework")]
 pub use rafx_framework::declare_render_feature;
+pub use rafx_framework::declare_render_feature_extract_job;
+pub use rafx_framework::declare_render_feature_mod;
+pub use rafx_framework::declare_render_feature_prepare_job;
+pub use rafx_framework::declare_render_feature_renderer_plugin;
+pub use rafx_framework::declare_render_feature_write_job;
 #[cfg(feature = "framework")]
 pub use rafx_framework::declare_render_phase;
 #[cfg(feature = "framework")]

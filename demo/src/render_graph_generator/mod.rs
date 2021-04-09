@@ -115,58 +115,23 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             extract_resources,
         };
 
-        let shadow_maps = shadow_map_pass::shadow_map_passes(&mut graph_context);
-
-        let compute_test_pipeline = asset_manager
-            .committed_asset(&static_resources.compute_test)
-            .unwrap()
-            .compute_pipeline
-            .clone();
-
-        let compute_test_pass =
-            compute_test::compute_test_pass(&mut graph_context, &compute_test_pipeline);
-
-        let bloom_extract_material_pass = asset_manager
-            .committed_asset(&static_resources.bloom_extract_material)
-            .unwrap()
-            .get_single_material_pass()
-            .unwrap();
-
-        let bloom_blur_material_pass = asset_manager
-            .committed_asset(&static_resources.bloom_blur_material)
-            .unwrap()
-            .get_single_material_pass()
-            .unwrap();
-
-        let bloom_combine_material_pass = asset_manager
-            .committed_asset(&static_resources.bloom_combine_material)
-            .unwrap()
-            .get_single_material_pass()
-            .unwrap();
-
-        let skybox_material_pass = asset_manager
-            .committed_asset(&static_resources.skybox_material)
-            .unwrap()
-            .get_single_material_pass()
-            .unwrap();
-
-        let skybox_texture = asset_manager
-            .committed_asset(&static_resources.skybox_texture)
-            .unwrap()
-            .image_view
-            .clone();
-
         let depth_prepass = depth_prepass::depth_prepass(&mut graph_context);
 
-        let opaque_pass = opaque_pass::opaque_pass(
-            &mut graph_context,
-            depth_prepass.depth,
-            skybox_material_pass,
-            skybox_texture,
-            &shadow_maps,
-        );
+        let shadow_maps = shadow_map_pass::shadow_map_passes(&mut graph_context);
+
+        let opaque_pass =
+            opaque_pass::opaque_pass(&mut graph_context, depth_prepass.depth, &shadow_maps);
 
         {
+            let compute_test_pipeline = asset_manager
+                .committed_asset(&static_resources.compute_test)
+                .unwrap()
+                .compute_pipeline
+                .clone();
+
+            let compute_test_pass =
+                compute_test::compute_test_pass(&mut graph_context, &compute_test_pipeline);
+
             let _out = graph_context.graph.read_storage_buffer(
                 opaque_pass.node,
                 compute_test_pass.position_buffer,
@@ -177,6 +142,24 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
         }
 
         let previous_pass_color = if graph_config.enable_hdr {
+            let bloom_extract_material_pass = asset_manager
+                .committed_asset(&static_resources.bloom_extract_material)
+                .unwrap()
+                .get_single_material_pass()
+                .unwrap();
+
+            let bloom_blur_material_pass = asset_manager
+                .committed_asset(&static_resources.bloom_blur_material)
+                .unwrap()
+                .get_single_material_pass()
+                .unwrap();
+
+            let bloom_combine_material_pass = asset_manager
+                .committed_asset(&static_resources.bloom_combine_material)
+                .unwrap()
+                .get_single_material_pass()
+                .unwrap();
+
             let bloom_extract_pass = bloom_extract_pass::bloom_extract_pass(
                 &mut graph_context,
                 bloom_extract_material_pass,

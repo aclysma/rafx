@@ -1,11 +1,6 @@
-use crate::features::text::extract::TextExtractJob;
 use rafx::framework::{
     BufferResource, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,
 };
-use rafx::nodes::ExtractJob;
-use rafx::nodes::RenderFeature;
-use rafx::nodes::RenderFeatureIndex;
-use std::convert::TryInto;
 
 mod extract;
 mod plugin;
@@ -21,7 +16,7 @@ use rafx::distill::loader::LoadHandle;
 pub use text_resource::*;
 
 pub fn create_text_extract_job() -> Box<dyn ExtractJob> {
-    Box::new(TextExtractJob::new())
+    Box::new(ExtractJobImpl::new())
 }
 
 pub type TextUniformBufferObject = shaders::text_vert::PerViewUboUniform;
@@ -47,6 +42,8 @@ lazy_static::lazy_static! {
     };
 }
 
+rafx::declare_render_feature_mod!();
+rafx::declare_render_feature_renderer_plugin!();
 rafx::declare_render_feature!(TextRenderFeature, TEXT_FEATURE_INDEX);
 
 pub struct TextImageUpdate {

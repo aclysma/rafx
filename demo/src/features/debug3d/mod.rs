@@ -1,9 +1,4 @@
-use crate::features::debug3d::extract::Debug3dExtractJob;
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
-use rafx::nodes::ExtractJob;
-use rafx::nodes::RenderFeature;
-use rafx::nodes::RenderFeatureIndex;
-use std::convert::TryInto;
 
 mod debug3d_resource;
 mod extract;
@@ -16,7 +11,7 @@ pub use debug3d_resource::*;
 use rafx::api::RafxPrimitiveTopology;
 
 pub fn create_debug3d_extract_job() -> Box<dyn ExtractJob> {
-    Box::new(Debug3dExtractJob::new())
+    Box::new(ExtractJobImpl::new())
 }
 
 pub type Debug3dUniformBufferObject = shaders::debug_vert::PerFrameUboUniform;
@@ -40,6 +35,8 @@ lazy_static::lazy_static! {
     };
 }
 
+rafx::declare_render_feature_mod!();
+rafx::declare_render_feature_renderer_plugin!();
 rafx::declare_render_feature!(Debug3dRenderFeature, DEBUG_3D_FEATURE_INDEX);
 
 pub(self) struct ExtractedDebug3dData {

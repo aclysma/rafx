@@ -3,6 +3,7 @@ use crate::assets::gltf::GltfAssetTypeRendererPlugin;
 use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use crate::features::debug3d::{Debug3DRendererPlugin, DebugDraw3DResource};
 use crate::features::mesh::{MeshRenderNodeSet, MeshRendererPlugin};
+use crate::features::skybox;
 use crate::features::sprite::{SpriteRenderNodeSet, SpriteRendererPlugin};
 use crate::features::text::{TextRendererPlugin, TextResource};
 use crate::features::tile_layer::{
@@ -75,6 +76,7 @@ pub fn rendering_init(
         .add_plugin(Box::new(SpriteRendererPlugin))
         .add_plugin(Box::new(TileLayerRendererPlugin))
         .add_plugin(Box::new(MeshRendererPlugin))
+        .add_plugin(Box::new(skybox::RendererPluginImpl))
         .add_plugin(Box::new(DemoRendererPlugin));
 
     #[cfg(feature = "use-imgui")]

@@ -16,9 +16,9 @@ use rafx::nodes::{
     RenderJobExtractContext, RenderView,
 };
 
-pub struct MeshExtractJob {}
+pub struct ExtractJobImpl {}
 
-impl ExtractJob for MeshExtractJob {
+impl ExtractJob for ExtractJobImpl {
     fn feature_debug_name(&self) -> &'static str {
         MeshRenderFeature::feature_debug_name()
     }
