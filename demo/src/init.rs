@@ -6,9 +6,7 @@ use crate::features::mesh::{MeshRenderNodeSet, MeshRendererPlugin};
 use crate::features::skybox;
 use crate::features::sprite::{SpriteRenderNodeSet, SpriteRendererPlugin};
 use crate::features::text;
-use crate::features::tile_layer::{
-    TileLayerRenderNodeSet, TileLayerRendererPlugin, TileLayerResource,
-};
+use crate::features::tile_layer;
 use crate::render_graph_generator::DemoRenderGraphGenerator;
 use crate::DemoRendererPlugin;
 use legion::Resources;
@@ -56,12 +54,11 @@ pub fn rendering_init(
 ) -> RafxResult<()> {
     resources.insert(SpriteRenderNodeSet::default());
     resources.insert(MeshRenderNodeSet::default());
-    resources.insert(TileLayerRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(ViewportsResource::default());
-    resources.insert(TileLayerResource::default());
 
+    tile_layer::legion_init(resources);
     debug3d::legion_init(resources);
     text::legion_init(resources);
 
@@ -75,7 +72,7 @@ pub fn rendering_init(
         .add_plugin(Box::new(debug3d::RendererPluginImpl))
         .add_plugin(Box::new(text::RendererPluginImpl))
         .add_plugin(Box::new(SpriteRendererPlugin))
-        .add_plugin(Box::new(TileLayerRendererPlugin))
+        .add_plugin(Box::new(tile_layer::RendererPluginImpl))
         .add_plugin(Box::new(MeshRendererPlugin))
         .add_plugin(Box::new(skybox::RendererPluginImpl))
         .add_plugin(Box::new(DemoRendererPlugin));
@@ -151,10 +148,10 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         resources.remove::<Renderer>();
         resources.remove::<SpriteRenderNodeSet>();
         resources.remove::<MeshRenderNodeSet>();
-        resources.remove::<TileLayerRenderNodeSet>();
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
 
+        tile_layer::legion_destroy(resources);
         debug3d::legion_destroy(resources);
         text::legion_destroy(resources);
 

@@ -29,7 +29,7 @@ use rafx::api::{
     RafxTextureBarrier, RafxVertexBufferBinding,
 };
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{RenderJobBeginExecuteGraphContext, RenderViewIndex};
+use rafx::nodes::{push_view_indexed_value, RenderJobBeginExecuteGraphContext, RenderViewIndex};
 
 #[derive(Debug)]
 pub struct TextDrawCallMeta {
@@ -94,16 +94,11 @@ impl FeatureCommandWriterImpl {
         view_index: RenderViewIndex,
         per_view_descriptor_set: DescriptorSetArc,
     ) {
-        // Grow the array if necessary
-
-        self.per_view_descriptor_sets.resize(
-            self.per_view_descriptor_sets
-                .len()
-                .max(view_index as usize + 1),
-            None,
+        push_view_indexed_value(
+            &mut self.per_view_descriptor_sets,
+            view_index,
+            per_view_descriptor_set,
         );
-
-        self.per_view_descriptor_sets[view_index as usize] = Some(per_view_descriptor_set);
     }
 
     pub fn draw_call_metas(&self) -> &Vec<TextDrawCallMeta> {

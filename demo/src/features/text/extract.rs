@@ -33,6 +33,7 @@ impl ExtractJob for ExtractJobImpl {
             .render_resources
             .fetch::<StaticResources>()
             .text_material;
+
         let text_material_pass = asset_manager
             .committed_asset(&text_material)
             .unwrap()

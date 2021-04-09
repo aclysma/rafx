@@ -2,13 +2,14 @@ rafx::declare_render_feature_prepare_job!();
 
 use super::internal::FontAtlasCache;
 use super::public::TextDrawCommand;
-use super::TextUniformBufferObject;
 use crate::assets::font::FontAsset;
 use crate::phases::UiRenderPhase;
 use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
 use rafx::api::RafxBufferDef;
 use rafx::framework::{MaterialPassResource, ResourceArc};
+
+pub type TextUniformBufferObject = shaders::text_vert::PerViewUboUniform;
 
 pub struct PrepareJobImpl {
     text_material_pass: ResourceArc<MaterialPassResource>,

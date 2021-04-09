@@ -15,8 +15,6 @@ use distill::loader::handle::Handle;
 use internal::FontAtlasCache;
 use rafx::assets::MaterialAsset;
 
-pub type TextUniformBufferObject = shaders::text_vert::PerViewUboUniform;
-
 pub use public::AppendText;
 pub use public::TextResource;
 

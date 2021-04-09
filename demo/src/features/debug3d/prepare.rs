@@ -1,11 +1,12 @@
 rafx::declare_render_feature_prepare_job!();
 
 use super::write::Debug3DVertex;
-use super::Debug3dUniformBufferObject;
 use crate::features::debug3d::public::debug3d_resource::LineList3D;
 use crate::phases::OpaqueRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{MaterialPassResource, ResourceArc};
+
+pub type Debug3dUniformBufferObject = shaders::debug_vert::PerFrameUboUniform;
 
 pub struct PrepareJobImpl {
     debug3d_material_pass: ResourceArc<MaterialPassResource>,

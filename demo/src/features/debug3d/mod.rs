@@ -12,8 +12,6 @@ mod public;
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
-pub type Debug3dUniformBufferObject = shaders::debug_vert::PerFrameUboUniform;
-
 pub use public::debug3d_resource::DebugDraw3DResource;
 
 pub struct StaticResources {

@@ -1,6 +1,7 @@
 use crate::nodes::{
     MergedFrameSubmitNodes, RenderFeatureIndex, RenderJobBeginExecuteGraphContext,
-    RenderJobWriteContext, RenderPhase, RenderPhaseIndex, RenderRegistry, RenderView, SubmitNodeId,
+    RenderJobWriteContext, RenderPhase, RenderPhaseIndex, RenderRegistry, RenderView,
+    RenderViewIndex, SubmitNodeId,
 };
 use rafx_api::RafxResult;
 
@@ -37,6 +38,16 @@ pub trait FeatureCommandWriter {
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;
+}
+
+pub fn push_view_indexed_value<T: Clone>(
+    vec: &mut Vec<Option<T>>,
+    view_index: RenderViewIndex,
+    value: T,
+) {
+    // Grow the array if necessary
+    vec.resize(vec.len().max(view_index as usize + 1), None);
+    vec[view_index as usize] = Some(value);
 }
 
 // pub struct FeatureCommandWriterSet {

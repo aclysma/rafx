@@ -1,116 +1,81 @@
-use rafx::base::slab::{DropSlab, DropSlabKey};
-use rafx::nodes::{GenericRenderNodeHandle, RenderNodeCount, RenderNodeSet};
-
-mod extract;
-
-mod prepare;
-
-mod write;
-
-mod plugin;
-pub use plugin::TileLayerRendererPlugin;
-
-mod tile_layer_resource;
-pub use tile_layer_resource::TileLayerResource;
-
-use crate::assets::ldtk::LdtkLayerDrawCallData;
-use rafx::api::RafxPrimitiveTopology;
-use rafx::framework::{
-    BufferResource, DescriptorSetArc, ResourceArc, VertexDataLayout, VertexDataSetLayout,
-};
-use write::TileLayerCommandWriter;
-
-/// Per-pass "global" data
-pub type TileLayerUniformBufferObject = shaders::tile_layer_vert::ArgsUniform;
-
-/// Vertex format for vertices sent to the GPU
-#[derive(Clone, Debug, Copy, Default)]
-#[repr(C)]
-pub struct TileLayerVertex {
-    pub position: [f32; 3],
-    pub uv: [f32; 2],
-}
-
-lazy_static::lazy_static! {
-    pub static ref TILE_LAYER_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use rafx::api::RafxFormat;
-
-        VertexDataLayout::build_vertex_layout(&TileLayerVertex::default(), |builder, vertex| {
-            builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
-            builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
-        }).into_set(RafxPrimitiveTopology::TriangleList)
-    };
-}
-
-pub fn create_tile_layer_extract_job() -> Box<dyn ExtractJob> {
-    Box::new(ExtractJobImpl::new())
-}
-
-//
-// This is boiler-platish
-//
-#[derive(Clone)]
-pub struct TileLayerRenderNode {
-    per_layer_descriptor_set: DescriptorSetArc,
-    draw_call_data: Vec<LdtkLayerDrawCallData>,
-    vertex_buffer: ResourceArc<BufferResource>,
-    index_buffer: ResourceArc<BufferResource>,
-    z_position: f32,
-}
-
-#[derive(Clone)]
-pub struct TileLayerRenderNodeHandle(pub DropSlabKey<TileLayerRenderNode>);
-
-impl TileLayerRenderNodeHandle {
-    pub fn as_raw_generic_handle(&self) -> GenericRenderNodeHandle {
-        GenericRenderNodeHandle::new(
-            <TileLayerRenderFeature as RenderFeature>::feature_index(),
-            self.0.index(),
-        )
-    }
-}
-
-impl Into<GenericRenderNodeHandle> for TileLayerRenderNodeHandle {
-    fn into(self) -> GenericRenderNodeHandle {
-        self.as_raw_generic_handle()
-    }
-}
-
-#[derive(Default)]
-pub struct TileLayerRenderNodeSet {
-    tile_layers: DropSlab<TileLayerRenderNode>,
-}
-
-impl TileLayerRenderNodeSet {
-    pub fn register_tile_layer(
-        &mut self,
-        node: TileLayerRenderNode,
-    ) -> TileLayerRenderNodeHandle {
-        TileLayerRenderNodeHandle(self.tile_layers.allocate(node))
-    }
-
-    pub fn get_mut(
-        &mut self,
-        handle: &TileLayerRenderNodeHandle,
-    ) -> Option<&mut TileLayerRenderNode> {
-        self.tile_layers.get_mut(&handle.0)
-    }
-
-    pub fn update(&mut self) {
-        self.tile_layers.process_drops();
-    }
-}
-
-impl RenderNodeSet for TileLayerRenderNodeSet {
-    fn feature_index(&self) -> RenderFeatureIndex {
-        TileLayerRenderFeature::feature_index()
-    }
-
-    fn max_render_node_count(&self) -> RenderNodeCount {
-        self.tile_layers.storage_size() as RenderNodeCount
-    }
-}
-
 rafx::declare_render_feature_mod!();
 rafx::declare_render_feature_renderer_plugin!();
+
 rafx::declare_render_feature!(TileLayerRenderFeature, TILE_LAYER_FEATURE_INDEX);
+
+mod extract;
+mod prepare;
+mod write;
+
+mod public;
+pub use public::*;
+
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
+use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+
+pub struct StaticResources {
+    pub tile_layer_material: Handle<MaterialAsset>,
+}
+
+pub struct RendererPluginImpl;
+
+impl RendererPlugin for RendererPluginImpl {
+    fn configure_render_registry(
+        &self,
+        render_registry: RenderRegistryBuilder,
+    ) -> RenderRegistryBuilder {
+        render_registry.register_feature::<TileLayerRenderFeature>()
+    }
+
+    fn initialize_static_resources(
+        &self,
+        asset_manager: &mut AssetManager,
+        asset_resource: &mut AssetResource,
+        _extract_resources: &ExtractResources,
+        render_resources: &mut ResourceMap,
+        _upload: &mut RafxTransferUpload,
+    ) -> RafxResult<()> {
+        let tile_layer_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/tile_layer.material");
+
+        asset_manager.wait_for_asset_to_load(
+            &tile_layer_material,
+            asset_resource,
+            "tile_layer_material",
+        )?;
+
+        render_resources.insert(StaticResources {
+            tile_layer_material,
+        });
+
+        render_resources.insert(TileLayerRenderNodeSet::default());
+        render_resources.try_insert_default::<StaticVisibilityNodeSet>();
+        render_resources.try_insert_default::<DynamicVisibilityNodeSet>();
+
+        Ok(())
+    }
+
+    fn add_extract_jobs(
+        &self,
+        _extract_resources: &ExtractResources,
+        _render_resources: &RenderResources,
+        extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
+    ) {
+        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+    }
+}
+
+// Legion-specific
+
+use legion::Resources;
+
+pub fn legion_init(resources: &mut Resources) {
+    resources.insert(TileLayerRenderNodeSet::default());
+    resources.insert(TileLayerResource::default());
+}
+
+pub fn legion_destroy(resources: &mut Resources) {
+    resources.remove::<TileLayerRenderNodeSet>();
+    resources.remove::<TileLayerResource>();
+}

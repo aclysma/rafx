@@ -1,24 +1,68 @@
-use crate::features::tile_layer::{TileLayerRenderFeature, TileLayerRenderNode};
-use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
-use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
-    RenderPhaseIndex, RenderView, SubmitNodeId,
-};
+rafx::declare_render_feature_write_job!();
 
-pub struct TileLayerCommandWriter {
-    pub visible_render_nodes: Vec<TileLayerRenderNode>,
-    pub per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
-    pub tile_layer_material: ResourceArc<MaterialPassResource>,
+use super::TileLayerVertex;
+use rafx::api::RafxPrimitiveTopology;
+use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+
+lazy_static::lazy_static! {
+    pub static ref TILE_LAYER_VERTEX_LAYOUT : VertexDataSetLayout = {
+        use rafx::api::RafxFormat;
+        VertexDataLayout::build_vertex_layout(&TileLayerVertex::default(), |builder, vertex| {
+            builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+            builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+        }).into_set(RafxPrimitiveTopology::TriangleList)
+    };
 }
 
-impl FeatureCommandWriter for TileLayerCommandWriter {
+use super::TileLayerRenderNode;
+use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
+use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
+use rafx::nodes::{push_view_indexed_value, RenderViewIndex};
+
+pub struct FeatureCommandWriterImpl {
+    visible_render_nodes: Vec<TileLayerRenderNode>,
+    per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
+    tile_layer_material: ResourceArc<MaterialPassResource>,
+}
+
+impl FeatureCommandWriterImpl {
+    pub fn new(
+        tile_layer_material: ResourceArc<MaterialPassResource>,
+        visible_render_nodes: Vec<TileLayerRenderNode>,
+    ) -> Self {
+        FeatureCommandWriterImpl {
+            visible_render_nodes,
+            per_view_descriptor_sets: Default::default(),
+            tile_layer_material,
+        }
+    }
+
+    pub fn visible_render_nodes(&self) -> &Vec<TileLayerRenderNode> {
+        &self.visible_render_nodes
+    }
+
+    pub fn push_per_view_descriptor_set(
+        &mut self,
+        view_index: RenderViewIndex,
+        per_view_descriptor_set: DescriptorSetArc,
+    ) {
+        push_view_indexed_value(
+            &mut self.per_view_descriptor_sets,
+            view_index,
+            per_view_descriptor_set,
+        );
+    }
+}
+
+impl FeatureCommandWriter for FeatureCommandWriterImpl {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
+        profiling::scope!(apply_setup_scope);
+
         let command_buffer = &write_context.command_buffer;
 
         let pipeline = write_context
@@ -28,7 +72,7 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
                 render_phase_index,
                 &self.tile_layer_material,
                 &write_context.render_target_meta,
-                &super::TILE_LAYER_VERTEX_LAYOUT,
+                &TILE_LAYER_VERTEX_LAYOUT,
             )
             .unwrap();
 
@@ -44,6 +88,8 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
+        profiling::scope!(render_element_scope);
+
         let command_buffer = &write_context.command_buffer;
 
         // Bind per-pass data (UBO with view/proj matrix, sampler)
@@ -84,10 +130,10 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        TileLayerRenderFeature::feature_debug_name()
+        render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        TileLayerRenderFeature::feature_index()
+        render_feature_index()
     }
 }

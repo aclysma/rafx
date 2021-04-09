@@ -24,7 +24,7 @@ lazy_static::lazy_static! {
 }
 
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::RenderViewIndex;
+use rafx::nodes::{push_view_indexed_value, RenderViewIndex};
 
 #[derive(Debug)]
 pub struct Debug3DDrawCall {
@@ -57,16 +57,11 @@ impl FeatureCommandWriterImpl {
         view_index: RenderViewIndex,
         per_view_descriptor_set: DescriptorSetArc,
     ) {
-        // Grow the array if necessary
-
-        self.per_view_descriptor_sets.resize(
-            self.per_view_descriptor_sets
-                .len()
-                .max(view_index as usize + 1),
-            None,
+        push_view_indexed_value(
+            &mut self.per_view_descriptor_sets,
+            view_index,
+            per_view_descriptor_set,
         );
-
-        self.per_view_descriptor_sets[view_index as usize] = Some(per_view_descriptor_set);
     }
 
     pub fn push_draw_call(
