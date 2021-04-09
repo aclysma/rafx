@@ -1,18 +1,18 @@
 use rafx::render_feature_mod_prelude::*;
 use rafx::render_feature_renderer_prelude::*;
-
-use distill::loader::handle::Handle;
-use extract::ExtractJobImpl;
-use rafx::assets::MaterialAsset;
-
 rafx::declare_render_feature!(Debug3DRenderFeature, DEBUG_3D_FEATURE_INDEX);
 
 mod extract;
+use extract::*;
 mod prepare;
+use prepare::*;
 mod write;
-
+use write::*;
 mod public;
-pub use public::debug3d_resource::DebugDraw3DResource;
+pub use public::*;
+
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
 
 struct StaticResources {
     pub debug3d_material: Handle<MaterialAsset>,

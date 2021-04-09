@@ -1,23 +1,9 @@
+use super::super::{TextDrawCommand, TextDrawData};
 use crate::assets::font::FontAsset;
 use fnv::FnvHashMap;
 use rafx::distill::loader::handle::AssetHandle;
 use rafx::distill::loader::handle::Handle;
 use rafx::distill::loader::LoadHandle;
-
-pub struct TextDrawData {
-    pub fonts: FnvHashMap<LoadHandle, Handle<FontAsset>>,
-    pub text_draw_commands: Vec<TextDrawCommand>,
-}
-
-#[derive(Debug)]
-pub struct TextDrawCommand {
-    pub text: String,
-    pub position: glam::Vec3,
-    pub font: LoadHandle,
-    pub size: f32,
-    pub color: glam::Vec4,
-    pub is_append: bool,
-}
 
 pub struct AppendText<'a>(&'a mut TextResource, glam::Vec3);
 
@@ -57,7 +43,7 @@ impl TextResource {
         self.do_add_text(text, position, font, size, color, false)
     }
 
-    pub fn do_add_text(
+    pub(super) fn do_add_text(
         &mut self,
         text: String,
         position: glam::Vec3,
@@ -81,7 +67,7 @@ impl TextResource {
     }
 
     // Returns the draw data, leaving this object in an empty state
-    pub fn take_text_draw_data(&mut self) -> TextDrawData {
+    pub(in super::super) fn take_text_draw_data(&mut self) -> TextDrawData {
         TextDrawData {
             fonts: std::mem::take(&mut self.fonts),
             text_draw_commands: std::mem::take(&mut self.text_draw_commands),

@@ -1,22 +1,21 @@
 use rafx::render_feature_mod_prelude::*;
 use rafx::render_feature_renderer_prelude::*;
-
-use crate::assets::font::FontAsset;
-use distill::loader::handle::Handle;
-use extract::ExtractJobImpl;
-use internal::FontAtlasCache;
-use rafx::assets::MaterialAsset;
-
 rafx::declare_render_feature!(TextRenderFeature, TEXT_FEATURE_INDEX);
 
 mod extract;
+use extract::*;
 mod prepare;
+use prepare::*;
 mod write;
-
+use write::*;
 mod internal;
+use internal::*;
 mod public;
-pub use public::AppendText;
-pub use public::TextResource;
+pub use public::*;
+
+use crate::assets::font::FontAsset;
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
 
 struct StaticResources {
     pub text_material: Handle<MaterialAsset>,

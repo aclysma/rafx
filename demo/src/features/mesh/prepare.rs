@@ -1,7 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::write::WriteJobImpl;
-use super::{LightId, RenderFeatureType, ShadowMapRenderView, ShadowMapResource};
+use super::{LightId, RenderFeatureType, ShadowMapRenderView, ShadowMapResource, WriteJobImpl};
 use crate::assets::gltf::MeshAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,

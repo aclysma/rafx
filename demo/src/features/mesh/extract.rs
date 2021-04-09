@@ -1,11 +1,9 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::prepare::{
+use super::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
-    PrepareJobImpl,
+    MeshRenderNode, MeshRenderNodeSet, PrepareJobImpl, StaticResources,
 };
-use super::public::{MeshRenderNode, MeshRenderNodeSet};
-use super::StaticResources;
 use crate::components::MeshComponent;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,

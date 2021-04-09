@@ -1,7 +1,8 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::prepare::{ExtractedSpriteData, PrepareJobImpl};
-use super::{SpriteRenderNode, SpriteRenderNodeSet, StaticResources};
+use super::{
+    ExtractedSpriteData, PrepareJobImpl, SpriteRenderNode, SpriteRenderNodeSet, StaticResources,
+};
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
 

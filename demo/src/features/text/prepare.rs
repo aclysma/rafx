@@ -1,10 +1,9 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::internal::FontAtlasCache;
-use super::public::TextDrawCommand;
-use super::write::WriteJobImpl;
+use super::FontAtlasCache;
+use super::WriteJobImpl;
+use super::{RenderFeatureType, TextDrawCommand};
 use crate::assets::font::FontAsset;
-use crate::features::text::RenderFeatureType;
 use crate::phases::UiRenderPhase;
 use distill::loader::LoadHandle;
 use fnv::FnvHashMap;

@@ -1,5 +1,5 @@
+use super::super::render_feature_index;
 use crate::assets::gltf::MeshAsset;
-use crate::features::mesh::render_feature_index;
 use distill::loader::handle::Handle;
 use rafx::base::slab::{DropSlab, DropSlabKey};
 use rafx::nodes::{GenericRenderNodeHandle, RenderFeatureIndex, RenderNodeCount, RenderNodeSet};

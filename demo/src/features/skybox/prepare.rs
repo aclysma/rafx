@@ -1,7 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::write::WriteJobImpl;
-use super::RenderFeatureType;
+use super::{RenderFeatureType, WriteJobImpl};
 use crate::phases::OpaqueRenderPhase;
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
 

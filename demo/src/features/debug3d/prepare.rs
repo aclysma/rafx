@@ -1,8 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::public::debug3d_resource::LineList3D;
-use super::write::{Debug3DVertex, WriteJobImpl};
-use super::RenderFeatureType;
+use super::{Debug3DVertex, LineList3D, RenderFeatureType, WriteJobImpl};
 use crate::phases::OpaqueRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{MaterialPassResource, ResourceArc};

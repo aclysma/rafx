@@ -1,19 +1,19 @@
 use rafx::render_feature_mod_prelude::*;
 use rafx::render_feature_renderer_prelude::*;
-
-use distill::loader::handle::Handle;
-use extract::ExtractJobImpl;
-use rafx::assets::MaterialAsset;
-use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-
 rafx::declare_render_feature!(TileLayerRenderFeature, TILE_LAYER_FEATURE_INDEX);
 
 mod extract;
+use extract::*;
 mod prepare;
+use prepare::*;
 mod write;
-
+use write::*;
 mod public;
 pub use public::*;
+
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
+use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
 struct StaticResources {
     pub tile_layer_material: Handle<MaterialAsset>,

@@ -1,8 +1,6 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::prepare::{ImGuiUniformBufferObject, PrepareJobImpl};
-use super::Sdl2ImguiManager;
-use super::StaticResources;
+use super::{ImGuiUniformBufferObject, PrepareJobImpl, Sdl2ImguiManager, StaticResources};
 use rafx::assets::AssetManagerRenderResource;
 use rafx::graph::SwapchainSurfaceInfo;
 

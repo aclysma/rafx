@@ -1,7 +1,6 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::prepare::PrepareJobImpl;
-use super::{StaticResources, TextResource};
+use super::{PrepareJobImpl, StaticResources, TextResource};
 use fnv::FnvHashMap;
 use rafx::assets::AssetManagerRenderResource;
 

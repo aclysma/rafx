@@ -23,7 +23,7 @@ lazy_static::lazy_static! {
     };
 }
 
-use super::internal::TextImageUpdate;
+use super::TextImageUpdate;
 use rafx::api::{
     RafxCmdCopyBufferToTextureParams, RafxIndexBufferBinding, RafxIndexType, RafxResourceState,
     RafxTextureBarrier, RafxVertexBufferBinding,

@@ -21,7 +21,7 @@ lazy_static::lazy_static! {
     };
 }
 
-use super::internal::{ImGuiDrawCmd, ImGuiDrawData};
+use super::{ImGuiDrawCmd, ImGuiDrawData};
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 

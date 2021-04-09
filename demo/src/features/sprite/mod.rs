@@ -1,18 +1,18 @@
 use rafx::render_feature_mod_prelude::*;
 use rafx::render_feature_renderer_prelude::*;
-
-use distill::loader::handle::Handle;
-use extract::ExtractJobImpl;
-use rafx::assets::MaterialAsset;
-
 rafx::declare_render_feature!(SpriteRenderFeature, SPRITE_FEATURE_INDEX);
 
 mod extract;
+use extract::*;
 mod prepare;
+use prepare::*;
 mod write;
-
+use write::*;
 mod public;
 pub use public::*;
+
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
 
 struct StaticResources {
     pub sprite_material: Handle<MaterialAsset>,

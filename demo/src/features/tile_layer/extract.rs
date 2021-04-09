@@ -1,8 +1,8 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::prepare::PrepareJobImpl;
-use crate::features::tile_layer::{
-    StaticResources, TileLayerRenderFeature, TileLayerRenderNode, TileLayerRenderNodeSet,
+use super::{
+    PrepareJobImpl, StaticResources, TileLayerRenderFeature, TileLayerRenderNode,
+    TileLayerRenderNodeSet,
 };
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;

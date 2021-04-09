@@ -1,7 +1,6 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::prepare::PrepareJobImpl;
-use super::{DebugDraw3DResource, StaticResources};
+use super::{DebugDraw3DResource, PrepareJobImpl, StaticResources};
 use rafx::assets::AssetManagerRenderResource;
 
 pub struct ExtractJobImpl {}

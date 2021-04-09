@@ -1,6 +1,6 @@
 use rafx::render_feature_write_job_prelude::*;
 
-use crate::features::mesh::prepare::ExtractedFrameNodeMeshData;
+use super::ExtractedFrameNodeMeshData;
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
 use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::nodes::{FrameNodeIndex, PerViewNode};

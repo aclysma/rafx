@@ -1,7 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::internal::ImGuiDrawData;
-use super::write::WriteJobImpl;
+use super::{ImGuiDrawData, WriteJobImpl};
 use crate::phases::UiRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};

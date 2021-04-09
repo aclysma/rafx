@@ -1,6 +1,5 @@
+use super::super::{TextDrawCallMeta, TextDrawCommand, TextVertex};
 use crate::assets::font::{font_cooking, FontAsset};
-use crate::features::text::public::TextDrawCommand;
-use crate::features::text::write::{TextDrawCallMeta, TextVertex};
 use distill::loader::LoadHandle;
 use fnv::{FnvBuildHasher, FnvHashMap, FnvHashSet};
 use fontdue::layout::{GlyphPosition, LayoutSettings, TextStyle};

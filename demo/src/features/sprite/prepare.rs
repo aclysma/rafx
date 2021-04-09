@@ -1,6 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::write::{SpriteVertex, WriteJobImpl};
+use super::{SpriteVertex, WriteJobImpl};
 use crate::phases::OpaqueRenderPhase;
 use crate::phases::TransparentRenderPhase;
 use fnv::FnvHashMap;

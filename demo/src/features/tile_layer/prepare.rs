@@ -1,7 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::write::WriteJobImpl;
-use super::{RenderFeatureType, TileLayerRenderNode};
+use super::{RenderFeatureType, TileLayerRenderNode, WriteJobImpl};
 use crate::phases::TransparentRenderPhase;
 use rafx::framework::{MaterialPassResource, ResourceArc};
 

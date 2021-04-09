@@ -1,7 +1,7 @@
+use super::super::RenderFeatureType;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use crate::features::mesh::MeshRenderFeature;
 use crate::phases::ShadowMapRenderPhase;
 use crate::RenderOptions;
 use arrayvec::ArrayVec;
@@ -265,7 +265,7 @@ fn calculate_shadow_map_views(
 
     let shadow_map_feature_mask = if render_options.show_shadows {
         RenderFeatureMaskBuilder::default()
-            .add_render_feature::<MeshRenderFeature>()
+            .add_render_feature::<RenderFeatureType>()
             .build()
     } else {
         RenderFeatureMask::empty()
