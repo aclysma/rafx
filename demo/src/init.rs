@@ -5,7 +5,7 @@ use crate::features::debug3d::{Debug3DRendererPlugin, DebugDraw3DResource};
 use crate::features::mesh::{MeshRenderNodeSet, MeshRendererPlugin};
 use crate::features::skybox;
 use crate::features::sprite::{SpriteRenderNodeSet, SpriteRendererPlugin};
-use crate::features::text::{TextRendererPlugin, TextResource};
+use crate::features::text;
 use crate::features::tile_layer::{
     TileLayerRenderNodeSet, TileLayerRendererPlugin, TileLayerResource,
 };
@@ -60,9 +60,10 @@ pub fn rendering_init(
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(DebugDraw3DResource::new());
-    resources.insert(TextResource::new());
     resources.insert(ViewportsResource::default());
     resources.insert(TileLayerResource::default());
+
+    text::legion_init(resources);
 
     let rafx_api = rafx::api::RafxApi::new(sdl2_window, &Default::default())?;
 
@@ -72,7 +73,7 @@ pub fn rendering_init(
         .add_plugin(Box::new(GltfAssetTypeRendererPlugin))
         .add_plugin(Box::new(LdtkAssetTypeRendererPlugin))
         .add_plugin(Box::new(Debug3DRendererPlugin))
-        .add_plugin(Box::new(TextRendererPlugin))
+        .add_plugin(Box::new(text::RendererPluginImpl))
         .add_plugin(Box::new(SpriteRendererPlugin))
         .add_plugin(Box::new(TileLayerRendererPlugin))
         .add_plugin(Box::new(MeshRendererPlugin))
@@ -154,7 +155,9 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
         resources.remove::<DebugDraw3DResource>();
-        resources.remove::<TextResource>();
+
+        text::legion_destroy(resources);
+
         resources.remove::<RenderRegistry>();
 
         // Remove the asset resource because we have asset storages that reference resources

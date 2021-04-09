@@ -2,14 +2,14 @@ rafx::declare_render_feature_write_job!();
 
 use rafx::api::RafxPrimitiveTopology;
 use rafx::framework::VertexDataSetLayout;
-use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
-use std::ops::Sub;
 
 lazy_static::lazy_static! {
     pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
         VertexDataSetLayout::new(vec![], RafxPrimitiveTopology::TriangleList)
     };
 }
+
+use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
 
 pub struct FeatureCommandWriterImpl {
     material_pass_resource: ResourceArc<MaterialPassResource>,
@@ -70,7 +70,7 @@ impl FeatureCommandWriter for FeatureCommandWriterImpl {
         &self,
         write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
-        render_phase_index: RenderPhaseIndex,
+        _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
         profiling::scope!(render_element_scope);

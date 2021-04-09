@@ -1,12 +1,8 @@
-use crate::features::text::plugin::TextStaticResources;
-use crate::features::text::prepare::TextPrepareJobImpl;
-use crate::features::text::{ExtractedTextData, TextRenderFeature, TextResource};
+rafx::declare_render_feature_extract_job!();
+
+use super::{StaticResources, TextResource};
 use fnv::FnvHashMap;
 use rafx::assets::AssetManagerRenderResource;
-use rafx::nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
-    RenderJobExtractContext, RenderView,
-};
 
 pub struct ExtractJobImpl {}
 
@@ -23,7 +19,8 @@ impl ExtractJob for ExtractJobImpl {
         _frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!("Text Extract");
+        profiling::scope!(extract_scope);
+
         let asset_manager = extract_context
             .render_resources
             .fetch::<AssetManagerRenderResource>();
@@ -34,7 +31,7 @@ impl ExtractJob for ExtractJobImpl {
 
         let text_material = &extract_context
             .render_resources
-            .fetch::<TextStaticResources>()
+            .fetch::<StaticResources>()
             .text_material;
         let text_material_pass = asset_manager
             .committed_asset(&text_material)
@@ -50,20 +47,18 @@ impl ExtractJob for ExtractJobImpl {
             assert!(old.is_none());
         }
 
-        Box::new(TextPrepareJobImpl::new(
+        Box::new(PrepareJobImpl::new(
             text_material_pass,
-            ExtractedTextData {
-                text_draw_commands: text_draw_data.text_draw_commands,
-                font_assets,
-            },
+            text_draw_data.text_draw_commands,
+            font_assets,
         ))
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        TextRenderFeature::feature_debug_name()
+        render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        TextRenderFeature::feature_index()
+        render_feature_index()
     }
 }

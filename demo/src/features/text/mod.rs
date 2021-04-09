@@ -1,57 +1,85 @@
-use rafx::framework::{
-    BufferResource, ImageViewResource, ResourceArc, VertexDataLayout, VertexDataSetLayout,
-};
+rafx::declare_render_feature_mod!();
+rafx::declare_render_feature_renderer_plugin!();
+
+rafx::declare_render_feature!(TextRenderFeature, TEXT_FEATURE_INDEX);
 
 mod extract;
-mod plugin;
 mod prepare;
-mod text_resource;
 mod write;
-pub use plugin::TextRendererPlugin;
+
+mod internal;
+mod public;
 
 use crate::assets::font::FontAsset;
-use fnv::FnvHashMap;
-use rafx::api::RafxPrimitiveTopology;
-use rafx::distill::loader::LoadHandle;
-pub use text_resource::*;
-
-pub fn create_text_extract_job() -> Box<dyn ExtractJob> {
-    Box::new(ExtractJobImpl::new())
-}
+use distill::loader::handle::Handle;
+use internal::FontAtlasCache;
+use rafx::assets::MaterialAsset;
 
 pub type TextUniformBufferObject = shaders::text_vert::PerViewUboUniform;
 
-/// Vertex format for vertices sent to the GPU
-#[derive(Clone, Debug, Copy, Default)]
-#[repr(C)]
-pub struct TextVertex {
-    pub position: [f32; 3],
-    pub uv: [f32; 2],
-    pub color: [f32; 4],
+pub use public::AppendText;
+pub use public::TextResource;
+
+pub struct StaticResources {
+    pub text_material: Handle<MaterialAsset>,
+    pub default_font: Handle<FontAsset>,
 }
 
-lazy_static::lazy_static! {
-    pub static ref TEXT_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use rafx::api::RafxFormat;
+pub struct RendererPluginImpl;
 
-        VertexDataLayout::build_vertex_layout(&TextVertex::default(), |builder, vertex| {
-            builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
-            builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
-            builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
-        }).into_set(RafxPrimitiveTopology::TriangleList)
-    };
+impl RendererPlugin for RendererPluginImpl {
+    fn configure_render_registry(
+        &self,
+        render_registry: RenderRegistryBuilder,
+    ) -> RenderRegistryBuilder {
+        render_registry.register_feature::<TextRenderFeature>()
+    }
+
+    fn initialize_static_resources(
+        &self,
+        asset_manager: &mut AssetManager,
+        asset_resource: &mut AssetResource,
+        _extract_resources: &ExtractResources,
+        render_resources: &mut ResourceMap,
+        _upload: &mut RafxTransferUpload,
+    ) -> RafxResult<()> {
+        let text_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/text.material");
+        let default_font =
+            asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf");
+
+        asset_manager.wait_for_asset_to_load(&text_material, asset_resource, "text material")?;
+
+        asset_manager.wait_for_asset_to_load(&default_font, asset_resource, "default font")?;
+
+        render_resources.insert(StaticResources {
+            text_material,
+            default_font,
+        });
+
+        render_resources.insert(FontAtlasCache::default());
+
+        Ok(())
+    }
+
+    fn add_extract_jobs(
+        &self,
+        _extract_resources: &ExtractResources,
+        _render_resources: &RenderResources,
+        extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
+    ) {
+        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+    }
 }
 
-rafx::declare_render_feature_mod!();
-rafx::declare_render_feature_renderer_plugin!();
-rafx::declare_render_feature!(TextRenderFeature, TEXT_FEATURE_INDEX);
+// Legion-specific
 
-pub struct TextImageUpdate {
-    pub upload_buffer: ResourceArc<BufferResource>,
-    pub upload_image: ResourceArc<ImageViewResource>,
+use legion::Resources;
+
+pub fn legion_init(resources: &mut Resources) {
+    resources.insert(TextResource::new());
 }
 
-pub(self) struct ExtractedTextData {
-    text_draw_commands: Vec<TextDrawCommand>,
-    font_assets: FnvHashMap<LoadHandle, FontAsset>,
+pub fn legion_destroy(resources: &mut Resources) {
+    resources.remove::<TextResource>();
 }
