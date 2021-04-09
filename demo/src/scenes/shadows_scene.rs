@@ -193,8 +193,9 @@ impl super::TestScene for ShadowsScene {
         {
             let time_state = resources.get::<TimeState>().unwrap();
             let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
+            let render_options = resources.get::<RenderOptions>().unwrap();
 
-            update_main_view_3d(&*time_state, &mut *viewports_resource);
+            update_main_view_3d(&*time_state, &*render_options, &mut *viewports_resource);
         }
 
         {
@@ -250,24 +251,35 @@ impl super::TestScene for ShadowsScene {
 #[profiling::function]
 fn update_main_view_3d(
     time_state: &TimeState,
+    render_options: &RenderOptions,
     viewports_resource: &mut ViewportsResource,
 ) {
-    let main_camera_phase_mask = RenderPhaseMaskBuilder::default()
+    let phase_mask = RenderPhaseMaskBuilder::default()
         .add_render_phase::<DepthPrepassRenderPhase>()
         .add_render_phase::<OpaqueRenderPhase>()
         .add_render_phase::<TransparentRenderPhase>()
         .add_render_phase::<UiRenderPhase>()
         .build();
 
-    let main_camera_feature_mask = RenderFeatureMaskBuilder::default()
+    let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
         .add_render_feature::<MeshRenderFeature>()
-        .add_render_feature::<Debug3DRenderFeature>()
         .add_render_feature::<ImGuiRenderFeature>()
-        .add_render_feature::<SkyboxRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<TextRenderFeature>()
-        .add_render_feature::<TileLayerRenderFeature>()
-        .build();
+        .add_render_feature::<TileLayerRenderFeature>();
+
+    if render_options.show_text {
+        feature_mask_builder = feature_mask_builder.add_render_feature::<TextRenderFeature>();
+    }
+
+    if render_options.show_debug3d {
+        feature_mask_builder = feature_mask_builder.add_render_feature::<Debug3DRenderFeature>();
+    }
+
+    if render_options.show_skybox {
+        feature_mask_builder = feature_mask_builder.add_render_feature::<SkyboxRenderFeature>();
+    }
+
+    let main_camera_feature_mask = feature_mask_builder.build();
 
     const CAMERA_XY_DISTANCE: f32 = 12.0;
     const CAMERA_Z: f32 = 6.0;
@@ -297,7 +309,7 @@ fn update_main_view_3d(
         view,
         proj,
         depth_range: RenderViewDepthRange::new_infinite_reverse(near_plane),
-        render_phase_mask: main_camera_phase_mask,
+        render_phase_mask: phase_mask,
         render_feature_mask: main_camera_feature_mask,
         debug_name: "main".to_string(),
     });

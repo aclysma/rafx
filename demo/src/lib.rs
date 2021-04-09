@@ -136,6 +136,11 @@ pub struct RenderOptions {
     pub enable_msaa: bool,
     pub enable_hdr: bool,
     pub enable_bloom: bool,
+    pub show_debug3d: bool,
+    pub show_text: bool,
+    pub show_skybox: bool,
+    pub show_feature_toggles: bool,
+    pub show_shadows: bool,
     pub blur_pass_count: usize,
     pub tonemapper_type: TonemapperType,
 }
@@ -146,6 +151,11 @@ impl RenderOptions {
             enable_msaa: false,
             enable_hdr: false,
             enable_bloom: false,
+            show_debug3d: true,
+            show_text: true,
+            show_skybox: true,
+            show_shadows: true,
+            show_feature_toggles: false,
             blur_pass_count: 0,
             tonemapper_type: TonemapperType::None,
         }
@@ -156,6 +166,11 @@ impl RenderOptions {
             enable_msaa: true,
             enable_hdr: true,
             enable_bloom: true,
+            show_debug3d: true,
+            show_text: true,
+            show_skybox: true,
+            show_shadows: true,
+            show_feature_toggles: true,
             blur_pass_count: 5,
             tonemapper_type: TonemapperType::LogDerivative,
         }
@@ -186,6 +201,17 @@ impl RenderOptions {
         ui.checkbox(imgui::im_str!("enable_msaa"), &mut self.enable_msaa);
         ui.checkbox(imgui::im_str!("enable_hdr"), &mut self.enable_hdr);
         ui.checkbox(imgui::im_str!("enable_bloom"), &mut self.enable_bloom);
+
+        if self.show_feature_toggles {
+            ui.checkbox(
+                imgui::im_str!("show_debug3d_feature"),
+                &mut self.show_debug3d,
+            );
+            ui.checkbox(imgui::im_str!("show_text_feature"), &mut self.show_text);
+            ui.checkbox(imgui::im_str!("show_skybox_feature"), &mut self.show_skybox);
+            ui.checkbox(imgui::im_str!("show_shadows"), &mut self.show_shadows);
+        }
+
         let mut blur_pass_count = self.blur_pass_count as i32;
 
         imgui::Drag::new(imgui::im_str!("blur_pass_count"))
@@ -193,11 +219,14 @@ impl RenderOptions {
             .build(ui, &mut blur_pass_count);
 
         self.blur_pass_count = blur_pass_count as usize;
+
         // iterate over the valid tonemapper values and convert them into their names
         let tonemapper_names: Vec<imgui::ImString> = (0..(TonemapperType::MAX as i32))
             .map(|t| imgui::ImString::new(TonemapperType::from(t).display_name()))
             .collect();
+
         let mut current_tonemapper_type = self.tonemapper_type as i32;
+
         if let Some(combo) = imgui::ComboBox::new(imgui::im_str!("tonemapper_type"))
             .preview_value(&tonemapper_names[current_tonemapper_type as usize])
             .begin(ui)

@@ -3,6 +3,7 @@ use crate::components::{
 };
 use crate::features::mesh::MeshRenderFeature;
 use crate::phases::ShadowMapRenderPhase;
+use crate::RenderOptions;
 use arrayvec::ArrayVec;
 use fnv::FnvHashMap;
 use legion::*;
@@ -260,9 +261,15 @@ fn calculate_shadow_map_views(
         .add_render_phase::<ShadowMapRenderPhase>()
         .build();
 
-    let shadow_map_feature_mask = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshRenderFeature>()
-        .build();
+    let render_options = extract_resources.fetch::<RenderOptions>();
+
+    let shadow_map_feature_mask = if render_options.show_shadows {
+        RenderFeatureMaskBuilder::default()
+            .add_render_feature::<MeshRenderFeature>()
+            .build()
+    } else {
+        RenderFeatureMask::empty()
+    };
 
     //TODO: The look-at calls in this fn will fail if the light is pointed straight down
 

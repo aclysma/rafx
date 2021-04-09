@@ -1,7 +1,8 @@
 rafx::declare_render_feature_prepare_job!();
 
+use super::public::debug3d_resource::LineList3D;
 use super::write::Debug3DVertex;
-use crate::features::debug3d::public::debug3d_resource::LineList3D;
+use super::RenderFeatureType;
 use crate::phases::OpaqueRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{MaterialPassResource, ResourceArc};
@@ -47,7 +48,10 @@ impl<'a> PrepareJob for PrepareJobImpl {
             &self.debug3d_material_pass.get_raw().descriptor_set_layouts
                 [shaders::debug_vert::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX];
 
-        for view in views {
+        for view in views
+            .iter()
+            .filter(|view| view.feature_is_relevant::<RenderFeatureType>())
+        {
             let debug3d_view = Debug3dUniformBufferObject {
                 view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
             };
@@ -117,7 +121,10 @@ impl<'a> PrepareJob for PrepareJobImpl {
         // TODO: Submit separate nodes for transparency
         //
         let mut submit_nodes = FeatureSubmitNodes::default();
-        for view in views {
+        for view in views
+            .iter()
+            .filter(|view| view.feature_is_relevant::<RenderFeatureType>())
+        {
             let mut view_submit_nodes =
                 ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
             view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(0, 0, 0.0);

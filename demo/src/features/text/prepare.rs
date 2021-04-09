@@ -3,6 +3,7 @@ rafx::declare_render_feature_prepare_job!();
 use super::internal::FontAtlasCache;
 use super::public::TextDrawCommand;
 use crate::assets::font::FontAsset;
+use crate::features::text::RenderFeatureType;
 use crate::phases::UiRenderPhase;
 use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
@@ -97,7 +98,10 @@ impl<'a> PrepareJob for PrepareJobImpl {
             //
             // Create per-view descriptor sets (i.e. a projection matrix)
             //
-            for view in views {
+            for view in views
+                .iter()
+                .filter(|view| view.feature_is_relevant::<RenderFeatureType>())
+            {
                 //
                 // Setup the vertex shader descriptor set
                 //
@@ -165,7 +169,10 @@ impl<'a> PrepareJob for PrepareJobImpl {
         // Submit a single node for each view
         // TODO: Submit separate nodes for transparency/text positioned in 3d
         //
-        for view in views {
+        for view in views
+            .iter()
+            .filter(|view| view.feature_is_relevant::<RenderFeatureType>())
+        {
             let mut view_submit_nodes =
                 ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
 
