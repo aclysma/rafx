@@ -2,10 +2,10 @@
 // access to the render phase index from anywhere in the binary
 //
 // Use like this:
-//      rafx::declare_render_phase!(Debug3dRenderFeature, DEBUG_3D_RENDER_FEATURE, sort_fn);
+//      rafx::declare_render_phase!(Debug3DRenderFeature, DEBUG_3D_RENDER_FEATURE, sort_fn);
 //
 // The first name is all that really matters, the second name just needs to be a constant that is
-// exposed via the first name (i.e. Debug3dRenderFeature::feature_index())
+// exposed via the first name (i.e. Debug3DRenderFeature::feature_index())
 //
 // The function provided is a sort function like this:
 //

@@ -2,10 +2,10 @@
 // access to the render feature index from anywhere in the binary
 //
 // Use like this:
-//      rafx::declare_render_feature!(Debug3dRenderFeature, DEBUG_3D_RENDER_FEATURE);
+//      rafx::declare_render_feature!(Debug3DRenderFeature, DEBUG_3D_RENDER_FEATURE);
 //
 // The first name is all that really matters, the second name just needs to be a constant that is
-// exposed via the first name (i.e. Debug3dRenderFeature::feature_index())
+// exposed via the first name (i.e. Debug3DRenderFeature::feature_index())
 #[macro_export]
 macro_rules! declare_render_feature {
     ($struct_name:ident, $atomic_constant_name:ident) => {

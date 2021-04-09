@@ -1,50 +1,73 @@
-use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+rafx::declare_render_feature_mod!();
+rafx::declare_render_feature_renderer_plugin!();
 
-mod debug3d_resource;
+rafx::declare_render_feature!(Debug3DRenderFeature, DEBUG_3D_FEATURE_INDEX);
+
 mod extract;
-mod plugin;
 mod prepare;
 mod write;
-pub use plugin::Debug3DRendererPlugin;
 
-pub use debug3d_resource::*;
-use rafx::api::RafxPrimitiveTopology;
+mod public;
 
-pub fn create_debug3d_extract_job() -> Box<dyn ExtractJob> {
-    Box::new(ExtractJobImpl::new())
-}
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
 
 pub type Debug3dUniformBufferObject = shaders::debug_vert::PerFrameUboUniform;
 
-/// Vertex format for vertices sent to the GPU
-#[derive(Clone, Debug, Copy, Default)]
-#[repr(C)]
-pub struct Debug3dVertex {
-    pub pos: [f32; 3],
-    pub color: [f32; 4],
+pub use public::debug3d_resource::DebugDraw3DResource;
+
+pub struct StaticResources {
+    pub debug3d_material: Handle<MaterialAsset>,
 }
 
-lazy_static::lazy_static! {
-    pub static ref DEBUG_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use rafx::api::RafxFormat;
+pub struct RendererPluginImpl;
 
-        VertexDataLayout::build_vertex_layout(&Debug3dVertex::default(), |builder, vertex| {
-            builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32B32_SFLOAT);
-            builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
-        }).into_set(RafxPrimitiveTopology::LineStrip)
-    };
+impl RendererPlugin for RendererPluginImpl {
+    fn configure_render_registry(
+        &self,
+        render_registry: RenderRegistryBuilder,
+    ) -> RenderRegistryBuilder {
+        render_registry.register_feature::<Debug3DRenderFeature>()
+    }
+
+    fn initialize_static_resources(
+        &self,
+        asset_manager: &mut AssetManager,
+        asset_resource: &mut AssetResource,
+        _extract_resources: &ExtractResources,
+        render_resources: &mut ResourceMap,
+        _upload: &mut RafxTransferUpload,
+    ) -> RafxResult<()> {
+        let debug3d_material =
+            asset_resource.load_asset_path::<MaterialAsset, _>("materials/debug.material");
+
+        asset_manager
+            .wait_for_asset_to_load(&debug3d_material, asset_resource, "debug.material")
+            .unwrap();
+
+        render_resources.insert(StaticResources { debug3d_material });
+
+        Ok(())
+    }
+
+    fn add_extract_jobs(
+        &self,
+        _extract_resources: &ExtractResources,
+        _render_resources: &RenderResources,
+        extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
+    ) {
+        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+    }
 }
 
-rafx::declare_render_feature_mod!();
-rafx::declare_render_feature_renderer_plugin!();
-rafx::declare_render_feature!(Debug3dRenderFeature, DEBUG_3D_FEATURE_INDEX);
+// Legion-specific
 
-pub(self) struct ExtractedDebug3dData {
-    line_lists: Vec<LineList3D>,
+use legion::Resources;
+
+pub fn legion_init(resources: &mut Resources) {
+    resources.insert(DebugDraw3DResource::new());
 }
 
-#[derive(Debug)]
-struct Debug3dDrawCall {
-    first_element: u32,
-    count: u32,
+pub fn legion_destroy(resources: &mut Resources) {
+    resources.remove::<DebugDraw3DResource>();
 }

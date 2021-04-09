@@ -1,7 +1,7 @@
 use crate::assets::font::FontAssetTypeRendererPlugin;
 use crate::assets::gltf::GltfAssetTypeRendererPlugin;
 use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
-use crate::features::debug3d::{Debug3DRendererPlugin, DebugDraw3DResource};
+use crate::features::debug3d;
 use crate::features::mesh::{MeshRenderNodeSet, MeshRendererPlugin};
 use crate::features::skybox;
 use crate::features::sprite::{SpriteRenderNodeSet, SpriteRendererPlugin};
@@ -59,10 +59,10 @@ pub fn rendering_init(
     resources.insert(TileLayerRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
-    resources.insert(DebugDraw3DResource::new());
     resources.insert(ViewportsResource::default());
     resources.insert(TileLayerResource::default());
 
+    debug3d::legion_init(resources);
     text::legion_init(resources);
 
     let rafx_api = rafx::api::RafxApi::new(sdl2_window, &Default::default())?;
@@ -72,7 +72,7 @@ pub fn rendering_init(
         .add_plugin(Box::new(FontAssetTypeRendererPlugin))
         .add_plugin(Box::new(GltfAssetTypeRendererPlugin))
         .add_plugin(Box::new(LdtkAssetTypeRendererPlugin))
-        .add_plugin(Box::new(Debug3DRendererPlugin))
+        .add_plugin(Box::new(debug3d::RendererPluginImpl))
         .add_plugin(Box::new(text::RendererPluginImpl))
         .add_plugin(Box::new(SpriteRendererPlugin))
         .add_plugin(Box::new(TileLayerRendererPlugin))
@@ -154,8 +154,8 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         resources.remove::<TileLayerRenderNodeSet>();
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
-        resources.remove::<DebugDraw3DResource>();
 
+        debug3d::legion_destroy(resources);
         text::legion_destroy(resources);
 
         resources.remove::<RenderRegistry>();

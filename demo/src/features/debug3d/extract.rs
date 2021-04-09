@@ -1,11 +1,7 @@
-use crate::features::debug3d::plugin::Debug3DStaticResources;
-use crate::features::debug3d::prepare::Debug3dPrepareJobImpl;
-use crate::features::debug3d::{Debug3dRenderFeature, DebugDraw3DResource, ExtractedDebug3dData};
+rafx::declare_render_feature_extract_job!();
+
+use super::{DebugDraw3DResource, StaticResources};
 use rafx::assets::AssetManagerRenderResource;
-use rafx::nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
-    RenderJobExtractContext, RenderView,
-};
 
 pub struct ExtractJobImpl {}
 
@@ -22,7 +18,8 @@ impl ExtractJob for ExtractJobImpl {
         _frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!("Debug3d Extract");
+        profiling::scope!(extract_scope);
+
         let asset_manager = extract_context
             .render_resources
             .fetch::<AssetManagerRenderResource>();
@@ -34,7 +31,7 @@ impl ExtractJob for ExtractJobImpl {
 
         let debug3d_material = &extract_context
             .render_resources
-            .fetch::<Debug3DStaticResources>()
+            .fetch::<StaticResources>()
             .debug3d_material;
 
         let debug3d_material_pass = asset_manager
@@ -43,17 +40,14 @@ impl ExtractJob for ExtractJobImpl {
             .get_single_material_pass()
             .unwrap();
 
-        Box::new(Debug3dPrepareJobImpl::new(
-            debug3d_material_pass,
-            ExtractedDebug3dData { line_lists },
-        ))
+        Box::new(PrepareJobImpl::new(debug3d_material_pass, line_lists))
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        Debug3dRenderFeature::feature_debug_name()
+        render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        Debug3dRenderFeature::feature_index()
+        render_feature_index()
     }
 }

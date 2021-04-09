@@ -1,50 +1,51 @@
-use super::write::Debug3dCommandWriter;
-use crate::features::debug3d::{
-    Debug3dDrawCall, Debug3dRenderFeature, Debug3dUniformBufferObject, Debug3dVertex,
-    ExtractedDebug3dData,
-};
+rafx::declare_render_feature_prepare_job!();
+
+use super::write::Debug3DVertex;
+use super::Debug3dUniformBufferObject;
+use crate::features::debug3d::public::debug3d_resource::LineList3D;
 use crate::phases::OpaqueRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderJobPrepareContext, RenderView, ViewSubmitNodes,
-};
 
-pub struct Debug3dPrepareJobImpl {
+pub struct PrepareJobImpl {
     debug3d_material_pass: ResourceArc<MaterialPassResource>,
-    extracted_debug3d_data: ExtractedDebug3dData,
+    line_lists: Vec<LineList3D>,
 }
 
-impl Debug3dPrepareJobImpl {
+impl PrepareJobImpl {
     pub(super) fn new(
         debug3d_material_pass: ResourceArc<MaterialPassResource>,
-        extracted_debug3d_data: ExtractedDebug3dData,
+        line_lists: Vec<LineList3D>,
     ) -> Self {
-        Debug3dPrepareJobImpl {
+        PrepareJobImpl {
             debug3d_material_pass,
-            extracted_debug3d_data,
+            line_lists,
         }
     }
 }
 
-impl<'a> PrepareJob for Debug3dPrepareJobImpl {
+impl<'a> PrepareJob for PrepareJobImpl {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
-        profiling::scope!("Debug3d Prepare");
+        profiling::scope!(prepare_scope);
+
+        let mut writer = Box::new(FeatureCommandWriterImpl::new(
+            self.debug3d_material_pass.clone(),
+            self.line_lists.len(),
+        ));
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
             .create_descriptor_set_allocator();
+
         let per_view_descriptor_set_layout =
             &self.debug3d_material_pass.get_raw().descriptor_set_layouts
                 [shaders::debug_vert::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX];
 
-        let mut per_view_descriptor_sets = Vec::default();
         for view in views {
             let debug3d_view = Debug3dUniformBufferObject {
                 view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
@@ -59,47 +60,35 @@ impl<'a> PrepareJob for Debug3dPrepareJobImpl {
                 )
                 .unwrap();
 
-            per_view_descriptor_sets.resize(
-                per_view_descriptor_sets
-                    .len()
-                    .max(view.view_index() as usize + 1),
-                None,
-            );
-            per_view_descriptor_sets[view.view_index() as usize] = Some(descriptor_set.clone());
+            writer.push_per_view_descriptor_set(view.view_index(), descriptor_set);
         }
 
         //
         // Gather the raw draw data
         //
-        let line_lists = &self.extracted_debug3d_data.line_lists;
-        let mut draw_calls = Vec::with_capacity(line_lists.len());
         let dyn_resource_allocator = prepare_context
             .resource_context
             .create_dyn_resource_allocator_set();
 
-        let mut vertex_list: Vec<Debug3dVertex> = vec![];
-        for line_list in line_lists {
+        let mut vertex_list: Vec<Debug3DVertex> = vec![];
+        for line_list in &self.line_lists {
             let vertex_buffer_first_element = vertex_list.len() as u32;
 
             for vertex_pos in &line_list.points {
-                vertex_list.push(Debug3dVertex {
+                vertex_list.push(Debug3DVertex {
                     pos: (*vertex_pos).into(),
                     color: line_list.color.into(),
                 });
             }
 
-            let draw_call = Debug3dDrawCall {
-                first_element: vertex_buffer_first_element,
-                count: line_list.points.len() as u32,
-            };
-
-            draw_calls.push(draw_call);
+            writer.push_draw_call(vertex_buffer_first_element, line_list.points.len());
         }
 
         // We would probably want to support multiple buffers at some point
-        let vertex_buffer = if !draw_calls.is_empty() {
+
+        let vertex_buffer = if !writer.draw_calls().is_empty() {
             let vertex_buffer_size =
-                vertex_list.len() as u64 * std::mem::size_of::<Debug3dVertex>() as u64;
+                vertex_list.len() as u64 * std::mem::size_of::<Debug3DVertex>() as u64;
 
             let vertex_buffer = prepare_context
                 .device_context
@@ -120,6 +109,8 @@ impl<'a> PrepareJob for Debug3dPrepareJobImpl {
             None
         };
 
+        writer.set_vertex_buffer(vertex_buffer);
+
         //
         // Submit a single node for each view
         // TODO: Submit separate nodes for transparency
@@ -132,21 +123,14 @@ impl<'a> PrepareJob for Debug3dPrepareJobImpl {
             submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
         }
 
-        let writer = Box::new(Debug3dCommandWriter {
-            draw_calls,
-            vertex_buffer,
-            debug3d_material_pass: self.debug3d_material_pass,
-            per_view_descriptor_sets,
-        });
-
         (writer, submit_nodes)
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        Debug3dRenderFeature::feature_debug_name()
+        render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        Debug3dRenderFeature::feature_index()
+        render_feature_index()
     }
 }
