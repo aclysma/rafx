@@ -1,7 +1,7 @@
 use glam::f32::Vec3;
 use rafx::nodes::{
     ExtractJob, FrameNodeIndex, GenericRenderNodeHandle, RenderFeature, RenderFeatureIndex,
-    RenderNodeCount, RenderNodeSet, ViewNodeIndex,
+    RenderNodeCount, RenderNodeSet, RenderViewIndex,
 };
 use rafx_base::slab::{DropSlab, DropSlabKey};
 use std::convert::TryInto;
@@ -97,5 +97,5 @@ pub(self) struct PreparedPerSubmitNodeDemoData {
     #[allow(dead_code)]
     alpha: f32,
     frame_node_index: FrameNodeIndex,
-    view_node_index: ViewNodeIndex,
+    view_index: RenderViewIndex,
 }

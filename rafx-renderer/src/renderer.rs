@@ -288,6 +288,7 @@ impl Renderer {
             (main_window_size.width, main_window_size.height),
             view_meta.depth_range,
             view_meta.render_phase_mask,
+            view_meta.render_feature_mask,
             view_meta.debug_name,
         );
 

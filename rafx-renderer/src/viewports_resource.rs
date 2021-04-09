@@ -1,5 +1,5 @@
 use rafx_api::RafxExtents2D;
-use rafx_framework::nodes::{RenderPhaseMask, RenderViewDepthRange};
+use rafx_framework::nodes::{RenderFeatureMask, RenderPhaseMask, RenderViewDepthRange};
 
 // Very bare-bones for now, in the future this could support multiple windows, multiple viewports
 // per window, and some method for configuring the graph that's being drawn (maybe the graph
@@ -12,6 +12,7 @@ pub struct RenderViewMeta {
     pub proj: glam::Mat4,
     pub depth_range: RenderViewDepthRange,
     pub render_phase_mask: RenderPhaseMask,
+    pub render_feature_mask: RenderFeatureMask,
     pub debug_name: String,
 }
 
@@ -30,6 +31,7 @@ impl Default for RenderViewMeta {
             proj,
             depth_range: RenderViewDepthRange::new_infinite_reverse(0.1),
             render_phase_mask: RenderPhaseMask::empty(),
+            render_feature_mask: RenderFeatureMask::empty(),
             debug_name: "undefined".to_string(),
         }
     }

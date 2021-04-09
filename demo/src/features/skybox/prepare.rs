@@ -1,5 +1,6 @@
 rafx::declare_render_feature_prepare_job!();
 
+use super::RenderFeatureType;
 use crate::phases::OpaqueRenderPhase;
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
 
@@ -44,7 +45,7 @@ impl PrepareJob for PrepareJobImpl {
             let mut view_submit_nodes =
                 ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
 
-            if view.phase_is_relevant::<OpaqueRenderPhase>() {
+            if view.is_relevant::<OpaqueRenderPhase, RenderFeatureType>() {
                 // Set up a descriptor set pointing at the image so we can sample from it
                 let descriptor_set_layouts = self.skybox_material.get_raw().descriptor_set_layouts;
                 let skybox_material_dyn_set0 = descriptor_set_allocator

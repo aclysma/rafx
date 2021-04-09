@@ -1,11 +1,10 @@
 rafx::declare_render_feature_prepare_job!();
 
+use super::{LightId, RenderFeatureType, ShadowMapRenderView, ShadowMapResource};
 use crate::assets::gltf::MeshAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use crate::features::mesh::ShadowMapResource;
-use crate::features::mesh::{LightId, ShadowMapRenderView};
 use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase};
 use crate::StatsAllocMemoryRegion;
 use fnv::{FnvHashMap, FnvHashSet};
@@ -410,8 +409,8 @@ impl PrepareJob for PrepareJobImpl {
         {
             profiling::scope!("create per view descriptor sets");
             for view in views {
-                if view.phase_is_relevant::<DepthPrepassRenderPhase>()
-                    || view.phase_is_relevant::<ShadowMapRenderPhase>()
+                if view.is_relevant::<DepthPrepassRenderPhase, RenderFeatureType>()
+                    || view.is_relevant::<ShadowMapRenderPhase, RenderFeatureType>()
                 {
                     let mut per_view_data = ShadowPerViewShaderParam::default();
 
@@ -436,7 +435,7 @@ impl PrepareJob for PrepareJobImpl {
                     }
                 }
 
-                if view.phase_is_relevant::<OpaqueRenderPhase>() {
+                if view.is_relevant::<OpaqueRenderPhase, RenderFeatureType>() {
                     let mut per_view_frag_data = self.create_per_view_frag_data(
                         view,
                         &prepared_directional_lights,
@@ -568,7 +567,8 @@ impl PrepareJob for PrepareJobImpl {
                                 //
                                 // Depth prepass for opaque objects
                                 //
-                                if view.phase_is_relevant::<DepthPrepassRenderPhase>() {
+                                if view.is_relevant::<DepthPrepassRenderPhase, RenderFeatureType>()
+                                {
                                     let per_view_descriptor_set =
                                         PrepareJobImpl::get_per_view_descriptor_set(
                                             &per_view_descriptor_sets,
@@ -601,7 +601,7 @@ impl PrepareJob for PrepareJobImpl {
                                 //
                                 // Write opaque render node, if it's relevant
                                 //
-                                if view.phase_is_relevant::<OpaqueRenderPhase>() {
+                                if view.is_relevant::<OpaqueRenderPhase, RenderFeatureType>() {
                                     let per_view_descriptor_set =
                                         PrepareJobImpl::get_per_view_descriptor_set(
                                             &per_view_descriptor_sets,
@@ -636,7 +636,8 @@ impl PrepareJob for PrepareJobImpl {
                                 //
                                 let casts_shadows = true; // TODO(dvd): Make this configurable somehow.
                                 if casts_shadows {
-                                    if view.phase_is_relevant::<ShadowMapRenderPhase>() {
+                                    if view.is_relevant::<ShadowMapRenderPhase, RenderFeatureType>()
+                                    {
                                         let per_view_descriptor_set =
                                             PrepareJobImpl::get_per_view_descriptor_set(
                                                 &per_view_descriptor_sets,

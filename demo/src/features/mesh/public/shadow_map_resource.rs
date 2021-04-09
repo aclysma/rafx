@@ -1,6 +1,7 @@
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
+use crate::features::mesh::MeshRenderFeature;
 use crate::phases::ShadowMapRenderPhase;
 use arrayvec::ArrayVec;
 use fnv::FnvHashMap;
@@ -8,8 +9,9 @@ use legion::*;
 use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::graph::{PreparedRenderGraph, RenderGraphImageUsageId};
 use rafx::nodes::{
-    ExtractResources, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder, RenderView,
-    RenderViewDepthRange, RenderViewSet, VisibilityResult,
+    ExtractResources, FramePacketBuilder, RenderFeatureMask, RenderFeatureMaskBuilder,
+    RenderPhaseMask, RenderPhaseMaskBuilder, RenderView, RenderViewDepthRange, RenderViewSet,
+    VisibilityResult,
 };
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
@@ -258,6 +260,10 @@ fn calculate_shadow_map_views(
         .add_render_phase::<ShadowMapRenderPhase>()
         .build();
 
+    let shadow_map_feature_mask = RenderFeatureMaskBuilder::default()
+        .add_render_feature::<MeshRenderFeature>()
+        .build();
+
     //TODO: The look-at calls in this fn will fail if the light is pointed straight down
 
     const SHADOW_MAP_RESOLUTION: u32 = 1024;
@@ -281,6 +287,7 @@ fn calculate_shadow_map_views(
             (SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION),
             RenderViewDepthRange::new_reverse(near_plane, far_plane),
             shadow_map_phase_mask,
+            shadow_map_feature_mask,
             "shadow_map".to_string(),
         );
 
@@ -318,6 +325,7 @@ fn calculate_shadow_map_views(
             (SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION),
             RenderViewDepthRange::new_reverse(near_plane, far_plane),
             shadow_map_phase_mask,
+            shadow_map_feature_mask,
             "shadow_map".to_string(),
         );
 
@@ -342,6 +350,7 @@ fn calculate_shadow_map_views(
     for (entity, light, position) in query.iter(world) {
         fn cube_map_face(
             phase_mask: RenderPhaseMask,
+            feature_mask: RenderFeatureMask,
             render_view_set: &RenderViewSet,
             light: &PointLightComponent,
             position: glam::Vec3,
@@ -365,18 +374,19 @@ fn calculate_shadow_map_views(
                 (SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION),
                 RenderViewDepthRange::new_reverse(near, far),
                 phase_mask,
+                feature_mask,
                 "shadow_map".to_string(),
             )
         }
 
         #[rustfmt::skip]
         let cube_map_views = [
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[0]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[1]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[2]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[3]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[4]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[5]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[0]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[1]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[2]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[3]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[4]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[5]),
         ];
 
         let index = shadow_map_render_views.len();

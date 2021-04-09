@@ -1,6 +1,6 @@
 rafx::declare_render_feature_prepare_job!();
 
-use crate::features::tile_layer::TileLayerRenderNode;
+use super::{RenderFeatureType, TileLayerRenderNode};
 use crate::phases::TransparentRenderPhase;
 use rafx::framework::{MaterialPassResource, ResourceArc};
 
@@ -68,7 +68,7 @@ impl PrepareJob for PrepareJobImpl {
                 submit_nodes.add_submit_nodes_for_view(&view, view_submit_nodes);
             }
 
-            if view.phase_is_relevant::<TransparentRenderPhase>() {
+            if view.is_relevant::<TransparentRenderPhase, RenderFeatureType>() {
                 let layout = &self.tile_layer_material.get_raw().descriptor_set_layouts
                     [shaders::tile_layer_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
                 let descriptor_set = descriptor_set_allocator

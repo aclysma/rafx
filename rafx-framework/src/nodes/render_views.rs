@@ -1,5 +1,7 @@
 use super::registry::{RenderPhaseMaskInnerType, MAX_RENDER_PHASE_COUNT};
 use super::{RenderPhase, RenderPhaseIndex};
+use crate::nodes::registry::{RenderFeatureMaskInnerType, MAX_RENDER_FEATURE_COUNT};
+use crate::nodes::{RenderFeature, RenderFeatureIndex};
 use glam::{Mat4, Vec3};
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
@@ -12,10 +14,10 @@ pub type RenderViewCount = u32;
 pub struct RenderPhaseMaskBuilder(RenderPhaseMaskInnerType);
 
 impl RenderPhaseMaskBuilder {
-    pub fn add_render_phase<T: RenderPhase>(mut self) -> RenderPhaseMaskBuilder {
-        let index = T::render_phase_index();
+    pub fn add_render_phase<RenderPhaseT: RenderPhase>(mut self) -> RenderPhaseMaskBuilder {
+        let index = RenderPhaseT::render_phase_index();
         assert!(index < MAX_RENDER_PHASE_COUNT);
-        self.0 |= 1 << T::render_phase_index();
+        self.0 |= 1 << RenderPhaseT::render_phase_index();
         self
     }
 
@@ -47,6 +49,44 @@ impl RenderPhaseMask {
 }
 
 #[derive(Default)]
+pub struct RenderFeatureMaskBuilder(RenderFeatureMaskInnerType);
+
+impl RenderFeatureMaskBuilder {
+    pub fn add_render_feature<RenderFeatureT: RenderFeature>(mut self) -> RenderFeatureMaskBuilder {
+        let index = RenderFeatureT::feature_index();
+        assert!(index < MAX_RENDER_FEATURE_COUNT);
+        self.0 |= 1 << RenderFeatureT::feature_index();
+        self
+    }
+
+    pub fn build(self) -> RenderFeatureMask {
+        RenderFeatureMask(self.0)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct RenderFeatureMask(RenderFeatureMaskInnerType);
+
+impl RenderFeatureMask {
+    pub fn is_included<RenderFeatureT: RenderFeature>(&self) -> bool {
+        self.is_included_index(RenderFeatureT::feature_index())
+    }
+
+    pub fn is_included_index(
+        &self,
+        index: RenderFeatureIndex,
+    ) -> bool {
+        // If this asserts, a render phase was not registered
+        assert!(index < MAX_RENDER_FEATURE_COUNT);
+        (self.0 & 1 << index) != 0
+    }
+
+    pub fn empty() -> Self {
+        RenderFeatureMask(0)
+    }
+}
+
+#[derive(Default)]
 pub struct RenderViewSet {
     view_count: AtomicU32,
 }
@@ -60,6 +100,7 @@ impl RenderViewSet {
         extents: (u32, u32),
         depth_range: RenderViewDepthRange,
         render_phase_mask: RenderPhaseMask,
+        render_feature_mask: RenderFeatureMask,
         debug_name: String,
     ) -> RenderView {
         let view_index = self.view_count.fetch_add(1, Ordering::Release);
@@ -71,6 +112,7 @@ impl RenderViewSet {
             extents,
             depth_range,
             render_phase_mask,
+            render_feature_mask,
             debug_name,
         )
     }
@@ -92,6 +134,7 @@ pub struct RenderViewInner {
     extents: (u32, u32),
     depth_range: RenderViewDepthRange,
     render_phase_mask: RenderPhaseMask,
+    render_feature_mask: RenderFeatureMask,
     debug_name: String,
 }
 
@@ -178,6 +221,7 @@ impl RenderView {
         extents: (u32, u32),
         depth_range: RenderViewDepthRange,
         render_phase_mask: RenderPhaseMask,
+        render_feature_mask: RenderFeatureMask,
         debug_name: String,
     ) -> RenderView {
         let view_dir = glam::Vec3::new(view.x_axis.z, view.y_axis.z, view.z_axis.z) * -1.0;
@@ -193,6 +237,7 @@ impl RenderView {
             extents,
             depth_range,
             render_phase_mask,
+            render_feature_mask,
             debug_name,
         };
 
@@ -258,5 +303,36 @@ impl RenderView {
 
     pub fn render_phase_mask(&self) -> RenderPhaseMask {
         self.inner.render_phase_mask
+    }
+
+    pub fn feature_is_relevant<RenderFeatureT: RenderFeature>(&self) -> bool {
+        self.inner
+            .render_feature_mask
+            .is_included::<RenderFeatureT>()
+    }
+
+    pub fn feature_index_is_relevant(
+        &self,
+        feature_index: RenderFeatureIndex,
+    ) -> bool {
+        self.inner
+            .render_feature_mask
+            .is_included_index(feature_index)
+    }
+
+    pub fn render_feature_mask(&self) -> RenderFeatureMask {
+        self.inner.render_feature_mask
+    }
+
+    pub fn is_relevant<RenderPhaseT: RenderPhase, RenderFeatureT: RenderFeature>(&self) -> bool {
+        self.phase_is_relevant::<RenderPhaseT>() && self.feature_is_relevant::<RenderFeatureT>()
+    }
+
+    pub fn index_is_relevant(
+        &self,
+        phase_index: RenderPhaseIndex,
+        feature_index: RenderFeatureIndex,
+    ) -> bool {
+        self.phase_index_is_relevant(phase_index) && self.feature_index_is_relevant(feature_index)
     }
 }

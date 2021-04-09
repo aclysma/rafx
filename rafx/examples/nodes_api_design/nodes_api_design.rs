@@ -1,7 +1,9 @@
 use crate::demo_phases::*;
 use glam::Vec3;
 use legion::*;
-use rafx::nodes::{ExtractJobSet, FramePacketBuilder, RenderPhaseMaskBuilder};
+use rafx::nodes::{
+    ExtractJobSet, FramePacketBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
+};
 use rafx::nodes::{ExtractResources, RenderViewSet};
 use rafx::nodes::{
     RenderJobExtractContext, RenderJobPrepareContext, RenderJobWriteContext, RenderRegistryBuilder,
@@ -71,6 +73,18 @@ fn main() {
         let minimap_render_phase_mask = RenderPhaseMaskBuilder::default()
             .add_render_phase::<DemoOpaqueRenderPhase>()
             .add_render_phase::<DemoTransparentRenderPhase>()
+            .build();
+
+        //
+        // Set up render feature masks for each view. This is used to enable/disable features for particular
+        // view
+        //
+        let main_camera_render_feature_mask = RenderFeatureMaskBuilder::default()
+            .add_render_feature::<DemoRenderFeature>()
+            .build();
+
+        let minimap_render_feature_mask = RenderFeatureMaskBuilder::default()
+            .add_render_feature::<DemoRenderFeature>()
             .build();
 
         // In theory we could pre-cook static visibility in chunks and stream them in
@@ -182,6 +196,7 @@ fn main() {
                 (frustum_width, frustum_height),
                 RenderViewDepthRange::new(near, far),
                 main_camera_render_phase_mask,
+                main_camera_render_feature_mask,
                 "main".to_string(),
             );
 
@@ -212,6 +227,7 @@ fn main() {
                 (frustum_width, frustum_height),
                 RenderViewDepthRange::new(near, far),
                 minimap_render_phase_mask,
+                minimap_render_feature_mask,
                 "minimap".to_string(),
             );
 

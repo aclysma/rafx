@@ -8,6 +8,9 @@ pub type RenderFeatureIndex = u32;
 pub type RenderFeatureCount = u32;
 pub type RenderPhaseIndex = u32;
 
+pub type RenderFeatureMaskInnerType = u64;
+pub const MAX_RENDER_FEATURE_COUNT: u32 = 64;
+
 pub type RenderPhaseMaskInnerType = u32;
 pub const MAX_RENDER_PHASE_COUNT: u32 = 32;
 

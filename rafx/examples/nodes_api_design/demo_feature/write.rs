@@ -47,7 +47,7 @@ impl FeatureCommandWriter for DemoCommandWriter {
         // This demonstrates accessing data that was extracted or prepared
         let submit_node_data = &self.per_submit_node_data[index as usize];
         let _frame_node_data = &self.per_frame_data[submit_node_data.frame_node_index as usize];
-        let _view_node_data = &self.per_view_data[submit_node_data.view_node_index as usize];
+        let _view_node_data = &self.per_view_data[submit_node_data.view_index as usize];
 
         Ok(())
     }

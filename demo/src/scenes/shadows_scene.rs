@@ -3,7 +3,13 @@ use crate::components::SpotLightComponent;
 use crate::components::{
     DirectionalLightComponent, MeshComponent, PointLightComponent, PositionComponent,
 };
-use crate::features::mesh::{MeshRenderNode, MeshRenderNodeSet};
+use crate::features::debug3d::Debug3DRenderFeature;
+use crate::features::imgui::ImGuiRenderFeature;
+use crate::features::mesh::{MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet};
+use crate::features::skybox::SkyboxRenderFeature;
+use crate::features::sprite::SpriteRenderFeature;
+use crate::features::text::TextRenderFeature;
+use crate::features::tile_layer::TileLayerRenderFeature;
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
 };
@@ -13,7 +19,7 @@ use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
-use rafx::nodes::{RenderPhaseMaskBuilder, RenderViewDepthRange};
+use rafx::nodes::{RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 
@@ -246,11 +252,21 @@ fn update_main_view_3d(
     time_state: &TimeState,
     viewports_resource: &mut ViewportsResource,
 ) {
-    let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
+    let main_camera_phase_mask = RenderPhaseMaskBuilder::default()
         .add_render_phase::<DepthPrepassRenderPhase>()
         .add_render_phase::<OpaqueRenderPhase>()
         .add_render_phase::<TransparentRenderPhase>()
         .add_render_phase::<UiRenderPhase>()
+        .build();
+
+    let main_camera_feature_mask = RenderFeatureMaskBuilder::default()
+        .add_render_feature::<MeshRenderFeature>()
+        .add_render_feature::<Debug3DRenderFeature>()
+        .add_render_feature::<ImGuiRenderFeature>()
+        .add_render_feature::<SkyboxRenderFeature>()
+        .add_render_feature::<SpriteRenderFeature>()
+        .add_render_feature::<TextRenderFeature>()
+        .add_render_feature::<TileLayerRenderFeature>()
         .build();
 
     const CAMERA_XY_DISTANCE: f32 = 12.0;
@@ -281,7 +297,8 @@ fn update_main_view_3d(
         view,
         proj,
         depth_range: RenderViewDepthRange::new_infinite_reverse(near_plane),
-        render_phase_mask: main_camera_render_phase_mask,
+        render_phase_mask: main_camera_phase_mask,
+        render_feature_mask: main_camera_feature_mask,
         debug_name: "main".to_string(),
     });
 }
