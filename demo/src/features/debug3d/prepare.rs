@@ -1,7 +1,7 @@
-rafx::declare_render_feature_prepare_job!();
+use rafx::render_feature_prepare_job_predule::*;
 
 use super::public::debug3d_resource::LineList3D;
-use super::write::Debug3DVertex;
+use super::write::{Debug3DVertex, FeatureCommandWriterImpl};
 use super::RenderFeatureType;
 use crate::phases::OpaqueRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
@@ -33,7 +33,7 @@ impl<'a> PrepareJob for PrepareJobImpl {
         _frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
-        profiling::scope!(prepare_scope);
+        profiling::scope!(super::prepare_scope);
 
         let mut writer = Box::new(FeatureCommandWriterImpl::new(
             self.debug3d_material_pass.clone(),
@@ -135,10 +135,10 @@ impl<'a> PrepareJob for PrepareJobImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        render_feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        render_feature_index()
+        super::render_feature_index()
     }
 }

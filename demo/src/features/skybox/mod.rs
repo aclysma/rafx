@@ -1,14 +1,15 @@
-rafx::declare_render_feature_mod!();
-rafx::declare_render_feature_renderer_plugin!();
+use rafx::render_feature_mod_prelude::*;
+use rafx::render_feature_renderer_prelude::*;
+
+use distill::loader::handle::Handle;
+use extract::ExtractJobImpl;
+use rafx::assets::{ImageAsset, MaterialAsset};
 
 rafx::declare_render_feature!(SkyboxRenderFeature, SKYBOX_FEATURE_INDEX);
 
 mod extract;
 mod prepare;
 mod write;
-
-use distill::loader::handle::Handle;
-use rafx::assets::{ImageAsset, MaterialAsset};
 
 struct StaticResources {
     pub skybox_material: Handle<MaterialAsset>,

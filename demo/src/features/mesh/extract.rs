@@ -1,14 +1,15 @@
-rafx::declare_render_feature_extract_job!();
+use rafx::render_feature_extract_job_predule::*;
 
+use super::prepare::{
+    ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
+    PrepareJobImpl,
+};
+use super::public::{MeshRenderNode, MeshRenderNodeSet};
+use super::StaticResources;
 use crate::components::MeshComponent;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use crate::features::mesh::prepare::{
-    ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
-};
-use crate::features::mesh::public::{MeshRenderNode, MeshRenderNodeSet};
-use crate::features::mesh::StaticResources;
 use legion::*;
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
@@ -28,7 +29,7 @@ impl ExtractJob for ExtractJobImpl {
         frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!(extract_scope);
+        profiling::scope!(super::extract_scope);
 
         let legion_world = extract_context.extract_resources.fetch::<World>();
         let world = &*legion_world;
@@ -135,10 +136,10 @@ impl ExtractJob for ExtractJobImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        render_feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        render_feature_index()
+        super::render_feature_index()
     }
 }

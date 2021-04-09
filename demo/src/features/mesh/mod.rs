@@ -1,5 +1,12 @@
-rafx::declare_render_feature_mod!();
-rafx::declare_render_feature_renderer_plugin!();
+use rafx::render_feature_mod_prelude::*;
+use rafx::render_feature_renderer_prelude::*;
+
+use distill::loader::handle::Handle;
+use extract::ExtractJobImpl;
+use legion::Resources;
+use rafx::assets::MaterialAsset;
+use rafx::nodes::{FramePacketBuilder, RenderView, RenderViewSet};
+use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
 rafx::declare_render_feature!(MeshRenderFeature, MESH_FEATURE_INDEX);
 
@@ -8,13 +15,6 @@ mod prepare;
 mod write;
 
 mod public;
-
-use distill::loader::handle::Handle;
-use legion::Resources;
-use rafx::assets::MaterialAsset;
-use rafx::nodes::{FramePacketBuilder, RenderView, RenderViewSet};
-use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
-
 pub use public::*;
 
 pub struct RendererPluginImpl;

@@ -1,6 +1,6 @@
-rafx::declare_render_feature_extract_job!();
+use rafx::render_feature_extract_job_predule::*;
 
-use super::prepare::ImGuiUniformBufferObject;
+use super::prepare::{ImGuiUniformBufferObject, PrepareJobImpl};
 use super::Sdl2ImguiManager;
 use super::StaticResources;
 use rafx::assets::AssetManagerRenderResource;
@@ -21,7 +21,7 @@ impl ExtractJob for ExtractJobImpl {
         _frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!(extract_scope);
+        profiling::scope!(super::extract_scope);
 
         let asset_manager = extract_context
             .render_resources
@@ -77,10 +77,10 @@ impl ExtractJob for ExtractJobImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        render_feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        render_feature_index()
+        super::render_feature_index()
     }
 }

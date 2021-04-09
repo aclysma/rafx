@@ -1,5 +1,11 @@
-rafx::declare_render_feature_mod!();
-rafx::declare_render_feature_renderer_plugin!();
+use rafx::render_feature_mod_prelude::*;
+use rafx::render_feature_renderer_prelude::*;
+
+use distill::loader::handle::Handle;
+use extract::ExtractJobImpl;
+use internal::*;
+use rafx::assets::MaterialAsset;
+use rafx::framework::{ImageViewResource, ResourceArc};
 
 rafx::declare_render_feature!(ImGuiRenderFeature, DEBUG_3D_FEATURE_INDEX);
 
@@ -9,12 +15,6 @@ mod write;
 
 mod internal;
 mod public;
-
-use distill::loader::handle::Handle;
-use internal::*;
-use rafx::assets::MaterialAsset;
-use rafx::framework::{ImageViewResource, ResourceArc};
-
 pub use public::Sdl2ImguiManager;
 
 struct StaticResources {

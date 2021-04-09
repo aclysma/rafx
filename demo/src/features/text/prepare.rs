@@ -1,7 +1,8 @@
-rafx::declare_render_feature_prepare_job!();
+use rafx::render_feature_prepare_job_predule::*;
 
 use super::internal::FontAtlasCache;
 use super::public::TextDrawCommand;
+use super::write::FeatureCommandWriterImpl;
 use crate::assets::font::FontAsset;
 use crate::features::text::RenderFeatureType;
 use crate::phases::UiRenderPhase;
@@ -39,7 +40,7 @@ impl<'a> PrepareJob for PrepareJobImpl {
         _frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
-        profiling::scope!(prepare_scope);
+        profiling::scope!(super::prepare_scope);
 
         let dyn_resource_allocator = prepare_context
             .resource_context
@@ -191,10 +192,10 @@ impl<'a> PrepareJob for PrepareJobImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        render_feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        render_feature_index()
+        super::render_feature_index()
     }
 }

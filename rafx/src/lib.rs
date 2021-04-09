@@ -36,11 +36,6 @@ pub use rafx_assets::distill;
 pub use rafx_framework as framework;
 #[cfg(feature = "framework")]
 pub use rafx_framework::declare_render_feature;
-pub use rafx_framework::declare_render_feature_extract_job;
-pub use rafx_framework::declare_render_feature_mod;
-pub use rafx_framework::declare_render_feature_prepare_job;
-pub use rafx_framework::declare_render_feature_renderer_plugin;
-pub use rafx_framework::declare_render_feature_write_job;
 #[cfg(feature = "framework")]
 pub use rafx_framework::declare_render_phase;
 #[cfg(feature = "framework")]
@@ -49,6 +44,46 @@ pub use rafx_framework::graph;
 pub use rafx_framework::nodes;
 #[cfg(feature = "framework")]
 pub use rafx_framework::visibility;
-
+#[cfg(feature = "framework")]
+pub mod render_feature_extract_job_predule {
+    pub use rafx_framework::nodes::{
+        ExtractJob, FramePacket, PrepareJob, RenderFeatureIndex, RenderJobExtractContext,
+        RenderView,
+    };
+}
+#[cfg(feature = "framework")]
+pub mod render_feature_prepare_job_predule {
+    pub use rafx_framework::nodes::{
+        FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeatureIndex,
+        RenderJobPrepareContext, RenderView, ViewSubmitNodes,
+    };
+}
+#[cfg(feature = "framework")]
+pub mod render_feature_write_job_prelude {
+    pub use rafx_api::RafxResult;
+    pub use rafx_framework::nodes::{
+        FeatureCommandWriter, RenderFeatureIndex, RenderJobWriteContext, RenderPhaseIndex,
+        RenderView, SubmitNodeId,
+    };
+}
+#[cfg(feature = "framework")]
+pub mod render_feature_renderer_prelude {
+    pub use rafx_api::extra::upload::RafxTransferUpload;
+    pub use rafx_api::RafxResult;
+    #[cfg(feature = "assets")]
+    pub use rafx_assets::distill_impl::AssetResource;
+    #[cfg(feature = "assets")]
+    pub use rafx_assets::AssetManager;
+    pub use rafx_base::resource_map::ResourceMap;
+    pub use rafx_framework::nodes::{ExtractJob, ExtractResources, RenderRegistryBuilder};
+    pub use rafx_framework::RenderResources;
+    #[cfg(feature = "renderer")]
+    pub use rafx_renderer::RendererPlugin;
+}
+#[cfg(feature = "framework")]
+pub mod render_feature_mod_prelude {
+    pub use rafx_framework::nodes::{RenderFeature, RenderFeatureIndex};
+    pub use std::convert::TryInto;
+}
 #[cfg(feature = "renderer")]
 pub use rafx_renderer as renderer;

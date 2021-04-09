@@ -1,5 +1,6 @@
-rafx::declare_render_feature_prepare_job!();
+use rafx::render_feature_prepare_job_predule::*;
 
+use super::write::FeatureCommandWriterImpl;
 use super::RenderFeatureType;
 use crate::phases::OpaqueRenderPhase;
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
@@ -28,7 +29,7 @@ impl PrepareJob for PrepareJobImpl {
         _frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
-        profiling::scope!(prepare_scope);
+        profiling::scope!(super::prepare_scope);
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
@@ -78,10 +79,10 @@ impl PrepareJob for PrepareJobImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        render_feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        render_feature_index()
+        super::render_feature_index()
     }
 }

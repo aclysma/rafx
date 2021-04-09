@@ -1,4 +1,4 @@
-rafx::declare_render_feature_write_job!();
+use rafx::render_feature_write_job_prelude::*;
 
 use rafx::api::RafxPrimitiveTopology;
 use rafx::framework::VertexDataSetLayout;
@@ -47,7 +47,7 @@ impl FeatureCommandWriter for FeatureCommandWriterImpl {
         _view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
-        profiling::scope!(apply_setup_scope);
+        profiling::scope!(super::apply_setup_scope);
 
         let command_buffer = &write_context.command_buffer;
 
@@ -73,7 +73,7 @@ impl FeatureCommandWriter for FeatureCommandWriterImpl {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(render_element_scope);
+        profiling::scope!(super::render_element_scope);
 
         let command_buffer = &write_context.command_buffer;
 
@@ -86,10 +86,10 @@ impl FeatureCommandWriter for FeatureCommandWriterImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        render_feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        render_feature_index()
+        super::render_feature_index()
     }
 }

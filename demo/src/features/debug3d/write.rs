@@ -1,4 +1,4 @@
-rafx::declare_render_feature_write_job!();
+use rafx::render_feature_write_job_prelude::*;
 
 use rafx::api::RafxPrimitiveTopology;
 use rafx::api::RafxVertexBufferBinding;
@@ -94,7 +94,7 @@ impl FeatureCommandWriter for FeatureCommandWriterImpl {
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
-        profiling::scope!(apply_setup_scope);
+        profiling::scope!(super::apply_setup_scope);
 
         if let Some(vertex_buffer) = self.vertex_buffer.as_ref() {
             let pipeline = write_context
@@ -133,7 +133,7 @@ impl FeatureCommandWriter for FeatureCommandWriterImpl {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(render_element_scope);
+        profiling::scope!(super::render_element_scope);
 
         // The prepare phase emits a single node which will draw everything. In the future it might
         // emit a node per draw call that uses transparency
@@ -149,10 +149,10 @@ impl FeatureCommandWriter for FeatureCommandWriterImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        render_feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        render_feature_index()
+        super::render_feature_index()
     }
 }

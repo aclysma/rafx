@@ -1,6 +1,7 @@
-rafx::declare_render_feature_prepare_job!();
+use rafx::render_feature_prepare_job_predule::*;
 
 use super::internal::ImGuiDrawData;
+use super::write::FeatureCommandWriterImpl;
 use crate::phases::UiRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
@@ -38,7 +39,7 @@ impl PrepareJob for PrepareJobImpl {
         _frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
-        profiling::scope!(prepare_scope);
+        profiling::scope!(super::prepare_scope);
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
@@ -129,7 +130,7 @@ impl PrepareJob for PrepareJobImpl {
         let mut submit_nodes = FeatureSubmitNodes::default();
         for view in views {
             let mut view_submit_nodes =
-                ViewSubmitNodes::new(render_feature_index(), view.render_phase_mask());
+                ViewSubmitNodes::new(super::render_feature_index(), view.render_phase_mask());
             view_submit_nodes.add_submit_node::<UiRenderPhase>(0, 0, 0.0);
             submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
         }
@@ -138,10 +139,10 @@ impl PrepareJob for PrepareJobImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        render_feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        render_feature_index()
+        super::render_feature_index()
     }
 }

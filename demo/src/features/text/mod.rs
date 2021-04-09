@@ -1,5 +1,11 @@
-rafx::declare_render_feature_mod!();
-rafx::declare_render_feature_renderer_plugin!();
+use rafx::render_feature_mod_prelude::*;
+use rafx::render_feature_renderer_prelude::*;
+
+use crate::assets::font::FontAsset;
+use distill::loader::handle::Handle;
+use extract::ExtractJobImpl;
+use internal::FontAtlasCache;
+use rafx::assets::MaterialAsset;
 
 rafx::declare_render_feature!(TextRenderFeature, TEXT_FEATURE_INDEX);
 
@@ -9,12 +15,6 @@ mod write;
 
 mod internal;
 mod public;
-
-use crate::assets::font::FontAsset;
-use distill::loader::handle::Handle;
-use internal::FontAtlasCache;
-use rafx::assets::MaterialAsset;
-
 pub use public::AppendText;
 pub use public::TextResource;
 

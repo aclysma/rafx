@@ -1,6 +1,6 @@
-rafx::declare_render_feature_prepare_job!();
+use rafx::render_feature_prepare_job_predule::*;
 
-use super::write::SpriteVertex;
+use super::write::{FeatureCommandWriterImpl, SpriteVertex};
 use crate::phases::OpaqueRenderPhase;
 use crate::phases::TransparentRenderPhase;
 use fnv::FnvHashMap;
@@ -79,7 +79,7 @@ impl PrepareJob for PrepareJobImpl {
         frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
-        profiling::scope!(prepare_scope);
+        profiling::scope!(super::prepare_scope);
 
         let mut writer = Box::new(FeatureCommandWriterImpl::new(self.sprite_material.clone()));
 
@@ -412,10 +412,10 @@ impl PrepareJob for PrepareJobImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        render_feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        render_feature_index()
+        super::render_feature_index()
     }
 }

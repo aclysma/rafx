@@ -1,5 +1,10 @@
-rafx::declare_render_feature_mod!();
-rafx::declare_render_feature_renderer_plugin!();
+use rafx::render_feature_mod_prelude::*;
+use rafx::render_feature_renderer_prelude::*;
+
+use distill::loader::handle::Handle;
+use extract::ExtractJobImpl;
+use rafx::assets::MaterialAsset;
+
 rafx::declare_render_feature!(SpriteRenderFeature, SPRITE_FEATURE_INDEX);
 
 mod extract;
@@ -7,10 +12,6 @@ mod prepare;
 mod write;
 
 mod public;
-
-use distill::loader::handle::Handle;
-use rafx::assets::MaterialAsset;
-
 pub use public::*;
 
 struct StaticResources {
