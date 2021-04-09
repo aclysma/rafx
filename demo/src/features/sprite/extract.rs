@@ -1,14 +1,9 @@
-use crate::features::sprite::plugin::SpriteStaticResources;
-use crate::features::sprite::prepare::SpritePrepareJob;
-use crate::features::sprite::{
-    ExtractedSpriteData, SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet,
-};
+rafx::declare_render_feature_extract_job!();
+
+use super::prepare::ExtractedSpriteData;
+use super::{SpriteRenderNode, SpriteRenderNodeSet, StaticResources};
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
-use rafx::nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
-    RenderJobExtractContext, RenderView,
-};
 
 pub struct ExtractJobImpl {}
 
@@ -25,7 +20,8 @@ impl ExtractJob for ExtractJobImpl {
         frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!("Sprite Extract");
+        profiling::scope!(extract_scope);
+
         let asset_manager = extract_context
             .render_resources
             .fetch::<AssetManagerRenderResource>();
@@ -34,6 +30,7 @@ impl ExtractJob for ExtractJobImpl {
         let mut sprite_render_nodes = extract_context
             .extract_resources
             .fetch_mut::<SpriteRenderNodeSet>();
+
         sprite_render_nodes.update();
 
         let mut extracted_frame_node_sprite_data =
@@ -73,9 +70,7 @@ impl ExtractJob for ExtractJobImpl {
             }
         }
 
-        let static_resources = extract_context
-            .render_resources
-            .fetch::<SpriteStaticResources>();
+        let static_resources = extract_context.render_resources.fetch::<StaticResources>();
 
         let sprite_material = asset_manager
             .committed_asset(&static_resources.sprite_material)
@@ -83,16 +78,16 @@ impl ExtractJob for ExtractJobImpl {
             .get_single_material_pass()
             .unwrap();
 
-        let prepare_impl = SpritePrepareJob::new(extracted_frame_node_sprite_data, sprite_material);
+        let prepare_impl = PrepareJobImpl::new(extracted_frame_node_sprite_data, sprite_material);
 
         Box::new(prepare_impl)
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        SpriteRenderFeature::feature_debug_name()
+        render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        SpriteRenderFeature::feature_index()
+        render_feature_index()
     }
 }

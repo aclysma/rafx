@@ -4,7 +4,7 @@ use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use crate::features::debug3d;
 use crate::features::mesh::{MeshRenderNodeSet, MeshRendererPlugin};
 use crate::features::skybox;
-use crate::features::sprite::{SpriteRenderNodeSet, SpriteRendererPlugin};
+use crate::features::sprite;
 use crate::features::text;
 use crate::features::tile_layer;
 use crate::render_graph_generator::DemoRenderGraphGenerator;
@@ -52,12 +52,12 @@ pub fn rendering_init(
     sdl2_window: &sdl2::video::Window,
     asset_source: AssetSource,
 ) -> RafxResult<()> {
-    resources.insert(SpriteRenderNodeSet::default());
     resources.insert(MeshRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(ViewportsResource::default());
 
+    sprite::legion_init(resources);
     tile_layer::legion_init(resources);
     debug3d::legion_init(resources);
     text::legion_init(resources);
@@ -71,7 +71,7 @@ pub fn rendering_init(
         .add_plugin(Box::new(LdtkAssetTypeRendererPlugin))
         .add_plugin(Box::new(debug3d::RendererPluginImpl))
         .add_plugin(Box::new(text::RendererPluginImpl))
-        .add_plugin(Box::new(SpriteRendererPlugin))
+        .add_plugin(Box::new(sprite::RendererPluginImpl))
         .add_plugin(Box::new(tile_layer::RendererPluginImpl))
         .add_plugin(Box::new(MeshRendererPlugin))
         .add_plugin(Box::new(skybox::RendererPluginImpl))
@@ -146,11 +146,11 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         }
 
         resources.remove::<Renderer>();
-        resources.remove::<SpriteRenderNodeSet>();
         resources.remove::<MeshRenderNodeSet>();
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
 
+        sprite::legion_destroy(resources);
         tile_layer::legion_destroy(resources);
         debug3d::legion_destroy(resources);
         text::legion_destroy(resources);

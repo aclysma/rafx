@@ -1,44 +1,87 @@
-use super::SpriteCommandWriter;
-use crate::features::sprite::{
-    ExtractedSpriteData, SpriteDrawCall, SpriteRenderFeature, SpriteVertex, QUAD_INDEX_LIST,
-    QUAD_VERTEX_LIST,
-};
+rafx::declare_render_feature_prepare_job!();
+
+use super::write::SpriteVertex;
 use crate::phases::OpaqueRenderPhase;
 use crate::phases::TransparentRenderPhase;
 use fnv::FnvHashMap;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::base::DecimalF32;
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderJobPrepareContext, RenderView, ViewSubmitNodes,
-};
 
-pub struct SpritePrepareJob {
+/// Per-pass "global" data
+pub type SpriteUniformBufferObject = shaders::sprite_vert::ArgsUniform;
+
+/// Used as static data to represent a quad
+#[derive(Clone, Debug, Copy)]
+struct QuadVertex {
+    pub pos: [f32; 3],
+    pub tex_coord: [f32; 2],
+}
+
+/// Static data the represents a "unit" quad
+const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
+    // Top Right
+    QuadVertex {
+        pos: [0.5, 0.5, 0.0],
+        tex_coord: [1.0, 0.0],
+    },
+    // Top Left
+    QuadVertex {
+        pos: [-0.5, 0.5, 0.0],
+        tex_coord: [0.0, 0.0],
+    },
+    // Bottom Right
+    QuadVertex {
+        pos: [0.5, -0.5, 0.0],
+        tex_coord: [1.0, 1.0],
+    },
+    // Bottom Left
+    QuadVertex {
+        pos: [-0.5, -0.5, 0.0],
+        tex_coord: [0.0, 1.0],
+    },
+];
+
+/// Draw order of QUAD_VERTEX_LIST
+const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 1, 3];
+
+#[derive(Debug)]
+pub struct ExtractedSpriteData {
+    pub position: glam::Vec3,
+    pub texture_size: glam::Vec2,
+    pub scale: glam::Vec2,
+    pub rotation: glam::Quat,
+    pub color: glam::Vec4,
+    pub image_view: ResourceArc<ImageViewResource>,
+}
+
+pub struct PrepareJobImpl {
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
     sprite_material: ResourceArc<MaterialPassResource>,
 }
 
-impl SpritePrepareJob {
+impl PrepareJobImpl {
     pub(super) fn new(
         extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
         sprite_material: ResourceArc<MaterialPassResource>,
     ) -> Self {
-        SpritePrepareJob {
+        PrepareJobImpl {
             extracted_frame_node_sprite_data: extracted_sprite_data,
             sprite_material,
         }
     }
 }
 
-impl PrepareJob for SpritePrepareJob {
+impl PrepareJob for PrepareJobImpl {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
-        profiling::scope!("Sprite Prepare");
+        profiling::scope!(prepare_scope);
+
+        let mut writer = Box::new(FeatureCommandWriterImpl::new(self.sprite_material.clone()));
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
@@ -49,7 +92,6 @@ impl PrepareJob for SpritePrepareJob {
         //
         // Create per-view descriptor sets
         //
-        let mut per_view_descriptor_sets = Vec::default();
         for view in views {
             let layout = &self.sprite_material.get_raw().descriptor_set_layouts
                 [shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
@@ -64,13 +106,7 @@ impl PrepareJob for SpritePrepareJob {
                 )
                 .unwrap();
 
-            per_view_descriptor_sets.resize(
-                per_view_descriptor_sets
-                    .len()
-                    .max(view.view_index() as usize + 1),
-                None,
-            );
-            per_view_descriptor_sets[view.view_index() as usize] = Some(descriptor_set);
+            writer.push_per_view_descriptor_set(view.view_index(), descriptor_set);
         }
 
         //
@@ -180,7 +216,6 @@ impl PrepareJob for SpritePrepareJob {
         }
 
         let mut submit_nodes = FeatureSubmitNodes::default();
-        let mut draw_calls = Vec::<SpriteDrawCall>::default();
         let mut vertex_data = Vec::<SpriteVertex>::default();
         let mut index_data = Vec::<u16>::default();
 
@@ -219,14 +254,19 @@ impl PrepareJob for SpritePrepareJob {
                             //
                             // If the vertex count exceeds what a u16 index buffer support, start a new draw call
                             //
-                            let mut vertex_count =
-                                (draw_calls.last().map(|x| x.index_count).unwrap_or(0) / 6) * 4;
+                            let mut vertex_count = (writer
+                                .draw_calls()
+                                .last()
+                                .map(|x| x.index_count)
+                                .unwrap_or(0)
+                                / 6)
+                                * 4;
 
-                            if draw_calls.is_empty()
+                            if writer.draw_calls().is_empty()
                                 || vertex_count + 4 > u16::MAX as u32
                                 || batch_index != previous_batch_index
                             {
-                                let submit_node_id = draw_calls.len() as u32;
+                                let submit_node_id = writer.draw_calls().len() as u32;
 
                                 if sprite.color.w >= 1.0 {
                                     // non-transparent can just batch by material
@@ -251,20 +291,18 @@ impl PrepareJob for SpritePrepareJob {
                                     .unwrap()
                                     .material_index;
 
-                                draw_calls.push(SpriteDrawCall {
-                                    vertex_data_offset_index: vertex_data.len() as u32,
-                                    index_data_offset_index: index_data.len() as u32,
-                                    index_count: 0,
-                                    texture_descriptor_set: per_material_descriptor_sets
-                                        [material_index as usize]
-                                        .clone(),
-                                });
+                                writer.push_draw_call(
+                                    vertex_data.len(),
+                                    index_data.len(),
+                                    per_material_descriptor_sets[material_index as usize].clone(),
+                                );
 
                                 previous_batch_index = batch_index;
                                 vertex_count = 0;
                             }
 
-                            let current_draw_call_data = draw_calls.last_mut().unwrap();
+                            let current_draw_call_data =
+                                writer.draw_calls_mut().last_mut().unwrap();
 
                             let matrix = glam::Mat4::from_scale_rotation_translation(
                                 glam::Vec3::new(
@@ -316,7 +354,7 @@ impl PrepareJob for SpritePrepareJob {
             .resource_context
             .create_dyn_resource_allocator_set();
 
-        let vertex_buffer = if !draw_calls.is_empty() {
+        let vertex_buffer = if !writer.draw_calls().is_empty() {
             let vertex_buffer_size =
                 vertex_data.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
 
@@ -339,10 +377,12 @@ impl PrepareJob for SpritePrepareJob {
             None
         };
 
+        writer.set_vertex_buffer(vertex_buffer);
+
         //
         // If we have index data, create the index buffer
         //
-        let index_buffer = if !draw_calls.is_empty() {
+        let index_buffer = if !writer.draw_calls().is_empty() {
             let index_buffer_size = index_data.len() as u64 * std::mem::size_of::<u16>() as u64;
 
             let index_buffer = prepare_context
@@ -364,24 +404,18 @@ impl PrepareJob for SpritePrepareJob {
             None
         };
 
-        log::trace!("sprite draw calls: {}", draw_calls.len());
+        writer.set_index_buffer(index_buffer);
 
-        let writer = Box::new(SpriteCommandWriter {
-            draw_calls,
-            vertex_buffer,
-            index_buffer,
-            per_view_descriptor_sets,
-            sprite_material: self.sprite_material,
-        });
+        log::trace!("sprite draw calls: {}", writer.draw_calls().len());
 
         (writer, submit_nodes)
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        SpriteRenderFeature::feature_debug_name()
+        render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        SpriteRenderFeature::feature_index()
+        render_feature_index()
     }
 }
