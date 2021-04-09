@@ -18,7 +18,7 @@ mod depth_prepass;
 
 mod bloom_extract_pass;
 use crate::demo_plugin::DemoStaticResources;
-use crate::features::mesh::shadow_map_resource::ShadowMapResource;
+use crate::features::mesh::ShadowMapResource;
 use crate::RenderOptions;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;

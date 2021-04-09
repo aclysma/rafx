@@ -1,39 +1,35 @@
+rafx::declare_render_feature_extract_job!();
+
 use crate::components::MeshComponent;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use crate::features::mesh::plugin::MeshStaticResources;
-use crate::features::mesh::prepare::MeshPrepareJob;
-use crate::features::mesh::{
+use crate::features::mesh::prepare::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
-    MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet,
 };
+use crate::features::mesh::public::{MeshRenderNode, MeshRenderNodeSet};
+use crate::features::mesh::StaticResources;
 use legion::*;
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
-use rafx::nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
-    RenderJobExtractContext, RenderView,
-};
 
 pub struct ExtractJobImpl {}
 
+impl ExtractJobImpl {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 impl ExtractJob for ExtractJobImpl {
-    fn feature_debug_name(&self) -> &'static str {
-        MeshRenderFeature::feature_debug_name()
-    }
-
-    fn feature_index(&self) -> RenderFeatureIndex {
-        MeshRenderFeature::feature_index()
-    }
-
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
         frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!("Mesh Extract");
+        profiling::scope!(extract_scope);
+
         let legion_world = extract_context.extract_resources.fetch::<World>();
         let world = &*legion_world;
 
@@ -66,10 +62,7 @@ impl ExtractJob for ExtractJobImpl {
                 frame_packet.frame_node_count(self.feature_index()) as usize,
             );
 
-        for frame_node in frame_packet
-            .frame_nodes(MeshRenderFeature::feature_index())
-            .iter()
-        {
+        for frame_node in frame_packet.frame_nodes(self.feature_index()).iter() {
             let render_node_index = frame_node.render_node_index();
             let render_node_handle = RawSlabKey::<MeshRenderNode>::new(render_node_index);
             let mesh_render_node = mesh_render_nodes
@@ -124,9 +117,7 @@ impl ExtractJob for ExtractJobImpl {
             })
             .collect();
 
-        let static_resources = extract_context
-            .render_resources
-            .fetch::<MeshStaticResources>();
+        let static_resources = extract_context.render_resources.fetch::<StaticResources>();
 
         let depth_material = asset_manager
             .committed_asset(&static_resources.depth_material)
@@ -134,12 +125,20 @@ impl ExtractJob for ExtractJobImpl {
             .get_single_material_pass()
             .unwrap();
 
-        Box::new(MeshPrepareJob {
+        Box::new(PrepareJobImpl::new(
             depth_material,
             extracted_frame_node_mesh_data,
             directional_lights,
             point_lights,
             spot_lights,
-        })
+        ))
+    }
+
+    fn feature_debug_name(&self) -> &'static str {
+        render_feature_debug_name()
+    }
+
+    fn feature_index(&self) -> RenderFeatureIndex {
+        render_feature_index()
     }
 }

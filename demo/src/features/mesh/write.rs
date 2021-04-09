@@ -1,18 +1,76 @@
-use crate::features::mesh::{
-    ExtractedFrameNodeMeshData, MeshRenderFeature, PreparedSubmitNodeMeshData,
-};
-use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
-use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
-    RenderPhaseIndex, RenderView, SubmitNodeId,
-};
+rafx::declare_render_feature_write_job!();
 
-pub struct MeshCommandWriter {
-    pub(super) extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
-    pub(super) prepared_submit_node_mesh_data: Vec<PreparedSubmitNodeMeshData>,
+use crate::features::mesh::prepare::ExtractedFrameNodeMeshData;
+use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
+use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
+use rafx::nodes::{FrameNodeIndex, PerViewNode};
+
+struct PreparedSubmitNodeMeshData {
+    material_pass_resource: ResourceArc<MaterialPassResource>,
+    per_view_descriptor_set: DescriptorSetArc,
+    per_material_descriptor_set: Option<DescriptorSetArc>,
+    per_instance_descriptor_set: DescriptorSetArc,
+    // we can get the mesh via the frame node index
+    frame_node_index: FrameNodeIndex,
+    mesh_part_index: usize,
 }
 
-impl FeatureCommandWriter for MeshCommandWriter {
+impl std::fmt::Debug for PreparedSubmitNodeMeshData {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("PreparedSubmitNodeMeshData")
+            .field("frame_node_index", &self.frame_node_index)
+            .field("mesh_part_index", &self.mesh_part_index)
+            .finish()
+    }
+}
+
+pub struct FeatureCommandWriterImpl {
+    extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
+    prepared_submit_node_mesh_data: Vec<PreparedSubmitNodeMeshData>,
+}
+
+impl FeatureCommandWriterImpl {
+    pub fn new() -> Self {
+        FeatureCommandWriterImpl {
+            extracted_frame_node_mesh_data: Default::default(),
+            prepared_submit_node_mesh_data: Default::default(),
+        }
+    }
+
+    pub fn push_submit_node(
+        &mut self,
+        view_node: &PerViewNode,
+        per_view_descriptor_set: DescriptorSetArc,
+        per_material_descriptor_set: Option<DescriptorSetArc>,
+        per_instance_descriptor_set: DescriptorSetArc,
+        mesh_part_index: usize,
+        material_pass_resource: ResourceArc<MaterialPassResource>,
+    ) -> usize {
+        let submit_node_index = self.prepared_submit_node_mesh_data.len();
+        self.prepared_submit_node_mesh_data
+            .push(PreparedSubmitNodeMeshData {
+                material_pass_resource: material_pass_resource.clone(),
+                per_view_descriptor_set,
+                per_material_descriptor_set,
+                per_instance_descriptor_set,
+                frame_node_index: view_node.frame_node_index(),
+                mesh_part_index,
+            });
+        submit_node_index
+    }
+
+    pub fn set_extracted_frame_node_mesh_data(
+        &mut self,
+        extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
+    ) {
+        self.extracted_frame_node_mesh_data = extracted_frame_node_mesh_data;
+    }
+}
+
+impl FeatureCommandWriter for FeatureCommandWriterImpl {
     fn render_element(
         &self,
         write_context: &mut RenderJobWriteContext,
@@ -20,6 +78,8 @@ impl FeatureCommandWriter for MeshCommandWriter {
         render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
+        profiling::scope!(render_element_scope);
+
         let command_buffer = &write_context.command_buffer;
 
         let render_node_data = &self.prepared_submit_node_mesh_data[index as usize];
@@ -92,10 +152,10 @@ impl FeatureCommandWriter for MeshCommandWriter {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        MeshRenderFeature::feature_debug_name()
+        render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        MeshRenderFeature::feature_index()
+        render_feature_index()
     }
 }

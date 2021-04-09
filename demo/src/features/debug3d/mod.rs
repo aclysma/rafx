@@ -14,7 +14,7 @@ use rafx::assets::MaterialAsset;
 
 pub use public::debug3d_resource::DebugDraw3DResource;
 
-pub struct StaticResources {
+struct StaticResources {
     pub debug3d_material: Handle<MaterialAsset>,
 }
 

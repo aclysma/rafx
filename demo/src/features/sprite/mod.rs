@@ -13,7 +13,7 @@ use rafx::assets::MaterialAsset;
 
 pub use public::*;
 
-pub struct StaticResources {
+struct StaticResources {
     pub sprite_material: Handle<MaterialAsset>,
 }
 

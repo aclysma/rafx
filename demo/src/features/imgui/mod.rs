@@ -17,7 +17,7 @@ use rafx::framework::{ImageViewResource, ResourceArc};
 
 pub use public::Sdl2ImguiManager;
 
-pub struct StaticResources {
+struct StaticResources {
     pub imgui_material: Handle<MaterialAsset>,
     pub imgui_font_atlas_image_view: ResourceArc<ImageViewResource>,
 }

@@ -1,7 +1,6 @@
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use crate::features::mesh::{LightId, ShadowMapRenderView};
 use crate::phases::ShadowMapRenderPhase;
 use arrayvec::ArrayVec;
 use fnv::FnvHashMap;
@@ -13,6 +12,19 @@ use rafx::nodes::{
     RenderViewDepthRange, RenderViewSet, VisibilityResult,
 };
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum LightId {
+    PointLight(legion::Entity), // u32 is a face index
+    SpotLight(legion::Entity),
+    DirectionalLight(legion::Entity),
+}
+
+#[derive(Clone)]
+pub enum ShadowMapRenderView {
+    Single(RenderView), // width, height of texture
+    Cube([RenderView; 6]),
+}
 
 struct RenderViewVisibility {
     render_view: RenderView,
@@ -28,15 +40,15 @@ enum ShadowMapVisibility {
 #[derive(Default)]
 pub struct ShadowMapResource {
     // These are populated by recalculate_shadow_map_views()
-    pub(super) shadow_map_lookup: FnvHashMap<LightId, usize>,
-    pub(super) shadow_map_render_views: Vec<ShadowMapRenderView>,
+    pub(in crate::features::mesh) shadow_map_lookup: FnvHashMap<LightId, usize>,
+    pub(in crate::features::mesh) shadow_map_render_views: Vec<ShadowMapRenderView>,
 
     // Populated by set_shadow_map_image_resources, during construction of the render graph
-    pub(super) image_usage_ids: Vec<RenderGraphImageUsageId>,
+    pub(in crate::features::mesh) image_usage_ids: Vec<RenderGraphImageUsageId>,
 
     // Populated by set_shadow_map_image_views, after the render graph is constructed and image
     // resources are allocated
-    pub(super) shadow_map_image_views: Vec<ResourceArc<ImageViewResource>>,
+    pub(in crate::features::mesh) shadow_map_image_views: Vec<ResourceArc<ImageViewResource>>,
 }
 
 impl ShadowMapResource {
@@ -83,10 +95,7 @@ impl ShadowMapResource {
         // Determine shadowmap views
         //
         let (shadow_map_lookup, shadow_map_render_views) =
-            crate::features::mesh::shadow_map_resource::calculate_shadow_map_views(
-                &render_view_set,
-                extract_resources,
-            );
+            calculate_shadow_map_views(&render_view_set, extract_resources);
 
         self.shadow_map_lookup = shadow_map_lookup;
         self.shadow_map_render_views = shadow_map_render_views;

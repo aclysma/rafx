@@ -14,7 +14,7 @@ use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
-pub struct StaticResources {
+struct StaticResources {
     pub tile_layer_material: Handle<MaterialAsset>,
 }
 

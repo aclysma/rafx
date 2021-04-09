@@ -2,7 +2,7 @@ use crate::assets::font::FontAssetTypeRendererPlugin;
 use crate::assets::gltf::GltfAssetTypeRendererPlugin;
 use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use crate::features::debug3d;
-use crate::features::mesh::{MeshRenderNodeSet, MeshRendererPlugin};
+use crate::features::mesh;
 use crate::features::skybox;
 use crate::features::sprite;
 use crate::features::text;
@@ -52,11 +52,11 @@ pub fn rendering_init(
     sdl2_window: &sdl2::video::Window,
     asset_source: AssetSource,
 ) -> RafxResult<()> {
-    resources.insert(MeshRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
     resources.insert(ViewportsResource::default());
 
+    mesh::legion_init(resources);
     sprite::legion_init(resources);
     tile_layer::legion_init(resources);
     debug3d::legion_init(resources);
@@ -73,7 +73,7 @@ pub fn rendering_init(
         .add_plugin(Box::new(text::RendererPluginImpl))
         .add_plugin(Box::new(sprite::RendererPluginImpl))
         .add_plugin(Box::new(tile_layer::RendererPluginImpl))
-        .add_plugin(Box::new(MeshRendererPlugin))
+        .add_plugin(Box::new(mesh::RendererPluginImpl))
         .add_plugin(Box::new(skybox::RendererPluginImpl))
         .add_plugin(Box::new(DemoRendererPlugin));
 
@@ -146,9 +146,6 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         }
 
         resources.remove::<Renderer>();
-        resources.remove::<MeshRenderNodeSet>();
-        resources.remove::<StaticVisibilityNodeSet>();
-        resources.remove::<DynamicVisibilityNodeSet>();
 
         #[cfg(feature = "use-imgui")]
         {
@@ -156,10 +153,14 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
             imgui::legion_destroy(resources);
         }
 
+        mesh::legion_destroy(resources);
         sprite::legion_destroy(resources);
         tile_layer::legion_destroy(resources);
         debug3d::legion_destroy(resources);
         text::legion_destroy(resources);
+
+        resources.remove::<StaticVisibilityNodeSet>();
+        resources.remove::<DynamicVisibilityNodeSet>();
 
         resources.remove::<RenderRegistry>();
 

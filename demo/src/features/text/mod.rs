@@ -18,7 +18,7 @@ use rafx::assets::MaterialAsset;
 pub use public::AppendText;
 pub use public::TextResource;
 
-pub struct StaticResources {
+struct StaticResources {
     pub text_material: Handle<MaterialAsset>,
     pub default_font: Handle<FontAsset>,
 }

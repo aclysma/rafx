@@ -10,7 +10,7 @@ mod write;
 use distill::loader::handle::Handle;
 use rafx::assets::{ImageAsset, MaterialAsset};
 
-pub struct StaticResources {
+struct StaticResources {
     pub skybox_material: Handle<MaterialAsset>,
     pub skybox_texture: Handle<ImageAsset>,
 }
