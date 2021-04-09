@@ -1,7 +1,7 @@
 use rafx::render_feature_prepare_job_predule::*;
 
 use super::internal::ImGuiDrawData;
-use super::write::FeatureCommandWriterImpl;
+use super::write::WriteJobImpl;
 use crate::phases::UiRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
@@ -69,7 +69,7 @@ impl PrepareJob for PrepareJobImpl {
             )
             .unwrap();
 
-        let mut writer = Box::new(FeatureCommandWriterImpl::new(
+        let mut writer = Box::new(WriteJobImpl::new(
             self.imgui_material_pass.clone(),
             per_view_descriptor_set,
             per_font_descriptor_set,

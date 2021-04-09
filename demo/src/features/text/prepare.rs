@@ -2,7 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::internal::FontAtlasCache;
 use super::public::TextDrawCommand;
-use super::write::FeatureCommandWriterImpl;
+use super::write::WriteJobImpl;
 use crate::assets::font::FontAsset;
 use crate::features::text::RenderFeatureType;
 use crate::phases::UiRenderPhase;
@@ -74,7 +74,7 @@ impl<'a> PrepareJob for PrepareJobImpl {
 
         let mut submit_nodes = FeatureSubmitNodes::default();
 
-        let mut writer = Box::new(FeatureCommandWriterImpl::new(
+        let mut writer = Box::new(WriteJobImpl::new(
             self.text_material_pass.clone(),
             draw_vertices_result.draw_call_metas,
             draw_vertices_result.image_updates,

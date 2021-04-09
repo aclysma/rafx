@@ -45,7 +45,7 @@ struct TextDrawCallBuffers {
     pub index_buffer: ResourceArc<BufferResource>,
 }
 
-pub struct FeatureCommandWriterImpl {
+pub struct WriteJobImpl {
     draw_call_buffers: Vec<TextDrawCallBuffers>,
     draw_call_metas: Vec<TextDrawCallMeta>,
     text_material_pass: ResourceArc<MaterialPassResource>,
@@ -54,14 +54,14 @@ pub struct FeatureCommandWriterImpl {
     image_updates: Vec<TextImageUpdate>,
 }
 
-impl FeatureCommandWriterImpl {
+impl WriteJobImpl {
     pub fn new(
         text_material_pass: ResourceArc<MaterialPassResource>,
         draw_call_metas: Vec<TextDrawCallMeta>,
         image_updates: Vec<TextImageUpdate>,
         num_draw_call_buffers: usize,
     ) -> Self {
-        FeatureCommandWriterImpl {
+        WriteJobImpl {
             draw_call_buffers: Vec::with_capacity(num_draw_call_buffers),
             draw_call_metas,
             text_material_pass,
@@ -106,7 +106,7 @@ impl FeatureCommandWriterImpl {
     }
 }
 
-impl FeatureCommandWriter for FeatureCommandWriterImpl {
+impl FeatureCommandWriter for WriteJobImpl {
     fn on_begin_execute_graph(
         &self,
         write_context: &mut RenderJobBeginExecuteGraphContext,

@@ -1,6 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::write::FeatureCommandWriterImpl;
+use super::write::WriteJobImpl;
 use super::RenderFeatureType;
 use crate::phases::OpaqueRenderPhase;
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
@@ -35,7 +35,7 @@ impl PrepareJob for PrepareJobImpl {
             .resource_context
             .create_descriptor_set_allocator();
 
-        let mut writer = Box::new(FeatureCommandWriterImpl::new(self.skybox_material.clone()));
+        let mut writer = Box::new(WriteJobImpl::new(self.skybox_material.clone()));
 
         // Skyboxes assume Y up and we're Z up, so "fix" it by adding a rotation about X axis.
         // This effectively applies a rotation to the skybox

@@ -1,6 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::write::FeatureCommandWriterImpl;
+use super::write::WriteJobImpl;
 use super::{LightId, RenderFeatureType, ShadowMapRenderView, ShadowMapResource};
 use crate::assets::gltf::MeshAsset;
 use crate::components::{
@@ -535,7 +535,7 @@ impl PrepareJob for PrepareJobImpl {
             }
         }
 
-        let mut writer = Box::new(FeatureCommandWriterImpl::new());
+        let mut writer = Box::new(WriteJobImpl::new());
 
         //
         // Produce render nodes for every mesh

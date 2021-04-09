@@ -1,6 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::write::FeatureCommandWriterImpl;
+use super::write::WriteJobImpl;
 use super::{RenderFeatureType, TileLayerRenderNode};
 use crate::phases::TransparentRenderPhase;
 use rafx::framework::{MaterialPassResource, ResourceArc};
@@ -38,7 +38,7 @@ impl PrepareJob for PrepareJobImpl {
             .resource_context
             .create_descriptor_set_allocator();
 
-        let mut writer = Box::new(FeatureCommandWriterImpl::new(
+        let mut writer = Box::new(WriteJobImpl::new(
             self.tile_layer_material.clone(),
             self.visible_render_nodes,
         ));

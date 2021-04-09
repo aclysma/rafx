@@ -27,14 +27,14 @@ impl std::fmt::Debug for PreparedSubmitNodeMeshData {
     }
 }
 
-pub struct FeatureCommandWriterImpl {
+pub struct WriteJobImpl {
     extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
     prepared_submit_node_mesh_data: Vec<PreparedSubmitNodeMeshData>,
 }
 
-impl FeatureCommandWriterImpl {
+impl WriteJobImpl {
     pub fn new() -> Self {
-        FeatureCommandWriterImpl {
+        WriteJobImpl {
             extracted_frame_node_mesh_data: Default::default(),
             prepared_submit_node_mesh_data: Default::default(),
         }
@@ -70,7 +70,7 @@ impl FeatureCommandWriterImpl {
     }
 }
 
-impl FeatureCommandWriter for FeatureCommandWriterImpl {
+impl FeatureCommandWriter for WriteJobImpl {
     fn render_element(
         &self,
         write_context: &mut RenderJobWriteContext,

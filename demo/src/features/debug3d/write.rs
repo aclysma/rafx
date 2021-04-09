@@ -32,19 +32,19 @@ pub struct Debug3DDrawCall {
     count: u32,
 }
 
-pub struct FeatureCommandWriterImpl {
+pub struct WriteJobImpl {
     vertex_buffer: Option<ResourceArc<BufferResource>>,
     draw_calls: Vec<Debug3DDrawCall>,
     debug3d_material_pass: ResourceArc<MaterialPassResource>,
     per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
 }
 
-impl FeatureCommandWriterImpl {
+impl WriteJobImpl {
     pub fn new(
         debug3d_material_pass: ResourceArc<MaterialPassResource>,
         num_line_lists: usize,
     ) -> Self {
-        FeatureCommandWriterImpl {
+        WriteJobImpl {
             vertex_buffer: Default::default(),
             draw_calls: Vec::with_capacity(num_line_lists),
             debug3d_material_pass,
@@ -87,7 +87,7 @@ impl FeatureCommandWriterImpl {
     }
 }
 
-impl FeatureCommandWriter for FeatureCommandWriterImpl {
+impl FeatureCommandWriter for WriteJobImpl {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,

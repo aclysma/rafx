@@ -36,7 +36,7 @@ pub struct SpriteDrawCall {
     pub index_count: u32,
 }
 
-pub struct FeatureCommandWriterImpl {
+pub struct WriteJobImpl {
     vertex_buffer: Option<ResourceArc<BufferResource>>,
     index_buffer: Option<ResourceArc<BufferResource>>,
     draw_calls: Vec<SpriteDrawCall>,
@@ -44,9 +44,9 @@ pub struct FeatureCommandWriterImpl {
     sprite_material: ResourceArc<MaterialPassResource>,
 }
 
-impl FeatureCommandWriterImpl {
+impl WriteJobImpl {
     pub fn new(sprite_material: ResourceArc<MaterialPassResource>) -> Self {
-        FeatureCommandWriterImpl {
+        WriteJobImpl {
             vertex_buffer: Default::default(),
             index_buffer: Default::default(),
             draw_calls: Default::default(),
@@ -104,7 +104,7 @@ impl FeatureCommandWriterImpl {
     }
 }
 
-impl FeatureCommandWriter for FeatureCommandWriterImpl {
+impl FeatureCommandWriter for WriteJobImpl {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
