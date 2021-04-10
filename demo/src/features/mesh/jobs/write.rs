@@ -95,7 +95,7 @@ impl WriteJob for MeshWriteJob {
         render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_element_scope);
+        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
 
         let command_buffer = &write_context.command_buffer;
 

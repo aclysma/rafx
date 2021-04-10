@@ -211,7 +211,7 @@ impl PrepareJob for MeshPrepareJob {
         frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
-        profiling::scope!(super::prepare_scope);
+        profiling::scope!(super::PREPARE_SCOPE_NAME);
 
         let invalid_resources = prepare_context.render_resources.fetch::<InvalidResources>();
 

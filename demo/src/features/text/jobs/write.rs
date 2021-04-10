@@ -111,7 +111,7 @@ impl WriteJob for TextWriteJob {
         &self,
         write_context: &mut RenderJobBeginExecuteGraphContext,
     ) -> RafxResult<()> {
-        profiling::scope!(super::on_begin_execute_graph_scope);
+        profiling::scope!(super::ON_BEGIN_EXECUTE_GRAPH_SCOPE_NAME);
 
         for image_update in &self.image_updates {
             let rafx_image = &image_update.upload_image.get_raw().image.get_raw().image;
@@ -168,7 +168,7 @@ impl WriteJob for TextWriteJob {
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
-        profiling::scope!(super::apply_setup_scope);
+        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
 
         if !self.draw_call_metas.is_empty() {
             let pipeline = write_context
@@ -199,7 +199,7 @@ impl WriteJob for TextWriteJob {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_element_scope);
+        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
 
         let draw_call = &self.draw_call_metas[index as usize];
         let buffers = &self.draw_call_buffers[draw_call.buffer_index as usize];

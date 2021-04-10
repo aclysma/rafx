@@ -11,8 +11,8 @@
 /// - `render_feature_index()`: Syntactic sugar for Debug3DRenderFeature::feature_index().
 /// - `render_feature_debug_name()`: Syntactic sugar for Debug3DRenderFeature::feature_debug_name().
 /// - `RenderFeatureType`: Syntactic sugar for Debug3DRenderFeature.
-/// - `extract_scope`: Syntactic sugar for `&'static str` in the form `Debug3DRenderFeature extract`.
-/// - `[...]_scope`: The same as `extract_scope` for other supported job entry points.
+/// - `EXTRACT_SCOPE_NAME`: Syntactic sugar for `&'static str` in the form `Debug3DRenderFeature extract`.
+/// - `[...]_SCOPE_NAME`: The same as `EXTRACT_SCOPE_NAME` for other supported job entry points.
 #[macro_export]
 macro_rules! declare_render_feature {
     ($struct_name:ident, $atomic_constant_name:ident) => {
@@ -20,16 +20,16 @@ macro_rules! declare_render_feature {
             std::sync::atomic::AtomicI32::new(-1);
 
         #[rustfmt::skip]
-        static extract_scope: &'static str = stringify!($struct_name extract);
+        static EXTRACT_SCOPE_NAME: &'static str = stringify!($struct_name extract);
 
         #[rustfmt::skip]
-        static prepare_scope: &'static str = stringify!($struct_name prepare);
+        static PREPARE_SCOPE_NAME: &'static str = stringify!($struct_name prepare);
 
         #[rustfmt::skip]
-        static on_begin_execute_graph_scope: &'static str = stringify!($struct_name on_begin_execute_graph);
-        static render_element_scope: &'static str = stringify!($struct_name render_element);
-        static apply_setup_scope: &'static str = stringify!($struct_name apply_setup);
-        static revert_setup_scope: &'static str = stringify!($struct_name revert_setup);
+        static ON_BEGIN_EXECUTE_GRAPH_SCOPE_NAME: &'static str = stringify!($struct_name on_begin_execute_graph);
+        static RENDER_ELEMENT_SCOPE_NAME: &'static str = stringify!($struct_name render_element);
+        static APPLY_SETUP_SCOPE_NAME: &'static str = stringify!($struct_name apply_setup);
+        static REVERT_SETUP_SCOPE_NAME: &'static str = stringify!($struct_name revert_setup);
 
         pub struct $struct_name;
         type RenderFeatureType = $struct_name;

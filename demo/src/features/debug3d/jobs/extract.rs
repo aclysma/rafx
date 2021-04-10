@@ -18,7 +18,7 @@ impl ExtractJob for Debug3DExtractJob {
         _frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!(super::extract_scope);
+        profiling::scope!(super::EXTRACT_SCOPE_NAME);
 
         let asset_manager = extract_context
             .render_resources

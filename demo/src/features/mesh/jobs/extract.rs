@@ -27,7 +27,7 @@ impl ExtractJob for MeshExtractJob {
         frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!(super::extract_scope);
+        profiling::scope!(super::EXTRACT_SCOPE_NAME);
 
         let legion_world = extract_context.extract_resources.fetch::<World>();
         let world = &*legion_world;

@@ -31,7 +31,7 @@ impl<'a> PrepareJob for Debug3DPrepareJob {
         _frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
-        profiling::scope!(super::prepare_scope);
+        profiling::scope!(super::PREPARE_SCOPE_NAME);
 
         let mut writer = Box::new(Debug3DWriteJob::new(
             self.debug3d_material_pass.clone(),

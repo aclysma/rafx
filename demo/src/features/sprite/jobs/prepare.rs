@@ -79,7 +79,7 @@ impl PrepareJob for SpritePrepareJob {
         frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
-        profiling::scope!(super::prepare_scope);
+        profiling::scope!(super::PREPARE_SCOPE_NAME);
 
         let mut writer = Box::new(SpriteWriteJob::new(self.sprite_material.clone()));
 

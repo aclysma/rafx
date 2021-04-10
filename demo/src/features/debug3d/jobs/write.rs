@@ -94,7 +94,7 @@ impl WriteJob for Debug3DWriteJob {
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
-        profiling::scope!(super::apply_setup_scope);
+        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
 
         if let Some(vertex_buffer) = self.vertex_buffer.as_ref() {
             let pipeline = write_context
@@ -133,7 +133,7 @@ impl WriteJob for Debug3DWriteJob {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_element_scope);
+        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
 
         // The prepare phase emits a single node which will draw everything. In the future it might
         // emit a node per draw call that uses transparency

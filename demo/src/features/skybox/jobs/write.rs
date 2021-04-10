@@ -47,7 +47,7 @@ impl WriteJob for SkyboxWriteJob {
         _view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
-        profiling::scope!(super::apply_setup_scope);
+        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
 
         let command_buffer = &write_context.command_buffer;
 
@@ -73,7 +73,7 @@ impl WriteJob for SkyboxWriteJob {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_element_scope);
+        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
 
         let command_buffer = &write_context.command_buffer;
 

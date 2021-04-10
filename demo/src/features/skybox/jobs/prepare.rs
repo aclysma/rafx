@@ -28,7 +28,7 @@ impl PrepareJob for SkyboxPrepareJob {
         _frame_packet: &FramePacket,
         views: &[RenderView],
     ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
-        profiling::scope!(super::prepare_scope);
+        profiling::scope!(super::PREPARE_SCOPE_NAME);
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
