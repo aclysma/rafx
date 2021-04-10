@@ -13,10 +13,7 @@ static NEXT_QUEUE_ID: AtomicU32 = AtomicU32::new(0);
 pub struct RafxQueueGlInner {
     device_context: RafxDeviceContextGl,
     queue_type: RafxQueueType,
-    //queue: gl_rs::CommandQueue,
     queue_id: u32,
-    //barrier_flags: AtomicU8,
-    //fence: gl_rs::Fence,
 }
 
 // for gl_rs::CommandQueue
@@ -33,34 +30,6 @@ impl RafxQueueGl {
         self.inner.queue_id
     }
 
-    //
-    // These barrier flag helpers are not meant to be threadsafe, the Rafx API assumes command
-    // buffers and the queues they come from are not concurrently accessed. (Even if we were careful
-    // about thread-safety here, underlying GPU APIs will often produce undefined behavior if this
-    // occurs.)
-    //
-    // pub fn barrier_flags(&self) -> BarrierFlagsGl {
-    //     BarrierFlagsGl::from_bits(self.inner.barrier_flags.load(Ordering::Relaxed)).unwrap()
-    // }
-
-    // Get the fence used internally by the currently recording command buffer
-    // pub fn gl_fence(&self) -> &gl_rs::FenceRef {
-    //     self.inner.fence.as_ref()
-    // }
-
-    // pub fn add_barrier_flags(
-    //     &self,
-    //     flags: BarrierFlagsGl,
-    // ) {
-    //     self.inner
-    //         .barrier_flags
-    //         .fetch_or(flags.bits(), Ordering::Relaxed);
-    // }
-    //
-    // pub fn clear_barrier_flags(&self) {
-    //     self.inner.barrier_flags.store(0, Ordering::Relaxed);
-    // }
-
     pub fn queue_type(&self) -> RafxQueueType {
         self.inner.queue_type
     }
@@ -68,10 +37,6 @@ impl RafxQueueGl {
     pub fn device_context(&self) -> &RafxDeviceContextGl {
         &self.inner.device_context
     }
-
-    // pub fn gl_queue(&self) -> &gl_rs::CommandQueueRef {
-    //     self.inner.queue.as_ref()
-    // }
 
     pub fn create_command_pool(
         &self,
@@ -84,23 +49,16 @@ impl RafxQueueGl {
         device_context: &RafxDeviceContextGl,
         queue_type: RafxQueueType,
     ) -> RafxResult<RafxQueueGl> {
-        unimplemented!();
-        // let queue = device_context.device().new_command_queue();
-        // let fence = device_context.device().new_fence();
-        //
-        // let queue_id = NEXT_QUEUE_ID.fetch_add(1, Ordering::Relaxed);
-        // let inner = RafxQueueGlInner {
-        //     device_context: device_context.clone(),
-        //     queue_type,
-        //     queue,
-        //     queue_id,
-        //     barrier_flags: AtomicU8::default(),
-        //     fence,
-        // };
-        //
-        // Ok(RafxQueueGl {
-        //     inner: Arc::new(inner),
-        // })
+        let queue_id = NEXT_QUEUE_ID.fetch_add(1, Ordering::Relaxed);
+        let inner = RafxQueueGlInner {
+            device_context: device_context.clone(),
+            queue_type,
+            queue_id,
+        };
+
+        Ok(RafxQueueGl {
+            inner: Arc::new(inner),
+        })
     }
 
     pub fn wait_for_queue_idle(&self) -> RafxResult<()> {

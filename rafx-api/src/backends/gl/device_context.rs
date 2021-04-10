@@ -7,11 +7,7 @@ use crate::{
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
-use crate::gl::{
-    RafxBufferGl, RafxDescriptorSetArrayGl, RafxFenceGl, RafxPipelineGl,
-    RafxQueueGl, RafxRootSignatureGl, RafxSamplerGl, RafxSemaphoreGl, RafxShaderGl,
-    RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl,
-};
+use crate::gl::{RafxBufferGl, RafxDescriptorSetArrayGl, RafxFenceGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxSamplerGl, RafxSemaphoreGl, RafxShaderGl, RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl, GlContextManager};
 
 use crate::gl::GlContext;
 use crate::gl::gles20;
@@ -24,7 +20,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 pub struct RafxDeviceContextGlInner {
     pub(crate) device_info: RafxDeviceInfo,
 
-    gl_context: GlContext,
+    gl_context_manager: GlContextManager,
+    gl_context: Arc<GlContext>,
     //device: gl_rs::Device,
     destroyed: AtomicBool,
 
@@ -51,9 +48,9 @@ impl Drop for RafxDeviceContextGlInner {
 
 impl RafxDeviceContextGlInner {
     pub fn new(window: &dyn HasRawWindowHandle) -> RafxResult<Self> {
+        let gl_context_manager = super::internal::GlContextManager::new(window);
         // GL requires a window for initialization
-        let gl_context = GlContext::new(window);
-        gl_context.make_current();
+        let gl_context = gl_context_manager.main_context().clone();
 
         let pack_alignment = gl_context.gl_get_integerv(gles20::PACK_ALIGNMENT) as u32;
 
@@ -78,6 +75,7 @@ impl RafxDeviceContextGlInner {
 
         Ok(RafxDeviceContextGlInner {
             device_info,
+            gl_context_manager,
             gl_context,
             //device,
             //gl_features,
@@ -218,6 +216,14 @@ impl RafxDeviceContextGl {
     // pub fn gl_features(&self) -> &GlFeatures {
     //     &self.inner.gl_features
     // }
+
+    pub fn gl_context(&self) -> &GlContext {
+        &self.inner.gl_context
+    }
+
+    pub fn gl_context_manager(&self) -> &GlContextManager {
+        &self.inner.gl_context_manager
+    }
 
     pub fn new(inner: Arc<RafxDeviceContextGlInner>) -> RafxResult<Self> {
         Ok(RafxDeviceContextGl {

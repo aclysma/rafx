@@ -3,6 +3,7 @@ use crate::{RafxCommandBufferDef, RafxCommandPoolDef, RafxQueueType, RafxResult}
 
 pub struct RafxCommandPoolGl {
     queue: RafxQueueGl,
+    //TODO: Tracking data for current state of the GPU?
 }
 
 impl RafxCommandPoolGl {
@@ -22,8 +23,7 @@ impl RafxCommandPoolGl {
         &self,
         command_buffer_def: &RafxCommandBufferDef,
     ) -> RafxResult<RafxCommandBufferGl> {
-        unimplemented!();
-        //RafxCommandBufferGl::new(self, command_buffer_def)
+        RafxCommandBufferGl::new(self, command_buffer_def)
     }
 
     pub fn reset_command_pool(&self) -> RafxResult<()> {
@@ -36,7 +36,6 @@ impl RafxCommandPoolGl {
         queue: &RafxQueueGl,
         _command_pool_def: &RafxCommandPoolDef,
     ) -> RafxResult<RafxCommandPoolGl> {
-        unimplemented!();
         Ok(RafxCommandPoolGl {
             queue: queue.clone(),
         })

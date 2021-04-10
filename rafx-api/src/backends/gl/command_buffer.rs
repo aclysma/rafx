@@ -17,33 +17,33 @@ use fnv::FnvHashSet;
 use rafx_base::trust_cell::TrustCell;
 
 // Mutable state stored in a lock. (Hopefully we can optimize away the lock later)
-#[derive(Debug)]
-pub struct RafxCommandBufferGlInner {
-    // render_targets_to_make_readable: FnvHashSet<RafxTextureGl>,
-    // command_buffer: Option<gl_rs::CommandBuffer>,
-    // render_encoder: Option<gl_rs::RenderCommandEncoder>,
-    // compute_encoder: Option<gl_rs::ComputeCommandEncoder>,
-    // blit_encoder: Option<gl_rs::BlitCommandEncoder>,
-    // current_index_buffer: Option<gl_rs::Buffer>,
-    // current_index_buffer_byte_offset: u64,
-    // current_index_buffer_type: MTLIndexType,
-    // current_index_buffer_stride: u32,
-    // last_pipeline_type: Option<RafxPipelineType>,
-    // primitive_type: MTLPrimitiveType,
-    // current_render_targets_width: u32,
-    // current_render_targets_height: u32,
-    // compute_threads_per_group_x: u32,
-    // compute_threads_per_group_y: u32,
-    // compute_threads_per_group_z: u32,
-}
+// #[derive(Debug)]
+// pub struct RafxCommandBufferGlInner {
+//     // render_targets_to_make_readable: FnvHashSet<RafxTextureGl>,
+//     // command_buffer: Option<gl_rs::CommandBuffer>,
+//     // render_encoder: Option<gl_rs::RenderCommandEncoder>,
+//     // compute_encoder: Option<gl_rs::ComputeCommandEncoder>,
+//     // blit_encoder: Option<gl_rs::BlitCommandEncoder>,
+//     // current_index_buffer: Option<gl_rs::Buffer>,
+//     // current_index_buffer_byte_offset: u64,
+//     // current_index_buffer_type: MTLIndexType,
+//     // current_index_buffer_stride: u32,
+//     // last_pipeline_type: Option<RafxPipelineType>,
+//     // primitive_type: MTLPrimitiveType,
+//     // current_render_targets_width: u32,
+//     // current_render_targets_height: u32,
+//     // compute_threads_per_group_x: u32,
+//     // compute_threads_per_group_y: u32,
+//     // compute_threads_per_group_z: u32,
+// }
 
-unsafe impl Send for RafxCommandBufferGlInner {}
-unsafe impl Sync for RafxCommandBufferGlInner {}
+// unsafe impl Send for RafxCommandBufferGlInner {}
+// unsafe impl Sync for RafxCommandBufferGlInner {}
 
 #[derive(Debug)]
 pub struct RafxCommandBufferGl {
     queue: RafxQueueGl,
-    inner: TrustCell<RafxCommandBufferGlInner>,
+    //inner: TrustCell<RafxCommandBufferGlInner>,
 }
 
 impl RafxCommandBufferGl {
@@ -67,30 +67,14 @@ impl RafxCommandBufferGl {
         command_pool: &RafxCommandPoolGl,
         _command_buffer_def: &RafxCommandBufferDef,
     ) -> RafxResult<RafxCommandBufferGl> {
-        unimplemented!();
         // let inner = RafxCommandBufferGlInner {
-        //     render_targets_to_make_readable: Default::default(),
-        //     command_buffer: None,
-        //     render_encoder: None,
-        //     compute_encoder: None,
-        //     blit_encoder: None,
-        //     last_pipeline_type: None,
-        //     primitive_type: MTLPrimitiveType::Triangle,
-        //     current_render_targets_width: 0,
-        //     current_render_targets_height: 0,
-        //     compute_threads_per_group_x: 0,
-        //     compute_threads_per_group_y: 0,
-        //     compute_threads_per_group_z: 0,
-        //     current_index_buffer: None,
-        //     current_index_buffer_byte_offset: 0,
-        //     current_index_buffer_type: MTLIndexType::UInt16,
-        //     current_index_buffer_stride: 0,
-        // };
         //
-        // Ok(RafxCommandBufferGl {
-        //     queue: command_pool.queue().clone(),
-        //     inner: TrustCell::new(inner),
-        // })
+        // };
+
+        Ok(RafxCommandBufferGl {
+            queue: command_pool.queue().clone(),
+            //inner: TrustCell::new(inner),
+        })
     }
 
     pub fn begin(&self) -> RafxResult<()> {
@@ -477,53 +461,53 @@ impl RafxCommandBufferGl {
         // )
     }
 
-    fn do_bind_descriptor_set(
-        &self,
-        inner: &RafxCommandBufferGlInner,
-        root_signature: &RafxRootSignatureGl,
-        set_index: u32,
-        //argument_buffer: &gl_rs::BufferRef,
-        argument_buffer_offset: u32,
-        array_index: u32,
-        argument_buffer_data: &ArgumentBufferData,
-    ) -> RafxResult<()> {
-        unimplemented!();
-        // match root_signature.pipeline_type() {
-        //     RafxPipelineType::Graphics => {
-        //         let render_encoder = inner
-        //             .render_encoder
-        //             .as_ref()
-        //             .ok_or("Must begin render pass before binding graphics descriptor sets")?;
-        //         render_encoder.set_vertex_buffer(
-        //             set_index as _,
-        //             Some(argument_buffer),
-        //             argument_buffer_offset as _,
-        //         );
-        //         render_encoder.set_fragment_buffer(
-        //             set_index as _,
-        //             Some(argument_buffer),
-        //             argument_buffer_offset as _,
-        //         );
-        //         argument_buffer_data
-        //             .make_resources_resident_render_encoder(array_index, render_encoder);
-        //     }
-        //     RafxPipelineType::Compute => {
-        //         let compute_encoder = inner
-        //             .compute_encoder
-        //             .as_ref()
-        //             .ok_or("Must bind compute pipeline before binding compute descriptor sets")?;
-        //         compute_encoder.set_buffer(
-        //             set_index as _,
-        //             Some(argument_buffer),
-        //             argument_buffer_offset as _,
-        //         );
-        //         argument_buffer_data
-        //             .make_resources_resident_compute_encoder(array_index, compute_encoder);
-        //     }
-        // }
-        //
-        // Ok(())
-    }
+    // fn do_bind_descriptor_set(
+    //     &self,
+    //     inner: &RafxCommandBufferGlInner,
+    //     root_signature: &RafxRootSignatureGl,
+    //     set_index: u32,
+    //     //argument_buffer: &gl_rs::BufferRef,
+    //     argument_buffer_offset: u32,
+    //     array_index: u32,
+    //     argument_buffer_data: &ArgumentBufferData,
+    // ) -> RafxResult<()> {
+    //     unimplemented!();
+    //     // match root_signature.pipeline_type() {
+    //     //     RafxPipelineType::Graphics => {
+    //     //         let render_encoder = inner
+    //     //             .render_encoder
+    //     //             .as_ref()
+    //     //             .ok_or("Must begin render pass before binding graphics descriptor sets")?;
+    //     //         render_encoder.set_vertex_buffer(
+    //     //             set_index as _,
+    //     //             Some(argument_buffer),
+    //     //             argument_buffer_offset as _,
+    //     //         );
+    //     //         render_encoder.set_fragment_buffer(
+    //     //             set_index as _,
+    //     //             Some(argument_buffer),
+    //     //             argument_buffer_offset as _,
+    //     //         );
+    //     //         argument_buffer_data
+    //     //             .make_resources_resident_render_encoder(array_index, render_encoder);
+    //     //     }
+    //     //     RafxPipelineType::Compute => {
+    //     //         let compute_encoder = inner
+    //     //             .compute_encoder
+    //     //             .as_ref()
+    //     //             .ok_or("Must bind compute pipeline before binding compute descriptor sets")?;
+    //     //         compute_encoder.set_buffer(
+    //     //             set_index as _,
+    //     //             Some(argument_buffer),
+    //     //             argument_buffer_offset as _,
+    //     //         );
+    //     //         argument_buffer_data
+    //     //             .make_resources_resident_compute_encoder(array_index, compute_encoder);
+    //     //     }
+    //     // }
+    //     //
+    //     // Ok(())
+    // }
 
     pub fn cmd_draw(
         &self,

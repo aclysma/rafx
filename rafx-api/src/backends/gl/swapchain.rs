@@ -1,5 +1,5 @@
 use crate::backends::gl::RafxTextureGl;
-use crate::gl::{RafxDeviceContextGl, RafxFenceGl, RafxRawImageGl, RafxSemaphoreGl};
+use crate::gl::{RafxDeviceContextGl, RafxFenceGl, RafxRawImageGl, RafxSemaphoreGl, RafxTextureGlInner, GlContext};
 use crate::{
     RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
     RafxSwapchainImage, RafxTexture, RafxTextureDef, RafxTextureDimensions,
@@ -17,6 +17,7 @@ pub struct RafxSwapchainGl {
     format: RafxFormat,
     // Just fake this
     next_swapchain_image_index: u32,
+    swapchain_images: Vec<RafxTextureGl>,
 }
 
 // for gl_rs::CAGlDrawable
@@ -49,7 +50,44 @@ impl RafxSwapchainGl {
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainGl> {
-        unimplemented!();
+        let format = RafxFormat::B8G8R8A8_SRGB;
+
+        let mut resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
+
+        let context = device_context.gl_context_manager().create_surface_context(raw_window_handle);
+
+        // add surface
+        // set GL swap interval (vsync)
+
+        let mut swapchain_images = Vec::with_capacity(SWAPCHAIN_IMAGE_COUNT as usize);
+        for _ in 0..SWAPCHAIN_IMAGE_COUNT {
+            swapchain_images.push(RafxTextureGl::from_existing(device_context, Some(RafxRawImageGl::RenderTarget), &RafxTextureDef {
+                extents: RafxExtents3D {
+                    width: swapchain_def.width,
+                    height: swapchain_def.height,
+                    depth: 1
+                },
+                array_length: 1,
+                mip_count: 1,
+                format,
+                resource_type,
+                sample_count: RafxSampleCount::SampleCount1,
+                dimensions: RafxTextureDimensions::Dim2D,
+            })?);
+        }
+
+        Ok(RafxSwapchainGl {
+            device_context: device_context.clone(),
+            //layer,
+            //drawable: Default::default(),
+            swapchain_def: swapchain_def.clone(),
+            next_swapchain_image_index: 0,
+            format,
+            swapchain_images,
+        })
+
+
+        //unimplemented!();
         // let layer = match raw_window_handle.raw_window_handle() {
         //     #[cfg(target_os = "macos")]
         //     raw_window_handle::RawWindowHandle::MacOS(handle) => unsafe {

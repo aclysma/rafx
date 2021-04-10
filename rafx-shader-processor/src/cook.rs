@@ -15,6 +15,9 @@ pub(crate) fn cook_shader(
         // to produce a cooked shader on machines without the tools. (Also the tools don't provide an
         // API so will need to figure out how to compile the shader programmatically.)
         metal: Some(RafxShaderPackageMetal::Src(metal_source)),
+
+        // TODO: TEMPORARY
+        gl: None,
     };
 
     let cooked_shader = CookedShaderPackage {

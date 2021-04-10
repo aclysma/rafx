@@ -8,8 +8,6 @@ pub struct RafxSemaphoreGl {
     // Set to true when an operation is scheduled to signal this semaphore
     // Cleared when an operation is scheduled to consume this semaphore
     signal_available: AtomicBool,
-
-    //gl_event: gl_rs::Event,
 }
 
 // for gl_rs::Event
@@ -18,24 +16,15 @@ unsafe impl Sync for RafxSemaphoreGl {}
 
 impl RafxSemaphoreGl {
     pub fn new(device_context: &RafxDeviceContextGl) -> RafxResult<RafxSemaphoreGl> {
-        unimplemented!();
-        // //TODO: Need to add support for new_event() in gl crate
-        //
-        // let gl_event = device_context.device().new_event();
-        //
-        // Ok(RafxSemaphoreGl {
-        //     _device_context: device_context.clone(),
-        //     gl_event,
-        //     signal_available: AtomicBool::new(false),
-        // })
+        // Semaphores are not available on OpenGL ES 2.0
+        // use glFlush for Gpu->Gpu sync
+        Ok(RafxSemaphoreGl {
+            _device_context: device_context.clone(),
+            signal_available: AtomicBool::new(false),
+        })
     }
 
-    // pub fn gl_event(&self) -> &gl_rs::EventRef {
-    //     self.gl_event.as_ref()
-    // }
-
     pub(crate) fn signal_available(&self) -> bool {
-        unimplemented!();
         self.signal_available.load(Ordering::Relaxed)
     }
 
@@ -43,7 +32,6 @@ impl RafxSemaphoreGl {
         &self,
         available: bool,
     ) {
-        unimplemented!();
         self.signal_available.store(available, Ordering::Relaxed);
     }
 }

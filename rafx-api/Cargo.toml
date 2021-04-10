@@ -44,7 +44,7 @@ foreign-types-shared = { version = "0.1", optional = true }
 block = { version = "0.1.6", optional = true }
 
 # gl
-raw-gl-context = { version = "0.1.2", optional = true }
+raw-gl-context = { git = "https://github.com/aclysma/raw-gl-context.git", branch = "rafx", optional = true }
 
 [features]
 default = []

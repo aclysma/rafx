@@ -4,8 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 pub struct RafxFenceGl {
-    _device_context: RafxDeviceContextGl,
-    //mtl_semaphore: Arc<dispatch::Semaphore>,
+    device_context: RafxDeviceContextGl,
     // Set to true when an operation is scheduled to signal this fence
     // Cleared when an operation is scheduled to consume this fence
     submitted: AtomicBool,
@@ -13,75 +12,61 @@ pub struct RafxFenceGl {
 
 impl RafxFenceGl {
     pub fn new(device_context: &RafxDeviceContextGl) -> RafxResult<RafxFenceGl> {
-        unimplemented!();
-        // let mtl_semaphore = dispatch::Semaphore::new(0);
-        //
-        // Ok(RafxFenceGl {
-        //     _device_context: device_context.clone(),
-        //     //mtl_semaphore: Arc::new(mtl_semaphore),
-        //     submitted: AtomicBool::new(false),
-        // })
+        // Fences are not available on OpenGL ES 2.0
+        // use glFlush for Gpu->Cpu sync
+        Ok(RafxFenceGl {
+            device_context: device_context.clone(),
+            submitted: AtomicBool::new(false),
+        })
     }
 
-    // pub(crate) fn gl_dispatch_semaphore(&self) -> &Arc<dispatch::Semaphore> {
-    //     &self.mtl_semaphore
-    // }
-
     pub(crate) fn submitted(&self) -> bool {
-        unimplemented!();
-        //self.submitted.load(Ordering::Relaxed)
+        self.submitted.load(Ordering::Relaxed)
     }
 
     pub fn wait(&self) -> RafxResult<()> {
-        unimplemented!();
-        // if self.submitted() {
-        //     self.mtl_semaphore.wait();
-        // }
-        //
-        // self.set_submitted(false);
-        // Ok(())
+        if self.submitted() {
+            self.device_context.gl_context().gl_finish();
+        }
+
+        self.set_submitted(false);
+        Ok(())
     }
 
     pub fn wait_for_fences(
         _device_context: &RafxDeviceContextGl,
         fences: &[&RafxFenceGl],
     ) -> RafxResult<()> {
-        unimplemented!();
-        // for fence in fences {
-        //     if fence.submitted() {
-        //         fence.wait()?;
-        //     }
-        // }
-        //
-        // Ok(())
+        let mut finish_called = false;
+        for fence in fences {
+            if fence.submitted() {
+                fence.device_context.gl_context().gl_finish();
+                finish_called = true;
+                break;
+            }
+        }
+
+        if finish_called {
+            for fence in fences {
+                fence.set_submitted(false);
+            }
+        }
+
+        Ok(())
     }
 
     pub(crate) fn set_submitted(
         &self,
         available: bool,
     ) {
-        unimplemented!();
-        //self.submitted.store(available, Ordering::Relaxed);
+        self.submitted.store(available, Ordering::Relaxed);
     }
 
     pub fn get_fence_status(&self) -> RafxResult<RafxFenceStatus> {
-        unimplemented!();
-        // if !self.submitted() {
-        //     Ok(RafxFenceStatus::Unsubmitted)
-        // } else {
-        //     let is_ready = self
-        //         .mtl_semaphore
-        //         .wait_timeout(std::time::Duration::default())
-        //         .is_ok();
-        //     if is_ready {
-        //         self.set_submitted(false);
-        //     }
-        //
-        //     if is_ready {
-        //         Ok(RafxFenceStatus::Complete)
-        //     } else {
-        //         Ok(RafxFenceStatus::Incomplete)
-        //     }
-        // }
+        if !self.submitted() {
+            Ok(RafxFenceStatus::Unsubmitted)
+        } else {
+            Ok(RafxFenceStatus::Incomplete)
+        }
     }
 }

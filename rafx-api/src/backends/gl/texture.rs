@@ -6,11 +6,12 @@ use crate::{
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::process::exit;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RafxRawImageGl {
     Owned(u32),
-    Ref(u32)
+    RenderTarget
     //Ref(gl_rs::Texture),
 }
 
@@ -31,7 +32,7 @@ impl RafxRawImageGl {
 pub struct RafxTextureGlInner {
     device_context: RafxDeviceContextGl,
     texture_def: RafxTextureDef,
-    //image: RafxRawImageGl,
+    image: RafxRawImageGl,
     //mip_level_uav_views: Vec<gl_rs::Texture>,
     texture_id: u32,
 }
@@ -95,7 +96,29 @@ impl RafxTextureGl {
         texture_def: &RafxTextureDef,
     ) -> RafxResult<RafxTextureGl> {
         texture_def.verify();
+
+        if let Some(existing_image) = existing_image {
+            if existing_image == RafxRawImageGl::RenderTarget {
+                let texture_id = crate::internal_shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
+
+                let inner = RafxTextureGlInner {
+                    device_context: device_context.clone(),
+                    image: existing_image,
+                    texture_def: texture_def.clone(),
+                    texture_id
+                };
+
+                return Ok(RafxTextureGl {
+                    inner: Arc::new(inner)
+                })
+            }
+        }
+
         unimplemented!();
+
+
+
+        // unimplemented!();
 
         // let dimensions = texture_def
         //     .dimensions

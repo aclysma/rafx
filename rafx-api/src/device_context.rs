@@ -84,7 +84,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-metal")]
             RafxDeviceContext::Metal(inner) => RafxQueue::Metal(inner.create_queue(queue_type)?),
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => RafxQueue::Gl(inner.create_queue(queue_type)?),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -248,7 +248,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-metal")]
             RafxDeviceContext::Metal(inner) => RafxBuffer::Metal(inner.create_buffer(buffer_def)?),
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => RafxBuffer::Gl(inner.create_buffer(buffer_def)?),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
