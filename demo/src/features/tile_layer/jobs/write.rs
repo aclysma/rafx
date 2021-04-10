@@ -1,8 +1,15 @@
 use rafx::render_feature_write_job_prelude::*;
 
-use super::TileLayerVertex;
 use rafx::api::RafxPrimitiveTopology;
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+
+/// Vertex format for vertices sent to the GPU
+#[derive(Clone, Debug, Copy, Default)]
+#[repr(C)]
+pub struct TileLayerVertex {
+    pub position: [f32; 3],
+    pub uv: [f32; 2],
+}
 
 lazy_static::lazy_static! {
     pub static ref TILE_LAYER_VERTEX_LAYOUT : VertexDataSetLayout = {

@@ -9,8 +9,7 @@ rafx::declare_render_feature!(MeshRenderFeature, MESH_FEATURE_INDEX);
 mod plugin;
 pub use plugin::*;
 
-mod mesh_vertex;
-pub use mesh_vertex::*;
+pub use jobs::MeshVertex;
 
 mod mesh_render_node_set;
 pub use mesh_render_node_set::*;

@@ -9,11 +9,10 @@ rafx::declare_render_feature!(TileLayerRenderFeature, TILE_LAYER_FEATURE_INDEX);
 mod plugin;
 pub use plugin::*;
 
+pub use jobs::TileLayerVertex;
+
 mod tile_layer_render_node_set;
 pub use tile_layer_render_node_set::*;
 
 mod tile_layer_resource;
 pub use tile_layer_resource::*;
-
-mod tile_layer_vertex;
-pub use tile_layer_vertex::*;
