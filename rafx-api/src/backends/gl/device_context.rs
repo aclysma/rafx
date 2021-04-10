@@ -53,6 +53,7 @@ impl RafxDeviceContextGlInner {
     pub fn new(window: &dyn HasRawWindowHandle) -> RafxResult<Self> {
         // GL requires a window for initialization
         let gl_context = GlContext::new(window);
+        gl_context.make_current();
 
         let pack_alignment = gl_context.gl_get_integerv(gles20::PACK_ALIGNMENT) as u32;
 
@@ -67,11 +68,11 @@ impl RafxDeviceContextGlInner {
         let renderer = gl_context.gl_get_string(gles20::RENDERER);
         log::debug!("Renderer: {}", renderer);
         let version = gl_context.gl_get_string(gles20::VERSION);
-        log::debug!("Version: {}", renderer);
+        log::debug!("Version: {}", version);
         let vendor = gl_context.gl_get_string(gles20::VENDOR);
-        log::debug!("Vendor: {}", renderer);
+        log::debug!("Vendor: {}", vendor);
         let shading_language_version = gl_context.gl_get_string(gles20::SHADING_LANGUAGE_VERSION);
-        log::debug!("Shading Language Version: {}", renderer);
+        log::debug!("Shading Language Version: {}", shading_language_version);
 
         //TODO: Support extensions
 

@@ -75,7 +75,7 @@ impl GlContext {
                 return "".to_string();
             }
 
-            std::ffi::CString::from_raw(str as _).into_string().unwrap()
+            std::ffi::CStr::from_ptr(str as _).to_str().unwrap().to_string()
         }
     }
 }
