@@ -67,7 +67,7 @@ impl TextResource {
     }
 
     // Returns the draw data, leaving this object in an empty state
-    pub(in super::super) fn take_text_draw_data(&mut self) -> TextDrawData {
+    pub(super) fn take_text_draw_data(&mut self) -> TextDrawData {
         TextDrawData {
             fonts: std::mem::take(&mut self.fonts),
             text_draw_commands: std::mem::take(&mut self.text_draw_commands),

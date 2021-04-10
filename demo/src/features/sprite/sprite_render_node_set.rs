@@ -33,7 +33,7 @@ impl Into<GenericRenderNodeHandle> for SpriteRenderNodeHandle {
 
 #[derive(Default)]
 pub struct SpriteRenderNodeSet {
-    pub(in crate::features::sprite) sprites: DropSlab<SpriteRenderNode>,
+    pub(super) sprites: DropSlab<SpriteRenderNode>,
 }
 
 impl SpriteRenderNodeSet {

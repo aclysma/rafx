@@ -43,15 +43,15 @@ enum ShadowMapVisibility {
 #[derive(Default)]
 pub struct ShadowMapResource {
     // These are populated by recalculate_shadow_map_views()
-    pub(in crate::features::mesh) shadow_map_lookup: FnvHashMap<LightId, usize>,
-    pub(in crate::features::mesh) shadow_map_render_views: Vec<ShadowMapRenderView>,
+    pub(super) shadow_map_lookup: FnvHashMap<LightId, usize>,
+    pub(super) shadow_map_render_views: Vec<ShadowMapRenderView>,
 
     // Populated by set_shadow_map_image_resources, during construction of the render graph
-    pub(in crate::features::mesh) image_usage_ids: Vec<RenderGraphImageUsageId>,
+    pub(super) image_usage_ids: Vec<RenderGraphImageUsageId>,
 
     // Populated by set_shadow_map_image_views, after the render graph is constructed and image
     // resources are allocated
-    pub(in crate::features::mesh) shadow_map_image_views: Vec<ResourceArc<ImageViewResource>>,
+    pub(super) shadow_map_image_views: Vec<ResourceArc<ImageViewResource>>,
 }
 
 impl ShadowMapResource {

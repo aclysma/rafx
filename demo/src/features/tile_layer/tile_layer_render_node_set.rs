@@ -33,7 +33,7 @@ impl Into<GenericRenderNodeHandle> for TileLayerRenderNodeHandle {
 
 #[derive(Default)]
 pub struct TileLayerRenderNodeSet {
-    pub(in crate::features::tile_layer) tile_layers: DropSlab<TileLayerRenderNode>,
+    pub(super) tile_layers: DropSlab<TileLayerRenderNode>,
 }
 
 impl TileLayerRenderNodeSet {

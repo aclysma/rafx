@@ -29,7 +29,7 @@ impl Into<GenericRenderNodeHandle> for MeshRenderNodeHandle {
 
 #[derive(Default)]
 pub struct MeshRenderNodeSet {
-    pub(in crate::features::mesh) meshes: DropSlab<MeshRenderNode>,
+    pub(super) meshes: DropSlab<MeshRenderNode>,
 }
 
 impl MeshRenderNodeSet {
