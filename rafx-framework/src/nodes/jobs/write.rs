@@ -5,7 +5,7 @@ use crate::nodes::{
 };
 use rafx_api::RafxResult;
 
-pub trait FeatureCommandWriter {
+pub trait WriteJob {
     fn on_begin_execute_graph(
         &self,
         _write_context: &mut RenderJobBeginExecuteGraphContext,
@@ -55,7 +55,7 @@ pub fn push_view_indexed_value<T: Clone>(
 // }
 
 pub struct PreparedRenderData {
-    feature_writers: Vec<Option<Box<dyn FeatureCommandWriter>>>,
+    feature_writers: Vec<Option<Box<dyn WriteJob>>>,
     submit_nodes: MergedFrameSubmitNodes,
 }
 
@@ -68,7 +68,7 @@ impl PreparedRenderData {
     }
 
     pub fn new(
-        feature_writers: Vec<Box<dyn FeatureCommandWriter>>,
+        feature_writers: Vec<Box<dyn WriteJob>>,
         submit_nodes: MergedFrameSubmitNodes,
     ) -> Self {
         let mut writers: Vec<_> = (0..RenderRegistry::registered_feature_count())

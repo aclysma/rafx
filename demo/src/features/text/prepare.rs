@@ -1,7 +1,7 @@
 use rafx::render_feature_prepare_job_predule::*;
 
 use super::FontAtlasCache;
-use super::WriteJobImpl;
+use super::TextWriteJob;
 use super::{RenderFeatureType, TextDrawCommand};
 use crate::assets::font::FontAsset;
 use crate::phases::UiRenderPhase;
@@ -12,19 +12,19 @@ use rafx::framework::{MaterialPassResource, ResourceArc};
 
 pub type TextUniformBufferObject = shaders::text_vert::PerViewUboUniform;
 
-pub struct PrepareJobImpl {
+pub struct TextPrepareJob {
     text_material_pass: ResourceArc<MaterialPassResource>,
     text_draw_commands: Vec<TextDrawCommand>,
     font_assets: FnvHashMap<LoadHandle, FontAsset>,
 }
 
-impl PrepareJobImpl {
+impl TextPrepareJob {
     pub(super) fn new(
         text_material_pass: ResourceArc<MaterialPassResource>,
         text_draw_commands: Vec<TextDrawCommand>,
         font_assets: FnvHashMap<LoadHandle, FontAsset>,
     ) -> Self {
-        PrepareJobImpl {
+        TextPrepareJob {
             text_material_pass,
             text_draw_commands,
             font_assets,
@@ -32,13 +32,13 @@ impl PrepareJobImpl {
     }
 }
 
-impl<'a> PrepareJob for PrepareJobImpl {
+impl<'a> PrepareJob for TextPrepareJob {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
         profiling::scope!(super::prepare_scope);
 
         let dyn_resource_allocator = prepare_context
@@ -73,7 +73,7 @@ impl<'a> PrepareJob for PrepareJobImpl {
 
         let mut submit_nodes = FeatureSubmitNodes::default();
 
-        let mut writer = Box::new(WriteJobImpl::new(
+        let mut writer = Box::new(TextWriteJob::new(
             self.text_material_pass.clone(),
             draw_vertices_result.draw_call_metas,
             draw_vertices_result.image_updates,

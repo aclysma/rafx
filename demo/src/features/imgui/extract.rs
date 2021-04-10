@@ -1,18 +1,18 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::{ImGuiUniformBufferObject, PrepareJobImpl, Sdl2ImguiManager, StaticResources};
+use super::{ImGuiPrepareJob, ImGuiStaticResources, ImGuiUniformBufferObject, Sdl2ImguiManager};
 use rafx::assets::AssetManagerRenderResource;
 use rafx::graph::SwapchainSurfaceInfo;
 
-pub struct ExtractJobImpl {}
+pub struct ImGuiExtractJob {}
 
-impl ExtractJobImpl {
+impl ImGuiExtractJob {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl ExtractJob for ExtractJobImpl {
+impl ExtractJob for ImGuiExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -53,7 +53,7 @@ impl ExtractJob for ExtractJobImpl {
 
         let imgui_material = &extract_context
             .render_resources
-            .fetch::<StaticResources>()
+            .fetch::<ImGuiStaticResources>()
             .imgui_material;
         let imgui_material_pass = asset_manager
             .committed_asset(imgui_material)
@@ -61,12 +61,14 @@ impl ExtractJob for ExtractJobImpl {
             .get_single_material_pass()
             .unwrap();
 
-        let static_resources = &extract_context.render_resources.fetch::<StaticResources>();
+        let static_resources = &extract_context
+            .render_resources
+            .fetch::<ImGuiStaticResources>();
         let view_ubo = ImGuiUniformBufferObject {
             mvp: view_proj.to_cols_array_2d(),
         };
 
-        Box::new(PrepareJobImpl::new(
+        Box::new(ImGuiPrepareJob::new(
             imgui_draw_data,
             imgui_material_pass,
             view_ubo,

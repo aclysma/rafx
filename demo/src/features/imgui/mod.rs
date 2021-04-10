@@ -17,7 +17,7 @@ use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::framework::{ImageViewResource, ResourceArc};
 
-struct StaticResources {
+struct ImGuiStaticResources {
     pub imgui_material: Handle<MaterialAsset>,
     pub imgui_font_atlas_image_view: ResourceArc<ImageViewResource>,
 }
@@ -72,7 +72,7 @@ impl RendererPlugin for ImGuiRendererPlugin {
             &dyn_resource_allocator,
         )?;
 
-        render_resources.insert(StaticResources {
+        render_resources.insert(ImGuiStaticResources {
             imgui_material,
             imgui_font_atlas_image_view,
         });
@@ -86,6 +86,6 @@ impl RendererPlugin for ImGuiRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+        extract_jobs.push(Box::new(ImGuiExtractJob::new()));
     }
 }

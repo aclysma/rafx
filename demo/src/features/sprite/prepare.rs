@@ -1,6 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{SpriteVertex, WriteJobImpl};
+use super::{SpriteVertex, SpriteWriteJob};
 use crate::phases::OpaqueRenderPhase;
 use crate::phases::TransparentRenderPhase;
 use fnv::FnvHashMap;
@@ -55,33 +55,33 @@ pub struct ExtractedSpriteData {
     pub image_view: ResourceArc<ImageViewResource>,
 }
 
-pub struct PrepareJobImpl {
+pub struct SpritePrepareJob {
     extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
     sprite_material: ResourceArc<MaterialPassResource>,
 }
 
-impl PrepareJobImpl {
+impl SpritePrepareJob {
     pub(super) fn new(
         extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
         sprite_material: ResourceArc<MaterialPassResource>,
     ) -> Self {
-        PrepareJobImpl {
+        SpritePrepareJob {
             extracted_frame_node_sprite_data: extracted_sprite_data,
             sprite_material,
         }
     }
 }
 
-impl PrepareJob for PrepareJobImpl {
+impl PrepareJob for SpritePrepareJob {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
         profiling::scope!(super::prepare_scope);
 
-        let mut writer = Box::new(WriteJobImpl::new(self.sprite_material.clone()));
+        let mut writer = Box::new(SpriteWriteJob::new(self.sprite_material.clone()));
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context

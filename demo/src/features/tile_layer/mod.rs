@@ -15,7 +15,7 @@ use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
-struct StaticResources {
+struct TileLayerStaticResources {
     pub tile_layer_material: Handle<MaterialAsset>,
 }
 
@@ -58,7 +58,7 @@ impl RendererPlugin for TileLayerRendererPlugin {
             "tile_layer_material",
         )?;
 
-        render_resources.insert(StaticResources {
+        render_resources.insert(TileLayerStaticResources {
             tile_layer_material,
         });
 
@@ -75,6 +75,6 @@ impl RendererPlugin for TileLayerRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+        extract_jobs.push(Box::new(TileLayerExtractJob::new()));
     }
 }

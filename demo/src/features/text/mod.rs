@@ -17,7 +17,7 @@ use crate::assets::font::FontAsset;
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
-struct StaticResources {
+struct TextStaticResources {
     pub text_material: Handle<MaterialAsset>,
     pub default_font: Handle<FontAsset>,
 }
@@ -59,7 +59,7 @@ impl RendererPlugin for TextRendererPlugin {
 
         asset_manager.wait_for_asset_to_load(&default_font, asset_resource, "default font")?;
 
-        render_resources.insert(StaticResources {
+        render_resources.insert(TextStaticResources {
             text_material,
             default_font,
         });
@@ -75,6 +75,6 @@ impl RendererPlugin for TextRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+        extract_jobs.push(Box::new(TextExtractJob::new()));
     }
 }

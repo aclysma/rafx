@@ -1,17 +1,17 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::{PrepareJobImpl, StaticResources};
+use super::{SkyboxPrepareJob, SkyboxStaticResources};
 use rafx::assets::AssetManagerRenderResource;
 
-pub struct ExtractJobImpl {}
+pub struct SkyboxExtractJob {}
 
-impl ExtractJobImpl {
+impl SkyboxExtractJob {
     pub fn new() -> Self {
-        ExtractJobImpl {}
+        SkyboxExtractJob {}
     }
 }
 
-impl ExtractJob for ExtractJobImpl {
+impl ExtractJob for SkyboxExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -24,7 +24,9 @@ impl ExtractJob for ExtractJobImpl {
             .render_resources
             .fetch::<AssetManagerRenderResource>();
 
-        let static_resources = extract_context.render_resources.fetch::<StaticResources>();
+        let static_resources = extract_context
+            .render_resources
+            .fetch::<SkyboxStaticResources>();
 
         let skybox_material = asset_manager
             .committed_asset(&static_resources.skybox_material)
@@ -38,7 +40,7 @@ impl ExtractJob for ExtractJobImpl {
             .image_view
             .clone();
 
-        Box::new(PrepareJobImpl::new(skybox_material, skybox_texture))
+        Box::new(SkyboxPrepareJob::new(skybox_material, skybox_texture))
     }
 
     fn feature_debug_name(&self) -> &'static str {

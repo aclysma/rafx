@@ -1,22 +1,22 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::{
-    PrepareJobImpl, StaticResources, TileLayerRenderFeature, TileLayerRenderNode,
-    TileLayerRenderNodeSet,
+    TileLayerPrepareJob, TileLayerRenderFeature, TileLayerRenderNode, TileLayerRenderNodeSet,
+    TileLayerStaticResources,
 };
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
 use rafx::nodes::RenderFeature;
 
-pub struct ExtractJobImpl {}
+pub struct TileLayerExtractJob {}
 
-impl ExtractJobImpl {
+impl TileLayerExtractJob {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl ExtractJob for ExtractJobImpl {
+impl ExtractJob for TileLayerExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -29,7 +29,9 @@ impl ExtractJob for ExtractJobImpl {
             .render_resources
             .fetch::<AssetManagerRenderResource>();
 
-        let static_resources = extract_context.render_resources.fetch::<StaticResources>();
+        let static_resources = extract_context
+            .render_resources
+            .fetch::<TileLayerStaticResources>();
 
         let tile_layer_material = asset_manager
             .committed_asset(&static_resources.tile_layer_material)
@@ -57,7 +59,7 @@ impl ExtractJob for ExtractJobImpl {
             visible_render_nodes.push(render_node.clone());
         }
 
-        Box::new(PrepareJobImpl::new(
+        Box::new(TileLayerPrepareJob::new(
             visible_render_nodes,
             tile_layer_material,
         ))

@@ -1,20 +1,21 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::{
-    ExtractedSpriteData, PrepareJobImpl, SpriteRenderNode, SpriteRenderNodeSet, StaticResources,
+    ExtractedSpriteData, SpritePrepareJob, SpriteRenderNode, SpriteRenderNodeSet,
+    SpriteStaticResources,
 };
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
 
-pub struct ExtractJobImpl {}
+pub struct SpriteExtractJob {}
 
-impl ExtractJobImpl {
+impl SpriteExtractJob {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl ExtractJob for ExtractJobImpl {
+impl ExtractJob for SpriteExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -71,7 +72,9 @@ impl ExtractJob for ExtractJobImpl {
             }
         }
 
-        let static_resources = extract_context.render_resources.fetch::<StaticResources>();
+        let static_resources = extract_context
+            .render_resources
+            .fetch::<SpriteStaticResources>();
 
         let sprite_material = asset_manager
             .committed_asset(&static_resources.sprite_material)
@@ -79,7 +82,7 @@ impl ExtractJob for ExtractJobImpl {
             .get_single_material_pass()
             .unwrap();
 
-        let prepare_impl = PrepareJobImpl::new(extracted_frame_node_sprite_data, sprite_material);
+        let prepare_impl = SpritePrepareJob::new(extracted_frame_node_sprite_data, sprite_material);
 
         Box::new(prepare_impl)
     }

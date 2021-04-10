@@ -14,7 +14,7 @@ pub use public::*;
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
-struct StaticResources {
+struct Debug3DStaticResources {
     pub debug3d_material: Handle<MaterialAsset>,
 }
 
@@ -53,7 +53,7 @@ impl RendererPlugin for Debug3DRendererPlugin {
             .wait_for_asset_to_load(&debug3d_material, asset_resource, "debug.material")
             .unwrap();
 
-        render_resources.insert(StaticResources { debug3d_material });
+        render_resources.insert(Debug3DStaticResources { debug3d_material });
 
         Ok(())
     }
@@ -64,6 +64,6 @@ impl RendererPlugin for Debug3DRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+        extract_jobs.push(Box::new(Debug3DExtractJob::new()));
     }
 }

@@ -54,16 +54,16 @@ pub mod render_feature_extract_job_predule {
 #[cfg(feature = "framework")]
 pub mod render_feature_prepare_job_predule {
     pub use rafx_framework::nodes::{
-        FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeatureIndex,
-        RenderJobPrepareContext, RenderView, ViewSubmitNodes,
+        FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeatureIndex, RenderJobPrepareContext,
+        RenderView, ViewSubmitNodes, WriteJob,
     };
 }
 #[cfg(feature = "framework")]
 pub mod render_feature_write_job_prelude {
     pub use rafx_api::RafxResult;
     pub use rafx_framework::nodes::{
-        FeatureCommandWriter, RenderFeatureIndex, RenderJobWriteContext, RenderPhaseIndex,
-        RenderView, SubmitNodeId,
+        RenderFeatureIndex, RenderJobWriteContext, RenderPhaseIndex, RenderView, SubmitNodeId,
+        WriteJob,
     };
 }
 #[cfg(feature = "framework")]

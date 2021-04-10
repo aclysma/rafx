@@ -11,14 +11,14 @@ lazy_static::lazy_static! {
 
 use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
 
-pub struct WriteJobImpl {
+pub struct SkyboxWriteJob {
     material_pass_resource: ResourceArc<MaterialPassResource>,
     submit_nodes: Vec<SubmitNodeData>,
 }
 
-impl WriteJobImpl {
+impl SkyboxWriteJob {
     pub fn new(material_pass_resource: ResourceArc<MaterialPassResource>) -> Self {
-        WriteJobImpl {
+        SkyboxWriteJob {
             material_pass_resource,
             submit_nodes: Default::default(),
         }
@@ -40,7 +40,7 @@ struct SubmitNodeData {
     per_view_descriptor_set: DescriptorSetArc,
 }
 
-impl FeatureCommandWriter for WriteJobImpl {
+impl WriteJob for SkyboxWriteJob {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,

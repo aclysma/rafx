@@ -1,17 +1,17 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::{DebugDraw3DResource, PrepareJobImpl, StaticResources};
+use super::{Debug3DPrepareJob, Debug3DStaticResources, DebugDraw3DResource};
 use rafx::assets::AssetManagerRenderResource;
 
-pub struct ExtractJobImpl {}
+pub struct Debug3DExtractJob {}
 
-impl ExtractJobImpl {
+impl Debug3DExtractJob {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl ExtractJob for ExtractJobImpl {
+impl ExtractJob for Debug3DExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -31,7 +31,7 @@ impl ExtractJob for ExtractJobImpl {
 
         let debug3d_material = &extract_context
             .render_resources
-            .fetch::<StaticResources>()
+            .fetch::<Debug3DStaticResources>()
             .debug3d_material;
 
         let debug3d_material_pass = asset_manager
@@ -40,7 +40,7 @@ impl ExtractJob for ExtractJobImpl {
             .get_single_material_pass()
             .unwrap();
 
-        Box::new(PrepareJobImpl::new(debug3d_material_pass, line_lists))
+        Box::new(Debug3DPrepareJob::new(debug3d_material_pass, line_lists))
     }
 
     fn feature_debug_name(&self) -> &'static str {

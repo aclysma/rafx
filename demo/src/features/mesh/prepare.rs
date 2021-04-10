@@ -1,6 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{LightId, RenderFeatureType, ShadowMapRenderView, ShadowMapResource, WriteJobImpl};
+use super::{LightId, MeshWriteJob, RenderFeatureType, ShadowMapRenderView, ShadowMapResource};
 use crate::assets::gltf::MeshAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
@@ -74,7 +74,7 @@ struct PreparedSpotLight<'a> {
     shadow_map_index: Option<usize>,
 }
 
-pub struct PrepareJobImpl {
+pub struct MeshPrepareJob {
     depth_material: ResourceArc<MaterialPassResource>,
     extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
     directional_lights: Vec<ExtractedDirectionalLight>,
@@ -82,7 +82,7 @@ pub struct PrepareJobImpl {
     spot_lights: Vec<ExtractedSpotLight>,
 }
 
-impl PrepareJobImpl {
+impl MeshPrepareJob {
     pub fn new(
         depth_material: ResourceArc<MaterialPassResource>,
         extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
@@ -90,7 +90,7 @@ impl PrepareJobImpl {
         point_lights: Vec<ExtractedPointLight>,
         spot_lights: Vec<ExtractedSpotLight>,
     ) -> Self {
-        PrepareJobImpl {
+        MeshPrepareJob {
             depth_material,
             extracted_frame_node_mesh_data,
             directional_lights,
@@ -204,13 +204,13 @@ impl PrepareJobImpl {
     }
 }
 
-impl PrepareJob for PrepareJobImpl {
+impl PrepareJob for MeshPrepareJob {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
         profiling::scope!(super::prepare_scope);
 
         let invalid_resources = prepare_context.render_resources.fetch::<InvalidResources>();
@@ -534,7 +534,7 @@ impl PrepareJob for PrepareJobImpl {
             }
         }
 
-        let mut writer = Box::new(WriteJobImpl::new());
+        let mut writer = Box::new(MeshWriteJob::new());
 
         //
         // Produce render nodes for every mesh
@@ -570,7 +570,7 @@ impl PrepareJob for PrepareJobImpl {
                                 if view.is_relevant::<DepthPrepassRenderPhase, RenderFeatureType>()
                                 {
                                     let per_view_descriptor_set =
-                                        PrepareJobImpl::get_per_view_descriptor_set(
+                                        MeshPrepareJob::get_per_view_descriptor_set(
                                             &per_view_descriptor_sets,
                                             &view,
                                             &depth_material,
@@ -603,7 +603,7 @@ impl PrepareJob for PrepareJobImpl {
                                 //
                                 if view.is_relevant::<OpaqueRenderPhase, RenderFeatureType>() {
                                     let per_view_descriptor_set =
-                                        PrepareJobImpl::get_per_view_descriptor_set(
+                                        MeshPrepareJob::get_per_view_descriptor_set(
                                             &per_view_descriptor_sets,
                                             &view,
                                             &mesh_part.opaque_pass.material_pass_resource,
@@ -639,7 +639,7 @@ impl PrepareJob for PrepareJobImpl {
                                     if view.is_relevant::<ShadowMapRenderPhase, RenderFeatureType>()
                                     {
                                         let per_view_descriptor_set =
-                                            PrepareJobImpl::get_per_view_descriptor_set(
+                                            MeshPrepareJob::get_per_view_descriptor_set(
                                                 &per_view_descriptor_sets,
                                                 &view,
                                                 &depth_material,

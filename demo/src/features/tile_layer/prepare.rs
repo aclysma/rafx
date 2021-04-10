@@ -1,43 +1,43 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{RenderFeatureType, TileLayerRenderNode, WriteJobImpl};
+use super::{RenderFeatureType, TileLayerRenderNode, TileLayerWriteJob};
 use crate::phases::TransparentRenderPhase;
 use rafx::framework::{MaterialPassResource, ResourceArc};
 
 /// Per-pass "global" data
 pub type TileLayerUniformBufferObject = shaders::tile_layer_vert::ArgsUniform;
 
-pub struct PrepareJobImpl {
+pub struct TileLayerPrepareJob {
     visible_render_nodes: Vec<TileLayerRenderNode>,
     tile_layer_material: ResourceArc<MaterialPassResource>,
 }
 
-impl PrepareJobImpl {
+impl TileLayerPrepareJob {
     pub(super) fn new(
         visible_render_nodes: Vec<TileLayerRenderNode>,
         tile_layer_material: ResourceArc<MaterialPassResource>,
     ) -> Self {
-        PrepareJobImpl {
+        TileLayerPrepareJob {
             visible_render_nodes,
             tile_layer_material,
         }
     }
 }
 
-impl PrepareJob for PrepareJobImpl {
+impl PrepareJob for TileLayerPrepareJob {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
         profiling::scope!(super::prepare_scope);
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
             .create_descriptor_set_allocator();
 
-        let mut writer = Box::new(WriteJobImpl::new(
+        let mut writer = Box::new(TileLayerWriteJob::new(
             self.tile_layer_material.clone(),
             self.visible_render_nodes,
         ));

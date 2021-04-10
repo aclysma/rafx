@@ -16,7 +16,7 @@ use rafx::assets::MaterialAsset;
 use rafx::nodes::{FramePacketBuilder, RenderView, RenderViewSet};
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
-struct StaticResources {
+struct MeshStaticResources {
     pub depth_material: Handle<MaterialAsset>,
 }
 
@@ -53,7 +53,7 @@ impl RendererPlugin for MeshRendererPlugin {
 
         asset_manager.wait_for_asset_to_load(&depth_material, asset_resource, "depth")?;
 
-        render_resources.insert(StaticResources { depth_material });
+        render_resources.insert(MeshStaticResources { depth_material });
 
         render_resources.insert(ShadowMapResource::default());
 
@@ -88,6 +88,6 @@ impl RendererPlugin for MeshRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+        extract_jobs.push(Box::new(MeshExtractJob::new()));
     }
 }

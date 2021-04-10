@@ -2,7 +2,7 @@ use rafx::render_feature_extract_job_predule::*;
 
 use super::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
-    MeshRenderNode, MeshRenderNodeSet, PrepareJobImpl, StaticResources,
+    MeshPrepareJob, MeshRenderNode, MeshRenderNodeSet, MeshStaticResources,
 };
 use crate::components::MeshComponent;
 use crate::components::{
@@ -12,15 +12,15 @@ use legion::*;
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
 
-pub struct ExtractJobImpl {}
+pub struct MeshExtractJob {}
 
-impl ExtractJobImpl {
+impl MeshExtractJob {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl ExtractJob for ExtractJobImpl {
+impl ExtractJob for MeshExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -116,7 +116,9 @@ impl ExtractJob for ExtractJobImpl {
             })
             .collect();
 
-        let static_resources = extract_context.render_resources.fetch::<StaticResources>();
+        let static_resources = extract_context
+            .render_resources
+            .fetch::<MeshStaticResources>();
 
         let depth_material = asset_manager
             .committed_asset(&static_resources.depth_material)
@@ -124,7 +126,7 @@ impl ExtractJob for ExtractJobImpl {
             .get_single_material_pass()
             .unwrap();
 
-        Box::new(PrepareJobImpl::new(
+        Box::new(MeshPrepareJob::new(
             depth_material,
             extracted_frame_node_mesh_data,
             directional_lights,

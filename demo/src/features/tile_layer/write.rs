@@ -19,18 +19,18 @@ use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
 use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::nodes::{push_view_indexed_value, RenderViewIndex};
 
-pub struct WriteJobImpl {
+pub struct TileLayerWriteJob {
     visible_render_nodes: Vec<TileLayerRenderNode>,
     per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
     tile_layer_material: ResourceArc<MaterialPassResource>,
 }
 
-impl WriteJobImpl {
+impl TileLayerWriteJob {
     pub fn new(
         tile_layer_material: ResourceArc<MaterialPassResource>,
         visible_render_nodes: Vec<TileLayerRenderNode>,
     ) -> Self {
-        WriteJobImpl {
+        TileLayerWriteJob {
             visible_render_nodes,
             per_view_descriptor_sets: Default::default(),
             tile_layer_material,
@@ -54,7 +54,7 @@ impl WriteJobImpl {
     }
 }
 
-impl FeatureCommandWriter for WriteJobImpl {
+impl WriteJob for TileLayerWriteJob {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,

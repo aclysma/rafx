@@ -3,8 +3,8 @@ use crate::demo_feature::{
     PreparedPerSubmitNodeDemoData,
 };
 use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
-    RenderPhaseIndex, RenderView, SubmitNodeId,
+    RenderFeature, RenderFeatureIndex, RenderJobWriteContext, RenderPhaseIndex, RenderView,
+    SubmitNodeId, WriteJob,
 };
 use rafx_api::RafxResult;
 
@@ -14,7 +14,7 @@ pub struct DemoCommandWriter {
     pub(super) per_submit_node_data: Vec<PreparedPerSubmitNodeDemoData>,
 }
 
-impl FeatureCommandWriter for DemoCommandWriter {
+impl WriteJob for DemoCommandWriter {
     fn apply_setup(
         &self,
         _write_context: &mut RenderJobWriteContext,

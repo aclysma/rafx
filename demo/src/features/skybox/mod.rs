@@ -12,7 +12,7 @@ use write::*;
 use distill::loader::handle::Handle;
 use rafx::assets::{ImageAsset, MaterialAsset};
 
-struct StaticResources {
+struct SkyboxStaticResources {
     pub skybox_material: Handle<MaterialAsset>,
     pub skybox_texture: Handle<ImageAsset>,
 }
@@ -55,7 +55,7 @@ impl RendererPlugin for SkyboxRendererPlugin {
 
         asset_manager.wait_for_asset_to_load(&skybox_texture, asset_resource, "skybox texture")?;
 
-        render_resources.insert(StaticResources {
+        render_resources.insert(SkyboxStaticResources {
             skybox_material,
             skybox_texture,
         });
@@ -69,6 +69,6 @@ impl RendererPlugin for SkyboxRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+        extract_jobs.push(Box::new(SkyboxExtractJob::new()));
     }
 }

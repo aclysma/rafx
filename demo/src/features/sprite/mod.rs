@@ -9,12 +9,13 @@ use prepare::*;
 mod write;
 use write::*;
 mod public;
+
 pub use public::*;
 
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
-struct StaticResources {
+struct SpriteStaticResources {
     pub sprite_material: Handle<MaterialAsset>,
 }
 
@@ -55,7 +56,7 @@ impl RendererPlugin for SpriteRendererPlugin {
             "sprite_material",
         )?;
 
-        render_resources.insert(StaticResources { sprite_material });
+        render_resources.insert(SpriteStaticResources { sprite_material });
 
         Ok(())
     }
@@ -66,6 +67,6 @@ impl RendererPlugin for SpriteRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(Box::new(ExtractJobImpl::new()));
+        extract_jobs.push(Box::new(SpriteExtractJob::new()));
     }
 }

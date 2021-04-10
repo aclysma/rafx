@@ -1,6 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{ImGuiDrawData, WriteJobImpl};
+use super::{ImGuiDrawData, ImGuiWriteJob};
 use crate::phases::UiRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
@@ -8,21 +8,21 @@ use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
 /// Per-pass "global" data
 pub type ImGuiUniformBufferObject = shaders::imgui_vert::ArgsUniform;
 
-pub struct PrepareJobImpl {
+pub struct ImGuiPrepareJob {
     imgui_draw_data: Option<ImGuiDrawData>,
     imgui_material_pass: ResourceArc<MaterialPassResource>,
     view_ubo: ImGuiUniformBufferObject,
     font_atlas: ResourceArc<ImageViewResource>,
 }
 
-impl PrepareJobImpl {
+impl ImGuiPrepareJob {
     pub(super) fn new(
         imgui_draw_data: Option<ImGuiDrawData>,
         imgui_material_pass: ResourceArc<MaterialPassResource>,
         view_ubo: ImGuiUniformBufferObject,
         font_atlas: ResourceArc<ImageViewResource>,
     ) -> Self {
-        PrepareJobImpl {
+        ImGuiPrepareJob {
             imgui_draw_data,
             imgui_material_pass,
             view_ubo,
@@ -31,13 +31,13 @@ impl PrepareJobImpl {
     }
 }
 
-impl PrepareJob for PrepareJobImpl {
+impl PrepareJob for ImGuiPrepareJob {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
         profiling::scope!(super::prepare_scope);
 
         let mut descriptor_set_allocator = prepare_context
@@ -68,7 +68,7 @@ impl PrepareJob for PrepareJobImpl {
             )
             .unwrap();
 
-        let mut writer = Box::new(WriteJobImpl::new(
+        let mut writer = Box::new(ImGuiWriteJob::new(
             self.imgui_material_pass.clone(),
             per_view_descriptor_set,
             per_font_descriptor_set,

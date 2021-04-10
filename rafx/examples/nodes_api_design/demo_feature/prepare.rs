@@ -6,9 +6,8 @@ use crate::demo_feature::{
 use crate::demo_phases::*;
 use glam::Vec3;
 use rafx::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderJobPrepareContext, RenderView, RenderViewIndex, SubmitNodeId,
-    ViewSubmitNodes,
+    FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
+    RenderJobPrepareContext, RenderView, RenderViewIndex, SubmitNodeId, ViewSubmitNodes, WriteJob,
 };
 
 pub struct DemoPrepareJob {
@@ -22,7 +21,7 @@ impl PrepareJob for DemoPrepareJob {
         _prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
         //
         // The submit node struct will combine all submit nodes across all views for this feature.
         // It later gets merged with render nodes from other features and sorted. This is useful

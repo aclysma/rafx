@@ -25,7 +25,7 @@ use super::{ImGuiDrawCmd, ImGuiDrawData};
 use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 
-pub struct WriteJobImpl {
+pub struct ImGuiWriteJob {
     vertex_buffers: Vec<ResourceArc<BufferResource>>,
     index_buffers: Vec<ResourceArc<BufferResource>>,
     per_view_descriptor_set: DescriptorSetArc,
@@ -34,14 +34,14 @@ pub struct WriteJobImpl {
     imgui_draw_data: Option<ImGuiDrawData>,
 }
 
-impl WriteJobImpl {
+impl ImGuiWriteJob {
     pub fn new(
         imgui_material_pass: ResourceArc<MaterialPassResource>,
         per_view_descriptor_set: DescriptorSetArc,
         per_font_descriptor_set: DescriptorSetArc,
         num_draw_lists: usize,
     ) -> Self {
-        WriteJobImpl {
+        ImGuiWriteJob {
             vertex_buffers: Vec::with_capacity(num_draw_lists),
             index_buffers: Vec::with_capacity(num_draw_lists),
             per_view_descriptor_set,
@@ -68,7 +68,7 @@ impl WriteJobImpl {
     }
 }
 
-impl FeatureCommandWriter for WriteJobImpl {
+impl WriteJob for ImGuiWriteJob {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,

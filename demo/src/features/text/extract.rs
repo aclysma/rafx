@@ -1,18 +1,18 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::{PrepareJobImpl, StaticResources, TextResource};
+use super::{TextPrepareJob, TextResource, TextStaticResources};
 use fnv::FnvHashMap;
 use rafx::assets::AssetManagerRenderResource;
 
-pub struct ExtractJobImpl {}
+pub struct TextExtractJob {}
 
-impl ExtractJobImpl {
+impl TextExtractJob {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl ExtractJob for ExtractJobImpl {
+impl ExtractJob for TextExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
@@ -31,7 +31,7 @@ impl ExtractJob for ExtractJobImpl {
 
         let text_material = &extract_context
             .render_resources
-            .fetch::<StaticResources>()
+            .fetch::<TextStaticResources>()
             .text_material;
 
         let text_material_pass = asset_manager
@@ -48,7 +48,7 @@ impl ExtractJob for ExtractJobImpl {
             assert!(old.is_none());
         }
 
-        Box::new(PrepareJobImpl::new(
+        Box::new(TextPrepareJob::new(
             text_material_pass,
             text_draw_data.text_draw_commands,
             font_assets,

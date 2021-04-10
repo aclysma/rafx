@@ -1,40 +1,40 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{RenderFeatureType, WriteJobImpl};
+use super::{RenderFeatureType, SkyboxWriteJob};
 use crate::phases::OpaqueRenderPhase;
 use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
 
-pub struct PrepareJobImpl {
+pub struct SkyboxPrepareJob {
     skybox_material: ResourceArc<MaterialPassResource>,
     skybox_texture: ResourceArc<ImageViewResource>,
 }
 
-impl PrepareJobImpl {
+impl SkyboxPrepareJob {
     pub fn new(
         skybox_material: ResourceArc<MaterialPassResource>,
         skybox_texture: ResourceArc<ImageViewResource>,
     ) -> Self {
-        PrepareJobImpl {
+        SkyboxPrepareJob {
             skybox_material,
             skybox_texture,
         }
     }
 }
 
-impl PrepareJob for PrepareJobImpl {
+impl PrepareJob for SkyboxPrepareJob {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
         profiling::scope!(super::prepare_scope);
 
         let mut descriptor_set_allocator = prepare_context
             .resource_context
             .create_descriptor_set_allocator();
 
-        let mut writer = Box::new(WriteJobImpl::new(self.skybox_material.clone()));
+        let mut writer = Box::new(SkyboxWriteJob::new(self.skybox_material.clone()));
 
         // Skyboxes assume Y up and we're Z up, so "fix" it by adding a rotation about X axis.
         // This effectively applies a rotation to the skybox

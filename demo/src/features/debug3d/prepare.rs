@@ -1,39 +1,39 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{Debug3DVertex, LineList3D, RenderFeatureType, WriteJobImpl};
+use super::{Debug3DVertex, Debug3DWriteJob, LineList3D, RenderFeatureType};
 use crate::phases::OpaqueRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{MaterialPassResource, ResourceArc};
 
 pub type Debug3dUniformBufferObject = shaders::debug_vert::PerFrameUboUniform;
 
-pub struct PrepareJobImpl {
+pub struct Debug3DPrepareJob {
     debug3d_material_pass: ResourceArc<MaterialPassResource>,
     line_lists: Vec<LineList3D>,
 }
 
-impl PrepareJobImpl {
+impl Debug3DPrepareJob {
     pub(super) fn new(
         debug3d_material_pass: ResourceArc<MaterialPassResource>,
         line_lists: Vec<LineList3D>,
     ) -> Self {
-        PrepareJobImpl {
+        Debug3DPrepareJob {
             debug3d_material_pass,
             line_lists,
         }
     }
 }
 
-impl<'a> PrepareJob for PrepareJobImpl {
+impl<'a> PrepareJob for Debug3DPrepareJob {
     fn prepare(
         self: Box<Self>,
         prepare_context: &RenderJobPrepareContext,
         _frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
         profiling::scope!(super::prepare_scope);
 
-        let mut writer = Box::new(WriteJobImpl::new(
+        let mut writer = Box::new(Debug3DWriteJob::new(
             self.debug3d_material_pass.clone(),
             self.line_lists.len(),
         ));
