@@ -1,4 +1,4 @@
-use super::super::RenderFeatureType;
+use super::RenderFeatureType;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };

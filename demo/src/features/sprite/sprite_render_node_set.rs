@@ -1,4 +1,4 @@
-use super::super::render_feature_index;
+use super::render_feature_index;
 use distill::loader::handle::Handle;
 use rafx::assets::ImageAsset;
 use rafx::base::slab::{DropSlab, DropSlabKey};

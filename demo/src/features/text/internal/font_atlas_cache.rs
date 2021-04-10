@@ -1,4 +1,4 @@
-use super::super::{TextDrawCallMeta, TextDrawCommand, TextVertex};
+use super::{TextDrawCallMeta, TextDrawCommand, TextVertex};
 use crate::assets::font::{font_cooking, FontAsset};
 use distill::loader::LoadHandle;
 use fnv::{FnvBuildHasher, FnvHashMap, FnvHashSet};

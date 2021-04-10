@@ -1,4 +1,4 @@
-use super::super::{TextDrawCommand, TextDrawData};
+use super::{TextDrawCommand, TextDrawData};
 use crate::assets::font::FontAsset;
 use fnv::FnvHashMap;
 use rafx::distill::loader::handle::AssetHandle;

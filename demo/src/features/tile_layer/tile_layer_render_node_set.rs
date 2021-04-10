@@ -1,4 +1,4 @@
-use super::super::render_feature_index;
+use super::render_feature_index;
 use crate::assets::ldtk::LdtkLayerDrawCallData;
 use rafx::base::slab::{DropSlab, DropSlabKey};
 use rafx::framework::{BufferResource, DescriptorSetArc, ResourceArc};

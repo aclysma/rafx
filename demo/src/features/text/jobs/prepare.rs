@@ -1,8 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::FontAtlasCache;
-use super::TextWriteJob;
-use super::{RenderFeatureType, TextDrawCommand};
+use super::{FontAtlasCache, RenderFeatureType, TextDrawCommand, TextWriteJob};
 use crate::assets::font::FontAsset;
 use crate::phases::UiRenderPhase;
 use distill::loader::LoadHandle;
