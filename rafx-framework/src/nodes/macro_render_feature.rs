@@ -32,7 +32,6 @@ macro_rules! declare_render_feature {
         static REVERT_SETUP_SCOPE_NAME: &'static str = stringify!($struct_name revert_setup);
 
         pub struct $struct_name;
-        type RenderFeatureType = $struct_name;
 
         impl RenderFeature for $struct_name {
             fn set_feature_index(index: RenderFeatureIndex) {

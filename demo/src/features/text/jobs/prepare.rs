@@ -1,6 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{FontAtlasCache, RenderFeatureType, TextDrawCommand, TextWriteJob};
+use super::{FontAtlasCache, TextDrawCommand, TextRenderFeature, TextWriteJob};
 use crate::assets::font::FontAsset;
 use crate::phases::UiRenderPhase;
 use distill::loader::LoadHandle;
@@ -98,7 +98,7 @@ impl<'a> PrepareJob for TextPrepareJob {
             //
             for view in views
                 .iter()
-                .filter(|view| view.feature_is_relevant::<RenderFeatureType>())
+                .filter(|view| view.feature_is_relevant::<TextRenderFeature>())
             {
                 //
                 // Setup the vertex shader descriptor set
@@ -169,7 +169,7 @@ impl<'a> PrepareJob for TextPrepareJob {
         //
         for view in views
             .iter()
-            .filter(|view| view.feature_is_relevant::<RenderFeatureType>())
+            .filter(|view| view.feature_is_relevant::<TextRenderFeature>())
         {
             let mut view_submit_nodes =
                 ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());

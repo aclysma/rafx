@@ -1,6 +1,6 @@
 use rafx::render_feature_renderer_prelude::*;
 
-use super::{RenderFeatureType, SkyboxExtractJob};
+use super::{SkyboxExtractJob, SkyboxRenderFeature};
 use distill::loader::handle::Handle;
 use rafx::assets::{ImageAsset, MaterialAsset};
 
@@ -22,7 +22,7 @@ impl RendererPlugin for SkyboxRendererPlugin {
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<RenderFeatureType>()
+        render_registry.register_feature::<SkyboxRenderFeature>()
     }
 
     fn initialize_static_resources(

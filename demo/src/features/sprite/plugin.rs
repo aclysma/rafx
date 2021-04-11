@@ -1,6 +1,6 @@
 use rafx::render_feature_renderer_prelude::*;
 
-use super::{RenderFeatureType, SpriteExtractJob, SpriteRenderNodeSet};
+use super::{SpriteExtractJob, SpriteRenderFeature, SpriteRenderNodeSet};
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
@@ -25,7 +25,7 @@ impl RendererPlugin for SpriteRendererPlugin {
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<RenderFeatureType>()
+        render_registry.register_feature::<SpriteRenderFeature>()
     }
 
     fn initialize_static_resources(

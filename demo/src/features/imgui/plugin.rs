@@ -1,7 +1,7 @@
 use rafx::render_feature_renderer_prelude::*;
 
 use super::{
-    create_font_atlas_image_view, init_sdl2_imgui_manager, ImGuiExtractJob, RenderFeatureType,
+    create_font_atlas_image_view, init_sdl2_imgui_manager, ImGuiExtractJob, ImGuiRenderFeature,
     Sdl2ImguiManager,
 };
 use distill::loader::handle::Handle;
@@ -35,7 +35,7 @@ impl RendererPlugin for ImGuiRendererPlugin {
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<RenderFeatureType>()
+        render_registry.register_feature::<ImGuiRenderFeature>()
     }
 
     fn initialize_static_resources(

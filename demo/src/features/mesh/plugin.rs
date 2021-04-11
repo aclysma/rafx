@@ -1,6 +1,6 @@
 use rafx::render_feature_renderer_prelude::*;
 
-use super::{MeshExtractJob, MeshRenderNodeSet, RenderFeatureType, ShadowMapResource};
+use super::{MeshExtractJob, MeshRenderFeature, MeshRenderNodeSet, ShadowMapResource};
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::nodes::{FramePacketBuilder, RenderView, RenderViewSet};
@@ -27,7 +27,7 @@ impl RendererPlugin for MeshRendererPlugin {
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<RenderFeatureType>()
+        render_registry.register_feature::<MeshRenderFeature>()
     }
 
     fn initialize_static_resources(

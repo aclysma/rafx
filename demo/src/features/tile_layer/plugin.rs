@@ -1,6 +1,8 @@
 use rafx::render_feature_renderer_prelude::*;
 
-use super::{RenderFeatureType, TileLayerExtractJob, TileLayerRenderNodeSet, TileLayerResource};
+use super::{
+    TileLayerExtractJob, TileLayerRenderFeature, TileLayerRenderNodeSet, TileLayerResource,
+};
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
@@ -28,7 +30,7 @@ impl RendererPlugin for TileLayerRendererPlugin {
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<RenderFeatureType>()
+        render_registry.register_feature::<TileLayerRenderFeature>()
     }
 
     fn initialize_static_resources(

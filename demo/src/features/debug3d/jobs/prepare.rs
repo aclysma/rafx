@@ -1,6 +1,6 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{Debug3DVertex, Debug3DWriteJob, LineList3D, RenderFeatureType};
+use super::{Debug3DRenderFeature, Debug3DVertex, Debug3DWriteJob, LineList3D};
 use crate::phases::OpaqueRenderPhase;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::{MaterialPassResource, ResourceArc};
@@ -48,7 +48,7 @@ impl<'a> PrepareJob for Debug3DPrepareJob {
 
         for view in views
             .iter()
-            .filter(|view| view.feature_is_relevant::<RenderFeatureType>())
+            .filter(|view| view.feature_is_relevant::<Debug3DRenderFeature>())
         {
             let debug3d_view = Debug3dUniformBufferObject {
                 view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
@@ -121,7 +121,7 @@ impl<'a> PrepareJob for Debug3DPrepareJob {
         let mut submit_nodes = FeatureSubmitNodes::default();
         for view in views
             .iter()
-            .filter(|view| view.feature_is_relevant::<RenderFeatureType>())
+            .filter(|view| view.feature_is_relevant::<Debug3DRenderFeature>())
         {
             let mut view_submit_nodes =
                 ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
