@@ -1,48 +1,207 @@
-use super::MeshCommandWriter;
+use rafx::render_feature_prepare_job_predule::*;
+
+use super::{LightId, MeshRenderFeature, MeshWriteJob, ShadowMapRenderView, ShadowMapResource};
+use crate::assets::gltf::MeshAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
-};
-use crate::features::mesh::shadow_map_resource::ShadowMapResource;
-use crate::features::mesh::{
-    ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
-    LightId, MeshPerObjectFragmentShaderParam, MeshPerViewFragmentShaderParam, MeshRenderFeature,
-    PreparedSubmitNodeMeshData, ShadowMapRenderView, ShadowPerObjectShaderParam,
-    ShadowPerViewShaderParam,
 };
 use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase};
 use crate::StatsAllocMemoryRegion;
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx::framework::MaterialPassResource;
 use rafx::framework::{DescriptorSetArc, DescriptorSetLayoutResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PerViewNode, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderJobPrepareContext, RenderView, RenderViewIndex, ViewSubmitNodes,
-};
+use rafx::nodes::RenderViewIndex;
 use rafx::renderer::InvalidResources;
+use shaders::depth_vert::PerObjectDataUniform as ShadowPerObjectShaderParam;
+use shaders::depth_vert::PerViewDataUniform as ShadowPerViewShaderParam;
+use shaders::mesh_frag::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
+use shaders::mesh_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
 
-pub struct PreparedDirectionalLight<'a> {
+const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
+    shaders::mesh_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
+const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 =
+    shaders::mesh_frag::PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX as u32;
+const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 =
+    shaders::mesh_frag::PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX as u32;
+
+pub struct ExtractedDirectionalLight {
+    pub light: DirectionalLightComponent,
+    pub entity: legion::Entity,
+}
+
+pub struct ExtractedPointLight {
+    pub light: PointLightComponent,
+    pub position: PositionComponent,
+    pub entity: legion::Entity,
+}
+
+pub struct ExtractedSpotLight {
+    pub light: SpotLightComponent,
+    pub position: PositionComponent,
+    pub entity: legion::Entity,
+}
+
+pub struct ExtractedFrameNodeMeshData {
+    pub world_transform: glam::Mat4,
+    pub mesh_asset: MeshAsset,
+}
+
+impl std::fmt::Debug for ExtractedFrameNodeMeshData {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("ExtractedFrameNodeMeshData")
+            .field("world_transform", &self.world_transform)
+            .finish()
+    }
+}
+
+struct PreparedDirectionalLight<'a> {
     light: &'a DirectionalLightComponent,
     shadow_map_index: Option<usize>,
 }
 
-pub struct PreparedPointLight<'a> {
+struct PreparedPointLight<'a> {
     light: &'a PointLightComponent,
     position: &'a PositionComponent,
     shadow_map_index: Option<usize>,
 }
 
-pub struct PreparedSpotLight<'a> {
+struct PreparedSpotLight<'a> {
     light: &'a SpotLightComponent,
     position: &'a PositionComponent,
     shadow_map_index: Option<usize>,
 }
 
 pub struct MeshPrepareJob {
-    pub(super) depth_material: ResourceArc<MaterialPassResource>,
-    pub(super) extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
-    pub(super) directional_lights: Vec<ExtractedDirectionalLight>,
-    pub(super) point_lights: Vec<ExtractedPointLight>,
-    pub(super) spot_lights: Vec<ExtractedSpotLight>,
+    depth_material: ResourceArc<MaterialPassResource>,
+    extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
+    directional_lights: Vec<ExtractedDirectionalLight>,
+    point_lights: Vec<ExtractedPointLight>,
+    spot_lights: Vec<ExtractedSpotLight>,
+}
+
+impl MeshPrepareJob {
+    pub fn new(
+        depth_material: ResourceArc<MaterialPassResource>,
+        extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
+        directional_lights: Vec<ExtractedDirectionalLight>,
+        point_lights: Vec<ExtractedPointLight>,
+        spot_lights: Vec<ExtractedSpotLight>,
+    ) -> Self {
+        MeshPrepareJob {
+            depth_material,
+            extracted_frame_node_mesh_data,
+            directional_lights,
+            point_lights,
+            spot_lights,
+        }
+    }
+
+    fn create_per_view_frag_data(
+        &self,
+        view: &RenderView,
+        directional_lights: &[PreparedDirectionalLight],
+        spot_lights: &[PreparedSpotLight],
+        point_lights: &[PreparedPointLight],
+    ) -> MeshPerViewFragmentShaderParam {
+        let mut per_view_data = MeshPerViewFragmentShaderParam::default();
+
+        per_view_data.view = view.view_matrix().to_cols_array_2d();
+        per_view_data.view_proj = view.view_proj().to_cols_array_2d();
+
+        per_view_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0).into();
+
+        for light in directional_lights {
+            let light_count = per_view_data.directional_light_count as usize;
+            if light_count > per_view_data.directional_lights.len() {
+                break;
+            }
+
+            let light_from = glam::Vec3::ZERO;
+            let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
+            let light_to = light.light.direction;
+            let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();
+
+            let light_direction = (light_to - light_from).normalize();
+            let light_direction_vs = (light_to_vs - light_from_vs).normalize();
+
+            let out = &mut per_view_data.directional_lights[light_count];
+            out.direction_ws = light_direction.into();
+            out.direction_vs = light_direction_vs.into();
+            out.color = light.light.color.into();
+            out.intensity = light.light.intensity;
+            out.shadow_map = light.shadow_map_index.map(|x| x as i32).unwrap_or(-1);
+
+            per_view_data.directional_light_count += 1;
+        }
+
+        for light in point_lights {
+            let light_count = per_view_data.point_light_count as usize;
+            if light_count > per_view_data.point_lights.len() {
+                break;
+            }
+
+            let out = &mut per_view_data.point_lights[light_count];
+            out.position_ws = light.position.position.into();
+            out.position_vs = (view.view_matrix() * light.position.position.extend(1.0))
+                .truncate()
+                .into();
+            out.color = light.light.color.into();
+            out.range = light.light.range;
+            out.intensity = light.light.intensity;
+            out.shadow_map = light.shadow_map_index.map(|x| x as i32).unwrap_or(-1);
+
+            per_view_data.point_light_count += 1;
+        }
+
+        for light in spot_lights {
+            let light_count = per_view_data.spot_light_count as usize;
+            if light_count > per_view_data.spot_lights.len() {
+                break;
+            }
+
+            let light_from = light.position.position;
+            let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
+            let light_to = light.position.position + light.light.direction;
+            let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();
+
+            let light_direction = (light_to - light_from).normalize();
+            let light_direction_vs = (light_to_vs - light_from_vs).normalize();
+
+            let out = &mut per_view_data.spot_lights[light_count];
+            out.position_ws = light_from.into();
+            out.position_vs = light_from_vs.into();
+            out.direction_ws = light_direction.into();
+            out.direction_vs = light_direction_vs.into();
+            out.spotlight_half_angle = light.light.spotlight_half_angle;
+            out.color = light.light.color.into();
+            out.range = light.light.range;
+            out.intensity = light.light.intensity;
+            out.shadow_map = light.shadow_map_index.map(|x| x as i32).unwrap_or(-1);
+
+            per_view_data.spot_light_count += 1;
+        }
+
+        per_view_data
+    }
+
+    fn get_per_view_descriptor_set(
+        per_view_descriptor_sets: &FnvHashMap<
+            (u32, ResourceArc<DescriptorSetLayoutResource>),
+            DescriptorSetArc,
+        >,
+        view: &RenderView,
+        material_pass_resource: &ResourceArc<MaterialPassResource>,
+    ) -> DescriptorSetArc {
+        let per_view_descriptor_set_layout = material_pass_resource
+            .get_raw()
+            .descriptor_set_layouts[PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
+            .clone();
+
+        per_view_descriptor_sets[&(view.view_index(), per_view_descriptor_set_layout)].clone()
+    }
 }
 
 impl PrepareJob for MeshPrepareJob {
@@ -51,8 +210,9 @@ impl PrepareJob for MeshPrepareJob {
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
-        profiling::scope!("Mesh Prepare");
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
+        profiling::scope!(super::PREPARE_SCOPE_NAME);
+
         let invalid_resources = prepare_context.render_resources.fetch::<InvalidResources>();
 
         let shadow_map_data = prepare_context
@@ -70,15 +230,13 @@ impl PrepareJob for MeshPrepareJob {
             FnvHashSet::<ResourceArc<DescriptorSetLayoutResource>>::default();
         let mut depth_per_view_descriptor_set_layouts =
             FnvHashSet::<ResourceArc<DescriptorSetLayoutResource>>::default();
-        let mut prepared_submit_node_mesh_data = Vec::<PreparedSubmitNodeMeshData>::default();
         let mut per_view_descriptor_sets = FnvHashMap::<
             (RenderViewIndex, ResourceArc<DescriptorSetLayoutResource>),
             DescriptorSetArc,
         >::default();
 
         depth_per_view_descriptor_set_layouts.insert(
-            depth_material.get_raw().descriptor_set_layouts
-                [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
+            depth_material.get_raw().descriptor_set_layouts[PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
                 .clone(),
         );
 
@@ -101,7 +259,7 @@ impl PrepareJob for MeshPrepareJob {
                                     .material_pass_resource
                                     .get_raw()
                                     .descriptor_set_layouts
-                                    [super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
+                                    [PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
                                     .clone(),
                             );
                         }
@@ -251,8 +409,8 @@ impl PrepareJob for MeshPrepareJob {
         {
             profiling::scope!("create per view descriptor sets");
             for view in views {
-                if view.phase_is_relevant::<DepthPrepassRenderPhase>()
-                    || view.phase_is_relevant::<ShadowMapRenderPhase>()
+                if view.is_relevant::<DepthPrepassRenderPhase, MeshRenderFeature>()
+                    || view.is_relevant::<ShadowMapRenderPhase, MeshRenderFeature>()
                 {
                     let mut per_view_data = ShadowPerViewShaderParam::default();
 
@@ -277,7 +435,7 @@ impl PrepareJob for MeshPrepareJob {
                     }
                 }
 
-                if view.phase_is_relevant::<OpaqueRenderPhase>() {
+                if view.is_relevant::<OpaqueRenderPhase, MeshRenderFeature>() {
                     let mut per_view_frag_data = self.create_per_view_frag_data(
                         view,
                         &prepared_directional_lights,
@@ -312,8 +470,10 @@ impl PrepareJob for MeshPrepareJob {
 
         let mut opaque_frame_node_per_instance_descriptor_sets =
             vec![None; self.extracted_frame_node_mesh_data.len()];
+
         let mut shadow_map_frame_node_per_instance_descriptor_sets =
             vec![None; self.extracted_frame_node_mesh_data.len()];
+
         {
             profiling::scope!("create per instance descriptor sets");
             StatsAllocMemoryRegion::new("create per instance descriptor sets");
@@ -334,7 +494,7 @@ impl PrepareJob for MeshPrepareJob {
                                     .material_pass_resource
                                     .get_raw()
                                     .descriptor_set_layouts
-                                    [super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
+                                    [PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
 
                                 opaque_frame_node_per_instance_descriptor_sets[frame_node_index] =
                                     Some(
@@ -354,7 +514,7 @@ impl PrepareJob for MeshPrepareJob {
 
                                 let per_instance_descriptor_set_layout =
                                     &depth_material.get_raw().descriptor_set_layouts
-                                        [super::PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
+                                        [PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
 
                                 shadow_map_frame_node_per_instance_descriptor_sets
                                     [frame_node_index] = Some(
@@ -373,6 +533,8 @@ impl PrepareJob for MeshPrepareJob {
                 }
             }
         }
+
+        let mut writer = Box::new(MeshWriteJob::new());
 
         //
         // Produce render nodes for every mesh
@@ -405,24 +567,29 @@ impl PrepareJob for MeshPrepareJob {
                                 //
                                 // Depth prepass for opaque objects
                                 //
-                                if view.phase_is_relevant::<DepthPrepassRenderPhase>() {
-                                    let per_object_descriptor =
+                                if view.is_relevant::<DepthPrepassRenderPhase, MeshRenderFeature>()
+                                {
+                                    let per_view_descriptor_set =
+                                        MeshPrepareJob::get_per_view_descriptor_set(
+                                            &per_view_descriptor_sets,
+                                            &view,
+                                            &depth_material,
+                                        );
+
+                                    let per_instance_descriptor_set =
                                         shadow_map_frame_node_per_instance_descriptor_sets
                                             [view_node.frame_node_index() as usize]
                                             .as_ref()
                                             .unwrap();
 
-                                    let depth_prepass_submit_node_index =
-                                        MeshPrepareJob::add_render_node(
-                                            &mut prepared_submit_node_mesh_data,
-                                            &per_view_descriptor_sets,
-                                            &view,
-                                            view_node,
-                                            per_object_descriptor,
-                                            mesh_part_index,
-                                            depth_material.clone(),
-                                            None,
-                                        );
+                                    let depth_prepass_submit_node_index = writer.push_submit_node(
+                                        view_node,
+                                        per_view_descriptor_set,
+                                        None,
+                                        per_instance_descriptor_set.clone(),
+                                        mesh_part_index,
+                                        depth_material.clone(),
+                                    );
 
                                     view_submit_nodes.add_submit_node::<DepthPrepassRenderPhase>(
                                         depth_prepass_submit_node_index as u32,
@@ -434,22 +601,27 @@ impl PrepareJob for MeshPrepareJob {
                                 //
                                 // Write opaque render node, if it's relevant
                                 //
-                                if view.phase_is_relevant::<OpaqueRenderPhase>() {
-                                    let per_object_descriptor =
+                                if view.is_relevant::<OpaqueRenderPhase, MeshRenderFeature>() {
+                                    let per_view_descriptor_set =
+                                        MeshPrepareJob::get_per_view_descriptor_set(
+                                            &per_view_descriptor_sets,
+                                            &view,
+                                            &mesh_part.opaque_pass.material_pass_resource,
+                                        );
+
+                                    let per_instance_descriptor_set =
                                         opaque_frame_node_per_instance_descriptor_sets
                                             [view_node.frame_node_index() as usize]
                                             .as_ref()
                                             .unwrap();
 
-                                    let opaque_submit_node_index = MeshPrepareJob::add_render_node(
-                                        &mut prepared_submit_node_mesh_data,
-                                        &per_view_descriptor_sets,
-                                        &view,
+                                    let opaque_submit_node_index = writer.push_submit_node(
                                         view_node,
-                                        per_object_descriptor,
+                                        per_view_descriptor_set,
+                                        Some(mesh_part.opaque_material_descriptor_set.clone()),
+                                        per_instance_descriptor_set.clone(),
                                         mesh_part_index,
                                         mesh_part.opaque_pass.material_pass_resource.clone(),
-                                        Some(mesh_part.opaque_material_descriptor_set.clone()),
                                     );
 
                                     view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(
@@ -464,22 +636,28 @@ impl PrepareJob for MeshPrepareJob {
                                 //
                                 let casts_shadows = true; // TODO(dvd): Make this configurable somehow.
                                 if casts_shadows {
-                                    if view.phase_is_relevant::<ShadowMapRenderPhase>() {
-                                        let per_object_descriptor =
+                                    if view.is_relevant::<ShadowMapRenderPhase, MeshRenderFeature>()
+                                    {
+                                        let per_view_descriptor_set =
+                                            MeshPrepareJob::get_per_view_descriptor_set(
+                                                &per_view_descriptor_sets,
+                                                &view,
+                                                &depth_material,
+                                            );
+
+                                        let per_instance_descriptor_set =
                                             shadow_map_frame_node_per_instance_descriptor_sets
                                                 [view_node.frame_node_index() as usize]
                                                 .as_ref()
                                                 .unwrap();
 
-                                        let submit_node_index = MeshPrepareJob::add_render_node(
-                                            &mut prepared_submit_node_mesh_data,
-                                            &per_view_descriptor_sets,
-                                            &view,
+                                        let submit_node_index = writer.push_submit_node(
                                             view_node,
-                                            per_object_descriptor,
+                                            per_view_descriptor_set,
+                                            None,
+                                            per_instance_descriptor_set.clone(),
                                             mesh_part_index,
                                             depth_material.clone(),
-                                            None,
                                         );
 
                                         view_submit_nodes.add_submit_node::<ShadowMapRenderPhase>(
@@ -498,146 +676,16 @@ impl PrepareJob for MeshPrepareJob {
             submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
         }
 
-        let writer = Box::new(MeshCommandWriter {
-            extracted_frame_node_mesh_data: self.extracted_frame_node_mesh_data,
-            prepared_submit_node_mesh_data,
-        });
+        writer.set_extracted_frame_node_mesh_data(self.extracted_frame_node_mesh_data);
 
         (writer, submit_nodes)
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        MeshRenderFeature::feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        MeshRenderFeature::feature_index()
-    }
-}
-
-impl MeshPrepareJob {
-    fn create_per_view_frag_data(
-        &self,
-        view: &RenderView,
-        directional_lights: &[PreparedDirectionalLight],
-        spot_lights: &[PreparedSpotLight],
-        point_lights: &[PreparedPointLight],
-    ) -> MeshPerViewFragmentShaderParam {
-        let mut per_view_data = MeshPerViewFragmentShaderParam::default();
-
-        per_view_data.view = view.view_matrix().to_cols_array_2d();
-        per_view_data.view_proj = view.view_proj().to_cols_array_2d();
-
-        per_view_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0).into();
-
-        for light in directional_lights {
-            let light_count = per_view_data.directional_light_count as usize;
-            if light_count > per_view_data.directional_lights.len() {
-                break;
-            }
-
-            let light_from = glam::Vec3::ZERO;
-            let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
-            let light_to = light.light.direction;
-            let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();
-
-            let light_direction = (light_to - light_from).normalize();
-            let light_direction_vs = (light_to_vs - light_from_vs).normalize();
-
-            let out = &mut per_view_data.directional_lights[light_count];
-            out.direction_ws = light_direction.into();
-            out.direction_vs = light_direction_vs.into();
-            out.color = light.light.color.into();
-            out.intensity = light.light.intensity;
-            out.shadow_map = light.shadow_map_index.map(|x| x as i32).unwrap_or(-1);
-
-            per_view_data.directional_light_count += 1;
-        }
-
-        for light in point_lights {
-            let light_count = per_view_data.point_light_count as usize;
-            if light_count > per_view_data.point_lights.len() {
-                break;
-            }
-
-            let out = &mut per_view_data.point_lights[light_count];
-            out.position_ws = light.position.position.into();
-            out.position_vs = (view.view_matrix() * light.position.position.extend(1.0))
-                .truncate()
-                .into();
-            out.color = light.light.color.into();
-            out.range = light.light.range;
-            out.intensity = light.light.intensity;
-            out.shadow_map = light.shadow_map_index.map(|x| x as i32).unwrap_or(-1);
-
-            per_view_data.point_light_count += 1;
-        }
-
-        for light in spot_lights {
-            let light_count = per_view_data.spot_light_count as usize;
-            if light_count > per_view_data.spot_lights.len() {
-                break;
-            }
-
-            let light_from = light.position.position;
-            let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
-            let light_to = light.position.position + light.light.direction;
-            let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();
-
-            let light_direction = (light_to - light_from).normalize();
-            let light_direction_vs = (light_to_vs - light_from_vs).normalize();
-
-            let out = &mut per_view_data.spot_lights[light_count];
-            out.position_ws = light_from.into();
-            out.position_vs = light_from_vs.into();
-            out.direction_ws = light_direction.into();
-            out.direction_vs = light_direction_vs.into();
-            out.spotlight_half_angle = light.light.spotlight_half_angle;
-            out.color = light.light.color.into();
-            out.range = light.light.range;
-            out.intensity = light.light.intensity;
-            out.shadow_map = light.shadow_map_index.map(|x| x as i32).unwrap_or(-1);
-
-            per_view_data.spot_light_count += 1;
-        }
-
-        per_view_data
-    }
-
-    fn add_render_node(
-        prepared_submit_node_mesh_data: &mut Vec<PreparedSubmitNodeMeshData>,
-        per_view_descriptor_sets: &FnvHashMap<
-            (u32, ResourceArc<DescriptorSetLayoutResource>),
-            DescriptorSetArc,
-        >,
-        view: &RenderView,
-        view_node: &PerViewNode,
-        per_object_descriptor: &DescriptorSetArc,
-        mesh_part_index: usize,
-        material_pass_resource: ResourceArc<MaterialPassResource>,
-        per_material_descriptor_set: Option<DescriptorSetArc>,
-    ) -> usize {
-        let per_view_descriptor_set = {
-            let per_view_descriptor_set_layout = material_pass_resource
-                .get_raw()
-                .descriptor_set_layouts[super::PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
-                .clone();
-
-            per_view_descriptor_sets[&(view.view_index(), per_view_descriptor_set_layout)].clone()
-        };
-
-        //
-        // Create the submit node
-        //
-        let submit_node_index = prepared_submit_node_mesh_data.len();
-        prepared_submit_node_mesh_data.push(PreparedSubmitNodeMeshData {
-            material_pass_resource: material_pass_resource.clone(),
-            per_view_descriptor_set,
-            per_material_descriptor_set: per_material_descriptor_set.clone(),
-            per_instance_descriptor_set: per_object_descriptor.clone(),
-            frame_node_index: view_node.frame_node_index(),
-            mesh_part_index,
-        });
-        submit_node_index
+        super::render_feature_index()
     }
 }

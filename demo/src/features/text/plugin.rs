@@ -1,14 +1,9 @@
+use rafx::render_feature_renderer_prelude::*;
+
+use super::{FontAtlasCache, TextExtractJob, TextRenderFeature, TextResource};
 use crate::assets::font::FontAsset;
-use crate::features::text::{FontAtlasCache, TextRenderFeature};
-use rafx::api::extra::upload::RafxTransferUpload;
-use rafx::api::RafxResult;
-use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, MaterialAsset};
-use rafx::base::resource_map::ResourceMap;
-use rafx::distill::loader::handle::Handle;
-use rafx::framework::RenderResources;
-use rafx::nodes::{ExtractJob, ExtractResources, RenderRegistryBuilder};
-use rafx::renderer::RendererPlugin;
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
 
 pub struct TextStaticResources {
     pub text_material: Handle<MaterialAsset>,
@@ -16,6 +11,16 @@ pub struct TextStaticResources {
 }
 
 pub struct TextRendererPlugin;
+
+impl TextRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(TextResource::new());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<TextResource>();
+    }
+}
 
 impl RendererPlugin for TextRendererPlugin {
     fn configure_render_registry(
@@ -58,6 +63,6 @@ impl RendererPlugin for TextRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(super::create_text_extract_job());
+        extract_jobs.push(Box::new(TextExtractJob::new()));
     }
 }

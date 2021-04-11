@@ -4,8 +4,7 @@ use rafx::graph::*;
 use super::RenderGraphContext;
 use super::ShadowMapImageResources;
 use rafx::api::RafxColorClearValue;
-use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
-use rafx::nodes::{RenderJobWriteContext, RenderPhase};
+use rafx::nodes::RenderJobWriteContext;
 
 pub(super) struct OpaquePass {
     pub(super) node: RenderGraphNodeId,
@@ -16,8 +15,6 @@ pub(super) struct OpaquePass {
 pub(super) fn opaque_pass(
     context: &mut RenderGraphContext,
     depth_prepass: RenderGraphImageUsageId,
-    skybox_material: ResourceArc<MaterialPassResource>,
-    skybox_texture: ResourceArc<ImageViewResource>,
     shadow_map_passes: &[ShadowMapImageResources],
 ) -> OpaquePass {
     let node = context
@@ -74,19 +71,10 @@ pub(super) fn opaque_pass(
 
     context.graph.set_renderpass_callback(node, move |args| {
         let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+
         args.graph_context
             .prepared_render_data()
             .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context)?;
-
-        crate::features::skybox::draw_skybox(
-            args.graph_context.resource_context(),
-            &skybox_material,
-            &skybox_texture,
-            &main_view,
-            &args.render_target_meta,
-            &args.command_buffer,
-            OpaqueRenderPhase::render_phase_index(),
-        )?;
 
         args.graph_context
             .prepared_render_data()

@@ -24,7 +24,7 @@ impl ImguiFontAtlasData {
 pub struct ImguiFontAtlas(pub ResourceArc<ImageViewResource>);
 
 #[cfg(feature = "use-imgui")]
-pub(super) fn create_font_atlas_image_view(
+pub fn create_font_atlas_image_view(
     imgui_font_atlas_data: ImguiFontAtlasData,
     device_context: &RafxDeviceContext,
     upload: &mut RafxTransferUpload,

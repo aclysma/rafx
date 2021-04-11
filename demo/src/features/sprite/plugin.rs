@@ -1,19 +1,24 @@
-use crate::features::sprite::SpriteRenderFeature;
-use rafx::api::extra::upload::RafxTransferUpload;
-use rafx::api::RafxResult;
-use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, MaterialAsset};
-use rafx::base::resource_map::ResourceMap;
-use rafx::distill::loader::handle::Handle;
-use rafx::framework::RenderResources;
-use rafx::nodes::{ExtractJob, ExtractResources, RenderRegistryBuilder};
-use rafx::renderer::RendererPlugin;
+use rafx::render_feature_renderer_prelude::*;
+
+use super::{SpriteExtractJob, SpriteRenderFeature, SpriteRenderNodeSet};
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
 
 pub struct SpriteStaticResources {
     pub sprite_material: Handle<MaterialAsset>,
 }
 
 pub struct SpriteRendererPlugin;
+
+impl SpriteRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(SpriteRenderNodeSet::default());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<SpriteRenderNodeSet>();
+    }
+}
 
 impl RendererPlugin for SpriteRendererPlugin {
     fn configure_render_registry(
@@ -51,6 +56,6 @@ impl RendererPlugin for SpriteRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(super::create_sprite_extract_job());
+        extract_jobs.push(Box::new(SpriteExtractJob::new()));
     }
 }

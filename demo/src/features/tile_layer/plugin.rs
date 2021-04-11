@@ -1,13 +1,10 @@
-use crate::features::tile_layer::{TileLayerRenderFeature, TileLayerRenderNodeSet};
-use rafx::api::extra::upload::RafxTransferUpload;
-use rafx::api::RafxResult;
-use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, MaterialAsset};
-use rafx::base::resource_map::ResourceMap;
-use rafx::distill::loader::handle::Handle;
-use rafx::framework::RenderResources;
-use rafx::nodes::{ExtractJob, ExtractResources, RenderRegistryBuilder};
-use rafx::renderer::RendererPlugin;
+use rafx::render_feature_renderer_prelude::*;
+
+use super::{
+    TileLayerExtractJob, TileLayerRenderFeature, TileLayerRenderNodeSet, TileLayerResource,
+};
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
 pub struct TileLayerStaticResources {
@@ -15,6 +12,18 @@ pub struct TileLayerStaticResources {
 }
 
 pub struct TileLayerRendererPlugin;
+
+impl TileLayerRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(TileLayerRenderNodeSet::default());
+        resources.insert(TileLayerResource::default());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<TileLayerRenderNodeSet>();
+        resources.remove::<TileLayerResource>();
+    }
+}
 
 impl RendererPlugin for TileLayerRendererPlugin {
     fn configure_render_registry(
@@ -58,6 +67,6 @@ impl RendererPlugin for TileLayerRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(super::create_tile_layer_extract_job());
+        extract_jobs.push(Box::new(TileLayerExtractJob::new()));
     }
 }

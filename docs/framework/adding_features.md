@@ -8,7 +8,7 @@ debug draw, imgui, etc.
 You may either implement `RenderFeature` or use this macro
 
 ```rust
-rafx::declare_render_feature!(Debug3dRenderFeature, DEBUG_3D_FEATURE_INDEX);
+rafx::declare_render_feature!(Debug3DRenderFeature, DEBUG_3D_FEATURE_INDEX);
 ```
 
 ## Register the Feature

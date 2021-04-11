@@ -1,10 +1,11 @@
 use crate::nodes::{
     MergedFrameSubmitNodes, RenderFeatureIndex, RenderJobBeginExecuteGraphContext,
-    RenderJobWriteContext, RenderPhase, RenderPhaseIndex, RenderRegistry, RenderView, SubmitNodeId,
+    RenderJobWriteContext, RenderPhase, RenderPhaseIndex, RenderRegistry, RenderView,
+    RenderViewIndex, SubmitNodeId,
 };
 use rafx_api::RafxResult;
 
-pub trait FeatureCommandWriter {
+pub trait WriteJob {
     fn on_begin_execute_graph(
         &self,
         _write_context: &mut RenderJobBeginExecuteGraphContext,
@@ -39,12 +40,22 @@ pub trait FeatureCommandWriter {
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 
+pub fn push_view_indexed_value<T: Clone>(
+    vec: &mut Vec<Option<T>>,
+    view_index: RenderViewIndex,
+    value: T,
+) {
+    // Grow the array if necessary
+    vec.resize(vec.len().max(view_index as usize + 1), None);
+    vec[view_index as usize] = Some(value);
+}
+
 // pub struct FeatureCommandWriterSet {
 //     prepare_jobs: Vec<Box<dyn FeatureCommandWriter>>,
 // }
 
 pub struct PreparedRenderData {
-    feature_writers: Vec<Option<Box<dyn FeatureCommandWriter>>>,
+    feature_writers: Vec<Option<Box<dyn WriteJob>>>,
     submit_nodes: MergedFrameSubmitNodes,
 }
 
@@ -57,7 +68,7 @@ impl PreparedRenderData {
     }
 
     pub fn new(
-        feature_writers: Vec<Box<dyn FeatureCommandWriter>>,
+        feature_writers: Vec<Box<dyn WriteJob>>,
         submit_nodes: MergedFrameSubmitNodes,
     ) -> Self {
         let mut writers: Vec<_> = (0..RenderRegistry::registered_feature_count())

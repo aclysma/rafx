@@ -1,6 +1,7 @@
 use crate::assets::gltf::{
-    GltfMaterialData, GltfMaterialDataShaderParam, MeshAssetData, MeshPartAssetData, MeshVertex,
+    GltfMaterialData, GltfMaterialDataShaderParam, MeshAssetData, MeshPartAssetData,
 };
+use crate::features::mesh::MeshVertex;
 use distill::core::AssetUuid;
 use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
 use distill::loader::handle::Handle;

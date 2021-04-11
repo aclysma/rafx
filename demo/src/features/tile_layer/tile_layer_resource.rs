@@ -1,7 +1,5 @@
+use super::{TileLayerRenderNode, TileLayerRenderNodeHandle, TileLayerRenderNodeSet};
 use crate::assets::ldtk::LdtkProjectAsset;
-use crate::features::tile_layer::{
-    TileLayerRenderNode, TileLayerRenderNodeHandle, TileLayerRenderNodeSet,
-};
 use rafx::assets::AssetManager;
 use rafx::distill::loader::handle::Handle;
 use rafx::visibility::{

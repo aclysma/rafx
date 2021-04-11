@@ -15,6 +15,8 @@ pub use submit_nodes::SubmitNodeSortKey;
 pub use submit_nodes::ViewSubmitNodes;
 
 mod render_views;
+pub use render_views::RenderFeatureMask;
+pub use render_views::RenderFeatureMaskBuilder;
 pub use render_views::RenderPhaseMask;
 pub use render_views::RenderPhaseMaskBuilder;
 pub use render_views::RenderView;

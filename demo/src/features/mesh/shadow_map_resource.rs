@@ -1,18 +1,33 @@
+use super::MeshRenderFeature;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
 };
-use crate::features::mesh::{LightId, ShadowMapRenderView};
 use crate::phases::ShadowMapRenderPhase;
+use crate::RenderOptions;
 use arrayvec::ArrayVec;
 use fnv::FnvHashMap;
 use legion::*;
 use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::graph::{PreparedRenderGraph, RenderGraphImageUsageId};
 use rafx::nodes::{
-    ExtractResources, FramePacketBuilder, RenderPhaseMask, RenderPhaseMaskBuilder, RenderView,
-    RenderViewDepthRange, RenderViewSet, VisibilityResult,
+    ExtractResources, FramePacketBuilder, RenderFeatureMask, RenderFeatureMaskBuilder,
+    RenderPhaseMask, RenderPhaseMaskBuilder, RenderView, RenderViewDepthRange, RenderViewSet,
+    VisibilityResult,
 };
 use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum LightId {
+    PointLight(legion::Entity), // u32 is a face index
+    SpotLight(legion::Entity),
+    DirectionalLight(legion::Entity),
+}
+
+#[derive(Clone)]
+pub enum ShadowMapRenderView {
+    Single(RenderView), // width, height of texture
+    Cube([RenderView; 6]),
+}
 
 struct RenderViewVisibility {
     render_view: RenderView,
@@ -83,10 +98,7 @@ impl ShadowMapResource {
         // Determine shadowmap views
         //
         let (shadow_map_lookup, shadow_map_render_views) =
-            crate::features::mesh::shadow_map_resource::calculate_shadow_map_views(
-                &render_view_set,
-                extract_resources,
-            );
+            calculate_shadow_map_views(&render_view_set, extract_resources);
 
         self.shadow_map_lookup = shadow_map_lookup;
         self.shadow_map_render_views = shadow_map_render_views;
@@ -249,6 +261,16 @@ fn calculate_shadow_map_views(
         .add_render_phase::<ShadowMapRenderPhase>()
         .build();
 
+    let render_options = extract_resources.fetch::<RenderOptions>();
+
+    let shadow_map_feature_mask = if render_options.show_shadows {
+        RenderFeatureMaskBuilder::default()
+            .add_render_feature::<MeshRenderFeature>()
+            .build()
+    } else {
+        RenderFeatureMask::empty()
+    };
+
     //TODO: The look-at calls in this fn will fail if the light is pointed straight down
 
     const SHADOW_MAP_RESOLUTION: u32 = 1024;
@@ -272,6 +294,7 @@ fn calculate_shadow_map_views(
             (SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION),
             RenderViewDepthRange::new_reverse(near_plane, far_plane),
             shadow_map_phase_mask,
+            shadow_map_feature_mask,
             "shadow_map".to_string(),
         );
 
@@ -309,6 +332,7 @@ fn calculate_shadow_map_views(
             (SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION),
             RenderViewDepthRange::new_reverse(near_plane, far_plane),
             shadow_map_phase_mask,
+            shadow_map_feature_mask,
             "shadow_map".to_string(),
         );
 
@@ -319,8 +343,8 @@ fn calculate_shadow_map_views(
     }
 
     #[rustfmt::skip]
-        // The eye offset and up vector. The directions are per the specification of cubemaps
-        let cube_map_view_directions = [
+    // The eye offset and up vector. The directions are per the specification of cubemaps
+    let cube_map_view_directions = [
         (glam::Vec3::X, glam::Vec3::Y),
         (glam::Vec3::X * -1.0, glam::Vec3::Y),
         (glam::Vec3::Y, glam::Vec3::Z * -1.0),
@@ -333,6 +357,7 @@ fn calculate_shadow_map_views(
     for (entity, light, position) in query.iter(world) {
         fn cube_map_face(
             phase_mask: RenderPhaseMask,
+            feature_mask: RenderFeatureMask,
             render_view_set: &RenderViewSet,
             light: &PointLightComponent,
             position: glam::Vec3,
@@ -356,18 +381,19 @@ fn calculate_shadow_map_views(
                 (SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION),
                 RenderViewDepthRange::new_reverse(near, far),
                 phase_mask,
+                feature_mask,
                 "shadow_map".to_string(),
             )
         }
 
         #[rustfmt::skip]
-            let cube_map_views = [
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[0]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[1]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[2]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[3]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[4]),
-            cube_map_face(shadow_map_phase_mask, &render_view_set, light, position.position, &cube_map_view_directions[5]),
+        let cube_map_views = [
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[0]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[1]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[2]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[3]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[4]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[5]),
         ];
 
         let index = shadow_map_render_views.len();

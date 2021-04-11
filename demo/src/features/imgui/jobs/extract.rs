@@ -1,33 +1,30 @@
-use super::Sdl2ImguiManager;
-use crate::features::imgui::plugin::ImguiStaticResources;
-use crate::features::imgui::prepare::ImGuiPrepareJobImpl;
-use crate::features::imgui::{ExtractedImGuiData, ImGuiRenderFeature, ImGuiUniformBufferObject};
+use rafx::render_feature_extract_job_predule::*;
+
+use super::{ImGuiPrepareJob, ImGuiStaticResources, ImGuiUniformBufferObject, Sdl2ImguiManager};
 use rafx::assets::AssetManagerRenderResource;
 use rafx::graph::SwapchainSurfaceInfo;
-use rafx::nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
-    RenderJobExtractContext, RenderView,
-};
 
-pub struct ImGuiExtractJobImpl {}
+pub struct ImGuiExtractJob {}
 
-impl ImGuiExtractJobImpl {
+impl ImGuiExtractJob {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl ExtractJob for ImGuiExtractJobImpl {
+impl ExtractJob for ImGuiExtractJob {
     fn extract(
         self: Box<Self>,
         extract_context: &RenderJobExtractContext,
         _frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!("ImGui Extract");
+        profiling::scope!(super::EXTRACT_SCOPE_NAME);
+
         let asset_manager = extract_context
             .render_resources
             .fetch::<AssetManagerRenderResource>();
+
         let imgui_draw_data = extract_context
             .extract_resources
             .fetch::<Sdl2ImguiManager>()
@@ -56,7 +53,7 @@ impl ExtractJob for ImGuiExtractJobImpl {
 
         let imgui_material = &extract_context
             .render_resources
-            .fetch::<ImguiStaticResources>()
+            .fetch::<ImGuiStaticResources>()
             .imgui_material;
         let imgui_material_pass = asset_manager
             .committed_asset(imgui_material)
@@ -66,13 +63,13 @@ impl ExtractJob for ImGuiExtractJobImpl {
 
         let static_resources = &extract_context
             .render_resources
-            .fetch::<ImguiStaticResources>();
+            .fetch::<ImGuiStaticResources>();
         let view_ubo = ImGuiUniformBufferObject {
             mvp: view_proj.to_cols_array_2d(),
         };
 
-        Box::new(ImGuiPrepareJobImpl::new(
-            ExtractedImGuiData { imgui_draw_data },
+        Box::new(ImGuiPrepareJob::new(
+            imgui_draw_data,
             imgui_material_pass,
             view_ubo,
             static_resources.imgui_font_atlas_image_view.clone(),
@@ -80,10 +77,10 @@ impl ExtractJob for ImGuiExtractJobImpl {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        ImGuiRenderFeature::feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        ImGuiRenderFeature::feature_index()
+        super::render_feature_index()
     }
 }

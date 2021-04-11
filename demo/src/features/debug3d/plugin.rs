@@ -1,13 +1,8 @@
-use crate::features::debug3d::Debug3dRenderFeature;
-use rafx::api::extra::upload::RafxTransferUpload;
-use rafx::api::RafxResult;
-use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, MaterialAsset};
-use rafx::base::resource_map::ResourceMap;
-use rafx::distill::loader::handle::Handle;
-use rafx::framework::RenderResources;
-use rafx::nodes::{ExtractJob, ExtractResources, RenderRegistryBuilder};
-use rafx::renderer::RendererPlugin;
+use rafx::render_feature_renderer_prelude::*;
+
+use super::{Debug3DExtractJob, Debug3DRenderFeature, DebugDraw3DResource};
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
 
 pub struct Debug3DStaticResources {
     pub debug3d_material: Handle<MaterialAsset>,
@@ -15,12 +10,22 @@ pub struct Debug3DStaticResources {
 
 pub struct Debug3DRendererPlugin;
 
+impl Debug3DRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(DebugDraw3DResource::new());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<DebugDraw3DResource>();
+    }
+}
+
 impl RendererPlugin for Debug3DRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<Debug3dRenderFeature>()
+        render_registry.register_feature::<Debug3DRenderFeature>()
     }
 
     fn initialize_static_resources(
@@ -49,6 +54,6 @@ impl RendererPlugin for Debug3DRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(super::create_debug3d_extract_job());
+        extract_jobs.push(Box::new(Debug3DExtractJob::new()));
     }
 }

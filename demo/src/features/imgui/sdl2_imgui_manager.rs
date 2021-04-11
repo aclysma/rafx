@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use super::ImguiManager;
-use super::{ImGuiDrawData, ImguiFontAtlasData};
+use super::{ImGuiDrawData, ImguiFontAtlasData, ImguiManager};
 use imgui_sdl2::ImguiSdl2;
 use sdl2::mouse::MouseState;
 use sdl2::video::Window;
@@ -277,7 +276,7 @@ fn init_imgui(window: &Window) -> imgui::Context {
     imgui
 }
 
-pub fn init_sdl2_imgui_manager(window: &Window) -> Sdl2ImguiManager {
+pub(super) fn init_sdl2_imgui_manager(window: &Window) -> Sdl2ImguiManager {
     let imgui_context = init_imgui(&window);
     Sdl2ImguiManager::new(imgui_context, window)
 }

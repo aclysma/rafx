@@ -1,13 +1,35 @@
-use crate::features::text::{TextImageUpdate, TextRenderFeature};
+use rafx::render_feature_write_job_prelude::*;
+
+use rafx::api::RafxFormat;
+use rafx::api::RafxPrimitiveTopology;
+use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+
+/// Vertex format for vertices sent to the GPU
+#[derive(Clone, Debug, Copy, Default)]
+#[repr(C)]
+pub struct TextVertex {
+    pub position: [f32; 3],
+    pub uv: [f32; 2],
+    pub color: [f32; 4],
+}
+
+lazy_static::lazy_static! {
+    pub static ref TEXT_VERTEX_LAYOUT : VertexDataSetLayout = {
+        VertexDataLayout::build_vertex_layout(&TextVertex::default(), |builder, vertex| {
+            builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+            builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+            builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
+        }).into_set(RafxPrimitiveTopology::TriangleList)
+    };
+}
+
+use super::TextImageUpdate;
 use rafx::api::{
     RafxCmdCopyBufferToTextureParams, RafxIndexBufferBinding, RafxIndexType, RafxResourceState,
-    RafxResult, RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxTextureBarrier, RafxVertexBufferBinding,
 };
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobBeginExecuteGraphContext,
-    RenderJobWriteContext, RenderPhaseIndex, RenderView, SubmitNodeId,
-};
+use rafx::nodes::{push_view_indexed_value, RenderJobBeginExecuteGraphContext, RenderViewIndex};
 
 #[derive(Debug)]
 pub struct TextDrawCallMeta {
@@ -18,25 +40,79 @@ pub struct TextDrawCallMeta {
     pub z_position: f32,
 }
 
-pub struct TextDrawCallBuffers {
+struct TextDrawCallBuffers {
     pub vertex_buffer: ResourceArc<BufferResource>,
     pub index_buffer: ResourceArc<BufferResource>,
 }
 
-pub struct TextCommandWriter {
-    pub(super) draw_call_buffers: Vec<TextDrawCallBuffers>,
-    pub(super) draw_call_metas: Vec<TextDrawCallMeta>,
-    pub(super) text_material_pass: ResourceArc<MaterialPassResource>,
-    pub(super) per_font_descriptor_sets: Vec<DescriptorSetArc>,
-    pub(super) per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
-    pub(super) image_updates: Vec<TextImageUpdate>,
+pub struct TextWriteJob {
+    draw_call_buffers: Vec<TextDrawCallBuffers>,
+    draw_call_metas: Vec<TextDrawCallMeta>,
+    text_material_pass: ResourceArc<MaterialPassResource>,
+    per_font_descriptor_sets: Vec<DescriptorSetArc>,
+    per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
+    image_updates: Vec<TextImageUpdate>,
 }
 
-impl FeatureCommandWriter for TextCommandWriter {
+impl TextWriteJob {
+    pub fn new(
+        text_material_pass: ResourceArc<MaterialPassResource>,
+        draw_call_metas: Vec<TextDrawCallMeta>,
+        image_updates: Vec<TextImageUpdate>,
+        num_draw_call_buffers: usize,
+    ) -> Self {
+        TextWriteJob {
+            draw_call_buffers: Vec::with_capacity(num_draw_call_buffers),
+            draw_call_metas,
+            text_material_pass,
+            per_font_descriptor_sets: Default::default(),
+            per_view_descriptor_sets: Default::default(),
+            image_updates,
+        }
+    }
+
+    pub fn push_buffers(
+        &mut self,
+        vertex_buffer: ResourceArc<BufferResource>,
+        index_buffer: ResourceArc<BufferResource>,
+    ) {
+        self.draw_call_buffers.push(TextDrawCallBuffers {
+            vertex_buffer,
+            index_buffer,
+        });
+    }
+
+    pub fn push_per_font_descriptor_set(
+        &mut self,
+        per_font_descriptor_set: DescriptorSetArc,
+    ) {
+        self.per_font_descriptor_sets.push(per_font_descriptor_set);
+    }
+
+    pub fn push_per_view_descriptor_set(
+        &mut self,
+        view_index: RenderViewIndex,
+        per_view_descriptor_set: DescriptorSetArc,
+    ) {
+        push_view_indexed_value(
+            &mut self.per_view_descriptor_sets,
+            view_index,
+            per_view_descriptor_set,
+        );
+    }
+
+    pub fn draw_call_metas(&self) -> &Vec<TextDrawCallMeta> {
+        &self.draw_call_metas
+    }
+}
+
+impl WriteJob for TextWriteJob {
     fn on_begin_execute_graph(
         &self,
         write_context: &mut RenderJobBeginExecuteGraphContext,
     ) -> RafxResult<()> {
+        profiling::scope!(super::ON_BEGIN_EXECUTE_GRAPH_SCOPE_NAME);
+
         for image_update in &self.image_updates {
             let rafx_image = &image_update.upload_image.get_raw().image.get_raw().image;
 
@@ -92,6 +168,8 @@ impl FeatureCommandWriter for TextCommandWriter {
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
+        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
+
         if !self.draw_call_metas.is_empty() {
             let pipeline = write_context
                 .resource_context
@@ -100,7 +178,7 @@ impl FeatureCommandWriter for TextCommandWriter {
                     render_phase_index,
                     &self.text_material_pass,
                     &write_context.render_target_meta,
-                    &*super::TEXT_VERTEX_LAYOUT,
+                    &*TEXT_VERTEX_LAYOUT,
                 )?;
 
             let command_buffer = &write_context.command_buffer;
@@ -121,6 +199,8 @@ impl FeatureCommandWriter for TextCommandWriter {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
+        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
+
         let draw_call = &self.draw_call_metas[index as usize];
         let buffers = &self.draw_call_buffers[draw_call.buffer_index as usize];
         let command_buffer = &write_context.command_buffer;
@@ -146,10 +226,10 @@ impl FeatureCommandWriter for TextCommandWriter {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        TextRenderFeature::feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        TextRenderFeature::feature_index()
+        super::render_feature_index()
     }
 }

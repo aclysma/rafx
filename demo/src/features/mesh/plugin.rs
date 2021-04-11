@@ -1,23 +1,25 @@
-use crate::features::mesh::shadow_map_resource::ShadowMapResource;
-use crate::features::mesh::MeshRenderFeature;
-use distill::loader::handle::Handle;
-use rafx::api::extra::upload::RafxTransferUpload;
-use rafx::api::RafxResult;
-use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, MaterialAsset};
-use rafx::base::resource_map::ResourceMap;
-use rafx::framework::RenderResources;
-use rafx::nodes::{
-    ExtractJob, ExtractResources, FramePacketBuilder, RenderRegistryBuilder, RenderView,
-    RenderViewSet,
-};
-use rafx::renderer::RendererPlugin;
-use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use rafx::render_feature_renderer_prelude::*;
 
-pub struct MeshRendererPlugin;
+use super::{MeshExtractJob, MeshRenderFeature, MeshRenderNodeSet, ShadowMapResource};
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
+use rafx::nodes::{FramePacketBuilder, RenderView, RenderViewSet};
+use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
 pub struct MeshStaticResources {
     pub depth_material: Handle<MaterialAsset>,
+}
+
+pub struct MeshRendererPlugin;
+
+impl MeshRendererPlugin {
+    pub fn legion_init(resources: &mut legion::Resources) {
+        resources.insert(MeshRenderNodeSet::default());
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<MeshRenderNodeSet>();
+    }
 }
 
 impl RendererPlugin for MeshRendererPlugin {
@@ -48,15 +50,6 @@ impl RendererPlugin for MeshRendererPlugin {
         Ok(())
     }
 
-    fn add_extract_jobs(
-        &self,
-        _extract_resources: &ExtractResources,
-        _render_resources: &RenderResources,
-        extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
-    ) {
-        extract_jobs.push(super::create_mesh_extract_job());
-    }
-
     fn add_render_views(
         &self,
         extract_resources: &ExtractResources,
@@ -77,5 +70,14 @@ impl RendererPlugin for MeshRendererPlugin {
         );
 
         shadow_map_resource.append_render_views(render_views);
+    }
+
+    fn add_extract_jobs(
+        &self,
+        _extract_resources: &ExtractResources,
+        _render_resources: &RenderResources,
+        extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
+    ) {
+        extract_jobs.push(Box::new(MeshExtractJob::new()));
     }
 }

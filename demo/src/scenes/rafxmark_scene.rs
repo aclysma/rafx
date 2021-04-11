@@ -2,8 +2,10 @@
 
 use crate::assets::font::FontAsset;
 use crate::components::{PositionComponent, SpriteComponent};
-use crate::features::sprite::{SpriteRenderNode, SpriteRenderNodeSet};
-use crate::features::text::TextResource;
+use crate::features::imgui::ImGuiRenderFeature;
+use crate::features::skybox::SkyboxRenderFeature;
+use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet};
+use crate::features::text::{TextRenderFeature, TextResource};
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
 };
@@ -16,7 +18,7 @@ use legion::{IntoQuery, Read, Resources, Schedule, SystemBuilder, World, Write};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
-use rafx::nodes::{RenderPhaseMaskBuilder, RenderViewDepthRange};
+use rafx::nodes::{RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
 use sdl2::event::Event;
@@ -311,11 +313,18 @@ fn add_sprites(
 
 #[profiling::function]
 fn update_main_view_2d(viewports_resource: &mut ViewportsResource) {
-    let main_camera_render_phase_mask = RenderPhaseMaskBuilder::default()
+    let main_camera_phase_mask = RenderPhaseMaskBuilder::default()
         .add_render_phase::<DepthPrepassRenderPhase>()
         .add_render_phase::<OpaqueRenderPhase>()
         .add_render_phase::<TransparentRenderPhase>()
         .add_render_phase::<UiRenderPhase>()
+        .build();
+
+    let main_camera_feature_mask = RenderFeatureMaskBuilder::default()
+        .add_render_feature::<ImGuiRenderFeature>()
+        .add_render_feature::<SkyboxRenderFeature>()
+        .add_render_feature::<SpriteRenderFeature>()
+        .add_render_feature::<TextRenderFeature>()
         .build();
 
     const CAMERA_Z: f32 = 1000.0;
@@ -358,7 +367,8 @@ fn update_main_view_2d(viewports_resource: &mut ViewportsResource) {
         view,
         proj,
         depth_range: RenderViewDepthRange::new_infinite_reverse(0.0),
-        render_phase_mask: main_camera_render_phase_mask,
+        render_phase_mask: main_camera_phase_mask,
+        render_feature_mask: main_camera_feature_mask,
         debug_name: "main".to_string(),
     });
 }

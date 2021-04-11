@@ -188,7 +188,11 @@ impl FramePacketBuilder {
 
         let mut guard = self.inner.lock().unwrap();
         for visibility_result in visibility_results {
-            for handle in &visibility_result.handles {
+            for handle in visibility_result
+                .handles
+                .iter()
+                .filter(|handle| view.feature_index_is_relevant(handle.render_feature_index()))
+            {
                 let frame_node_index = Self::append_frame_node(&mut *guard, *handle);
                 view_packet_builder.append_view_node(*handle, frame_node_index);
             }

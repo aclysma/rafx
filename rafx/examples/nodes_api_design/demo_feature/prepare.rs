@@ -6,9 +6,8 @@ use crate::demo_feature::{
 use crate::demo_phases::*;
 use glam::Vec3;
 use rafx::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature,
-    RenderFeatureIndex, RenderJobPrepareContext, RenderView, SubmitNodeId, ViewNodeIndex,
-    ViewSubmitNodes,
+    FeatureSubmitNodes, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
+    RenderJobPrepareContext, RenderView, RenderViewIndex, SubmitNodeId, ViewSubmitNodes, WriteJob,
 };
 
 pub struct DemoPrepareJob {
@@ -22,7 +21,7 @@ impl PrepareJob for DemoPrepareJob {
         _prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes) {
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
         //
         // The submit node struct will combine all submit nodes across all views for this feature.
         // It later gets merged with render nodes from other features and sorted. This is useful
@@ -54,7 +53,7 @@ impl PrepareJob for DemoPrepareJob {
                         position: per_view_extracted_data.position,
                         alpha: per_view_extracted_data.alpha,
                         frame_node_index: view_node.frame_node_index(),
-                        view_node_index: view_node_index as ViewNodeIndex,
+                        view_index: view_index as RenderViewIndex,
                     });
 
                     //
@@ -84,7 +83,7 @@ impl PrepareJob for DemoPrepareJob {
                         let distance =
                             Vec3::length(per_view_extracted_data.position - view.eye_position());
                         view_submit_nodes.add_submit_node::<DemoTransparentRenderPhase>(
-                            view_node_index as SubmitNodeId,
+                            submit_node_index as SubmitNodeId,
                             0,
                             distance,
                         );

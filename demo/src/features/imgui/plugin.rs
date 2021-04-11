@@ -1,23 +1,36 @@
-use crate::features::imgui::ImGuiRenderFeature;
-use rafx::api::extra::upload::RafxTransferUpload;
-use rafx::api::RafxResult;
-use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, MaterialAsset};
-use rafx::base::resource_map::ResourceMap;
-use rafx::distill::loader::handle::Handle;
-use rafx::framework::{ImageViewResource, RenderResources, ResourceArc};
-use rafx::nodes::{ExtractJob, ExtractResources, RenderRegistryBuilder};
-use rafx::renderer::RendererPlugin;
+use rafx::render_feature_renderer_prelude::*;
 
-pub struct ImguiStaticResources {
+use super::{
+    create_font_atlas_image_view, init_sdl2_imgui_manager, ImGuiExtractJob, ImGuiRenderFeature,
+    Sdl2ImguiManager,
+};
+use distill::loader::handle::Handle;
+use rafx::assets::MaterialAsset;
+use rafx::framework::{ImageViewResource, ResourceArc};
+
+pub struct ImGuiStaticResources {
     pub imgui_material: Handle<MaterialAsset>,
     pub imgui_font_atlas_image_view: ResourceArc<ImageViewResource>,
 }
 
 #[derive(Default)]
-pub struct ImguiRendererPlugin;
+pub struct ImGuiRendererPlugin;
 
-impl RendererPlugin for ImguiRendererPlugin {
+impl ImGuiRendererPlugin {
+    pub fn legion_init(
+        resources: &mut legion::Resources,
+        window: &sdl2::video::Window,
+    ) {
+        let imgui_manager = init_sdl2_imgui_manager(window);
+        resources.insert(imgui_manager);
+    }
+
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<Sdl2ImguiManager>();
+    }
+}
+
+impl RendererPlugin for ImGuiRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry: RenderRegistryBuilder,
@@ -38,21 +51,19 @@ impl RendererPlugin for ImguiRendererPlugin {
 
         asset_manager.wait_for_asset_to_load(&imgui_material, asset_resource, "imgui material")?;
 
-        use crate::features::imgui::Sdl2ImguiManager;
-
         let imgui_font_atlas_data = extract_resources
             .fetch::<Sdl2ImguiManager>()
             .build_font_atlas();
 
         let dyn_resource_allocator = asset_manager.create_dyn_resource_allocator_set();
-        let imgui_font_atlas_image_view = super::imgui_font_atlas::create_font_atlas_image_view(
+        let imgui_font_atlas_image_view = create_font_atlas_image_view(
             imgui_font_atlas_data,
             asset_manager.device_context(),
             upload,
             &dyn_resource_allocator,
         )?;
 
-        render_resources.insert(ImguiStaticResources {
+        render_resources.insert(ImGuiStaticResources {
             imgui_material,
             imgui_font_atlas_image_view,
         });
@@ -66,6 +77,6 @@ impl RendererPlugin for ImguiRendererPlugin {
         _render_resources: &RenderResources,
         extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
     ) {
-        extract_jobs.push(super::create_imgui_extract_job());
+        extract_jobs.push(Box::new(ImGuiExtractJob::new()));
     }
 }

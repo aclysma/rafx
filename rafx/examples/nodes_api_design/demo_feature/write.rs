@@ -3,8 +3,8 @@ use crate::demo_feature::{
     PreparedPerSubmitNodeDemoData,
 };
 use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
-    RenderPhaseIndex, RenderView, SubmitNodeId,
+    RenderFeature, RenderFeatureIndex, RenderJobWriteContext, RenderPhaseIndex, RenderView,
+    SubmitNodeId, WriteJob,
 };
 use rafx_api::RafxResult;
 
@@ -14,7 +14,7 @@ pub struct DemoCommandWriter {
     pub(super) per_submit_node_data: Vec<PreparedPerSubmitNodeDemoData>,
 }
 
-impl FeatureCommandWriter for DemoCommandWriter {
+impl WriteJob for DemoCommandWriter {
     fn apply_setup(
         &self,
         _write_context: &mut RenderJobWriteContext,
@@ -47,7 +47,7 @@ impl FeatureCommandWriter for DemoCommandWriter {
         // This demonstrates accessing data that was extracted or prepared
         let submit_node_data = &self.per_submit_node_data[index as usize];
         let _frame_node_data = &self.per_frame_data[submit_node_data.frame_node_index as usize];
-        let _view_node_data = &self.per_view_data[submit_node_data.view_node_index as usize];
+        let _view_node_data = &self.per_view_data[submit_node_data.view_index as usize];
 
         Ok(())
     }

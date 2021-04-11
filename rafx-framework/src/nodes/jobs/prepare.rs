@@ -1,6 +1,6 @@
 use crate::nodes::{
-    FeatureCommandWriter, FeatureSubmitNodes, FramePacket, MergedFrameSubmitNodes,
-    PreparedRenderData, RenderFeatureIndex, RenderJobPrepareContext, RenderRegistry, RenderView,
+    FeatureSubmitNodes, FramePacket, MergedFrameSubmitNodes, PreparedRenderData,
+    RenderFeatureIndex, RenderJobPrepareContext, RenderRegistry, RenderView, WriteJob,
 };
 
 pub trait PrepareJob: Send {
@@ -9,7 +9,7 @@ pub trait PrepareJob: Send {
         prepare_context: &RenderJobPrepareContext,
         frame_packet: &FramePacket,
         views: &[RenderView],
-    ) -> (Box<dyn FeatureCommandWriter>, FeatureSubmitNodes);
+    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes);
 
     fn feature_debug_name(&self) -> &'static str;
     fn feature_index(&self) -> RenderFeatureIndex;

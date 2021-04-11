@@ -1,13 +1,12 @@
 use crate::assets::font::FontAssetTypeRendererPlugin;
 use crate::assets::gltf::GltfAssetTypeRendererPlugin;
 use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
-use crate::features::debug3d::{Debug3DRendererPlugin, DebugDraw3DResource};
-use crate::features::mesh::{MeshRenderNodeSet, MeshRendererPlugin};
-use crate::features::sprite::{SpriteRenderNodeSet, SpriteRendererPlugin};
-use crate::features::text::{TextRendererPlugin, TextResource};
-use crate::features::tile_layer::{
-    TileLayerRenderNodeSet, TileLayerRendererPlugin, TileLayerResource,
-};
+use crate::features::debug3d::Debug3DRendererPlugin;
+use crate::features::mesh::MeshRendererPlugin;
+use crate::features::skybox::SkyboxRendererPlugin;
+use crate::features::sprite::SpriteRendererPlugin;
+use crate::features::text::TextRendererPlugin;
+use crate::features::tile_layer::TileLayerRendererPlugin;
 use crate::render_graph_generator::DemoRenderGraphGenerator;
 use crate::DemoRendererPlugin;
 use legion::Resources;
@@ -53,15 +52,16 @@ pub fn rendering_init(
     sdl2_window: &sdl2::video::Window,
     asset_source: AssetSource,
 ) -> RafxResult<()> {
-    resources.insert(SpriteRenderNodeSet::default());
-    resources.insert(MeshRenderNodeSet::default());
-    resources.insert(TileLayerRenderNodeSet::default());
     resources.insert(StaticVisibilityNodeSet::default());
     resources.insert(DynamicVisibilityNodeSet::default());
-    resources.insert(DebugDraw3DResource::new());
-    resources.insert(TextResource::new());
     resources.insert(ViewportsResource::default());
-    resources.insert(TileLayerResource::default());
+
+    MeshRendererPlugin::legion_init(resources);
+    SpriteRendererPlugin::legion_init(resources);
+    SkyboxRendererPlugin::legion_init(resources);
+    TileLayerRendererPlugin::legion_init(resources);
+    Debug3DRendererPlugin::legion_init(resources);
+    TextRendererPlugin::legion_init(resources);
 
     let rafx_api = rafx::api::RafxApi::new(sdl2_window, &Default::default())?;
 
@@ -75,14 +75,14 @@ pub fn rendering_init(
         .add_plugin(Box::new(SpriteRendererPlugin))
         .add_plugin(Box::new(TileLayerRendererPlugin))
         .add_plugin(Box::new(MeshRendererPlugin))
+        .add_plugin(Box::new(SkyboxRendererPlugin))
         .add_plugin(Box::new(DemoRendererPlugin));
 
     #[cfg(feature = "use-imgui")]
     {
-        use crate::features::imgui::ImguiRendererPlugin;
-        let imgui_manager = crate::features::imgui::init_sdl2_imgui_manager(sdl2_window);
-        resources.insert(imgui_manager);
-        renderer_builder = renderer_builder.add_plugin(Box::new(ImguiRendererPlugin::default()));
+        use crate::features::imgui::ImGuiRendererPlugin;
+        ImGuiRendererPlugin::legion_init(resources, sdl2_window);
+        renderer_builder = renderer_builder.add_plugin(Box::new(ImGuiRendererPlugin::default()));
     }
 
     let mut renderer_builder_result = {
@@ -146,13 +146,23 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         }
 
         resources.remove::<Renderer>();
-        resources.remove::<SpriteRenderNodeSet>();
-        resources.remove::<MeshRenderNodeSet>();
-        resources.remove::<TileLayerRenderNodeSet>();
+
+        #[cfg(feature = "use-imgui")]
+        {
+            use crate::features::imgui::ImGuiRendererPlugin;
+            ImGuiRendererPlugin::legion_destroy(resources);
+        }
+
+        MeshRendererPlugin::legion_destroy(resources);
+        SpriteRendererPlugin::legion_destroy(resources);
+        SkyboxRendererPlugin::legion_destroy(resources);
+        TileLayerRendererPlugin::legion_destroy(resources);
+        Debug3DRendererPlugin::legion_destroy(resources);
+        TextRendererPlugin::legion_destroy(resources);
+
         resources.remove::<StaticVisibilityNodeSet>();
         resources.remove::<DynamicVisibilityNodeSet>();
-        resources.remove::<DebugDraw3DResource>();
-        resources.remove::<TextResource>();
+
         resources.remove::<RenderRegistry>();
 
         // Remove the asset resource because we have asset storages that reference resources

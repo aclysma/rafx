@@ -1,14 +1,11 @@
-use crate::features::sprite::plugin::SpriteStaticResources;
-use crate::features::sprite::prepare::SpritePrepareJob;
-use crate::features::sprite::{
-    ExtractedSpriteData, SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet,
+use rafx::render_feature_extract_job_predule::*;
+
+use super::{
+    ExtractedSpriteData, SpritePrepareJob, SpriteRenderNode, SpriteRenderNodeSet,
+    SpriteStaticResources,
 };
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
-use rafx::nodes::{
-    ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
-    RenderJobExtractContext, RenderView,
-};
 
 pub struct SpriteExtractJob {}
 
@@ -25,7 +22,8 @@ impl ExtractJob for SpriteExtractJob {
         frame_packet: &FramePacket,
         _views: &[RenderView],
     ) -> Box<dyn PrepareJob> {
-        profiling::scope!("Sprite Extract");
+        profiling::scope!(super::EXTRACT_SCOPE_NAME);
+
         let asset_manager = extract_context
             .render_resources
             .fetch::<AssetManagerRenderResource>();
@@ -34,6 +32,7 @@ impl ExtractJob for SpriteExtractJob {
         let mut sprite_render_nodes = extract_context
             .extract_resources
             .fetch_mut::<SpriteRenderNodeSet>();
+
         sprite_render_nodes.update();
 
         let mut extracted_frame_node_sprite_data =
@@ -89,10 +88,10 @@ impl ExtractJob for SpriteExtractJob {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        SpriteRenderFeature::feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        SpriteRenderFeature::feature_index()
+        super::render_feature_index()
     }
 }

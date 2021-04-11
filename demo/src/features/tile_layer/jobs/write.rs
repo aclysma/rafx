@@ -1,24 +1,75 @@
-use crate::features::tile_layer::{TileLayerRenderFeature, TileLayerRenderNode};
-use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxResult, RafxVertexBufferBinding};
-use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{
-    FeatureCommandWriter, RenderFeature, RenderFeatureIndex, RenderJobWriteContext,
-    RenderPhaseIndex, RenderView, SubmitNodeId,
-};
+use rafx::render_feature_write_job_prelude::*;
 
-pub struct TileLayerCommandWriter {
-    pub visible_render_nodes: Vec<TileLayerRenderNode>,
-    pub per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
-    pub tile_layer_material: ResourceArc<MaterialPassResource>,
+use rafx::api::RafxPrimitiveTopology;
+use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+
+/// Vertex format for vertices sent to the GPU
+#[derive(Clone, Debug, Copy, Default)]
+#[repr(C)]
+pub struct TileLayerVertex {
+    pub position: [f32; 3],
+    pub uv: [f32; 2],
 }
 
-impl FeatureCommandWriter for TileLayerCommandWriter {
+lazy_static::lazy_static! {
+    pub static ref TILE_LAYER_VERTEX_LAYOUT : VertexDataSetLayout = {
+        use rafx::api::RafxFormat;
+        VertexDataLayout::build_vertex_layout(&TileLayerVertex::default(), |builder, vertex| {
+            builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+            builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+        }).into_set(RafxPrimitiveTopology::TriangleList)
+    };
+}
+
+use super::TileLayerRenderNode;
+use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
+use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
+use rafx::nodes::{push_view_indexed_value, RenderViewIndex};
+
+pub struct TileLayerWriteJob {
+    visible_render_nodes: Vec<TileLayerRenderNode>,
+    per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
+    tile_layer_material: ResourceArc<MaterialPassResource>,
+}
+
+impl TileLayerWriteJob {
+    pub fn new(
+        tile_layer_material: ResourceArc<MaterialPassResource>,
+        visible_render_nodes: Vec<TileLayerRenderNode>,
+    ) -> Self {
+        TileLayerWriteJob {
+            visible_render_nodes,
+            per_view_descriptor_sets: Default::default(),
+            tile_layer_material,
+        }
+    }
+
+    pub fn visible_render_nodes(&self) -> &Vec<TileLayerRenderNode> {
+        &self.visible_render_nodes
+    }
+
+    pub fn push_per_view_descriptor_set(
+        &mut self,
+        view_index: RenderViewIndex,
+        per_view_descriptor_set: DescriptorSetArc,
+    ) {
+        push_view_indexed_value(
+            &mut self.per_view_descriptor_sets,
+            view_index,
+            per_view_descriptor_set,
+        );
+    }
+}
+
+impl WriteJob for TileLayerWriteJob {
     fn apply_setup(
         &self,
         write_context: &mut RenderJobWriteContext,
         _view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
+        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
+
         let command_buffer = &write_context.command_buffer;
 
         let pipeline = write_context
@@ -28,7 +79,7 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
                 render_phase_index,
                 &self.tile_layer_material,
                 &write_context.render_target_meta,
-                &super::TILE_LAYER_VERTEX_LAYOUT,
+                &TILE_LAYER_VERTEX_LAYOUT,
             )
             .unwrap();
 
@@ -44,6 +95,8 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
         _render_phase_index: RenderPhaseIndex,
         index: SubmitNodeId,
     ) -> RafxResult<()> {
+        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
+
         let command_buffer = &write_context.command_buffer;
 
         // Bind per-pass data (UBO with view/proj matrix, sampler)
@@ -84,10 +137,10 @@ impl FeatureCommandWriter for TileLayerCommandWriter {
     }
 
     fn feature_debug_name(&self) -> &'static str {
-        TileLayerRenderFeature::feature_debug_name()
+        super::render_feature_debug_name()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
-        TileLayerRenderFeature::feature_index()
+        super::render_feature_index()
     }
 }
