@@ -1,4 +1,4 @@
-use crate::gl::{RafxDeviceContextGl, ShaderId};
+use crate::gl::{RafxDeviceContextGl, ShaderId, ProgramId};
 use crate::{RafxPipelineReflection, RafxResult, RafxShaderStageDef, RafxShaderStageFlags};
 use std::sync::Arc;
 
@@ -7,8 +7,9 @@ struct RafxShaderGlInner {
     stage_flags: RafxShaderStageFlags,
     stages: Vec<RafxShaderStageDef>,
     pipeline_reflection: RafxPipelineReflection,
-    vertex_shader: ShaderId,
-    fragment_shader: ShaderId,
+    vertex_shader_id: ShaderId,
+    fragment_shader_id: ShaderId,
+    program_id: ProgramId,
 }
 
 #[derive(Clone, Debug)]
@@ -24,60 +25,45 @@ impl RafxShaderGl {
         let pipeline_reflection = RafxPipelineReflection::from_stages(&stages)?;
         let mut stage_flags = RafxShaderStageFlags::empty();
 
-        let mut vertex_shader = None;
-        let mut fragment_shader = None;
+        let mut vertex_shader_id = None;
+        let mut fragment_shader_id = None;
 
         for stage in &stages {
             stage_flags |= stage.reflection.shader_stage;
 
+            log::debug!("Compiling shader for stage {:?}", stage.reflection.shader_stage);
             let compiled = stage.shader_module.gl_shader_module().unwrap().compile_shader(stage.reflection.shader_stage)?;
-            if stage == RafxShaderStageFlags::VERTEX {
-                vertex_shader = Some(compiled);
-            } else if stage == RafxShaderStageFlags::FRAGMENT {
-                fragment_shader = Some(compiled);
+            if stage.reflection.shader_stage == RafxShaderStageFlags::VERTEX {
+                vertex_shader_id = Some(compiled);
+            } else if stage.reflection.shader_stage == RafxShaderStageFlags::FRAGMENT {
+                fragment_shader_id = Some(compiled);
             } else {
                 return Err(format!("Unexpected shader stage for GL ES 2.0: {:?}", stage.reflection.shader_stage))?;
             }
         }
 
-        let vertex_shader = vertex_shader.ok_or(Err("No vertex shader specified, it is required for GL ES 2.0"))?;
-        let fragment_shader = fragment_shader.ok_or(Err("No fragment shader specified, it is required for GL ES 2.0"))?;
+        let vertex_shader_id = vertex_shader_id.ok_or("No vertex shader specified, it is required for GL ES 2.0")?;
+        let fragment_shader_id = fragment_shader_id.ok_or("No fragment shader specified, it is required for GL ES 2.0")?;
 
         let gl_context = device_context.gl_context();
-        let program = gl_context.gl_create_program()?;
-        gl_context.gl_attach_shader(program, vertex_shader)?;
-        gl_context.gl_attach_shader(program, fragment_shader)?;
+        let program_id = gl_context.gl_create_program()?;
+        gl_context.gl_attach_shader(program_id, vertex_shader_id)?;
+        gl_context.gl_attach_shader(program_id, fragment_shader_id)?;
 
-        gl_context.link_shader(program);
-
-
+        gl_context.link_and_validate_shader_program(program_id)?;
 
         let inner = RafxShaderGlInner {
             stages,
             pipeline_reflection,
             stage_flags,
+            vertex_shader_id,
+            fragment_shader_id,
+            program_id
         };
 
         Ok(RafxShaderGl {
             inner: Arc::new(inner),
         })
-
-        //unimplemented!();
-        // let pipeline_reflection = RafxPipelineReflection::from_stages(&stages)?;
-        // let mut stage_flags = RafxShaderStageFlags::empty();
-        // for stage in &stages {
-        //     stage_flags |= stage.reflection.shader_stage;
-        // }
-        //
-        // let inner = RafxShaderGlInner {
-        //     stages,
-        //     pipeline_reflection,
-        //     stage_flags,
-        // };
-        //
-        // Ok(RafxShaderGl {
-        //     inner: Arc::new(inner),
-        // })
     }
 
     pub fn stages(&self) -> &[RafxShaderStageDef] {

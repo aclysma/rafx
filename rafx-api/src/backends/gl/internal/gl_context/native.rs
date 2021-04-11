@@ -56,6 +56,10 @@ impl GlContext {
         }
     }
 
+    pub fn is_es(&self) -> bool {
+        false
+    }
+
     pub fn window_hash(&self) -> WindowHash {
         self.window_hash
     }
@@ -176,63 +180,64 @@ impl GlContext {
         }
     }
 
-    pub fn gl_shader_source(&self, shader: ShaderId, code: &CString) -> RafxResult<()> {
+    pub fn gl_shader_source(&self, shader_id: ShaderId, code: &CString) -> RafxResult<()> {
         unsafe {
             let len : GLint = code.as_bytes().len() as _;
-            self.gles2.ShaderSource(shader.0, 1, &code.as_ptr(), &len);
+            self.gles2.ShaderSource(shader_id.0, 1, &code.as_ptr(), &len);
             self.check_for_error()
         }
     }
 
-    pub fn gl_compile_shader(&self, shader: ShaderId) -> RafxResult<()> {
+    pub fn gl_compile_shader(&self, shader_id: ShaderId) -> RafxResult<()> {
         unsafe {
-            self.gles2.CompileShader(shader.0);
+            self.gles2.CompileShader(shader_id.0);
             self.check_for_error()
         }
     }
 
-    pub fn gl_get_shaderiv(&self, shader: ShaderId, pname: GLenum) -> RafxResult<i32> {
+    pub fn gl_get_shaderiv(&self, shader_id: ShaderId, pname: GLenum) -> RafxResult<i32> {
         unsafe {
             let mut value = 0;
-            self.gles2.GetShaderiv(shader.0, pname, &mut value);
+            self.gles2.GetShaderiv(shader_id.0, pname, &mut value);
             self.check_for_error()?;
             Ok(value)
         }
     }
 
-    pub fn gl_get_programiv(&self, program: ProgramId, pname: GLenum) -> RafxResult<i32> {
+    pub fn gl_get_programiv(&self, program_id: ProgramId, pname: GLenum) -> RafxResult<i32> {
         unsafe {
             let mut value = 0;
-            self.gles2.GetProgramiv(program.0, pname, &mut value);
+            self.gles2.GetProgramiv(program_id.0, pname, &mut value);
             self.check_for_error()?;
             Ok(value)
         }
     }
 
-    pub fn gl_get_shader_info_log(&self, shader: ShaderId, string: &mut CString) -> RafxResult<()> {
+    pub fn gl_get_shader_info_log(&self, shader_id: ShaderId, string: &mut [u8]) -> RafxResult<()> {
         unsafe {
-            let mut len = string.as_bytes().len();
-
-            let mut tmp = CString::new("").unwrap();
-            std::mem::swap(&mut tmp, string);
-            let ptr = tmp.into_raw();
-            self.gles2.GetShaderInfoLog(shader.0, len as _, std::ptr::null_mut(), ptr);
-            *string = CString::from_raw(ptr);
+            let mut len = string.len();
+            self.gles2.GetShaderInfoLog(shader_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
             self.check_for_error()
         }
     }
 
-    pub fn gl_get_program_info_log(&self, program: ProgramId, string: &mut CString) -> RafxResult<()> {
+    pub fn gl_get_program_info_log(&self, program_id: ProgramId, string: &mut [u8]) -> RafxResult<()> {
         unsafe {
-            let mut len = string.as_bytes().len();
-
-            let mut tmp = CString::new("").unwrap();
-            std::mem::swap(&mut tmp, string);
-            let ptr = tmp.into_raw();
-            self.gles2.GetProgramInfoLog(program.0, len as _, std::ptr::null_mut(), ptr);
-            *string = CString::from_raw(ptr);
+            let mut len = string.len();
+            self.gles2.GetProgramInfoLog(program_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
             self.check_for_error()
         }
+    }
+
+    fn get_shader_info_log(&self, shader_id: ShaderId) -> RafxResult<Option<String>> {
+        let error_len = self.gl_get_shaderiv(shader_id, gles20::INFO_LOG_LENGTH)?;
+        if error_len == 0 {
+            return Ok(None);
+        };
+
+        let mut log = vec![0_u8; error_len as usize];
+        self.gl_get_shader_info_log(shader_id, &mut log)?;
+        Ok(Some(String::from_utf8(log).unwrap()))
     }
 
     pub fn compile_shader(&self, shader_type: GLenum, src: &CString) -> RafxResult<ShaderId> {
@@ -240,14 +245,14 @@ impl GlContext {
         self.gl_shader_source(shader_id, &src)?;
         self.gl_compile_shader(shader_id)?;
         if self.gl_get_shaderiv(shader_id, gles20::COMPILE_STATUS)? == 0 {
-            let error_len = self.gl_get_shaderiv(shader_id, gles20::INFO_LOG_LENGTH)?;
-            return if error_len > 1 {
-                let mut log = CString::new(vec![0_u8; error_len as usize]).unwrap();
-                self.gl_get_shader_info_log(shader_id, &mut log)?;
-                Err(log.into_string().unwrap())?
-            } else {
-                Err("Error compiling shader, info log not available")?
-            };
+            return Err(match self.get_shader_info_log(shader_id)? {
+                Some(x) => format!("Error compiling shader: {}", x),
+                None => "Error compiling shader, info log not available".to_string()
+            })?;
+        }
+
+        if let Ok(Some(debug_info)) = self.get_shader_info_log(shader_id) {
+            log::debug!("Debug info while compiling shader program: {}", debug_info);
         }
 
         Ok(shader_id)
@@ -261,24 +266,62 @@ impl GlContext {
         }
     }
 
-    pub fn gl_attach_shader(&self, program: ProgramId, shader: ShaderId) -> RafxResult<()> {
+    pub fn gl_attach_shader(&self, program_id: ProgramId, shader_id: ShaderId) -> RafxResult<()> {
         unsafe {
-            self.gles2.AttachShader(program.0, shader.0);
+            self.gles2.AttachShader(program_id.0, shader_id.0);
             self.check_for_error()
         }
     }
 
-    pub fn gl_link_program(&self, program: ProgramId) -> RafxResult<()> {
+    pub fn gl_link_program(&self, program_id: ProgramId) -> RafxResult<()> {
         unsafe {
-            self.gles2.LinkProgram(program.0);
+            self.gles2.LinkProgram(program_id.0);
             self.check_for_error()
         }
     }
 
-    pub fn link_and_validate_shader_program(&self, program: ProgramId) -> RafxResult<ProgramId> {
-        self.gl_link_program(program)?;
-        if self.gl_get_shaderiv(shader_id, gles20::LINK_STATUS)? == 0 {
-
+    pub fn gl_validate_program(&self, program_id: ProgramId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.ValidateProgram(program_id.0);
+            self.check_for_error()
         }
+    }
+
+    fn get_program_info_log(&self, program_id: ProgramId) -> RafxResult<Option<String>> {
+        let error_len = self.gl_get_programiv(program_id, gles20::INFO_LOG_LENGTH)?;
+        if error_len == 0 {
+            return Ok(None);
+        };
+
+        let mut log = vec![0_u8; error_len as usize];
+        self.gl_get_program_info_log(program_id, &mut log)?;
+        Ok(Some(String::from_utf8(log).unwrap()))
+    }
+
+    pub fn link_and_validate_shader_program(&self, program_id: ProgramId) -> RafxResult<()> {
+        self.gl_link_program(program_id)?;
+        if self.gl_get_programiv(program_id, gles20::LINK_STATUS)? == 0 {
+            return Err(match self.get_program_info_log(program_id)? {
+                Some(x) => format!("Error linking shader program: {}", x),
+                None => "Error linking shader program, info log not available".to_string()
+            })?;
+        }
+
+        if let Ok(Some(debug_info)) = self.get_program_info_log(program_id) {
+            log::debug!("Debug info while linking shader program: {}", debug_info);
+        }
+
+        if self.gl_get_programiv(program_id, gles20::VALIDATE_STATUS)? == 0 {
+            return Err(match self.get_program_info_log(program_id)? {
+                Some(x) => format!("Error validating shader program: {}", x),
+                None => "Error validating shader program, info log not available".to_string()
+            })?;
+        }
+
+        if let Ok(Some(debug_info)) = self.get_program_info_log(program_id) {
+            log::debug!("Debug info while validating shader program: {}", debug_info);
+        }
+
+        Ok(())
     }
 }

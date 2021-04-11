@@ -11,6 +11,7 @@ mod parse_declarations;
 mod include;
 use include::include_impl;
 use include::IncludeType;
+use shaderc::ShaderKind;
 
 mod codegen;
 
@@ -391,6 +392,24 @@ fn process_glsl_shader(
         spirv_cross_gl_options.version = spirv_cross::glsl::Version::V3_30;
         spirv_cross_gl_options.vulkan_semantics = false;
 
+        let shader_resources = gl_ast.get_shader_resources()?;
+
+        if normalize_shader_kind(shader_kind) == ShaderKind::Vertex {
+            for resource in shader_resources.stage_outputs {
+                let location = gl_ast.get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
+                gl_ast.rename_interface_variable(&[resource], location, &format!("interface_var_{}", location));
+            }
+        } else if normalize_shader_kind(shader_kind) == ShaderKind::Fragment {
+            for resource in shader_resources.stage_inputs {
+                let location = gl_ast.get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
+                gl_ast.rename_interface_variable(&[resource], location, &format!("interface_var_{}", location));
+            }
+        }
+
+        for resource in shader_resources.uniform_buffers {
+            gl_ast.unset_decoration(resource.id, spirv_cross::spirv::Decoration::Binding)?;
+        }
+
         gl_ast.set_compiler_options(&spirv_cross_gl_options)?;
         let gl_src = gl_ast.compile()?;
 
@@ -519,4 +538,25 @@ fn deduce_default_shader_kind_from_path(path: &Path) -> Option<shaderc::ShaderKi
     }
 
     None
+}
+
+fn normalize_shader_kind(shader_kind: ShaderKind) -> ShaderKind {
+    match shader_kind {
+        ShaderKind::Vertex | ShaderKind::DefaultVertex => ShaderKind::Vertex,
+        ShaderKind::Fragment | ShaderKind::DefaultFragment => ShaderKind::Fragment,
+        ShaderKind::Compute | ShaderKind::DefaultCompute => ShaderKind::Compute,
+        ShaderKind::Geometry | ShaderKind::DefaultGeometry => ShaderKind::Geometry,
+        ShaderKind::TessControl | ShaderKind::DefaultTessControl => ShaderKind::TessControl,
+        ShaderKind::TessEvaluation | ShaderKind::DefaultTessEvaluation => ShaderKind::TessEvaluation,
+        ShaderKind::RayGeneration | ShaderKind::DefaultRayGeneration => ShaderKind::RayGeneration,
+        ShaderKind::AnyHit | ShaderKind::DefaultAnyHit => ShaderKind::AnyHit,
+        ShaderKind::ClosestHit | ShaderKind::DefaultClosestHit => ShaderKind::ClosestHit,
+        ShaderKind::Miss | ShaderKind::DefaultMiss => ShaderKind::Miss,
+        ShaderKind::Intersection | ShaderKind::DefaultIntersection => ShaderKind::Intersection,
+        ShaderKind::Callable | ShaderKind::DefaultCallable => ShaderKind::Callable,
+        ShaderKind::Task | ShaderKind::DefaultTask => ShaderKind::Task,
+        ShaderKind::Mesh | ShaderKind::DefaultMesh => ShaderKind::Mesh,
+        ShaderKind::InferFromSource => ShaderKind::InferFromSource,
+        ShaderKind::SpirvAssembly => ShaderKind::SpirvAssembly,
+    }
 }

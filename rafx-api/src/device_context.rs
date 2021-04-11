@@ -272,6 +272,7 @@ impl RafxDeviceContext {
             ),
             #[cfg(feature = "rafx-gl")]
             RafxDeviceContext::Gl(inner) => RafxShaderModule::Gl(
+                // This one is different because we have different flavors of GL
                 inner.create_shader_module(shader_module_def.gl.unwrap())?,
             ),
             #[cfg(any(

@@ -44,11 +44,14 @@ impl RafxShaderModuleGl {
         device_context: &RafxDeviceContextGl,
         data: RafxShaderModuleDefGl,
     ) -> RafxResult<Self> {
-        match data {
-            RafxShaderModuleDefGl::GlSrc(src) => {
-                RafxShaderModuleGl::new_from_src(device_context, src)
-            }
-        }
+
+        let src = if device_context.gl_context().is_es() {
+            data.gles_src.ok_or("No shader src available for GL ES")?
+        } else {
+            data.gl_src.ok_or("No shader src available for GL")?
+        };
+
+        RafxShaderModuleGl::new_from_src(device_context, &src)
     }
 
     pub fn new_from_src(

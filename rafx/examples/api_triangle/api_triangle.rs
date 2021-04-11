@@ -494,11 +494,12 @@ fn load_shader_packages(
     {
         let gl_path = _base_path.join(_gl_src_file);
         let gl_src = std::fs::read_to_string(gl_path)?;
-        _package.gl = Some(RafxShaderPackageGl::Src(gl_src));
-
         let gles_path = _base_path.join(_gles_src_file);
         let gles_src = std::fs::read_to_string(gles_path)?;
-        _package.gles = Some(RafxShaderPackageGles::Src(gles_src));
+        _package.gl = Some(RafxShaderPackageGl {
+            gl_src: Some(gl_src),
+            gles_src: Some(gles_src),
+        });
     }
 
     Ok(_package)
