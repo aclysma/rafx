@@ -1,0 +1,12 @@
+#version 100
+
+varying vec4 out_color;
+attribute vec4 in_color;
+attribute vec4 pos;
+
+void main()
+{
+    out_color = in_color;
+    gl_Position = pos;
+}
+

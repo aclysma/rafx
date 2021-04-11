@@ -1,0 +1,15 @@
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+out vec4 out_color;
+layout(location = 1) in vec4 in_color;
+layout(location = 0) in vec4 pos;
+
+void main()
+{
+    out_color = in_color;
+    gl_Position = pos;
+}
+

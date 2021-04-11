@@ -271,7 +271,9 @@ impl RafxDeviceContext {
                 inner.create_shader_module(shader_module_def.metal.unwrap())?,
             ),
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => RafxShaderModule::Gl(
+                inner.create_shader_module(shader_module_def.gl.unwrap())?,
+            ),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -294,7 +296,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-metal")]
             RafxDeviceContext::Metal(inner) => RafxShader::Metal(inner.create_shader(stages)?),
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => RafxShader::Gl(inner.create_shader(stages)?),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

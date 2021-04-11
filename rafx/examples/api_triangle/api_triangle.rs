@@ -142,12 +142,16 @@ fn run() -> RafxResult<()> {
             &processed_shaders_base_path,
             "shader.vert.metal",
             "shader.vert.spv",
+            "shader.vert.gl",
+            "shader.vert.gles",
         )?;
 
         let frag_shader_package = load_shader_packages(
             &processed_shaders_base_path,
             "shader.frag.metal",
             "shader.frag.spv",
+            "shader.frag.gl",
+            "shader.frag.gles"
         )?;
 
         let vert_shader_module =
@@ -467,6 +471,8 @@ fn load_shader_packages(
     _base_path: &Path,
     _metal_src_file: &str,
     _vk_spv_file: &str,
+    _gl_src_file: &str,
+    _gles_src_file: &str,
 ) -> RafxResult<RafxShaderPackage> {
     let mut _package = RafxShaderPackage::default();
 
@@ -482,6 +488,17 @@ fn load_shader_packages(
         let vk_path = _base_path.join(_vk_spv_file);
         let vk_bytes = std::fs::read(vk_path)?;
         _package.vk = Some(RafxShaderPackageVulkan::SpvBytes(vk_bytes));
+    }
+
+    #[cfg(feature = "rafx-gl")]
+    {
+        let gl_path = _base_path.join(_gl_src_file);
+        let gl_src = std::fs::read_to_string(gl_path)?;
+        _package.gl = Some(RafxShaderPackageGl::Src(gl_src));
+
+        let gles_path = _base_path.join(_gles_src_file);
+        let gles_src = std::fs::read_to_string(gles_path)?;
+        _package.gles = Some(RafxShaderPackageGles::Src(gles_src));
     }
 
     Ok(_package)

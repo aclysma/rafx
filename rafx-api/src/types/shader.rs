@@ -12,6 +12,15 @@ pub enum RafxShaderPackageGl {
     Src(String),
 }
 
+/// GL-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
+/// used to initialize a shader module GPU object
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub enum RafxShaderPackageGles {
+    /// Raw uncompiled sorce code. Will be compiled at runtime.
+    Src(String),
+}
+
 /// Metal-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
 /// used to initialize a shader module GPU object
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -50,18 +59,32 @@ pub enum RafxShaderPackageEmpty {
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxShaderPackage {
     pub gl: Option<RafxShaderPackageGl>,
+    pub gles: Option<RafxShaderPackageGles>,
     pub metal: Option<RafxShaderPackageMetal>,
     pub vk: Option<RafxShaderPackageVulkan>,
 }
 
 impl RafxShaderPackage {
     /// Create a shader module def for use with a GL RafxDevice. Returns none if the package does
-    /// not contain data necessary for GL
+    /// not contain data necessary for GL (not GL ES)
     #[cfg(feature = "rafx-gl")]
     pub fn gl_module_def(&self) -> Option<RafxShaderModuleDefGl> {
         if let Some(gl) = self.gl.as_ref() {
             Some(match gl {
                 RafxShaderPackageGl::Src(src) => RafxShaderModuleDefGl::GlSrc(src),
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Create a shader module def for use with a GL RafxDevice. Returns none if the package does
+    /// not contain data necessary for GL ES.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gles_module_def(&self) -> Option<RafxShaderModuleDefGl> {
+        if let Some(gles) = self.gles.as_ref() {
+            Some(match gles {
+                RafxShaderPackageGles::Src(src) => RafxShaderModuleDefGl::GlSrc(src),
             })
         } else {
             None

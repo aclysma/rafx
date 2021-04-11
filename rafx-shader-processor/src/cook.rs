@@ -1,4 +1,4 @@
-use rafx_api::{RafxShaderPackage, RafxShaderPackageMetal, RafxShaderPackageVulkan};
+use rafx_api::{RafxShaderPackage, RafxShaderPackageMetal, RafxShaderPackageVulkan, RafxShaderPackageGl, RafxShaderPackageGles};
 use rafx_framework::CookedShaderPackage;
 use rafx_framework::{ReflectedEntryPoint, ShaderModuleHash};
 
@@ -6,6 +6,8 @@ pub(crate) fn cook_shader(
     reflected_data: &[ReflectedEntryPoint],
     spv: &[u8],
     metal_source: String,
+    gl_source: String,
+    gles_source: String,
 ) -> Result<Vec<u8>, String> {
     let shader_package = RafxShaderPackage {
         vk: Some(RafxShaderPackageVulkan::SpvBytes(spv.to_vec())),
@@ -16,8 +18,8 @@ pub(crate) fn cook_shader(
         // API so will need to figure out how to compile the shader programmatically.)
         metal: Some(RafxShaderPackageMetal::Src(metal_source)),
 
-        // TODO: TEMPORARY
-        gl: None,
+        gl: Some(RafxShaderPackageGl::Src(gl_source)),
+        gles: Some(RafxShaderPackageGles::Src(gles_source)),
     };
 
     let cooked_shader = CookedShaderPackage {
