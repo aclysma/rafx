@@ -63,7 +63,12 @@ pub fn rendering_init(
     Debug3DRendererPlugin::legion_init(resources);
     TextRendererPlugin::legion_init(resources);
 
-    let rafx_api = rafx::api::RafxApi::new(sdl2_window, &Default::default())?;
+    //
+    // Create the api. GPU programming is fundamentally unsafe, so all rafx APIs should be
+    // considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
+    // behavior on the CPU for reasons other than interacting with the GPU.
+    //
+    let rafx_api = unsafe { rafx::api::RafxApi::new(sdl2_window, &Default::default())? };
 
     let mut renderer_builder = RendererBuilder::default();
     renderer_builder = renderer_builder

@@ -23,7 +23,12 @@ impl RafxApiMetal {
         self.device_context.as_ref().unwrap()
     }
 
-    pub fn new(
+    /// # Safety
+    ///
+    /// GPU programming is fundamentally unsafe, so all rafx APIs that interact with the GPU should
+    /// be considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
+    /// behavior on the CPU for reasons other than interacting with the GPU.
+    pub unsafe fn new(
         _window: &dyn HasRawWindowHandle,
         _api_def: &RafxApiDef,
         _metal_api_def: &RafxApiDefMetal,
