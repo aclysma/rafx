@@ -39,15 +39,26 @@ Please keep in mind, this crate is still in pre-0.1.0 status!
 ## Roadmap
 
  * The API of `rafx-api` is unlikely to change significantly
- * `rafx-framework` and `rafx-assets` may get some refactoring/improvements based on demo improvements and dogfooding in
-   other projects
+ * Other higher level crates are being refactored/improved based on demo improvements and dogfooding in
+   other projects   
  * For the near-term future, the focus will be on:
-     * Adding more documentation
-     * Maturing the existing backends
+     * Improvements to the framework (visibility, multithreading, API ergonomics)
+     * Exploring options that would allow adding rendering features in a modular way, letting end-users
+       more easily share their work.
+     * Maturing the existing backends and adding new backends
      * Extending the demo with more rendering techniques
    
 **This crate will use semantic versioning rules after 0.1.0 of this project has been published. The
 0.0.x versions do not follow semantic versioning rules.**
+
+## Safety
+
+Rafx is unsafe because hardware-accelerated rendering is fundamentally unsafe. However, we reserve usage
+of the unsafe keyword for when an operation can produce undefined behavior for reasons other than interacting
+with the GPU. Please see these documents for more detail:
+
+ * https://github.com/aclysma/rafx/blob/master/docs/api/api_design.md#safety
+ * https://github.com/aclysma/rafx/blob/master/docs/api/safety.md
 
 ## Prerequisites
 

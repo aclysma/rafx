@@ -22,9 +22,11 @@ fn run() -> RafxResult<()> {
     let sdl2_systems = sdl2_init();
 
     //
-    // Create the api
+    // Create the api. GPU programming is fundamentally unsafe, so all rafx APIs should be
+    // considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
+    // behavior on the CPU for reasons other than interacting with the GPU.
     //
-    let mut api = RafxApi::new(&sdl2_systems.window, &Default::default())?;
+    let mut api = unsafe { RafxApi::new(&sdl2_systems.window, &Default::default())? };
 
     // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
     // clean shutdown.

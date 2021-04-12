@@ -35,8 +35,14 @@ pub enum RafxApi {
 
 impl RafxApi {
     /// Create a device using the "default" backend for the platform.
+    ///
+    /// # Safety
+    ///
+    /// GPU programming is fundamentally unsafe, so all rafx APIs that interact with the GPU should
+    /// be considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
+    /// behavior on the CPU for reasons other than interacting with the GPU.
     #[allow(unreachable_code)]
-    pub fn new(
+    pub unsafe fn new(
         _window: &dyn HasRawWindowHandle,
         _api_def: &RafxApiDef,
     ) -> RafxResult<Self> {
@@ -54,8 +60,14 @@ impl RafxApi {
     }
 
     /// Initialize a device using vulkan
+    ///
+    /// # Safety
+    ///
+    /// GPU programming is fundamentally unsafe, so all rafx APIs that interact with the GPU should
+    /// be considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
+    /// behavior on the CPU for reasons other than interacting with the GPU.
     #[cfg(feature = "rafx-vulkan")]
-    pub fn new_vulkan(
+    pub unsafe fn new_vulkan(
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
         vk_api_def: &RafxApiDefVulkan,
@@ -66,8 +78,14 @@ impl RafxApi {
     }
 
     /// Initialize a device using vulkan
+    ///
+    /// # Safety
+    ///
+    /// GPU programming is fundamentally unsafe, so all rafx APIs that interact with the GPU should
+    /// be considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
+    /// behavior on the CPU for reasons other than interacting with the GPU.
     #[cfg(feature = "rafx-metal")]
-    pub fn new_metal(
+    pub unsafe fn new_metal(
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
         vk_api_def: &RafxApiDefMetal,
