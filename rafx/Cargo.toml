@@ -17,6 +17,7 @@ rafx-api = { version = "=0.0.10", path = "../rafx-api" }
 rafx-framework = { version = "=0.0.10", path = "../rafx-framework", optional = true }
 rafx-assets = { version = "=0.0.10", path = "../rafx-assets", optional = true }
 rafx-renderer = { version = "=0.0.10", path = "../rafx-renderer", optional = true }
+rafx-visibility = { version = "=0.0.10", path = "../rafx-visibility" }
 
 [dev-dependencies]
 log = "0.4"
@@ -63,28 +64,32 @@ profile-with-puffin = [
     "rafx-framework/profile-with-puffin",
     "rafx-assets/profile-with-puffin",
     "rafx-api/profile-with-puffin",
-    "rafx-renderer/profile-with-puffin"
+    "rafx-renderer/profile-with-puffin",
+    "rafx-visibility/profile-with-puffin"
 ]
 
 profile-with-optick = [
     "rafx-framework/profile-with-optick",
     "rafx-assets/profile-with-optick",
     "rafx-api/profile-with-optick",
-    "rafx-renderer/profile-with-optick"
+    "rafx-renderer/profile-with-optick",
+    "rafx-visibility/profile-with-optick"
 ]
 
 profile-with-superluminal = [
     "rafx-framework/profile-with-superluminal",
     "rafx-assets/profile-with-superluminal",
     "rafx-api/profile-with-superluminal",
-    "rafx-renderer/profile-with-superluminal"
+    "rafx-renderer/profile-with-superluminal",
+    "rafx-visibility/profile-with-superluminal"
 ]
 
 profile-with-tracy = [
     "rafx-framework/profile-with-tracy",
     "rafx-assets/profile-with-tracy",
     "rafx-api/profile-with-tracy",
-    "rafx-renderer/profile-with-tracy"
+    "rafx-renderer/profile-with-tracy",
+    "rafx-visibility/profile-with-tracy"
 ]
 
 #
