@@ -4,9 +4,8 @@ use super::{
     ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
     MeshPrepareJob, MeshRenderNode, MeshRenderNodeSet, MeshStaticResources,
 };
-use crate::components::MeshComponent;
 use crate::components::{
-    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+    DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
 use legion::*;
 use rafx::assets::AssetManagerRenderResource;
@@ -44,15 +43,6 @@ impl ExtractJob for MeshExtractJob {
             .fetch_mut::<MeshRenderNodeSet>();
         mesh_render_nodes.update();
 
-        let mut query = <(Read<PositionComponent>, Read<MeshComponent>)>::query();
-        for (position_component, mesh_component) in query.iter(world) {
-            let render_node = mesh_render_nodes
-                .get_mut(&mesh_component.render_node)
-                .unwrap();
-            render_node.mesh = mesh_component.mesh.clone();
-            render_node.transform = glam::Mat4::from_translation(position_component.position);
-        }
-
         //
         // Get the position/mesh asset pairs we will draw
         //
@@ -62,22 +52,28 @@ impl ExtractJob for MeshExtractJob {
             );
 
         for frame_node in frame_packet.frame_nodes(self.feature_index()).iter() {
+            let entity_id = frame_node.entity_id();
+            let entry = world.entry_ref(entity_id.into()).unwrap();
+            let transform_component = entry.get_component::<TransformComponent>().unwrap();
+
             let render_node_index = frame_node.render_node_index();
             let render_node_handle = RawSlabKey::<MeshRenderNode>::new(render_node_index);
+
             let mesh_render_node = mesh_render_nodes
                 .meshes
                 .get_raw(render_node_handle)
                 .unwrap();
 
-            let mesh_asset = mesh_render_node
-                .mesh
-                .as_ref()
-                .and_then(|mesh_asset_handle| asset_manager.committed_asset(mesh_asset_handle));
+            let mesh_asset = asset_manager.committed_asset(&mesh_render_node.mesh);
 
             let extracted_frame_node = mesh_asset.and_then(|mesh_asset| {
                 Some(ExtractedFrameNodeMeshData {
                     mesh_asset: mesh_asset.clone(),
-                    world_transform: mesh_render_node.transform,
+                    world_transform: glam::Mat4::from_scale_rotation_translation(
+                        transform_component.scale,
+                        transform_component.rotation,
+                        transform_component.translation,
+                    ),
                 })
             });
 
@@ -96,7 +92,7 @@ impl ExtractJob for MeshExtractJob {
             })
             .collect();
 
-        let mut query = <(Entity, Read<PositionComponent>, Read<PointLightComponent>)>::query();
+        let mut query = <(Entity, Read<TransformComponent>, Read<PointLightComponent>)>::query();
         let point_lights = query
             .iter(world)
             .map(|(e, p, l)| ExtractedPointLight {
@@ -106,7 +102,7 @@ impl ExtractJob for MeshExtractJob {
             })
             .collect();
 
-        let mut query = <(Entity, Read<PositionComponent>, Read<SpotLightComponent>)>::query();
+        let mut query = <(Entity, Read<TransformComponent>, Read<SpotLightComponent>)>::query();
         let spot_lights = query
             .iter(world)
             .map(|(e, p, l)| ExtractedSpotLight {

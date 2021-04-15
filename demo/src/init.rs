@@ -13,10 +13,10 @@ use legion::Resources;
 use rafx::api::{RafxApi, RafxDeviceContext, RafxResult, RafxSwapchainHelper};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
+use rafx::framework::visibility::VisibilityRegion;
 use rafx::nodes::{ExtractResources, RenderRegistry};
 use rafx::renderer::ViewportsResource;
 use rafx::renderer::{AssetSource, Renderer, RendererBuilder, SwapchainHandler};
-use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
 pub struct Sdl2Systems {
     pub context: sdl2::Sdl,
@@ -52,8 +52,7 @@ pub fn rendering_init(
     sdl2_window: &sdl2::video::Window,
     asset_source: AssetSource,
 ) -> RafxResult<()> {
-    resources.insert(StaticVisibilityNodeSet::default());
-    resources.insert(DynamicVisibilityNodeSet::default());
+    resources.insert(VisibilityRegion::new());
     resources.insert(ViewportsResource::default());
 
     MeshRendererPlugin::legion_init(resources);
@@ -164,9 +163,6 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         TileLayerRendererPlugin::legion_destroy(resources);
         Debug3DRendererPlugin::legion_destroy(resources);
         TextRendererPlugin::legion_destroy(resources);
-
-        resources.remove::<StaticVisibilityNodeSet>();
-        resources.remove::<DynamicVisibilityNodeSet>();
 
         resources.remove::<RenderRegistry>();
 

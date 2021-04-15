@@ -49,7 +49,7 @@ const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 1, 3];
 pub struct ExtractedSpriteData {
     pub position: glam::Vec3,
     pub texture_size: glam::Vec2,
-    pub scale: glam::Vec2,
+    pub scale: glam::Vec3,
     pub rotation: glam::Quat,
     pub color: glam::Vec4,
     pub image_view: ResourceArc<ImageViewResource>,

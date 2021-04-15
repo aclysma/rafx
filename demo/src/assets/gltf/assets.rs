@@ -6,6 +6,7 @@ use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler,
 };
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPass, ResourceArc};
+use rafx::rafx_visibility::VisibleBounds;
 use serde::{Deserialize, Serialize};
 use shaders::mesh_frag::MaterialDataStd140;
 use std::sync::Arc;
@@ -105,6 +106,7 @@ pub struct MeshAssetData {
     pub mesh_parts: Vec<MeshPartAssetData>,
     pub vertex_buffer: Handle<BufferAsset>, //Vec<MeshVertex>,
     pub index_buffer: Handle<BufferAsset>,  //Vec<u16>,
+    pub visible_bounds: VisibleBounds,
 }
 
 pub struct MeshAssetPart {

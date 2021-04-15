@@ -1,7 +1,7 @@
 // NOTE(dvd): Inspired by Bevy `bevymark` example (MIT licensed) https://github.com/bevyengine/bevy/blob/81b53d15d4e038261182b8d7c8f65f9a3641fd2d/examples/tools/bevymark.rs
 
 use crate::assets::font::FontAsset;
-use crate::components::{PositionComponent, SpriteComponent};
+use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::features::skybox::SkyboxRenderFeature;
 use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet};
@@ -11,7 +11,7 @@ use crate::phases::{
 };
 use crate::time::TimeState;
 use crate::RenderOptions;
-use glam::{Quat, Vec2, Vec3};
+use glam::Vec3;
 use legion;
 use legion::systems::CommandBuffer;
 use legion::{IntoQuery, Read, Resources, Schedule, SystemBuilder, World, Write};
@@ -19,8 +19,9 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
 use rafx::nodes::{RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange};
+use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
+use rafx::visibility::{CullModel, EntityId, ViewFrustumArc, VisibilityRegion};
 use sdl2::event::Event;
 use sdl2::mouse::MouseButton;
 
@@ -59,6 +60,7 @@ struct SpriteSpawnerComponent {
 
 pub(super) struct RafxmarkScene {
     schedule: Schedule,
+    main_view_frustum: ViewFrustumArc,
 }
 
 impl RafxmarkScene {
@@ -68,6 +70,10 @@ impl RafxmarkScene {
     ) -> Self {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_2d();
+
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+        let main_view_frustum = visibility_region.register_view_frustum();
+        let mut main_view_frustum_copy = main_view_frustum.clone();
 
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
@@ -83,23 +89,20 @@ impl RafxmarkScene {
             .write_resource::<ViewportsResource>()
             .build(move |_, _, viewports_resource, _| {
                 profiling::scope!("update_camera_system");
-                update_main_view_2d(viewports_resource);
+                update_main_view_2d(&mut main_view_frustum_copy, viewports_resource);
             });
 
         let sprite_spawner_system = SystemBuilder::new("sprite_spawner")
             .read_resource::<TimeState>()
+            .read_resource::<VisibilityRegion>()
             .write_resource::<SpriteRenderNodeSet>()
-            .write_resource::<DynamicVisibilityNodeSet>()
             .with_query(<(
                 Read<InputComponent>,
                 Write<SpriteSpawnerComponent>,
                 Write<TextComponent>,
             )>::query())
             .build(
-                move |commands,
-                      world,
-                      (time, sprite_render_nodes, dynamic_visibility_node_set),
-                      queries| {
+                move |commands, world, (time, visibility_region, sprite_render_nodes), queries| {
                     profiling::scope!("sprite_spawner_system");
                     for (input, sprite_spawner, sprite_count_text) in queries.iter_mut(world) {
                         if input.is_left_mouse_button_down {
@@ -108,7 +111,7 @@ impl RafxmarkScene {
                                 commands,
                                 time,
                                 sprite_render_nodes,
-                                dynamic_visibility_node_set,
+                                visibility_region,
                             );
                         }
 
@@ -130,47 +133,44 @@ impl RafxmarkScene {
 
         let velocity_system = SystemBuilder::new("velocity")
             .read_resource::<TimeState>()
-            .with_query(<(Write<PositionComponent>, Write<BodyComponent>)>::query())
+            .with_query(<(Write<TransformComponent>, Write<BodyComponent>)>::query())
             .build(move |_, world, time, queries| {
                 profiling::scope!("velocity_system");
-                for (pos, body) in queries.iter_mut(world) {
-                    pos.position += body.velocity * time.previous_update_dt();
+                for (transform, body) in queries.iter_mut(world) {
+                    transform.translation += body.velocity * time.previous_update_dt();
                 }
             });
 
         let collision_system = SystemBuilder::new("collision")
-            .with_query(<(Write<PositionComponent>, Write<BodyComponent>)>::query())
+            .with_query(<(
+                Write<TransformComponent>,
+                Write<BodyComponent>,
+                Read<VisibilityComponent>,
+            )>::query())
             .build(move |_, world, (), queries| {
                 profiling::scope!("collision_system");
-                for (pos, body) in queries.iter_mut(world) {
-                    if pos.position.x < LEFT {
-                        pos.position.x = LEFT;
+                for (transform, body, visibility) in queries.iter_mut(world) {
+                    if transform.translation.x < LEFT {
+                        transform.translation.x = LEFT;
                         body.velocity.x = -body.velocity.x;
-                    } else if pos.position.x > RIGHT {
-                        pos.position.x = RIGHT;
+                    } else if transform.translation.x > RIGHT {
+                        transform.translation.x = RIGHT;
                         body.velocity.x = -body.velocity.x;
                     }
 
-                    if pos.position.y > TOP {
-                        pos.position.y = TOP;
+                    if transform.translation.y > TOP {
+                        transform.translation.y = TOP;
                         body.velocity.y = -body.velocity.y;
-                    } else if pos.position.y < BOTTOM {
-                        pos.position.y = BOTTOM;
+                    } else if transform.translation.y < BOTTOM {
+                        transform.translation.y = BOTTOM;
                         body.velocity.y = -body.velocity.y;
                     }
-                }
-            });
 
-        let update_render_node_system = SystemBuilder::new("update_render_node")
-            .write_resource::<SpriteRenderNodeSet>()
-            .with_query(<(Write<PositionComponent>, Read<SpriteComponent>)>::query())
-            .build(move |_, world, sprite_render_node_set, queries| {
-                profiling::scope!("update_render_node_system");
-                for (pos, sprite) in queries.iter_mut(world) {
-                    sprite_render_node_set
-                        .get_mut(&sprite.render_node)
-                        .unwrap()
-                        .position = pos.position;
+                    visibility.handle.set_transform(
+                        transform.translation,
+                        transform.rotation,
+                        transform.scale,
+                    );
                 }
             });
 
@@ -196,7 +196,6 @@ impl RafxmarkScene {
             .add_system(gravity_system)
             .add_system(velocity_system)
             .add_system(collision_system)
-            .add_system(update_render_node_system)
             .add_system(print_text_system)
             .build();
 
@@ -214,7 +213,10 @@ impl RafxmarkScene {
             },
         ));
 
-        RafxmarkScene { schedule }
+        RafxmarkScene {
+            schedule,
+            main_view_frustum,
+        }
     }
 }
 
@@ -256,7 +258,7 @@ fn add_sprites(
     commands: &mut CommandBuffer,
     time: &TimeState,
     sprite_render_nodes: &mut SpriteRenderNodeSet,
-    dynamic_visibility_node_set: &mut DynamicVisibilityNodeSet,
+    visibility_region: &VisibilityRegion,
 ) {
     let spawn_count = (SPRITES_PER_SECOND as f32 * time.previous_update_dt()) as usize;
 
@@ -280,31 +282,44 @@ fn add_sprites(
         let alpha = 0.8;
 
         let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
-            position,
-            scale: Vec2::splat(SPRITE_SCALE),
-            rotation: Quat::from_rotation_z(0.0),
             tint,
             alpha,
             image: sprite_spawner.sprite_image.clone(),
         });
 
-        let aabb_info = DynamicAabbVisibilityNode {
-            handle: render_node.as_raw_generic_handle(),
+        let transform_component = TransformComponent {
+            translation: position,
+            scale: glam::Vec3::splat(SPRITE_SCALE),
+            rotation: glam::Quat::from_rotation_z(0.0),
         };
 
-        let visibility_node = dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
-
-        let position_component = PositionComponent { position };
         let sprite_component = SpriteComponent {
-            render_node,
-            visibility_node,
-            alpha,
-            image: sprite_spawner.sprite_image.clone(),
+            render_node: render_node.clone(),
         };
+
         let body_component = BodyComponent { velocity };
 
-        commands.extend(
-            (0..1).map(move |_| (position_component, sprite_component.clone(), body_component)),
+        let entity = commands.push((
+            transform_component.clone(),
+            sprite_component,
+            body_component,
+        ));
+
+        commands.add_component(
+            entity,
+            VisibilityComponent {
+                handle: {
+                    let handle = visibility_region
+                        .register_dynamic_object(EntityId::from(entity), CullModel::quad(64., 64.));
+                    handle.set_transform(
+                        transform_component.translation,
+                        transform_component.rotation,
+                        transform_component.scale,
+                    );
+                    handle.add_feature(render_node.as_raw_generic_handle());
+                    handle
+                },
+            },
         );
     }
 
@@ -312,7 +327,10 @@ fn add_sprites(
 }
 
 #[profiling::function]
-fn update_main_view_2d(viewports_resource: &mut ViewportsResource) {
+fn update_main_view_2d(
+    main_view_frustum: &mut ViewFrustumArc,
+    viewports_resource: &mut ViewportsResource,
+) {
     let main_camera_phase_mask = RenderPhaseMaskBuilder::default()
         .add_render_phase::<DepthPrepassRenderPhase>()
         .add_render_phase::<OpaqueRenderPhase>()
@@ -351,22 +369,34 @@ fn update_main_view_2d(viewports_resource: &mut ViewportsResource) {
         eye.y = eye.y.round();
     }
 
-    let view = glam::Mat4::look_at_rh(eye, Vec3::new(0., 0., 0.), Vec3::new(0.0, 1.0, 0.0));
+    let look_at = Vec3::ZERO;
+    let up = Vec3::Y;
 
-    let proj = glam::Mat4::orthographic_rh(
+    let view = glam::Mat4::look_at_rh(eye, look_at, up);
+
+    let near = 0.01;
+    let far = 2000.0;
+
+    let projection = Projection::Orthographic(OrthographicParameters::new(
         -half_width,
         half_width,
         -half_height,
         half_height,
-        2000.0,
-        0.0,
-    );
+        near,
+        far,
+        DepthRange::InfiniteReverse,
+    ));
+
+    main_view_frustum
+        .set_projection(&projection)
+        .set_transform(eye, look_at, up);
 
     viewports_resource.main_view_meta = Some(RenderViewMeta {
+        view_frustum: main_view_frustum.clone(),
         eye_position: eye,
         view,
-        proj,
-        depth_range: RenderViewDepthRange::new_infinite_reverse(0.0),
+        proj: projection.as_rh_mat4(),
+        depth_range: RenderViewDepthRange::from_projection(&projection),
         render_phase_mask: main_camera_phase_mask,
         render_feature_mask: main_camera_feature_mask,
         debug_name: "main".to_string(),

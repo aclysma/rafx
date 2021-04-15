@@ -4,12 +4,8 @@ use distill::loader::handle::Handle;
 use rafx::base::slab::{DropSlab, DropSlabKey};
 use rafx::nodes::{GenericRenderNodeHandle, RenderFeatureIndex, RenderNodeCount, RenderNodeSet};
 
-//
-// This is boiler-platish
-//
 pub struct MeshRenderNode {
-    pub mesh: Option<Handle<MeshAsset>>,
-    pub transform: glam::Mat4,
+    pub mesh: Handle<MeshAsset>,
 }
 
 #[derive(Clone)]
@@ -38,6 +34,13 @@ impl MeshRenderNodeSet {
         node: MeshRenderNode,
     ) -> MeshRenderNodeHandle {
         MeshRenderNodeHandle(self.meshes.allocate(node))
+    }
+
+    pub fn get(
+        &self,
+        handle: &MeshRenderNodeHandle,
+    ) -> Option<&MeshRenderNode> {
+        self.meshes.get(&handle.0)
     }
 
     pub fn get_mut(

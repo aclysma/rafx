@@ -1,20 +1,22 @@
 use super::MeshRenderFeature;
 use crate::components::{
-    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+    DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
 use crate::phases::ShadowMapRenderPhase;
 use crate::RenderOptions;
-use arrayvec::ArrayVec;
 use fnv::FnvHashMap;
 use legion::*;
+use rafx::framework::visibility::VisibilityRegion;
 use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::graph::{PreparedRenderGraph, RenderGraphImageUsageId};
 use rafx::nodes::{
     ExtractResources, FramePacketBuilder, RenderFeatureMask, RenderFeatureMaskBuilder,
     RenderPhaseMask, RenderPhaseMaskBuilder, RenderView, RenderViewDepthRange, RenderViewSet,
-    VisibilityResult,
 };
-use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use rafx::rafx_visibility::{
+    DepthRange, OrthographicParameters, PerspectiveParameters, Projection,
+};
+use rafx::visibility::ViewFrustumArc;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum LightId {
@@ -27,17 +29,6 @@ pub enum LightId {
 pub enum ShadowMapRenderView {
     Single(RenderView), // width, height of texture
     Cube([RenderView; 6]),
-}
-
-struct RenderViewVisibility {
-    render_view: RenderView,
-    static_visibility: VisibilityResult,
-    dynamic_visibility: VisibilityResult,
-}
-
-enum ShadowMapVisibility {
-    Single(RenderViewVisibility),
-    Cube(ArrayVec<[RenderViewVisibility; 6]>),
 }
 
 #[derive(Default)]
@@ -88,9 +79,8 @@ impl ShadowMapResource {
         &mut self,
         render_view_set: &RenderViewSet,
         extract_resources: &ExtractResources,
+        visibility_region: &VisibilityRegion,
         frame_packet_builder: &FramePacketBuilder,
-        static_visibility_node_set: &mut StaticVisibilityNodeSet,
-        dynamic_visibility_node_set: &mut DynamicVisibilityNodeSet,
     ) {
         self.clear();
 
@@ -104,71 +94,15 @@ impl ShadowMapResource {
         self.shadow_map_render_views = shadow_map_render_views;
         self.shadow_map_image_views.clear();
 
-        let mut shadow_map_visibility_results = Vec::default();
         for render_view in &self.shadow_map_render_views {
             match render_view {
-                ShadowMapRenderView::Single(view) => shadow_map_visibility_results.push(
-                    ShadowMapVisibility::Single(create_render_view_visibility(
-                        static_visibility_node_set,
-                        dynamic_visibility_node_set,
-                        view,
-                    )),
-                ),
+                ShadowMapRenderView::Single(view) => {
+                    frame_packet_builder.query_visibility_and_add_results(&view, visibility_region);
+                }
                 ShadowMapRenderView::Cube(views) => {
-                    shadow_map_visibility_results.push(ShadowMapVisibility::Cube(
-                        [
-                            create_render_view_visibility(
-                                static_visibility_node_set,
-                                dynamic_visibility_node_set,
-                                &views[0],
-                            ),
-                            create_render_view_visibility(
-                                static_visibility_node_set,
-                                dynamic_visibility_node_set,
-                                &views[1],
-                            ),
-                            create_render_view_visibility(
-                                static_visibility_node_set,
-                                dynamic_visibility_node_set,
-                                &views[2],
-                            ),
-                            create_render_view_visibility(
-                                static_visibility_node_set,
-                                dynamic_visibility_node_set,
-                                &views[3],
-                            ),
-                            create_render_view_visibility(
-                                static_visibility_node_set,
-                                dynamic_visibility_node_set,
-                                &views[4],
-                            ),
-                            create_render_view_visibility(
-                                static_visibility_node_set,
-                                dynamic_visibility_node_set,
-                                &views[5],
-                            ),
-                        ]
-                        .into(),
-                    ));
-                }
-            }
-        }
-
-        for shadow_map_visibility_result in shadow_map_visibility_results {
-            match shadow_map_visibility_result {
-                ShadowMapVisibility::Single(view) => {
-                    frame_packet_builder.add_view(
-                        &view.render_view,
-                        &[view.static_visibility, view.dynamic_visibility],
-                    );
-                }
-                ShadowMapVisibility::Cube(views) => {
                     for view in views {
-                        let static_visibility = view.static_visibility;
-                        frame_packet_builder.add_view(
-                            &view.render_view,
-                            &[static_visibility, view.dynamic_visibility],
-                        );
+                        frame_packet_builder
+                            .query_visibility_and_add_results(&view, visibility_region);
                     }
                 }
             }
@@ -198,31 +132,6 @@ impl ShadowMapResource {
             shadow_map_image_views.len()
         );
         self.shadow_map_image_views = shadow_map_image_views;
-    }
-}
-
-fn create_render_view_visibility(
-    static_visibility_node_set: &mut StaticVisibilityNodeSet,
-    dynamic_visibility_node_set: &mut DynamicVisibilityNodeSet,
-    render_view: &RenderView,
-) -> RenderViewVisibility {
-    let static_visibility = static_visibility_node_set.calculate_static_visibility(&render_view);
-    let dynamic_visibility = dynamic_visibility_node_set.calculate_dynamic_visibility(&render_view);
-
-    log::trace!(
-        "shadow view static node count: {}",
-        static_visibility.handles.len()
-    );
-
-    log::trace!(
-        "shadow view dynamic node count: {}",
-        dynamic_visibility.handles.len()
-    );
-
-    RenderViewVisibility {
-        render_view: render_view.clone(),
-        static_visibility,
-        dynamic_visibility,
     }
 }
 
@@ -275,27 +184,41 @@ fn calculate_shadow_map_views(
 
     const SHADOW_MAP_RESOLUTION: u32 = 1024;
 
-    let mut query = <(Entity, Read<SpotLightComponent>, Read<PositionComponent>)>::query();
-    for (entity, light, position) in query.iter(world) {
+    let mut query = <(Entity, Read<SpotLightComponent>, Read<TransformComponent>)>::query();
+    for (entity, light, transform) in query.iter(world) {
         //TODO: Transform direction by rotation
-        let eye_position = position.position;
-        let light_to = position.position + light.direction;
+        let eye_position = transform.translation;
+        let light_to = transform.translation + light.direction;
 
         let view = glam::Mat4::look_at_rh(eye_position, light_to, glam::Vec3::new(0.0, 0.0, 1.0));
 
         let near_plane = 0.25;
         let far_plane = 100.0;
-        let proj = perspective_rh(light.spotlight_half_angle * 2.0, 1.0, far_plane, near_plane);
+
+        let view_frustum: ViewFrustumArc = light.view_frustum.clone();
+        let projection = Projection::Perspective(PerspectiveParameters::new(
+            light.spotlight_half_angle * 2.0,
+            1.0,
+            near_plane,
+            far_plane,
+            DepthRange::Reverse,
+        ));
+        view_frustum.set_projection(&projection).set_transform(
+            eye_position,
+            light_to,
+            glam::Vec3::new(0.0, 0.0, 1.0),
+        );
 
         let view = render_view_set.create_view(
+            view_frustum.clone(),
             eye_position,
             view,
-            proj,
+            projection.as_rh_mat4(),
             (SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION),
-            RenderViewDepthRange::new_reverse(near_plane, far_plane),
+            RenderViewDepthRange::from_projection(&projection),
             shadow_map_phase_mask,
             shadow_map_feature_mask,
-            "shadow_map".to_string(),
+            "shadow_map_spotlight".to_string(),
         );
 
         let index = shadow_map_render_views.len();
@@ -316,24 +239,33 @@ fn calculate_shadow_map_views(
         let near_plane = 0.25;
         let far_plane = 100.0;
         let ortho_projection_size = 10.0;
-        let proj = glam::Mat4::orthographic_rh(
+        let view_frustum: ViewFrustumArc = light.view_frustum.clone();
+        let projection = Projection::Orthographic(OrthographicParameters::new(
             -ortho_projection_size,
             ortho_projection_size,
             -ortho_projection_size,
             ortho_projection_size,
-            far_plane,
             near_plane,
+            far_plane,
+            DepthRange::Reverse,
+        ));
+
+        view_frustum.set_projection(&projection).set_transform(
+            eye_position,
+            glam::Vec3::ZERO,
+            glam::Vec3::new(0.0, 0.0, 1.0),
         );
 
         let view = render_view_set.create_view(
+            view_frustum,
             eye_position,
             view,
-            proj,
+            projection.as_rh_mat4(),
             (SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION),
-            RenderViewDepthRange::new_reverse(near_plane, far_plane),
+            RenderViewDepthRange::from_projection(&projection),
             shadow_map_phase_mask,
             shadow_map_feature_mask,
-            "shadow_map".to_string(),
+            "shadow_map_directional".to_string(),
         );
 
         let index = shadow_map_render_views.len();
@@ -353,47 +285,63 @@ fn calculate_shadow_map_views(
         (glam::Vec3::Z * -1.0, glam::Vec3::Y),
     ];
 
-    let mut query = <(Entity, Read<PointLightComponent>, Read<PositionComponent>)>::query();
-    for (entity, light, position) in query.iter(world) {
+    let mut query = <(Entity, Read<PointLightComponent>, Read<TransformComponent>)>::query();
+    for (entity, light, transform) in query.iter(world) {
         fn cube_map_face(
             phase_mask: RenderPhaseMask,
             feature_mask: RenderFeatureMask,
             render_view_set: &RenderViewSet,
             light: &PointLightComponent,
             position: glam::Vec3,
+            face_idx: usize,
             cube_map_view_directions: &(glam::Vec3, glam::Vec3),
         ) -> RenderView {
-            //NOTE: Cubemaps always use LH
+            let near = 0.25;
+            let far = light.range;
+
+            let view_frustum: ViewFrustumArc = light.view_frustums[face_idx].clone();
+            let projection = Projection::Perspective(PerspectiveParameters::new(
+                std::f32::consts::FRAC_PI_2,
+                1.0,
+                near,
+                far,
+                DepthRange::Reverse,
+            ));
+
+            view_frustum.set_projection(&projection).set_transform(
+                position,
+                position + cube_map_view_directions.0,
+                cube_map_view_directions.1,
+            );
+
+            // NOTE: Cubemaps always use LH
             let view = glam::Mat4::look_at_lh(
                 position,
                 position + cube_map_view_directions.0,
                 cube_map_view_directions.1,
             );
 
-            let near = 0.25;
-            let far = light.range;
-            let proj = glam::Mat4::perspective_lh(std::f32::consts::FRAC_PI_2, 1.0, far, near);
-
             render_view_set.create_view(
+                view_frustum,
                 position,
                 view,
-                proj,
+                projection.as_lh_mat4(),
                 (SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION),
-                RenderViewDepthRange::new_reverse(near, far),
+                RenderViewDepthRange::from_projection(&projection),
                 phase_mask,
                 feature_mask,
-                "shadow_map".to_string(),
+                format!("shadow_map_point_light_face_{}", face_idx),
             )
         }
 
         #[rustfmt::skip]
         let cube_map_views = [
-            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[0]),
-            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[1]),
-            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[2]),
-            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[3]),
-            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[4]),
-            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, position.position, &cube_map_view_directions[5]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, transform.translation, 0, &cube_map_view_directions[0]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, transform.translation, 1, &cube_map_view_directions[1]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, transform.translation, 2, &cube_map_view_directions[2]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, transform.translation, 3, &cube_map_view_directions[3]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, transform.translation, 4, &cube_map_view_directions[4]),
+            cube_map_face(shadow_map_phase_mask, shadow_map_feature_mask, &render_view_set, light, transform.translation, 5, &cube_map_view_directions[5]),
         ];
 
         let index = shadow_map_render_views.len();

@@ -1,8 +1,8 @@
 use crate::assets::gltf::MeshAsset;
-use crate::components::SpotLightComponent;
 use crate::components::{
-    DirectionalLightComponent, MeshComponent, PointLightComponent, PositionComponent,
+    DirectionalLightComponent, MeshComponent, PointLightComponent, TransformComponent,
 };
+use crate::components::{SpotLightComponent, VisibilityComponent};
 use crate::features::debug3d::Debug3DRenderFeature;
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::features::mesh::{MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet};
@@ -15,122 +15,175 @@ use crate::phases::{
 };
 use crate::time::TimeState;
 use crate::RenderOptions;
+use distill::loader::handle::Handle;
 use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetManager;
 use rafx::nodes::{RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange};
+use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
+use rafx::visibility::{CullModel, EntityId, ViewFrustumArc, VisibilityRegion};
+use rand::{thread_rng, Rng};
 
-pub(super) struct ShadowsScene {}
+pub(super) struct ShadowsScene {
+    main_view_frustum: ViewFrustumArc,
+}
 
 impl ShadowsScene {
     pub(super) fn new(
         world: &mut World,
         resources: &Resources,
     ) -> Self {
+        let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
+        let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
+
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
 
         let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
-        let mut dynamic_visibility_node_set =
-            resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
+
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+
+        let floor_mesh_asset =
+            asset_resource.load_asset_path::<MeshAsset, _>("blender/cement_floor.glb");
+        let container_1_asset = asset_resource.load_asset_path("blender/storage_container1.glb");
+        let container_2_asset = asset_resource.load_asset_path("blender/storage_container2.glb");
+        let blue_icosphere_asset =
+            asset_resource.load_asset::<MeshAsset>("d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into());
+
+        let mut load_visible_bounds = |asset_handle: &Handle<MeshAsset>| {
+            asset_manager
+                .wait_for_asset_to_load(asset_handle, &mut asset_resource, "")
+                .unwrap();
+
+            CullModel::VisibleBounds(
+                asset_manager
+                    .committed_asset(&floor_mesh_asset)
+                    .unwrap()
+                    .inner
+                    .asset_data
+                    .visible_bounds,
+            )
+        };
 
         //
         // Add a floor
         //
         {
-            let floor_mesh = {
-                let asset_resource = resources.get::<AssetResource>().unwrap();
-                asset_resource.load_asset_path::<MeshAsset, _>("blender/cement_floor.glb")
-            };
-
             let position = Vec3::new(0.0, 0.0, -1.0);
 
-            let render_node = mesh_render_nodes.register_mesh(MeshRenderNode {
-                transform: glam::Mat4::from_translation(position),
-                mesh: Some(floor_mesh.clone()),
+            let floor_mesh = mesh_render_nodes.register_mesh(MeshRenderNode {
+                mesh: floor_mesh_asset.clone(),
             });
 
-            // User calls functions to register visibility objects
-            // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-            let visibility_node =
-                dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
-                    handle: render_node.as_raw_generic_handle(),
-                    // aabb bounds
-                });
-
-            let position_component = PositionComponent { position };
-            let mesh_component = MeshComponent {
-                render_node,
-                visibility_node,
-                mesh: Some(floor_mesh.clone()),
+            let transform_component = TransformComponent {
+                translation: position,
+                ..Default::default()
             };
 
-            world.extend((0..1).map(|_| (position_component, mesh_component.clone())));
+            let mesh_component = MeshComponent {
+                render_node: floor_mesh.clone(),
+            };
+
+            let entity = world.push((transform_component.clone(), mesh_component));
+            let mut entry = world.entry(entity).unwrap();
+            entry.add_component(VisibilityComponent {
+                handle: {
+                    let handle = visibility_region.register_static_object(
+                        EntityId::from(entity),
+                        load_visible_bounds(&floor_mesh_asset),
+                    );
+                    handle.set_transform(
+                        transform_component.translation,
+                        transform_component.rotation,
+                        transform_component.scale,
+                    );
+                    handle.add_feature(floor_mesh.as_raw_generic_handle());
+                    handle
+                },
+            });
         }
 
         //
         // Add some meshes
         //
         {
-            let cube_meshes = {
-                let asset_resource = resources.get::<AssetResource>().unwrap();
+            let example_meshes = {
                 let mut meshes = Vec::default();
 
                 // container1
-                meshes.push(
-                    asset_resource.load_asset_path("blender/storage_container1.glb"),
-                    //.load_asset::<MeshAsset>(asset_uuid!("b461ed48-d2f8-44af-bcda-c5b64633c13d")),
-                );
+                meshes.push(mesh_render_nodes.register_mesh(MeshRenderNode {
+                    mesh: container_1_asset,
+                }));
 
                 // container2
-                meshes.push(
-                    asset_resource.load_asset_path("blender/storage_container2.glb"),
-                    //.load_asset::<MeshAsset>(asset_uuid!("04ea64c6-d4da-4ace-83e7-56f4d60524c1")),
-                );
+                meshes.push(mesh_render_nodes.register_mesh(MeshRenderNode {
+                    mesh: container_2_asset,
+                }));
 
                 // blue icosphere - load by UUID since it's one of several meshes in the file
-                meshes.push(
-                    asset_resource
-                        .load_asset::<MeshAsset>("d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into()),
-                );
+                meshes.push(mesh_render_nodes.register_mesh(MeshRenderNode {
+                    mesh: blue_icosphere_asset,
+                }));
 
                 meshes
             };
 
-            for i in 0..200 {
+            let mut rng = thread_rng();
+            for i in 0..1000 {
                 let position = Vec3::new(((i / 9) * 3) as f32, ((i % 9) * 3) as f32, 0.0);
-                let cube_mesh = cube_meshes[i % cube_meshes.len()].clone();
+                let mesh_render_node = example_meshes[i % example_meshes.len()].clone();
+                let asset_handle = &mesh_render_nodes.get(&mesh_render_node).unwrap().mesh;
 
-                let render_node = mesh_render_nodes.register_mesh(MeshRenderNode {
-                    transform: glam::Mat4::from_translation(position),
-                    mesh: Some(cube_mesh.clone()),
-                });
-
-                // User calls functions to register visibility objects
-                // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-                let visibility_node =
-                    dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
-                        handle: render_node.as_raw_generic_handle(),
-                        // aabb bounds
-                    });
-
-                let position_component = PositionComponent { position };
-                let mesh_component = MeshComponent {
-                    render_node,
-                    visibility_node,
-                    mesh: Some(cube_mesh.clone()),
+                let rand_scale_z = rng.gen_range(0.8, 1.2);
+                let offset = rand_scale_z - 1.;
+                let transform_component = TransformComponent {
+                    translation: position + Vec3::new(0., 0., offset),
+                    scale: Vec3::new(
+                        rng.gen_range(0.8, 1.2),
+                        rng.gen_range(0.8, 1.2),
+                        rand_scale_z,
+                    ),
+                    ..Default::default()
                 };
 
-                world.extend((0..1).map(|_| (position_component, mesh_component.clone())));
+                let mesh_component = MeshComponent {
+                    render_node: mesh_render_node.clone(),
+                };
+
+                let entity = world.push((transform_component.clone(), mesh_component));
+                let mut entry = world.entry(entity).unwrap();
+                entry.add_component(VisibilityComponent {
+                    handle: {
+                        let handle = visibility_region.register_dynamic_object(
+                            EntityId::from(entity),
+                            load_visible_bounds(&asset_handle),
+                        );
+                        handle.set_transform(
+                            transform_component.translation,
+                            transform_component.rotation,
+                            transform_component.scale,
+                        );
+                        handle.add_feature(mesh_render_node.as_raw_generic_handle());
+                        handle
+                    },
+                });
             }
         }
 
         //
         // POINT LIGHT
         //
+        let view_frustums = [
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+        ];
         super::add_point_light(
             resources,
             world,
@@ -140,6 +193,7 @@ impl ShadowsScene {
                 color: [0.0, 1.0, 0.0, 1.0].into(),
                 intensity: 50.0,
                 range: 25.0,
+                view_frustums,
             },
         );
 
@@ -156,6 +210,7 @@ impl ShadowsScene {
                 direction: light_direction,
                 intensity: 1.0,
                 color: [0.0, 0.0, 1.0, 1.0].into(),
+                view_frustum: visibility_region.register_view_frustum(),
             },
         );
 
@@ -175,10 +230,13 @@ impl ShadowsScene {
                 range: 12.0,
                 color: [1.0, 0.0, 0.0, 1.0].into(),
                 intensity: 500.0,
+                view_frustum: visibility_region.register_view_frustum(),
             },
         );
 
-        ShadowsScene {}
+        let main_view_frustum = visibility_region.register_view_frustum();
+
+        ShadowsScene { main_view_frustum }
     }
 }
 
@@ -195,7 +253,12 @@ impl super::TestScene for ShadowsScene {
             let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
             let render_options = resources.get::<RenderOptions>().unwrap();
 
-            update_main_view_3d(&*time_state, &*render_options, &mut *viewports_resource);
+            update_main_view_3d(
+                &*time_state,
+                &*render_options,
+                &mut self.main_view_frustum,
+                &mut *viewports_resource,
+            );
         }
 
         {
@@ -225,8 +288,8 @@ impl super::TestScene for ShadowsScene {
 
         {
             let time_state = resources.get::<TimeState>().unwrap();
-            let mut query = <(Write<PositionComponent>, Read<PointLightComponent>)>::query();
-            for (position, _light) in query.iter_mut(world) {
+            let mut query = <(Write<TransformComponent>, Read<PointLightComponent>)>::query();
+            for (transform, _light) in query.iter_mut(world) {
                 const LIGHT_XY_DISTANCE: f32 = 6.0;
                 const LIGHT_Z: f32 = 3.5;
                 const LIGHT_ROTATE_SPEED: f32 = 0.5;
@@ -242,7 +305,7 @@ impl super::TestScene for ShadowsScene {
                     //0.2
                     //2.0
                 );
-                position.position = light_from;
+                transform.translation = light_from;
             }
         }
     }
@@ -252,6 +315,7 @@ impl super::TestScene for ShadowsScene {
 fn update_main_view_3d(
     time_state: &TimeState,
     render_options: &RenderOptions,
+    main_view_frustum: &mut ViewFrustumArc,
     viewports_resource: &mut ViewportsResource,
 ) {
     let phase_mask = RenderPhaseMaskBuilder::default()
@@ -295,20 +359,31 @@ fn update_main_view_3d(
     let aspect_ratio = viewports_resource.main_window_size.width as f32
         / viewports_resource.main_window_size.height.max(1) as f32;
 
-    let view = glam::Mat4::look_at_rh(eye, glam::Vec3::ZERO, glam::Vec3::new(0.0, 0.0, 1.0));
+    let look_at = glam::Vec3::ZERO;
+    let up = glam::Vec3::new(0.0, 0.0, 1.0);
+    let view = glam::Mat4::look_at_rh(eye, look_at, up);
 
+    let fov_y_radians = std::f32::consts::FRAC_PI_4;
     let near_plane = 0.01;
-    let proj = glam::Mat4::perspective_infinite_reverse_rh(
-        std::f32::consts::FRAC_PI_4,
+
+    let projection = Projection::Perspective(PerspectiveParameters::new(
+        fov_y_radians,
         aspect_ratio,
         near_plane,
-    );
+        10000.,
+        DepthRange::InfiniteReverse,
+    ));
+
+    main_view_frustum
+        .set_projection(&projection)
+        .set_transform(eye, look_at, up);
 
     viewports_resource.main_view_meta = Some(RenderViewMeta {
+        view_frustum: main_view_frustum.clone(),
         eye_position: eye,
         view,
-        proj,
-        depth_range: RenderViewDepthRange::new_infinite_reverse(near_plane),
+        proj: projection.as_rh_mat4(),
+        depth_range: RenderViewDepthRange::from_projection(&projection),
         render_phase_mask: phase_mask,
         render_feature_mask: main_camera_feature_mask,
         debug_name: "main".to_string(),

@@ -1,5 +1,5 @@
 use crate::assets::ldtk::LdtkProjectAsset;
-use crate::components::{PositionComponent, SpriteComponent};
+use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet};
 use crate::features::text::TextRenderFeature;
@@ -17,13 +17,13 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ImageAsset};
 use rafx::distill::loader::handle::Handle;
 use rafx::nodes::{RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange};
+use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{
-    DynamicAabbVisibilityNode, DynamicVisibilityNodeSet, StaticVisibilityNodeSet,
-};
+use rafx::visibility::{CullModel, EntityId, ViewFrustumArc, VisibilityRegion};
 
 pub(super) struct SpriteScene {
     ldtk_handle: Handle<LdtkProjectAsset>,
+    main_view_frustum: ViewFrustumArc,
 }
 
 impl SpriteScene {
@@ -33,6 +33,8 @@ impl SpriteScene {
     ) -> Self {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_2d();
+
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
@@ -56,39 +58,48 @@ impl SpriteScene {
             let alpha = ((i / 5) as f32 * 0.1).min(1.0);
 
             let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
-            let mut dynamic_visibility_node_set =
-                resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
 
             let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
-                position,
-                scale: glam::Vec2::splat(0.125),
-                rotation: glam::Quat::from_rotation_z(0.0),
                 tint: glam::Vec3::new(1.0, 1.0, 1.0),
                 alpha,
                 image: sprite_image.clone(),
             });
 
-            let aabb_info = DynamicAabbVisibilityNode {
-                handle: render_node.as_raw_generic_handle(),
-                // aabb bounds
+            let transform_component = TransformComponent {
+                translation: position,
+                scale: glam::Vec3::splat(0.125),
+                rotation: glam::Quat::from_rotation_z(0.0),
             };
 
-            // User calls functions to register visibility objects
-            // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-            let visibility_node = dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
-
-            let position_component = PositionComponent { position };
             let sprite_component = SpriteComponent {
-                render_node,
-                visibility_node,
-                alpha,
-                image: sprite_image.clone(),
+                render_node: render_node.clone(),
             };
 
-            world.extend((0..1).map(|_| (position_component, sprite_component.clone())));
+            let entity = world.push((transform_component.clone(), sprite_component));
+            let mut entry = world.entry(entity).unwrap();
+            entry.add_component(VisibilityComponent {
+                handle: {
+                    let handle = visibility_region.register_dynamic_object(
+                        EntityId::from(entity),
+                        CullModel::quad(800., 450.),
+                    );
+                    handle.set_transform(
+                        transform_component.translation,
+                        transform_component.rotation,
+                        transform_component.scale,
+                    );
+                    handle.add_feature(render_node.as_raw_generic_handle());
+                    handle
+                },
+            });
         }
 
-        SpriteScene { ldtk_handle }
+        let main_view_frustum = visibility_region.register_view_frustum();
+
+        SpriteScene {
+            ldtk_handle,
+            main_view_frustum,
+        }
     }
 }
 
@@ -102,7 +113,11 @@ impl super::TestScene for SpriteScene {
             let time_state = resources.get::<TimeState>().unwrap();
             let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
 
-            update_main_view_2d(&*time_state, &mut *viewports_resource);
+            update_main_view_2d(
+                &*time_state,
+                &mut self.main_view_frustum,
+                &mut *viewports_resource,
+            );
         }
 
         // Wait until we have loaded the tileset. If we have, then set it.
@@ -118,14 +133,13 @@ impl super::TestScene for SpriteScene {
                 if asset.is_some() {
                     let mut tile_layer_render_nodes =
                         resources.get_mut::<TileLayerRenderNodeSet>().unwrap();
-                    let mut static_visibility_nodes =
-                        resources.get_mut::<StaticVisibilityNodeSet>().unwrap();
+                    let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
                     tile_layer_resource.set_project(
                         &self.ldtk_handle,
                         &*asset_manager,
                         &mut *tile_layer_render_nodes,
-                        &mut *static_visibility_nodes,
+                        &visibility_region,
                     );
                 }
             }
@@ -145,6 +159,7 @@ impl super::TestScene for SpriteScene {
 #[profiling::function]
 fn update_main_view_2d(
     time_state: &TimeState,
+    main_view_frustum: &mut ViewFrustumArc,
     viewports_resource: &mut ViewportsResource,
 ) {
     let main_camera_phase_mask = RenderPhaseMaskBuilder::default()
@@ -195,26 +210,34 @@ fn update_main_view_2d(
         eye.y = eye.y.round();
     }
 
-    let view = glam::Mat4::look_at_rh(
-        eye,
-        eye.truncate().extend(0.0),
-        glam::Vec3::new(0.0, 1.0, 0.0),
-    );
+    let look_at = eye.truncate().extend(0.0);
+    let up = glam::Vec3::new(0.0, 1.0, 0.0);
 
-    let proj = glam::Mat4::orthographic_rh(
+    let view = glam::Mat4::look_at_rh(eye, look_at, up);
+
+    let near = 0.01;
+    let far = 2000.0;
+
+    let projection = Projection::Orthographic(OrthographicParameters::new(
         -half_width,
         half_width,
         -half_height,
         half_height,
-        2000.0,
-        0.0,
-    );
+        near,
+        far,
+        DepthRange::InfiniteReverse,
+    ));
+
+    main_view_frustum
+        .set_projection(&projection)
+        .set_transform(eye, look_at, up);
 
     viewports_resource.main_view_meta = Some(RenderViewMeta {
+        view_frustum: main_view_frustum.clone(),
         eye_position: eye,
         view,
-        proj,
-        depth_range: RenderViewDepthRange::new_infinite_reverse(0.0),
+        proj: projection.as_rh_mat4(),
+        depth_range: RenderViewDepthRange::from_projection(&projection),
         render_phase_mask: main_camera_phase_mask,
         render_feature_mask: main_camera_feature_mask,
         debug_name: "main".to_string(),
