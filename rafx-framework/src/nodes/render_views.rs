@@ -2,7 +2,9 @@ use super::registry::{RenderPhaseMaskInnerType, MAX_RENDER_PHASE_COUNT};
 use super::{RenderPhase, RenderPhaseIndex};
 use crate::nodes::registry::{RenderFeatureMaskInnerType, MAX_RENDER_FEATURE_COUNT};
 use crate::nodes::{RenderFeature, RenderFeatureIndex};
+use crate::visibility::ViewFrustumArc;
 use glam::{Mat4, Vec3};
+use rafx_visibility::{DepthRange, Projection};
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -94,6 +96,7 @@ pub struct RenderViewSet {
 impl RenderViewSet {
     pub fn create_view(
         &self,
+        view_frustum: ViewFrustumArc,
         eye_position: Vec3,
         view: Mat4,
         proj: Mat4,
@@ -105,6 +108,7 @@ impl RenderViewSet {
     ) -> RenderView {
         let view_index = self.view_count.fetch_add(1, Ordering::Release);
         RenderView::new(
+            view_frustum,
             view_index,
             eye_position,
             view,
@@ -124,6 +128,7 @@ impl RenderViewSet {
 
 ////////////////// Views //////////////////
 pub struct RenderViewInner {
+    view_frustum: ViewFrustumArc,
     eye_position: Vec3,
     view: Mat4,
     proj: Mat4,
@@ -154,6 +159,17 @@ impl RenderViewDepthRange {
             near,
             far: Some(far),
             reversed: false,
+        }
+    }
+
+    pub fn from_projection(projection: &Projection) -> Self {
+        let near = projection.near_distance();
+        let far = projection.far_distance();
+        match projection.depth_range() {
+            DepthRange::Normal => RenderViewDepthRange::new(near, far),
+            DepthRange::Infinite => RenderViewDepthRange::new_infinite(near),
+            DepthRange::Reverse => RenderViewDepthRange::new_reverse(near, far),
+            DepthRange::InfiniteReverse => RenderViewDepthRange::new_infinite_reverse(near),
         }
     }
 
@@ -214,6 +230,7 @@ pub struct RenderView {
 
 impl RenderView {
     pub fn new(
+        view_frustum: ViewFrustumArc,
         view_index: RenderViewIndex,
         eye_position: Vec3,
         view: Mat4,
@@ -228,6 +245,7 @@ impl RenderView {
 
         log::trace!("Allocate view {} {}", debug_name, view_index);
         let inner = RenderViewInner {
+            view_frustum,
             eye_position,
             view,
             proj,
@@ -244,6 +262,10 @@ impl RenderView {
         RenderView {
             inner: Arc::new(inner),
         }
+    }
+
+    pub fn view_frustum(&self) -> ViewFrustumArc {
+        self.inner.view_frustum.clone()
     }
 
     pub fn eye_position(&self) -> Vec3 {
