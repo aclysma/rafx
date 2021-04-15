@@ -4,7 +4,7 @@ use crate::demo_feature::{
     ExtractedPerViewNodeDemoData,
 };
 use crate::DemoComponent;
-use crate::PositionComponent;
+use crate::TransformComponent;
 use legion::*;
 use rafx::nodes::{
     ExtractJob, FramePacket, PrepareJob, RenderFeature, RenderFeatureIndex,
@@ -41,7 +41,7 @@ impl ExtractJob for DemoExtractJob {
         // pulled from an ECS as in this example). The intent is that the extract process can use
         // visibility info to index directly into the render nodes.
         //
-        let mut query = <(Read<PositionComponent>, Read<DemoComponent>)>::query();
+        let mut query = <(Read<TransformComponent>, Read<DemoComponent>)>::query();
 
         for (position_component, demo_component) in query.iter(&*world) {
             let render_node = demo_render_nodes

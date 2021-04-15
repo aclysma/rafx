@@ -1,5 +1,5 @@
 use crate::demo_phases::*;
-use glam::Vec3;
+use glam::{Quat, Vec3};
 use legion::*;
 use rafx::nodes::{
     ExtractJobSet, FramePacketBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
@@ -11,7 +11,7 @@ use rafx::nodes::{
 use rafx::visibility::*;
 
 #[derive(Copy, Clone)]
-pub struct PositionComponent {
+pub struct TransformComponent {
     pub position: Vec3,
 }
 
@@ -22,14 +22,19 @@ use rafx::api::{
 };
 use rafx::nodes::RenderViewDepthRange;
 use rafx_framework::{GraphicsPipelineRenderTargetMeta, RenderResources};
+use rafx_visibility::{DepthRange, OrthographicParameters, PerspectiveParameters, Projection};
 
 mod demo_phases;
 
 #[derive(Clone)]
 pub struct DemoComponent {
     pub render_node: DemoRenderNodeHandle,
-    pub visibility_node: DynamicAabbVisibilityNodeHandle,
     pub alpha: f32,
+}
+
+#[derive(Clone)]
+pub struct VisibilityComponent {
+    pub handle: VisibilityObjectArc,
 }
 
 // This example is not really meant for running, just to show how the API works. It compiles but it
@@ -95,8 +100,38 @@ fn main() {
             .build();
 
         // In theory we could pre-cook static visibility in chunks and stream them in
-        let mut static_visibility_node_set = StaticVisibilityNodeSet::default();
-        let mut dynamic_visibility_node_set = DynamicVisibilityNodeSet::default();
+        let visibility_region = VisibilityRegion::new();
+
+        let frustum_width = 800;
+        let frustum_height = 600;
+        let near = 0.1;
+        let far = 100.0;
+
+        let fov_y_radians = std::f32::consts::FRAC_PI_4;
+        let main_camera_projection = Projection::Perspective(PerspectiveParameters::new(
+            fov_y_radians,
+            16. / 9.,
+            near,
+            far,
+            DepthRange::InfiniteReverse,
+        ));
+
+        let mut main_camera_view_frustum = visibility_region.register_view_frustum();
+        main_camera_view_frustum.set_projection(&main_camera_projection);
+
+        let minimap_projection = Projection::Orthographic(OrthographicParameters::new(
+            0.0,
+            frustum_width as f32,
+            0.0,
+            frustum_height as f32,
+            near,
+            far,
+            DepthRange::Normal,
+        ));
+
+        let minimap_view_frustum = visibility_region.register_dynamic_view_frustum();
+        minimap_view_frustum.set_projection(&minimap_projection);
+
         let demo_render_nodes = DemoRenderNodeSet::default();
 
         //
@@ -132,23 +167,27 @@ fn main() {
                     alpha,
                 });
 
-                // User calls functions to register visibility objects
-                // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
-                let visibility_node =
-                    dynamic_visibility_node_set.register_dynamic_aabb(DynamicAabbVisibilityNode {
-                        handle: render_node.as_raw_generic_handle(),
-                        // aabb bounds
-                    });
-
-                let position_component = PositionComponent { position };
+                let position_component = TransformComponent { position };
                 let demo_component = DemoComponent {
-                    render_node,
-                    visibility_node,
+                    render_node: render_node.clone(),
                     alpha,
                 };
 
-                let entity =
-                    world.extend((0..1).map(|_| (position_component, demo_component.clone())))[0];
+                let entity = world.push((position_component, demo_component));
+                let mut entry = world.entry(entity).unwrap();
+                entry.add_component(VisibilityComponent {
+                    handle: {
+                        // User calls functions to register visibility objects
+                        // - This is a retained API because presumably we don't want to rebuild spatial structures every frame
+                        let handle = visibility_region.register_dynamic_object(
+                            EntityId::from(entity),
+                            CullModel::Sphere(1.8),
+                        );
+                        handle.set_transform(position, Quat::IDENTITY, Vec3::ONE);
+                        handle.add_feature(render_node.as_raw_generic_handle());
+                        handle
+                    },
+                });
 
                 println!("create entity {:?}", entity);
             }
@@ -171,37 +210,25 @@ fn main() {
             // Calculate user camera
             //
 
+            let look_at = glam::Vec3::from([0.0, 0.0, 0.0]);
+            let up = glam::Vec3::from([0.0, 1.0, 0.0]);
             let eye_position = glam::Vec3::from([0.0, 0.0, 5.0]);
+
             // User calls function to create "main" view
-            let view = glam::Mat4::look_at_rh(
-                eye_position,
-                glam::Vec3::from([0.0, 0.0, 0.0]),
-                glam::Vec3::from([0.0, 1.0, 0.0]),
-            );
+            let view = glam::Mat4::look_at_rh(eye_position, look_at, up);
 
-            let frustum_width = 800;
-            let frustum_height = 600;
-            let near = 0.1;
-            let far = 100.0;
-            let projection = glam::Mat4::orthographic_rh(
-                0.0,
-                frustum_width as f32,
-                0.0,
-                frustum_height as f32,
-                near,
-                far,
-            );
-
-            let view_proj = projection * view;
+            let view_proj = main_camera_projection.as_rh_mat4() * view;
 
             println!("eye is at {}", view_proj);
 
+            main_camera_view_frustum.set_transform(eye_position, look_at, up);
             let main_view = render_view_set.create_view(
+                main_camera_view_frustum.clone(),
                 eye_position,
                 view_proj,
                 glam::Mat4::IDENTITY,
                 (frustum_width, frustum_height),
-                RenderViewDepthRange::new(near, far),
+                RenderViewDepthRange::from_projection(&main_camera_projection),
                 main_camera_render_phase_mask,
                 main_camera_render_feature_mask,
                 "main".to_string(),
@@ -217,8 +244,9 @@ fn main() {
             // User could call function to calculate visibility of static objects for FPS camera early to reduce
             // future critical-path work (to reduce latency). The bungie talk took a volume of possible camera
             // positions instead of a single position
-            let main_view_static_visibility_result =
-                static_visibility_node_set.calculate_static_visibility(&main_view); // return task?
+            {
+                let _ = main_camera_view_frustum.query_visibility().unwrap();
+            }
 
             //
             // Simulation would go here
@@ -227,38 +255,20 @@ fn main() {
             //
             // Figure out other views (example: minimap, shadow maps, etc.)
             //
+
+            let view_proj = minimap_projection.as_rh_mat4() * view;
+
+            minimap_view_frustum.set_transform(eye_position, look_at, up);
             let minimap_view = render_view_set.create_view(
+                minimap_view_frustum.clone(),
                 eye_position,
                 view_proj,
                 glam::Mat4::IDENTITY,
                 (frustum_width, frustum_height),
-                RenderViewDepthRange::new(near, far),
+                RenderViewDepthRange::from_projection(&minimap_projection),
                 minimap_render_phase_mask,
                 minimap_render_feature_mask,
                 "minimap".to_string(),
-            );
-
-            //
-            // Finish visibility calculations for all views. Views can be processed in their own jobs.
-            //
-
-            // User calls functions to start jobs that calculate dynamic visibility for FPS view
-            let main_view_dynamic_visibility_result =
-                dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
-
-            // User calls functions to start jobs that calculate static and dynamic visibility for all other views
-            let minimap_static_visibility_result =
-                static_visibility_node_set.calculate_static_visibility(&minimap_view);
-            let minimap_dynamic_visibility_result =
-                dynamic_visibility_node_set.calculate_dynamic_visibility(&minimap_view);
-
-            log::trace!(
-                "main view static node count: {}",
-                main_view_static_visibility_result.handles.len()
-            );
-            log::trace!(
-                "main view dynamic node count: {}",
-                main_view_dynamic_visibility_result.handles.len()
             );
 
             //
@@ -279,21 +289,9 @@ fn main() {
             };
 
             // After these jobs end, user calls functions to start jobs that extract data
-            frame_packet_builder.add_view(
-                &main_view,
-                &[
-                    main_view_static_visibility_result,
-                    main_view_dynamic_visibility_result,
-                ],
-            );
-
-            frame_packet_builder.add_view(
-                &minimap_view,
-                &[
-                    minimap_static_visibility_result,
-                    minimap_dynamic_visibility_result,
-                ],
-            );
+            frame_packet_builder.query_visibility_and_add_results(&main_view, &visibility_region);
+            frame_packet_builder
+                .query_visibility_and_add_results(&minimap_view, &visibility_region);
 
             let render_views = vec![main_view.clone(), minimap_view.clone()];
 
