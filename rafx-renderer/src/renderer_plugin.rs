@@ -8,7 +8,6 @@ use rafx_framework::nodes::{
     ExtractJob, ExtractResources, FramePacketBuilder, RenderRegistryBuilder, RenderView,
     RenderViewSet,
 };
-use rafx_framework::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 use rafx_framework::RenderResources;
 
 pub trait RendererPlugin: Send + Sync {
@@ -65,8 +64,6 @@ pub trait RendererPlugin: Send + Sync {
         _render_resources: &RenderResources,
         _render_view_set: &RenderViewSet,
         _frame_packet_builder: &FramePacketBuilder,
-        _static_visibility_node_set: &mut StaticVisibilityNodeSet,
-        _dynamic_visibility_node_set: &mut DynamicVisibilityNodeSet,
         _render_views: &mut Vec<RenderView>,
     ) {
     }

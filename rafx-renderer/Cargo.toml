@@ -16,6 +16,7 @@ rafx-api = { version = "=0.0.10", path = "../rafx-api" }
 rafx-base = { version = "=0.0.10", path = "../rafx-base" }
 rafx-framework = { version = "=0.0.10", path = "../rafx-framework" }
 rafx-assets = { version = "=0.0.10", path = "../rafx-assets" }
+rafx-visibility = { version = "=0.0.10", path = "../rafx-visibility" }
 
 glam = { version = "0.13.1", features = [ "serde" ] }
 crossbeam-channel = "0.5"
