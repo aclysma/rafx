@@ -5,7 +5,7 @@ vulkan SPV, and a custom "package" format that can be used to create a shader at
 
 `rafx-shader-processor` uses `spirv_cross` to read and translate between shader languages.
 
-![Diagram showing input and outputs of the shader processor](../shader-processor.png)
+![Diagram showing input and outputs of the shader processor](../images/shader_processor.png)
 
 ## Installation
 

@@ -10,7 +10,7 @@ A video of this talk is available here! https://www.youtube.com/watch?v=0nTDFLML
 One of the most important goals in this architecture is to move as much rendering work as possible off the critical 
 path of generating a frame. Rendering work should happen on a separate thread from simulation.
 
-![Diagram showing pipelineing](../pipelining.png)
+![Diagram showing pipelineing](../images/pipelining.png)
 
 This diagram shows a "pipelined" frame. As soon as simulation for frame N ends, we can hand it off to a rendering thread
 and immediately start simulation for frame N+1. A similar pattern could be followed for other systems.

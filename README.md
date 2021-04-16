@@ -8,6 +8,7 @@ for real-world projects with multidisciplinary teams.
 
 This crate contains several layers:
  * `rafx-api`: Low-level graphics API abstraction 
+ * `rafx-visibility`: Low-level retained API for visibility determination
  * `rafx-framework`: Mid-level framework that eases resource management, lifetime handling, and draw call dispatching
  * `rafx-assets`: Asset layer that integrates with [`distill`](https://github.com/amethyst/distill)
  * `rafx-renderer`: A pipelined renderer with a plugin system for customizing it
@@ -88,8 +89,8 @@ dependencies for both SDL2 and vulkan are available.
 
 ### Demo Features
 
-* Render thread decoupled from main thread [(diagram)](docs/pipelining.png)
-* Shader build pipeline [(diagram)](docs/shader-processor.png)
+* Render thread decoupled from main thread [(diagram)](docs/images/pipelining.png)
+* Shader build pipeline [(diagram)](docs/images/shader_processor.png)
 * Offline texture compression and mipmap generations (via 
   [basis-universal](https://github.com/BinomialLLC/basis_universal) format)
 * Asynchronous asset loading
@@ -111,6 +112,7 @@ dependencies for both SDL2 and vulkan are available.
 * Multiple Spot/Directional/Point light soft shadows
 * Font Rendering
 * LDTK tilemap import
+* Frustum culling for multiple cameras in 2D or 3D, in both orthogonal or perspective projections
 
 ## Tools
 
@@ -126,7 +128,7 @@ This tool parses GLSL and produces matching rust code. This makes working with d
  * You can `cargo install rafx-shader-processor`. Be sure to install the same version as you include in your project.
    Also, don't forget to update it if you update your project's dependencies!
 
-![Diagram illustrating that shaders are processed into .metal, .spirv, etc.](docs/shader-processor.png)
+![Diagram illustrating that shaders are processed into .metal, .spirv, etc.](docs/images/shader_processor.png)
 
 The shader processor produces the following assets artifacts
 
@@ -159,6 +161,9 @@ This tool currently is only useful for packing assets.
  * `rafx-api` - Rendering API abstraction layer.
    * Vulkan backend for windows/linux
    * Metal backend for macOS/iOS
+ * `rafx-visibility` - Retained visibility API.
+   * Simple handle-based abstraction.
+   * Fast, thread-safe visibility queries.
  * `rafx-framework` - Resource management for images, buffers, descriptor sets, etc.
    * Most things are hashed and reference counted
    * Provides a render graph
@@ -171,6 +176,8 @@ This tool currently is only useful for packing assets.
         actually executed parallel yet)
       * Handles multiple views and phases allowing advanced features like shadow mapping
       * Flexible sorting mechanism for interleaving and batching write commands from multiple rendering features
+   * Visibility Region - Built on top of `rafx-visibility`
+      * Higher-level visibility API, integrated with framework render jobs
  * `rafx-assets` - An asset loading and management system.
    * Assets can hot reload from files (but see [#14](rafx/issues/14))
    * Because distill pre-processes and stores cached assets as they change, custom processing/packing can be

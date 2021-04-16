@@ -19,12 +19,15 @@
     * [Resource Binding Model](api/resource_binding_model.md)
     * [Validation and Debugging](api/validation_and_debugging.md)
     * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
+* rafx-visibility
+    * [API Design](visibility/api_design.md)
 * rafx-framework
     * [Framework Architecture](framework/framework_architecture.md)
     * [Adding Features](framework/adding_features.md)
     * [Adding Phases](framework/adding_render_phases.md)
     * [Render Graph](framework/render_graph.md)
     * [Render Graph Triangle Example](../rafx/examples/framework_triangle/framework_triangle.rs)
+    * [Visibility Region](framework/visibility_region.md)
 * rafx-assets
     * `distill` Architecture and Features
     * [Asset Triangle Example](../rafx/examples/asset_triangle/asset_triangle.rs)
@@ -54,9 +57,10 @@
 
 ## Diagrams
 
-* [Key crate dependencies](crate-dependencies.png)
-* [Pipelining](pipelining.png)
-* [Shader Processor](shader-processor.png)
+* [Key crate dependencies](images/crate_dependencies.png)
+* [Pipelining](images/pipelining.png)
+* [Shader Processor](images/shader_processor.png)
+* [Visibility region](images/visibility_region.jpg)
 
 ## Other Resources
 
