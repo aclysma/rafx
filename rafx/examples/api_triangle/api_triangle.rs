@@ -142,7 +142,7 @@ fn run() -> RafxResult<()> {
             &processed_shaders_base_path,
             "shader.vert.metal",
             "shader.vert.spv",
-            "shader.vert.gl",
+            "shader.vert.gles",
             "shader.vert.gles",
         )?;
 
@@ -150,7 +150,7 @@ fn run() -> RafxResult<()> {
             &processed_shaders_base_path,
             "shader.frag.metal",
             "shader.frag.spv",
-            "shader.frag.gl",
+            "shader.frag.gles",
             "shader.frag.gles"
         )?;
 
@@ -168,7 +168,7 @@ fn run() -> RafxResult<()> {
         // from spirv_cross)
         //
         let color_shader_resource = RafxShaderResource {
-            name: Some("color".to_string()),
+            name: Some("uniform_data.uniform_color".to_string()),
             set_index: 0,
             binding: 0,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
@@ -209,6 +209,8 @@ fn run() -> RafxResult<()> {
             shaders: &[shader.clone()],
             immutable_samplers: &[],
         })?;
+
+        println!("root signature:\n{:#?}", root_signature);
 
         //
         // Descriptors are allocated in blocks and never freed. Normally you will want to build a

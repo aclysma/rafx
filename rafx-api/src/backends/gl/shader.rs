@@ -18,6 +18,22 @@ pub struct RafxShaderGl {
 }
 
 impl RafxShaderGl {
+    pub fn stages(&self) -> &[RafxShaderStageDef] {
+        &self.inner.stages
+    }
+
+    pub fn pipeline_reflection(&self) -> &RafxPipelineReflection {
+        &self.inner.pipeline_reflection
+    }
+
+    pub fn stage_flags(&self) -> RafxShaderStageFlags {
+        self.inner.stage_flags
+    }
+
+    pub fn gl_program_id(&self) -> ProgramId {
+        self.inner.program_id
+    }
+
     pub fn new(
         device_context: &RafxDeviceContextGl,
         stages: Vec<RafxShaderStageDef>,
@@ -50,7 +66,7 @@ impl RafxShaderGl {
         gl_context.gl_attach_shader(program_id, vertex_shader_id)?;
         gl_context.gl_attach_shader(program_id, fragment_shader_id)?;
 
-        gl_context.link_and_validate_shader_program(program_id)?;
+        gl_context.link_shader_program(program_id)?;
 
         let inner = RafxShaderGlInner {
             stages,
@@ -64,20 +80,5 @@ impl RafxShaderGl {
         Ok(RafxShaderGl {
             inner: Arc::new(inner),
         })
-    }
-
-    pub fn stages(&self) -> &[RafxShaderStageDef] {
-        unimplemented!();
-        &self.inner.stages
-    }
-
-    pub fn pipeline_reflection(&self) -> &RafxPipelineReflection {
-        unimplemented!();
-        &self.inner.pipeline_reflection
-    }
-
-    pub fn stage_flags(&self) -> RafxShaderStageFlags {
-        unimplemented!();
-        self.inner.stage_flags
     }
 }

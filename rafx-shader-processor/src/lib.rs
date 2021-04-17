@@ -425,6 +425,20 @@ fn process_glsl_shader(
         spirv_cross_gles_options.version = spirv_cross::glsl::Version::V1_00Es;
         spirv_cross_gles_options.vulkan_semantics = false;
 
+        let shader_resources = gles_ast.get_shader_resources()?;
+
+        if normalize_shader_kind(shader_kind) == ShaderKind::Vertex {
+            for resource in shader_resources.stage_outputs {
+                let location = gles_ast.get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
+                gles_ast.rename_interface_variable(&[resource], location, &format!("interface_var_{}", location));
+            }
+        } else if normalize_shader_kind(shader_kind) == ShaderKind::Fragment {
+            for resource in shader_resources.stage_inputs {
+                let location = gles_ast.get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
+                gles_ast.rename_interface_variable(&[resource], location, &format!("interface_var_{}", location));
+            }
+        }
+
         gles_ast.set_compiler_options(&spirv_cross_gles_options)?;
         let gles_src = gles_ast.compile()?;
 

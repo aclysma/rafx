@@ -4,22 +4,24 @@ use raw_gl_context::GlConfig;
 use super::gles20::Gles2;
 use super::gles20;
 use super::gles20::types::GLenum;
-use fnv::FnvHasher;
+use fnv::{FnvHasher, FnvHashMap};
 use std::hash::{Hasher, Hash};
 use super::WindowHash;
 use crate::{RafxResult, RafxError};
 use crate::gl::gles20::types::{GLsizeiptr, GLint};
 use std::ffi::{CStr, CString};
+use std::process::exit;
+use std::ops::Range;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct BufferId(pub u32);
 pub const NONE_BUFFER: BufferId = BufferId(gles20::NONE);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ShaderId(pub u32);
 pub const NONE_SHADER: ShaderId = ShaderId(gles20::NONE);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ProgramId(pub u32);
 pub const NONE_PROGRAM: ProgramId = ProgramId(gles20::NONE);
 
@@ -298,7 +300,7 @@ impl GlContext {
         Ok(Some(String::from_utf8(log).unwrap()))
     }
 
-    pub fn link_and_validate_shader_program(&self, program_id: ProgramId) -> RafxResult<()> {
+    pub fn link_shader_program(&self, program_id: ProgramId) -> RafxResult<()> {
         self.gl_link_program(program_id)?;
         if self.gl_get_programiv(program_id, gles20::LINK_STATUS)? == 0 {
             return Err(match self.get_program_info_log(program_id)? {
@@ -311,6 +313,11 @@ impl GlContext {
             log::debug!("Debug info while linking shader program: {}", debug_info);
         }
 
+        Ok(())
+    }
+
+    pub fn validate_shader_program(&self, program_id: ProgramId) -> RafxResult<()> {
+        self.gl_validate_program(program_id)?;
         if self.gl_get_programiv(program_id, gles20::VALIDATE_STATUS)? == 0 {
             return Err(match self.get_program_info_log(program_id)? {
                 Some(x) => format!("Error validating shader program: {}", x),
@@ -323,5 +330,18 @@ impl GlContext {
         }
 
         Ok(())
+    }
+
+    pub fn gl_get_uniform_location(&self, program_id: ProgramId, name: &CStr) -> RafxResult<Option<u32>> {
+        unsafe {
+            let value = self.gles2.GetUniformLocation(program_id.0, name.as_ptr());
+            self.check_for_error()?;
+
+            if value == -1 {
+                return Ok(None);
+            }
+
+            Ok(Some(value as u32))
+        }
     }
 }

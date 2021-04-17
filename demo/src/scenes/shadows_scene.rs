@@ -68,6 +68,8 @@ impl ShadowsScene {
             )
         };
 
+        let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
+
         //
         // Add a floor
         //

@@ -321,7 +321,9 @@ impl RafxDeviceContext {
                 RafxRootSignature::Metal(inner.create_root_signature(root_signature_def)?)
             }
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => {
+                RafxRootSignature::Gl(inner.create_root_signature(root_signature_def)?)
+            },
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -399,7 +401,9 @@ impl RafxDeviceContext {
                 inner.create_descriptor_set_array(descriptor_set_array_def)?,
             ),
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => RafxDescriptorSetArray::Gl(
+                inner.create_descriptor_set_array(descriptor_set_array_def)?,
+            ),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
