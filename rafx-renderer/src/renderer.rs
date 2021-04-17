@@ -4,7 +4,7 @@ use rafx_assets::{AssetManager, GpuImageData};
 use rafx_framework::nodes::{
     ExtractJobSet, ExtractResources, FramePacketBuilder, RenderJobExtractContext, RenderViewSet,
 };
-use rafx_framework::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
+use rafx_framework::visibility::VisibilityRegion;
 use rafx_framework::{DynResourceAllocatorSet, RenderResources};
 use rafx_framework::{ImageViewResource, ResourceArc};
 use std::sync::{Arc, Mutex};
@@ -219,13 +219,7 @@ impl Renderer {
         //
         // Fetch resources
         //
-        let mut static_visibility_node_set_fetch =
-            extract_resources.fetch_mut::<StaticVisibilityNodeSet>();
-        let static_visibility_node_set = &mut *static_visibility_node_set_fetch;
-
-        let mut dynamic_visibility_node_set_fetch =
-            extract_resources.fetch_mut::<DynamicVisibilityNodeSet>();
-        let dynamic_visibility_node_set = &mut *dynamic_visibility_node_set_fetch;
+        let visibility_region = extract_resources.fetch::<VisibilityRegion>();
 
         let mut asset_manager_fetch = extract_resources.fetch_mut::<AssetManager>();
         let asset_manager = &mut *asset_manager_fetch;
@@ -274,14 +268,14 @@ impl Renderer {
         //
         // Determine Camera Location
         //
+
         let viewports_resource = extract_resources.fetch::<ViewportsResource>();
-        let view_meta = viewports_resource
-            .main_view_meta
-            .clone()
-            .unwrap_or_default();
+        let view_meta = viewports_resource.main_view_meta.clone().unwrap();
+
         let main_window_size = viewports_resource.main_window_size;
 
         let main_view = render_view_set.create_view(
+            view_meta.view_frustum,
             view_meta.eye_position,
             view_meta.view,
             view_meta.proj,
@@ -304,40 +298,15 @@ impl Renderer {
         let frame_packet_builder = FramePacketBuilder::new();
         {
             profiling::scope!("Update visibility");
-            let main_view_static_visibility_result =
-                static_visibility_node_set.calculate_static_visibility(&main_view);
-            let main_view_dynamic_visibility_result =
-                dynamic_visibility_node_set.calculate_dynamic_visibility(&main_view);
-
-            log::trace!(
-                "main view static node count: {}",
-                main_view_static_visibility_result.handles.len()
-            );
-
-            log::trace!(
-                "main view dynamic node count: {}",
-                main_view_dynamic_visibility_result.handles.len()
-            );
-
             // After these jobs end, user calls functions to start jobs that extract data
-            frame_packet_builder.add_view(
-                &main_view,
-                &[
-                    main_view_static_visibility_result,
-                    main_view_dynamic_visibility_result,
-                ],
-            );
-
+            frame_packet_builder.query_visibility_and_add_results(&main_view, &visibility_region);
             render_views.push(main_view.clone());
-
             for plugin in &*renderer_inner.plugins {
                 plugin.add_render_views(
                     extract_resources,
                     render_resources,
                     &render_view_set,
                     &frame_packet_builder,
-                    static_visibility_node_set,
-                    dynamic_visibility_node_set,
                     &mut render_views,
                 );
             }

@@ -4,7 +4,7 @@ use rafx_base::slab::SlabIndexT;
 pub type RenderNodeIndex = u32;
 pub type RenderNodeCount = u32;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct GenericRenderNodeHandle {
     render_feature_index: RenderFeatureIndex,
     render_node_index: SlabIndexT,

@@ -1,7 +1,7 @@
 // NOTE(dvd): Inspired by Bevy `many_sprites` example (MIT licensed) https://github.com/bevyengine/bevy/blob/621cba4864fd5d2c0962151b126769eff45797fd/examples/2d/many_sprites.rs
 
 use crate::assets::font::FontAsset;
-use crate::components::{PositionComponent, SpriteComponent};
+use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::features::skybox::SkyboxRenderFeature;
 use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet};
@@ -18,8 +18,9 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
 use rafx::nodes::{RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange};
+use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{DynamicAabbVisibilityNode, DynamicVisibilityNodeSet};
+use rafx::visibility::{CullModel, EntityId, ViewFrustumArc, VisibilityRegion};
 use rand::Rng;
 
 const CAMERA_SPEED: f32 = 1000.0;
@@ -34,13 +35,6 @@ struct CameraComponent {
 struct TextComponent {
     text: String,
     font: Handle<FontAsset>,
-}
-
-#[derive(Clone, Copy)]
-struct TransformComponent {
-    pub translation: Vec3,
-    pub rotation: Quat,
-    pub scale: Vec3,
 }
 
 impl TransformComponent {
@@ -78,6 +72,7 @@ impl TransformComponent {
 
 pub(super) struct ManySpritesScene {
     schedule: Schedule,
+    main_view_frustum: ViewFrustumArc,
 }
 
 impl ManySpritesScene {
@@ -87,6 +82,8 @@ impl ManySpritesScene {
     ) -> Self {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_2d();
+
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
@@ -106,6 +103,9 @@ impl ManySpritesScene {
         let half_x = (map_size.x / 2.0) as i32;
         let half_y = (map_size.y / 2.0) as i32;
 
+        let main_view_frustum = visibility_region.register_view_frustum();
+        let mut main_view_frustum_copy = main_view_frustum.clone();
+
         let update_camera_system = SystemBuilder::new("update_camera")
             .read_resource::<TimeState>()
             .write_resource::<ViewportsResource>()
@@ -113,20 +113,22 @@ impl ManySpritesScene {
             .build(move |_, world, (time_state, viewports_resource), queries| {
                 profiling::scope!("update_camera_system");
                 for camera in queries.iter_mut(world) {
-                    update_main_view_2d(camera, time_state, viewports_resource);
+                    update_main_view_2d(
+                        camera,
+                        &mut main_view_frustum_copy,
+                        time_state,
+                        viewports_resource,
+                    );
                 }
             });
 
-        let update_render_node_system = SystemBuilder::new("update_render_node")
+        let update_transforms_system = SystemBuilder::new("update_transforms")
             .read_resource::<TimeState>()
-            .write_resource::<SpriteRenderNodeSet>()
-            .with_query(<Read<SpriteComponent>>::query())
-            .build(move |_, world, (time, sprite_render_node_set), queries| {
-                profiling::scope!("update_render_node_system");
-                for sprite in queries.iter_mut(world) {
-                    let render_node: &mut SpriteRenderNode =
-                        sprite_render_node_set.get_mut(&sprite.render_node).unwrap();
-                    render_node.rotation *=
+            .with_query(<Write<TransformComponent>>::query())
+            .build(move |_, world, time, queries| {
+                profiling::scope!("update_transforms_system");
+                for transform in queries.iter_mut(world) {
+                    transform.rotation *=
                         Quat::from_rotation_z(time.previous_update_dt() * rand::random::<f32>());
                 }
             });
@@ -149,7 +151,7 @@ impl ManySpritesScene {
 
         let schedule = Schedule::builder()
             .add_system(update_camera_system)
-            .add_system(update_render_node_system)
+            .add_system(update_transforms_system)
             .add_system(print_text_system)
             .build();
 
@@ -159,45 +161,54 @@ impl ManySpritesScene {
             for x in -half_x..half_x {
                 let position = Vec2::new(x as f32, y as f32);
                 let translation = (position * tile_size).extend(rng.gen::<f32>());
-                let scale = Vec2::new(rng.gen::<f32>() * 2.0, rng.gen::<f32>() * 2.0);
+                let scale = Vec3::new(
+                    rng.gen::<f32>() * 2.0,
+                    rng.gen::<f32>() * 2.0,
+                    rng.gen::<f32>() * 2.0,
+                );
 
                 let tint = super::random_color(&mut rng);
                 let alpha = f32::max(0.2, rng.gen::<f32>());
 
                 let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
-                let mut dynamic_visibility_node_set =
-                    resources.get_mut::<DynamicVisibilityNodeSet>().unwrap();
 
                 let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
-                    position: translation,
+                    tint,
+                    alpha,
+                    image: sprite_image.clone(),
+                });
+
+                let transform_component = TransformComponent {
+                    translation,
                     scale,
                     rotation: Quat::from_rotation_ypr(
                         rng.gen::<f32>(),
                         rng.gen::<f32>(),
                         rng.gen::<f32>(),
                     ),
-                    tint,
-                    alpha,
-                    image: sprite_image.clone(),
-                });
-
-                let aabb_info = DynamicAabbVisibilityNode {
-                    handle: render_node.as_raw_generic_handle(),
                 };
 
-                let visibility_node = dynamic_visibility_node_set.register_dynamic_aabb(aabb_info);
-
-                let position_component = PositionComponent {
-                    position: translation,
-                };
                 let sprite_component = SpriteComponent {
-                    render_node,
-                    visibility_node,
-                    alpha,
-                    image: sprite_image.clone(),
+                    render_node: render_node.clone(),
                 };
 
-                world.extend((0..1).map(|_| (position_component, sprite_component.clone())));
+                let entity = world.push((transform_component.clone(), sprite_component));
+                let mut entry = world.entry(entity).unwrap();
+                entry.add_component(VisibilityComponent {
+                    handle: {
+                        let handle = visibility_region.register_dynamic_object(
+                            EntityId::from(entity),
+                            CullModel::quad(64., 64.),
+                        );
+                        handle.set_transform(
+                            transform_component.translation,
+                            transform_component.rotation,
+                            transform_component.scale,
+                        );
+                        handle.add_feature(render_node.as_raw_generic_handle());
+                        handle
+                    },
+                });
 
                 sprite_count += 1;
             }
@@ -219,7 +230,10 @@ impl ManySpritesScene {
             font,
         },));
 
-        ManySpritesScene { schedule }
+        ManySpritesScene {
+            schedule,
+            main_view_frustum: main_view_frustum,
+        }
     }
 }
 
@@ -236,6 +250,7 @@ impl super::TestScene for ManySpritesScene {
 #[profiling::function]
 fn update_main_view_2d(
     camera: &mut CameraComponent,
+    main_view_frustum: &mut ViewFrustumArc,
     time: &TimeState,
     viewports_resource: &mut ViewportsResource,
 ) {
@@ -295,22 +310,33 @@ fn update_main_view_2d(
         eye.y = eye.y.round();
     }
 
-    let view = glam::Mat4::look_at_rh(eye, Vec3::new(0., 0., 0.), camera.up);
+    let look_at = Vec3::new(0., 0., 0.);
 
-    let proj = glam::Mat4::orthographic_rh(
+    let view = glam::Mat4::look_at_rh(eye, look_at, camera.up);
+
+    let near = 0.01;
+    let far = 10000.0;
+
+    let projection = Projection::Orthographic(OrthographicParameters::new(
         -half_width,
         half_width,
         -half_height,
         half_height,
-        2000.0,
-        0.0,
-    );
+        near,
+        far,
+        DepthRange::InfiniteReverse,
+    ));
+
+    main_view_frustum
+        .set_projection(&projection)
+        .set_transform(eye, look_at, camera.up);
 
     viewports_resource.main_view_meta = Some(RenderViewMeta {
+        view_frustum: main_view_frustum.clone(),
         eye_position: eye,
         view,
-        proj,
-        depth_range: RenderViewDepthRange::new_infinite_reverse(0.0),
+        proj: projection.as_rh_mat4(),
+        depth_range: RenderViewDepthRange::from_projection(&projection),
         render_phase_mask: main_camera_phase_mask,
         render_feature_mask: main_camera_feature_mask,
         debug_name: "main".to_string(),

@@ -1,5 +1,5 @@
 use crate::components::{
-    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+    DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
 use crate::features::debug3d::DebugDraw3DResource;
 use glam::Vec3;
@@ -167,15 +167,16 @@ fn add_light_debug_draw(
         debug_draw.add_line(light_from, light_to, light.color);
     }
 
-    let mut query = <(Read<PositionComponent>, Read<PointLightComponent>)>::query();
-    for (position, light) in query.iter(world) {
-        debug_draw.add_sphere(position.position, 0.25, light.color, 12);
+    let mut query = <(Read<TransformComponent>, Read<PointLightComponent>)>::query();
+    for (transform, light) in query.iter(world) {
+        debug_draw.add_sphere(transform.translation, 0.1, light.color, 12);
+        debug_draw.add_sphere(transform.translation, light.range, light.color, 12);
     }
 
-    let mut query = <(Read<PositionComponent>, Read<SpotLightComponent>)>::query();
-    for (position, light) in query.iter(world) {
-        let light_from = position.position;
-        let light_to = position.position + light.direction;
+    let mut query = <(Read<TransformComponent>, Read<SpotLightComponent>)>::query();
+    for (transform, light) in query.iter(world) {
+        let light_from = transform.translation;
+        let light_to = transform.translation + light.direction;
         let light_direction = (light_to - light_from).normalize();
 
         debug_draw.add_cone(
@@ -202,7 +203,10 @@ fn add_spot_light(
     position: glam::Vec3,
     light_component: SpotLightComponent,
 ) {
-    let position_component = PositionComponent { position };
+    let position_component = TransformComponent {
+        translation: position,
+        ..Default::default()
+    };
 
     world.extend(vec![(position_component, light_component)]);
 }
@@ -213,7 +217,10 @@ fn add_point_light(
     position: glam::Vec3,
     light_component: PointLightComponent,
 ) {
-    let position_component = PositionComponent { position };
+    let position_component = TransformComponent {
+        translation: position,
+        ..Default::default()
+    };
 
     world.extend(vec![(position_component, light_component)]);
 }

@@ -4,15 +4,9 @@ use rafx::assets::ImageAsset;
 use rafx::base::slab::{DropSlab, DropSlabKey};
 use rafx::nodes::{GenericRenderNodeHandle, RenderFeatureIndex, RenderNodeCount, RenderNodeSet};
 
-//
-// This is boiler-platish
-//
 pub struct SpriteRenderNode {
-    pub position: glam::Vec3,
     pub tint: glam::Vec3,
-    pub scale: glam::Vec2,
     pub alpha: f32,
-    pub rotation: glam::Quat,
     pub image: Handle<ImageAsset>,
 }
 

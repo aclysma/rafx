@@ -6,6 +6,7 @@ members = [
     "rafx-framework",
     "rafx-shader-processor",
     "rafx-renderer",
+    "rafx-visibility",
     "rafx-assets",
     "demo",
     "demo/shaders",

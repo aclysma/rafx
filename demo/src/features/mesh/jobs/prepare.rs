@@ -3,7 +3,7 @@ use rafx::render_feature_prepare_job_predule::*;
 use super::{LightId, MeshRenderFeature, MeshWriteJob, ShadowMapRenderView, ShadowMapResource};
 use crate::assets::gltf::MeshAsset;
 use crate::components::{
-    DirectionalLightComponent, PointLightComponent, PositionComponent, SpotLightComponent,
+    DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
 use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase};
 use crate::StatsAllocMemoryRegion;
@@ -31,13 +31,13 @@ pub struct ExtractedDirectionalLight {
 
 pub struct ExtractedPointLight {
     pub light: PointLightComponent,
-    pub position: PositionComponent,
+    pub position: TransformComponent,
     pub entity: legion::Entity,
 }
 
 pub struct ExtractedSpotLight {
     pub light: SpotLightComponent,
-    pub position: PositionComponent,
+    pub position: TransformComponent,
     pub entity: legion::Entity,
 }
 
@@ -64,13 +64,13 @@ struct PreparedDirectionalLight<'a> {
 
 struct PreparedPointLight<'a> {
     light: &'a PointLightComponent,
-    position: &'a PositionComponent,
+    transform: &'a TransformComponent,
     shadow_map_index: Option<usize>,
 }
 
 struct PreparedSpotLight<'a> {
     light: &'a SpotLightComponent,
-    position: &'a PositionComponent,
+    transform: &'a TransformComponent,
     shadow_map_index: Option<usize>,
 }
 
@@ -144,8 +144,8 @@ impl MeshPrepareJob {
             }
 
             let out = &mut per_view_data.point_lights[light_count];
-            out.position_ws = light.position.position.into();
-            out.position_vs = (view.view_matrix() * light.position.position.extend(1.0))
+            out.position_ws = light.transform.translation.into();
+            out.position_vs = (view.view_matrix() * light.transform.translation.extend(1.0))
                 .truncate()
                 .into();
             out.color = light.light.color.into();
@@ -162,9 +162,9 @@ impl MeshPrepareJob {
                 break;
             }
 
-            let light_from = light.position.position;
+            let light_from = light.transform.translation;
             let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
-            let light_to = light.position.position + light.light.direction;
+            let light_to = light.transform.translation + light.light.direction;
             let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();
 
             let light_direction = (light_to - light_from).normalize();
@@ -378,7 +378,7 @@ impl PrepareJob for MeshPrepareJob {
         for spot_light in &self.spot_lights {
             prepared_spot_lights.push(PreparedSpotLight {
                 light: &spot_light.light,
-                position: &spot_light.position,
+                transform: &spot_light.position,
                 shadow_map_index: shadow_map_data
                     .shadow_map_lookup
                     .get(&LightId::SpotLight(spot_light.entity))
@@ -394,7 +394,7 @@ impl PrepareJob for MeshPrepareJob {
         for point_light in &self.point_lights {
             prepared_point_lights.push(PreparedPointLight {
                 light: &point_light.light,
-                position: &point_light.position,
+                transform: &point_light.position,
                 shadow_map_index: shadow_map_data
                     .shadow_map_lookup
                     .get(&LightId::PointLight(point_light.entity))

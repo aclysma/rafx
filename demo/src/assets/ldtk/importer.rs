@@ -248,6 +248,11 @@ impl Importer for LdtkImporter {
                         material_instance: tileset.material_instance.clone(),
                         draw_call_data: layer_draw_call_data,
                         z_pos,
+                        world_x_pos: level.world_x + layer.px_total_offset_x,
+                        world_y_pos: level.world_y + layer.px_total_offset_y,
+                        grid_width: layer.c_wid,
+                        grid_height: layer.c_hei,
+                        grid_size: layer.grid_size,
                     })
                 }
             }

@@ -1,16 +1,15 @@
 use super::{TileLayerRenderNode, TileLayerRenderNodeHandle, TileLayerRenderNodeSet};
 use crate::assets::ldtk::LdtkProjectAsset;
+use glam::{Quat, Vec3};
 use rafx::assets::AssetManager;
 use rafx::distill::loader::handle::Handle;
-use rafx::visibility::{
-    StaticAabbVisibilityNode, StaticAabbVisibilityNodeHandle, StaticVisibilityNodeSet,
-};
+use rafx::visibility::{CullModel, EntityId, VisibilityObjectArc, VisibilityRegion};
 
 #[derive(Default)]
 pub struct TileLayerResource {
     project: Option<Handle<LdtkProjectAsset>>,
     render_nodes: Vec<TileLayerRenderNodeHandle>,
-    visibiility_nodes: Vec<StaticAabbVisibilityNodeHandle>,
+    visibility_handles: Vec<VisibilityObjectArc>,
 }
 
 impl TileLayerResource {
@@ -27,13 +26,14 @@ impl TileLayerResource {
         project: &Handle<LdtkProjectAsset>,
         asset_manager: &AssetManager,
         tile_layer_render_nodes: &mut TileLayerRenderNodeSet,
-        static_visibility: &mut StaticVisibilityNodeSet,
+        visibility_region: &VisibilityRegion,
     ) {
         self.clear_project();
         self.project = Some(project.clone());
 
         let project_asset = asset_manager.committed_asset(project).unwrap();
 
+        let mut tile_layer_entity_id: u64 = 0;
         for (level_uid, level) in &project_asset.inner.levels {
             for (layer_index, layer) in level.layers.iter().enumerate() {
                 if let (Some(vertex_buffer), Some(index_buffer)) =
@@ -41,6 +41,7 @@ impl TileLayerResource {
                 {
                     let layer_data =
                         &project_asset.inner.data.levels[level_uid].layer_data[layer_index];
+
                     let render_node =
                         tile_layer_render_nodes.register_tile_layer(TileLayerRenderNode {
                             per_layer_descriptor_set: layer.per_layer_descriptor_set.clone(),
@@ -50,13 +51,19 @@ impl TileLayerResource {
                             z_position: layer_data.z_pos,
                         });
 
-                    let visibility_node =
-                        static_visibility.register_static_aabb(StaticAabbVisibilityNode {
-                            handle: render_node.as_raw_generic_handle(),
-                        });
+                    // NOTE(dvd): Not an actual entity, but necessary for the frame packet.
+                    tile_layer_entity_id += 1;
+                    let handle = visibility_region.register_static_object(
+                        EntityId::from(tile_layer_entity_id),
+                        CullModel::quad(layer.width as f32, layer.height as f32),
+                    );
+                    let mut translation = layer.center;
+                    translation.y = -translation.y; // NOTE(dvd): +y is up in our world, but _down_ in LDtk.
+                    handle.set_transform(translation, Quat::IDENTITY, Vec3::ONE);
+                    handle.add_feature(render_node.as_raw_generic_handle());
 
+                    self.visibility_handles.push(handle);
                     self.render_nodes.push(render_node);
-                    self.visibiility_nodes.push(visibility_node);
                 }
             }
         }
@@ -65,6 +72,6 @@ impl TileLayerResource {
     pub fn clear_project(&mut self) {
         self.project = None;
         self.render_nodes.clear();
-        self.visibiility_nodes.clear();
+        self.visibility_handles.clear();
     }
 }

@@ -85,5 +85,8 @@ pub mod render_feature_mod_prelude {
     pub use rafx_framework::nodes::{RenderFeature, RenderFeatureIndex};
     pub use std::convert::TryInto;
 }
+#[cfg(feature = "framework")]
+pub use rafx_visibility;
+
 #[cfg(feature = "renderer")]
 pub use rafx_renderer as renderer;

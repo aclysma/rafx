@@ -7,6 +7,7 @@ use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue}
 use distill::loader::handle::Handle;
 use distill::{make_handle, make_handle_from_str};
 use fnv::FnvHashMap;
+use glam::Vec3;
 use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
 use itertools::Itertools;
@@ -17,6 +18,7 @@ use rafx::assets::ImageAsset;
 use rafx::assets::MaterialInstanceAsset;
 use rafx::assets::{ImageAssetColorSpace, ImageAssetData};
 use rafx::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
+use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::Read;
@@ -747,6 +749,9 @@ fn extract_meshes_to_import(
     let mut buffers_to_import = Vec::with_capacity(doc.meshes().len() * 2);
 
     for mesh in doc.meshes() {
+        let mut all_positions = Vec::with_capacity(1024);
+        let mut all_position_indices = Vec::with_capacity(8192);
+
         let mut all_vertices = PushBuffer::new(16384);
         let mut all_indices = PushBuffer::new(16384);
 
@@ -788,6 +793,11 @@ fn extract_meshes_to_import(
                         let indices_offset = all_indices.len();
 
                         for i in 0..positions.len() {
+                            all_positions.push(Vec3::new(
+                                positions[i][0],
+                                positions[i][1],
+                                positions[i][2],
+                            ));
                             all_vertices.push(
                                 &[MeshVertex {
                                     position: positions[i],
@@ -800,6 +810,7 @@ fn extract_meshes_to_import(
                         }
 
                         all_indices.push(&part_indices, 1);
+                        all_position_indices.extend_from_slice(&part_indices);
 
                         let vertex_size = all_vertices.len() - vertex_offset;
                         let indices_size = all_indices.len() - indices_offset;
@@ -888,10 +899,16 @@ fn extract_meshes_to_import(
 
         let index_buffer_handle = make_handle(index_buffer_uuid);
 
+        let mesh_data = PolygonSoup {
+            vertex_positions: all_positions,
+            index: PolygonSoupIndex::Indexed16(all_position_indices),
+        };
+
         let asset = MeshAssetData {
             mesh_parts,
             vertex_buffer: vertex_buffer_handle,
             index_buffer: index_buffer_handle,
+            visible_bounds: VisibleBounds::from(mesh_data),
         };
 
         let mesh_id = mesh

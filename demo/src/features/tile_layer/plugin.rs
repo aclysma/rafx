@@ -5,7 +5,6 @@ use super::{
 };
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
-use rafx::visibility::{DynamicVisibilityNodeSet, StaticVisibilityNodeSet};
 
 pub struct TileLayerStaticResources {
     pub tile_layer_material: Handle<MaterialAsset>,
@@ -55,8 +54,6 @@ impl RendererPlugin for TileLayerRendererPlugin {
         });
 
         render_resources.insert(TileLayerRenderNodeSet::default());
-        render_resources.try_insert_default::<StaticVisibilityNodeSet>();
-        render_resources.try_insert_default::<DynamicVisibilityNodeSet>();
 
         Ok(())
     }

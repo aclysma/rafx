@@ -1,12 +1,19 @@
-//! Part of `rafx-framework`. This is a stub and doesn't do anything yet.
+//! Part of `rafx-framework`.
 
-mod visibility_nodes;
-pub use visibility_nodes::*;
+mod view_frustum_arc;
+pub use view_frustum_arc::ViewFrustumArc;
 
-mod static_visibility_node_set;
-pub use static_visibility_node_set::StaticVisibilityNodeSet;
+mod visibility_object_arc;
+pub use visibility_object_arc::CullModel;
+pub use visibility_object_arc::VisibilityObjectArc;
 
-mod dynamic_visibility_node_set;
-pub use dynamic_visibility_node_set::DynamicVisibilityNodeSet;
+mod visibility_object_allocator;
+pub use visibility_object_allocator::ViewFrustumObjectId;
+pub use visibility_object_allocator::VisibilityObjectAllocator;
+pub use visibility_object_allocator::VisibilityObjectId;
 
-pub use crate::nodes::VisibilityResult;
+mod entity_id;
+pub use entity_id::EntityId;
+
+mod visibility_region;
+pub use visibility_region::VisibilityRegion;

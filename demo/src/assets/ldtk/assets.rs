@@ -1,5 +1,6 @@
 use crate::phases::OpaqueRenderPhase;
 use fnv::FnvHashMap;
+use glam::Vec3;
 use rafx::api::RafxResult;
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset,
@@ -27,6 +28,11 @@ pub struct LdtkLayerData {
     pub material_instance: Handle<MaterialInstanceAsset>,
     pub draw_call_data: Vec<LdtkLayerDrawCallData>,
     pub z_pos: f32,
+    pub world_x_pos: i64,
+    pub world_y_pos: i64,
+    pub grid_width: i64,
+    pub grid_height: i64,
+    pub grid_size: i64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -54,6 +60,9 @@ pub struct LdtkAssetData {
 #[derive(Clone, Debug)]
 pub struct LdtkLayer {
     pub per_layer_descriptor_set: DescriptorSetArc,
+    pub width: i64,
+    pub height: i64,
+    pub center: Vec3,
 }
 
 #[derive(Clone, Debug)]
@@ -100,8 +109,17 @@ impl DefaultAssetTypeLoadHandler<LdtkAssetData, LdtkProjectAsset> for LdtkLoadHa
                     .clone()
                     .unwrap();
 
+                let width = layer_data.grid_width * layer_data.grid_size;
+                let height = layer_data.grid_height * layer_data.grid_size;
                 layers.push(LdtkLayer {
                     per_layer_descriptor_set: descriptor_set,
+                    center: Vec3::new(
+                        (layer_data.world_x_pos + (width / 2)) as f32,
+                        (layer_data.world_y_pos + (height / 2)) as f32,
+                        layer_data.z_pos,
+                    ),
+                    width,
+                    height,
                 });
             }
 

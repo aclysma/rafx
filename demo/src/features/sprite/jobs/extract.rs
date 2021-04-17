@@ -4,6 +4,8 @@ use super::{
     ExtractedSpriteData, SpritePrepareJob, SpriteRenderNode, SpriteRenderNodeSet,
     SpriteStaticResources,
 };
+use crate::components::TransformComponent;
+use legion::{EntityStore, World};
 use rafx::assets::AssetManagerRenderResource;
 use rafx::base::slab::RawSlabKey;
 
@@ -28,11 +30,13 @@ impl ExtractJob for SpriteExtractJob {
             .render_resources
             .fetch::<AssetManagerRenderResource>();
 
+        let legion_world = extract_context.extract_resources.fetch::<World>();
+        let world = &*legion_world;
+
         // Update the mesh render nodes. This could be done earlier as part of a system
         let mut sprite_render_nodes = extract_context
             .extract_resources
             .fetch_mut::<SpriteRenderNodeSet>();
-
         sprite_render_nodes.update();
 
         let mut extracted_frame_node_sprite_data =
@@ -43,6 +47,10 @@ impl ExtractJob for SpriteExtractJob {
         {
             profiling::scope!("per frame node");
             for frame_node in frame_packet.frame_nodes(self.feature_index()) {
+                let entity_id = frame_node.entity_id();
+                let entry = world.entry_ref(entity_id.into()).unwrap();
+                let transform_component = entry.get_component::<TransformComponent>().unwrap();
+
                 let render_node_index = frame_node.render_node_index();
                 let render_node_handle = RawSlabKey::<SpriteRenderNode>::new(render_node_index);
                 let sprite_render_node = sprite_render_nodes
@@ -56,13 +64,13 @@ impl ExtractJob for SpriteExtractJob {
                     let texture_extents = image_asset.image.get_raw().image.texture_def().extents;
 
                     Some(ExtractedSpriteData {
-                        position: sprite_render_node.position,
+                        position: transform_component.translation,
                         texture_size: glam::Vec2::new(
                             texture_extents.width as f32,
                             texture_extents.height as f32,
                         ),
-                        scale: sprite_render_node.scale,
-                        rotation: sprite_render_node.rotation,
+                        scale: transform_component.scale,
+                        rotation: transform_component.rotation,
                         color: sprite_render_node.tint.extend(sprite_render_node.alpha),
                         image_view: image_asset.image_view.clone(),
                     })

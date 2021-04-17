@@ -49,8 +49,3 @@ pub use registry::MAX_RENDER_PHASE_COUNT;
 
 mod macro_render_feature;
 mod macro_render_phase;
-
-#[derive(Default)]
-pub struct VisibilityResult {
-    pub handles: Vec<GenericRenderNodeHandle>,
-}
