@@ -2,92 +2,15 @@ use super::RawSlab;
 use super::RawSlabKey;
 use super::SlabIndexT;
 use crossbeam_channel::{Receiver, Sender};
+use std::marker::PhantomData;
 use std::sync::Arc;
-
-pub struct DropSlabKeyInner<T> {
-    raw_slab_key: RawSlabKey<T>,
-    drop_tx: Sender<RawSlabKey<T>>,
-}
-
-impl<T: Sized> Drop for DropSlabKeyInner<T> {
-    fn drop(&mut self) {
-        // Not a problem if the rx closed, it would have destroyed the contained objects
-        let _ = self.drop_tx.send(self.raw_slab_key);
-    }
-}
-
-pub struct DropSlabKey<T> {
-    inner: Arc<DropSlabKeyInner<T>>,
-}
-
-impl<T: Sized> Clone for DropSlabKey<T> {
-    fn clone(&self) -> DropSlabKey<T> {
-        DropSlabKey {
-            inner: self.inner.clone(),
-        }
-    }
-}
-
-// Ideally we don't need this, would need to decide if drop_tx should be included
-/*
-impl<T: Sized> PartialEq for DropSlabKey<T> {
-    fn eq(
-        &self,
-        other: &Self,
-    ) -> bool {
-        self.raw_slab_key.index() == other.raw_slab_key.index()
-    }
-}
-
-impl<T: Sized> Eq for DropSlabKey<T> {}
-
-impl<T: Sized> Hash for DropSlabKey<T> {
-    fn hash<H: Hasher>(
-        &self,
-        state: &mut H,
-    ) {
-        self.raw_slab_key.hash(state);
-    }
-}
-*/
-
-impl<T: Sized> std::fmt::Debug for DropSlabKey<T> {
-    fn fmt(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        f.debug_struct("RawSlabKey")
-            .field("index", &self.inner.raw_slab_key.index())
-            .finish()
-    }
-}
-
-impl<T: Sized> DropSlabKey<T> {
-    pub fn new(
-        raw_slab_key: RawSlabKey<T>,
-        drop_tx: Sender<RawSlabKey<T>>,
-    ) -> Self {
-        let inner = DropSlabKeyInner {
-            raw_slab_key,
-            drop_tx,
-        };
-
-        DropSlabKey {
-            inner: Arc::new(inner),
-        }
-    }
-
-    pub fn index(&self) -> SlabIndexT {
-        self.inner.raw_slab_key.index()
-    }
-}
 
 /// Wraps a RawSlab with reference counting handles. When the handle is dropped it sends a message
 /// to the slab. We process these messages to remove old elements
 pub struct DropSlab<T> {
     raw_slab: RawSlab<T>,
-    drop_tx: Sender<RawSlabKey<T>>,
-    drop_rx: Receiver<RawSlabKey<T>>,
+    drop_tx: Sender<SlabIndexT>,
+    drop_rx: Receiver<SlabIndexT>,
 }
 
 impl<T> Default for DropSlab<T> {
@@ -105,7 +28,7 @@ impl<T> DropSlab<T> {
     /// Create an empty but presized RawSlab
     pub fn with_capacity(capacity: SlabIndexT) -> Self {
         let (drop_tx, drop_rx) = crossbeam_channel::unbounded();
-        DropSlab {
+        Self {
             raw_slab: RawSlab::with_capacity(capacity),
             drop_tx,
             drop_rx,
@@ -113,8 +36,9 @@ impl<T> DropSlab<T> {
     }
 
     pub fn process_drops(&mut self) {
-        for slab_key in self.drop_rx.try_iter() {
-            self.raw_slab.free(slab_key);
+        for slab_index in self.drop_rx.try_iter() {
+            let raw_slab_key = RawSlabKey::<T>::new(slab_index);
+            self.raw_slab.free(raw_slab_key);
         }
     }
 
@@ -123,14 +47,21 @@ impl<T> DropSlab<T> {
         value: T,
     ) -> DropSlabKey<T> {
         let slab_key = self.raw_slab.allocate(value);
-        DropSlabKey::new(slab_key, self.drop_tx.clone())
+        DropSlabKey::new(slab_key.index(), self.drop_tx.clone())
     }
 
     pub fn get(
         &self,
         slab_key: &DropSlabKey<T>,
     ) -> Option<&T> {
-        self.raw_slab.get(slab_key.inner.raw_slab_key)
+        self.get_raw(RawSlabKey::new(slab_key.index()))
+    }
+
+    pub fn get_mut(
+        &mut self,
+        slab_key: &DropSlabKey<T>,
+    ) -> Option<&mut T> {
+        self.get_raw_mut(RawSlabKey::new(slab_key.index()))
     }
 
     pub fn get_raw(
@@ -138,13 +69,6 @@ impl<T> DropSlab<T> {
         raw_slab_key: RawSlabKey<T>,
     ) -> Option<&T> {
         self.raw_slab.get(raw_slab_key)
-    }
-
-    pub fn get_mut(
-        &mut self,
-        slab_key: &DropSlabKey<T>,
-    ) -> Option<&mut T> {
-        self.raw_slab.get_mut(slab_key.inner.raw_slab_key)
     }
 
     pub fn get_raw_mut(
@@ -164,7 +88,7 @@ impl<T> DropSlab<T> {
 
     // Have not needed these yet
     /*
-    pub fn iter(&self) -> impl Iterator<Item = (DropSlabKey<T>, &T)> {
+    pub fn iter(&self) -> impl Iterator<Item = (RawDropSlabKey, &T)> {
         let drop_tx = self.drop_tx.clone();
         self.raw_slab.iter().map(move |(key, value)| {
             (
@@ -174,7 +98,7 @@ impl<T> DropSlab<T> {
         })
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (DropSlabKey<T>, &mut T)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (RawDropSlabKey, &mut T)> {
         let drop_tx = self.drop_tx.clone();
         self.raw_slab.iter_mut().map(move |(key, value)| {
             (
@@ -199,5 +123,105 @@ impl<T> DropSlab<T> {
 
     pub fn storage_size(&self) -> usize {
         self.raw_slab.storage_size()
+    }
+}
+
+pub struct RawDropSlabKeyInner {
+    raw_slab_index: SlabIndexT,
+    drop_tx: Sender<SlabIndexT>,
+}
+
+impl Drop for RawDropSlabKeyInner {
+    fn drop(&mut self) {
+        // Not a problem if the rx closed, it would have destroyed the contained objects
+        let _ = self.drop_tx.send(self.raw_slab_index);
+    }
+}
+
+pub struct DropSlabKey<T> {
+    inner: Arc<RawDropSlabKeyInner>,
+    _phantom: PhantomData<T>,
+}
+
+impl<T> Clone for DropSlabKey<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            _phantom: Default::default(),
+        }
+    }
+}
+
+impl<T> std::fmt::Debug for DropSlabKey<T> {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("DropSlabKey")
+            .field("index", &self.inner.raw_slab_index)
+            .finish()
+    }
+}
+
+impl<T> DropSlabKey<T> {
+    fn new(
+        raw_slab_index: SlabIndexT,
+        drop_tx: Sender<SlabIndexT>,
+    ) -> Self {
+        let inner = RawDropSlabKeyInner {
+            raw_slab_index,
+            drop_tx,
+        };
+
+        Self {
+            inner: Arc::new(inner),
+            _phantom: Default::default(),
+        }
+    }
+
+    pub fn index(&self) -> SlabIndexT {
+        self.inner.raw_slab_index
+    }
+
+    pub fn generic_drop_slab_key(&self) -> GenericDropSlabKey {
+        GenericDropSlabKey::new(self.inner.clone())
+    }
+}
+
+pub struct GenericDropSlabKey {
+    inner: Arc<RawDropSlabKeyInner>,
+}
+
+impl Clone for GenericDropSlabKey {
+    fn clone(&self) -> Self {
+        Self::new(self.inner.clone())
+    }
+}
+
+impl std::fmt::Debug for GenericDropSlabKey {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("GenericDropSlabKey")
+            .field("index", &self.inner.raw_slab_index)
+            .finish()
+    }
+}
+
+impl GenericDropSlabKey {
+    fn new(inner: Arc<RawDropSlabKeyInner>) -> Self {
+        Self { inner }
+    }
+
+    pub fn index(&self) -> SlabIndexT {
+        self.inner.raw_slab_index
+    }
+
+    pub fn drop_slab_key<T>(&self) -> DropSlabKey<T> {
+        DropSlabKey {
+            inner: self.inner.clone(),
+            _phantom: Default::default(),
+        }
     }
 }

@@ -30,13 +30,4 @@ pub use raw_slab::RawSlabKey;
 mod drop_slab;
 pub use drop_slab::DropSlab;
 pub use drop_slab::DropSlabKey;
-
-// GenSlab not currently in use anywhere
-
-//mod generation;
-//pub use generation::Generation;
-//pub use generation::GenerationIndex;
-
-//mod gen_slab;
-// pub use gen_slab::GenSlab;
-// pub use gen_slab::GenSlabKey;
+pub use drop_slab::GenericDropSlabKey;
