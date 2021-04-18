@@ -48,3 +48,5 @@ pub use pipeline::*;
 
 mod internal;
 pub(crate) use internal::*;
+
+pub use internal::gles20;

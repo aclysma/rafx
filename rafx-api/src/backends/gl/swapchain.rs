@@ -6,11 +6,13 @@ use crate::{
 };
 use rafx_base::trust_cell::TrustCell;
 use raw_window_handle::HasRawWindowHandle;
+use std::sync::Arc;
 
 const SWAPCHAIN_IMAGE_COUNT: u32 = 3;
 
 pub struct RafxSwapchainGl {
     device_context: RafxDeviceContextGl,
+    surface_context: Arc<GlContext>,
     //layer: gl_rs::GlLayer,
     //drawable: TrustCell<Option<gl_rs::GlDrawable>>,
     swapchain_def: RafxSwapchainDef,
@@ -19,10 +21,6 @@ pub struct RafxSwapchainGl {
     next_swapchain_image_index: u32,
     swapchain_images: Vec<RafxTextureGl>,
 }
-
-// for gl_rs::CAGlDrawable
-unsafe impl Send for RafxSwapchainGl {}
-unsafe impl Sync for RafxSwapchainGl {}
 
 impl RafxSwapchainGl {
     pub fn swapchain_def(&self) -> &RafxSwapchainDef {
@@ -35,6 +33,10 @@ impl RafxSwapchainGl {
 
     pub fn format(&self) -> RafxFormat {
         self.format
+    }
+
+    pub fn surface_context(&self) -> &Arc<GlContext> {
+        &self.surface_context
     }
 
     // pub fn gl_layer(&self) -> &gl_rs::GlLayerRef {
@@ -54,7 +56,7 @@ impl RafxSwapchainGl {
 
         let mut resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
 
-        let context = device_context.gl_context_manager().create_surface_context(raw_window_handle);
+        let surface_context = device_context.gl_context_manager().create_surface_context(raw_window_handle);
 
         // add surface
         // set GL swap interval (vsync)
@@ -78,6 +80,7 @@ impl RafxSwapchainGl {
 
         Ok(RafxSwapchainGl {
             device_context: device_context.clone(),
+            surface_context,
             //layer,
             //drawable: Default::default(),
             swapchain_def: swapchain_def.clone(),
@@ -138,7 +141,7 @@ impl RafxSwapchainGl {
         &mut self,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<()> {
-        unimplemented!();
+        //unimplemented!();
         // self.layer.set_drawable_size(gl_rs::CGSize::new(
         //     swapchain_def.width as f64,
         //     swapchain_def.height as f64,
@@ -146,70 +149,36 @@ impl RafxSwapchainGl {
         // //TODO: Add to gl crate, following presents_with_transaction as an example
         // //self.layer.set_display_sync_enabled(swapchain_def.enable_vsync);
         //
-        // self.swapchain_def = swapchain_def.clone();
+        self.swapchain_def = swapchain_def.clone();
         Ok(())
     }
 
     pub fn acquire_next_image_fence(
         &mut self,
-        _fence: &RafxFenceGl,
+        fence: &RafxFenceGl,
     ) -> RafxResult<RafxSwapchainImage> {
-        unimplemented!();
+        fence.set_submitted(true);
         self.acquire_next_image()
     }
 
     pub fn acquire_next_image_semaphore(
         &mut self,
-        _semaphore: &RafxSemaphoreGl,
+        semaphore: &RafxSemaphoreGl,
     ) -> RafxResult<RafxSwapchainImage> {
-        unimplemented!();
+        semaphore.set_signal_available(true);
         self.acquire_next_image()
     }
 
     pub fn acquire_next_image(&mut self) -> RafxResult<RafxSwapchainImage> {
-        unimplemented!();
-        // objc::rc::autoreleasepool(|| {
-        //     let drawable = self
-        //         .layer
-        //         .next_drawable()
-        //         .ok_or("Timed out while trying to acquire drawable".to_string())?;
-        //
-        //     let mut old_drawable = self.drawable.borrow_mut();
-        //     assert!(old_drawable.is_none());
-        //     *old_drawable = Some(drawable.to_owned());
-        //
-        //     let raw_image = RafxRawImageGl::Ref(drawable.texture().to_owned());
-        //
-        //     // This ends up being cheap because it doesn't allocate anything. We could cache it but it doesn't
-        //     // seem worthwhile
-        //     let image = RafxTextureGl::from_existing(
-        //         &self.device_context,
-        //         Some(raw_image),
-        //         &RafxTextureDef {
-        //             extents: RafxExtents3D {
-        //                 width: self.swapchain_def.width,
-        //                 height: self.swapchain_def.height,
-        //                 depth: 1,
-        //             },
-        //             array_length: 1,
-        //             mip_count: 1,
-        //             format: self.format,
-        //             resource_type: RafxResourceType::UNDEFINED,
-        //             sample_count: RafxSampleCount::SampleCount1,
-        //             dimensions: RafxTextureDimensions::Dim2D,
-        //         },
-        //     )?;
-        //
-        //     let swapchain_image_index = self.next_swapchain_image_index;
-        //     self.next_swapchain_image_index += 1;
-        //     if self.next_swapchain_image_index >= SWAPCHAIN_IMAGE_COUNT {
-        //         self.next_swapchain_image_index = 0;
-        //     }
-        //
-        //     Ok(RafxSwapchainImage {
-        //         texture: RafxTexture::Gl(image),
-        //         swapchain_image_index,
-        //     })
-        // })
+        let swapchain_image_index = self.next_swapchain_image_index;
+        self.next_swapchain_image_index += 1;
+        if self.next_swapchain_image_index >= SWAPCHAIN_IMAGE_COUNT {
+            self.next_swapchain_image_index = 0;
+        }
+
+        Ok(RafxSwapchainImage {
+            texture: RafxTexture::Gl(self.swapchain_images[swapchain_image_index as usize].clone()),
+            swapchain_image_index,
+        })
     }
 }

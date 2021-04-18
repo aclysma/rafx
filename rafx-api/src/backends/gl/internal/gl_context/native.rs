@@ -344,4 +344,18 @@ impl GlContext {
             Ok(Some(value as u32))
         }
     }
+
+    pub fn gl_flush(&self) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Flush();
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_disable(&self, value: GLenum) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Disable(value);
+            self.check_for_error()
+        }
+    }
 }

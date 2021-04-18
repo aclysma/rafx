@@ -30,7 +30,7 @@ pub struct RafxDeviceContextGlInner {
     pub(crate) all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 }
 
-// For gl_rs::Device
+// For GlContext
 unsafe impl Send for RafxDeviceContextGlInner {}
 unsafe impl Sync for RafxDeviceContextGlInner {}
 

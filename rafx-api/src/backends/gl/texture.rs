@@ -15,10 +15,6 @@ pub enum RafxRawImageGl {
     //Ref(gl_rs::Texture),
 }
 
-// for gl_rs::Texture
-unsafe impl Send for RafxRawImageGl {}
-unsafe impl Sync for RafxRawImageGl {}
-
 impl RafxRawImageGl {
     // pub fn gl_texture(&self) -> &gl_rs::TextureRef {
     //     match self {
@@ -43,10 +39,6 @@ pub struct RafxTextureGlInner {
 pub struct RafxTextureGl {
     inner: Arc<RafxTextureGlInner>,
 }
-
-// for gl_rs::Texture
-unsafe impl Send for RafxTextureGl {}
-unsafe impl Sync for RafxTextureGl {}
 
 impl PartialEq for RafxTextureGl {
     fn eq(

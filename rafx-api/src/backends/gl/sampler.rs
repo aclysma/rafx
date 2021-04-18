@@ -8,10 +8,6 @@ pub struct RafxSamplerGlInner {
     //sampler: gl_rs::SamplerState,
 }
 
-// for gl_rs::SamplerState
-unsafe impl Send for RafxSamplerGlInner {}
-unsafe impl Sync for RafxSamplerGlInner {}
-
 #[derive(Debug, Clone)]
 pub struct RafxSamplerGl {
     inner: Arc<RafxSamplerGlInner>,

@@ -9,11 +9,9 @@ use serde::{Deserialize, Serialize};
 /// It is a struct rather than an enum because these are not mutually exclusive
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-pub struct RafxShaderPackageGl {
-    /// Raw uncompiled OpenGL source code. Will be compiled at runtime.
-    pub gl_src: Option<String>,
+pub enum RafxShaderPackageGl {
     /// Raw uncompiled OpenGL ES source code. Will be compiled at runtime.
-    pub gles_src: Option<String>,
+    Src(String)
 }
 
 /// Metal-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
@@ -64,9 +62,8 @@ impl RafxShaderPackage {
     #[cfg(feature = "rafx-gl")]
     pub fn gl_module_def(&self) -> Option<RafxShaderModuleDefGl> {
         if let Some(gl) = self.gl.as_ref() {
-            Some(RafxShaderModuleDefGl {
-                gl_src: gl.gl_src.as_ref().map(|x| x.as_str()),
-                gles_src: gl.gles_src.as_ref().map(|x| x.as_str()),
+            Some(match gl {
+                RafxShaderPackageGl::Src(src) => RafxShaderModuleDefGl::GlSrc(src)
             })
         } else {
             None
@@ -135,24 +132,10 @@ impl RafxShaderPackage {
 
 /// Used to create a RafxShaderModule
 ///
-/// This struct may be populated manually or created from a RafxShaderPackage.
-///
-/// It is a struct rather than an enum because these are not mutually exclusive
-#[derive(Copy, Clone, Hash)]
-#[cfg(feature = "rafx-gl")]
-pub struct RafxShaderModuleDefGl<'a> {
-    /// GL
-    pub gl_src: Option<&'a str>,
-    /// GL ES
-    pub gles_src: Option<&'a str>,
-}
-
-/// Used to create a RafxShaderModule
-///
 /// This enum may be populated manually or created from a RafxShaderPackage.
 #[derive(Copy, Clone, Hash)]
 #[cfg(feature = "rafx-gl")]
-pub enum RafxShaderModuleDefGles<'a> {
+pub enum RafxShaderModuleDefGl<'a> {
     /// GL source code
     GlSrc(&'a str),
 }

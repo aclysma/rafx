@@ -153,7 +153,7 @@ impl RafxApi {
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => inner.destroy(),
             #[cfg(feature = "rafx-gl")]
-            RafxApi::Gl(inner) => unimplemented!(),
+            RafxApi::Gl(inner) => inner.destroy(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -172,7 +172,7 @@ impl RafxApi {
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_) => None,
             #[cfg(feature = "rafx-gl")]
-            RafxApi::Gl(inner) => unimplemented!(),
+            RafxApi::Gl(inner) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -191,7 +191,27 @@ impl RafxApi {
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gl")]
-            RafxApi::Gl(inner) => unimplemented!(),
+            RafxApi::Gl(inner) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxApi::Empty(_) => None,
+        }
+    }
+
+
+    /// Get the underlying gl API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_api(&self) -> Option<&RafxApiGl> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxApi::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxApi::Metal(inner) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxApi::Gl(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -213,7 +233,7 @@ impl RafxApi {
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_) => None,
             #[cfg(feature = "rafx-gl")]
-            RafxApi::Gl(inner) => unimplemented!(),
+            RafxApi::Gl(inner) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

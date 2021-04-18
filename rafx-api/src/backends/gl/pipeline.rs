@@ -20,10 +20,6 @@ use crate::{
 //     Compute(gl_rs::ComputePipelineState),
 // }
 
-// for gl_rs::RenderPipelineState
-// unsafe impl Send for GlPipelineState {}
-// unsafe impl Sync for GlPipelineState {}
-
 // #[derive(Debug)]
 // pub(crate) struct PipelineComputeEncoderInfo {
 //     pub compute_threads_per_group: [u32; 3],
@@ -41,10 +37,6 @@ use crate::{
 //     pub(crate) mtl_depth_stencil_state: Option<gl_rs::DepthStencilState>,
 //     pub(crate) mtl_primitive_type: gl_rs::MTLPrimitiveType,
 // }
-
-// for gl_rs::DepthStencilState
-// unsafe impl Send for PipelineRenderEncoderInfo {}
-// unsafe impl Sync for PipelineRenderEncoderInfo {}
 
 #[derive(Debug)]
 pub struct RafxPipelineGl {
@@ -234,48 +226,6 @@ impl RafxPipelineGl {
         device_context: &RafxDeviceContextGl,
         pipeline_def: &RafxComputePipelineDef,
     ) -> RafxResult<Self> {
-        unimplemented!();
-        // let mut compute_function = None;
-        // let mut compute_threads_per_group = None;
-        //
-        // for stage in pipeline_def.shader.gl_shader().unwrap().stages() {
-        //     if stage
-        //         .reflection
-        //         .shader_stage
-        //         .intersects(RafxShaderStageFlags::COMPUTE)
-        //     {
-        //         let entry_point = gl_entry_point_name(&stage.reflection.entry_point_name);
-        //
-        //         assert!(compute_function.is_none());
-        //         compute_function = Some(
-        //             stage
-        //                 .shader_module
-        //                 .gl_shader_module()
-        //                 .unwrap()
-        //                 .library()
-        //                 .get_function(entry_point, None)?,
-        //         );
-        //
-        //         compute_threads_per_group = stage.reflection.compute_threads_per_group;
-        //     }
-        // }
-        //
-        // let compute_function = compute_function.ok_or("Could not find compute function")?;
-        //
-        // let pipeline = device_context
-        //     .device()
-        //     .new_compute_pipeline_state_with_function(compute_function.as_ref())?;
-        //
-        // let compute_encoder_info = PipelineComputeEncoderInfo {
-        //     compute_threads_per_group: compute_threads_per_group.unwrap(),
-        // };
-        //
-        // Ok(RafxPipelineGl {
-        //     root_signature: pipeline_def.root_signature.clone(),
-        //     pipeline_type: pipeline_def.root_signature.pipeline_type(),
-        //     pipeline: GlPipelineState::Compute(pipeline),
-        //     render_encoder_info: None,
-        //     compute_encoder_info: Some(compute_encoder_info),
-        // })
+        unimplemented!("GL ES 2.0 does not support compute pipelines");
     }
 }

@@ -11,6 +11,22 @@ pub struct RafxShaderResourceBindingKey {
     pub binding: u32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub struct RafxGlUniformMember {
+    pub name: String,
+    pub offset: u32,
+}
+
+impl RafxGlUniformMember {
+    pub fn new<T: Into<String>>(name: T, offset: u32) -> Self {
+        RafxGlUniformMember {
+            name: name.into(),
+            offset
+        }
+    }
+}
+
 /// A data source within a shader. Often a descriptor or push constant.
 //TODO: Consider separate type for bindings vs. push constants
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -32,6 +48,14 @@ pub struct RafxShaderResource {
     pub name: Option<String>,
     //pub texture_dimensions: Option<RafxTextureDimension>,
     // metal stuff?
+
+    // Required for GL ES 2.0 only. Other APIs use set_index and binding. (Rafx shader processor
+    // can produce this metadata automatically)
+    pub gl_name: Option<String>,
+    // Required for GL ES 2.0 only, every field within a uniform must be specified with the byte
+    // offset. This includes elements within arrays. (Rafx shader processor can produce rust structs
+    // and the necessary metadata automatically.)
+    pub gl_uniform_members: Vec<RafxGlUniformMember>,
 }
 
 impl RafxShaderResource {
@@ -126,6 +150,13 @@ impl RafxShaderResource {
             Err(format!(
                 "Pass is using shaders in different stages with different size_in_bytes {} and {} (set={} binding={})",
                 self.size_in_bytes, other.size_in_bytes,
+                self.set_index, self.binding
+            ))?;
+        }
+
+        if self.gl_uniform_members != other.gl_uniform_members {
+            Err(format!(
+                "Pass is using shaders in different stages with different gl_uniform_members (set={} binding={})",
                 self.set_index, self.binding
             ))?;
         }

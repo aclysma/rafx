@@ -8,14 +8,15 @@ use std::sync::atomic::Ordering;
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
 
-#[derive(Debug)]
-pub struct SharedBufferData {
+// This struct exists so that descriptor sets can (somewhat) safely point at the contents of a buffer
+#[derive(Debug, Clone)]
+pub(crate) struct GlBufferContents {
     data: Arc<TrustCell<Box<[u8]>>>
 }
 
-impl SharedBufferData {
+impl GlBufferContents {
     pub fn new(data: Vec<u8>) -> Self {
-        SharedBufferData {
+        GlBufferContents {
             data: Arc::new(TrustCell::new(data.into_boxed_slice()))
         }
     }
@@ -36,22 +37,22 @@ pub struct RafxBufferGl {
     device_context: RafxDeviceContextGl,
     buffer_def: RafxBufferDef,
     buffer_id: Option<BufferId>,
-    buffer_contents: Option<SharedBufferData>,
+    buffer_contents: Option<GlBufferContents>,
     mapped_count: AtomicU32,
     target: GLenum, // may be gles20::NONE
 }
-
-// for gl_rs::Buffer
-unsafe impl Send for RafxBufferGl {}
-unsafe impl Sync for RafxBufferGl {}
 
 impl RafxBufferGl {
     pub fn buffer_def(&self) -> &RafxBufferDef {
         &self.buffer_def
     }
 
-    pub fn gl_buffer_d(&self) -> Option<BufferId> {
+    pub fn gl_buffer_id(&self) -> Option<BufferId> {
         self.buffer_id
+    }
+
+    pub(crate) fn buffer_contents(&self) -> &Option<GlBufferContents> {
+        &self.buffer_contents
     }
 
     pub fn map_buffer(&self) -> RafxResult<*mut u8> {
@@ -167,7 +168,7 @@ impl RafxBufferGl {
             device_context: device_context.clone(),
             buffer_def: buffer_def.clone(),
             buffer_id,
-            buffer_contents: buffer_contents.map(|x| SharedBufferData::new(x)),
+            buffer_contents: buffer_contents.map(|x| GlBufferContents::new(x)),
             mapped_count: AtomicU32::new(0),
             target
         })

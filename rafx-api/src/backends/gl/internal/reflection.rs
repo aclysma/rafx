@@ -1,6 +1,6 @@
 use std::ffi::CString;
 use crate::gl::{gles20, ProgramId, GlContext};
-use crate::RafxResult;
+use crate::{RafxResult, RafxShader};
 use fnv::FnvHashMap;
 use std::ops::Range;
 
@@ -22,6 +22,7 @@ pub struct UniformFieldInfo {
     size: u32,
     ty: gles20::types::GLenum,
     field_index: FieldIndex,
+    offset: u32,
 }
 
 #[derive(Debug)]
@@ -33,12 +34,32 @@ pub struct UniformReflectionData {
 }
 
 impl UniformReflectionData {
-    pub fn new(gl_context: &GlContext, program_ids: Vec<ProgramId>) -> RafxResult<UniformReflectionData> {
+    pub fn new(
+        gl_context: &GlContext,
+        program_ids: Vec<ProgramId>,
+        shaders: &[RafxShader],
+    ) -> RafxResult<UniformReflectionData> {
         #[derive(Debug)]
         struct SizeTypeName {
             size: u32,
             ty: gles20::types::GLenum,
             name: CString,
+        }
+
+        let mut all_uniform_member_offsets = FnvHashMap::<String, u32>::default();
+        for shader in shaders {
+            for stage in shader.gl_shader().unwrap().stages() {
+                for resource in &stage.reflection.resources {
+                    for uniform_member in &resource.gl_uniform_members {
+                        let old = all_uniform_member_offsets.insert(uniform_member.name.clone(), uniform_member.offset);
+                        if let Some(offset) = old {
+                            if offset != uniform_member.offset {
+                                return Err(format!("Uniform member {} supplied multiple times with different offsets {} and {}", uniform_member.name, uniform_member.offset, offset))?;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Temporary structures we use for merging uniforms/fields from multiple programs
@@ -120,10 +141,16 @@ impl UniformReflectionData {
             uniforms.push(uniform_info);
 
             for size_type_name in uniform_fields {
+                let name_as_str = size_type_name.name.to_string_lossy();
+                let offset = *all_uniform_member_offsets
+                    .get(&*name_as_str)
+                    .ok_or_else(|| format!("Could not find uniform member {} in the metadata for any shader stage", name_as_str))?;
+
                 let field_info = UniformFieldInfo {
                     size: size_type_name.size,
                     ty: size_type_name.ty,
                     field_index: FieldIndex(fields.len() as u32),
+                    offset
                 };
 
                 fields.push(field_info);

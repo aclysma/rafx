@@ -3,23 +3,19 @@ use crate::RafxResult;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct RafxSemaphoreGl {
-    _device_context: RafxDeviceContextGl,
+    device_context: RafxDeviceContextGl,
 
     // Set to true when an operation is scheduled to signal this semaphore
     // Cleared when an operation is scheduled to consume this semaphore
     signal_available: AtomicBool,
 }
 
-// for gl_rs::Event
-unsafe impl Send for RafxSemaphoreGl {}
-unsafe impl Sync for RafxSemaphoreGl {}
-
 impl RafxSemaphoreGl {
     pub fn new(device_context: &RafxDeviceContextGl) -> RafxResult<RafxSemaphoreGl> {
         // Semaphores are not available on OpenGL ES 2.0
         // use glFlush for Gpu->Gpu sync
         Ok(RafxSemaphoreGl {
-            _device_context: device_context.clone(),
+            device_context: device_context.clone(),
             signal_available: AtomicBool::new(false),
         })
     }
@@ -33,5 +29,27 @@ impl RafxSemaphoreGl {
         available: bool,
     ) {
         self.signal_available.store(available, Ordering::Relaxed);
+    }
+
+    pub(crate) fn handle_wait_semaphores(semaphores: &[&RafxSemaphoreGl]) -> RafxResult<()> {
+        if semaphores.is_empty() {
+            return Ok(());
+        }
+
+        let mut should_flush = false;
+        for &semaphore in semaphores {
+            if semaphore.signal_available() {
+                should_flush = true;
+                semaphore.set_signal_available(false);
+            }
+        }
+
+        if should_flush {
+            if let Some(first) = semaphores.first() {
+                first.device_context.gl_context().gl_flush()?;
+            }
+        }
+
+        Ok(())
     }
 }

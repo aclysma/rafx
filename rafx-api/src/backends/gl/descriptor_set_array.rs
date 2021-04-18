@@ -1,4 +1,4 @@
-use crate::gl::{RafxBufferGl, RafxDeviceContextGl, DescriptorSetLayoutInfo, SharedBufferData};
+use crate::gl::{RafxBufferGl, RafxDeviceContextGl, DescriptorSetLayoutInfo, GlBufferContents, BufferId};
 use crate::{
     RafxBufferDef, RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate,
     RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult, RafxRootSignature,
@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct RafxDescriptorSetHandleGl {
-    descriptor_set_array_data: Arc<DescriptorSetArrayData>,
+    descriptor_set_array_data: Arc<TrustCell<DescriptorSetArrayData>>,
     array_index: u32,
 }
 
@@ -25,11 +25,8 @@ impl std::fmt::Debug for RafxDescriptorSetHandleGl {
     }
 }
 
-unsafe impl Send for RafxDescriptorSetHandleGl {}
-unsafe impl Sync for RafxDescriptorSetHandleGl {}
-
 impl RafxDescriptorSetHandleGl {
-    pub fn descriptor_set_array_data(&self) -> &DescriptorSetArrayData {
+    pub fn descriptor_set_array_data(&self) -> &Arc<TrustCell<DescriptorSetArrayData>> {
         &self.descriptor_set_array_data
     }
 
@@ -38,26 +35,30 @@ impl RafxDescriptorSetHandleGl {
     }
 }
 
+#[derive(Clone)]
 pub struct BufferDescriptorState {
-    buffer: Vec<SharedBufferData>,
-    offset: u32,
-    range: u32,
+    buffer_id: Option<BufferId>,
+    buffer_contents: Option<GlBufferContents>,
+    offset: u64,
+    //range: u32,
 }
 
+#[derive(Clone)]
 pub struct ImageDescriptorState {
     texture: Option<u32>,
     sampler: Option<u32>,
 }
 
+#[derive(Clone)]
 pub struct DescriptorSetArrayData {
-    buffers: Vec<BufferDescriptorState>,
-    image_state: Vec<ImageDescriptorState>,
+    buffer_states: Vec<Option<BufferDescriptorState>>,
+    image_states: Vec<Option<ImageDescriptorState>>,
 }
 
 pub struct RafxDescriptorSetArrayGl {
     root_signature: RafxRootSignature,
     set_index: u32,
-    data: Arc<DescriptorSetArrayData>,
+    data: Arc<TrustCell<DescriptorSetArrayData>>,
     array_length: u32
 }
 
@@ -70,7 +71,7 @@ impl RafxDescriptorSetArrayGl {
         self.set_index
     }
 
-    pub fn descriptor_set_array_data(&self) -> &Arc<DescriptorSetArrayData> {
+    pub fn descriptor_set_array_data(&self) -> &Arc<TrustCell<DescriptorSetArrayData>> {
         &self.data
     }
 
@@ -92,76 +93,26 @@ impl RafxDescriptorSetArrayGl {
         device_context: &RafxDeviceContextGl,
         descriptor_set_array_def: &RafxDescriptorSetArrayDef,
     ) -> RafxResult<Self> {
-        unimplemented!();
-        // let root_signature = descriptor_set_array_def
-        //     .root_signature
-        //     .gl_root_signature()
-        //     .unwrap()
-        //     .clone();
-        //
-        // let layout_index = descriptor_set_array_def.set_index as usize;
-        // let layout = &root_signature.inner.layouts[layout_index];
-        //
-        // let argument_descriptors = &root_signature.inner.argument_descriptors[layout_index];
-        // //let immutable_samplers = &layout.immutable_samplers;
-        // let argument_buffer_data = if !argument_descriptors.is_empty()
-        // /*|| !immutable_samplers.is_empty()*/
-        // {
-        //     let array = gl_rs::Array::from_owned_slice(&argument_descriptors);
-        //     let encoder = device_context.device().new_argument_encoder(array);
-        //
-        //     let required_alignment = 256;
-        //     assert!(required_alignment >= encoder.alignment() as _);
-        //     let stride = rafx_base::memory::round_size_up_to_alignment_u32(
-        //         encoder.encoded_length() as _,
-        //         required_alignment,
-        //     );
-        //     let total_buffer_size = stride * descriptor_set_array_def.array_length as u32;
-        //
-        //     let buffer = device_context.create_buffer(&RafxBufferDef {
-        //         size: total_buffer_size as u64,
-        //         alignment: required_alignment,
-        //         resource_type: RafxResourceType::ARGUMENT_BUFFER,
-        //         memory_usage: RafxMemoryUsage::CpuToGpu,
-        //         queue_type: RafxQueueType::Graphics,
-        //         always_mapped: true,
-        //         ..Default::default()
-        //     })?;
-        //
-        //     // Bind static samplers - spirv_cross embeds it within the shader now
-        //     // for immutable_sampler in immutable_samplers {
-        //     //     for array_index in 0..descriptor_set_array_def.array_length {
-        //     //         encoder.set_argument_buffer(buffer.gl_buffer(), (array_index as u32 * stride) as _);
-        //     //
-        //     //         let samplers : Vec<_> = immutable_sampler.samplers.iter().map(|x| x.gl_sampler()).collect();
-        //     //         encoder.set_sampler_states(immutable_sampler.argument_buffer_id, &samplers);
-        //     //     }
-        //     // }
-        //
-        //     let resource_count =
-        //         descriptor_set_array_def.array_length * layout.argument_buffer_id_range as usize;
-        //
-        //     Some(ArgumentBufferData {
-        //         encoder,
-        //         buffer,
-        //         stride,
-        //         argument_buffer_id_range: layout.argument_buffer_id_range,
-        //         resource_usages: root_signature.inner.argument_buffer_resource_usages[layout_index]
-        //             .clone(),
-        //         resource_pointers: TrustCell::new(vec![
-        //             std::ptr::null_mut::<MTLResource>();
-        //             resource_count
-        //         ]),
-        //     })
-        // } else {
-        //     None
-        // };
-        //
-        // Ok(RafxDescriptorSetArrayGl {
-        //     root_signature: RafxRootSignature::Gl(root_signature),
-        //     set_index: descriptor_set_array_def.set_index,
-        //     argument_buffer_data: argument_buffer_data.map(|x| Arc::new(x)),
-        // })
+        let root_signature = descriptor_set_array_def
+            .root_signature
+            .gl_root_signature()
+            .unwrap()
+            .clone();
+
+        let layout_index = descriptor_set_array_def.set_index as usize;
+        let layout = &root_signature.inner.layouts[layout_index];
+
+        let data = DescriptorSetArrayData {
+            buffer_states: vec![None; layout.buffer_descriptor_state_count as usize],
+            image_states: vec![None; layout.image_descriptor_state_count as usize],
+        };
+
+        Ok(RafxDescriptorSetArrayGl {
+            root_signature: RafxRootSignature::Gl(root_signature),
+            set_index: descriptor_set_array_def.set_index,
+            data: Arc::new(TrustCell::new(data)),
+            array_length: descriptor_set_array_def.array_length as u32
+        })
     }
 
     pub fn update_descriptor_set(
@@ -222,21 +173,8 @@ impl RafxDescriptorSetArrayGl {
             }
         };
 
-
-
         let descriptor = root_signature.descriptor(descriptor_index).unwrap();
 
-        //
-        // let argument_buffer = self.argument_buffer_data.as_ref().unwrap();
-        // argument_buffer.encoder.set_argument_buffer(
-        //     argument_buffer.buffer.gl_buffer(),
-        //     (update.array_index * argument_buffer.stride) as _,
-        // );
-        // let mut resource_pointers = argument_buffer.resource_pointers.borrow_mut();
-        // let first_ptr = update.array_index as usize * layout.argument_buffer_id_range as usize;
-        // let last_ptr = first_ptr + layout.argument_buffer_id_range as usize;
-        // let descriptor_resource_pointers = &mut resource_pointers[first_ptr..last_ptr];
-        //
         log::trace!(
             "update descriptor set {:?} (set_index: {:?} binding: {} name: {:?} type: {:?} array_index: {})",
             update.descriptor_key,
@@ -246,8 +184,10 @@ impl RafxDescriptorSetArrayGl {
             descriptor.resource_type,
             update.array_index,
         );
-        //
-        // match descriptor.resource_type {
+
+        let mut descriptor_set_data = self.data.borrow_mut();
+
+        match descriptor.resource_type {
         //     RafxResourceType::SAMPLER => {
         //         let samplers = update.elements.samplers.ok_or_else(||
         //             format!(
@@ -275,17 +215,20 @@ impl RafxDescriptorSetArrayGl {
         //             next_index += 1;
         //         }
         //     }
-        //     RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
-        //         let textures = update.elements.textures.ok_or_else(||
-        //             format!(
-        //                 "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the texture element list was None",
-        //                 update.descriptor_key,
-        //                 descriptor.set_index,
-        //                 descriptor.binding,
-        //                 descriptor.name,
-        //                 descriptor.resource_type,
-        //             )
-        //         )?;
+            RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
+                let textures = update.elements.textures.ok_or_else(||
+                    format!(
+                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the texture element list was None",
+                        update.descriptor_key,
+                        descriptor.set_index,
+                        descriptor.binding,
+                        descriptor.name,
+                        descriptor.resource_type,
+                    )
+                )?;
+
+                unimplemented!();
+
         //
         //         // Defaults to UavMipSlice(0) for TEXTURE_READ_WRITE and Srv for TEXTURE
         //         let texture_bind_type =
@@ -374,53 +317,55 @@ impl RafxDescriptorSetArrayGl {
         //                 update.texture_bind_type
         //             ))?;
         //         }
-        //     }
-        //     RafxResourceType::UNIFORM_BUFFER
-        //     | RafxResourceType::BUFFER
-        //     | RafxResourceType::BUFFER_READ_WRITE => {
-        //         let buffers = update.elements.buffers.ok_or_else(||
-        //             format!(
-        //                 "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
-        //                 update.descriptor_key,
-        //                 descriptor.set_index,
-        //                 descriptor.binding,
-        //                 descriptor.name,
-        //                 descriptor.resource_type,
-        //             )
-        //         )?;
-        //
-        //         let begin_index =
-        //             descriptor.argument_buffer_id as usize + update.dst_element_offset as usize;
-        //         assert!(
-        //             update.dst_element_offset + buffers.len() as u32 <= descriptor.element_count
-        //         );
-        //
-        //         // Modify the update data
-        //         let mut next_index = begin_index;
-        //         for (buffer_index, buffer) in buffers.iter().enumerate() {
-        //             let offset = update
-        //                 .elements
-        //                 .buffer_offset_sizes
-        //                 .map(|x| x[buffer_index].byte_offset)
-        //                 .unwrap_or(0);
-        //             //println!("arg buffer index: {} offset {} buffer {:?}", next_index, offset, buffer.gl_buffer().unwrap().gl_buffer());
-        //
-        //             let gl_buffer = buffer.gl_buffer().unwrap().gl_buffer();
-        //             argument_buffer
-        //                 .encoder
-        //                 .set_buffer(next_index as _, gl_buffer, offset);
-        //             descriptor_resource_pointers[next_index] =
-        //                 (gl_buffer as &gl_rs::ResourceRef).as_ptr();
-        //
-        //             next_index += 1;
-        //         }
-        //     }
-        //     _ => unimplemented!(),
-        // }
-        // Ok(())
+            }
+            RafxResourceType::UNIFORM_BUFFER
+            | RafxResourceType::BUFFER
+            | RafxResourceType::BUFFER_READ_WRITE => {
+                let buffers = update.elements.buffers.ok_or_else(||
+                    format!(
+                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
+                        update.descriptor_key,
+                        descriptor.set_index,
+                        descriptor.binding,
+                        descriptor.name,
+                        descriptor.resource_type,
+                    )
+                )?;
 
+                let begin_index =
+                    descriptor.descriptor_data_offset_in_set.unwrap() as usize + update.dst_element_offset as usize;
+                assert!(
+                    update.dst_element_offset + buffers.len() as u32 <= descriptor.element_count
+                );
 
-        unimplemented!();
+                // Modify the update data
+                let mut next_index = begin_index;
+                for (buffer_index, buffer) in buffers.iter().enumerate() {
+                    let offset = update
+                        .elements
+                        .buffer_offset_sizes
+                        .map(|x| x[buffer_index].byte_offset)
+                        .unwrap_or(0);
+                    //println!("arg buffer index: {} offset {} buffer {:?}", next_index, offset, buffer.gl_buffer().unwrap().gl_buffer());
+
+                    let gl_buffer = buffer.gl_buffer().unwrap();
+                    descriptor_set_data.buffer_states[next_index as usize] = Some(BufferDescriptorState {
+                        buffer_contents: gl_buffer.buffer_contents().clone(),
+                        buffer_id: gl_buffer.gl_buffer_id(),
+                        offset
+                    });
+                    // argument_buffer
+                    //     .encoder
+                    //     .set_buffer(next_index as _, gl_buffer, offset);
+                    // descriptor_resource_pointers[next_index] =
+                    //     (gl_buffer as &gl_rs::ResourceRef).as_ptr();
+
+                    next_index += 1;
+                }
+            }
+            _ => unimplemented!(),
+        }
+        Ok(())
     }
 }
 

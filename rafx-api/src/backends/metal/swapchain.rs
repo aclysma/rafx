@@ -137,7 +137,7 @@ impl RafxSwapchainMetal {
 
             let raw_image = RafxRawImageMetal::Ref(drawable.texture().to_owned());
 
-            let mut resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
+            let resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
 
             // This ends up being cheap because it doesn't allocate anything. We could cache it but it doesn't
             // seem worthwhile

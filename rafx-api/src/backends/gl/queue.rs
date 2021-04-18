@@ -16,10 +16,6 @@ pub struct RafxQueueGlInner {
     queue_id: u32,
 }
 
-// for gl_rs::CommandQueue
-unsafe impl Send for RafxQueueGlInner {}
-unsafe impl Sync for RafxQueueGlInner {}
-
 #[derive(Clone, Debug)]
 pub struct RafxQueueGl {
     inner: Arc<RafxQueueGlInner>,
@@ -62,14 +58,8 @@ impl RafxQueueGl {
     }
 
     pub fn wait_for_queue_idle(&self) -> RafxResult<()> {
-        unimplemented!();
-        // let wait = self
-        //     .inner
-        //     .queue
-        //     .new_command_buffer_with_unretained_references();
-        // wait.commit();
-        // wait.wait_until_completed();
-        // Ok(())
+        // There is no reason to wait for idle in GL
+        Ok(())
     }
 
     fn submit_semaphore_wait(
@@ -102,58 +92,19 @@ impl RafxQueueGl {
         signal_semaphores: &[&RafxSemaphoreGl],
         signal_fence: Option<&RafxFenceGl>,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // objc::rc::autoreleasepool(|| {
-        //     assert!(!command_buffers.is_empty());
-        //
-        //     // If a signal fence exists, mark it as submitted and add a closure to execute at the end
-        //     // of each command buffer. The closure will have a shared atomic counter that is incremented
-        //     // each time it is executed. When the counter reaches the number of command buffers, we know
-        //     // that all command buffers are finished executing and will signal the semaphore
-        //     if let Some(signal_fence) = signal_fence {
-        //         signal_fence.set_submitted(true);
-        //
-        //         let command_count = command_buffers.len();
-        //         let complete_count = Arc::new(AtomicUsize::new(0));
-        //         let dispatch_semaphore = signal_fence.gl_dispatch_semaphore().clone();
-        //         let block = block::ConcreteBlock::new(move |_command_buffer_ref| {
-        //             // Add 1 because fetch_add returns the value from before the add
-        //             let complete =
-        //                 complete_count.fetch_add(1, Ordering::Relaxed) + 1 == command_count;
-        //             if complete {
-        //                 dispatch_semaphore.signal();
-        //             }
-        //         })
-        //         .copy();
-        //
-        //         for command_buffer in command_buffers {
-        //             command_buffer
-        //                 .gl_command_buffer()
-        //                 .unwrap()
-        //                 .add_completed_handler(&block);
-        //         }
-        //     }
-        //
-        //     for signal_semaphore in signal_semaphores {
-        //         command_buffers
-        //             .last()
-        //             .unwrap()
-        //             .gl_command_buffer()
-        //             .unwrap()
-        //             .encode_signal_event(signal_semaphore.gl_event(), 1);
-        //         signal_semaphore.set_signal_available(true);
-        //     }
-        //
-        //     self.submit_semaphore_wait(wait_semaphores);
-        //
-        //     for command_buffer in command_buffers {
-        //         command_buffer.end_current_encoders(false)?;
-        //         command_buffer.gl_command_buffer().unwrap().commit();
-        //         command_buffer.clear_command_buffer();
-        //     }
-        //
-        //     Ok(())
-        // })
+        assert!(!command_buffers.is_empty());
+
+        RafxSemaphoreGl::handle_wait_semaphores(wait_semaphores)?;
+
+        for semaphore in signal_semaphores {
+            semaphore.set_signal_available(true);
+        }
+
+        if let Some(fence) = signal_fence {
+            fence.set_submitted(true);
+        }
+
+        Ok(())
     }
 
     pub fn present(
@@ -162,17 +113,16 @@ impl RafxQueueGl {
         wait_semaphores: &[&RafxSemaphoreGl],
         _image_index: u32,
     ) -> RafxResult<RafxPresentSuccessResult> {
-        unimplemented!();
-        // objc::rc::autoreleasepool(|| {
-        //     self.submit_semaphore_wait(wait_semaphores);
-        //
-        //     let command_buffer = self.inner.queue.new_command_buffer();
-        //     let drawable = swapchain.take_drawable().unwrap();
-        //     command_buffer.present_drawable(drawable.as_ref());
-        //     // Invalidate swapchain texture in some way?
-        //     command_buffer.commit();
-        //
-        //     Ok(RafxPresentSuccessResult::Success)
-        // })
+        RafxSemaphoreGl::handle_wait_semaphores(wait_semaphores)?;
+
+        self.device_context().gl_context().gl_disable(crate::gl::gles20::SCISSOR_TEST)?;
+
+        let surface_context = swapchain.surface_context();
+        let gl_context_manager = self.device_context().gl_context_manager();
+        gl_context_manager.set_current_context(Some(surface_context));
+        self.device_context().gl_context().swap_buffers();
+        gl_context_manager.set_current_context(Some(gl_context_manager.main_context()));
+
+        Ok(RafxPresentSuccessResult::Success)
     }
 }

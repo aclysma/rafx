@@ -349,7 +349,9 @@ impl RafxDeviceContext {
                 RafxPipeline::Metal(inner.create_graphics_pipeline(pipeline_def)?)
             }
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => {
+                RafxPipeline::Gl(inner.create_graphics_pipeline(pipeline_def)?)
+            },
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -449,6 +451,25 @@ impl RafxDeviceContext {
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
             RafxDeviceContext::Empty(inner) => None,
+        }
+    }
+
+    /// Get the underlying gl API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gl")]
+    pub fn gl_device_context(&self) -> Option<&RafxDeviceContextGl> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxDeviceContext::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxDeviceContext::Metal(_) => None,
+            #[cfg(feature = "rafx-gl")]
+            RafxDeviceContext::Gl(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDeviceContext::Empty(_) => None,
         }
     }
 

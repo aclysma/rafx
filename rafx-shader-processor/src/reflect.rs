@@ -4,14 +4,11 @@ use rafx_framework::cooked_shader::{
 };
 
 use fnv::FnvHashMap;
-use rafx_api::{
-    RafxAddressMode, RafxCompareOp, RafxFilterType, RafxMipMapMode, RafxResourceType, RafxResult,
-    RafxSamplerDef, RafxShaderResource, RafxShaderStageFlags, RafxShaderStageReflection,
-    MAX_DESCRIPTOR_SET_LAYOUTS,
-};
+use rafx_api::{RafxAddressMode, RafxCompareOp, RafxFilterType, RafxMipMapMode, RafxResourceType, RafxResult, RafxSamplerDef, RafxShaderResource, RafxShaderStageFlags, RafxShaderStageReflection, MAX_DESCRIPTOR_SET_LAYOUTS, RafxGlUniformMember};
 use spirv_cross::msl::{ResourceBinding, ResourceBindingLocation, SamplerData, SamplerLocation};
 use spirv_cross::spirv::{ExecutionModel, Type};
 use std::collections::BTreeMap;
+use crate::shader_types::{TypeAlignmentInfo, UserType, generate_struct, MemoryLayout, element_count};
 
 fn get_descriptor_count_from_type<TargetT>(
     ast: &spirv_cross::spirv::Ast<TargetT>,
@@ -91,7 +88,70 @@ where
     )
 }
 
-fn get_binding_dsc<TargetT>(
+fn get_rafx_resource<TargetT>(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
+    ast: &spirv_cross::spirv::Ast<TargetT>,
+    declarations: &super::parse_declarations::ParseDeclarationsResult,
+    resource: &spirv_cross::spirv::Resource,
+    resource_type: RafxResourceType,
+    stage_flags: RafxShaderStageFlags,
+) -> RafxResult<RafxShaderResource>
+    where
+        TargetT: spirv_cross::spirv::Target,
+        spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Parse<TargetT>,
+        spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Compile<TargetT>,
+{
+    let set = ast
+        .get_decoration(resource.id, spirv_cross::spirv::Decoration::DescriptorSet)
+        .map_err(|_x| "could not get descriptor set index from reflection data")?;
+    let binding = ast
+        .get_decoration(resource.id, spirv_cross::spirv::Decoration::Binding)
+        .map_err(|_x| "could not get descriptor binding index from reflection data")?;
+    let element_count = get_descriptor_count_from_type(ast, resource.type_id)?;
+
+    let parsed_binding = declarations.bindings.iter().find(|x| x.parsed.layout_parts.binding == Some(binding as usize) && x.parsed.layout_parts.set == Some(set as usize))
+        .or_else(|| declarations.bindings.iter().find(|x| x.parsed.instance_name == *resource.name))
+        .ok_or_else(|| format!("A resource named {} in spirv reflection data was not matched up to a resource scanned in source code.", resource.name))?;
+
+    let slot_name = if let Some(annotation) = &parsed_binding.annotations.slot_name {
+        Some(annotation.0.clone())
+    } else {
+        None
+    };
+
+    let mut gl_uniform_members = Vec::<RafxGlUniformMember>::default();
+    if resource_type == RafxResourceType::UNIFORM_BUFFER {
+        generate_gl_uniform_members(
+            &builtin_types,
+            &user_types,
+            &parsed_binding.parsed.type_name,
+            parsed_binding.parsed.instance_name.clone(),
+            0,
+            &mut gl_uniform_members
+        )?;
+    }
+
+    let resource = RafxShaderResource {
+        resource_type,
+        set_index: set,
+        binding,
+        element_count,
+        size_in_bytes: 0,
+        used_in_shader_stages: stage_flags,
+        name: Some(slot_name.unwrap_or_else(|| resource.name.clone())),
+        gl_name: Some(resource.name.clone()),
+        gl_uniform_members,
+    };
+
+    resource.validate()?;
+
+    Ok(resource)
+}
+
+fn get_reflected_binding<TargetT>(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
     ast: &spirv_cross::spirv::Ast<TargetT>,
     declarations: &super::parse_declarations::ParseDeclarationsResult,
     resource: &spirv_cross::spirv::Resource,
@@ -104,13 +164,17 @@ where
     spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Compile<TargetT>,
 {
     let name = &resource.name;
-    let set = ast
-        .get_decoration(resource.id, spirv_cross::spirv::Decoration::DescriptorSet)
-        .map_err(|_x| "could not get descriptor set index from reflection data")?;
-    let binding = ast
-        .get_decoration(resource.id, spirv_cross::spirv::Decoration::Binding)
-        .map_err(|_x| "could not get descriptor binding index from reflection data")?;
-    let element_count = get_descriptor_count_from_type(ast, resource.type_id)?;
+    let rafx_resource = get_rafx_resource(
+        builtin_types,
+        user_types,
+        ast,
+        declarations,
+        resource,
+        resource_type,
+        stage_flags
+    )?;
+    let set = rafx_resource.set_index;
+    let binding = rafx_resource.binding;
 
     let parsed_binding = declarations.bindings.iter().find(|x| x.parsed.layout_parts.binding == Some(binding as usize) && x.parsed.layout_parts.set == Some(set as usize))
         .or_else(|| declarations.bindings.iter().find(|x| x.parsed.instance_name == *name))
@@ -133,22 +197,6 @@ where
             None
         };
 
-    let slot_name = if let Some(annotation) = &parsed_binding.annotations.slot_name {
-        Some(annotation.0.clone())
-    } else {
-        None
-    };
-
-    let rafx_resource = RafxShaderResource {
-        name: slot_name.clone(),
-        set_index: set,
-        binding,
-        size_in_bytes: 0, // Only for push constants
-        resource_type,
-        used_in_shader_stages: stage_flags,
-        element_count,
-    };
-
     Ok(ReflectedDescriptorSetLayoutBinding {
         resource: rafx_resource,
         internal_buffer_per_descriptor_size,
@@ -156,53 +204,9 @@ where
     })
 }
 
-fn get_binding_rafx<TargetT>(
-    ast: &spirv_cross::spirv::Ast<TargetT>,
-    declarations: &super::parse_declarations::ParseDeclarationsResult,
-    resource: &spirv_cross::spirv::Resource,
-    resource_type: RafxResourceType,
-    stage_flags: RafxShaderStageFlags,
-) -> RafxResult<RafxShaderResource>
-where
-    TargetT: spirv_cross::spirv::Target,
-    spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Parse<TargetT>,
-    spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Compile<TargetT>,
-{
-    let name = &resource.name;
-    let set = ast
-        .get_decoration(resource.id, spirv_cross::spirv::Decoration::DescriptorSet)
-        .map_err(|_x| "could not get descriptor set index from reflection data")?;
-    let binding = ast
-        .get_decoration(resource.id, spirv_cross::spirv::Decoration::Binding)
-        .map_err(|_x| "could not get descriptor binding index from reflection data")?;
-    let element_count = get_descriptor_count_from_type(ast, resource.type_id)?;
-
-    let parsed_binding = declarations.bindings.iter().find(|x| x.parsed.layout_parts.binding == Some(binding as usize) && x.parsed.layout_parts.set == Some(set as usize))
-        .or_else(|| declarations.bindings.iter().find(|x| x.parsed.instance_name == *name))
-        .ok_or_else(|| format!("A resource named {} in spirv reflection data was not matched up to a resource scanned in source code.", resource.name))?;
-
-    let slot_name = if let Some(annotation) = &parsed_binding.annotations.slot_name {
-        Some(annotation.0.clone())
-    } else {
-        None
-    };
-
-    let resource = RafxShaderResource {
-        resource_type,
-        set_index: set,
-        binding,
-        element_count,
-        size_in_bytes: 0,
-        used_in_shader_stages: stage_flags,
-        name: Some(slot_name.unwrap_or_else(|| name.clone())),
-    };
-
-    resource.validate()?;
-
-    Ok(resource)
-}
-
-fn get_bindings_dsc<TargetT>(
+fn get_reflected_bindings<TargetT>(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
     descriptors: &mut Vec<ReflectedDescriptorSetLayoutBinding>,
     ast: &spirv_cross::spirv::Ast<TargetT>,
     declarations: &super::parse_declarations::ParseDeclarationsResult,
@@ -216,7 +220,9 @@ where
     spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Compile<TargetT>,
 {
     for resource in resources {
-        descriptors.push(get_binding_dsc(
+        descriptors.push(get_reflected_binding(
+            builtin_types,
+            user_types,
             ast,
             declarations,
             resource,
@@ -228,33 +234,9 @@ where
     Ok(())
 }
 
-fn get_bindings_rafx<TargetT>(
-    descriptors: &mut Vec<RafxShaderResource>,
-    ast: &spirv_cross::spirv::Ast<TargetT>,
-    declarations: &super::parse_declarations::ParseDeclarationsResult,
-    resources: &[spirv_cross::spirv::Resource],
-    resource_type: RafxResourceType,
-    stage_flags: RafxShaderStageFlags,
-) -> RafxResult<()>
-where
-    TargetT: spirv_cross::spirv::Target,
-    spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Parse<TargetT>,
-    spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Compile<TargetT>,
-{
-    for resource in resources {
-        descriptors.push(get_binding_rafx(
-            ast,
-            declarations,
-            resource,
-            resource_type,
-            stage_flags,
-        )?);
-    }
-
-    Ok(())
-}
-
-fn get_all_bindings_dsc<TargetT>(
+fn get_all_reflected_bindings<TargetT>(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
     shader_resources: &spirv_cross::spirv::ShaderResources,
     ast: &spirv_cross::spirv::Ast<TargetT>,
     declarations: &super::parse_declarations::ParseDeclarationsResult,
@@ -266,7 +248,9 @@ where
     spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Compile<TargetT>,
 {
     let mut bindings = Vec::default();
-    get_bindings_dsc(
+    get_reflected_bindings(
+        builtin_types,
+        user_types,
         &mut bindings,
         ast,
         declarations,
@@ -274,7 +258,9 @@ where
         RafxResourceType::UNIFORM_BUFFER,
         stage_flags,
     )?;
-    get_bindings_dsc(
+    get_reflected_bindings(
+        builtin_types,
+        user_types,
         &mut bindings,
         ast,
         declarations,
@@ -282,7 +268,9 @@ where
         RafxResourceType::BUFFER,
         stage_flags,
     )?;
-    get_bindings_dsc(
+    get_reflected_bindings(
+        builtin_types,
+        user_types,
         &mut bindings,
         ast,
         declarations,
@@ -290,7 +278,9 @@ where
         RafxResourceType::TEXTURE_READ_WRITE,
         stage_flags,
     )?;
-    get_bindings_dsc(
+    get_reflected_bindings(
+        builtin_types,
+        user_types,
         &mut bindings,
         ast,
         declarations,
@@ -298,7 +288,9 @@ where
         RafxResourceType::COMBINED_IMAGE_SAMPLER,
         stage_flags,
     )?;
-    get_bindings_dsc(
+    get_reflected_bindings(
+        builtin_types,
+        user_types,
         &mut bindings,
         ast,
         declarations,
@@ -306,71 +298,9 @@ where
         RafxResourceType::TEXTURE,
         stage_flags,
     )?;
-    get_bindings_dsc(
-        &mut bindings,
-        ast,
-        declarations,
-        &shader_resources.separate_samplers,
-        RafxResourceType::SAMPLER,
-        stage_flags,
-    )?;
-
-    Ok(bindings)
-}
-
-fn get_all_bindings_rafx<TargetT>(
-    shader_resources: &spirv_cross::spirv::ShaderResources,
-    ast: &spirv_cross::spirv::Ast<TargetT>,
-    declarations: &super::parse_declarations::ParseDeclarationsResult,
-    stage_flags: RafxShaderStageFlags,
-) -> RafxResult<Vec<RafxShaderResource>>
-where
-    TargetT: spirv_cross::spirv::Target,
-    spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Parse<TargetT>,
-    spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Compile<TargetT>,
-{
-    let mut bindings = Vec::default();
-    get_bindings_rafx(
-        &mut bindings,
-        ast,
-        declarations,
-        &shader_resources.uniform_buffers,
-        RafxResourceType::UNIFORM_BUFFER,
-        stage_flags,
-    )?;
-    get_bindings_rafx(
-        &mut bindings,
-        ast,
-        declarations,
-        &shader_resources.storage_buffers,
-        RafxResourceType::BUFFER_READ_WRITE,
-        stage_flags,
-    )?;
-    get_bindings_rafx(
-        &mut bindings,
-        ast,
-        declarations,
-        &shader_resources.storage_images,
-        RafxResourceType::TEXTURE_READ_WRITE,
-        stage_flags,
-    )?;
-    get_bindings_rafx(
-        &mut bindings,
-        ast,
-        declarations,
-        &shader_resources.sampled_images,
-        RafxResourceType::COMBINED_IMAGE_SAMPLER,
-        stage_flags,
-    )?;
-    get_bindings_rafx(
-        &mut bindings,
-        ast,
-        declarations,
-        &shader_resources.separate_images,
-        RafxResourceType::TEXTURE,
-        stage_flags,
-    )?;
-    get_bindings_rafx(
+    get_reflected_bindings(
+        builtin_types,
+        user_types,
         &mut bindings,
         ast,
         declarations,
@@ -623,6 +553,46 @@ pub(crate) fn msl_const_samplers(
     Ok(immutable_samplers)
 }
 
+fn generate_gl_uniform_members(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
+    type_name: &str,
+    prefix: String,
+    offset: usize,
+    gl_uniform_members: &mut Vec<RafxGlUniformMember>
+) -> RafxResult<()> {
+    if builtin_types.contains_key(type_name) {
+        //println!("{} at {}: {}", prefix, offset, type_name);
+        gl_uniform_members.push(RafxGlUniformMember {
+            name: prefix,
+            offset: offset as u32,
+        })
+    } else {
+        let user_type = user_types.get(type_name).ok_or_else(|| format!("Could not find type named {} in generate_gl_uniform_members", type_name))?;
+
+        let generated_struct = generate_struct(builtin_types, user_types, &user_type.type_name, user_type, MemoryLayout::Std140)?;
+
+        for field in &*user_type.fields {
+            let struct_member = generated_struct.members.iter().find(|x| x.name == field.field_name).ok_or_else(|| format!("Could not find member {} within generated struct {}", field.field_name, generated_struct.name))?;
+
+            if field.array_sizes.is_empty() {
+                let member_full_name = format!("{}.{}", prefix, field.field_name);
+                let field_offset = offset + struct_member.offset;
+                generate_gl_uniform_members(builtin_types, user_types, &field.type_name, member_full_name, field_offset, gl_uniform_members)?;
+            } else {
+                let element_count = element_count(&field.array_sizes);
+                for i in 0..element_count {
+                    let member_full_name = format!("{}.{}[{}]", prefix, field.field_name, i);
+                    let field_offset = offset + struct_member.offset + (i * struct_member.size / element_count);
+                    generate_gl_uniform_members(builtin_types, user_types, &field.type_name, member_full_name, field_offset, gl_uniform_members)?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub struct ShaderProcessorRefectionData {
     pub reflection: Vec<ReflectedEntryPoint>,
     pub msl_argument_buffer_assignments: BTreeMap<ResourceBindingLocation, ResourceBinding>,
@@ -630,6 +600,8 @@ pub struct ShaderProcessorRefectionData {
 }
 
 pub(crate) fn reflect_data<TargetT>(
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
     ast: &spirv_cross::spirv::Ast<TargetT>,
     declarations: &super::parse_declarations::ParseDeclarationsResult,
     require_semantics: bool,
@@ -651,10 +623,14 @@ where
             .get_shader_resources()
             .map_err(|_x| "could not get resources from reflection data")?;
 
-        let dsc_bindings = get_all_bindings_dsc(&shader_resources, ast, declarations, stage_flags)?;
-
-        let mut rafx_bindings =
-            get_all_bindings_rafx(&shader_resources, ast, declarations, stage_flags)?;
+        let dsc_bindings = get_all_reflected_bindings(
+            builtin_types,
+            user_types,
+            &shader_resources,
+            ast,
+            declarations,
+            stage_flags
+        )?;
 
         // stage inputs
         // stage outputs
@@ -663,7 +639,10 @@ where
         // push constant buffers
 
         let mut descriptor_set_layouts: Vec<Option<ReflectedDescriptorSetLayout>> = vec![];
+        let mut rafx_bindings = Vec::default();
         for binding in dsc_bindings {
+            rafx_bindings.push(binding.resource.clone());
+
             while descriptor_set_layouts.len() <= binding.resource.set_index as usize {
                 descriptor_set_layouts.push(None);
             }

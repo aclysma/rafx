@@ -37,9 +37,6 @@ use rafx_base::trust_cell::TrustCell;
 //     // compute_threads_per_group_z: u32,
 // }
 
-// unsafe impl Send for RafxCommandBufferGlInner {}
-// unsafe impl Sync for RafxCommandBufferGlInner {}
-
 #[derive(Debug)]
 pub struct RafxCommandBufferGl {
     queue: RafxQueueGl,
