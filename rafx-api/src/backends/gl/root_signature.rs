@@ -46,6 +46,10 @@ pub(crate) struct DescriptorInfo {
     //size?
     //type?
     pub(crate) uniform_index: Option<UniformIndex>,
+
+    // descriptor sets contain a list of textures, buffers, etc. This indicates where in the list
+    // this descriptor starts.
+    pub(crate) descriptor_data_offset_in_set: Option<u32>,
 }
 
 #[derive(Default, Debug)]
@@ -59,7 +63,7 @@ pub(crate) struct DescriptorSetLayoutInfo {
     // // Now embedded by spirv_cross in the shader
     // //pub(crate) immutable_samplers: Vec<ImmutableSampler>,
     // All argument buffer IDs must be within 0..argument_buffer_id_range
-    pub(crate) argument_buffer_id_range: u32,
+    // //pub(crate) argument_buffer_id_range: u32,
     // // pub(crate) sampler_count: u32,
     // // pub(crate) texture_count: u32,
     // // pub(crate) buffer_count: u32,
@@ -85,10 +89,6 @@ pub(crate) struct RafxRootSignatureGlInner {
     pub(crate) program_targets: Vec<ProgramId>,
     pub(crate) uniform_reflection: UniformReflectionData,
 }
-
-// for gl_rs::ArgumentDescriptor
-unsafe impl Send for RafxRootSignatureGlInner {}
-unsafe impl Sync for RafxRootSignatureGlInner {}
 
 #[derive(Clone, Debug)]
 pub struct RafxRootSignatureGl {
@@ -180,7 +180,12 @@ impl RafxRootSignatureGl {
 
         //let mut resource_usages = [vec![], vec![], vec![], vec![]];
 
-        let mut next_argument_buffer_id = [0, 0, 0, 0];
+        //let mut next_argument_buffer_id = [0, 0, 0, 0];
+
+        // These are used to populate descriptor_data_offset_in_set in a descriptor, which is later used
+        // to index into Vecs in DescriptorSetArrayData
+        let mut next_descriptor_data_buffer_offset = [0, 0, 0, 0];
+        let mut next_descriptor_data_image_offset = [0, 0, 0, 0];
 
         let mut descriptors = Vec::with_capacity(merged_resources.len());
         let mut name_to_descriptor_index = FnvHashMap::default();
@@ -191,6 +196,19 @@ impl RafxRootSignatureGl {
 
         for resource in &merged_resources {
             resource.validate()?;
+
+            let mut descriptor_data_offset_in_set = None;
+
+            match resource.resource_type {
+                RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
+                    descriptor_data_offset_in_set = Some(next_descriptor_data_image_offset[resource.set_index as usize]);
+                    next_descriptor_data_image_offset[resource.set_index as usize] += resource.element_count;
+                },
+                RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE | RafxResourceType::UNIFORM_BUFFER => {
+                    descriptor_data_offset_in_set = Some(next_descriptor_data_buffer_offset[resource.set_index as usize]);
+                    next_descriptor_data_buffer_offset[resource.set_index as usize] += resource.element_count;
+                },
+            }
 
             //let mut gl_locations = vec![];
             for shader in root_signature_def.shaders {
@@ -235,9 +253,9 @@ impl RafxRootSignatureGl {
 
             let descriptor_index = RafxDescriptorIndex(descriptors.len() as u32);
 
-            let argument_buffer_id = next_argument_buffer_id[resource.set_index as usize];
-            next_argument_buffer_id[resource.set_index as usize] +=
-                resource.element_count_normalized();
+            // let argument_buffer_id = next_argument_buffer_id[resource.set_index as usize];
+            // next_argument_buffer_id[resource.set_index as usize] +=
+            //     resource.element_count_normalized();
 
             //let update_data_offset_in_set = Some(layout.update_data_count_per_set);
 
@@ -271,6 +289,7 @@ impl RafxRootSignatureGl {
                     // // usage
                     // argument_buffer_id: argument_buffer_id as _,
                     uniform_index: None,
+                    descriptor_data_offset_in_set: None,
                 });
 
                 if let Some(name) = resource.name.as_ref() {
@@ -281,8 +300,8 @@ impl RafxRootSignatureGl {
                 layout
                     .binding_to_descriptor_index
                     .insert(resource.binding, descriptor_index);
-                layout.argument_buffer_id_range =
-                    next_argument_buffer_id[resource.set_index as usize];
+                // layout.argument_buffer_id_range =
+                //     next_argument_buffer_id[resource.set_index as usize];
 
                 // // Build out the MTLResourceUsage usages - it's used when we bind descriptor sets
                 // let layout_resource_usages = &mut resource_usages[resource.set_index as usize];
@@ -295,7 +314,7 @@ impl RafxRootSignatureGl {
                 //     layout_resource_usages[i as usize] = usage;
                 // }
 
-                debug_assert_ne!(layout.argument_buffer_id_range, 0);
+                //debug_assert_ne!(layout.argument_buffer_id_range, 0);
             }
         }
 

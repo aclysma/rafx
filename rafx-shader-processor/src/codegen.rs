@@ -6,6 +6,7 @@ use rafx_api::RafxResourceType;
 use rafx_framework::cooked_shader::ReflectedEntryPoint;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use crate::codegen::StructOrBinding::Binding;
 
 // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
 fn next_power_of_2(mut v: usize) -> usize {
@@ -276,12 +277,51 @@ pub(crate) fn generate_rust_code(
         }
     }
 
+    for parsed_declaration in &parsed_declarations.bindings {
+        if parsed_declaration.parsed.binding_type == BindingType::Uniform {
+            generate_gl_offsets(&parsed_declaration.parsed.type_name, &parsed_declaration.parsed.instance_name, &builtin_types, &user_types, 0);
+        }
+    }
+
     generate_rust_file(
         &parsed_declarations,
         &builtin_types,
         &user_types,
         reflected_entry_point,
     )
+}
+
+fn generate_gl_offsets(
+    type_name: &str,
+    prefix: &str,
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
+    offset: usize,
+) {
+    if let Some(builtin_type) = builtin_types.get(type_name) {
+        println!("{} at {}: {}", prefix, offset, type_name);
+    } else {
+        let user_type = user_types.get(type_name).unwrap();
+
+        let generated_struct = generate_struct(builtin_types, user_types, &user_type.type_name, user_type, MemoryLayout::Std140).unwrap();
+
+        for field in &*user_type.fields {
+            let struct_member = generated_struct.members.iter().find(|x| x.name == field.field_name).unwrap();
+
+            if field.array_sizes.is_empty() {
+                let member_full_name = format!("{}.{}", prefix, field.field_name);
+                let field_offset = offset + struct_member.offset;
+                generate_gl_offsets(&field.type_name, &member_full_name, builtin_types, user_types, field_offset);
+            } else {
+                let element_count = element_count(&field.array_sizes);
+                for i in 0..element_count {
+                    let member_full_name = format!("{}.{}[{}]", prefix, field.field_name, i);
+                    let field_offset = offset + struct_member.offset + (i * struct_member.size / element_count);
+                    generate_gl_offsets(&field.type_name, &member_full_name, builtin_types, user_types, field_offset);
+                }
+            }
+        }
+    }
 }
 
 fn generate_rust_file(

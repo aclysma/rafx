@@ -1,5 +1,5 @@
 use crate::gl::{
-    ArgumentBufferData, RafxBufferGl, RafxCommandPoolGl,
+    DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl,
     RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl,
     RafxRootSignatureGl, RafxTextureGl,
 };

@@ -1,17 +1,16 @@
-use crate::gl::{RafxBufferGl, RafxDeviceContextGl};
+use crate::gl::{RafxBufferGl, RafxDeviceContextGl, DescriptorSetLayoutInfo, SharedBufferData};
 use crate::{
     RafxBufferDef, RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate,
     RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult, RafxRootSignature,
     RafxTextureBindType,
 };
-//use foreign_types_shared::ForeignTypeRef;
-//use gl_rs::{MTLResource, MTLResourceUsage};
+
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct RafxDescriptorSetHandleGl {
-    argument_buffer_data: Arc<ArgumentBufferData>,
+    descriptor_set_array_data: Arc<DescriptorSetArrayData>,
     array_index: u32,
 }
 
@@ -21,92 +20,45 @@ impl std::fmt::Debug for RafxDescriptorSetHandleGl {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         f.debug_struct("RafxDescriptorSetHandleGl")
-            //.field("buffer", &self.gl_buffer())
             .field("array_index", &self.array_index)
             .finish()
     }
 }
 
-// for gl_rs::MTLBuffer
 unsafe impl Send for RafxDescriptorSetHandleGl {}
 unsafe impl Sync for RafxDescriptorSetHandleGl {}
 
 impl RafxDescriptorSetHandleGl {
-    // pub fn gl_buffer(&self) -> &gl_rs::BufferRef {
-    //     self.argument_buffer_data.buffer.gl_buffer()
-    // }
-
-    pub fn argument_buffer_data(&self) -> &ArgumentBufferData {
-        &self.argument_buffer_data
+    pub fn descriptor_set_array_data(&self) -> &DescriptorSetArrayData {
+        &self.descriptor_set_array_data
     }
-
-    // pub fn offset(&self) -> u32 {
-    //     self.array_index * self.argument_buffer_data.stride
-    // }
 
     pub fn array_index(&self) -> u32 {
         self.array_index
     }
 }
 
-pub struct ArgumentBufferData {
-    // // static metadata
-    // stride: u32,
-    // argument_buffer_id_range: u32,
-    // resource_usages: Arc<Vec<MTLResourceUsage>>,
-    //
-    // // modified when we update descriptor sets
-    // buffer: RafxBufferGl,
-    // encoder: gl_rs::ArgumentEncoder,
-    // resource_pointers: TrustCell<Vec<*mut MTLResource>>,
+pub struct BufferDescriptorState {
+    buffer: Vec<SharedBufferData>,
+    offset: u32,
+    range: u32,
 }
 
-impl ArgumentBufferData {
-    // pub fn make_resources_resident_render_encoder(
-    //     &self,
-    //     index: u32,
-    //     encoder: &gl_rs::RenderCommandEncoderRef,
-    // ) {
-    //     let first_ptr = index as usize * self.argument_buffer_id_range as usize;
-    //     let last_ptr = first_ptr + self.argument_buffer_id_range as usize;
-    //
-    //     let ptrs = self.resource_pointers.borrow();
-    //     for (&ptr, &usage) in ptrs[first_ptr..last_ptr].iter().zip(&*self.resource_usages) {
-    //         unsafe {
-    //             if !ptr.is_null() {
-    //                 encoder.use_resource(&gl_rs::ResourceRef::from_ptr(ptr), usage);
-    //             }
-    //         }
-    //     }
-    // }
-    //
-    // pub fn make_resources_resident_compute_encoder(
-    //     &self,
-    //     index: u32,
-    //     encoder: &gl_rs::ComputeCommandEncoderRef,
-    // ) {
-    //     let first_ptr = index as usize * self.argument_buffer_id_range as usize;
-    //     let last_ptr = first_ptr + self.argument_buffer_id_range as usize;
-    //
-    //     let ptrs = self.resource_pointers.borrow();
-    //     for (&ptr, &usage) in ptrs[first_ptr..last_ptr].iter().zip(&*self.resource_usages) {
-    //         unsafe {
-    //             if !ptr.is_null() {
-    //                 encoder.use_resource(&gl_rs::ResourceRef::from_ptr(ptr), usage);
-    //             }
-    //         }
-    //     }
-    // }
+pub struct ImageDescriptorState {
+    texture: Option<u32>,
+    sampler: Option<u32>,
 }
 
-// for gl_rs::ArgumentEncoder
-unsafe impl Send for ArgumentBufferData {}
-unsafe impl Sync for ArgumentBufferData {}
+pub struct DescriptorSetArrayData {
+    buffers: Vec<BufferDescriptorState>,
+    image_state: Vec<ImageDescriptorState>,
+}
 
 pub struct RafxDescriptorSetArrayGl {
     root_signature: RafxRootSignature,
     set_index: u32,
-    argument_buffer_data: Option<Arc<ArgumentBufferData>>,
+    data: Arc<DescriptorSetArrayData>,
+    array_length: u32
 }
 
 impl RafxDescriptorSetArrayGl {
@@ -118,34 +70,22 @@ impl RafxDescriptorSetArrayGl {
         self.set_index
     }
 
-    // pub fn gl_argument_buffer_and_offset(
-    //     &self,
-    //     index: u32,
-    // ) -> Option<(&gl_rs::BufferRef, u32)> {
-    //     if let Some(argument_buffer_data) = &self.argument_buffer_data {
-    //         Some((
-    //             argument_buffer_data.buffer.gl_buffer(),
-    //             index * argument_buffer_data.stride,
-    //         ))
-    //     } else {
-    //         None
-    //     }
-    // }
-
-    pub fn argument_buffer_data(&self) -> Option<&Arc<ArgumentBufferData>> {
-        self.argument_buffer_data.as_ref()
+    pub fn descriptor_set_array_data(&self) -> &Arc<DescriptorSetArrayData> {
+        &self.data
     }
 
     pub fn handle(
         &self,
         array_index: u32,
     ) -> Option<RafxDescriptorSetHandleGl> {
-        self.argument_buffer_data
-            .as_ref()
-            .map(|x| RafxDescriptorSetHandleGl {
-                argument_buffer_data: x.clone(),
-                array_index,
-            })
+        if array_index >= self.array_length {
+            return None;
+        }
+
+        Some(RafxDescriptorSetHandleGl {
+            descriptor_set_array_data: self.data.clone(),
+            array_index,
+        })
     }
 
     pub(crate) fn new(
@@ -235,56 +175,57 @@ impl RafxDescriptorSetArrayGl {
     }
 
     pub fn flush_descriptor_set_updates(&mut self) -> RafxResult<()> {
-        unimplemented!();
-        // // Don't need to do anything on flush
-        // Ok(())
+        // Don't need to do anything on flush
+        Ok(())
     }
 
     pub fn queue_descriptor_set_update(
         &mut self,
         update: &RafxDescriptorUpdate,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let root_signature = self.root_signature.gl_root_signature().unwrap();
-        // let layout: &DescriptorSetLayoutInfo =
-        //     &root_signature.inner.layouts[self.set_index as usize];
-        // let descriptor_index = match &update.descriptor_key {
-        //     RafxDescriptorKey::Name(name) => {
-        //         let descriptor_index = root_signature.find_descriptor_by_name(name);
-        //         if let Some(descriptor_index) = descriptor_index {
-        //             let set_index = root_signature
-        //                 .descriptor(descriptor_index)
-        //                 .unwrap()
-        //                 .set_index;
-        //             if set_index == self.set_index {
-        //                 descriptor_index
-        //             } else {
-        //                 return Err(format!(
-        //                     "Found descriptor {:?} but it's set_index ({:?}) does not match the set ({:?})",
-        //                     &update.descriptor_key,
-        //                     set_index,
-        //                     self.set_index
-        //                 ))?;
-        //             }
-        //         } else {
-        //             return Err(format!(
-        //                 "Could not find descriptor {:?}",
-        //                 &update.descriptor_key
-        //             ))?;
-        //         }
-        //     }
-        //     RafxDescriptorKey::Binding(binding) => layout
-        //         .binding_to_descriptor_index
-        //         .get(binding)
-        //         .copied()
-        //         .ok_or_else(|| format!("Could not find descriptor {:?}", update.descriptor_key,))?,
-        //     RafxDescriptorKey::DescriptorIndex(descriptor_index) => *descriptor_index,
-        //     RafxDescriptorKey::Undefined => {
-        //         return Err("Passed RafxDescriptorKey::Undefined to update_descriptor_set()")?
-        //     }
-        // };
-        //
-        // let descriptor = root_signature.descriptor(descriptor_index).unwrap();
+        let root_signature = self.root_signature.gl_root_signature().unwrap();
+        let layout: &DescriptorSetLayoutInfo =
+            &root_signature.inner.layouts[self.set_index as usize];
+        let descriptor_index = match &update.descriptor_key {
+            RafxDescriptorKey::Name(name) => {
+                let descriptor_index = root_signature.find_descriptor_by_name(name);
+                if let Some(descriptor_index) = descriptor_index {
+                    let set_index = root_signature
+                        .descriptor(descriptor_index)
+                        .unwrap()
+                        .set_index;
+                    if set_index == self.set_index {
+                        descriptor_index
+                    } else {
+                        return Err(format!(
+                            "Found descriptor {:?} but it's set_index ({:?}) does not match the set ({:?})",
+                            &update.descriptor_key,
+                            set_index,
+                            self.set_index
+                        ))?;
+                    }
+                } else {
+                    return Err(format!(
+                        "Could not find descriptor {:?}",
+                        &update.descriptor_key
+                    ))?;
+                }
+            }
+            RafxDescriptorKey::Binding(binding) => layout
+                .binding_to_descriptor_index
+                .get(binding)
+                .copied()
+                .ok_or_else(|| format!("Could not find descriptor {:?}", update.descriptor_key,))?,
+            RafxDescriptorKey::DescriptorIndex(descriptor_index) => *descriptor_index,
+            RafxDescriptorKey::Undefined => {
+                return Err("Passed RafxDescriptorKey::Undefined to update_descriptor_set()")?
+            }
+        };
+
+
+
+        let descriptor = root_signature.descriptor(descriptor_index).unwrap();
+
         //
         // let argument_buffer = self.argument_buffer_data.as_ref().unwrap();
         // argument_buffer.encoder.set_argument_buffer(
@@ -296,16 +237,15 @@ impl RafxDescriptorSetArrayGl {
         // let last_ptr = first_ptr + layout.argument_buffer_id_range as usize;
         // let descriptor_resource_pointers = &mut resource_pointers[first_ptr..last_ptr];
         //
-        // log::trace!(
-        //     "update descriptor set {:?} (set_index: {:?} binding: {} name: {:?} type: {:?} array_index: {} arg buffer id: {})",
-        //     update.descriptor_key,
-        //     descriptor.set_index,
-        //     descriptor.binding,
-        //     descriptor.name,
-        //     descriptor.resource_type,
-        //     update.array_index,
-        //     descriptor.argument_buffer_id,
-        // );
+        log::trace!(
+            "update descriptor set {:?} (set_index: {:?} binding: {} name: {:?} type: {:?} array_index: {})",
+            update.descriptor_key,
+            descriptor.set_index,
+            descriptor.binding,
+            descriptor.name,
+            descriptor.resource_type,
+            update.array_index,
+        );
         //
         // match descriptor.resource_type {
         //     RafxResourceType::SAMPLER => {
@@ -478,6 +418,9 @@ impl RafxDescriptorSetArrayGl {
         //     _ => unimplemented!(),
         // }
         // Ok(())
+
+
+        unimplemented!();
     }
 }
 

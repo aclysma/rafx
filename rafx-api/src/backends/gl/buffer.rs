@@ -5,15 +5,38 @@ use crate::gl::gles20;
 use crate::gl::gles20::types::GLenum;
 use std::sync::atomic::{AtomicU32, AtomicBool};
 use std::sync::atomic::Ordering;
+use rafx_base::trust_cell::TrustCell;
+use std::sync::Arc;
 
+#[derive(Debug)]
+pub struct SharedBufferData {
+    data: Arc<TrustCell<Box<[u8]>>>
+}
+
+impl SharedBufferData {
+    pub fn new(data: Vec<u8>) -> Self {
+        SharedBufferData {
+            data: Arc::new(TrustCell::new(data.into_boxed_slice()))
+        }
+    }
+
+    // Get the ptr, this should be considered a raw FFI pointer that may or may not actually be
+    // a unique reference
+    pub unsafe fn as_ptr(&self) -> *const u8 {
+        self.data.borrow().as_ptr()
+    }
+
+    pub unsafe fn as_mut_ptr(&self) -> *mut u8 {
+        self.data.borrow_mut().as_mut_ptr()
+    }
+}
 
 #[derive(Debug)]
 pub struct RafxBufferGl {
     device_context: RafxDeviceContextGl,
     buffer_def: RafxBufferDef,
     buffer_id: Option<BufferId>,
-    buffer_contents: Option<Vec<u8>>,
-    buffer_contents_ptr: Option<*mut u8>,
+    buffer_contents: Option<SharedBufferData>,
     mapped_count: AtomicU32,
     target: GLenum, // may be gles20::NONE
 }
@@ -34,7 +57,9 @@ impl RafxBufferGl {
     pub fn map_buffer(&self) -> RafxResult<*mut u8> {
         self.mapped_count.fetch_add(1, Ordering::Acquire);
         assert_ne!(self.buffer_def.memory_usage, RafxMemoryUsage::GpuOnly);
-        Ok(self.buffer_contents_ptr.unwrap())
+        unsafe {
+            Ok(self.buffer_contents.as_ref().unwrap().as_mut_ptr())
+        }
     }
 
     pub fn unmap_buffer(&self) -> RafxResult<()> {
@@ -43,7 +68,10 @@ impl RafxBufferGl {
         if self.target != gles20::NONE {
             let gl_context = self.device_context.gl_context();
             gl_context.gl_bind_buffer(self.target, self.buffer_id.unwrap())?;
-            gl_context.gl_buffer_sub_data(self.target, 0, self.buffer_def.size, self.buffer_contents.as_ref().unwrap().as_ptr())?;
+            let ptr = unsafe {
+                self.buffer_contents.as_ref().unwrap().as_ptr()
+            };
+            gl_context.gl_buffer_sub_data(self.target, 0, self.buffer_def.size, ptr)?;
             gl_context.gl_bind_buffer(self.target, NONE_BUFFER)?;
         }
 
@@ -53,7 +81,9 @@ impl RafxBufferGl {
 
     pub fn mapped_memory(&self) -> Option<*mut u8> {
         if self.mapped_count.load(Ordering::Relaxed) > 0 {
-            self.buffer_contents_ptr
+            self.buffer_contents.as_ref().map(|x| unsafe {
+                x.as_mut_ptr()
+            })
         } else {
             None
         }
@@ -133,14 +163,11 @@ impl RafxBufferGl {
             target = gles20::NONE;
         }
 
-        let buffer_contents_ptr = buffer_contents.as_mut().map(|x| x.as_mut_ptr());
-
         Ok(RafxBufferGl {
             device_context: device_context.clone(),
             buffer_def: buffer_def.clone(),
             buffer_id,
-            buffer_contents,
-            buffer_contents_ptr,
+            buffer_contents: buffer_contents.map(|x| SharedBufferData::new(x)),
             mapped_count: AtomicU32::new(0),
             target
         })

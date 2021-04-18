@@ -107,6 +107,7 @@ pub struct RafxDescriptorSetArrayMetal {
     root_signature: RafxRootSignature,
     set_index: u32,
     argument_buffer_data: Option<Arc<ArgumentBufferData>>,
+    array_length: u32,
 }
 
 impl RafxDescriptorSetArrayMetal {
@@ -140,6 +141,10 @@ impl RafxDescriptorSetArrayMetal {
         &self,
         array_index: u32,
     ) -> Option<RafxDescriptorSetHandleMetal> {
+        if array_index >= self.array_length {
+            return None;
+        }
+
         self.argument_buffer_data
             .as_ref()
             .map(|x| RafxDescriptorSetHandleMetal {
@@ -220,6 +225,7 @@ impl RafxDescriptorSetArrayMetal {
             root_signature: RafxRootSignature::Metal(root_signature),
             set_index: descriptor_set_array_def.set_index,
             argument_buffer_data: argument_buffer_data.map(|x| Arc::new(x)),
+            array_length: descriptor_set_array_def.array_length
         })
     }
 
