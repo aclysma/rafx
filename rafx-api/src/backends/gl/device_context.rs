@@ -17,13 +17,11 @@ pub struct RafxDeviceContextGlInner {
 
     gl_context_manager: GlContextManager,
     gl_context: Arc<GlContext>,
-    //device: gl_rs::Device,
     destroyed: AtomicBool,
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
     next_create_index: AtomicU64,
-    //gl_features: GlFeatures,
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
@@ -68,12 +66,19 @@ impl RafxDeviceContextGlInner {
 
         //TODO: Support extensions
 
+        #[cfg(debug_assertions)]
+            #[cfg(feature = "track-device-contexts")]
+            let all_contexts = {
+            let create_backtrace = backtrace::Backtrace::new_unresolved();
+            let mut all_contexts = fnv::FnvHashMap::<u64, backtrace::Backtrace>::default();
+            all_contexts.insert(0, create_backtrace);
+            all_contexts
+        };
+
         Ok(RafxDeviceContextGlInner {
             device_info,
             gl_context_manager,
             gl_context,
-            //device,
-            //gl_features,
             destroyed: AtomicBool::new(false),
 
             #[cfg(debug_assertions)]
@@ -84,46 +89,6 @@ impl RafxDeviceContextGlInner {
             #[cfg(feature = "track-device-contexts")]
             next_create_index: AtomicU64::new(1),
         })
-
-
-        //unimplemented!();
-        // let device_info = RafxDeviceInfo {
-        //     // pretty sure this is consistent across macOS device (maybe not M1, not sure)
-        //     min_uniform_buffer_offset_alignment: 256,
-        //     // based on one of the loosest vulkan limits (intel iGPU), can't find official value
-        //     min_storage_buffer_offset_alignment: 64,
-        //     upload_buffer_texture_alignment: 16,
-        //     upload_buffer_texture_row_alignment: 1,
-        //     supports_clamp_to_border_color: true, //TODO: Check for iOS support
-        // };
-        //
-        // #[cfg(debug_assertions)]
-        // #[cfg(feature = "track-device-contexts")]
-        // let all_contexts = {
-        //     let create_backtrace = backtrace::Backtrace::new_unresolved();
-        //     let mut all_contexts = fnv::FnvHashMap::<u64, backtrace::Backtrace>::default();
-        //     all_contexts.insert(0, create_backtrace);
-        //     all_contexts
-        // };
-        //
-        // let device = gl_rs::Device::system_default().expect("no device found");
-        //
-        // let gl_features = GlFeatures::from_device(device.as_ref());
-        //
-        // Ok(RafxDeviceContextGlInner {
-        //     device_info,
-        //     device,
-        //     gl_features,
-        //     destroyed: AtomicBool::new(false),
-        //
-        //     #[cfg(debug_assertions)]
-        //     #[cfg(feature = "track-device-contexts")]
-        //     all_contexts: Mutex::new(all_contexts),
-        //
-        //     #[cfg(debug_assertions)]
-        //     #[cfg(feature = "track-device-contexts")]
-        //     next_create_index: AtomicU64::new(1),
-        // })
     }
 }
 

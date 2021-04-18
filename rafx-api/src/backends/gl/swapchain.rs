@@ -58,8 +58,7 @@ impl RafxSwapchainGl {
 
         let surface_context = device_context.gl_context_manager().create_surface_context(raw_window_handle);
 
-        // add surface
-        // set GL swap interval (vsync)
+        //TODO: set GL swap interval (vsync)
 
         let mut swapchain_images = Vec::with_capacity(SWAPCHAIN_IMAGE_COUNT as usize);
         for _ in 0..SWAPCHAIN_IMAGE_COUNT {
@@ -81,74 +80,17 @@ impl RafxSwapchainGl {
         Ok(RafxSwapchainGl {
             device_context: device_context.clone(),
             surface_context,
-            //layer,
-            //drawable: Default::default(),
             swapchain_def: swapchain_def.clone(),
             next_swapchain_image_index: 0,
             format,
             swapchain_images,
         })
-
-
-        //unimplemented!();
-        // let layer = match raw_window_handle.raw_window_handle() {
-        //     #[cfg(target_os = "macos")]
-        //     raw_window_handle::RawWindowHandle::MacOS(handle) => unsafe {
-        //         raw_window_gl::macos::gl_layer_from_handle(handle)
-        //     },
-        //     #[cfg(target_os = "ios")]
-        //     raw_window_handle::RawWindowHandle::IOS(handle) => unsafe {
-        //         raw_window_gl::ios::gl_layer_from_handle(handle)
-        //     },
-        //     _ => return Err("Cannot create RafxSurfaceGl on this operating system".into()),
-        // };
-        //
-        // let layer = match layer {
-        //     raw_window_gl::Layer::Allocated(x) => Some(x),
-        //     raw_window_gl::Layer::Existing(x) => Some(x),
-        //     raw_window_gl::Layer::None => None,
-        // }
-        // .unwrap();
-        //
-        // let layer = unsafe { std::mem::transmute::<_, &gl_rs::GlLayerRef>(layer).to_owned() };
-        //
-        // layer.set_device(device_context.device());
-        // //TODO: Don't hardcode pixel format
-        // // https://developer.apple.com/documentation/quartzcore/cagllayer/1478155-pixelformat
-        // layer.set_pixel_format(gl_rs::MTLPixelFormat::BGRA8Unorm_sRGB);
-        // layer.set_presents_with_transaction(false);
-        // layer.set_display_sync_enabled(swapchain_def.enable_vsync);
-        //
-        // //TODO: disable timeout on acquire drawable?
-        // layer.set_drawable_size(gl_rs::CGSize::new(
-        //     swapchain_def.width as f64,
-        //     swapchain_def.height as f64,
-        // ));
-        //
-        // let swapchain_def = swapchain_def.clone();
-        //
-        // Ok(RafxSwapchainGl {
-        //     device_context: device_context.clone(),
-        //     layer,
-        //     drawable: Default::default(),
-        //     swapchain_def,
-        //     next_swapchain_image_index: 0,
-        //     format: RafxFormat::B8G8R8A8_SRGB,
-        // })
     }
 
     pub fn rebuild(
         &mut self,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<()> {
-        //unimplemented!();
-        // self.layer.set_drawable_size(gl_rs::CGSize::new(
-        //     swapchain_def.width as f64,
-        //     swapchain_def.height as f64,
-        // ));
-        // //TODO: Add to gl crate, following presents_with_transaction as an example
-        // //self.layer.set_display_sync_enabled(swapchain_def.enable_vsync);
-        //
         self.swapchain_def = swapchain_def.clone();
         Ok(())
     }

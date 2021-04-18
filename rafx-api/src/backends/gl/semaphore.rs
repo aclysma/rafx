@@ -30,26 +30,4 @@ impl RafxSemaphoreGl {
     ) {
         self.signal_available.store(available, Ordering::Relaxed);
     }
-
-    pub(crate) fn handle_wait_semaphores(semaphores: &[&RafxSemaphoreGl]) -> RafxResult<()> {
-        if semaphores.is_empty() {
-            return Ok(());
-        }
-
-        let mut should_flush = false;
-        for &semaphore in semaphores {
-            if semaphore.signal_available() {
-                should_flush = true;
-                semaphore.set_signal_available(false);
-            }
-        }
-
-        if should_flush {
-            if let Some(first) = semaphores.first() {
-                first.device_context.gl_context().gl_flush()?;
-            }
-        }
-
-        Ok(())
-    }
 }

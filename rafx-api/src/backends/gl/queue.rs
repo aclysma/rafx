@@ -65,24 +65,24 @@ impl RafxQueueGl {
     fn submit_semaphore_wait(
         &self,
         wait_semaphores: &[&RafxSemaphoreGl],
-    ) {
-        unimplemented!();
-        // let wait_command_buffer_required = wait_semaphores.iter().any(|x| x.signal_available());
-        //
-        // if wait_command_buffer_required {
-        //     let wait_command_buffer = self
-        //         .inner
-        //         .queue
-        //         .new_command_buffer_with_unretained_references();
-        //     for wait_semaphore in wait_semaphores {
-        //         if wait_semaphore.signal_available() {
-        //             wait_command_buffer.encode_wait_for_event(wait_semaphore.gl_event(), 1);
-        //             wait_semaphore.set_signal_available(false);
-        //         }
-        //     }
-        //
-        //     wait_command_buffer.commit();
-        // }
+    ) -> RafxResult<()> {
+        if wait_semaphores.is_empty() {
+            return Ok(());
+        }
+
+        let mut should_flush = false;
+        for &semaphore in wait_semaphores {
+            if semaphore.signal_available() {
+                should_flush = true;
+                semaphore.set_signal_available(false);
+            }
+        }
+
+        if should_flush {
+            self.device_context().gl_context().gl_flush()?;
+        }
+
+        Ok(())
     }
 
     pub fn submit(
@@ -94,7 +94,7 @@ impl RafxQueueGl {
     ) -> RafxResult<()> {
         assert!(!command_buffers.is_empty());
 
-        RafxSemaphoreGl::handle_wait_semaphores(wait_semaphores)?;
+        self.submit_semaphore_wait(wait_semaphores)?;
 
         for semaphore in signal_semaphores {
             semaphore.set_signal_available(true);
@@ -113,7 +113,7 @@ impl RafxQueueGl {
         wait_semaphores: &[&RafxSemaphoreGl],
         _image_index: u32,
     ) -> RafxResult<RafxPresentSuccessResult> {
-        RafxSemaphoreGl::handle_wait_semaphores(wait_semaphores)?;
+        self.submit_semaphore_wait(wait_semaphores)?;
 
         self.device_context().gl_context().gl_disable(crate::gl::gles20::SCISSOR_TEST)?;
 
