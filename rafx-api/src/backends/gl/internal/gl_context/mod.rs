@@ -24,5 +24,23 @@ pub fn calculate_window_hash(window: &dyn HasRawWindowHandle) -> WindowHash {
     WindowHash(hasher.finish())
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct WindowHash(u64);
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct BufferId(pub u32);
+pub const NONE_BUFFER: BufferId = BufferId(gles20::NONE);
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ShaderId(pub u32);
+pub const NONE_SHADER: ShaderId = ShaderId(gles20::NONE);
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ProgramId(pub u32);
+pub const NONE_PROGRAM: ProgramId = ProgramId(gles20::NONE);
+
+pub struct ActiveUniformInfo {
+    pub name_buffer: Vec<u8>,
+    pub size: u32,
+    pub ty: u32,
+}

@@ -10,25 +10,9 @@ use super::WindowHash;
 use crate::{RafxResult, RafxError};
 use crate::gl::gles20::types::{GLsizeiptr, GLint};
 use std::ffi::{CStr, CString};
-use std::process::exit;
 use std::ops::Range;
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct BufferId(pub u32);
-pub const NONE_BUFFER: BufferId = BufferId(gles20::NONE);
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct ShaderId(pub u32);
-pub const NONE_SHADER: ShaderId = ShaderId(gles20::NONE);
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct ProgramId(pub u32);
-pub const NONE_PROGRAM: ProgramId = ProgramId(gles20::NONE);
-
-// pub struct GlError(pub u32);
-// impl std::error::Error for GlError {
-//
-// }
+use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo};
+use std::cmp::max;
 
 pub struct GlContext {
     context: raw_gl_context::GlContext,
@@ -56,10 +40,6 @@ impl GlContext {
             gles2,
             window_hash
         }
-    }
-
-    pub fn is_es(&self) -> bool {
-        false
     }
 
     pub fn window_hash(&self) -> WindowHash {
@@ -150,6 +130,13 @@ impl GlContext {
             self.gles2.GenBuffers(1, &mut buffer);
             self.check_for_error()?;
             Ok(BufferId(buffer))
+        }
+    }
+
+    pub fn gl_destroy_buffer(&self, buffer_id: BufferId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DeleteBuffers(1, &buffer_id.0);
+            self.check_for_error()
         }
     }
 
@@ -343,6 +330,39 @@ impl GlContext {
 
             Ok(Some(value as u32))
         }
+    }
+
+    pub fn gl_get_active_uniform(
+        &self,
+        program_id: ProgramId,
+        index: u32,
+        max_uniform_name_length: usize
+    ) -> RafxResult<ActiveUniformInfo> {
+        let mut name_length = 0;
+        let mut size = 0;
+        let mut ty = 0;
+        let mut name_buffer = vec![0_u8; max_uniform_name_length];
+
+        unsafe {
+            self.gles2.GetActiveUniform(
+                program_id.0,
+                index,
+                max_uniform_name_length as _,
+                &mut name_length,
+                &mut size,
+                &mut ty,
+                name_buffer.as_mut_ptr() as _
+            );
+        }
+        self.check_for_error()?;
+
+        name_buffer.resize(name_length as usize, 0);
+
+        Ok(ActiveUniformInfo {
+            name_buffer,
+            size: size as u32,
+            ty
+        })
     }
 
     pub fn gl_flush(&self) -> RafxResult<()> {

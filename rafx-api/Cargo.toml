@@ -44,7 +44,13 @@ foreign-types-shared = { version = "0.1", optional = true }
 block = { version = "0.1.6", optional = true }
 
 # gl
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 raw-gl-context = { git = "https://github.com/aclysma/raw-gl-context.git", branch = "rafx", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+#js-sys = "0.3.49"
+wasm-bindgen = "0.2.72"
+web-sys = { version = "0.3.4", features = ["Document", "Element", "HtmlCanvasElement", "WebGlBuffer", "WebGlRenderingContext", "WebGlProgram", "WebGlShader", "Window"] }
 
 [features]
 default = []

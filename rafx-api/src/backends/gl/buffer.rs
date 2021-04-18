@@ -42,6 +42,14 @@ pub struct RafxBufferGl {
     target: GLenum, // may be gles20::NONE
 }
 
+impl Drop for RafxBufferGl {
+    fn drop(&mut self) {
+        if let Some(buffer_id) = self.buffer_id {
+            self.device_context.gl_context().gl_destroy_buffer(buffer_id);
+        }
+    }
+}
+
 impl RafxBufferGl {
     pub fn buffer_def(&self) -> &RafxBufferDef {
         &self.buffer_def

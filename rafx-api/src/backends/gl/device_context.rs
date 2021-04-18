@@ -41,10 +41,14 @@ impl Drop for RafxDeviceContextGlInner {
 
 impl RafxDeviceContextGlInner {
     pub fn new(window: &dyn HasRawWindowHandle) -> RafxResult<Self> {
+        log::debug!("Initializing GL backend");
+        log::trace!("Initializing GL backend AAAAA");
         let gl_context_manager = super::internal::GlContextManager::new(window);
         // GL requires a window for initialization
+        log::trace!("Initializing GL backend BBBBB");
         let gl_context = gl_context_manager.main_context().clone();
 
+        log::trace!("Initializing GL backend CCCCC");
         let pack_alignment = gl_context.gl_get_integerv(gles20::PACK_ALIGNMENT) as u32;
 
         let device_info = RafxDeviceInfo {
@@ -55,6 +59,7 @@ impl RafxDeviceContextGlInner {
             supports_clamp_to_border_color: false, // requires GLES 3.2 or an extension
         };
 
+        log::trace!("Initializing GL backend DDDDD");
         let renderer = gl_context.gl_get_string(gles20::RENDERER);
         log::debug!("Renderer: {}", renderer);
         let version = gl_context.gl_get_string(gles20::VERSION);

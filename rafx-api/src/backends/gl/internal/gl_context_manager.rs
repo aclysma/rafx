@@ -12,7 +12,7 @@ pub struct GlContextManager {
 impl GlContextManager {
     pub fn new(window: &dyn HasRawWindowHandle) -> GlContextManager{
         let main_context = Arc::new(GlContext::new(window, None));
-        main_context.context().make_current();
+        main_context.make_current();
 
         GlContextManager {
             main_context: main_context.clone(),

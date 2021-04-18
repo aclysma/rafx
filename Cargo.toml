@@ -11,6 +11,7 @@ members = [
     "demo",
     "demo/shaders",
     "demo/cli",
+    "demo-web"
 ]
 
 exclude = [

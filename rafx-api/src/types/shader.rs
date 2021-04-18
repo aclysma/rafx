@@ -177,7 +177,7 @@ pub enum RafxShaderModuleDefEmpty<'a> {
 /// Used to create a RafxShaderModule
 ///
 /// This enum may be populated manually or created from a RafxShaderPackage.
-#[derive(Copy, Clone, Hash)]
+#[derive(Copy, Clone, Hash, Default)]
 pub struct RafxShaderModuleDef<'a> {
     #[cfg(feature = "rafx-gl")]
     pub gl: Option<RafxShaderModuleDefGl<'a>>,

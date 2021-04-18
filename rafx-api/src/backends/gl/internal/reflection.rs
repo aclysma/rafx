@@ -67,53 +67,59 @@ impl UniformReflectionData {
         let mut field_lookup = FnvHashMap::<CString, SizeTypeName>::default();
 
         for &program_id in &program_ids {
-            let active_uniform_count = gl_context.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORMS)?;
-            let active_uniform_max_length = gl_context.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORM_MAX_LENGTH)?;
+            let active_uniform_count = gl_context.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORMS)? as u32;
+            let active_uniform_max_length = gl_context.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORM_MAX_LENGTH)? as usize;
 
             // Merges all the uniforms from the program into uniform_lookup and field_lookup
             for i in 0..active_uniform_count {
-                let mut name_length = 0;
-                let mut size = 0;
-                let mut ty = 0;
-                let mut name = vec![0_u8; active_uniform_max_length as usize];
+                // let mut name_length = 0;
+                // let mut size = 0;
+                // let mut ty = 0;
+                // let mut name_buffer = vec![0_u8; active_uniform_max_length];
 
-                unsafe {
-                    gl_context.gles2().GetActiveUniform(
-                        program_id.0,
-                        i as _,
+                let mut uniform_info = unsafe {
+                    gl_context.gl_get_active_uniform(
+                        program_id,
+                        i,
                         active_uniform_max_length,
-                        &mut name_length,
-                        &mut size,
-                        &mut ty,
-                        name.as_mut_ptr() as _
-                    );
-                }
+                    )
+
+
+                    // gl_context.gles2().GetActiveUniform(
+                    //     program_id.0,
+                    //     i as _,
+                    //     active_uniform_max_length,
+                    //     &mut name_length,
+                    //     &mut size,
+                    //     &mut ty,
+                    //     name.as_mut_ptr() as _
+                    // );
+                }?;
 
                 gl_context.check_for_error()?;
 
                 // Find the first part of the name (everything up to but not including the first dot)
-                let first_split = name
+                let first_split = uniform_info.name_buffer
                     .iter()
                     .position(|x| *x == '.' as u8)
-                    .unwrap_or(name_length as usize);
+                    .unwrap_or(uniform_info.name_buffer.len());
 
-                let uniform_name = CString::new(&name[0..first_split]).unwrap();
-                name.resize(name_length as usize, 0);
+                let uniform_name = CString::new(&uniform_info.name_buffer[0..first_split]).unwrap();
 
                 // Need to keep this so we can query GetUniformLocation later
-                let full_name = CString::new(name).unwrap();
+                let full_name = CString::new(uniform_info.name_buffer).unwrap();
 
                 if let Some(existing) = field_lookup.get_mut(&full_name) {
                     // verify the field metadata matches the other program's field metadata
-                    if existing.size != size as u32 {
-                        return Err(format!("Multiple programs with the same variable name {} but mismatching sizes of {} and {}", full_name.to_string_lossy(), existing.size, size))?;
-                    } else if existing.ty != ty {
-                        return Err(format!("Multiple programs with the same variable name {} but mismatching types of {} and {}", full_name.to_string_lossy(), existing.ty, ty))?;
+                    if existing.size != uniform_info.size as u32 {
+                        return Err(format!("Multiple programs with the same variable name {} but mismatching sizes of {} and {}", full_name.to_string_lossy(), existing.size, uniform_info.size))?;
+                    } else if existing.ty != uniform_info.ty {
+                        return Err(format!("Multiple programs with the same variable name {} but mismatching types of {} and {}", full_name.to_string_lossy(), existing.ty, uniform_info.ty))?;
                     }
                 } else {
                     let field = SizeTypeName {
-                        size: size as u32,
-                        ty,
+                        size: uniform_info.size as u32,
+                        ty: uniform_info.ty,
                         name: full_name
                     };
 
@@ -157,12 +163,9 @@ impl UniformReflectionData {
 
                 for &program_id in &program_ids {
                     unsafe {
-                        let location = gl_context.gles2().GetUniformLocation(program_id.0, size_type_name.name.as_ptr() as _);
-                        gl_context.check_for_error()?;
-
+                        let location = gl_context.gl_get_uniform_location(program_id, &size_type_name.name)?;
+                        locations.push(location.map(|x| x as i32).unwrap_or(-1));
                         //println!("{} {}", location, size_type_name.name.to_string_lossy());
-
-                        locations.push(location);
                     }
                 }
             }

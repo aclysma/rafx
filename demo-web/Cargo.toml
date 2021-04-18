@@ -1,0 +1,69 @@
+[package]
+name = "demo-web"
+version = "0.0.10"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+# This is a demo crate, we shouldn't publish it
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+rafx = { path = "../rafx", features = ["rafx-gl"] }
+raw-window-handle = "0.3.3"
+log = "0.4.14"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+raw-gl-context = "0.1.2"
+winit = "0.24"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3.49"
+wasm-bindgen = "0.2.72"
+web-sys = { version = "0.3.4", features = ["Document", "Element", "HtmlCanvasElement", "WebGlBuffer", "WebGlRenderingContext", "WebGlProgram", "WebGlShader", "Window"] }
+console_log = { version = "0.2" }
+winit = { version = "0.24", features = ["web-sys"] }
+
+[features]
+#default = [
+#    "sdl2-bundled",
+#    "sdl2-static-link",
+#    "use-imgui",
+#    "profile-with-puffin",
+#    #"profile-with-stats-alloc", # Cannot be enabled with "profile-with-tracy-memory". Will run renderer / game loop single-threaded.
+#    #"profile-with-optick",
+#    #"profile-with-tracy",
+#    #"profile-with-tracy-memory", # Cannot be enabled with "profile-with-stats-alloc".
+#    #"profile-with-superluminal"
+#]
+#use-imgui = ["imgui", "imgui-sdl2"]
+#rafx-empty = ["rafx/rafx-empty"]
+#rafx-vulkan = ["rafx/rafx-vulkan"]
+#rafx-metal = ["rafx/rafx-metal"]
+#rafx-gl = ["rafx/rafx-gl"]
+#sdl2-bundled = ["sdl2/bundled"]
+#sdl2-static-link = ["sdl2/static-link"]
+#static-vulkan = ["rafx/static-vulkan"]
+#profile-with-stats-alloc = ["stats_alloc", "rafx/no-render-thread"]
+#profile-with-puffin = [
+#    "use-imgui",
+#    "profiling/profile-with-puffin",
+#    "rafx/profile-with-puffin",
+#    "puffin-imgui"
+#]
+#profile-with-optick = [
+#    "profiling/profile-with-optick",
+#    "rafx/profile-with-optick",
+#]
+#profile-with-superluminal = [
+#    "profiling/profile-with-superluminal",
+#    "rafx/profile-with-superluminal",
+#]
+#profile-with-tracy = ["profiling/profile-with-tracy", "rafx/profile-with-tracy"]
+#profile-with-tracy-memory = [
+#    "profiling/profile-with-tracy",
+#    "profile-with-tracy"
+#]
