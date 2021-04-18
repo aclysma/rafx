@@ -202,7 +202,7 @@ impl GlContext {
         }
     }
 
-    pub fn gl_get_shader_info_log(&self, shader_id: ShaderId, string: &mut [u8]) -> RafxResult<()> {
+    fn gl_get_shader_info_log(&self, shader_id: ShaderId, string: &mut [u8]) -> RafxResult<()> {
         unsafe {
             let mut len = string.len();
             self.gles2.GetShaderInfoLog(shader_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
@@ -210,7 +210,7 @@ impl GlContext {
         }
     }
 
-    pub fn gl_get_program_info_log(&self, program_id: ProgramId, string: &mut [u8]) -> RafxResult<()> {
+    fn gl_get_program_info_log(&self, program_id: ProgramId, string: &mut [u8]) -> RafxResult<()> {
         unsafe {
             let mut len = string.len();
             self.gles2.GetProgramInfoLog(program_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
@@ -218,7 +218,7 @@ impl GlContext {
         }
     }
 
-    fn get_shader_info_log(&self, shader_id: ShaderId) -> RafxResult<Option<String>> {
+    pub fn get_shader_info_log(&self, shader_id: ShaderId) -> RafxResult<Option<String>> {
         let error_len = self.gl_get_shaderiv(shader_id, gles20::INFO_LOG_LENGTH)?;
         if error_len == 0 {
             return Ok(None);

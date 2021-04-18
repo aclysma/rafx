@@ -1,5 +1,5 @@
 use raw_window_handle::HasRawWindowHandle;
-use web_sys::{WebGlRenderingContext, WebGlBuffer};
+use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader};
 use crate::{RafxResult, RafxError};
 use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER};
 use crate::gl::gles20::types::*;
@@ -7,13 +7,30 @@ use std::ffi::{CString, CStr};
 use fnv::FnvHashMap;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
+use wasm_bindgen::JsValue;
 
 static NEXT_GL_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+static NEXT_GL_SHADER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+
+fn convert_js_to_i32(value: &JsValue) -> Option<i32> {
+    if let Some(value) = value.as_f64() {
+        Some(value as i32)
+    } else if let Some(value) = value.as_bool() {
+        if value {
+            Some(1)
+        } else {
+            Some(0)
+        }
+    } else {
+        None
+    }
+}
 
 pub struct GlContext {
     context: WebGlRenderingContext,
     window_hash: WindowHash,
-    buffers: Mutex<FnvHashMap<BufferId, WebGlBuffer>>
+    buffers: Mutex<FnvHashMap<BufferId, WebGlBuffer>>,
+    shaders: Mutex<FnvHashMap<ShaderId, WebGlShader>>,
 }
 
 impl PartialEq for GlContext {
@@ -56,7 +73,8 @@ impl GlContext {
         GlContext {
             context,
             window_hash,
-            buffers: Default::default()
+            buffers: Default::default(),
+            shaders: Default::default()
         }
     }
 
@@ -90,7 +108,7 @@ impl GlContext {
     }
 
     pub fn gl_get_integerv(&self, pname: u32) -> i32 {
-        self.context.get_parameter(pname).unwrap().as_f64().unwrap() as i32
+        convert_js_to_i32(&self.context.get_parameter(pname).unwrap()).unwrap()
     }
 
     pub fn gl_get_string(&self, pname: u32) -> String {
@@ -158,43 +176,37 @@ impl GlContext {
     }
 
     pub fn gl_create_shader(&self, shader_type: GLenum) -> RafxResult<ShaderId> {
-        log::trace!("gl_create_shader unimplemented");
-        // unsafe {
-        //     let id = self.gles2.CreateShader(shader_type);
-        //     self.check_for_error()?;
-        //     Ok(ShaderId(id))
-        // }
-        unimplemented!();
+        let shader = self.context.create_shader(shader_type).unwrap();
+        self.check_for_error()?;
+        let shader_id = ShaderId(NEXT_GL_SHADER_ID.fetch_add(1, Ordering::Relaxed));
+        let old = self.shaders.lock().unwrap().insert(shader_id, shader);
+        assert!(old.is_none());
+        Ok(shader_id)
+    }
+
+    pub fn gl_destroy_shader(&self, shader_id: ShaderId) -> RafxResult<()> {
+        let shader = self.shaders.lock().unwrap().remove(&shader_id).unwrap();
+        self.context.delete_shader(Some(&shader));
+        self.check_for_error()
     }
 
     pub fn gl_shader_source(&self, shader_id: ShaderId, code: &CString) -> RafxResult<()> {
-        log::trace!("gl_shader_source unimplemented");
-        // unsafe {
-        //     let len : GLint = code.as_bytes().len() as _;
-        //     self.gles2.ShaderSource(shader_id.0, 1, &code.as_ptr(), &len);
-        //     self.check_for_error()
-        // }
-        unimplemented!();
+        let shaders = self.shaders.lock().unwrap();
+        self.context.shader_source(shaders.get(&shader_id).unwrap(), code.to_str().unwrap());
+        self.check_for_error()
     }
 
     pub fn gl_compile_shader(&self, shader_id: ShaderId) -> RafxResult<()> {
-        log::trace!("gl_compile_shader unimplemented");
-        // unsafe {
-        //     self.gles2.CompileShader(shader_id.0);
-        //     self.check_for_error()
-        // }
-        unimplemented!();
+        let shaders = self.shaders.lock().unwrap();
+        self.context.compile_shader(shaders.get(&shader_id).unwrap());
+        self.check_for_error()
     }
 
     pub fn gl_get_shaderiv(&self, shader_id: ShaderId, pname: GLenum) -> RafxResult<i32> {
-        log::trace!("gl_get_shaderiv unimplemented");
-        // unsafe {
-        //     let mut value = 0;
-        //     self.gles2.GetShaderiv(shader_id.0, pname, &mut value);
-        //     self.check_for_error()?;
-        //     Ok(value)
-        // }
-        unimplemented!();
+        let shaders = self.shaders.lock().unwrap();
+        let value = self.context.get_shader_parameter(shaders.get(&shader_id).unwrap(), pname);
+        self.check_for_error()?;
+        Ok(convert_js_to_i32(&value).ok_or_else(|| format!("Parameter {} in convert_js_to_i32 is a {:?} which is neither a number or boolean", pname, value))?)
     }
 
     pub fn gl_get_programiv(&self, program_id: ProgramId, pname: GLenum) -> RafxResult<i32> {
@@ -208,57 +220,62 @@ impl GlContext {
         unimplemented!();
     }
 
-    pub fn gl_get_shader_info_log(&self, shader_id: ShaderId, string: &mut [u8]) -> RafxResult<()> {
-        log::trace!("gl_get_shader_info_log unimplemented");
-        // unsafe {
-        //     let mut len = string.len();
-        //     self.gles2.GetShaderInfoLog(shader_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
-        //     self.check_for_error()
-        // }
-        unimplemented!();
-    }
+    // pub fn gl_get_shader_info_log(&self, shader_id: ShaderId, string: &mut [u8]) -> RafxResult<()> {
+    //     let shaders = self.shaders.lock().unwrap();
+    //     let value = self.context.get_shader_info_log(shaders.get(&shader_id).unwrap()).ok_or("Shader log unavailable")?;
+    //
+    //     let log_cstring = CString::new(value).unwrap();
+    //     let log_bytes = log_cstring.to_bytes();
+    //     for i in 0..string.len().min(log_bytes.len()) {
+    //         string[i] = log_bytes[i];
+    //     }
+    //     string[string.len() - 1] = 0;
+    //
+    //     Ok(())
+    // }
 
-    pub fn gl_get_program_info_log(&self, program_id: ProgramId, string: &mut [u8]) -> RafxResult<()> {
-        log::trace!("gl_get_program_info_log unimplemented");
-        // unsafe {
-        //     let mut len = string.len();
-        //     self.gles2.GetProgramInfoLog(program_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
-        //     self.check_for_error()
-        // }
-        unimplemented!();
-    }
+    // pub fn gl_get_program_info_log(&self, program_id: ProgramId, string: &mut [u8]) -> RafxResult<()> {
+    //     log::trace!("gl_get_program_info_log unimplemented");
+    //     // unsafe {
+    //     //     let mut len = string.len();
+    //     //     self.gles2.GetProgramInfoLog(program_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
+    //     //     self.check_for_error()
+    //     // }
+    //     unimplemented!();
+    // }
 
     fn get_shader_info_log(&self, shader_id: ShaderId) -> RafxResult<Option<String>> {
-        log::trace!("get_shader_info_log unimplemented");
-        // let error_len = self.gl_get_shaderiv(shader_id, gles20::INFO_LOG_LENGTH)?;
-        // if error_len == 0 {
-        //     return Ok(None);
-        // };
-        //
-        // let mut log = vec![0_u8; error_len as usize];
-        // self.gl_get_shader_info_log(shader_id, &mut log)?;
-        // Ok(Some(String::from_utf8(log).unwrap()))
-        unimplemented!();
+        let shaders = self.shaders.lock().unwrap();
+        let value = self.context.get_shader_info_log(shaders.get(&shader_id).unwrap()).ok_or("Shader log unavailable")?;
+
+        if value.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(value))
+        }
     }
 
     pub fn compile_shader(&self, shader_type: GLenum, src: &CString) -> RafxResult<ShaderId> {
-        log::trace!("compile_shader unimplemented");
-        // let shader_id = self.gl_create_shader(shader_type)?;
-        // self.gl_shader_source(shader_id, &src)?;
-        // self.gl_compile_shader(shader_id)?;
-        // if self.gl_get_shaderiv(shader_id, gles20::COMPILE_STATUS)? == 0 {
-        //     return Err(match self.get_shader_info_log(shader_id)? {
-        //         Some(x) => format!("Error compiling shader: {}", x),
-        //         None => "Error compiling shader, info log not available".to_string()
-        //     })?;
-        // }
-        //
-        // if let Ok(Some(debug_info)) = self.get_shader_info_log(shader_id) {
-        //     log::debug!("Debug info while compiling shader program: {}", debug_info);
-        // }
-        //
-        // Ok(shader_id)
-        unimplemented!();
+        log::trace!("compiling shader");
+        let shader_id = self.gl_create_shader(shader_type)?;
+        self.gl_shader_source(shader_id, &src)?;
+        self.gl_compile_shader(shader_id)?;
+        log::trace!("compiling shader AAAAA");
+        if self.gl_get_shaderiv(shader_id, gles20::COMPILE_STATUS)? == 0 {
+            return Err(match self.get_shader_info_log(shader_id)? {
+                Some(x) => format!("Error compiling shader: {}", x),
+                None => "Error compiling shader, info log not available".to_string()
+            })?;
+        }
+
+        log::trace!("compiling shader BBBBB");
+        if let Ok(Some(debug_info)) = self.get_shader_info_log(shader_id) {
+            log::debug!("Debug info while compiling shader program: {}", debug_info);
+        }
+
+        log::trace!("compiled shader");
+
+        Ok(shader_id)
     }
 
     pub fn gl_create_program(&self) -> RafxResult<ProgramId> {
