@@ -250,12 +250,14 @@ fn run() -> RafxResult<()> {
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
+                    gl_attribute_name: Some("pos".to_string())
                 },
                 RafxVertexLayoutAttribute {
                     format: RafxFormat::R32G32B32_SFLOAT,
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
+                    gl_attribute_name: Some("in_color".to_string())
                 },
             ],
             buffers: vec![RafxVertexLayoutBuffer {
@@ -264,18 +266,18 @@ fn run() -> RafxResult<()> {
             }],
         };
 
-        // let pipeline = device_context.create_graphics_pipeline(&RafxGraphicsPipelineDef {
-        //     shader: &shader,
-        //     root_signature: &root_signature,
-        //     vertex_layout: &vertex_layout,
-        //     blend_state: &Default::default(),
-        //     depth_state: &Default::default(),
-        //     rasterizer_state: &Default::default(),
-        //     color_formats: &[swapchain_helper.format()],
-        //     sample_count: RafxSampleCount::SampleCount1,
-        //     depth_stencil_format: None,
-        //     primitive_topology: RafxPrimitiveTopology::TriangleList,
-        // })?;
+        let pipeline = device_context.create_graphics_pipeline(&RafxGraphicsPipelineDef {
+            shader: &shader,
+            root_signature: &root_signature,
+            vertex_layout: &vertex_layout,
+            blend_state: &Default::default(),
+            depth_state: &Default::default(),
+            rasterizer_state: &Default::default(),
+            color_formats: &[swapchain_helper.format()],
+            sample_count: RafxSampleCount::SampleCount1,
+            depth_stencil_format: None,
+            primitive_topology: RafxPrimitiveTopology::TriangleList,
+        })?;
 
         let start_time = std::time::Instant::now();
 
@@ -338,66 +340,66 @@ fn run() -> RafxResult<()> {
                 device_context.gl_device_context().unwrap().gl_context().gles2().Clear(rafx_api::gl::gles20::COLOR_BUFFER_BIT);
             }
 
-            // //
-            // // Record the command buffer. For now just transition it between layouts
-            // //
-            // cmd_pool.reset_command_pool()?;
-            // cmd_buffer.begin()?;
             //
-            // // Put it into a layout where we can draw on it
-            // cmd_buffer.cmd_resource_barrier(
-            //     &[],
-            //     &[RafxTextureBarrier::state_transition(
-            //         &swapchain_texture,
-            //         RafxResourceState::PRESENT,
-            //         RafxResourceState::RENDER_TARGET,
-            //     )],
-            // )?;
+            // Record the command buffer. For now just transition it between layouts
             //
-            // cmd_buffer.cmd_begin_render_pass(
-            //     &[RafxColorRenderTargetBinding {
-            //         texture: &swapchain_texture,
-            //         load_op: RafxLoadOp::Clear,
-            //         store_op: RafxStoreOp::Store,
-            //         array_slice: None,
-            //         mip_slice: None,
-            //         clear_value: RafxColorClearValue([0.0, 0.0, 0.0, 0.0]),
-            //         resolve_target: None,
-            //         resolve_store_op: RafxStoreOp::DontCare,
-            //         resolve_mip_slice: None,
-            //         resolve_array_slice: None,
-            //     }],
-            //     None,
-            // )?;
-            //
-            // cmd_buffer.cmd_bind_pipeline(&pipeline)?;
-            //
-            // cmd_buffer.cmd_bind_vertex_buffers(
-            //     0,
-            //     &[RafxVertexBufferBinding {
-            //         buffer: &vertex_buffer,
-            //         byte_offset: 0,
-            //     }],
-            // )?;
-            // cmd_buffer.cmd_bind_descriptor_set(
-            //     &descriptor_set_array,
-            //     presentable_frame.rotating_frame_index() as u32,
-            // )?;
-            // cmd_buffer.cmd_draw(3, 0)?;
-            //
-            // // Put it into a layout where we can present it
-            //
-            // cmd_buffer.cmd_end_render_pass()?;
-            //
-            // cmd_buffer.cmd_resource_barrier(
-            //     &[],
-            //     &[RafxTextureBarrier::state_transition(
-            //         &swapchain_texture,
-            //         RafxResourceState::RENDER_TARGET,
-            //         RafxResourceState::PRESENT,
-            //     )],
-            // )?;
-            // cmd_buffer.end()?;
+            cmd_pool.reset_command_pool()?;
+            cmd_buffer.begin()?;
+
+            // Put it into a layout where we can draw on it
+            cmd_buffer.cmd_resource_barrier(
+                &[],
+                &[RafxTextureBarrier::state_transition(
+                    &swapchain_texture,
+                    RafxResourceState::PRESENT,
+                    RafxResourceState::RENDER_TARGET,
+                )],
+            )?;
+
+            cmd_buffer.cmd_begin_render_pass(
+                &[RafxColorRenderTargetBinding {
+                    texture: &swapchain_texture,
+                    load_op: RafxLoadOp::Clear,
+                    store_op: RafxStoreOp::Store,
+                    array_slice: None,
+                    mip_slice: None,
+                    clear_value: RafxColorClearValue([0.0, 0.0, 0.0, 0.0]),
+                    resolve_target: None,
+                    resolve_store_op: RafxStoreOp::DontCare,
+                    resolve_mip_slice: None,
+                    resolve_array_slice: None,
+                }],
+                None,
+            )?;
+
+            cmd_buffer.cmd_bind_pipeline(&pipeline)?;
+
+            cmd_buffer.cmd_bind_vertex_buffers(
+                0,
+                &[RafxVertexBufferBinding {
+                    buffer: &vertex_buffer,
+                    byte_offset: 0,
+                }],
+            )?;
+            cmd_buffer.cmd_bind_descriptor_set(
+                &descriptor_set_array,
+                presentable_frame.rotating_frame_index() as u32,
+            )?;
+            cmd_buffer.cmd_draw(3, 0)?;
+
+            // Put it into a layout where we can present it
+
+            cmd_buffer.cmd_end_render_pass()?;
+
+            cmd_buffer.cmd_resource_barrier(
+                &[],
+                &[RafxTextureBarrier::state_transition(
+                    &swapchain_texture,
+                    RafxResourceState::RENDER_TARGET,
+                    RafxResourceState::PRESENT,
+                )],
+            )?;
+            cmd_buffer.end()?;
 
             //
             // Present the image

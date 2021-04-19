@@ -14,7 +14,7 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
-use rafx::api::{RafxApi, RafxSwapchainDef, RafxSwapchainHelper, RafxQueueType, RafxResult, RafxCommandPoolDef, RafxBufferDef, RafxCommandBufferDef, RafxShaderModuleDef, RafxShaderModuleDefGl, RafxShaderResource, RafxGlUniformMember, RafxShaderStageDef, RafxShaderStageReflection, RafxShaderStageFlags, RafxResourceType, RafxRootSignatureDef, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxDescriptorKey, RafxDescriptorElements, RafxVertexLayout, RafxVertexLayoutAttribute, RafxFormat, RafxVertexLayoutBuffer, RafxVertexAttributeRate};
+use rafx::api::{RafxApi, RafxSwapchainDef, RafxSwapchainHelper, RafxQueueType, RafxResult, RafxCommandPoolDef, RafxBufferDef, RafxCommandBufferDef, RafxShaderModuleDef, RafxShaderModuleDefGl, RafxShaderResource, RafxGlUniformMember, RafxShaderStageDef, RafxShaderStageReflection, RafxShaderStageFlags, RafxResourceType, RafxRootSignatureDef, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxDescriptorKey, RafxDescriptorElements, RafxVertexLayout, RafxVertexLayoutAttribute, RafxFormat, RafxVertexLayoutBuffer, RafxVertexAttributeRate, RafxGraphicsPipelineDef, RafxSampleCount, RafxPrimitiveTopology, RafxTextureBarrier, RafxResourceState, RafxColorRenderTargetBinding, RafxStoreOp, RafxColorClearValue, RafxLoadOp, RafxVertexBufferBinding};
 
 pub fn update_loop(
     window: winit::window::Window,
@@ -243,12 +243,14 @@ pub fn update_loop(
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
+                    gl_attribute_name: Some("pos".to_string())
                 },
                 RafxVertexLayoutAttribute {
                     format: RafxFormat::R32G32B32_SFLOAT,
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
+                    gl_attribute_name: Some("in_color".to_string())
                 },
             ],
             buffers: vec![RafxVertexLayoutBuffer {
@@ -256,6 +258,19 @@ pub fn update_loop(
                 rate: RafxVertexAttributeRate::Vertex,
             }],
         };
+
+        let pipeline = device_context.create_graphics_pipeline(&RafxGraphicsPipelineDef {
+            shader: &shader,
+            root_signature: &root_signature,
+            vertex_layout: &vertex_layout,
+            blend_state: &Default::default(),
+            depth_state: &Default::default(),
+            rasterizer_state: &Default::default(),
+            color_formats: &[swapchain_helper.format()],
+            sample_count: RafxSampleCount::SampleCount1,
+            depth_stencil_format: None,
+            primitive_topology: RafxPrimitiveTopology::TriangleList,
+        })?;
 
         log::trace!("Starting event loop");
         let start_time = instant::Instant::now();
@@ -338,6 +353,67 @@ pub fn update_loop(
                         );
                         device_context.gl_device_context().unwrap().gl_context().gl_clear(rafx::api::gl::gles20::COLOR_BUFFER_BIT);
                     }
+
+                    //
+                    // Record the command buffer. For now just transition it between layouts
+                    //
+                    cmd_pool.reset_command_pool().unwrap();
+                    cmd_buffer.begin().unwrap();
+
+                    // Put it into a layout where we can draw on it
+                    cmd_buffer.cmd_resource_barrier(
+                        &[],
+                        &[RafxTextureBarrier::state_transition(
+                            &swapchain_texture,
+                            RafxResourceState::PRESENT,
+                            RafxResourceState::RENDER_TARGET,
+                        )],
+                    ).unwrap();
+
+                    cmd_buffer.cmd_begin_render_pass(
+                        &[RafxColorRenderTargetBinding {
+                            texture: &swapchain_texture,
+                            load_op: RafxLoadOp::Clear,
+                            store_op: RafxStoreOp::Store,
+                            array_slice: None,
+                            mip_slice: None,
+                            clear_value: RafxColorClearValue([0.0, 0.0, 0.0, 0.0]),
+                            resolve_target: None,
+                            resolve_store_op: RafxStoreOp::DontCare,
+                            resolve_mip_slice: None,
+                            resolve_array_slice: None,
+                        }],
+                        None,
+                    ).unwrap();
+
+                    cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
+
+                    cmd_buffer.cmd_bind_vertex_buffers(
+                        0,
+                        &[RafxVertexBufferBinding {
+                            buffer: &vertex_buffer,
+                            byte_offset: 0,
+                        }],
+                    ).unwrap();
+                    cmd_buffer.cmd_bind_descriptor_set(
+                        &descriptor_set_array,
+                        presentable_frame.rotating_frame_index() as u32,
+                    ).unwrap();
+                    cmd_buffer.cmd_draw(3, 0).unwrap();
+
+                    // Put it into a layout where we can present it
+
+                    cmd_buffer.cmd_end_render_pass().unwrap();
+
+                    cmd_buffer.cmd_resource_barrier(
+                        &[],
+                        &[RafxTextureBarrier::state_transition(
+                            &swapchain_texture,
+                            RafxResourceState::RENDER_TARGET,
+                            RafxResourceState::PRESENT,
+                        )],
+                    ).unwrap();
+                    cmd_buffer.end().unwrap();
 
                     //
                     // Present the image

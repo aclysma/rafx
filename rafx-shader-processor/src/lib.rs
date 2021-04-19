@@ -63,6 +63,15 @@ pub struct ShaderProcessorArgs {
 
     #[structopt(name = "optimize-shaders", long)]
     pub optimize_shaders: bool,
+
+    #[structopt(name = "package-vk", long)]
+    pub package_vk: bool,
+    #[structopt(name = "package-metal", long)]
+    pub package_metal: bool,
+    #[structopt(name = "package-gles", long)]
+    pub package_gles: bool,
+    #[structopt(name = "package-all", long)]
+    pub package_all: bool,
 }
 
 pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
@@ -92,7 +101,7 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
             args.gles_generated_src_file.as_ref(),
             args.cooked_shader_file.as_ref(),
             shader_kind,
-            args.optimize_shaders,
+            &args,
         )
         .map_err(|x| format!("{}: {}", glsl_file.to_string_lossy(), x.to_string()))?;
 
@@ -160,7 +169,7 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                     gles_generated_src_path.as_ref(),
                     cooked_shader_path.as_ref(),
                     shader_kind,
-                    args.optimize_shaders,
+                    &args,
                 )
                 .map_err(|x| format!("{}: {}", glsl_file.to_string_lossy(), x.to_string()))?;
 
@@ -203,7 +212,7 @@ fn process_glsl_shader(
     gles_generated_src_file: Option<&PathBuf>,
     cooked_shader_file: Option<&PathBuf>,
     shader_kind: shaderc::ShaderKind,
-    optimize_shaders: bool,
+    args: &ShaderProcessorArgs
 ) -> Result<(), Box<dyn Error>> {
     log::trace!("--- Start processing shader job ---");
     log::trace!("glsl: {:?}", glsl_file);
@@ -213,6 +222,11 @@ fn process_glsl_shader(
     log::trace!("gles: {:?}", gles_generated_src_file);
     log::trace!("cooked: {:?}", cooked_shader_file);
     log::trace!("shader kind: {:?}", shader_kind);
+
+    let package_vk = (args.package_all || args.package_vk) && cooked_shader_file.is_some();
+    let package_metal = (args.package_all || args.package_metal) && cooked_shader_file.is_some();
+    let package_gles = (args.package_all || args.package_gles) && cooked_shader_file.is_some();
+    log::trace!("package VK: {} Metal: {} GLES: {}", package_vk, package_metal, package_gles);
 
     let code = std::fs::read_to_string(&glsl_file)?;
     let entry_point_name = "main";
@@ -337,7 +351,7 @@ fn process_glsl_shader(
     //TODO: Should we compile what comes out of spirv cross?
     //ast.build_combined_image_samplers();
     //let compiled = ast.compile()?;
-    let output_spv = if optimize_shaders {
+    let output_spv = if args.optimize_shaders {
         log::trace!("{:?}: compile optimized", glsl_file);
         let mut compile_options = shaderc::CompileOptions::new().unwrap();
         compile_options.set_include_callback(include::shaderc_include_callback);
@@ -359,7 +373,7 @@ fn process_glsl_shader(
         unoptimized_compile_spirv_result.as_binary_u8().to_vec()
     };
 
-    let metal_src = if metal_generated_src_file.is_some() || cooked_shader_file.is_some() {
+    let metal_src = if metal_generated_src_file.is_some() || package_metal {
         log::trace!("{:?}: create msl", glsl_file);
         let mut msl_ast =
             spirv_cross::spirv::Ast::<spirv_cross::msl::Target>::parse(&spirv_cross_module)?;
@@ -386,7 +400,7 @@ fn process_glsl_shader(
         None
     };
 
-    let gles_src = if gles_generated_src_file.is_some() || cooked_shader_file.is_some() {
+    let gles_src = if gles_generated_src_file.is_some() || package_gles {
         log::trace!("{:?}: create gles", glsl_file);
         let mut gles_ast = spirv_cross::spirv::Ast::<spirv_cross::glsl::Target>::parse(&spirv_cross_module)?;
         let mut spirv_cross_gles_options = spirv_cross::glsl::CompilerOptions::default();
@@ -418,11 +432,29 @@ fn process_glsl_shader(
     // Don't worry about the return value
     log::trace!("{:?}: cook shader", glsl_file);
     let cooked_shader = if cooked_shader_file.is_some() {
+        let output_spv = if package_vk {
+            Some(&output_spv)
+        } else {
+            None
+        };
+
+        let metal_src = if package_metal {
+            Some(metal_src.as_ref().unwrap().clone())
+        } else {
+            None
+        };
+
+        let gles_src = if package_gles {
+            Some(gles_src.as_ref().unwrap().clone())
+        } else {
+            None
+        };
+
         Some(cook::cook_shader(
             &reflected_data.as_ref().unwrap().reflection,
-            &output_spv,
-            metal_src.as_ref().unwrap().clone(),
-            gles_src.as_ref().unwrap().clone(),
+            output_spv,
+            metal_src,
+            gles_src,
         )?)
     } else {
         None

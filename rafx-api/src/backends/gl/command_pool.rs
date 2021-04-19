@@ -1,9 +1,41 @@
 use crate::gl::{RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl};
 use crate::{RafxCommandBufferDef, RafxCommandPoolDef, RafxQueueType, RafxResult};
+use rafx_base::trust_cell::TrustCell;
+use std::sync::Arc;
+
+#[derive(Debug)]
+pub(crate) struct CommandPoolGlStateInner {
+    pub(crate) is_started: bool
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct CommandPoolGlState {
+    inner: Arc<TrustCell<CommandPoolGlStateInner>>
+}
+
+impl CommandPoolGlState {
+    fn new() -> Self {
+        let inner = CommandPoolGlStateInner {
+            is_started: false
+        };
+
+        CommandPoolGlState {
+            inner: Arc::new(TrustCell::new(inner))
+        }
+    }
+
+    pub(crate) fn borrow(&self) -> rafx_base::trust_cell::Ref<CommandPoolGlStateInner> {
+        self.inner.borrow()
+    }
+
+    pub(crate) fn borrow_mut(&self) -> rafx_base::trust_cell::RefMut<CommandPoolGlStateInner> {
+        self.inner.borrow_mut()
+    }
+}
 
 pub struct RafxCommandPoolGl {
+    command_pool_state: CommandPoolGlState,
     queue: RafxQueueGl,
-    //TODO: Tracking data for current state of the GPU?
 }
 
 impl RafxCommandPoolGl {
@@ -19,6 +51,10 @@ impl RafxCommandPoolGl {
         &self.queue
     }
 
+    pub(crate) fn command_pool_state(&self) -> &CommandPoolGlState {
+        &self.command_pool_state
+    }
+
     pub fn create_command_buffer(
         &self,
         command_buffer_def: &RafxCommandBufferDef,
@@ -27,8 +63,10 @@ impl RafxCommandPoolGl {
     }
 
     pub fn reset_command_pool(&self) -> RafxResult<()> {
-        unimplemented!();
-        // do nothing
+        // Clear state
+        let state = self.command_pool_state.borrow_mut();
+        assert!(!state.is_started);
+
         Ok(())
     }
 
@@ -37,6 +75,7 @@ impl RafxCommandPoolGl {
         _command_pool_def: &RafxCommandPoolDef,
     ) -> RafxResult<RafxCommandPoolGl> {
         Ok(RafxCommandPoolGl {
+            command_pool_state: CommandPoolGlState::new(),
             queue: queue.clone(),
         })
     }

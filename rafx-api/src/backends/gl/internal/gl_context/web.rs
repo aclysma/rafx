@@ -372,4 +372,10 @@ impl GlContext {
         self.context.disable(value);
         self.check_for_error()
     }
+
+    pub fn gl_bind_attrib_location(&self, program_id: ProgramId, index: u32, name: &str) -> RafxResult<()> {
+        let programs = self.programs.lock().unwrap();
+        self.context.bind_attrib_location(programs.get(&program_id).unwrap(), index, name);
+        self.check_for_error()
+    }
 }

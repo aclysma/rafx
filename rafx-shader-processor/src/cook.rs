@@ -4,20 +4,20 @@ use rafx_framework::{ReflectedEntryPoint, ShaderModuleHash};
 
 pub(crate) fn cook_shader(
     reflected_data: &[ReflectedEntryPoint],
-    spv: &[u8],
-    metal_source: String,
-    gles_source: String,
+    vk_spv: Option<&Vec<u8>>,
+    metal_source: Option<String>,
+    gles_source: Option<String>,
 ) -> Result<Vec<u8>, String> {
     let shader_package = RafxShaderPackage {
-        vk: Some(RafxShaderPackageVulkan::SpvBytes(spv.to_vec())),
+        vk: vk_spv.map(|x| RafxShaderPackageVulkan::SpvBytes(x.to_vec())),
 
         //TODO: We ideally package binary but this is only possible with apple shader tools installed,
         // which is only available on win/mac. So we'll want a fallback path so that it's not impossible
         // to produce a cooked shader on machines without the tools. (Also the tools don't provide an
         // API so will need to figure out how to compile the shader programmatically.)
-        metal: Some(RafxShaderPackageMetal::Src(metal_source)),
+        metal: metal_source.map(|x| RafxShaderPackageMetal::Src(x)),
 
-        gl: Some(RafxShaderPackageGl::Src(gles_source)),
+        gl: gles_source.map(|x| RafxShaderPackageGl::Src(x)),
     };
 
     let cooked_shader = CookedShaderPackage {

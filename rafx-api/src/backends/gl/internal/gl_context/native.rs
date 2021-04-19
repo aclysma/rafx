@@ -402,4 +402,24 @@ impl GlContext {
             self.check_for_error()
         }
     }
+
+    pub fn gl_bind_attrib_location(&self, program_id: ProgramId, index: u32, name: &str) -> RafxResult<()> {
+        unsafe {
+            self.gles2.BindAttribLocation(program_id.0, index, CString::new(name).unwrap().as_ptr());
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_use_program(&self, program_id: ProgramId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.UseProgram(program_id.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_bind_renderbuffer(&self, id: GLenum, renderbuffer: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.BindRenderbuffer(id, )
+        }
+    }
 }

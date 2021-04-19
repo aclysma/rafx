@@ -1,8 +1,4 @@
-use crate::gl::{
-    DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl,
-    RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl,
-    RafxRootSignatureGl, RafxTextureGl,
-};
+use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState};
 use crate::{
     RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
     RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D,
@@ -15,6 +11,7 @@ use fnv::FnvHashSet;
 //     MTLScissorRect, MTLSize, MTLViewport,
 // };
 use rafx_base::trust_cell::TrustCell;
+use web_sys::default_prevented;
 
 // Mutable state stored in a lock. (Hopefully we can optimize away the lock later)
 // #[derive(Debug)]
@@ -40,7 +37,7 @@ use rafx_base::trust_cell::TrustCell;
 #[derive(Debug)]
 pub struct RafxCommandBufferGl {
     queue: RafxQueueGl,
-    //inner: TrustCell<RafxCommandBufferGlInner>,
+    command_pool_state: CommandPoolGlState,
 }
 
 impl RafxCommandBufferGl {
@@ -64,38 +61,29 @@ impl RafxCommandBufferGl {
         command_pool: &RafxCommandPoolGl,
         _command_buffer_def: &RafxCommandBufferDef,
     ) -> RafxResult<RafxCommandBufferGl> {
-        // let inner = RafxCommandBufferGlInner {
-        //
-        // };
-
         Ok(RafxCommandBufferGl {
             queue: command_pool.queue().clone(),
-            //inner: TrustCell::new(inner),
+            command_pool_state: command_pool.command_pool_state().clone(),
         })
     }
 
     pub fn begin(&self) -> RafxResult<()> {
-        unimplemented!();
-        // objc::rc::autoreleasepool(|| {
-        //     let command_buffer = self.queue.gl_queue().new_command_buffer();
-        //     let mut inner = self.inner.borrow_mut();
-        //     inner.command_buffer = Some(command_buffer.to_owned());
-        //     inner.last_pipeline_type = None;
-        //     Ok(())
-        // })
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(!state.is_started);
+        state.is_started = true;
+        Ok(())
     }
 
     pub fn end(&self) -> RafxResult<()> {
-        unimplemented!();
-        //objc::rc::autoreleasepool(|| self.end_current_encoders(true))
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+        state.is_started = false;
+        Ok(())
     }
 
     pub fn return_to_pool(&self) -> RafxResult<()> {
-        unimplemented!();
-        // Returning to pool means the command buffer no longer needs to stay valid, so drop the
-        // current one
-        // self.inner.borrow_mut().command_buffer = None;
-        // Ok(())
+        // don't need to do anything
+        Ok(())
     }
 
     pub fn cmd_begin_render_pass(
@@ -103,7 +91,25 @@ impl RafxCommandBufferGl {
         color_targets: &[RafxColorRenderTargetBinding],
         depth_target: Option<RafxDepthStencilRenderTargetBinding>,
     ) -> RafxResult<()> {
-        unimplemented!();
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        if color_targets.is_empty() && depth_target.is_none() {
+            Err("No color or depth target supplied to cmd_begin_render_pass")?;
+        }
+
+        let mut clear_mask = 0;
+
+        let gl_context = queue.device_context().gl_context();
+
+        for render_target in color_targets {
+            gl_context.gl_bind_renderbuffer(gles20::GL_RENDERBUFFER, render_target.render_buffer);
+        }
+
+
+
+        Ok(())
+
         // // if self.has_active_renderpass.load(Ordering::Relaxed) {
         // //     self.cmd_end_render_pass()?;
         // // }
@@ -693,31 +699,8 @@ impl RafxCommandBufferGl {
         buffer_barriers: &[RafxBufferBarrier],
         texture_barriers: &[RafxTextureBarrier],
     ) -> RafxResult<()> {
-        unimplemented!();
-        // if !buffer_barriers.is_empty() {
-        //     self.queue.add_barrier_flags(BarrierFlagsGl::BUFFERS);
-        // }
-        //
-        // if !texture_barriers.is_empty() {
-        //     self.queue.add_barrier_flags(BarrierFlagsGl::TEXTURES);
-        //
-        //     let mut inner = self.inner.borrow_mut();
-        //     for texture_barrier in texture_barriers {
-        //         if texture_barrier
-        //             .src_state
-        //             .intersects(RafxResourceState::RENDER_TARGET)
-        //             && texture_barrier.dst_state.intersects(
-        //                 RafxResourceState::UNORDERED_ACCESS | RafxResourceState::SHADER_RESOURCE,
-        //             )
-        //         {
-        //             inner
-        //                 .render_targets_to_make_readable
-        //                 .insert(texture_barrier.texture.gl_texture().unwrap().clone());
-        //         }
-        //     }
-        // }
-        //
-        // Ok(())
+        // don't need to do anything
+        Ok(())
     }
 
     pub fn cmd_copy_buffer_to_buffer(

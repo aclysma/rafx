@@ -1,4 +1,4 @@
-use crate::gl::RafxDeviceContextGl;
+use crate::gl::{RafxDeviceContextGl, GlCompiledShader, ProgramId, RafxShaderGl};
 use crate::{
     RafxComputePipelineDef, RafxGraphicsPipelineDef, RafxPipelineType, RafxResult,
     RafxRootSignature, RafxShaderStageFlags,
@@ -43,6 +43,7 @@ pub struct RafxPipelineGl {
     pipeline_type: RafxPipelineType,
     // It's a RafxRootSignatureGl, but stored as RafxRootSignature so we can return refs to it
     root_signature: RafxRootSignature,
+    shader: RafxShaderGl,
     //pipeline: GlPipelineState,
 
     //pub(crate) render_encoder_info: Option<PipelineRenderEncoderInfo>,
@@ -76,7 +77,31 @@ impl RafxPipelineGl {
         device_context: &RafxDeviceContextGl,
         pipeline_def: &RafxGraphicsPipelineDef,
     ) -> RafxResult<Self> {
-        unimplemented!();
+
+        let gl_context = device_context.gl_context();
+        let shader = pipeline_def.shader.gl_shader().unwrap();
+        let program = shader.gl_program_id();
+
+        //TODO: Check vertex layout is within hardware limits
+        for attribute in &pipeline_def.vertex_layout.attributes {
+            gl_context.gl_bind_attrib_location(
+                program,
+                attribute.location,
+                attribute.gl_attribute_name.as_ref().unwrap()
+            )?;
+        }
+
+        gl_context.gl_use_program(program);
+
+        Ok(RafxPipelineGl {
+            root_signature: pipeline_def.root_signature.clone(),
+            pipeline_type: RafxPipelineType::Graphics,
+            shader: shader.clone()
+        })
+
+        //TODO: Cache rasterizer, depth stencil, blend states
+
+
         // let pipeline = gl_rs::RenderPipelineDescriptor::new();
         //
         // let mut vertex_function = None;
