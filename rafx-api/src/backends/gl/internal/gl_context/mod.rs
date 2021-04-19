@@ -17,6 +17,7 @@ pub mod gles20;
 use raw_window_handle::HasRawWindowHandle;
 use fnv::FnvHasher;
 use std::hash::{Hash, Hasher};
+use std::ffi::CString;
 
 pub fn calculate_window_hash(window: &dyn HasRawWindowHandle) -> WindowHash {
     let mut hasher = FnvHasher::default();
@@ -40,7 +41,7 @@ pub struct ProgramId(pub u32);
 pub const NONE_PROGRAM: ProgramId = ProgramId(gles20::NONE);
 
 pub struct ActiveUniformInfo {
-    pub name_buffer: Vec<u8>,
+    pub name: CString,
     pub size: u32,
     pub ty: u32,
 }

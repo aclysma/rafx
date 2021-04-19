@@ -1,5 +1,5 @@
 use std::ffi::CString;
-use crate::gl::{gles20, ProgramId, GlContext};
+use crate::gl::{gles20, ProgramId, GlContext, LocationId};
 use crate::{RafxResult, RafxShader};
 use fnv::FnvHashMap;
 use std::ops::Range;
@@ -30,7 +30,7 @@ pub struct UniformReflectionData {
     program_ids: Vec<ProgramId>,
     uniforms: Vec<UniformInfo>,
     fields: Vec<UniformFieldInfo>,
-    locations: Vec<i32>,
+    locations: Vec<Option<LocationId>>,
 }
 
 impl UniformReflectionData {
@@ -68,53 +68,40 @@ impl UniformReflectionData {
 
         for &program_id in &program_ids {
             let active_uniform_count = gl_context.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORMS)? as u32;
-            let active_uniform_max_length = gl_context.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORM_MAX_LENGTH)? as usize;
+            let max_name_length_hint = gl_context.get_active_uniform_max_name_length_hint(program_id)?;
 
             // Merges all the uniforms from the program into uniform_lookup and field_lookup
             for i in 0..active_uniform_count {
-                // let mut name_length = 0;
-                // let mut size = 0;
-                // let mut ty = 0;
-                // let mut name_buffer = vec![0_u8; active_uniform_max_length];
-
                 let mut uniform_info = unsafe {
                     gl_context.gl_get_active_uniform(
                         program_id,
                         i,
-                        active_uniform_max_length,
+                        &max_name_length_hint,
                     )
-
-
-                    // gl_context.gles2().GetActiveUniform(
-                    //     program_id.0,
-                    //     i as _,
-                    //     active_uniform_max_length,
-                    //     &mut name_length,
-                    //     &mut size,
-                    //     &mut ty,
-                    //     name.as_mut_ptr() as _
-                    // );
                 }?;
 
                 gl_context.check_for_error()?;
 
                 // Find the first part of the name (everything up to but not including the first dot)
-                let first_split = uniform_info.name_buffer
+                let first_split = uniform_info.name
+                    .to_bytes()
                     .iter()
                     .position(|x| *x == '.' as u8)
-                    .unwrap_or(uniform_info.name_buffer.len());
+                    .unwrap_or(uniform_info.name.to_bytes().len());
 
-                let uniform_name = CString::new(&uniform_info.name_buffer[0..first_split]).unwrap();
+                let uniform_name = CString::new(&uniform_info.name.to_bytes()[0..first_split]).unwrap();
 
                 // Need to keep this so we can query GetUniformLocation later
-                let full_name = CString::new(uniform_info.name_buffer).unwrap();
+                let full_name = uniform_info.name;
+                let size = uniform_info.size;
+                let ty = uniform_info.ty;
 
                 if let Some(existing) = field_lookup.get_mut(&full_name) {
                     // verify the field metadata matches the other program's field metadata
-                    if existing.size != uniform_info.size as u32 {
-                        return Err(format!("Multiple programs with the same variable name {} but mismatching sizes of {} and {}", full_name.to_string_lossy(), existing.size, uniform_info.size))?;
-                    } else if existing.ty != uniform_info.ty {
-                        return Err(format!("Multiple programs with the same variable name {} but mismatching types of {} and {}", full_name.to_string_lossy(), existing.ty, uniform_info.ty))?;
+                    if existing.size != size as u32 {
+                        return Err(format!("Multiple programs with the same variable name {} but mismatching sizes of {} and {}", full_name.to_string_lossy(), existing.size, size))?;
+                    } else if existing.ty != ty {
+                        return Err(format!("Multiple programs with the same variable name {} but mismatching types of {} and {}", full_name.to_string_lossy(), existing.ty, ty))?;
                     }
                 } else {
                     let field = SizeTypeName {
@@ -135,7 +122,7 @@ impl UniformReflectionData {
         // fields are stored grouped by uniform. This list is somewhat parallel with the locations list
         let mut fields = Vec::<UniformFieldInfo>::default();
         // Indexed by (field_index * program_count) + program_index
-        let mut locations = Vec::<i32>::default();
+        let mut locations = Vec::<Option<LocationId>>::default();
 
         for (uniform_name, uniform_fields) in uniform_lookup {
             let uniform_info = UniformInfo {
@@ -164,7 +151,7 @@ impl UniformReflectionData {
                 for &program_id in &program_ids {
                     unsafe {
                         let location = gl_context.gl_get_uniform_location(program_id, &size_type_name.name)?;
-                        locations.push(location.map(|x| x as i32).unwrap_or(-1));
+                        locations.push(location);
                         //println!("{} {}", location, size_type_name.name.to_string_lossy());
                     }
                 }
@@ -205,14 +192,9 @@ impl UniformReflectionData {
             .map(|x| x as u32)
     }
 
-    pub fn location(&self, program_id: ProgramId, field_index: FieldIndex) -> Option<u32> {
+    pub fn location(&self, program_id: ProgramId, field_index: FieldIndex) -> Option<LocationId> {
         let program_index = self.program_index(program_id)?;
 
-        let location = self.locations[(field_index.0 as usize * self.program_ids.len()) + program_index as usize];
-        if location == -1 {
-            None
-        } else {
-            Some(location as u32)
-        }
+        self.locations[(field_index.0 as usize * self.program_ids.len()) + program_index as usize].clone()
     }
 }

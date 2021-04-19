@@ -4,15 +4,38 @@ use std::sync::{Arc, Mutex};
 use std::ffi::{CString, CStr};
 use rafx_base::trust_cell::TrustCell;
 
-struct CompiledShader {
+#[derive(Debug)]
+struct GlCompiledShaderInner {
+    device_context: RafxDeviceContextGl,
     shader_id: ShaderId,
     stage: RafxShaderStageFlags,
+}
+
+impl Drop for GlCompiledShaderInner {
+    fn drop(&mut self) {
+        self.device_context.gl_context().gl_destroy_shader(self.shader_id).unwrap();
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct GlCompiledShader {
+    inner: Arc<GlCompiledShaderInner>
+}
+
+impl GlCompiledShader {
+    pub fn stage(&self) -> RafxShaderStageFlags {
+        self.inner.stage
+    }
+
+    pub fn shader_id(&self) -> ShaderId {
+        self.inner.shader_id
+    }
 }
 
 pub struct RafxShaderModuleGlInner {
     device_context: RafxDeviceContextGl,
     src: CString,
-    compiled_shader: TrustCell<Option<CompiledShader>>,
+    compiled_shader: TrustCell<Option<GlCompiledShader>>,
 }
 
 impl std::fmt::Debug for RafxShaderModuleGlInner {
@@ -60,14 +83,14 @@ impl RafxShaderModuleGl {
         })
     }
 
-    pub(crate) fn compile_shader(&self, stage: RafxShaderStageFlags) -> RafxResult<ShaderId> {
-        let mut compiled_shader = self.inner.compiled_shader.borrow_mut();
-        if let Some(compiled_shader) = compiled_shader.as_ref() {
-            return if compiled_shader.stage == stage {
+    pub(crate) fn compile_shader(&self, stage: RafxShaderStageFlags) -> RafxResult<GlCompiledShader> {
+        let mut previously_compiled_shader = self.inner.compiled_shader.borrow_mut();
+        if let Some(compiled_shader) = previously_compiled_shader.as_ref() {
+            return if compiled_shader.stage() == stage {
                 log::debug!("compile_shader called, returning previously compiled result");
-                Ok(compiled_shader.shader_id)
+                Ok(compiled_shader.clone())
             } else {
-                Err(format!("Shader was already compiled with stage {:?}, but compile_shader() called again with stage {:?}", compiled_shader.stage, stage))?
+                Err(format!("Shader was already compiled with stage {:?}, but compile_shader() called again with stage {:?}", compiled_shader.stage(), stage))?
             };
         }
 
@@ -82,12 +105,19 @@ impl RafxShaderModuleGl {
         let gl_context = self.inner.device_context.gl_context();
         let shader_id = gl_context.compile_shader(gl_stage, &self.inner.src)?;
 
-        *compiled_shader = Some(CompiledShader {
+        let inner = GlCompiledShaderInner {
+            device_context: self.inner.device_context.clone(),
             shader_id,
             stage
-        });
+        };
 
-        Ok(shader_id)
+        let compiled_shader = GlCompiledShader {
+            inner: Arc::new(inner)
+        };
+
+        *previously_compiled_shader = Some(compiled_shader.clone());
+
+        Ok(compiled_shader)
     }
 }
 

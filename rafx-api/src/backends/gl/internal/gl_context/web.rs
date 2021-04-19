@@ -1,5 +1,5 @@
 use raw_window_handle::HasRawWindowHandle;
-use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader};
+use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader, WebGlProgram, WebGlUniformLocation};
 use crate::{RafxResult, RafxError};
 use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER};
 use crate::gl::gles20::types::*;
@@ -9,8 +9,14 @@ use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 use wasm_bindgen::JsValue;
 
+pub struct GetActiveUniformMaxNameLengthHint;
+
 static NEXT_GL_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_SHADER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+static NEXT_GL_PROGRAM_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LocationId(WebGlUniformLocation);
 
 fn convert_js_to_i32(value: &JsValue) -> Option<i32> {
     if let Some(value) = value.as_f64() {
@@ -31,6 +37,7 @@ pub struct GlContext {
     window_hash: WindowHash,
     buffers: Mutex<FnvHashMap<BufferId, WebGlBuffer>>,
     shaders: Mutex<FnvHashMap<ShaderId, WebGlShader>>,
+    programs: Mutex<FnvHashMap<ProgramId, WebGlProgram>>,
 }
 
 impl PartialEq for GlContext {
@@ -74,7 +81,8 @@ impl GlContext {
             context,
             window_hash,
             buffers: Default::default(),
-            shaders: Default::default()
+            shaders: Default::default(),
+            programs: Default::default(),
         }
     }
 
@@ -210,39 +218,17 @@ impl GlContext {
     }
 
     pub fn gl_get_programiv(&self, program_id: ProgramId, pname: GLenum) -> RafxResult<i32> {
-        log::trace!("gl_get_programiv unimplemented");
-        // unsafe {
-        //     let mut value = 0;
-        //     self.gles2.GetProgramiv(program_id.0, pname, &mut value);
-        //     self.check_for_error()?;
-        //     Ok(value)
-        // }
-        unimplemented!();
+        // This pname is undefined in webgl
+        if pname == gles20::ACTIVE_UNIFORM_MAX_LENGTH {
+            // Return a
+            return Ok(256);
+        }
+
+        let programs = self.programs.lock().unwrap();
+        let value = self.context.get_program_parameter(programs.get(&program_id).unwrap(), pname);
+        self.check_for_error()?;
+        Ok(convert_js_to_i32(&value).ok_or_else(|| format!("Parameter {} in convert_js_to_i32 is a {:?} which is neither a number or boolean", pname, value))?)
     }
-
-    // pub fn gl_get_shader_info_log(&self, shader_id: ShaderId, string: &mut [u8]) -> RafxResult<()> {
-    //     let shaders = self.shaders.lock().unwrap();
-    //     let value = self.context.get_shader_info_log(shaders.get(&shader_id).unwrap()).ok_or("Shader log unavailable")?;
-    //
-    //     let log_cstring = CString::new(value).unwrap();
-    //     let log_bytes = log_cstring.to_bytes();
-    //     for i in 0..string.len().min(log_bytes.len()) {
-    //         string[i] = log_bytes[i];
-    //     }
-    //     string[string.len() - 1] = 0;
-    //
-    //     Ok(())
-    // }
-
-    // pub fn gl_get_program_info_log(&self, program_id: ProgramId, string: &mut [u8]) -> RafxResult<()> {
-    //     log::trace!("gl_get_program_info_log unimplemented");
-    //     // unsafe {
-    //     //     let mut len = string.len();
-    //     //     self.gles2.GetProgramInfoLog(program_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
-    //     //     self.check_for_error()
-    //     // }
-    //     unimplemented!();
-    // }
 
     fn get_shader_info_log(&self, shader_id: ShaderId) -> RafxResult<Option<String>> {
         let shaders = self.shaders.lock().unwrap();
@@ -256,11 +242,9 @@ impl GlContext {
     }
 
     pub fn compile_shader(&self, shader_type: GLenum, src: &CString) -> RafxResult<ShaderId> {
-        log::trace!("compiling shader");
         let shader_id = self.gl_create_shader(shader_type)?;
         self.gl_shader_source(shader_id, &src)?;
         self.gl_compile_shader(shader_id)?;
-        log::trace!("compiling shader AAAAA");
         if self.gl_get_shaderiv(shader_id, gles20::COMPILE_STATUS)? == 0 {
             return Err(match self.get_shader_info_log(shader_id)? {
                 Some(x) => format!("Error compiling shader: {}", x),
@@ -268,168 +252,124 @@ impl GlContext {
             })?;
         }
 
-        log::trace!("compiling shader BBBBB");
         if let Ok(Some(debug_info)) = self.get_shader_info_log(shader_id) {
             log::debug!("Debug info while compiling shader program: {}", debug_info);
         }
-
-        log::trace!("compiled shader");
 
         Ok(shader_id)
     }
 
     pub fn gl_create_program(&self) -> RafxResult<ProgramId> {
-        log::trace!("gl_create_program unimplemented");
-        // unsafe {
-        //     let program_id = self.gles2.CreateProgram();
-        //     self.check_for_error()?;
-        //     Ok(ProgramId(program_id))
-        // }
-        unimplemented!();
+        let program = self.context.create_program().unwrap();
+        self.check_for_error()?;
+        let program_id = ProgramId(NEXT_GL_SHADER_ID.fetch_add(1, Ordering::Relaxed));
+        let old = self.programs.lock().unwrap().insert(program_id, program);
+        assert!(old.is_none());
+        Ok(program_id)
+    }
+
+    pub fn gl_destroy_program(&self, program_id: ProgramId) -> RafxResult<()> {
+        let program = self.programs.lock().unwrap().remove(&program_id).unwrap();
+        self.context.delete_program(Some(&program));
+        self.check_for_error()
     }
 
     pub fn gl_attach_shader(&self, program_id: ProgramId, shader_id: ShaderId) -> RafxResult<()> {
-        log::trace!("gl_attach_shader unimplemented");
-        // unsafe {
-        //     self.gles2.AttachShader(program_id.0, shader_id.0);
-        //     self.check_for_error()
-        // }
-        unimplemented!();
+        let programs = self.programs.lock().unwrap();
+        let shaders = self.shaders.lock().unwrap();
+        self.context.attach_shader(programs.get(&program_id).unwrap(), shaders.get(&shader_id).unwrap());
+        self.check_for_error()
     }
 
     pub fn gl_link_program(&self, program_id: ProgramId) -> RafxResult<()> {
-        log::trace!("gl_link_program unimplemented");
-        // unsafe {
-        //     self.gles2.LinkProgram(program_id.0);
-        //     self.check_for_error()
-        // }
-        unimplemented!();
+        let programs = self.programs.lock().unwrap();
+        self.context.link_program(programs.get(&program_id).unwrap());
+        self.check_for_error()
     }
 
     pub fn gl_validate_program(&self, program_id: ProgramId) -> RafxResult<()> {
-        log::trace!("gl_validate_program unimplemented");
-        // unsafe {
-        //     self.gles2.ValidateProgram(program_id.0);
-        //     self.check_for_error()
-        // }
-        unimplemented!();
+        let programs = self.programs.lock().unwrap();
+        self.context.validate_program(programs.get(&program_id).unwrap());
+        self.check_for_error()
     }
 
     fn get_program_info_log(&self, program_id: ProgramId) -> RafxResult<Option<String>> {
-        log::trace!("get_program_info_log unimplemented");
-        // let error_len = self.gl_get_programiv(program_id, gles20::INFO_LOG_LENGTH)?;
-        // if error_len == 0 {
-        //     return Ok(None);
-        // };
-        //
-        // let mut log = vec![0_u8; error_len as usize];
-        // self.gl_get_program_info_log(program_id, &mut log)?;
-        // Ok(Some(String::from_utf8(log).unwrap()))
-        unimplemented!();
+        let programs = self.programs.lock().unwrap();
+        let value = self.context.get_program_info_log(programs.get(&program_id).unwrap()).ok_or("Program log unavailable")?;
+
+        if value.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(value))
+        }
     }
 
     pub fn link_shader_program(&self, program_id: ProgramId) -> RafxResult<()> {
-        log::trace!("link_shader_program unimplemented");
-        // self.gl_link_program(program_id)?;
-        // if self.gl_get_programiv(program_id, gles20::LINK_STATUS)? == 0 {
-        //     return Err(match self.get_program_info_log(program_id)? {
-        //         Some(x) => format!("Error linking shader program: {}", x),
-        //         None => "Error linking shader program, info log not available".to_string()
-        //     })?;
-        // }
-        //
-        // if let Ok(Some(debug_info)) = self.get_program_info_log(program_id) {
-        //     log::debug!("Debug info while linking shader program: {}", debug_info);
-        // }
-        //
-        // Ok(())
-        unimplemented!();
+        self.gl_link_program(program_id)?;
+        if self.gl_get_programiv(program_id, gles20::LINK_STATUS)? == 0 {
+            return Err(match self.get_program_info_log(program_id)? {
+                Some(x) => format!("Error linking shader program: {}", x),
+                None => "Error linking shader program, info log not available".to_string()
+            })?;
+        }
+
+        if let Ok(Some(debug_info)) = self.get_program_info_log(program_id) {
+            log::debug!("Debug info while linking shader program: {}", debug_info);
+        }
+
+        Ok(())
     }
 
     pub fn validate_shader_program(&self, program_id: ProgramId) -> RafxResult<()> {
-        log::trace!("validate_shader_program unimplemented");
-        // self.gl_validate_program(program_id)?;
-        // if self.gl_get_programiv(program_id, gles20::VALIDATE_STATUS)? == 0 {
-        //     return Err(match self.get_program_info_log(program_id)? {
-        //         Some(x) => format!("Error validating shader program: {}", x),
-        //         None => "Error validating shader program, info log not available".to_string()
-        //     })?;
-        // }
-        //
-        // if let Ok(Some(debug_info)) = self.get_program_info_log(program_id) {
-        //     log::debug!("Debug info while validating shader program: {}", debug_info);
-        // }
-        //
-        // Ok(())
-        unimplemented!();
+        self.gl_validate_program(program_id)?;
+        if self.gl_get_programiv(program_id, gles20::VALIDATE_STATUS)? == 0 {
+            return Err(match self.get_program_info_log(program_id)? {
+                Some(x) => format!("Error validating shader program: {}", x),
+                None => "Error validating shader program, info log not available".to_string()
+            })?;
+        }
+
+        if let Ok(Some(debug_info)) = self.get_program_info_log(program_id) {
+            log::debug!("Debug info while validating shader program: {}", debug_info);
+        }
+
+        Ok(())
     }
 
-    pub fn gl_get_uniform_location(&self, program_id: ProgramId, name: &CStr) -> RafxResult<Option<u32>> {
-        log::trace!("gl_get_uniform_location unimplemented");
-        // unsafe {
-        //     let value = self.gles2.GetUniformLocation(program_id.0, name.as_ptr());
-        //     self.check_for_error()?;
-        //
-        //     if value == -1 {
-        //         return Ok(None);
-        //     }
-        //
-        //     Ok(Some(value as u32))
-        // }
-        unimplemented!();
+    pub fn gl_get_uniform_location(&self, program_id: ProgramId, name: &CStr) -> RafxResult<Option<LocationId>> {
+        let programs = self.programs.lock().unwrap();
+        let location = self.context.get_uniform_location(programs.get(&program_id).unwrap(), &*name.to_string_lossy());
+        self.check_for_error()?;
+        Ok(location.map(|x| LocationId(x)))
     }
 
+    pub fn get_active_uniform_max_name_length_hint(&self, _program_id: ProgramId) -> RafxResult<GetActiveUniformMaxNameLengthHint> {
+        Ok(GetActiveUniformMaxNameLengthHint)
+    }
 
     pub fn gl_get_active_uniform(
         &self,
         program_id: ProgramId,
         index: u32,
-        max_uniform_name_length: usize
+        _max_name_length_hint: &GetActiveUniformMaxNameLengthHint
     ) -> RafxResult<ActiveUniformInfo> {
-        log::trace!("gl_get_active_uniform unimplemented");
-        // let mut name_length = 0;
-        // let mut size = 0;
-        // let mut ty = 0;
-        // let mut name_buffer = vec![0_u8; max_uniform_name_length];
-        //
-        // unsafe {
-        //     self.gles2.GetActiveUniform(
-        //         program_id.0,
-        //         index,
-        //         max_uniform_name_length as _,
-        //         &mut name_length,
-        //         &mut size,
-        //         &mut ty,
-        //         name_buffer.as_mut_ptr() as _
-        //     );
-        // }
-        // self.check_for_error()?;
-        //
-        // name_buffer.resize(name_length as usize, 0);
-        //
-        // Ok(ActiveUniformInfo {
-        //     name_buffer,
-        //     size: size as u32,
-        //     ty
-        // })
-        unimplemented!();
+        let programs = self.programs.lock().unwrap();
+        let info = self.context.get_active_uniform(programs.get(&program_id).unwrap(), index).ok_or_else(|| format!("Did not find uniform {} in gl_get_active_uniform", index))?;
+
+        Ok(ActiveUniformInfo {
+            name: CString::new(info.name()).unwrap(),
+            size: info.size() as u32,
+            ty: info.type_()
+        })
     }
 
     pub fn gl_flush(&self) -> RafxResult<()> {
-        log::trace!("gl_flush unimplemented");
-        // unsafe {
-        //     self.gles2.Flush();
-        //     self.check_for_error()
-        // }
-        unimplemented!();
+        self.context.flush();
+        self.check_for_error()
     }
 
     pub fn gl_disable(&self, value: GLenum) -> RafxResult<()> {
-        log::trace!("gl_disable unimplemented");
-        // unsafe {
-        //     self.gles2.Disable(value);
-        //     self.check_for_error()
-        // }
-        unimplemented!();
+        self.context.disable(value);
+        self.check_for_error()
     }
 }

@@ -1,17 +1,24 @@
-use crate::gl::{RafxDeviceContextGl, ShaderId, ProgramId};
+use crate::gl::{RafxDeviceContextGl, ShaderId, ProgramId, GlCompiledShader};
 use crate::{RafxPipelineReflection, RafxResult, RafxShaderStageDef, RafxShaderStageFlags};
 use std::sync::Arc;
 use fnv::FnvHashMap;
 
 #[derive(Debug)]
 struct RafxShaderGlInner {
+    device_context: RafxDeviceContextGl,
     stage_flags: RafxShaderStageFlags,
     stages: Vec<RafxShaderStageDef>,
     pipeline_reflection: RafxPipelineReflection,
-    vertex_shader_id: ShaderId,
-    fragment_shader_id: ShaderId,
+    vertex_shader: GlCompiledShader,
+    fragment_shader: GlCompiledShader,
     program_id: ProgramId,
     all_uniform_member_offsets: FnvHashMap<String, u32>
+}
+
+impl Drop for RafxShaderGlInner {
+    fn drop(&mut self) {
+        self.device_context.gl_context().gl_destroy_program(self.program_id);
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -62,22 +69,23 @@ impl RafxShaderGl {
             }
         }
 
-        let vertex_shader_id = vertex_shader_id.ok_or("No vertex shader specified, it is required for GL ES 2.0")?;
-        let fragment_shader_id = fragment_shader_id.ok_or("No fragment shader specified, it is required for GL ES 2.0")?;
+        let vertex_shader = vertex_shader_id.ok_or("No vertex shader specified, it is required for GL ES 2.0")?;
+        let fragment_shader = fragment_shader_id.ok_or("No fragment shader specified, it is required for GL ES 2.0")?;
 
         let gl_context = device_context.gl_context();
         let program_id = gl_context.gl_create_program()?;
-        gl_context.gl_attach_shader(program_id, vertex_shader_id)?;
-        gl_context.gl_attach_shader(program_id, fragment_shader_id)?;
+        gl_context.gl_attach_shader(program_id, vertex_shader.shader_id())?;
+        gl_context.gl_attach_shader(program_id, fragment_shader.shader_id())?;
 
         gl_context.link_shader_program(program_id)?;
 
         let inner = RafxShaderGlInner {
+            device_context: device_context.clone(),
             stages,
             pipeline_reflection,
             stage_flags,
-            vertex_shader_id,
-            fragment_shader_id,
+            vertex_shader,
+            fragment_shader,
             program_id,
             all_uniform_member_offsets
         };

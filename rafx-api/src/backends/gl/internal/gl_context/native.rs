@@ -14,6 +14,11 @@ use std::ops::Range;
 use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo};
 use std::cmp::max;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LocationId(u32);
+
+pub struct GetActiveUniformMaxNameLengthHint(i32);
+
 pub struct GlContext {
     context: raw_gl_context::GlContext,
     gles2: Gles2,
@@ -169,6 +174,13 @@ impl GlContext {
         }
     }
 
+    pub fn gl_destroy_shader(&self, shader_id: ShaderId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DeleteShader(shader_id.0);
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_shader_source(&self, shader_id: ShaderId, code: &CString) -> RafxResult<()> {
         unsafe {
             let len : GLint = code.as_bytes().len() as _;
@@ -255,6 +267,13 @@ impl GlContext {
         }
     }
 
+    pub fn gl_destroy_program(&self, program_id: ProgramId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DeleteProgram(program_id.0);
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_attach_shader(&self, program_id: ProgramId, shader_id: ShaderId) -> RafxResult<()> {
         unsafe {
             self.gles2.AttachShader(program_id.0, shader_id.0);
@@ -319,7 +338,7 @@ impl GlContext {
         Ok(())
     }
 
-    pub fn gl_get_uniform_location(&self, program_id: ProgramId, name: &CStr) -> RafxResult<Option<u32>> {
+    pub fn gl_get_uniform_location(&self, program_id: ProgramId, name: &CStr) -> RafxResult<Option<LocationId>> {
         unsafe {
             let value = self.gles2.GetUniformLocation(program_id.0, name.as_ptr());
             self.check_for_error()?;
@@ -328,26 +347,31 @@ impl GlContext {
                 return Ok(None);
             }
 
-            Ok(Some(value as u32))
+            Ok(Some(LocationId(value as u32)))
         }
+    }
+
+    pub fn get_active_uniform_max_name_length_hint(&self, program_id: ProgramId) -> RafxResult<GetActiveUniformMaxNameLengthHint> {
+        let max_length = self.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORM_MAX_LENGTH)?;
+        Ok(GetActiveUniformMaxNameLengthHint(max_length))
     }
 
     pub fn gl_get_active_uniform(
         &self,
         program_id: ProgramId,
         index: u32,
-        max_uniform_name_length: usize
+        max_name_length_hint: &GetActiveUniformMaxNameLengthHint
     ) -> RafxResult<ActiveUniformInfo> {
         let mut name_length = 0;
         let mut size = 0;
         let mut ty = 0;
-        let mut name_buffer = vec![0_u8; max_uniform_name_length];
+        let mut name_buffer = vec![0_u8; max_name_length_hint.0 as usize];
 
         unsafe {
             self.gles2.GetActiveUniform(
                 program_id.0,
                 index,
-                max_uniform_name_length as _,
+                max_name_length_hint.0 as _,
                 &mut name_length,
                 &mut size,
                 &mut ty,
@@ -356,10 +380,10 @@ impl GlContext {
         }
         self.check_for_error()?;
 
-        name_buffer.resize(name_length as usize, 0);
+        let name = CString::new(&name_buffer[0..name_length as usize]).unwrap();
 
         Ok(ActiveUniformInfo {
-            name_buffer,
+            name,
             size: size as u32,
             ty
         })

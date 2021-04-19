@@ -133,16 +133,16 @@ pub fn update_loop(
         log::trace!("Creating shader modules");
         let vert_shader_module = device_context.create_shader_module(RafxShaderModuleDef {
             gl: Some(RafxShaderModuleDefGl::GlSrc(include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/shaders/shader.vert.gles"
+            env!("CARGO_MANIFEST_DIR"),
+            "/shaders/shader.vert.gles"
             )))),
             ..Default::default()
         })?;
 
         let frag_shader_module = device_context.create_shader_module(RafxShaderModuleDef {
             gl: Some(RafxShaderModuleDefGl::GlSrc(include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/shaders/shader.frag.gles"
+            env!("CARGO_MANIFEST_DIR"),
+            "/shaders/shader.frag.gles"
             )))),
             ..Default::default()
         })?;
@@ -256,51 +256,100 @@ pub fn update_loop(
                 rate: RafxVertexAttributeRate::Vertex,
             }],
         };
-    }
 
-    log::trace!("Starting event loop");
+        log::trace!("Starting event loop");
+        let start_time = instant::Instant::now();
 
-    let mut i = 0;
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Poll;
+        let mut i = 0;
+        event_loop.run(move |event, _, control_flow| {
+            *control_flow = ControlFlow::Poll;
 
-        match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                window_id,
-            } => *control_flow = ControlFlow::Exit,
-            Event::MainEventsCleared => {
-                window.request_redraw();
-            },
-            Event::WindowEvent {
-                event: window_event,
-                window_id: _
-            } => {
-                match window_event {
-                    WindowEvent::KeyboardInput { .. } | WindowEvent::MouseInput { .. } => {
-                        log::debug!("{:?}", window_event);
+            match event {
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    window_id,
+                } => *control_flow = ControlFlow::Exit,
+                Event::MainEventsCleared => {
+                    window.request_redraw();
+                },
+                Event::WindowEvent {
+                    event: window_event,
+                    window_id: _
+                } => {
+                    match window_event {
+                        WindowEvent::KeyboardInput { .. } | WindowEvent::MouseInput { .. } => {
+                            log::debug!("{:?}", window_event);
+                        }
+                        _ => {}
                     }
-                    _ => {}
-                }
-            },
-            Event::RedrawRequested(_) => {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    i += 1;
-                }
+                },
+                Event::RedrawRequested(_) => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        i += 1;
+                    }
 
-                #[cfg(target_arch = "wasm32")]
-                {
-                    i += 100;
-                }
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        i += 100;
+                    }
 
-                // ctx.make_current();
-                // ctx.gl_clear_color((i as f32 / 1000.0).sin() * 0.5 + 0.5, 0.0, 1.0, 1.0);
-                // ctx.gl_clear(crate::gles20::COLOR_BUFFER_BIT);
-                // ctx.swap_buffers();
-                // ctx.make_not_current();
+                    let elapsed_seconds = start_time.elapsed().as_secs_f32();
+
+                    #[rustfmt::skip]
+                    let vertex_data = [
+                        0.0f32, 0.5, 1.0, 0.0, 0.0,
+                        0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
+                        -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
+                    ];
+
+                    let color = (elapsed_seconds.cos() + 1.0) / 2.0;
+                    let uniform_data = [color, 0.0, 1.0 - color, 1.0];
+
+                    //
+                    // Acquire swapchain image
+                    //
+                    let window_size = window.inner_size();
+                    let presentable_frame =
+                        swapchain_helper.acquire_next_image(window_size.width, window_size.height, None).unwrap();
+                    let swapchain_texture = presentable_frame.swapchain_texture();
+
+                    //
+                    // Use the command pool/buffer assigned to this frame
+                    //
+                    let cmd_pool = &mut command_pools[presentable_frame.rotating_frame_index()];
+                    let cmd_buffer = &command_buffers[presentable_frame.rotating_frame_index()];
+                    let vertex_buffer = &vertex_buffers[presentable_frame.rotating_frame_index()];
+                    let uniform_buffer = &uniform_buffers[presentable_frame.rotating_frame_index()];
+
+                    //
+                    // Update the buffers
+                    //
+                    vertex_buffer.copy_to_host_visible_buffer(&vertex_data).unwrap();
+                    uniform_buffer.copy_to_host_visible_buffer(&uniform_data).unwrap();
+
+                    unsafe {
+                        println!("color: {}", elapsed_seconds.sin() * 0.5 + 0.5);
+                        device_context.gl_device_context().unwrap().gl_context().gl_clear_color(
+                            elapsed_seconds.sin() * 0.5 + 0.5,
+                            0.0,
+                            1.0,
+                            1.0
+                        );
+                        device_context.gl_device_context().unwrap().gl_context().gl_clear(rafx::api::gl::gles20::COLOR_BUFFER_BIT);
+                    }
+
+                    //
+                    // Present the image
+                    //
+                    presentable_frame.present(&graphics_queue, &[&cmd_buffer]).unwrap();
+                }
+                _ => (),
             }
-            _ => (),
-        }
-    });
+        });
+    }
+}
+
+pub fn update() {
+
 }
