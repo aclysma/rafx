@@ -15,6 +15,7 @@ use winit::{
     window::WindowBuilder,
 };
 use rafx::api::{RafxApi, RafxSwapchainDef, RafxSwapchainHelper, RafxQueueType, RafxResult, RafxCommandPoolDef, RafxBufferDef, RafxCommandBufferDef, RafxShaderModuleDef, RafxShaderModuleDefGl, RafxShaderResource, RafxGlUniformMember, RafxShaderStageDef, RafxShaderStageReflection, RafxShaderStageFlags, RafxResourceType, RafxRootSignatureDef, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxDescriptorKey, RafxDescriptorElements, RafxVertexLayout, RafxVertexLayoutAttribute, RafxFormat, RafxVertexLayoutBuffer, RafxVertexAttributeRate, RafxGraphicsPipelineDef, RafxSampleCount, RafxPrimitiveTopology, RafxTextureBarrier, RafxResourceState, RafxColorRenderTargetBinding, RafxStoreOp, RafxColorClearValue, RafxLoadOp, RafxVertexBufferBinding};
+use rafx::api::gl::NONE_RENDERBUFFER;
 
 pub fn update_loop(
     window: winit::window::Window,
@@ -343,17 +344,6 @@ pub fn update_loop(
                     vertex_buffer.copy_to_host_visible_buffer(&vertex_data).unwrap();
                     uniform_buffer.copy_to_host_visible_buffer(&uniform_data).unwrap();
 
-                    // unsafe {
-                    //     println!("color: {}", elapsed_seconds.sin() * 0.5 + 0.5);
-                    //     device_context.gl_device_context().unwrap().gl_context().gl_clear_color(
-                    //         elapsed_seconds.sin() * 0.5 + 0.5,
-                    //         0.0,
-                    //         1.0,
-                    //         1.0
-                    //     );
-                    //     device_context.gl_device_context().unwrap().gl_context().gl_clear(rafx::api::gl::gles20::COLOR_BUFFER_BIT);
-                    // }
-
                     //
                     // Record the command buffer. For now just transition it between layouts
                     //
@@ -377,7 +367,7 @@ pub fn update_loop(
                             store_op: RafxStoreOp::Store,
                             array_slice: None,
                             mip_slice: None,
-                            clear_value: RafxColorClearValue([elapsed_seconds.sin() * 0.5 + 0.5, 0.0, 1.0, 0.0]),
+                            clear_value: RafxColorClearValue([elapsed_seconds.sin() * 0.5 + 0.5, 0.0, 1.0, 1.0]),
                             resolve_target: None,
                             resolve_store_op: RafxStoreOp::DontCare,
                             resolve_mip_slice: None,
@@ -385,6 +375,8 @@ pub fn update_loop(
                         }],
                         None,
                     ).unwrap();
+
+
                     //
                     // cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
                     //

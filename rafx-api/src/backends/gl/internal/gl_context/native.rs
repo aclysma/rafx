@@ -136,9 +136,9 @@ impl GlContext {
         }
     }
 
-    pub fn gl_clear_stencil(&self, s: u32) -> RafxResult<()> {
+    pub fn gl_clear_stencil(&self, s: i32) -> RafxResult<()> {
         unsafe {
-            self.gles2.ClearStencil(s as _);
+            self.gles2.ClearStencil(s);
             self.check_for_error()
         }
     }
@@ -431,6 +431,27 @@ impl GlContext {
         }
     }
 
+    pub fn gl_enable(&self, value: GLenum) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Enable(value);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_cull_face(&self, mode: GLenum) -> RafxResult<()> {
+        unsafe {
+            self.gles2.CullFace(mode);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_front_face(&self, mode: GLenum) -> RafxResult<()> {
+        unsafe {
+            self.gles2.FrontFace(mode);
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_bind_attrib_location(&self, program_id: ProgramId, index: u32, name: &str) -> RafxResult<()> {
         unsafe {
             self.gles2.BindAttribLocation(program_id.0, index, CString::new(name).unwrap().as_ptr());
@@ -464,6 +485,13 @@ impl GlContext {
             let result = self.gles2.CheckFramebufferStatus(target);
             self.check_for_error()?;
             Ok(result)
+        }
+    }
+
+    pub fn gl_disable_vertex_attrib_array(&self, index: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DisableVertexAttribArray(index);
+            self.check_for_error()
         }
     }
 }

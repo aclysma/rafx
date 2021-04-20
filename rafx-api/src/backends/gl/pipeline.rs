@@ -1,9 +1,7 @@
 use crate::gl::{RafxDeviceContextGl, GlCompiledShader, ProgramId, RafxShaderGl};
-use crate::{
-    RafxComputePipelineDef, RafxGraphicsPipelineDef, RafxPipelineType, RafxResult,
-    RafxRootSignature, RafxShaderStageFlags,
-};
-
+use crate::{RafxComputePipelineDef, RafxGraphicsPipelineDef, RafxPipelineType, RafxResult, RafxRootSignature, RafxShaderStageFlags, RafxRasterizerState};
+use crate::gl::gles20;
+use crate::gl::conversions::GlRasterizerState;
 // fn gl_entry_point_name(name: &str) -> &str {
 //     // "main" is not an allowed entry point name. spirv_cross adds a 0 to the end of any
 //     // unallowed entry point names so do that here too
@@ -46,6 +44,8 @@ pub struct RafxPipelineGl {
     shader: RafxShaderGl,
     //pipeline: GlPipelineState,
 
+    gl_rasterizer_state: GlRasterizerState,
+
     //pub(crate) render_encoder_info: Option<PipelineRenderEncoderInfo>,
     //pub(crate) compute_encoder_info: Option<PipelineComputeEncoderInfo>,
 }
@@ -57,6 +57,14 @@ impl RafxPipelineGl {
 
     pub fn root_signature(&self) -> &RafxRootSignature {
         &self.root_signature
+    }
+
+    pub fn gl_program_id(&self) -> ProgramId {
+        self.shader.gl_program_id()
+    }
+
+    pub(crate) fn gl_rasterizer_state(&self) -> &GlRasterizerState {
+        &self.gl_rasterizer_state
     }
 
     // pub fn gl_render_pipeline(&self) -> Option<&gl_rs::RenderPipelineStateRef> {
@@ -96,7 +104,8 @@ impl RafxPipelineGl {
         Ok(RafxPipelineGl {
             root_signature: pipeline_def.root_signature.clone(),
             pipeline_type: RafxPipelineType::Graphics,
-            shader: shader.clone()
+            shader: shader.clone(),
+
         })
 
         //TODO: Cache rasterizer, depth stencil, blend states

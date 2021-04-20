@@ -37,22 +37,6 @@ pub struct RafxCommandBufferGl {
 }
 
 impl RafxCommandBufferGl {
-    // pub fn gl_command_buffer(&self) -> Option<&gl_rs::CommandBufferRef> {
-    //     use foreign_types_shared::ForeignType;
-    //     use foreign_types_shared::ForeignTypeRef;
-    //     let ptr = self
-    //         .inner
-    //         .borrow()
-    //         .command_buffer
-    //         .as_ref()
-    //         .map(|x| x.as_ptr());
-    //     ptr.map(|x| unsafe { gl_rs::CommandBufferRef::from_ptr(x) })
-    // }
-
-    // pub(crate) fn clear_command_buffer(&self) {
-    //     self.inner.borrow_mut().command_buffer = None;
-    // }
-
     pub fn new(
         command_pool: &RafxCommandPoolGl,
         _command_buffer_def: &RafxCommandBufferDef,
@@ -145,7 +129,7 @@ impl RafxCommandBufferGl {
                 }
 
                 if depth_target.stencil_load_op == RafxLoadOp::Clear {
-                    gl_context.gl_clear_stencil(depth_target.clear_value.stencil)?;
+                    gl_context.gl_clear_stencil(depth_target.clear_value.stencil as _)?;
                     clear_mask |= gles20::STENCIL_BUFFER_BIT;
                 }
 
@@ -238,6 +222,31 @@ impl RafxCommandBufferGl {
         &self,
         pipeline: &RafxPipelineGl,
     ) -> RafxResult<()> {
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        //state.pipeline = pipeline.clone();
+
+        let gl_rasterizer_state = pipeline.gl_rasterizer_state();
+
+
+        let gl_context = self.queue.device_context().gl_context();
+        gl_context.gl_use_program(pipeline.gl_program_id())?;
+
+        const MAX_VERTEX_ATTRIBUTE_COUNT: u32 = 16;
+
+        for i in 0..MAX_VERTEX_ATTRIBUTE_COUNT {
+            gl_context.gl_disable_vertex_attrib_array(i);
+        }
+
+        if gl_rasterizer_state.cull_mode != gles20::NONE {
+            gl_context.gl_enable(gles20::CULL_FACE)?;
+            gl_context.gl_cull_face(gl_rasterizer_state.cull_mode)?;
+            gl_context.gl_front_face(gl_rasterizer_state.front_face)?;
+        }
+
+
+
         unimplemented!();
         // objc::rc::autoreleasepool(|| {
         //     let mut inner = self.inner.borrow_mut();
@@ -596,37 +605,17 @@ impl RafxCommandBufferGl {
 
     pub fn cmd_dispatch(
         &self,
-        group_count_x: u32,
-        group_count_y: u32,
-        group_count_z: u32,
+        _group_count_x: u32,
+        _group_count_y: u32,
+        _group_count_z: u32,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let inner = self.inner.borrow();
-        // self.wait_for_barriers(&*inner)?;
-        // let thread_per_group = MTLSize {
-        //     width: inner.compute_threads_per_group_x as _,
-        //     height: inner.compute_threads_per_group_y as _,
-        //     depth: inner.compute_threads_per_group_z as _,
-        // };
-        //
-        // let group_count = MTLSize {
-        //     width: group_count_x as _,
-        //     height: group_count_y as _,
-        //     depth: group_count_z as _,
-        // };
-        //
-        // inner
-        //     .compute_encoder
-        //     .as_ref()
-        //     .unwrap()
-        //     .dispatch_thread_groups(group_count, thread_per_group);
-        // Ok(())
+        unimplemented!("Compute shaders not supported in GL ES");
     }
 
     pub fn cmd_resource_barrier(
         &self,
-        buffer_barriers: &[RafxBufferBarrier],
-        texture_barriers: &[RafxTextureBarrier],
+        _buffer_barriers: &[RafxBufferBarrier],
+        _texture_barriers: &[RafxTextureBarrier],
     ) -> RafxResult<()> {
         // don't need to do anything
         Ok(())

@@ -1,7 +1,7 @@
 use raw_window_handle::HasRawWindowHandle;
-use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader, WebGlProgram, WebGlUniformLocation};
+use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader, WebGlProgram, WebGlUniformLocation, WebGlRenderbuffer};
 use crate::{RafxResult, RafxError};
-use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER};
+use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER, NONE_PROGRAM, RenderbufferId, NONE_RENDERBUFFER};
 use crate::gl::gles20::types::*;
 use std::ffi::{CString, CStr};
 use fnv::FnvHashMap;
@@ -14,6 +14,7 @@ pub struct GetActiveUniformMaxNameLengthHint;
 static NEXT_GL_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_SHADER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_PROGRAM_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+static NEXT_GL_RENDERBUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocationId(WebGlUniformLocation);
@@ -38,6 +39,7 @@ pub struct GlContext {
     buffers: Mutex<FnvHashMap<BufferId, WebGlBuffer>>,
     shaders: Mutex<FnvHashMap<ShaderId, WebGlShader>>,
     programs: Mutex<FnvHashMap<ProgramId, WebGlProgram>>,
+    renderbuffers: Mutex<FnvHashMap<RenderbufferId, WebGlRenderbuffer>>,
 }
 
 impl PartialEq for GlContext {
@@ -83,6 +85,7 @@ impl GlContext {
             buffers: Default::default(),
             shaders: Default::default(),
             programs: Default::default(),
+            renderbuffers: Default::default(),
         }
     }
 
@@ -123,16 +126,39 @@ impl GlContext {
         self.context.get_parameter(pname).unwrap().as_string().unwrap()
     }
 
-    pub fn gl_viewport(&self, x: i32, y: i32, width: i32, height: i32) {
-        self.context.viewport(x, y, width, height)
+    pub fn gl_viewport(&self, x: i32, y: i32, width: i32, height: i32) -> RafxResult<()> {
+        self.context.viewport(x, y, width, height);
+        self.check_for_error()
     }
 
-    pub fn gl_clear_color(&self, r: f32, g: f32, b: f32, a: f32) {
+    pub fn gl_scissor(&self, x: i32, y: i32, width: i32, height: i32) -> RafxResult<()> {
+        self.context.scissor(x, y, width, height);
+        self.check_for_error()
+    }
+
+    pub fn gl_depth_rangef(&self, n: f32, f: f32) -> RafxResult<()> {
+        self.context.depth_range(n, f);
+        self.check_for_error()
+    }
+
+    pub fn gl_clear_color(&self, r: f32, g: f32, b: f32, a: f32) -> RafxResult<()> {
         self.context.clear_color(r, g, b, a);
+        self.check_for_error()
     }
 
-    pub fn gl_clear(&self, mask: u32) {
+    pub fn gl_clear_depthf(&self, d: f32) -> RafxResult<()> {
+        self.context.clear_depth(d);
+        self.check_for_error()
+    }
+
+    pub fn gl_clear_stencil(&self, s: i32) -> RafxResult<()> {
+        self.context.clear_stencil(s);
+        self.check_for_error()
+    }
+
+    pub fn gl_clear(&self, mask: u32) -> RafxResult<()> {
         self.context.clear(mask);
+        self.check_for_error()
     }
 
     pub fn gl_finish(&self) -> RafxResult<()> {
@@ -377,5 +403,44 @@ impl GlContext {
         let programs = self.programs.lock().unwrap();
         self.context.bind_attrib_location(programs.get(&program_id).unwrap(), index, name);
         self.check_for_error()
+    }
+
+    pub fn gl_use_program(&self, program_id: ProgramId) -> RafxResult<()> {
+        if program_id == NONE_PROGRAM {
+            self.context.use_program(None);
+        } else {
+            let programs = self.programs.lock().unwrap();
+            self.context.use_program(Some(programs.get(&program_id).unwrap()));
+        }
+
+        self.check_for_error()
+    }
+
+    pub fn gl_bind_renderbuffer(&self, target: GLenum, renderbuffer: RenderbufferId) -> RafxResult<()> {
+        if renderbuffer == NONE_RENDERBUFFER {
+            self.context.bind_renderbuffer(target, None);
+        } else {
+            let renderbuffers = self.renderbuffers.lock().unwrap();
+            self.context.bind_renderbuffer(target, Some(&renderbuffers.get(&renderbuffer).unwrap()));
+        }
+
+        self.check_for_error()
+    }
+
+    pub fn gl_framebuffer_renderbuffer(&self, target: GLenum, attachment: GLenum, renderbuffer_target: GLenum, renderbuffer: RenderbufferId) -> RafxResult<()> {
+        if renderbuffer == NONE_RENDERBUFFER {
+            self.context.framebuffer_renderbuffer(target, attachment, renderbuffer_target, None);
+        } else {
+            let renderbuffers = self.renderbuffers.lock().unwrap();
+            self.context.framebuffer_renderbuffer(target, attachment, renderbuffer_target, Some(&renderbuffers.get(&renderbuffer).unwrap()));
+        }
+
+        self.check_for_error()
+    }
+
+    pub fn gl_check_framebuffer_status(&self, target: GLenum) -> RafxResult<u32> {
+        let result = self.context.check_framebuffer_status(target);
+        self.check_for_error()?;
+        Ok(result)
     }
 }
