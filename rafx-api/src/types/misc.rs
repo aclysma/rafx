@@ -135,6 +135,15 @@ pub struct RafxExtents3D {
     pub depth: u32,
 }
 
+impl RafxExtents3D {
+    pub fn to_2d(self) -> RafxExtents2D {
+        RafxExtents2D {
+            width: self.width,
+            height: self.height
+        }
+    }
+}
+
 /// Number of MSAA samples to use. 1xMSAA and 4xMSAA are most broadly supported
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]

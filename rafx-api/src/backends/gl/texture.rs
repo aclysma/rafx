@@ -1,4 +1,4 @@
-use crate::gl::RafxDeviceContextGl;
+use crate::gl::{RafxDeviceContextGl, RenderbufferId, TextureId, NONE_RENDERBUFFER};
 use crate::{
     RafxMemoryUsage, RafxResourceType, RafxResult, RafxSampleCount, RafxTextureDef,
     RafxTextureDimensions,
@@ -10,18 +10,24 @@ use std::process::exit;
 
 #[derive(Debug, PartialEq)]
 pub enum RafxRawImageGl {
-    Owned(u32),
-    RenderTarget
-    //Ref(gl_rs::Texture),
+    Renderbuffer(RenderbufferId),
+    Texture(TextureId)
 }
 
 impl RafxRawImageGl {
-    // pub fn gl_texture(&self) -> &gl_rs::TextureRef {
-    //     match self {
-    //         RafxRawImageGl::Owned(owned) => owned.as_ref(),
-    //         RafxRawImageGl::Ref(r) => r.as_ref(),
-    //     }
-    // }
+    pub fn gl_texture_id(&self) -> Option<TextureId> {
+        match self {
+            RafxRawImageGl::Renderbuffer(_) => None,
+            RafxRawImageGl::Texture(id) => Some(*id)
+        }
+    }
+
+    pub fn gl_renderbuffer_id(&self) -> Option<RenderbufferId> {
+        match self {
+            RafxRawImageGl::Renderbuffer(id) => Some(*id),
+            RafxRawImageGl::Texture(_) => None
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -65,6 +71,10 @@ impl RafxTextureGl {
         &self.inner.texture_def
     }
 
+    pub fn gl_raw_image(&self) -> &RafxRawImageGl {
+        &self.inner.image
+    }
+
     // pub fn gl_texture(&self) -> &gl_rs::TextureRef {
     //     self.inner.image.gl_texture()
     // }
@@ -90,7 +100,7 @@ impl RafxTextureGl {
         texture_def.verify();
 
         if let Some(existing_image) = existing_image {
-            if existing_image == RafxRawImageGl::RenderTarget {
+            if existing_image == RafxRawImageGl::Renderbuffer(NONE_RENDERBUFFER) {
                 let texture_id = crate::internal_shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
 
                 let inner = RafxTextureGlInner {

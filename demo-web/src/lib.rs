@@ -343,16 +343,16 @@ pub fn update_loop(
                     vertex_buffer.copy_to_host_visible_buffer(&vertex_data).unwrap();
                     uniform_buffer.copy_to_host_visible_buffer(&uniform_data).unwrap();
 
-                    unsafe {
-                        println!("color: {}", elapsed_seconds.sin() * 0.5 + 0.5);
-                        device_context.gl_device_context().unwrap().gl_context().gl_clear_color(
-                            elapsed_seconds.sin() * 0.5 + 0.5,
-                            0.0,
-                            1.0,
-                            1.0
-                        );
-                        device_context.gl_device_context().unwrap().gl_context().gl_clear(rafx::api::gl::gles20::COLOR_BUFFER_BIT);
-                    }
+                    // unsafe {
+                    //     println!("color: {}", elapsed_seconds.sin() * 0.5 + 0.5);
+                    //     device_context.gl_device_context().unwrap().gl_context().gl_clear_color(
+                    //         elapsed_seconds.sin() * 0.5 + 0.5,
+                    //         0.0,
+                    //         1.0,
+                    //         1.0
+                    //     );
+                    //     device_context.gl_device_context().unwrap().gl_context().gl_clear(rafx::api::gl::gles20::COLOR_BUFFER_BIT);
+                    // }
 
                     //
                     // Record the command buffer. For now just transition it between layouts
@@ -377,7 +377,7 @@ pub fn update_loop(
                             store_op: RafxStoreOp::Store,
                             array_slice: None,
                             mip_slice: None,
-                            clear_value: RafxColorClearValue([0.0, 0.0, 0.0, 0.0]),
+                            clear_value: RafxColorClearValue([elapsed_seconds.sin() * 0.5 + 0.5, 0.0, 1.0, 0.0]),
                             resolve_target: None,
                             resolve_store_op: RafxStoreOp::DontCare,
                             resolve_mip_slice: None,
@@ -385,23 +385,23 @@ pub fn update_loop(
                         }],
                         None,
                     ).unwrap();
-
-                    cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
-
-                    cmd_buffer.cmd_bind_vertex_buffers(
-                        0,
-                        &[RafxVertexBufferBinding {
-                            buffer: &vertex_buffer,
-                            byte_offset: 0,
-                        }],
-                    ).unwrap();
-                    cmd_buffer.cmd_bind_descriptor_set(
-                        &descriptor_set_array,
-                        presentable_frame.rotating_frame_index() as u32,
-                    ).unwrap();
-                    cmd_buffer.cmd_draw(3, 0).unwrap();
-
-                    // Put it into a layout where we can present it
+                    //
+                    // cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
+                    //
+                    // cmd_buffer.cmd_bind_vertex_buffers(
+                    //     0,
+                    //     &[RafxVertexBufferBinding {
+                    //         buffer: &vertex_buffer,
+                    //         byte_offset: 0,
+                    //     }],
+                    // ).unwrap();
+                    // cmd_buffer.cmd_bind_descriptor_set(
+                    //     &descriptor_set_array,
+                    //     presentable_frame.rotating_frame_index() as u32,
+                    // ).unwrap();
+                    // cmd_buffer.cmd_draw(3, 0).unwrap();
+                    //
+                    // // Put it into a layout where we can present it
 
                     cmd_buffer.cmd_end_render_pass().unwrap();
 

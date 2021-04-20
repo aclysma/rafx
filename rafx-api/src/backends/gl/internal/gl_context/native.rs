@@ -11,7 +11,7 @@ use crate::{RafxResult, RafxError};
 use crate::gl::gles20::types::{GLsizeiptr, GLint};
 use std::ffi::{CStr, CString};
 use std::ops::Range;
-use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo};
+use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo, RenderbufferId};
 use std::cmp::max;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -108,9 +108,37 @@ impl GlContext {
         }
     }
 
+    pub fn gl_scissor(&self, x: i32, y: i32, width: i32, height: i32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Scissor(x, y, width, height);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_depth_rangef(&self, n: f32, f: f32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DepthRangef(n, f);
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_clear_color(&self, r: f32, g: f32, b: f32, a: f32) -> RafxResult<()> {
         unsafe {
             self.gles2.ClearColor(r, g, b, a);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_clear_depthf(&self, d: f32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.ClearDepthf(d);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_clear_stencil(&self, s: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.ClearStencil(s as _);
             self.check_for_error()
         }
     }
@@ -417,9 +445,25 @@ impl GlContext {
         }
     }
 
-    pub fn gl_bind_renderbuffer(&self, id: GLenum, renderbuffer: u32) -> RafxResult<()> {
+    pub fn gl_bind_renderbuffer(&self, target: GLenum, renderbuffer: RenderbufferId) -> RafxResult<()> {
         unsafe {
-            self.gles2.BindRenderbuffer(id, )
+            self.gles2.BindRenderbuffer(target, renderbuffer.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_framebuffer_renderbuffer(&self, target: GLenum, attachment: GLenum, renderbuffer_target: GLenum, renderbuffer: RenderbufferId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.FramebufferRenderbuffer(target, attachment, renderbuffer_target, renderbuffer.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_check_framebuffer_status(&self, target: GLenum) -> RafxResult<u32> {
+        unsafe {
+            let result = self.gles2.CheckFramebufferStatus(target);
+            self.check_for_error()?;
+            Ok(result)
         }
     }
 }

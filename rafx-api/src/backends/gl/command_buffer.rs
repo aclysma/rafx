@@ -1,17 +1,13 @@
-use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState};
-use crate::{
-    RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
-    RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D,
-    RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState,
-    RafxResult, RafxTextureBarrier, RafxVertexBufferBinding,
-};
+use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState, NONE_RENDERBUFFER};
+use crate::{RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState, RafxResult, RafxTextureBarrier, RafxVertexBufferBinding, RafxExtents2D};
 use fnv::FnvHashSet;
 // use gl_rs::{
 //     MTLBlitOption, MTLIndexType, MTLOrigin, MTLPrimitiveType, MTLRenderStages, MTLResourceUsage,
 //     MTLScissorRect, MTLSize, MTLViewport,
 // };
 use rafx_base::trust_cell::TrustCell;
-use web_sys::default_prevented;
+
+use crate::gl::gles20;
 
 // Mutable state stored in a lock. (Hopefully we can optimize away the lock later)
 // #[derive(Debug)]
@@ -98,139 +94,95 @@ impl RafxCommandBufferGl {
             Err("No color or depth target supplied to cmd_begin_render_pass")?;
         }
 
+        let gl_context = self.queue.device_context().gl_context();
         let mut clear_mask = 0;
+        let mut extents = RafxExtents3D::default();
 
-        let gl_context = queue.device_context().gl_context();
+        for (index, render_target) in color_targets.iter().enumerate() {
+            extents = render_target.texture.texture_def().extents;
 
-        for render_target in color_targets {
-            gl_context.gl_bind_renderbuffer(gles20::GL_RENDERBUFFER, render_target.render_buffer);
+            let renderbuffer = render_target.texture.gl_texture().unwrap().gl_raw_image().gl_renderbuffer_id().unwrap();
+            gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
+            if renderbuffer != NONE_RENDERBUFFER {
+                gl_context.gl_framebuffer_renderbuffer(gles20::FRAMEBUFFER, gles20::COLOR_ATTACHMENT0 + index as u32, gles20::RENDERBUFFER, renderbuffer)?;
+            }
+
+            if render_target.load_op == RafxLoadOp::Clear {
+                let c = &render_target.clear_value.0;
+                gl_context.gl_clear_color(c[0], c[1], c[2], c[3])?;
+                clear_mask |= gles20::COLOR_BUFFER_BIT;
+            }
+
+            gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
         }
 
+        if let Some(depth_target) = depth_target {
+            let format = depth_target.texture.texture_def().format;
+            if format.has_depth() {
+                extents = depth_target.texture.texture_def().extents;
 
+                let renderbuffer = depth_target.texture.gl_texture().unwrap().gl_raw_image().gl_renderbuffer_id().unwrap();
+                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
+                if renderbuffer != NONE_RENDERBUFFER {
+                    gl_context.gl_framebuffer_renderbuffer(gles20::FRAMEBUFFER, gles20::DEPTH_ATTACHMENT, gles20::RENDERBUFFER, renderbuffer)?;
+                }
 
-        Ok(())
+                if depth_target.depth_load_op == RafxLoadOp::Clear {
+                    gl_context.gl_clear_depthf(depth_target.clear_value.depth)?;
+                    clear_mask |= gles20::DEPTH_BUFFER_BIT;
+                }
 
-        // // if self.has_active_renderpass.load(Ordering::Relaxed) {
-        // //     self.cmd_end_render_pass()?;
-        // // }
-        //
-        // if color_targets.is_empty() && depth_target.is_none() {
-        //     Err("No color or depth target supplied to cmd_begin_render_pass")?;
-        // }
-        //
-        // let mut extents = RafxExtents3D::default();
-        //
-        // let result: RafxResult<()> = objc::rc::autoreleasepool(|| {
-        //     let descriptor = gl_rs::RenderPassDescriptor::new();
-        //
-        //     let mut inner = self.inner.borrow_mut();
-        //     for (i, color_target) in color_targets.iter().enumerate() {
-        //         let color_descriptor = descriptor.color_attachments().object_at(i as _).unwrap();
-        //         let texture = color_target.texture.gl_texture().unwrap();
-        //
-        //         // Ensure current_render_targets_width/current_render_targets_depth are set
-        //         extents = texture.texture_def().extents;
-        //         inner.current_render_targets_width = extents.width;
-        //         inner.current_render_targets_height = extents.height;
-        //
-        //         color_descriptor.set_texture(Some(texture.gl_texture()));
-        //         color_descriptor.set_level(color_target.mip_slice.unwrap_or(0) as _);
-        //         if color_target.array_slice.is_some() {
-        //             if texture.texture_def().extents.depth > 1 {
-        //                 color_descriptor.set_depth_plane(color_target.array_slice.unwrap() as _);
-        //             } else {
-        //                 color_descriptor.set_slice(color_target.array_slice.unwrap() as _);
-        //             }
-        //         }
-        //
-        //         color_descriptor.set_load_action(color_target.load_op.into());
-        //         let store_action =
-        //             super::util::color_render_target_binding_mtl_store_op(color_target);
-        //         color_descriptor.set_store_action(store_action);
-        //
-        //         if color_target.load_op == RafxLoadOp::Clear {
-        //             color_descriptor.set_clear_color(color_target.clear_value.into());
-        //         }
-        //
-        //         if let Some(resolve_target) = color_target.resolve_target {
-        //             color_descriptor.set_resolve_texture(Some(
-        //                 resolve_target.gl_texture().unwrap().gl_texture(),
-        //             ));
-        //             color_descriptor
-        //                 .set_resolve_level(color_target.resolve_mip_slice.unwrap_or(0) as _);
-        //             color_descriptor.set_resolve_slice(color_target.array_slice.unwrap_or(0) as _);
-        //         }
-        //     }
-        //
-        //     if let Some(depth_target) = depth_target {
-        //         let depth_descriptor = descriptor.depth_attachment().unwrap();
-        //         let texture = depth_target.texture.gl_texture().unwrap();
-        //
-        //         // Ensure current_render_targets_width/current_render_targets_depth are set
-        //         extents = depth_target.texture.texture_def().extents;
-        //         inner.current_render_targets_width = extents.width;
-        //         inner.current_render_targets_height = extents.height;
-        //
-        //         depth_descriptor.set_texture(Some(texture.gl_texture()));
-        //         depth_descriptor.set_level(depth_target.mip_slice.unwrap_or(0) as _);
-        //         depth_descriptor.set_slice(depth_target.array_slice.unwrap_or(0) as _);
-        //         depth_descriptor.set_load_action(depth_target.depth_load_op.into());
-        //         depth_descriptor.set_store_action(depth_target.depth_store_op.into());
-        //
-        //         if depth_target.depth_load_op == RafxLoadOp::Clear {
-        //             depth_descriptor.set_clear_depth(depth_target.clear_value.depth as f64);
-        //         }
-        //
-        //         let has_stencil = texture.texture_def().format.has_stencil();
-        //         if has_stencil {
-        //             let stencil_descriptor = descriptor.stencil_attachment().unwrap();
-        //             stencil_descriptor.set_texture(Some(texture.gl_texture()));
-        //             stencil_descriptor.set_level(depth_target.mip_slice.unwrap_or(0) as _);
-        //             stencil_descriptor.set_slice(depth_target.array_slice.unwrap_or(0) as _);
-        //             stencil_descriptor.set_load_action(depth_target.stencil_load_op.into());
-        //             stencil_descriptor.set_store_action(depth_target.stencil_store_op.into());
-        //         } else {
-        //             //let stencil_descriptor = descriptor.stencil_attachment().unwrap();
-        //             //stencil_descriptor.set_load_action(RafxStoreOp::DontCare.into());
-        //             //stencil_descriptor.set_store_action(RafxStoreOp::DontCare.into());
-        //         }
-        //     } else {
-        //         // let depth_descriptor = descriptor.depth_attachment().unwrap();
-        //         // depth_descriptor.set_load_action(RafxStoreOp::DontCare.into());
-        //         // depth_descriptor.set_store_action(RafxStoreOp::DontCare.into());
-        //         // let stencil_descriptor = descriptor.stencil_attachment().unwrap();
-        //         // stencil_descriptor.set_load_action(RafxStoreOp::DontCare.into());
-        //         // stencil_descriptor.set_store_action(RafxStoreOp::DontCare.into());
-        //     }
-        //
-        //     // end encoders
-        //     Self::do_end_current_encoders(&self.queue, &mut *inner, false)?;
-        //     let cmd_buffer = inner.command_buffer.as_ref().unwrap();
-        //     let render_encoder = cmd_buffer.new_render_command_encoder(descriptor);
-        //     inner.render_encoder = Some(render_encoder.to_owned());
-        //     self.wait_for_barriers(&*inner)?;
-        //     // set heaps?
-        //
-        //     Ok(())
-        // });
-        // result?;
-        //
-        // self.cmd_set_viewport(
-        //     0.0,
-        //     0.0,
-        //     extents.width as f32,
-        //     extents.height as f32,
-        //     0.0,
-        //     1.0,
-        // )?;
-        //
-        // self.cmd_set_scissor(0, 0, extents.width, extents.height)
+                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
+            }
+
+            if format.has_stencil() {
+                extents = depth_target.texture.texture_def().extents;
+
+                let renderbuffer = depth_target.texture.gl_texture().unwrap().gl_raw_image().gl_renderbuffer_id().unwrap();
+                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
+                if renderbuffer != NONE_RENDERBUFFER {
+                    gl_context.gl_framebuffer_renderbuffer(gles20::FRAMEBUFFER, gles20::STENCIL_ATTACHMENT, gles20::RENDERBUFFER, renderbuffer)?;
+                }
+
+                if depth_target.stencil_load_op == RafxLoadOp::Clear {
+                    gl_context.gl_clear_stencil(depth_target.clear_value.stencil)?;
+                    clear_mask |= gles20::STENCIL_BUFFER_BIT;
+                }
+
+                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
+            }
+        }
+
+        if clear_mask != 0 {
+            gl_context.gl_clear(clear_mask)?;
+        }
+
+        let result = gl_context.gl_check_framebuffer_status(gles20::FRAMEBUFFER)?;
+        if result != gles20::FRAMEBUFFER_COMPLETE {
+            log::error!("Incomplete framebuffer {}", result);
+        }
+
+        state.surface_size = Some(extents.to_2d());
+
+        std::mem::drop(state);
+        self.cmd_set_viewport(
+            0.0,
+            0.0,
+            extents.width as f32,
+            extents.height as f32,
+            0.0,
+            1.0,
+        )?;
+
+        self.cmd_set_scissor(0, 0, extents.width, extents.height)
     }
 
     pub fn cmd_end_render_pass(&self) -> RafxResult<()> {
-        unimplemented!();
-        // no action necessary
-        //Ok(())
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        state.surface_size = None;
+        Ok(())
     }
 
     pub fn cmd_set_viewport(
@@ -242,22 +194,14 @@ impl RafxCommandBufferGl {
         depth_min: f32,
         depth_max: f32,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // self.inner
-        //     .borrow()
-        //     .render_encoder
-        //     .as_ref()
-        //     .unwrap()
-        //     .set_viewport(MTLViewport {
-        //         originX: x as _,
-        //         originY: y as _,
-        //         width: width as _,
-        //         height: height as _,
-        //         znear: depth_min as _,
-        //         zfar: depth_max as _,
-        //     });
-        //
-        // Ok(())
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        let gl_context = self.queue.device_context().gl_context();
+        let y_offset = state.surface_size.unwrap().height as f32 - y - height;
+
+        gl_context.gl_viewport(x as _, y_offset as _, width as _, height as _)?;
+        gl_context.gl_depth_rangef(depth_min, depth_max)
     }
 
     pub fn cmd_set_scissor(
@@ -267,28 +211,13 @@ impl RafxCommandBufferGl {
         mut width: u32,
         mut height: u32,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let inner = self.inner.borrow();
-        // let max_x = inner.current_render_targets_width;
-        // let max_y = inner.current_render_targets_height;
-        //
-        // x = x.min(max_x);
-        // y = y.min(max_y);
-        // width = width.min(max_x - x);
-        // height = height.min(max_y - y);
-        //
-        // inner
-        //     .render_encoder
-        //     .as_ref()
-        //     .unwrap()
-        //     .set_scissor_rect(MTLScissorRect {
-        //         x: x as _,
-        //         y: y as _,
-        //         width: width as _,
-        //         height: height as _,
-        //     });
-        //
-        // Ok(())
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        let gl_context = self.queue.device_context().gl_context();
+        let y_offset = state.surface_size.unwrap().height - y - height;
+
+        gl_context.gl_scissor(x as _, y_offset as _, width as _, height as _)
     }
 
     pub fn cmd_set_stencil_reference_value(

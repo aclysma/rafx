@@ -1,5 +1,5 @@
 use crate::backends::gl::RafxTextureGl;
-use crate::gl::{RafxDeviceContextGl, RafxFenceGl, RafxRawImageGl, RafxSemaphoreGl, RafxTextureGlInner, GlContext};
+use crate::gl::{RafxDeviceContextGl, RafxFenceGl, RafxRawImageGl, RafxSemaphoreGl, RafxTextureGlInner, GlContext, NONE_RENDERBUFFER};
 use crate::{
     RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
     RafxSwapchainImage, RafxTexture, RafxTextureDef, RafxTextureDimensions,
@@ -62,7 +62,7 @@ impl RafxSwapchainGl {
 
         let mut swapchain_images = Vec::with_capacity(SWAPCHAIN_IMAGE_COUNT as usize);
         for _ in 0..SWAPCHAIN_IMAGE_COUNT {
-            swapchain_images.push(RafxTextureGl::from_existing(device_context, Some(RafxRawImageGl::RenderTarget), &RafxTextureDef {
+            swapchain_images.push(RafxTextureGl::from_existing(device_context, Some(RafxRawImageGl::Renderbuffer(NONE_RENDERBUFFER)), &RafxTextureDef {
                 extents: RafxExtents3D {
                     width: swapchain_def.width,
                     height: swapchain_def.height,
