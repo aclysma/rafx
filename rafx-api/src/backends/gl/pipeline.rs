@@ -1,7 +1,9 @@
-use crate::gl::{RafxDeviceContextGl, GlCompiledShader, ProgramId, RafxShaderGl};
+use crate::gl::{RafxDeviceContextGl, GlCompiledShader, ProgramId, RafxShaderGl, NONE_PROGRAM};
 use crate::{RafxComputePipelineDef, RafxGraphicsPipelineDef, RafxPipelineType, RafxResult, RafxRootSignature, RafxShaderStageFlags, RafxRasterizerState};
 use crate::gl::gles20;
 use crate::gl::conversions::{GlRasterizerState, GlBlendState, GlDepthStencilState};
+use crate::gl::gles20::types::GLenum;
+use std::sync::Arc;
 // fn gl_entry_point_name(name: &str) -> &str {
 //     // "main" is not an allowed entry point name. spirv_cross adds a 0 to the end of any
 //     // unallowed entry point names so do that here too
@@ -36,6 +38,28 @@ use crate::gl::conversions::{GlRasterizerState, GlBlendState, GlDepthStencilStat
 //     pub(crate) mtl_primitive_type: gl_rs::MTLPrimitiveType,
 // }
 
+
+
+#[derive(Debug)]
+pub(crate) struct GlAttribute {
+    pub(crate) location: u32,
+    pub(crate) channel_count: u32,
+    pub(crate) gl_type: GLenum,
+    pub(crate) stride: u32,
+    pub(crate) is_normalized: bool,
+    pub(crate) byte_offset: u32,
+}
+
+#[derive(Debug)]
+pub(crate) struct GlPipelineInfo {
+    pub(crate) gl_rasterizer_state: GlRasterizerState,
+    pub(crate) gl_depth_stencil_state: GlDepthStencilState,
+    pub(crate) gl_blend_state: GlBlendState,
+    pub(crate) gl_topology: GLenum,
+    pub(crate) vertex_buffer_stride: u32,
+    pub(crate) gl_attributes: Vec<GlAttribute>
+}
+
 #[derive(Debug)]
 pub struct RafxPipelineGl {
     pipeline_type: RafxPipelineType,
@@ -43,9 +67,7 @@ pub struct RafxPipelineGl {
     root_signature: RafxRootSignature,
     shader: RafxShaderGl,
 
-    gl_rasterizer_state: GlRasterizerState,
-    gl_depth_stencil_state: GlDepthStencilState,
-    gl_blend_state: GlBlendState,
+    gl_pipeline_info: Arc<GlPipelineInfo>,
 }
 
 impl RafxPipelineGl {
@@ -61,23 +83,9 @@ impl RafxPipelineGl {
         self.shader.gl_program_id()
     }
 
-    pub(crate) fn gl_rasterizer_state(&self) -> &GlRasterizerState {
-        &self.gl_rasterizer_state
+    pub(crate) fn gl_pipeline_info(&self) -> &Arc<GlPipelineInfo> {
+        &self.gl_pipeline_info
     }
-
-    // pub fn gl_render_pipeline(&self) -> Option<&gl_rs::RenderPipelineStateRef> {
-    //     match &self.pipeline {
-    //         GlPipelineState::Graphics(pipeline) => Some(pipeline.as_ref()),
-    //         GlPipelineState::Compute(_) => None,
-    //     }
-    // }
-    //
-    // pub fn gl_compute_pipeline(&self) -> Option<&gl_rs::ComputePipelineStateRef> {
-    //     match &self.pipeline {
-    //         GlPipelineState::Graphics(_) => None,
-    //         GlPipelineState::Compute(pipeline) => Some(pipeline.as_ref()),
-    //     }
-    // }
 
     pub fn new_graphics_pipeline(
         device_context: &RafxDeviceContextGl,
@@ -86,6 +94,12 @@ impl RafxPipelineGl {
         let gl_context = device_context.gl_context();
         let shader = pipeline_def.shader.gl_shader().unwrap();
         let program = shader.gl_program_id();
+
+        // Multiple buffers not currently supported
+        assert!(pipeline_def.vertex_layout.buffers.len() <= 1);
+
+        let vertex_buffer_stride = pipeline_def.vertex_layout.buffers[0].stride;
+        let mut gl_attributes = Vec::with_capacity(pipeline_def.vertex_layout.attributes.len());
 
         for attribute in &pipeline_def.vertex_layout.attributes {
             if attribute.location >= device_context.device_info().max_vertex_attribute_count {
@@ -101,170 +115,53 @@ impl RafxPipelineGl {
                 attribute.location,
                 attribute.gl_attribute_name.as_ref().unwrap()
             )?;
+
+            let gl_type = attribute.format.gl_type().ok_or_else(|| format!("Unsupported format {:?}", attribute.format))?;
+
+            gl_attributes.push(GlAttribute {
+                location: attribute.location,
+                channel_count: attribute.format.channel_count(),
+                gl_type,
+                stride: attribute.format.block_or_pixel_size_in_bytes(),
+                is_normalized: attribute.format.is_normalized(),
+                byte_offset: attribute.byte_offset
+            });
         }
 
-        gl_context.gl_use_program(program);
+        if !pipeline_def.vertex_layout.attributes.is_empty() {
+            gl_context.link_shader_program(program)?;
+            //gl_context.validate_shader_program(program)?;
+        }
+
+        //TODO: set up textures?
+        //gl_context.gl_use_program(program)?;
+        //gl_context.gl_use_program(NONE_PROGRAM)?;
+
+        let gl_topology = pipeline_def
+            .primitive_topology
+            .gl_topology()
+            .ok_or_else(|| format!("GL ES 2.0 does not support topology {:?}", pipeline_def.primitive_topology))?;
+
+        let gl_pipeline_info = GlPipelineInfo {
+            gl_rasterizer_state: pipeline_def.rasterizer_state.into(),
+            gl_depth_stencil_state: pipeline_def.depth_state.into(),
+            gl_blend_state: pipeline_def.blend_state.gl_blend_state()?,
+            gl_topology,
+            vertex_buffer_stride,
+            gl_attributes
+        };
 
         Ok(RafxPipelineGl {
             root_signature: pipeline_def.root_signature.clone(),
             pipeline_type: RafxPipelineType::Graphics,
             shader: shader.clone(),
-            gl_rasterizer_state: pipeline_def.rasterizer_state.into(),
-            gl_depth_stencil_state: pipeline_def.depth_state.into(),
-            gl_blend_state: pipeline_def.blend_state.gl_blend_state()?
+            gl_pipeline_info: Arc::new(gl_pipeline_info)
         })
-
-        //TODO: Cache rasterizer, depth stencil, blend states
-
-
-        // let pipeline = gl_rs::RenderPipelineDescriptor::new();
-        //
-        // let mut vertex_function = None;
-        // let mut fragment_function = None;
-        //
-        // for stage in pipeline_def.shader.gl_shader().unwrap().stages() {
-        //     if stage
-        //         .reflection
-        //         .shader_stage
-        //         .intersects(RafxShaderStageFlags::VERTEX)
-        //     {
-        //         let entry_point = gl_entry_point_name(&stage.reflection.entry_point_name);
-        //         assert!(vertex_function.is_none());
-        //         vertex_function = Some(
-        //             stage
-        //                 .shader_module
-        //                 .gl_shader_module()
-        //                 .unwrap()
-        //                 .library()
-        //                 .get_function(entry_point, None)?,
-        //         );
-        //     }
-        //
-        //     if stage
-        //         .reflection
-        //         .shader_stage
-        //         .intersects(RafxShaderStageFlags::FRAGMENT)
-        //     {
-        //         let entry_point = gl_entry_point_name(&stage.reflection.entry_point_name);
-        //         assert!(fragment_function.is_none());
-        //         fragment_function = Some(
-        //             stage
-        //                 .shader_module
-        //                 .gl_shader_module()
-        //                 .unwrap()
-        //                 .library()
-        //                 .get_function(entry_point, None)?,
-        //         );
-        //     }
-        // }
-        //
-        // let vertex_function = vertex_function.ok_or("Could not find vertex function")?;
-        //
-        // pipeline.set_vertex_function(Some(vertex_function.as_ref()));
-        // pipeline.set_fragment_function(fragment_function.as_ref().map(|x| x.as_ref()));
-        // pipeline.set_sample_count(pipeline_def.sample_count.into());
-        //
-        // let vertex_descriptor = gl_rs::VertexDescriptor::new();
-        // for attribute in &pipeline_def.vertex_layout.attributes {
-        //     let buffer_index =
-        //         super::util::vertex_buffer_adjusted_buffer_index(attribute.buffer_index);
-        //     let attribute_descriptor = vertex_descriptor
-        //         .attributes()
-        //         .object_at(attribute.location as _)
-        //         .unwrap();
-        //     attribute_descriptor.set_buffer_index(buffer_index);
-        //     attribute_descriptor.set_format(attribute.format.into());
-        //     attribute_descriptor.set_offset(attribute.byte_offset as _);
-        // }
-        //
-        // for (index, binding) in pipeline_def.vertex_layout.buffers.iter().enumerate() {
-        //     let buffer_index = super::util::vertex_buffer_adjusted_buffer_index(index as u32);
-        //     let layout_descriptor = vertex_descriptor.layouts().object_at(buffer_index).unwrap();
-        //     layout_descriptor.set_stride(binding.stride as _);
-        //     layout_descriptor.set_step_function(binding.rate.into());
-        //     layout_descriptor.set_step_rate(1);
-        // }
-        // pipeline.set_vertex_descriptor(Some(vertex_descriptor));
-        //
-        // pipeline.set_input_primitive_topology(pipeline_def.primitive_topology.into());
-        //
-        // //TODO: Pass in number of color attachments?
-        // super::util::blend_def_to_attachment(
-        //     pipeline_def.blend_state,
-        //     &mut pipeline.color_attachments(),
-        //     pipeline_def.color_formats.len(),
-        // );
-        //
-        // for (index, &color_format) in pipeline_def.color_formats.iter().enumerate() {
-        //     pipeline
-        //         .color_attachments()
-        //         .object_at(index as _)
-        //         .unwrap()
-        //         .set_pixel_format(color_format.into());
-        // }
-        //
-        // if let Some(depth_format) = pipeline_def.depth_stencil_format {
-        //     if depth_format.has_depth() {
-        //         pipeline.set_depth_attachment_pixel_format(depth_format.into());
-        //     }
-        //
-        //     if depth_format.has_stencil() {
-        //         pipeline.set_stencil_attachment_pixel_format(depth_format.into());
-        //     }
-        // }
-        //
-        // let pipeline = device_context
-        //     .device()
-        //     .new_render_pipeline_state(pipeline.as_ref())?;
-        //
-        // let mtl_cull_mode = pipeline_def.rasterizer_state.cull_mode.into();
-        // let mtl_triangle_fill_mode = pipeline_def.rasterizer_state.fill_mode.into();
-        // let mtl_front_facing_winding = pipeline_def.rasterizer_state.front_face.into();
-        // let mtl_depth_bias = pipeline_def.rasterizer_state.depth_bias as f32;
-        // let mtl_depth_bias_slope_scaled =
-        //     pipeline_def.rasterizer_state.depth_bias_slope_scaled as f32;
-        // let mtl_depth_clip_mode = if pipeline_def.rasterizer_state.depth_clamp_enable {
-        //     gl_rs::MTLDepthClipMode::Clamp
-        // } else {
-        //     gl_rs::MTLDepthClipMode::Clip
-        // };
-        // let mtl_primitive_type = pipeline_def.primitive_topology.into();
-        //
-        // let depth_stencil_descriptor =
-        //     super::util::depth_state_to_descriptor(&pipeline_def.depth_state);
-        // let mtl_depth_stencil_state = if pipeline_def.depth_stencil_format.is_some() {
-        //     Some(
-        //         device_context
-        //             .device()
-        //             .new_depth_stencil_state(depth_stencil_descriptor.as_ref()),
-        //     )
-        // } else {
-        //     None
-        // };
-        //
-        // let render_encoder_info = PipelineRenderEncoderInfo {
-        //     mtl_cull_mode,
-        //     mtl_triangle_fill_mode,
-        //     mtl_front_facing_winding,
-        //     mtl_depth_bias,
-        //     mtl_depth_bias_slope_scaled,
-        //     mtl_depth_clip_mode,
-        //     mtl_depth_stencil_state,
-        //     mtl_primitive_type,
-        // };
-        //
-        // Ok(RafxPipelineGl {
-        //     root_signature: pipeline_def.root_signature.clone(),
-        //     pipeline_type: pipeline_def.root_signature.pipeline_type(),
-        //     pipeline: GlPipelineState::Graphics(pipeline),
-        //     render_encoder_info: Some(render_encoder_info),
-        //     compute_encoder_info: None,
-        // })
     }
 
     pub fn new_compute_pipeline(
-        device_context: &RafxDeviceContextGl,
-        pipeline_def: &RafxComputePipelineDef,
+        _device_context: &RafxDeviceContextGl,
+        _pipeline_def: &RafxComputePipelineDef,
     ) -> RafxResult<Self> {
         unimplemented!("GL ES 2.0 does not support compute pipelines");
     }

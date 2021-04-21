@@ -55,8 +55,13 @@ impl RafxBufferGl {
         &self.buffer_def
     }
 
+    // only some for vertex and index buffers
     pub fn gl_buffer_id(&self) -> Option<BufferId> {
         self.buffer_id
+    }
+
+    pub fn gl_target(&self) -> GLenum {
+        self.target
     }
 
     pub(crate) fn buffer_contents(&self) -> &Option<GlBufferContents> {

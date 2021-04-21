@@ -1,4 +1,4 @@
-use crate::gl::{RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl};
+use crate::gl::{RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl, GlPipelineInfo};
 use crate::{RafxCommandBufferDef, RafxCommandPoolDef, RafxQueueType, RafxResult, RafxExtents2D};
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
@@ -6,7 +6,9 @@ use std::sync::Arc;
 #[derive(Debug)]
 pub(crate) struct CommandPoolGlStateInner {
     pub(crate) is_started: bool,
-    pub(crate) surface_size: Option<RafxExtents2D>
+    pub(crate) surface_size: Option<RafxExtents2D>,
+    pub(crate) current_gl_pipeline_info: Option<Arc<GlPipelineInfo>>,
+    pub(crate) vertex_buffer_byte_offset: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -19,6 +21,8 @@ impl CommandPoolGlState {
         let inner = CommandPoolGlStateInner {
             is_started: false,
             surface_size: None,
+            current_gl_pipeline_info: None,
+            vertex_buffer_byte_offset: 0
         };
 
         CommandPoolGlState {

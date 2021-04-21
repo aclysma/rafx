@@ -9,5 +9,5 @@ pub fn main_native() {
         .build(&event_loop)
         .unwrap();
 
-    crate::update_loop(window, event_loop);
+    crate::update_loop(window, event_loop).unwrap();
 }

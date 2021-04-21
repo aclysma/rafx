@@ -8,7 +8,7 @@ use fnv::{FnvHasher, FnvHashMap};
 use std::hash::{Hasher, Hash};
 use super::WindowHash;
 use crate::{RafxResult, RafxError};
-use crate::gl::gles20::types::{GLsizeiptr, GLint};
+use crate::gl::gles20::types::{GLsizeiptr, GLint, GLboolean};
 use std::ffi::{CStr, CString};
 use std::ops::Range;
 use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo, RenderbufferId};
@@ -176,6 +176,21 @@ impl GlContext {
     pub fn gl_bind_buffer(&self, target: GLenum, buffer_id: BufferId) -> RafxResult<()> {
         unsafe {
             self.gles2.BindBuffer(target, buffer_id.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_vertex_attrib_pointer(&self, index: u32, size: i32, type_: GLenum, normalized: bool, stride: u32, byte_offset: u32) -> RafxResult<()> {
+        unsafe {
+            let ptr = byte_offset as *const std::ffi::c_void;
+            self.gles2.VertexAttribPointer(index, size, type_, to_gl_bool(normalized), stride as _, ptr);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_enable_vertex_attrib_array(&self, index: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.EnableVertexAttribArray(index);
             self.check_for_error()
         }
     }
@@ -452,6 +467,55 @@ impl GlContext {
         }
     }
 
+    pub fn gl_depth_mask(&self, flag: bool) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DepthMask(to_gl_bool(flag));
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_depth_func(&self, value: GLenum) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DepthFunc(value);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_stencil_mask(&self, mask: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.StencilMask(mask);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_stencil_func_separate(&self, face: GLenum, func: GLenum, ref_value: i32, mask: GLenum) -> RafxResult<()> {
+        unsafe {
+            self.gles2.StencilFuncSeparate(face, func, ref_value, mask);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_stencil_op_separate(&self, face: GLenum, sfail: GLenum, dpfail: GLenum, dppass: GLenum) -> RafxResult<()> {
+        unsafe {
+            self.gles2.StencilOpSeparate(face, sfail, dpfail, dppass);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_blend_func_separate(&self, sfactor_rgb: GLenum, dfactor_rgb: GLenum, sfactor_alpha: GLenum, dfactor_alpha: GLenum) -> RafxResult<()> {
+        unsafe {
+            self.gles2.BlendFuncSeparate(sfactor_rgb, dfactor_rgb, sfactor_alpha, dfactor_alpha);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_blend_equation_separate(&self, mode_rgb: GLenum, mode_alpha: GLenum) -> RafxResult<()> {
+        unsafe {
+            self.gles2.BlendEquationSeparate(mode_rgb, mode_alpha);
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_bind_attrib_location(&self, program_id: ProgramId, index: u32, name: &str) -> RafxResult<()> {
         unsafe {
             self.gles2.BindAttribLocation(program_id.0, index, CString::new(name).unwrap().as_ptr());
@@ -493,5 +557,13 @@ impl GlContext {
             self.gles2.DisableVertexAttribArray(index);
             self.check_for_error()
         }
+    }
+}
+
+fn to_gl_bool(value: bool) -> GLboolean {
+    if value {
+        gles20::TRUE
+    } else {
+        gles20::FALSE
     }
 }

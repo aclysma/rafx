@@ -376,17 +376,16 @@ pub fn update_loop(
                         None,
                     ).unwrap();
 
+                    cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
 
-                    //
-                    // cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
-                    //
-                    // cmd_buffer.cmd_bind_vertex_buffers(
-                    //     0,
-                    //     &[RafxVertexBufferBinding {
-                    //         buffer: &vertex_buffer,
-                    //         byte_offset: 0,
-                    //     }],
-                    // ).unwrap();
+                    cmd_buffer.cmd_bind_vertex_buffers(
+                        0,
+                        &[RafxVertexBufferBinding {
+                            buffer: &vertex_buffer,
+                            byte_offset: 0,
+                        }],
+                    ).unwrap();
+
                     // cmd_buffer.cmd_bind_descriptor_set(
                     //     &descriptor_set_array,
                     //     presentable_frame.rotating_frame_index() as u32,

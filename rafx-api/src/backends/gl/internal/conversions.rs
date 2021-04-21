@@ -1,6 +1,19 @@
-use crate::{RafxMemoryUsage, RafxCullMode, RafxRasterizerState, RafxFrontFace, RafxDepthState, RafxCompareOp, RafxStencilOp, RafxBlendState, RafxBlendStateRenderTarget, RafxBlendFactor, RafxBlendOp, RafxResult};
+use crate::{RafxMemoryUsage, RafxCullMode, RafxRasterizerState, RafxFrontFace, RafxDepthState, RafxCompareOp, RafxStencilOp, RafxBlendState, RafxBlendStateRenderTarget, RafxBlendFactor, RafxBlendOp, RafxResult, RafxPrimitiveTopology};
 use crate::gl::gles20::types::GLenum;
 use crate::gl::gles20;
+
+impl RafxPrimitiveTopology {
+    pub fn gl_topology(self) -> Option<GLenum> {
+        match self {
+            RafxPrimitiveTopology::PointList => Some(gles20::POINTS),
+            RafxPrimitiveTopology::LineList => Some(gles20::LINES),
+            RafxPrimitiveTopology::LineStrip => Some(gles20::LINE_STRIP),
+            RafxPrimitiveTopology::TriangleList => Some(gles20::TRIANGLES),
+            RafxPrimitiveTopology::TriangleStrip => Some(gles20::TRIANGLE_STRIP),
+            RafxPrimitiveTopology::PatchList => None,
+        }
+    }
+}
 
 impl RafxMemoryUsage {
     pub fn gl_usage(self) -> Option<GLenum> {
@@ -154,31 +167,6 @@ impl RafxBlendOp {
         }
     }
 }
-
-// pub struct GlBlendStateRenderTarget {
-//     pub enabled: bool,
-//     pub src_factor: GLenum,
-//     pub dst_factor: GLenum,
-//     pub src_factor_alpha: GLenum,
-//     pub dst_factor_alpha: GLenum,
-//     pub blend_op: GLenum,
-//     pub blend_op_alpha: GLenum,
-//     //pub masks: RafxColorFlags,
-// }
-//
-// impl From<&RafxBlendStateRenderTarget> for GlBlendStateRenderTarget {
-//     fn from(state: &RafxBlendStateRenderTarget) -> Self {
-//         GlBlendStateRenderTarget {
-//             enabled: state.blend_enabled(),
-//             src_factor: state.src_factor.gl_blend_factor(),
-//             dst_factor: state.dst_factor.gl_blend_factor(),
-//             src_factor_alpha: state.src_factor_alpha.gl_blend_factor(),
-//             dst_factor_alpha: state.dst_factor_alpha.gl_blend_factor(),
-//             blend_op: state.blend_op.gl_blend_op().ok_or_else(|| format!("GL ES 2.0 does not support blend op {:?}", state.blend_op))?,
-//             blend_op_alpha: state.blend_op.gl_blend_op().ok_or_else(|| format!("GL ES 2.0 does not support blend op {:?}", state.blend_op))?,
-//         }
-//     }
-// }
 
 //TODO: Some fields in RafxBlendState are not handled!
 #[derive(Debug)]

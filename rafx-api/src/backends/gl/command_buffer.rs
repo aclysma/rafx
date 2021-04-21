@@ -57,7 +57,12 @@ impl RafxCommandBufferGl {
     pub fn end(&self) -> RafxResult<()> {
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
+        assert!(state.surface_size.is_none());
+
         state.is_started = false;
+        state.vertex_buffer_byte_offset = 0;
+        state.current_gl_pipeline_info = None;
+
         Ok(())
     }
 
@@ -209,13 +214,6 @@ impl RafxCommandBufferGl {
         value: u32,
     ) -> RafxResult<()> {
         unimplemented!();
-        // self.inner
-        //     .borrow()
-        //     .render_encoder
-        //     .as_ref()
-        //     .unwrap()
-        //     .set_stencil_reference_value(value);
-        // Ok(())
     }
 
     pub fn cmd_bind_pipeline(
@@ -225,10 +223,12 @@ impl RafxCommandBufferGl {
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
 
-        //state.pipeline = pipeline.clone();
+        let pipeline_info = pipeline.gl_pipeline_info();
+        state.current_gl_pipeline_info = Some(pipeline_info.clone());
 
-        let gl_rasterizer_state = pipeline.gl_rasterizer_state();
-
+        let gl_rasterizer_state = &pipeline_info.gl_rasterizer_state;
+        let gl_depth_stencil_state = &pipeline_info.gl_depth_stencil_state;
+        let gl_blend_state = &pipeline_info.gl_blend_state;
 
         let gl_context = self.queue.device_context().gl_context();
         gl_context.gl_use_program(pipeline.gl_program_id())?;
@@ -242,73 +242,62 @@ impl RafxCommandBufferGl {
             gl_context.gl_enable(gles20::CULL_FACE)?;
             gl_context.gl_cull_face(gl_rasterizer_state.cull_mode)?;
             gl_context.gl_front_face(gl_rasterizer_state.front_face)?;
+        } else {
+            gl_context.gl_disable(gles20::CULL_FACE)?;
         }
 
+        if gl_rasterizer_state.scissor_test {
+            gl_context.gl_enable(gles20::SCISSOR_TEST)?;
+        } else {
+            gl_context.gl_disable(gles20::SCISSOR_TEST)?;
+        }
 
+        if gl_depth_stencil_state.depth_test_enable {
+            gl_context.gl_enable(gles20::DEPTH_TEST)?;
+            gl_context.gl_depth_mask(gl_depth_stencil_state.depth_write_enable)?;
+            gl_context.gl_depth_func(gl_depth_stencil_state.depth_compare_op)?;
+        } else {
+            gl_context.gl_disable(gles20::DEPTH_TEST)?;
+        }
 
-        unimplemented!();
-        // objc::rc::autoreleasepool(|| {
-        //     let mut inner = self.inner.borrow_mut();
-        //     let last_pipeline_type = inner.last_pipeline_type;
-        //     inner.last_pipeline_type = Some(pipeline.pipeline_type());
-        //
-        //     let barrier_required = last_pipeline_type != Some(pipeline.pipeline_type());
-        //
-        //     match pipeline.pipeline_type() {
-        //         RafxPipelineType::Graphics => {
-        //             let render_encoder = inner.render_encoder.as_ref().unwrap();
-        //             let render_encoder_info = pipeline.render_encoder_info.as_ref().unwrap();
-        //             render_encoder
-        //                 .set_render_pipeline_state(pipeline.gl_render_pipeline().unwrap());
-        //             render_encoder.set_cull_mode(render_encoder_info.mtl_cull_mode);
-        //             render_encoder
-        //                 .set_front_facing_winding(render_encoder_info.mtl_front_facing_winding);
-        //             render_encoder
-        //                 .set_triangle_fill_mode(render_encoder_info.mtl_triangle_fill_mode);
-        //             render_encoder.set_depth_bias(
-        //                 render_encoder_info.mtl_depth_bias,
-        //                 render_encoder_info.mtl_depth_bias_slope_scaled,
-        //                 0.0,
-        //             );
-        //             render_encoder.set_depth_clip_mode(render_encoder_info.mtl_depth_clip_mode);
-        //             if let Some(mtl_depth_stencil_state) =
-        //                 &render_encoder_info.mtl_depth_stencil_state
-        //             {
-        //                 render_encoder.set_depth_stencil_state(mtl_depth_stencil_state);
-        //             }
-        //
-        //             inner.primitive_type = render_encoder_info.mtl_primitive_type;
-        //             self.flush_render_targets_to_make_readable(&mut *inner);
-        //         }
-        //         RafxPipelineType::Compute => {
-        //             if !inner.compute_encoder.is_some() {
-        //                 Self::do_end_current_encoders(&self.queue, &mut *inner, barrier_required)?;
-        //
-        //                 let compute_encoder = inner
-        //                     .command_buffer
-        //                     .as_ref()
-        //                     .unwrap()
-        //                     .new_compute_command_encoder();
-        //                 inner.compute_encoder = Some(compute_encoder.to_owned());
-        //             }
-        //
-        //             let compute_encoder_info = pipeline.compute_encoder_info.as_ref().unwrap();
-        //             let compute_threads_per_group = compute_encoder_info.compute_threads_per_group;
-        //             inner.compute_threads_per_group_x = compute_threads_per_group[0];
-        //             inner.compute_threads_per_group_y = compute_threads_per_group[1];
-        //             inner.compute_threads_per_group_z = compute_threads_per_group[2];
-        //
-        //             inner
-        //                 .compute_encoder
-        //                 .as_ref()
-        //                 .unwrap()
-        //                 .set_compute_pipeline_state(pipeline.gl_compute_pipeline().unwrap());
-        //             self.flush_render_targets_to_make_readable(&mut *inner);
-        //         }
-        //     }
-        //
-        //     Ok(())
-        // })
+        if gl_depth_stencil_state.stencil_test_enable {
+            gl_context.gl_enable(gles20::STENCIL_TEST)?;
+            gl_context.gl_stencil_mask(gl_depth_stencil_state.stencil_write_mask as _)?;
+
+            gl_context.gl_stencil_func_separate(gles20::FRONT, gl_depth_stencil_state.front_stencil_compare_op, 0, !0)?;
+            gl_context.gl_stencil_op_separate(
+                gles20::FRONT,
+                gl_depth_stencil_state.front_stencil_fail_op,
+                gl_depth_stencil_state.front_depth_fail_op,
+                gl_depth_stencil_state.front_stencil_pass_op
+            )?;
+
+            gl_context.gl_stencil_func_separate(gles20::BACK, gl_depth_stencil_state.back_stencil_compare_op, 0, !0)?;
+            gl_context.gl_stencil_op_separate(
+                gles20::BACK,
+                gl_depth_stencil_state.back_stencil_fail_op,
+                gl_depth_stencil_state.back_depth_fail_op,
+                gl_depth_stencil_state.back_stencil_pass_op
+            )?;
+        } else {
+            gl_context.gl_disable(gles20::STENCIL_TEST)?;
+        }
+
+        if gl_blend_state.enabled {
+            gl_context.gl_enable(gles20::BLEND)?;
+            gl_context.gl_blend_func_separate(
+                gl_blend_state.src_factor,
+                gl_blend_state.dst_factor,
+                gl_blend_state.src_factor_alpha,
+                gl_blend_state.dst_factor_alpha
+            )?;
+
+            gl_context.gl_blend_equation_separate(gl_blend_state.blend_op, gl_blend_state.blend_op_alpha)?;
+        } else {
+            gl_context.gl_disable(gles20::BLEND)?;
+        }
+
+        Ok(())
     }
 
     pub fn cmd_bind_vertex_buffers(
@@ -316,22 +305,43 @@ impl RafxCommandBufferGl {
         first_binding: u32,
         bindings: &[RafxVertexBufferBinding],
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let inner = self.inner.borrow();
-        // let render_encoder = inner.render_encoder.as_ref().unwrap();
-        //
-        // let mut binding_index = first_binding;
-        // for binding in bindings {
-        //     render_encoder.set_vertex_buffer(
-        //         super::util::vertex_buffer_adjusted_buffer_index(binding_index),
-        //         Some(binding.buffer.gl_buffer().unwrap().gl_buffer()),
-        //         binding.byte_offset as _,
-        //     );
-        //
-        //     binding_index += 1;
-        // }
-        //
-        // Ok(())
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+        assert!(first_binding + bindings.len() as u32 <= self.queue.device_context().device_info().max_vertex_attribute_count);
+
+        // Binding multiple vertex buffers not currently supported
+        assert!(bindings.len() < 2);
+        assert_eq!(first_binding, 0);
+
+        let gl_context = self.queue.device_context().gl_context();
+
+        let mut binding_index = first_binding;
+        for binding in bindings {
+            let gl_buffer = binding.buffer.gl_buffer().unwrap();
+            assert_eq!(gl_buffer.gl_target(), gles20::ARRAY_BUFFER);
+            gl_context.gl_bind_buffer(gl_buffer.gl_target(), gl_buffer.gl_buffer_id().unwrap());
+            state.vertex_buffer_byte_offset = binding.byte_offset as u32;
+
+            binding_index += 1;
+        }
+
+        let gl_pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap();
+        for attribute in &gl_pipeline_info.gl_attributes {
+            let byte_offset = state.vertex_buffer_byte_offset + attribute.byte_offset;
+
+            gl_context.gl_vertex_attrib_pointer(
+                attribute.location,
+                attribute.channel_count as _,
+                attribute.gl_type,
+                attribute.is_normalized,
+                attribute.stride,
+                byte_offset as _
+            )?;
+
+            gl_context.gl_enable_vertex_attrib_array(attribute.location)?;
+        }
+
+        Ok(())
     }
 
     pub fn cmd_bind_index_buffer(
