@@ -1,7 +1,7 @@
 use crate::gl::{RafxDeviceContextGl, GlCompiledShader, ProgramId, RafxShaderGl};
 use crate::{RafxComputePipelineDef, RafxGraphicsPipelineDef, RafxPipelineType, RafxResult, RafxRootSignature, RafxShaderStageFlags, RafxRasterizerState};
 use crate::gl::gles20;
-use crate::gl::conversions::GlRasterizerState;
+use crate::gl::conversions::{GlRasterizerState, GlBlendState, GlDepthStencilState};
 // fn gl_entry_point_name(name: &str) -> &str {
 //     // "main" is not an allowed entry point name. spirv_cross adds a 0 to the end of any
 //     // unallowed entry point names so do that here too
@@ -42,12 +42,10 @@ pub struct RafxPipelineGl {
     // It's a RafxRootSignatureGl, but stored as RafxRootSignature so we can return refs to it
     root_signature: RafxRootSignature,
     shader: RafxShaderGl,
-    //pipeline: GlPipelineState,
 
     gl_rasterizer_state: GlRasterizerState,
-
-    //pub(crate) render_encoder_info: Option<PipelineRenderEncoderInfo>,
-    //pub(crate) compute_encoder_info: Option<PipelineComputeEncoderInfo>,
+    gl_depth_stencil_state: GlDepthStencilState,
+    gl_blend_state: GlBlendState,
 }
 
 impl RafxPipelineGl {
@@ -85,13 +83,19 @@ impl RafxPipelineGl {
         device_context: &RafxDeviceContextGl,
         pipeline_def: &RafxGraphicsPipelineDef,
     ) -> RafxResult<Self> {
-
         let gl_context = device_context.gl_context();
         let shader = pipeline_def.shader.gl_shader().unwrap();
         let program = shader.gl_program_id();
 
-        //TODO: Check vertex layout is within hardware limits
         for attribute in &pipeline_def.vertex_layout.attributes {
+            if attribute.location >= device_context.device_info().max_vertex_attribute_count {
+                Err(format!(
+                    "Vertex attribute location {} exceeds max of {}",
+                    attribute.location,
+                    device_context.device_info().max_vertex_attribute_count
+                ))?;
+            }
+
             gl_context.gl_bind_attrib_location(
                 program,
                 attribute.location,
@@ -105,7 +109,9 @@ impl RafxPipelineGl {
             root_signature: pipeline_def.root_signature.clone(),
             pipeline_type: RafxPipelineType::Graphics,
             shader: shader.clone(),
-
+            gl_rasterizer_state: pipeline_def.rasterizer_state.into(),
+            gl_depth_stencil_state: pipeline_def.depth_state.into(),
+            gl_blend_state: pipeline_def.blend_state.gl_blend_state()?
         })
 
         //TODO: Cache rasterizer, depth stencil, blend states

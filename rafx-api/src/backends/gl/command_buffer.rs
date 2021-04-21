@@ -233,9 +233,8 @@ impl RafxCommandBufferGl {
         let gl_context = self.queue.device_context().gl_context();
         gl_context.gl_use_program(pipeline.gl_program_id())?;
 
-        const MAX_VERTEX_ATTRIBUTE_COUNT: u32 = 16;
-
-        for i in 0..MAX_VERTEX_ATTRIBUTE_COUNT {
+        let max_attribs = self.queue.device_context().device_info().max_vertex_attribute_count;
+        for i in 0..max_attribs {
             gl_context.gl_disable_vertex_attrib_array(i);
         }
 

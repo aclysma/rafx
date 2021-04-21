@@ -43,7 +43,10 @@ pub struct RafxDeviceInfo {
 
     // Requires iOS 14.0, macOS 10.12
     pub supports_clamp_to_border_color: bool,
-    // max_vertex_input_binding_count: u32,
+
+    pub max_vertex_attribute_count: u32,
+
+    //max_vertex_input_binding_count: u32,
     // max_root_signature_dwords: u32,
     // wave_lane_count: u32,
     // wave_ops_support_flags: u32,

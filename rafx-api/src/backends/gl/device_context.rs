@@ -46,16 +46,6 @@ impl RafxDeviceContextGlInner {
         // GL requires a window for initialization
         let gl_context = gl_context_manager.main_context().clone();
 
-        let pack_alignment = gl_context.gl_get_integerv(gles20::PACK_ALIGNMENT) as u32;
-
-        let device_info = RafxDeviceInfo {
-            min_uniform_buffer_offset_alignment: pack_alignment,
-            min_storage_buffer_offset_alignment: pack_alignment,
-            upload_buffer_texture_alignment: pack_alignment,
-            upload_buffer_texture_row_alignment: pack_alignment,
-            supports_clamp_to_border_color: false, // requires GLES 3.2 or an extension
-        };
-
         let renderer = gl_context.gl_get_string(gles20::RENDERER);
         log::debug!("Renderer: {}", renderer);
         let version = gl_context.gl_get_string(gles20::VERSION);
@@ -64,6 +54,19 @@ impl RafxDeviceContextGlInner {
         log::debug!("Vendor: {}", vendor);
         let shading_language_version = gl_context.gl_get_string(gles20::SHADING_LANGUAGE_VERSION);
         log::debug!("Shading Language Version: {}", shading_language_version);
+
+
+        let pack_alignment = gl_context.gl_get_integerv(gles20::PACK_ALIGNMENT) as u32;
+        let max_vertex_attribute_count = gl_context.gl_get_integerv(gles20::MAX_VERTEX_ATTRIBS) as u32;
+
+        let device_info = RafxDeviceInfo {
+            min_uniform_buffer_offset_alignment: pack_alignment,
+            min_storage_buffer_offset_alignment: pack_alignment,
+            upload_buffer_texture_alignment: pack_alignment,
+            upload_buffer_texture_row_alignment: pack_alignment,
+            supports_clamp_to_border_color: false, // requires GLES 3.2 or an extension
+            max_vertex_attribute_count,
+        };
 
         //TODO: Support extensions
 
