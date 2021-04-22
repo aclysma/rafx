@@ -11,7 +11,7 @@ use crate::{RafxResult, RafxError};
 use crate::gl::gles20::types::{GLsizeiptr, GLint, GLboolean};
 use std::ffi::{CStr, CString};
 use std::ops::Range;
-use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo, RenderbufferId};
+use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo, RenderbufferId, VertexArrayObjectId};
 use std::cmp::max;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,7 +35,11 @@ impl GlContext {
     pub fn new(window: &dyn HasRawWindowHandle, share: Option<&GlContext>) -> Self {
         let window_hash = super::calculate_window_hash(window);
 
-        let context = raw_gl_context::GlContext::create(window, GlConfig::default(), share.map(|x| x.context())).unwrap();
+        let mut config = GlConfig::default();
+        config.profile = raw_gl_context::Profile::Core;
+        config.version = (3, 2);
+
+        let context = raw_gl_context::GlContext::create(window, config, share.map(|x| x.context())).unwrap();
         context.make_current();
         let gles2 = Gles2::load_with(|symbol| context.get_proc_address(symbol) as *const _);
         context.make_not_current();
@@ -169,6 +173,29 @@ impl GlContext {
     pub fn gl_destroy_buffer(&self, buffer_id: BufferId) -> RafxResult<()> {
         unsafe {
             self.gles2.DeleteBuffers(1, &buffer_id.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_create_vertex_array(&self) -> RafxResult<VertexArrayObjectId> {
+        unsafe {
+            let mut vao = 0;
+            self.gles2.GenVertexArraysOES(1, &mut vao);
+            self.check_for_error()?;
+            Ok(VertexArrayObjectId(vao))
+        }
+    }
+
+    pub fn gl_destroy_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DeleteVertexArraysOES(1, &vao_id.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_bind_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.BindVertexArrayOES(vao_id.0);
             self.check_for_error()
         }
     }
