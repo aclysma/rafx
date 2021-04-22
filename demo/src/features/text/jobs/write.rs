@@ -25,8 +25,8 @@ lazy_static::lazy_static! {
 
 use super::TextImageUpdate;
 use rafx::api::{
-    RafxCmdCopyBufferToTextureParams, RafxIndexBufferBinding, RafxIndexType, RafxResourceState,
-    RafxBarrierQueueTransition, RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxBarrierQueueTransition, RafxCmdCopyBufferToTextureParams, RafxIndexBufferBinding,
+    RafxIndexType, RafxResourceState, RafxTextureBarrier, RafxVertexBufferBinding,
 };
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::nodes::{push_view_indexed_value, RenderJobBeginExecuteGraphContext, RenderViewIndex};
