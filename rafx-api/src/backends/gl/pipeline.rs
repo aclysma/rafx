@@ -42,6 +42,7 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub(crate) struct GlAttribute {
+    pub(crate) buffer_index: u32,
     pub(crate) location: u32,
     pub(crate) channel_count: u32,
     pub(crate) gl_type: GLenum,
@@ -119,6 +120,7 @@ impl RafxPipelineGl {
             let gl_type = attribute.format.gl_type().ok_or_else(|| format!("Unsupported format {:?}", attribute.format))?;
 
             gl_attributes.push(GlAttribute {
+                buffer_index: attribute.buffer_index,
                 location: attribute.location,
                 channel_count: attribute.format.channel_count(),
                 gl_type,

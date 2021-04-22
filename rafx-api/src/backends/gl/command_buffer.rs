@@ -64,8 +64,10 @@ impl RafxCommandBufferGl {
         assert!(state.surface_size.is_none());
 
         state.is_started = false;
-        state.vertex_buffer_byte_offset = 0;
         state.current_gl_pipeline_info = None;
+        for offset in &mut state.vertex_buffer_begin_offset {
+            *offset = 0;
+        }
 
         self.queue.device_context().gl_context().gl_bind_vertex_array(NONE_VERTEX_ARRAY_OBJECT);
 
@@ -315,36 +317,39 @@ impl RafxCommandBufferGl {
         assert!(state.is_started);
         assert!(first_binding + bindings.len() as u32 <= self.queue.device_context().device_info().max_vertex_attribute_count);
 
-        // Binding multiple vertex buffers not currently supported
-        assert!(bindings.len() < 2);
-        assert_eq!(first_binding, 0);
-
+        let gl_pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap().clone();
         let gl_context = self.queue.device_context().gl_context();
 
         let mut binding_index = first_binding;
         for binding in bindings {
             let gl_buffer = binding.buffer.gl_buffer().unwrap();
             assert_eq!(gl_buffer.gl_target(), gles20::ARRAY_BUFFER);
+
+            // Bind the vertex buffer
             gl_context.gl_bind_buffer(gl_buffer.gl_target(), gl_buffer.gl_buffer_id().unwrap());
-            state.vertex_buffer_byte_offset = binding.byte_offset as u32;
+            state.vertex_buffer_begin_offset[binding_index as usize] = binding.byte_offset as u32;
+
+            // Setup all the attributes associated with this vertex buffer
+            for attribute in &gl_pipeline_info.gl_attributes {
+                if attribute.buffer_index != binding_index {
+                    continue;
+                }
+
+                let byte_offset = binding.byte_offset as u32 + attribute.byte_offset;
+                gl_context.gl_vertex_attrib_pointer(
+                    attribute.location,
+                    attribute.channel_count as _,
+                    attribute.gl_type,
+                    attribute.is_normalized,
+                    attribute.stride,
+                    byte_offset
+                )?;
+                dbg!(attribute, byte_offset);
+
+                gl_context.gl_enable_vertex_attrib_array(attribute.location)?;
+            }
 
             binding_index += 1;
-        }
-
-        let gl_pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap();
-        for attribute in &gl_pipeline_info.gl_attributes {
-            let byte_offset = state.vertex_buffer_byte_offset + attribute.byte_offset;
-
-            gl_context.gl_vertex_attrib_pointer(
-                attribute.location,
-                attribute.channel_count as _,
-                attribute.gl_type,
-                attribute.is_normalized,
-                attribute.stride,
-                byte_offset as _
-            )?;
-
-            gl_context.gl_enable_vertex_attrib_array(attribute.location)?;
         }
 
         Ok(())
@@ -470,14 +475,14 @@ impl RafxCommandBufferGl {
         vertex_count: u32,
         first_vertex: u32,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let inner = self.inner.borrow();
-        // inner.render_encoder.as_ref().unwrap().draw_primitives(
-        //     inner.primitive_type,
-        //     first_vertex as _,
-        //     vertex_count as _,
-        // );
-        // Ok(())
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        let gl_context = self.queue.device_context().gl_context();
+        let pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap();
+        gl_context.gl_draw_arrays(pipeline_info.gl_topology, first_vertex as _, vertex_count as _)?;
+
+        Ok(())
     }
 
     pub fn cmd_draw_instanced(

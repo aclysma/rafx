@@ -8,7 +8,9 @@ pub(crate) struct CommandPoolGlStateInner {
     pub(crate) is_started: bool,
     pub(crate) surface_size: Option<RafxExtents2D>,
     pub(crate) current_gl_pipeline_info: Option<Arc<GlPipelineInfo>>,
-    pub(crate) vertex_buffer_byte_offset: u32,
+
+    // One per possible bound vertex buffer (could be 1 per attribute!)
+    pub(crate) vertex_buffer_begin_offset: Vec<u32>,
 }
 
 #[derive(Clone, Debug)]
@@ -17,12 +19,12 @@ pub(crate) struct CommandPoolGlState {
 }
 
 impl CommandPoolGlState {
-    fn new() -> Self {
+    fn new(device_context: &RafxDeviceContextGl) -> Self {
         let inner = CommandPoolGlStateInner {
             is_started: false,
             surface_size: None,
             current_gl_pipeline_info: None,
-            vertex_buffer_byte_offset: 0
+            vertex_buffer_begin_offset: vec![0; device_context.device_info().max_vertex_attribute_count as usize]
         };
 
         CommandPoolGlState {
@@ -81,7 +83,7 @@ impl RafxCommandPoolGl {
         _command_pool_def: &RafxCommandPoolDef,
     ) -> RafxResult<RafxCommandPoolGl> {
         Ok(RafxCommandPoolGl {
-            command_pool_state: CommandPoolGlState::new(),
+            command_pool_state: CommandPoolGlState::new(queue.device_context()),
             queue: queue.clone(),
         })
     }

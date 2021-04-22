@@ -51,6 +51,10 @@ impl GlContext {
         }
     }
 
+    pub fn supports_vertex_array_objects(&self) -> bool {
+        self.gles2.GenVertexArrays.is_loaded()
+    }
+
     pub fn window_hash(&self) -> WindowHash {
         self.window_hash
     }
@@ -180,7 +184,7 @@ impl GlContext {
     pub fn gl_create_vertex_array(&self) -> RafxResult<VertexArrayObjectId> {
         unsafe {
             let mut vao = 0;
-            self.gles2.GenVertexArraysOES(1, &mut vao);
+            self.gles2.GenVertexArrays(1, &mut vao);
             self.check_for_error()?;
             Ok(VertexArrayObjectId(vao))
         }
@@ -188,14 +192,14 @@ impl GlContext {
 
     pub fn gl_destroy_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
         unsafe {
-            self.gles2.DeleteVertexArraysOES(1, &vao_id.0);
+            self.gles2.DeleteVertexArrays(1, &vao_id.0);
             self.check_for_error()
         }
     }
 
     pub fn gl_bind_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
         unsafe {
-            self.gles2.BindVertexArrayOES(vao_id.0);
+            self.gles2.BindVertexArray(vao_id.0);
             self.check_for_error()
         }
     }
@@ -582,6 +586,13 @@ impl GlContext {
     pub fn gl_disable_vertex_attrib_array(&self, index: u32) -> RafxResult<()> {
         unsafe {
             self.gles2.DisableVertexAttribArray(index);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_draw_arrays(&self, mode: GLenum, first: i32, count: i32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DrawArrays(mode, first, count);
             self.check_for_error()
         }
     }

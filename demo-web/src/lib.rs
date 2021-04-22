@@ -390,7 +390,7 @@ pub fn update_loop(
                     //     &descriptor_set_array,
                     //     presentable_frame.rotating_frame_index() as u32,
                     // ).unwrap();
-                    // cmd_buffer.cmd_draw(3, 0).unwrap();
+                    cmd_buffer.cmd_draw(3, 0).unwrap();
                     //
                     // // Put it into a layout where we can present it
 
