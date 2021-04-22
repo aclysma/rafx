@@ -158,17 +158,6 @@ impl WriteJob for TextWriteJob {
                     &*write_context.command_buffer,
                     rafx_image,
                 )?;
-                write_context.command_buffer.cmd_resource_barrier(
-                    &[],
-                    &[RafxTextureBarrier {
-                        texture: &rafx_image,
-                        src_state: RafxResourceState::COPY_SRC,
-                        dst_state: RafxResourceState::SHADER_RESOURCE,
-                        queue_transition: RafxBarrierQueueTransition::None,
-                        array_slice: None,
-                        mip_slice: Some(0),
-                    }],
-                )?;
             }
 
             write_context.command_buffer.cmd_resource_barrier(
