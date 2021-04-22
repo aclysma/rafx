@@ -13,7 +13,7 @@ use winit::platform::web::WindowExtWebSys;
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue>
 {
-    console_log::init_with_level(Level::Trace).unwrap();
+    console_log::init_with_level(Level::Debug).unwrap();
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()

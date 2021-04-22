@@ -1,7 +1,7 @@
 use raw_window_handle::HasRawWindowHandle;
 use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader, WebGlProgram, WebGlUniformLocation, WebGlRenderbuffer};
 use crate::{RafxResult, RafxError};
-use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER, NONE_PROGRAM, RenderbufferId, NONE_RENDERBUFFER};
+use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER, NONE_PROGRAM, RenderbufferId, NONE_RENDERBUFFER, VertexArrayObjectId};
 use crate::gl::gles20::types::*;
 use std::ffi::{CString, CStr};
 use fnv::FnvHashMap;
@@ -181,6 +181,21 @@ impl GlContext {
         self.check_for_error()
     }
 
+    pub fn gl_create_vertex_array(&self) -> RafxResult<VertexArrayObjectId> {
+        //unimplemented!();
+        Ok(VertexArrayObjectId(1))
+    }
+
+    pub fn gl_destroy_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
+        //unimplemented!();
+        Ok(())
+    }
+
+    pub fn gl_bind_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
+        //unimplemented!();
+        Ok(())
+    }
+
     pub fn gl_bind_buffer(&self, target: GLenum, buffer_id: BufferId) -> RafxResult<()> {
         if buffer_id == NONE_BUFFER {
             self.context.bind_buffer(target, None);
@@ -190,6 +205,16 @@ impl GlContext {
             self.context.bind_buffer(target, Some(buffer));
         }
 
+        self.check_for_error()
+    }
+
+    pub fn gl_vertex_attrib_pointer(&self, index: u32, size: i32, type_: GLenum, normalized: bool, stride: u32, byte_offset: u32) -> RafxResult<()> {
+        self.context.vertex_attrib_pointer_with_i32(index, size, type_, normalized, stride as _, byte_offset as _);
+        self.check_for_error()
+    }
+
+    pub fn gl_enable_vertex_attrib_array(&self, index: u32) -> RafxResult<()> {
+        self.context.enable_vertex_attrib_array(index);
         self.check_for_error()
     }
 
@@ -399,6 +424,56 @@ impl GlContext {
         self.check_for_error()
     }
 
+    pub fn gl_enable(&self, value: GLenum) -> RafxResult<()> {
+        self.context.enable(value);
+        self.check_for_error()
+    }
+
+    pub fn gl_cull_face(&self, mode: GLenum) -> RafxResult<()> {
+        self.context.cull_face(mode);
+        self.check_for_error()
+    }
+
+    pub fn gl_front_face(&self, mode: GLenum) -> RafxResult<()> {
+        self.context.front_face(mode);
+        self.check_for_error()
+    }
+
+    pub fn gl_depth_mask(&self, flag: bool) -> RafxResult<()> {
+        self.context.depth_mask(flag);
+        self.check_for_error()
+    }
+
+    pub fn gl_depth_func(&self, value: GLenum) -> RafxResult<()> {
+        self.context.depth_func(value);
+        self.check_for_error()
+    }
+
+    pub fn gl_stencil_mask(&self, mask: u32) -> RafxResult<()> {
+        self.context.stencil_mask(mask);
+        self.check_for_error()
+    }
+
+    pub fn gl_stencil_func_separate(&self, face: GLenum, func: GLenum, ref_value: i32, mask: GLenum) -> RafxResult<()> {
+        self.context.stencil_func_separate(face, func, ref_value, mask);
+        self.check_for_error()
+    }
+
+    pub fn gl_stencil_op_separate(&self, face: GLenum, sfail: GLenum, dpfail: GLenum, dppass: GLenum) -> RafxResult<()> {
+        self.context.stencil_op_separate(face, sfail, dpfail, dppass);
+        self.check_for_error()
+    }
+
+    pub fn gl_blend_func_separate(&self, sfactor_rgb: GLenum, dfactor_rgb: GLenum, sfactor_alpha: GLenum, dfactor_alpha: GLenum) -> RafxResult<()> {
+        self.context.blend_func_separate(sfactor_rgb, dfactor_rgb, sfactor_alpha, dfactor_alpha);
+        self.check_for_error()
+    }
+
+    pub fn gl_blend_equation_separate(&self, mode_rgb: GLenum, mode_alpha: GLenum) -> RafxResult<()> {
+        self.context.blend_equation_separate(mode_rgb, mode_alpha);
+        self.check_for_error()
+    }
+
     pub fn gl_bind_attrib_location(&self, program_id: ProgramId, index: u32, name: &str) -> RafxResult<()> {
         let programs = self.programs.lock().unwrap();
         self.context.bind_attrib_location(programs.get(&program_id).unwrap(), index, name);
@@ -442,5 +517,15 @@ impl GlContext {
         let result = self.context.check_framebuffer_status(target);
         self.check_for_error()?;
         Ok(result)
+    }
+
+    pub fn gl_disable_vertex_attrib_array(&self, index: u32) -> RafxResult<()> {
+        self.context.disable_vertex_attrib_array(index);
+        self.check_for_error()
+    }
+
+    pub fn gl_draw_arrays(&self, mode: GLenum, first: i32, count: i32) -> RafxResult<()> {
+        self.context.draw_arrays(mode, first, count);
+        self.check_for_error()
     }
 }

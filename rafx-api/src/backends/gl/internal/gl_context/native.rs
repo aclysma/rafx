@@ -51,9 +51,9 @@ impl GlContext {
         }
     }
 
-    pub fn supports_vertex_array_objects(&self) -> bool {
-        self.gles2.GenVertexArrays.is_loaded()
-    }
+    // pub fn supports_vertex_array_objects(&self) -> bool {
+    //     self.gles2.GenVertexArrays.is_loaded()
+    // }
 
     pub fn window_hash(&self) -> WindowHash {
         self.window_hash
