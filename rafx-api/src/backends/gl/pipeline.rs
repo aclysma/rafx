@@ -57,7 +57,6 @@ pub(crate) struct GlPipelineInfo {
     pub(crate) gl_depth_stencil_state: GlDepthStencilState,
     pub(crate) gl_blend_state: GlBlendState,
     pub(crate) gl_topology: GLenum,
-    pub(crate) vertex_buffer_stride: u32,
     pub(crate) gl_attributes: Vec<GlAttribute>
 }
 
@@ -99,7 +98,6 @@ impl RafxPipelineGl {
         // Multiple buffers not currently supported
         assert!(pipeline_def.vertex_layout.buffers.len() <= 1);
 
-        let vertex_buffer_stride = pipeline_def.vertex_layout.buffers[0].stride;
         let mut gl_attributes = Vec::with_capacity(pipeline_def.vertex_layout.attributes.len());
 
         for attribute in &pipeline_def.vertex_layout.attributes {
@@ -119,12 +117,14 @@ impl RafxPipelineGl {
 
             let gl_type = attribute.format.gl_type().ok_or_else(|| format!("Unsupported format {:?}", attribute.format))?;
 
+            let buffer = &pipeline_def.vertex_layout.buffers[attribute.buffer_index as usize];
+
             gl_attributes.push(GlAttribute {
                 buffer_index: attribute.buffer_index,
                 location: attribute.location,
                 channel_count: attribute.format.channel_count(),
                 gl_type,
-                stride: attribute.format.block_or_pixel_size_in_bytes(),
+                stride: buffer.stride,
                 is_normalized: attribute.format.is_normalized(),
                 byte_offset: attribute.byte_offset
             });
@@ -149,7 +149,6 @@ impl RafxPipelineGl {
             gl_depth_stencil_state: pipeline_def.depth_state.into(),
             gl_blend_state: pipeline_def.blend_state.gl_blend_state()?,
             gl_topology,
-            vertex_buffer_stride,
             gl_attributes
         };
 
