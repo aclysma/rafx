@@ -3,6 +3,7 @@ use raw_window_handle::HasRawWindowHandle;
 use std::sync::{Arc, Mutex};
 use fnv::FnvHasher;
 use std::hash::{Hash, Hasher};
+use crate::RafxResult;
 
 pub struct GlContextManager {
     main_context: Arc<GlContext>,
@@ -10,14 +11,14 @@ pub struct GlContextManager {
 }
 
 impl GlContextManager {
-    pub fn new(window: &dyn HasRawWindowHandle) -> GlContextManager{
-        let main_context = Arc::new(GlContext::new(window, None));
+    pub fn new(window: &dyn HasRawWindowHandle) -> RafxResult<GlContextManager> {
+        let main_context = Arc::new(GlContext::new(window, None)?);
         main_context.make_current();
 
-        GlContextManager {
+        Ok(GlContextManager {
             main_context: main_context.clone(),
             current_context: Mutex::new(Some(main_context))
-        }
+        })
     }
 
     pub fn main_context(&self) -> &Arc<GlContext> {
@@ -51,11 +52,11 @@ impl GlContextManager {
     // - The main context must never change or be invalidated
     // - Calling create_surface_context on the same window is only allowed if the previously
     //   returned context was torn down completely
-    pub fn create_surface_context(&self, window: &dyn HasRawWindowHandle) -> Arc<GlContext> {
+    pub fn create_surface_context(&self, window: &dyn HasRawWindowHandle) -> RafxResult<Arc<GlContext>> {
         if self.main_context.window_hash() == super::gl_context::calculate_window_hash(window) {
-            self.main_context.clone()
+            Ok(self.main_context.clone())
         } else {
-            Arc::new(GlContext::new(window, Some(&*self.main_context)))
+            Ok(Arc::new(GlContext::new(window, Some(&*self.main_context))?))
         }
     }
 }

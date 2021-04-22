@@ -1,4 +1,4 @@
-use crate::gl::{RafxCommandBufferGl, RafxCommandPoolGl, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl, RafxSwapchainGl, VertexArrayObjectId};
+use crate::gl::{RafxCommandBufferGl, RafxCommandPoolGl, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl, RafxSwapchainGl};
 use crate::{RafxCommandPoolDef, RafxPresentSuccessResult, RafxQueueType, RafxResult};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
@@ -11,16 +11,6 @@ pub struct RafxQueueGlInner {
     device_context: RafxDeviceContextGl,
     queue_type: RafxQueueType,
     queue_id: u32,
-
-    // We use one global VAO and rebind it when we bind vertex buffers. It is bound/unbound when
-    // a command buffer begins/ends
-    vertex_array_object: VertexArrayObjectId,
-}
-
-impl Drop for RafxQueueGlInner {
-    fn drop(&mut self) {
-        self.device_context.gl_context().gl_destroy_vertex_array(self.vertex_array_object);
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -41,10 +31,6 @@ impl RafxQueueGl {
         &self.inner.device_context
     }
 
-    pub(crate) fn gl_vertex_buffer_array_object(&self) -> VertexArrayObjectId {
-        self.inner.vertex_array_object
-    }
-
     pub fn create_command_pool(
         &self,
         command_pool_def: &RafxCommandPoolDef,
@@ -56,14 +42,12 @@ impl RafxQueueGl {
         device_context: &RafxDeviceContextGl,
         queue_type: RafxQueueType,
     ) -> RafxResult<RafxQueueGl> {
-        let vertex_array_object = device_context.gl_context().gl_create_vertex_array()?;
 
         let queue_id = NEXT_QUEUE_ID.fetch_add(1, Ordering::Relaxed);
         let inner = RafxQueueGlInner {
             device_context: device_context.clone(),
             queue_type,
             queue_id,
-            vertex_array_object
         };
 
         Ok(RafxQueueGl {

@@ -1,7 +1,7 @@
 use raw_window_handle::HasRawWindowHandle;
 use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader, WebGlProgram, WebGlUniformLocation, WebGlRenderbuffer};
 use crate::{RafxResult, RafxError};
-use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER, NONE_PROGRAM, RenderbufferId, NONE_RENDERBUFFER, VertexArrayObjectId};
+use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER, NONE_PROGRAM, RenderbufferId, NONE_RENDERBUFFER};
 use crate::gl::gles20::types::*;
 use std::ffi::{CString, CStr};
 use fnv::FnvHashMap;
@@ -49,7 +49,7 @@ impl PartialEq for GlContext {
 }
 
 impl GlContext {
-    pub fn new(window: &dyn HasRawWindowHandle, share: Option<&GlContext>) -> Self {
+    pub fn new(window: &dyn HasRawWindowHandle, share: Option<&GlContext>) -> RafxResult<Self> {
         if share.is_some() {
             panic!("rafx-api web does not support multiple GL contexts");
         }
@@ -79,14 +79,14 @@ impl GlContext {
 
         let window_hash = super::calculate_window_hash(window);
 
-        GlContext {
+        Ok(GlContext {
             context,
             window_hash,
             buffers: Default::default(),
             shaders: Default::default(),
             programs: Default::default(),
             renderbuffers: Default::default(),
-        }
+        })
     }
 
     pub fn window_hash(&self) -> WindowHash {
@@ -179,21 +179,6 @@ impl GlContext {
         let buffer = self.buffers.lock().unwrap().remove(&buffer_id).unwrap();
         self.context.delete_buffer(Some(&buffer));
         self.check_for_error()
-    }
-
-    pub fn gl_create_vertex_array(&self) -> RafxResult<VertexArrayObjectId> {
-        //unimplemented!();
-        Ok(VertexArrayObjectId(1))
-    }
-
-    pub fn gl_destroy_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
-        //unimplemented!();
-        Ok(())
-    }
-
-    pub fn gl_bind_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
-        //unimplemented!();
-        Ok(())
     }
 
     pub fn gl_bind_buffer(&self, target: GLenum, buffer_id: BufferId) -> RafxResult<()> {

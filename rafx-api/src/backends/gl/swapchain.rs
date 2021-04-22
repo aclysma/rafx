@@ -56,7 +56,7 @@ impl RafxSwapchainGl {
 
         let mut resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
 
-        let surface_context = device_context.gl_context_manager().create_surface_context(raw_window_handle);
+        let surface_context = device_context.gl_context_manager().create_surface_context(raw_window_handle)?;
 
         //TODO: set GL swap interval (vsync)
 

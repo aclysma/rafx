@@ -42,7 +42,7 @@ impl Drop for RafxDeviceContextGlInner {
 impl RafxDeviceContextGlInner {
     pub fn new(window: &dyn HasRawWindowHandle) -> RafxResult<Self> {
         log::debug!("Initializing GL backend");
-        let gl_context_manager = super::internal::GlContextManager::new(window);
+        let gl_context_manager = super::internal::GlContextManager::new(window)?;
         // GL requires a window for initialization
         let gl_context = gl_context_manager.main_context().clone();
 

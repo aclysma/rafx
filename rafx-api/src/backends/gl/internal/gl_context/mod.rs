@@ -33,10 +33,6 @@ pub struct BufferId(pub u32);
 pub const NONE_BUFFER: BufferId = BufferId(gles20::NONE);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct VertexArrayObjectId(pub u32);
-pub const NONE_VERTEX_ARRAY_OBJECT: VertexArrayObjectId = VertexArrayObjectId(gles20::NONE);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TextureId(pub u32);
 pub const NONE_TEXTURE: TextureId = TextureId(gles20::NONE);
 

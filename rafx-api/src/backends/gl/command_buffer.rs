@@ -1,4 +1,4 @@
-use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState, NONE_RENDERBUFFER, NONE_VERTEX_ARRAY_OBJECT};
+use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState, NONE_RENDERBUFFER};
 use crate::{RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState, RafxResult, RafxTextureBarrier, RafxVertexBufferBinding, RafxExtents2D};
 use fnv::FnvHashSet;
 // use gl_rs::{
@@ -52,9 +52,6 @@ impl RafxCommandBufferGl {
         assert!(!state.is_started);
         state.is_started = true;
 
-        let vao = self.queue.gl_vertex_buffer_array_object();
-        self.queue.device_context().gl_context().gl_bind_vertex_array(vao);
-
         Ok(())
     }
 
@@ -68,8 +65,6 @@ impl RafxCommandBufferGl {
         for offset in &mut state.vertex_buffer_begin_offset {
             *offset = 0;
         }
-
-        self.queue.device_context().gl_context().gl_bind_vertex_array(NONE_VERTEX_ARRAY_OBJECT);
 
         Ok(())
     }
@@ -344,7 +339,6 @@ impl RafxCommandBufferGl {
                     attribute.stride,
                     byte_offset
                 )?;
-                dbg!(attribute, byte_offset);
 
                 gl_context.gl_enable_vertex_attrib_array(attribute.location)?;
             }

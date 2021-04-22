@@ -11,7 +11,7 @@ use crate::{RafxResult, RafxError};
 use crate::gl::gles20::types::{GLsizeiptr, GLint, GLboolean};
 use std::ffi::{CStr, CString};
 use std::ops::Range;
-use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo, RenderbufferId, VertexArrayObjectId};
+use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo, RenderbufferId};
 use std::cmp::max;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -23,6 +23,7 @@ pub struct GlContext {
     context: raw_gl_context::GlContext,
     gles2: Gles2,
     window_hash: WindowHash,
+    global_vao: u32,
 }
 
 impl PartialEq for GlContext {
@@ -31,8 +32,21 @@ impl PartialEq for GlContext {
     }
 }
 
+impl Drop for GlContext {
+    fn drop(&mut self) {
+        if self.gles2.GenVertexArrays.is_loaded() {
+            unsafe {
+                self.gles2.BindVertexArray(0);
+                self.check_for_error().unwrap();
+                self.gles2.DeleteVertexArrays(1, &self.global_vao);
+                self.check_for_error().unwrap();
+            }
+        }
+    }
+}
+
 impl GlContext {
-    pub fn new(window: &dyn HasRawWindowHandle, share: Option<&GlContext>) -> Self {
+    pub fn new(window: &dyn HasRawWindowHandle, share: Option<&GlContext>) -> RafxResult<Self> {
         let window_hash = super::calculate_window_hash(window);
 
         let mut config = GlConfig::default();
@@ -42,18 +56,26 @@ impl GlContext {
         let context = raw_gl_context::GlContext::create(window, config, share.map(|x| x.context())).unwrap();
         context.make_current();
         let gles2 = Gles2::load_with(|symbol| context.get_proc_address(symbol) as *const _);
+
+        let mut global_vao = 0;
+        if gles2.GenVertexArrays.is_loaded() {
+            unsafe {
+                gles2.GenVertexArrays(1, &mut global_vao);
+                check_for_error(&gles2)?;
+                gles2.BindVertexArray(global_vao);
+                check_for_error(&gles2)?;
+            }
+        }
+
         context.make_not_current();
 
-        GlContext {
+        Ok(GlContext {
             context,
             gles2,
-            window_hash
-        }
+            window_hash,
+            global_vao
+        })
     }
-
-    // pub fn supports_vertex_array_objects(&self) -> bool {
-    //     self.gles2.GenVertexArrays.is_loaded()
-    // }
 
     pub fn window_hash(&self) -> WindowHash {
         self.window_hash
@@ -69,9 +91,17 @@ impl GlContext {
 
     pub fn make_current(&self) {
         self.context.make_current();
+        unsafe {
+            self.gles2.BindVertexArray(self.global_vao);
+            self.check_for_error().unwrap();
+        }
     }
 
     pub fn make_not_current(&self) {
+        unsafe {
+            self.gles2.BindVertexArray(0);
+            self.check_for_error().unwrap();
+        }
         self.context.make_not_current();
     }
 
@@ -80,14 +110,7 @@ impl GlContext {
     }
 
     pub fn check_for_error(&self) -> RafxResult<()> {
-        unsafe {
-            let result = self.gles2.GetError();
-            if result != gles20::NO_ERROR {
-                Err(RafxError::GlError(result))
-            } else {
-                Ok(())
-            }
-        }
+        check_for_error(&self.gles2)
     }
 
     pub fn gl_get_integerv(&self, pname: u32) -> i32 {
@@ -177,29 +200,6 @@ impl GlContext {
     pub fn gl_destroy_buffer(&self, buffer_id: BufferId) -> RafxResult<()> {
         unsafe {
             self.gles2.DeleteBuffers(1, &buffer_id.0);
-            self.check_for_error()
-        }
-    }
-
-    pub fn gl_create_vertex_array(&self) -> RafxResult<VertexArrayObjectId> {
-        unsafe {
-            let mut vao = 0;
-            self.gles2.GenVertexArrays(1, &mut vao);
-            self.check_for_error()?;
-            Ok(VertexArrayObjectId(vao))
-        }
-    }
-
-    pub fn gl_destroy_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
-        unsafe {
-            self.gles2.DeleteVertexArrays(1, &vao_id.0);
-            self.check_for_error()
-        }
-    }
-
-    pub fn gl_bind_vertex_array(&self, vao_id: VertexArrayObjectId) -> RafxResult<()> {
-        unsafe {
-            self.gles2.BindVertexArray(vao_id.0);
             self.check_for_error()
         }
     }
@@ -603,5 +603,17 @@ fn to_gl_bool(value: bool) -> GLboolean {
         gles20::TRUE
     } else {
         gles20::FALSE
+    }
+}
+
+
+pub fn check_for_error(gles2: &Gles2) -> RafxResult<()> {
+    unsafe {
+        let result = gles2.GetError();
+        if result != gles20::NO_ERROR {
+            Err(RafxError::GlError(result))
+        } else {
+            Ok(())
+        }
     }
 }
