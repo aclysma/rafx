@@ -513,4 +513,11 @@ impl GlContext {
         self.context.draw_arrays(mode, first, count);
         self.check_for_error()
     }
+
+    pub fn gl_draw_elements(&self, mode: GLenum, count: i32, type_: GLenum, byte_offset: u32) -> RafxResult<()> {
+        unsafe {
+            self.context.draw_elements_with_i32(mode, count, type_, byte_offset as _);
+            self.check_for_error()
+        }
+    }
 }

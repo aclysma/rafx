@@ -1,34 +1,11 @@
-use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState, NONE_RENDERBUFFER};
+use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState, NONE_RENDERBUFFER, GlContext};
 use crate::{RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState, RafxResult, RafxTextureBarrier, RafxVertexBufferBinding, RafxExtents2D};
 use fnv::FnvHashSet;
-// use gl_rs::{
-//     MTLBlitOption, MTLIndexType, MTLOrigin, MTLPrimitiveType, MTLRenderStages, MTLResourceUsage,
-//     MTLScissorRect, MTLSize, MTLViewport,
-// };
+
 use rafx_base::trust_cell::TrustCell;
 
 use crate::gl::gles20;
-
-// Mutable state stored in a lock. (Hopefully we can optimize away the lock later)
-// #[derive(Debug)]
-// pub struct RafxCommandBufferGlInner {
-//     // render_targets_to_make_readable: FnvHashSet<RafxTextureGl>,
-//     // command_buffer: Option<gl_rs::CommandBuffer>,
-//     // render_encoder: Option<gl_rs::RenderCommandEncoder>,
-//     // compute_encoder: Option<gl_rs::ComputeCommandEncoder>,
-//     // blit_encoder: Option<gl_rs::BlitCommandEncoder>,
-//     // current_index_buffer: Option<gl_rs::Buffer>,
-//     // current_index_buffer_byte_offset: u64,
-//     // current_index_buffer_type: MTLIndexType,
-//     // current_index_buffer_stride: u32,
-//     // last_pipeline_type: Option<RafxPipelineType>,
-//     // primitive_type: MTLPrimitiveType,
-//     // current_render_targets_width: u32,
-//     // current_render_targets_height: u32,
-//     // compute_threads_per_group_x: u32,
-//     // compute_threads_per_group_y: u32,
-//     // compute_threads_per_group_z: u32,
-// }
+use crate::gl::conversions::GlDepthStencilState;
 
 #[derive(Debug)]
 pub struct RafxCommandBufferGl {
@@ -62,7 +39,9 @@ impl RafxCommandBufferGl {
 
         state.is_started = false;
         state.current_gl_pipeline_info = None;
-        for offset in &mut state.vertex_buffer_begin_offset {
+        state.stencil_reference_value = 0;
+        state.index_buffer_byte_offset = 0;
+        for offset in &mut state.vertex_buffer_byte_offsets {
             *offset = 0;
         }
 
@@ -216,7 +195,26 @@ impl RafxCommandBufferGl {
         &self,
         value: u32,
     ) -> RafxResult<()> {
-        unimplemented!();
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+        state.stencil_reference_value = value;
+
+        let gl_context = self.queue.device_context().gl_context();
+        if let Some(info) = &state.current_gl_pipeline_info {
+            Self::do_set_stencil_compare_ref_mask(gl_context, &info.gl_depth_stencil_state, state.stencil_reference_value)?;
+        }
+
+        Ok(())
+    }
+
+    // This logic is shared between cmd_set_stencil_reference_value and cmd_bind_pipeline
+    fn do_set_stencil_compare_ref_mask(gl_context: &GlContext, state: &GlDepthStencilState, stencil_reference_value: u32) -> RafxResult<()> {
+        if state.stencil_test_enable {
+            gl_context.gl_stencil_func_separate(gles20::FRONT, state.front_stencil_compare_op, 0, !0)?;
+            gl_context.gl_stencil_func_separate(gles20::BACK, state.back_stencil_compare_op, 0, !0)?;
+        }
+
+        Ok(())
     }
 
     pub fn cmd_bind_pipeline(
@@ -267,7 +265,8 @@ impl RafxCommandBufferGl {
             gl_context.gl_enable(gles20::STENCIL_TEST)?;
             gl_context.gl_stencil_mask(gl_depth_stencil_state.stencil_write_mask as _)?;
 
-            gl_context.gl_stencil_func_separate(gles20::FRONT, gl_depth_stencil_state.front_stencil_compare_op, 0, !0)?;
+            Self::do_set_stencil_compare_ref_mask(gl_context, gl_depth_stencil_state, state.stencil_reference_value)?;
+
             gl_context.gl_stencil_op_separate(
                 gles20::FRONT,
                 gl_depth_stencil_state.front_stencil_fail_op,
@@ -275,7 +274,6 @@ impl RafxCommandBufferGl {
                 gl_depth_stencil_state.front_stencil_pass_op
             )?;
 
-            gl_context.gl_stencil_func_separate(gles20::BACK, gl_depth_stencil_state.back_stencil_compare_op, 0, !0)?;
             gl_context.gl_stencil_op_separate(
                 gles20::BACK,
                 gl_depth_stencil_state.back_stencil_fail_op,
@@ -322,7 +320,7 @@ impl RafxCommandBufferGl {
 
             // Bind the vertex buffer
             gl_context.gl_bind_buffer(gl_buffer.gl_target(), gl_buffer.gl_buffer_id().unwrap());
-            state.vertex_buffer_begin_offset[binding_index as usize] = binding.byte_offset as u32;
+            state.vertex_buffer_byte_offsets[binding_index as usize] = binding.byte_offset as u32;
 
             // Setup all the attributes associated with this vertex buffer
             for attribute in &gl_pipeline_info.gl_attributes {
@@ -353,23 +351,23 @@ impl RafxCommandBufferGl {
         &self,
         binding: &RafxIndexBufferBinding,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let mut inner = self.inner.borrow_mut();
-        // inner.current_index_buffer = Some(
-        //     binding
-        //         .buffer
-        //         .gl_buffer()
-        //         .unwrap()
-        //         .gl_buffer()
-        //         .to_owned(),
-        // );
-        // inner.current_index_buffer_byte_offset = binding.byte_offset;
-        // inner.current_index_buffer_type = binding.index_type.into();
-        // inner.current_index_buffer_stride = match binding.index_type {
-        //     RafxIndexType::Uint32 => std::mem::size_of::<u32>() as _,
-        //     RafxIndexType::Uint16 => std::mem::size_of::<u16>() as _,
-        // };
-        // Ok(())
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        let gl_pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap().clone();
+        let gl_context = self.queue.device_context().gl_context();
+
+        if binding.index_type != RafxIndexType::Uint16 {
+            Err("GL ES 2.0 only supports Uint16 index buffers")?;
+        }
+
+        let buffer = binding.buffer.gl_buffer().unwrap();
+        if buffer.gl_target() != gles20::ELEMENT_ARRAY_BUFFER {
+            Err("Buffers provided to cmd_bind_index_buffer must be index buffers")?;
+        }
+
+        state.index_buffer_byte_offset = binding.byte_offset as u32;
+        gl_context.gl_bind_buffer(gles20::ELEMENT_ARRAY_BUFFER, buffer.gl_buffer_id().unwrap())
     }
 
     pub fn cmd_bind_descriptor_set(
@@ -486,39 +484,7 @@ impl RafxCommandBufferGl {
         instance_count: u32,
         first_instance: u32,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let features = self.queue.device_context().gl_features();
-        // if !features.supports_base_vertex_instance_drawing {
-        //     assert_eq!(first_instance, 0);
-        // }
-        //
-        // let inner = self.inner.borrow();
-        //
-        // if first_instance == 0 {
-        //     inner
-        //         .render_encoder
-        //         .as_ref()
-        //         .unwrap()
-        //         .draw_primitives_instanced(
-        //             inner.primitive_type,
-        //             first_vertex as _,
-        //             vertex_count as _,
-        //             instance_count as _,
-        //         );
-        // } else {
-        //     inner
-        //         .render_encoder
-        //         .as_ref()
-        //         .unwrap()
-        //         .draw_primitives_instanced_base_instance(
-        //             inner.primitive_type,
-        //             first_vertex as _,
-        //             vertex_count as _,
-        //             instance_count as _,
-        //             first_instance as _,
-        //         );
-        // }
-        // Ok(())
+        unimplemented!("Instanced drawing not natively supported by GL ES 2.0");
     }
 
     pub fn cmd_draw_indexed(
@@ -527,44 +493,18 @@ impl RafxCommandBufferGl {
         first_index: u32,
         vertex_offset: i32,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let features = self.queue.device_context().gl_features();
-        // if !features.supports_base_vertex_instance_drawing {
-        //     assert_eq!(vertex_offset, 0);
-        // }
-        //
-        // let inner = self.inner.borrow();
-        // let stride = inner.current_index_buffer_stride;
-        // if vertex_offset == 0 {
-        //     inner
-        //         .render_encoder
-        //         .as_ref()
-        //         .unwrap()
-        //         .draw_indexed_primitives(
-        //             inner.primitive_type,
-        //             index_count as _,
-        //             inner.current_index_buffer_type,
-        //             inner.current_index_buffer.as_ref().unwrap(),
-        //             ((stride * first_index) as u64 + inner.current_index_buffer_byte_offset) as _,
-        //         );
-        // } else {
-        //     inner
-        //         .render_encoder
-        //         .as_ref()
-        //         .unwrap()
-        //         .draw_indexed_primitives_instanced_base_instance(
-        //             inner.primitive_type,
-        //             index_count as _,
-        //             inner.current_index_buffer_type,
-        //             inner.current_index_buffer.as_ref().unwrap(),
-        //             ((stride * first_index) as u64 + inner.current_index_buffer_byte_offset) as _,
-        //             1,
-        //             vertex_offset as _,
-        //             0,
-        //         );
-        // }
-        //
-        // Ok(())
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        let gl_context = self.queue.device_context().gl_context();
+        let pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap();
+
+        if vertex_offset > 0 {
+            unimplemented!("GL ES 2.0 does not support vertex offsets during glDrawElements");
+        }
+
+        let offset = first_index * (std::mem::size_of::<gles20::types::GLushort>() as u32) + state.index_buffer_byte_offset;
+        gl_context.gl_draw_elements(pipeline_info.gl_topology, index_count as _, gles20::UNSIGNED_SHORT, offset)
     }
 
     pub fn cmd_draw_indexed_instanced(
@@ -575,46 +515,7 @@ impl RafxCommandBufferGl {
         first_instance: u32,
         vertex_offset: i32,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let features = self.queue.device_context().gl_features();
-        // if !features.supports_base_vertex_instance_drawing {
-        //     assert_eq!(vertex_offset, 0);
-        //     assert_eq!(first_instance, 0);
-        // }
-        //
-        // let inner = self.inner.borrow();
-        // let stride = inner.current_index_buffer_stride;
-        // if vertex_offset == 0 && first_instance == 0 {
-        //     inner
-        //         .render_encoder
-        //         .as_ref()
-        //         .unwrap()
-        //         .draw_indexed_primitives_instanced(
-        //             inner.primitive_type,
-        //             index_count as _,
-        //             inner.current_index_buffer_type,
-        //             inner.current_index_buffer.as_ref().unwrap(),
-        //             ((stride * first_index) as u64 + inner.current_index_buffer_byte_offset) as _,
-        //             instance_count as _,
-        //         );
-        // } else {
-        //     inner
-        //         .render_encoder
-        //         .as_ref()
-        //         .unwrap()
-        //         .draw_indexed_primitives_instanced_base_instance(
-        //             inner.primitive_type,
-        //             index_count as _,
-        //             inner.current_index_buffer_type,
-        //             inner.current_index_buffer.as_ref().unwrap(),
-        //             ((stride * first_index) as u64 + inner.current_index_buffer_byte_offset) as _,
-        //             instance_count as _,
-        //             vertex_offset as _,
-        //             first_instance as _,
-        //         );
-        // }
-        //
-        // Ok(())
+        unimplemented!("Instanced drawing not natively supported by GL ES 2.0");
     }
 
     pub fn cmd_dispatch(

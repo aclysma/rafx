@@ -8,9 +8,11 @@ pub(crate) struct CommandPoolGlStateInner {
     pub(crate) is_started: bool,
     pub(crate) surface_size: Option<RafxExtents2D>,
     pub(crate) current_gl_pipeline_info: Option<Arc<GlPipelineInfo>>,
+    pub(crate) stencil_reference_value: u32,
 
     // One per possible bound vertex buffer (could be 1 per attribute!)
-    pub(crate) vertex_buffer_begin_offset: Vec<u32>,
+    pub(crate) vertex_buffer_byte_offsets: Vec<u32>,
+    pub(crate) index_buffer_byte_offset: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -24,7 +26,9 @@ impl CommandPoolGlState {
             is_started: false,
             surface_size: None,
             current_gl_pipeline_info: None,
-            vertex_buffer_begin_offset: vec![0; device_context.device_info().max_vertex_attribute_count as usize]
+            stencil_reference_value: 0,
+            vertex_buffer_byte_offsets: vec![0; device_context.device_info().max_vertex_attribute_count as usize],
+            index_buffer_byte_offset: 0
         };
 
         CommandPoolGlState {

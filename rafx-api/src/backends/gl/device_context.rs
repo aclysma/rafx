@@ -294,58 +294,27 @@ impl RafxDeviceContextGl {
     pub fn find_supported_format(
         &self,
         candidates: &[RafxFormat],
-        resource_type: RafxResourceType,
+        _resource_type: RafxResourceType,
     ) -> Option<RafxFormat> {
-        unimplemented!();
-        // // https://developer.apple.com/gl/Gl-Feature-Set-Tables.pdf
-        // use gl_rs::PixelFormatCapabilities;
-        //
-        // let mut required_capabilities = PixelFormatCapabilities::empty();
-        //
-        // // Some formats include color and not write, so I think it's not necessary to have write
-        // // capability for color attachments
-        // if resource_type.intersects(RafxResourceType::RENDER_TARGET_COLOR) {
-        //     required_capabilities |= PixelFormatCapabilities::Color;
-        // }
-        //
-        // // Depth formats don't include write, so presumably it's implied that a depth format can
-        // // be a depth attachment
-        // // if resource_type.intersects(RafxResourceType::RENDER_TARGET_DEPTH_STENCIL) {
-        // //     required_capabilities |= PixelFormatCapabilities::Write;
-        // // }
-        //
-        // if resource_type.intersects(RafxResourceType::TEXTURE_READ_WRITE) {
-        //     required_capabilities |= PixelFormatCapabilities::Write;
-        // }
-        //
-        // for &candidate in candidates {
-        //     let capabilities = self
-        //         .inner
-        //         .gl_features
-        //         .pixel_format_capabilities(candidate.into());
-        //     if capabilities.contains(required_capabilities) {
-        //         return Some(candidate);
-        //     }
-        // }
-        //
-        // None
+        // OpenGL doesn't provide a great way to determine if a texture is natively available
+        for &candidate in candidates {
+            // For now we don't support compressed textures for GL ES at all (but we probably could)
+            if !candidate.is_compressed() {
+                return Some(candidate);
+            }
+        }
+
+        None
     }
 
     pub fn find_supported_sample_count(
         &self,
         candidates: &[RafxSampleCount],
     ) -> Option<RafxSampleCount> {
-        unimplemented!();
-        // for &candidate in candidates {
-        //     if self
-        //         .inner
-        //         .device
-        //         .supports_texture_sample_count(candidate.into())
-        //     {
-        //         return Some(candidate);
-        //     }
-        // }
-
-        //None
+        if candidates.contains(&RafxSampleCount::SampleCount1) {
+            Some(RafxSampleCount::SampleCount1)
+        } else {
+            None
+        }
     }
 }

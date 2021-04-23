@@ -1312,6 +1312,66 @@ impl RafxFormat {
         self == RafxFormat::UNDEFINED
     }
 
+    pub fn is_compressed(self) -> bool {
+        match self {
+            RafxFormat::BC1_RGB_UNORM_BLOCK
+            | RafxFormat::BC1_RGB_SRGB_BLOCK
+            | RafxFormat::BC1_RGBA_UNORM_BLOCK
+            | RafxFormat::BC1_RGBA_SRGB_BLOCK
+            | RafxFormat::BC2_UNORM_BLOCK
+            | RafxFormat::BC2_SRGB_BLOCK
+            | RafxFormat::BC3_UNORM_BLOCK
+            | RafxFormat::BC3_SRGB_BLOCK
+            | RafxFormat::BC4_UNORM_BLOCK
+            | RafxFormat::BC4_SNORM_BLOCK
+            | RafxFormat::BC5_UNORM_BLOCK
+            | RafxFormat::BC5_SNORM_BLOCK
+            | RafxFormat::BC6H_UFLOAT_BLOCK
+            | RafxFormat::BC6H_SFLOAT_BLOCK
+            | RafxFormat::BC7_UNORM_BLOCK
+            | RafxFormat::BC7_SRGB_BLOCK
+            | RafxFormat::ETC2_R8G8B8_UNORM_BLOCK
+            | RafxFormat::ETC2_R8G8B8_SRGB_BLOCK
+            | RafxFormat::ETC2_R8G8B8A1_UNORM_BLOCK
+            | RafxFormat::ETC2_R8G8B8A1_SRGB_BLOCK
+            | RafxFormat::ETC2_R8G8B8A8_UNORM_BLOCK
+            | RafxFormat::ETC2_R8G8B8A8_SRGB_BLOCK
+            | RafxFormat::EAC_R11_UNORM_BLOCK
+            | RafxFormat::EAC_R11_SNORM_BLOCK
+            | RafxFormat::EAC_R11G11_UNORM_BLOCK
+            | RafxFormat::EAC_R11G11_SNORM_BLOCK
+            | RafxFormat::ASTC_4X4_UNORM_BLOCK
+            | RafxFormat::ASTC_4X4_SRGB_BLOCK
+            | RafxFormat::ASTC_5X4_UNORM_BLOCK
+            | RafxFormat::ASTC_5X4_SRGB_BLOCK
+            | RafxFormat::ASTC_5X5_UNORM_BLOCK
+            | RafxFormat::ASTC_5X5_SRGB_BLOCK
+            | RafxFormat::ASTC_6X5_UNORM_BLOCK
+            | RafxFormat::ASTC_6X5_SRGB_BLOCK
+            | RafxFormat::ASTC_6X6_UNORM_BLOCK
+            | RafxFormat::ASTC_6X6_SRGB_BLOCK
+            | RafxFormat::ASTC_8X5_UNORM_BLOCK
+            | RafxFormat::ASTC_8X5_SRGB_BLOCK
+            | RafxFormat::ASTC_8X6_UNORM_BLOCK
+            | RafxFormat::ASTC_8X6_SRGB_BLOCK
+            | RafxFormat::ASTC_8X8_UNORM_BLOCK
+            | RafxFormat::ASTC_8X8_SRGB_BLOCK
+            | RafxFormat::ASTC_10X5_UNORM_BLOCK
+            | RafxFormat::ASTC_10X5_SRGB_BLOCK
+            | RafxFormat::ASTC_10X6_UNORM_BLOCK
+            | RafxFormat::ASTC_10X6_SRGB_BLOCK
+            | RafxFormat::ASTC_10X8_UNORM_BLOCK
+            | RafxFormat::ASTC_10X8_SRGB_BLOCK
+            | RafxFormat::ASTC_10X10_UNORM_BLOCK
+            | RafxFormat::ASTC_10X10_SRGB_BLOCK
+            | RafxFormat::ASTC_12X10_UNORM_BLOCK
+            | RafxFormat::ASTC_12X10_SRGB_BLOCK
+            | RafxFormat::ASTC_12X12_UNORM_BLOCK
+            | RafxFormat::ASTC_12X12_SRGB_BLOCK => true,
+            _ => false,
+        }
+    }
+
     pub fn block_or_pixel_size_in_bytes(self) -> u32 {
         match self {
             RafxFormat::UNDEFINED => unimplemented!(),

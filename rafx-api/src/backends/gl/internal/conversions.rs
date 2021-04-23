@@ -1,6 +1,28 @@
-use crate::{RafxMemoryUsage, RafxCullMode, RafxRasterizerState, RafxFrontFace, RafxDepthState, RafxCompareOp, RafxStencilOp, RafxBlendState, RafxBlendStateRenderTarget, RafxBlendFactor, RafxBlendOp, RafxResult, RafxPrimitiveTopology};
+use crate::{RafxMemoryUsage, RafxCullMode, RafxRasterizerState, RafxFrontFace, RafxDepthState, RafxCompareOp, RafxStencilOp, RafxBlendState, RafxBlendStateRenderTarget, RafxBlendFactor, RafxBlendOp, RafxResult, RafxPrimitiveTopology, RafxFilterType, RafxAddressMode};
 use crate::gl::gles20::types::GLenum;
 use crate::gl::gles20;
+
+impl RafxFilterType {
+    pub fn gl_filter_type(self) -> GLenum {
+        match self {
+            RafxFilterType::Nearest => gles20::NEAREST,
+            RafxFilterType::Linear => gles20::LINEAR,
+        }
+    }
+}
+
+impl RafxAddressMode {
+    pub fn gl_address_mode(self) -> Option<GLenum> {
+        match self {
+            RafxAddressMode::Mirror => Some(gles20::MIRRORED_REPEAT),
+            RafxAddressMode::Repeat => Some(gles20::REPEAT),
+            RafxAddressMode::ClampToEdge => Some(gles20::CLAMP_TO_EDGE),
+            // requires GL_OES_texture_border_clamp
+            //RafxAddressMode::ClampToBorder => gles20::CLAMP_TO_BORDER,
+            RafxAddressMode::ClampToBorder => None,
+        }
+    }
+}
 
 impl RafxPrimitiveTopology {
     pub fn gl_topology(self) -> Option<GLenum> {

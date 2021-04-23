@@ -596,6 +596,14 @@ impl GlContext {
             self.check_for_error()
         }
     }
+
+    pub fn gl_draw_elements(&self, mode: GLenum, count: i32, type_: GLenum, byte_offset: u32) -> RafxResult<()> {
+        unsafe {
+            let ptr = byte_offset as *const std::ffi::c_void;
+            self.gles2.DrawElements(mode, count, type_, ptr);
+            self.check_for_error()
+        }
+    }
 }
 
 fn to_gl_bool(value: bool) -> GLboolean {

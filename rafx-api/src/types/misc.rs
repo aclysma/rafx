@@ -408,7 +408,7 @@ pub enum RafxPrimitiveTopology {
 }
 
 /// The size of index buffer elements
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RafxIndexType {
     Uint32,
     Uint16,
