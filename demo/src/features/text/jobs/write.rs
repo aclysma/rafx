@@ -166,9 +166,7 @@ impl WriteJob for TextWriteJob {
                         RafxResourceState::SHADER_RESOURCE,
                     )],
                 )?;
-            }
-            else
-            {
+            } else {
                 write_context.command_buffer.cmd_resource_barrier(
                     &[],
                     &[RafxTextureBarrier::state_transition(
