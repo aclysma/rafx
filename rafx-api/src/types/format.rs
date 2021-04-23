@@ -850,6 +850,7 @@ impl Into<MTLVertexFormat> for RafxFormat {
 }
 
 #[cfg(feature = "rafx-gl")]
+#[derive(Debug)]
 pub struct GlTextureFormatInfo {
     pub gl_format: GLenum,
     pub gl_type: GLenum,

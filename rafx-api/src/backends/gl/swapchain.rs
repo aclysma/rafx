@@ -52,7 +52,7 @@ impl RafxSwapchainGl {
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainGl> {
-        let format = RafxFormat::B8G8R8A8_SRGB;
+        let format = RafxFormat::R8G8B8A8_UNORM;
 
         let mut resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
 

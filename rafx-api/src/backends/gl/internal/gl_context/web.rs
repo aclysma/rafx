@@ -1,7 +1,7 @@
 use raw_window_handle::HasRawWindowHandle;
-use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader, WebGlProgram, WebGlUniformLocation, WebGlRenderbuffer};
+use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader, WebGlProgram, WebGlUniformLocation, WebGlRenderbuffer, WebGlTexture};
 use crate::{RafxResult, RafxError};
-use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER, NONE_PROGRAM, RenderbufferId, NONE_RENDERBUFFER};
+use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER, NONE_PROGRAM, RenderbufferId, NONE_RENDERBUFFER, TextureId};
 use crate::gl::gles20::types::*;
 use std::ffi::{CString, CStr};
 use fnv::FnvHashMap;
@@ -11,6 +11,7 @@ use wasm_bindgen::JsValue;
 
 pub struct GetActiveUniformMaxNameLengthHint;
 
+static NEXT_GL_TEXTURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_SHADER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_PROGRAM_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
@@ -36,6 +37,7 @@ fn convert_js_to_i32(value: &JsValue) -> Option<i32> {
 pub struct GlContext {
     context: WebGlRenderingContext,
     window_hash: WindowHash,
+    textures: Mutex<FnvHashMap<TextureId, WebGlTexture>>,
     buffers: Mutex<FnvHashMap<BufferId, WebGlBuffer>>,
     shaders: Mutex<FnvHashMap<ShaderId, WebGlShader>>,
     programs: Mutex<FnvHashMap<ProgramId, WebGlProgram>>,
@@ -82,6 +84,7 @@ impl GlContext {
         Ok(GlContext {
             context,
             window_hash,
+            textures: Default::default(),
             buffers: Default::default(),
             shaders: Default::default(),
             programs: Default::default(),
@@ -163,6 +166,21 @@ impl GlContext {
 
     pub fn gl_finish(&self) -> RafxResult<()> {
         self.context.finish();
+        self.check_for_error()
+    }
+
+    pub fn gl_create_texture(&self) -> RafxResult<TextureId> {
+        let texture = self.context.create_texture().unwrap();
+        self.check_for_error()?;
+        let texture_id = TextureId(NEXT_GL_TEXTURE_ID.fetch_add(1, Ordering::Relaxed));
+        let old = self.textures.lock().unwrap().insert(texture_id, texture);
+        assert!(old.is_none());
+        Ok(texture_id)
+    }
+
+    pub fn gl_destroy_texture(&self, texture_id: TextureId) -> RafxResult<()> {
+        let texture = self.textures.lock().unwrap().remove(&texture_id).unwrap();
+        self.context.delete_texture(Some(&texture));
         self.check_for_error()
     }
 

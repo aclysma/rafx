@@ -7,11 +7,11 @@ use super::gles20::types::GLenum;
 use fnv::{FnvHasher, FnvHashMap};
 use std::hash::{Hasher, Hash};
 use super::WindowHash;
-use crate::{RafxResult, RafxError};
+use crate::{RafxResult, RafxError, RafxResourceType};
 use crate::gl::gles20::types::{GLsizeiptr, GLint, GLboolean};
 use std::ffi::{CStr, CString};
 use std::ops::Range;
-use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo, RenderbufferId};
+use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo, RenderbufferId, TextureId};
 use std::cmp::max;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -184,6 +184,22 @@ impl GlContext {
     pub fn gl_finish(&self) -> RafxResult<()> {
         unsafe {
             self.gles2.Finish();
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_create_texture(&self) -> RafxResult<TextureId> {
+        unsafe {
+            let mut texture = 0;
+            self.gles2.GenTextures(1, &mut texture);
+            self.check_for_error()?;
+            Ok(TextureId(texture))
+        }
+    }
+
+    pub fn gl_destroy_texture(&self, texture_id: TextureId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DeleteTextures(1, &texture_id.0);
             self.check_for_error()
         }
     }
