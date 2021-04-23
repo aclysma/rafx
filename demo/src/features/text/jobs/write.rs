@@ -25,8 +25,8 @@ lazy_static::lazy_static! {
 
 use super::TextImageUpdate;
 use rafx::api::{
-    RafxCmdCopyBufferToTextureParams, RafxIndexBufferBinding, RafxIndexType, RafxResourceState,
-    RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxBarrierQueueTransition, RafxCmdCopyBufferToTextureParams, RafxIndexBufferBinding,
+    RafxIndexType, RafxResourceState, RafxTextureBarrier, RafxVertexBufferBinding,
 };
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::nodes::{push_view_indexed_value, RenderJobBeginExecuteGraphContext, RenderViewIndex};
@@ -143,20 +143,39 @@ impl WriteJob for TextWriteJob {
             )?;
 
             if rafx_image.texture_def().mip_count > 1 {
+                write_context.command_buffer.cmd_resource_barrier(
+                    &[],
+                    &[RafxTextureBarrier {
+                        texture: &rafx_image,
+                        src_state: RafxResourceState::COPY_DST,
+                        dst_state: RafxResourceState::COPY_SRC,
+                        queue_transition: RafxBarrierQueueTransition::None,
+                        array_slice: None,
+                        mip_slice: Some(0),
+                    }],
+                )?;
                 rafx::api::extra::mipmaps::generate_mipmaps(
                     &*write_context.command_buffer,
                     rafx_image,
                 )?;
+                write_context.command_buffer.cmd_resource_barrier(
+                    &[],
+                    &[RafxTextureBarrier::state_transition(
+                        rafx_image,
+                        RafxResourceState::COPY_SRC,
+                        RafxResourceState::SHADER_RESOURCE,
+                    )],
+                )?;
+            } else {
+                write_context.command_buffer.cmd_resource_barrier(
+                    &[],
+                    &[RafxTextureBarrier::state_transition(
+                        rafx_image,
+                        RafxResourceState::COPY_DST,
+                        RafxResourceState::SHADER_RESOURCE,
+                    )],
+                )?;
             }
-
-            write_context.command_buffer.cmd_resource_barrier(
-                &[],
-                &[RafxTextureBarrier::state_transition(
-                    rafx_image,
-                    RafxResourceState::COPY_DST,
-                    RafxResourceState::SHADER_RESOURCE,
-                )],
-            )?;
         }
 
         Ok(())
