@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use crate::gl::{gles20, ProgramId, GlContext, LocationId};
 use crate::{RafxResult, RafxShader};
 use fnv::FnvHashMap;
@@ -12,17 +12,17 @@ pub struct FieldIndex(pub u32);
 
 #[derive(Debug)]
 pub struct UniformInfo {
-    name: CString,
-    first_field_index: FieldIndex,
-    field_count: u32,
+    pub(crate) name: CString,
+    pub(crate) first_field_index: FieldIndex,
+    pub(crate) field_count: u32,
 }
 
 #[derive(Debug)]
 pub struct UniformFieldInfo {
-    size: u32,
-    ty: gles20::types::GLenum,
-    field_index: FieldIndex,
-    offset: u32,
+    pub(crate) element_count: u32,
+    pub(crate) ty: gles20::types::GLenum,
+    pub(crate) field_index: FieldIndex,
+    pub(crate) offset: u32,
 }
 
 #[derive(Debug)]
@@ -31,16 +31,18 @@ pub struct UniformReflectionData {
     uniforms: Vec<UniformInfo>,
     fields: Vec<UniformFieldInfo>,
     locations: Vec<Option<LocationId>>,
+    uniform_name_lookup: FnvHashMap<String, UniformIndex>
 }
 
 impl UniformReflectionData {
     pub fn new(
         gl_context: &GlContext,
-        program_ids: Vec<ProgramId>,
+        program_ids: &[ProgramId],
         shaders: &[RafxShader],
     ) -> RafxResult<UniformReflectionData> {
         #[derive(Debug)]
         struct SizeTypeName {
+            // size is number of elements here, not bytes
             size: u32,
             ty: gles20::types::GLenum,
             name: CString,
@@ -66,7 +68,7 @@ impl UniformReflectionData {
         let mut uniform_lookup = FnvHashMap::<CString, Vec<SizeTypeName>>::default();
         let mut field_lookup = FnvHashMap::<CString, SizeTypeName>::default();
 
-        for &program_id in &program_ids {
+        for &program_id in program_ids {
             let active_uniform_count = gl_context.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORMS)? as u32;
             let max_name_length_hint = gl_context.get_active_uniform_max_name_length_hint(program_id)?;
 
@@ -124,14 +126,20 @@ impl UniformReflectionData {
         // Indexed by (field_index * program_count) + program_index
         let mut locations = Vec::<Option<LocationId>>::default();
 
+        let mut uniform_name_lookup = FnvHashMap::<String, UniformIndex>::default();
+
         for (uniform_name, uniform_fields) in uniform_lookup {
+            let uniform_name_str = uniform_name.clone().into_string().unwrap();
             let uniform_info = UniformInfo {
                 name: uniform_name,
                 field_count: uniform_fields.len() as u32,
                 first_field_index: FieldIndex(fields.len() as u32)
             };
 
+            let uniform_index = UniformIndex(uniforms.len() as u32);
             uniforms.push(uniform_info);
+            let old = uniform_name_lookup.insert(uniform_name_str, uniform_index);
+            assert!(old.is_none());
 
             for size_type_name in uniform_fields {
                 let name_as_str = size_type_name.name.to_string_lossy();
@@ -140,7 +148,7 @@ impl UniformReflectionData {
                     .ok_or_else(|| format!("Could not find uniform member {} in the metadata for any shader stage", name_as_str))?;
 
                 let field_info = UniformFieldInfo {
-                    size: size_type_name.size,
+                    element_count: size_type_name.size,
                     ty: size_type_name.ty,
                     field_index: FieldIndex(fields.len() as u32),
                     offset
@@ -148,7 +156,7 @@ impl UniformReflectionData {
 
                 fields.push(field_info);
 
-                for &program_id in &program_ids {
+                for &program_id in program_ids {
                     unsafe {
                         let location = gl_context.gl_get_uniform_location(program_id, &size_type_name.name)?;
                         locations.push(location);
@@ -159,18 +167,20 @@ impl UniformReflectionData {
         }
 
         Ok(UniformReflectionData {
-            program_ids,
+            program_ids: program_ids.to_vec(),
             uniforms,
             fields,
-            locations
+            locations,
+            uniform_name_lookup
         })
     }
 
-    pub fn uniform_index(&self, name: &CString) -> Option<u32> {
-        self.uniforms
-            .iter()
-            .position(|x| x.name == *name)
-            .map(|x| x as u32)
+    pub fn uniform_index(&self, name: &str) -> Option<UniformIndex> {
+        self.uniform_name_lookup.get(name).cloned()
+        // self.uniforms
+        //     .iter()
+        //     .position(|x| x.name == *name)
+        //     .map(|x| UniformIndex(x as u32))
     }
 
     pub fn field_range(&self, uniform_index: UniformIndex) -> Range<usize> {
@@ -192,9 +202,15 @@ impl UniformReflectionData {
             .map(|x| x as u32)
     }
 
-    pub fn location(&self, program_id: ProgramId, field_index: FieldIndex) -> Option<LocationId> {
-        let program_index = self.program_index(program_id)?;
+    pub fn location(&self, program_id: ProgramId, field_index: FieldIndex) -> Option<&LocationId> {
+        if let Some(program_index) = self.program_index(program_id) {
+            self.location_by_program_index(program_index, field_index).as_ref()
+        } else {
+            None
+        }
+    }
 
-        self.locations[(field_index.0 as usize * self.program_ids.len()) + program_index as usize].clone()
+    pub fn location_by_program_index(&self, program_index: u32, field_index: FieldIndex) -> &Option<LocationId> {
+        &self.locations[(field_index.0 as usize * self.program_ids.len()) + program_index as usize]
     }
 }

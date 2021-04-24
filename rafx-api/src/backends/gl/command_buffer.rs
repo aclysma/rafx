@@ -1,11 +1,13 @@
-use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState, NONE_RENDERBUFFER, GlContext};
-use crate::{RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState, RafxResult, RafxTextureBarrier, RafxVertexBufferBinding, RafxExtents2D};
+use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState, NONE_RENDERBUFFER, GlContext, CommandPoolGlStateInner};
+use crate::{RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState, RafxResult, RafxTextureBarrier, RafxVertexBufferBinding, RafxExtents2D, RafxResourceType};
 use fnv::FnvHashSet;
 
 use rafx_base::trust_cell::TrustCell;
 
 use crate::gl::gles20;
 use crate::gl::conversions::GlDepthStencilState;
+
+use crate::gl::gl_type_util;
 
 #[derive(Debug)]
 pub struct RafxCommandBufferGl {
@@ -375,22 +377,19 @@ impl RafxCommandBufferGl {
         descriptor_set_array: &RafxDescriptorSetArrayGl,
         index: u32,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let (buffer, offset) = descriptor_set_array
-        //     .gl_argument_buffer_and_offset(index)
-        //     .unwrap();
-        // self.do_bind_descriptor_set(
-        //     &*self.inner.borrow(),
-        //     descriptor_set_array
-        //         .root_signature()
-        //         .gl_root_signature()
-        //         .unwrap(),
-        //     descriptor_set_array.set_index(),
-        //     buffer,
-        //     offset,
-        //     index,
-        //     descriptor_set_array.argument_buffer_data().unwrap(),
-        // )
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        self.do_bind_descriptor_set(
+            &*state,
+            &*descriptor_set_array.descriptor_set_array_data().borrow(),
+            descriptor_set_array
+                .root_signature()
+                .gl_root_signature()
+                .unwrap(),
+            descriptor_set_array.set_index(),
+            index,
+        )
     }
 
     pub fn cmd_bind_descriptor_set_handle(
@@ -399,68 +398,91 @@ impl RafxCommandBufferGl {
         set_index: u32,
         descriptor_set_handle: &RafxDescriptorSetHandleGl,
     ) -> RafxResult<()> {
-        unimplemented!();
-        // let buffer = descriptor_set_handle.gl_buffer();
-        // let offset = descriptor_set_handle.offset();
-        // let array_index = descriptor_set_handle.array_index();
-        // self.do_bind_descriptor_set(
-        //     &*self.inner.borrow(),
-        //     root_signature,
-        //     set_index,
-        //     buffer,
-        //     offset,
-        //     array_index,
-        //     descriptor_set_handle.argument_buffer_data(),
-        // )
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        self.do_bind_descriptor_set(
+            &*state,
+            &*descriptor_set_handle.descriptor_set_array_data().borrow(),
+            root_signature,
+            set_index,
+            descriptor_set_handle.array_index()
+        )
     }
 
-    // fn do_bind_descriptor_set(
-    //     &self,
-    //     inner: &RafxCommandBufferGlInner,
-    //     root_signature: &RafxRootSignatureGl,
-    //     set_index: u32,
-    //     //argument_buffer: &gl_rs::BufferRef,
-    //     argument_buffer_offset: u32,
-    //     array_index: u32,
-    //     argument_buffer_data: &ArgumentBufferData,
-    // ) -> RafxResult<()> {
-    //     unimplemented!();
-    //     // match root_signature.pipeline_type() {
-    //     //     RafxPipelineType::Graphics => {
-    //     //         let render_encoder = inner
-    //     //             .render_encoder
-    //     //             .as_ref()
-    //     //             .ok_or("Must begin render pass before binding graphics descriptor sets")?;
-    //     //         render_encoder.set_vertex_buffer(
-    //     //             set_index as _,
-    //     //             Some(argument_buffer),
-    //     //             argument_buffer_offset as _,
-    //     //         );
-    //     //         render_encoder.set_fragment_buffer(
-    //     //             set_index as _,
-    //     //             Some(argument_buffer),
-    //     //             argument_buffer_offset as _,
-    //     //         );
-    //     //         argument_buffer_data
-    //     //             .make_resources_resident_render_encoder(array_index, render_encoder);
-    //     //     }
-    //     //     RafxPipelineType::Compute => {
-    //     //         let compute_encoder = inner
-    //     //             .compute_encoder
-    //     //             .as_ref()
-    //     //             .ok_or("Must bind compute pipeline before binding compute descriptor sets")?;
-    //     //         compute_encoder.set_buffer(
-    //     //             set_index as _,
-    //     //             Some(argument_buffer),
-    //     //             argument_buffer_offset as _,
-    //     //         );
-    //     //         argument_buffer_data
-    //     //             .make_resources_resident_compute_encoder(array_index, compute_encoder);
-    //     //     }
-    //     // }
-    //     //
-    //     // Ok(())
-    // }
+    fn do_bind_descriptor_set(
+        &self,
+        state: &CommandPoolGlStateInner,
+        data: &DescriptorSetArrayData,
+        root_signature: &RafxRootSignatureGl,
+        set_index: u32,
+        array_index: u32,
+    ) -> RafxResult<()> {
+        let gl_context = self.queue.device_context().gl_context();
+
+        for (program_index, &program_id) in root_signature.inner.program_ids.iter().enumerate() {
+            gl_context.gl_use_program(program_id)?;
+
+            for descriptor in &root_signature.inner.descriptors {
+                match descriptor.resource_type {
+                    RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE => {
+                        let data_offset = descriptor.descriptor_data_offset_in_set.unwrap();
+                        for i in 0..descriptor.element_count {
+                            let buffer_state = data.buffer_states[(data_offset + i) as usize].as_ref().unwrap();
+
+                            // let base_offset = buffer_state.offset;
+                            // let data = unsafe {
+                            //     buffer_state.buffer_contents.as_ref().unwrap().as_slice()
+                            // };
+                            //
+                            // let location = root_signature.resource_location(program_index, descriptor.descriptor_index);
+                            // if let Some(location) = location {
+                            //     gl_type_util::set_uniform(gl_context, location, data, descriptor.gl_type, descriptor.element_count)?;
+                            // }
+                            unimplemented!()
+                        }
+                    },
+                    RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
+                        unimplemented!()
+                    },
+                    RafxResourceType::UNIFORM_BUFFER => {
+                        let data_offset = descriptor.descriptor_data_offset_in_set.unwrap();
+                        for i in 0..descriptor.element_count {
+                            let buffer_state = data.buffer_states[(data_offset + i) as usize].as_ref().unwrap();
+
+                            let base_offset = buffer_state.offset;
+                            let data = unsafe {
+                                buffer_state.buffer_contents.as_ref().unwrap().as_slice()
+                            };
+
+                            let uniform_reflection_data = root_signature.uniform_reflection_data();
+                            let uniform_index = root_signature.uniform_index(descriptor.descriptor_index);
+
+                            if let Some(uniform_index) = uniform_index {
+                                let fields = uniform_reflection_data.fields(uniform_index);
+                                for field in fields {
+                                    let location = uniform_reflection_data.location_by_program_index(program_index as u32, field.field_index);
+                                    if let Some(location) = location {
+                                        let field_offset = field.offset + base_offset as u32;
+                                        assert!(field_offset + field.element_count <= data.len() as u32);
+                                        unsafe {
+                                            let data_ref = &*data.as_ptr().add(field_offset as usize);
+                                            log::info!("program {:?}", program_id);
+                                            log::info!("LOCATION {:?}", location);
+                                            gl_type_util::set_uniform(gl_context, location, data_ref, field.ty, field.element_count)?;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    _ => unimplemented!("Unrecognized descriptor type in do_bind_descriptor_set")
+                }
+            }
+        }
+
+        Ok(())
+    }
 
     pub fn cmd_draw(
         &self,

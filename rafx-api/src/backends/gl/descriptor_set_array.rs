@@ -37,22 +37,22 @@ impl RafxDescriptorSetHandleGl {
 
 #[derive(Clone)]
 pub struct BufferDescriptorState {
-    buffer_id: Option<BufferId>,
-    buffer_contents: Option<GlBufferContents>,
-    offset: u64,
+    pub(crate) buffer_id: Option<BufferId>,
+    pub(crate) buffer_contents: Option<GlBufferContents>,
+    pub(crate) offset: u64,
     //range: u32,
 }
 
 #[derive(Clone)]
 pub struct ImageDescriptorState {
-    texture: Option<u32>,
-    sampler: Option<u32>,
+    pub(crate) texture: Option<u32>,
+    pub(crate) sampler: Option<u32>,
 }
 
 #[derive(Clone)]
 pub struct DescriptorSetArrayData {
-    buffer_states: Vec<Option<BufferDescriptorState>>,
-    image_states: Vec<Option<ImageDescriptorState>>,
+    pub(crate) buffer_states: Vec<Option<BufferDescriptorState>>,
+    pub(crate) image_states: Vec<Option<ImageDescriptorState>>,
 }
 
 pub struct RafxDescriptorSetArrayGl {

@@ -16,9 +16,10 @@ static NEXT_GL_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::Atom
 static NEXT_GL_SHADER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_PROGRAM_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_RENDERBUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+//static NEXT_GL_LOCATION_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LocationId(WebGlUniformLocation);
+pub struct LocationId(WebGlUniformLocation, ProgramId);
 
 fn convert_js_to_i32(value: &JsValue) -> Option<i32> {
     if let Some(value) = value.as_f64() {
@@ -394,7 +395,7 @@ impl GlContext {
         let programs = self.programs.lock().unwrap();
         let location = self.context.get_uniform_location(programs.get(&program_id).unwrap(), &*name.to_string_lossy());
         self.check_for_error()?;
-        Ok(location.map(|x| LocationId(x)))
+        Ok(location.map(|x| LocationId(x, program_id)))
     }
 
     pub fn get_active_uniform_max_name_length_hint(&self, _program_id: ProgramId) -> RafxResult<GetActiveUniformMaxNameLengthHint> {
@@ -535,6 +536,105 @@ impl GlContext {
     pub fn gl_draw_elements(&self, mode: GLenum, count: i32, type_: GLenum, byte_offset: u32) -> RafxResult<()> {
         unsafe {
             self.context.draw_elements_with_i32(mode, count, type_, byte_offset as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_1iv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const i32;
+            let slice = std::slice::from_raw_parts(data_slice, count as usize);
+            self.context.uniform1iv_with_i32_array(Some(&location.0), slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_1fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const f32;
+            let slice = std::slice::from_raw_parts(data_slice, count as usize);
+            self.context.uniform1fv_with_f32_array(Some(&location.0), slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_2iv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const i32;
+            let slice = std::slice::from_raw_parts(data_slice, 2 * count as usize);
+            self.context.uniform2iv_with_i32_array(Some(&location.0), slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_2fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const f32;
+            let slice = std::slice::from_raw_parts(data_slice, 2 * count as usize);
+            self.context.uniform2fv_with_f32_array(Some(&location.0), slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_3iv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const i32;
+            let slice = std::slice::from_raw_parts(data_slice, 3 * count as usize);
+            self.context.uniform3iv_with_i32_array(Some(&location.0), slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_3fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const f32;
+            let slice = std::slice::from_raw_parts(data_slice, 3 * count as usize);
+            self.context.uniform3fv_with_f32_array(Some(&location.0), slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_4iv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const i32;
+            let slice = std::slice::from_raw_parts(data_slice, 4 * count as usize);
+            self.context.uniform4iv_with_i32_array(Some(&location.0), slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_4fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const f32;
+            let slice = std::slice::from_raw_parts(data_slice, 4 * count as usize);
+            self.context.uniform4fv_with_f32_array(Some(&location.0), slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_matrix_2fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const f32;
+            let slice = std::slice::from_raw_parts(data_slice, 16 * count as usize);
+            self.context.uniform_matrix2fv_with_f32_array(Some(&location.0), false, slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_matrix_3fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const f32;
+            let slice = std::slice::from_raw_parts(data_slice, 24 * count as usize);
+            self.context.uniform_matrix3fv_with_f32_array(Some(&location.0), false, slice);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_matrix_4fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            let data_slice = data as *const T as *const f32;
+            let slice = std::slice::from_raw_parts(data_slice, 32 * count as usize);
+            self.context.uniform_matrix4fv_with_f32_array(Some(&location.0), false, slice);
             self.check_for_error()
         }
     }

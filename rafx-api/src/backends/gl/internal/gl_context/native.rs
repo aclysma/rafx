@@ -26,6 +26,9 @@ pub struct GlContext {
     global_vao: u32,
 }
 
+unsafe impl Send for GlContext {}
+unsafe impl Sync for GlContext {}
+
 impl PartialEq for GlContext {
     fn eq(&self, other: &Self) -> bool {
         self.window_hash == other.window_hash
@@ -617,6 +620,83 @@ impl GlContext {
         unsafe {
             let ptr = byte_offset as *const std::ffi::c_void;
             self.gles2.DrawElements(mode, count, type_, ptr);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_1iv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Uniform1iv(location.0 as _, count as _, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_1fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Uniform1fv(location.0 as _, count as _, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_2iv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Uniform2iv(location.0 as _, count as _, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_2fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Uniform2fv(location.0 as _, count as _, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_3iv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Uniform3iv(location.0 as _, count as _, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_3fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Uniform3fv(location.0 as _, count as _, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_4iv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Uniform4iv(location.0 as _, count as _, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_4fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.Uniform4fv(location.0 as _, count as _, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_matrix_2fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.UniformMatrix2fv(location.0 as _, count as _, gles20::FALSE, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_matrix_3fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.UniformMatrix3fv(location.0 as _, count as _, gles20::FALSE, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_uniform_matrix_4fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.UniformMatrix4fv(location.0 as _, count as _, gles20::FALSE, data as *const T as _);
             self.check_for_error()
         }
     }

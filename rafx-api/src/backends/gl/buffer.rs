@@ -30,6 +30,10 @@ impl GlBufferContents {
     pub unsafe fn as_mut_ptr(&self) -> *mut u8 {
         self.data.borrow_mut().as_mut_ptr()
     }
+
+    pub unsafe fn as_slice(&self) -> &[u8] {
+        self.data.borrow().value
+    }
 }
 
 #[derive(Debug)]

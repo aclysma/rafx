@@ -21,7 +21,6 @@ pub fn update_loop(
     window: winit::window::Window,
     event_loop: winit::event_loop::EventLoop<()>,
 ) -> RafxResult<()> {
-
     //
     // Create the api
     //
@@ -386,16 +385,15 @@ pub fn update_loop(
                         }],
                     ).unwrap();
 
-                    // cmd_buffer.cmd_bind_descriptor_set(
-                    //     &descriptor_set_array,
-                    //     presentable_frame.rotating_frame_index() as u32,
-                    // ).unwrap();
+                    cmd_buffer.cmd_bind_descriptor_set(
+                        &descriptor_set_array,
+                        presentable_frame.rotating_frame_index() as u32,
+                    ).unwrap();
                     cmd_buffer.cmd_draw(3, 0).unwrap();
-                    //
-                    // // Put it into a layout where we can present it
 
                     cmd_buffer.cmd_end_render_pass().unwrap();
 
+                    // Put it into a layout where we can present it
                     cmd_buffer.cmd_resource_barrier(
                         &[],
                         &[RafxTextureBarrier::state_transition(
@@ -404,6 +402,7 @@ pub fn update_loop(
                             RafxResourceState::PRESENT,
                         )],
                     ).unwrap();
+
                     cmd_buffer.end().unwrap();
 
                     //

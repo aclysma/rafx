@@ -13,6 +13,6 @@ varying highp vec4 interface_var_0;
 
 void main()
 {
-    gl_FragData[0] = interface_var_0;
+    gl_FragData[0] = uniform_data.uniform_color;
 }
 
