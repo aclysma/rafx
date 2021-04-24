@@ -2,25 +2,36 @@ use crate::gl::{RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl, GlPipelin
 use crate::{RafxCommandBufferDef, RafxCommandPoolDef, RafxQueueType, RafxResult, RafxExtents2D, MAX_DESCRIPTOR_SET_LAYOUTS};
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
+
+static NEXT_COMMAND_POOL_STATE_ID: AtomicU32 = AtomicU32::new(0);
 
 pub(crate) struct BoundDescriptorSet {
     pub(crate) data: Arc<TrustCell<DescriptorSetArrayData>>,
     pub(crate) array_index: u32,
-    pub(crate) root_signature: RafxRootSignatureGl,
-    pub(crate) update_index: u64,
 }
 
 pub(crate) struct CommandPoolGlStateInner {
+    pub(crate) id: u32,
     pub(crate) is_started: bool,
     pub(crate) surface_size: Option<RafxExtents2D>,
     pub(crate) current_gl_pipeline_info: Option<Arc<GlPipelineInfo>>,
     pub(crate) stencil_reference_value: u32,
 
     pub(crate) bound_descriptor_sets: [Option<BoundDescriptorSet>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    pub(crate) bound_descriptor_sets_root_signature: Option<RafxRootSignatureGl>,
+    pub(crate) descriptor_sets_update_index: [u64; MAX_DESCRIPTOR_SET_LAYOUTS],
+
 
     // One per possible bound vertex buffer (could be 1 per attribute!)
     pub(crate) vertex_buffer_byte_offsets: Vec<u32>,
     pub(crate) index_buffer_byte_offset: u32,
+}
+
+impl PartialEq for CommandPoolGlStateInner {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl std::fmt::Debug for CommandPoolGlStateInner {
@@ -39,6 +50,16 @@ impl std::fmt::Debug for CommandPoolGlStateInner {
     }
 }
 
+impl CommandPoolGlStateInner {
+    pub(crate) fn clear_bindings(&mut self) {
+        for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
+            self.bound_descriptor_sets[i] = None;
+            self.descriptor_sets_update_index[i] += 1;
+            self.bound_descriptor_sets_root_signature = None;
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct CommandPoolGlState {
     inner: Arc<TrustCell<CommandPoolGlStateInner>>
@@ -47,13 +68,16 @@ pub(crate) struct CommandPoolGlState {
 impl CommandPoolGlState {
     fn new(device_context: &RafxDeviceContextGl) -> Self {
         let inner = CommandPoolGlStateInner {
+            id: NEXT_COMMAND_POOL_STATE_ID.fetch_add(1, Ordering::Relaxed),
             is_started: false,
             surface_size: None,
             current_gl_pipeline_info: None,
             stencil_reference_value: 0,
             vertex_buffer_byte_offsets: vec![0; device_context.device_info().max_vertex_attribute_count as usize],
             index_buffer_byte_offset: 0,
-            bound_descriptor_sets: Default::default()
+            bound_descriptor_sets: Default::default(),
+            bound_descriptor_sets_root_signature: None,
+            descriptor_sets_update_index: Default::default(),
         };
 
         CommandPoolGlState {

@@ -1,4 +1,4 @@
-use crate::gl::{RafxDeviceContextGl, GlCompiledShader, ProgramId, RafxShaderGl, NONE_PROGRAM, LocationId, RafxRootSignatureGl};
+use crate::gl::{RafxDeviceContextGl, GlCompiledShader, ProgramId, RafxShaderGl, NONE_PROGRAM, LocationId, RafxRootSignatureGl, RafxQueueGl};
 use crate::{RafxComputePipelineDef, RafxGraphicsPipelineDef, RafxPipelineType, RafxResult, RafxRootSignature, RafxShaderStageFlags, RafxRasterizerState, RafxDescriptorIndex, MAX_DESCRIPTOR_SET_LAYOUTS};
 use crate::gl::gles20;
 use crate::gl::conversions::{GlRasterizerState, GlBlendState, GlDepthStencilState};
@@ -30,6 +30,7 @@ pub(crate) struct GlPipelineInfo {
     uniform_field_locations: Vec<Option<LocationId>>,
     pub(crate) root_signature: RafxRootSignatureGl,
     pub(crate) last_descriptor_updates: TrustCell<[u64; MAX_DESCRIPTOR_SET_LAYOUTS]>,
+    pub(crate) last_bound_by_command_pool: TrustCell<u32>,
 }
 
 impl GlPipelineInfo {
@@ -144,6 +145,7 @@ impl RafxPipelineGl {
             .ok_or_else(|| format!("GL ES 2.0 does not support topology {:?}", pipeline_def.primitive_topology))?;
 
         let gl_pipeline_info = GlPipelineInfo {
+            last_bound_by_command_pool: TrustCell::new(0),
             gl_rasterizer_state: pipeline_def.rasterizer_state.into(),
             gl_depth_stencil_state: pipeline_def.depth_state.into(),
             gl_blend_state: pipeline_def.blend_state.gl_blend_state()?,

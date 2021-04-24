@@ -48,6 +48,8 @@ impl RafxCommandBufferGl {
             *offset = 0;
         }
 
+        state.clear_bindings();
+
         Ok(())
     }
 
@@ -226,6 +228,13 @@ impl RafxCommandBufferGl {
     ) -> RafxResult<()> {
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
+
+        // if let Some(previous_pipeline) = state.current_gl_pipeline_info {
+        //     if pipeline_info.root_signature != previous_pipeline.root_signature {
+        //         state.clear_bindings();
+        //     }
+        // }
+
 
         let pipeline_info = pipeline.gl_pipeline_info();
         state.current_gl_pipeline_info = Some(pipeline_info.clone());
@@ -424,18 +433,22 @@ impl RafxCommandBufferGl {
         set_index: u32,
         array_index: u32,
     ) {
-        let previous = &state.bound_descriptor_sets[set_index as usize];
-        let mut bind_count = 1;
-        if let Some(previous) = previous {
-            bind_count = previous.update_index + 1;
+        // If we bind a descriptor set with a different root signature, clear the other bindings
+        if let Some(current_root_signature) = &state.bound_descriptor_sets_root_signature {
+            if current_root_signature != root_signature {
+                state.clear_bindings();
+                state.bound_descriptor_sets_root_signature = Some(root_signature.clone());
+            }
+        } else {
+            state.bound_descriptor_sets_root_signature = Some(root_signature.clone());
         }
 
+        // Cache the info necessary to update bound programs later
         state.bound_descriptor_sets[set_index as usize] = Some(BoundDescriptorSet {
-            root_signature: root_signature.clone(),
             data: data.clone(),
             array_index,
-            update_index: bind_count
         });
+        state.descriptor_sets_update_index[set_index as usize] += 1;
     }
 
     // Call right before drawing, this just checks that the program is up-to-date with the latest
@@ -447,19 +460,34 @@ impl RafxCommandBufferGl {
         let pipeline = state.current_gl_pipeline_info.as_ref().unwrap();
         let mut last_descriptor_updates = pipeline.last_descriptor_updates.borrow_mut();
 
-        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            if let Some(bound_descriptor_set) = &state.bound_descriptor_sets[set_index] {
-                if last_descriptor_updates[set_index] < bound_descriptor_set.update_index {
-                    if bound_descriptor_set.root_signature == pipeline.root_signature {
-                        Self::do_bind_descriptor_set(
-                            gl_context,
-                            pipeline,
-                            &*bound_descriptor_set.data.borrow(),
-                            set_index as u32,
-                            bound_descriptor_set.array_index
-                        )?;
+        // If the program was previously bound by some other command pool, we can't assume it's in
+        // the same state as before. Clear the last_descriptor_updates values to ensure that we push
+        // all sets into the program state
+        let mut last_bound_by_command_pool = pipeline.last_bound_by_command_pool.borrow_mut();
+        if *last_bound_by_command_pool != state.id {
+            *last_bound_by_command_pool = state.id;
 
-                        last_descriptor_updates[set_index] = bound_descriptor_set.update_index;
+            for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
+                last_descriptor_updates[set_index] = 0;
+            }
+        }
+
+        if let Some(bound_descriptor_sets_root_signature) = &state.bound_descriptor_sets_root_signature {
+            // Only update the program if the bound descriptor sets match the root signature
+            if *bound_descriptor_sets_root_signature == pipeline.root_signature {
+                for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
+                    if let Some(bound_descriptor_set) = &state.bound_descriptor_sets[set_index] {
+                        if last_descriptor_updates[set_index] < state.descriptor_sets_update_index[set_index] {
+                            Self::do_bind_descriptor_set(
+                                gl_context,
+                                pipeline,
+                                &*bound_descriptor_set.data.borrow(),
+                                set_index as u32,
+                                bound_descriptor_set.array_index
+                            )?;
+
+                            last_descriptor_updates[set_index] = state.descriptor_sets_update_index[set_index];
+                        }
                     }
                 }
             }
@@ -621,6 +649,13 @@ impl RafxCommandBufferGl {
         dst_offset: u64,
         size: u64,
     ) -> RafxResult<()> {
+
+        let mut state = self.command_pool_state.borrow_mut();
+        assert!(state.is_started);
+
+        //self.queue.gl
+
+
         unimplemented!();
         // let mut inner = self.inner.borrow_mut();
         // let blit_encoder = inner.blit_encoder.as_ref();
