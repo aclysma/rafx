@@ -3,12 +3,13 @@ use crate::{
     RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-//use cocoa_foundation::foundation::NSUInteger;
 use fnv::FnvHashMap;
-//use gl_rs::{MTLResourceUsage, MTLTextureType};
 use std::sync::Arc;
 use crate::gl::reflection::{UniformReflectionData, UniformIndex};
 use std::ffi::CString;
+use std::sync::atomic::Ordering;
+
+static NEXT_ROOT_SIGNATURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 // #[derive(Debug)]
 // pub(crate) struct ImmutableSampler {
@@ -38,19 +39,16 @@ pub(crate) struct DescriptorInfo {
 
     // // --- gl-specific ---
     // //pub(crate) immutable_sampler: Option<Vec<RafxSampler>>,
-    // //pub(crate) usage: gl::MTLResourceUsage,
-    // pub(crate) argument_buffer_id: NSUInteger,
 
     // Indexed by the index of the shader passed into the root descriptor. It may not be the same
     // for different shaders.
-    //pub(crate) gl_locations: Vec<u32>,
-    //size?
-    //type?
     pub(crate) uniform_index: Option<UniformIndex>,
 
     // descriptor sets contain a list of textures, buffers, etc. This indicates where in the list
     // this descriptor starts.
     pub(crate) descriptor_data_offset_in_set: Option<u32>,
+
+    pub(crate) gl_name: CString,
 }
 
 #[derive(Default, Debug)]
@@ -63,8 +61,6 @@ pub(crate) struct DescriptorSetLayoutInfo {
     // // --- gl-specific ---
     // // Now embedded by spirv_cross in the shader
     // //pub(crate) immutable_samplers: Vec<ImmutableSampler>,
-    // All argument buffer IDs must be within 0..argument_buffer_id_range
-    // //pub(crate) argument_buffer_id_range: u32,
     // // pub(crate) sampler_count: u32,
     pub(crate) image_descriptor_state_count: u32,
     pub(crate) buffer_descriptor_state_count: u32,
@@ -82,20 +78,20 @@ pub(crate) struct RafxRootSignatureGlInner {
     // // Keeps them in scope so they don't drop
     // //TODO: Can potentially remove, they are held in DescriptorInfo too
     // //immutable_samplers: Vec<RafxSampler>,
-    // pub(crate) argument_descriptors:
-    //     [Vec<gl_rs::ArgumentDescriptor>; MAX_DESCRIPTOR_SET_LAYOUTS],
-    // pub(crate) argument_buffer_resource_usages:
-    //     [Arc<Vec<MTLResourceUsage>>; MAX_DESCRIPTOR_SET_LAYOUTS],
 
-    pub(crate) program_ids: Vec<ProgramId>,
     pub(crate) uniform_reflection: UniformReflectionData,
-    // index using program_count * descriptor_index + program_index
-    pub(crate) resource_locations: Vec<Option<LocationId>>
+    pub(crate) root_signature_id: u32,
 }
 
 #[derive(Clone, Debug)]
 pub struct RafxRootSignatureGl {
     pub(crate) inner: Arc<RafxRootSignatureGlInner>,
+}
+
+impl PartialEq for RafxRootSignatureGl {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.root_signature_id == other.inner.root_signature_id
+    }
 }
 
 impl RafxRootSignatureGl {
@@ -132,26 +128,6 @@ impl RafxRootSignatureGl {
     ) -> Option<&DescriptorInfo> {
         self.inner.descriptors.get(descriptor_index.0 as usize)
     }
-
-    pub(crate) fn program_index(&self, program_id: ProgramId) -> Option<u32> {
-        for (program_index, p) in self.inner.program_ids.iter().enumerate() {
-            if program_id == *p {
-                return Some(program_index as u32)
-            }
-        }
-
-        None
-    }
-
-    pub(crate) fn resource_location(&self, program_index: u32, descriptor_index: RafxDescriptorIndex) -> &Option<LocationId> {
-        &self.inner.resource_locations[descriptor_index.0 as usize * self.inner.program_ids.len() + program_index as usize]
-    }
-
-    // pub(crate) fn uniform_fields(&self, program: ProgramId, descriptor_index: RafxDescriptorIndex) -> &UniformReflectionData {
-    //     let uniform_index = self.inner.descriptors[descriptor_index.0 as usize].uniform_index
-    //     self.inner.uniform_reflection.fields()
-    // }
-
 
     pub(crate) fn uniform_reflection_data(&self) -> &UniformReflectionData {
         &self.inner.uniform_reflection
@@ -206,9 +182,6 @@ impl RafxRootSignatureGl {
         let mut name_to_descriptor_index = FnvHashMap::default();
 
         let program_ids : Vec<ProgramId> = root_signature_def.shaders.iter().map(|x| x.gl_shader().unwrap().gl_program_id()).collect();
-
-        // Will hold locations for all resources
-        let mut resource_locations = Vec::with_capacity(program_ids.len() * merged_resources.len());
 
         // Lookup for uniform fields
         let uniform_reflection = UniformReflectionData::new(
@@ -278,15 +251,9 @@ impl RafxRootSignatureGl {
                 // });
             } else {
                 let descriptor_index = RafxDescriptorIndex(descriptors.len() as u32);
-                debug_assert_eq!(resource_locations.len(), descriptor_index.0 as usize * program_ids.len());
 
                 let gl_name = resource.gl_name.as_ref().unwrap();
                 let gl_name_cstr = CString::new(gl_name.as_str()).unwrap();
-
-                for &program_id in &program_ids {
-                    let location = gl_context.gl_get_uniform_location(program_id, &gl_name_cstr)?;
-                    resource_locations.push(location);
-                }
 
                 let uniform_index = if resource.resource_type == RafxResourceType::UNIFORM_BUFFER {
                     // May be none if the variable is not active in any shader
@@ -307,6 +274,7 @@ impl RafxRootSignatureGl {
                     // immutable_sampler: immutable_sampler.map(|x| immutable_samplers[x].clone()),
                     uniform_index,
                     descriptor_data_offset_in_set,
+                    gl_name: gl_name_cstr,
                 });
 
                 if let Some(name) = resource.name.as_ref() {
@@ -317,56 +285,15 @@ impl RafxRootSignatureGl {
                 layout
                     .binding_to_descriptor_index
                     .insert(resource.binding, descriptor_index);
-                // layout.argument_buffer_id_range =
-                //     next_argument_buffer_id[resource.set_index as usize];
-
-                // // Build out the MTLResourceUsage usages - it's used when we bind descriptor sets
-                // let layout_resource_usages = &mut resource_usages[resource.set_index as usize];
-                // layout_resource_usages.resize(
-                //     layout.argument_buffer_id_range as usize,
-                //     MTLResourceUsage::empty(),
-                // );
-                // let usage = super::util::resource_type_mtl_resource_usage(resource.resource_type);
-                // for i in argument_buffer_id..layout.argument_buffer_id_range {
-                //     layout_resource_usages[i as usize] = usage;
-                // }
-
-                //debug_assert_ne!(layout.argument_buffer_id_range, 0);
             }
         }
-
-        // let mut argument_descriptors = [vec![], vec![], vec![], vec![]];
-
-        // for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-        //     for &resource_index in &layouts[i].descriptors {
-        //         let descriptor = &descriptors[resource_index.0 as usize];
-        //
-        //         let argument_descriptor = gl_rs::ArgumentDescriptor::new();
-        //
-        //         let access =
-        //             super::util::resource_type_mtl_argument_access(descriptor.resource_type);
-        //         let data_type =
-        //             super::util::resource_type_mtl_data_type(descriptor.resource_type).unwrap();
-        //         argument_descriptor.set_access(access);
-        //         argument_descriptor.set_array_length(descriptor.element_count as _);
-        //         argument_descriptor.set_data_type(data_type);
-        //         argument_descriptor.set_index(descriptor.argument_buffer_id as _);
-        //         argument_descriptor.set_texture_type(MTLTextureType::D2); //TODO: Temp, not sure if it's this gets changed when bound
-        //         argument_descriptors[i].push(argument_descriptor.to_owned());
-        //     }
-        // }
-        //
-        // let argument_buffer_resource_usages = [
-        //     Arc::new(std::mem::take(&mut resource_usages[0])),
-        //     Arc::new(std::mem::take(&mut resource_usages[1])),
-        //     Arc::new(std::mem::take(&mut resource_usages[2])),
-        //     Arc::new(std::mem::take(&mut resource_usages[3])),
-        // ];
 
         for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
             layouts[i].image_descriptor_state_count = next_descriptor_data_image_offset[i];
             layouts[i].buffer_descriptor_state_count = next_descriptor_data_buffer_offset[i];
         }
+
+        let root_signature_id = NEXT_ROOT_SIGNATURE_ID.fetch_add(1, Ordering::Relaxed);
 
         let inner = RafxRootSignatureGlInner {
             device_context: device_context.clone(),
@@ -374,11 +301,8 @@ impl RafxRootSignatureGl {
             layouts,
             descriptors,
             name_to_descriptor_index,
-            program_ids,
-            //argument_buffer_resource_usages,
-            //argument_descriptors,
             uniform_reflection,
-            resource_locations
+            root_signature_id
         };
 
         Ok(RafxRootSignatureGl {

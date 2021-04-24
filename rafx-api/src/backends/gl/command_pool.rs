@@ -1,18 +1,42 @@
-use crate::gl::{RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl, GlPipelineInfo};
-use crate::{RafxCommandBufferDef, RafxCommandPoolDef, RafxQueueType, RafxResult, RafxExtents2D};
+use crate::gl::{RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl, GlPipelineInfo, DescriptorSetArrayData, RafxRootSignatureGl};
+use crate::{RafxCommandBufferDef, RafxCommandPoolDef, RafxQueueType, RafxResult, RafxExtents2D, MAX_DESCRIPTOR_SET_LAYOUTS};
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
 
-#[derive(Debug)]
+pub(crate) struct BoundDescriptorSet {
+    pub(crate) data: Arc<TrustCell<DescriptorSetArrayData>>,
+    pub(crate) array_index: u32,
+    pub(crate) root_signature: RafxRootSignatureGl,
+    pub(crate) update_index: u64,
+}
+
 pub(crate) struct CommandPoolGlStateInner {
     pub(crate) is_started: bool,
     pub(crate) surface_size: Option<RafxExtents2D>,
     pub(crate) current_gl_pipeline_info: Option<Arc<GlPipelineInfo>>,
     pub(crate) stencil_reference_value: u32,
 
+    pub(crate) bound_descriptor_sets: [Option<BoundDescriptorSet>; MAX_DESCRIPTOR_SET_LAYOUTS],
+
     // One per possible bound vertex buffer (could be 1 per attribute!)
     pub(crate) vertex_buffer_byte_offsets: Vec<u32>,
     pub(crate) index_buffer_byte_offset: u32,
+}
+
+impl std::fmt::Debug for CommandPoolGlStateInner {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("CommandPoolGlStateInner")
+            .field("is_started", &self.is_started)
+            .field("surface_size", &self.surface_size)
+            .field("current_gl_pipeline_info", &self.current_gl_pipeline_info)
+            .field("stencil_reference_value", &self.stencil_reference_value)
+            .field("vertex_buffer_byte_offsets", &self.vertex_buffer_byte_offsets)
+            .field("index_buffer_byte_offset", &self.index_buffer_byte_offset)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -28,7 +52,8 @@ impl CommandPoolGlState {
             current_gl_pipeline_info: None,
             stencil_reference_value: 0,
             vertex_buffer_byte_offsets: vec![0; device_context.device_info().max_vertex_attribute_count as usize],
-            index_buffer_byte_offset: 0
+            index_buffer_byte_offset: 0,
+            bound_descriptor_sets: Default::default()
         };
 
         CommandPoolGlState {

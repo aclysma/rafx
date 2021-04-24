@@ -23,14 +23,13 @@ pub struct UniformFieldInfo {
     pub(crate) ty: gles20::types::GLenum,
     pub(crate) field_index: FieldIndex,
     pub(crate) offset: u32,
+    pub(crate) name: CString,
 }
 
 #[derive(Debug)]
 pub struct UniformReflectionData {
-    program_ids: Vec<ProgramId>,
     uniforms: Vec<UniformInfo>,
     fields: Vec<UniformFieldInfo>,
-    locations: Vec<Option<LocationId>>,
     uniform_name_lookup: FnvHashMap<String, UniformIndex>
 }
 
@@ -151,66 +150,38 @@ impl UniformReflectionData {
                     element_count: size_type_name.size,
                     ty: size_type_name.ty,
                     field_index: FieldIndex(fields.len() as u32),
-                    offset
+                    offset,
+                    name: size_type_name.name
                 };
 
                 fields.push(field_info);
-
-                for &program_id in program_ids {
-                    unsafe {
-                        let location = gl_context.gl_get_uniform_location(program_id, &size_type_name.name)?;
-                        locations.push(location);
-                        //println!("{} {}", location, size_type_name.name.to_string_lossy());
-                    }
-                }
             }
         }
 
         Ok(UniformReflectionData {
-            program_ids: program_ids.to_vec(),
             uniforms,
             fields,
-            locations,
             uniform_name_lookup
         })
     }
 
     pub fn uniform_index(&self, name: &str) -> Option<UniformIndex> {
         self.uniform_name_lookup.get(name).cloned()
-        // self.uniforms
-        //     .iter()
-        //     .position(|x| x.name == *name)
-        //     .map(|x| UniformIndex(x as u32))
     }
 
-    pub fn field_range(&self, uniform_index: UniformIndex) -> Range<usize> {
+    pub fn uniform_field_range(&self, uniform_index: UniformIndex) -> Range<usize> {
         let uniform = &self.uniforms[uniform_index.0 as usize];
         let first = uniform.first_field_index.0 as usize;
         let last = uniform.first_field_index.0 as usize + uniform.field_count as usize;
         first..last
     }
 
-    pub fn fields(&self, uniform_index: UniformIndex) -> &[UniformFieldInfo] {
-        let field_range = self.field_range(uniform_index);
+    pub fn uniform_fields(&self, uniform_index: UniformIndex) -> &[UniformFieldInfo] {
+        let field_range = self.uniform_field_range(uniform_index);
         return &self.fields[field_range];
     }
 
-    fn program_index(&self, program_id: ProgramId) -> Option<u32> {
-        self.program_ids
-            .iter()
-            .position(|x| *x == program_id)
-            .map(|x| x as u32)
-    }
-
-    pub fn location(&self, program_id: ProgramId, field_index: FieldIndex) -> Option<&LocationId> {
-        if let Some(program_index) = self.program_index(program_id) {
-            self.location_by_program_index(program_index, field_index).as_ref()
-        } else {
-            None
-        }
-    }
-
-    pub fn location_by_program_index(&self, program_index: u32, field_index: FieldIndex) -> &Option<LocationId> {
-        &self.locations[(field_index.0 as usize * self.program_ids.len()) + program_index as usize]
+    pub fn fields(&self) -> &[UniformFieldInfo] {
+        &self.fields
     }
 }

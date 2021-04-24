@@ -43,6 +43,14 @@ impl RafxShaderGl {
         self.inner.program_id
     }
 
+    pub fn gl_vertex_shader(&self) -> &GlCompiledShader {
+        &self.inner.vertex_shader
+    }
+
+    pub fn gl_fragment_shader(&self) -> &GlCompiledShader {
+        &self.inner.fragment_shader
+    }
+
     pub fn new(
         device_context: &RafxDeviceContextGl,
         stages: Vec<RafxShaderStageDef>,

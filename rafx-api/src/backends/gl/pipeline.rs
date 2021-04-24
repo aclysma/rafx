@@ -1,44 +1,11 @@
-use crate::gl::{RafxDeviceContextGl, GlCompiledShader, ProgramId, RafxShaderGl, NONE_PROGRAM};
-use crate::{RafxComputePipelineDef, RafxGraphicsPipelineDef, RafxPipelineType, RafxResult, RafxRootSignature, RafxShaderStageFlags, RafxRasterizerState};
+use crate::gl::{RafxDeviceContextGl, GlCompiledShader, ProgramId, RafxShaderGl, NONE_PROGRAM, LocationId, RafxRootSignatureGl};
+use crate::{RafxComputePipelineDef, RafxGraphicsPipelineDef, RafxPipelineType, RafxResult, RafxRootSignature, RafxShaderStageFlags, RafxRasterizerState, RafxDescriptorIndex, MAX_DESCRIPTOR_SET_LAYOUTS};
 use crate::gl::gles20;
 use crate::gl::conversions::{GlRasterizerState, GlBlendState, GlDepthStencilState};
 use crate::gl::gles20::types::GLenum;
 use std::sync::Arc;
-// fn gl_entry_point_name(name: &str) -> &str {
-//     // "main" is not an allowed entry point name. spirv_cross adds a 0 to the end of any
-//     // unallowed entry point names so do that here too
-//     if name == "main" {
-//         "main0"
-//     } else {
-//         name
-//     }
-// }
-
-// #[derive(Debug)]
-// enum GlPipelineState {
-//     Graphics(gl_rs::RenderPipelineState),
-//     Compute(gl_rs::ComputePipelineState),
-// }
-
-// #[derive(Debug)]
-// pub(crate) struct PipelineComputeEncoderInfo {
-//     pub compute_threads_per_group: [u32; 3],
-// }
-//
-// #[derive(Debug)]
-// pub(crate) struct PipelineRenderEncoderInfo {
-//     // This is all set on the render encoder, so cache it now so we can set it later
-//     pub(crate) mtl_cull_mode: gl_rs::MTLCullMode,
-//     pub(crate) mtl_triangle_fill_mode: gl_rs::MTLTriangleFillMode,
-//     pub(crate) mtl_front_facing_winding: gl_rs::MTLWinding,
-//     pub(crate) mtl_depth_bias: f32,
-//     pub(crate) mtl_depth_bias_slope_scaled: f32,
-//     pub(crate) mtl_depth_clip_mode: gl_rs::MTLDepthClipMode,
-//     pub(crate) mtl_depth_stencil_state: Option<gl_rs::DepthStencilState>,
-//     pub(crate) mtl_primitive_type: gl_rs::MTLPrimitiveType,
-// }
-
-
+use crate::gl::reflection::FieldIndex;
+use rafx_base::trust_cell::TrustCell;
 
 #[derive(Debug)]
 pub(crate) struct GlAttribute {
@@ -57,7 +24,22 @@ pub(crate) struct GlPipelineInfo {
     pub(crate) gl_depth_stencil_state: GlDepthStencilState,
     pub(crate) gl_blend_state: GlBlendState,
     pub(crate) gl_topology: GLenum,
-    pub(crate) gl_attributes: Vec<GlAttribute>
+    pub(crate) gl_attributes: Vec<GlAttribute>,
+    pub(crate) program_id: ProgramId,
+    resource_locations: Vec<Option<LocationId>>,
+    uniform_field_locations: Vec<Option<LocationId>>,
+    pub(crate) root_signature: RafxRootSignatureGl,
+    pub(crate) last_descriptor_updates: TrustCell<[u64; MAX_DESCRIPTOR_SET_LAYOUTS]>,
+}
+
+impl GlPipelineInfo {
+    pub fn resource_location(&self, descriptor_index: RafxDescriptorIndex) -> &Option<LocationId> {
+        &self.resource_locations[descriptor_index.0 as usize]
+    }
+
+    pub fn uniform_member_location(&self, field_index: FieldIndex) -> &Option<LocationId> {
+        &self.uniform_field_locations[field_index.0 as usize]
+    }
 }
 
 #[derive(Debug)]
@@ -66,8 +48,14 @@ pub struct RafxPipelineGl {
     // It's a RafxRootSignatureGl, but stored as RafxRootSignature so we can return refs to it
     root_signature: RafxRootSignature,
     shader: RafxShaderGl,
-
     gl_pipeline_info: Arc<GlPipelineInfo>,
+}
+
+impl Drop for RafxPipelineGl {
+    fn drop(&mut self) {
+        let device_context = self.root_signature.gl_root_signature().unwrap().device_context();
+        device_context.gl_context().gl_destroy_program(self.gl_pipeline_info.program_id).unwrap();
+    }
 }
 
 impl RafxPipelineGl {
@@ -80,7 +68,7 @@ impl RafxPipelineGl {
     }
 
     pub fn gl_program_id(&self) -> ProgramId {
-        self.shader.gl_program_id()
+        self.gl_pipeline_info.program_id
     }
 
     pub(crate) fn gl_pipeline_info(&self) -> &Arc<GlPipelineInfo> {
@@ -93,10 +81,13 @@ impl RafxPipelineGl {
     ) -> RafxResult<Self> {
         let gl_context = device_context.gl_context();
         let shader = pipeline_def.shader.gl_shader().unwrap();
-        let program = shader.gl_program_id();
 
-        // Multiple buffers not currently supported
-        assert!(pipeline_def.vertex_layout.buffers.len() <= 1);
+        // Create a new program so that we can customize the vertex attributes
+        let program_id = gl_context.gl_create_program()?;
+        gl_context.gl_attach_shader(program_id, shader.gl_vertex_shader().shader_id())?;
+        gl_context.gl_attach_shader(program_id, shader.gl_fragment_shader().shader_id())?;
+
+        let gl_root_signature = pipeline_def.root_signature.gl_root_signature().unwrap();
 
         let mut gl_attributes = Vec::with_capacity(pipeline_def.vertex_layout.attributes.len());
 
@@ -110,7 +101,7 @@ impl RafxPipelineGl {
             }
 
             gl_context.gl_bind_attrib_location(
-                program,
+                program_id,
                 attribute.location,
                 attribute.gl_attribute_name.as_ref().unwrap()
             )?;
@@ -130,9 +121,17 @@ impl RafxPipelineGl {
             });
         }
 
-        if !pipeline_def.vertex_layout.attributes.is_empty() {
-            gl_context.link_shader_program(program)?;
-            //gl_context.validate_shader_program(program)?;
+        gl_context.link_shader_program(program_id)?;
+
+        let mut resource_locations = Vec::with_capacity(gl_root_signature.inner.descriptors.len());
+        for resource in &gl_root_signature.inner.descriptors {
+            resource_locations.push(gl_context.gl_get_uniform_location(program_id, &resource.gl_name)?);
+        }
+
+        let all_uniform_fields = gl_root_signature.inner.uniform_reflection.fields();
+        let mut uniform_field_locations = Vec::with_capacity(all_uniform_fields.len());
+        for field in all_uniform_fields {
+            uniform_field_locations.push(gl_context.gl_get_uniform_location(program_id, &field.name)?);
         }
 
         //TODO: set up textures?
@@ -149,14 +148,19 @@ impl RafxPipelineGl {
             gl_depth_stencil_state: pipeline_def.depth_state.into(),
             gl_blend_state: pipeline_def.blend_state.gl_blend_state()?,
             gl_topology,
-            gl_attributes
+            gl_attributes,
+            program_id,
+            resource_locations,
+            uniform_field_locations,
+            root_signature: gl_root_signature.clone(),
+            last_descriptor_updates: Default::default()
         };
 
         Ok(RafxPipelineGl {
             root_signature: pipeline_def.root_signature.clone(),
             pipeline_type: RafxPipelineType::Graphics,
             shader: shader.clone(),
-            gl_pipeline_info: Arc::new(gl_pipeline_info)
+            gl_pipeline_info: Arc::new(gl_pipeline_info),
         })
     }
 

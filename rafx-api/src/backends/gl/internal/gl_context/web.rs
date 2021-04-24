@@ -16,10 +16,9 @@ static NEXT_GL_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::Atom
 static NEXT_GL_SHADER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_PROGRAM_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_RENDERBUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
-//static NEXT_GL_LOCATION_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LocationId(WebGlUniformLocation, ProgramId);
+pub struct LocationId(WebGlUniformLocation);
 
 fn convert_js_to_i32(value: &JsValue) -> Option<i32> {
     if let Some(value) = value.as_f64() {
@@ -395,7 +394,8 @@ impl GlContext {
         let programs = self.programs.lock().unwrap();
         let location = self.context.get_uniform_location(programs.get(&program_id).unwrap(), &*name.to_string_lossy());
         self.check_for_error()?;
-        Ok(location.map(|x| LocationId(x, program_id)))
+        let location = location.map(|x| LocationId(x));
+        Ok(location)
     }
 
     pub fn get_active_uniform_max_name_length_hint(&self, _program_id: ProgramId) -> RafxResult<GetActiveUniformMaxNameLengthHint> {
