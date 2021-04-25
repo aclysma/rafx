@@ -1077,4 +1077,11 @@ impl GlContext {
             .map_err(|x| format!("{:?}", x))?;
         self.check_for_error()
     }
+
+    pub fn gl_tex_parameteri(&self, target: GLenum, pname: GLenum, param: i32) -> RafxResult<()> {
+        unsafe {
+            self.context.tex_parameteri(target, pname, param);
+            self.check_for_error()
+        }
+    }
 }
