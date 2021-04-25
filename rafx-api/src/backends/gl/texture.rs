@@ -1,8 +1,6 @@
 use crate::gl::gles20::types::GLenum;
 use crate::gl::{gles20, RafxDeviceContextGl, RenderbufferId, TextureId, NONE_TEXTURE};
-use crate::{
-    GlTextureFormatInfo, RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions,
-};
+use crate::{GlTextureFormatInfo, RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions, RafxSampleCount};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -110,6 +108,10 @@ impl RafxTextureGl {
         texture_def: &RafxTextureDef,
     ) -> RafxResult<RafxTextureGl> {
         texture_def.verify();
+
+        if texture_def.sample_count != RafxSampleCount::SampleCount1 {
+            Err("GL ES 2.0 backend does not implement multisampled images")?;
+        }
 
         let dimensions = texture_def
             .dimensions

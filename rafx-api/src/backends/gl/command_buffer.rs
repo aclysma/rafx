@@ -683,6 +683,7 @@ impl RafxCommandBufferGl {
         array_index: u32,
     ) -> RafxResult<()> {
         let root_signature = &pipeline_info.root_signature;
+        let uniform_reflection_data = root_signature.uniform_reflection_data();
         for descriptor_index in &root_signature.inner.layouts[set_index as usize].descriptors {
             let descriptor = &root_signature.inner.descriptors[descriptor_index.0 as usize];
 
@@ -710,40 +711,40 @@ impl RafxCommandBufferGl {
                     unimplemented!()
                 }
                 RafxResourceType::UNIFORM_BUFFER => {
-                    let data_offset = descriptor.descriptor_data_offset_in_set.unwrap();
-                    for i in 0..descriptor.element_count {
-                        let buffer_state = data.buffer_states[(data_offset + i) as usize]
-                            .as_ref()
-                            .unwrap();
+                    let uniform_index =
+                        root_signature.uniform_index(descriptor.descriptor_index);
 
-                        let base_offset = buffer_state.offset;
-                        let data =
-                            unsafe { buffer_state.buffer_contents.as_ref().unwrap().as_slice() };
+                    if let Some(uniform_index) = uniform_index {
+                        // Find where the buffers states begin for this resource in this descriptor set
+                        let base_buffer_state_index = array_index * data.buffer_states_per_set + descriptor.descriptor_data_offset_in_set.unwrap();
+                        for i in 0..descriptor.element_count {
+                            // Find the buffer state for this specific element of the resource
+                            let buffer_state_index = base_buffer_state_index + i;
+                            let buffer_state = data.buffer_states[buffer_state_index as usize]
+                                .as_ref()
+                                .unwrap();
 
-                        let uniform_reflection_data = root_signature.uniform_reflection_data();
-                        let uniform_index =
-                            root_signature.uniform_index(descriptor.descriptor_index);
+                            // Get a ptr to the start of the uniform data we're binding
+                            let uniform_data_ptr =
+                                unsafe { buffer_state.buffer_contents.as_ref().unwrap().as_ptr().add(buffer_state.offset as usize) };
 
-                        if let Some(uniform_index) = uniform_index {
                             let fields = uniform_reflection_data.uniform_fields(uniform_index);
                             for field in fields {
+                                // Iterate through each member, updating the values
                                 if let Some(location) =
                                     pipeline_info.uniform_member_location(field.field_index)
                                 {
-                                    let field_offset = field.offset + base_offset as u32;
-                                    assert!(
-                                        field_offset + field.element_count <= data.len() as u32
-                                    );
-                                    unsafe {
-                                        let data_ref = &*data.as_ptr().add(field_offset as usize);
-                                        gl_type_util::set_uniform(
-                                            gl_context,
-                                            location,
-                                            data_ref,
-                                            field.ty,
-                                            field.element_count,
-                                        )?;
-                                    }
+                                    let field_ref = unsafe {
+                                        &*uniform_data_ptr.add(field.offset as usize)
+                                    };
+
+                                    gl_type_util::set_uniform(
+                                        gl_context,
+                                        location,
+                                        field_ref,
+                                        field.ty,
+                                        field.element_count,
+                                    )?;
                                 }
                             }
                         }

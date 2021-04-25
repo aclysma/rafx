@@ -73,6 +73,29 @@ impl RafxDeviceContext {
         }
     }
 
+    pub fn find_supported_sample_count(
+        &self,
+        candidates: &[RafxSampleCount],
+    ) -> Option<RafxSampleCount> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxDeviceContext::Vk(inner) => inner.find_supported_sample_count(candidates),
+            #[cfg(feature = "rafx-metal")]
+            RafxDeviceContext::Metal(inner) => {
+                inner.find_supported_sample_count(candidates)
+            }
+            #[cfg(feature = "rafx-gl")]
+            RafxDeviceContext::Gl(inner) => inner.find_supported_sample_count(candidates),
+            #[cfg(any(
+            feature = "rafx-empty",
+            not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            ))]
+            RafxDeviceContext::Empty(inner) => {
+                inner.find_supported_sample_count(candidates)
+            }
+        }
+    }
+
     /// Create a queue
     pub fn create_queue(
         &self,

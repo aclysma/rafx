@@ -1,4 +1,4 @@
-use crate::gl::{BufferId, DescriptorSetLayoutInfo, GlBufferContents, RafxDeviceContextGl};
+use crate::gl::{BufferId, DescriptorSetLayoutInfo, GlBufferContents, RafxDeviceContextGl, DescriptorInfo};
 use crate::{
     RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType,
     RafxResult, RafxRootSignature,
@@ -50,6 +50,8 @@ pub struct ImageDescriptorState {
 
 #[derive(Clone)]
 pub struct DescriptorSetArrayData {
+    pub(crate) buffer_states_per_set: u32,
+    pub(crate) image_states_per_set: u32,
     pub(crate) buffer_states: Vec<Option<BufferDescriptorState>>,
     pub(crate) image_states: Vec<Option<ImageDescriptorState>>,
 }
@@ -102,8 +104,10 @@ impl RafxDescriptorSetArrayGl {
         let layout = &root_signature.inner.layouts[layout_index];
 
         let data = DescriptorSetArrayData {
-            buffer_states: vec![None; layout.buffer_descriptor_state_count as usize],
-            image_states: vec![None; layout.image_descriptor_state_count as usize],
+            buffer_states_per_set: layout.buffer_descriptor_state_count,
+            image_states_per_set: layout.image_descriptor_state_count,
+            buffer_states: vec![None; descriptor_set_array_def.array_length * layout.buffer_descriptor_state_count as usize],
+            image_states: vec![None; descriptor_set_array_def.array_length * layout.image_descriptor_state_count as usize],
         };
 
         Ok(RafxDescriptorSetArrayGl {
@@ -331,8 +335,7 @@ impl RafxDescriptorSetArrayGl {
                     )
                 )?;
 
-                let begin_index = descriptor.descriptor_data_offset_in_set.unwrap() as usize
-                    + update.dst_element_offset as usize;
+                let begin_index = Self::first_buffer_index(layout, update, descriptor);
                 assert!(
                     update.dst_element_offset + buffers.len() as u32 <= descriptor.element_count
                 );
@@ -345,7 +348,6 @@ impl RafxDescriptorSetArrayGl {
                         .buffer_offset_sizes
                         .map(|x| x[buffer_index].byte_offset)
                         .unwrap_or(0);
-                    //println!("arg buffer index: {} offset {} buffer {:?}", next_index, offset, buffer.gl_buffer().unwrap().gl_buffer());
 
                     let gl_buffer = buffer.gl_buffer().unwrap();
                     descriptor_set_data.buffer_states[next_index as usize] =
@@ -354,11 +356,6 @@ impl RafxDescriptorSetArrayGl {
                             buffer_id: gl_buffer.gl_buffer_id(),
                             offset,
                         });
-                    // argument_buffer
-                    //     .encoder
-                    //     .set_buffer(next_index as _, gl_buffer, offset);
-                    // descriptor_resource_pointers[next_index] =
-                    //     (gl_buffer as &gl_rs::ResourceRef).as_ptr();
 
                     next_index += 1;
                 }
@@ -366,6 +363,16 @@ impl RafxDescriptorSetArrayGl {
             _ => unimplemented!(),
         }
         Ok(())
+    }
+
+    fn first_buffer_index(layout: &DescriptorSetLayoutInfo, update: &RafxDescriptorUpdate, descriptor: &DescriptorInfo) -> u32 {
+        assert!(update.dst_element_offset + update.elements.buffers.as_ref().unwrap().len() as u32 <= descriptor.element_count);
+        layout.buffer_descriptor_state_count * update.array_index + descriptor.descriptor_data_offset_in_set.unwrap() + update.dst_element_offset
+    }
+
+    fn first_image_index(layout: &DescriptorSetLayoutInfo, update: &RafxDescriptorUpdate, descriptor: &DescriptorInfo) -> u32 {
+        assert!(update.dst_element_offset + update.elements.textures.as_ref().unwrap().len() as u32 <= descriptor.element_count);
+        layout.image_descriptor_state_count * update.array_index + descriptor.descriptor_data_offset_in_set.unwrap() + update.dst_element_offset
     }
 }
 

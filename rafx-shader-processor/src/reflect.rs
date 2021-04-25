@@ -146,7 +146,7 @@ where
         size_in_bytes: 0,
         used_in_shader_stages: stage_flags,
         name: Some(slot_name.unwrap_or_else(|| resource.name.clone())),
-        gl_name: Some(resource.name.clone()),
+        gl_name: Some(parsed_binding.parsed.instance_name.clone()),
         gl_uniform_members,
     };
 

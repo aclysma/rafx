@@ -350,7 +350,7 @@ fn run() -> RafxResult<()> {
                     store_op: RafxStoreOp::Store,
                     array_slice: None,
                     mip_slice: None,
-                    clear_value: RafxColorClearValue([0.0, 0.0, 0.0, 0.0]),
+                    clear_value: RafxColorClearValue([0.2, 0.2, 0.2, 1.0]),
                     resolve_target: None,
                     resolve_store_op: RafxStoreOp::DontCare,
                     resolve_mip_slice: None,
